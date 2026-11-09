@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 223 entries: 113 open, 3 partial, 14 blocked, 93 done.
+`TODO/INDEX.md` holds 223 entries: 112 open, 3 partial, 14 blocked, 94 done.
 
 ## State
 
@@ -24,7 +24,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** T-022, T-023, T-024 and T-025 can go now (betas, 2026-11-09). Cut a beta when a
+3. **Releases:** T-023, T-024 and T-025 can go now (betas, 2026-11-09). Cut a beta when a
    batch of fixes is green.
 
 ### The order of podnet's own work
@@ -34,7 +34,7 @@ one. In a milestone: P1, then P2, then P3. At one priority, an S entry goes firs
 not wait for a larger one.
 
 1. **M0, the record and the guards:** T-012.
-2. **M1, the rename:** T-022, T-023 and T-024, then T-025 (betas are allowed, 2026-11-09).
+2. **M1, the rename:** T-023 and T-024, then T-025 (betas are allowed, 2026-11-09).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands before T-040 starts, or after it ends.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):

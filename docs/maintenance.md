@@ -213,9 +213,8 @@ Facts about `live.yml`:
 
 ## Release
 
-There is no podnet release now (`docs/decisions.md`, 2026-11-05, Order).
-These steps apply when the owner allows releases again. When a batch of
-fixes is green (`CLAUDE.md`):
+Betas are allowed; there is no crates.io release (`docs/decisions.md`,
+2026-11-09, Releases). When a batch of fixes is green (`CLAUDE.md`):
 
 1. Set the version in `Cargo.toml` (the package and the `podnet-netns`
    dependency), `Cargo.lock` and `fuzz/Cargo.lock` (the packages `podnet` and

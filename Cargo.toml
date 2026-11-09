@@ -38,7 +38,7 @@ exclude = ["fuzz"]
 default-members = [".", "crates/podnet-netns"]
 
 [workspace.package]
-version = "0.3.0-beta.12"
+version = "0.4.0-beta.1"
 
 # The switch of the publish to crates.io (.github/workflows/publish.yml).
 # false: each run is a dry run. It stays false while the ruling "Publish no
@@ -55,7 +55,7 @@ name = "podnet"
 path = "src/main.rs"
 
 [dependencies]
-podnet-netns = { path = "crates/podnet-netns", version = "0.3.0-beta.12" }
+podnet-netns = { path = "crates/podnet-netns", version = "0.4.0-beta.1" }
 # TLS of PodUtils/podcrates: the roots, the client configurations and the
 # split of the ClientHello, with podnet's settings (src/trust.rs), on ring.
 pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.8.0", version = "0.8.0" }

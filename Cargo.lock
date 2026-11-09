@@ -2144,7 +2144,7 @@ source = "git+https://github.com/PodUtils/podcrates?tag=v0.8.0#f6801133552b0b343
 
 [[package]]
 name = "podnet"
-version = "0.3.0-beta.12"
+version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -2197,7 +2197,7 @@ dependencies = [
 
 [[package]]
 name = "podnet-netns"
-version = "0.3.0-beta.12"
+version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "libc",
