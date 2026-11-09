@@ -755,8 +755,8 @@ checks (T-097) resolve names on this chain.
 
 ## Premise
 
-- Read in the cargo checkout of podcrates; podnet only consumes it (`src/resolve.rs:80-104`,
-  `names: Names::Last` at `:96`). The fix belongs to `pod-dns` and `pod-proxy`.
+- Read in the cargo checkout of podcrates; podnet only consumes it (`src/resolve.rs:111-135`,
+  `names: Names::Last` at `:127`). The fix belongs to `pod-dns` and `pod-proxy`.
 - A second part is in podnet: no startup note when the egress takes names only. Each resolver then pays
   one failed literal try.
 - Not measured: the 3x cost of the issue.

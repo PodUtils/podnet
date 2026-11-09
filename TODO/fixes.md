@@ -2104,7 +2104,7 @@ attempts repeat the same failure for about 30 s.
 
 - `src/quicktunnel.rs:308-310` (budget and attempts), `:341-353` (the arms; `Hop::Dns` goes to
   `ProvisionError::Http(_)` at `:353`).
-- `crate::resolve::answering_step(host)` (`src/resolve.rs:162`) names the step that answers now.
+- `crate::resolve::answering_step(host)` (`src/resolve.rs:193`) names the step that answers now.
 - `src/quicktunnel.rs` is Cloudflare adapter code (pod-cloudflare, T-029/T-052): a fix is allowed.
 - Not measured: the 30 s run of the issue.
 

@@ -890,12 +890,12 @@ T-165.
 ## Problem
 
 The name `*.trycloudflare.com` is known only after the provision. `--resolve` is one string, set once.
-`PINS` (`src/resolve.rs:41`) and the resolver `SETTINGS` (`:81`) are `OnceLock`s; `set_pins` has no effect
+`PINS` (`src/resolve.rs:41`) and the resolver `SETTINGS` (`:112`) are `OnceLock`s; `set_pins` has no effect
 a second time. A supervisor cannot give a pin to a running start.
 
 ## Premise
 
-- The pins are in `pod_dns::Settings` (`src/resolve.rs:94-100`, `pins: pins()`). A refresh needs a
+- The pins are in `pod_dns::Settings` (`src/resolve.rs:125-131`, `pins: pins()`). A refresh needs a
   settings or pins handle that can change in `pod-dns`.
 
 ## Approach
