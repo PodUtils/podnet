@@ -83,9 +83,9 @@
 378 issue open
 379 issue open
 380 issue open
-381 pull open
-382 pull open
-383 pull open
+381 pull closed
+382 pull closed
+383 pull closed
 384 issue open
 385 issue open
 386 issue open
@@ -117,3 +117,4 @@
 412 issue open
 413 issue open
 414 issue open
+415 pull open
