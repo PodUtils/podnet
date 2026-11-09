@@ -2203,11 +2203,11 @@ python3 scripts/check-size.py
 
 ## Problem
 
-A client that connects and sends nothing, or one byte of a SOCKS5 greeting, holds its task and socket until the process ends. Each connection is unauthenticated. The accept loops have no cap. The WARP door has the fix (`REQUEST_LIMIT`, 30 s, `src/warp/proxy.rs:588`). `CLIENT_TIMEOUT` (300 s) wraps only the copy.
+A client that connects and sends nothing, or one byte of a SOCKS5 greeting, holds its task and socket until the process ends. Each connection is unauthenticated. The accept loops have no cap. The WARP door has the fix (`REQUEST_LIMIT`, 30 s, `src/warp/proxy.rs:586`). `CLIENT_TIMEOUT` (300 s) wraps only the copy.
 
 ## Premise
 
-- `src/vnet/proxy.rs:84-96`: `fill_buf`, `socks5_read_request` and `http_read_connect` have no timeout. The copy is wrapped at `:118-125`. Accept loops: `:269-294`.
+- `src/vnet/proxy.rs:84-96`: `fill_buf`, `socks5_read_request` and `http_read_connect` have no timeout. The copy is wrapped at `:118-125`. Accept loops: `:267-292`.
 - `crates/podnet-netns/src/tailscale.rs:377,383,387`: same reads. The dial and the copy have a timeout (`:386`, `:406`).
 - `crates/podnet-netns/src/frontdoor.rs:79,121`: same reads in the door of `pod --serve` (not in the issue).
 - `src/warp/proxy.rs:628-630,657-661,703-706`: the precedent.
@@ -2248,9 +2248,9 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:87`, `src/vnet/switch.rs:435`, `src/vnet/proxy.rs:315`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:433`, `src/vnet/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1368`.
-- `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:347`).
+- `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:371`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:57-63`).
 
 ## Approach
@@ -2286,7 +2286,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`src/net.rs:89-114`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:178-196`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:80-84`).
+- `connect_origin` (`src/net.rs:113-138`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:178-196`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:104-108`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:185-189`).
 
@@ -2323,7 +2323,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 
 ## Problem
 
-`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:755-759`).
+`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:753-757`).
 
 ## Premise
 
@@ -2361,7 +2361,7 @@ Tests: a forward outside the subnet returns the error; a second forward of one a
 
 ## Problem
 
-`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `src/vnet/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:465`). No counter, no log, no accessor. The `spoofed` counter (`:153`) has no accessor. The rule of the project: a drop is counted (`src/vnet/stack.rs:171-175`). The fault injector counts are not readable either (`:54-111`).
+`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `src/vnet/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:463`). No counter, no log, no accessor. The `spoofed` counter (`:153`) has no accessor. The rule of the project: a drop is counted (`src/vnet/stack.rs:171-175`). The fault injector counts are not readable either (`:54-111`).
 
 ## Premise
 
@@ -3184,7 +3184,7 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Premise
 
-- `README.md:697-701`. `src/warp/proxy.rs:509-529` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:697-701`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
@@ -3297,8 +3297,8 @@ session is up, each task waits in `live.get()` for up to 20 s. `--max-connection
 
 ## Premise
 
-- `src/warp/proxy.rs:195-217` (`serve_dns`), `:139-150` (`admit`), `:160-187` (`health_log`), `:110-125` (`Stats`),
-  `:383-385` (length check in `forward_dns_to`).
+- `src/warp/proxy.rs:193-215` (`serve_dns`), `:137-148` (`admit`), `:158-185` (`health_log`), `:108-123` (`Stats`),
+  `:381-383` (length check in `forward_dns_to`).
 - `src/warp/live.rs:25` (`WAIT_FOR_NEW` 20 s).
 - `src/warp/proxy.rs` has 1902 lines (allowlist): put the new code in a new file.
 

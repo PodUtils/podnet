@@ -68,9 +68,7 @@ impl Bound {
 pub async fn bind(listen: &ProxyListen) -> Result<Bound> {
     match listen {
         ProxyListen::Tcp(addr) => {
-            let listener = tokio::net::TcpListener::bind(addr)
-                .await
-                .with_context(|| format!("binding tcp://{addr}"))?;
+            let listener = crate::net::bind_tcp(*addr).await?;
             let actual = listener.local_addr().unwrap_or(*addr);
             Ok(Bound::Tcp(listener, ProxyListen::Tcp(actual)))
         }

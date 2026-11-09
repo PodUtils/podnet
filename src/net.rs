@@ -56,6 +56,30 @@ pub fn claim_socket_path(path: &std::path::Path, replace: bool) -> Result<()> {
     }
 }
 
+/// Give a refused bind (`AddrInUse`, `PermissionDenied`, `AddrNotAvailable`
+/// in the chain of `err`) the class `Fault::Unavailable`: exit 69.
+pub fn bind_fault(err: anyhow::Error) -> anyhow::Error {
+    use crate::exit::{fault, Fault};
+    use std::io::ErrorKind::{AddrInUse, AddrNotAvailable, PermissionDenied};
+    let refused = err.chain().any(|e| {
+        e.downcast_ref::<std::io::Error>()
+            .is_some_and(|io| matches!(io.kind(), AddrInUse | PermissionDenied | AddrNotAvailable))
+    });
+    if refused {
+        fault(Fault::Unavailable, err)
+    } else {
+        err
+    }
+}
+
+/// Bind a TCP listener. A refused bind exits 69.
+pub async fn bind_tcp(addr: std::net::SocketAddr) -> Result<tokio::net::TcpListener> {
+    tokio::net::TcpListener::bind(addr)
+        .await
+        .with_context(|| format!("binding tcp://{addr}"))
+        .map_err(bind_fault)
+}
+
 pub fn init_crypto() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
@@ -346,6 +370,14 @@ fn _pathbuf(_: PathBuf) {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn a_second_bind_on_one_port_exits_69() {
+        crate::test_host::need_loopback!();
+        let first = bind_tcp(([127, 0, 0, 1], 0).into()).await.unwrap();
+        let err = bind_tcp(first.local_addr().unwrap()).await.unwrap_err();
+        assert_eq!(crate::exit::code_of(&err), crate::exit::UNAVAILABLE);
+    }
 
     #[test]
     fn a_claim_gives_69_for_a_live_socket_64_for_a_file_and_removes_a_stale_one() {

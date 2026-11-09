@@ -22,7 +22,7 @@
 2103 src/vnet/stack.rs
 1680 src/warp/ip.rs
 1078 src/warp/mod.rs
-1876 src/warp/proxy.rs
+1874 src/warp/proxy.rs
 892 src/warp/register.rs
 1211 src/warp/session.rs
 817 src/warp/up.rs

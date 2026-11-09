@@ -61,7 +61,9 @@ pub(crate) async fn net_tailscale(args: TailscaleArgs) -> Result<()> {
             )
         })
         .fault(Fault::Unavailable)?;
-    let proxy = tailscale::serve(Dialer::new(&args.socket), listen, args.port).await?;
+    let proxy = tailscale::serve(Dialer::new(&args.socket), listen, args.port)
+        .await
+        .map_err(podnet::net::bind_fault)?;
     // Issue 300: the bound address (a TCP port 0 gives the port).
     println!("podnet: proxy    {}", proxy.listen);
     println!("podnet: localapi {}", args.socket);

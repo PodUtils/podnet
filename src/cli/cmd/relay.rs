@@ -187,7 +187,7 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                     };
                     match listen {
                         podnet::vnet::proxy::ProxyListen::Tcp(addr) => {
-                            let listener = tokio::net::TcpListener::bind(addr).await?;
+                            let listener = podnet::net::bind_tcp(addr).await?;
                             let local = format!("tcp://{}", listener.local_addr()?);
                             println!("podnet: relay    {name} -> {local}");
                             podnet::detach::ready(

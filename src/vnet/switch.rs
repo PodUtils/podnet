@@ -410,9 +410,7 @@ async fn serve_for(listen: ProxyListen, token: Option<String>, owner: u32) -> Re
             };
             check_token(&token)?;
             let token: Arc<str> = token.into();
-            let listener = tokio::net::TcpListener::bind(addr)
-                .await
-                .with_context(|| format!("binding tcp://{addr}"))?;
+            let listener = crate::net::bind_tcp(*addr).await?;
             // Issue 300: keep the bound address (the port that the kernel
             // chose for port 0), not the requested one.
             listen = ProxyListen::Tcp(listener.local_addr()?);
