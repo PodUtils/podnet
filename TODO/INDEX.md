@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 142 open, 2 partial, 17 blocked, 61 done.**
+**222 entries: 141 open, 2 partial, 17 blocked, 62 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 5 | 1 | 2 | 16 | 24 |
-| P2 | 92 | 1 | 10 | 34 | 137 |
+| P2 | 91 | 1 | 10 | 35 | 137 |
 | P3 | 44 | 0 | 5 | 11 | 60 |
-| **All** | 142 | 2 | 17 | 61 | 222 |
+| **All** | 141 | 2 | 17 | 62 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -229,7 +229,7 @@ M8 Overlays, M9 Later.
 | [T-181](pods.md) | P3 | M | M7 | feature | open | seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376) |
 | [T-182](fixes.md) | P2 | M | M5 | defect | blocked | `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378) |
 | [T-183](fixes.md) | P2 | S | M5 | defect | done | One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379) |
-| [T-184](fixes.md) | P2 | S | M5 | defect | open | `doctor`: the relay row follows `--relay` and keeps a loopback relay (GitHub #380) |
+| [T-184](fixes.md) | P2 | S | M5 | defect | done | `doctor`: the relay row follows `--relay` and keeps a loopback relay (GitHub #380) |
 | [T-185](fixes.md) | P1 | M | M5 | defect | done | A deadline for the client handshake of `net proxy`, `net tailscale` and `pod --serve` (GitHub #384) |
 | [T-186](fixes.md) | P1 | S | M5 | defect | done | `net tailscale` and the other unix listeners claim the socket path first (GitHub #385) |
 | [T-187](fixes.md) | P2 | M | M5 | defect | open | `net proxy --forward`: a real target may be a name, and the dial reports its hop (GitHub #386) |

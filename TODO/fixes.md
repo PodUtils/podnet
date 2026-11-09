@@ -2162,7 +2162,7 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2187,6 +2187,10 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 cargo test -p podnet --lib doctor::
 python3 scripts/check-size.py
 ```
+
+## Done
+
+2026-11-09, commit aff90d5. podnet doctor --relay URL (env PODNET_RELAY) sets Options.relay; targets(relay) is in src/doctor/targets.rs; a loopback http:// relay gets the row with Tls::Plain and the words 'loopback relay, no TLS'. src/doctor.rs is smaller. Tests: doctor::targets::tests::the_relay_row_follows_the_given_relay, the_targets_hold_the_given_relay. check.sh: exit 0. CI: at the merge.
 
 # T-185: A deadline for the client handshake of `net proxy`, `net tailscale` and `pod --serve` (GitHub #384)
 
