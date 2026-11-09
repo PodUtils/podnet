@@ -12,7 +12,6 @@
 1254 src/doctor.rs
 1608 src/edge_h2.rs
 2142 src/feature/mod.rs
-910 src/main.rs
 2034 src/proxy.rs
 861 src/quicktunnel.rs
 899 src/relay_reverse.rs
