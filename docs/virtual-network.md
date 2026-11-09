@@ -128,6 +128,11 @@ A client must speak SOCKS5 over `AF_UNIX` itself, because `curl` does not
 accept a unix-socket SOCKS proxy. On a host that permits a TCP bind, use
 `--listen tcp://127.0.0.1:1080` and `ALL_PROXY=socks5h://127.0.0.1:1080`.
 
+Each unix listener (`net proxy`, `net switch`, `net tailscale`) claims its
+socket path first. A socket that another process serves gives exit 69. A file
+that is not a socket gives exit 64. A stale socket is removed. A client that
+sends no request in 30 s gets SOCKS5 code 4 or HTTP 504.
+
 ### 5.3 Switch (more than one host)
 
 `podnet net switch` is a hub for stacks. Each stack connects to it with a byte

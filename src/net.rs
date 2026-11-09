@@ -347,6 +347,25 @@ fn _pathbuf(_: PathBuf) {}
 mod tests {
     use super::*;
 
+    #[test]
+    fn a_claim_gives_69_for_a_live_socket_64_for_a_file_and_removes_a_stale_one() {
+        use crate::exit::{code_of, UNAVAILABLE, USAGE};
+        let dir = tempfile::tempdir().unwrap();
+        let live = dir.path().join("live.sock");
+        let _listener = std::os::unix::net::UnixListener::bind(&live).unwrap();
+        let err = claim_socket_path(&live, false).unwrap_err();
+        assert_eq!(code_of(&err), UNAVAILABLE);
+        let file = dir.path().join("plain");
+        std::fs::write(&file, b"x").unwrap();
+        let err = claim_socket_path(&file, false).unwrap_err();
+        assert_eq!(code_of(&err), USAGE);
+        assert!(file.exists());
+        let stale = dir.path().join("stale.sock");
+        drop(std::os::unix::net::UnixListener::bind(&stale).unwrap());
+        claim_socket_path(&stale, false).unwrap();
+        assert!(!stale.exists());
+    }
+
     /// #248: the first dial of an origin with noTLSVerify warns; the next
     /// dials of it do not.
     #[test]

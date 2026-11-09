@@ -130,9 +130,64 @@ pub fn bind_private(
     Ok(listener)
 }
 
+/// Make `path` free for a new unix listener. A socket that answers belongs
+/// to another process: `AddrInUse`. A file that is not a socket is never
+/// removed: `InvalidInput`. A stale socket is removed.
+pub fn claim_unix_path(path: &std::path::Path) -> std::io::Result<()> {
+    use std::io::{Error, ErrorKind};
+    use std::os::unix::fs::FileTypeExt as _;
+    match std::fs::symlink_metadata(path) {
+        Ok(meta) if meta.file_type().is_socket() => {
+            if std::os::unix::net::UnixStream::connect(path).is_ok() {
+                return Err(Error::new(
+                    ErrorKind::AddrInUse,
+                    format!("unix:{} is served by another process", path.display()),
+                ));
+            }
+            std::fs::remove_file(path)
+        }
+        Ok(_) => Err(Error::new(
+            ErrorKind::InvalidInput,
+            format!("unix:{} exists and is not a socket", path.display()),
+        )),
+        Err(err) if err.kind() == ErrorKind::NotFound => Ok(()),
+        Err(err) => Err(err),
+    }
+}
+
+/// [`claim_unix_path`], then [`bind_private`].
+pub fn bind_claimed(path: &std::path::Path) -> std::io::Result<tokio::net::UnixListener> {
+    claim_unix_path(path)?;
+    bind_private(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_claim_refuses_a_live_socket_and_a_file_and_removes_a_stale_socket() {
+        use std::io::ErrorKind;
+        let dir = tempfile::tempdir().unwrap();
+        let live = dir.path().join("live.sock");
+        let _listener = std::os::unix::net::UnixListener::bind(&live).unwrap();
+        let err = claim_unix_path(&live).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::AddrInUse);
+        assert!(live.exists());
+
+        let file = dir.path().join("plain");
+        std::fs::write(&file, b"data").unwrap();
+        let err = claim_unix_path(&file).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+        assert!(file.exists());
+
+        let stale = dir.path().join("stale.sock");
+        drop(std::os::unix::net::UnixListener::bind(&stale).unwrap());
+        assert!(stale.exists());
+        claim_unix_path(&stale).unwrap();
+        assert!(!stale.exists());
+        claim_unix_path(&dir.path().join("none")).unwrap();
+    }
 
     #[test]
     fn a_unix_url_with_three_slashes_is_an_absolute_path() {

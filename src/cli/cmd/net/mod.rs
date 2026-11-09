@@ -61,7 +61,9 @@ pub(crate) struct TailscaleArgs {
     /// The LocalAPI socket of tailscaled.
     #[arg(long, default_value = podnet_netns::tailscale::DEFAULT_SOCKET)]
     socket: String,
-    /// Where to accept proxy clients: unix:/path or tcp://[bind:]port.
+    /// Where to accept proxy clients: unix:/path or tcp://[bind:]port. A
+    /// unix path that another process serves exits 69; a file that is not a
+    /// socket exits 64; a stale socket is removed.
     #[arg(long, default_value = "unix:/tmp/podnet-socks.sock")]
     listen: String,
     /// Port to use when a client omits one.

@@ -45,6 +45,10 @@ pub(crate) async fn net_tailscale(args: TailscaleArgs) -> Result<()> {
     use podnet::vnet::tailscale::{self, Dialer};
 
     let listen = ProxyListen::parse(&args.listen)?;
+    // A live socket is exit 69, a file that is no socket is 64.
+    if let ProxyListen::Unix(path) = &listen {
+        podnet::net::claim_socket_path(path, false)?;
+    }
     // The LocalAPI socket of tailscaled must answer before the front door
     // starts: before, a missing tailscaled was found only at the first
     // SOCKS request, and the command exited 0.

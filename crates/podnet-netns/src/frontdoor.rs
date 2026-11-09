@@ -51,13 +51,10 @@ pub(crate) async fn bind_front_door(
 ) -> Result<(FrontListener, crate::listen::ProxyListen)> {
     use crate::listen::ProxyListen;
     Ok(match listen {
-        ProxyListen::Unix(path) => {
-            let _ = std::fs::remove_file(path);
-            (
-                FrontListener::Unix(crate::listen::bind_private(path)?),
-                listen.clone(),
-            )
-        }
+        ProxyListen::Unix(path) => (
+            FrontListener::Unix(crate::listen::bind_claimed(path)?),
+            listen.clone(),
+        ),
         ProxyListen::Tcp(addr) => {
             let listener = tokio::net::TcpListener::bind(addr).await?;
             let actual = listener.local_addr()?;
