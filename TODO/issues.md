@@ -87,12 +87,12 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #388 | vnet switch: uncounted drops, unbounded queues | open | T-189, T-190 |
 | #389 | net doctor listener table incomplete | open | T-191, T-192 |
 | #390 | net proxy --map reaches the door only | open | T-193 |
-| #391 | relay node: close drops the abort handle | open | T-194 |
-| #392 | relay stop: wrong order | open | T-195 |
-| #393 | relay node: no drain after local EOF | open | T-196 |
-| #394 | relay pair file: mode and read checks | open | T-197 |
+| #391 | relay node: close drops the abort handle | closed (ci 42641451152, live 42641450984 at e784949) | T-194 |
+| #392 | relay stop: wrong order | closed (ci 42641451152, live 42641450984 at e784949) | T-195 |
+| #393 | relay node: no drain after local EOF | closed (ci 42641451152, live 42641450984 at e784949) | T-196 |
+| #394 | relay pair file: mode and read checks | closed (ci 42641451152, live 42641450984 at e784949) | T-197 |
 | #395 | docs say 6 seed hosts, client takes 3 | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-198 |
-| #396 | relay connect --listen: no --detach, record, restart | open | T-199 |
+| #396 | relay connect --listen: no --detach, record, restart | closed (ci 42641451152, live 42641450984 at e784949) | T-199 |
 | #397 | relay reverse road uses host 0 only | open | T-200 |
 | #398 | WebSocketTunnel dials direct (latent, no caller) | open | T-201 |
 | #399 | serve: root_404 never set | open | T-202 |
@@ -101,14 +101,14 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #402 | detach: nested start inherits the env (only --no-restart) | open | T-205 |
 | #403 | agent status has no --json | open | T-206 |
 | #404 | static: `+` decoded differently (one more divergence) | open | T-207 |
-| #405 | warp up --tun drops --replace and others | open | T-208 |
-| #406 | warp status never names warp-tun | open | T-209 |
+| #405 | warp up --tun drops --replace and others | closed (ci 42641451152, live 42641450984 at e784949) | T-208 |
+| #406 | warp status never names warp-tun | closed (ci 42641451152, live 42641450984 at e784949) | T-209 |
 | #407 | warp: every type but "free" reads as WARP+ (partly) | open | T-210 |
-| #408 | warp down removes the fish file without an owner check | open | T-211 |
+| #408 | warp down removes the fish file without an owner check | closed (ci 42641451152, live 42641450984 at e784949) | T-211 |
 | #409 | README says --l4 ignores rules; code applies them | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-212 |
-| #410 | WireGuard endpoint: v6 and ports unread | open | T-213 |
-| #411 | warp ssh-config: path not quoted | open | T-214 |
-| #412 | warp proxy --dns: one task per datagram | open | T-215 |
+| #410 | WireGuard endpoint: v6 and ports unread | closed (ci 42641451152, live 42641450984 at e784949) | T-213 |
+| #411 | warp ssh-config: path not quoted | closed (ci 42641451152, live 42641450984 at e784949) | T-214 |
+| #412 | warp proxy --dns: one task per datagram | closed (ci 42641451152, live 42641450984 at e784949) | T-215 |
 | #413 | COORD-006: asks of podnet for pod-relay, pod-dns, pod-proxy and pod-services | open (a COORD issue between sessions) | T-161, T-162, T-163, T-166, T-172, T-175, T-182, T-200 |
 | #414 | COORD-007: podnet took v0.7.0 and the parts of pod-core; the asks of cfb; the view on pod-hold | closed (podcrates c229926 recorded it) | T-137, T-216 to T-222 |
 
