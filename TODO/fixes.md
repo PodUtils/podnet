@@ -2392,7 +2392,7 @@ A test fills the queue of a peer that does not read and reads a non-zero drop co
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2415,6 +2415,10 @@ A test fills the queue of a peer that does not read and reads a non-zero drop co
 cargo test -p podnet --lib vnet::
 python3 scripts/check-size.py
 ```
+
+## Done
+
+2026-11-09, commit b40d290. LinkDevice::link (src/vnet/device.rs) bounds both queues (LINK_OUTBOUND 512, LINK_INBOUND 4096) and counts an inbound drop in rx_dropped, so device_stats() shows it; stack.rs uses it with no new line. Test: vnet::device::tests::a_link_device_is_bounded_and_counts_its_inbound_drops; the switch tests including the 64 KiB transfer with faults pass. check.sh: exit 0. CI: at the merge.
 
 # T-191: The listener table of `net doctor` names each command that listens (GitHub #389, part 1)
 
