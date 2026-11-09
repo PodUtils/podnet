@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 157 open, 1 partial, 17 blocked, 47 done.**
+**222 entries: 156 open, 1 partial, 17 blocked, 48 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 7 | 1 | 2 | 14 | 24 |
-| P2 | 100 | 0 | 10 | 27 | 137 |
+| P2 | 99 | 0 | 10 | 28 | 137 |
 | P3 | 49 | 0 | 5 | 6 | 60 |
-| **All** | 157 | 1 | 17 | 47 | 222 |
+| **All** | 156 | 1 | 17 | 48 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -244,7 +244,7 @@ M8 Overlays, M9 Later.
 | [T-196](fixes.md) | P2 | M | M5 | defect | done | The relay node drains and waits after a local end of stream (GitHub #393) |
 | [T-197](fixes.md) | P2 | S | M5 | defect | done | The pair file is always mode 0600, and `load` checks the file (GitHub #394) |
 | [T-198](fixes.md) | P3 | S | M5 | docs | open | `docs/protocol.md` and the test agree on the number of seed alternates (GitHub #395) |
-| [T-199](fixes.md) | P2 | M | M5 | defect | open | `relay connect --listen` has the instance surface of `connect -L` (GitHub #396) |
+| [T-199](fixes.md) | P2 | M | M5 | defect | done | `relay connect --listen` has the instance surface of `connect -L` (GitHub #396) |
 | [T-200](crates.md) | P2 | M | M3 | feature | blocked | The reverse road of the relay uses the alternate hosts (GitHub #397) |
 | [T-201](fixes.md) | P3 | S | M5 | defect | open | `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398) |
 | [T-202](fixes.md) | P3 | S | M5 | defect | open | `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399) |
