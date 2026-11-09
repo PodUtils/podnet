@@ -2942,7 +2942,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2969,6 +2969,14 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 `cargo test -p podnet --lib warp_up_tun_args` (new tests: `--replace` present only when set; `Cli::try_parse_from` of
 `warp up --tun --env-d` is a clap error).
+
+## Done
+
+2026-11-09, commit dd02a91 (`T-208: warp up --tun forwards --replace and refuses the proxy flags`).
+`warp_up_tun_args` takes `replace` and pushes `--replace` when set. `--env-d`, `--dns`,
+`--proxy-user` and `--proxy-password-file` of `warp up` have `conflicts_with = "tun"`. Tests (in
+`src/cli/cmd/warp/up_tests.rs`): `warp_up_tun_args_replace_only_when_set`,
+`warp_up_tun_refuses_the_proxy_flags`. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-209: `warp status` names the `warp-tun` instance (GitHub #406)
 
