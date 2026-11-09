@@ -2207,7 +2207,7 @@ The tests cover: refuse, allow with the variable, mode still checked, no registr
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2243,6 +2243,10 @@ A unit test gives a row with a passing index and a failing file host and expects
 ## Correction
 
 2026-11-09: the blocker cleared. podcrates v0.8.0 has `pod_services::get("pypi-files")` (podcrates T-127); podnet takes v0.8.0 in 0df677d.
+
+## Done
+
+2026-11-09, commit 9c5eda7. A row with a file host is ok only when both hosts answer; the row names the failed host. Cargo: the dl key of config.json. Docker: the Location of the redirect of one blob request (manifest walk of library/hello-world). Pip: pod_services pypi-files. JSON rows get the key files. Tests: agent::tests::a_failing_file_host_fails_the_row_and_is_named, agent_files::tests. Not run: a live `doctor --agent --json` (no live host here). check.sh: exit 0. CI: at the merge.
 
 # T-183: One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379)
 

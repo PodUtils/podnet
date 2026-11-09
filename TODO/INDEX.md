@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 127 open, 2 partial, 14 blocked, 80 done.**
+**223 entries: 126 open, 2 partial, 14 blocked, 81 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
-| P2 | 82 | 1 | 8 | 46 | 137 |
+| P2 | 81 | 1 | 8 | 47 | 137 |
 | P3 | 40 | 0 | 4 | 17 | 61 |
-| **All** | 127 | 2 | 14 | 80 | 223 |
+| **All** | 126 | 2 | 14 | 81 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -227,7 +227,7 @@ M8 Overlays, M9 Later.
 | [T-179](later.md) | P3 | S | M9 | research | open | Research: a direction split for asymmetric uplinks (GitHub #375) |
 | [T-180](services.md) | P3 | M | M6 | feature | open | Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376) |
 | [T-181](pods.md) | P3 | M | M7 | feature | open | seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376) |
-| [T-182](fixes.md) | P2 | M | M5 | defect | open | `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378) |
+| [T-182](fixes.md) | P2 | M | M5 | defect | done | `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378) |
 | [T-183](fixes.md) | P2 | S | M5 | defect | done | One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379) |
 | [T-184](fixes.md) | P2 | S | M5 | defect | done | `doctor`: the relay row follows `--relay` and keeps a loopback relay (GitHub #380) |
 | [T-185](fixes.md) | P1 | M | M5 | defect | done | A deadline for the client handshake of `net proxy`, `net tailscale` and `pod --serve` (GitHub #384) |
