@@ -2476,7 +2476,7 @@ A test answers a DNS query for a mapped name at the gateway address.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2501,6 +2501,10 @@ The `close` control message removes the entry of the session and drops its `Abor
 cargo test --test relay_reverse -- a_relay_close_ends_a_session_whose_target_does_not_read
 cargo test --test relay_reverse
 ```
+
+## Done
+
+2026-11-09, commit 699d002 (`T-194: a relay close aborts the session task`). The `close` arm calls `end_session` (`src/relay_reverse/session.rs`): it removes the entry and aborts the task. The binary-frame arm and the `End` arm use the same helper. The session code of the node moved to `src/relay_reverse/session.rs`; `src/relay_reverse.rs` has 973 lines (was 1139). Test: `a_relay_close_ends_a_session_whose_target_does_not_read` (`tests/relay_reverse.rs`, a unix target with a fixed buffer): it fails with no abort (the target reads 3145728 of 3145728 bytes), and passes with it. `scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-195: `relay stop` checks the pair before it stops the local node (GitHub #392)
 

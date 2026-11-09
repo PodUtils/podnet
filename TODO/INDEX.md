@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 161 open, 1 partial, 17 blocked, 43 done.**
+**222 entries: 160 open, 1 partial, 17 blocked, 44 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 7 | 1 | 2 | 14 | 24 |
-| P2 | 104 | 0 | 10 | 23 | 137 |
+| P2 | 103 | 0 | 10 | 24 | 137 |
 | P3 | 49 | 0 | 5 | 6 | 60 |
-| **All** | 161 | 1 | 17 | 43 | 222 |
+| **All** | 160 | 1 | 17 | 44 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -239,7 +239,7 @@ M8 Overlays, M9 Later.
 | [T-191](fixes.md) | P3 | S | M5 | defect | open | The listener table of `net doctor` names each command that listens (GitHub #389, part 1) |
 | [T-192](fixes.md) | P3 | S | M5 | defect | open | A refused TCP bind exits 69 in each listener command (GitHub #389, part 2; GitHub #385 step 5) |
 | [T-193](fixes.md) | P2 | M | M5 | defect | open | `net proxy --map` fills the gateway resolver and the shim table (GitHub #390) |
-| [T-194](fixes.md) | P2 | S | M5 | defect | open | A relay `close` aborts the session task of the node (GitHub #391) |
+| [T-194](fixes.md) | P2 | S | M5 | defect | done | A relay `close` aborts the session task of the node (GitHub #391) |
 | [T-195](fixes.md) | P2 | S | M5 | defect | open | `relay stop` checks the pair before it stops the local node (GitHub #392) |
 | [T-196](fixes.md) | P2 | M | M5 | defect | open | The relay node drains and waits after a local end of stream (GitHub #393) |
 | [T-197](fixes.md) | P2 | S | M5 | defect | open | The pair file is always mode 0600, and `load` checks the file (GitHub #394) |
