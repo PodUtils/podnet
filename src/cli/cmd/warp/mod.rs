@@ -1,8 +1,14 @@
 //! `podnet warp`: the WARP client. The prologue of the global options and the
 //! dispatch to the files of the subcommands.
 
+pub(crate) mod account;
 pub(crate) mod args;
 pub(crate) mod client;
+pub(crate) mod export;
+pub(crate) mod front;
+pub(crate) mod probe;
+pub(crate) mod run;
+pub(crate) mod tun;
 pub(crate) mod up;
 
 use std::time::Duration;
@@ -12,7 +18,7 @@ use anyhow::Result;
 use podnet::exit::{Fault, ResultExt};
 
 pub(crate) use args::{WarpArgs, WarpCommand};
-use client::{identity_pairs, warp_client};
+use client::warp_client;
 
 pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
     // Issue 111: a bad PODNET_WARP_TCP_BURST fails before any network wait.
@@ -52,46 +58,8 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
     if up::before_client(&args).await? {
         return Ok(());
     }
-    match &args.command {
-        WarpCommand::Forward { list: true, .. } => {
-            let list = podnet::instances::list(&podnet::instances::lookup_dir());
-            print!("{}", podnet::instances::text::forward_list(&list));
-            return Ok(());
-        }
-        // Issue 148: a WireGuard device of its own; warp.json is not used.
-        WarpCommand::Export(args) => return podnet::warp::export::command::run(args).await,
-        // Issues 132 and 136: check the rules with no device and no session.
-        WarpCommand::Proxy {
-            rules,
-            rules_file,
-            rule_default,
-            check: true,
-            ..
-        } => {
-            let default = podnet::warp::rules::Action::parse(rule_default).fault(Fault::Usage)?;
-            let table = podnet::warp::rules::Table::build(rules, rules_file.as_deref(), default)
-                .fault(Fault::Usage)?;
-            for rule in &table.rules {
-                println!("rule        {}", rule.spec);
-            }
-            println!("default     {}", table.default.name());
-            return Ok(());
-        }
-        // Issue 150: a bad --listen-identity is a usage error before any
-        // registration.
-        WarpCommand::Proxy {
-            listen_identity,
-            listen,
-            ..
-        } if !listen_identity.is_empty() => {
-            let main = match &args.identity {
-                Some(path) => Some(path.clone()),
-                None if args.ephemeral => None,
-                None => podnet::warp::WarpClient::default_identity_path().fault(Fault::Config)?,
-            };
-            identity_pairs(listen_identity, main.as_deref(), listen).fault(Fault::Usage)?;
-        }
-        _ => {}
+    if export::before_client(&args).await? || front::before_client(&args)? {
+        return Ok(());
     }
     // These commands use a saved device and register none.
     if matches!(
@@ -149,5 +117,27 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
     {
         return up::nc_session(client, host, *port, *udp, *idle, *shutdown).await;
     }
-    crate::warp_other(args, client, path).await
+    match args.command {
+        WarpCommand::Register
+        | WarpCommand::Status { .. }
+        | WarpCommand::License { .. }
+        | WarpCommand::Rotate
+        | WarpCommand::Delete => account::run(args, client, path).await,
+        WarpCommand::Scan { .. } | WarpCommand::Exit { .. } | WarpCommand::Probe { .. } => {
+            probe::run(args, client).await
+        }
+        WarpCommand::Proxy { .. } | WarpCommand::Forward { .. } => {
+            front::run(args, client, path).await
+        }
+        WarpCommand::Tun { .. } => tun::run(args, client).await,
+        WarpCommand::Run { .. } => run::run(args, client).await,
+        WarpCommand::Up { .. }
+        | WarpCommand::Down
+        | WarpCommand::Export(_)
+        | WarpCommand::Env
+        | WarpCommand::Exec { .. }
+        | WarpCommand::Shell(_)
+        | WarpCommand::SshConfig { .. }
+        | WarpCommand::Nc { .. } => unreachable!("handled before this function"),
+    }
 }

@@ -2664,7 +2664,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
   `SocketFile` is in `src/cli/cmd/connect.rs:196-216` (`pub(crate)`).
 - Message: `src/net.rs:38-44`.
-- `src/main.rs:148` allows `--replace` without `--detach` only for `Command::Connect`.
+- `src/main.rs:139` allows `--replace` without `--detach` only for `Command::Connect`.
 
 ## Approach
 
@@ -2989,7 +2989,7 @@ then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:
 
 - `src/warp/live/instance.rs:70-76` (`instance_state` reads `INSTANCE`), `:79-96` (`instance_state_in` takes a name),
   `:104-131` (the line). `src/warp/up.rs:20-22` (two names), `:547-552` (`down` knows both).
-- `src/main.rs:349-362` (inside `warp_other`: T-031 moves it; `main.rs` is in the size allowlist: add no net line).
+- `src/cli/cmd/warp/account.rs:32-45` (the arm `Status` of the account file).
 - `warp tun` has no `Live` and so no `data_path` (the issue notes it; not part of this entry).
 
 ## Approach
@@ -3020,9 +3020,9 @@ another type is shown as WARP+.
 
 ## Premise
 
-- `src/warp/identity.rs:157-171`. Users: `src/main.rs:351`, `:365-368`, `:400-403`. Test: `src/main.rs:1792-1795`.
+- `src/warp/identity.rs:157-171`. Users: `src/cli/cmd/warp/account.rs:34`, `:48-51`, `:83-86`. Test: `src/main.rs:892-895`.
 - The issue says the fixture type `limited` is a free type. This is not shown: `src/warp/register.rs:687` is a test of
-  the redaction of a licence key, and the test at `main.rs:1794` uses `limited` with `premium_data` 10 as WARP+.
+  the redaction of a licence key, and the test at `main.rs:894` uses `limited` with `premium_data` 10 as WARP+.
   The tree has no list of the types that the service sends. A closed list of paid types could hide a real paid account.
 - Earlier report: `docs/reports/aerrand-agent.md:639` (the raw `warp_plus` field).
 
