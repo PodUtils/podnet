@@ -333,6 +333,11 @@ pub(crate) fn doctor(json: bool) -> i32 {
             "ok (getsockname/getpeername: fail)"
         }
     );
+    // T-149: the fidelity of UDP stops at the proxy.
+    println!(
+        "podnet-netns: UDP goes through the proxy: no ICMP error gets to the program \
+         (no ECONNREFUSED, no EMSGSIZE of the path MTU, no IP_MTU)"
+    );
     println!("podnet-netns: the host conditions that podnet handles: https://github.com/PodUtils/podnet/blob/main/docs/target-environment.md");
     if any {
         0

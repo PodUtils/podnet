@@ -472,16 +472,20 @@ pub(crate) fn handle_recv(
     pid: u32,
 ) -> Result<()> {
     let fd = a[0] as i32;
+    let recvmsg = nr == libc::SYS_recvmsg as i32;
+    let flags = if recvmsg { a[2] } else { a[3] } as i32;
+    // T-149: the relay carries no ICMP error, so the error queue of a UDP
+    // or ICMP socket is always empty: `EAGAIN`, as the kernel gives. The
+    // kernel would read the queue of the `AF_UNIX` socketpair.
+    let ours = matches!(map.get(&key), Some(Sock::Datagram(_) | Sock::Icmp(_)));
+    if ours && flags & libc::MSG_ERRQUEUE != 0 {
+        return notif_respond(lfd, id, -1, libc::EAGAIN);
+    }
     let inbox = match map.get(&key) {
         Some(Sock::Datagram(udp)) if writable && udp.inbox.dest().is_none() => udp.inbox.clone(),
         Some(Sock::Icmp(icmp)) if writable => icmp.inbox.clone(),
         _ => return notif_continue(lfd, id),
     };
-    let recvmsg = nr == libc::SYS_recvmsg as i32;
-    let flags = if recvmsg { a[2] } else { a[3] } as i32;
-    if flags & libc::MSG_ERRQUEUE != 0 {
-        return notif_continue(lfd, id);
-    }
     if flags & libc::MSG_OOB != 0 {
         return notif_respond(lfd, id, -1, libc::EOPNOTSUPP);
     }

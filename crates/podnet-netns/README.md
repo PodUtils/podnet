@@ -153,6 +153,13 @@ see it. Use a unix socket for it (`-L unix:///path`).
   kernel. The supervisor compares the source of each datagram of the relay
   (after it maps a name to its fake IP) with the address of `connect`, and
   drops a datagram of another source before it gets to the socketpair.
+* No ICMP error gets to a UDP socket of the program. The relay peers with
+  the proxy, and the SOCKS5 UDP header has no ICMP field. Thus the program
+  gets no `ECONNREFUSED` from a port-unreachable, no `EMSGSIZE` with the
+  path MTU, and `IP_MTU` has no value. The error queue is always empty:
+  `recvmsg` with `MSG_ERRQUEUE` on a UDP or ICMP socket gets `EAGAIN` from
+  the supervisor (the kernel would read the socketpair). `pod doctor`
+  prints this limit.
 * `recvmmsg` is a series of `recvmsg` reads: each `mmsghdr` gets the real
   source and its `msg_len`. The call waits for the first message only, as
   with `MSG_WAITFORONE`, then takes each message that waits. The timeout

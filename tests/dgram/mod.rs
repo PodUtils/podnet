@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 mod addresses;
+mod errqueue;
 mod options;
 mod relay;
 mod source;
