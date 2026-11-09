@@ -1968,7 +1968,7 @@ CONNECT ...: 502`, exit 69, and `curl --proxy ... URL` gives 200. `--no-verify` 
 - Read: `verify_fetch` (`src/tunnel.rs:1230-1311`). The Dns arm (`:1276-1279`) and the other `Err` arm
   (`:1280-1283`) only change the retry text. After the loop only `last_status` can demote the verdict
   (`:1301-1306`). Otherwise `fault(Unavailable)` (`:1307-1310`).
-- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-186`).
+- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-185`).
   `run_demo` passes a body token, so the warn branch cannot apply; it prints PROOF from `check.dns`
   (`run.rs:153-160`). `wants_verify` (`tunnel.rs:1208`) has no caller. The ready document has
   `"verified": bool` (`run.rs:196-215`).
@@ -3003,9 +3003,9 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 
 ## Premise
 
-- `src/cli/cmd/run.rs:82-93` (no `stamped`). The only `stamped` call of `run.rs` is `:262` (`announce`).
+- `src/cli/cmd/run.rs:82-92` (no `stamped`). The only `stamped` call of `run.rs` is `:279` (`announce`).
 - `grep -rn "status::stamped" src/cli` gives 8 hits, none in `run_share`.
-- The `verified` line is unstamped in every command (`run.rs:119`, `:155`). It stays as it is.
+- The `verified` line is unstamped in every command (`run.rs:119`, `:154`). It stays as it is.
 
 ## Approach
 
