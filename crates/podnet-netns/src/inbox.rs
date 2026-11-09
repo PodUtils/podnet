@@ -94,12 +94,19 @@ impl Inbox {
     /// Put `payload` into the socketpair (through `pair`, the end of the
     /// supervisor) and queue its source. The lock is held from the send to
     /// the push, so a read sees the entry of each datagram that it can get.
+    /// A connected socket takes the datagrams of its peer only, as in the
+    /// kernel (T-147): another datagram is dropped, with no queue.
     pub(crate) async fn deliver(
         &self,
         pair: &tokio::net::UnixDatagram,
         source: WireSource,
         payload: &[u8],
     ) {
+        if let Some((ip, port)) = self.dest() {
+            if self.address(Some(source.clone())) != sockaddr_for(self.v6, ip, port) {
+                return;
+            }
+        }
         loop {
             if pair.writable().await.is_err() {
                 return;

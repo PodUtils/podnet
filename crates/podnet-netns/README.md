@@ -149,6 +149,10 @@ see it. Use a unix socket for it (`-L unix:///path`).
   through the supervisor: the kernel runs it. Each other `recvfrom` and each
   `recvmsg` goes through the supervisor, also a read of a TCP socket, which
   the supervisor passes on at once.
+* A connected UDP socket takes the datagrams of its peer only, as in the
+  kernel. The supervisor compares the source of each datagram of the relay
+  (after it maps a name to its fake IP) with the address of `connect`, and
+  drops a datagram of another source before it gets to the socketpair.
 * `recvmmsg` is a series of `recvmsg` reads: each `mmsghdr` gets the real
   source and its `msg_len`. The call waits for the first message only, as
   with `MSG_WAITFORONE`, then takes each message that waits. The timeout
