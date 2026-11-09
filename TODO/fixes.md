@@ -3611,7 +3611,7 @@ cargo todo check
 **Milestone:** M5
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3675,3 +3675,17 @@ The UDP lines of the same series agree after T-143 to T-149.
 ```sh
 cargo test --test pod_seccomp_diff -- seccomp_errnos_match_the_host
 ```
+
+## Done
+
+2026-11-09, commit d68a51c (`T-223: seccomp: close the six TCP gaps of the differential check`).
+The six TCP lines agree with the host kernel; `ALLOWED` of `tests/pod_seccomp_diff.rs` is empty.
+New code: `crates/podnet-netns/src/tcp.rs` (`shutdown`, `listen` with no `bind`, a waiting
+`SO_ERROR`) and the nonblocking dial of `crates/podnet-netns/src/connect.rs`. Tests:
+`seccomp_errnos_match_the_host` (with the new line `tcp getsockname listening`),
+`seccomp_a_nonblocking_connect_gives_einprogress` (`tests/pod_seccomp_nonblock.rs`: `EINPROGRESS`,
+`EALREADY`, `SO_ERROR` waits for a slow dial, the handoff of T-065, a write before the dial ends),
+and `so_error_gives_the_error_of_a_failed_connect` (now `EINPROGRESS`, then `ECONNREFUSED` once).
+`sh scripts/agent/check.sh` exits 0. `unshare -n -- cargo test --offline --test pod_seccomp_diff
+--test pod_seccomp --test pod_seccomp_dgram` and `sh scripts/restricted-host.sh` with the same
+tests exit 0. CI: at the merge.
