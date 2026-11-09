@@ -1750,7 +1750,7 @@ with the fix both pass on this host. `sh scripts/agent/check.sh` exits 0. CI: at
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1779,6 +1779,25 @@ the AF_UNIX pair.
 cargo test --test pod_seccomp_dgram -- seccomp_udp_errqueue_read_is_eagain
 grep -n "ICMP error" crates/podnet-netns/README.md
 ```
+
+## Done
+
+2026-11-09, commit ba83a3e (`T-149: the fidelity of UDP stops at the proxy; MSG_ERRQUEUE gets
+EAGAIN`). The result of the research: option (c). The relay peers with the proxy, and RFC 1928 gives
+the UDP request header no ICMP, TTL or MTU field, so the supervisor cannot know a port-unreachable
+or a path MTU of the target. Option (a) needs a new frame type in the relay protocol and in each
+server of it (`podnet warp proxy`, `podnet pod --serve`, other SOCKS5 servers do not have it).
+Option (b) guesses: a send failure at the proxy is not an ICMP error at the target, and a wrong
+`ECONNREFUSED` breaks a program that retries. No program of the record needs (a) or (b) now: they
+get an entry when a report names a program that needs them. The limit is in
+`crates/podnet-netns/README.md` ("No ICMP error") and in the text form of `pod doctor`
+(`crates/podnet-netns/src/doctor.rs`). `handle_recv` (`crates/podnet-netns/src/inbox.rs`) answers
+`MSG_ERRQUEUE` on a UDP or ICMP socket with `EAGAIN`, connected or not, before the dispatch to the
+inbox. The test `seccomp_udp_errqueue_read_is_eagain` (`tests/dgram/errqueue.rs`) reads the queue
+of an empty socket, of a socket with a waiting datagram (the datagram stays), of a connected socket
+and of an ICMP socket. On the tree before the fix the first read blocked on the socketpair until the
+alarm of the program; with the fix the test passes on this host. `grep -n "ICMP error"
+crates/podnet-netns/README.md` gives one line. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-154: seccomp: fuzz targets for the notification handlers (GitHub #353)
 

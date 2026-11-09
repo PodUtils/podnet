@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 138 open, 2 partial, 17 blocked, 65 done.**
+**222 entries: 137 open, 2 partial, 17 blocked, 66 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 6 | 1 | 2 | 15 | 24 |
 | P2 | 88 | 1 | 10 | 38 | 137 |
-| P3 | 43 | 0 | 5 | 12 | 60 |
-| **All** | 138 | 2 | 17 | 65 | 222 |
+| P3 | 42 | 0 | 5 | 13 | 60 |
+| **All** | 137 | 2 | 17 | 66 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -194,7 +194,7 @@ M8 Overlays, M9 Later.
 | [T-146](fixes.md) | P2 | S | M5 | defect | done | seccomp: `connect(AF_UNSPEC)` dissolves the association of a datagram socket (GitHub #350) |
 | [T-147](fixes.md) | P2 | S | M5 | defect | done | seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350) |
 | [T-148](fixes.md) | P3 | S | M5 | defect | done | seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350) |
-| [T-149](fixes.md) | P3 | S | M5 | research | open | seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350) |
+| [T-149](fixes.md) | P3 | S | M5 | research | done | seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350) |
 | [T-150](pods.md) | P3 | S | M7 | feature | open | seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351) |
 | [T-151](pods.md) | P3 | M | M7 | measurement | open | seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351) |
 | [T-152](pods.md) | P3 | S | M7 | research | open | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
