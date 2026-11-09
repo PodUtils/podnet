@@ -2054,7 +2054,7 @@ cargo test --test cli -- help
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -2088,6 +2088,10 @@ The lead, 2026-11-09: item 1 (the family order) is a fix and lands now. Item 2 (
 cargo test -p podnet endpoint_order_puts_v6_first_without_a_v4_route
 cargo test --test cli -- tunnel_takes_masque_endpoint
 ```
+
+## Correction
+
+2026-11-09, commit 243720f. Item 1 (the family order) is done: `endpoint_order` (now `src/warp/door.rs`) puts the IPv6 doors first with no IPv4 default route, no proxy, no relay and no door that won. Test: `warp::door::tests::endpoint_order_puts_v6_first_without_a_v4_route`. Item 2 (`--masque-endpoint` in `tunnel`) waits for pod-warp and pod-cloudflare (T-050, T-052) by the Decision; the COORD issue (to podcrates) is for the lead to open. The test `tunnel_takes_masque_endpoint` is not written. CI: at the merge.
 
 # T-170: Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367)
 

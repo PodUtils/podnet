@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 124 open, 2 partial, 17 blocked, 80 done.**
+**223 entries: 123 open, 3 partial, 17 blocked, 80 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
-| P2 | 79 | 1 | 10 | 47 | 137 |
+| P2 | 78 | 2 | 10 | 47 | 137 |
 | P3 | 40 | 0 | 5 | 16 | 61 |
-| **All** | 124 | 2 | 17 | 80 | 223 |
+| **All** | 123 | 3 | 17 | 80 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -214,7 +214,7 @@ M8 Overlays, M9 Later.
 | [T-166](later.md) | P3 | M | M9 | feature | blocked | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
 | [T-167](services.md) | P2 | M | M6 | feature | open | `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364) |
 | [T-168](services.md) | P2 | S | M6 | feature | open | A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365) |
-| [T-169](fixes.md) | P2 | S | M5 | defect | open | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
+| [T-169](fixes.md) | P2 | S | M5 | defect | partial | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
 | [T-170](fixes.md) | P2 | S | M5 | defect | open | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
 | [T-171](fixes.md) | P2 | S | M5 | defect | done | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
 | [T-172](later.md) | P3 | M | M9 | feature | blocked | A pin of the new public name while the process runs (GitHub #367) |
