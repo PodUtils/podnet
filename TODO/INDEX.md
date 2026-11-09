@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 128 open, 2 partial, 14 blocked, 79 done.**
+**223 entries: 127 open, 2 partial, 14 blocked, 80 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
 | P2 | 82 | 1 | 8 | 46 | 137 |
-| P3 | 41 | 0 | 4 | 16 | 61 |
-| **All** | 128 | 2 | 14 | 79 | 223 |
+| P3 | 40 | 0 | 4 | 17 | 61 |
+| **All** | 127 | 2 | 14 | 80 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -217,7 +217,7 @@ M8 Overlays, M9 Later.
 | [T-169](fixes.md) | P2 | S | M5 | defect | open | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
 | [T-170](fixes.md) | P2 | S | M5 | defect | open | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
 | [T-171](fixes.md) | P2 | S | M5 | defect | open | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
-| [T-172](later.md) | P3 | M | M9 | feature | open | A pin of the new public name while the process runs (GitHub #367) |
+| [T-172](later.md) | P3 | M | M9 | feature | done | A pin of the new public name while the process runs (GitHub #367) |
 | [T-173](fixes.md) | P2 | S | M5 | feature | partial | A WARP identity of another uid, with a consent variable (GitHub #368) |
 | [T-174](pods.md) | P3 | M | M7 | feature | open | netns: a veth wire when `/dev/net/tun` is not there (GitHub #369) |
 | [T-175](crates.md) | P2 | M | M3 | feature | done | DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370) |

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 223 entries: 128 open, 2 partial, 14 blocked, 79 done.
+`TODO/INDEX.md` holds 223 entries: 127 open, 2 partial, 14 blocked, 80 done.
 
 ## State
 
@@ -62,7 +62,7 @@ not wait for a larger one.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161, T-162, T-163,
-    T-200 (`pod-relay`), T-166 (`pod-services`). T-172 and T-182 can go now (podcrates v0.8.0).
+    T-200 (`pod-relay`), T-166 (`pod-services`). T-182 can go now (podcrates v0.8.0).
 12. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait): T-216, T-217 (the schema of `doctor --json`), T-222, T-218
     (the connector profile), T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
