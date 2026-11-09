@@ -13,6 +13,7 @@ pub const MAX_UDP: usize = 512;
 /// The length of the fixed DNS header.
 pub const HEADER_LEN: usize = 12;
 pub const RCODE_NOERROR: u8 = 0;
+pub const RCODE_SERVFAIL: u8 = 2;
 pub const RCODE_NXDOMAIN: u8 = 3;
 
 /// Lower-case a name and remove the trailing dot.
@@ -104,7 +105,9 @@ impl ParsedQuery {
         Ok(Self {
             id,
             flags,
-            name: labels.join("."),
+            // Names match with no case (T-145). The answer keeps the
+            // question as the client wrote it.
+            name: normalize(&labels.join(".")),
             qtype,
             qclass,
             question,

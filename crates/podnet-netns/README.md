@@ -218,13 +218,18 @@ answers `0x07`.
 ## DNS
 
 Both backends answer A queries from the pool `198.18.0.0/15`. The same name
-always gets the same address. With the `seccomp` backend, AAAA queries get
+always gets the same address. Names match with no case, and with no
+trailing dot: `Example.COM` and `example.com.` get the address of
+`example.com`. The pool has 131072 addresses, and it gives each address
+once: a pod that asks for more names gets `SERVFAIL` for each new name (the
+names that have an address keep it). A reused address would send the flows
+of an older name to the newer name. With the `seccomp` backend, AAAA queries get
 an address of the ULA prefix `fd63:6672:7300::/96` that holds the same pool
 address, so `getaddrinfo(AF_INET6)` works. The `netns` backend (IPv4 only)
 answers AAAA with no address. When the program connects to a pool address
 of either family, the upstream gets the name (SOCKS5 `ATYP=3`, or the
 `CONNECT` host), so the upstream resolves it. A name of `--map` gets no
-AAAA answer.
+AAAA answer. `--map` names match with no case too.
 
 ## Library
 

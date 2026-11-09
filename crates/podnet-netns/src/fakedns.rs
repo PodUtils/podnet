@@ -16,13 +16,19 @@ pub(crate) struct FakeDns {
 impl FakeDns {
     /// Answer a query from the pool. An A query gets the fake address of the
     /// name. Other types get an empty NOERROR answer, so the caller uses IPv4.
+    /// A name that does not fit in the pool gets SERVFAIL (T-145).
     pub(crate) fn answer(&mut self, query: &crate::dns::ParsedQuery) -> Vec<u8> {
+        let servfail = || crate::dns::build_response(query, &[], crate::dns::RCODE_SERVFAIL);
         if query.qtype == crate::dns::TYPE_A {
-            let fake = self.address_for(&query.name);
+            let Some(fake) = self.address_for(&query.name) else {
+                return servfail();
+            };
             crate::dns::build_response(query, &[IpAddr::V4(fake)], crate::dns::RCODE_NOERROR)
         } else if query.qtype == crate::dns::TYPE_AAAA && self.v6 {
             // A pinned name (--map) has no fake address: it gets no AAAA.
-            let v4 = self.address_for(&query.name);
+            let Some(v4) = self.address_for(&query.name) else {
+                return servfail();
+            };
             let answers = if self.by_ip.contains_key(&v4) {
                 vec![IpAddr::V6(fake_v6(v4))]
             } else {
@@ -43,9 +49,15 @@ impl FakeDns {
     }
 
     /// Pin a name to a real address, so it resolves locally with no fake IP.
+    /// A name that has a pool address keeps it: a program can use it.
     pub(crate) fn pin(&mut self, name: &str, ip: IpAddr) {
-        if let IpAddr::V4(v4) = ip {
-            self.by_name.insert(name.to_string(), v4);
+        let name = crate::dns::normalize(name);
+        let live = self
+            .by_name
+            .get(&name)
+            .is_some_and(|v4| self.by_ip.contains_key(v4));
+        if let (IpAddr::V4(v4), false) = (ip, live) {
+            self.by_name.insert(name, v4);
         }
     }
 
@@ -58,15 +70,23 @@ impl FakeDns {
         }
     }
 
-    pub(crate) fn address_for(&mut self, name: &str) -> Ipv4Addr {
-        if let Some(ip) = self.by_name.get(name) {
-            return *ip;
+    /// The address of `name` (no case): its pin, its pool address, else the
+    /// next pool address. `None` at the end of the pool: the pool does not
+    /// wrap, because a reused address would send the flows of an older name
+    /// to the newer name (T-145).
+    pub(crate) fn address_for(&mut self, name: &str) -> Option<Ipv4Addr> {
+        let name = crate::dns::normalize(name);
+        if let Some(ip) = self.by_name.get(&name) {
+            return Some(*ip);
         }
-        let ip = Ipv4Addr::from((FAKE_IP_BASE + (self.next % FAKE_IP_COUNT)).to_be_bytes());
+        if self.next >= FAKE_IP_COUNT {
+            return None;
+        }
+        let ip = Ipv4Addr::from((FAKE_IP_BASE + self.next).to_be_bytes());
         self.next += 1;
-        self.by_name.insert(name.to_string(), ip);
-        self.by_ip.insert(ip, name.to_string());
-        ip
+        self.by_name.insert(name.clone(), ip);
+        self.by_ip.insert(ip, name);
+        Some(ip)
     }
 
     pub(crate) fn name_for(&self, ip: Ipv4Addr) -> Option<&str> {
@@ -102,10 +122,73 @@ mod tests {
         assert_eq!(unfake_v6(v6), Some(v4));
         assert_eq!(unfake_v6("2606:4700:4700::1111".parse().unwrap()), None);
         let mut dns = FakeDns::new();
-        let fake = dns.address_for("example.com");
+        let fake = dns.address_for("example.com").unwrap();
         assert_eq!(
             dns.name_for_ip(IpAddr::V6(fake_v6(fake))),
             Some("example.com")
         );
+    }
+
+    fn query(name: &str) -> crate::dns::ParsedQuery {
+        let message = crate::dns::build_query(7, name, crate::dns::TYPE_A).unwrap();
+        crate::dns::ParsedQuery::parse(&message).unwrap()
+    }
+
+    /// The pool gives each address once: the name after the last address
+    /// gets `None`, and the first name keeps its address.
+    #[test]
+    fn fake_pool_refuses_past_its_end() {
+        let mut dns = FakeDns::new();
+        let first = dns.address_for("n0.example").unwrap();
+        for n in 1..FAKE_IP_COUNT {
+            assert!(dns.address_for(&format!("n{n}.example")).is_some());
+        }
+        assert_eq!(dns.address_for("over.example"), None);
+        assert_eq!(dns.name_for(first), Some("n0.example"));
+        assert_eq!(dns.address_for("n0.example"), Some(first));
+        assert_eq!(dns.by_ip.len(), FAKE_IP_COUNT as usize);
+    }
+
+    #[test]
+    fn fake_names_ignore_case() {
+        let mut dns = FakeDns::new();
+        let a = dns.address_for("Example.COM").unwrap();
+        assert_eq!(dns.address_for("example.com."), Some(a));
+        assert_eq!(dns.name_for(a), Some("example.com"));
+        assert_eq!(query("WWW.Example.Com").name, "www.example.com");
+        assert_eq!(dns.next, 1);
+        dns.pin("Pinned.Example", "10.0.0.5".parse().unwrap());
+        assert_eq!(
+            dns.address_for("pinned.example"),
+            Some(Ipv4Addr::new(10, 0, 0, 5))
+        );
+    }
+
+    #[test]
+    fn fake_pin_does_not_evict_a_live_name() {
+        let mut dns = FakeDns::new();
+        let fake = dns.address_for("live.example").unwrap();
+        dns.pin("LIVE.example", "10.0.0.5".parse().unwrap());
+        assert_eq!(dns.address_for("live.example"), Some(fake));
+        assert_eq!(dns.name_for(fake), Some("live.example"));
+    }
+
+    #[test]
+    fn servfail_answers_a_name_that_does_not_fit() {
+        let mut dns = FakeDns::new();
+        dns.v6 = true;
+        dns.next = FAKE_IP_COUNT;
+        for qtype in [crate::dns::TYPE_A, crate::dns::TYPE_AAAA] {
+            let mut parsed = query("late.example");
+            parsed.qtype = qtype;
+            let answer = dns.answer(&parsed);
+            assert_eq!(answer[3] & 0x0f, crate::dns::RCODE_SERVFAIL);
+            assert_eq!(&answer[6..8], &[0, 0], "no answer record");
+        }
+        let full = dns.answer(&query("other.example"));
+        assert_eq!(full[3] & 0x0f, crate::dns::RCODE_SERVFAIL);
+        dns.next = 0;
+        let fits = dns.answer(&query("other.example"));
+        assert_eq!(fits[3] & 0x0f, crate::dns::RCODE_NOERROR);
     }
 }
