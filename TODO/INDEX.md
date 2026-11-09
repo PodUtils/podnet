@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 150 open, 2 partial, 17 blocked, 53 done.**
+**222 entries: 145 open, 2 partial, 17 blocked, 58 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 7 | 1 | 2 | 14 | 24 |
-| P2 | 98 | 1 | 10 | 28 | 137 |
+| P2 | 93 | 1 | 10 | 33 | 137 |
 | P3 | 44 | 0 | 5 | 11 | 60 |
-| **All** | 150 | 2 | 17 | 53 | 222 |
+| **All** | 145 | 2 | 17 | 58 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -239,12 +239,12 @@ M8 Overlays, M9 Later.
 | [T-191](fixes.md) | P3 | S | M5 | defect | open | The listener table of `net doctor` names each command that listens (GitHub #389, part 1) |
 | [T-192](fixes.md) | P3 | S | M5 | defect | open | A refused TCP bind exits 69 in each listener command (GitHub #389, part 2; GitHub #385 step 5) |
 | [T-193](fixes.md) | P2 | M | M5 | defect | open | `net proxy --map` fills the gateway resolver and the shim table (GitHub #390) |
-| [T-194](fixes.md) | P2 | S | M5 | defect | open | A relay `close` aborts the session task of the node (GitHub #391) |
-| [T-195](fixes.md) | P2 | S | M5 | defect | open | `relay stop` checks the pair before it stops the local node (GitHub #392) |
-| [T-196](fixes.md) | P2 | M | M5 | defect | open | The relay node drains and waits after a local end of stream (GitHub #393) |
-| [T-197](fixes.md) | P2 | S | M5 | defect | open | The pair file is always mode 0600, and `load` checks the file (GitHub #394) |
+| [T-194](fixes.md) | P2 | S | M5 | defect | done | A relay `close` aborts the session task of the node (GitHub #391) |
+| [T-195](fixes.md) | P2 | S | M5 | defect | done | `relay stop` checks the pair before it stops the local node (GitHub #392) |
+| [T-196](fixes.md) | P2 | M | M5 | defect | done | The relay node drains and waits after a local end of stream (GitHub #393) |
+| [T-197](fixes.md) | P2 | S | M5 | defect | done | The pair file is always mode 0600, and `load` checks the file (GitHub #394) |
 | [T-198](fixes.md) | P3 | S | M5 | docs | done | `docs/protocol.md` and the test agree on the number of seed alternates (GitHub #395) |
-| [T-199](fixes.md) | P2 | M | M5 | defect | open | `relay connect --listen` has the instance surface of `connect -L` (GitHub #396) |
+| [T-199](fixes.md) | P2 | M | M5 | defect | done | `relay connect --listen` has the instance surface of `connect -L` (GitHub #396) |
 | [T-200](crates.md) | P2 | M | M3 | feature | blocked | The reverse road of the relay uses the alternate hosts (GitHub #397) |
 | [T-201](fixes.md) | P3 | S | M5 | defect | open | `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398) |
 | [T-202](fixes.md) | P3 | S | M5 | defect | open | `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399) |

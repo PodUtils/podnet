@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 222 entries: 150 open, 2 partial, 17 blocked, 53 done.
+`TODO/INDEX.md` holds 222 entries: 145 open, 2 partial, 17 blocked, 58 done.
 
 ## State
 
@@ -38,7 +38,6 @@ not wait for a larger one.
    - pod backends (`podnet-netns`; before T-040): T-143, T-142, T-144 to T-149, T-154, T-155.
    - `net`, `doctor` and the proxy: T-185, T-186, T-183, T-184, T-187 to T-193 (T-188 before T-187;
      they land before T-061 merges the doors).
-   - relay (no growth of `src/relay_reverse.rs`): T-194, T-195, T-197, T-196, T-199.
    - tunnel, share, serve and the CLI: T-160, T-169 to T-171, T-201 to T-207.
    - WARP: T-173, T-210.
    - T-182 is blocked (the file host of pip, `pod-services`).

@@ -158,24 +158,51 @@ fn millis(at: SystemTime) -> u64 {
         .unwrap_or(0)
 }
 
+/// Why a file is not read as a private file.
+#[derive(Debug)]
+pub enum Unusable {
+    /// No file at the path.
+    Missing,
+    /// The file is not safe to use; the text says why.
+    Unsafe(&'static str),
+    /// The read failed.
+    Io(std::io::Error),
+}
+
+/// The text of the private file `path`: a regular file (no symlink) of this
+/// user, that other users cannot read or write, of at most [`MAX_FILE`]
+/// bytes.
+pub fn read_private_checked(path: &Path) -> Result<String, Unusable> {
+    let meta = match std::fs::symlink_metadata(path) {
+        Ok(meta) => meta,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Err(Unusable::Missing),
+        Err(err) => return Err(Unusable::Io(err)),
+    };
+    let uid = unsafe { libc::geteuid() };
+    if !meta.file_type().is_file() {
+        Err(Unusable::Unsafe("it is not a regular file"))
+    } else if meta.uid() != uid {
+        Err(Unusable::Unsafe("it belongs to another user"))
+    } else if meta.mode() & 0o077 != 0 {
+        Err(Unusable::Unsafe("other users can read or write it"))
+    } else if meta.len() > MAX_FILE {
+        Err(Unusable::Unsafe("it is too large"))
+    } else {
+        std::fs::read_to_string(path).map_err(Unusable::Io)
+    }
+}
+
 /// The text of the private file `path`, or `None` when it is missing or
 /// not safe to use.
 pub fn read_private(path: &Path) -> Option<String> {
-    let meta = std::fs::symlink_metadata(path).ok()?;
-    let uid = unsafe { libc::geteuid() };
-    let why = if !meta.file_type().is_file() {
-        "it is not a regular file"
-    } else if meta.uid() != uid {
-        "it belongs to another user"
-    } else if meta.mode() & 0o077 != 0 {
-        "other users can read or write it"
-    } else if meta.len() > MAX_FILE {
-        "it is too large"
-    } else {
-        return std::fs::read_to_string(path).ok();
-    };
-    tracing::warn!(path = %path.display(), "podnet does not use the cache file: {why}");
-    None
+    match read_private_checked(path) {
+        Ok(text) => Some(text),
+        Err(Unusable::Unsafe(why)) => {
+            tracing::warn!(path = %path.display(), "podnet does not use the cache file: {why}");
+            None
+        }
+        Err(_) => None,
+    }
 }
 
 /// Write `text` to `path` with mode 0600 (a new file, then a rename).

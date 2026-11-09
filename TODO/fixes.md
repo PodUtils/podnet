@@ -2429,7 +2429,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:177`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
@@ -2488,11 +2488,11 @@ A test answers a DNS query for a mapped name at the gateway address.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
-The `close` control message removes the entry of the session and drops its `AbortHandle` (`src/relay_reverse.rs:522-526`). A dropped handle does not stop the task. If the task waits in `write_all` to a target that does not read (`:719-727`), it stays with its socket and its queued frames. The binary-frame arm aborts (`:547-551`).
+The `close` control message removes the entry of the session and drops its `AbortHandle` (`src/relay_reverse.rs:448-452`). A dropped handle does not stop the task. If the task waits in `write_all` to a target that does not read (`:645-653`), it stays with its socket and its queued frames. The binary-frame arm aborts (`:473-477`).
 
 ## Premise
 
@@ -2514,6 +2514,10 @@ cargo test --test relay_reverse -- a_relay_close_ends_a_session_whose_target_doe
 cargo test --test relay_reverse
 ```
 
+## Done
+
+2026-11-09, commit 699d002 (`T-194: a relay close aborts the session task`). The `close` arm calls `end_session` (`src/relay_reverse/session.rs`): it removes the entry and aborts the task. The binary-frame arm and the `End` arm use the same helper. The session code of the node moved to `src/relay_reverse/session.rs`; `src/relay_reverse.rs` has 973 lines (was 1139). Test: `a_relay_close_ends_a_session_whose_target_does_not_read` (`tests/relay_reverse.rs`, a unix target with a fixed buffer): it fails with no abort (the target reads 3145728 of 3145728 bytes), and passes with it. `scripts/agent/check.sh` exits 0. CI: at the merge.
+
 # T-195: `relay stop` checks the pair before it stops the local node (GitHub #392)
 
 **Source:** GitHub #392 (https://github.com/PodUtils/podnet/issues/392)
@@ -2521,15 +2525,15 @@ cargo test --test relay_reverse
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:207-224`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:215-217`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
+`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:231-255`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:143-145`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
 
 ## Premise
 
-- The local-first order has a good reason (`src/cli/cmd/relay.rs:209-210`): a stopped node does not connect again.
+- The local-first order has a good reason (`src/cli/cmd/relay.rs:240-241`): a stopped node does not connect again.
 - Read only. No run.
 
 ## Approach
@@ -2546,6 +2550,10 @@ cargo test --test relay_reverse relay_stop
 
 A test: a pair with an empty stop token stops no instance, exits 69 and keeps the file.
 
+## Done
+
+2026-11-09, commit 77a70f6 (`T-195: relay stop checks the pair before it stops the local node`). `relay stop` parses the relay URL (78) and checks the stop token (69) before the first local stop (`src/cli/cmd/relay.rs`). A failed relay call after the local stop says that the relay side is live, gives the time left and the pair file path. The retry of the POST is skipped (optional). Test: `relay_stop_checks_the_pair_before_it_stops_an_instance` (`tests/relay_reverse.rs`; a live planted instance and a pair with no stop token): it fails before the fix (the instance is stopped), and passes after it. `scripts/agent/check.sh` exits 0. CI: at the merge.
+
 # T-196: The relay node drains and waits after a local end of stream (GitHub #393)
 
 **Source:** GitHub #393 (https://github.com/PodUtils/podnet/issues/393)
@@ -2553,11 +2561,11 @@ A test: a pair with an empty stop token stops no instance, exits 69 and keeps th
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`session` ends when the local read returns 0 (`src/relay_reverse.rs:706`, select at `:728-731`) and sends `close` at once (`:733`). The operator side keeps the session open after its input ends (`EOF_IDLE`, `:775`, `:863`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, `:895`). The forward leg has the right shape (`src/relay.rs:263-297`).
+`session` ends when the local read returns 0 (`src/relay_reverse.rs:632`, select at `:654-657`) and sends `close` at once (`:659`). The operator side keeps the session open after its input ends (`EOF_IDLE`, `:535`, `:623`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, `:655`). The forward leg has the right shape (`src/relay.rs:263-297`).
 
 ## Premise
 
@@ -2585,6 +2593,10 @@ cargo test --test relay_reverse
 
 A fake relay and a target that writes, shuts down its write half, then reads to the end: it reads each byte of the operator.
 
+## Done
+
+2026-11-09, commit 0682f98 (`T-196: the relay node waits after a local end of stream`). When the local read returns 0, the session sends no `close` and logs `the target closed its write side`. The write side goes on until the relay closes the id (abort, T-194), a write to the target fails, or no frame comes for 2 s (`HALF_CLOSE_IDLE`, the Decision; `src/relay_reverse/session.rs`). The queued frames go to the target first. Test: `a_half_closing_target_gets_the_whole_input` (`tests/relay_reverse.rs`): it fails before the fix (the target reads 0 of 300000 bytes), and passes after it. `cargo test --workspace` passes; the other checks of `scripts/agent/check.sh` exit 0. CI: at the merge.
+
 # T-197: The pair file is always mode 0600, and `load` checks the file (GitHub #394)
 
 **Source:** GitHub #394 (https://github.com/PodUtils/podnet/issues/394)
@@ -2592,18 +2604,18 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`save` opens the pair file with `.mode(0o600)` (`src/relay_reverse.rs:147-152`). The kernel applies the mode only to a new file. An old file of mode 0644 keeps it, and `relay pair` prints `mode 0600` (`src/cli/cmd/relay.rs:99`). `save` follows a symlink. `load` uses `read_to_string` (`:165`) with no check of type, owner, mode or size. The file holds three tokens. The token cache has all four checks and a rename write (`src/relay_pool.rs:163-195`).
+`save` opens the pair file with `.mode(0o600)` (`src/relay_reverse.rs:149-154`). The kernel applies the mode only to a new file. An old file of mode 0644 keeps it, and `relay pair` prints `mode 0600` (`src/cli/cmd/relay.rs:105`). `save` follows a symlink. `load` uses `read_to_string` (`:172`) with no check of type, owner, mode or size. The file holds three tokens. The token cache has all four checks and a rename write (`src/relay_pool.rs:163-195`).
 
 ## Premise
 
 - `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`src/state.rs:344-363`).
-- `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs:149-186`).
-- `DirBuilder::mode(0o700)` applies only to a new directory (`:141-144`).
-- The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:1119`.
+- `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs:151-188`).
+- `DirBuilder::mode(0o700)` applies only to a new directory (`:143-146`).
+- The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:879`.
 
 ## Approach
 
@@ -2618,6 +2630,10 @@ cargo test -p podnet --lib relay_reverse::
 ```
 
 Tests: a 0644 file becomes 0600 after `save`; a symlink is replaced; `load` refuses a 0644 file, a symlink and an oversize file.
+
+## Done
+
+2026-11-09, commit 7efd1d8 (`T-197: the pair file is always mode 0600, and load checks the file`). `save` writes through `state::replace_file` (rename, mode 0600; a symlink is replaced). `load` reads through `relay_pool::read_private_checked` (shared with `read_private`): type, owner, mode and size; a fault is exit 78 with the reason. `save` and `load` refuse a `relay` directory that others can write. The code is in `src/relay_reverse/pairfile.rs` (`src/relay_reverse.rs`: 899 lines). Tests (`cargo test -p podnet --lib relay_reverse::`): `a_file_of_mode_0644_becomes_0600_after_save`, `save_replaces_a_symlink_and_does_not_write_through_it`, `load_refuses_a_file_that_is_open_a_symlink_or_large`, `a_directory_that_others_can_write_is_refused`. `scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-198: `docs/protocol.md` and the test agree on the number of seed alternates (GitHub #395)
 
@@ -2634,7 +2650,7 @@ Tests: a 0644 file becomes 0600 after `save`; a symlink is replaced; `load` refu
 
 ## Premise
 
-- The test pins the count of alternates only (`src/relay_pool.rs:320`).
+- The test pins the count of alternates only (`src/relay_pool.rs:347`).
 - `docs/decisions.md` (2026-11-04, Relay) says only that the alternates are the hosts of the podssh seed.
 
 ## Approach
@@ -2661,7 +2677,7 @@ cargo todo check
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2673,8 +2689,8 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 
 ## Premise
 
-- `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:49-64`. `RelayCommand::Node` has it: `:44-45`.
-- `detach_of` has no arm for it: `src/cli/opts.rs:240-243`. `connect` has one: `:233`.
+- `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:49-70`. `RelayCommand::Node` has it: `:44-45`.
+- `detach_of` has no arm for it: `src/cli/opts.rs:253-262`. `connect` has one: `:246`.
 - Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:186`, `:198`. `connect -L` logs and returns:
   `src/cli/cmd/connect.rs:185-188`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
@@ -2697,6 +2713,10 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 `fwd`, `stop fwd` ends it).
 `cargo test -p podnet relay_connect_unix_socket_removed` (new test: the socket file is gone after a clean stop).
 `cargo run -q -- relay connect x --listen tcp://127.0.0.1:0 --detach --help` exits 0 (flag exists).
+
+## Done
+
+2026-11-09, commit 456c7d9 (`T-199: relay connect --listen has the instance surface of connect -L`). `relay connect` flattens `DetachArgs` (the positional is the field `pair`: the id `name` clashed with `--name`); `detach_of` has an arm that applies only with `--listen`; `--replace` works as for `connect -L` (`replaces_a_socket` in `src/cli/opts.rs`). An accept error ends the command with exit 69 (a supervisor starts it again). The unix listener uses `connect::unix_listener` (`SocketFile` removes the file at the end; the real `replace` reaches `claim_socket_path`). The ready document has `pair` and `listen`. A detached start moves `--token` of `relay connect` to `PODNET_RELAY_CONNECT_TOKEN` in the secret file (`split_secrets`, `SECRET_VARIABLES`); before, it went to `TUNNEL_TOKEN` and the child had no token. The message of `claim_socket_path` stays: `podnet ps`, `podnet stop NAME` and `--replace` now exist for this caller. The tests are in the new file `tests/relay_listen.rs` (`tests/cli.rs` is in the size allowlist): `relay_connect_listen_detach` (start with `--detach --name fwd`, `ps --json` lists `fwd`, no token in the record, `stop fwd` ends it) and `relay_connect_unix_socket_removed` (the socket file is gone after SIGTERM); both fail before the change. `relay connect x --listen tcp://127.0.0.1:0 --detach --help` exits 0. `cargo test --workspace --no-fail-fast` passes; the other checks of `scripts/agent/check.sh` exit 0. CI: at the merge.
 
 # T-201: `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398)
 

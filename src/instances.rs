@@ -187,7 +187,10 @@ pub fn write(dir: &Path, record: &Record) -> Result<()> {
 }
 
 /// The variables that hold a secret of an instance.
-pub const SECRET_VARIABLES: &[&str] = &["TUNNEL_TOKEN", "PODNET_PROXY"];
+pub const SECRET_VARIABLES: &[&str] = &["TUNNEL_TOKEN", "PODNET_PROXY", CONNECT_TOKEN_VARIABLE];
+
+/// The variable with the connect token of `relay connect`.
+pub const CONNECT_TOKEN_VARIABLE: &str = "PODNET_RELAY_CONNECT_TOKEN";
 
 /// The secret variables of `vars` ([`SECRET_VARIABLES`]).
 pub fn secrets_of(vars: &[(String, String)]) -> Vec<(String, String)> {

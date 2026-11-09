@@ -566,3 +566,186 @@ async fn a_named_node_ends_at_the_expiry() {
     assert_eq!(podnet::exit::code_of(&err), 78, "{err:#}");
     assert!(format!("{err:#}").contains("expired"), "{err:#}");
 }
+
+/// A unix target that does not read for `hold`, then reads to the end. It
+/// gives its path and the count of bytes that it read. A unix socket has a
+/// fixed buffer, so the node blocks in a write at once.
+async fn late_reader(
+    dir: &std::path::Path,
+    hold: Duration,
+) -> (String, tokio::sync::oneshot::Receiver<usize>) {
+    let path = dir.join("late.sock");
+    let listener = tokio::net::UnixListener::bind(&path).unwrap();
+    let addr = format!("unix:{}", path.display());
+    let (done, count) = tokio::sync::oneshot::channel();
+    tokio::spawn(async move {
+        let Ok((mut socket, _)) = listener.accept().await else {
+            return;
+        };
+        tokio::time::sleep(hold).await;
+        let mut total = 0;
+        let mut buf = vec![0u8; 64 * 1024];
+        while let Ok(Ok(n)) =
+            tokio::time::timeout(Duration::from_secs(5), socket.read(&mut buf)).await
+        {
+            if n == 0 {
+                break;
+            }
+            total += n;
+        }
+        let _ = done.send(total);
+    });
+    (addr, count)
+}
+
+// T-194: a `close` of the relay ends a session whose target does not read.
+// Before, the task stayed in its write and kept its queued frames.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_relay_close_ends_a_session_whose_target_does_not_read() {
+    test_host::need_loopback!();
+    let (url, state) = fake_relay(None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (addr, count) = late_reader(dir.path(), Duration::from_secs(4)).await;
+    let target = Target::parse(&addr).unwrap();
+    let node_relay = Relay::new(&url, None).unwrap();
+    let node_pair = pair(&url);
+    tokio::spawn(async move { node(&node_relay, &node_pair, &target).await });
+    wait_for_node(&state, 1).await;
+    let relay = Relay::new(&url, None).unwrap();
+    let sent = 3 << 20;
+    let operator = tokio::spawn(async move {
+        let input = vec![5u8; sent];
+        let mut out = Vec::new();
+        let _ = connect(&relay, NAME, "connect", &input[..], &mut out).await;
+    });
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    // The operator goes away: the relay sends `close` to the node.
+    operator.abort();
+    let read = tokio::time::timeout(Duration::from_secs(20), count)
+        .await
+        .expect("the target sees the end")
+        .unwrap();
+    assert!(read < sent, "the target read {read} of {sent} bytes");
+}
+
+/// Run `podnet` with a state directory and a run directory.
+fn podnet_in(
+    state: &std::path::Path,
+    run: &std::path::Path,
+    args: &[&str],
+) -> std::process::Output {
+    std::process::Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(args)
+        .env("PODNET_STATE_DIR", state)
+        .env("PODNET_RUN_DIR", run)
+        .env_remove("PODNET_RELAY")
+        .output()
+        .unwrap()
+}
+
+// T-195: a pair with no stop token stops no local instance. The command
+// exits 69 and keeps the pair file. Before, it stopped the instance first.
+#[test]
+fn relay_stop_checks_the_pair_before_it_stops_an_instance() {
+    use std::os::fd::AsRawFd as _;
+    let state = tempfile::tempdir().unwrap();
+    let run = tempfile::tempdir().unwrap();
+    let relay_dir = state.path().join("relay");
+    let mut with_no_token = pair("http://127.0.0.1:1");
+    with_no_token.name = "notoken".into();
+    save(&with_no_token, &relay_dir).unwrap();
+    // A live instance of the node of this pair: a held lock and a record.
+    let mut child = std::process::Command::new("sleep")
+        .arg("60")
+        .spawn()
+        .unwrap();
+    std::fs::set_permissions(
+        run.path(),
+        std::os::unix::fs::PermissionsExt::from_mode(0o700),
+    )
+    .unwrap();
+    let lock = std::fs::File::create(run.path().join("n1.lock")).unwrap();
+    // SAFETY: flock on a descriptor of this process.
+    assert_eq!(unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX) }, 0);
+    let record = serde_json::json!({
+        "name": "n1", "pid": child.id(), "started": 1,
+        "command": "relay node", "args": ["relay", "node", "notoken"],
+        "hash": "x", "cwd": "/", "state": "ready",
+        "ready": {"pair": "notoken"}, "log": "n1.log",
+    });
+    std::fs::write(run.path().join("n1.json"), record.to_string()).unwrap();
+    let out = podnet_in(state.path(), run.path(), &["relay", "stop", "notoken"]);
+    let err = String::from_utf8_lossy(&out.stderr);
+    let alive = child.try_wait().unwrap().is_none();
+    let _ = child.kill();
+    let _ = child.wait();
+    assert_eq!(out.status.code(), Some(69), "{err}");
+    assert!(err.contains("stop token"), "{err}");
+    assert!(alive, "the instance was stopped: {err}");
+    assert!(relay_dir.join("notoken.json").exists(), "the file stays");
+    assert!(!String::from_utf8_lossy(&out.stdout).contains("stopped"));
+}
+
+/// A TCP target that writes `HELLO`, shuts down its write half, and reads
+/// to the end. It gives its address and the bytes that it read.
+async fn half_closer() -> (String, tokio::sync::oneshot::Receiver<Vec<u8>>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap().to_string();
+    let (done, read) = tokio::sync::oneshot::channel();
+    tokio::spawn(async move {
+        let Ok((mut socket, _)) = listener.accept().await else {
+            return;
+        };
+        socket.write_all(b"HELLO").await.unwrap();
+        socket.shutdown().await.unwrap();
+        let mut all = Vec::new();
+        let _ = tokio::time::timeout(Duration::from_secs(20), socket.read_to_end(&mut all)).await;
+        let _ = done.send(all);
+    });
+    (addr, read)
+}
+
+// T-196: a target that shuts down its write half and still reads gets the
+// whole input of the operator. Before, the node sent `close` at the end of
+// the read side, and the later input was lost.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_half_closing_target_gets_the_whole_input() {
+    test_host::need_loopback!();
+    let (url, state) = fake_relay(None).await;
+    let (addr, read) = half_closer().await;
+    let target = Target::parse(&addr).unwrap();
+    let node_relay = Relay::new(&url, None).unwrap();
+    let node_pair = pair(&url);
+    tokio::spawn(async move { node(&node_relay, &node_pair, &target).await });
+    wait_for_node(&state, 1).await;
+    let relay = Relay::new(&url, None).unwrap();
+    let input: Vec<u8> = (0..300_000u32).map(|i| (i % 251) as u8).collect();
+    let (ours, theirs) = tokio::io::duplex(1 << 20);
+    let sent = input.clone();
+    tokio::spawn(async move {
+        // The input comes after the target closed its write half.
+        tokio::time::sleep(Duration::from_millis(700)).await;
+        let mut ours = ours;
+        ours.write_all(&sent).await.unwrap();
+    });
+    let mut out = Vec::new();
+    let (reader, _keep) = tokio::io::split(theirs);
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        connect(&relay, NAME, "connect", reader, &mut out),
+    )
+    .await
+    .expect("the session ends")
+    .unwrap();
+    assert_eq!(out, b"HELLO");
+    let got = tokio::time::timeout(Duration::from_secs(10), read)
+        .await
+        .expect("the target sees the end")
+        .unwrap();
+    assert!(
+        got == input,
+        "the target read {} of {} bytes",
+        got.len(),
+        input.len()
+    );
+}

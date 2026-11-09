@@ -184,6 +184,15 @@ pub fn split_secrets(args: &[String], env: &dyn Fn(&str) -> Option<String>) -> (
         vars.retain(|(k, _)| k != key);
         vars.push((key.to_string(), value));
     };
+    // The token of `relay connect` has its own variable (T-199).
+    let token_key = if args
+        .windows(2)
+        .any(|w| w[0] == "relay" && w[1] == "connect")
+    {
+        crate::instances::CONNECT_TOKEN_VARIABLE
+    } else {
+        "TUNNEL_TOKEN"
+    };
     let mut kept = Vec::new();
     let mut i = 0;
     while i < args.len() {
@@ -193,7 +202,7 @@ pub fn split_secrets(args: &[String], env: &dyn Fn(&str) -> Option<String>) -> (
             _ => (arg.as_str(), None),
         };
         let secret_key = match flag {
-            "--token" => Some("TUNNEL_TOKEN"),
+            "--token" => Some(token_key),
             "--proxy" => Some("PODNET_PROXY"),
             _ => None,
         };

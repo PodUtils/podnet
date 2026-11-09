@@ -48,7 +48,8 @@ pub(crate) enum RelayCommand {
     /// ProxyCommand), or each connection of --listen.
     Connect {
         /// The pair name.
-        name: String,
+        #[arg(value_name = "NAME")]
+        pair: String,
         /// The connect token. Prefer the variable or --token-file: other
         /// users of the host can read a command line. Default: the local
         /// pair file.
@@ -61,6 +62,11 @@ pub(crate) enum RelayCommand {
         /// one session for each, in place of stdin and stdout.
         #[arg(long, value_name = "LISTEN")]
         listen: Option<String>,
+        /// With --listen: --detach, --name, --replace, --no-restart and
+        /// --ready-timeout, as `connect -L`. They have no effect without
+        /// --listen.
+        #[command(flatten)]
+        detach: DetachArgs,
     },
     /// Stop a node and its sessions at the relay (POST /v1/stop), and
     /// remove the local pair file.
@@ -127,9 +133,10 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             }
         }
         RelayCommand::Connect {
-            name,
+            pair: name,
             token,
             listen,
+            detach,
             ..
         } => {
             let (token, relay) = match token {
@@ -172,30 +179,47 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                             }
                         });
                     };
+                    // An accept error ends the command with exit 69: a
+                    // supervisor (--detach) starts it again.
+                    let accepted = |err: std::io::Error| {
+                        tracing::warn!(error = %err, "accept failed");
+                        Err(anyhow::anyhow!("accept failed: {err}")).fault(Fault::Unavailable)
+                    };
                     match listen {
                         podnet::vnet::proxy::ProxyListen::Tcp(addr) => {
                             let listener = tokio::net::TcpListener::bind(addr).await?;
-                            println!(
-                                "podnet: relay    {} -> tcp://{}",
-                                name,
-                                listener.local_addr()?
+                            let local = format!("tcp://{}", listener.local_addr()?);
+                            println!("podnet: relay    {name} -> {local}");
+                            podnet::detach::ready(
+                                serde_json::json!({ "pair": *name, "listen": local }),
                             );
                             podnet::detach::arm_stop();
                             loop {
                                 tokio::select! {
-                                    accepted = listener.accept() => serve(Box::new(accepted?.0)),
+                                    got = listener.accept() => match got {
+                                        Ok((socket, _)) => serve(Box::new(socket)),
+                                        Err(err) => return accepted(err),
+                                    },
                                     _ = shutdown_signal() => return Ok(()),
                                 }
                             }
                         }
                         podnet::vnet::proxy::ProxyListen::Unix(path) => {
-                            podnet::net::claim_socket_path(&path, false)?;
-                            let listener = podnet_netns::listen::bind_private(&path)?;
-                            println!("podnet: relay    {} -> unix:{}", name, path.display());
+                            // The file of this run goes at the end.
+                            let (listener, _file) =
+                                super::connect::unix_listener(&path, detach.replace)?;
+                            let local = format!("unix:{}", path.display());
+                            println!("podnet: relay    {name} -> {local}");
+                            podnet::detach::ready(
+                                serde_json::json!({ "pair": *name, "listen": local }),
+                            );
                             podnet::detach::arm_stop();
                             loop {
                                 tokio::select! {
-                                    accepted = listener.accept() => serve(Box::new(accepted?.0)),
+                                    got = listener.accept() => match got {
+                                        Ok((socket, _)) => serve(Box::new(socket)),
+                                        Err(err) => return accepted(err),
+                                    },
                                     _ = shutdown_signal() => return Ok(()),
                                 }
                             }
@@ -206,6 +230,13 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
         }
         RelayCommand::Stop { name } => {
             let pair = reverse::load(&dir, Some(&name))?;
+            // Check the pair before the first local stop: a stop that the
+            // relay cannot get must not leave a node that is stopped.
+            let relay = podnet::ws_relay::Relay::new(&pair.relay, None).fault(Fault::Config)?;
+            if pair.stop_token.is_empty() {
+                return Err(anyhow::anyhow!("the pair {name} has no stop token"))
+                    .fault(Fault::Unavailable);
+            }
             // Issue 119: the local node of the pair stops first, so that it
             // does not connect again.
             if let Ok(run) = podnet::instances::run_dir() {
@@ -219,11 +250,18 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                     println!("podnet: relay    stopped the node instance {instance}");
                 }
             }
-            let relay = podnet::ws_relay::Relay::new(&pair.relay, None).fault(Fault::Config)?;
+            let file = dir.join(format!("{name}.json"));
             reverse::stop(&relay, &pair)
                 .await
+                .with_context(|| {
+                    format!(
+                        "the relay side of {name} is live for {} more; the pair file {} stays",
+                        reverse::left_words(pair.left()),
+                        file.display()
+                    )
+                })
                 .fault(Fault::Unavailable)?;
-            let _ = std::fs::remove_file(dir.join(format!("{name}.json")));
+            let _ = std::fs::remove_file(&file);
             println!("podnet: relay    {name} stopped");
             Ok(())
         }
