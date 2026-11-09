@@ -30,7 +30,7 @@ handshake. With `--backend netns`, the same program works. The reporter lost abo
 ## Premise
 
 - Read: after a TCP connect succeeds, `handle_connect` removes the descriptor from the table of
-  the supervisor (`crates/podnet-netns/src/seccomp.rs`). Then `setsockopt` goes to the kernel
+  the supervisor (`crates/podnet-netns/src/seccomp/mod.rs`). Then `setsockopt` goes to the kernel
   AF_UNIX socket and gives EOPNOTSUPP for `TCP_NODELAY` and `TCP_KEEPIDLE`. `getsockname` and
   `getpeername` go to the kernel and give the AF_UNIX address.
 - The evidence log shows `ss_family: 1` for the local and the peer address
@@ -94,7 +94,7 @@ made by `dup`, `dup2` or `fcntl(F_DUPFD)` has no entry, so it sends to the wrong
 
 ## Premise
 
-- Read: the descriptor table and the `close` branch in `crates/podnet-netns/src/seccomp.rs`.
+- Read: the descriptor table and the `close` branch in `crates/podnet-netns/src/seccomp/mod.rs`.
 - `docs/research/podnet/vn.md`, section 3.1: the C supervisor of vn counts references and misses
   `F_DUPFD`. The Rust `try_clone` uses `F_DUPFD_CLOEXEC`.
 
@@ -185,7 +185,7 @@ an AF_UNIX socket pair, not the upstream socket.
 
 - The kernel can install a descriptor at a number of the target process
   (`SECCOMP_IOCTL_NOTIF_ADDFD` with `SECCOMP_ADDFD_FLAG_SETFD`). The seccomp backend uses ADDFD
-  already (`crates/podnet-netns/src/seccomp.rs`).
+  already (`crates/podnet-netns/src/seccomp/notif.rs`).
 - After a handoff, the supervisor sees no byte of that flow: no byte count, no idle limit, no
   log line of the flow.
 
@@ -261,10 +261,10 @@ Three calls get a wrong result under the seccomp backend:
 
 ## Premise
 
-- Read: `handle_socket` does not read the protocol argument (`crates/podnet-netns/src/seccomp.rs`).
+- Read: `handle_socket` does not read the protocol argument (`crates/podnet-netns/src/socket.rs`).
 - `recvmmsg` is not in the list of intercepted calls. The ruling of 2026-11-04 names `recvfrom`
   and `recvmsg` (`docs/decisions.md`, pod seccomp UDP).
-- `wrap_udp_name` cuts a name over 255 bytes (`crates/podnet-netns/src/seccomp.rs`).
+- `wrap_udp_name` cuts a name over 255 bytes (`crates/podnet-netns/src/upstream.rs`).
 
 ## Approach
 
@@ -329,7 +329,7 @@ ends. A program with a slow upstream freezes in calls that need no network.
 ## Premise
 
 - Read: the notification loop dials the upstream before it answers the next notification
-  (`supervise_seccomp` and `handle_connect` in `crates/podnet-netns/src/seccomp.rs`).
+  (`supervise_seccomp` and `handle_connect` in `crates/podnet-netns/src/seccomp/mod.rs` and `crates/podnet-netns/src/connect.rs`).
 - A notification id stays valid until the supervisor answers it. `SECCOMP_IOCTL_NOTIF_ID_VALID`
   tells whether the task still waits.
 
@@ -2401,7 +2401,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 ## Premise
 
 - Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:433`, `src/vnet/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
-- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1137`.
+- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
 - `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:371`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:62-68`).
 

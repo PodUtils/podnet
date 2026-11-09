@@ -764,7 +764,7 @@ T-008 and T-009 are done.
 
 ## Problem
 
-`crates/podnet-netns/src/seccomp.rs` has 1,900 lines and `crates/podnet-netns/src/netns.rs` 1,199,
+crates/podnet-netns/src/seccomp.rs has 1,900 lines and crates/podnet-netns/src/netns.rs 1,199,
 with no test module. The fixes of M5 (T-063 to T-067) and the features of M7 change both files.
 
 ## Premise
@@ -778,8 +778,8 @@ with no test module. The fixes of M5 (T-063 to T-067) and the features of M7 cha
 
 ## Approach
 
-1. Split `crates/podnet-netns/src/seccomp.rs` into a seccomp directory, one commit for each new file.
-2. Split `crates/podnet-netns/src/netns.rs` into a netns directory, one commit for each new file.
+1. Split crates/podnet-netns/src/seccomp.rs into a seccomp directory, one commit for each new file.
+2. Split crates/podnet-netns/src/netns.rs into a netns directory, one commit for each new file.
 3. Do this entry before T-063 starts, or after T-067 is done.
 
 ## Prove

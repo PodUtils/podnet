@@ -24,7 +24,7 @@ called this the highest cost of the session.
 ## Premise
 
 - Read: `supervise_seccomp` sets `shutdown` when `waitpid` returns for the first child, drains
-  the relays for `RELAY_DRAIN`, and exits (`crates/podnet-netns/src/seccomp.rs`).
+  the relays for `RELAY_DRAIN`, and exits (`crates/podnet-netns/src/seccomp/mod.rs`).
 - The notification descriptor gives POLLHUP when no task uses the filter.
 
 ## Approach
@@ -63,7 +63,7 @@ The netns backend ends its router when the first program exits, as the seccomp b
 ## Premise
 
 - Read: the netns backend returns when `waitpid` returns for its child
-  (`crates/podnet-netns/src/netns.rs`).
+  (`crates/podnet-netns/src/netns/mod.rs`).
 
 ## Approach
 
@@ -172,7 +172,7 @@ emulates the sockets. Thus a user must choose between UDP and correct socket cal
 ## Premise
 
 - Read: `answer_dns` takes the DNS datagrams from the TUN before smoltcp
-  (`crates/podnet-netns/src/netns.rs`).
+  (`crates/podnet-netns/src/netns/backend.rs`).
 - The upstream chain carries UDP in the stream with 0x83 frames
   (`crates/podnet-netns/src/upstream.rs`).
 - A smoltcp UDP socket for each port loses datagrams of two flows to one port (the defect of the
@@ -212,7 +212,7 @@ gateway address for it.
 
 ## Premise
 
-- The gateway of the TUN of the pod is fixed (`crates/podnet-netns/src/netns.rs`).
+- The gateway of the TUN of the pod is fixed (`crates/podnet-netns/src/netns/mod.rs`).
 - A map of the gateway to the host loopback lets the pod reach each service on 127.0.0.1 of the
   host.
 
@@ -530,8 +530,8 @@ namespace, with an `AF_PACKET` socket on one end, can carry the frames to the sa
 
 ## Premise
 
-- `crates/podnet-netns/src/netns.rs:96-98` opens the node; `send_fd`/`recv_fd` (`:231,:265`) and the
-  handoff (`:1002,:1074`) are reusable. `doctor.rs:70,281` gates `auto` on the TUN probe.
+- `crates/podnet-netns/src/netns/tun.rs:41-43` opens the node; `send_fd`/`recv_fd` (`crates/podnet-netns/src/netns/fdpass.rs:51,85`) and the
+  handoff (`crates/podnet-netns/src/netns/mod.rs:96,168`) are reusable. `doctor.rs:70,281` gates `auto` on the TUN probe.
 - smoltcp has `medium-ip` only (`Cargo.toml:117`, `crates/podnet-netns/Cargo.toml:26`): add `medium-ethernet`.
 - `docs/research/podnet/vn.md:313` is plan item P5; `vn.md:411` asks if any target host has no TUN. No
   measured host lacks it (`docs/target-environment.md:33`).
@@ -576,8 +576,8 @@ counter. The pod sees a bare errno.
 
 ## Premise
 
-- `crates/podnet-netns/src/seccomp.rs:930` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
-  refuses), `socket.rs:19-21` (`EMFILE`), `seccomp.rs:834-843` (`EIO` or `ECONNREFUSED`).
+- `crates/podnet-netns/src/seccomp/mod.rs:384` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
+  refuses), `socket.rs:19-21` (`EMFILE`), `seccomp/mod.rs:326-331` (`EIO` or `ECONNREFUSED`).
 - Not measured: the 5000-connection run of the issue.
 
 ## Approach
