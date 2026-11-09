@@ -274,6 +274,12 @@ The public modules are also used alone:
 with both backends. A backend that the host does not permit is skipped. Each
 test program has a 10-second alarm, so a lost reply fails the test.
 
+`tests/pod_seccomp_diff.rs` (a test of the workspace root) runs one series
+of socket calls on the host kernel and in a seccomp pod, and compares the
+result or the errno of each call and the form of each address. A
+difference fails the test, except a known difference that names its entry
+of the record.
+
 ## DNS of the program (netns backend)
 
 The netns backend gives the program a private `/etc/resolv.conf` with

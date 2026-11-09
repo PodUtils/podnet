@@ -3496,3 +3496,56 @@ Ask A-X-19 (P2): "Machine-readable docs for agents: `llms.txt` and `llms-full.tx
 cargo test -p podnet --test cli -- help_json_matches_man_json
 cargo todo check
 ```
+
+# T-223: seccomp: the TCP gaps that the differential check finds
+
+**Source:** T-155 (the differential check `tests/pod_seccomp_diff.rs`), 2026-11-09
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The differential check of T-155 runs one series of socket calls on the host kernel and in a seccomp
+pod. Six TCP lines differ. Each one is an item of `ALLOWED` in `tests/pod_seccomp_diff.rs`:
+
+| Label | Host kernel | Seccomp pod |
+| --- | --- | --- |
+| `tcp shutdown unconnected` | `ENOTCONN` | 0 |
+| `tcp getsockname bound` (bind to port 0) | an ephemeral port | port 0 |
+| `tcp bind again` | `EINVAL` | 0 |
+| `tcp listen unbound` | 0 (the kernel binds a port) | `EINVAL` |
+| `tcp SO_ERROR after refused` (a blocking connect) | 0 | `ECONNREFUSED` |
+| `tcp nonblocking connect` (to a closed loopback port) | `EINPROGRESS` | `ECONNREFUSED` |
+
+The UDP lines of the same series agree after T-143 to T-149.
+
+## Premise
+
+- Measured: `cargo test --test pod_seccomp_diff` on 2026-11-09, on a host with user namespaces and
+  seccomp user notification (the table above).
+- Read: `shutdown` is not in the filter (`crates/podnet-netns/README.md`, seccomp). The socketpair
+  is connected, so the kernel answers 0.
+- Read: `handle_bind` (`crates/podnet-netns/src/sockopt.rs`) keeps the address of a stream as the
+  program gives it, also port 0 and a second `bind`. `handle_listen` needs a bound port.
+- Read: the pending error of a refused connect stays for one read of `SO_ERROR` (issue 302). The
+  kernel clears it when `connect` itself returns the error.
+- Not measured: the effect of each gap on a real program.
+
+## Approach
+
+1. `bind` of a stream: port 0 gets `ephemeral_port(fd)`; a second `bind` gets `EINVAL` (as
+   `Udp::bind` of T-144).
+2. `listen` with no `bind`: bind the unspecified address and an ephemeral port first.
+3. `SO_ERROR`: keep the error only when the `connect` did not return it.
+4. `shutdown` and a nonblocking `connect`: decide whether to stop `shutdown` (one more system call
+   in the filter) and whether to give `EINPROGRESS`; write the result here.
+5. Remove each fixed line from `ALLOWED`. The check fails on a line that no longer differs.
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_diff -- seccomp_errnos_match_the_host
+```

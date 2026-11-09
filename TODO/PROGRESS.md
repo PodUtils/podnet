@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 222 entries: 137 open, 2 partial, 17 blocked, 66 done.
+`TODO/INDEX.md` holds 223 entries: 138 open, 2 partial, 17 blocked, 66 done.
 
 ## State
 
