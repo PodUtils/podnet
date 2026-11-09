@@ -52,6 +52,7 @@ mod recvmmsg;
 mod seccomp;
 mod socket;
 mod sockopt;
+mod udp;
 
 pub use cli::{set_program_name, usage, usage_for};
 pub use listen::ProxyListen;
@@ -389,11 +390,11 @@ mod tests {
     #[test]
     fn fake_dns_is_stable_and_reversible() {
         let mut dns = FakeDns::new();
-        let a = dns.address_for("example.com");
-        let b = dns.address_for("example.com");
+        let a = dns.address_for("example.com").unwrap();
+        let b = dns.address_for("example.com").unwrap();
         assert_eq!(a, b, "the same name must map to the same fake ip");
         assert_eq!(dns.name_for(a), Some("example.com"));
-        let other = dns.address_for("example.org");
+        let other = dns.address_for("example.org").unwrap();
         assert_ne!(a, other);
         assert!(a.octets()[0] == 198 && a.octets()[1] == 18);
     }

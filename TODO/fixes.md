@@ -1362,7 +1362,7 @@ tag (#322). GitHub #325 is closed with this evidence.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1405,6 +1405,22 @@ The first test opens 100 UDP sockets, sends one datagram on each, closes each, a
 second test uses a child that exits (the `sweep` path) or `close_range`. The third test checks that the
 control connection of the stream form ends.
 
+## Done
+
+2026-11-09, commit f974e6b (`T-142: the close of a UDP socket stops its relay`). The relay code is
+in a new file, `crates/podnet-netns/src/udp.rs`. The entry `Sock::Datagram(Udp)` holds a
+`tokio::sync::watch` sender; each reader task of the relay selects on it and stops when the entry
+drops (`handle_close`, the sweep, and the end of the pod before `drain_relays`). The writer task of
+the stream form stops when its channel sender drops with the entry. The tests are in
+`tests/dgram/relay.rs`, a module of the test target `pod_seccomp_dgram`:
+`seccomp_udp_close_frees_the_relay_descriptors`, `seccomp_udp_exit_frees_the_relay_descriptors`
+(a child exits with 100 open sockets; new sockets of the parent start the sweep) and
+`seccomp_udp_stream_control_ends_on_close`. Each test counts `/proc/PPID/fd` of the supervisor from
+the program. On the tree before the fix the first two give 11 descriptors before and 311 after, and
+the third test sees the control connection stay open: the three fail. With the fix the three pass,
+on this host (user namespaces and seccomp user notification work here). `seccomp.rs`: 1516 to 1307
+lines. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
+
 # T-143: seccomp: a datagram written with `write(2)` leaves the pod (GitHub #347)
 
 **Source:** GitHub #347 (https://github.com/PodUtils/podnet/issues/347) (defect 1)
@@ -1412,7 +1428,7 @@ control connection of the stream form ends.
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1453,6 +1469,22 @@ cargo test --test pod_seccomp_dgram -- seccomp_udp_write_after_connect_is_relaye
 The first test makes a `SOCK_DGRAM`, calls `connect`, calls `write`, and reads the echo from the
 stand-in proxy. It fails on c52b8e0.
 
+## Done
+
+2026-11-09, commit eb4a8ba (`T-143: a datagram written with write(2) leaves the pod`). `write` is
+not intercepted. `Udp::new` (`crates/podnet-netns/src/udp.rs`) starts a reader task on the
+supervisor end of the socketpair. It sends each datagram, with the address of `connect`, on a
+bounded queue (256) to the supervisor loop, and `relay_written` sends it through `send_payload`, the
+path of `sendto` (port 53 gets the fake-IP answer). The address of `connect` is a cell of the inbox
+(`Inbox::dest`), shared with the reader. A datagram with no destination is dropped, with one line
+under `-v`. The README gives the limit (no `EDESTADDRREQ`). `handle_bind` moved to `sockopt.rs`,
+so `seccomp.rs` does not grow (1287 lines). Tests in `tests/dgram/write.rs`:
+`seccomp_udp_write_after_connect_is_relayed` (`write`, `writev`, a DNS query with `write`, and a
+`write` with no `connect`; on both forms of the relay) and `seccomp_udp_sendto_still_works`
+(`sendto`, `send`, `sendmsg`). On the tree before the fix the first test fails ("write: no
+answer"); with the fix both pass on this host. `sh scripts/agent/check.sh` exits 0. CI: at the
+merge.
+
 # T-144: seccomp: `bind` on a datagram socket is recorded, and `getsockname` reports it (GitHub #348)
 
 **Source:** GitHub #348 (https://github.com/PodUtils/podnet/issues/348)
@@ -1460,7 +1492,7 @@ stand-in proxy. It fails on c52b8e0.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1501,6 +1533,24 @@ The lead, 2026-11-09: record the address of a `bind` on a datagram socket. Port 
 cargo test --test pod_seccomp_dgram -- seccomp_udp_bind_is_read_back seccomp_udp_getpeername_is_enotconn_when_unconnected seccomp_udp_getsockname_of_a_connected_socket_is_local
 ```
 
+## Done
+
+2026-11-09, commit bd0db77 (`T-144: bind on a UDP socket is recorded, and getsockname reports it`), as
+the Decision says. `Udp::bind` and `Udp::name` (`crates/podnet-netns/src/udp.rs`): the entry keeps
+the address of `bind`; port 0 gets `ephemeral_port(fd)`; a second `bind` gets `EINVAL`.
+`getsockname` gives the bound address, else the unspecified address of the family of the socket,
+with an ephemeral port after a `connect` or a relayed datagram and port 0 before (as the kernel
+binds at the first send). `getpeername` gives the address of `connect`, else `ENOTCONN`. A connected
+socket gives the unspecified local address, as a connected TCP socket does: the kernel gives the
+address of the route. The README states that no datagram arrives at a bound port, and that the ICMP
+socket keeps only its identifier. Tests in `tests/dgram/addresses.rs`:
+`seccomp_udp_bind_is_read_back`, `seccomp_udp_getpeername_is_enotconn_when_unconnected`,
+`seccomp_udp_getsockname_of_a_connected_socket_is_local`. On the tree before the fix the three fail
+(`bound: 0.0.0.0 0`, `unconnected: 0.0.0.0 0`, `local: 192.0.2.10 7777`); with the fix the three
+pass on this host. The same C programs, run with no pod, give the same lines except the local
+address of a connected socket (the kernel gives the address of the route). `sh
+scripts/agent/check.sh` exits 0. CI: at the merge.
+
 # T-145: fake DNS: the pool refuses at its end, and names match without case (GitHub #349)
 
 **Source:** GitHub #349 (https://github.com/PodUtils/podnet/issues/349)
@@ -1508,7 +1558,7 @@ cargo test --test pod_seccomp_dgram -- seccomp_udp_bind_is_read_back seccomp_udp
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1542,6 +1592,20 @@ cargo test --test pod_seccomp_dgram -- seccomp_udp_bind_is_read_back seccomp_udp
 cargo test -p podnet-netns --lib -- fake_pool_refuses_past_its_end fake_names_ignore_case fake_pin_does_not_evict_a_live_name servfail_answers_a_name_that_does_not_fit
 ```
 
+## Done
+
+2026-11-09, commit 0c3206c (`T-145: the fake-IP pool refuses at its end, and names match with no
+case`). `FakeDns::address_for` (`crates/podnet-netns/src/fakedns.rs`) returns `Option<Ipv4Addr>`:
+`None` when `next` is at `FAKE_IP_COUNT`, with no insert, so the pool does not wrap. `answer` gives
+`RCODE_SERVFAIL` (2, new in `crates/podnet-netns/src/dns.rs`) to an A or AAAA query of a name that
+does not fit; both backends use `answer`. `ParsedQuery::parse`, `address_for` and `pin` call
+`dns::normalize`; the answer keeps the question bytes as the client wrote them. A pin of a name that
+holds a pool address keeps the pool address. The README (DNS) gives the bound, the case rule and
+SERVFAIL. The four tests of the Prove pass (`cargo test -p podnet-netns --lib`, 4 passed). On the
+tree before the fix they do not compile (`address_for` returned an address), and the arithmetic of
+the Premise holds: `next % FAKE_IP_COUNT` gave name 131073 the address of name 1. `sh
+scripts/agent/check.sh` exits 0. CI: at the merge.
+
 # T-146: seccomp: `connect(AF_UNSPEC)` dissolves the association of a datagram socket (GitHub #350)
 
 **Source:** GitHub #350 (https://github.com/PodUtils/podnet/issues/350) (item 1)
@@ -1549,7 +1613,7 @@ cargo test -p podnet-netns --lib -- fake_pool_refuses_past_its_end fake_names_ig
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1578,6 +1642,17 @@ the child gets `EAFNOSUPPORT` and `dest` stays.
 cargo test --test pod_seccomp_dgram -- seccomp_udp_af_unspec_disconnects
 ```
 
+## Done
+
+2026-11-09, commit d324710 (`T-146: connect(AF_UNSPEC) dissolves the association of a UDP socket`).
+`handle_connect` (`crates/podnet-netns/src/connect.rs`) answers 0 to a datagram socket whose
+family field is 0 (length 2 or more), and clears the address of `connect` (`Inbox::set_dest`). No
+port is minted. The reader of T-143 reads the same cell, so a later `write` has no destination. The
+test `seccomp_udp_af_unspec_disconnects` (`tests/dgram/addresses.rs`) connects, disconnects, and
+checks `getpeername` (`ENOTCONN`), `send` with no address (`EDESTADDRREQ`) and the source of
+`recvfrom`. On the tree before the fix it fails (`unspec: -1`, the peer stays); with the fix it
+passes on this host. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
+
 # T-147: seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350)
 
 **Source:** GitHub #350 (https://github.com/PodUtils/podnet/issues/350) (item 2)
@@ -1585,7 +1660,7 @@ cargo test --test pod_seccomp_dgram -- seccomp_udp_af_unspec_disconnects
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1613,6 +1688,19 @@ the datagrams of the peer.
 cargo test --test pod_seccomp_dgram -- seccomp_connected_udp_drops_other_sources seccomp_unconnected_udp_keeps_all_sources
 ```
 
+## Done
+
+2026-11-09, commit f2568d4 (`T-147: a connected UDP socket takes datagrams from its peer only`).
+The shared cell is the address of `connect` in the inbox (`Inbox::dest`, from T-143).
+`Inbox::deliver` (`crates/podnet-netns/src/inbox.rs`) compares the `sockaddr` of the source, as
+`Inbox::address` maps it (a name, or the host address of a proxy answer for a name, gives the fake
+IP), with the `sockaddr` of `connect`, and drops a datagram of another source before the send into
+the socketpair (no queue). A DNS answer has the resolver address as its source, so it passes. The
+README states the filter. Tests in `tests/dgram/source.rs`: `seccomp_connected_udp_drops_other_sources`
+(both forms of the relay) and `seccomp_unconnected_udp_keeps_all_sources`. On the tree before the
+fix the first test fails (`first: NOISE`); with the fix both pass on this host. `sh
+scripts/agent/check.sh` exits 0. CI: at the merge.
+
 # T-148: seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350)
 
 **Source:** GitHub #350 (https://github.com/PodUtils/podnet/issues/350) (item 3)
@@ -1620,7 +1708,7 @@ cargo test --test pod_seccomp_dgram -- seccomp_connected_udp_drops_other_sources
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1645,6 +1733,16 @@ cargo test --test pod_seccomp_dgram -- seccomp_connected_udp_drops_other_sources
 cargo test --test pod_seccomp_dgram -- seccomp_udp_ip_ttl_round_trips seccomp_icmp_socket_keeps_its_options
 ```
 
+## Done
+
+2026-11-09, commit c6aa374 (`T-148: UDP and ICMP sockets keep their IP-level options`). `Udp`
+(`crates/podnet-netns/src/udp.rs`) and `Icmp` (`crates/podnet-netns/src/icmp.rs`) have an `options`
+map, and `options_of` (`crates/podnet-netns/src/sockopt.rs`) returns it. The README says that the
+values are echoes and that `IP_MTU` has no value. Tests in `tests/dgram/options.rs`:
+`seccomp_udp_ip_ttl_round_trips` (`IP_TTL`, `IP_TOS`, `IPV6_UNICAST_HOPS`) and
+`seccomp_icmp_socket_keeps_its_options`. On the tree before the fix both fail (each value is 0);
+with the fix both pass on this host. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
+
 # T-149: seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350)
 
 **Source:** GitHub #350 (https://github.com/PodUtils/podnet/issues/350) (item 4)
@@ -1652,7 +1750,7 @@ cargo test --test pod_seccomp_dgram -- seccomp_udp_ip_ttl_round_trips seccomp_ic
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1681,6 +1779,25 @@ the AF_UNIX pair.
 cargo test --test pod_seccomp_dgram -- seccomp_udp_errqueue_read_is_eagain
 grep -n "ICMP error" crates/podnet-netns/README.md
 ```
+
+## Done
+
+2026-11-09, commit ba83a3e (`T-149: the fidelity of UDP stops at the proxy; MSG_ERRQUEUE gets
+EAGAIN`). The result of the research: option (c). The relay peers with the proxy, and RFC 1928 gives
+the UDP request header no ICMP, TTL or MTU field, so the supervisor cannot know a port-unreachable
+or a path MTU of the target. Option (a) needs a new frame type in the relay protocol and in each
+server of it (`podnet warp proxy`, `podnet pod --serve`, other SOCKS5 servers do not have it).
+Option (b) guesses: a send failure at the proxy is not an ICMP error at the target, and a wrong
+`ECONNREFUSED` breaks a program that retries. No program of the record needs (a) or (b) now: they
+get an entry when a report names a program that needs them. The limit is in
+`crates/podnet-netns/README.md` ("No ICMP error") and in the text form of `pod doctor`
+(`crates/podnet-netns/src/doctor.rs`). `handle_recv` (`crates/podnet-netns/src/inbox.rs`) answers
+`MSG_ERRQUEUE` on a UDP or ICMP socket with `EAGAIN`, connected or not, before the dispatch to the
+inbox. The test `seccomp_udp_errqueue_read_is_eagain` (`tests/dgram/errqueue.rs`) reads the queue
+of an empty socket, of a socket with a waiting datagram (the datagram stays), of a connected socket
+and of an ICMP socket. On the tree before the fix the first read blocked on the socketpair until the
+alarm of the program; with the fix the test passes on this host. `grep -n "ICMP error"
+crates/podnet-netns/README.md` gives one line. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-154: seccomp: fuzz targets for the notification handlers (GitHub #353)
 
@@ -1734,7 +1851,7 @@ T-040 is done.
 **Milestone:** M5
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1761,6 +1878,21 @@ addresses and the cmsg. A rewrite of a handler can pass the hand-written C tests
 ```sh
 cargo test --test pod_seccomp_diff -- seccomp_errnos_match_the_host
 ```
+
+## Done
+
+2026-11-09, commit 46b130b (`T-155: a differential check of the socket calls against the host kernel`).
+Steps 1, 2 and 4: `tests/pod_seccomp_diff.rs` compiles one C driver (32 lines: 16 TCP calls,
+then 16 UDP calls of T-143 to T-149). It prints the result or the errno name of each call, and the
+family, the address and the class of the port (0, fixed, ephemeral) of each address. The test runs
+the driver on the host kernel and in `podnet pod --backend seccomp`, and compares the lines. A
+difference fails the test, except an item of `ALLOWED`, which names its entry; an item that no
+longer differs fails the test too. The check finds six TCP gaps; they are the new entry T-223, and
+the six lines of `ALLOWED` name it. Each UDP line agrees. CI runs the test in `cargo test
+--workspace` (`.github/workflows/ci.yml`); it takes less than one second here. Step 3 (`diff-trace`)
+is not built: the entry builds it only when step 2 works, and nothing asks for it now. The test
+passes on this host (user namespaces and seccomp user notification work here). `sh
+scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-159: research documents are readings; fix the stale counts of the record (GitHub #356)
 
@@ -2237,7 +2369,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 ## Premise
 
 - Five callers use `claim_socket_path` (`src/warp/proxy.rs:87`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:317`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
-- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1368`.
+- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1139`.
 - `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:347`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:53-59`).
 
@@ -3378,4 +3510,57 @@ Ask A-X-19 (P2): "Machine-readable docs for agents: `llms.txt` and `llms-full.tx
 ```sh
 cargo test -p podnet --test cli -- help_json_matches_man_json
 cargo todo check
+```
+
+# T-223: seccomp: the TCP gaps that the differential check finds
+
+**Source:** T-155 (the differential check `tests/pod_seccomp_diff.rs`), 2026-11-09
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The differential check of T-155 runs one series of socket calls on the host kernel and in a seccomp
+pod. Six TCP lines differ. Each one is an item of `ALLOWED` in `tests/pod_seccomp_diff.rs`:
+
+| Label | Host kernel | Seccomp pod |
+| --- | --- | --- |
+| `tcp shutdown unconnected` | `ENOTCONN` | 0 |
+| `tcp getsockname bound` (bind to port 0) | an ephemeral port | port 0 |
+| `tcp bind again` | `EINVAL` | 0 |
+| `tcp listen unbound` | 0 (the kernel binds a port) | `EINVAL` |
+| `tcp SO_ERROR after refused` (a blocking connect) | 0 | `ECONNREFUSED` |
+| `tcp nonblocking connect` (to a closed loopback port) | `EINPROGRESS` | `ECONNREFUSED` |
+
+The UDP lines of the same series agree after T-143 to T-149.
+
+## Premise
+
+- Measured: `cargo test --test pod_seccomp_diff` on 2026-11-09, on a host with user namespaces and
+  seccomp user notification (the table above).
+- Read: `shutdown` is not in the filter (`crates/podnet-netns/README.md`, seccomp). The socketpair
+  is connected, so the kernel answers 0.
+- Read: `handle_bind` (`crates/podnet-netns/src/sockopt.rs`) keeps the address of a stream as the
+  program gives it, also port 0 and a second `bind`. `handle_listen` needs a bound port.
+- Read: the pending error of a refused connect stays for one read of `SO_ERROR` (issue 302). The
+  kernel clears it when `connect` itself returns the error.
+- Not measured: the effect of each gap on a real program.
+
+## Approach
+
+1. `bind` of a stream: port 0 gets `ephemeral_port(fd)`; a second `bind` gets `EINVAL` (as
+   `Udp::bind` of T-144).
+2. `listen` with no `bind`: bind the unspecified address and an ephemeral port first.
+3. `SO_ERROR`: keep the error only when the `connect` did not return it.
+4. `shutdown` and a nonblocking `connect`: decide whether to stop `shutdown` (one more system call
+   in the filter) and whether to give `EINPROGRESS`; write the result here.
+5. Remove each fixed line from `ALLOWED`. The check fails on a line that no longer differs.
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_diff -- seccomp_errnos_match_the_host
 ```

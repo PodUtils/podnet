@@ -529,22 +529,6 @@ pub(crate) fn notif_continue(lfd: RawFd, id: u64) -> Result<()> {
     Ok(())
 }
 
-/// A live SOCKS5 UDP association.
-pub(crate) enum UdpRelay {
-    /// `UDP ASSOCIATE`: the relay socket, its address, and the control
-    /// connection that must stay open for the association to live.
-    Socket {
-        udp: Arc<tokio::net::UdpSocket>,
-        relay_addr: SocketAddr,
-        _control: Upstream,
-    },
-    /// The datagrams go as frames on the control connection (issue 84):
-    /// no kernel UDP socket. A writer task owns the write half.
-    Stream {
-        tx: tokio::sync::mpsc::UnboundedSender<Vec<u8>>,
-    },
-}
-
 /// A listening socket inside the sandbox. Connections arrive on a unix
 /// listener (the only bind a sealed host permits) and are handed to the child's
 /// `accept` as injected socketpair ends.
@@ -572,13 +556,8 @@ pub(crate) enum Sock {
     },
     /// A connected TCP socket (T-063): a relay, or the program (T-065), has it.
     Connected(crate::sockopt::Connected),
-    Datagram {
-        pair: Arc<tokio::net::UnixDatagram>,
-        dest: Option<(IpAddr, u16)>,
-        relay: Option<UdpRelay>,
-        /// The receive side: the sources of the datagrams (issue 305).
-        inbox: Arc<crate::inbox::Inbox>,
-    },
+    /// A UDP socket (`src/udp.rs`).
+    Datagram(crate::udp::Udp),
     /// An ICMP datagram socket (T-066): the pod answers an echo to its gateway.
     Icmp(crate::icmp::Icmp),
 }
@@ -704,6 +683,7 @@ pub(crate) async fn supervise_seccomp(
     let mut map = crate::fdtable::Table::new(pid);
     let mut dns = FakeDns::new();
     let mut dials = crate::connect::Dials::new();
+    let (writes_tx, mut writes) = tokio::sync::mpsc::channel(crate::udp::WRITES);
     let route = crate::connect::Route {
         proxies: &proxies,
         rules: &rules,
@@ -723,6 +703,11 @@ pub(crate) async fn supervise_seccomp(
             guard = async_fd.readable() => guard,
             Some(done) = dials.next() => {
                 crate::connect::finish(lfd, done, &mut map, &mut dials, verbose);
+                continue;
+            }
+            // T-143: a datagram that the program wrote with `write(2)`.
+            Some(written) = writes.recv() => {
+                crate::udp::relay_written(&mut map, written, &mut dns, &proxies, verbose).await;
                 continue;
             }
             _ = tokio::time::sleep(Duration::from_millis(50)) => continue,
@@ -775,7 +760,7 @@ pub(crate) async fn supervise_seccomp(
         let outcome = if let Some(outcome) = icmp.await {
             outcome
         } else if nr == libc::SYS_socket as i32 {
-            crate::socket::handle_socket(lfd, id, a, &mut map, verbose)
+            crate::socket::handle_socket(lfd, id, a, &mut map, &writes_tx, verbose)
         } else if nr == libc::SYS_connect as i32 {
             let entry = (&mut *map, key, req.pid);
             crate::connect::handle_connect(lfd, id, a, mem, entry, &mut dns, &mut dials, &route)
@@ -806,7 +791,7 @@ pub(crate) async fn supervise_seccomp(
             // syscalls, which would bypass this filter entirely. Refuse it.
             notif_respond(lfd, id, -1, libc::EPERM)
         } else if nr == libc::SYS_bind as i32 {
-            handle_bind(lfd, id, a, mem, (&mut map, key))
+            crate::sockopt::handle_bind(lfd, id, a, mem, (&mut map, key))
         } else if nr == libc::SYS_listen as i32 {
             handle_listen(lfd, id, a, (&mut map, key), &inbound_dir, req.pid).await
         } else if nr == SYS_ACCEPT as i32 || nr == libc::SYS_accept4 as i32 {
@@ -848,6 +833,8 @@ pub(crate) async fn supervise_seccomp(
 
     // The child can exit while a relay still carries its last bytes (a server
     // that writes a reply and exits). Let the relays finish, for a short time.
+    // The UDP relays of the program stop now (T-142).
+    map.retain(|_, sock| !matches!(sock, Sock::Datagram(_)));
     drain_relays(RELAY_DRAIN).await;
 
     let mut status = 0;
@@ -957,10 +944,8 @@ pub(crate) async fn handle_sendto(
     let len = a[2] as usize;
     let name = a[4];
     let namelen = a[5] as usize;
-    let (recorded, pair, inbox) = match map.get(&fd) {
-        Some(Sock::Datagram {
-            dest, pair, inbox, ..
-        }) => (*dest, pair.clone(), inbox.clone()),
+    let recorded = match map.get(&fd) {
+        Some(Sock::Datagram(udp)) => udp.inbox.dest(),
         _ => return notif_continue(lfd, id),
     };
     let target = if name != 0 && namelen >= 4 {
@@ -980,36 +965,9 @@ pub(crate) async fn handle_sendto(
     let Ok(payload) = read_mem(mem, buf, len) else {
         return notif_respond(lfd, id, -1, libc::EFAULT);
     };
-    if port == DNS_PORT {
-        let Ok(parsed) = crate::dns::ParsedQuery::parse(&payload) else {
-            return notif_respond(lfd, id, -1, libc::EINVAL);
-        };
-        let reply = dns.answer(&parsed);
-        let source = crate::inbox::WireSource::Ip(SocketAddr::new(ip, port));
-        inbox.deliver(&pair, source, &reply).await;
-        return notif_respond(lfd, id, len as i64, 0);
-    }
-    let name = dns.name_for_ip(ip).map(str::to_string);
-    if let Err(errno) = crate::dgram::fits_relay(len, ip, name.as_deref()) {
-        return notif_respond(lfd, id, -1, errno);
-    }
-    match relay_datagram(
-        map,
-        fd,
-        &proxies[0],
-        (pair, inbox),
-        &payload,
-        ip,
-        name,
-        port,
-    )
-    .await
-    {
-        Ok(()) => notif_respond(lfd, id, len as i64, 0),
-        Err(e) => {
-            let _ = notif_respond(lfd, id, -1, libc::ENETUNREACH);
-            Err(e)
-        }
+    match crate::udp::send_payload(map, fd, dns, proxies, &payload, (ip, port)).await {
+        Ok(sent) => notif_respond(lfd, id, sent as i64, 0),
+        Err(errno) => notif_respond(lfd, id, -1, errno),
     }
 }
 
@@ -1091,10 +1049,8 @@ pub(crate) async fn send_msghdr(
     dns: &mut FakeDns,
     proxies: &[Proxy],
 ) -> Result<Option<std::result::Result<usize, i32>>> {
-    let (recorded, pair, inbox) = match map.get(&fd) {
-        Some(Sock::Datagram {
-            dest, pair, inbox, ..
-        }) => (*dest, pair.clone(), inbox.clone()),
+    let recorded = match map.get(&fd) {
+        Some(Sock::Datagram(udp)) => udp.inbox.dest(),
         _ => return Ok(None),
     };
     // struct msghdr on x86_64: name, namelen, iov, iovlen, control, controllen, flags.
@@ -1153,193 +1109,8 @@ pub(crate) async fn send_msghdr(
         };
         payload.extend_from_slice(&part);
     }
-    if port == DNS_PORT {
-        let Ok(parsed) = crate::dns::ParsedQuery::parse(&payload) else {
-            return Ok(Some(Err(libc::EINVAL)));
-        };
-        let reply = dns.answer(&parsed);
-        let source = crate::inbox::WireSource::Ip(SocketAddr::new(ip, port));
-        inbox.deliver(&pair, source, &reply).await;
-        return Ok(Some(Ok(payload.len())));
-    }
-    let name = dns.name_for_ip(ip).map(str::to_string);
-    if let Err(errno) = crate::dgram::fits_relay(payload.len(), ip, name.as_deref()) {
-        return Ok(Some(Err(errno)));
-    }
-    match relay_datagram(
-        map,
-        fd,
-        &proxies[0],
-        (pair, inbox),
-        &payload,
-        ip,
-        name,
-        port,
-    )
-    .await
-    {
-        Ok(()) => Ok(Some(Ok(payload.len()))),
-        Err(_) => Ok(Some(Err(libc::ENETUNREACH))),
-    }
-}
-
-pub(crate) async fn ensure_udp_relay(
-    map: &mut HashMap<Key, Sock>,
-    fd: Key,
-    proxy: &Proxy,
-    pair: Arc<tokio::net::UnixDatagram>,
-    inbox: Arc<crate::inbox::Inbox>,
-) -> Result<()> {
-    if matches!(map.get(&fd), Some(Sock::Datagram { relay: Some(_), .. })) {
-        return Ok(());
-    }
-    if proxy.kind != ProxyKind::Socks5 {
-        bail!("UDP relay needs a SOCKS5 proxy");
-    }
-    // Issue 84: a proxy on a unix socket (warp proxy, a pod front door)
-    // carries the datagrams on the control connection, so no kernel UDP
-    // socket is necessary. A server that does not know the command gets
-    // UDP ASSOCIATE.
-    if proxy.is_unix() {
-        let control = within_timeout("udp in the stream dial", dial_proxy(proxy)).await?;
-        // On an error (0x07, or a server that closes on a command that it
-        // does not know): UDP ASSOCIATE below.
-        if let Ok(control) = within_timeout(
-            "udp in the stream",
-            crate::upstream::socks5_udp_in_stream(control, proxy),
-        )
-        .await
-        {
-            {
-                let (mut read, mut write) = tokio::io::split(control);
-                let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
-                tokio::spawn(async move {
-                    while let Some(datagram) = rx.recv().await {
-                        if crate::upstream::write_udp_frame(&mut write, &datagram)
-                            .await
-                            .is_err()
-                        {
-                            break;
-                        }
-                    }
-                });
-                tokio::spawn(async move {
-                    while let Ok(Some(datagram)) = crate::upstream::read_udp_frame(&mut read).await
-                    {
-                        if let Some((source, off)) = crate::inbox::udp_source(&datagram) {
-                            inbox.deliver(&pair, source, &datagram[off..]).await;
-                        }
-                    }
-                });
-                if let Some(Sock::Datagram { relay, .. }) = map.get_mut(&fd) {
-                    *relay = Some(UdpRelay::Stream { tx });
-                }
-                return Ok(());
-            }
-        }
-    }
-    let control = within_timeout("udp associate dial", dial_proxy(proxy)).await?;
-    let (control, relay_addr) =
-        within_timeout("udp associate", socks5_udp_associate(control, proxy)).await?;
-    let udp = Arc::new(tokio::net::UdpSocket::bind("0.0.0.0:0").await?);
-    let reader = udp.clone();
-    tokio::spawn(async move {
-        let mut buf = vec![0u8; 65536];
-        loop {
-            let Ok((n, _)) = reader.recv_from(&mut buf).await else {
-                break;
-            };
-            if let Some((source, off)) = crate::inbox::udp_source(&buf[..n]) {
-                inbox.deliver(&pair, source, &buf[off..n]).await;
-            }
-        }
-    });
-    if let Some(Sock::Datagram { relay, .. }) = map.get_mut(&fd) {
-        *relay = Some(UdpRelay::Socket {
-            udp,
-            relay_addr,
-            _control: control,
-        });
-    }
-    Ok(())
-}
-
-/// Wrap a datagram in a SOCKS5 UDP request header and send it to the relay.
-/// Send one datagram of the program through the UDP relay. A fake IP of the
-/// pod goes to the proxy as its name (ATYP 3, issue 113): before, the
-/// proxy got the fake IP, which no host has.
-#[allow(clippy::too_many_arguments)]
-pub(crate) async fn relay_datagram(
-    map: &mut HashMap<Key, Sock>,
-    fd: Key,
-    proxy: &Proxy,
-    (pair, inbox): (Arc<tokio::net::UnixDatagram>, Arc<crate::inbox::Inbox>),
-    payload: &[u8],
-    ip: IpAddr,
-    name: Option<String>,
-    port: u16,
-) -> Result<()> {
-    ensure_udp_relay(map, fd, proxy, pair, inbox.clone()).await?;
-    let wrapped = match name {
-        Some(name) => {
-            let wire = crate::inbox::WireSource::Name(name.clone(), port);
-            inbox.remember(wire, ip, port);
-            crate::upstream::wrap_udp_name(payload, &name, port)
-        }
-        None => {
-            let wire = crate::inbox::WireSource::Ip(SocketAddr::new(ip, port));
-            inbox.remember(wire, ip, port);
-            wrap_udp(payload, ip, port)
-        }
-    };
-    match map.get(&fd) {
-        Some(Sock::Datagram {
-            relay: Some(UdpRelay::Socket {
-                udp, relay_addr, ..
-            }),
-            ..
-        }) => {
-            udp.send_to(&wrapped, *relay_addr).await?;
-        }
-        Some(Sock::Datagram {
-            relay: Some(UdpRelay::Stream { tx }),
-            ..
-        }) if tx.send(wrapped).is_err() => {
-            // The association ended: the next datagram opens a new one.
-            if let Some(Sock::Datagram { relay, .. }) = map.get_mut(&fd) {
-                *relay = None;
-            }
-            bail!("the UDP association in the stream ended");
-        }
-        _ => {}
-    }
-    Ok(())
-}
-
-pub(crate) fn handle_bind(
-    lfd: RawFd,
-    id: u64,
-    a: [u64; 6],
-    mem: RawFd,
-    (map, fd): (&mut HashMap<Key, Sock>, Key),
-) -> Result<()> {
-    match map.get_mut(&fd) {
-        Some(Sock::Stream { bound, .. }) => {
-            if a[1] != 0 && a[2] >= 4 {
-                if let Some((_, ip, port)) =
-                    parse_sockaddr(&read_mem(mem, a[1], (a[2] as usize).min(128))?)
-                {
-                    *bound = Some((ip, port));
-                }
-            }
-            notif_respond(lfd, id, 0, 0)
-        }
-        // A datagram socket that binds a local port is a socketpair here.
-        Some(Sock::Datagram { .. } | Sock::Icmp(_)) => notif_respond(lfd, id, 0, 0),
-        // A connected socket is bound already, as in the kernel.
-        Some(Sock::Connected(_)) => notif_respond(lfd, id, -1, libc::EINVAL),
-        None => notif_continue(lfd, id),
-    }
+    let sent = crate::udp::send_payload(map, fd, dns, proxies, &payload, (ip, port)).await;
+    Ok(Some(sent))
 }
 
 /// `listen` creates the real listener the sandbox can have: a unix socket named

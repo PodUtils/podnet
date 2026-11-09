@@ -14,6 +14,7 @@ pub(crate) fn handle_socket(
     id: u64,
     a: [u64; 6],
     map: &mut crate::fdtable::Table,
+    writes: &crate::udp::Writes,
     verbose: bool,
 ) -> Result<()> {
     if !map.has_room() {
@@ -81,13 +82,9 @@ pub(crate) fn handle_socket(
                 v6,
                 dest: None,
                 ident: None,
+                options: Default::default(),
             }),
-            false => Sock::Datagram {
-                pair,
-                dest: None,
-                relay: None,
-                inbox,
-            },
+            false => Sock::Datagram(crate::udp::Udp::new(pair, inbox, (key, writes))),
         };
         map.insert(key, entry);
     }

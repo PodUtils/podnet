@@ -61,6 +61,9 @@ pub(crate) struct Inbox {
     peers: std::sync::Mutex<VecDeque<(WireSource, IpAddr, u16)>>,
     /// The socket is `AF_INET6`.
     v6: bool,
+    /// The address of `connect` on a UDP socket. A reader of the
+    /// socketpair (`src/udp.rs`) reads it too.
+    dest: std::sync::Mutex<Option<(IpAddr, u16)>>,
 }
 
 impl Inbox {
@@ -70,18 +73,40 @@ impl Inbox {
             pending: std::sync::Mutex::new(VecDeque::new()),
             peers: std::sync::Mutex::new(VecDeque::new()),
             v6,
+            dest: std::sync::Mutex::new(None),
         }
+    }
+
+    /// Whether the socket is `AF_INET6`.
+    pub(crate) fn v6(&self) -> bool {
+        self.v6
+    }
+
+    /// The address of `connect`, `None` when the socket is not connected.
+    pub(crate) fn dest(&self) -> Option<(IpAddr, u16)> {
+        *self.dest.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub(crate) fn set_dest(&self, dest: Option<(IpAddr, u16)>) {
+        *self.dest.lock().unwrap_or_else(|e| e.into_inner()) = dest;
     }
 
     /// Put `payload` into the socketpair (through `pair`, the end of the
     /// supervisor) and queue its source. The lock is held from the send to
     /// the push, so a read sees the entry of each datagram that it can get.
+    /// A connected socket takes the datagrams of its peer only, as in the
+    /// kernel (T-147): another datagram is dropped, with no queue.
     pub(crate) async fn deliver(
         &self,
         pair: &tokio::net::UnixDatagram,
         source: WireSource,
         payload: &[u8],
     ) {
+        if let Some((ip, port)) = self.dest() {
+            if self.address(Some(source.clone())) != sockaddr_for(self.v6, ip, port) {
+                return;
+            }
+        }
         loop {
             if pair.writable().await.is_err() {
                 return;
@@ -447,18 +472,20 @@ pub(crate) fn handle_recv(
     pid: u32,
 ) -> Result<()> {
     let fd = a[0] as i32;
+    let recvmsg = nr == libc::SYS_recvmsg as i32;
+    let flags = if recvmsg { a[2] } else { a[3] } as i32;
+    // T-149: the relay carries no ICMP error, so the error queue of a UDP
+    // or ICMP socket is always empty: `EAGAIN`, as the kernel gives. The
+    // kernel would read the queue of the `AF_UNIX` socketpair.
+    let ours = matches!(map.get(&key), Some(Sock::Datagram(_) | Sock::Icmp(_)));
+    if ours && flags & libc::MSG_ERRQUEUE != 0 {
+        return notif_respond(lfd, id, -1, libc::EAGAIN);
+    }
     let inbox = match map.get(&key) {
-        Some(Sock::Datagram {
-            dest: None, inbox, ..
-        }) if writable => inbox.clone(),
+        Some(Sock::Datagram(udp)) if writable && udp.inbox.dest().is_none() => udp.inbox.clone(),
         Some(Sock::Icmp(icmp)) if writable => icmp.inbox.clone(),
         _ => return notif_continue(lfd, id),
     };
-    let recvmsg = nr == libc::SYS_recvmsg as i32;
-    let flags = if recvmsg { a[2] } else { a[3] } as i32;
-    if flags & libc::MSG_ERRQUEUE != 0 {
-        return notif_continue(lfd, id);
-    }
     if flags & libc::MSG_OOB != 0 {
         return notif_respond(lfd, id, -1, libc::EOPNOTSUPP);
     }

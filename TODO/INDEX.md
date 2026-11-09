@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 145 open, 2 partial, 17 blocked, 58 done.**
+**223 entries: 137 open, 2 partial, 17 blocked, 67 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
-| P1 | 7 | 1 | 2 | 14 | 24 |
-| P2 | 93 | 1 | 10 | 33 | 137 |
-| P3 | 44 | 0 | 5 | 11 | 60 |
-| **All** | 145 | 2 | 17 | 58 | 222 |
+| P1 | 6 | 1 | 2 | 15 | 24 |
+| P2 | 88 | 1 | 10 | 38 | 137 |
+| P3 | 42 | 0 | 5 | 14 | 61 |
+| **All** | 137 | 2 | 17 | 67 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -187,20 +187,20 @@ M8 Overlays, M9 Later.
 | [T-139](fixes.md) | P2 | S | M5 | defect | done | The start of a session changes the global git identity and can drop commits of main |
 | [T-140](fixes.md) | P2 | S | M5 | feature | done | `data_path` and the time of the last TCP probe in `status`, the ready document and `warp status` |
 | [T-141](fixes.md) | P1 | S | M5 | defect | done | live: two runs in a row failed after the take of pod-dns and pod-services (GitHub #325) |
-| [T-142](fixes.md) | P2 | M | M5 | defect | open | seccomp: closing a UDP socket stops its relay and frees three descriptors (GitHub #347) |
-| [T-143](fixes.md) | P1 | M | M5 | defect | open | seccomp: a datagram written with `write(2)` leaves the pod (GitHub #347) |
-| [T-144](fixes.md) | P2 | S | M5 | defect | open | seccomp: `bind` on a datagram socket is recorded, and `getsockname` reports it (GitHub #348) |
-| [T-145](fixes.md) | P2 | S | M5 | defect | open | fake DNS: the pool refuses at its end, and names match without case (GitHub #349) |
-| [T-146](fixes.md) | P2 | S | M5 | defect | open | seccomp: `connect(AF_UNSPEC)` dissolves the association of a datagram socket (GitHub #350) |
-| [T-147](fixes.md) | P2 | S | M5 | defect | open | seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350) |
-| [T-148](fixes.md) | P3 | S | M5 | defect | open | seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350) |
-| [T-149](fixes.md) | P3 | S | M5 | research | open | seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350) |
+| [T-142](fixes.md) | P2 | M | M5 | defect | done | seccomp: closing a UDP socket stops its relay and frees three descriptors (GitHub #347) |
+| [T-143](fixes.md) | P1 | M | M5 | defect | done | seccomp: a datagram written with `write(2)` leaves the pod (GitHub #347) |
+| [T-144](fixes.md) | P2 | S | M5 | defect | done | seccomp: `bind` on a datagram socket is recorded, and `getsockname` reports it (GitHub #348) |
+| [T-145](fixes.md) | P2 | S | M5 | defect | done | fake DNS: the pool refuses at its end, and names match without case (GitHub #349) |
+| [T-146](fixes.md) | P2 | S | M5 | defect | done | seccomp: `connect(AF_UNSPEC)` dissolves the association of a datagram socket (GitHub #350) |
+| [T-147](fixes.md) | P2 | S | M5 | defect | done | seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350) |
+| [T-148](fixes.md) | P3 | S | M5 | defect | done | seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350) |
+| [T-149](fixes.md) | P3 | S | M5 | research | done | seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350) |
 | [T-150](pods.md) | P3 | S | M7 | feature | open | seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351) |
 | [T-151](pods.md) | P3 | M | M7 | measurement | open | seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351) |
 | [T-152](pods.md) | P3 | S | M7 | research | open | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
 | [T-153](later.md) | P3 | L | M9 | feature | open | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
 | [T-154](fixes.md) | P2 | M | M5 | chore | open | seccomp: fuzz targets for the notification handlers (GitHub #353) |
-| [T-155](fixes.md) | P3 | M | M5 | chore | open | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
+| [T-155](fixes.md) | P3 | M | M5 | chore | done | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
 | [T-156](pods.md) | P2 | M | M7 | feature | open | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |
 | [T-157](pods.md) | P2 | M | M7 | feature | open | pod: `--default-action` and a JSON flow record (GitHub #355) |
 | [T-158](pods.md) | P3 | M | M7 | feature | open | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
@@ -268,3 +268,4 @@ M8 Overlays, M9 Later.
 | [T-220](services.md) | P1 | S | M6 | feature | blocked | `relay node` as a system service, with no operator act (PodUtils/podcrates#35, A-N-12) |
 | [T-221](services.md) | P2 | M | M6 | feature | open | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
 | [T-222](fixes.md) | P2 | S | M5 | feature | open | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |
+| [T-223](fixes.md) | P3 | M | M5 | defect | open | seccomp: the TCP gaps that the differential check finds |

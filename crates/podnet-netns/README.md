@@ -78,8 +78,9 @@ see it. Use a unix socket for it (`-L unix:///path`).
   `io_uring_enter`, `io_uring_register`. A system call of a foreign ABI (i386 or x32 on x86_64)
   gets `ENOSYS`.
 * `socket(AF_INET | AF_INET6)` gets one end of a socketpair, installed with
-  `SECCOMP_IOCTL_NOTIF_ADDFD`. Thus `read`, `write`, `poll` and `epoll` work on
-  a real descriptor.
+  `SECCOMP_IOCTL_NOTIF_ADDFD`. Thus `poll` and `epoll` work on a real
+  descriptor, and `read` and `write` of a TCP socket go on the socketpair.
+  The UDP path is below.
 * The supervisor keeps one entry for each socket of the program. The key is
   the inode of the socket (`/proc/<pid>/fd/<n>` gives `socket:[INODE]`), so a
   copy made by `fork`, `dup`, `dup2`, `dup3` or `fcntl(F_DUPFD)` finds the
@@ -111,6 +112,21 @@ see it. Use a unix socket for it (`-L unix:///path`).
   `single-request` to `RES_OPTIONS` of the program: glibc then sends the A
   and the AAAA query in two calls (issue 113). A program that clears its
   environment loses this option.
+* The filter does not stop `write` and `writev`: a stop costs one
+  notification for each write of each program. On a UDP socket, a reader
+  task of the supervisor takes each datagram that the program writes on the
+  socketpair, and the supervisor sends it to the address of `connect`, as
+  `sendto` does (a query to port 53 gets its answer from the fake-IP pool).
+  The `write` gives the length at once, so an error of the relay does not
+  get to the program. A datagram written on a socket with no `connect` has
+  no destination: the supervisor drops it, and the `write` gives no
+  `EDESTADDRREQ`. `-v` prints one line for each dropped datagram.
+* The entry of a UDP socket holds its relay: the relay socket or the control
+  connection, and the tasks that read them. The drop of the entry stops the
+  relay, and the supervisor closes its descriptors of the socket. A `close`
+  of the last descriptor drops the entry, a sweep drops the entry of a
+  socket that closed with no `close` call, and the end of the pod drops each
+  entry.
 * The supervisor checks each length that the program gives before it reads
   the memory of the program. A datagram that does not fit in one SOCKS5 UDP
   datagram of 65507 bytes (the header and the payload) gets `EMSGSIZE`, as
@@ -133,6 +149,17 @@ see it. Use a unix socket for it (`-L unix:///path`).
   through the supervisor: the kernel runs it. Each other `recvfrom` and each
   `recvmsg` goes through the supervisor, also a read of a TCP socket, which
   the supervisor passes on at once.
+* A connected UDP socket takes the datagrams of its peer only, as in the
+  kernel. The supervisor compares the source of each datagram of the relay
+  (after it maps a name to its fake IP) with the address of `connect`, and
+  drops a datagram of another source before it gets to the socketpair.
+* No ICMP error gets to a UDP socket of the program. The relay peers with
+  the proxy, and the SOCKS5 UDP header has no ICMP field. Thus the program
+  gets no `ECONNREFUSED` from a port-unreachable, no `EMSGSIZE` with the
+  path MTU, and `IP_MTU` has no value. The error queue is always empty:
+  `recvmsg` with `MSG_ERRQUEUE` on a UDP or ICMP socket gets `EAGAIN` from
+  the supervisor (the kernel would read the socketpair). `pod doctor`
+  prints this limit.
 * `recvmmsg` is a series of `recvmsg` reads: each `mmsghdr` gets the real
   source and its `msg_len`. The call waits for the first message only, as
   with `MSG_WAITFORONE`, then takes each message that waits. The timeout
@@ -157,6 +184,23 @@ see it. Use a unix socket for it (`-L unix:///path`).
   the port of the `connect` (a name keeps its fake address); a stream with
   no `connect` gives `ENOTCONN`. `getsockname` gives the bound address,
   else the unspecified address of the family with an ephemeral port.
+* A UDP socket and an ICMP socket keep their options too. The values are
+  echoes: `getsockopt` gives the value that the program set (for example
+  `IP_TTL`), and SOCKS5 carries no IP option, so the value has no effect on
+  the datagrams upstream. An option that the program did not set gives
+  zeros: `IP_MTU` has no value.
+* A UDP socket keeps the address of `bind`. Port 0 gets a stable port of
+  the ephemeral range, and a second `bind` gets `EINVAL`. `getsockname`
+  gives the bound address, else the unspecified address of the family: with
+  an ephemeral port after a `connect` or a relayed datagram, with port 0
+  before. `getpeername` gives the address of `connect`, else `ENOTCONN`.
+  `connect` with `AF_UNSPEC` dissolves the association, as in the kernel:
+  then `getpeername` gives `ENOTCONN`, `send` with no address gives
+  `EDESTADDRREQ`, and `recvfrom` gives the source of each datagram again.
+  No datagram arrives at a bound port: the relay carries only the answers to
+  the datagrams that the socket sent. An ICMP socket keeps only the
+  identifier of `bind` (its port), and its `getsockname` gives the
+  unspecified address with that identifier.
 * `getsockname` and `getpeername` give the logical address. The supervisor
   writes it into the child memory through `/proc/<pid>/mem`, else with
   `process_vm_writev`. As the kernel does, it writes at most the length that
@@ -193,13 +237,18 @@ answers `0x07`.
 ## DNS
 
 Both backends answer A queries from the pool `198.18.0.0/15`. The same name
-always gets the same address. With the `seccomp` backend, AAAA queries get
+always gets the same address. Names match with no case, and with no
+trailing dot: `Example.COM` and `example.com.` get the address of
+`example.com`. The pool has 131072 addresses, and it gives each address
+once: a pod that asks for more names gets `SERVFAIL` for each new name (the
+names that have an address keep it). A reused address would send the flows
+of an older name to the newer name. With the `seccomp` backend, AAAA queries get
 an address of the ULA prefix `fd63:6672:7300::/96` that holds the same pool
 address, so `getaddrinfo(AF_INET6)` works. The `netns` backend (IPv4 only)
 answers AAAA with no address. When the program connects to a pool address
 of either family, the upstream gets the name (SOCKS5 `ATYP=3`, or the
 `CONNECT` host), so the upstream resolves it. A name of `--map` gets no
-AAAA answer.
+AAAA answer. `--map` names match with no case too.
 
 ## Library
 
@@ -224,6 +273,12 @@ The public modules are also used alone:
 `tests/seccomp.rs` compiles small C programs (static and dynamic) and runs them
 with both backends. A backend that the host does not permit is skipped. Each
 test program has a 10-second alarm, so a lost reply fails the test.
+
+`tests/pod_seccomp_diff.rs` (a test of the workspace root) runs one series
+of socket calls on the host kernel and in a seccomp pod, and compares the
+result or the errno of each call and the form of each address. A
+difference fails the test, except a known difference that names its entry
+of the record.
 
 ## DNS of the program (netns backend)
 

@@ -11,7 +11,9 @@
 //! closes it.
 
 use crate::prelude::*;
-use crate::seccomp::{notif_continue, notif_respond, read_mem, sockaddr_in, write_mem, Sock};
+use crate::seccomp::{
+    notif_continue, notif_respond, parse_sockaddr, read_mem, sockaddr_in, write_mem, Sock,
+};
 
 /// The options that the program set on a socket: (level, name) to value.
 pub(crate) type Options = HashMap<(i32, i32), Vec<u8>>;
@@ -56,7 +58,7 @@ impl Connected {
 
 /// A port of the ephemeral range of Linux (32768 to 60999), stable for one
 /// descriptor.
-fn ephemeral_port(fd: i32) -> u16 {
+pub(crate) fn ephemeral_port(fd: i32) -> u16 {
     32768 + (fd.unsigned_abs() % 28232) as u16
 }
 
@@ -65,7 +67,9 @@ fn options_of(entry: &mut Sock) -> Option<&mut Options> {
     match entry {
         Sock::Stream { options, .. } => Some(options),
         Sock::Connected(c) => Some(&mut c.options),
-        Sock::Datagram { .. } | Sock::Icmp(_) => None,
+        // T-148: a UDP and an ICMP socket keep their options too.
+        Sock::Datagram(udp) => Some(&mut udp.options),
+        Sock::Icmp(icmp) => Some(&mut icmp.options),
     }
 }
 
@@ -128,14 +132,14 @@ pub(crate) fn handle_getsockopt(
     let value: Option<Vec<u8>> = if level == libc::SOL_SOCKET && optname == libc::SO_TYPE {
         let ty = match entry {
             Sock::Stream { .. } | Sock::Connected(_) => libc::SOCK_STREAM,
-            Sock::Datagram { .. } | Sock::Icmp(_) => libc::SOCK_DGRAM,
+            Sock::Datagram(_) | Sock::Icmp(_) => libc::SOCK_DGRAM,
         };
         Some(ty.to_ne_bytes().to_vec())
     } else if level == libc::SOL_SOCKET && optname == libc::SO_ERROR {
         // Issue 302: the error of a failed connect, once; then 0.
         let error = match entry {
             Sock::Stream { error, .. } => std::mem::take(error),
-            Sock::Connected(_) | Sock::Datagram { .. } | Sock::Icmp(_) => 0,
+            Sock::Connected(_) | Sock::Datagram(_) | Sock::Icmp(_) => 0,
         };
         Some(error.to_ne_bytes().to_vec())
     } else {
@@ -150,6 +154,44 @@ pub(crate) fn handle_getsockopt(
     }
     write_mem(mem, optval, &vec![0u8; len])?;
     notif_respond(lfd, id, 0, 0)
+}
+
+/// `bind`: the entry keeps the address. The kernel does not see the call.
+pub(crate) fn handle_bind(
+    lfd: RawFd,
+    id: u64,
+    a: [u64; 6],
+    mem: RawFd,
+    (map, fd): (&mut HashMap<Key, Sock>, Key),
+) -> Result<()> {
+    match map.get_mut(&fd) {
+        Some(Sock::Stream { bound, .. }) => {
+            if a[1] != 0 && a[2] >= 4 {
+                if let Some((_, ip, port)) =
+                    parse_sockaddr(&read_mem(mem, a[1], (a[2] as usize).min(128))?)
+                {
+                    *bound = Some((ip, port));
+                }
+            }
+            notif_respond(lfd, id, 0, 0)
+        }
+        // A datagram socket that binds a local port is a socketpair here.
+        // T-144: a UDP socket keeps its address for `getsockname`.
+        Some(Sock::Datagram(udp)) => {
+            let to = match a[1] != 0 && a[2] >= 4 {
+                true => parse_sockaddr(&read_mem(mem, a[1], (a[2] as usize).min(128))?),
+                false => None,
+            };
+            match udp.bind(a[0] as i32, to.map(|(_, ip, port)| (ip, port))) {
+                Ok(()) => notif_respond(lfd, id, 0, 0),
+                Err(errno) => notif_respond(lfd, id, -1, errno),
+            }
+        }
+        Some(Sock::Icmp(_)) => notif_respond(lfd, id, 0, 0),
+        // A connected socket is bound already, as in the kernel.
+        Some(Sock::Connected(_)) => notif_respond(lfd, id, -1, libc::EINVAL),
+        None => notif_continue(lfd, id),
+    }
 }
 
 /// `getsockname` (`peer` false) and `getpeername` (`peer` true).
@@ -180,7 +222,10 @@ pub(crate) fn handle_sockname(
         (Sock::Stream { .. }, true) => return notif_respond(lfd, id, -1, libc::ENOTCONN),
         (Sock::Connected(c), false) => c.local,
         (Sock::Connected(c), true) => c.peer,
-        (Sock::Datagram { dest, .. }, _) => dest.unwrap_or(unspecified),
+        (Sock::Datagram(udp), peer) => match udp.name(a[0] as i32, peer) {
+            Some(name) => name,
+            None => return notif_respond(lfd, id, -1, libc::ENOTCONN),
+        },
         (Sock::Icmp(icmp), peer) => match icmp.name(peer) {
             Some(name) => name,
             None => return notif_respond(lfd, id, -1, libc::ENOTCONN),

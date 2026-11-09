@@ -1,36 +1,16 @@
 //! T-066: three datagram calls under the seccomp backend. An ICMP datagram
 //! socket gets an echo answer from the gateway of the pod, and `EACCES` for
 //! another destination. `recvmmsg` gives the real source of each message.
-//! A UDP name over 255 bytes gets `EINVAL`.
+//! A UDP name over 255 bytes gets `EINVAL`. The module `dgram` (`tests/dgram/`)
+//! holds the UDP tests of T-142 to T-149.
 
 use std::io::{Read, Write};
 use std::os::unix::net::UnixListener;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Output;
 
-fn pod() -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_podnet"));
-    command.arg("pod");
-    command
-}
+mod dgram;
 
-fn seccomp_available() -> bool {
-    let out = pod().args(["doctor", "--json"]).output().unwrap();
-    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
-    report["backend_seccomp"] == serde_json::Value::Bool(true)
-}
-
-/// A C compiler: `$CC`, then `cc`, `gcc` or `clang` on `PATH`.
-fn compiler() -> Option<PathBuf> {
-    let mut names: Vec<String> = std::env::var("CC").into_iter().collect();
-    names.extend(["cc", "gcc", "clang"].map(String::from));
-    let path = std::env::var_os("PATH")?;
-    names.iter().find_map(|name| {
-        std::env::split_paths(&path)
-            .map(|dir| dir.join(name))
-            .find(|p| p.is_file())
-    })
-}
+use dgram::{build, compiler, expect_lines, pod, seccomp_available};
 
 /// A SOCKS5 stand-in on a unix socket: it accepts each command and then
 /// closes the connection after one line.
@@ -91,33 +71,6 @@ fn run_in_pod(source: &str) -> Option<Output> {
         .output()
         .unwrap();
     Some(out)
-}
-
-fn build(dir: &Path, cc: &Path, source: &str) -> PathBuf {
-    let src = dir.join("client.c");
-    std::fs::write(&src, source).unwrap();
-    let out = dir.join("client");
-    let status = Command::new(cc)
-        .arg("-O2")
-        .arg("-o")
-        .arg(&out)
-        .arg(&src)
-        .status()
-        .unwrap();
-    assert!(status.success(), "compiling the client failed");
-    out
-}
-
-fn expect_lines(out: &Output, want: &[&str]) {
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(out.status.success(), "{stdout}\n{stderr}");
-    for want in want {
-        assert!(
-            stdout.lines().any(|l| l == *want),
-            "{want:?} in:\n{stdout}\n{stderr}"
-        );
-    }
 }
 
 /// The ICMP part of the static guest of the vn kit: an echo to the gateway
