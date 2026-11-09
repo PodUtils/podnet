@@ -111,5 +111,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #412 | warp proxy --dns: one task per datagram | closed (ci 42641451152, live 42641450984 at e784949) | T-215 |
 | #413 | COORD-006: asks of podnet for pod-relay, pod-dns, pod-proxy and pod-services | open (a COORD issue between sessions) | T-161, T-162, T-163, T-166, T-172, T-175, T-182, T-200 |
 | #414 | COORD-007: podnet took v0.7.0 and the parts of pod-core; the asks of cfb; the view on pod-hold | closed (podcrates c229926 recorded it) | T-137, T-216 to T-222 |
+| #416 | COORD-008: podnet took v0.8.0; the freeze of the datagram path of upstream.rs is recorded | open (a COORD issue between sessions) | T-137 |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
