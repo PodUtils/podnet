@@ -2513,7 +2513,7 @@ cargo test --test relay_reverse
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2537,6 +2537,10 @@ cargo test --test relay_reverse relay_stop
 ```
 
 A test: a pair with an empty stop token stops no instance, exits 69 and keeps the file.
+
+## Done
+
+2026-11-09, commit 77a70f6 (`T-195: relay stop checks the pair before it stops the local node`). `relay stop` parses the relay URL (78) and checks the stop token (69) before the first local stop (`src/cli/cmd/relay.rs`). A failed relay call after the local stop says that the relay side is live, gives the time left and the pair file path. The retry of the POST is skipped (optional). Test: `relay_stop_checks_the_pair_before_it_stops_an_instance` (`tests/relay_reverse.rs`; a live planted instance and a pair with no stop token): it fails before the fix (the instance is stopped), and passes after it. `scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-196: The relay node drains and waits after a local end of stream (GitHub #393)
 
