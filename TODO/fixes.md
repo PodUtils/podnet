@@ -3167,7 +3167,7 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3192,6 +3192,10 @@ quotes it with `shell_quote`. A path with a space works with `--write` and fails
 
 `cargo test -p podnet --lib warp::nc` (new test: for `/b/podnet`, `/opt/c f/podnet` and a path with a quote, the printed
 `ProxyCommand` line equals the line of `ssh_config::block`).
+
+## Done
+
+2026-11-09, commit 3f9c205 (`T-214: warp ssh-config prints a ProxyCommand with the quote of --write`). `ssh_config::proxy_command` gives the command line to both builders (`--write` and the printed block). The `GIT_SSH_COMMAND` comment is quoted in two levels (the shell that reads the line, and the shell that runs `ssh`). Test: `warp::nc::tests::the_printed_block_quotes_the_path_as_the_written_block` (`/b/podnet`, `/opt/c f/podnet`, `/o'q/podnet`; the export line runs through `sh` and gives back the path). `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-215: `warp proxy --dns` has a bound and a counter (GitHub #412)
 
