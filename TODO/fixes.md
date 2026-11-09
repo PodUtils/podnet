@@ -2549,7 +2549,7 @@ A test: a pair with an empty stop token stops no instance, exits 69 and keeps th
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2580,6 +2580,10 @@ cargo test --test relay_reverse
 ```
 
 A fake relay and a target that writes, shuts down its write half, then reads to the end: it reads each byte of the operator.
+
+## Done
+
+2026-11-09, commit 0682f98 (`T-196: the relay node waits after a local end of stream`). When the local read returns 0, the session sends no `close` and logs `the target closed its write side`. The write side goes on until the relay closes the id (abort, T-194), a write to the target fails, or no frame comes for 2 s (`HALF_CLOSE_IDLE`, the Decision; `src/relay_reverse/session.rs`). The queued frames go to the target first. Test: `a_half_closing_target_gets_the_whole_input` (`tests/relay_reverse.rs`): it fails before the fix (the target reads 0 of 300000 bytes), and passes after it. `cargo test --workspace` passes; the other checks of `scripts/agent/check.sh` exit 0. CI: at the merge.
 
 # T-197: The pair file is always mode 0600, and `load` checks the file (GitHub #394)
 
