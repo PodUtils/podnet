@@ -2357,7 +2357,7 @@ Tests: a forward outside the subnet returns the error; a second forward of one a
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2380,6 +2380,10 @@ cargo test -p podnet --lib vnet::switch::
 ```
 
 A test fills the queue of a peer that does not read and reads a non-zero drop count.
+
+## Done
+
+2026-11-09, commit da010b5. Table::deliver counts sent and dropped for each peer; Switch::counts (src/vnet/switch/counts.rs) gives them with the spoofed count; the stop logs the totals; FaultInjector logs its counts on drop. Test: vnet::switch::tests::a_full_queue_counts_its_drops. check.sh: exit 0. CI: at the merge.
 
 # T-190: A stack over a switch link has bounded queues (GitHub #388, part 2)
 
