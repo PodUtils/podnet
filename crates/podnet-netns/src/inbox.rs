@@ -77,6 +77,11 @@ impl Inbox {
         }
     }
 
+    /// Whether the socket is `AF_INET6`.
+    pub(crate) fn v6(&self) -> bool {
+        self.v6
+    }
+
     /// The address of `connect`, `None` when the socket is not connected.
     pub(crate) fn dest(&self) -> Option<(IpAddr, u16)> {
         *self.dest.lock().unwrap_or_else(|e| e.into_inner())

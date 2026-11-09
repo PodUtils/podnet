@@ -173,6 +173,15 @@ see it. Use a unix socket for it (`-L unix:///path`).
   the port of the `connect` (a name keeps its fake address); a stream with
   no `connect` gives `ENOTCONN`. `getsockname` gives the bound address,
   else the unspecified address of the family with an ephemeral port.
+* A UDP socket keeps the address of `bind`. Port 0 gets a stable port of
+  the ephemeral range, and a second `bind` gets `EINVAL`. `getsockname`
+  gives the bound address, else the unspecified address of the family: with
+  an ephemeral port after a `connect` or a relayed datagram, with port 0
+  before. `getpeername` gives the address of `connect`, else `ENOTCONN`.
+  No datagram arrives at a bound port: the relay carries only the answers to
+  the datagrams that the socket sent. An ICMP socket keeps only the
+  identifier of `bind` (its port), and its `getsockname` gives the
+  unspecified address with that identifier.
 * `getsockname` and `getpeername` give the logical address. The supervisor
   writes it into the child memory through `/proc/<pid>/mem`, else with
   `process_vm_writev`. As the kernel does, it writes at most the length that

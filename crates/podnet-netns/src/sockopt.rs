@@ -58,7 +58,7 @@ impl Connected {
 
 /// A port of the ephemeral range of Linux (32768 to 60999), stable for one
 /// descriptor.
-fn ephemeral_port(fd: i32) -> u16 {
+pub(crate) fn ephemeral_port(fd: i32) -> u16 {
     32768 + (fd.unsigned_abs() % 28232) as u16
 }
 
@@ -174,7 +174,18 @@ pub(crate) fn handle_bind(
             notif_respond(lfd, id, 0, 0)
         }
         // A datagram socket that binds a local port is a socketpair here.
-        Some(Sock::Datagram(_) | Sock::Icmp(_)) => notif_respond(lfd, id, 0, 0),
+        // T-144: a UDP socket keeps its address for `getsockname`.
+        Some(Sock::Datagram(udp)) => {
+            let to = match a[1] != 0 && a[2] >= 4 {
+                true => parse_sockaddr(&read_mem(mem, a[1], (a[2] as usize).min(128))?),
+                false => None,
+            };
+            match udp.bind(a[0] as i32, to.map(|(_, ip, port)| (ip, port))) {
+                Ok(()) => notif_respond(lfd, id, 0, 0),
+                Err(errno) => notif_respond(lfd, id, -1, errno),
+            }
+        }
+        Some(Sock::Icmp(_)) => notif_respond(lfd, id, 0, 0),
         // A connected socket is bound already, as in the kernel.
         Some(Sock::Connected(_)) => notif_respond(lfd, id, -1, libc::EINVAL),
         None => notif_continue(lfd, id),
@@ -209,7 +220,10 @@ pub(crate) fn handle_sockname(
         (Sock::Stream { .. }, true) => return notif_respond(lfd, id, -1, libc::ENOTCONN),
         (Sock::Connected(c), false) => c.local,
         (Sock::Connected(c), true) => c.peer,
-        (Sock::Datagram(udp), _) => udp.inbox.dest().unwrap_or(unspecified),
+        (Sock::Datagram(udp), peer) => match udp.name(a[0] as i32, peer) {
+            Some(name) => name,
+            None => return notif_respond(lfd, id, -1, libc::ENOTCONN),
+        },
         (Sock::Icmp(icmp), peer) => match icmp.name(peer) {
             Some(name) => name,
             None => return notif_respond(lfd, id, -1, libc::ENOTCONN),

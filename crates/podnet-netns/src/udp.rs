@@ -55,6 +55,9 @@ pub(crate) struct Udp {
     /// The end of the supervisor of the socketpair.
     pub(crate) pair: Arc<tokio::net::UnixDatagram>,
     pub(crate) relay: Option<UdpRelay>,
+    /// The address of `bind` (T-144). No datagram arrives at it: the relay
+    /// gives only the answers to the datagrams of the socket.
+    bound: Option<(IpAddr, u16)>,
     /// The receive side: the sources of the datagrams (issue 305).
     pub(crate) inbox: Arc<Inbox>,
     /// The tasks of the socket stop when this sender drops.
@@ -72,6 +75,7 @@ impl Udp {
         let udp = Udp {
             pair,
             relay: None,
+            bound: None,
             inbox,
             stop: tokio::sync::watch::channel(()).0,
         };
@@ -97,6 +101,45 @@ impl Udp {
             }
         });
         udp
+    }
+
+    /// `bind` of the descriptor `fd` to `to`. Port 0 gets a stable port of
+    /// the ephemeral range. A second `bind` gets `EINVAL`, as in the kernel.
+    /// An address that is not `AF_INET` or `AF_INET6` is not kept.
+    pub(crate) fn bind(&mut self, fd: i32, to: Option<(IpAddr, u16)>) -> Result<(), i32> {
+        if self.bound.is_some() {
+            return Err(libc::EINVAL);
+        }
+        if let Some((ip, port)) = to {
+            let port = match port {
+                0 => crate::sockopt::ephemeral_port(fd),
+                port => port,
+            };
+            self.bound = Some((ip, port));
+        }
+        Ok(())
+    }
+
+    /// The address of `getsockname` (`peer` false) of the descriptor `fd`,
+    /// or of `getpeername`. `None`: the socket has no peer.
+    pub(crate) fn name(&self, fd: i32, peer: bool) -> Option<(IpAddr, u16)> {
+        let dest = self.inbox.dest();
+        if peer {
+            return dest;
+        }
+        if let Some(bound) = self.bound {
+            return Some(bound);
+        }
+        let ip = match self.inbox.v6() {
+            true => IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED),
+            false => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        };
+        // The kernel binds a port at the first connect or send.
+        let port = match dest.is_some() || self.relay.is_some() {
+            true => crate::sockopt::ephemeral_port(fd),
+            false => 0,
+        };
+        Some((ip, port))
     }
 
     /// A future that ends when the entry of the socket drops.
