@@ -2278,7 +2278,7 @@ cargo test -p podnet-netns tailscale
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2307,6 +2307,10 @@ cargo test -p podnet --lib cli::cmd::net::proxy
 ```
 
 Unit tests: a literal, a name, a unix path, and the error words without a network.
+
+## Done
+
+2026-11-09, commit 76d8993. RealTarget (src/cli/cmd/net/real.rs) accepts HOST:PORT, [V6]:PORT and unix:/PATH; a non-loopback target uses egress::dial (process proxy, NO_PROXY); loopback and unix dial direct; the error words name target, way and hop. Decision of the lead (2026-11-09) applied. Tests: real::tests::a_literal_a_name_a_v6_and_a_unix_path_parse, only_a_target_that_is_not_loopback_uses_the_process_proxy, the_error_words_name_the_target_the_way_and_the_hop. check.sh: exit 0. CI: at the merge.
 
 # T-188: `net proxy --forward` reports a failed bind before it prints the forward (GitHub #387)
 
