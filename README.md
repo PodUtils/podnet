@@ -301,6 +301,9 @@ spa:/srv/www
   health line of `warp proxy` has the same counters.
 * `--http-host-header NAME` sets the `Host` header for the origin.
 * `--no-tls-verify` does not verify the TLS certificate of an HTTPS origin.
+* `--no-verify` (`tunnel`, `serve`, `share`, `demo`) does not fetch the public URL after the registration. The
+  fetch proves that the URL answers. The flag does not change the check of an origin certificate: `--no-tls-verify`
+  does that. Use `--no-verify` on a host that resolves a new `*.trycloudflare.com` name late.
 
 All built-in origins run in the process. They do not open a TCP listener.
 
@@ -697,8 +700,9 @@ podnet warp tun --interface podnet0        # TUN interface (needs CAP_NET_ADMIN)
 * `warp proxy --l4` (`PODNET_WARP_L4`): each TCP client is one HTTP/3
   `CONNECT` stream to the L4 door of WARP (UDP 443, TLS name of `--l4-sni`,
   `consumer-masque-proxy.cloudflareclient.com`), with no IP stack in
-  between. UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not
-  apply.
+  between. UDP (SOCKS5 UDP ASSOCIATE) is not served. The rules apply (`-r`,
+  `--rules-file`, `--rule-default`): a `cidr:` rule decides an address, and a
+  name with no other rule takes `--rule-default`.
 * `--transport wireguard` (a flag of `podnet warp`, before or after the subcommand; `PODNET_WARP_TRANSPORT`): the tunnel on
   WireGuard (UDP, port 2408 of the record, or `--wireguard-endpoint`) in
   place of MASQUE. The device is the one of `podnet warp export`

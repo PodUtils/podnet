@@ -317,6 +317,7 @@ mod tests {
     #[test]
     fn the_alternates_come_from_the_cache_else_the_seed() {
         let alternates = alternates_of(default_host(), None);
+        assert!(seed().len() >= MAX_ALTERNATES);
         assert_eq!(alternates.len(), MAX_ALTERNATES);
         assert_eq!(alternates[0], seed()[0]);
         let cached = vec!["tcp-x.ssh.relay.ajam.dev".to_string()];

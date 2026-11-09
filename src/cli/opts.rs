@@ -55,7 +55,8 @@ pub(crate) struct TunnelOpts {
     /// leg before failed).
     #[arg(long, global = true, default_value = "staggered", env = "PODNET_LEG_FAILOVER", hide_env_values = true, value_parser = ["staggered", "serial"])]
     pub(crate) leg_failover: String,
-    /// Do not fetch the public URL to prove reachability.
+    /// Do not fetch the public URL to prove reachability. Origin TLS checks
+    /// stay on.
     #[arg(long, global = true)]
     pub(crate) no_verify: bool,
     /// Print a QR code for the public URL.

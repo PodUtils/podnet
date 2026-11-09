@@ -206,10 +206,12 @@ directory, so the next process does not mint again.
 The hosts: `--relay` (or `PODNET_RELAY`) takes one URL or a comma list. Each
 host of a list must be under the parent domain of the first host (one
 deployment), because the token goes to each host. For one host, the
-alternates are the first 3 hosts of its pool: the `pool[].host` names of
+alternates are the first 3 hosts of its pool (`MAX_ALTERNATES` in
+`src/relay_pool.rs`): the `pool[].host` names of
 `/relays.json`, read after a mint and kept for 7 days in
-`relay-pool-HOST.json`. Until a pool is cached, the default relay uses 6
-hosts in different regions (`src/relay_pool.rs`). A connect tries the
+`relay-pool-HOST.json`. Until a pool is cached, the default relay uses the
+first 3 hosts of its seed. The seed holds 6 hosts in different regions
+(`src/relay_pool.rs`). A connect tries the
 first host, then the next host after 2 s, or at once after a failure. A
 refused fixed token or a policy refusal stops the hosts that did not start:
 they are of the same deployment. On 2026-11-04 each of the 37 hosts of the
