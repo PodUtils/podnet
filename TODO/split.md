@@ -431,7 +431,7 @@ T-028, T-029, T-030 and T-031 are done.
 
 ## Done
 
-2026-11-09, commit HASH (`T-032: move the unit tests of src/main.rs to the modules that they
+2026-11-09, commit ac018b1 (`T-032: move the unit tests of src/main.rs to the modules that they
 test`). The 24 tests and the helper `share_args` moved with their names to test modules:
 `src/cli/help_tests.rs` (the help, the hints, the manual: 9 tests), `src/cli/argv_tests.rs` (4),
 `src/cli/signals_tests.rs` (2), `src/cli/cmd/run_tests.rs` (1), `share_tests.rs` (1),
