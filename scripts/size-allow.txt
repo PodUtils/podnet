@@ -9,7 +9,7 @@
 1123 src/cloudflare/http2.rs
 1207 src/config.rs
 1210 src/detach.rs
-1305 src/doctor.rs
+1254 src/doctor.rs
 1608 src/edge_h2.rs
 2142 src/feature/mod.rs
 910 src/main.rs

@@ -2170,8 +2170,8 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 
 ## Premise
 
-- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:38-48`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-29`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
-- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:244-248`).
+- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:38-48`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
+- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:248-253`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
 ## Approach
@@ -2928,7 +2928,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:10-41` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:230-240` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:997-1003`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:997-1003`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3310,7 +3310,7 @@ cfb reads the document to qualify a host. The keys must not change within schema
 
 ## Premise
 
-- Read: `src/doctor.rs:299` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
+- Read: `src/doctor.rs:243` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
 - Read: `podnet doctor` has `--samples` and `--timeout` (`src/cli/cmd/host.rs`). It has no `--quick`. The default budget of the samples is 10 s (`Options::budget`).
 - Not measured: the time of a full run on a host with no egress.
 
@@ -3343,7 +3343,7 @@ Ask A-C-10 (P1): "A fixed JSON schema of the egress lanes for the node probe of 
 
 ## Premise
 
-- Read: `src/doctor.rs:277` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
+- Read: `src/doctor.rs:221` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
 - Read: the verdict words of the doctor are `ok`, `no` and others (`Verdict::name`). The lanes use `ok`, `fail` and `unknown`, so a map is necessary.
 - `ws_upgrade` has no probe now. `proxy` is the row of the proxy (T-184).
 
