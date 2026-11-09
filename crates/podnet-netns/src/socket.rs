@@ -56,6 +56,7 @@ pub(crate) fn handle_socket(
             Sock::Stream {
                 pair: tokio::net::UnixStream::from_std(ours)?,
                 bound: None,
+                v6: domain == libc::AF_INET6,
                 inbound: None,
                 error: 0,
                 options: Default::default(),

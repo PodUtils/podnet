@@ -53,6 +53,7 @@ mod recvmmsg;
 mod seccomp;
 mod socket;
 mod sockopt;
+mod tcp;
 mod udp;
 
 pub use cli::{set_program_name, usage, usage_for};

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 114 open, 3 partial, 14 blocked, 92 done.**
+**223 entries: 113 open, 3 partial, 14 blocked, 93 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
 | P2 | 72 | 2 | 8 | 55 | 137 |
-| P3 | 37 | 0 | 4 | 20 | 61 |
-| **All** | 114 | 3 | 14 | 92 | 223 |
+| P3 | 36 | 0 | 4 | 21 | 61 |
+| **All** | 113 | 3 | 14 | 93 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -268,4 +268,4 @@ M8 Overlays, M9 Later.
 | [T-220](services.md) | P1 | S | M6 | feature | blocked | `relay node` as a system service, with no operator act (PodUtils/podcrates#35, A-N-12) |
 | [T-221](services.md) | P2 | M | M6 | feature | open | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
 | [T-222](fixes.md) | P2 | S | M5 | feature | open | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |
-| [T-223](fixes.md) | P3 | M | M5 | defect | open | seccomp: the TCP gaps that the differential check finds |
+| [T-223](fixes.md) | P3 | M | M5 | defect | done | seccomp: the TCP gaps that the differential check finds |

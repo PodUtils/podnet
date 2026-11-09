@@ -13,30 +13,7 @@ use std::process::Command;
 mod test_host;
 
 /// The known differences: (the label of the line, the entry, the gap).
-const ALLOWED: &[(&str, &str, &str)] = &[
-    (
-        "tcp shutdown unconnected",
-        "T-223",
-        "shutdown is not stopped: the socketpair is connected",
-    ),
-    (
-        "tcp getsockname bound",
-        "T-223",
-        "bind of port 0 keeps port 0",
-    ),
-    ("tcp bind again", "T-223", "a second bind is accepted"),
-    ("tcp listen unbound", "T-223", "listen needs a bound port"),
-    (
-        "tcp SO_ERROR after refused",
-        "T-223",
-        "the error stays after a blocking connect (issue 302)",
-    ),
-    (
-        "tcp nonblocking connect",
-        "T-223",
-        "a fast failed dial gives ECONNREFUSED, not EINPROGRESS",
-    ),
-];
+const ALLOWED: &[(&str, &str, &str)] = &[];
 
 const DRIVER: &str = r#"
 #define _GNU_SOURCE
@@ -136,6 +113,7 @@ int main(void) {
     close(t);
     t = socket(AF_INET, SOCK_STREAM, 0);
     result("tcp listen unbound", listen(t, 4));
+    name("tcp getsockname listening", t, 0);
     close(t);
     t = socket(AF_INET, SOCK_STREAM, 0);
     result("tcp connect closed", connect(t, SA(closed)));
