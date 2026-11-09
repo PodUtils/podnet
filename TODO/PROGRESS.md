@@ -34,6 +34,15 @@ not wait for a larger one.
    again.
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands before T-040 starts, or after it ends.
+   The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
+   - pod backends (`podnet-netns`; before T-040): T-143, T-142, T-144 to T-149, T-154, T-155.
+   - `net`, `doctor` and the proxy: T-185, T-186, T-183, T-184, T-187 to T-193 (T-188 before T-187;
+     they land before T-061 merges the doors).
+   - relay (no growth of `src/relay_reverse.rs`): T-194, T-195, T-197, T-196, T-199.
+   - tunnel, share, serve and the CLI: T-160, T-169 to T-171, T-201 to T-207.
+   - WARP (after T-031): T-173, T-208 to T-211, T-213 to T-215.
+   - documents: T-159, T-164, T-198, T-212.
+   - T-182 is blocked (the file host of pip, `pod-services`).
 4. **M2, the splits:** T-031, then T-032; T-033 to T-041; T-042,
    T-043, T-044; T-045; then T-015.
 5. **M3, the crates:** T-046, T-047, T-048, T-051, T-053, then the prerelease T-054. T-049, T-050
@@ -44,11 +53,18 @@ not wait for a larger one.
    `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
    server T-088, T-089, T-090, T-091; git T-092, T-093, T-094; the router T-095, T-096, T-097,
    T-098, T-099, T-100, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
-8. **M7, the pods:** T-107, T-108, T-111, T-109, T-110, T-113, T-112.
+    The triage adds T-167 and T-168 (the shims of `net`), T-177 (`podnet route check`) and
+    T-180 (the router control); the router additions are in T-096 to T-099 (GitHub #372 to #374).
+8. **M7, the pods:** T-107, T-108, T-111, T-109, T-110, T-113, T-112. The triage adds T-156, T-157
+   and T-158 (the reject action, the default action, learn), T-181 (the flow budget), T-150 and
+   T-151 (the TCP handoff and its measure), T-152 (the measure of the netfilter plane) and T-174 (the veth wire).
 9. **M8, the overlays:** T-114, T-115, T-116, T-117, T-118.
 10. **M9, later:** T-119 to T-130, T-132 and T-134, each when its start condition holds.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
+11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161, T-162, T-163,
+    T-200 (`pod-relay`), T-175 (`pod-dns`, `pod-proxy`), T-172 (`pod-dns`), T-166 (`pod-services`),
+    T-182 (`pod-services`).
 
 When the owner allows releases again: cut the next prerelease (`v0.4.0-beta.N`) unattended when
 a batch is green (`CLAUDE.md`).
@@ -61,6 +77,11 @@ These entries stay open. The condition in each entry tells when it can start.
 | --- | --- |
 | T-131 | T-137 takes `pod-session`, `pod-e2e` and `pod-identity` (the owner chose the source: a git tag) |
 | T-132 | The ruling "Order" ends (`try_update` is stable at the `rust-version` 1.99) |
+| T-153 | T-152 gives a pass on the target hosts (the netfilter plane; T-111 stays) |
+| T-165 | The owner rules that the SSH forward-relay leg gets a CLI |
+| T-176 | A guest-wire router (smoltcp) is planned |
+| T-178 | T-096 and T-097 are done, and a measured need exists |
+| T-179 | The owner changes the T-096 contract (research only; T-096 keeps one flow for one uplink) |
 
 ## Calls made without a ruling
 
