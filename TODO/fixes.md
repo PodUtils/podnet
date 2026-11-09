@@ -3176,8 +3176,8 @@ quotes it with `shell_quote`. A path with a space works with `--write` and fails
 
 ## Premise
 
-- `src/warp/nc.rs:281-289` (raw `{exe}` at `:285`). `src/warp/ssh_config.rs:34-36`, `:60-68`.
-- The only test of the printed block: `src/warp/nc.rs:342-346` (plain path).
+- `src/warp/nc.rs:294-303` (raw `{exe}` at `:285`). `src/warp/ssh_config.rs:34-36`, `:65-73`.
+- The only test of the printed block: `src/warp/nc.rs:356-360` (plain path).
 - The issue says the double quotes of the `GIT_SSH_COMMAND` comment are right. They are not: the shell that runs
   `ProxyCommand` splits the path at a space inside `"..."` of the outer option too. The comment needs the quote of the
   path inside the value (`ProxyCommand='...'` with the `'\''` form).

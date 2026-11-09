@@ -30,8 +30,13 @@ fn end(host: &str) -> String {
 const BEGIN_PREFIX: &str = "# >>> podnet warp ssh-config: ";
 const END_PREFIX: &str = "# <<< podnet warp ssh-config: ";
 
+/// The `ProxyCommand` command of `exe`: the path is one word for `sh`.
+pub fn proxy_command(exe: &Path) -> String {
+    format!("{} warp nc %h %p", shell_quote(&exe.display().to_string()))
+}
+
 /// A word for `sh`: in single quotes.
-fn shell_quote(word: &str) -> String {
+pub(super) fn shell_quote(word: &str) -> String {
     format!("'{}'", word.replace('\'', r"'\''"))
 }
 
@@ -60,9 +65,9 @@ pub fn check_host(host: &str) -> Result<()> {
 pub fn block(exe: &Path, host: &str) -> String {
     debug_assert!(check_host(host).is_ok(), "{host:?}");
     format!(
-        "{}\nHost {host}\n    ProxyCommand {} warp nc %h %p\n{}\n",
+        "{}\nHost {host}\n    ProxyCommand {}\n{}\n",
         begin(host),
-        shell_quote(&exe.display().to_string()),
+        proxy_command(exe),
         end(host)
     )
 }
