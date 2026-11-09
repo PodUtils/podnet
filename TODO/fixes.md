@@ -1613,7 +1613,7 @@ scripts/agent/check.sh` exits 0. CI: at the merge.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1641,6 +1641,17 @@ the child gets `EAFNOSUPPORT` and `dest` stays.
 ```sh
 cargo test --test pod_seccomp_dgram -- seccomp_udp_af_unspec_disconnects
 ```
+
+## Done
+
+2026-11-09, commit d324710 (`T-146: connect(AF_UNSPEC) dissolves the association of a UDP socket`).
+`handle_connect` (`crates/podnet-netns/src/connect.rs`) answers 0 to a datagram socket whose
+family field is 0 (length 2 or more), and clears the address of `connect` (`Inbox::set_dest`). No
+port is minted. The reader of T-143 reads the same cell, so a later `write` has no destination. The
+test `seccomp_udp_af_unspec_disconnects` (`tests/dgram/addresses.rs`) connects, disconnects, and
+checks `getpeername` (`ENOTCONN`), `send` with no address (`EDESTADDRREQ`) and the source of
+`recvfrom`. On the tree before the fix it fails (`unspec: -1`, the peer stays); with the fix it
+passes on this host. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-147: seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350)
 
