@@ -1428,7 +1428,7 @@ lines. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1468,6 +1468,22 @@ cargo test --test pod_seccomp_dgram -- seccomp_udp_write_after_connect_is_relaye
 
 The first test makes a `SOCK_DGRAM`, calls `connect`, calls `write`, and reads the echo from the
 stand-in proxy. It fails on c52b8e0.
+
+## Done
+
+2026-11-09, commit eb4a8ba (`T-143: a datagram written with write(2) leaves the pod`). `write` is
+not intercepted. `Udp::new` (`crates/podnet-netns/src/udp.rs`) starts a reader task on the
+supervisor end of the socketpair. It sends each datagram, with the address of `connect`, on a
+bounded queue (256) to the supervisor loop, and `relay_written` sends it through `send_payload`, the
+path of `sendto` (port 53 gets the fake-IP answer). The address of `connect` is a cell of the inbox
+(`Inbox::dest`), shared with the reader. A datagram with no destination is dropped, with one line
+under `-v`. The README gives the limit (no `EDESTADDRREQ`). `handle_bind` moved to `sockopt.rs`,
+so `seccomp.rs` does not grow (1287 lines). Tests in `tests/dgram/write.rs`:
+`seccomp_udp_write_after_connect_is_relayed` (`write`, `writev`, a DNS query with `write`, and a
+`write` with no `connect`; on both forms of the relay) and `seccomp_udp_sendto_still_works`
+(`sendto`, `send`, `sendmsg`). On the tree before the fix the first test fails ("write: no
+answer"); with the fix both pass on this host. `sh scripts/agent/check.sh` exits 0. CI: at the
+merge.
 
 # T-144: seccomp: `bind` on a datagram socket is recorded, and `getsockname` reports it (GitHub #348)
 
