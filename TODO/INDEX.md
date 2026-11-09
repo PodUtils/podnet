@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 155 open, 1 partial, 17 blocked, 49 done.**
+**222 entries: 154 open, 2 partial, 17 blocked, 49 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 7 | 1 | 2 | 14 | 24 |
-| P2 | 99 | 0 | 10 | 28 | 137 |
+| P2 | 98 | 1 | 10 | 28 | 137 |
 | P3 | 48 | 0 | 5 | 7 | 60 |
-| **All** | 155 | 1 | 17 | 49 | 222 |
+| **All** | 154 | 2 | 17 | 49 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -218,7 +218,7 @@ M8 Overlays, M9 Later.
 | [T-170](fixes.md) | P2 | S | M5 | defect | open | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
 | [T-171](fixes.md) | P2 | S | M5 | defect | open | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
 | [T-172](later.md) | P3 | M | M9 | feature | blocked | A pin of the new public name while the process runs (GitHub #367) |
-| [T-173](fixes.md) | P2 | S | M5 | feature | open | A WARP identity of another uid, with a consent variable (GitHub #368) |
+| [T-173](fixes.md) | P2 | S | M5 | feature | partial | A WARP identity of another uid, with a consent variable (GitHub #368) |
 | [T-174](pods.md) | P3 | M | M7 | feature | open | netns: a veth wire when `/dev/net/tun` is not there (GitHub #369) |
 | [T-175](crates.md) | P2 | M | M3 | feature | blocked | DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370) |
 | [T-176](later.md) | P3 | S | M9 | research | open | Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372) |
