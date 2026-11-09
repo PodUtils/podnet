@@ -659,7 +659,7 @@ mint, and only the cache file changes, not the running list.
 - Correction of the issue: a stalled host costs the stagger (2 s), not the full timeout. The race starts
   the next host after the stagger and the first success wins (`src/race.rs:1-9`). The loopback test of
   the issue must assert a connect time near 2 s before and near 0 s after, not a full timeout.
-- Precedent: the front door orders the address that worked first (`src/warp/mod.rs:975`, issue 124).
+- Precedent: the front door orders the address that worked first (`src/warp/mod.rs:948`, issue 124).
 - `ws_relay.rs` and `relay_pool.rs` go to `pod-relay` (T-049): a new feature waits for the crate.
   T-056 and T-058 plan the dialer combinators; T-097 plans router health.
 

@@ -43,6 +43,8 @@ pub mod l4;
 pub mod live;
 pub mod nc;
 pub mod pod;
+mod private;
+pub(crate) use private::check_private;
 pub mod proxy;
 pub mod quic;
 pub mod register;
@@ -937,40 +939,11 @@ pub fn write_private_file(path: &std::path::Path, bytes: &[u8]) -> std::io::Resu
     write_private(path, bytes)
 }
 
-/// Refuse `path` when its owner is another user, or when its group or other
-/// users may read or write it.
-pub(crate) fn check_private(path: &std::path::Path) -> Result<()> {
-    use std::os::unix::fs::MetadataExt;
-    let meta = std::fs::metadata(path)
-        .with_context(|| format!("reading the WARP identity from {}", path.display()))?;
-    if meta.is_dir() {
-        return Err(crate::exit::fault(
-            crate::exit::Fault::Usage,
-            anyhow::anyhow!("{} is a directory; give the identity file", path.display()),
-        ));
-    }
-    let uid = unsafe { libc::geteuid() };
-    if meta.uid() != uid {
-        anyhow::bail!(
-            "{} belongs to user {}, not to this user ({uid}); podnet does not use it",
-            path.display(),
-            meta.uid()
-        );
-    }
-    let mode = meta.mode() & 0o777;
-    if mode & 0o077 != 0 {
-        anyhow::bail!(
-            "{} has mode {mode:04o}: other users may read the WARP key. Run: chmod 600 {}",
-            path.display(),
-            path.display()
-        );
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod private_file_tests {
     use super::*;
+
+    mod foreign;
 
     // Issue 124: the address that worked goes first; IPv6 only with a
     // route.

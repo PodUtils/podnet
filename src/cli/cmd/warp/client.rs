@@ -37,7 +37,7 @@ pub(crate) async fn carry_peer(args: &WarpArgs) -> Result<Option<podnet::warp::w
         .fault(Fault::Config)?;
     let exported = podnet::warp::export::load_or_register(&path, false, None)
         .await
-        .fault(Fault::Unavailable)?;
+        .map_err(unavailable_unless_classed)?;
     let peer = podnet::warp::wg::Peer::from_exported(&exported, args.carry_endpoint)
         .fault(Fault::Config)?;
     tracing::info!(endpoint = %peer.endpoint, "a second WireGuard device goes inside the tunnel");
@@ -56,7 +56,7 @@ pub(crate) async fn wireguard_peer(args: &WarpArgs) -> Result<Option<podnet::war
         .fault(Fault::Config)?;
     let exported = podnet::warp::export::load_or_register(&path, false, None)
         .await
-        .fault(Fault::Unavailable)?;
+        .map_err(unavailable_unless_classed)?;
     let peer = podnet::warp::wg::Peer::from_exported(&exported, args.wireguard_endpoint)
         .fault(Fault::Config)?;
     tracing::info!(endpoint = %peer.endpoint, "the tunnel goes on WireGuard (UDP)");
@@ -115,6 +115,17 @@ pub(crate) fn identity_pairs(
     Ok(out)
 }
 
+/// The class `Unavailable` for an error that has no class. A class that the
+/// library gave stays (T-173: an identity of another user is a `Config`
+/// error).
+fn unavailable_unless_classed(err: anyhow::Error) -> anyhow::Error {
+    if podnet::exit::code_of(&err) == podnet::exit::FAILURE {
+        podnet::exit::fault(Fault::Unavailable, err)
+    } else {
+        err
+    }
+}
+
 pub(crate) async fn warp_client_inner(
     args: &WarpArgs,
 ) -> Result<(podnet::warp::WarpClient, Option<PathBuf>)> {
@@ -141,7 +152,21 @@ pub(crate) async fn warp_client_inner(
     Ok((
         WarpClient::register_or_load(&path)
             .await
-            .fault(Fault::Unavailable)?,
+            .map_err(unavailable_unless_classed)?,
         Some(path),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_class_of_the_library_stays() {
+        let classed = podnet::exit::fault(Fault::Config, anyhow::anyhow!("foreign owner"));
+        let err = unavailable_unless_classed(classed);
+        assert_eq!(podnet::exit::code_of(&err), podnet::exit::CONFIG);
+        let err = unavailable_unless_classed(anyhow::anyhow!("no network"));
+        assert_eq!(podnet::exit::code_of(&err), Fault::Unavailable.code());
+    }
 }

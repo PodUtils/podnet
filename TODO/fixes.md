@@ -1922,8 +1922,8 @@ has `--masque-endpoint`; `tunnel` has none.
 
 - `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:823-834`). Neither
   `TunnelOpts` (`src/cli/opts.rs:20-105`) nor `TunnelArgs` has the flag. `with_masque` exists
-  (`src/warp/mod.rs:284`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
-- `open_on` (`src/warp/mod.rs:821-846`) uses `endpoint_order` (`:99-120`): the record order, IPv4 first.
+  (`src/warp/mod.rs:286`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
+- `open_on` (`src/warp/mod.rs:823-848`) uses `endpoint_order` (`:101-122`): the record order, IPv4 first.
   `has_default_route(true)` (v6) only decides whether the IPv6 door is included.
 - The log lines of the issue are from beta.6 on one host. The silent-drop timing is read, not measured.
 
@@ -2031,8 +2031,8 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 ## Premise
 
-- `src/warp/mod.rs:942-968` (owner and mode checks, bare `bail!`); readers: `load` (`:379`) and
-  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:457-476`) refuses and does not write over the file.
+- `src/warp/mod.rs:942-968` (owner and mode checks, bare `bail!`); readers: `load` (`:381`) and
+  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:459-478`) refuses and does not write over the file.
 - `src/state.rs:67-118` has the model. `src/manual/facts.rs:126` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
