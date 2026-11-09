@@ -3204,7 +3204,7 @@ quotes it with `shell_quote`. A path with a space works with `--write` and fails
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3229,6 +3229,10 @@ session is up, each task waits in `live.get()` for up to 20 s. `--max-connection
 
 `cargo test -p podnet --lib warp::proxy::dns_bound` (new test: a burst larger than the bound gives at most the bound in
 flight and a count of drops; a 1-byte datagram spawns nothing).
+
+## Done
+
+2026-11-09, commit be1c8dc (`T-215: warp proxy --dns has a bound and a counter`). `serve_dns` moved to `src/warp/proxy/dns_bound.rs` (`src/warp/proxy.rs` 1902 to 1878 lines). A semaphore of 256 places (`MAX_DNS_TASKS`) bounds the queries in flight; an excess datagram is dropped and counted in `Stats.dns_dropped`, which the health line prints. A datagram under 12 bytes starts no task. One task for each query; the first answer wins. Tests: `warp::proxy::dns_bound::tests::{a_burst_gives_at_most_the_bound_in_flight, a_short_datagram_starts_nothing}`. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-216: Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04)
 
