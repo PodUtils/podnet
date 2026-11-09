@@ -2396,7 +2396,7 @@ A test fills the queue of a peer that does not read and reads a non-zero drop co
 
 ## Problem
 
-`NetStack::over_link` builds `LinkDevice::tunnel(config.mtu)`: both queues are unbounded and the stack does not hold when full (`src/vnet/stack.rs:1436-1441`, `src/vnet/device.rs:276-285`). A slow pump grows the heap. The WARP stack uses `tunnel_bounded` and `with_inbound_limit` (`src/warp/ip.rs:454-455`, 512 and 4096 packets).
+`NetStack::over_link` builds `LinkDevice::tunnel(config.mtu)`: both queues are unbounded and the stack does not hold when full (`src/vnet/stack.rs:1436-1441`, `src/vnet/device.rs:304-313`). A slow pump grows the heap. The WARP stack uses `tunnel_bounded` and `with_inbound_limit` (`src/warp/ip.rs:454-455`, 512 and 4096 packets).
 
 ## Premise
 
