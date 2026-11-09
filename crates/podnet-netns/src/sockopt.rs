@@ -41,18 +41,22 @@ impl Connected {
         bound: Option<(IpAddr, u16)>,
         options: Options,
     ) -> Self {
-        let local = bound.filter(|(_, port)| *port != 0).unwrap_or_else(|| {
-            let ip = match peer.0 {
-                IpAddr::V4(_) => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                IpAddr::V6(_) => IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED),
-            };
-            (ip, ephemeral_port(fd))
-        });
+        let local = bound
+            .filter(|(_, port)| *port != 0)
+            .unwrap_or_else(|| (unspecified(peer.0.is_ipv6()), ephemeral_port(fd)));
         Connected {
             peer,
             local,
             options,
         }
+    }
+}
+
+/// The unspecified address of a family.
+pub(crate) fn unspecified(v6: bool) -> IpAddr {
+    match v6 {
+        true => IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED),
+        false => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
     }
 }
 
@@ -157,19 +161,24 @@ pub(crate) fn handle_getsockopt(
 }
 
 /// `bind`: the entry keeps the address. The kernel does not see the call.
+/// T-223: a stream binds one time (then `EINVAL`), and port 0 gets an
+/// ephemeral port, as in the kernel.
 pub(crate) fn handle_bind(
     lfd: RawFd,
     id: u64,
     a: [u64; 6],
     mem: RawFd,
-    (map, fd): (&mut HashMap<Key, Sock>, Key),
+    (map, key): (&mut HashMap<Key, Sock>, Key),
 ) -> Result<()> {
-    match map.get_mut(&fd) {
+    let fd = a[0] as i32;
+    match map.get_mut(&key) {
+        Some(Sock::Stream { bound: Some(_), .. }) => notif_respond(lfd, id, -1, libc::EINVAL),
         Some(Sock::Stream { bound, .. }) => {
             if a[1] != 0 && a[2] >= 4 {
                 if let Some((_, ip, port)) =
                     parse_sockaddr(&read_mem(mem, a[1], (a[2] as usize).min(128))?)
                 {
+                    let port = if port == 0 { ephemeral_port(fd) } else { port };
                     *bound = Some((ip, port));
                 }
             }
@@ -182,7 +191,7 @@ pub(crate) fn handle_bind(
                 true => parse_sockaddr(&read_mem(mem, a[1], (a[2] as usize).min(128))?),
                 false => None,
             };
-            match udp.bind(a[0] as i32, to.map(|(_, ip, port)| (ip, port))) {
+            match udp.bind(fd, to.map(|(_, ip, port)| (ip, port))) {
                 Ok(()) => notif_respond(lfd, id, 0, 0),
                 Err(errno) => notif_respond(lfd, id, -1, errno),
             }
@@ -213,11 +222,10 @@ pub(crate) fn handle_sockname(
         // an address and abort on (ngtcp2). A clean error in its place.
         return notif_respond(lfd, id, -1, libc::EOPNOTSUPP);
     }
-    let unspecified = (IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0);
     // Answer with a plausible INET address so a program that checks it does not
     // see an AF_UNIX socketpair.
     let (ip, port) = match (entry, peer) {
-        (Sock::Stream { bound, .. }, false) => bound.unwrap_or(unspecified),
+        (Sock::Stream { bound, v6, .. }, false) => bound.unwrap_or((unspecified(*v6), 0)),
         // A stream with no connect has no peer, as in the kernel.
         (Sock::Stream { .. }, true) => return notif_respond(lfd, id, -1, libc::ENOTCONN),
         (Sock::Connected(c), false) => c.local,

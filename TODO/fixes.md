@@ -2401,7 +2401,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 ## Premise
 
 - Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:433`, `src/vnet/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
-- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1139`.
+- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1137`.
 - `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:371`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:62-68`).
 
@@ -3650,6 +3650,25 @@ The UDP lines of the same series agree after T-143 to T-149.
 4. `shutdown` and a nonblocking `connect`: decide whether to stop `shutdown` (one more system call
    in the filter) and whether to give `EINPROGRESS`; write the result here.
 5. Remove each fixed line from `ALLOWED`. The check fails on a line that no longer differs.
+
+## Decision
+
+2026-11-09: each of the six gaps closes; `ALLOWED` is empty.
+
+- `shutdown` goes into the filter. A TCP socket with no connection, no listener and no dial gets
+  `ENOTCONN` (`EINVAL` for a bad `how`). Each other socket goes to the kernel, as before. The cost
+  is one notification for each `shutdown` call of the program.
+- A nonblocking `connect` gives `EINPROGRESS` and the dial goes on. The socket pair is writable
+  before the dial ends, so `poll` does not wait. Thus `getsockopt(SO_ERROR)` during the dial
+  waits for the end of the dial and gives its result. This keeps the result that T-067 (Correction)
+  found lost. A program that reads `SO_ERROR` after `poll` (curl, Go, tokio, libuv, Python) gets
+  the correct result. A second nonblocking `connect` during the dial gives `EALREADY`; a blocking
+  one waits. At the end of the dial the connection stays when no call waits. One waiting
+  `SO_ERROR` can take a plain upstream (T-065).
+- Not matched: a `read` or `write` after a failed nonblocking dial does not give the error (the
+  socket pair stays open), and `poll` gives no `POLLERR`. The program must read `SO_ERROR`. The
+  driver does not test this.
+- The driver has a new line `tcp getsockname listening` (the address of `listen` with no `bind`).
 
 ## Prove
 

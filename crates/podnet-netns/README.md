@@ -74,7 +74,7 @@ see it. Use a unix socket for it (`-L unix:///path`).
   filter, and forks the child. Thus the supervisor threads have no filter.
 * The filter stops: `socket`, `connect`, `bind`, `listen`, `accept`, `accept4`,
   `sendto`, `sendmsg`, `sendmmsg`, `recvfrom`, `recvmsg`, `recvmmsg`, `setsockopt`,
-  `getsockopt`, `getsockname`, `getpeername`, `close`, `io_uring_setup`,
+  `getsockopt`, `getsockname`, `getpeername`, `close`, `shutdown`, `io_uring_setup`,
   `io_uring_enter`, `io_uring_register`. A system call of a foreign ABI (i386 or x32 on x86_64)
   gets `ENOSYS`.
 * `socket(AF_INET | AF_INET6)` gets one end of a socketpair, installed with
@@ -97,8 +97,18 @@ see it. Use a unix socket for it (`-L unix:///path`).
   supervisor reads the address from `/proc/<pid>/mem` of the calling task. It
   opens that file again for each notification, and it checks the notification
   with `SECCOMP_IOCTL_NOTIF_ID_VALID` after the open. A connect that fails
-  gives `ECONNREFUSED`. Then `getsockopt(SO_ERROR)` gives `ECONNREFUSED`
-  one time, and 0 after that, as the kernel does.
+  gives `ECONNREFUSED`, and `getsockopt(SO_ERROR)` then gives 0, as the
+  kernel does.
+* A `connect` of a nonblocking socket gives `EINPROGRESS` at once, and the
+  dial goes on (T-223). A second nonblocking `connect` during the dial gives
+  `EALREADY`. The socketpair is writable before the dial ends, so `poll`
+  does not wait: `getsockopt(SO_ERROR)` during the dial waits for the end of
+  the dial. It gives 0 or `ECONNREFUSED` one time, and 0 after that. A
+  `read` or `write` after a failed nonblocking dial does not give the error.
+* `bind` of a TCP socket keeps the address, with an ephemeral port for
+  port 0; a second `bind` gives `EINVAL`. `listen` with no `bind` binds the
+  unspecified address and an ephemeral port. `shutdown` of a TCP socket
+  with no connection gives `ENOTCONN` (T-223).
 * `bind`, `listen` and `accept` make a unix listener in `--inbound-dir`. The
   listener fd of the program is readable while a connection waits, so
   `poll`, `select` and `epoll` wake for it. A non-blocking `accept` with no

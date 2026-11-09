@@ -1651,8 +1651,8 @@ int main(void) {
 }
 "#;
 
-/// Issue 302: after a refused connect, SO_ERROR gives the error once
-/// (ECONNREFUSED), then 0, as the kernel does. Before, it gave 0.
+/// Issue 302, T-223: a nonblocking connect gives EINPROGRESS; then SO_ERROR
+/// gives the error of the dial once (ECONNREFUSED), then 0, as the kernel.
 #[test]
 fn so_error_gives_the_error_of_a_failed_connect() {
     if !have_compiler() || !seccomp_available() {
@@ -1665,7 +1665,7 @@ fn so_error_gives_the_error_of_a_failed_connect() {
     let stdout = run(&dir, &[&dir.join("nobody.sock")], &program);
     let refused = libc::ECONNREFUSED;
     assert!(
-        stdout.contains(&format!("CONNECT:-1:{refused}\n")),
+        stdout.contains(&format!("CONNECT:-1:{}\n", libc::EINPROGRESS)),
         "{stdout:?}"
     );
     assert!(

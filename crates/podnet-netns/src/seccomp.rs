@@ -58,7 +58,7 @@ pub(crate) struct SeccompNotifAddfd {
 }
 
 /// The syscalls the filter stops. Everything else is allowed untouched.
-pub(crate) fn intercepted_syscalls() -> [libc::c_long; 20] {
+pub(crate) fn intercepted_syscalls() -> [libc::c_long; 21] {
     [
         libc::SYS_socket,
         libc::SYS_recvfrom,
@@ -80,6 +80,8 @@ pub(crate) fn intercepted_syscalls() -> [libc::c_long; 20] {
         libc::SYS_accept4,
         libc::SYS_io_uring_enter,
         libc::SYS_io_uring_register,
+        // T-223: an unconnected TCP socket gets ENOTCONN.
+        libc::SYS_shutdown,
     ]
 }
 
@@ -249,19 +251,9 @@ pub(crate) fn install_notif_filter() -> Result<RawFd> {
             jf: 1,
             k: syscall as u32,
         });
-        filter.push(libc::sock_filter {
-            code: BPF_RET_K,
-            jt: 0,
-            jf: 0,
-            k: RET_USER_NOTIF,
-        });
+        filter.push(stmt(BPF_RET_K, RET_USER_NOTIF));
     }
-    filter.push(libc::sock_filter {
-        code: BPF_RET_K,
-        jt: 0,
-        jf: 0,
-        k: RET_ALLOW,
-    });
+    filter.push(stmt(BPF_RET_K, RET_ALLOW));
 
     let prog = libc::sock_fprog {
         len: filter.len() as u16,
@@ -548,6 +540,8 @@ pub(crate) enum Sock {
     Stream {
         pair: tokio::net::UnixStream,
         bound: Option<(IpAddr, u16)>,
+        /// The family is `AF_INET6` (T-223: the address of `listen` with no `bind`).
+        v6: bool,
         inbound: Option<Inbound>,
         /// The pending error of the socket (`SO_ERROR`): the errno of the
         /// last failed connect, 0 when none. A read of `SO_ERROR` clears it.
@@ -756,8 +750,12 @@ pub(crate) async fn supervise_seccomp(
             continue;
         }
 
+        let call = (nr, a, req.pid, (mem, mem_writable));
+        let tcp = crate::tcp::handle(lfd, id, call, (&mut map, key), &mut dials);
         let icmp = crate::icmp::handle(lfd, id, nr, a, (mem, mem_writable), (&mut map, key));
-        let outcome = if let Some(outcome) = icmp.await {
+        let outcome = if let Some(outcome) = tcp {
+            outcome
+        } else if let Some(outcome) = icmp.await {
             outcome
         } else if nr == libc::SYS_socket as i32 {
             crate::socket::handle_socket(lfd, id, a, &mut map, &writes_tx, verbose)
