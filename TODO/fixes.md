@@ -3117,7 +3117,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3147,6 +3147,10 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 `cargo test -p podnet --lib agent_status_accepts_json_flag` (new test: `Cli::try_parse_from(["podnet","agent","status","--json"])`).
 `cargo test -p podnet --test commands agent_status` (new JSON test: `schema == 1`, keys `instances` and `report`; the text test passes).
+
+## Done
+
+2026-11-09, commit 25435fb. `agent status --json` prints `{schema, podnet, instances, dir, report}` and exits 0; `instances_doc` (`src/cli/cmd/instances.rs`) is shared with `ps --json`. The text form stays. The README names the flag. Tests: `agent_status_accepts_json_flag` (bin tests), `agent_status_json_has_the_instances_and_the_report` (`tests/commands.rs`). CI: at the merge.
 
 # T-207: The library static path decodes `+` as a literal plus (GitHub #404)
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 117 open, 3 partial, 17 blocked, 86 done.**
+**223 entries: 116 open, 3 partial, 17 blocked, 87 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
-| P2 | 75 | 2 | 10 | 50 | 137 |
+| P2 | 74 | 2 | 10 | 51 | 137 |
 | P3 | 37 | 0 | 5 | 19 | 61 |
-| **All** | 117 | 3 | 17 | 86 | 223 |
+| **All** | 116 | 3 | 17 | 87 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -251,7 +251,7 @@ M8 Overlays, M9 Later.
 | [T-203](fixes.md) | P2 | S | M5 | defect | done | The ready line of `share --json` has `schema` and `podnet` (GitHub #400) |
 | [T-204](fixes.md) | P2 | S | M5 | defect | done | `tunnel --config` refuses the origin flags (GitHub #401) |
 | [T-205](fixes.md) | P3 | S | M5 | defect | done | A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402) |
-| [T-206](fixes.md) | P2 | S | M5 | feature | open | `agent status --json` (GitHub #403) |
+| [T-206](fixes.md) | P2 | S | M5 | feature | done | `agent status --json` (GitHub #403) |
 | [T-207](fixes.md) | P2 | S | M5 | defect | open | The library static path decodes `+` as a literal plus (GitHub #404) |
 | [T-208](fixes.md) | P2 | S | M5 | defect | done | `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405) |
 | [T-209](fixes.md) | P2 | S | M5 | defect | done | `warp status` names the `warp-tun` instance (GitHub #406) |
