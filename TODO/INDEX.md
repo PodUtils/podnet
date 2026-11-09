@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 160 open, 1 partial, 17 blocked, 44 done.**
+**222 entries: 159 open, 1 partial, 17 blocked, 45 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 7 | 1 | 2 | 14 | 24 |
-| P2 | 103 | 0 | 10 | 24 | 137 |
+| P2 | 102 | 0 | 10 | 25 | 137 |
 | P3 | 49 | 0 | 5 | 6 | 60 |
-| **All** | 160 | 1 | 17 | 44 | 222 |
+| **All** | 159 | 1 | 17 | 45 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -254,7 +254,7 @@ M8 Overlays, M9 Later.
 | [T-206](fixes.md) | P2 | S | M5 | feature | open | `agent status --json` (GitHub #403) |
 | [T-207](fixes.md) | P2 | S | M5 | defect | open | The library static path decodes `+` as a literal plus (GitHub #404) |
 | [T-208](fixes.md) | P2 | S | M5 | defect | done | `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405) |
-| [T-209](fixes.md) | P2 | S | M5 | defect | open | `warp status` names the `warp-tun` instance (GitHub #406) |
+| [T-209](fixes.md) | P2 | S | M5 | defect | done | `warp status` names the `warp-tun` instance (GitHub #406) |
 | [T-210](fixes.md) | P3 | S | M5 | defect | open | The WARP+ label names the paid account types (GitHub #407) |
 | [T-211](fixes.md) | P2 | S | M5 | defect | open | `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408) |
 | [T-212](fixes.md) | P3 | S | M5 | docs | open | The README states that the rules apply to `warp proxy --l4` (GitHub #409) |

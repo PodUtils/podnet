@@ -2985,7 +2985,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3010,6 +3010,14 @@ then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:
 
 `cargo test -p podnet --lib warp::live::instance` (new tests: `instance_state_in(dir, "warp-tun")` is running with a tun
 record; the line for neither, proxy only, tun only).
+
+## Done
+
+2026-11-09, commit 57ff81c (`T-209: warp status names the warp-tun instance`). `instance_state_tun`
+(`src/warp/live/instance.rs`) reads the instance `warp-tun`. `warp status --json` has the key
+`tun_instance` beside `instance`. `instances_line` names each running instance and, with only the
+tunnel, points to `podnet warp down`. Test: `warp_status_names_the_tunnel_instance`. `agent
+status` keeps its text (not part of this fix). `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-210: The WARP+ label names the paid account types (GitHub #407)
 
