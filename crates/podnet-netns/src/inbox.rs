@@ -448,9 +448,7 @@ pub(crate) fn handle_recv(
 ) -> Result<()> {
     let fd = a[0] as i32;
     let inbox = match map.get(&key) {
-        Some(Sock::Datagram {
-            dest: None, inbox, ..
-        }) if writable => inbox.clone(),
+        Some(Sock::Datagram(udp)) if writable && udp.dest.is_none() => udp.inbox.clone(),
         Some(Sock::Icmp(icmp)) if writable => icmp.inbox.clone(),
         _ => return notif_continue(lfd, id),
     };

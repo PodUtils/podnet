@@ -78,8 +78,9 @@ see it. Use a unix socket for it (`-L unix:///path`).
   `io_uring_enter`, `io_uring_register`. A system call of a foreign ABI (i386 or x32 on x86_64)
   gets `ENOSYS`.
 * `socket(AF_INET | AF_INET6)` gets one end of a socketpair, installed with
-  `SECCOMP_IOCTL_NOTIF_ADDFD`. Thus `read`, `write`, `poll` and `epoll` work on
-  a real descriptor.
+  `SECCOMP_IOCTL_NOTIF_ADDFD`. Thus `poll` and `epoll` work on a real
+  descriptor, and `read` and `write` of a TCP socket go on the socketpair.
+  The UDP path is below.
 * The supervisor keeps one entry for each socket of the program. The key is
   the inode of the socket (`/proc/<pid>/fd/<n>` gives `socket:[INODE]`), so a
   copy made by `fork`, `dup`, `dup2`, `dup3` or `fcntl(F_DUPFD)` finds the
@@ -111,6 +112,12 @@ see it. Use a unix socket for it (`-L unix:///path`).
   `single-request` to `RES_OPTIONS` of the program: glibc then sends the A
   and the AAAA query in two calls (issue 113). A program that clears its
   environment loses this option.
+* The entry of a UDP socket holds its relay: the relay socket or the control
+  connection, and the tasks that read them. The drop of the entry stops the
+  relay, and the supervisor closes its descriptors of the socket. A `close`
+  of the last descriptor drops the entry, a sweep drops the entry of a
+  socket that closed with no `close` call, and the end of the pod drops each
+  entry.
 * The supervisor checks each length that the program gives before it reads
   the memory of the program. A datagram that does not fit in one SOCKS5 UDP
   datagram of 65507 bytes (the header and the payload) gets `EMSGSIZE`, as

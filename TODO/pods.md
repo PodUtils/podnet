@@ -576,7 +576,7 @@ counter. The pod sees a bare errno.
 
 ## Premise
 
-- `crates/podnet-netns/src/seccomp.rs:945` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
+- `crates/podnet-netns/src/seccomp.rs:926` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
   refuses), `socket.rs:19-21` (`EMFILE`), `seccomp.rs:834-843` (`EIO` or `ECONNREFUSED`).
 - Not measured: the 5000-connection run of the issue.
 

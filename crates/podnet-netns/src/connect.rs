@@ -79,7 +79,7 @@ pub(crate) fn handle_connect(
     route: &Route<'_>,
 ) -> Result<()> {
     let fd = a[0] as i32;
-    let is_datagram = matches!(map.get(&key), Some(Sock::Datagram { .. }));
+    let is_datagram = matches!(map.get(&key), Some(Sock::Datagram(_)));
     match map.get(&key) {
         None => return notif_continue(lfd, id),
         Some(Sock::Connected(_)) => return notif_respond(lfd, id, -1, libc::EISCONN),
@@ -95,8 +95,8 @@ pub(crate) fn handle_connect(
         return notif_respond(lfd, id, -1, libc::EAFNOSUPPORT);
     };
     if is_datagram {
-        if let Some(Sock::Datagram { dest, .. }) = map.get_mut(&key) {
-            *dest = Some((ip, port));
+        if let Some(Sock::Datagram(udp)) = map.get_mut(&key) {
+            udp.dest = Some((ip, port));
         }
         return notif_respond(lfd, id, 0, 0);
     }

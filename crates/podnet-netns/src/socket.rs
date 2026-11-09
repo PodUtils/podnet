@@ -82,12 +82,7 @@ pub(crate) fn handle_socket(
                 dest: None,
                 ident: None,
             }),
-            false => Sock::Datagram {
-                pair,
-                dest: None,
-                relay: None,
-                inbox,
-            },
+            false => Sock::Datagram(crate::udp::Udp::new(pair, inbox)),
         };
         map.insert(key, entry);
     }
