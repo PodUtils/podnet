@@ -2104,7 +2104,7 @@ attempts repeat the same failure for about 30 s.
 
 - `src/quicktunnel.rs:308-310` (budget and attempts), `:341-353` (the arms; `Hop::Dns` goes to
   `ProvisionError::Http(_)` at `:353`).
-- `crate::resolve::answering_step(host)` (`src/resolve.rs:150`) names the step that answers now.
+- `crate::resolve::answering_step(host)` (`src/resolve.rs:193`) names the step that answers now.
 - `src/quicktunnel.rs` is Cloudflare adapter code (pod-cloudflare, T-029/T-052): a fix is allowed.
 - Not measured: the 30 s run of the issue.
 
@@ -2207,7 +2207,7 @@ The tests cover: refuse, allow with the variable, mode still checked, no registr
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2215,7 +2215,7 @@ The tests cover: refuse, allow with the variable, mode still checked, no registr
 
 ## Premise
 
-- `Task` has one `host` and one `port`, and `Check::Tls` is one handshake (`src/agent.rs:25-39`). The three rows are at `src/agent.rs:55-59`, `:67-71` and `:79-83`. The table prints one target (`src/agent.rs:491-506`).
+- `Task` has one `host` and one `port`, and `Check::Tls` is one handshake (`src/agent.rs:26-42`). The three rows are at `src/agent.rs:60-65`, `:74-79` and `:88-93`. The table prints one target (`src/agent.rs:541-561`).
 - `registry-1.docker.io` is in pod-services as the endpoint `registry` of `docker-hub-registry`. The other hosts are not in pod-services (read of `services/` at podcrates v0.7.0).
 - `src/agent.rs` is a taken source of pod-services (not frozen).
 - Not measured: the three answers of the issue (curl of 2026-11-07).
@@ -2243,6 +2243,10 @@ A unit test gives a row with a passing index and a failing file host and expects
 ## Correction
 
 2026-11-09: the blocker cleared. podcrates v0.8.0 has `pod_services::get("pypi-files")` (podcrates T-127); podnet takes v0.8.0 in 0df677d.
+
+## Done
+
+2026-11-09, commit 9c5eda7. A row with a file host is ok only when both hosts answer; the row names the failed host. Cargo: the dl key of config.json. Docker: the Location of the redirect of one blob request (manifest walk of library/hello-world). Pip: pod_services pypi-files. JSON rows get the key files. Tests: agent::tests::a_failing_file_host_fails_the_row_and_is_named, agent_files::tests. Not run: a live `doctor --agent --json` (no live host here). check.sh: exit 0. CI: at the merge.
 
 # T-183: One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379)
 
@@ -2418,7 +2422,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`src/net.rs:113-138`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:178-196`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:104-108`).
+- `connect_origin` (`src/net.rs:113-138`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:181-199`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:104-108`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:185-189`).
 
@@ -3092,7 +3096,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:10-41` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:997-1003`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:157-159` (`Serialize`). `README.md:997-1003`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3203,7 +3207,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 `warp up --tun` starts the instance `warp-tun`. `warp status` reads the instance `warp` only. On a host that runs the
 tunnel, it prints `warp up     not running (podnet warp up starts it)` and `instance: {"running": false}`. A script
-then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:488`).
+then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:538`).
 
 ## Premise
 

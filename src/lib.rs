@@ -76,6 +76,7 @@ macro_rules! update_atomic {
 }
 
 pub mod agent;
+pub mod agent_files;
 pub mod autostart;
 pub mod bug_report;
 pub mod cloudflare;

@@ -1234,12 +1234,12 @@ async fn verify_fetch(
     budget: Duration,
     interval: Duration,
 ) -> Result<Verified> {
-    let mut last;
-    let mut last_status;
+    let (mut last, mut last_status);
     let deadline = tokio::time::Instant::now() + budget;
     let mut attempt = 0u32;
     loop {
         attempt += 1;
+        crate::resolve::refresh_pins();
         let request = crate::fetch::Request::new("GET", url).timeout(Duration::from_secs(15));
         match crate::fetch::send(request).await {
             Ok(response) => {

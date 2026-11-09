@@ -885,17 +885,17 @@ T-165.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
 The name `*.trycloudflare.com` is known only after the provision. `--resolve` is one string, set once.
-`PINS` (`src/resolve.rs:41`) and the resolver `SETTINGS` (`:81`) are `OnceLock`s; `set_pins` has no effect
+`PINS` (`src/resolve.rs:41`) and the resolver `SETTINGS` (`:112`) are `OnceLock`s; `set_pins` has no effect
 a second time. A supervisor cannot give a pin to a running start.
 
 ## Premise
 
-- The pins are in `pod_dns::Settings` (`src/resolve.rs:94-100`, `pins: pins()`). A refresh needs a
+- The pins are in `pod_dns::Settings` (`src/resolve.rs:125-131`, `pins: pins()`). A refresh needs a
   settings or pins handle that can change in `pod-dns`.
 
 ## Approach
@@ -917,6 +917,10 @@ podcrates gives the changeable pin table.
 ## Correction
 
 2026-11-09: the blocker cleared. podcrates v0.8.0 has `Resolver::set_pins` of pod-dns (podcrates T-126); podnet takes v0.8.0 in 0df677d.
+
+## Done
+
+2026-11-09, commit 8b0c546. verify_fetch calls resolve::refresh_pins at each attempt; it sets the table of the resolver (`--resolve` pins and the variable PODNET_RESOLVE as it is then) with Resolver::set_pins. A pin file is not added. Test: resolve::tests::a_later_pin_reaches_the_resolver. check.sh: exit 0. CI: at the merge.
 
 # T-176: Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372)
 

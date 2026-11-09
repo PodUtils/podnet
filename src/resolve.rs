@@ -39,6 +39,9 @@ pub const PINS_VARIABLE: &str = "PODNET_RESOLVE";
 pub const STEP_TIMEOUT: Duration = Duration::from_secs(5);
 
 static PINS: OnceLock<Vec<(String, IpAddr)>> = OnceLock::new();
+/// The pins of `--resolve` alone: [`refresh_pins`] adds the pins of the
+/// variable, as it is then, to them.
+static OPTION_PINS: OnceLock<Vec<(String, IpAddr)>> = OnceLock::new();
 
 /// Set the pins of `--resolve`. Call it before the first dialer (the one of
 /// `--proxy` or `--no-proxy`, else of the first dial): the resolver of each
@@ -46,6 +49,7 @@ static PINS: OnceLock<Vec<(String, IpAddr)>> = OnceLock::new();
 /// `PODNET_RESOLVE` are added to them.
 pub fn set_pins(list: &str) -> Result<()> {
     let mut pins = parse_pins(list)?;
+    let _ = OPTION_PINS.set(pins.clone());
     if let Ok(env) = std::env::var(PINS_VARIABLE) {
         let parsed = parse_pins(&env)
             .context(PINS_VARIABLE)
@@ -65,6 +69,33 @@ fn pins() -> Vec<(String, IpAddr)> {
         Err(_) => Vec::new(),
     })
     .clone()
+}
+
+/// Read the pins again and give them to the resolver of the process: the
+/// pins of `--resolve` and those of `PODNET_RESOLVE` as the variable is now.
+/// A name that gets its pin while the process runs (the public name of a
+/// new tunnel) reaches the next lookup. A bad variable keeps the table that
+/// is in force.
+pub fn refresh_pins() {
+    let env = std::env::var(PINS_VARIABLE).ok();
+    let option = OPTION_PINS.get().map(Vec::as_slice).unwrap_or_default();
+    if let Err(err) = apply_pins(&crate::egress::resolver(), option, env.as_deref()) {
+        tracing::warn!("{PINS_VARIABLE}: {err:#}; the pins stay as they are");
+    }
+}
+
+/// Give `resolver` the table of `option` and the list `env`.
+fn apply_pins(
+    resolver: &pod_dns::Resolver,
+    option: &[(String, IpAddr)],
+    env: Option<&str>,
+) -> Result<()> {
+    let mut table = option.to_vec();
+    if let Some(list) = env {
+        table.extend(parse_pins(list)?);
+    }
+    resolver.set_pins(table);
+    Ok(())
 }
 
 /// Parse `HOST=IP[,HOST=IP]...`. One host may have several entries.
@@ -127,6 +158,18 @@ pub fn with_doh(dial: Arc<dyn pod_core::Dial>) -> pod_dns::Resolver {
         .with_observer(crate::egress::counters())
 }
 
+/// Write one line, once, when the egress resolves names: each DoH server is
+/// then tried by its address first, and an egress that takes names only
+/// refuses that address; the name follows (T-175).
+pub(crate) fn note_names_inside() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        tracing::info!(
+            "the egress resolves names: each DoH server is tried by address, then by name; an egress that takes names only refuses the address"
+        );
+    });
+}
+
 /// The time limit of the whole chain: each step, and each question of each
 /// DoH server.
 fn chain_limit(resolver: &pod_dns::Resolver) -> Duration {
@@ -169,6 +212,24 @@ pub async fn doh_query(name: &str, rtype: &str) -> Result<DohAnswer> {
 mod tests {
     use super::*;
 
+    /// A pin that comes while the process runs reaches the resolver (T-172).
+    #[tokio::test]
+    async fn a_later_pin_reaches_the_resolver() {
+        let resolver = pod_dns::Resolver::new(pod_dns::Settings::default());
+        let limit = || Instant::now() + Duration::from_secs(2);
+        let early: Vec<(String, IpAddr)> = parse_pins("early.test=192.0.2.1").unwrap();
+        apply_pins(&resolver, &early, None).unwrap();
+        assert!(resolver.ips("late.test.invalid", limit()).await.is_err());
+        apply_pins(&resolver, &early, Some("late.test.invalid=192.0.2.7")).unwrap();
+        let ips = resolver.ips("late.test.invalid", limit()).await.unwrap();
+        assert_eq!(ips, ["192.0.2.7".parse::<IpAddr>().unwrap()]);
+        let ips = resolver.ips("early.test", limit()).await.unwrap();
+        assert_eq!(ips, ["192.0.2.1".parse::<IpAddr>().unwrap()]);
+        // A bad list changes nothing.
+        assert!(apply_pins(&resolver, &early, Some("nonsense")).is_err());
+        assert_eq!(resolver.pins().len(), 2);
+    }
+
     /// podnet's settings: the servers of two operators by address, the
     /// names last, A and AAAA both, NXDOMAIN asks the next operator, no
     /// cache, and a bound of 5 s for each step.
@@ -195,3 +256,6 @@ mod tests {
         assert!(settings.user_agent.starts_with("podnet/"));
     }
 }
+
+#[cfg(test)]
+mod kept_tests;

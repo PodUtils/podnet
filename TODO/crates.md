@@ -744,7 +744,7 @@ T-049 is done; podcrates answers the COORD issue for `edge_h2.rs`.
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -755,8 +755,8 @@ checks (T-097) resolve names on this chain.
 
 ## Premise
 
-- Read in the cargo checkout of podcrates; podnet only consumes it (`src/resolve.rs:80-104`,
-  `names: Names::Last` at `:96`). The fix belongs to `pod-dns` and `pod-proxy`.
+- Read in the cargo checkout of podcrates; podnet only consumes it (`src/resolve.rs:111-135`,
+  `names: Names::Last` at `:127`). The fix belongs to `pod-dns` and `pod-proxy`.
 - A second part is in podnet: no startup note when the egress takes names only. Each resolver then pays
   one failed literal try.
 - Not measured: the 3x cost of the issue.
@@ -777,6 +777,10 @@ cargo test -p podnet resolve:: -- doh_queries_share_one_connection
 ## Correction
 
 2026-11-09: the blocker cleared. podcrates v0.8.0 has `pod_dns::Kept` and `Way::kept` (podcrates T-125); podnet takes v0.8.0 in 0df677d.
+
+## Done
+
+2026-11-09, commit b61a90e. The resolver of pod-dns v0.8.0 keeps one connection for each server, so the wiring needs no code. egress writes one info line when the egress resolves names. Test: resolve::kept_tests::doh_queries_share_one_connection. check.sh: exit 0. CI: at the merge.
 
 # T-200: The reverse road of the relay uses the alternate hosts (GitHub #397)
 

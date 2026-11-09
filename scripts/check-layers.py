@@ -48,7 +48,7 @@ LAYER = {
     "cloudflare": "cloudflare", "tunnel": "cloudflare", "edge_h2": "cloudflare",
     "edge_discovery": "cloudflare", "quicktunnel": "cloudflare",
     "config": "cloudflare", "proxy": "cloudflare",
-    "doctor": "podnet", "preflight": "podnet", "agent": "podnet",
+    "doctor": "podnet", "preflight": "podnet", "agent": "podnet", "agent_files": "podnet",
     "status": "podnet", "bug_report": "podnet", "manual": "podnet",
     "update": "podnet", "fuzzing": "podnet", "lib": "podnet",
     "test_host": "podnet", "services": "core", "main": "podnet",
