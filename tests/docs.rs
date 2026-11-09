@@ -289,22 +289,50 @@ fn the_readme_names_each_command_with_detach() {
     }
 }
 
+/// The tags `vX.Y.Z-beta.N` in `text`.
+fn beta_tags(text: &str) -> Vec<String> {
+    let mut tags = Vec::new();
+    for (at, _) in text.match_indices('v') {
+        let rest = &text[at + 1..];
+        let mut parts = Vec::new();
+        let mut cursor = rest;
+        for sep in [".", ".", "-beta."] {
+            let n: String = cursor.chars().take_while(|c| c.is_ascii_digit()).collect();
+            if n.is_empty() || !cursor[n.len()..].starts_with(sep) {
+                parts.clear();
+                break;
+            }
+            parts.push(n.clone());
+            cursor = &cursor[n.len() + sep.len()..];
+        }
+        let n: String = cursor.chars().take_while(|c| c.is_ascii_digit()).collect();
+        if parts.len() == 3 && !n.is_empty() {
+            tags.push(format!("v{}.{}.{}-beta.{n}", parts[0], parts[1], parts[2]));
+        }
+    }
+    tags
+}
+
+#[test]
+fn the_tag_scan_reads_each_beta_tag() {
+    assert_eq!(
+        beta_tags("a v0.3.0-beta.12, `v0.4.0-beta.1` and v1.2.3 and v1.2.3-beta."),
+        ["v0.3.0-beta.12", "v0.4.0-beta.1"]
+    );
+}
+
 /// #258: each release tag that the README, the notebook or a help text
-/// names has a release note: a tag in an example is not invented.
+/// names has a release note: a tag in an example is not invented. T-022: the
+/// scan reads each `vX.Y.Z-beta.N`.
 #[test]
 fn each_tag_in_the_documents_has_a_release_note() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut missing = Vec::new();
     for name in ["README.md", "notebooks/install.ipynb", "src/main.rs"] {
         let text = std::fs::read_to_string(root.join(name)).unwrap();
-        for part in text.split("v0.3.0-beta.").skip(1) {
-            let n: String = part.chars().take_while(|c| c.is_ascii_digit()).collect();
-            if n.is_empty() {
-                continue;
-            }
-            let note = root.join(format!("docs/releases/v0.3.0-beta.{n}.md"));
-            if !note.exists() {
-                missing.push(format!("{name}: v0.3.0-beta.{n}"));
+        for tag in beta_tags(&text) {
+            if !root.join(format!("docs/releases/{tag}.md")).exists() {
+                missing.push(format!("{name}: {tag}"));
             }
         }
     }
