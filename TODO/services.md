@@ -599,7 +599,7 @@ T-057 is done.
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 2.1 and 2.5;
 `docs/research/podnet/mwan-field.md`, sections 1.4 (D1) and 1.6; the owner's ruling of 2026-11-05
-(`docs/decisions.md`, Router).
+(`docs/decisions.md`, Router); GitHub #373 and #376.
 **Category:** feature
 **Milestone:** M6
 **Priority:** P2
@@ -623,6 +623,10 @@ to the host route.
    client and destination of UDP; a member that is down leaves the pick.
 2. When no member is healthy, refuse the flow. Never fall back to direct.
 3. Accept `--group NAME=a*2,b*1`.
+3. A member in `Cooldown` or `Probation` (T-097) still counts as healthy. The pick refuses when no
+   member is `Up` or timed (GitHub #373, #376).
+4. The pick returns `Selection::{One, Replicate, None}`. `None` refuses and counts the refusal, and never
+   dials direct. `Replicate` (a backup, the first answer wins) is optional.
 
 ## Decision
 
@@ -644,7 +648,7 @@ T-058 is done.
 # T-097: Router: a TCP health check for each member, and `podnet route status`
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 2.1 and 2.5;
-`docs/research/podnet/mwan-field.md`, sections 1.4 (D5, D6, D10), 1.6 and 2.2 (R2, R5).
+`docs/research/podnet/mwan-field.md`, sections 1.4 (D5, D6, D10), 1.6 and 2.2 (R2, R5); GitHub #373 and #374.
 **Category:** feature
 **Milestone:** M6
 **Priority:** P2
@@ -671,11 +675,28 @@ TCP (T-068).
 3. A failed probe of a WARP member calls the renew of T-068.
 4. Add `podnet route status [--json]`: the state, the round-trip time, the flows and the bytes of
    each member. Add rows to the metrics.
+5. Set K, R and the thresholds so that K > R > 1 and R > K/2 (GitHub #373). A probe that flaps must not
+   re-admit a member at once.
+6. Give a member the states `Up`, `Probation`, `Cooldown` and `Down`. Cooldown and probation give a
+   reduced weight (`degraded_weight`). `Down` follows only a clean failure (refused, unreachable, reset)
+   that a control corroborates. The renewal of a WARP member fires on `Down`.
+7. Add a control probe: one extra probe for each interval, through a second member or to a second target.
+   A correlated failure of all members stops the down step and the renewals. The control gates both sites
+   of `tcp_dead` (`src/warp/live.rs:279` and `:387`).
+8. The probe is a method of the member (`Uplink::probe`). It never re-enters the group pick (GitHub #374).
+   The probe goes through its own member, and the resolver of that member resolves its name.
+9. `ProbeResult` is `Ok`, `ConnectFailed`, `WrongEgress` or `AuthExpired`. The egress check is on for WARP
+   members (the trace request of `src/warp/exit.rs`) and off by default for other members. An echo
+   endpoint of a member that is not WARP is operator input. Add no hardcoded host.
+10. `AuthExpired` renews the member, make-before-break, with the stored registration (`register_or_load`).
+    It makes no new device for each failure.
+11. The thresholds, the cooldown and the probation go in the config file of T-100. Tests inject the time.
 
 ## Prove
 
 ```sh
 cargo test --workspace -- router_health_moves_flows_off_a_dead_member router_status_json_keys
+cargo test --workspace -- router_health_member_with_flapping_probe_stays_in_cooldown router_probe_dials_through_its_own_member
 ```
 
 ## Start condition
@@ -684,7 +705,7 @@ T-096 and T-068 are done.
 
 # T-098: Router: doors with a default network, and rules to a network, a group or a refusal
 
-**Source:** `docs/research/podnet/capabilities.md`, sections 2.1 to 2.3.
+**Source:** `docs/research/podnet/capabilities.md`, sections 2.1 to 2.3; GitHub #372 and #374.
 **Category:** feature
 **Milestone:** M6
 **Priority:** P2
@@ -706,6 +727,9 @@ flow through another network.
    optional DNS, on TCP or `unix:`.
 2. Add rules `domain:` and `cidr:` to a network, a group or `reject`. The first match wins. A
    change of the rules file takes effect with no restart.
+3. Each member carries its resolver (`pod_dns::Resolver`). A flow pinned to a member resolves through
+   it (GitHub #374). Land it with the DNS door of T-099. A `WrongEgress` member (T-097) leaves the pick
+   and no direct dial replaces it.
 
 ## Prove
 
@@ -722,7 +746,7 @@ T-061 and T-096 are done.
 # T-099: Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose`
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 2.1 to 2.3;
-`docs/research/podnet/mwan-field.md`, section 3 (F4b).
+`docs/research/podnet/mwan-field.md`, section 3 (F4b); GitHub #372.
 **Category:** feature
 **Milestone:** M6
 **Priority:** P2
@@ -746,11 +770,16 @@ UDP. The DNS door works for WARP only. Each way in to a local service is its own
 2. Add UDP forwards, and a DNS door for each network.
 3. Add `podnet expose TARGET` with a choice of the tunnel, the relay or the switch, as an alias of
    the three commands.
+4. A pump that carries UDP over a byte stream keeps a pending buffer with an offset. It writes the rest on
+   the next poll, bounds the queue, and pauses the flow (no failover, no close) when the queue is full. A
+   full queue stops reading the source (GitHub #372). The existing writers use `write_all` and are safe.
+   The smoltcp socket items are in T-176.
 
 ## Prove
 
 ```sh
 cargo test --workspace -- forward_over_a_network forward_udp_echo dns_door_over_a_network expose_via_relay_is_a_relay_node
+cargo test --workspace -- a_partial_stream_write_keeps_the_record_stream_aligned
 ```
 
 ## Start condition

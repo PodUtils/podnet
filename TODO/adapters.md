@@ -7,7 +7,7 @@ stays (the owner's ruling of 2026-11-05 on regressions, `docs/decisions.md`).
 # T-055: The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link
 
 **Source:** `docs/research/podnet/architecture.md`, section 4.3;
-`docs/research/podnet/capabilities.md`, sections 2.2 and 6 (enabler 4).
+`docs/research/podnet/capabilities.md`, sections 2.2 and 6 (enabler 4); GitHub #377.
 **Category:** feature
 **Milestone:** M4
 **Priority:** P2
@@ -35,6 +35,17 @@ each command calls one of them by name. A router, a group or a new overlay needs
    poll to receive, so that a quinn socket can wrap it); `Network` (`scheme`, `caps`, `up`,
    `checks`); `Link` (a dialer, the exports, a status document and a close function); `Caps`.
 2. Write the documentation of each type. Add unit tests with a fake dialer.
+3. Declare the addressing mode in the types (GitHub #377). A `Target` is a destination (a host and a
+   port) or a peer (a name or a shared secret, with no port). Each `Dialer` states which one it takes.
+   The combinators `Chain`, `Rules` and `Race` (T-058) refuse a peer dialer where the consumer dials a
+   destination, at startup, with one error line. Add a test with a fake peer dialer in a destination
+   chain. The issue keeps the sketch `Addressing { Destination, Peer }` and a measured keepalive of 5 s
+   through a CONNECT proxy. Add no step to the old `src/transport/mod.rs`: it has no consumer, and M4
+   replaces it.
+
+## Decision
+
+The lead, 2026-11-09: no entry for a transport of the gsr network (a third-party relay with a shared secret, TLS-SRP, a new service of another party). Only the addressing contract above goes into this entry. A protocol crate for gsr is a COORD issue (to podcrates), when the owner wants it. The owner can rule otherwise (`docs/decisions.md`).
 
 ## Prove
 
@@ -142,7 +153,7 @@ adapter that holds the stack (`pod-warp`): do this work after the take, or as a 
 
 # T-058: The combinators `Chain`, `Rules`, `Race` and `Failover`
 
-**Source:** `docs/research/podnet/architecture.md`, section 4.3 (the combinators).
+**Source:** `docs/research/podnet/architecture.md`, section 4.3 (the combinators); GitHub #377.
 **Category:** feature
 **Milestone:** M4
 **Priority:** P2
@@ -167,6 +178,8 @@ proxy (`warp::Dial`, `MasqueOptions`), the rules of `warp proxy -r` (`src/warp/r
 3. `Race`: staggered attempts over several dialers, with `src/race.rs`.
 4. `Failover`: the next dialer after an error.
 5. Unit tests with fake dialers: the order, the stagger, the first rule, the failover.
+3. The combinators read the addressing mode of T-055 (GitHub #377): `Chain`, `Rules` and `Race`
+   refuse a peer dialer in a destination chain, at startup, with one error line.
 
 ## Prove
 
@@ -268,7 +281,7 @@ T-059 is done.
 
 # T-061: One front door over a dialer for `warp proxy`, `pod --serve`, `net proxy` and `net tailscale`
 
-**Source:** `docs/research/podnet/capabilities.md`, sections 1.3 and 2.4.
+**Source:** `docs/research/podnet/capabilities.md`, sections 1.3 and 2.4; GitHub #384.
 **Category:** feature
 **Milestone:** M4
 **Priority:** P2
@@ -294,6 +307,9 @@ The router of M6 needs a door over any network.
    authentication.
 2. Make the four commands build their dialer and call the door. Keep their extras as options of
    the door or of the command.
+3. The one door has one deadline for the request, and one cap or counter of live client tasks (GitHub #384).
+   The deadline covers the first byte, the SOCKS5 request and the CONNECT head (30 s as `REQUEST_LIMIT`
+   in `src/warp/proxy.rs:612`). T-185 fixes the defect first in two doors and names the constant.
 
 ## Prove
 

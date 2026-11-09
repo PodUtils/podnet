@@ -157,7 +157,7 @@ T-109 is done.
 # T-111: netns: generic UDP
 
 **Source:** `docs/research/podnet/vn.md`, section 3.1 (P2) and 3.6;
-`docs/research/podnet/mwan-field.md`, section 5 (question 3).
+`docs/research/podnet/mwan-field.md`, section 5 (question 3); GitHub #372.
 **Category:** feature
 **Milestone:** M7
 **Priority:** P2
@@ -186,6 +186,9 @@ emulates the sockets. Thus a user must choose between UDP and correct socket cal
 3. Carry the datagrams in the stream of the upstream, else with SOCKS5 UDP ASSOCIATE. Send a
    name of the fake DNS as a name.
 4. Add a test that a datagram of zero bytes survives the frame code.
+5. The pump of a datagram over a stream follows the rule of T-099 step 4: a pending buffer with an offset,
+   a bounded queue, and a pause with no failover when the queue is full (GitHub #372). The smoltcp
+   socket items are in T-176.
 
 ## Prove
 
