@@ -30,10 +30,12 @@ pub(crate) async fn run(
             let mut account = client.account().await?;
             // Issue 116: the instance of warp up, with the account.
             let instance = podnet::warp::up::instance_state();
+            let tun = podnet::warp::live::instance::instance_state_tun();
             if json {
                 let active = podnet::warp::identity::warp_plus_label(&account) == "yes";
                 if let Some(doc) = account.as_object_mut() {
                     doc.insert("instance".into(), instance);
+                    doc.insert("tun_instance".into(), tun);
                     // Issue 178: warp_plus of the API is not the state of
                     // the account; warp_plus_active is.
                     doc.insert("warp_plus_active".into(), active.into());
@@ -42,7 +44,10 @@ pub(crate) async fn run(
                 return Ok(());
             }
             print_device(&client, path.as_deref());
-            println!("warp up     {}", podnet::warp::up::instance_line(&instance));
+            println!(
+                "warp up     {}",
+                podnet::warp::live::instance::instances_line(&instance, &tun)
+            );
             let field = |name: &str| account.get(name).map(plain_value).unwrap_or_default();
             println!("type        {}", field("account_type"));
             println!(

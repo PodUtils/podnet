@@ -75,6 +75,15 @@ pub fn instance_state() -> Value {
     }
 }
 
+/// The state of the instance `warp-tun` of `podnet warp up --tun` (T-209):
+/// for `warp status`.
+pub fn instance_state_tun() -> Value {
+    match instances::existing_run_dir() {
+        Some(dir) => instance_state_in(&dir, crate::warp::up::TUN_INSTANCE),
+        None => json!({"running": false}),
+    }
+}
+
 /// [`instance_state`] of the instance `name` in `dir`.
 pub fn instance_state_in(dir: &Path, name: &str) -> Value {
     match instances::read(dir, name) {
@@ -98,6 +107,24 @@ pub fn instance_state_in(dir: &Path, name: &str) -> Value {
 /// The line of [`instance_state`] for `warp status`.
 pub fn instance_line(state: &Value) -> String {
     instance_line_at(state, instances::now())
+}
+
+/// The line of `warp status` for the proxy instance and the tunnel instance
+/// (T-209): it names each instance that runs.
+pub fn instances_line(proxy: &Value, tun: &Value) -> String {
+    match (proxy["running"] == true, tun["running"] == true) {
+        (false, false) => instance_line(proxy),
+        (true, false) => instance_line(proxy),
+        (false, true) => format!(
+            "tunnel (warp-tun): {} (podnet warp down stops it)",
+            instance_line(tun)
+        ),
+        (true, true) => format!(
+            "proxy: {}; tunnel (warp-tun): {} (podnet warp down stops both)",
+            instance_line(proxy),
+            instance_line(tun)
+        ),
+    }
 }
 
 /// [`instance_line`] at the Unix time `now`.
@@ -158,6 +185,41 @@ mod tests {
             .ends_with("unix:/r/warp.sock, data path tcp-dead, last probe 12 s ago"));
         state["last_probe"] = Value::Null;
         assert!(instance_line_at(&state, 1012).ends_with(", data path tcp-dead, last probe -"));
+    }
+
+    // T-209: the tunnel instance has its own record and its own line.
+    #[test]
+    fn warp_status_names_the_tunnel_instance() {
+        let dir = tempfile::tempdir().unwrap();
+        let at = dir.path();
+        let _held = instances::lock(&instances::paths(at, "warp-tun").unwrap().lock).unwrap();
+        let record = Record {
+            name: "warp-tun".into(),
+            pid: 7,
+            state: "ready".into(),
+            ..Default::default()
+        };
+        instances::write(at, &record).unwrap();
+        let tun = instance_state_in(at, "warp-tun");
+        assert_eq!(tun["running"], true, "{tun}");
+        let proxy = instance_state_in(at, "warp");
+        assert_eq!(proxy["running"], false, "{proxy}");
+        let none = json!({"running": false});
+        assert!(instances_line(&none, &none).starts_with("not running"));
+        let only_proxy = json!({"running": true, "pid": 1, "state": "ready", "restarts": 0});
+        assert_eq!(
+            instances_line(&only_proxy, &none),
+            instance_line(&only_proxy)
+        );
+        let line = instances_line(&proxy, &tun);
+        assert!(
+            line.starts_with("tunnel (warp-tun): ready, pid 7"),
+            "{line}"
+        );
+        assert!(line.contains("podnet warp down"), "{line}");
+        let both = instances_line(&only_proxy, &tun);
+        assert!(both.starts_with("proxy: ready, pid 1"), "{both}");
+        assert!(both.contains("tunnel (warp-tun): ready, pid 7"), "{both}");
     }
 
     /// A session whose TCP probe fails when `tcp` is false.
