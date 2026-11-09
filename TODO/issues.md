@@ -46,17 +46,17 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #344 | [gh action] requested: a run of live.yml | closed (live 42292490990 at 416574b: success) | none |
 | #345 | [gh action] requested: a run of ci.yml | closed (ci 42296502041 at c52b8e0: success) | none |
 | #346 | [gh action] requested: a run of live.yml | closed (live 42296493409 at c52b8e0: success) | none |
-| #347 | seccomp: write(2) on UDP dropped; closed UDP leaks 3 fds | open | T-142, T-143 |
-| #348 | seccomp: UDP bind records nothing; getsockname port 0 | open | T-144 |
-| #349 | fake-IP pool wraps at 131072; names case-sensitive | open | T-145 |
-| #350 | seccomp UDP: AF_UNSPEC, source filter, sockopts, ICMP | open | T-146, T-147, T-148, T-149 |
+| #347 | seccomp: write(2) on UDP dropped; closed UDP leaks 3 fds | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-142, T-143 |
+| #348 | seccomp: UDP bind records nothing; getsockname port 0 | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-144 |
+| #349 | fake-IP pool wraps at 131072; names case-sensitive | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-145 |
+| #350 | seccomp UDP: AF_UNSPEC, source filter, sockopts, ICMP | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-146, T-147, T-148, T-149 |
 | #351 | seccomp TCP copied in user space | open | T-150, T-151 |
 | #352 | netns: in-namespace netfilter in place of smoltcp | open | T-152, T-153 |
 | #353 | no fuzz targets for seccomp handlers | open | T-154, T-155 |
 | #354 | pod rules: no reject action (also no `block`) | open | T-156 |
 | #355 | pod: default-deny, flow log, learn | open | T-157, T-158 |
 | #356 | research documents cite old paths | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-159 |
-| #357 | verify: young name exits 69, tears down a working tunnel | open | T-160 |
+| #357 | verify: young name exits 69, tears down a working tunnel | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-160 |
 | #358 | relay node: pair cannot be renewed | open | T-161 |
 | #359 | relay alternates chosen once (cost is the 2 s stagger) | open | T-162 |
 | #360 | relay session budget is a constant | open | T-163 |
@@ -66,10 +66,10 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #364 | net socksify: no per-destination routing | open | T-167 |
 | #365 | fakepwd only via ts-shims (partly: it works, gap is name/docs) | open | T-168 |
 | #366 | tunnel: no `--masque-endpoint`; v4 door first | open | T-169 |
-| #367 | provision retries DNS; verify has no pin path | open | T-170, T-171, T-172 |
+| #367 | provision retries DNS; verify has no pin path | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-170, T-171, T-172 |
 | #368 | WARP identity of another uid refused | open | T-173 |
 | #369 | netns veth wire without /dev/net/tun | open | T-174 |
-| #370 | one TLS connection per DoH query | open | T-175 |
+| #370 | one TLS connection per DoH query | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-175 |
 | #371 | TCP flow terminators (design limits, no present defect) | open | T-176 |
 | #372 | router datagram carrier | open | T-098, T-099, T-111 |
 | #373 | router health: hysteresis, cooldown | open | T-096, T-097 |
@@ -77,16 +77,16 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #375 | `route check`, group policies, direction split | open | T-177, T-178, T-179 |
 | #376 | router control, typed selection, seccomp budget | open | T-096, T-180, T-181 |
 | #377 | Transport trait addressing; gsr transport | open | T-055, T-058 |
-| #378 | doctor --agent checks index host, not file host | open | T-182 |
-| #379 | http:// proxy default port 8080 vs 80 | open | T-183 |
-| #380 | doctor relay row from PODNET_RELAY only (partly) | open | T-184 |
+| #378 | doctor --agent checks index host, not file host | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-182 |
+| #379 | http:// proxy default port 8080 vs 80 | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-183 |
+| #380 | doctor relay row from PODNET_RELAY only (partly) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-184 |
 | #384 | net proxy handshake has no deadline (pod --serve too) | open | T-061, T-185 |
-| #385 | net tailscale unix bind deletes a live path (frontdoor too) | open | T-186 |
-| #386 | net proxy --forward dials direct (partly disputed) | open | T-187 |
-| #387 | --forward prints before bind; bind failure only logged | open | T-188 |
-| #388 | vnet switch: uncounted drops, unbounded queues | open | T-189, T-190 |
-| #389 | net doctor listener table incomplete | open | T-191, T-192 |
-| #390 | net proxy --map reaches the door only | open | T-193 |
+| #385 | net tailscale unix bind deletes a live path (frontdoor too) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-186 |
+| #386 | net proxy --forward dials direct (partly disputed) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-187 |
+| #387 | --forward prints before bind; bind failure only logged | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-188 |
+| #388 | vnet switch: uncounted drops, unbounded queues | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-189, T-190 |
+| #389 | net doctor listener table incomplete | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-191, T-192 |
+| #390 | net proxy --map reaches the door only | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-193 |
 | #391 | relay node: close drops the abort handle | closed (ci 42641451152, live 42641450984 at e784949) | T-194 |
 | #392 | relay stop: wrong order | closed (ci 42641451152, live 42641450984 at e784949) | T-195 |
 | #393 | relay node: no drain after local EOF | closed (ci 42641451152, live 42641450984 at e784949) | T-196 |
@@ -94,13 +94,13 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #395 | docs say 6 seed hosts, client takes 3 | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-198 |
 | #396 | relay connect --listen: no --detach, record, restart | closed (ci 42641451152, live 42641450984 at e784949) | T-199 |
 | #397 | relay reverse road uses host 0 only | open | T-200 |
-| #398 | WebSocketTunnel dials direct (latent, no caller) | open | T-201 |
-| #399 | serve: root_404 never set | open | T-202 |
-| #400 | share --json: no schema, no podnet key | open | T-203 |
-| #401 | tunnel --config drops origin flags | open | T-204 |
-| #402 | detach: nested start inherits the env (only --no-restart) | open | T-205 |
-| #403 | agent status has no --json | open | T-206 |
-| #404 | static: `+` decoded differently (one more divergence) | open | T-207 |
+| #398 | WebSocketTunnel dials direct (latent, no caller) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-201 |
+| #399 | serve: root_404 never set | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-202 |
+| #400 | share --json: no schema, no podnet key | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-203 |
+| #401 | tunnel --config drops origin flags | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-204 |
+| #402 | detach: nested start inherits the env (only --no-restart) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-205 |
+| #403 | agent status has no --json | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-206 |
+| #404 | static: `+` decoded differently (one more divergence) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-207 |
 | #405 | warp up --tun drops --replace and others | closed (ci 42641451152, live 42641450984 at e784949) | T-208 |
 | #406 | warp status never names warp-tun | closed (ci 42641451152, live 42641450984 at e784949) | T-209 |
 | #407 | warp: every type but "free" reads as WARP+ (partly) | open | T-210 |
