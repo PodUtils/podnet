@@ -182,21 +182,23 @@ where
 /// Bind a virtual listener and splice each accepted connection to a real
 /// destination. `dial` is called once per connection, so it can open a fresh
 /// real socket; the test suite passes a duplex instead.
-pub fn forward<F, Fut, S>(net: Arc<NetStack>, virt: VirtAddr, dial: F) -> JoinHandle<()>
+///
+/// The bind is done when this returns. A refusal of the stack (an address
+/// outside the subnet: `AddrNotAvailable`; a second bind: `AddrInUse`; the
+/// ACL: `PermissionDenied`) is the error.
+pub async fn forward<F, Fut, S>(
+    net: Arc<NetStack>,
+    virt: VirtAddr,
+    dial: F,
+) -> std::io::Result<JoinHandle<()>>
 where
     F: Fn() -> Fut + Send + Sync + 'static,
     Fut: Future<Output = std::io::Result<S>> + Send + 'static,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    tokio::spawn(async move {
-        let mut listener = match net.listen(virt).await {
-            Ok(listener) => listener,
-            Err(err) => {
-                tracing::warn!(%virt, error = %err, "virtual forward could not bind");
-                return;
-            }
-        };
-        tracing::info!(%virt, "virtual forward listening");
+    let mut listener = net.listen(virt).await?;
+    tracing::info!(%virt, "virtual forward listening");
+    Ok(tokio::spawn(async move {
         while let Ok(mut virtual_stream) = listener.accept().await {
             let dialed = dial();
             tokio::spawn(async move {
@@ -212,7 +214,7 @@ where
                 }
             });
         }
-    })
+    }))
 }
 
 /// The running proxy: the accept loop plus every forward task.
@@ -224,13 +226,19 @@ pub struct Proxy {
 
 impl Proxy {
     /// Start forwarding the configured virtual endpoints.
-    pub fn spawn_forwards<F, Fut, S>(&mut self, net: Arc<NetStack>, virt: VirtAddr, dial: F)
+    pub async fn spawn_forwards<F, Fut, S>(
+        &mut self,
+        net: Arc<NetStack>,
+        virt: VirtAddr,
+        dial: F,
+    ) -> std::io::Result<()>
     where
         F: Fn() -> Fut + Send + Sync + 'static,
         Fut: Future<Output = std::io::Result<S>> + Send + 'static,
         S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     {
-        self.forwards.push(forward(net, virt, dial));
+        self.forwards.push(forward(net, virt, dial).await?);
+        Ok(())
     }
 
     /// Stop the accept loop and every forward.
@@ -419,9 +427,9 @@ mod tests {
             let (real, far) = tokio::io::duplex(4096);
             tokio::spawn(echo(far));
             Ok(real)
-        });
-        // Give the forward a moment to bind its virtual listener.
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        })
+        .await
+        .unwrap();
 
         let (mut client, server) = tokio::io::duplex(4096);
         let proxy = {
@@ -464,8 +472,9 @@ mod tests {
             let (real, far) = tokio::io::duplex(4096);
             tokio::spawn(echo(far));
             Ok(real)
-        });
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        })
+        .await
+        .unwrap();
 
         let mut resolver = Resolver::new();
         resolver.insert("api".into(), "10.66.0.2".parse().unwrap());
@@ -500,5 +509,29 @@ mod tests {
         drop(client);
         let _ = proxy.await;
         handle.abort();
+    }
+
+    async fn duplex_dial() -> std::io::Result<tokio::io::DuplexStream> {
+        let (real, far) = tokio::io::duplex(64);
+        tokio::spawn(echo(far));
+        Ok(real)
+    }
+
+    #[tokio::test]
+    async fn a_forward_outside_the_subnet_returns_the_error() {
+        let net = Arc::new(NetStack::loopback());
+        let virt: VirtAddr = "192.168.9.9:80".parse().unwrap();
+        let err = forward(net, virt, duplex_dial).await.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::AddrNotAvailable);
+    }
+
+    #[tokio::test]
+    async fn a_second_forward_of_one_address_returns_addr_in_use() {
+        let net = Arc::new(NetStack::loopback());
+        let virt: VirtAddr = "10.66.0.2:8080".parse().unwrap();
+        let first = forward(net.clone(), virt, duplex_dial).await.unwrap();
+        let err = forward(net, virt, duplex_dial).await.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::AddrInUse);
+        first.abort();
     }
 }

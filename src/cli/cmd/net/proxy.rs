@@ -101,18 +101,17 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
         );
     }
     let listen = ProxyListen::parse(&args.listen)?;
+    let forwards = parse_forwards(&args.forwards)?;
     let mut proxy = podnet::vnet::proxy::serve(net.clone(), listen, resolver, args.port).await?;
-    for spec in &args.forwards {
-        let (virt, real) = spec
-            .split_once('=')
-            .with_context(|| format!("--forward wants VIRT=REAL, got {spec:?}"))?;
-        let virt: VirtAddr = virt.trim().parse()?;
-        let real = RealTarget::parse(real.trim())?;
+    for (virt, real) in forwards {
         let dial_real = real.clone();
-        proxy.spawn_forwards(net.clone(), virt, move || {
-            let real = dial_real.clone();
-            async move { real.dial().await }
-        });
+        proxy
+            .spawn_forwards(net.clone(), virt, move || {
+                let real = dial_real.clone();
+                async move { real.dial().await }
+            })
+            .await
+            .map_err(|err| forward_fault(virt, err))?;
         println!("podnet: forward  {virt} -> {}", real.describe());
     }
     // Issue 300: the bound address (a TCP port 0 gives the port).
@@ -121,6 +120,37 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
     sleep_or_signal(args.run_for).await;
     proxy.abort();
     Ok(())
+}
+
+/// Parse each `--forward VIRT=REAL`. A repeated `VIRT` is a usage error.
+fn parse_forwards(specs: &[String]) -> Result<Vec<(VirtAddr, RealTarget)>> {
+    let mut out: Vec<(VirtAddr, RealTarget)> = Vec::new();
+    for spec in specs {
+        let (virt, real) = spec
+            .split_once('=')
+            .with_context(|| format!("--forward wants VIRT=REAL, got {spec:?}"))
+            .fault(Fault::Usage)?;
+        let virt: VirtAddr = virt.trim().parse().fault(Fault::Usage)?;
+        if out.iter().any(|(seen, _)| *seen == virt) {
+            return Err(anyhow::anyhow!("--forward {virt} is given more than once"))
+                .fault(Fault::Usage);
+        }
+        out.push((virt, RealTarget::parse(real.trim()).fault(Fault::Usage)?));
+    }
+    Ok(out)
+}
+
+/// The class of a refused bind of a forward: an address that the subnet does
+/// not hold is a usage error; a taken address or an ACL refusal is 69.
+fn forward_fault(virt: VirtAddr, err: std::io::Error) -> anyhow::Error {
+    let class = match err.kind() {
+        std::io::ErrorKind::AddrNotAvailable => Fault::Usage,
+        _ => Fault::Unavailable,
+    };
+    podnet::exit::fault(
+        class,
+        anyhow::Error::new(err).context(format!("--forward {virt} could not bind")),
+    )
 }
 
 /// A real destination a virtual forward bridges to.
@@ -180,3 +210,37 @@ pub(crate) trait DialStream:
 }
 
 impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin> DialStream for T {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_repeated_forward_address_is_a_usage_error() {
+        let specs = vec![
+            "10.66.0.2:80=127.0.0.1:1".to_string(),
+            "10.66.0.2:80=127.0.0.1:2".to_string(),
+        ];
+        let err = parse_forwards(&specs).unwrap_err();
+        assert_eq!(podnet::exit::code_of(&err), podnet::exit::USAGE);
+        assert!(format!("{err:#}").contains("10.66.0.2:80"));
+    }
+
+    #[test]
+    fn a_refused_bind_has_its_class() {
+        let virt: VirtAddr = "10.66.0.2:80".parse().unwrap();
+        let class = |kind| podnet::exit::code_of(&forward_fault(virt, std::io::Error::from(kind)));
+        assert_eq!(
+            class(std::io::ErrorKind::AddrNotAvailable),
+            podnet::exit::USAGE
+        );
+        assert_eq!(
+            class(std::io::ErrorKind::AddrInUse),
+            podnet::exit::UNAVAILABLE
+        );
+        assert_eq!(
+            class(std::io::ErrorKind::PermissionDenied),
+            podnet::exit::UNAVAILABLE
+        );
+    }
+}
