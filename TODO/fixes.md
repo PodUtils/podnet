@@ -3131,7 +3131,7 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3159,6 +3159,10 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 
 `cargo test -p podnet --lib warp::export` (new tests: host only, v4 only, v6 only, none).
 `cargo test -p podnet --lib warp::wg` (the existing tests pass).
+
+## Done
+
+2026-11-09, commit 23cb347 (`T-213: the WireGuard endpoint of a device record has one derivation`). `src/warp/export.rs` has one list of candidates: `host`, `v4`, `v6` (port 2408; brackets for `v6`). `wireguard_endpoint` (`warp export`) takes the first; `wireguard_socket_addr` (`Peer::from_exported`) takes the first literal address, else the first name that the system resolver gives. A record with only `host` or only `v6` now connects. A record with a name and a `v4` keeps its old results (the export names the host; the leg takes the address with no lookup). A failure names the fields that the record has. `Endpoint.ports` is not read: not measured (no live record of the service in this session); no new entry opened. Test: `warp::export::tests::the_two_wireguard_readers_agree_on_the_record_shapes`; `cargo test -p podnet --lib warp::wg` passes. `src/warp/register.rs` is unchanged. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-214: `warp ssh-config` prints a `ProxyCommand` with the same quote as `--write` (GitHub #411)
 
