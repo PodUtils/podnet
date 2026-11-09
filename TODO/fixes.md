@@ -3074,7 +3074,7 @@ exits 64 and names `--port`; same for `--forward` and `--no-tls-verify`).
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3105,6 +3105,10 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 `cargo test -p podnet --lib detach::` (new tests: `child_env_has_no_supervised_variable`,
 `split_secrets_skips_supervised_variable`).
 `cargo test -p podnet --test detach` (existing tests pass).
+
+## Done
+
+2026-11-09, commit e4ad540. `child_command` (`src/detach/spawn.rs`, moved out of `start_inner`) calls `env_remove(PODNET_DETACH_SUPERVISED)`; `kept_variable` keeps it out of an autostart entry (`split_secrets`). `src/detach.rs` is smaller by 19 lines. Tests: `detach::spawn::tests::child_env_has_no_supervised_variable`, `split_secrets_skips_supervised_variable`. The test of `targets()` for a record with no supervisor is not written. CI: at the merge.
 
 # T-206: `agent status --json` (GitHub #403)
 
