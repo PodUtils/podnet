@@ -342,7 +342,7 @@ live.yml` is not done here: the commit is not on `main` yet. Run it after the me
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -374,6 +374,21 @@ gh workflow run live.yml
 ## Start condition
 
 T-030 is done.
+
+## Done
+
+2026-11-09, commit 7e5fe8d (`T-031: move the other WARP subcommands to src/cli/cmd/warp/`).
+`src/cli/cmd/warp/account.rs` (139 lines: the arms `Register`, `Status`, `License`, `Rotate` and
+`Delete`, `plain_value`, `print_device`), `probe.rs` (220: `Scan`, `Exit`, `Probe`,
+`parse_door`, `exit_line`), `export.rs` (15: `Export` before the client), `front.rs` (322:
+`Proxy` and `Forward`, with the checks before the client: `forward --list`, `proxy --check` and
+`proxy --listen-identity`), `tun.rs` (190: `Tun`), `run.rs` (153: `Run`, `warp_run_raw`) and
+`mod.rs` (143: the dispatch to each file). `warp_other` is removed. `warp_plus_label` was already
+in the library (`src/warp/identity.rs`); it stays there. `src/main.rs` has 910 lines (1,810
+before). The tests stay in `src/main.rs` with their names (T-032 moves them). `sh
+scripts/agent/check.sh`: exit 0. `scripts/agent/parity-snapshot.sh`: exit 0, no map; 1,285
+commands, 1,278 public items and 1,019 tests before and after. The live run is dispatched by the
+lead after the merge.
 
 # T-032: `src/main.rs` to a CLI module, part 6: the unit tests go to the modules that they test
 

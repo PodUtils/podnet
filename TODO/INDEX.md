@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 162 open, 1 partial, 17 blocked, 42 done.**
+**222 entries: 161 open, 1 partial, 17 blocked, 43 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 7 | 1 | 2 | 14 | 24 |
-| P2 | 105 | 0 | 10 | 22 | 137 |
+| P2 | 104 | 0 | 10 | 23 | 137 |
 | P3 | 49 | 0 | 5 | 6 | 60 |
-| **All** | 162 | 1 | 17 | 42 | 222 |
+| **All** | 161 | 1 | 17 | 43 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -76,7 +76,7 @@ M8 Overlays, M9 Later.
 | [T-028](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 2: the host commands and the `net` commands |
 | [T-029](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 3: the server commands |
 | [T-030](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 4: the WARP arguments, the client and `warp up` |
-| [T-031](split.md) | P2 | M | M2 | chore | open | `src/main.rs` to a CLI module, part 5: the other WARP subcommands |
+| [T-031](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 5: the other WARP subcommands |
 | [T-032](split.md) | P2 | M | M2 | chore | open | `src/main.rs` to a CLI module, part 6: the unit tests go to the modules that they test |
 | [T-033](split.md) | P2 | M | M2 | chore | open | Split `src/egress.rs`, `src/detach.rs`, `src/update.rs` and `src/doctor.rs` |
 | [T-034](split.md) | P2 | M | M2 | chore | open | Split `src/vnet/stack.rs` |

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 222 entries: 162 open, 1 partial, 17 blocked, 42 done.
+`TODO/INDEX.md` holds 222 entries: 161 open, 1 partial, 17 blocked, 43 done.
 
 ## State
 
@@ -40,11 +40,11 @@ not wait for a larger one.
      they land before T-061 merges the doors).
    - relay (no growth of `src/relay_reverse.rs`): T-194, T-195, T-197, T-196, T-199.
    - tunnel, share, serve and the CLI: T-160, T-169 to T-171, T-201 to T-207.
-   - WARP (after T-031): T-173, T-208 to T-211, T-213 to T-215.
+   - WARP: T-173, T-208 to T-211, T-213 to T-215.
    - documents: T-159, T-164, T-198, T-212.
    - the asks of cfb (PodUtils/podcrates#40): T-216, T-217 (the schema of `doctor --json`), T-222.
    - T-182 is blocked (the file host of pip, `pod-services`).
-4. **M2, the splits:** T-031, then T-032; T-033 to T-041; T-042,
+4. **M2, the splits:** T-032; T-033 to T-041; T-042,
    T-043, T-044; T-045; then T-015.
 5. **M3, the crates:** T-046, T-047, T-048, T-051, T-053, then the prerelease T-054. T-049, T-050
    and T-052 are the takes of `pod-relay`, `pod-warp` and `pod-cloudflare` of `PodUtils/podcrates`
