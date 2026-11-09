@@ -10,7 +10,7 @@
 1207 src/config.rs
 1210 src/detach.rs
 1305 src/doctor.rs
-1734 src/edge_h2.rs
+1608 src/edge_h2.rs
 2142 src/feature/mod.rs
 1810 src/main.rs
 2034 src/proxy.rs
@@ -23,7 +23,7 @@
 1680 src/warp/ip.rs
 1105 src/warp/mod.rs
 1902 src/warp/proxy.rs
-908 src/warp/register.rs
+892 src/warp/register.rs
 1211 src/warp/session.rs
 847 src/warp/up.rs
 972 src/warp/wg.rs

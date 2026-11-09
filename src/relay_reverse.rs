@@ -360,7 +360,7 @@ pub fn expiry_line(pair: &Pair, left: Duration, follow: bool) -> String {
         "the pair {} expires in {}, at {}",
         pair.name,
         left_words(left),
-        crate::warp::register::utc_minutes(pair.expires / 1000)
+        pod_core::clock::utc_minutes(pair.expires / 1000)
     );
     if follow {
         format!("{when}; make the next pair now (podnet relay pair): this node takes it at the expiry, and its operators need its name and connect token")
@@ -432,7 +432,7 @@ pub async fn run_node(follow: Option<&Path>, pair: Pair, target: &Target) -> Res
         tracing::warn!(
             old = %pair.name,
             new = %next.name,
-            expires = %crate::warp::register::utc_minutes(next.expires / 1000),
+            expires = %pod_core::clock::utc_minutes(next.expires / 1000),
             "the pair expired; the node takes the next stored pair"
         );
         pair = next;

@@ -700,9 +700,9 @@ cuts streams with no replacement. A larger cap wastes sessions.
 ## Premise
 
 - Read: constants at `ws_relay.rs:49-52`. `RelayBudget::meter` applies them (`:66`) and `meter_with`
-  takes values (`:70`). Other users: `src/warp/session.rs:413` (through `meter`), `src/edge_h2.rs:408`
-  and `:749` (direct, outside `RelayBudget`). `parse_pool` reads only `pool[].host`
-  (`relay_pool.rs:83-100`). `CachedPool` has no limits (`:120-128`).
+  takes values (`:70`). Other users: `src/warp/session.rs:413` (through `meter`), `src/edge_h2.rs:409`
+  and `:644` (direct, outside `RelayBudget`). `parse_pool` reads only `pool[].host`
+  (`relay_pool.rs:83-100`). `CachedPool` has no limits (`:121-129`).
 - Measured on 2026-11-09: `https://tcp.ssh.relay.ajam.dev/relays.json` already has a `limits` object
   with `max_session_ms` 43200000, `max_session_bytes` 67108864, `idle_timeout_ms` 180000 and
   `connect_timeout_ms` 10000. The key names differ from the issue (`session_bytes`). No relay-server

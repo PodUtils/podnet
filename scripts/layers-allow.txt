@@ -6,7 +6,6 @@ hop -> cloudflare
 ingress -> config
 net -> ingress
 relay -> proxy
-relay_reverse -> warp
 report -> quicktunnel
 transport -> proxy
 util -> feature

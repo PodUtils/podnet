@@ -43,6 +43,7 @@ use crate::cloudflare::http2::{
 use crate::cloudflare::{h2_sni, EdgeAddr};
 use crate::ingress::Ingress;
 use crate::service::ServiceRuntime;
+pub use pod_core::Metered;
 
 /// The longest time for TCP and TLS to the edge.
 pub const DIAL_TIMEOUT: Duration = Duration::from_secs(10);
@@ -408,112 +409,6 @@ impl Budget {
             age: crate::ws_relay::SESSION_AGE,
         };
         (budget, spent)
-    }
-}
-
-/// Counts the bytes that go through `inner` in the two directions, and
-/// notifies `spent` one time when the count gets to `limit`.
-pub struct Metered<T> {
-    inner: T,
-    used: u64,
-    limit: u64,
-    spent: Option<Arc<tokio::sync::Notify>>,
-    flag: Option<Arc<std::sync::atomic::AtomicBool>>,
-}
-
-impl<T> Metered<T> {
-    pub fn new(inner: T, limit: u64, spent: Arc<tokio::sync::Notify>) -> Self {
-        Self {
-            inner,
-            used: 0,
-            limit,
-            spent: Some(spent),
-            flag: None,
-        }
-    }
-
-    /// [`Metered::new`] that sets `flag` at the limit, in place of a notice.
-    pub fn with_flag(inner: T, limit: u64, flag: Arc<std::sync::atomic::AtomicBool>) -> Self {
-        Self {
-            inner,
-            used: 0,
-            limit,
-            spent: None,
-            flag: Some(flag),
-        }
-    }
-
-    fn count(&mut self, n: usize) {
-        self.used = self.used.saturating_add(n as u64);
-        if self.used >= self.limit {
-            if let Some(spent) = self.spent.take() {
-                spent.notify_one();
-            }
-            if let Some(flag) = self.flag.take() {
-                flag.store(true, std::sync::atomic::Ordering::Relaxed);
-            }
-        }
-    }
-}
-
-impl<T: AsyncRead + Unpin> AsyncRead for Metered<T> {
-    fn poll_read(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> std::task::Poll<std::io::Result<()>> {
-        let before = buf.filled().len();
-        let this = &mut *self;
-        let poll = std::pin::Pin::new(&mut this.inner).poll_read(cx, buf);
-        let n = buf.filled().len() - before;
-        this.count(n);
-        poll
-    }
-}
-
-impl<T: tokio::io::AsyncWrite + Unpin> tokio::io::AsyncWrite for Metered<T> {
-    fn poll_write(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        data: &[u8],
-    ) -> std::task::Poll<std::io::Result<usize>> {
-        let this = &mut *self;
-        let poll = std::pin::Pin::new(&mut this.inner).poll_write(cx, data);
-        if let std::task::Poll::Ready(Ok(n)) = poll {
-            this.count(n);
-        }
-        poll
-    }
-
-    fn poll_flush(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<std::io::Result<()>> {
-        std::pin::Pin::new(&mut self.inner).poll_flush(cx)
-    }
-
-    fn poll_shutdown(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<std::io::Result<()>> {
-        std::pin::Pin::new(&mut self.inner).poll_shutdown(cx)
-    }
-
-    fn poll_write_vectored(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        bufs: &[std::io::IoSlice<'_>],
-    ) -> std::task::Poll<std::io::Result<usize>> {
-        let this = &mut *self;
-        let poll = std::pin::Pin::new(&mut this.inner).poll_write_vectored(cx, bufs);
-        if let std::task::Poll::Ready(Ok(n)) = poll {
-            this.count(n);
-        }
-        poll
-    }
-
-    fn is_write_vectored(&self) -> bool {
-        self.inner.is_write_vectored()
     }
 }
 
@@ -1433,27 +1328,6 @@ mod tests {
         );
         drop(send);
         driver.abort();
-    }
-
-    /// The meter counts the two directions and notifies one time, when the
-    /// count gets to the limit.
-    #[tokio::test]
-    async fn the_meter_notifies_at_its_limit() {
-        let spent = Arc::new(tokio::sync::Notify::new());
-        let (near, mut far) = tokio::io::duplex(1 << 16);
-        let mut io = Metered::new(near, 10, spent.clone());
-        io.write_all(b"12345").await.unwrap();
-        far.write_all(b"1234").await.unwrap();
-        let mut got = [0u8; 4];
-        io.read_exact(&mut got).await.unwrap();
-        assert_eq!(io.used, 9);
-        let early = tokio::time::timeout(Duration::from_millis(50), spent.notified()).await;
-        assert!(early.is_err(), "no notice under the limit");
-        io.write_all(b"x").await.unwrap();
-        tokio::time::timeout(Duration::from_secs(1), spent.notified())
-            .await
-            .expect("a notice at the limit");
-        assert!(io.spent.is_none(), "one notice only");
     }
 
     /// A spent byte budget drains the connection, as a GOAWAY does: the

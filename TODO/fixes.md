@@ -3021,7 +3021,7 @@ another type is shown as WARP+.
 ## Premise
 
 - `src/warp/identity.rs:157-171`. Users: `src/main.rs:351`, `:365-368`, `:400-403`. Test: `src/main.rs:1792-1795`.
-- The issue says the fixture type `limited` is a free type. This is not shown: `src/warp/register.rs:703` is a test of
+- The issue says the fixture type `limited` is a free type. This is not shown: `src/warp/register.rs:687` is a test of
   the redaction of a licence key, and the test at `main.rs:1794` uses `limited` with `premium_data` 10 as WARP+.
   The tree has no list of the types that the service sends. A closed list of paid types could hide a real paid account.
 - Earlier report: `docs/reports/aerrand-agent.md:639` (the raw `warp_plus` field).
@@ -3123,7 +3123,7 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 
 - `src/warp/register.rs:181-190` (`Endpoint`; frozen file: no edit). `src/warp/export.rs:242-260`, `:30` (`WG_PORT`).
 - `src/warp/wg.rs:482-489` (v4 only; the message `:485-487`).
-- MASQUE reads `v4` and `v6`: `src/warp/register.rs:634-673`.
+- MASQUE reads `v4` and `v6`: `src/warp/register.rs:618-657`.
 - `grep -rn "\.ports" src/warp` finds no reader.
 - Test to extend: `src/warp/export.rs:343-378`.
 

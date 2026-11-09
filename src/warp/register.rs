@@ -323,28 +323,12 @@ fn now_rfc3339_millis() -> String {
     format!("{y:04}-{mo:02}-{d:02}T{h:02}:{mi:02}:{s:02}.{millis:03}Z")
 }
 
-/// `YYYY-MM-DD HH:MM UTC` of Unix seconds.
-pub(crate) fn utc_minutes(secs: u64) -> String {
-    let (y, mo, d, h, mi, _) = civil_from_unix(secs);
-    format!("{y:04}-{mo:02}-{d:02} {h:02}:{mi:02} UTC")
-}
-
-/// Convert Unix seconds to a civil UTC date, so the crate needs no time library.
+/// The civil UTC date and time of Unix seconds (`pod_core::clock`).
 fn civil_from_unix(secs: u64) -> (i64, u32, u32, u32, u32, u32) {
-    let days = (secs / 86_400) as i64;
+    let (y, m, d) = pod_core::clock::civil_from_days((secs / 86_400) as i64);
     let rem = secs % 86_400;
     let (h, mi, s) = (rem / 3600, (rem % 3600) / 60, rem % 60);
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    let y = if m <= 2 { y + 1 } else { y };
-    (y, m, d, h as u32, mi as u32, s as u32)
+    (y, m as u32, d as u32, h as u32, mi as u32, s as u32)
 }
 
 fn random_bytes<const N: usize>() -> [u8; N] {
