@@ -2959,7 +2959,7 @@ with a refusing proxy shows that the proxy is asked).
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2987,6 +2987,10 @@ true; for a directory with `index.html` gives false).
 `cargo test -p podnet --lib verify_accepts_404_at_info` (new test: a local server with status 404 and `accepted=&[404]`
 returns `Ok`).
 
+## Done
+
+2026-11-09, commit 7074262. `serve_show` (`src/cli/cmd/share.rs`) sets `root_404` for a directory with no `index.html` and no `--spa`; `serve` and `--check` use it. Test: `serve_show_root_404` (bin tests). The test `verify_accepts_404_at_info` is not added: `tunnel::verify::tests::an_accepted_status_of_the_origin_verifies` covers it. CI: at the merge.
+
 # T-203: The ready line of `share --json` has `schema` and `podnet` (GitHub #400)
 
 **Source:** GitHub #400 (https://github.com/PodUtils/podnet/issues/400)
@@ -2994,7 +2998,7 @@ returns `Ok`).
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3016,6 +3020,10 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 
 `cargo test -p podnet --lib share_ready_doc_is_stamped` (new test: `schema == 1`, non-empty `podnet`).
 `cargo test -p podnet` (the other documents keep both keys).
+
+## Done
+
+2026-11-09, commit 6197ff3. `share_ready_doc` (`src/cli/cmd/run.rs`) wraps the ready line with `status::stamped`. Test: `share_ready_doc_is_stamped` (bin tests). CI: at the merge.
 
 # T-204: `tunnel --config` refuses the origin flags (GitHub #401)
 

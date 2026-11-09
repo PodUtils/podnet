@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 121 open, 3 partial, 17 blocked, 82 done.**
+**223 entries: 119 open, 3 partial, 17 blocked, 84 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
-| P2 | 77 | 2 | 10 | 48 | 137 |
-| P3 | 39 | 0 | 5 | 17 | 61 |
-| **All** | 121 | 3 | 17 | 82 | 223 |
+| P2 | 76 | 2 | 10 | 49 | 137 |
+| P3 | 38 | 0 | 5 | 18 | 61 |
+| **All** | 119 | 3 | 17 | 84 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -247,8 +247,8 @@ M8 Overlays, M9 Later.
 | [T-199](fixes.md) | P2 | M | M5 | defect | done | `relay connect --listen` has the instance surface of `connect -L` (GitHub #396) |
 | [T-200](crates.md) | P2 | M | M3 | feature | blocked | The reverse road of the relay uses the alternate hosts (GitHub #397) |
 | [T-201](fixes.md) | P3 | S | M5 | defect | done | `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398) |
-| [T-202](fixes.md) | P3 | S | M5 | defect | open | `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399) |
-| [T-203](fixes.md) | P2 | S | M5 | defect | open | The ready line of `share --json` has `schema` and `podnet` (GitHub #400) |
+| [T-202](fixes.md) | P3 | S | M5 | defect | done | `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399) |
+| [T-203](fixes.md) | P2 | S | M5 | defect | done | The ready line of `share --json` has `schema` and `podnet` (GitHub #400) |
 | [T-204](fixes.md) | P2 | S | M5 | defect | open | `tunnel --config` refuses the origin flags (GitHub #401) |
 | [T-205](fixes.md) | P3 | S | M5 | defect | open | A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402) |
 | [T-206](fixes.md) | P2 | S | M5 | feature | open | `agent status --json` (GitHub #403) |
