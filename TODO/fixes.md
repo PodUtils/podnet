@@ -1953,7 +1953,7 @@ The `grep -L` prints no file name after the fix.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1968,7 +1968,7 @@ CONNECT ...: 502`, exit 69, and `curl --proxy ... URL` gives 200. `--no-verify` 
 - Read: `verify_fetch` (`src/tunnel.rs:1230-1311`). The Dns arm (`:1276-1279`) and the other `Err` arm
   (`:1280-1283`) only change the retry text. After the loop only `last_status` can demote the verdict
   (`:1301-1306`). Otherwise `fault(Unavailable)` (`:1307-1310`).
-- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-176`).
+- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-185`).
   `run_demo` passes a body token, so the warn branch cannot apply; it prints PROOF from `check.dns`
   (`run.rs:153-160`). `wants_verify` (`tunnel.rs:1208`) has no caller. The ready document has
   `"verified": bool` (`run.rs:196-215`).
@@ -2001,6 +2001,10 @@ cargo test -p podnet --lib -- a_name_that_does_not_resolve_keeps_the_tunnel_up a
 cargo test --test cli -- tunnel_ready_document_marks_an_unresolved_name
 ```
 
+## Done
+
+2026-11-09, commit ebc94ea. `verify_fetch` (now `src/tunnel/verify.rs`) tracks failures before the edge: Dns hop, or a proxy `Refusal` of CONNECT. When each attempt failed so, it returns `Verified { unverified: Some("resolution") }` and the tunnel stays up (also for a body token). The ready document has `unverified`; `run_demo` prints NOT PROVED. `PODNET_VERIFY_STRICT=1` gives exit 69. HTTP 530 stays fatal. Tests: `a_name_that_does_not_resolve_keeps_the_tunnel_up` (skips when a proxy of the host answers), `a_proxy_refusal_is_a_resolution_failure`, `a_failed_verify_exits_69_after_the_budget`. The CLI test `tunnel_ready_document_marks_an_unresolved_name` is not written: it needs a live tunnel. CI: at the merge.
+
 # T-164: Document `--no-verify` in the README, and say what it does not do (GitHub #361)
 
 **Source:** GitHub #361 (https://github.com/PodUtils/podnet/issues/361)
@@ -2022,7 +2026,7 @@ Operators of restricted hosts need the flag: the fresh `*.trycloudflare.com` nam
 - `src/cli/opts.rs:58-60` declares it (`global = true`); `src/cli/opts.rs:173` sets `config.verify`.
 - `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `src/tunnel.rs:1230`
   runs the fetch. `src/net.rs` takes `no_tls_verify` from the ingress rule. The two flags share no state.
-- `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1208`) has no caller.
+- `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1220`) has no caller.
 - Not measured: the runtime fetch on a restricted host.
 
 ## Approach
@@ -2050,7 +2054,7 @@ cargo test --test cli -- help
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -2060,10 +2064,10 @@ has `--masque-endpoint`; `tunnel` has none.
 
 ## Premise
 
-- `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:823-834`). Neither
+- `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:827-838`). Neither
   `TunnelOpts` (`src/cli/opts.rs:20-105`) nor `TunnelArgs` has the flag. `with_masque` exists
-  (`src/warp/mod.rs:286`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
-- `open_on` (`src/warp/mod.rs:823-848`) uses `endpoint_order` (`:101-122`): the record order, IPv4 first.
+  (`src/warp/mod.rs:262`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
+- `open_on` (`src/warp/mod.rs:799-828`) uses `endpoint_order` (`:101-122`): the record order, IPv4 first.
   `has_default_route(true)` (v6) only decides whether the IPv6 door is included.
 - The log lines of the issue are from beta.6 on one host. The silent-drop timing is read, not measured.
 
@@ -2085,6 +2089,10 @@ cargo test -p podnet endpoint_order_puts_v6_first_without_a_v4_route
 cargo test --test cli -- tunnel_takes_masque_endpoint
 ```
 
+## Correction
+
+2026-11-09, commit 243720f. Item 1 (the family order) is done: `endpoint_order` (now `src/warp/door.rs`) puts the IPv6 doors first with no IPv4 default route, no proxy, no relay and no door that won. Test: `warp::door::tests::endpoint_order_puts_v6_first_without_a_v4_route`. Item 2 (`--masque-endpoint` in `tunnel`) waits for pod-warp and pod-cloudflare (T-050, T-052) by the Decision; the COORD issue (to podcrates) is for the lead to open. The test `tunnel_takes_masque_endpoint` is not written. CI: at the merge.
+
 # T-170: Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367)
 
 **Source:** GitHub #367 (https://github.com/PodUtils/podnet/issues/367)
@@ -2092,7 +2100,7 @@ cargo test --test cli -- tunnel_takes_masque_endpoint
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2102,9 +2110,9 @@ attempts repeat the same failure for about 30 s.
 
 ## Premise
 
-- `src/quicktunnel.rs:308-310` (budget and attempts), `:341-353` (the arms; `Hop::Dns` goes to
-  `ProvisionError::Http(_)` at `:353`).
-- `crate::resolve::answering_step(host)` (`src/resolve.rs:193`) names the step that answers now.
+- `src/quicktunnel.rs:270-272` (budget and attempts), `:304-324` (the arms; `Hop::Dns` goes to
+  `ProvisionError::Http(_)` at `:324`).
+- `crate::resolve::answering_step(host)` (`src/resolve.rs:150`) names the step that answers now.
 - `src/quicktunnel.rs` is Cloudflare adapter code (pod-cloudflare, T-029/T-052): a fix is allowed.
 - Not measured: the 30 s run of the issue.
 
@@ -2119,6 +2127,10 @@ attempts repeat the same failure for about 30 s.
 cargo test -p podnet quicktunnel::tests::a_dns_failure_is_retried_once
 ```
 
+## Done
+
+2026-11-09, commit 99aa461. `provision` retries a `Hop::Dns` failure once, then again only when `answering_step` of the API host changed (`src/quicktunnel/retry.rs`). The error ends with the `Hop::Dns` hint through the hop of the error. Test: `quicktunnel::retry::tests::a_dns_failure_is_retried_once` (the decision, not a live run). CI: at the merge.
+
 # T-171: The verify loop names the remedy when the public name does not resolve (GitHub #367)
 
 **Source:** GitHub #367 (https://github.com/PodUtils/podnet/issues/367)
@@ -2126,7 +2138,7 @@ cargo test -p podnet quicktunnel::tests::a_dns_failure_is_retried_once
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2154,6 +2166,10 @@ error text repeats `system resolver: no answer ... Network unreachable`. The fin
 cargo test -p podnet tunnel::tests::verify_failure_names_the_remedy
 ```
 
+## Done
+
+2026-11-09, commit ebc94ea (with T-160). The final error of a verify that failed before the edge names `--resolve HOST=IP` and `--no-verify`; the first failed attempt logs the same remedy. Test: `tunnel::verify::tests::verify_failure_names_the_remedy` (skips when a proxy of the host answers). The line before the start of the verify is not added. CI: at the merge.
+
 # T-173: A WARP identity of another uid, with a consent variable (GitHub #368)
 
 **Source:** GitHub #368 (https://github.com/PodUtils/podnet/issues/368)
@@ -2171,8 +2187,8 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 ## Premise
 
-- `src/warp/mod.rs:942-968` (owner and mode checks, bare `bail!`); readers: `load` (`:381`) and
-  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:459-478`) refuses and does not write over the file.
+- `src/warp/mod.rs:922-929` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
+  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:435-454`) refuses and does not write over the file.
 - `src/state.rs:67-118` has the model. `src/manual/facts.rs:126` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
@@ -2572,7 +2588,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:267-268`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:903-905` uses `net switch --listen tcp://` as its example.
+- `README.md:906-908` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -2905,7 +2921,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2936,6 +2952,10 @@ command builds the type (latent).
 with a refusing proxy shows that the proxy is asked).
 `cargo test -p podnet --lib websocket_transport_reports_its_name`.
 
+## Done
+
+2026-11-09, commit 35d2a3b. `WebSocketTunnel::connect` dials with `crate::egress::dial` (errors map to `Unreachable`), takes the TLS config of `crate::trust::context()` with ALPN `http/1.1`, parses `wss://[::1]:8443/ws` (host `::1`) and brackets an IPv6 host in the Host header. Tests: `transport::websocket::tests::parses_an_ipv6_host`, `websocket_transport_reports_its_name`. The test with a refusing proxy is not written: the proxy choice of the egress layer is process-global state. CI: at the merge.
+
 # T-202: `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399)
 
 **Source:** GitHub #399 (https://github.com/PodUtils/podnet/issues/399)
@@ -2943,7 +2963,7 @@ with a refusing proxy shows that the proxy is asked).
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2953,7 +2973,7 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 ## Premise
 
 - `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:114` (field), `:124` (`root_404: false`),
-  `src/cli/cmd/run.rs:31` (read).
+  `src/cli/cmd/run.rs:32` (read).
 - `serve` passes `args.common.show()`: `src/cli/cmd/share.rs:149-151`.
 - The warn branch: `src/tunnel.rs:1266-1270`. `static_router` gives 404 at `/` with no index: `src/service.rs:110-150`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
@@ -2971,6 +2991,10 @@ true; for a directory with `index.html` gives false).
 `cargo test -p podnet --lib verify_accepts_404_at_info` (new test: a local server with status 404 and `accepted=&[404]`
 returns `Ok`).
 
+## Done
+
+2026-11-09, commit 7074262. `serve_show` (`src/cli/cmd/share.rs`) sets `root_404` for a directory with no `index.html` and no `--spa`; `serve` and `--check` use it. Test: `serve_show_root_404` (bin tests). The test `verify_accepts_404_at_info` is not added: `tunnel::verify::tests::an_accepted_status_of_the_origin_verifies` covers it. CI: at the merge.
+
 # T-203: The ready line of `share --json` has `schema` and `podnet` (GitHub #400)
 
 **Source:** GitHub #400 (https://github.com/PodUtils/podnet/issues/400)
@@ -2978,7 +3002,7 @@ returns `Ok`).
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2987,9 +3011,9 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 
 ## Premise
 
-- `src/cli/cmd/run.rs:79-90` (no `stamped`). The only `stamped` call of `run.rs` is `:248` (`announce`).
+- `src/cli/cmd/run.rs:82-92` (no `stamped`). The only `stamped` call of `run.rs` is `:279` (`announce`).
 - `grep -rn "status::stamped" src/cli` gives 8 hits, none in `run_share`.
-- The `verified` line is unstamped in every command (`run.rs:119`, `:155`). It stays as it is.
+- The `verified` line is unstamped in every command (`run.rs:119`, `:154`). It stays as it is.
 
 ## Approach
 
@@ -3001,6 +3025,10 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 `cargo test -p podnet --lib share_ready_doc_is_stamped` (new test: `schema == 1`, non-empty `podnet`).
 `cargo test -p podnet` (the other documents keep both keys).
 
+## Done
+
+2026-11-09, commit 6197ff3. `share_ready_doc` (`src/cli/cmd/run.rs`) wraps the ready line with `status::stamped`. Test: `share_ready_doc_is_stamped` (bin tests). CI: at the merge.
+
 # T-204: `tunnel --config` refuses the origin flags (GitHub #401)
 
 **Source:** GitHub #401 (https://github.com/PodUtils/podnet/issues/401)
@@ -3008,7 +3036,7 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3018,9 +3046,9 @@ so. The README (`:307-362`) documents the precedence of the token and protocol f
 
 ## Premise
 
-- Guard: `src/cli/cmd/tunnel.rs:98` (`if args.config.is_none()`). The flags are read at `:100-124`, `:207`.
-  The three per-origin flags are declared at `:56-64`.
-- The token case already has a usage error: `src/cli/cmd/tunnel.rs:73-89` (issue 172).
+- Guard: `src/cli/cmd/tunnel.rs:136` (`if args.config.is_none()`). The flags are read at `:138-162`, `:245`.
+  The three per-origin flags are declared at `:62-73`.
+- The token case already has a usage error: `src/cli/cmd/tunnel.rs:111-127` (issue 172).
 - Existing tests with `--config`: `tests/cli.rs:71`, `:610`, `:1237`, `:1298` (none gives an origin flag).
 
 ## Approach
@@ -3039,6 +3067,10 @@ The lead, 2026-11-09: `tunnel --config` with an origin flag is refused with exit
 exits 64 and names `--port`; same for `--forward` and `--no-tls-verify`).
 `cargo test -p podnet --test cli` (the `--config` tests without an origin flag still pass).
 
+## Done
+
+2026-11-09, commit 71a0afe. `tunnel --config` with an origin flag exits 64 and names each flag given and `ingress:`. The help of each flag and the README section say it. Tests: `tunnel_config_with_origin_flag_is_usage_error` (`tests/tunnel_config.rs`: `--port`, `--forward`, `--no-tls-verify`), `origin_flags_are_named` (bin tests). The existing `--config` tests pass. CI: at the merge.
+
 # T-205: A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402)
 
 **Source:** GitHub #402 (https://github.com/PodUtils/podnet/issues/402)
@@ -3046,7 +3078,7 @@ exits 64 and names `--port`; same for `--forward` and `--no-tls-verify`).
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3057,10 +3089,10 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 ## Premise
 
-- `src/detach.rs:164-190` (`child_begin` reads the variable). `:513-520` sets 4 detach variables and not this one.
-  `:892` is the only writer (the supervisor).
+- `src/detach.rs:166-192` (`child_begin` reads the variable). `:513-520` sets 4 detach variables and not this one.
+  `:874` is the only writer (the supervisor).
 - `src/autostart.rs:178-182` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
-- `src/detach.rs:709-716` (`targets()` gives `Vec::new()` for this record).
+- `src/detach.rs:691-698` (`targets()` gives `Vec::new()` for this record).
 - The default start (restart on) runs `--detach-supervise`: the supervisor sets the variable for its own child, so that
   path is right. The defect needs `--no-restart`. I did not run it.
 - `src/detach.rs` is in the size allowlist (1210 lines): add no net line.
@@ -3078,6 +3110,10 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 `split_secrets_skips_supervised_variable`).
 `cargo test -p podnet --test detach` (existing tests pass).
 
+## Done
+
+2026-11-09, commit e4ad540. `child_command` (`src/detach/spawn.rs`, moved out of `start_inner`) calls `env_remove(PODNET_DETACH_SUPERVISED)`; `kept_variable` keeps it out of an autostart entry (`split_secrets`). `src/detach.rs` is smaller by 19 lines. Tests: `detach::spawn::tests::child_env_has_no_supervised_variable`, `split_secrets_skips_supervised_variable`. The test of `targets()` for a record with no supervisor is not written. CI: at the merge.
+
 # T-206: `agent status --json` (GitHub #403)
 
 **Source:** GitHub #403 (https://github.com/PodUtils/podnet/issues/403)
@@ -3085,7 +3121,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3095,8 +3131,8 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 ## Premise
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
-- `src/cli/cmd/instances.rs:10-41` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:157-159` (`Serialize`). `README.md:997-1003`.
+- `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1000-1006`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3116,6 +3152,10 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 `cargo test -p podnet --lib agent_status_accepts_json_flag` (new test: `Cli::try_parse_from(["podnet","agent","status","--json"])`).
 `cargo test -p podnet --test commands agent_status` (new JSON test: `schema == 1`, keys `instances` and `report`; the text test passes).
 
+## Done
+
+2026-11-09, commit 25435fb. `agent status --json` prints `{schema, podnet, instances, dir, report}` and exits 0; `instances_doc` (`src/cli/cmd/instances.rs`) is shared with `ps --json`. The text form stays. The README names the flag. Tests: `agent_status_accepts_json_flag` (bin tests), `agent_status_json_has_the_instances_and_the_report` (`tests/commands.rs`). CI: at the merge.
+
 # T-207: The library static path decodes `+` as a literal plus (GitHub #404)
 
 **Source:** GitHub #404 (https://github.com/PodUtils/podnet/issues/404)
@@ -3123,7 +3163,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3132,11 +3172,11 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 ## Premise
 
-- `src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-85` (`resolve`), test `:603-607` asserts `"a b"`.
+- `src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-89` (`resolve`), test `:603-607` asserts `"a b"`.
 - `src/service.rs:217-232`, `:183`. `src/ingress.rs:184-187`, test `:616-629` (`"a + stays a +"`).
-- `README.md:482-483`.
+- `README.md:485-486`.
 - One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:249-251`, test
-  `:606`). The CLI decoder returns `None` (`src/service.rs:222-225`), so the request is refused. A short escape at the
+  `:609`). The CLI decoder returns `None` (`src/service.rs:222-225`), so the request is refused. A short escape at the
   end (`i + 2 < len`) also differs.
 
 ## Approach
@@ -3150,6 +3190,10 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 `cargo test -p podnet --lib origin::static_files::tests::percent_decoding` (changed test).
 `cargo test -p podnet --lib static_paths_agree_on_plus` (new test).
+
+## Done
+
+2026-11-09, commit 76ec99a. `origin::static_files::percent_decode` keeps `+`; `resolve` refuses a bad escape (`%zz`, a short `%`), as `service::percent_decode_path` does. Tests: `origin::static_files::tests::percent_decoding`, `a_plus_in_a_path_is_a_plus` (the files `a b.txt` and `a+b.txt`), `service::tests::static_paths_agree_on_plus` (the two decoders). CI: at the merge.
 
 # T-208: `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405)
 
@@ -3172,7 +3216,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
   proxy path pushes `--replace`).
 - `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:513-528` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
-- `src/detach.rs:486-493` (the refusal text).
+- `src/detach.rs:488-495` (the refusal text).
 
 ## Approach
 
@@ -3323,12 +3367,12 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Problem
 
-`README.md:700-701` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`README.md:703-704` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
 `-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
 
 ## Premise
 
-- `README.md:697-701`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:700-704`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.

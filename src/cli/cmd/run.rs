@@ -22,6 +22,7 @@ pub(crate) async fn run_tunnel(
 ) -> Result<()> {
     let verify = config.verify;
     let handle = Tunnel::builder().config(config).build()?.start().await?;
+    let mut unverified = None;
     announce(&handle, show)?;
     // Issue 179: --run-for also ends the verify.
     let deadline = deadline_of(run_for);
@@ -50,9 +51,10 @@ pub(crate) async fn run_tunnel(
                 }
             };
             verified(show, url, checked.dns);
+            unverified = checked.unverified;
         }
     }
-    podnet::detach::ready(tunnel_doc(&handle, handle.url(), verify));
+    podnet::detach::ready(tunnel_doc(&handle, handle.url(), verify, unverified));
     serve_until(&handle, wait(deadline, controls)).await?;
     handle.shutdown().await;
     Ok(())
@@ -68,6 +70,7 @@ pub(crate) async fn run_share(
 ) -> Result<()> {
     let verify = config.verify;
     let handle = Tunnel::builder().config(config).build()?.start().await?;
+    let mut unverified = None;
     let deadline = deadline_of(run_for);
     let base = handle
         .url()
@@ -79,14 +82,13 @@ pub(crate) async fn run_share(
     if show.json {
         println!(
             "{}",
-            serde_json::json!({
-                "event": "ready",
-                "url": public,
-                "tunnel_id": handle.tunnel_id().to_string(),
-                "locations": handle.locations(),
-                "leg": handle.leg(),
-                "pin": pin,
-            })
+            share_ready_doc(
+                &public,
+                &handle.tunnel_id().to_string(),
+                handle.locations(),
+                handle.leg(),
+                &pin
+            )
         );
     } else {
         println!();
@@ -117,8 +119,9 @@ pub(crate) async fn run_share(
             }
         };
         verified(show, &public, check.dns);
+        unverified = check.unverified;
     }
-    let mut doc = tunnel_doc(&handle, Some(&public), verify);
+    let mut doc = tunnel_doc(&handle, Some(&public), verify, unverified);
     doc["pin"] = pin.clone().into();
     podnet::detach::ready(doc);
     let controls = handle.share_controls();
@@ -150,9 +153,12 @@ pub(crate) async fn run_demo(
                 return Err(err);
             }
         };
-        if show.json {
+        let url = handle.url().unwrap_or("");
+        if check.is_some_and(|c| c.unverified.is_some()) {
+            println!("  podnet: NOT PROVED   {url} (this host cannot resolve the name yet)");
+        } else if show.json {
             let dns = check.map(|c| c.dns).unwrap_or("none");
-            verified(show, handle.url().unwrap_or(""), dns);
+            verified(show, url, dns);
         } else {
             println!(
                 "  podnet: PROOF   {} -> HTTP 200 (built-in hello world)",
@@ -167,11 +173,14 @@ pub(crate) async fn run_demo(
         handle.shutdown().await;
         return Ok(());
     };
-    if let Err(err) = check {
-        handle.shutdown().await;
-        return Err(err);
-    }
-    podnet::detach::ready(tunnel_doc(&handle, handle.url(), true));
+    let unverified = match check {
+        Ok(c) => c.and_then(|c| c.unverified),
+        Err(err) => {
+            handle.shutdown().await;
+            return Err(err);
+        }
+    };
+    podnet::detach::ready(tunnel_doc(&handle, handle.url(), true, unverified));
     serve_until(&handle, wait(deadline, vec![])).await?;
     handle.shutdown().await;
     Ok(())
@@ -197,20 +206,42 @@ fn tunnel_doc(
     handle: &podnet::TunnelHandle,
     url: Option<&str>,
     verified: bool,
+    unverified: Option<&str>,
 ) -> serde_json::Value {
     let mut doc = serde_json::json!({
         "url": url,
-        "verified": verified && url.is_some(),
+        "verified": verified && url.is_some() && unverified.is_none(),
         "tunnel_id": handle.tunnel_id().to_string(),
         "locations": handle.locations(),
         "leg": handle.leg(),
     });
+    if let Some(why) = unverified {
+        doc["unverified"] = why.into();
+    }
     // Issue 203: the endpoint for podnet connect.
     if let Some(path) = handle.forward_path() {
         doc["forward"] = url.and_then(|u| podnet::ws::forward_url(u, path)).into();
         doc["forward_path"] = path.into();
     }
     doc
+}
+
+/// The ready line of `share --json`: stamped with `schema` and `podnet` (T-203).
+fn share_ready_doc(
+    url: &str,
+    tunnel_id: &str,
+    locations: &[String],
+    leg: &str,
+    pin: &Option<String>,
+) -> serde_json::Value {
+    podnet::status::stamped(serde_json::json!({
+        "event": "ready",
+        "url": url,
+        "tunnel_id": tunnel_id,
+        "locations": locations,
+        "leg": leg,
+        "pin": pin,
+    }))
 }
 
 /// The ready document of a listener for --detach.
@@ -349,4 +380,19 @@ async fn wait_controls(controls: Vec<Arc<ShareControl>>) {
 #[allow(dead_code)]
 fn _mode(mode: ShareMode) -> ShareMode {
     mode
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn share_ready_doc_is_stamped() {
+        let doc = share_ready_doc("https://x/s/t/", "id", &["fra01".into()], "quic", &None);
+        assert_eq!(doc["schema"], 1);
+        assert!(!doc["podnet"].as_str().unwrap().is_empty());
+        assert_eq!(doc["event"], "ready");
+        assert_eq!(doc["url"], "https://x/s/t/");
+        assert_eq!(doc["pin"], serde_json::Value::Null);
+    }
 }

@@ -323,4 +323,17 @@ mod tests {
         assert_eq!(get(&spa, "/some/route").await, (200, "index".into()));
         assert_eq!(get(&spa, "/abs-link").await.0, 404);
     }
+
+    // T-207: the router of `serve` and the library origin decode a path alike.
+    #[test]
+    fn static_paths_agree_on_plus() {
+        use crate::origin::static_files::percent_decode;
+        for path in ["/a+b", "/a%20b", "/a%2Bb", "/%41", "/a%7e"] {
+            assert_eq!(
+                percent_decode_path(path).as_deref(),
+                Some(percent_decode(path).as_str()),
+                "{path}"
+            );
+        }
+    }
 }

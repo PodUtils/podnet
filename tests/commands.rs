@@ -431,3 +431,21 @@ fn warp_forward_list_prints_the_forwards_of_ps() {
         "{out}"
     );
 }
+
+#[test]
+fn agent_status_json_has_the_instances_and_the_report() {
+    test_host::need_loopback!();
+    let env = Env::new();
+    let out = env
+        .cmd(&["agent", "status", "--json"])
+        .env("HTTPS_PROXY", "http://127.0.0.1:9")
+        .env_remove("ALL_PROXY")
+        .env_remove("NO_PROXY")
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    let doc: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(doc["schema"], 1, "{doc}");
+    assert!(doc["instances"].is_array(), "{doc}");
+    assert!(doc["report"]["rows"].is_array(), "{doc}");
+}

@@ -8,7 +8,7 @@ use clap::Subcommand;
 
 use podnet::exit::Fault;
 
-use crate::cli::cmd::instances::instances_ps;
+use crate::cli::cmd::instances::{instances_doc, instances_ps};
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum AgentCommand {
@@ -32,7 +32,12 @@ pub(crate) enum AgentCommand {
     /// Stop what podnet agent up started and put back each change.
     Down,
     /// Print the state: the instances, podnet warp up, and the doctor.
-    Status,
+    Status {
+        /// Print one JSON document: the instances and the report. The exit
+        /// code is 0; the state is in the document.
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 /// Run `podnet ARGS` and give its last line as JSON (the ready document of
@@ -202,7 +207,15 @@ pub(crate) async fn agent(command: AgentCommand) -> Result<()> {
             }
             podnet::warp::up::down()
         }
-        AgentCommand::Status => {
+        AgentCommand::Status { json: true } => {
+            let dir = podnet::instances::lookup_dir();
+            podnet::instances::prune(&dir);
+            let mut doc = instances_doc(&podnet::instances::list(&dir), &dir);
+            doc["report"] = serde_json::to_value(podnet::agent::run(timeout).await)?;
+            println!("{}", podnet::status::stamped(doc));
+            Ok(())
+        }
+        AgentCommand::Status { json: false } => {
             instances_ps(false)?;
             println!();
             let report = podnet::agent::run(timeout).await;
@@ -229,4 +242,15 @@ pub(crate) fn agent_commands(warp: bool, warp_tcp: bool) -> Vec<String> {
     commands.push("podnet agent status".into());
     commands.push("podnet agent down".into());
     commands
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser as _;
+
+    #[test]
+    fn agent_status_accepts_json_flag() {
+        let cli = crate::cli::Cli::try_parse_from(["podnet", "agent", "status", "--json"]);
+        assert!(cli.is_ok(), "{:?}", cli.err());
+    }
 }

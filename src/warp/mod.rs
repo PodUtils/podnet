@@ -32,6 +32,8 @@
 //! ```
 
 pub mod capsule;
+mod door;
+use door::endpoint_order;
 pub mod exit;
 pub mod export;
 pub mod find;
@@ -93,32 +95,6 @@ pub struct WarpClient {
     /// A second device on WireGuard inside the first session (issues 154
     /// and 155): the stack of the tools is the stack of this one.
     carry: Option<wg::Peer>,
-}
-
-/// The order of the front door addresses: the one that worked last first,
-/// then the others; IPv6 only with an IPv6 route (or a proxy or a relay,
-/// which reach it for podnet).
-fn endpoint_order(
-    all: Vec<std::net::SocketAddr>,
-    won: Option<std::net::SocketAddr>,
-    bad: Option<std::net::SocketAddr>,
-    ipv6: bool,
-) -> Vec<std::net::SocketAddr> {
-    let mut out: Vec<std::net::SocketAddr> =
-        all.into_iter().filter(|a| a.is_ipv4() || ipv6).collect();
-    if let Some(won) = won.filter(|w| Some(*w) != bad) {
-        if let Some(i) = out.iter().position(|a| *a == won) {
-            out.swap(0, i);
-        }
-    }
-    // Issue 133: a door that carried no packet goes last.
-    if let Some(bad) = bad {
-        if let Some(i) = out.iter().position(|a| *a == bad) {
-            let door = out.remove(i);
-            out.push(door);
-        }
-    }
-    out
 }
 
 /// The door file of an identity file: `warp.json` gives `warp-door.json`.
@@ -838,7 +814,11 @@ impl WarpClient {
                 let ipv6 = relay.is_some()
                     || self.proxy.is_some()
                     || crate::resolve::has_default_route(true);
-                let order = endpoint_order(self.device.masque_endpoints(), won, bad, ipv6);
+                let v4_route = relay.is_some()
+                    || self.proxy.is_some()
+                    || crate::resolve::has_default_route(false);
+                let order =
+                    endpoint_order(self.device.masque_endpoints(), won, bad, ipv6, v4_route);
                 if order.is_empty() {
                     vec![endpoint]
                 } else {
@@ -944,25 +924,6 @@ mod private_file_tests {
     use super::*;
 
     mod foreign;
-
-    // Issue 124: the address that worked goes first; IPv6 only with a
-    // route.
-    #[test]
-    fn the_order_of_the_front_door_addresses() {
-        let v4: std::net::SocketAddr = "162.159.198.2:443".parse().unwrap();
-        let v6: std::net::SocketAddr = "[2606:4700:103::2]:443".parse().unwrap();
-        assert_eq!(endpoint_order(vec![v4, v6], None, None, true), [v4, v6]);
-        assert_eq!(endpoint_order(vec![v4, v6], Some(v6), None, true), [v6, v4]);
-        assert_eq!(endpoint_order(vec![v4, v6], None, None, false), [v4]);
-        assert_eq!(endpoint_order(vec![v4, v6], Some(v6), None, false), [v4]);
-        // Issue 133: a door that carried no packet goes last, also when it
-        // won the handshake.
-        assert_eq!(
-            endpoint_order(vec![v4, v6], Some(v4), Some(v4), true),
-            [v6, v4]
-        );
-        assert_eq!(endpoint_order(vec![v4, v6], None, Some(v4), true), [v6, v4]);
-    }
 
     // Issue 133: the door file is used when it is recent and names a door
     // of the device.

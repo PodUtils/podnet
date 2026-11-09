@@ -6,38 +6,44 @@ use podnet::exit::Fault;
 
 use crate::cli::signals::shutdown_signal;
 
+/// The JSON of the instances (`ps --json`, `agent status --json`), with no
+/// `schema` and `podnet` keys.
+pub(crate) fn instances_doc(
+    list: &[podnet::instances::Entry],
+    dir: &std::path::Path,
+) -> serde_json::Value {
+    let items: Vec<serde_json::Value> = list
+        .iter()
+        .map(|e| {
+            let r = &e.record;
+            serde_json::json!({
+                "name": r.name,
+                "state": r.state,
+                "pid": r.pid,
+                "supervisor": r.supervisor,
+                "command": r.command,
+                "args": r.args,
+                "cwd": r.cwd,
+                "started": r.started,
+                "restarts": r.restarts,
+                "log": r.log,
+                "ready": r.ready,
+            })
+        })
+        .collect();
+    serde_json::json!({
+        "instances": items,
+        "dir": dir.display().to_string(),
+    })
+}
+
 /// `podnet ps`: the instances of the run directory.
 pub(crate) fn instances_ps(json: bool) -> Result<()> {
     let dir = podnet::instances::lookup_dir();
     podnet::instances::prune(&dir);
     let list = podnet::instances::list(&dir);
     if json {
-        let items: Vec<serde_json::Value> = list
-            .iter()
-            .map(|e| {
-                let r = &e.record;
-                serde_json::json!({
-                    "name": r.name,
-                    "state": r.state,
-                    "pid": r.pid,
-                    "supervisor": r.supervisor,
-                    "command": r.command,
-                    "args": r.args,
-                    "cwd": r.cwd,
-                    "started": r.started,
-                    "restarts": r.restarts,
-                    "log": r.log,
-                    "ready": r.ready,
-                })
-            })
-            .collect();
-        println!(
-            "{}",
-            podnet::status::stamped(serde_json::json!({
-                "instances": items,
-                "dir": dir.display().to_string(),
-            }))
-        );
+        println!("{}", podnet::status::stamped(instances_doc(&list, &dir)));
         return Ok(());
     }
     let now = podnet::instances::now();

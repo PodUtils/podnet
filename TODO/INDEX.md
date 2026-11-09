@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 126 open, 2 partial, 14 blocked, 81 done.**
+**223 entries: 115 open, 3 partial, 14 blocked, 91 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
-| P2 | 81 | 1 | 8 | 47 | 137 |
-| P3 | 40 | 0 | 4 | 17 | 61 |
-| **All** | 126 | 2 | 14 | 81 | 223 |
+| P2 | 73 | 2 | 8 | 54 | 137 |
+| P3 | 37 | 0 | 4 | 20 | 61 |
+| **All** | 115 | 3 | 14 | 91 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -205,7 +205,7 @@ M8 Overlays, M9 Later.
 | [T-157](pods.md) | P2 | M | M7 | feature | open | pod: `--default-action` and a JSON flow record (GitHub #355) |
 | [T-158](pods.md) | P3 | M | M7 | feature | open | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
 | [T-159](fixes.md) | P3 | S | M5 | docs | done | research documents are readings; fix the stale counts of the record (GitHub #356) |
-| [T-160](fixes.md) | P2 | S | M5 | defect | open | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
+| [T-160](fixes.md) | P2 | S | M5 | defect | done | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
 | [T-161](crates.md) | P2 | M | M3 | feature | blocked | relay node: renew the pair before it expires (GitHub #358) |
 | [T-162](crates.md) | P3 | M | M3 | feature | blocked | relay: a host that stalls is tried last on the next connect (GitHub #359) |
 | [T-163](crates.md) | P2 | M | M3 | feature | blocked | relay: the session budget comes from the pool document (GitHub #360) |
@@ -214,9 +214,9 @@ M8 Overlays, M9 Later.
 | [T-166](later.md) | P3 | M | M9 | feature | blocked | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
 | [T-167](services.md) | P2 | M | M6 | feature | open | `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364) |
 | [T-168](services.md) | P2 | S | M6 | feature | open | A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365) |
-| [T-169](fixes.md) | P2 | S | M5 | defect | open | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
-| [T-170](fixes.md) | P2 | S | M5 | defect | open | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
-| [T-171](fixes.md) | P2 | S | M5 | defect | open | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
+| [T-169](fixes.md) | P2 | S | M5 | defect | partial | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
+| [T-170](fixes.md) | P2 | S | M5 | defect | done | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
+| [T-171](fixes.md) | P2 | S | M5 | defect | done | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
 | [T-172](later.md) | P3 | M | M9 | feature | done | A pin of the new public name while the process runs (GitHub #367) |
 | [T-173](fixes.md) | P2 | S | M5 | feature | partial | A WARP identity of another uid, with a consent variable (GitHub #368) |
 | [T-174](pods.md) | P3 | M | M7 | feature | open | netns: a veth wire when `/dev/net/tun` is not there (GitHub #369) |
@@ -246,13 +246,13 @@ M8 Overlays, M9 Later.
 | [T-198](fixes.md) | P3 | S | M5 | docs | done | `docs/protocol.md` and the test agree on the number of seed alternates (GitHub #395) |
 | [T-199](fixes.md) | P2 | M | M5 | defect | done | `relay connect --listen` has the instance surface of `connect -L` (GitHub #396) |
 | [T-200](crates.md) | P2 | M | M3 | feature | blocked | The reverse road of the relay uses the alternate hosts (GitHub #397) |
-| [T-201](fixes.md) | P3 | S | M5 | defect | open | `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398) |
-| [T-202](fixes.md) | P3 | S | M5 | defect | open | `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399) |
-| [T-203](fixes.md) | P2 | S | M5 | defect | open | The ready line of `share --json` has `schema` and `podnet` (GitHub #400) |
-| [T-204](fixes.md) | P2 | S | M5 | defect | open | `tunnel --config` refuses the origin flags (GitHub #401) |
-| [T-205](fixes.md) | P3 | S | M5 | defect | open | A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402) |
-| [T-206](fixes.md) | P2 | S | M5 | feature | open | `agent status --json` (GitHub #403) |
-| [T-207](fixes.md) | P2 | S | M5 | defect | open | The library static path decodes `+` as a literal plus (GitHub #404) |
+| [T-201](fixes.md) | P3 | S | M5 | defect | done | `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398) |
+| [T-202](fixes.md) | P3 | S | M5 | defect | done | `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399) |
+| [T-203](fixes.md) | P2 | S | M5 | defect | done | The ready line of `share --json` has `schema` and `podnet` (GitHub #400) |
+| [T-204](fixes.md) | P2 | S | M5 | defect | done | `tunnel --config` refuses the origin flags (GitHub #401) |
+| [T-205](fixes.md) | P3 | S | M5 | defect | done | A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402) |
+| [T-206](fixes.md) | P2 | S | M5 | feature | done | `agent status --json` (GitHub #403) |
+| [T-207](fixes.md) | P2 | S | M5 | defect | done | The library static path decodes `+` as a literal plus (GitHub #404) |
 | [T-208](fixes.md) | P2 | S | M5 | defect | done | `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405) |
 | [T-209](fixes.md) | P2 | S | M5 | defect | done | `warp status` names the `warp-tun` instance (GitHub #406) |
 | [T-210](fixes.md) | P3 | S | M5 | defect | open | The WARP+ label names the paid account types (GitHub #407) |

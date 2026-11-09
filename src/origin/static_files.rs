@@ -82,6 +82,10 @@ impl StaticDir {
     /// A component that starts with a dot (`.env`, `.git`, `.well-known`) is
     /// refused, as in `podnet serve`: such names often hold secrets.
     fn resolve(&self, rel: &str) -> Option<(PathBuf, bool)> {
+        // A bad escape is refused, as in the router of `serve` (T-207).
+        if has_bad_escape(rel) {
+            return None;
+        }
         let decoded = percent_decode(rel);
         let candidate = Path::new(&decoded);
 
@@ -233,7 +237,8 @@ pub fn content_type(path: &Path) -> &'static str {
     }
 }
 
-/// Minimal percent-decoding for request paths.
+/// Percent-decoding for request paths. A `+` is a plus: only a query string
+/// reads it as a space (T-207).
 pub fn percent_decode(s: &str) -> String {
     let bytes = s.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
@@ -253,10 +258,6 @@ pub fn percent_decode(s: &str) -> String {
                     }
                 }
             }
-            b'+' => {
-                out.push(b' ');
-                i += 1;
-            }
             b => {
                 out.push(b);
                 i += 1;
@@ -264,6 +265,17 @@ pub fn percent_decode(s: &str) -> String {
         }
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+/// True when `s` has a `%` that is not followed by two hex digits.
+fn has_bad_escape(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    bytes.iter().enumerate().any(|(i, b)| {
+        *b == b'%'
+            && !bytes
+                .get(i + 1..i + 3)
+                .is_some_and(|h| h.iter().all(u8::is_ascii_hexdigit))
+    })
 }
 
 /// The reason phrase for a status code, for the small set we emit by hand.
@@ -600,9 +612,27 @@ mod tests {
     }
 
     #[test]
-    fn percent_decoding_handles_escapes_and_plus() {
+    fn percent_decoding() {
         assert_eq!(percent_decode("a%20b"), "a b");
-        assert_eq!(percent_decode("a+b"), "a b");
+        assert_eq!(percent_decode("a+b"), "a+b");
         assert_eq!(percent_decode("%zz"), "%zz");
+    }
+
+    // T-207: `+` is a plus, and a bad escape finds no file.
+    #[test]
+    fn a_plus_in_a_path_is_a_plus() {
+        let d = tempfile::tempdir().unwrap();
+        std::fs::write(d.path().join("a b.txt"), "space").unwrap();
+        std::fs::write(d.path().join("a+b.txt"), "plus").unwrap();
+        let site = StaticDir::new(d.path());
+        let name = |rel: &str| {
+            site.resolve(rel)
+                .map(|(p, _)| p.file_name().unwrap().to_string_lossy().into_owned())
+        };
+        assert_eq!(name("a+b.txt").as_deref(), Some("a+b.txt"));
+        assert_eq!(name("a%20b.txt").as_deref(), Some("a b.txt"));
+        assert_eq!(name("a%2Bb.txt").as_deref(), Some("a+b.txt"));
+        assert_eq!(name("a%zzb.txt"), None);
+        assert_eq!(name("a%2"), None);
     }
 }

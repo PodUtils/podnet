@@ -243,6 +243,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "A program that gets a JSON report on its stdin when podnet fails (exit code not 0). It runs with no shell and no arguments, for at most 30 s. The report has the version, the system, the command, the exit code, the error (\"error\": the error and its causes, once) and the log lines before it (\"messages\": at most 64), with credentials masked. A usage error (exit 64) sends a report too. The program does not get TUNNEL_TOKEN, the relay tokens, or a proxy variable with a user and a password.",
     },
     EnvVar {
+        names: &["PODNET_VERIFY_STRICT"],
+        used_by: "tunnel, serve, share, demo",
+        meaning: "When set and not 0: a verify that only failed at name resolution, or at the CONNECT of a proxy, is an error (exit 69). By default the tunnel stays up, and the log says that the URL is not proved.",
+    },
+    EnvVar {
         names: &["RUST_LOG"],
         used_by: "all commands",
         meaning: "The log filter, for example podnet=debug. The default is podnet=info.",

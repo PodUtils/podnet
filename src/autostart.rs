@@ -176,7 +176,7 @@ pub fn split_secrets(args: &[String], env: &dyn Fn(&str) -> Option<String>) -> (
         .filter_map(|k| env(k).map(|v| (k.to_string(), v)))
         .collect();
     for (k, v) in std::env::vars() {
-        if k.starts_with("PODNET_") && k != "PODNET_ERROR_PROGRAM" && env(&k).is_some() {
+        if crate::detach::spawn::kept_variable(&k) && env(&k).is_some() {
             vars.push((k, v));
         }
     }

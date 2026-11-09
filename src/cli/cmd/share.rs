@@ -14,7 +14,7 @@ use podnet::share::ShareConfig;
 use crate::cli::cmd::connect::unix_listener;
 use crate::cli::cmd::run::{run_demo, run_share, run_tunnel};
 use crate::cli::cmd::tunnel::preflight;
-use crate::cli::opts::TunnelOpts;
+use crate::cli::opts::{Show, TunnelOpts};
 use crate::cli::signals::sleep_or_signal;
 
 #[derive(Args, Debug)]
@@ -145,10 +145,20 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
         spa: args.spa,
     });
     config = args.common.apply(config)?;
+    let show = serve_show(args.common.show(), &args.dir, args.spa);
     if args.common.check {
-        return preflight(&config, args.common.show()).await;
+        return preflight(&config, show).await;
     }
-    run_tunnel(config, args.common.show(), args.common.run_for, vec![]).await
+    run_tunnel(config, show, args.common.run_for, vec![]).await
+}
+
+/// `show` for `serve`: a directory with no `index.html`, and no `--spa`,
+/// answers 404 for `/`. That is its normal answer (T-202).
+fn serve_show(show: Show, dir: &std::path::Path, spa: bool) -> Show {
+    Show {
+        root_404: !spa && !dir.join("index.html").is_file(),
+        ..show
+    }
 }
 
 /// `serve --local ADDR` (issue 307): serve the static files on a local
@@ -389,5 +399,20 @@ fn default_upload_dir() -> PathBuf {
         downloads.join("podnet")
     } else {
         home.join("podnet-uploads")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serve_show_root_404() {
+        let dir = tempfile::tempdir().unwrap();
+        let show = Show::default();
+        assert!(serve_show(show, dir.path(), false).root_404);
+        assert!(!serve_show(show, dir.path(), true).root_404);
+        std::fs::write(dir.path().join("index.html"), "x").unwrap();
+        assert!(!serve_show(show, dir.path(), false).root_404);
     }
 }
