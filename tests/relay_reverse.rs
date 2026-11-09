@@ -685,3 +685,67 @@ fn relay_stop_checks_the_pair_before_it_stops_an_instance() {
     assert!(relay_dir.join("notoken.json").exists(), "the file stays");
     assert!(!String::from_utf8_lossy(&out.stdout).contains("stopped"));
 }
+
+/// A TCP target that writes `HELLO`, shuts down its write half, and reads
+/// to the end. It gives its address and the bytes that it read.
+async fn half_closer() -> (String, tokio::sync::oneshot::Receiver<Vec<u8>>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap().to_string();
+    let (done, read) = tokio::sync::oneshot::channel();
+    tokio::spawn(async move {
+        let Ok((mut socket, _)) = listener.accept().await else {
+            return;
+        };
+        socket.write_all(b"HELLO").await.unwrap();
+        socket.shutdown().await.unwrap();
+        let mut all = Vec::new();
+        let _ = tokio::time::timeout(Duration::from_secs(20), socket.read_to_end(&mut all)).await;
+        let _ = done.send(all);
+    });
+    (addr, read)
+}
+
+// T-196: a target that shuts down its write half and still reads gets the
+// whole input of the operator. Before, the node sent `close` at the end of
+// the read side, and the later input was lost.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_half_closing_target_gets_the_whole_input() {
+    test_host::need_loopback!();
+    let (url, state) = fake_relay(None).await;
+    let (addr, read) = half_closer().await;
+    let target = Target::parse(&addr).unwrap();
+    let node_relay = Relay::new(&url, None).unwrap();
+    let node_pair = pair(&url);
+    tokio::spawn(async move { node(&node_relay, &node_pair, &target).await });
+    wait_for_node(&state, 1).await;
+    let relay = Relay::new(&url, None).unwrap();
+    let input: Vec<u8> = (0..300_000u32).map(|i| (i % 251) as u8).collect();
+    let (ours, theirs) = tokio::io::duplex(1 << 20);
+    let sent = input.clone();
+    tokio::spawn(async move {
+        // The input comes after the target closed its write half.
+        tokio::time::sleep(Duration::from_millis(700)).await;
+        let mut ours = ours;
+        ours.write_all(&sent).await.unwrap();
+    });
+    let mut out = Vec::new();
+    let (reader, _keep) = tokio::io::split(theirs);
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        connect(&relay, NAME, "connect", reader, &mut out),
+    )
+    .await
+    .expect("the session ends")
+    .unwrap();
+    assert_eq!(out, b"HELLO");
+    let got = tokio::time::timeout(Duration::from_secs(10), read)
+        .await
+        .expect("the target sees the end")
+        .unwrap();
+    assert!(
+        got == input,
+        "the target read {} of {} bytes",
+        got.len(),
+        input.len()
+    );
+}

@@ -9,6 +9,11 @@ use tokio_tungstenite::tungstenite::Message;
 
 use super::{Target, FRAME, ID_LEN, LOCAL_CONNECT};
 
+/// After the target shuts down its write side, the node waits this long for
+/// a frame of the operator before it ends the session (the relay or a
+/// failed write can end it before; T-196).
+const HALF_CLOSE_IDLE: std::time::Duration = std::time::Duration::from_secs(2);
+
 /// A text control message of the node protocol.
 pub(super) fn control(kind: &str, id: &str, reason: Option<&str>) -> Message {
     let mut doc = serde_json::json!({ "type": kind, "id": id });
@@ -146,6 +151,8 @@ pub(super) async fn session(
     }
     tracing::info!(%id, %target, "a session is open");
     let (mut read, mut write) = tokio::io::split(io);
+    // The read side sets this when the target shuts down its write side.
+    let (half_tx, mut half_rx) = tokio::sync::watch::channel(false);
     let to_relay = {
         let out = out.clone();
         let id = id.clone();
@@ -153,33 +160,73 @@ pub(super) async fn session(
             let mut buf = vec![0u8; FRAME];
             loop {
                 let n = match read.read(&mut buf).await {
-                    Ok(0) => return None,
-                    Err(err) => return Some(format!("the read of the local side failed: {err}")),
+                    Ok(0) => return ReadEnd::Eof,
+                    Err(err) => {
+                        return ReadEnd::Done(Some(format!(
+                            "the read of the local side failed: {err}"
+                        )))
+                    }
                     Ok(n) => n,
                 };
                 let mut frame = Vec::with_capacity(ID_LEN + n);
                 frame.extend_from_slice(id.as_bytes());
                 frame.extend_from_slice(&buf[..n]);
                 if out.send(Out::data(&id, frame)).await.is_err() {
-                    return None;
+                    return ReadEnd::Done(None);
                 }
             }
         }
     };
-    let to_local = async move {
-        while let Some(data) = data_rx.recv().await {
-            if let Err(err) = write.write_all(&data).await {
-                return Some(format!("the write to the local side failed: {err}"));
+    // After the half close, the task ends when no frame comes for
+    // HALF_CLOSE_IDLE.
+    let to_local = {
+        let id = id.clone();
+        async move {
+            loop {
+                let after_half_close = async {
+                    let _ = half_rx.wait_for(|half| *half).await;
+                    tokio::time::sleep(HALF_CLOSE_IDLE).await;
+                };
+                let data = tokio::select! {
+                    data = data_rx.recv() => data,
+                    () = after_half_close => {
+                        tracing::info!(%id, "no frame after the target closed its write side");
+                        let _ = write.shutdown().await;
+                        return None;
+                    }
+                };
+                let Some(data) = data else { break };
+                if let Err(err) = write.write_all(&data).await {
+                    return Some(format!("the write to the local side failed: {err}"));
+                }
             }
+            let _ = write.shutdown().await;
+            None
         }
-        let _ = write.shutdown().await;
-        None
     };
+    tokio::pin!(to_relay, to_local);
     let reason = tokio::select! {
-        reason = to_relay => reason,
-        reason = to_local => reason,
+        ended = &mut to_relay => match ended {
+            ReadEnd::Done(reason) => reason,
+            // No `close` here: the operator can still send. The queued
+            // frames go to the target first.
+            ReadEnd::Eof => {
+                tracing::info!(%id, "the target closed its write side");
+                let _ = half_tx.send(true);
+                to_local.await
+            }
+        },
+        reason = &mut to_local => reason,
     };
     // After a close of the relay, the gate drops this close.
     let _ = out.send(Out::end(&id, "close", reason.as_deref())).await;
     tracing::info!(%id, reason = reason.as_deref().unwrap_or("an end of the stream"), "a session ended");
+}
+
+/// How the read side of a session ended.
+enum ReadEnd {
+    /// The target shut down its write side.
+    Eof,
+    /// The session ends, with a reason when it is a fault.
+    Done(Option<String>),
 }
