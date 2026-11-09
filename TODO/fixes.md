@@ -1968,7 +1968,7 @@ CONNECT ...: 502`, exit 69, and `curl --proxy ... URL` gives 200. `--no-verify` 
 - Read: `verify_fetch` (`src/tunnel.rs:1230-1311`). The Dns arm (`:1276-1279`) and the other `Err` arm
   (`:1280-1283`) only change the retry text. After the loop only `last_status` can demote the verdict
   (`:1301-1306`). Otherwise `fault(Unavailable)` (`:1307-1310`).
-- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-176`).
+- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-186`).
   `run_demo` passes a body token, so the warn branch cannot apply; it prints PROOF from `check.dns`
   (`run.rs:153-160`). `wants_verify` (`tunnel.rs:1208`) has no caller. The ready document has
   `"verified": bool` (`run.rs:196-215`).
@@ -2022,7 +2022,7 @@ Operators of restricted hosts need the flag: the fresh `*.trycloudflare.com` nam
 - `src/cli/opts.rs:58-60` declares it (`global = true`); `src/cli/opts.rs:173` sets `config.verify`.
 - `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `src/tunnel.rs:1230`
   runs the fetch. `src/net.rs` takes `no_tls_verify` from the ingress rule. The two flags share no state.
-- `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1208`) has no caller.
+- `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1220`) has no caller.
 - Not measured: the runtime fetch on a restricted host.
 
 ## Approach
@@ -2060,7 +2060,7 @@ has `--masque-endpoint`; `tunnel` has none.
 
 ## Premise
 
-- `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:823-834`). Neither
+- `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:827-838`). Neither
   `TunnelOpts` (`src/cli/opts.rs:20-105`) nor `TunnelArgs` has the flag. `with_masque` exists
   (`src/warp/mod.rs:286`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
 - `open_on` (`src/warp/mod.rs:823-848`) uses `endpoint_order` (`:101-122`): the record order, IPv4 first.
@@ -2949,7 +2949,7 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 ## Premise
 
 - `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:114` (field), `:124` (`root_404: false`),
-  `src/cli/cmd/run.rs:31` (read).
+  `src/cli/cmd/run.rs:32` (read).
 - `serve` passes `args.common.show()`: `src/cli/cmd/share.rs:149-151`.
 - The warn branch: `src/tunnel.rs:1266-1270`. `static_router` gives 404 at `/` with no index: `src/service.rs:110-150`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
@@ -2983,7 +2983,7 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 
 ## Premise
 
-- `src/cli/cmd/run.rs:79-90` (no `stamped`). The only `stamped` call of `run.rs` is `:248` (`announce`).
+- `src/cli/cmd/run.rs:82-93` (no `stamped`). The only `stamped` call of `run.rs` is `:262` (`announce`).
 - `grep -rn "status::stamped" src/cli` gives 8 hits, none in `run_share`.
 - The `verified` line is unstamped in every command (`run.rs:119`, `:155`). It stays as it is.
 
