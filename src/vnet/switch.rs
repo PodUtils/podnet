@@ -61,6 +61,19 @@ pub struct FaultInjector {
     pub reordered: u64,
 }
 
+impl Drop for FaultInjector {
+    fn drop(&mut self) {
+        if self.dropped + self.duplicated + self.reordered > 0 {
+            info!(
+                dropped = self.dropped,
+                duplicated = self.duplicated,
+                reordered = self.reordered,
+                "fault injector totals"
+            );
+        }
+    }
+}
+
 impl FaultInjector {
     pub fn new(faults: Faults) -> Self {
         Self {
@@ -132,6 +145,8 @@ pub fn packet_addresses(packet: &[u8]) -> Option<(IpAddr, IpAddr)> {
 struct Table {
     next_id: u64,
     peers: HashMap<u64, mpsc::Sender<Vec<u8>>>,
+    counts: HashMap<u64, PeerCount>,
+    left: PeerCount,
     owners: HashMap<IpAddr, u64>,
     /// The packets that were dropped because their source address is of
     /// another peer.
@@ -139,6 +154,38 @@ struct Table {
 }
 
 impl Table {
+    /// Queue `packet` for peer `id`. A full queue drops it: the drop is
+    /// counted, and the first drop of the peer is logged.
+    fn deliver(&mut self, id: u64, packet: Vec<u8>) {
+        let Some(peer) = self.peers.get(&id) else {
+            return;
+        };
+        let count = self.counts.entry(id).or_default();
+        match peer.try_send(packet) {
+            Ok(()) => count.sent += 1,
+            Err(_) => {
+                count.dropped += 1;
+                if count.dropped == 1 {
+                    warn!(
+                        peer = id,
+                        depth = PEER_QUEUE,
+                        "the queue of a switch peer is full: dropping its packets (counted)"
+                    );
+                }
+            }
+        }
+    }
+
+    fn counts(&self) -> SwitchCounts {
+        let mut peers: Vec<_> = self.counts.iter().map(|(id, c)| (*id, *c)).collect();
+        peers.sort_by_key(|(id, _)| *id);
+        SwitchCounts {
+            peers,
+            left: self.left,
+            spoofed: self.spoofed,
+        }
+    }
+
     fn forward(&mut self, from: u64, packet: Vec<u8>) {
         let Some((src, dst)) = packet_addresses(&packet) else {
             return;
@@ -160,16 +207,13 @@ impl Table {
         }
         match self.owners.get(&dst).copied() {
             Some(owner) if owner != from => {
-                if let Some(peer) = self.peers.get(&owner) {
-                    let _ = peer.try_send(packet);
-                }
+                self.deliver(owner, packet);
             }
             Some(_) => {}
             None => {
-                for (id, peer) in &self.peers {
-                    if *id != from {
-                        let _ = peer.try_send(packet.clone());
-                    }
+                let ids: Vec<u64> = self.peers.keys().copied().filter(|i| *i != from).collect();
+                for id in ids {
+                    self.deliver(id, packet.clone());
                 }
             }
         }
@@ -177,6 +221,10 @@ impl Table {
 
     fn remove(&mut self, id: u64) {
         self.peers.remove(&id);
+        if let Some(count) = self.counts.remove(&id) {
+            self.left.sent += count.sent;
+            self.left.dropped += count.dropped;
+        }
         self.owners.retain(|_, owner| *owner != id);
     }
 }
@@ -185,11 +233,25 @@ impl Table {
 pub struct Switch {
     pub listen: ProxyListen,
     task: JoinHandle<()>,
+    table: Arc<Mutex<Table>>,
 }
 
 impl Switch {
+    /// Stop accepting, and log the totals.
     pub fn abort(&self) {
         self.task.abort();
+        let counts = self.counts();
+        info!(
+            dropped = counts.dropped(),
+            spoofed = counts.spoofed,
+            "switch stopped"
+        );
+    }
+
+    /// The counters: for each peer, the packets sent and dropped; the
+    /// packets with a spoofed source address.
+    pub fn counts(&self) -> SwitchCounts {
+        self.table.lock().unwrap().counts()
     }
 }
 
@@ -337,6 +399,7 @@ pub async fn serve(listen: ProxyListen, token: Option<String>) -> Result<Switch>
 /// [`serve`], with the user that a unix peer must have.
 async fn serve_for(listen: ProxyListen, token: Option<String>, owner: u32) -> Result<Switch> {
     let table = Arc::new(Mutex::new(Table::default()));
+    let handle = table.clone();
     let mut listen = listen;
     let task = match &listen {
         ProxyListen::Tcp(addr) => {
@@ -387,7 +450,11 @@ async fn serve_for(listen: ProxyListen, token: Option<String>, owner: u32) -> Re
         }
     };
     info!(%listen, "switch is listening");
-    Ok(Switch { listen, task })
+    Ok(Switch {
+        listen,
+        task,
+        table: handle,
+    })
 }
 
 /// Serve one peer of the switch until its stream closes.
@@ -706,6 +773,9 @@ pub fn import(stack: Arc<NetStack>, addr: crate::vnet::addr::VirtAddr) -> Result
         }
     }))
 }
+
+mod counts;
+pub use counts::{PeerCount, SwitchCounts};
 
 #[cfg(test)]
 mod tests;

@@ -2248,7 +2248,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:87`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:315`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:87`, `src/vnet/switch.rs:435`, `src/vnet/proxy.rs:315`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1368`.
 - `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:347`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:57-63`).
@@ -2323,7 +2323,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 
 ## Problem
 
-`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:688-692`).
+`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:755-759`).
 
 ## Premise
 
@@ -2361,7 +2361,7 @@ Tests: a forward outside the subnet returns the error; a second forward of one a
 
 ## Problem
 
-`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `src/vnet/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:398`). No counter, no log, no accessor. The `spoofed` counter (`:138`) has no accessor. The rule of the project: a drop is counted (`src/vnet/stack.rs:171-175`). The fault injector counts are not readable either (`:54-111`).
+`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `src/vnet/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:465`). No counter, no log, no accessor. The `spoofed` counter (`:153`) has no accessor. The rule of the project: a drop is counted (`src/vnet/stack.rs:171-175`). The fault injector counts are not readable either (`:54-111`).
 
 ## Premise
 
@@ -2423,7 +2423,7 @@ python3 scripts/check-size.py
 
 ## Problem
 
-`NEEDS` (`src/vnet/doctor.rs:91-96`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`src/vnet/switch.rs:350-352`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:114` repeats the short list.
+`NEEDS` (`src/vnet/doctor.rs:91-96`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`src/vnet/switch.rs:413-415`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:114` repeats the short list.
 
 ## Premise
 
@@ -2453,7 +2453,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:262-264` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:262-264` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
