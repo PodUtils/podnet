@@ -109,5 +109,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #410 | WireGuard endpoint: v6 and ports unread | open | T-213 |
 | #411 | warp ssh-config: path not quoted | open | T-214 |
 | #412 | warp proxy --dns: one task per datagram | open | T-215 |
+| #413 | COORD-006: asks of podnet for pod-relay, pod-dns, pod-proxy and pod-services | open (a COORD issue between sessions) | T-161, T-162, T-163, T-166, T-172, T-175, T-182, T-200 |
 
 #313, #314, #318 and #381 to #383 are open pull requests. #312 and #315 are closed; they are pull requests.
