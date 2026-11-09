@@ -2917,7 +2917,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2947,6 +2947,10 @@ command builds the type (latent).
 `cargo test -p podnet --lib transport::websocket` (new tests: `wss://[::1]:8443/ws` gives host `::1`; a loopback server
 with a refusing proxy shows that the proxy is asked).
 `cargo test -p podnet --lib websocket_transport_reports_its_name`.
+
+## Done
+
+2026-11-09, commit 35d2a3b. `WebSocketTunnel::connect` dials with `crate::egress::dial` (errors map to `Unreachable`), takes the TLS config of `crate::trust::context()` with ALPN `http/1.1`, parses `wss://[::1]:8443/ws` (host `::1`) and brackets an IPv6 host in the Host header. Tests: `transport::websocket::tests::parses_an_ipv6_host`, `websocket_transport_reports_its_name`. The test with a refusing proxy is not written: the proxy choice of the egress layer is process-global state. CI: at the merge.
 
 # T-202: `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399)
 
