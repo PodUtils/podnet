@@ -17,6 +17,7 @@ use std::time::Duration;
 use anyhow::{Context as _, Result};
 use serde::Serialize;
 
+use crate::agent_files::Files;
 use crate::net::BoxedIo;
 
 /// One task of an agent and its target.
@@ -26,6 +27,8 @@ pub struct Task {
     pub host: &'static str,
     pub port: u16,
     pub check: Check,
+    /// Where the files come from, when not from `host`.
+    pub files: Option<Files>,
 }
 
 /// How a target is checked.
@@ -44,42 +47,49 @@ pub const TASKS: &[Task] = &[
         host: "github.com",
         port: 443,
         check: Check::Tls,
+        files: None,
     },
     Task {
         name: "git (SSH)",
         host: "github.com",
         port: 22,
         check: Check::Ssh,
+        files: None,
     },
     Task {
         name: "pip (pypi.org)",
         host: "pypi.org",
         port: 443,
         check: Check::Tls,
+        files: Some(Files::Service("pypi-files", "files")),
     },
     Task {
         name: "npm",
         host: "registry.npmjs.org",
         port: 443,
         check: Check::Tls,
+        files: None,
     },
     Task {
         name: "cargo (crates.io)",
         host: "index.crates.io",
         port: 443,
         check: Check::Tls,
+        files: Some(Files::Cargo),
     },
     Task {
         name: "go modules",
         host: "proxy.golang.org",
         port: 443,
         check: Check::Tls,
+        files: None,
     },
     Task {
         name: "docker pull",
         host: "registry-1.docker.io",
         port: 443,
         check: Check::Tls,
+        files: Some(Files::Docker),
     },
 ];
 
@@ -123,6 +133,10 @@ pub struct Row {
     pub direct: Outcome,
     pub proxy: Outcome,
     pub warp: Outcome,
+    /// The host of the files, when the tool gets them from another host
+    /// than the index (`host:port`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub files: Option<String>,
 }
 
 impl Row {
@@ -188,7 +202,7 @@ async fn resolver(timeout: Duration) -> Outcome {
     }
 }
 
-async fn dial(path: Path, host: &str, port: u16, timeout: Duration) -> Result<BoxedIo> {
+pub(crate) async fn dial(path: Path, host: &str, port: u16, timeout: Duration) -> Result<BoxedIo> {
     match path {
         Path::Direct => Ok(Box::new(
             crate::egress::dial_direct(host, port, timeout).await?,
@@ -210,21 +224,56 @@ async fn dial(path: Path, host: &str, port: u16, timeout: Duration) -> Result<Bo
     }
 }
 
-/// Check `task` on `path`.
-pub async fn check(task: &Task, path: Path, timeout: Duration) -> Outcome {
-    let io = match dial(path, task.host, task.port, timeout).await {
+/// Check `task` on `path`: the index, and the host of the files when the
+/// task has one. A row is `ok` only when both answer. The second value is the
+/// host of the files (T-182).
+pub async fn check_task(task: &Task, path: Path, timeout: Duration) -> (Outcome, Option<String>) {
+    let index = check_at(task.host, task.port, task.check, path, timeout).await;
+    let Some(files) = task.files else {
+        return (index, None);
+    };
+    if !index.works() {
+        return (index, None);
+    }
+    let (host, port) =
+        match crate::agent_files::host(files, (task.host, task.port), path, timeout).await {
+            Ok(found) => found,
+            Err(err) => {
+                return (
+                    Outcome::Failed(format!("index ok, files host unknown: {}", short(&err))),
+                    None,
+                )
+            }
+        };
+    let target = format!("{host}:{port}");
+    let found = check_at(&host, port, Check::Tls, path, timeout).await;
+    (both(index, &host, found), Some(target))
+}
+
+/// The row of an answering index and the check of its file host.
+fn both(index: Outcome, host: &str, files: Outcome) -> Outcome {
+    match files {
+        found if found.works() => index,
+        Outcome::Failed(why) => Outcome::Failed(format!("index ok, files fail ({host}): {why}")),
+        _ => Outcome::Failed(format!("index ok, files fail ({host})")),
+    }
+}
+
+/// Check one target on `path`.
+async fn check_at(host: &str, port: u16, check: Check, path: Path, timeout: Duration) -> Outcome {
+    let io = match dial(path, host, port, timeout).await {
         Ok(io) => io,
         Err(err) => return Outcome::Failed(short(&err)),
     };
     let checked = tokio::time::timeout(timeout, async {
-        match task.check {
-            Check::Tls => tls(io, task.host).await,
+        match check {
+            Check::Tls => tls(io, host).await,
             Check::Ssh => ssh(io).await,
         }
     })
     .await;
     match checked {
-        Ok(Outcome::Intercepted) => tls_with_bundle(task, path, timeout).await,
+        Ok(Outcome::Intercepted) => tls_with_bundle(host, port, path, timeout).await,
         Ok(outcome) => outcome,
         Err(_) => Outcome::Failed(format!("no answer in {} s", timeout.as_secs())),
     }
@@ -269,8 +318,8 @@ async fn tls(io: BoxedIo, host: &str) -> Outcome {
 /// [`check`] for a TLS task where the public roots failed on the chain:
 /// a second handshake with the CA bundle of this host tells an
 /// interception (trusted here) from a bad chain.
-async fn tls_with_bundle(task: &Task, path: Path, timeout: Duration) -> Outcome {
-    let io = match dial(path, task.host, task.port, timeout).await {
+async fn tls_with_bundle(host: &str, port: u16, path: Path, timeout: Duration) -> Outcome {
+    let io = match dial(path, host, port, timeout).await {
         Ok(io) => io,
         Err(err) => return Outcome::Failed(short(&err)),
     };
@@ -278,7 +327,7 @@ async fn tls_with_bundle(task: &Task, path: Path, timeout: Duration) -> Outcome 
         Ok(config) => config,
         Err(err) => return Outcome::Failed(short(&err.into())),
     };
-    let Ok(name) = rustls::pki_types::ServerName::try_from(task.host.to_string()) else {
+    let Ok(name) = rustls::pki_types::ServerName::try_from(host.to_string()) else {
         return Outcome::Failed("a bad TLS name".into());
     };
     match tokio::time::timeout(
@@ -373,12 +422,12 @@ pub async fn run(timeout: Duration) -> Report {
         async move {
             let on = |path: Path, there: bool| async move {
                 if there {
-                    check(task, path, timeout).await
+                    check_task(task, path, timeout).await
                 } else {
-                    Outcome::NotTried
+                    (Outcome::NotTried, None)
                 }
             };
-            let (direct, via_proxy, warp) = tokio::join!(
+            let ((direct, f1), (via_proxy, f2), (warp, f3)) = tokio::join!(
                 on(Path::Direct, true),
                 on(Path::Proxy, proxy),
                 on(Path::Warp, warp_up)
@@ -389,6 +438,7 @@ pub async fn run(timeout: Duration) -> Report {
                 direct,
                 proxy: via_proxy,
                 warp,
+                files: f1.or(f2).or(f3),
             }
         }
     }))
@@ -502,6 +552,11 @@ pub fn text(report: &Report) -> String {
             mark(&row.warp)
         ));
     }
+    for row in &report.rows {
+        if let Some(files) = &row.files {
+            out.push_str(&format!("  {}: files from {files}\n", row.task));
+        }
+    }
     out.push_str(&format!(
         "\nThis host, direct (no WARP): UDP DNS (1.1.1.1:53): {}   IPv6: {}   localhost: {}   resolver: {}\n",
         mark(&report.udp_dns),
@@ -542,6 +597,7 @@ mod tests {
             direct,
             proxy,
             warp,
+            files: None,
         }
     }
 
@@ -557,6 +613,27 @@ mod tests {
             resolver: Outcome::Ok,
             advice: Vec::new(),
         }
+    }
+
+    // T-182: an index that answers does not make the row ok alone.
+    #[test]
+    fn a_failing_file_host_fails_the_row_and_is_named() {
+        let down = Outcome::Failed("no answer in 4 s".into());
+        let row = both(Outcome::Ok, "files.example", down);
+        assert!(
+            matches!(&row, Outcome::Failed(why) if why.starts_with("index ok, files fail (files.example)")),
+            "{row:?}"
+        );
+        assert_eq!(both(Outcome::Ok, "files.example", Outcome::Ok), Outcome::Ok);
+        assert_eq!(
+            both(Outcome::Intercepted, "f", Outcome::Intercepted),
+            Outcome::Intercepted
+        );
+        let rows: Vec<_> = TASKS
+            .iter()
+            .filter_map(|t| t.files.map(|f| (t.name, f)))
+            .collect();
+        assert_eq!(rows.len(), 3, "{rows:?}");
     }
 
     // Issue 117: a fake-IP resolver is named, with advice.

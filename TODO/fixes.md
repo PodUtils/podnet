@@ -2215,7 +2215,7 @@ The tests cover: refuse, allow with the variable, mode still checked, no registr
 
 ## Premise
 
-- `Task` has one `host` and one `port`, and `Check::Tls` is one handshake (`src/agent.rs:25-39`). The three rows are at `src/agent.rs:55-59`, `:67-71` and `:79-83`. The table prints one target (`src/agent.rs:491-506`).
+- `Task` has one `host` and one `port`, and `Check::Tls` is one handshake (`src/agent.rs:26-42`). The three rows are at `src/agent.rs:60-65`, `:74-79` and `:88-93`. The table prints one target (`src/agent.rs:541-561`).
 - `registry-1.docker.io` is in pod-services as the endpoint `registry` of `docker-hub-registry`. The other hosts are not in pod-services (read of `services/` at podcrates v0.7.0).
 - `src/agent.rs` is a taken source of pod-services (not frozen).
 - Not measured: the three answers of the issue (curl of 2026-11-07).
@@ -3092,7 +3092,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:10-41` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:997-1003`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:157-159` (`Serialize`). `README.md:997-1003`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3203,7 +3203,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 `warp up --tun` starts the instance `warp-tun`. `warp status` reads the instance `warp` only. On a host that runs the
 tunnel, it prints `warp up     not running (podnet warp up starts it)` and `instance: {"running": false}`. A script
-then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:488`).
+then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:538`).
 
 ## Premise
 
