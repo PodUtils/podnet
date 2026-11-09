@@ -55,12 +55,12 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #353 | no fuzz targets for seccomp handlers | open | T-154, T-155 |
 | #354 | pod rules: no reject action (also no `block`) | open | T-156 |
 | #355 | pod: default-deny, flow log, learn | open | T-157, T-158 |
-| #356 | research documents cite old paths | open | T-159 |
+| #356 | research documents cite old paths | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-159 |
 | #357 | verify: young name exits 69, tears down a working tunnel | open | T-160 |
 | #358 | relay node: pair cannot be renewed | open | T-161 |
 | #359 | relay alternates chosen once (cost is the 2 s stagger) | open | T-162 |
 | #360 | relay session budget is a constant | open | T-163 |
-| #361 | `--no-verify` undocumented, name misleads | open | T-164 |
+| #361 | `--no-verify` undocumented, name misleads | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-164 |
 | #362 | ssh relay leg: no supervision (no caller) | open | T-165 |
 | #363 | ssh relay leg: one relay, one user | open | T-166 |
 | #364 | net socksify: no per-destination routing | open | T-167 |
@@ -91,7 +91,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #392 | relay stop: wrong order | open | T-195 |
 | #393 | relay node: no drain after local EOF | open | T-196 |
 | #394 | relay pair file: mode and read checks | open | T-197 |
-| #395 | docs say 6 seed hosts, client takes 3 | open | T-198 |
+| #395 | docs say 6 seed hosts, client takes 3 | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-198 |
 | #396 | relay connect --listen: no --detach, record, restart | open | T-199 |
 | #397 | relay reverse road uses host 0 only | open | T-200 |
 | #398 | WebSocketTunnel dials direct (latent, no caller) | open | T-201 |
@@ -105,7 +105,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #406 | warp status never names warp-tun | open | T-209 |
 | #407 | warp: every type but "free" reads as WARP+ (partly) | open | T-210 |
 | #408 | warp down removes the fish file without an owner check | open | T-211 |
-| #409 | README says --l4 ignores rules; code applies them | open | T-212 |
+| #409 | README says --l4 ignores rules; code applies them | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-212 |
 | #410 | WireGuard endpoint: v6 and ports unread | open | T-213 |
 | #411 | warp ssh-config: path not quoted | open | T-214 |
 | #412 | warp proxy --dns: one task per datagram | open | T-215 |

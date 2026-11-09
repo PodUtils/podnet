@@ -1812,7 +1812,7 @@ The `grep -L` prints no file name after the fix.
 
 ## Done
 
-2026-11-09, commit 9738eb9. Each research document and `docs/reports/aerrand-agent.md` has the banner `Reading of the tree at COMMIT`. T-040 has a Correction (the counts, T-063 to T-067 done). No checker (Decision). `scripts/agent/check.sh` exits 0. CI: at the merge.
+2026-11-09, commit 9738eb9. Each research document and `docs/reports/aerrand-agent.md` has the banner `Reading of the tree at COMMIT`. T-040 has a Correction (the counts, T-063 to T-067 done). No checker (Decision). `scripts/agent/check.sh` exits 0. CI at dbfcfd6: ci 42638635724 and live 42638635442 success.
 
 # T-160: tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357)
 
@@ -1909,7 +1909,7 @@ cargo test --test cli -- help
 
 ## Done
 
-2026-11-09, commit be7b624. The README has a `--no-verify` bullet beside `--no-tls-verify`. The help line says that origin TLS checks stay on. The name stays. `scripts/agent/check.sh` exits 0. CI: at the merge.
+2026-11-09, commit be7b624. The README has a `--no-verify` bullet beside `--no-tls-verify`. The help line says that origin TLS checks stay on. The name stays. `scripts/agent/check.sh` exits 0. CI at dbfcfd6: ci 42638635724 and live 42638635442 success.
 
 # T-169: `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366)
 
@@ -2668,7 +2668,7 @@ cargo todo check
 
 ## Done
 
-2026-11-09, commit be7b624. `docs/protocol.md` says that the seed holds 6 hosts and the client takes 3 (`MAX_ALTERNATES`). `docs/decisions.md` has the ruling. The test `the_alternates_come_from_the_cache_else_the_seed` checks `seed().len() >= MAX_ALTERNATES`. `scripts/agent/check.sh` exits 0. CI: at the merge.
+2026-11-09, commit be7b624. `docs/protocol.md` says that the seed holds 6 hosts and the client takes 3 (`MAX_ALTERNATES`). The test `the_alternates_come_from_the_cache_else_the_seed` checks `seed().len() >= MAX_ALTERNATES`. `scripts/agent/check.sh` exits 0. CI at dbfcfd6: ci 42638635724 and live 42638635442 success.
 
 # T-199: `relay connect --listen` has the instance surface of `connect -L` (GitHub #396)
 
@@ -3166,7 +3166,7 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Done
 
-2026-11-09, commit be7b624. The README says that the rules apply to `warp proxy --l4`. `grep -n "rules do not apply" README.md` prints nothing. Test: `warp::rules` lib tests. `scripts/agent/check.sh` exits 0. CI: at the merge.
+2026-11-09, commit be7b624. The README says that the rules apply to `warp proxy --l4`. `grep -n "rules do not apply" README.md` prints nothing. Test: `warp::rules` lib tests. `scripts/agent/check.sh` exits 0. CI at dbfcfd6: ci 42638635724 and live 42638635442 success.
 
 # T-213: The WireGuard endpoint of a device record has one derivation (GitHub #410)
 

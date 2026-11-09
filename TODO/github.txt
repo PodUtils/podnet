@@ -58,12 +58,12 @@
 353 issue open
 354 issue open
 355 issue open
-356 issue open
+356 issue closed
 357 issue open
 358 issue open
 359 issue open
 360 issue open
-361 issue open
+361 issue closed
 362 issue open
 363 issue open
 364 issue open
@@ -97,7 +97,7 @@
 392 issue open
 393 issue open
 394 issue open
-395 issue open
+395 issue closed
 396 issue open
 397 issue open
 398 issue open
@@ -111,7 +111,7 @@
 406 issue open
 407 issue open
 408 issue open
-409 issue open
+409 issue closed
 410 issue open
 411 issue open
 412 issue open
