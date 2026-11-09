@@ -30,6 +30,8 @@ use anyhow::{bail, Context as _, Result};
 
 use crate::instances::{self, Held, Record};
 
+pub(crate) mod spawn;
+
 /// The first argument of a detached child. Only podnet writes it.
 pub const CHILD_FLAG: &str = "--detach-child";
 /// The first argument of the supervisor of a detached child (issue 73).
@@ -499,28 +501,8 @@ fn start_inner(command: &str, options: &Options) -> Result<i32> {
     instances::write_secrets(&dir, &name, &secrets).map_err(|e| fault(Fault::Config, e))?;
     let mut tried = Vec::new();
     for program in binaries() {
-        let mut cmd = Command::new(&program);
-        {
-            use std::os::unix::process::CommandExt;
-            cmd.arg0("podnet");
-        }
-        cmd.arg(if options.restart {
-            SUPERVISE_FLAG
-        } else {
-            CHILD_FLAG
-        })
-        .args(&args)
-        .envs(vars.iter().map(|(k, v)| (k.as_str(), v.as_str())))
-        .env(NAME_VARIABLE, &name)
-        .env(HASH_VARIABLE, &hash)
-        .env(
-            READY_TIMEOUT_VARIABLE,
-            options.ready_timeout.as_secs().to_string(),
-        )
-        .env(COMMAND_VARIABLE, command)
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit());
+        let mut cmd =
+            spawn::child_command(&program, &args, &vars, (&name, &hash), command, options);
         match cmd.spawn() {
             Ok(child) => return Ok(wait_ready_child(child, &dir, &name, options.ready_timeout)),
             Err(err) => tried.push(format!("{}: {err}", program.display())),
