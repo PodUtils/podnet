@@ -117,7 +117,10 @@ program B: connect 10.66.0.2:8080  ->  \0podnet-vnet/4/10.66.0.2/8080
 
 `podnet net proxy` puts a SOCKS5 and HTTP `CONNECT` front door on the stack.
 `--forward VIRT=REAL` makes the stack listen on a virtual address and send each
-connection to a real destination (`host:port` or `unix:/path`).
+connection to a real destination (`host:port` with a name or an address,
+`[v6]:port`, or `unix:/path`). A target that is not loopback goes through the
+proxy of the process, with `NO_PROXY`. A loopback target and a unix path go
+direct. A failed dial logs the target, the way and the hop.
 
 ```sh
 podnet net proxy --listen unix:/tmp/podnet-vnet.socks \
@@ -127,6 +130,11 @@ podnet net proxy --listen unix:/tmp/podnet-vnet.socks \
 A client must speak SOCKS5 over `AF_UNIX` itself, because `curl` does not
 accept a unix-socket SOCKS proxy. On a host that permits a TCP bind, use
 `--listen tcp://127.0.0.1:1080` and `ALL_PROXY=socks5h://127.0.0.1:1080`.
+
+Each unix listener (`net proxy`, `net switch`, `net tailscale`) claims its
+socket path first. A socket that another process serves gives exit 69. A file
+that is not a socket gives exit 64. A stale socket is removed. A client that
+sends no request in 30 s gets SOCKS5 code 4 or HTTP 504.
 
 ### 5.3 Switch (more than one host)
 
@@ -198,7 +206,10 @@ podnet net proxy --switch unix:/tmp/sw.sock --address 10.66.0.3 --drop 0.1 --see
 ## 6. Resolver, policy and capture
 
 * `vnet::dns::Resolver` answers A and AAAA queries for a name table at
-  `10.66.0.1:53`. It can send unknown names to an upstream, or answer all
+  `10.66.0.1:53`. `net proxy --map NAME=ADDR` and `--map-file PATH` fill the
+  table of the gateway and of the proxy door; `net shim --map` and
+  `--map-file` fill the table of `getaddrinfo`. An address outside the subnet
+  is a usage error (exit 64). It can send unknown names to an upstream, or answer all
   unknown names with one address.
 * `vnet::policy::Acl` has allow and deny rules for addresses and ports. The
   stack applies them when a program binds or connects.

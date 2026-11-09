@@ -21,8 +21,10 @@ use std::net::IpAddr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, BufReader};
+use tokio::io::{AsyncRead, AsyncWrite, BufReader};
 use tokio::task::JoinHandle;
+
+use podnet_netns::opening::{read_opening, Opening, REQUEST_LIMIT};
 
 use crate::vnet::addr::VirtAddr;
 use crate::vnet::socks::{self, ProxyHost};
@@ -68,9 +70,8 @@ pub fn resolve_target(
 /// so one listener serves both SOCKS5 and HTTP `CONNECT` clients.
 pub use crate::vnet::stack::TcpStream;
 
-/// How long one proxied client connection may take, end to end. A client that
-/// opens a connection to the front door and then says nothing holds a task and
-/// an origin socket until this expires.
+/// How long the copy of one proxied client connection may take. It does not
+/// bound the opening: `REQUEST_LIMIT` bounds that.
 const CLIENT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
 
 pub async fn handle_connection<S>(
@@ -82,20 +83,9 @@ pub async fn handle_connection<S>(
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let mut reader = BufReader::new(stream);
-    let first = match reader.fill_buf().await {
-        Ok(buffer) if !buffer.is_empty() => buffer[0],
+    let (is_socks, request) = match read_opening(&mut reader, REQUEST_LIMIT).await {
+        Opening::Request { is_socks, request } => (is_socks, request),
         _ => return,
-    };
-    let is_socks = socks::looks_like_socks5(first);
-    let request = if is_socks {
-        match socks::socks5_read_request(&mut reader).await {
-            Ok(request) => request,
-            Err(_) => return,
-        }
-    } else if let Ok(request) = socks::http_read_connect(&mut reader).await {
-        request
-    } else {
-        return;
     };
 
     let target = match resolve_target(&request, &resolver, default_port) {
@@ -192,21 +182,23 @@ where
 /// Bind a virtual listener and splice each accepted connection to a real
 /// destination. `dial` is called once per connection, so it can open a fresh
 /// real socket; the test suite passes a duplex instead.
-pub fn forward<F, Fut, S>(net: Arc<NetStack>, virt: VirtAddr, dial: F) -> JoinHandle<()>
+///
+/// The bind is done when this returns. A refusal of the stack (an address
+/// outside the subnet: `AddrNotAvailable`; a second bind: `AddrInUse`; the
+/// ACL: `PermissionDenied`) is the error.
+pub async fn forward<F, Fut, S>(
+    net: Arc<NetStack>,
+    virt: VirtAddr,
+    dial: F,
+) -> std::io::Result<JoinHandle<()>>
 where
     F: Fn() -> Fut + Send + Sync + 'static,
     Fut: Future<Output = std::io::Result<S>> + Send + 'static,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    tokio::spawn(async move {
-        let mut listener = match net.listen(virt).await {
-            Ok(listener) => listener,
-            Err(err) => {
-                tracing::warn!(%virt, error = %err, "virtual forward could not bind");
-                return;
-            }
-        };
-        tracing::info!(%virt, "virtual forward listening");
+    let mut listener = net.listen(virt).await?;
+    tracing::info!(%virt, "virtual forward listening");
+    Ok(tokio::spawn(async move {
         while let Ok(mut virtual_stream) = listener.accept().await {
             let dialed = dial();
             tokio::spawn(async move {
@@ -222,7 +214,7 @@ where
                 }
             });
         }
-    })
+    }))
 }
 
 /// The running proxy: the accept loop plus every forward task.
@@ -234,13 +226,19 @@ pub struct Proxy {
 
 impl Proxy {
     /// Start forwarding the configured virtual endpoints.
-    pub fn spawn_forwards<F, Fut, S>(&mut self, net: Arc<NetStack>, virt: VirtAddr, dial: F)
+    pub async fn spawn_forwards<F, Fut, S>(
+        &mut self,
+        net: Arc<NetStack>,
+        virt: VirtAddr,
+        dial: F,
+    ) -> std::io::Result<()>
     where
         F: Fn() -> Fut + Send + Sync + 'static,
         Fut: Future<Output = std::io::Result<S>> + Send + 'static,
         S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     {
-        self.forwards.push(forward(net, virt, dial));
+        self.forwards.push(forward(net, virt, dial).await?);
+        Ok(())
     }
 
     /// Stop the accept loop and every forward.
@@ -262,9 +260,7 @@ pub async fn serve(
     let mut listen = listen;
     let accepts = match &listen {
         ProxyListen::Tcp(bind) => {
-            let listener = tokio::net::TcpListener::bind(bind)
-                .await
-                .with_context(|| format!("binding {bind}"))?;
+            let listener = crate::net::bind_tcp(*bind).await?;
             // Issue 300: keep the bound address (the port that the kernel
             // chose for port 0), not the requested one.
             listen = ProxyListen::Tcp(listener.local_addr()?);
@@ -429,9 +425,9 @@ mod tests {
             let (real, far) = tokio::io::duplex(4096);
             tokio::spawn(echo(far));
             Ok(real)
-        });
-        // Give the forward a moment to bind its virtual listener.
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        })
+        .await
+        .unwrap();
 
         let (mut client, server) = tokio::io::duplex(4096);
         let proxy = {
@@ -474,8 +470,9 @@ mod tests {
             let (real, far) = tokio::io::duplex(4096);
             tokio::spawn(echo(far));
             Ok(real)
-        });
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        })
+        .await
+        .unwrap();
 
         let mut resolver = Resolver::new();
         resolver.insert("api".into(), "10.66.0.2".parse().unwrap());
@@ -510,5 +507,29 @@ mod tests {
         drop(client);
         let _ = proxy.await;
         handle.abort();
+    }
+
+    async fn duplex_dial() -> std::io::Result<tokio::io::DuplexStream> {
+        let (real, far) = tokio::io::duplex(64);
+        tokio::spawn(echo(far));
+        Ok(real)
+    }
+
+    #[tokio::test]
+    async fn a_forward_outside_the_subnet_returns_the_error() {
+        let net = Arc::new(NetStack::loopback());
+        let virt: VirtAddr = "192.168.9.9:80".parse().unwrap();
+        let err = forward(net, virt, duplex_dial).await.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::AddrNotAvailable);
+    }
+
+    #[tokio::test]
+    async fn a_second_forward_of_one_address_returns_addr_in_use() {
+        let net = Arc::new(NetStack::loopback());
+        let virt: VirtAddr = "10.66.0.2:8080".parse().unwrap();
+        let first = forward(net.clone(), virt, duplex_dial).await.unwrap();
+        let err = forward(net, virt, duplex_dial).await.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::AddrInUse);
+        first.abort();
     }
 }

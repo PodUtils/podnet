@@ -309,7 +309,7 @@ The router of M6 needs a door over any network.
    the door or of the command.
 3. The one door has one deadline for the request, and one cap or counter of live client tasks (GitHub #384).
    The deadline covers the first byte, the SOCKS5 request and the CONNECT head (30 s as `REQUEST_LIMIT`
-   in `src/warp/proxy.rs:588`). T-185 fixes the defect first in two doors and names the constant.
+   in `src/warp/proxy.rs:586`). T-185 fixes the defect first in two doors and names the constant.
 
 ## Prove
 

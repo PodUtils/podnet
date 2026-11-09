@@ -59,11 +59,18 @@ impl DeviceStats {
     }
 }
 
+/// The packets that the outbound queue of a link device holds.
+pub const LINK_OUTBOUND: usize = 512;
+/// The packets that the inbound queue of a link device holds.
+pub const LINK_INBOUND: usize = 4096;
+
 struct QueueInner {
     packets: VecDeque<Vec<u8>>,
     waker: Option<Waker>,
     capacity: usize,
     dropped: u64,
+    /// Where to count a drop too (`rx_dropped` of a device).
+    sink: Option<Arc<DeviceStats>>,
 }
 
 /// A bounded packet queue with a waker, shared between the device and its
@@ -95,12 +102,20 @@ impl PacketQueue {
                 waker: None,
                 capacity: capacity.max(1),
                 dropped: 0,
+                sink: None,
             })),
         }
     }
 
     pub fn unbounded() -> Self {
         Self::bounded(usize::MAX)
+    }
+
+    /// Count each drop of this queue in `rx_dropped` of `stats`. Call it
+    /// before the queue is shared.
+    fn counting_in(self, stats: Arc<DeviceStats>) -> Self {
+        self.inner.lock().unwrap().sink = Some(stats);
+        self
     }
 
     /// Push a packet, waking a reader. Returns false when the packet was
@@ -110,6 +125,9 @@ impl PacketQueue {
             let mut inner = self.inner.lock().unwrap();
             if inner.packets.len() >= inner.capacity {
                 inner.dropped += 1;
+                if let Some(stats) = &inner.sink {
+                    stats.rx_dropped.fetch_add(1, Ordering::Relaxed);
+                }
                 return false;
             }
             inner.packets.push_back(packet);
@@ -253,6 +271,16 @@ impl LinkDevice {
         let mut device = Self::new(mtu, false);
         device.tx = PacketQueue::bounded(packets);
         device.hold_when_full = true;
+        device
+    }
+
+    /// The device of a stack over a switch link: both queues are bounded
+    /// (`LINK_OUTBOUND`, `LINK_INBOUND`). The stack holds when the outbound
+    /// queue is full. A packet that the pump cannot queue inbound is dropped
+    /// and counted in `rx_dropped`.
+    pub fn link(mtu: usize) -> Self {
+        let mut device = Self::tunnel_bounded(mtu, LINK_OUTBOUND).with_inbound_limit(LINK_INBOUND);
+        device.rx = device.rx.clone().counting_in(device.stats.clone());
         device
     }
 
@@ -582,6 +610,18 @@ mod tests {
         let mut seen = Vec::new();
         rx.consume(|buf| seen.extend_from_slice(buf));
         assert_eq!(seen, b"hello");
+    }
+
+    #[test]
+    fn a_link_device_is_bounded_and_counts_its_inbound_drops() {
+        let device = LinkDevice::link(1280);
+        let inbound = device.inbound();
+        for _ in 0..LINK_INBOUND {
+            assert!(inbound.push(vec![0x45]));
+        }
+        assert!(!inbound.push(vec![0x45]));
+        assert_eq!(device.stats().snapshot().rx_dropped, 1);
+        assert!(device.outbound().is_empty());
     }
 
     #[test]

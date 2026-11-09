@@ -42,11 +42,9 @@ pub use pod_proxy::{
 pub const PROXY_VARIABLES: &[&str] = &pod_proxy::PROXY_VARS_UPPER_FIRST;
 /// The variables of the list of targets that do not use the proxy.
 pub const NO_PROXY_VARIABLES: &[&str] = &pod_proxy::NO_PROXY_VARS_UPPER_FIRST;
-/// The port of an `http://` proxy URL with no port, as in curl.
-pub const HTTP_PORT: u16 = 8080;
-
 /// podnet's rules of the proxy settings: the upper case first, a URL that
-/// cannot be used passed over with a warning, `http://` on port 8080, an
+/// cannot be used passed over with a warning, `http://` with no port on port 80
+/// (the value of `pod-proxy`, Go and Python; curl reads 1080), an
 /// entry `host:port` of `NO_PROXY` for that port only, and the loopback
 /// through the proxy unless `NO_PROXY` names it.
 pub fn rules() -> Rules {
@@ -55,15 +53,15 @@ pub fn rules() -> Rules {
         http_proxy_vars: &pod_proxy::HTTP_PROXY_VARS_UPPER_FIRST,
         no_proxy_vars: &pod_proxy::NO_PROXY_VARS_UPPER_FIRST,
         skip_unusable: true,
-        http_port: HTTP_PORT,
         no_proxy_ports: true,
         loopback_direct: false,
+        ..Rules::default()
     }
 }
 
 /// The proxy of a URL by podnet's rules, as a variable gives it: no command.
 pub fn parse(spec: &str) -> Result<Proxy> {
-    Proxy::parse_with(spec, false, HTTP_PORT).map_err(anyhow::Error::msg)
+    Proxy::parse(spec).map_err(anyhow::Error::msg)
 }
 
 /// How podnet reaches the network, as `podnet status` names it.
@@ -456,10 +454,7 @@ mod tests {
         };
         let env = Environment::read_with(&set, rules());
         let proxy = env.proxy_at("relay.example", 443, &[]).unwrap().unwrap();
-        assert_eq!(
-            (proxy.host.as_str(), proxy.port),
-            ("proxy.example", HTTP_PORT)
-        );
+        assert_eq!((proxy.host.as_str(), proxy.port), ("proxy.example", 80));
         assert!(env
             .proxy_at("internal.example", 8443, &[])
             .unwrap()
@@ -472,6 +467,7 @@ mod tests {
             env.proxy_at("127.0.0.1", 80, &[]).unwrap().is_some(),
             "the loopback takes the proxy"
         );
-        assert_eq!(parse("http://127.0.0.1").unwrap().port, HTTP_PORT);
+        assert_eq!(parse("http://127.0.0.1").unwrap().port, 80);
+        assert_eq!(parse("socks5://127.0.0.1").unwrap().port, 1080);
     }
 }

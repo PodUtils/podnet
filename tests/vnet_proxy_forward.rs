@@ -44,14 +44,14 @@ async fn the_documented_forward_path_carries_a_reply_back_to_the_client() {
     )
     .await
     .expect("starting the proxy");
-    proxy.spawn_forwards(net.clone(), virt, || async {
-        let (ours, theirs) = tokio::io::duplex(4096);
-        tokio::spawn(real_service(theirs));
-        Ok(ours)
-    });
-
-    // The listener binds asynchronously; give it a moment.
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    proxy
+        .spawn_forwards(net.clone(), virt, || async {
+            let (ours, theirs) = tokio::io::duplex(4096);
+            tokio::spawn(real_service(theirs));
+            Ok(ours)
+        })
+        .await
+        .expect("binding the forward");
 
     let mut client = tokio::net::UnixStream::connect(&socks_path)
         .await

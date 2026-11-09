@@ -1138,7 +1138,7 @@ The abstract-name shim has no option to hand a chosen address to the SOCKS door.
 ## Premise
 
 - `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`shim/podnet-socks.c:81-92`).
-- `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:104-110`). `ShimOptions`
+- `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:115-121`). `ShimOptions`
   (`src/vnet/shim.rs:30-45`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
 - The variable list is in `src/manual/facts.rs:296`. `docs/virtual-network.md` has no text on socksify
   (README.md:921 only), so item 4 of the issue needs a new section.
@@ -1178,7 +1178,7 @@ Tailscale and described only for Tailscale SSH.
 ## Premise
 
 - `net ts-shims` already takes `--out --user --uid --gid --shell --json` and prints `LD_PRELOAD`
-  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:118-157`,
+  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:129-168`,
   `src/vnet/tailscale_ssh.rs:160-202`). It also writes `getent`, `id` and a compiled shim: more than a client needs.
 - `docs/target-environment.md:104` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
   No doctor row names the silent `ssh-keygen`.
@@ -1252,8 +1252,8 @@ its identity, force a reconnect or change the probe interval without a restart, 
 ## Premise
 
 - T-095 keeps one state directory for each identity. `warp rotate` and `--session-max-age` exist for one session.
-- `STATS` is global (`src/warp/proxy.rs:120`). The loopback and credential gate is at
-  `src/warp/proxy.rs:412-417`; the PIN gate is `src/gate.rs`.
+- `STATS` is global (`src/warp/proxy.rs:118`). The loopback and credential gate is at
+  `src/warp/proxy.rs:410-415`; the PIN gate is `src/gate.rs`.
 - The WARP service limits new devices for each address (T-101 Premise; `docs/decisions.md`).
 
 ## Approach

@@ -1,6 +1,7 @@
 //! `podnet net`: userspace virtual networking.
 
 pub(crate) mod proxy;
+mod real;
 pub(crate) mod shim;
 
 use std::net::IpAddr;
@@ -61,7 +62,9 @@ pub(crate) struct TailscaleArgs {
     /// The LocalAPI socket of tailscaled.
     #[arg(long, default_value = podnet_netns::tailscale::DEFAULT_SOCKET)]
     socket: String,
-    /// Where to accept proxy clients: unix:/path or tcp://[bind:]port.
+    /// Where to accept proxy clients: unix:/path or tcp://[bind:]port. A
+    /// unix path that another process serves exits 69; a file that is not a
+    /// socket exits 64; a stale socket is removed.
     #[arg(long, default_value = "unix:/tmp/podnet-socks.sock")]
     listen: String,
     /// Port to use when a client omits one.
@@ -125,6 +128,12 @@ pub(crate) struct ShimArgs {
     /// Rewrite 127.0.0.1 connections to the stack's local address.
     #[arg(long)]
     map_loopback: bool,
+    /// Name-to-address entries for the shim, repeatable: --map web=10.66.0.2
+    #[arg(long = "map", value_name = "NAME=ADDR")]
+    maps: Vec<String>,
+    /// Read name entries from a file, repeatable.
+    #[arg(long = "map-file", value_name = "PATH")]
+    map_files: Vec<PathBuf>,
     /// Print the environment as JSON instead of shell assignments.
     #[arg(long)]
     json: bool,
@@ -140,8 +149,14 @@ pub(crate) struct ProxyArgs {
     /// Name-to-address entries, repeatable: --map web=10.66.0.2
     #[arg(long = "map", value_name = "NAME=ADDR")]
     maps: Vec<String>,
+    /// Read name entries from a file, repeatable: `NAME=ADDR` or hosts lines.
+    /// The names answer at the gateway 10.66.0.1:53 and at the proxy.
+    #[arg(long = "map-file", value_name = "PATH")]
+    map_files: Vec<PathBuf>,
     /// Forward a virtual endpoint to a real one, repeatable. REAL is
-    /// host:port for TCP, or unix:/path for a unix service:
+    /// host:port (a name or an address) for TCP, or unix:/path for a unix
+    /// service. A target that is not loopback goes through the proxy of the
+    /// process (with NO_PROXY); a loopback target and a unix path go direct:
     /// --forward 10.66.0.2:8080=127.0.0.1:3000
     #[arg(long = "forward", value_name = "VIRT=REAL")]
     forwards: Vec<String>,

@@ -68,9 +68,7 @@ impl Bound {
 pub async fn bind(listen: &ProxyListen) -> Result<Bound> {
     match listen {
         ProxyListen::Tcp(addr) => {
-            let listener = tokio::net::TcpListener::bind(addr)
-                .await
-                .with_context(|| format!("binding tcp://{addr}"))?;
+            let listener = crate::net::bind_tcp(*addr).await?;
             let actual = listener.local_addr().unwrap_or(*addr);
             Ok(Bound::Tcp(listener, ProxyListen::Tcp(actual)))
         }
@@ -583,9 +581,7 @@ pub fn has_credentials() -> bool {
     CREDENTIALS.get().is_some()
 }
 
-/// The longest time for the request of a client (issue 146: a client that
-/// sent nothing held its task for ever).
-const REQUEST_LIMIT: Duration = Duration::from_secs(30);
+use podnet_netns::opening::REQUEST_LIMIT;
 
 /// [`handle_client`] with the credentials that the client must give.
 pub async fn handle_client_auth<S, D, F>(

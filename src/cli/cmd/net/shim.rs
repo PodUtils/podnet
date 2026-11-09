@@ -9,6 +9,10 @@ use super::{ShimArgs, SocksifyArgs, TailscaleArgs, TsShimsArgs};
 use crate::cli::signals::sleep_or_signal;
 
 pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
+    let subnet = podnet::vnet::StackConfig::default().subnet;
+    let hosts = podnet::vnet::dns::Resolver::from_maps(&args.maps, &args.map_files, &subnet)
+        .fault(Fault::Usage)?
+        .hosts_pairs();
     let directory = args
         .out
         .clone()
@@ -21,6 +25,7 @@ pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
     let options = podnet::vnet::shim::ShimOptions {
         log: args.log,
         map_loopback: args.map_loopback,
+        hosts,
         ..podnet::vnet::shim::ShimOptions::default()
     };
     let env = options.environment(&shim.path);
@@ -45,6 +50,10 @@ pub(crate) async fn net_tailscale(args: TailscaleArgs) -> Result<()> {
     use podnet::vnet::tailscale::{self, Dialer};
 
     let listen = ProxyListen::parse(&args.listen)?;
+    // A live socket is exit 69, a file that is no socket is 64.
+    if let ProxyListen::Unix(path) = &listen {
+        podnet::net::claim_socket_path(path, false)?;
+    }
     // The LocalAPI socket of tailscaled must answer before the front door
     // starts: before, a missing tailscaled was found only at the first
     // SOCKS request, and the command exited 0.
@@ -57,7 +66,9 @@ pub(crate) async fn net_tailscale(args: TailscaleArgs) -> Result<()> {
             )
         })
         .fault(Fault::Unavailable)?;
-    let proxy = tailscale::serve(Dialer::new(&args.socket), listen, args.port).await?;
+    let proxy = tailscale::serve(Dialer::new(&args.socket), listen, args.port)
+        .await
+        .map_err(podnet::net::bind_fault)?;
     // Issue 300: the bound address (a TCP port 0 gives the port).
     println!("podnet: proxy    {}", proxy.listen);
     println!("podnet: localapi {}", args.socket);

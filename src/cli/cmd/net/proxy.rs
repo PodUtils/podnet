@@ -3,11 +3,12 @@
 
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 
 use podnet::exit::{Fault, ResultExt};
 use podnet::vnet::VirtAddr;
 
+use super::real::RealTarget;
 use super::ProxyArgs;
 use crate::cli::cmd::run::listen_doc;
 use crate::cli::signals::sleep_or_signal;
@@ -26,9 +27,21 @@ pub(crate) fn probability(value: &str) -> std::result::Result<f64, String> {
 pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
     use podnet::vnet::proxy::{ProxyListen, Resolver};
 
+    // T-193: one resolver for the door, the gateway (10.66.0.1:53) and the
+    // stack; a bad entry is a usage error before anything starts.
+    let defaults = podnet::vnet::StackConfig::default();
+    let names =
+        podnet::vnet::dns::Resolver::from_maps(&args.maps, &args.map_files, &defaults.subnet)
+            .fault(Fault::Usage)?;
+    let names = Arc::new(names);
     let mut _link = None;
     let net = match &args.switch {
-        None => Arc::new(podnet::vnet::NetStack::loopback()),
+        None => Arc::new(podnet::vnet::NetStack::loopback_with(
+            podnet::vnet::StackConfig {
+                dns: Some(names.clone()),
+                ..defaults
+            },
+        )),
         Some(switch) => {
             let address = args
                 .address
@@ -36,7 +49,8 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
                 .fault(Fault::Usage)?;
             let config = podnet::vnet::StackConfig {
                 local_v4: address,
-                ..podnet::vnet::StackConfig::default()
+                dns: Some(names.clone()),
+                ..defaults
             };
             let net = Arc::new(podnet::vnet::NetStack::over_link(config));
             let faults = podnet::vnet::switch::Faults {
@@ -87,32 +101,19 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
             net
         }
     };
-    let mut resolver = Resolver::new();
-    for entry in &args.maps {
-        let (name, address) = entry
-            .split_once('=')
-            .with_context(|| format!("--map wants NAME=ADDRESS, got {entry:?}"))?;
-        resolver.insert(
-            name.trim().to_ascii_lowercase(),
-            address
-                .trim()
-                .parse()
-                .with_context(|| format!("bad address in {entry:?}"))?,
-        );
-    }
+    let resolver: Resolver = names.hosts_pairs().into_iter().collect();
     let listen = ProxyListen::parse(&args.listen)?;
+    let forwards = parse_forwards(&args.forwards)?;
     let mut proxy = podnet::vnet::proxy::serve(net.clone(), listen, resolver, args.port).await?;
-    for spec in &args.forwards {
-        let (virt, real) = spec
-            .split_once('=')
-            .with_context(|| format!("--forward wants VIRT=REAL, got {spec:?}"))?;
-        let virt: VirtAddr = virt.trim().parse()?;
-        let real = RealTarget::parse(real.trim())?;
+    for (virt, real) in forwards {
         let dial_real = real.clone();
-        proxy.spawn_forwards(net.clone(), virt, move || {
-            let real = dial_real.clone();
-            async move { real.dial().await }
-        });
+        proxy
+            .spawn_forwards(net.clone(), virt, move || {
+                let real = dial_real.clone();
+                async move { real.dial().await }
+            })
+            .await
+            .map_err(|err| forward_fault(virt, err))?;
         println!("podnet: forward  {virt} -> {}", real.describe());
     }
     // Issue 300: the bound address (a TCP port 0 gives the port).
@@ -123,60 +124,33 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
     Ok(())
 }
 
-/// A real destination a virtual forward bridges to.
-#[derive(Clone, Debug)]
-pub(crate) enum RealTarget {
-    Tcp(std::net::SocketAddr),
-    #[cfg(unix)]
-    Unix(std::path::PathBuf),
+/// Parse each `--forward VIRT=REAL`. A repeated `VIRT` is a usage error.
+fn parse_forwards(specs: &[String]) -> Result<Vec<(VirtAddr, RealTarget)>> {
+    let mut out: Vec<(VirtAddr, RealTarget)> = Vec::new();
+    for spec in specs {
+        let (virt, real) = spec
+            .split_once('=')
+            .with_context(|| format!("--forward wants VIRT=REAL, got {spec:?}"))
+            .fault(Fault::Usage)?;
+        let virt: VirtAddr = virt.trim().parse().fault(Fault::Usage)?;
+        if out.iter().any(|(seen, _)| *seen == virt) {
+            return Err(anyhow::anyhow!("--forward {virt} is given more than once"))
+                .fault(Fault::Usage);
+        }
+        out.push((virt, RealTarget::parse(real.trim()).fault(Fault::Usage)?));
+    }
+    Ok(out)
 }
 
-impl RealTarget {
-    fn parse(value: &str) -> Result<Self> {
-        if let Some(path) = value.strip_prefix("unix:") {
-            #[cfg(unix)]
-            {
-                if path.is_empty() {
-                    bail!("unix: real destination has no path");
-                }
-                return Ok(Self::Unix(std::path::PathBuf::from(path)));
-            }
-            #[cfg(not(unix))]
-            {
-                let _ = path;
-                bail!("unix destinations are not supported on this platform");
-            }
-        }
-        Ok(Self::Tcp(
-            value
-                .parse()
-                .with_context(|| format!("bad real address {value:?}"))?,
-        ))
-    }
-
-    fn describe(&self) -> String {
-        match self {
-            Self::Tcp(addr) => addr.to_string(),
-            #[cfg(unix)]
-            Self::Unix(path) => format!("unix:{}", path.display()),
-        }
-    }
-
-    /// Open a real connection, type-erased so the forward is generic.
-    async fn dial(&self) -> std::io::Result<Box<dyn DialStream>> {
-        match self {
-            Self::Tcp(addr) => Ok(Box::new(tokio::net::TcpStream::connect(addr).await?)),
-            #[cfg(unix)]
-            Self::Unix(path) => Ok(Box::new(tokio::net::UnixStream::connect(path).await?)),
-        }
-    }
+/// The class of a refused bind of a forward: an address that the subnet does
+/// not hold is a usage error; a taken address or an ACL refusal is 69.
+fn forward_fault(virt: VirtAddr, err: std::io::Error) -> anyhow::Error {
+    let class = match err.kind() {
+        std::io::ErrorKind::AddrNotAvailable => Fault::Usage,
+        _ => Fault::Unavailable,
+    };
+    podnet::exit::fault(
+        class,
+        anyhow::Error::new(err).context(format!("--forward {virt} could not bind")),
+    )
 }
-
-/// The bounds a forwarded connection must satisfy. A single local trait lets
-/// the real destination be either a TCP or a unix stream.
-pub(crate) trait DialStream:
-    tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin
-{
-}
-
-impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin> DialStream for T {}

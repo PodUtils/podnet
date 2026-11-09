@@ -1437,7 +1437,7 @@ impl NetStack {
         let device = if loopback {
             LinkDevice::loopback(config.mtu)
         } else {
-            LinkDevice::tunnel(config.mtu)
+            LinkDevice::link(config.mtu)
         };
         // A packet to an address of this stack stays in it (issue 65).
         device.add_local(IpAddr::V4(config.local_v4));

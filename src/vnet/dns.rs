@@ -83,6 +83,36 @@ impl Resolver {
         Ok(resolver)
     }
 
+    /// The resolver of `--map NAME=ADDR` entries and of `--map-file` files
+    /// (the lines that [`Resolver::from_lines`] reads). Each address must be
+    /// in `subnet`: a name that points outside the network is refused when
+    /// the entries are read, not at the first request.
+    pub fn from_maps(
+        maps: &[String],
+        files: &[std::path::PathBuf],
+        subnet: &crate::vnet::addr::VirtualSubnet,
+    ) -> Result<Self> {
+        let mut lines: Vec<String> = Vec::new();
+        for entry in maps {
+            if !entry.contains('=') {
+                anyhow::bail!("--map wants NAME=ADDRESS, got {entry:?}");
+            }
+            lines.push(entry.clone());
+        }
+        for file in files {
+            let text = std::fs::read_to_string(file)
+                .map_err(|e| anyhow::anyhow!("--map-file {}: {e}", file.display()))?;
+            lines.extend(text.lines().map(str::to_string));
+        }
+        let resolver = Self::from_lines(&lines)?;
+        for (name, ip) in resolver.hosts_pairs() {
+            if !subnet.contains(&ip) {
+                anyhow::bail!("the address {ip} of {name:?} is outside the virtual subnet");
+            }
+        }
+        Ok(resolver)
+    }
+
     /// The answers for a name and record type.
     pub fn answers(&self, name: &str, qtype: u16) -> Vec<IpAddr> {
         let mut answers: Vec<IpAddr> = match self.get(name) {

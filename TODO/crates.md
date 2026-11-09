@@ -709,7 +709,7 @@ cuts streams with no replacement. A larger cap wastes sessions.
   with `max_session_ms` 43200000, `max_session_bytes` 67108864, `idle_timeout_ms` 180000 and
   `connect_timeout_ms` 10000. The key names differ from the issue (`session_bytes`). No relay-server
   change is needed for the default deployment.
-- `docs/decisions.md:76` (2026-11-05): the limits of `/relays.json` are data of `pod-services`; the
+- `docs/decisions.md:77` (2026-11-05): the limits of `/relays.json` are data of `pod-services`; the
   relay client goes to `pod-relay`.
 - `src/edge_h2.rs` is frozen (pod-core): fixes only.
 - Not measured: the limits of a third-party relay.

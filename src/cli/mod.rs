@@ -240,3 +240,6 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::BugReport { doctor } => cmd::host::bug_report(doctor).await,
     }
 }
+
+#[cfg(test)]
+mod listen_table;

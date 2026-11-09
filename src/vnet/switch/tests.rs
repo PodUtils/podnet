@@ -357,3 +357,24 @@ async fn exported_and_imported_names_meet_through_the_switch() {
     assert_eq!(&reply, b"pong");
     switch.abort();
 }
+
+/// T-189: a full queue drops the packet, and the drop is counted.
+#[test]
+fn a_full_queue_counts_its_drops() {
+    let mut table = Table::default();
+    let (tx1, _rx1) = mpsc::channel(16);
+    let (tx2, _rx2_that_does_not_read) = mpsc::channel(2);
+    table.peers.insert(1, tx1);
+    table.peers.insert(2, tx2);
+    table.forward(2, v4_packet([10, 66, 0, 3], [10, 66, 0, 9]));
+    for _ in 0..5 {
+        table.forward(1, v4_packet([10, 66, 0, 2], [10, 66, 0, 3]));
+    }
+    let counts = table.counts();
+    let two = counts.peers.iter().find(|(id, _)| *id == 2).unwrap().1;
+    assert_eq!(two.sent, 2);
+    assert_eq!(two.dropped, 3);
+    assert_eq!(counts.dropped(), 3);
+    table.remove(2);
+    assert_eq!(table.counts().left.dropped, 3);
+}

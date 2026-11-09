@@ -32,7 +32,7 @@ use crate::net::BoxedIo;
 use crate::udp::Egress;
 
 /// The limits of the doctor.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Options {
     /// Samples of each TCP path.
     pub samples: usize,
@@ -42,6 +42,8 @@ pub struct Options {
     pub budget: Duration,
     /// The time limit of one connection, and of one TLS handshake.
     pub timeout: Duration,
+    /// The relay to test (`--relay`); else `PODNET_RELAY`, else the default.
+    pub relay: Option<String>,
 }
 
 impl Default for Options {
@@ -51,6 +53,7 @@ impl Default for Options {
             gap: Duration::from_millis(125),
             budget: Duration::from_secs(10),
             timeout: Duration::from_secs(3),
+            relay: None,
         }
     }
 }
@@ -84,6 +87,8 @@ pub enum Tls {
     /// pinned to a key that only a registered device knows, so the doctor
     /// gives the issuer and does not judge it.
     Masque,
+    /// A loopback relay on `http://`: a plain check, no TLS.
+    Plain,
 }
 
 /// One target of the doctor.
@@ -107,69 +112,8 @@ impl Target {
 
 pub use crate::services::{masque_address, masque_address_v6};
 
-/// The targets: the APIs, the edge by name and by address, and MASQUE.
-pub fn targets() -> Vec<Target> {
-    let edge = crate::udp::probe_target();
-    let quick_api = crate::services::endpoint(crate::services::QUICK, "api");
-    let warp_api = crate::services::endpoint(crate::services::WARP, "api");
-    vec![
-        Target {
-            id: "api",
-            host: quick_api.host().into(),
-            port: quick_api.port(),
-            tls: Tls::Web,
-        },
-        Target {
-            id: "warp-api",
-            host: warp_api.host().into(),
-            port: warp_api.port(),
-            tls: Tls::Web,
-        },
-        Target {
-            id: "edge-name",
-            host: crate::tunnel::edge_region_name().into(),
-            port: 7844,
-            tls: Tls::Edge,
-        },
-        Target {
-            id: "edge-address",
-            host: edge.ip().to_string(),
-            port: edge.port(),
-            tls: Tls::Edge,
-        },
-        Target {
-            id: "masque",
-            host: masque_address().into(),
-            port: crate::warp::register::masque_port(),
-            tls: Tls::Masque,
-        },
-    ]
-    .into_iter()
-    .chain(
-        (crate::resolve::has_default_route(true)
-            || crate::egress::proxy_for(masque_address_v6(), crate::warp::register::masque_port())
-                .is_some())
-        .then(|| Target {
-            id: "masque-v6",
-            host: masque_address_v6().into(),
-            port: crate::warp::register::masque_port(),
-            tls: Tls::Masque,
-        }),
-    )
-    // Issue 128: the WebSocket relay is a road of its own (PODNET_RELAY).
-    .chain(
-        crate::ws_relay::Relay::from_env(None)
-            .ok()
-            .filter(|r| r.url().starts_with("https://"))
-            .map(|relay| Target {
-                id: "relay",
-                host: relay.host().to_string(),
-                port: relay.port(),
-                tls: Tls::Web,
-            }),
-    )
-    .collect()
-}
+mod targets;
+pub use targets::targets;
 
 /// One sample of a TCP path.
 #[derive(Clone, Debug)]
@@ -475,7 +419,7 @@ impl Report {
 /// Run the doctor.
 pub async fn run(options: Options) -> Report {
     crate::init_crypto();
-    let targets = targets();
+    let targets = targets(options.relay.as_deref());
     let proxy = proxy_report(&targets);
     let start = Instant::now();
     let udp_target = crate::udp::probe_target();
@@ -483,7 +427,7 @@ pub async fn run(options: Options) -> Report {
         crate::udp::probe(udp_target, crate::udp::DOCTOR_DEADLINE)
     });
     let paths =
-        futures::future::join_all(targets.into_iter().map(|t| path(t, options, start))).await;
+        futures::future::join_all(targets.into_iter().map(|t| path(t, &options, start))).await;
     let udp = udp
         .await
         .unwrap_or_else(|e| Egress::Unknown(format!("the probe did not run: {e}")));
@@ -625,7 +569,7 @@ fn proxy_report(targets: &[Target]) -> Value {
     })
 }
 
-async fn path(target: Target, options: Options, start: Instant) -> Path {
+async fn path(target: Target, options: &Options, start: Instant) -> Path {
     let via = crate::egress::proxy_for(&target.host, target.port).map(|p| p.label());
     // Issue 128: the answer of the resolver chain, before the samples.
     let dns = if via.is_none() && target.host.parse::<std::net::IpAddr>().is_err() {
@@ -677,7 +621,12 @@ async fn path(target: Target, options: Options, start: Instant) -> Path {
         })
         .collect();
     let (verdict, detail) = if samples.iter().any(|s| matches!(s, Sample::Open(_))) {
-        (Verdict::Ok, "open".to_string())
+        let note = if target.tls == Tls::Plain {
+            "open; loopback relay, no TLS"
+        } else {
+            "open"
+        };
+        (Verdict::Ok, note.to_string())
     } else if let Some(Sample::Refused(_, why)) =
         samples.iter().find(|s| matches!(s, Sample::Refused(..)))
     {
@@ -692,7 +641,7 @@ async fn path(target: Target, options: Options, start: Instant) -> Path {
     } else {
         (Verdict::Unknown, "no sample in the time limit".to_string())
     };
-    let tls = if verdict == Verdict::Ok {
+    let tls = if verdict == Verdict::Ok && target.tls != Tls::Plain {
         Some(tls(&target, options.timeout).await)
     } else {
         None
@@ -899,7 +848,7 @@ fn verifier(tls: Tls) -> Result<Option<Arc<dyn ServerCertVerifier>>, String> {
     let extra: &[&[u8]] = match tls {
         Tls::Web => &[],
         Tls::Edge => &[crate::cloudflare::edge_roots_pem()],
-        Tls::Masque => return Ok(None),
+        Tls::Masque | Tls::Plain => return Ok(None),
     };
     let context = crate::trust::context();
     let roots = context.roots().map_err(|e| format!("{e:#}"))?;
@@ -934,7 +883,7 @@ async fn tls(target: &Target, timeout: Duration) -> TlsResult {
         .with_custom_certificate_verifier(recorder.clone())
         .with_no_client_auth();
     let sni = match target.tls {
-        Tls::Web => target.host.clone(),
+        Tls::Web | Tls::Plain => target.host.clone(),
         Tls::Edge => crate::cloudflare::h2_sni().to_string(),
         Tls::Masque => {
             config.alpn_protocols = vec![b"h2".to_vec()];

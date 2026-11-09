@@ -1671,7 +1671,7 @@ the datagrams of the peer.
 
 - Read: `Inbox::deliver` (`inbox.rs:79`) sends into the pair with no check of the source. Both relay
   reader tasks call it (`seccomp.rs:1226`, `:1246`). `Inbox::new` has no `dest`.
-- Read: the ruling of 2026-11-04 (`docs/decisions.md:35`): a read of a connected socket stays direct,
+- Read: the ruling of 2026-11-04 (`docs/decisions.md:36`): a read of a connected socket stays direct,
   so the filter must act at delivery.
 - Open: the form of the filter key. The relay source is a `WireSource` (name or address), the `dest` is
   a fake or real address. Compare after `name_for_ip` mapping.
@@ -2251,7 +2251,7 @@ The session of `PodUtils/podcrates` (the crate `pod-services`): the file host of
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2259,7 +2259,7 @@ The session of `PodUtils/podcrates` (the crate `pod-services`): the file host of
 
 ## Premise
 
-- `src/egress.rs:45-46` sets 8080 and `rules()` passes it as `http_port` (`src/egress.rs:52-63`); `parse()` uses it (`:66`).
+- `src/egress.rs:45-46` sets 8080 and `rules()` passes it as `http_port` (`src/egress.rs:50-61`); `parse()` uses it (`:66`).
 - `pod-proxy` `HTTP_PORT = 80` (`proxy/parse.rs:21`) is the default of `Rules` (`env.rs:141`). A consumer can set another value (`env.rs:124`).
 - The tests assert the constant, not a number (`src/egress.rs:461,475`).
 - `docs/decisions.md` has no ruling on this value. Not measured: curl behaviour (read from the issue).
@@ -2283,6 +2283,10 @@ grep -n "HTTP_PORT" src/egress.rs
 
 The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled number).
 
+## Done
+
+2026-11-09, commit cca2e0a. egress::rules and egress::parse use the default of pod-proxy (80); HTTP_PORT of egress.rs is removed; the ruling is in docs/decisions.md. Test: egress::tests (the chain test asserts 80 and 1080). COORD (to podssh): open for the lead. check.sh: exit 0. CI: at the merge.
+
 # T-184: `doctor`: the relay row follows `--relay` and keeps a loopback relay (GitHub #380)
 
 **Source:** GitHub #380 (https://github.com/PodUtils/podnet/issues/380)
@@ -2290,7 +2294,7 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2298,8 +2302,8 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 
 ## Premise
 
-- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:38-48`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-29`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
-- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:244-248`).
+- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:38-48`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
+- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:248-253`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
 ## Approach
@@ -2316,6 +2320,10 @@ cargo test -p podnet --lib doctor::
 python3 scripts/check-size.py
 ```
 
+## Done
+
+2026-11-09, commit aff90d5. podnet doctor --relay URL (env PODNET_RELAY) sets Options.relay; targets(relay) is in src/doctor/targets.rs; a loopback http:// relay gets the row with Tls::Plain and the words 'loopback relay, no TLS'. src/doctor.rs is smaller. Tests: doctor::targets::tests::the_relay_row_follows_the_given_relay, the_targets_hold_the_given_relay. check.sh: exit 0. CI: at the merge.
+
 # T-185: A deadline for the client handshake of `net proxy`, `net tailscale` and `pod --serve` (GitHub #384)
 
 **Source:** GitHub #384 (https://github.com/PodUtils/podnet/issues/384)
@@ -2323,16 +2331,16 @@ python3 scripts/check-size.py
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
-A client that connects and sends nothing, or one byte of a SOCKS5 greeting, holds its task and socket until the process ends. Each connection is unauthenticated. The accept loops have no cap. The WARP door has the fix (`REQUEST_LIMIT`, 30 s, `src/warp/proxy.rs:588`). `CLIENT_TIMEOUT` (300 s) wraps only the copy.
+A client that connects and sends nothing, or one byte of a SOCKS5 greeting, holds its task and socket until the process ends. Each connection is unauthenticated. The accept loops have no cap. The WARP door has the fix (`REQUEST_LIMIT`, 30 s, `src/warp/proxy.rs:586`). `CLIENT_TIMEOUT` (300 s) wraps only the copy.
 
 ## Premise
 
-- `src/vnet/proxy.rs:84-96`: `fill_buf`, `socks5_read_request` and `http_read_connect` have no timeout. The copy is wrapped at `:128-135`. Accept loops: `:271-296`.
-- `crates/podnet-netns/src/tailscale.rs:377,383,387`: same reads. The dial and the copy have a timeout (`:399`, `:419`).
+- `src/vnet/proxy.rs:84-96`: `fill_buf`, `socks5_read_request` and `http_read_connect` have no timeout. The copy is wrapped at `:118-125`. Accept loops: `:267-292`.
+- `crates/podnet-netns/src/tailscale.rs:377,383,387`: same reads. The dial and the copy have a timeout (`:386`, `:406`).
 - `crates/podnet-netns/src/frontdoor.rs:79,121`: same reads in the door of `pod --serve` (not in the issue).
 - `src/warp/proxy.rs:628-630,657-661,703-706`: the precedent.
 - Not run.
@@ -2340,7 +2348,7 @@ A client that connects and sends nothing, or one byte of a SOCKS5 greeting, hold
 ## Approach
 
 1. One constant `REQUEST_LIMIT` (30 s) in `podnet-netns` (`socks.rs`). Wrap the first byte and the request read in each of the three doors. The warp door uses the same constant.
-2. On expiry send a SOCKS5 reply `0x04` or an HTTP `504`, then close (`fail_with`, `src/vnet/proxy.rs:171-190`).
+2. On expiry send a SOCKS5 reply `0x04` or an HTTP `504`, then close (`fail_with`, `src/vnet/proxy.rs:161-180`).
 3. Fix the comment of `CLIENT_TIMEOUT`: it bounds the copy only.
 4. Count live client tasks (as `SocketCount::live`, `src/vnet/stack.rs:642-648`). A cap is a later choice.
 
@@ -2353,6 +2361,10 @@ cargo test -p podnet-netns tailscale
 
 Tests drive `handle_connection` over a duplex with tokio paused time: no byte, one byte `0x05`, and a CONNECT head with no blank line. Each ends within the limit with an answer.
 
+## Done
+
+2026-11-09, commit e0daff1. The doors of net proxy, net tailscale and pod --serve read the opening with REQUEST_LIMIT (30 s, crates/podnet-netns/src/opening.rs); on expiry the client gets SOCKS5 code 4 or HTTP 504. Tests: opening::tests::no_byte_ends_with_a_504, one_socks_byte_ends_with_code_4, a_connect_head_without_a_blank_line_ends_with_a_504. check.sh: exit 0. CI: at the merge.
+
 # T-186: `net tailscale` and the other unix listeners claim the socket path first (GitHub #385)
 
 **Source:** GitHub #385 (https://github.com/PodUtils/podnet/issues/385)
@@ -2360,18 +2372,18 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`bind_unix` of the tailnet door removes the path and binds (`crates/podnet-netns/src/tailscale.rs:355-359`). It deletes a regular file and takes over a live socket. The ruling "Sockets" (`docs/decisions.md:22`): a live socket is 69, a file that is not a socket is 64, a stale socket is removed. The default path is `unix:/tmp/podnet-socks.sock` (`src/cli/cmd/net/mod.rs:65`).
+`bind_unix` of the tailnet door removes the path and binds (`crates/podnet-netns/src/tailscale.rs:354-357`). It deletes a regular file and takes over a live socket. The ruling "Sockets" (`docs/decisions.md:22`): a live socket is 69, a file that is not a socket is 64, a stale socket is removed. The default path is `unix:/tmp/podnet-socks.sock` (`src/cli/cmd/net/mod.rs:68`).
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:87`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:317`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:433`, `src/vnet/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1139`.
-- `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:347`).
-- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:53-59`).
+- `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:371`).
+- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:62-68`).
 
 ## Approach
 
@@ -2387,6 +2399,10 @@ cargo test -p podnet --lib net::
 cargo test -p podnet-netns tailscale
 ```
 
+## Done
+
+2026-11-09, commit 864fea6. net tailscale and the front door claim the path first (listen::claim_unix_path, listen::bind_claimed). Tests: listen::tests::a_claim_refuses_a_live_socket_and_a_file_and_removes_a_stale_socket, net::tests::a_claim_gives_69_for_a_live_socket_64_for_a_file_and_removes_a_stale_one. check.sh: exit 0. CI: at the merge.
+
 # T-187: `net proxy --forward`: a real target may be a name, and the dial reports its hop (GitHub #386)
 
 **Source:** GitHub #386 (https://github.com/PodUtils/podnet/issues/386)
@@ -2394,17 +2410,17 @@ cargo test -p podnet-netns tailscale
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs:150-154`) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:119-120` say `host:port`. The dial is a bare `TcpStream::connect` (`:165-172`): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`src/vnet/proxy.rs:218`). Measured by the issue: a dead `--proxy` changed nothing.
+`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:119-120` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`src/vnet/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
 
 ## Premise
 
-- `connect_origin` (`src/net.rs:89-114`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:180-198`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:80-84`).
+- `connect_origin` (`src/net.rs:113-138`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:178-196`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:104-108`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
-- The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:195-199`).
+- The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:185-189`).
 
 ## Approach
 
@@ -2424,6 +2440,10 @@ cargo test -p podnet --lib cli::cmd::net::proxy
 
 Unit tests: a literal, a name, a unix path, and the error words without a network.
 
+## Done
+
+2026-11-09, commit 76d8993. RealTarget (src/cli/cmd/net/real.rs) accepts HOST:PORT, [V6]:PORT and unix:/PATH; a non-loopback target uses egress::dial (process proxy, NO_PROXY); loopback and unix dial direct; the error words name target, way and hop. Decision of the lead (2026-11-09) applied. Tests: real::tests::a_literal_a_name_a_v6_and_a_unix_path_parse, only_a_target_that_is_not_loopback_uses_the_process_proxy, the_error_words_name_the_target_the_way_and_the_hop. check.sh: exit 0. CI: at the merge.
+
 # T-188: `net proxy --forward` reports a failed bind before it prints the forward (GitHub #387)
 
 **Source:** GitHub #387 (https://github.com/PodUtils/podnet/issues/387)
@@ -2431,16 +2451,16 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:195-213`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:688-692`).
+`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:117`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:753-757`).
 
 ## Premise
 
 - Refusals: `src/vnet/stack.rs:815-832` (`AddrNotAvailable`, `PermissionDenied`, `AddrInUse`).
-- `spawn_forwards` cannot return a result (`src/vnet/proxy.rs:240-246`).
+- `spawn_forwards` cannot return a result (`src/vnet/proxy.rs:237-244`).
 - The `--map` entry outside the subnet fails only at the first request (note of the issue: not verified).
 
 ## Approach
@@ -2448,7 +2468,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 1. Bind first (async `forward`, or a `oneshot`). Return the result to `net_proxy`.
 2. Map `AddrNotAvailable` to `Fault::Usage`, `AddrInUse` and `PermissionDenied` to `Fault::Unavailable`. Print the line after the bind.
 3. Reject a repeated `VIRT` at parse time with its name.
-4. Keep the per-connection warn at `src/vnet/proxy.rs:218-220`.
+4. Keep the per-connection warn at `src/vnet/proxy.rs:210-212`.
 
 ## Prove
 
@@ -2458,6 +2478,10 @@ cargo test -p podnet --lib vnet::proxy::
 
 Tests: a forward outside the subnet returns the error; a second forward of one address returns `AddrInUse`; a valid forward still serves.
 
+## Done
+
+2026-11-09, commit 6360717. vnet::proxy::forward is async and binds before it returns; net proxy prints the forward line after the bind and maps AddrNotAvailable to 64 and AddrInUse and PermissionDenied to 69; a repeated VIRT is a usage error. Tests: vnet::proxy::tests::a_forward_outside_the_subnet_returns_the_error, a_second_forward_of_one_address_returns_addr_in_use; cli::cmd::net::proxy::tests::a_repeated_forward_address_is_a_usage_error, a_refused_bind_has_its_class; tests/vnet_proxy_forward.rs serves a valid forward. check.sh: exit 0. CI: at the merge.
+
 # T-189: The switch counts each packet that it drops (GitHub #388, part 1)
 
 **Source:** GitHub #388 (https://github.com/PodUtils/podnet/issues/388)
@@ -2465,11 +2489,11 @@ Tests: a forward outside the subnet returns the error; a second forward of one a
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `src/vnet/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:398`). No counter, no log, no accessor. The `spoofed` counter (`:138`) has no accessor. The rule of the project: a drop is counted (`src/vnet/stack.rs:171-175`). The fault injector counts are not readable either (`:54-111`).
+`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `src/vnet/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:463`). No counter, no log, no accessor. The `spoofed` counter (`:153`) has no accessor. The rule of the project: a drop is counted (`src/vnet/stack.rs:171-175`). The fault injector counts are not readable either (`:54-111`).
 
 ## Premise
 
@@ -2489,6 +2513,10 @@ cargo test -p podnet --lib vnet::switch::
 
 A test fills the queue of a peer that does not read and reads a non-zero drop count.
 
+## Done
+
+2026-11-09, commit da010b5. Table::deliver counts sent and dropped for each peer; Switch::counts (src/vnet/switch/counts.rs) gives them with the spoofed count; the stop logs the totals; FaultInjector logs its counts on drop. Test: vnet::switch::tests::a_full_queue_counts_its_drops. check.sh: exit 0. CI: at the merge.
+
 # T-190: A stack over a switch link has bounded queues (GitHub #388, part 2)
 
 **Source:** GitHub #388 (https://github.com/PodUtils/podnet/issues/388)
@@ -2496,15 +2524,15 @@ A test fills the queue of a peer that does not read and reads a non-zero drop co
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`NetStack::over_link` builds `LinkDevice::tunnel(config.mtu)`: both queues are unbounded and the stack does not hold when full (`src/vnet/stack.rs:1436-1441`, `src/vnet/device.rs:276-285`). A slow pump grows the heap. The WARP stack uses `tunnel_bounded` and `with_inbound_limit` (`src/warp/ip.rs:454-455`, 512 and 4096 packets).
+`NetStack::over_link` builds `LinkDevice::tunnel(config.mtu)`: both queues are unbounded and the stack does not hold when full (`src/vnet/stack.rs:1436-1441`, `src/vnet/device.rs:304-313`). A slow pump grows the heap. The WARP stack uses `tunnel_bounded` and `with_inbound_limit` (`src/warp/ip.rs:454-455`, 512 and 4096 packets).
 
 ## Premise
 
-- `over_link` has one production caller (`src/cli/cmd/net/proxy.rs:41`) and the switch tests (`src/vnet/switch/tests.rs`).
+- `over_link` has one production caller (`src/cli/cmd/net/proxy.rs:55`) and the switch tests (`src/vnet/switch/tests.rs`).
 - `src/vnet/stack.rs` has 2103 lines in `scripts/size-allow.txt` and can only shrink. Two new `StackConfig` fields grow it.
 
 ## Approach
@@ -2520,6 +2548,10 @@ cargo test -p podnet --lib vnet::
 python3 scripts/check-size.py
 ```
 
+## Done
+
+2026-11-09, commit b40d290. LinkDevice::link (src/vnet/device.rs) bounds both queues (LINK_OUTBOUND 512, LINK_INBOUND 4096) and counts an inbound drop in rx_dropped, so device_stats() shows it; stack.rs uses it with no new line. Test: vnet::device::tests::a_link_device_is_bounded_and_counts_its_inbound_drops; the switch tests including the 64 KiB transfer with faults pass. check.sh: exit 0. CI: at the merge.
+
 # T-191: The listener table of `net doctor` names each command that listens (GitHub #389, part 1)
 
 **Source:** GitHub #389 (https://github.com/PodUtils/podnet/issues/389)
@@ -2527,15 +2559,15 @@ python3 scripts/check-size.py
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`NEEDS` (`src/vnet/doctor.rs:91-96`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`src/vnet/switch.rs:350-352`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:114` repeats the short list.
+`NEEDS` (`src/vnet/doctor.rs:91-98`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`src/vnet/switch.rs:413-415`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:114` repeats the short list.
 
 ## Premise
 
-- Printed at `src/cli/cmd/net/mod.rs:252-253`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
+- Printed at `src/cli/cmd/net/mod.rs:267-268`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
 - `README.md:903-905` uses `net switch --listen tcp://` as its example.
 
 ## Approach
@@ -2550,6 +2582,10 @@ cargo test -p podnet --lib vnet::doctor::
 cargo test -p podnet --test cli doctor_tells_listen_from_bind
 ```
 
+## Done
+
+2026-11-09, commit a1d4666. NEEDS (src/vnet/doctor.rs) and docs/target-environment.md list each command that listens. Test: cli::listen_table::each_command_with_a_listen_flag_is_in_the_listener_table; tests/cli.rs doctor_tells_listen_from_bind passes. check.sh: exit 0. CI: at the merge.
+
 # T-192: A refused TCP bind exits 69 in each listener command (GitHub #389, part 2; GitHub #385 step 5)
 
 **Source:** GitHub #389 (https://github.com/PodUtils/podnet/issues/389)
@@ -2557,11 +2593,11 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:262-264` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
@@ -2579,6 +2615,10 @@ cargo test -p podnet --lib net::
 cargo test -p podnet --test cli
 ```
 
+## Done
+
+2026-11-09, commit 56ee2fa. net::bind_tcp and net::bind_fault map a refused bind to exit 69 at net switch, net proxy, warp proxy, relay connect --listen, and net tailscale (wrapped at the caller). Test: net::tests::a_second_bind_on_one_port_exits_69. check.sh: exit 0. CI: at the merge.
+
 # T-193: `net proxy --map` fills the gateway resolver and the shim table (GitHub #390)
 
 **Source:** GitHub #390 (https://github.com/PodUtils/podnet/issues/390)
@@ -2586,15 +2626,15 @@ cargo test -p podnet --test cli
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:90-102`). The stack gets `dns: None` (`src/vnet/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`:732-742`, `:1050-1053`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:21-25`, `src/vnet/shim.rs:53,82-90`). `docs/virtual-network.md:200-202` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:91-103`). The stack gets `dns: None` (`src/vnet/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`:732-742`, `:1050-1053`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:25-30`, `src/vnet/shim.rs:53,82-90`). `docs/virtual-network.md:208-213` and `net addresses` advertise the resolver.
 
 ## Premise
 
-- `vnet::dns::Resolver` exists and is tested: `from_lines` (`src/vnet/dns.rs:57`), `hosts_pairs` (`:138`), fields `upstream` and `catch_all` (`:26,29`) that nothing sets.
+- `vnet::dns::Resolver` exists and is tested: `from_lines` (`src/vnet/dns.rs:57`), `hosts_pairs` (`:168`), fields `upstream` and `catch_all` (`:26,29`) that nothing sets.
 - `src/vnet/stack.rs` allowlist (2103 lines): no new test in that file before T-034. A test can use the public `StackConfig.dns` from `src/vnet/dns.rs` or `tests/`.
 
 ## Approach
@@ -2602,7 +2642,7 @@ cargo test -p podnet --test cli
 1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
 2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
 3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
-4. Update the help and `docs/virtual-network.md:200-202`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+4. Update the help and `docs/virtual-network.md:208-213`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
 
 ## Prove
 
@@ -2612,6 +2652,10 @@ cargo test -p podnet --test vnet
 ```
 
 A test answers a DNS query for a mapped name at the gateway address.
+
+## Done
+
+2026-11-09, commit 96c43d0. Resolver::from_maps (src/vnet/dns.rs) reads --map and --map-file and checks the subnet; net proxy passes it as StackConfig.dns and as the door table; net shim fills ShimOptions::hosts; docs/virtual-network.md updated. Tests: tests/vnet.rs a_mapped_name_is_answered_at_the_gateway, a_map_outside_the_subnet_or_with_a_bad_form_is_refused. check.sh: exit 0. CI: at the merge.
 
 # T-194: A relay `close` aborts the session task of the node (GitHub #391)
 
@@ -3048,7 +3092,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:10-41` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:230-240` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:997-1003`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:997-1003`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3280,7 +3324,7 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Premise
 
-- `README.md:697-701`. `src/warp/proxy.rs:509-529` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:697-701`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
@@ -3393,8 +3437,8 @@ session is up, each task waits in `live.get()` for up to 20 s. `--max-connection
 
 ## Premise
 
-- `src/warp/proxy.rs:195-217` (`serve_dns`), `:139-150` (`admit`), `:160-187` (`health_log`), `:110-125` (`Stats`),
-  `:383-385` (length check in `forward_dns_to`).
+- `src/warp/proxy.rs:193-215` (`serve_dns`), `:137-148` (`admit`), `:158-185` (`health_log`), `:108-123` (`Stats`),
+  `:381-383` (length check in `forward_dns_to`).
 - `src/warp/live.rs:25` (`WAIT_FOR_NEW` 20 s).
 - `src/warp/proxy.rs` has 1902 lines (allowlist): put the new code in a new file.
 
@@ -3430,7 +3474,7 @@ cfb reads the document to qualify a host. The keys must not change within schema
 
 ## Premise
 
-- Read: `src/doctor.rs:299` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
+- Read: `src/doctor.rs:243` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
 - Read: `podnet doctor` has `--samples` and `--timeout` (`src/cli/cmd/host.rs`). It has no `--quick`. The default budget of the samples is 10 s (`Options::budget`).
 - Not measured: the time of a full run on a host with no egress.
 
@@ -3463,7 +3507,7 @@ Ask A-C-10 (P1): "A fixed JSON schema of the egress lanes for the node probe of 
 
 ## Premise
 
-- Read: `src/doctor.rs:277` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
+- Read: `src/doctor.rs:221` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
 - Read: the verdict words of the doctor are `ok`, `no` and others (`Verdict::name`). The lanes use `ok`, `fail` and `unknown`, so a map is necessary.
 - `ws_upgrade` has no probe now. `proxy` is the row of the proxy (T-184).
 

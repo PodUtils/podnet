@@ -26,6 +26,10 @@ pub(crate) struct DoctorArgs {
     /// The time limit of one connection and of one TLS handshake, in seconds.
     #[arg(long, default_value_t = 3, value_parser = clap::value_parser!(u64).range(1..=10))]
     timeout: u64,
+    /// The relay to test, as the `--relay` of `tunnel` (a loopback `http://`
+    /// relay is allowed).
+    #[arg(long, env = "PODNET_RELAY", hide_env_values = true, value_name = "URL")]
+    relay: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -244,6 +248,7 @@ pub(crate) async fn doctor(args: DoctorArgs) -> Result<()> {
     let report = podnet::doctor::run(podnet::doctor::Options {
         samples: args.samples as usize,
         timeout: Duration::from_secs(args.timeout),
+        relay: args.relay.filter(|r| !r.trim().is_empty()),
         ..podnet::doctor::Options::default()
     })
     .await;
