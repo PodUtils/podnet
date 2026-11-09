@@ -14,16 +14,16 @@
 222 issue open
 224 issue closed
 311 issue closed
-312 pull open
+312 pull closed
 313 pull open
 314 pull open
-315 pull open
+315 pull closed
 316 issue closed
 317 issue closed
 318 pull open
 319 issue closed
-320 issue open
-321 issue open
+320 issue closed
+321 issue closed
 322 issue closed
 323 issue closed
 324 issue closed
@@ -35,7 +35,7 @@
 330 issue closed
 331 issue closed
 332 issue closed
-333 issue open
+333 issue closed
 334 issue closed
 335 issue closed
 336 issue closed
@@ -47,3 +47,5 @@
 342 issue closed
 343 issue closed
 344 issue closed
+345 issue closed
+346 issue closed

@@ -19,8 +19,8 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #316 | live: two runs in a row failed | closed | T-138 |
 | #317 | COORD-001: a test of the fallback channel | closed (a COORD issue between sessions; no work) | none |
 | #319 | [gh action] requested: a run of ci.yml | closed (a request of a run; run 42183709673) | none |
-| #320 | COORD-002: podnet took pod-dns and pod-services of v0.4.0 | open (a COORD issue between sessions) | T-137 |
-| #321 | COORD-003: podnet moved each podcrates tag to v0.5.0 | open (a COORD issue between sessions) | T-137 |
+| #320 | COORD-002: podnet took pod-dns and pod-services of v0.4.0 | closed (podcrates v0.7.0 has the `taken bf0c7ca` lines) | T-137 |
+| #321 | COORD-003: podnet moved each podcrates tag to v0.5.0 | closed (superseded by #333) | T-137 |
 | #322 | COORD-004: pod-dns: name the DoH server in the debug line | closed (pod-dns v0.6.0; live run 42265938003 at 4094fee) | T-137 |
 | #323 | [gh action] requested: a run of ci.yml | closed (run 42222918056 at 61c70aa: success) | none |
 | #324 | [gh action] requested: a run of live.yml | closed (run 42222905277 at 61c70aa: failure, T-141) | none |
@@ -32,7 +32,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #330 | [gh action] requested: a run of ci.yml | closed (not the form of the rule of 2026-11-06; #332 in its place) | none |
 | #331 | [gh action] requested: a run of live.yml | closed (not the form of the rule of 2026-11-06; #332 in its place) | none |
 | #332 | [gh action] requested: a run of ci.yml and live.yml | closed (ci 42259197563 and live 42259203680 at 0c4ff75: success) | none |
-| #333 | COORD-005: podnet moved each podcrates tag to v0.6.0 | open (a COORD issue between sessions) | T-137 |
+| #333 | COORD-005: podnet moved each podcrates tag to v0.6.0 | closed (ci 42263403147 at 872a276, live 42265938003 at 4094fee: success) | T-137 |
 | #334 | [gh action] requested: a run of ci.yml and live.yml | closed (ci 42263403147 at 872a276: success; live did not start) | none |
 | #335 | [gh action] requested: a run of live.yml | closed (live 42264247691 at 872a276: failure, the form of the grep; 4094fee) | none |
 | #336 | [gh action] requested: a run of live.yml | closed (live 42265938003 at 4094fee: success) | none |
@@ -44,5 +44,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #342 | [gh action] requested: a run of ci.yml | closed (ci 42290515084 at b385489: success) | none |
 | #343 | [gh action] requested: a run of ci.yml | closed (ci 42292498940 at 416574b: success) | none |
 | #344 | [gh action] requested: a run of live.yml | closed (live 42292490990 at 416574b: success) | none |
+| #345 | [gh action] requested: a run of ci.yml | closed (ci 42296502041 at c52b8e0: success) | none |
+| #346 | [gh action] requested: a run of live.yml | closed (live 42296493409 at c52b8e0: success) | none |
 
 #312 to #315 and #318 are pull requests.
