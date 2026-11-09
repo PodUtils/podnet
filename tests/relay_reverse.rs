@@ -566,3 +566,64 @@ async fn a_named_node_ends_at_the_expiry() {
     assert_eq!(podnet::exit::code_of(&err), 78, "{err:#}");
     assert!(format!("{err:#}").contains("expired"), "{err:#}");
 }
+
+/// A unix target that does not read for `hold`, then reads to the end. It
+/// gives its path and the count of bytes that it read. A unix socket has a
+/// fixed buffer, so the node blocks in a write at once.
+async fn late_reader(
+    dir: &std::path::Path,
+    hold: Duration,
+) -> (String, tokio::sync::oneshot::Receiver<usize>) {
+    let path = dir.join("late.sock");
+    let listener = tokio::net::UnixListener::bind(&path).unwrap();
+    let addr = format!("unix:{}", path.display());
+    let (done, count) = tokio::sync::oneshot::channel();
+    tokio::spawn(async move {
+        let Ok((mut socket, _)) = listener.accept().await else {
+            return;
+        };
+        tokio::time::sleep(hold).await;
+        let mut total = 0;
+        let mut buf = vec![0u8; 64 * 1024];
+        while let Ok(Ok(n)) =
+            tokio::time::timeout(Duration::from_secs(5), socket.read(&mut buf)).await
+        {
+            if n == 0 {
+                break;
+            }
+            total += n;
+        }
+        let _ = done.send(total);
+    });
+    (addr, count)
+}
+
+// T-194: a `close` of the relay ends a session whose target does not read.
+// Before, the task stayed in its write and kept its queued frames.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_relay_close_ends_a_session_whose_target_does_not_read() {
+    test_host::need_loopback!();
+    let (url, state) = fake_relay(None).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (addr, count) = late_reader(dir.path(), Duration::from_secs(4)).await;
+    let target = Target::parse(&addr).unwrap();
+    let node_relay = Relay::new(&url, None).unwrap();
+    let node_pair = pair(&url);
+    tokio::spawn(async move { node(&node_relay, &node_pair, &target).await });
+    wait_for_node(&state, 1).await;
+    let relay = Relay::new(&url, None).unwrap();
+    let sent = 3 << 20;
+    let operator = tokio::spawn(async move {
+        let input = vec![5u8; sent];
+        let mut out = Vec::new();
+        let _ = connect(&relay, NAME, "connect", &input[..], &mut out).await;
+    });
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    // The operator goes away: the relay sends `close` to the node.
+    operator.abort();
+    let read = tokio::time::timeout(Duration::from_secs(20), count)
+        .await
+        .expect("the target sees the end")
+        .unwrap();
+    assert!(read < sent, "the target read {read} of {sent} bytes");
+}

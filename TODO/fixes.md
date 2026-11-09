@@ -2513,7 +2513,7 @@ cargo test --test relay_reverse
 
 ## Problem
 
-`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:207-224`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:215-217`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
+`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:207-224`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:217-219`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
 
 ## Premise
 
@@ -2545,7 +2545,7 @@ A test: a pair with an empty stop token stops no instance, exits 69 and keeps th
 
 ## Problem
 
-`session` ends when the local read returns 0 (`src/relay_reverse.rs:706`, select at `:728-731`) and sends `close` at once (`:733`). The operator side keeps the session open after its input ends (`EOF_IDLE`, `:775`, `:863`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, `:895`). The forward leg has the right shape (`src/relay.rs:263-297`).
+`session` ends when the local read returns 0 (`src/relay_reverse.rs:706`, select at `:728-731`) and sends `close` at once (`:733`). The operator side keeps the session open after its input ends (`EOF_IDLE`, `:609`, `:697`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, `:729`). The forward leg has the right shape (`src/relay.rs:263-297`).
 
 ## Premise
 
@@ -2584,14 +2584,14 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 
 ## Problem
 
-`save` opens the pair file with `.mode(0o600)` (`src/relay_reverse.rs:147-152`). The kernel applies the mode only to a new file. An old file of mode 0644 keeps it, and `relay pair` prints `mode 0600` (`src/cli/cmd/relay.rs:99`). `save` follows a symlink. `load` uses `read_to_string` (`:165`) with no check of type, owner, mode or size. The file holds three tokens. The token cache has all four checks and a rename write (`src/relay_pool.rs:163-195`).
+`save` opens the pair file with `.mode(0o600)` (`src/relay_reverse.rs:149-154`). The kernel applies the mode only to a new file. An old file of mode 0644 keeps it, and `relay pair` prints `mode 0600` (`src/cli/cmd/relay.rs:99`). `save` follows a symlink. `load` uses `read_to_string` (`:165`) with no check of type, owner, mode or size. The file holds three tokens. The token cache has all four checks and a rename write (`src/relay_pool.rs:163-195`).
 
 ## Premise
 
 - `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`src/state.rs:344-363`).
-- `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs:149-186`).
-- `DirBuilder::mode(0o700)` applies only to a new directory (`:141-144`).
-- The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:1119`.
+- `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs:151-188`).
+- `DirBuilder::mode(0o700)` applies only to a new directory (`:143-146`).
+- The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:953`.
 
 ## Approach
 
