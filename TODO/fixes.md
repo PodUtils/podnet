@@ -1558,7 +1558,7 @@ scripts/agent/check.sh` exits 0. CI: at the merge.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1591,6 +1591,20 @@ scripts/agent/check.sh` exits 0. CI: at the merge.
 ```sh
 cargo test -p podnet-netns --lib -- fake_pool_refuses_past_its_end fake_names_ignore_case fake_pin_does_not_evict_a_live_name servfail_answers_a_name_that_does_not_fit
 ```
+
+## Done
+
+2026-11-09, commit 0c3206c (`T-145: the fake-IP pool refuses at its end, and names match with no
+case`). `FakeDns::address_for` (`crates/podnet-netns/src/fakedns.rs`) returns `Option<Ipv4Addr>`:
+`None` when `next` is at `FAKE_IP_COUNT`, with no insert, so the pool does not wrap. `answer` gives
+`RCODE_SERVFAIL` (2, new in `crates/podnet-netns/src/dns.rs`) to an A or AAAA query of a name that
+does not fit; both backends use `answer`. `ParsedQuery::parse`, `address_for` and `pin` call
+`dns::normalize`; the answer keeps the question bytes as the client wrote them. A pin of a name that
+holds a pool address keeps the pool address. The README (DNS) gives the bound, the case rule and
+SERVFAIL. The four tests of the Prove pass (`cargo test -p podnet-netns --lib`, 4 passed). On the
+tree before the fix they do not compile (`address_for` returned an address), and the arithmetic of
+the Premise holds: `next % FAKE_IP_COUNT` gave name 131073 the address of name 1. `sh
+scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-146: seccomp: `connect(AF_UNSPEC)` dissolves the association of a datagram socket (GitHub #350)
 

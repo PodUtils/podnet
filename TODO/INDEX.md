@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 142 open, 2 partial, 17 blocked, 61 done.**
+**222 entries: 141 open, 2 partial, 17 blocked, 62 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 6 | 1 | 2 | 15 | 24 |
-| P2 | 91 | 1 | 10 | 35 | 137 |
+| P2 | 90 | 1 | 10 | 36 | 137 |
 | P3 | 44 | 0 | 5 | 11 | 60 |
-| **All** | 142 | 2 | 17 | 61 | 222 |
+| **All** | 141 | 2 | 17 | 62 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -190,7 +190,7 @@ M8 Overlays, M9 Later.
 | [T-142](fixes.md) | P2 | M | M5 | defect | done | seccomp: closing a UDP socket stops its relay and frees three descriptors (GitHub #347) |
 | [T-143](fixes.md) | P1 | M | M5 | defect | done | seccomp: a datagram written with `write(2)` leaves the pod (GitHub #347) |
 | [T-144](fixes.md) | P2 | S | M5 | defect | done | seccomp: `bind` on a datagram socket is recorded, and `getsockname` reports it (GitHub #348) |
-| [T-145](fixes.md) | P2 | S | M5 | defect | open | fake DNS: the pool refuses at its end, and names match without case (GitHub #349) |
+| [T-145](fixes.md) | P2 | S | M5 | defect | done | fake DNS: the pool refuses at its end, and names match without case (GitHub #349) |
 | [T-146](fixes.md) | P2 | S | M5 | defect | open | seccomp: `connect(AF_UNSPEC)` dissolves the association of a datagram socket (GitHub #350) |
 | [T-147](fixes.md) | P2 | S | M5 | defect | open | seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350) |
 | [T-148](fixes.md) | P3 | S | M5 | defect | open | seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350) |
