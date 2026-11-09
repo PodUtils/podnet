@@ -1,6 +1,7 @@
 //! `podnet net`: userspace virtual networking.
 
 pub(crate) mod proxy;
+mod real;
 pub(crate) mod shim;
 
 use std::net::IpAddr;
@@ -143,7 +144,9 @@ pub(crate) struct ProxyArgs {
     #[arg(long = "map", value_name = "NAME=ADDR")]
     maps: Vec<String>,
     /// Forward a virtual endpoint to a real one, repeatable. REAL is
-    /// host:port for TCP, or unix:/path for a unix service:
+    /// host:port (a name or an address) for TCP, or unix:/path for a unix
+    /// service. A target that is not loopback goes through the proxy of the
+    /// process (with NO_PROXY); a loopback target and a unix path go direct:
     /// --forward 10.66.0.2:8080=127.0.0.1:3000
     #[arg(long = "forward", value_name = "VIRT=REAL")]
     forwards: Vec<String>,

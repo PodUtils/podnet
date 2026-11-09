@@ -3,11 +3,12 @@
 
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 
 use podnet::exit::{Fault, ResultExt};
 use podnet::vnet::VirtAddr;
 
+use super::real::RealTarget;
 use super::ProxyArgs;
 use crate::cli::cmd::run::listen_doc;
 use crate::cli::signals::sleep_or_signal;
@@ -151,96 +152,4 @@ fn forward_fault(virt: VirtAddr, err: std::io::Error) -> anyhow::Error {
         class,
         anyhow::Error::new(err).context(format!("--forward {virt} could not bind")),
     )
-}
-
-/// A real destination a virtual forward bridges to.
-#[derive(Clone, Debug)]
-pub(crate) enum RealTarget {
-    Tcp(std::net::SocketAddr),
-    #[cfg(unix)]
-    Unix(std::path::PathBuf),
-}
-
-impl RealTarget {
-    fn parse(value: &str) -> Result<Self> {
-        if let Some(path) = value.strip_prefix("unix:") {
-            #[cfg(unix)]
-            {
-                if path.is_empty() {
-                    bail!("unix: real destination has no path");
-                }
-                return Ok(Self::Unix(std::path::PathBuf::from(path)));
-            }
-            #[cfg(not(unix))]
-            {
-                let _ = path;
-                bail!("unix destinations are not supported on this platform");
-            }
-        }
-        Ok(Self::Tcp(
-            value
-                .parse()
-                .with_context(|| format!("bad real address {value:?}"))?,
-        ))
-    }
-
-    fn describe(&self) -> String {
-        match self {
-            Self::Tcp(addr) => addr.to_string(),
-            #[cfg(unix)]
-            Self::Unix(path) => format!("unix:{}", path.display()),
-        }
-    }
-
-    /// Open a real connection, type-erased so the forward is generic.
-    async fn dial(&self) -> std::io::Result<Box<dyn DialStream>> {
-        match self {
-            Self::Tcp(addr) => Ok(Box::new(tokio::net::TcpStream::connect(addr).await?)),
-            #[cfg(unix)]
-            Self::Unix(path) => Ok(Box::new(tokio::net::UnixStream::connect(path).await?)),
-        }
-    }
-}
-
-/// The bounds a forwarded connection must satisfy. A single local trait lets
-/// the real destination be either a TCP or a unix stream.
-pub(crate) trait DialStream:
-    tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin
-{
-}
-
-impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin> DialStream for T {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_repeated_forward_address_is_a_usage_error() {
-        let specs = vec![
-            "10.66.0.2:80=127.0.0.1:1".to_string(),
-            "10.66.0.2:80=127.0.0.1:2".to_string(),
-        ];
-        let err = parse_forwards(&specs).unwrap_err();
-        assert_eq!(podnet::exit::code_of(&err), podnet::exit::USAGE);
-        assert!(format!("{err:#}").contains("10.66.0.2:80"));
-    }
-
-    #[test]
-    fn a_refused_bind_has_its_class() {
-        let virt: VirtAddr = "10.66.0.2:80".parse().unwrap();
-        let class = |kind| podnet::exit::code_of(&forward_fault(virt, std::io::Error::from(kind)));
-        assert_eq!(
-            class(std::io::ErrorKind::AddrNotAvailable),
-            podnet::exit::USAGE
-        );
-        assert_eq!(
-            class(std::io::ErrorKind::AddrInUse),
-            podnet::exit::UNAVAILABLE
-        );
-        assert_eq!(
-            class(std::io::ErrorKind::PermissionDenied),
-            podnet::exit::UNAVAILABLE
-        );
-    }
 }

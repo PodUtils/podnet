@@ -117,7 +117,10 @@ program B: connect 10.66.0.2:8080  ->  \0podnet-vnet/4/10.66.0.2/8080
 
 `podnet net proxy` puts a SOCKS5 and HTTP `CONNECT` front door on the stack.
 `--forward VIRT=REAL` makes the stack listen on a virtual address and send each
-connection to a real destination (`host:port` or `unix:/path`).
+connection to a real destination (`host:port` with a name or an address,
+`[v6]:port`, or `unix:/path`). A target that is not loopback goes through the
+proxy of the process, with `NO_PROXY`. A loopback target and a unix path go
+direct. A failed dial logs the target, the way and the hop.
 
 ```sh
 podnet net proxy --listen unix:/tmp/podnet-vnet.socks \

@@ -2244,7 +2244,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Problem
 
-`bind_unix` of the tailnet door removes the path and binds (`crates/podnet-netns/src/tailscale.rs:354-357`). It deletes a regular file and takes over a live socket. The ruling "Sockets" (`docs/decisions.md:22`): a live socket is 69, a file that is not a socket is 64, a stale socket is removed. The default path is `unix:/tmp/podnet-socks.sock` (`src/cli/cmd/net/mod.rs:67`).
+`bind_unix` of the tailnet door removes the path and binds (`crates/podnet-netns/src/tailscale.rs:354-357`). It deletes a regular file and takes over a live socket. The ruling "Sockets" (`docs/decisions.md:22`): a live socket is 69, a file that is not a socket is 64, a stale socket is removed. The default path is `unix:/tmp/podnet-socks.sock` (`src/cli/cmd/net/mod.rs:68`).
 
 ## Premise
 
@@ -2282,7 +2282,7 @@ cargo test -p podnet-netns tailscale
 
 ## Problem
 
-`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs:180-184`) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:119-120` say `host:port`. The dial is a bare `TcpStream::connect` (`:170-177`): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`src/vnet/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
+`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:119-120` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`src/vnet/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
 
 ## Premise
 
@@ -2319,7 +2319,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 
 ## Problem
 
-`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:115`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:688-692`).
+`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:688-692`).
 
 ## Premise
 
@@ -2392,7 +2392,7 @@ A test fills the queue of a peer that does not read and reads a non-zero drop co
 
 ## Premise
 
-- `over_link` has one production caller (`src/cli/cmd/net/proxy.rs:41`) and the switch tests (`src/vnet/switch/tests.rs`).
+- `over_link` has one production caller (`src/cli/cmd/net/proxy.rs:42`) and the switch tests (`src/vnet/switch/tests.rs`).
 - `src/vnet/stack.rs` has 2103 lines in `scripts/size-allow.txt` and can only shrink. Two new `StackConfig` fields grow it.
 
 ## Approach
@@ -2423,7 +2423,7 @@ python3 scripts/check-size.py
 
 ## Premise
 
-- Printed at `src/cli/cmd/net/mod.rs:254-255`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
+- Printed at `src/cli/cmd/net/mod.rs:257-258`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
 - `README.md:903-905` uses `net switch --listen tcp://` as its example.
 
 ## Approach
@@ -2478,7 +2478,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:90-102`). The stack gets `dns: None` (`src/vnet/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`:732-742`, `:1050-1053`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:21-25`, `src/vnet/shim.rs:53,82-90`). `docs/virtual-network.md:205-207` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:91-103`). The stack gets `dns: None` (`src/vnet/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`:732-742`, `:1050-1053`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:21-25`, `src/vnet/shim.rs:53,82-90`). `docs/virtual-network.md:208-210` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -2490,7 +2490,7 @@ cargo test -p podnet --test cli
 1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
 2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
 3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
-4. Update the help and `docs/virtual-network.md:205-207`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+4. Update the help and `docs/virtual-network.md:208-210`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
 
 ## Prove
 
