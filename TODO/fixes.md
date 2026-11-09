@@ -3061,7 +3061,7 @@ another type is shown as WARP+.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3087,6 +3087,10 @@ text outside the markers.
 
 `cargo test -p podnet --lib warp::up` (new tests: `fish_file_is_ours` for the block text, an empty text, a user text).
 A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `podnet warp down`, and check the file stays.
+
+## Done
+
+2026-11-09, commit 9ece848 (`T-211: warp down and warp up --persist own the fish file only when podnet wrote it`). A fish file is ours when its first line is the marker. `down` keeps another file and says so. `persist` refuses it, with the path, before any write. The code is in `src/warp/up/fish.rs` (`src/warp/up.rs` 847 to 817 lines). Tests: `warp::up::fish::tests::{the_fish_block_loads_the_env_file, fish_file_is_ours_by_its_first_line, a_user_fish_file_stays}`. Probe with a temporary HOME: a user file at the fish path stays after `podnet warp down`. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-212: The README states that the rules apply to `warp proxy --l4` (GitHub #409)
 
