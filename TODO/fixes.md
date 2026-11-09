@@ -2427,7 +2427,7 @@ python3 scripts/check-size.py
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2449,6 +2449,10 @@ python3 scripts/check-size.py
 cargo test -p podnet --lib vnet::doctor::
 cargo test -p podnet --test cli doctor_tells_listen_from_bind
 ```
+
+## Done
+
+2026-11-09, commit a1d4666. NEEDS (src/vnet/doctor.rs) and docs/target-environment.md list each command that listens. Test: cli::listen_table::each_command_with_a_listen_flag_is_in_the_listener_table; tests/cli.rs doctor_tells_listen_from_bind passes. check.sh: exit 0. CI: at the merge.
 
 # T-192: A refused TCP bind exits 69 in each listener command (GitHub #389, part 2; GitHub #385 step 5)
 
