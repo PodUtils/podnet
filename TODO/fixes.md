@@ -2588,7 +2588,7 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2614,6 +2614,10 @@ cargo test -p podnet --lib relay_reverse::
 ```
 
 Tests: a 0644 file becomes 0600 after `save`; a symlink is replaced; `load` refuses a 0644 file, a symlink and an oversize file.
+
+## Done
+
+2026-11-09, commit 7efd1d8 (`T-197: the pair file is always mode 0600, and load checks the file`). `save` writes through `state::replace_file` (rename, mode 0600; a symlink is replaced). `load` reads through `relay_pool::read_private_checked` (shared with `read_private`): type, owner, mode and size; a fault is exit 78 with the reason. `save` and `load` refuse a `relay` directory that others can write. The code is in `src/relay_reverse/pairfile.rs` (`src/relay_reverse.rs`: 899 lines). Tests (`cargo test -p podnet --lib relay_reverse::`): `a_file_of_mode_0644_becomes_0600_after_save`, `save_replaces_a_symlink_and_does_not_write_through_it`, `load_refuses_a_file_that_is_open_a_symlink_or_large`, `a_directory_that_others_can_write_is_refused`. `scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-198: `docs/protocol.md` and the test agree on the number of seed alternates (GitHub #395)
 
