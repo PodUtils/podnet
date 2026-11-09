@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 129 open, 2 partial, 14 blocked, 78 done.**
+**223 entries: 128 open, 2 partial, 14 blocked, 79 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
-| P2 | 83 | 1 | 8 | 45 | 137 |
+| P2 | 82 | 1 | 8 | 46 | 137 |
 | P3 | 41 | 0 | 4 | 16 | 61 |
-| **All** | 129 | 2 | 14 | 78 | 223 |
+| **All** | 128 | 2 | 14 | 79 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -220,7 +220,7 @@ M8 Overlays, M9 Later.
 | [T-172](later.md) | P3 | M | M9 | feature | open | A pin of the new public name while the process runs (GitHub #367) |
 | [T-173](fixes.md) | P2 | S | M5 | feature | partial | A WARP identity of another uid, with a consent variable (GitHub #368) |
 | [T-174](pods.md) | P3 | M | M7 | feature | open | netns: a veth wire when `/dev/net/tun` is not there (GitHub #369) |
-| [T-175](crates.md) | P2 | M | M3 | feature | open | DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370) |
+| [T-175](crates.md) | P2 | M | M3 | feature | done | DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370) |
 | [T-176](later.md) | P3 | S | M9 | research | open | Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372) |
 | [T-177](services.md) | P3 | S | M6 | feature | open | Router: `podnet route check`, a dry run of the rules (GitHub #375) |
 | [T-178](later.md) | P3 | M | M9 | feature | open | Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375) |
