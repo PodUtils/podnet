@@ -222,6 +222,19 @@ impl DetachArgs {
     }
 }
 
+/// Whether `--replace` works with no `--detach`: `connect -L` and
+/// `relay connect --listen` take a unix socket that another process serves.
+pub(crate) fn replaces_a_socket(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::Connect(_)
+            | Command::Relay(crate::cli::cmd::relay::RelayArgs {
+                command: RelayCommand::Connect { .. },
+                ..
+            })
+    )
+}
+
 /// The options of --detach of a command that can run in the background.
 pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
     match command {
@@ -239,6 +252,12 @@ pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
         },
         Command::Relay(args) => match &args.command {
             RelayCommand::Node { detach, .. } => Some(detach),
+            // T-199: the flags have no effect without --listen.
+            RelayCommand::Connect {
+                detach,
+                listen: Some(_),
+                ..
+            } => Some(detach),
             _ => None,
         },
         Command::Net(args) => match &args.command {

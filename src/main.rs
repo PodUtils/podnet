@@ -36,7 +36,7 @@ use cli::argv::{
     pod_network_option, LOG_JSON,
 };
 use cli::help::{error_json, json_wanted, print_error, top_command, usage_hints};
-use cli::opts::{detach_of, network_options};
+use cli::opts::{detach_of, network_options, replaces_a_socket};
 use cli::signals::install_signals;
 use cli::{async_main, Cli, Command};
 
@@ -133,7 +133,7 @@ fn main() {
         eprintln!("podnet: --detach-child is for podnet itself");
         std::process::exit(podnet::exit::USAGE);
     } else if let Some(detach) = detach_of(&cli.command) {
-        if detach.replace && !matches!(cli.command, Command::Connect(_)) {
+        if detach.replace && !replaces_a_socket(&cli.command) {
             eprintln!("podnet: --replace needs --detach");
             std::process::exit(podnet::exit::USAGE);
         }

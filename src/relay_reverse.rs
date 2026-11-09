@@ -37,7 +37,7 @@ pub use pairfile::{load, save};
 use session::{end_session, session, valid_id, Gate, Out, OutKind, Sessions, SESSION_QUEUE};
 
 /// The environment variable with the connect token of the operator.
-pub const CONNECT_TOKEN_VARIABLE: &str = "PODNET_RELAY_CONNECT_TOKEN";
+pub const CONNECT_TOKEN_VARIABLE: &str = crate::instances::CONNECT_TOKEN_VARIABLE;
 /// The most bytes in one data frame.
 const FRAME: usize = 64 * 1024;
 /// The length of a session id: 32 lowercase hex characters.

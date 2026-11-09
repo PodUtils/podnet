@@ -2417,7 +2417,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:177`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:69-71` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:69-71` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
@@ -2517,11 +2517,11 @@ cargo test --test relay_reverse
 
 ## Problem
 
-`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:207-231`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:143-145`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
+`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:231-255`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:143-145`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
 
 ## Premise
 
-- The local-first order has a good reason (`src/cli/cmd/relay.rs:216-217`): a stopped node does not connect again.
+- The local-first order has a good reason (`src/cli/cmd/relay.rs:240-241`): a stopped node does not connect again.
 - Read only. No run.
 
 ## Approach
@@ -2596,7 +2596,7 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 
 ## Problem
 
-`save` opens the pair file with `.mode(0o600)` (`src/relay_reverse.rs:149-154`). The kernel applies the mode only to a new file. An old file of mode 0644 keeps it, and `relay pair` prints `mode 0600` (`src/cli/cmd/relay.rs:99`). `save` follows a symlink. `load` uses `read_to_string` (`:165`) with no check of type, owner, mode or size. The file holds three tokens. The token cache has all four checks and a rename write (`src/relay_pool.rs:163-195`).
+`save` opens the pair file with `.mode(0o600)` (`src/relay_reverse.rs:149-154`). The kernel applies the mode only to a new file. An old file of mode 0644 keeps it, and `relay pair` prints `mode 0600` (`src/cli/cmd/relay.rs:105`). `save` follows a symlink. `load` uses `read_to_string` (`:172`) with no check of type, owner, mode or size. The file holds three tokens. The token cache has all four checks and a rename write (`src/relay_pool.rs:163-195`).
 
 ## Premise
 
@@ -2673,8 +2673,8 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 
 ## Premise
 
-- `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:49-64`. `RelayCommand::Node` has it: `:44-45`.
-- `detach_of` has no arm for it: `src/cli/opts.rs:240-243`. `connect` has one: `:233`.
+- `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:49-70`. `RelayCommand::Node` has it: `:44-45`.
+- `detach_of` has no arm for it: `src/cli/opts.rs:253-262`. `connect` has one: `:246`.
 - Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:186`, `:198`. `connect -L` logs and returns:
   `src/cli/cmd/connect.rs:185-188`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
