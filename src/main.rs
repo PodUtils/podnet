@@ -664,7 +664,7 @@ mod tests {
         let Command::Warp(args) = cli.command else {
             panic!("not warp")
         };
-        let argv = warp_up_tun_args(&args, 30);
+        let argv = warp_up_tun_args(&args, 30, false);
         let has = |a: &str, b: &str| argv.windows(2).any(|w| w[0] == a && w[1] == b);
         assert!(
             has("--masque-endpoint", "[2606:4700:103::2]:443"),

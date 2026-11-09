@@ -2952,9 +2952,9 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 ## Premise
 
-- `src/cli/cmd/warp/up.rs:19-28` (the `tun: true` arm matches `..`), `:403-415` (`warp_up_tun_args`), `:206-210` (the
+- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:403-415` (`warp_up_tun_args`), `:207-211` (the
   proxy path pushes `--replace`).
-- `src/cli/cmd/warp/args.rs:391-433` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:511-526` (`Tun` has
+- `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:513-528` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
 - `src/detach.rs:486-493` (the refusal text).
 

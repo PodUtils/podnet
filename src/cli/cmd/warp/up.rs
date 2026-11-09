@@ -19,9 +19,10 @@ pub(crate) async fn before_client(args: &WarpArgs) -> Result<bool> {
         WarpCommand::Up {
             tun: true,
             ready_timeout,
+            replace,
             ..
         } => {
-            let argv = warp_up_tun_args(args, *ready_timeout);
+            let argv = warp_up_tun_args(args, *ready_timeout, *replace);
             let doc = podnet::warp::up::start("podnet warp tun --default-route --detach", &argv)?;
             println!("{doc}");
             Ok(())
@@ -400,7 +401,7 @@ fn warp_global_args(args: &WarpArgs) -> Vec<String> {
 
 /// The command line of the `warp tun --default-route --detach` of `podnet
 /// warp up --tun`.
-pub(crate) fn warp_up_tun_args(args: &WarpArgs, ready_timeout: u64) -> Vec<String> {
+pub(crate) fn warp_up_tun_args(args: &WarpArgs, ready_timeout: u64, replace: bool) -> Vec<String> {
     let mut argv = warp_global_args(args);
     argv.extend([
         "tun".to_string(),
@@ -411,6 +412,9 @@ pub(crate) fn warp_up_tun_args(args: &WarpArgs, ready_timeout: u64) -> Vec<Strin
         "--ready-timeout".into(),
         ready_timeout.to_string(),
     ]);
+    if replace {
+        argv.push("--replace".into());
+    }
     argv
 }
 
@@ -436,3 +440,7 @@ pub(crate) fn warp_up_args(
     ]);
     argv
 }
+
+#[cfg(test)]
+#[path = "up_tests.rs"]
+mod tests;
