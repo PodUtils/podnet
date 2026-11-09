@@ -1708,7 +1708,7 @@ scripts/agent/check.sh` exits 0. CI: at the merge.
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1732,6 +1732,16 @@ scripts/agent/check.sh` exits 0. CI: at the merge.
 ```sh
 cargo test --test pod_seccomp_dgram -- seccomp_udp_ip_ttl_round_trips seccomp_icmp_socket_keeps_its_options
 ```
+
+## Done
+
+2026-11-09, commit c6aa374 (`T-148: UDP and ICMP sockets keep their IP-level options`). `Udp`
+(`crates/podnet-netns/src/udp.rs`) and `Icmp` (`crates/podnet-netns/src/icmp.rs`) have an `options`
+map, and `options_of` (`crates/podnet-netns/src/sockopt.rs`) returns it. The README says that the
+values are echoes and that `IP_MTU` has no value. Tests in `tests/dgram/options.rs`:
+`seccomp_udp_ip_ttl_round_trips` (`IP_TTL`, `IP_TOS`, `IPV6_UNICAST_HOPS`) and
+`seccomp_icmp_socket_keeps_its_options`. On the tree before the fix both fail (each value is 0);
+with the fix both pass on this host. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-149: seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350)
 
