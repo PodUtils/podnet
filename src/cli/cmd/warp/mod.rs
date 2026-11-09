@@ -11,6 +11,9 @@ pub(crate) mod run;
 pub(crate) mod tun;
 pub(crate) mod up;
 
+#[cfg(test)]
+mod cli_tests;
+
 use std::time::Duration;
 
 use anyhow::Result;

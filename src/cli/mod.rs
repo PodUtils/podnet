@@ -243,3 +243,10 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
 
 #[cfg(test)]
 mod listen_table;
+
+#[cfg(test)]
+mod argv_tests;
+#[cfg(test)]
+mod help_tests;
+#[cfg(test)]
+mod signals_tests;

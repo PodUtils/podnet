@@ -397,7 +397,7 @@ lead after the merge.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -428,6 +428,22 @@ cargo test --workspace -- --list 2>/dev/null | grep -c ': test$'
 ## Start condition
 
 T-028, T-029, T-030 and T-031 are done.
+
+## Done
+
+2026-11-09, commit HASH (`T-032: move the unit tests of src/main.rs to the modules that they
+test`). The 24 tests and the helper `share_args` moved with their names to test modules:
+`src/cli/help_tests.rs` (the help, the hints, the manual: 9 tests), `src/cli/argv_tests.rs` (4),
+`src/cli/signals_tests.rs` (2), `src/cli/cmd/run_tests.rs` (1), `share_tests.rs` (1),
+`agent_tests.rs` (1), `tunnel_tests.rs` (1) and `src/cli/cmd/warp/cli_tests.rs` (5: the WARP tests
+stay in the CLI, so `src/warp/` has no change). Each is declared with `#[cfg(test)]` in the
+`mod.rs` beside it. `src/main.rs` has 281 lines (910 before): the print macros, the `use` lines
+and `main()`. The line of `src/main.rs` is out of `scripts/size-allow.txt`. The record text that
+named the lines of the moved tests is updated. `sh scripts/agent/check.sh`: exit 0.
+`scripts/agent/parity-snapshot.sh`: 1,295 commands, 1,302 public items and 1,100 tests before and
+after; the compare needs a map of the 24 test paths (`tests::NAME` to `cli::...::NAME`), and
+reports no lost command, item or test. CI: at the merge.
+
 
 # T-033: Split `src/egress.rs`, `src/detach.rs`, `src/update.rs` and `src/doctor.rs`
 

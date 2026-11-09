@@ -11,3 +11,12 @@ pub(crate) mod run;
 pub(crate) mod share;
 pub(crate) mod tunnel;
 pub(crate) mod warp;
+
+#[cfg(test)]
+mod agent_tests;
+#[cfg(test)]
+mod run_tests;
+#[cfg(test)]
+mod share_tests;
+#[cfg(test)]
+mod tunnel_tests;
