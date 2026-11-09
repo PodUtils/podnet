@@ -110,6 +110,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #411 | warp ssh-config: path not quoted | open | T-214 |
 | #412 | warp proxy --dns: one task per datagram | open | T-215 |
 | #413 | COORD-006: asks of podnet for pod-relay, pod-dns, pod-proxy and pod-services | open (a COORD issue between sessions) | T-161, T-162, T-163, T-166, T-172, T-175, T-182, T-200 |
-| #414 | COORD-007: podnet took v0.7.0 and the parts of pod-core; the asks of cfb; the view on pod-hold | open (a COORD issue between sessions) | T-137, T-216 to T-222 |
+| #414 | COORD-007: podnet took v0.7.0 and the parts of pod-core; the asks of cfb; the view on pod-hold | closed (podcrates c229926 recorded it) | T-137, T-216 to T-222 |
 
 #313, #314, #318 and #415 are open pull requests. #312, #315 and #381 to #383 are closed; they are pull requests.
