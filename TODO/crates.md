@@ -581,7 +581,7 @@ Done so far:
 
 # T-161: relay node: renew the pair before it expires (GitHub #358)
 
-**Source:** GitHub #358 (https://github.com/PodUtils/podnet/issues/358)
+**Source:** GitHub #358 (https://github.com/PodUtils/podnet/issues/358); PodUtils/podcrates#35 (cfb), ask A-N-12.
 **Category:** feature
 **Milestone:** M3
 **Priority:** P2
@@ -615,6 +615,8 @@ stop after 72 h. Proposed: `POST /v1/pair/NAME/renew` with the node token; the a
    the TTL and at the first warning band). The owner of the relay adds the endpoint (see Decision).
 2. After `pod-relay` exists and the endpoint exists: take it (T-049, T-137). Add the podnet test.
 3. Keep the clean stop when the renewal fails.
+4. PodUtils/podcrates#35 (cfb), ask A-N-12, routed by PodUtils/podcrates#40: the renewal needs no
+   operator act, so a node under a system unit (T-220) runs past 72 h.
 
 ## Decision
 

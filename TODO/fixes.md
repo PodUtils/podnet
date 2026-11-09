@@ -3205,3 +3205,101 @@ session is up, each task waits in `live.get()` for up to 20 s. `--max-connection
 
 `cargo test -p podnet --lib warp::proxy::dns_bound` (new test: a burst larger than the bound gives at most the bound in
 flight and a count of drops; a 1-byte datagram spawns nothing).
+
+# T-216: Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04)
+
+**Source:** PodUtils/podcrates#35 (cfb), ask A-N-04, routed by PodUtils/podcrates#40.
+**Category:** feature
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Ask A-N-04 (P1): "Freeze `podnet doctor --json` as schema 1 for the legs and hops, with a quick mode."
+cfb reads the document to qualify a host. The keys must not change within schema 1, and a run must end soon.
+
+## Premise
+
+- Read: `src/doctor.rs:299` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
+- Read: `podnet doctor` has `--samples` and `--timeout` (`src/cli/cmd/host.rs`). It has no `--quick`. The default budget of the samples is 10 s (`Options::budget`).
+- Not measured: the time of a full run on a host with no egress.
+
+## Approach
+
+1. Write the schema in `docs/protocol.md`: each key, its type, and the verdict words. Say that a key is added, never removed or renamed, within schema 1.
+2. Add a test that compares the set of keys of each object (top level, `roads`, `legs`, the hops) to a fixed list.
+3. Add `--quick`: one sample for each path, a limit of 15 s for the whole run, and a leg that did not end in time gets the verdict `unknown` with a reason. `--quick` keeps the same keys.
+4. Test the limit with a fake host that never answers: the run ends in 15 s.
+
+## Prove
+
+```sh
+cargo test -p podnet --test doctor -- doctor_json_keys_are_fixed doctor_quick_ends_in_the_limit
+cargo todo check
+```
+
+# T-217: `doctor --json`: a fixed block for the egress lanes (PodUtils/podcrates#35, A-C-10)
+
+**Source:** PodUtils/podcrates#35 (cfb), ask A-C-10, routed by PodUtils/podcrates#40.
+**Category:** feature
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Ask A-C-10 (P1): "A fixed JSON schema of the egress lanes for the node probe of cfb: `tunnel_quic`, `tunnel_http2`, `tunnel_quic_warp`, `masque_tcp443`, `masque_udp443`, `ws_upgrade` and `proxy`, each `ok`, `fail` or `unknown`, with the time."
+
+## Premise
+
+- Read: `src/doctor.rs:277` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
+- Read: the verdict words of the doctor are `ok`, `no` and others (`Verdict::name`). The lanes use `ok`, `fail` and `unknown`, so a map is necessary.
+- `ws_upgrade` has no probe now. `proxy` is the row of the proxy (T-184).
+
+## Approach
+
+1. Add the key `lanes` to the JSON of `doctor`: an object with the seven names, each `{"verdict": "ok|fail|unknown", "ms": N or null}`. Map each leg and probe to one lane in one table.
+2. Add a probe for `ws_upgrade` (a WebSocket upgrade to the edge host), or give `unknown` with a reason until it exists.
+3. Write the block in the schema of T-216. Pin its keys with the same test.
+4. Do the work after T-216 (one schema) and after T-184 (the proxy row).
+
+## Prove
+
+```sh
+cargo test -p podnet --test doctor -- doctor_json_has_the_seven_lanes
+cargo todo check
+```
+
+# T-222: `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19)
+
+**Source:** PodUtils/podcrates#35 (cfb), ask A-X-19, routed by PodUtils/podcrates#40.
+**Category:** feature
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Ask A-X-19 (P2): "Machine-readable docs for agents: `llms.txt` and `llms-full.txt` for each tool, and `--help --json` generated from the source."
+
+## Premise
+
+- Read: `podnet man --json` prints the manual as JSON from the clap tree (`src/cli/cmd/host.rs`, `man`). `--help --json` does not exist.
+- No `llms.txt` exists in this repository.
+
+## Approach
+
+1. Make `--help --json` (global, at each level) print the same document as `podnet man --json` for that command.
+2. Generate `llms.txt` (an index of the commands and documents) and `llms-full.txt` (the manual and the documents) from the clap tree and `docs/`, with a script in `scripts/`. Publish both with each release.
+3. A test makes sure that the files agree with the tree.
+
+## Prove
+
+```sh
+cargo test -p podnet --test cli -- help_json_matches_man_json
+cargo todo check
+```

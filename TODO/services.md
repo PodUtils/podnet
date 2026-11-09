@@ -206,7 +206,7 @@ no crate `podnet-relay`. The start condition names T-049 (the take of `pod-relay
 
 # T-087: `relay node` and `relay connect` resume a session past the limits of the relay
 
-**Source:** `docs/research/podnet/podssh-copy.md`, sections 2.3, 3 (C5) and 5 (G2).
+**Source:** `docs/research/podnet/podssh-copy.md`, sections 2.3, 3 (C5) and 5 (G2); PodUtils/podcrates#35 (cfb), ask A-N-12.
 **Category:** feature
 **Milestone:** M6
 **Priority:** P2
@@ -234,6 +234,9 @@ relay and the transfer need more than 64 MiB.
    expires.
 4. Run the layer alone first. Add the end-to-end channel with keys (`--key`, `--allow`) as an
    option, and ask the owner whether it is the default.
+5. PodUtils/podcrates#35 (cfb), ask A-N-12, routed by PodUtils/podcrates#40: the resume must hold
+   past 64 MiB and 12 h on a node that runs as a system service (T-220). Test one session of 12 h
+   with a fake clock.
 
 ## Prove
 
@@ -1268,3 +1271,110 @@ cargo test --workspace -- route_control_rotate_reuses_the_state_dir route_contro
 ## Start condition
 
 T-095 and T-097 are done.
+
+# T-219: `podnet service install`: a hardened system unit (PodUtils/podcrates#35, A-N-11)
+
+**Source:** PodUtils/podcrates#35 (cfb), ask A-N-11, routed by PodUtils/podcrates#40.
+**Category:** feature
+**Milestone:** M6
+**Priority:** P1
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+Ask A-N-11 (P1): "Install a connector as a system service: a hardened `systemd` system unit (own user, `EnvironmentFile` for `TUNNEL_TOKEN`, `LimitNOFILE` 70000, `NoNewPrivileges`, `ProtectSystem=strict`), a fixed state directory for `warp.json`, and no new WARP device at a restart."
+
+## Premise
+
+- Read: `src/autostart.rs` writes a systemd user unit or a crontab line, with no root. It has no system unit and no own user.
+- The library that renders and installs a unit is `pod-unit` (PodUtils/podcrates, T-102). It does not exist in a release. The unit text is code of that crate.
+- Not read: how `warp.json` picks its directory (`src/warp/`, frozen for `pod-warp`).
+
+## Approach
+
+1. Take `pod-unit` with T-137 when it is released.
+2. Add `podnet service install|remove|status NAME -- COMMAND`. It writes a system unit with: `User`, `EnvironmentFile` (mode 0600, the token), `LimitNOFILE=70000`, `NoNewPrivileges=yes`, `ProtectSystem=strict`, `StateDirectory`, `Restart=always`. `--print-unit` prints the text and writes nothing.
+3. Set the state directory so that a restart reads the same `warp.json`. Test that a restart makes no new device.
+4. Keep `podnet autostart` for hosts with no root.
+
+## Prove
+
+```sh
+cargo test -p podnet --test cli -- service_print_unit_is_hardened service_install_keeps_no_secret_in_the_unit
+cargo todo check
+```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-unit`, T-102 there). Send a COORD issue (to podcrates) for the release. The entry is unblocked when podnet takes `pod-unit` (T-137).
+
+# T-220: `relay node` as a system service, with no operator act (PodUtils/podcrates#35, A-N-12)
+
+**Source:** PodUtils/podcrates#35 (cfb), ask A-N-12, routed by PodUtils/podcrates#40.
+**Category:** feature
+**Milestone:** M6
+**Priority:** P1
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+Ask A-N-12 (P1): "Operator SSH with no inbound port: `relay node` as a system service for `127.0.0.1:22`, renewal of the pair with no operator act, and resume past 64 MiB and 12 h (T-087)."
+
+## Premise
+
+- The service needs T-219 (the unit). The renewal is T-161 (a step with this ask). The resume is T-087 (a step with this ask).
+- The relay client is code of `pod-relay` (T-049). A feature there is not developed in podnet.
+
+## Approach
+
+1. After T-219: `podnet service install NAME -- relay node --target 127.0.0.1:22` runs the node under the system unit.
+2. Test the three parts together on a fake relay: the node outlives a pair (T-161) and a session past the cap (T-087).
+
+## Prove
+
+```sh
+cargo test -p podnet --test relay_reverse -- relay_node_service_outlives_pair_and_cap
+cargo todo check
+```
+
+## Blocker
+
+T-219 (`pod-unit`), T-161 and T-087 (`pod-relay`, PodUtils/podcrates). The entry is unblocked when these three are done.
+
+# T-221: `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15)
+
+**Source:** PodUtils/podcrates#35 (cfb), ask A-N-15, routed by PodUtils/podcrates#40.
+**Category:** feature
+**Milestone:** M6
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+Ask A-N-15 (P2): "A bench command, and a live step that runs it against podnet and `cloudflared` on the same runner."
+
+## Premise
+
+- Read: `podnet` has no `bench` command (`src/cli/mod.rs`). `tests/tcp_window.rs` measures a window, not a URL.
+- The live step needs a Cloudflare test account and waits (`docs/decisions.md`, 2026-11-09, Test accounts).
+
+## Approach
+
+1. Add `podnet bench URL [--json] [--connections N] [--duration S]`. It sends requests through the chosen road and measures the latency (p50, p95, p99), the rate and the errors.
+2. Print one stamped document with `schema` 1. Fix its keys with a test.
+3. Test it against a local server of podnet (`serve`).
+4. The live step in `live.yml` (podnet and `cloudflared` on one runner) starts when a test account exists.
+
+## Prove
+
+```sh
+cargo test -p podnet --test commands -- bench_json_has_the_fixed_keys
+cargo todo check
+```
+
+## Start condition
+
+For the live step only: a Cloudflare test account exists (`docs/decisions.md`, 2026-11-09, Test accounts). The local part can start now.

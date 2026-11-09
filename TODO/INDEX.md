@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**215 entries: 157 open, 1 partial, 15 blocked, 42 done.**
+**222 entries: 162 open, 1 partial, 17 blocked, 42 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
-| P0 | 0 | 0 | 0 | 0 | 0 |
-| P1 | 5 | 1 | 0 | 14 | 20 |
-| P2 | 103 | 0 | 10 | 22 | 135 |
+| P0 | 1 | 0 | 0 | 0 | 1 |
+| P1 | 7 | 1 | 2 | 14 | 24 |
+| P2 | 105 | 0 | 10 | 22 | 137 |
 | P3 | 49 | 0 | 5 | 6 | 60 |
-| **All** | 157 | 1 | 15 | 42 | 215 |
+| **All** | 162 | 1 | 17 | 42 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -261,3 +261,10 @@ M8 Overlays, M9 Later.
 | [T-213](fixes.md) | P2 | M | M5 | defect | open | The WireGuard endpoint of a device record has one derivation (GitHub #410) |
 | [T-214](fixes.md) | P3 | S | M5 | defect | open | `warp ssh-config` prints a `ProxyCommand` with the same quote as `--write` (GitHub #411) |
 | [T-215](fixes.md) | P2 | S | M5 | defect | open | `warp proxy --dns` has a bound and a counter (GitHub #412) |
+| [T-216](fixes.md) | P1 | S | M5 | feature | open | Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04) |
+| [T-217](fixes.md) | P1 | S | M5 | feature | open | `doctor --json`: a fixed block for the egress lanes (PodUtils/podcrates#35, A-C-10) |
+| [T-218](rename.md) | P0 | M | M1 | release | open | A connector profile that holds within a minor version (PodUtils/podcrates#35, A-N-05) |
+| [T-219](services.md) | P1 | M | M6 | feature | blocked | `podnet service install`: a hardened system unit (PodUtils/podcrates#35, A-N-11) |
+| [T-220](services.md) | P1 | S | M6 | feature | blocked | `relay node` as a system service, with no operator act (PodUtils/podcrates#35, A-N-12) |
+| [T-221](services.md) | P2 | M | M6 | feature | open | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
+| [T-222](fixes.md) | P2 | S | M5 | feature | open | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |

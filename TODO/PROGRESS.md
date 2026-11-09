@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 215 entries: 157 open, 1 partial, 15 blocked, 42 done.
+`TODO/INDEX.md` holds 222 entries: 162 open, 1 partial, 17 blocked, 42 done.
 
 ## State
 
@@ -31,7 +31,7 @@ one. In a milestone: P1, then P2, then P3. At one priority, an S entry goes firs
 not wait for a larger one.
 
 1. **M0, the record and the guards:** T-012.
-2. **M1, the rename:** T-022, T-023 and T-024, then T-025 (betas are allowed, 2026-11-09).
+2. **M1, the rename:** T-022, T-023 and T-024, T-218 (the connector profile, after T-216), then T-025 (betas are allowed, 2026-11-09).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands before T-040 starts, or after it ends.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
@@ -42,6 +42,7 @@ not wait for a larger one.
    - tunnel, share, serve and the CLI: T-160, T-169 to T-171, T-201 to T-207.
    - WARP (after T-031): T-173, T-208 to T-211, T-213 to T-215.
    - documents: T-159, T-164, T-198, T-212.
+   - the asks of cfb (PodUtils/podcrates#40): T-216, T-217 (the schema of `doctor --json`), T-222.
    - T-182 is blocked (the file host of pip, `pod-services`).
 4. **M2, the splits:** T-031, then T-032; T-033 to T-041; T-042,
    T-043, T-044; T-045; then T-015.
@@ -54,7 +55,7 @@ not wait for a larger one.
    server T-088, T-089, T-090, T-091; git T-092, T-093, T-094; the router T-095, T-096, T-097,
    T-098, T-099, T-100, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The triage adds T-167 and T-168 (the shims of `net`), T-177 (`podnet route check`) and
-    T-180 (the router control); the router additions are in T-096 to T-099 (GitHub #372 to #374).
+    T-180 (the router control); the asks of cfb add T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`); the router additions are in T-096 to T-099 (GitHub #372 to #374).
 8. **M7, the pods:** T-107, T-108, T-111, T-109, T-110, T-113, T-112. The triage adds T-156, T-157
    and T-158 (the reject action, the default action, learn), T-181 (the flow budget), T-150 and
    T-151 (the TCP handoff and its measure), T-152 (the measure of the netfilter plane) and T-174 (the veth wire).

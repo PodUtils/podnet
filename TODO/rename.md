@@ -656,3 +656,40 @@ v0.3.0-beta.1: the certificate names
 ["https://github.com/Azathothas/cfrs/.github/workflows/release.yml@refs/tags/v0.3.0-beta.1"], not
 https://github.com/PodUtils/podnet/.github/workflows/release.yml@refs/tags/v0.3.0-beta.1`. The
 step of the second batch passed with no 429. GitHub #311 is closed.
+
+# T-218: A connector profile that holds within a minor version (PodUtils/podcrates#35, A-N-05)
+
+**Source:** PodUtils/podcrates#35 (cfb), ask A-N-05, routed by PodUtils/podcrates#40.
+**Category:** release
+**Milestone:** M1
+**Priority:** P0
+**Effort:** M
+**Status:** open
+
+## Problem
+
+Ask A-N-05 (P0): "A signed prerelease named podnet that cfb can pin, and a connector profile: the flags, exit codes and JSON of `tunnel`, `ps --json`, `doctor --json` and `/ready` hold within a minor version."
+
+## Premise
+
+- Betas are allowed since 2026-11-09 (`docs/decisions.md`, Releases). The signed beta is T-022 and T-023. The release workflow signs the files with cosign.
+- No document lists the profile. `status::stamped` gives `schema` 1 to the JSON documents, and no test pins the keys of `ps --json`.
+- Not measured: the exit codes of `tunnel` in each failure.
+
+## Approach
+
+1. Write the profile in `docs/protocol.md`: the flags of `tunnel`, its exit codes (`src/exit.rs`), the keys of `ps --json`, `doctor --json` (T-216) and the body of `/ready`. State the rule: a change within a minor version only adds.
+2. Add tests that pin the flags (the help of `tunnel`), the exit codes, and the keys of the three JSON documents.
+3. Do T-022 and T-023 (the signed beta), and name the profile in the release note.
+4. The tunnel set (A-N-02, A-N-03, A-C-01, A-C-02) waits for the first crates.io release (`docs/decisions.md`, 2026-11-09, The tunnel set). The profile covers the connector as it is.
+
+## Prove
+
+```sh
+cargo test -p podnet --test cli -- connector_profile_is_pinned
+cargo todo check
+```
+
+## Start condition
+
+T-216 is done (the schema of `doctor --json`).
