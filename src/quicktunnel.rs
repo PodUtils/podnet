@@ -24,6 +24,9 @@
 
 use serde::{Deserialize, Serialize};
 
+mod retry;
+pub use retry::parse_retry_after;
+
 pub use crate::services::default_quick_service;
 
 /// The anonymous provisioning response. Only the fields podnet uses are modelled;
@@ -263,47 +266,6 @@ pub async fn request_quick_tunnel(
     }
 }
 
-/// The wait of a `Retry-After` value: a number of seconds, or an HTTP date
-/// (IMF-fixdate).
-pub fn parse_retry_after(value: &str) -> Option<std::time::Duration> {
-    let value = value.trim();
-    if let Ok(secs) = value.parse::<u64>() {
-        return Some(std::time::Duration::from_secs(secs));
-    }
-    // Sun, 06 Nov 1994 08:49:37 GMT
-    let parts: Vec<&str> = value.split_whitespace().collect();
-    if parts.len() != 6 || parts[5] != "GMT" {
-        return None;
-    }
-    let day: i64 = parts[1].parse().ok()?;
-    const MONTHS: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    let month = MONTHS.iter().position(|m| *m == parts[2])? as i64 + 1;
-    let year: i64 = parts[3].parse().ok()?;
-    let hms: Vec<i64> = parts[4].split(':').filter_map(|p| p.parse().ok()).collect();
-    if hms.len() != 3 {
-        return None;
-    }
-    // Days from 1970-01-01 (the algorithm of H. Hinnant).
-    let (y, m) = if month <= 2 {
-        (year - 1, month + 9)
-    } else {
-        (year, month - 3)
-    };
-    let era = y.div_euclid(400);
-    let yoe = y - era * 400;
-    let doy = (153 * m + 2) / 5 + day - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    let days = era * 146_097 + doe - 719_468;
-    let at = days * 86_400 + hms[0] * 3600 + hms[1] * 60 + hms[2];
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()?
-        .as_secs() as i64;
-    Some(std::time::Duration::from_secs((at - now).max(0) as u64))
-}
-
 /// The longest time that [`provision`] tries.
 pub const PROVISION_BUDGET: std::time::Duration = std::time::Duration::from_secs(300);
 /// The most attempts of [`provision`].
@@ -328,6 +290,7 @@ pub async fn provision(
         ..Default::default()
     };
     let mut attempt = 0;
+    let mut dns = retry::Dns::default();
     loop {
         attempt += 1;
         let err = match request_quick_tunnel(endpoint, auth_mode, user_agent, timeout, None).await {
@@ -349,6 +312,14 @@ pub async fn provision(
                 ) =>
             {
                 return Err(err)
+            }
+            // A name that does not resolve: one retry, then only when the
+            // answering step changed (T-170).
+            ProvisionError::Http(inner) if retry::is_dns(inner) => {
+                if !dns.again(endpoint).await {
+                    return Err(err);
+                }
+                policy.backoff_with_jitter(attempt)
             }
             ProvisionError::Http(_) => policy.backoff_with_jitter(attempt),
             _ => return Err(err),

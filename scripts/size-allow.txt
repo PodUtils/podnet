@@ -14,7 +14,7 @@
 2142 src/feature/mod.rs
 910 src/main.rs
 2034 src/proxy.rs
-890 src/quicktunnel.rs
+861 src/quicktunnel.rs
 899 src/relay_reverse.rs
 1901 src/share.rs
 1404 src/tunnel.rs
