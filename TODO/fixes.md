@@ -2251,7 +2251,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 - Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:433`, `src/vnet/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1368`.
 - `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:371`).
-- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:57-63`).
+- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:62-68`).
 
 ## Approach
 
@@ -2323,7 +2323,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 
 ## Problem
 
-`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:753-757`).
+`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:117`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:753-757`).
 
 ## Premise
 
@@ -2400,7 +2400,7 @@ A test fills the queue of a peer that does not read and reads a non-zero drop co
 
 ## Premise
 
-- `over_link` has one production caller (`src/cli/cmd/net/proxy.rs:42`) and the switch tests (`src/vnet/switch/tests.rs`).
+- `over_link` has one production caller (`src/cli/cmd/net/proxy.rs:55`) and the switch tests (`src/vnet/switch/tests.rs`).
 - `src/vnet/stack.rs` has 2103 lines in `scripts/size-allow.txt` and can only shrink. Two new `StackConfig` fields grow it.
 
 ## Approach
@@ -2435,7 +2435,7 @@ python3 scripts/check-size.py
 
 ## Premise
 
-- Printed at `src/cli/cmd/net/mod.rs:257-258`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
+- Printed at `src/cli/cmd/net/mod.rs:267-268`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
 - `README.md:903-905` uses `net switch --listen tcp://` as its example.
 
 ## Approach
@@ -2498,11 +2498,11 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:91-103`). The stack gets `dns: None` (`src/vnet/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`:732-742`, `:1050-1053`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:21-25`, `src/vnet/shim.rs:53,82-90`). `docs/virtual-network.md:208-210` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:91-103`). The stack gets `dns: None` (`src/vnet/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`:732-742`, `:1050-1053`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:25-30`, `src/vnet/shim.rs:53,82-90`). `docs/virtual-network.md:208-213` and `net addresses` advertise the resolver.
 
 ## Premise
 
-- `vnet::dns::Resolver` exists and is tested: `from_lines` (`src/vnet/dns.rs:57`), `hosts_pairs` (`:138`), fields `upstream` and `catch_all` (`:26,29`) that nothing sets.
+- `vnet::dns::Resolver` exists and is tested: `from_lines` (`src/vnet/dns.rs:57`), `hosts_pairs` (`:168`), fields `upstream` and `catch_all` (`:26,29`) that nothing sets.
 - `src/vnet/stack.rs` allowlist (2103 lines): no new test in that file before T-034. A test can use the public `StackConfig.dns` from `src/vnet/dns.rs` or `tests/`.
 
 ## Approach
@@ -2510,7 +2510,7 @@ cargo test -p podnet --test cli
 1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
 2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
 3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
-4. Update the help and `docs/virtual-network.md:208-210`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+4. Update the help and `docs/virtual-network.md:208-213`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
 
 ## Prove
 

@@ -128,6 +128,12 @@ pub(crate) struct ShimArgs {
     /// Rewrite 127.0.0.1 connections to the stack's local address.
     #[arg(long)]
     map_loopback: bool,
+    /// Name-to-address entries for the shim, repeatable: --map web=10.66.0.2
+    #[arg(long = "map", value_name = "NAME=ADDR")]
+    maps: Vec<String>,
+    /// Read name entries from a file, repeatable.
+    #[arg(long = "map-file", value_name = "PATH")]
+    map_files: Vec<PathBuf>,
     /// Print the environment as JSON instead of shell assignments.
     #[arg(long)]
     json: bool,
@@ -143,6 +149,10 @@ pub(crate) struct ProxyArgs {
     /// Name-to-address entries, repeatable: --map web=10.66.0.2
     #[arg(long = "map", value_name = "NAME=ADDR")]
     maps: Vec<String>,
+    /// Read name entries from a file, repeatable: `NAME=ADDR` or hosts lines.
+    /// The names answer at the gateway 10.66.0.1:53 and at the proxy.
+    #[arg(long = "map-file", value_name = "PATH")]
+    map_files: Vec<PathBuf>,
     /// Forward a virtual endpoint to a real one, repeatable. REAL is
     /// host:port (a name or an address) for TCP, or unix:/path for a unix
     /// service. A target that is not loopback goes through the proxy of the

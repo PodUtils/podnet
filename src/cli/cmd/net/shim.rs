@@ -9,6 +9,10 @@ use super::{ShimArgs, SocksifyArgs, TailscaleArgs, TsShimsArgs};
 use crate::cli::signals::sleep_or_signal;
 
 pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
+    let subnet = podnet::vnet::StackConfig::default().subnet;
+    let hosts = podnet::vnet::dns::Resolver::from_maps(&args.maps, &args.map_files, &subnet)
+        .fault(Fault::Usage)?
+        .hosts_pairs();
     let directory = args
         .out
         .clone()
@@ -21,6 +25,7 @@ pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
     let options = podnet::vnet::shim::ShimOptions {
         log: args.log,
         map_loopback: args.map_loopback,
+        hosts,
         ..podnet::vnet::shim::ShimOptions::default()
     };
     let env = options.environment(&shim.path);

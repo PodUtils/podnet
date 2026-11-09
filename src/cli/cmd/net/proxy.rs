@@ -27,9 +27,21 @@ pub(crate) fn probability(value: &str) -> std::result::Result<f64, String> {
 pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
     use podnet::vnet::proxy::{ProxyListen, Resolver};
 
+    // T-193: one resolver for the door, the gateway (10.66.0.1:53) and the
+    // stack; a bad entry is a usage error before anything starts.
+    let defaults = podnet::vnet::StackConfig::default();
+    let names =
+        podnet::vnet::dns::Resolver::from_maps(&args.maps, &args.map_files, &defaults.subnet)
+            .fault(Fault::Usage)?;
+    let names = Arc::new(names);
     let mut _link = None;
     let net = match &args.switch {
-        None => Arc::new(podnet::vnet::NetStack::loopback()),
+        None => Arc::new(podnet::vnet::NetStack::loopback_with(
+            podnet::vnet::StackConfig {
+                dns: Some(names.clone()),
+                ..defaults
+            },
+        )),
         Some(switch) => {
             let address = args
                 .address
@@ -37,7 +49,8 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
                 .fault(Fault::Usage)?;
             let config = podnet::vnet::StackConfig {
                 local_v4: address,
-                ..podnet::vnet::StackConfig::default()
+                dns: Some(names.clone()),
+                ..defaults
             };
             let net = Arc::new(podnet::vnet::NetStack::over_link(config));
             let faults = podnet::vnet::switch::Faults {
@@ -88,19 +101,7 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
             net
         }
     };
-    let mut resolver = Resolver::new();
-    for entry in &args.maps {
-        let (name, address) = entry
-            .split_once('=')
-            .with_context(|| format!("--map wants NAME=ADDRESS, got {entry:?}"))?;
-        resolver.insert(
-            name.trim().to_ascii_lowercase(),
-            address
-                .trim()
-                .parse()
-                .with_context(|| format!("bad address in {entry:?}"))?,
-        );
-    }
+    let resolver: Resolver = names.hosts_pairs().into_iter().collect();
     let listen = ProxyListen::parse(&args.listen)?;
     let forwards = parse_forwards(&args.forwards)?;
     let mut proxy = podnet::vnet::proxy::serve(net.clone(), listen, resolver, args.port).await?;

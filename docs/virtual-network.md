@@ -206,7 +206,10 @@ podnet net proxy --switch unix:/tmp/sw.sock --address 10.66.0.3 --drop 0.1 --see
 ## 6. Resolver, policy and capture
 
 * `vnet::dns::Resolver` answers A and AAAA queries for a name table at
-  `10.66.0.1:53`. It can send unknown names to an upstream, or answer all
+  `10.66.0.1:53`. `net proxy --map NAME=ADDR` and `--map-file PATH` fill the
+  table of the gateway and of the proxy door; `net shim --map` and
+  `--map-file` fill the table of `getaddrinfo`. An address outside the subnet
+  is a usage error (exit 64). It can send unknown names to an upstream, or answer all
   unknown names with one address.
 * `vnet::policy::Acl` has allow and deny rules for addresses and ports. The
   stack applies them when a program binds or connects.
