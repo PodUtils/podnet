@@ -2221,6 +2221,10 @@ cargo test -p podnet-netns tailscale
 
 Tests drive `handle_connection` over a duplex with tokio paused time: no byte, one byte `0x05`, and a CONNECT head with no blank line. Each ends within the limit with an answer.
 
+## Done
+
+2026-11-09, commit e0daff1. The doors of net proxy, net tailscale and pod --serve read the opening with REQUEST_LIMIT (30 s, crates/podnet-netns/src/opening.rs); on expiry the client gets SOCKS5 code 4 or HTTP 504. Tests: opening::tests::no_byte_ends_with_a_504, one_socks_byte_ends_with_code_4, a_connect_head_without_a_blank_line_ends_with_a_504. check.sh: exit 0. CI: at the merge.
+
 # T-186: `net tailscale` and the other unix listeners claim the socket path first (GitHub #385)
 
 **Source:** GitHub #385 (https://github.com/PodUtils/podnet/issues/385)
