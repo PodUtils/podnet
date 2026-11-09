@@ -2517,11 +2517,11 @@ cargo test --test relay_reverse
 
 ## Problem
 
-`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:207-224`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:217-219`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
+`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:207-231`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:217-219`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
 
 ## Premise
 
-- The local-first order has a good reason (`src/cli/cmd/relay.rs:209-210`): a stopped node does not connect again.
+- The local-first order has a good reason (`src/cli/cmd/relay.rs:216-217`): a stopped node does not connect again.
 - Read only. No run.
 
 ## Approach

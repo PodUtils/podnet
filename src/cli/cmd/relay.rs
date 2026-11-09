@@ -206,6 +206,13 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
         }
         RelayCommand::Stop { name } => {
             let pair = reverse::load(&dir, Some(&name))?;
+            // Check the pair before the first local stop: a stop that the
+            // relay cannot get must not leave a node that is stopped.
+            let relay = podnet::ws_relay::Relay::new(&pair.relay, None).fault(Fault::Config)?;
+            if pair.stop_token.is_empty() {
+                return Err(anyhow::anyhow!("the pair {name} has no stop token"))
+                    .fault(Fault::Unavailable);
+            }
             // Issue 119: the local node of the pair stops first, so that it
             // does not connect again.
             if let Ok(run) = podnet::instances::run_dir() {
@@ -219,11 +226,18 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                     println!("podnet: relay    stopped the node instance {instance}");
                 }
             }
-            let relay = podnet::ws_relay::Relay::new(&pair.relay, None).fault(Fault::Config)?;
+            let file = dir.join(format!("{name}.json"));
             reverse::stop(&relay, &pair)
                 .await
+                .with_context(|| {
+                    format!(
+                        "the relay side of {name} is live for {} more; the pair file {} stays",
+                        reverse::left_words(pair.left()),
+                        file.display()
+                    )
+                })
                 .fault(Fault::Unavailable)?;
-            let _ = std::fs::remove_file(dir.join(format!("{name}.json")));
+            let _ = std::fs::remove_file(&file);
             println!("podnet: relay    {name} stopped");
             Ok(())
         }

@@ -627,3 +627,61 @@ async fn a_relay_close_ends_a_session_whose_target_does_not_read() {
         .unwrap();
     assert!(read < sent, "the target read {read} of {sent} bytes");
 }
+
+/// Run `podnet` with a state directory and a run directory.
+fn podnet_in(
+    state: &std::path::Path,
+    run: &std::path::Path,
+    args: &[&str],
+) -> std::process::Output {
+    std::process::Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(args)
+        .env("PODNET_STATE_DIR", state)
+        .env("PODNET_RUN_DIR", run)
+        .env_remove("PODNET_RELAY")
+        .output()
+        .unwrap()
+}
+
+// T-195: a pair with no stop token stops no local instance. The command
+// exits 69 and keeps the pair file. Before, it stopped the instance first.
+#[test]
+fn relay_stop_checks_the_pair_before_it_stops_an_instance() {
+    use std::os::fd::AsRawFd as _;
+    let state = tempfile::tempdir().unwrap();
+    let run = tempfile::tempdir().unwrap();
+    let relay_dir = state.path().join("relay");
+    let mut with_no_token = pair("http://127.0.0.1:1");
+    with_no_token.name = "notoken".into();
+    save(&with_no_token, &relay_dir).unwrap();
+    // A live instance of the node of this pair: a held lock and a record.
+    let mut child = std::process::Command::new("sleep")
+        .arg("60")
+        .spawn()
+        .unwrap();
+    std::fs::set_permissions(
+        run.path(),
+        std::os::unix::fs::PermissionsExt::from_mode(0o700),
+    )
+    .unwrap();
+    let lock = std::fs::File::create(run.path().join("n1.lock")).unwrap();
+    // SAFETY: flock on a descriptor of this process.
+    assert_eq!(unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX) }, 0);
+    let record = serde_json::json!({
+        "name": "n1", "pid": child.id(), "started": 1,
+        "command": "relay node", "args": ["relay", "node", "notoken"],
+        "hash": "x", "cwd": "/", "state": "ready",
+        "ready": {"pair": "notoken"}, "log": "n1.log",
+    });
+    std::fs::write(run.path().join("n1.json"), record.to_string()).unwrap();
+    let out = podnet_in(state.path(), run.path(), &["relay", "stop", "notoken"]);
+    let err = String::from_utf8_lossy(&out.stderr);
+    let alive = child.try_wait().unwrap().is_none();
+    let _ = child.kill();
+    let _ = child.wait();
+    assert_eq!(out.status.code(), Some(69), "{err}");
+    assert!(err.contains("stop token"), "{err}");
+    assert!(alive, "the instance was stopped: {err}");
+    assert!(relay_dir.join("notoken.json").exists(), "the file stays");
+    assert!(!String::from_utf8_lossy(&out.stdout).contains("stopped"));
+}
