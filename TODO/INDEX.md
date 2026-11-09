@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 145 open, 2 partial, 17 blocked, 58 done.**
+**222 entries: 144 open, 2 partial, 17 blocked, 59 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 7 | 1 | 2 | 14 | 24 |
-| P2 | 93 | 1 | 10 | 33 | 137 |
+| P2 | 92 | 1 | 10 | 34 | 137 |
 | P3 | 44 | 0 | 5 | 11 | 60 |
-| **All** | 145 | 2 | 17 | 58 | 222 |
+| **All** | 144 | 2 | 17 | 59 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -187,7 +187,7 @@ M8 Overlays, M9 Later.
 | [T-139](fixes.md) | P2 | S | M5 | defect | done | The start of a session changes the global git identity and can drop commits of main |
 | [T-140](fixes.md) | P2 | S | M5 | feature | done | `data_path` and the time of the last TCP probe in `status`, the ready document and `warp status` |
 | [T-141](fixes.md) | P1 | S | M5 | defect | done | live: two runs in a row failed after the take of pod-dns and pod-services (GitHub #325) |
-| [T-142](fixes.md) | P2 | M | M5 | defect | open | seccomp: closing a UDP socket stops its relay and frees three descriptors (GitHub #347) |
+| [T-142](fixes.md) | P2 | M | M5 | defect | done | seccomp: closing a UDP socket stops its relay and frees three descriptors (GitHub #347) |
 | [T-143](fixes.md) | P1 | M | M5 | defect | open | seccomp: a datagram written with `write(2)` leaves the pod (GitHub #347) |
 | [T-144](fixes.md) | P2 | S | M5 | defect | open | seccomp: `bind` on a datagram socket is recorded, and `getsockname` reports it (GitHub #348) |
 | [T-145](fixes.md) | P2 | S | M5 | defect | open | fake DNS: the pool refuses at its end, and names match without case (GitHub #349) |

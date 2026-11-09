@@ -1362,7 +1362,7 @@ tag (#322). GitHub #325 is closed with this evidence.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1404,6 +1404,22 @@ The first test opens 100 UDP sockets, sends one datagram on each, closes each, a
 `/proc/PID/fd` of the supervisor (not `/proc/self/fd`). It expects the count before the test. The
 second test uses a child that exits (the `sweep` path) or `close_range`. The third test checks that the
 control connection of the stream form ends.
+
+## Done
+
+2026-11-09, commit f974e6b (`T-142: the close of a UDP socket stops its relay`). The relay code is
+in a new file, `crates/podnet-netns/src/udp.rs`. The entry `Sock::Datagram(Udp)` holds a
+`tokio::sync::watch` sender; each reader task of the relay selects on it and stops when the entry
+drops (`handle_close`, the sweep, and the end of the pod before `drain_relays`). The writer task of
+the stream form stops when its channel sender drops with the entry. The tests are in
+`tests/dgram/relay.rs`, a module of the test target `pod_seccomp_dgram`:
+`seccomp_udp_close_frees_the_relay_descriptors`, `seccomp_udp_exit_frees_the_relay_descriptors`
+(a child exits with 100 open sockets; new sockets of the parent start the sweep) and
+`seccomp_udp_stream_control_ends_on_close`. Each test counts `/proc/PPID/fd` of the supervisor from
+the program. On the tree before the fix the first two give 11 descriptors before and 311 after, and
+the third test sees the control connection stay open: the three fail. With the fix the three pass,
+on this host (user namespaces and seccomp user notification work here). `seccomp.rs`: 1516 to 1307
+lines. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-143: seccomp: a datagram written with `write(2)` leaves the pod (GitHub #347)
 
