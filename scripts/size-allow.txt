@@ -26,7 +26,7 @@
 892 src/warp/register.rs
 1211 src/warp/session.rs
 817 src/warp/up.rs
-972 src/warp/wg.rs
+965 src/warp/wg.rs
 994 src/ws_relay.rs
 2314 tests/cli.rs
 812 tests/detach.rs

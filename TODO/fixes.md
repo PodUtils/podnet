@@ -3145,7 +3145,7 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 - `src/warp/wg.rs:482-489` (v4 only; the message `:485-487`).
 - MASQUE reads `v4` and `v6`: `src/warp/register.rs:618-657`.
 - `grep -rn "\.ports" src/warp` finds no reader.
-- Test to extend: `src/warp/export.rs:343-378`.
+- Test to extend: `src/warp/export.rs:399-434`.
 
 ## Approach
 
