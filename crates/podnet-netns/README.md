@@ -177,6 +177,11 @@ see it. Use a unix socket for it (`-L unix:///path`).
   the port of the `connect` (a name keeps its fake address); a stream with
   no `connect` gives `ENOTCONN`. `getsockname` gives the bound address,
   else the unspecified address of the family with an ephemeral port.
+* A UDP socket and an ICMP socket keep their options too. The values are
+  echoes: `getsockopt` gives the value that the program set (for example
+  `IP_TTL`), and SOCKS5 carries no IP option, so the value has no effect on
+  the datagrams upstream. An option that the program did not set gives
+  zeros: `IP_MTU` has no value.
 * A UDP socket keeps the address of `bind`. Port 0 gets a stable port of
   the ephemeral range, and a second `bind` gets `EINVAL`. `getsockname`
   gives the bound address, else the unspecified address of the family: with

@@ -58,6 +58,9 @@ pub(crate) struct Udp {
     /// The address of `bind` (T-144). No datagram arrives at it: the relay
     /// gives only the answers to the datagrams of the socket.
     bound: Option<(IpAddr, u16)>,
+    /// The options that the program set (T-148): an echo for `getsockopt`.
+    /// SOCKS5 carries no IP option, so a value has no effect upstream.
+    pub(crate) options: crate::sockopt::Options,
     /// The receive side: the sources of the datagrams (issue 305).
     pub(crate) inbox: Arc<Inbox>,
     /// The tasks of the socket stop when this sender drops.
@@ -76,6 +79,7 @@ impl Udp {
             pair,
             relay: None,
             bound: None,
+            options: Default::default(),
             inbox,
             stop: tokio::sync::watch::channel(()).0,
         };

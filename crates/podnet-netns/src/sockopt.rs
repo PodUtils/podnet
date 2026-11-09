@@ -67,7 +67,9 @@ fn options_of(entry: &mut Sock) -> Option<&mut Options> {
     match entry {
         Sock::Stream { options, .. } => Some(options),
         Sock::Connected(c) => Some(&mut c.options),
-        Sock::Datagram(_) | Sock::Icmp(_) => None,
+        // T-148: a UDP and an ICMP socket keep their options too.
+        Sock::Datagram(udp) => Some(&mut udp.options),
+        Sock::Icmp(icmp) => Some(&mut icmp.options),
     }
 }
 

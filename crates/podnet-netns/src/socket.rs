@@ -82,6 +82,7 @@ pub(crate) fn handle_socket(
                 v6,
                 dest: None,
                 ident: None,
+                options: Default::default(),
             }),
             false => Sock::Datagram(crate::udp::Udp::new(pair, inbox, (key, writes))),
         };

@@ -31,6 +31,8 @@ pub(crate) struct Icmp {
     /// The identifier of `bind` (the port of the address). The kernel puts
     /// it in each echo request of the socket.
     pub(crate) ident: Option<u16>,
+    /// The options that the program set (T-148): an echo for `getsockopt`.
+    pub(crate) options: crate::sockopt::Options,
 }
 
 impl Icmp {
