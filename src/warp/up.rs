@@ -16,6 +16,10 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context as _, Result};
 
+mod fish;
+
+use fish::{fish_block, fish_file};
+
 /// The name of the detached instance of `podnet warp up`.
 pub const INSTANCE: &str = "warp";
 /// The name of the detached instance of `podnet warp up --tun`.
@@ -23,8 +27,8 @@ pub const TUN_INSTANCE: &str = "warp-tun";
 /// Set in a shell that `podnet warp shell` started, so that the hook does not
 /// start it again.
 pub const SHELL_VARIABLE: &str = "PODNET_WARP_SHELL";
-const BEGIN: &str = "# >>> podnet warp up >>>";
-const END: &str = "# <<< podnet warp up <<<";
+pub(super) const BEGIN: &str = "# >>> podnet warp up >>>";
+pub(super) const END: &str = "# <<< podnet warp up <<<";
 
 /// The unix socket of the proxy of `podnet warp up`.
 pub fn socket_path() -> Result<PathBuf> {
@@ -36,7 +40,7 @@ pub fn env_path() -> Result<PathBuf> {
     Ok(crate::instances::run_dir()?.join("warp.env"))
 }
 
-fn quote(s: &str) -> String {
+pub(super) fn quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
 
@@ -419,36 +423,18 @@ fn shell_files_in(home: &Path, shell: &str) -> Vec<PathBuf> {
     files
 }
 
-/// The file of fish (issue 115): a file of its own in conf.d, when fish is
-/// the shell or its config directory exists.
-fn fish_file() -> Option<PathBuf> {
-    let home = PathBuf::from(std::env::var_os("HOME")?);
-    crate::state::check_own(&home).ok()?;
-    let dir = home.join(".config/fish");
-    let shell = std::env::var("SHELL").unwrap_or_default();
-    (shell.ends_with("fish") || dir.exists()).then(|| dir.join("conf.d/podnet-warp.fish"))
-}
-
-/// The fish form of [`hook_block`]. fish has `export`, so the env file
-/// works with `source`.
-pub fn fish_block(env: &Path, socket: &Path, exe: &Path) -> String {
-    let env = quote(&env.display().to_string());
-    let socket = quote(&socket.display().to_string());
-    let exe = quote(&exe.display().to_string());
-    format!(
-        "{BEGIN}\n\
-if test -f {env}; source {env}; end\n\
-if status is-interactive; and not set -q {SHELL_VARIABLE}; and test -S {socket}; and test -x {exe}; exec {exe} warp shell; end\n\
-{END}\n"
-    )
-}
-
 /// Add the block to `~/.bashrc` and `~/.profile` (an old block is
 /// replaced; the rest of each file stays). Gives the files.
 pub fn persist(env: &Path) -> Result<Vec<PathBuf>> {
     let socket = socket_path()?;
     let exe = std::env::current_exe()?.canonicalize()?;
     let block = hook_block(env, &socket, &exe);
+    // T-211: a fish file that podnet did not write stays; check it before
+    // any write.
+    let fish = fish_file();
+    if let Some(file) = &fish {
+        fish::check(file)?;
+    }
     let mut done = Vec::new();
     for file in shell_files()? {
         let old = std::fs::read_to_string(&file).unwrap_or_default();
@@ -460,12 +446,8 @@ pub fn persist(env: &Path) -> Result<Vec<PathBuf>> {
         std::fs::write(&file, text).with_context(|| format!("writing {}", file.display()))?;
         done.push(file);
     }
-    if let Some(file) = fish_file() {
-        if let Some(dir) = file.parent() {
-            std::fs::create_dir_all(dir).with_context(|| format!("making {}", dir.display()))?;
-        }
-        std::fs::write(&file, fish_block(env, &socket, &exe))
-            .with_context(|| format!("writing {}", file.display()))?;
+    if let Some(file) = fish {
+        fish::write(&file, &fish_block(env, &socket, &exe))?;
         done.push(file);
     }
     Ok(done)
@@ -567,9 +549,7 @@ pub fn down() -> Result<()> {
         }
     }
     if let Some(file) = fish_file() {
-        if std::fs::remove_file(&file).is_ok() {
-            println!("podnet: warp down: removed {}", file.display());
-        }
+        fish::remove(&file);
     }
     // Issue 138: the environment.d file, when podnet wrote it.
     if let Ok(file) = env_d_path() {
@@ -649,16 +629,6 @@ mod tests {
         assert!(shell_files_in(home, "/usr/bin/zsh").contains(&home.join(".zshrc")));
         std::fs::write(home.join(".zshrc"), "").unwrap();
         assert!(shell_files_in(home, "/bin/bash").contains(&home.join(".zshrc")));
-        let fish = fish_block(
-            Path::new("/r/warp.env"),
-            Path::new("/r/warp.sock"),
-            Path::new("/b/podnet"),
-        );
-        assert!(
-            fish.contains("if test -f '/r/warp.env'; source '/r/warp.env'; end\n"),
-            "{fish}"
-        );
-        assert!(fish.contains("exec '/b/podnet' warp shell; end"), "{fish}");
     }
 
     // Issue 116: warp up does not send its own session through the proxy

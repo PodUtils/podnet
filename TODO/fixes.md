@@ -2996,7 +2996,7 @@ then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:
 ## Premise
 
 - `src/warp/live/instance.rs:70-76` (`instance_state` reads `INSTANCE`), `:88-105` (`instance_state_in` takes a name),
-  `:131-158` (the line). `src/warp/up.rs:20-22` (two names), `:547-552` (`down` knows both).
+  `:131-158` (the line). `src/warp/up.rs:24-26` (two names), `:529-534` (`down` knows both).
 - `src/cli/cmd/warp/account.rs:32-45` (the arm `Status` of the account file).
 - `warp tun` has no `Live` and so no `data_path` (the issue notes it; not part of this entry).
 
@@ -3071,8 +3071,8 @@ text outside the markers.
 
 ## Premise
 
-- `src/warp/up.rs:569-573` (remove), `:463-470` (write), `:424-430` (`fish_file`), `:434-444` (`fish_block` starts with
-  the shared `BEGIN` marker), `:513-515` and `:574-587` (the model).
+- `src/warp/up.rs:551-553` (remove), `:463-470` (write), `:424-430` (`fish_file`), `:434-444` (`fish_block` starts with
+  the shared `BEGIN` marker), `:495-497` and `:554-567` (the model).
 - `src/warp/up.rs` has 847 lines (allowlist): put the new code in a new small file, or remove lines elsewhere.
 
 ## Approach
