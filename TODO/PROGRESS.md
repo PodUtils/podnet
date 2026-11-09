@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 222 entries: 143 open, 2 partial, 17 blocked, 60 done.
+`TODO/INDEX.md` holds 222 entries: 142 open, 2 partial, 17 blocked, 61 done.
 
 ## State
 
@@ -36,7 +36,7 @@ not wait for a larger one.
    entry of this list is done. A fix in a pod backend lands before T-040 starts, or after it ends.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - pod backends (`podnet-netns`; before T-040): T-143, T-142, T-144 to T-149, T-154, T-155.
-   - `net`, `doctor` and the proxy: T-183, T-184, T-187 to T-193 (T-188 before T-187;
+   - `net`, `doctor` and the proxy: T-184, T-187 to T-193 (T-188 before T-187;
      they land before T-061 merges the doors).
    - tunnel, share, serve and the CLI: T-160, T-169 to T-171, T-201 to T-207.
    - WARP: T-173, T-210.

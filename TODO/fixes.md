@@ -2119,7 +2119,7 @@ The session of `PodUtils/podcrates` (the crate `pod-services`): the file host of
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2150,6 +2150,10 @@ grep -n "HTTP_PORT" src/egress.rs
 ```
 
 The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled number).
+
+## Done
+
+2026-11-09, commit cca2e0a. egress::rules and egress::parse use the default of pod-proxy (80); HTTP_PORT of egress.rs is removed; the ruling is in docs/decisions.md. Test: egress::tests (the chain test asserts 80 and 1080). COORD (to podssh): open for the lead. check.sh: exit 0. CI: at the merge.
 
 # T-184: `doctor`: the relay row follows `--relay` and keeps a loopback relay (GitHub #380)
 
