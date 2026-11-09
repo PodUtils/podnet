@@ -326,6 +326,9 @@ ingress:
   - service: http_status:404
 ```
 
+* The origin is in the `ingress:` rules. With `--config`, the origin flags (`--url`, `--unix`, `--port`, `--tcp`,
+  `--forward`, `--hello-world`, `--no-tls-verify`, `--http-host-header`, `--strip-accept-encoding`) are a usage
+  error (exit 64): they would have no effect.
 * The last rule must match all requests (no `hostname`, no `path`). podnet
   refuses a file where it does not.
 * `path:` is a regular expression, as in cloudflared (the syntax of the

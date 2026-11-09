@@ -2584,7 +2584,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:267-268`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:903-905` uses `net switch --listen tcp://` as its example.
+- `README.md:906-908` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -3042,9 +3042,9 @@ so. The README (`:307-362`) documents the precedence of the token and protocol f
 
 ## Premise
 
-- Guard: `src/cli/cmd/tunnel.rs:98` (`if args.config.is_none()`). The flags are read at `:100-124`, `:207`.
-  The three per-origin flags are declared at `:56-64`.
-- The token case already has a usage error: `src/cli/cmd/tunnel.rs:73-89` (issue 172).
+- Guard: `src/cli/cmd/tunnel.rs:136` (`if args.config.is_none()`). The flags are read at `:138-162`, `:245`.
+  The three per-origin flags are declared at `:62-73`.
+- The token case already has a usage error: `src/cli/cmd/tunnel.rs:111-127` (issue 172).
 - Existing tests with `--config`: `tests/cli.rs:71`, `:610`, `:1237`, `:1298` (none gives an origin flag).
 
 ## Approach
@@ -3120,7 +3120,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:10-41` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:997-1003`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1000-1006`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3158,9 +3158,9 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 - `src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-85` (`resolve`), test `:603-607` asserts `"a b"`.
 - `src/service.rs:217-232`, `:183`. `src/ingress.rs:184-187`, test `:616-629` (`"a + stays a +"`).
-- `README.md:482-483`.
+- `README.md:485-486`.
 - One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:249-251`, test
-  `:606`). The CLI decoder returns `None` (`src/service.rs:222-225`), so the request is refused. A short escape at the
+  `:609`). The CLI decoder returns `None` (`src/service.rs:222-225`), so the request is refused. A short escape at the
   end (`i + 2 < len`) also differs.
 
 ## Approach
@@ -3347,12 +3347,12 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Problem
 
-`README.md:700-701` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`README.md:703-704` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
 `-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
 
 ## Premise
 
-- `README.md:697-701`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:700-704`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.

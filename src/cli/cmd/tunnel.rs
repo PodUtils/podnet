@@ -17,21 +17,27 @@ pub(crate) struct TunnelArgs {
     #[command(flatten)]
     pub(crate) common: TunnelOpts,
     /// HTTP or HTTPS origin.
+    /// Not with --config.
     #[arg(long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
     url: Option<String>,
     /// HTTP origin on a unix socket.
+    /// Not with --config.
     #[arg(long)]
     unix: Option<PathBuf>,
     /// HTTP origin on 127.0.0.1:<PORT>.
+    /// Not with --config.
     #[arg(long, value_parser = clap::value_parser!(u16).range(1..))]
     port: Option<u16>,
     /// Raw TCP origin.
+    /// Not with --config.
     #[arg(long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
     tcp: Option<String>,
     /// Expose a raw stream over a WebSocket endpoint (tcp://host:port or unix:/path).
+    /// Not with --config.
     #[arg(long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
     forward: Option<String>,
     /// cloudflared's built-in hello world.
+    /// Not with --config.
     #[arg(long)]
     hello_world: bool,
     /// cloudflared-style YAML config with ingress rules.
@@ -54,17 +60,49 @@ pub(crate) struct TunnelArgs {
     #[arg(long)]
     credentials_file: Option<PathBuf>,
     /// Skip TLS verification of the origin.
+    /// Not with --config.
     #[arg(long)]
     no_tls_verify: bool,
     /// Override the Host header sent to the origin.
+    /// Not with --config.
     #[arg(long)]
     http_host_header: Option<String>,
     /// Drop Accept-Encoding so the origin cannot compress a streaming response.
+    /// Not with --config.
     #[arg(long)]
     strip_accept_encoding: bool,
 }
 
+/// The origin flags of `args`, by name. `--config` has the origin in its
+/// `ingress:` rules, so these flags have no effect with it (T-204).
+fn origin_flags(args: &TunnelArgs) -> Vec<&'static str> {
+    [
+        ("--url", args.url.is_some()),
+        ("--unix", args.unix.is_some()),
+        ("--port", args.port.is_some()),
+        ("--tcp", args.tcp.is_some()),
+        ("--forward", args.forward.is_some()),
+        ("--hello-world", args.hello_world),
+        ("--no-tls-verify", args.no_tls_verify),
+        ("--http-host-header", args.http_host_header.is_some()),
+        ("--strip-accept-encoding", args.strip_accept_encoding),
+    ]
+    .into_iter()
+    .filter_map(|(name, given)| given.then_some(name))
+    .collect()
+}
+
 pub(crate) async fn tunnel(args: TunnelArgs) -> Result<()> {
+    let given = origin_flags(&args);
+    if args.config.is_some() && !given.is_empty() {
+        return Err(podnet::exit::fault(
+            Fault::Usage,
+            anyhow::anyhow!(
+                "tunnel --config: {} has no effect with a config file; put the origin in `ingress:` of the file",
+                given.join(", ")
+            ),
+        ));
+    }
     let mut config = if let Some(path) = &args.config {
         load_file(path).fault(Fault::Config)?
     } else {
@@ -256,4 +294,24 @@ fn pick_optional_service(args: &TunnelArgs) -> Result<Option<Service>> {
         bail!("choose at most one origin: --url, --unix, --port, --tcp, --hello-world");
     }
     Ok(service)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct Probe {
+        #[command(flatten)]
+        args: TunnelArgs,
+    }
+
+    #[test]
+    fn origin_flags_are_named() {
+        let parse = |a: &[&str]| Probe::try_parse_from([&["p"], a].concat()).unwrap().args;
+        assert!(origin_flags(&parse(&["--config", "f.yml"])).is_empty());
+        let args = parse(&["--config", "f.yml", "--port", "80", "--no-tls-verify"]);
+        assert_eq!(origin_flags(&args), ["--port", "--no-tls-verify"]);
+    }
 }
