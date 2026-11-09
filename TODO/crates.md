@@ -798,7 +798,7 @@ are never used). A node whose primary host stops answering retries that host for
 
 - `src/ws_relay.rs:561-568` (`websocket`, `hosts[0]`), `:572-592` (`post_json`, `self.url()`), `:326-328` (`url()`),
   `:428-497` (`connect`), `:254-264` (`new` adds up to 3 alternates), `:275-284` (`single`).
-- `src/relay_reverse.rs:415` (`run_node` builds `Relay::single`), `:289-331` (reconnect loop).
+- `src/relay_reverse.rs:341` (`run_node` builds `Relay::single`), `:215-257` (reconnect loop).
 - `src/cli/cmd/relay.rs:76`, `:123` (validation only), `:222`.
 - Not measured: whether the relay accepts a node socket for a pair on every host of the deployment.
   `docs/protocol.md:209-215` measures the forward road only.

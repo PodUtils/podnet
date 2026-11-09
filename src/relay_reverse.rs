@@ -31,7 +31,9 @@ use tokio_tungstenite::tungstenite::Message;
 use crate::exit::{fault, Fault};
 use crate::ws_relay::Relay;
 
+mod pairfile;
 mod session;
+pub use pairfile::{load, save};
 use session::{end_session, session, valid_id, Gate, Out, OutKind, Sessions, SESSION_QUEUE};
 
 /// The environment variable with the connect token of the operator.
@@ -133,82 +135,6 @@ pub fn pairs_dir() -> Result<PathBuf> {
         .context("no state directory (set XDG_STATE_HOME or HOME)")?
         .join("relay");
     Ok(dir)
-}
-
-/// Write `pair` to `dir/NAME.json` with mode 0600 (the directory 0700).
-pub fn save(pair: &Pair, dir: &Path) -> Result<PathBuf> {
-    use std::io::Write as _;
-    use std::os::unix::fs::{DirBuilderExt as _, OpenOptionsExt as _};
-    check_name(&pair.name)?;
-    std::fs::DirBuilder::new()
-        .recursive(true)
-        .mode(0o700)
-        .create(dir)
-        .with_context(|| format!("creating {}", dir.display()))?;
-    let path = dir.join(format!("{}.json", pair.name));
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(&path)
-        .with_context(|| format!("writing {}", path.display()))?;
-    file.write_all(serde_json::to_string_pretty(pair)?.as_bytes())?;
-    Ok(path)
-}
-
-/// Read the pair `name` from `dir`; with no name, the pair that has the
-/// most time left.
-/// The class of each error (issue 249): a bad name is 64, no pair is 69, a
-/// pair file that cannot be read or does not parse is 78.
-pub fn load(dir: &Path, name: Option<&str>) -> Result<Pair> {
-    use crate::exit::{fault, Fault};
-    let read = |path: &Path| -> Result<Pair> {
-        let text = match std::fs::read_to_string(path) {
-            Ok(text) => text,
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                return Err(fault(
-                    Fault::Unavailable,
-                    anyhow::anyhow!("no pair at {} (podnet relay pair)", path.display()),
-                ))
-            }
-            Err(err) => {
-                return Err(fault(
-                    Fault::Config,
-                    anyhow::anyhow!("reading {}: {err}", path.display()),
-                ))
-            }
-        };
-        serde_json::from_str(&text)
-            .with_context(|| format!("{} is not a pair", path.display()))
-            .map_err(|e| fault(Fault::Config, e))
-    };
-    if let Some(name) = name {
-        check_name(name).map_err(|e| fault(Fault::Usage, e))?;
-        return read(&dir.join(format!("{name}.json")));
-    }
-    let mut best: Option<Pair> = None;
-    for entry in std::fs::read_dir(dir)
-        .with_context(|| format!("no pair in {} (podnet relay pair)", dir.display()))
-        .map_err(|e| fault(Fault::Unavailable, e))?
-        .flatten()
-    {
-        let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("json") {
-            continue;
-        }
-        if let Ok(pair) = read(&path) {
-            if best.as_ref().is_none_or(|b| pair.expires > b.expires) {
-                best = Some(pair);
-            }
-        }
-    }
-    best.ok_or_else(|| {
-        fault(
-            Fault::Unavailable,
-            anyhow::anyhow!("no pair in {} (podnet relay pair)", dir.display()),
-        )
-    })
 }
 
 /// Stop the node of `pair` and its sessions at the relay

@@ -2480,7 +2480,7 @@ A test answers a DNS query for a mapped name at the gateway address.
 
 ## Problem
 
-The `close` control message removes the entry of the session and drops its `AbortHandle` (`src/relay_reverse.rs:522-526`). A dropped handle does not stop the task. If the task waits in `write_all` to a target that does not read (`:719-727`), it stays with its socket and its queued frames. The binary-frame arm aborts (`:547-551`).
+The `close` control message removes the entry of the session and drops its `AbortHandle` (`src/relay_reverse.rs:448-452`). A dropped handle does not stop the task. If the task waits in `write_all` to a target that does not read (`:645-653`), it stays with its socket and its queued frames. The binary-frame arm aborts (`:473-477`).
 
 ## Premise
 
@@ -2517,7 +2517,7 @@ cargo test --test relay_reverse
 
 ## Problem
 
-`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:207-231`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:217-219`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
+`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:207-231`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:143-145`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
 
 ## Premise
 
@@ -2553,7 +2553,7 @@ A test: a pair with an empty stop token stops no instance, exits 69 and keeps th
 
 ## Problem
 
-`session` ends when the local read returns 0 (`src/relay_reverse.rs:706`, select at `:728-731`) and sends `close` at once (`:733`). The operator side keeps the session open after its input ends (`EOF_IDLE`, `:609`, `:697`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, `:729`). The forward leg has the right shape (`src/relay.rs:263-297`).
+`session` ends when the local read returns 0 (`src/relay_reverse.rs:632`, select at `:654-657`) and sends `close` at once (`:659`). The operator side keeps the session open after its input ends (`EOF_IDLE`, `:535`, `:623`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, `:655`). The forward leg has the right shape (`src/relay.rs:263-297`).
 
 ## Premise
 
@@ -2599,7 +2599,7 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 - `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`src/state.rs:344-363`).
 - `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs:151-188`).
 - `DirBuilder::mode(0o700)` applies only to a new directory (`:143-146`).
-- The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:953`.
+- The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:879`.
 
 ## Approach
 
@@ -2630,7 +2630,7 @@ Tests: a 0644 file becomes 0600 after `save`; a symlink is replaced; `load` refu
 
 ## Premise
 
-- The test pins the count of alternates only (`src/relay_pool.rs:320`).
+- The test pins the count of alternates only (`src/relay_pool.rs:347`).
 - `docs/decisions.md` (2026-11-04, Relay) says only that the alternates are the hosts of the podssh seed.
 
 ## Approach
