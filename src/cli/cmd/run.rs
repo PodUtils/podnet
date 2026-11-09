@@ -82,14 +82,13 @@ pub(crate) async fn run_share(
     if show.json {
         println!(
             "{}",
-            serde_json::json!({
-                "event": "ready",
-                "url": public,
-                "tunnel_id": handle.tunnel_id().to_string(),
-                "locations": handle.locations(),
-                "leg": handle.leg(),
-                "pin": pin,
-            })
+            share_ready_doc(
+                &public,
+                &handle.tunnel_id().to_string(),
+                handle.locations(),
+                handle.leg(),
+                &pin
+            )
         );
     } else {
         println!();
@@ -225,6 +224,24 @@ fn tunnel_doc(
         doc["forward_path"] = path.into();
     }
     doc
+}
+
+/// The ready line of `share --json`: stamped with `schema` and `podnet` (T-203).
+fn share_ready_doc(
+    url: &str,
+    tunnel_id: &str,
+    locations: &[String],
+    leg: &str,
+    pin: &Option<String>,
+) -> serde_json::Value {
+    podnet::status::stamped(serde_json::json!({
+        "event": "ready",
+        "url": url,
+        "tunnel_id": tunnel_id,
+        "locations": locations,
+        "leg": leg,
+        "pin": pin,
+    }))
 }
 
 /// The ready document of a listener for --detach.
@@ -363,4 +380,19 @@ async fn wait_controls(controls: Vec<Arc<ShareControl>>) {
 #[allow(dead_code)]
 fn _mode(mode: ShareMode) -> ShareMode {
     mode
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn share_ready_doc_is_stamped() {
+        let doc = share_ready_doc("https://x/s/t/", "id", &["fra01".into()], "quic", &None);
+        assert_eq!(doc["schema"], 1);
+        assert!(!doc["podnet"].as_str().unwrap().is_empty());
+        assert_eq!(doc["event"], "ready");
+        assert_eq!(doc["url"], "https://x/s/t/");
+        assert_eq!(doc["pin"], serde_json::Value::Null);
+    }
 }
