@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 126 open, 2 partial, 17 blocked, 78 done.**
+**223 entries: 124 open, 2 partial, 17 blocked, 80 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
-| P2 | 81 | 1 | 10 | 45 | 137 |
+| P2 | 79 | 1 | 10 | 47 | 137 |
 | P3 | 40 | 0 | 5 | 16 | 61 |
-| **All** | 126 | 2 | 17 | 78 | 223 |
+| **All** | 124 | 2 | 17 | 80 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -205,7 +205,7 @@ M8 Overlays, M9 Later.
 | [T-157](pods.md) | P2 | M | M7 | feature | open | pod: `--default-action` and a JSON flow record (GitHub #355) |
 | [T-158](pods.md) | P3 | M | M7 | feature | open | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
 | [T-159](fixes.md) | P3 | S | M5 | docs | done | research documents are readings; fix the stale counts of the record (GitHub #356) |
-| [T-160](fixes.md) | P2 | S | M5 | defect | open | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
+| [T-160](fixes.md) | P2 | S | M5 | defect | done | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
 | [T-161](crates.md) | P2 | M | M3 | feature | blocked | relay node: renew the pair before it expires (GitHub #358) |
 | [T-162](crates.md) | P3 | M | M3 | feature | blocked | relay: a host that stalls is tried last on the next connect (GitHub #359) |
 | [T-163](crates.md) | P2 | M | M3 | feature | blocked | relay: the session budget comes from the pool document (GitHub #360) |
@@ -216,7 +216,7 @@ M8 Overlays, M9 Later.
 | [T-168](services.md) | P2 | S | M6 | feature | open | A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365) |
 | [T-169](fixes.md) | P2 | S | M5 | defect | open | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
 | [T-170](fixes.md) | P2 | S | M5 | defect | open | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
-| [T-171](fixes.md) | P2 | S | M5 | defect | open | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
+| [T-171](fixes.md) | P2 | S | M5 | defect | done | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
 | [T-172](later.md) | P3 | M | M9 | feature | blocked | A pin of the new public name while the process runs (GitHub #367) |
 | [T-173](fixes.md) | P2 | S | M5 | feature | partial | A WARP identity of another uid, with a consent variable (GitHub #368) |
 | [T-174](pods.md) | P3 | M | M7 | feature | open | netns: a veth wire when `/dev/net/tun` is not there (GitHub #369) |

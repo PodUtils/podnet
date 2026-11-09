@@ -1953,7 +1953,7 @@ The `grep -L` prints no file name after the fix.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2000,6 +2000,10 @@ The lead, 2026-11-09: demote the verify verdict also when the failure is a proxy
 cargo test -p podnet --lib -- a_name_that_does_not_resolve_keeps_the_tunnel_up a_failed_verify_exits_69_after_the_budget
 cargo test --test cli -- tunnel_ready_document_marks_an_unresolved_name
 ```
+
+## Done
+
+2026-11-09, commit ebc94ea. `verify_fetch` (now `src/tunnel/verify.rs`) tracks failures before the edge: Dns hop, or a proxy `Refusal` of CONNECT. When each attempt failed so, it returns `Verified { unverified: Some("resolution") }` and the tunnel stays up (also for a body token). The ready document has `unverified`; `run_demo` prints NOT PROVED. `PODNET_VERIFY_STRICT=1` gives exit 69. HTTP 530 stays fatal. Tests: `a_name_that_does_not_resolve_keeps_the_tunnel_up` (skips when a proxy of the host answers), `a_proxy_refusal_is_a_resolution_failure`, `a_failed_verify_exits_69_after_the_budget`. The CLI test `tunnel_ready_document_marks_an_unresolved_name` is not written: it needs a live tunnel. CI: at the merge.
 
 # T-164: Document `--no-verify` in the README, and say what it does not do (GitHub #361)
 
@@ -2126,7 +2130,7 @@ cargo test -p podnet quicktunnel::tests::a_dns_failure_is_retried_once
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2153,6 +2157,10 @@ error text repeats `system resolver: no answer ... Network unreachable`. The fin
 ```sh
 cargo test -p podnet tunnel::tests::verify_failure_names_the_remedy
 ```
+
+## Done
+
+2026-11-09, commit ebc94ea (with T-160). The final error of a verify that failed before the edge names `--resolve HOST=IP` and `--no-verify`; the first failed attempt logs the same remedy. Test: `tunnel::verify::tests::verify_failure_names_the_remedy` (skips when a proxy of the host answers). The line before the start of the verify is not added. CI: at the merge.
 
 # T-173: A WARP identity of another uid, with a consent variable (GitHub #368)
 
