@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 135 open, 2 partial, 17 blocked, 68 done.**
+**222 entries: 134 open, 2 partial, 17 blocked, 69 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 5 | 1 | 2 | 16 | 24 |
-| P2 | 87 | 1 | 10 | 39 | 137 |
+| P2 | 86 | 1 | 10 | 40 | 137 |
 | P3 | 42 | 0 | 5 | 13 | 60 |
-| **All** | 135 | 2 | 17 | 68 | 222 |
+| **All** | 134 | 2 | 17 | 69 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -238,7 +238,7 @@ M8 Overlays, M9 Later.
 | [T-190](fixes.md) | P2 | M | M5 | defect | done | A stack over a switch link has bounded queues (GitHub #388, part 2) |
 | [T-191](fixes.md) | P3 | S | M5 | defect | done | The listener table of `net doctor` names each command that listens (GitHub #389, part 1) |
 | [T-192](fixes.md) | P3 | S | M5 | defect | done | A refused TCP bind exits 69 in each listener command (GitHub #389, part 2; GitHub #385 step 5) |
-| [T-193](fixes.md) | P2 | M | M5 | defect | open | `net proxy --map` fills the gateway resolver and the shim table (GitHub #390) |
+| [T-193](fixes.md) | P2 | M | M5 | defect | done | `net proxy --map` fills the gateway resolver and the shim table (GitHub #390) |
 | [T-194](fixes.md) | P2 | S | M5 | defect | done | A relay `close` aborts the session task of the node (GitHub #391) |
 | [T-195](fixes.md) | P2 | S | M5 | defect | done | `relay stop` checks the pair before it stops the local node (GitHub #392) |
 | [T-196](fixes.md) | P2 | M | M5 | defect | done | The relay node drains and waits after a local end of stream (GitHub #393) |

@@ -2494,7 +2494,7 @@ cargo test -p podnet --test cli
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2523,7 +2523,7 @@ A test answers a DNS query for a mapped name at the gateway address.
 
 ## Done
 
-2026-11-09, commit 96c43d0. Resolver::from_maps (src/vnet/dns.rs) reads --map and --map-file and checks the subnet; net proxy passes it as StackConfig.dns and as the door table; net shim fills ShimOptions::hosts; docs/virtual-network.md updated. Tests: tests/vnet_map.rs a_mapped_name_is_answered_at_the_gateway, a_map_outside_the_subnet_or_with_a_bad_form_is_refused. check.sh: exit 0. CI: at the merge.
+2026-11-09, commit 96c43d0. Resolver::from_maps (src/vnet/dns.rs) reads --map and --map-file and checks the subnet; net proxy passes it as StackConfig.dns and as the door table; net shim fills ShimOptions::hosts; docs/virtual-network.md updated. Tests: tests/vnet.rs a_mapped_name_is_answered_at_the_gateway, a_map_outside_the_subnet_or_with_a_bad_form_is_refused. check.sh: exit 0. CI: at the merge.
 
 # T-194: A relay `close` aborts the session task of the node (GitHub #391)
 
