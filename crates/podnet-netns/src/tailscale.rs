@@ -36,13 +36,12 @@ use std::task::{Context as TaskContext, Poll};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use tokio::io::{
-    AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, ReadBuf,
-};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, ReadBuf};
 use tokio::net::{TcpStream, UnixStream};
 use tokio::task::JoinHandle;
 
 use crate::listen::ProxyListen;
+use crate::opening::{read_opening, Opening, REQUEST_LIMIT};
 use crate::socks;
 
 /// The path `tailscaled` uses when `--socket` is not given and the process is
@@ -374,20 +373,9 @@ async fn handle_client_within<S>(
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let mut reader = BufReader::new(stream);
-    let first = match reader.fill_buf().await {
-        Ok(buffer) if !buffer.is_empty() => buffer[0],
+    let (is_socks, request) = match read_opening(&mut reader, REQUEST_LIMIT).await {
+        Opening::Request { is_socks, request } => (is_socks, request),
         _ => return,
-    };
-    let is_socks = socks::looks_like_socks5(first);
-    let request = if is_socks {
-        match socks::socks5_read_request(&mut reader).await {
-            Ok(request) => request,
-            Err(_) => return,
-        }
-    } else if let Ok(request) = socks::http_read_connect(&mut reader).await {
-        request
-    } else {
-        return;
     };
 
     let port = if request.port == 0 {

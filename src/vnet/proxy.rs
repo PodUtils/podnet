@@ -21,8 +21,10 @@ use std::net::IpAddr;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, BufReader};
+use tokio::io::{AsyncRead, AsyncWrite, BufReader};
 use tokio::task::JoinHandle;
+
+use podnet_netns::opening::{read_opening, Opening, REQUEST_LIMIT};
 
 use crate::vnet::addr::VirtAddr;
 use crate::vnet::socks::{self, ProxyHost};
@@ -68,9 +70,8 @@ pub fn resolve_target(
 /// so one listener serves both SOCKS5 and HTTP `CONNECT` clients.
 pub use crate::vnet::stack::TcpStream;
 
-/// How long one proxied client connection may take, end to end. A client that
-/// opens a connection to the front door and then says nothing holds a task and
-/// an origin socket until this expires.
+/// How long the copy of one proxied client connection may take. It does not
+/// bound the opening: `REQUEST_LIMIT` bounds that.
 const CLIENT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
 
 pub async fn handle_connection<S>(
@@ -82,20 +83,9 @@ pub async fn handle_connection<S>(
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let mut reader = BufReader::new(stream);
-    let first = match reader.fill_buf().await {
-        Ok(buffer) if !buffer.is_empty() => buffer[0],
+    let (is_socks, request) = match read_opening(&mut reader, REQUEST_LIMIT).await {
+        Opening::Request { is_socks, request } => (is_socks, request),
         _ => return,
-    };
-    let is_socks = socks::looks_like_socks5(first);
-    let request = if is_socks {
-        match socks::socks5_read_request(&mut reader).await {
-            Ok(request) => request,
-            Err(_) => return,
-        }
-    } else if let Ok(request) = socks::http_read_connect(&mut reader).await {
-        request
-    } else {
-        return;
     };
 
     let target = match resolve_target(&request, &resolver, default_port) {

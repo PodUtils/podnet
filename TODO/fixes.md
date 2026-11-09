@@ -2199,8 +2199,8 @@ A client that connects and sends nothing, or one byte of a SOCKS5 greeting, hold
 
 ## Premise
 
-- `src/vnet/proxy.rs:84-96`: `fill_buf`, `socks5_read_request` and `http_read_connect` have no timeout. The copy is wrapped at `:128-135`. Accept loops: `:271-296`.
-- `crates/podnet-netns/src/tailscale.rs:377,383,387`: same reads. The dial and the copy have a timeout (`:399`, `:419`).
+- `src/vnet/proxy.rs:84-96`: `fill_buf`, `socks5_read_request` and `http_read_connect` have no timeout. The copy is wrapped at `:118-125`. Accept loops: `:261-286`.
+- `crates/podnet-netns/src/tailscale.rs:377,383,387`: same reads. The dial and the copy have a timeout (`:387`, `:407`).
 - `crates/podnet-netns/src/frontdoor.rs:79,121`: same reads in the door of `pod --serve` (not in the issue).
 - `src/warp/proxy.rs:628-630,657-661,703-706`: the precedent.
 - Not run.
@@ -2208,7 +2208,7 @@ A client that connects and sends nothing, or one byte of a SOCKS5 greeting, hold
 ## Approach
 
 1. One constant `REQUEST_LIMIT` (30 s) in `podnet-netns` (`socks.rs`). Wrap the first byte and the request read in each of the three doors. The warp door uses the same constant.
-2. On expiry send a SOCKS5 reply `0x04` or an HTTP `504`, then close (`fail_with`, `src/vnet/proxy.rs:171-190`).
+2. On expiry send a SOCKS5 reply `0x04` or an HTTP `504`, then close (`fail_with`, `src/vnet/proxy.rs:161-180`).
 3. Fix the comment of `CLIENT_TIMEOUT`: it bounds the copy only.
 4. Count live client tasks (as `SocketCount::live`, `src/vnet/stack.rs:642-648`). A cap is a later choice.
 
@@ -2232,11 +2232,11 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Problem
 
-`bind_unix` of the tailnet door removes the path and binds (`crates/podnet-netns/src/tailscale.rs:355-359`). It deletes a regular file and takes over a live socket. The ruling "Sockets" (`docs/decisions.md:22`): a live socket is 69, a file that is not a socket is 64, a stale socket is removed. The default path is `unix:/tmp/podnet-socks.sock` (`src/cli/cmd/net/mod.rs:65`).
+`bind_unix` of the tailnet door removes the path and binds (`crates/podnet-netns/src/tailscale.rs:354-358`). It deletes a regular file and takes over a live socket. The ruling "Sockets" (`docs/decisions.md:22`): a live socket is 69, a file that is not a socket is 64, a stale socket is removed. The default path is `unix:/tmp/podnet-socks.sock` (`src/cli/cmd/net/mod.rs:65`).
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:87`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:317`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:87`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:307`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1368`.
 - `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:347`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:53-59`).
@@ -2266,13 +2266,13 @@ cargo test -p podnet-netns tailscale
 
 ## Problem
 
-`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs:150-154`) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:119-120` say `host:port`. The dial is a bare `TcpStream::connect` (`:165-172`): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`src/vnet/proxy.rs:218`). Measured by the issue: a dead `--proxy` changed nothing.
+`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs:150-154`) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:119-120` say `host:port`. The dial is a bare `TcpStream::connect` (`:165-172`): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`src/vnet/proxy.rs:208`). Measured by the issue: a dead `--proxy` changed nothing.
 
 ## Premise
 
 - `connect_origin` (`src/net.rs:89-114`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:180-198`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:80-84`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
-- The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:195-199`).
+- The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:185-189`).
 
 ## Approach
 
@@ -2303,12 +2303,12 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 
 ## Problem
 
-`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:195-213`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:688-692`).
+`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:688-692`).
 
 ## Premise
 
 - Refusals: `src/vnet/stack.rs:815-832` (`AddrNotAvailable`, `PermissionDenied`, `AddrInUse`).
-- `spawn_forwards` cannot return a result (`src/vnet/proxy.rs:240-246`).
+- `spawn_forwards` cannot return a result (`src/vnet/proxy.rs:230-236`).
 - The `--map` entry outside the subnet fails only at the first request (note of the issue: not verified).
 
 ## Approach
@@ -2316,7 +2316,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 1. Bind first (async `forward`, or a `oneshot`). Return the result to `net_proxy`.
 2. Map `AddrNotAvailable` to `Fault::Usage`, `AddrInUse` and `PermissionDenied` to `Fault::Unavailable`. Print the line after the bind.
 3. Reject a repeated `VIRT` at parse time with its name.
-4. Keep the per-connection warn at `src/vnet/proxy.rs:218-220`.
+4. Keep the per-connection warn at `src/vnet/proxy.rs:208-210`.
 
 ## Prove
 
@@ -2429,7 +2429,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:254-256` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 

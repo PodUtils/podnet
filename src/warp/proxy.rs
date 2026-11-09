@@ -583,9 +583,7 @@ pub fn has_credentials() -> bool {
     CREDENTIALS.get().is_some()
 }
 
-/// The longest time for the request of a client (issue 146: a client that
-/// sent nothing held its task for ever).
-const REQUEST_LIMIT: Duration = Duration::from_secs(30);
+use podnet_netns::opening::REQUEST_LIMIT;
 
 /// [`handle_client`] with the credentials that the client must give.
 pub async fn handle_client_auth<S, D, F>(

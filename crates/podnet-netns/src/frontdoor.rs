@@ -75,13 +75,27 @@ pub(crate) async fn serve_one(
     use crate::socks;
     use tokio::io::AsyncBufReadExt;
     let mut reader = tokio::io::BufReader::new(conn);
-    let first = {
-        let buf = reader.fill_buf().await?;
-        buf.first().copied()
+    let first = match tokio::time::timeout(crate::opening::REQUEST_LIMIT, reader.fill_buf()).await {
+        Ok(read) => read?.first().copied(),
+        Err(_) => {
+            crate::opening::refuse_slow(&mut reader, false).await;
+            return Ok(());
+        }
     };
     match first {
         Some(5) => {
-            let (cmd, request) = read_socks5_command(&mut reader).await?;
+            let (cmd, request) = match tokio::time::timeout(
+                crate::opening::REQUEST_LIMIT,
+                read_socks5_command(&mut reader),
+            )
+            .await
+            {
+                Ok(read) => read?,
+                Err(_) => {
+                    crate::opening::refuse_slow(&mut reader, true).await;
+                    return Ok(());
+                }
+            };
             if cmd == 0x03 {
                 return serve_udp_associate(reader, chain, verbose).await;
             }
@@ -118,7 +132,18 @@ pub(crate) async fn serve_one(
             Ok(())
         }
         Some(_) => {
-            let request = socks::http_read_connect(&mut reader).await?;
+            let request = match tokio::time::timeout(
+                crate::opening::REQUEST_LIMIT,
+                socks::http_read_connect(&mut reader),
+            )
+            .await
+            {
+                Ok(read) => read?,
+                Err(_) => {
+                    crate::opening::refuse_slow(&mut reader, false).await;
+                    return Ok(());
+                }
+            };
             let target = format!("{}:{}", request.host, request.port);
             let selected = select_chain(rules, chain, &target);
             let mut upstream = match within_timeout(
