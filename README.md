@@ -1005,7 +1005,7 @@ roots compiled into podnet. `podnet status` shows the roots in `tls_roots`. See
 
 ```sh
 podnet agent up --expose 3000      # test, start WARP if needed, expose port 3000
-podnet agent status
+podnet agent status                # add --json for one JSON document: instances and report
 podnet agent down                  # stop each part, put back each change
 ```
 

@@ -3127,7 +3127,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 ## Premise
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
-- `src/cli/cmd/instances.rs:10-41` (`instances_ps(json)` prints its own document).
+- `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
 - `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1000-1006`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
