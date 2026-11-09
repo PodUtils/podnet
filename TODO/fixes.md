@@ -3054,6 +3054,10 @@ another type is shown as WARP+.
 `cargo test -p podnet --lib warp_plus_label` (new cases from the measured values).
 `podnet warp status --json | jq '.account_type, .premium_data, .warp_plus_active'` on a live device (the measurement).
 
+## Correction
+
+2026-11-09: the measurement of Approach 1 is not possible in this session. No record of the `account_type` values of the live service exists in the tree: `grep -rn account_type docs tests src` finds the report line `docs/reports/aerrand-agent.md:639` (type `free` with `warp_plus` true), the fixtures `src/warp/register.rs:687` and `src/main.rs:894` (`limited`, made up), and no list of the paid types. A registration spends a device and needs the live service (`docs/decisions.md`, WARP devices). The code stays as it is. Start condition: one `podnet warp status --json` of a free device and one of a device with a licence, recorded in `docs/reports/`.
+
 # T-211: `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408)
 
 **Source:** GitHub #408 (https://github.com/PodUtils/podnet/issues/408)
