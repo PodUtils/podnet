@@ -2461,7 +2461,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2482,6 +2482,10 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 cargo test -p podnet --lib net::
 cargo test -p podnet --test cli
 ```
+
+## Done
+
+2026-11-09, commit 56ee2fa. net::bind_tcp and net::bind_fault map a refused bind to exit 69 at net switch, net proxy, warp proxy, relay connect --listen, and net tailscale (wrapped at the caller). Test: net::tests::a_second_bind_on_one_port_exits_69. check.sh: exit 0. CI: at the merge.
 
 # T-193: `net proxy --map` fills the gateway resolver and the shim table (GitHub #390)
 
