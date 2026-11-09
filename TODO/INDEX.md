@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 141 open, 2 partial, 17 blocked, 62 done.**
+**222 entries: 140 open, 2 partial, 17 blocked, 63 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 5 | 1 | 2 | 16 | 24 |
-| P2 | 91 | 1 | 10 | 35 | 137 |
+| P2 | 90 | 1 | 10 | 36 | 137 |
 | P3 | 44 | 0 | 5 | 11 | 60 |
-| **All** | 141 | 2 | 17 | 62 | 222 |
+| **All** | 140 | 2 | 17 | 63 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -233,7 +233,7 @@ M8 Overlays, M9 Later.
 | [T-185](fixes.md) | P1 | M | M5 | defect | done | A deadline for the client handshake of `net proxy`, `net tailscale` and `pod --serve` (GitHub #384) |
 | [T-186](fixes.md) | P1 | S | M5 | defect | done | `net tailscale` and the other unix listeners claim the socket path first (GitHub #385) |
 | [T-187](fixes.md) | P2 | M | M5 | defect | open | `net proxy --forward`: a real target may be a name, and the dial reports its hop (GitHub #386) |
-| [T-188](fixes.md) | P2 | S | M5 | defect | open | `net proxy --forward` reports a failed bind before it prints the forward (GitHub #387) |
+| [T-188](fixes.md) | P2 | S | M5 | defect | done | `net proxy --forward` reports a failed bind before it prints the forward (GitHub #387) |
 | [T-189](fixes.md) | P2 | S | M5 | defect | open | The switch counts each packet that it drops (GitHub #388, part 1) |
 | [T-190](fixes.md) | P2 | M | M5 | defect | open | A stack over a switch link has bounded queues (GitHub #388, part 2) |
 | [T-191](fixes.md) | P3 | S | M5 | defect | open | The listener table of `net doctor` names each command that listens (GitHub #389, part 1) |

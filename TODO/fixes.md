@@ -2315,7 +2315,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2341,6 +2341,10 @@ cargo test -p podnet --lib vnet::proxy::
 ```
 
 Tests: a forward outside the subnet returns the error; a second forward of one address returns `AddrInUse`; a valid forward still serves.
+
+## Done
+
+2026-11-09, commit 6360717. vnet::proxy::forward is async and binds before it returns; net proxy prints the forward line after the bind and maps AddrNotAvailable to 64 and AddrInUse and PermissionDenied to 69; a repeated VIRT is a usage error. Tests: vnet::proxy::tests::a_forward_outside_the_subnet_returns_the_error, a_second_forward_of_one_address_returns_addr_in_use; cli::cmd::net::proxy::tests::a_repeated_forward_address_is_a_usage_error, a_refused_bind_has_its_class; tests/vnet_proxy_forward.rs serves a valid forward. check.sh: exit 0. CI: at the merge.
 
 # T-189: The switch counts each packet that it drops (GitHub #388, part 1)
 
