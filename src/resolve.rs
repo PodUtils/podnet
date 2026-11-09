@@ -127,6 +127,18 @@ pub fn with_doh(dial: Arc<dyn pod_core::Dial>) -> pod_dns::Resolver {
         .with_observer(crate::egress::counters())
 }
 
+/// Write one line, once, when the egress resolves names: each DoH server is
+/// then tried by its address first, and an egress that takes names only
+/// refuses that address; the name follows (T-175).
+pub(crate) fn note_names_inside() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        tracing::info!(
+            "the egress resolves names: each DoH server is tried by address, then by name; an egress that takes names only refuses the address"
+        );
+    });
+}
+
 /// The time limit of the whole chain: each step, and each question of each
 /// DoH server.
 fn chain_limit(resolver: &pod_dns::Resolver) -> Duration {
@@ -195,3 +207,6 @@ mod tests {
         assert!(settings.user_agent.starts_with("podnet/"));
     }
 }
+
+#[cfg(test)]
+mod kept_tests;

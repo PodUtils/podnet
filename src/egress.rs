@@ -160,6 +160,9 @@ fn dialer_and_resolver(proxy: pod_proxy::ProxyChoice) -> (Dialer, Arc<pod_dns::R
     let doh_dial = Dialer::new(settings.clone(), plain.clone())
         .with_proxy_resolver(plain.clone())
         .with_observer(counters());
+    if pod_core::Dial::names_inside(&doh_dial) {
+        crate::resolve::note_names_inside();
+    }
     let resolver = Arc::new(crate::resolve::with_doh(Arc::new(doh_dial)));
     let dialer = Dialer::new(settings, resolver.clone())
         .with_proxy_resolver(plain)

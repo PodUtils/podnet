@@ -2104,7 +2104,7 @@ attempts repeat the same failure for about 30 s.
 
 - `src/quicktunnel.rs:308-310` (budget and attempts), `:341-353` (the arms; `Hop::Dns` goes to
   `ProvisionError::Http(_)` at `:353`).
-- `crate::resolve::answering_step(host)` (`src/resolve.rs:150`) names the step that answers now.
+- `crate::resolve::answering_step(host)` (`src/resolve.rs:162`) names the step that answers now.
 - `src/quicktunnel.rs` is Cloudflare adapter code (pod-cloudflare, T-029/T-052): a fix is allowed.
 - Not measured: the 30 s run of the issue.
 
@@ -2418,7 +2418,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`src/net.rs:113-138`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:178-196`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:104-108`).
+- `connect_origin` (`src/net.rs:113-138`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:181-199`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:104-108`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:185-189`).
 
