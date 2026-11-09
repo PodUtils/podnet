@@ -93,7 +93,9 @@ impl AsyncWrite for Prefixed {
     }
 }
 
-/// Carry a TCP stream inside a WebSocket.
+/// Carry a TCP stream inside a WebSocket. The destination is the `url`: the
+/// TCP goes through the egress layer of podnet (`--proxy`, `NO_PROXY`,
+/// `--resolve`, DoH). The addressing mode is GitHub #377.
 #[derive(Debug, Clone)]
 pub struct WebSocketTunnel {
     /// `ws://host:port/path` or `wss://host/path`.
@@ -139,15 +141,29 @@ fn parse_ws_url(url: &str) -> Result<(bool, String, u16, String), TransportError
         ));
     }
 
-    let (host, port) = match authority.rsplit_once(':') {
-        Some((h, p)) => (
-            h.to_string(),
-            p.parse::<u16>().map_err(|_| {
-                TransportError::Unsupported(format!("bad port in websocket url {url:?}"))
-            })?,
-        ),
-        None => (authority.to_string(), if secure { 443 } else { 80 }),
+    let bad_port = || TransportError::Unsupported(format!("bad port in websocket url {url:?}"));
+    let default_port = if secure { 443 } else { 80 };
+    // An IPv6 host is in brackets; the dial and the TLS name take it with
+    // none (T-201).
+    let (host, port) = if let Some(inner) = authority.strip_prefix('[') {
+        let (host, after) = inner.split_once(']').ok_or_else(bad_port)?;
+        match after {
+            "" => (host, default_port),
+            _ => (
+                host,
+                after
+                    .strip_prefix(':')
+                    .and_then(|p| p.parse::<u16>().ok())
+                    .ok_or_else(bad_port)?,
+            ),
+        }
+    } else {
+        match authority.rsplit_once(':') {
+            Some((h, p)) => (h, p.parse::<u16>().map_err(|_| bad_port())?),
+            None => (authority, default_port),
+        }
     };
+    let host = host.to_string();
 
     Ok((secure, host, port, path.to_string()))
 }
@@ -178,11 +194,12 @@ impl Transport for WebSocketTunnel {
         Box::pin(async move {
             let (secure, url_host, url_port, path) = parse_ws_url(&self.url)?;
 
-            let tcp = super::Direct::new()
-                .connect(&url_host, url_port, timeout)
-                .await?;
-            let _ = host;
-            let _ = port;
+            // The destination is the URL: `host` and `port` of the trait
+            // name the target of a byte tunnel, not the WebSocket server.
+            let _ = (host, port);
+            let tcp = crate::egress::dial(&url_host, url_port, None, timeout)
+                .await
+                .map_err(|e| TransportError::Unreachable(format!("{e:#}")))?;
 
             let key = ws_key().map_err(|_| {
                 TransportError::Handshake("no entropy for the websocket key".into())
@@ -190,9 +207,11 @@ impl Transport for WebSocketTunnel {
 
             // TLS first when the URL is wss.
             let stream: Box<dyn Duplex> = if secure {
-                let config = crate::util::tls::client_config(&url_host, false, None)
-                    .map_err(TransportError::Handshake)?;
-                let connector = tokio_rustls::TlsConnector::from(config);
+                // HTTP/1.1 only: a WebSocket upgrade does not go over HTTP/2.
+                let config = crate::trust::context()
+                    .client_config_with(&[], &[b"http/1.1"])
+                    .map_err(|e| TransportError::Handshake(format!("{e:#}")))?;
+                let connector = tokio_rustls::TlsConnector::from(std::sync::Arc::new(config));
                 let name = rustls_pki_types::ServerName::try_from(url_host.clone())
                     .map_err(|e| TransportError::Handshake(format!("bad server name: {e}")))?;
                 let connected = tokio::time::timeout(timeout, connector.connect(name, tcp))
@@ -201,11 +220,16 @@ impl Transport for WebSocketTunnel {
                     .map_err(|e| TransportError::Handshake(format!("websocket TLS: {e}")))?;
                 Box::new(connected)
             } else {
-                tcp
+                Box::new(tcp)
             };
 
+            let host_header = if url_host.contains(':') {
+                format!("[{url_host}]")
+            } else {
+                url_host.clone()
+            };
             let mut request = format!(
-            "GET {path} HTTP/1.1\r\nHost: {url_host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n"
+            "GET {path} HTTP/1.1\r\nHost: {host_header}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n"
         );
             if let Some(o) = &self.origin {
                 request.push_str(&format!("Origin: {o}\r\n"));
@@ -429,6 +453,18 @@ mod tests {
         assert_eq!(host, "relay.example.com");
         assert_eq!(port, 80);
         assert_eq!(path, "/", "a pathless url means /");
+    }
+
+    #[test]
+    fn parses_an_ipv6_host() {
+        let (secure, host, port, path) = parse_ws_url("wss://[::1]:8443/ws").unwrap();
+        assert!(secure);
+        assert_eq!((host.as_str(), port, path.as_str()), ("::1", 8443, "/ws"));
+        let (_, host, port, _) = parse_ws_url("ws://[2001:db8::2]/x").unwrap();
+        assert_eq!((host.as_str(), port), ("2001:db8::2", 80));
+        for bad in ["ws://[::1", "ws://[::1]:x/", "ws://[::1]x/"] {
+            assert!(parse_ws_url(bad).is_err(), "{bad:?}");
+        }
     }
 
     #[test]
