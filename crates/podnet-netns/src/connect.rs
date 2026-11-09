@@ -95,8 +95,8 @@ pub(crate) fn handle_connect(
         return notif_respond(lfd, id, -1, libc::EAFNOSUPPORT);
     };
     if is_datagram {
-        if let Some(Sock::Datagram(udp)) = map.get_mut(&key) {
-            udp.dest = Some((ip, port));
+        if let Some(Sock::Datagram(udp)) = map.get(&key) {
+            udp.inbox.set_dest(Some((ip, port)));
         }
         return notif_respond(lfd, id, 0, 0);
     }

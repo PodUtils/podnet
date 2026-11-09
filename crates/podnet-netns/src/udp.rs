@@ -6,6 +6,14 @@
 //! connection). The entry holds the stop signal of these tasks: the drop of
 //! the entry (a `close`, a sweep, the end of the pod) stops each task, and
 //! the descriptors close (T-142).
+//!
+//! The filter does not stop `write(2)` (a notification for each write of
+//! each program costs too much). A datagram that the program writes on the
+//! socketpair goes to a reader task of the socket, which gives it, with the
+//! address of `connect`, to the supervisor loop (T-143). The loop sends it
+//! as `sendto` does. A datagram written on a socket with no `connect` has no
+//! destination: the supervisor drops it, and the `write` of the program
+//! gives no `EDESTADDRREQ`.
 
 use crate::inbox::Inbox;
 use crate::prelude::*;
@@ -26,11 +34,26 @@ pub(crate) enum UdpRelay {
     },
 }
 
+/// The most datagrams that wait between the readers of the socketpairs and
+/// the supervisor loop. A full queue stops the readers; the socketpair then
+/// fills, and the `write` of the program waits.
+pub(crate) const WRITES: usize = 256;
+
+/// A datagram that the program wrote on the socket `key`, and the address
+/// of `connect` at that time.
+pub(crate) struct Written {
+    key: Key,
+    to: Option<(IpAddr, u16)>,
+    payload: Vec<u8>,
+}
+
+/// The queue of the written datagrams to the supervisor loop.
+pub(crate) type Writes = tokio::sync::mpsc::Sender<Written>;
+
 /// A UDP socket of the program.
 pub(crate) struct Udp {
     /// The end of the supervisor of the socketpair.
     pub(crate) pair: Arc<tokio::net::UnixDatagram>,
-    pub(crate) dest: Option<(IpAddr, u16)>,
     pub(crate) relay: Option<UdpRelay>,
     /// The receive side: the sources of the datagrams (issue 305).
     pub(crate) inbox: Arc<Inbox>,
@@ -39,14 +62,41 @@ pub(crate) struct Udp {
 }
 
 impl Udp {
-    pub(crate) fn new(pair: Arc<tokio::net::UnixDatagram>, inbox: Arc<Inbox>) -> Self {
-        Udp {
+    /// The entry of the socket `key`. Start the reader of the datagrams
+    /// that the program writes on the socketpair.
+    pub(crate) fn new(
+        pair: Arc<tokio::net::UnixDatagram>,
+        inbox: Arc<Inbox>,
+        (key, writes): (Key, &Writes),
+    ) -> Self {
+        let udp = Udp {
             pair,
-            dest: None,
             relay: None,
             inbox,
             stop: tokio::sync::watch::channel(()).0,
-        }
+        };
+        let (pair, inbox, stopped) = (udp.pair.clone(), udp.inbox.clone(), udp.stopped());
+        let writes = writes.clone();
+        tokio::spawn(async move {
+            let reads = async {
+                let mut buf = vec![0u8; MAX_DATAGRAM + 1];
+                while let Ok(n) = pair.recv(&mut buf).await {
+                    let written = Written {
+                        key,
+                        to: inbox.dest(),
+                        payload: buf[..n].to_vec(),
+                    };
+                    if writes.send(written).await.is_err() {
+                        break;
+                    }
+                }
+            };
+            tokio::select! {
+                _ = reads => {}
+                _ = stopped => {}
+            }
+        });
+        udp
     }
 
     /// A future that ends when the entry of the socket drops.
@@ -219,5 +269,35 @@ pub(crate) async fn send_payload(
     match relay_datagram(map, fd, &proxies[0], payload, (ip, name, port)).await {
         Ok(()) => Ok(payload.len()),
         Err(_) => Err(libc::ENETUNREACH),
+    }
+}
+
+/// Send a datagram that the program wrote with `write(2)` (T-143). A
+/// datagram with no destination, or one that fails, is dropped: the `write`
+/// of the program has its answer already. `-v` prints one line for each.
+pub(crate) async fn relay_written(
+    map: &mut HashMap<Key, Sock>,
+    written: Written,
+    dns: &mut FakeDns,
+    proxies: &[Proxy],
+    verbose: bool,
+) {
+    let Written { key, to, payload } = written;
+    if !matches!(map.get(&key), Some(Sock::Datagram(_))) {
+        return;
+    }
+    let Some(to) = to else {
+        if verbose {
+            eprintln!(
+                "podnet-netns: a datagram written on a UDP socket with no connect is dropped"
+            );
+        }
+        return;
+    };
+    if let Err(errno) = send_payload(map, key, dns, proxies, &payload, to).await {
+        if verbose {
+            let error = std::io::Error::from_raw_os_error(errno);
+            eprintln!("podnet-netns: a datagram written on a UDP socket is dropped: {error}");
+        }
     }
 }

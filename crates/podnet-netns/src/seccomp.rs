@@ -683,6 +683,7 @@ pub(crate) async fn supervise_seccomp(
     let mut map = crate::fdtable::Table::new(pid);
     let mut dns = FakeDns::new();
     let mut dials = crate::connect::Dials::new();
+    let (writes_tx, mut writes) = tokio::sync::mpsc::channel(crate::udp::WRITES);
     let route = crate::connect::Route {
         proxies: &proxies,
         rules: &rules,
@@ -702,6 +703,11 @@ pub(crate) async fn supervise_seccomp(
             guard = async_fd.readable() => guard,
             Some(done) = dials.next() => {
                 crate::connect::finish(lfd, done, &mut map, &mut dials, verbose);
+                continue;
+            }
+            // T-143: a datagram that the program wrote with `write(2)`.
+            Some(written) = writes.recv() => {
+                crate::udp::relay_written(&mut map, written, &mut dns, &proxies, verbose).await;
                 continue;
             }
             _ = tokio::time::sleep(Duration::from_millis(50)) => continue,
@@ -754,7 +760,7 @@ pub(crate) async fn supervise_seccomp(
         let outcome = if let Some(outcome) = icmp.await {
             outcome
         } else if nr == libc::SYS_socket as i32 {
-            crate::socket::handle_socket(lfd, id, a, &mut map, verbose)
+            crate::socket::handle_socket(lfd, id, a, &mut map, &writes_tx, verbose)
         } else if nr == libc::SYS_connect as i32 {
             let entry = (&mut *map, key, req.pid);
             crate::connect::handle_connect(lfd, id, a, mem, entry, &mut dns, &mut dials, &route)
@@ -785,7 +791,7 @@ pub(crate) async fn supervise_seccomp(
             // syscalls, which would bypass this filter entirely. Refuse it.
             notif_respond(lfd, id, -1, libc::EPERM)
         } else if nr == libc::SYS_bind as i32 {
-            handle_bind(lfd, id, a, mem, (&mut map, key))
+            crate::sockopt::handle_bind(lfd, id, a, mem, (&mut map, key))
         } else if nr == libc::SYS_listen as i32 {
             handle_listen(lfd, id, a, (&mut map, key), &inbound_dir, req.pid).await
         } else if nr == SYS_ACCEPT as i32 || nr == libc::SYS_accept4 as i32 {
@@ -939,7 +945,7 @@ pub(crate) async fn handle_sendto(
     let name = a[4];
     let namelen = a[5] as usize;
     let recorded = match map.get(&fd) {
-        Some(Sock::Datagram(udp)) => udp.dest,
+        Some(Sock::Datagram(udp)) => udp.inbox.dest(),
         _ => return notif_continue(lfd, id),
     };
     let target = if name != 0 && namelen >= 4 {
@@ -1044,7 +1050,7 @@ pub(crate) async fn send_msghdr(
     proxies: &[Proxy],
 ) -> Result<Option<std::result::Result<usize, i32>>> {
     let recorded = match map.get(&fd) {
-        Some(Sock::Datagram(udp)) => udp.dest,
+        Some(Sock::Datagram(udp)) => udp.inbox.dest(),
         _ => return Ok(None),
     };
     // struct msghdr on x86_64: name, namelen, iov, iovlen, control, controllen, flags.
@@ -1105,32 +1111,6 @@ pub(crate) async fn send_msghdr(
     }
     let sent = crate::udp::send_payload(map, fd, dns, proxies, &payload, (ip, port)).await;
     Ok(Some(sent))
-}
-
-pub(crate) fn handle_bind(
-    lfd: RawFd,
-    id: u64,
-    a: [u64; 6],
-    mem: RawFd,
-    (map, fd): (&mut HashMap<Key, Sock>, Key),
-) -> Result<()> {
-    match map.get_mut(&fd) {
-        Some(Sock::Stream { bound, .. }) => {
-            if a[1] != 0 && a[2] >= 4 {
-                if let Some((_, ip, port)) =
-                    parse_sockaddr(&read_mem(mem, a[1], (a[2] as usize).min(128))?)
-                {
-                    *bound = Some((ip, port));
-                }
-            }
-            notif_respond(lfd, id, 0, 0)
-        }
-        // A datagram socket that binds a local port is a socketpair here.
-        Some(Sock::Datagram(_) | Sock::Icmp(_)) => notif_respond(lfd, id, 0, 0),
-        // A connected socket is bound already, as in the kernel.
-        Some(Sock::Connected(_)) => notif_respond(lfd, id, -1, libc::EINVAL),
-        None => notif_continue(lfd, id),
-    }
 }
 
 /// `listen` creates the real listener the sandbox can have: a unix socket named

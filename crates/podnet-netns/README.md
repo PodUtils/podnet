@@ -112,6 +112,15 @@ see it. Use a unix socket for it (`-L unix:///path`).
   `single-request` to `RES_OPTIONS` of the program: glibc then sends the A
   and the AAAA query in two calls (issue 113). A program that clears its
   environment loses this option.
+* The filter does not stop `write` and `writev`: a stop costs one
+  notification for each write of each program. On a UDP socket, a reader
+  task of the supervisor takes each datagram that the program writes on the
+  socketpair, and the supervisor sends it to the address of `connect`, as
+  `sendto` does (a query to port 53 gets its answer from the fake-IP pool).
+  The `write` gives the length at once, so an error of the relay does not
+  get to the program. A datagram written on a socket with no `connect` has
+  no destination: the supervisor drops it, and the `write` gives no
+  `EDESTADDRREQ`. `-v` prints one line for each dropped datagram.
 * The entry of a UDP socket holds its relay: the relay socket or the control
   connection, and the tasks that read them. The drop of the entry stops the
   relay, and the supervisor closes its descriptors of the socket. A `close`

@@ -11,7 +11,9 @@
 //! closes it.
 
 use crate::prelude::*;
-use crate::seccomp::{notif_continue, notif_respond, read_mem, sockaddr_in, write_mem, Sock};
+use crate::seccomp::{
+    notif_continue, notif_respond, parse_sockaddr, read_mem, sockaddr_in, write_mem, Sock,
+};
 
 /// The options that the program set on a socket: (level, name) to value.
 pub(crate) type Options = HashMap<(i32, i32), Vec<u8>>;
@@ -152,6 +154,33 @@ pub(crate) fn handle_getsockopt(
     notif_respond(lfd, id, 0, 0)
 }
 
+/// `bind`: the entry keeps the address. The kernel does not see the call.
+pub(crate) fn handle_bind(
+    lfd: RawFd,
+    id: u64,
+    a: [u64; 6],
+    mem: RawFd,
+    (map, fd): (&mut HashMap<Key, Sock>, Key),
+) -> Result<()> {
+    match map.get_mut(&fd) {
+        Some(Sock::Stream { bound, .. }) => {
+            if a[1] != 0 && a[2] >= 4 {
+                if let Some((_, ip, port)) =
+                    parse_sockaddr(&read_mem(mem, a[1], (a[2] as usize).min(128))?)
+                {
+                    *bound = Some((ip, port));
+                }
+            }
+            notif_respond(lfd, id, 0, 0)
+        }
+        // A datagram socket that binds a local port is a socketpair here.
+        Some(Sock::Datagram(_) | Sock::Icmp(_)) => notif_respond(lfd, id, 0, 0),
+        // A connected socket is bound already, as in the kernel.
+        Some(Sock::Connected(_)) => notif_respond(lfd, id, -1, libc::EINVAL),
+        None => notif_continue(lfd, id),
+    }
+}
+
 /// `getsockname` (`peer` false) and `getpeername` (`peer` true).
 pub(crate) fn handle_sockname(
     lfd: RawFd,
@@ -180,7 +209,7 @@ pub(crate) fn handle_sockname(
         (Sock::Stream { .. }, true) => return notif_respond(lfd, id, -1, libc::ENOTCONN),
         (Sock::Connected(c), false) => c.local,
         (Sock::Connected(c), true) => c.peer,
-        (Sock::Datagram(udp), _) => udp.dest.unwrap_or(unspecified),
+        (Sock::Datagram(udp), _) => udp.inbox.dest().unwrap_or(unspecified),
         (Sock::Icmp(icmp), peer) => match icmp.name(peer) {
             Some(name) => name,
             None => return notif_respond(lfd, id, -1, libc::ENOTCONN),

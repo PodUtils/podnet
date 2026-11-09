@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 mod relay;
+mod write;
 
 pub fn pod() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_podnet"));
