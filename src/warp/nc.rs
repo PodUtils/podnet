@@ -13,6 +13,7 @@ use std::path::Path;
 use anyhow::{Context as _, Result};
 use tokio::io::{AsyncWriteExt as _, BufReader};
 
+use super::ssh_config::{proxy_command, shell_quote};
 use crate::net::BoxedIo;
 
 /// `host:port` for a SOCKS5 request (`[v6]:port` for IPv6).
@@ -277,14 +278,27 @@ pub async fn udp_via_stack(
     Ok((out_tx, back_rx))
 }
 
-/// An SSH config block and `GIT_SSH_COMMAND` that use `podnet warp nc`.
+/// The `export GIT_SSH_COMMAND=...` line (T-214): the command is one word
+/// for the shell that reads the line, and the `ProxyCommand` option is one
+/// word for the shell that runs `ssh`.
+fn git_ssh_command(exe: &Path) -> String {
+    let option = shell_quote(&format!("ProxyCommand={}", proxy_command(exe)));
+    format!(
+        "export GIT_SSH_COMMAND={}",
+        shell_quote(&format!("ssh -o {option}"))
+    )
+}
+
+/// An SSH config block and `GIT_SSH_COMMAND` that use `podnet warp nc`. The
+/// `ProxyCommand` line is the one of `warp ssh-config --write`.
 pub fn ssh_config(exe: &Path, host: &str) -> String {
-    let exe = exe.display();
     format!(
         "# podnet warp ssh-config: SSH through WARP (podnet warp nc)\n\
-Host {host}\n    ProxyCommand {exe} warp nc %h %p\n\n\
+Host {host}\n    ProxyCommand {}\n\n\
 # For git over SSH with no SSH config:\n\
-# export GIT_SSH_COMMAND='ssh -o ProxyCommand=\"{exe} warp nc %h %p\"'\n"
+# {}\n",
+        proxy_command(exe),
+        git_ssh_command(exe)
     )
 }
 
@@ -341,8 +355,40 @@ mod tests {
     #[test]
     fn the_ssh_config_uses_warp_nc() {
         let text = ssh_config(Path::new("/b/podnet"), "github.com");
-        assert!(text.contains("Host github.com\n    ProxyCommand /b/podnet warp nc %h %p\n"));
+        assert!(text.contains("Host github.com\n    ProxyCommand '/b/podnet' warp nc %h %p\n"));
         assert!(text.contains("GIT_SSH_COMMAND"));
+    }
+
+    /// T-214: the printed `ProxyCommand` line is the line of `--write`, and
+    /// the `GIT_SSH_COMMAND` line gives `sh` the same path in two steps.
+    #[test]
+    fn the_printed_block_quotes_the_path_as_the_written_block() {
+        for exe in ["/b/podnet", "/opt/c f/podnet", "/o'q/podnet"] {
+            let exe = Path::new(exe);
+            let line = |text: &str| {
+                text.lines()
+                    .find(|l| l.trim_start().starts_with("ProxyCommand "))
+                    .map(str::to_string)
+            };
+            let printed = ssh_config(exe, "h");
+            assert_eq!(
+                line(&printed),
+                line(&crate::warp::ssh_config::block(exe, "h"))
+            );
+            // The shell reads the export line; ssh reads the option word.
+            let script = format!(
+                "{}; eval set -- \"$GIT_SSH_COMMAND\"; eval set -- \"${{3#ProxyCommand=}}\"; printf %s \"$1\"",
+                git_ssh_command(exe)
+            );
+            let out = std::process::Command::new("sh")
+                .args(["-c", &script])
+                .output()
+                .unwrap();
+            assert_eq!(
+                String::from_utf8_lossy(&out.stdout),
+                exe.display().to_string()
+            );
+        }
     }
 
     /// The pipe carries both directions and ends when the far end closes.

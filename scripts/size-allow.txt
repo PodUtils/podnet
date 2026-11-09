@@ -21,12 +21,12 @@
 1191 src/update.rs
 2103 src/vnet/stack.rs
 1680 src/warp/ip.rs
-1105 src/warp/mod.rs
-1902 src/warp/proxy.rs
+1078 src/warp/mod.rs
+1878 src/warp/proxy.rs
 892 src/warp/register.rs
 1211 src/warp/session.rs
-847 src/warp/up.rs
-972 src/warp/wg.rs
+817 src/warp/up.rs
+965 src/warp/wg.rs
 994 src/ws_relay.rs
 2314 tests/cli.rs
 812 tests/detach.rs

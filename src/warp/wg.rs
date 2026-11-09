@@ -479,14 +479,7 @@ impl Peer {
             .context("the key of the WireGuard peer")?;
         let endpoint = match endpoint {
             Some(e) => e,
-            None => {
-                let v4 = peer.endpoint.v4.trim();
-                let ip = v4.rsplit_once(':').map_or(v4, |(ip, _)| ip);
-                let ip: std::net::Ipv4Addr = ip.parse().context(
-                    "the WireGuard peer has no IPv4 endpoint; give --wireguard-endpoint",
-                )?;
-                SocketAddr::new(ip.into(), super::export::WG_PORT)
-            }
+            None => super::export::wireguard_socket_addr(&peer.endpoint)?,
         };
         Ok(Peer {
             keys: Keys {

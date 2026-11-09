@@ -1930,8 +1930,8 @@ has `--masque-endpoint`; `tunnel` has none.
 
 - `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:823-834`). Neither
   `TunnelOpts` (`src/cli/opts.rs:20-105`) nor `TunnelArgs` has the flag. `with_masque` exists
-  (`src/warp/mod.rs:284`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
-- `open_on` (`src/warp/mod.rs:821-846`) uses `endpoint_order` (`:99-120`): the record order, IPv4 first.
+  (`src/warp/mod.rs:286`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
+- `open_on` (`src/warp/mod.rs:823-848`) uses `endpoint_order` (`:101-122`): the record order, IPv4 first.
   `has_default_route(true)` (v6) only decides whether the IPv6 door is included.
 - The log lines of the issue are from beta.6 on one host. The silent-drop timing is read, not measured.
 
@@ -2029,7 +2029,7 @@ cargo test -p podnet tunnel::tests::verify_failure_names_the_remedy
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -2039,8 +2039,8 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 ## Premise
 
-- `src/warp/mod.rs:942-968` (owner and mode checks, bare `bail!`); readers: `load` (`:379`) and
-  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:457-476`) refuses and does not write over the file.
+- `src/warp/mod.rs:942-968` (owner and mode checks, bare `bail!`); readers: `load` (`:381`) and
+  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:459-478`) refuses and does not write over the file.
 - `src/state.rs:67-118` has the model. `src/manual/facts.rs:126` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
@@ -2063,6 +2063,10 @@ cargo test -p podnet warp::private_file_tests
 ```
 
 The tests cover: refuse, allow with the variable, mode still checked, no registration after a refusal.
+
+## Correction
+
+2026-11-09, commit 5a21d81 (`T-173: a WARP identity of another uid is a Config error (exit 78)`). Done as the Decision says: item 2 (the exit code). `check_private` is in `src/warp/private.rs`; an owner of another uid gives `Fault::Config`. `warp_client_inner` and the carry and WireGuard peers keep a class that the library gave (the outer `Fault::Unavailable` hid it; this also gives a directory as `--identity` the exit 64 that its test names). A refused file leads to no registration. Tests: `warp::private_file_tests::foreign::{a_foreign_owner_is_a_config_error, a_refused_identity_leads_to_no_registration}` (the second one chowns the file, as root only), `cli::cmd::warp::client::tests::a_class_of_the_library_stays`. The message does not name `PODNET_FOREIGN_IDENTITY`: the variable has no effect until item 1 lands, and a message must not name a variable that does nothing. Item 1 (allow the owner mismatch with the variable, keep the mode check, warn) and the update of `src/manual/facts.rs` wait: a COORD issue (to podcrates) is to be opened by the lead (a worktree agent writes no issue); podnet takes it with `pod-warp` (T-050). Item 2 for the state-directory error: it names `PODNET_FOREIGN_HOME` already. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-182: `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378)
 
@@ -2191,7 +2195,7 @@ python3 scripts/check-size.py
 
 ## Problem
 
-A client that connects and sends nothing, or one byte of a SOCKS5 greeting, holds its task and socket until the process ends. Each connection is unauthenticated. The accept loops have no cap. The WARP door has the fix (`REQUEST_LIMIT`, 30 s, `src/warp/proxy.rs:612`). `CLIENT_TIMEOUT` (300 s) wraps only the copy.
+A client that connects and sends nothing, or one byte of a SOCKS5 greeting, holds its task and socket until the process ends. Each connection is unauthenticated. The accept loops have no cap. The WARP door has the fix (`REQUEST_LIMIT`, 30 s, `src/warp/proxy.rs:588`). `CLIENT_TIMEOUT` (300 s) wraps only the copy.
 
 ## Premise
 
@@ -2232,7 +2236,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:317`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:87`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:317`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1368`.
 - `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:347`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:53-59`).
@@ -2425,7 +2429,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:177`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:69-71` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:177`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
@@ -2954,7 +2958,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2964,9 +2968,9 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 ## Premise
 
-- `src/cli/cmd/warp/up.rs:19-28` (the `tun: true` arm matches `..`), `:403-415` (`warp_up_tun_args`), `:206-210` (the
+- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:403-415` (`warp_up_tun_args`), `:207-211` (the
   proxy path pushes `--replace`).
-- `src/cli/cmd/warp/args.rs:391-433` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:511-526` (`Tun` has
+- `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:513-528` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
 - `src/detach.rs:486-493` (the refusal text).
 
@@ -2982,6 +2986,14 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 `cargo test -p podnet --lib warp_up_tun_args` (new tests: `--replace` present only when set; `Cli::try_parse_from` of
 `warp up --tun --env-d` is a clap error).
 
+## Done
+
+2026-11-09, commit dd02a91 (`T-208: warp up --tun forwards --replace and refuses the proxy flags`).
+`warp_up_tun_args` takes `replace` and pushes `--replace` when set. `--env-d`, `--dns`,
+`--proxy-user` and `--proxy-password-file` of `warp up` have `conflicts_with = "tun"`. Tests (in
+`src/cli/cmd/warp/up_tests.rs`): `warp_up_tun_args_replace_only_when_set`,
+`warp_up_tun_refuses_the_proxy_flags`. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
+
 # T-209: `warp status` names the `warp-tun` instance (GitHub #406)
 
 **Source:** GitHub #406 (https://github.com/PodUtils/podnet/issues/406)
@@ -2989,7 +3001,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2999,8 +3011,8 @@ then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:
 
 ## Premise
 
-- `src/warp/live/instance.rs:70-76` (`instance_state` reads `INSTANCE`), `:79-96` (`instance_state_in` takes a name),
-  `:104-131` (the line). `src/warp/up.rs:20-22` (two names), `:547-552` (`down` knows both).
+- `src/warp/live/instance.rs:70-76` (`instance_state` reads `INSTANCE`), `:88-105` (`instance_state_in` takes a name),
+  `:131-158` (the line). `src/warp/up.rs:24-26` (two names), `:529-534` (`down` knows both).
 - `src/cli/cmd/warp/account.rs:32-45` (the arm `Status` of the account file).
 - `warp tun` has no `Live` and so no `data_path` (the issue notes it; not part of this entry).
 
@@ -3014,6 +3026,14 @@ then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:
 
 `cargo test -p podnet --lib warp::live::instance` (new tests: `instance_state_in(dir, "warp-tun")` is running with a tun
 record; the line for neither, proxy only, tun only).
+
+## Done
+
+2026-11-09, commit 57ff81c (`T-209: warp status names the warp-tun instance`). `instance_state_tun`
+(`src/warp/live/instance.rs`) reads the instance `warp-tun`. `warp status --json` has the key
+`tun_instance` beside `instance`. `instances_line` names each running instance and, with only the
+tunnel, points to `podnet warp down`. Test: `warp_status_names_the_tunnel_instance`. `agent
+status` keeps its text (not part of this fix). `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-210: The WARP+ label names the paid account types (GitHub #407)
 
@@ -3032,7 +3052,7 @@ another type is shown as WARP+.
 
 ## Premise
 
-- `src/warp/identity.rs:157-171`. Users: `src/cli/cmd/warp/account.rs:34`, `:48-51`, `:83-86`. Test: `src/main.rs:892-895`.
+- `src/warp/identity.rs:157-171`. Users: `src/cli/cmd/warp/account.rs:35`, `:53-56`, `:88-91`. Test: `src/main.rs:892-895`.
 - The issue says the fixture type `limited` is a free type. This is not shown: `src/warp/register.rs:687` is a test of
   the redaction of a licence key, and the test at `main.rs:894` uses `limited` with `premium_data` 10 as WARP+.
   The tree has no list of the types that the service sends. A closed list of paid types could hide a real paid account.
@@ -3050,6 +3070,10 @@ another type is shown as WARP+.
 `cargo test -p podnet --lib warp_plus_label` (new cases from the measured values).
 `podnet warp status --json | jq '.account_type, .premium_data, .warp_plus_active'` on a live device (the measurement).
 
+## Correction
+
+2026-11-09: the measurement of Approach 1 is not possible in this session. No record of the `account_type` values of the live service exists in the tree: `grep -rn account_type docs tests src` finds the report line `docs/reports/aerrand-agent.md:639` (type `free` with `warp_plus` true), the fixtures `src/warp/register.rs:687` and `src/main.rs:894` (`limited`, made up), and no list of the paid types. A registration spends a device and needs the live service (`docs/decisions.md`, WARP devices). The code stays as it is. Start condition: one `podnet warp status --json` of a free device and one of a device with a licence, recorded in `docs/reports/`.
+
 # T-211: `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408)
 
 **Source:** GitHub #408 (https://github.com/PodUtils/podnet/issues/408)
@@ -3057,7 +3081,7 @@ another type is shown as WARP+.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3067,8 +3091,8 @@ text outside the markers.
 
 ## Premise
 
-- `src/warp/up.rs:569-573` (remove), `:463-470` (write), `:424-430` (`fish_file`), `:434-444` (`fish_block` starts with
-  the shared `BEGIN` marker), `:513-515` and `:574-587` (the model).
+- `src/warp/up.rs:551-553` (remove), `:463-470` (write), `:424-430` (`fish_file`), `:434-444` (`fish_block` starts with
+  the shared `BEGIN` marker), `:495-497` and `:554-567` (the model).
 - `src/warp/up.rs` has 847 lines (allowlist): put the new code in a new small file, or remove lines elsewhere.
 
 ## Approach
@@ -3083,6 +3107,10 @@ text outside the markers.
 
 `cargo test -p podnet --lib warp::up` (new tests: `fish_file_is_ours` for the block text, an empty text, a user text).
 A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `podnet warp down`, and check the file stays.
+
+## Done
+
+2026-11-09, commit 9ece848 (`T-211: warp down and warp up --persist own the fish file only when podnet wrote it`). A fish file is ours when its first line is the marker. `down` keeps another file and says so. `persist` refuses it, with the path, before any write. The code is in `src/warp/up/fish.rs` (`src/warp/up.rs` 847 to 817 lines). Tests: `warp::up::fish::tests::{the_fish_block_loads_the_env_file, fish_file_is_ours_by_its_first_line, a_user_fish_file_stays}`. Probe with a temporary HOME: a user file at the fish path stays after `podnet warp down`. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-212: The README states that the rules apply to `warp proxy --l4` (GitHub #409)
 
@@ -3100,7 +3128,7 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Premise
 
-- `README.md:697-701`. `src/warp/proxy.rs:533-553` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:697-701`. `src/warp/proxy.rs:509-529` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
@@ -3127,7 +3155,7 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3141,7 +3169,7 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 - `src/warp/wg.rs:482-489` (v4 only; the message `:485-487`).
 - MASQUE reads `v4` and `v6`: `src/warp/register.rs:618-657`.
 - `grep -rn "\.ports" src/warp` finds no reader.
-- Test to extend: `src/warp/export.rs:343-378`.
+- Test to extend: `src/warp/export.rs:399-434`.
 
 ## Approach
 
@@ -3156,6 +3184,10 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 `cargo test -p podnet --lib warp::export` (new tests: host only, v4 only, v6 only, none).
 `cargo test -p podnet --lib warp::wg` (the existing tests pass).
 
+## Done
+
+2026-11-09, commit 23cb347 (`T-213: the WireGuard endpoint of a device record has one derivation`). `src/warp/export.rs` has one list of candidates: `host`, `v4`, `v6` (port 2408; brackets for `v6`). `wireguard_endpoint` (`warp export`) takes the first; `wireguard_socket_addr` (`Peer::from_exported`) takes the first literal address, else the first name that the system resolver gives. A record with only `host` or only `v6` now connects. A record with a name and a `v4` keeps its old results (the export names the host; the leg takes the address with no lookup). A failure names the fields that the record has. `Endpoint.ports` is not read: not measured (no live record of the service in this session); no new entry opened. Test: `warp::export::tests::the_two_wireguard_readers_agree_on_the_record_shapes`; `cargo test -p podnet --lib warp::wg` passes. `src/warp/register.rs` is unchanged. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
+
 # T-214: `warp ssh-config` prints a `ProxyCommand` with the same quote as `--write` (GitHub #411)
 
 **Source:** GitHub #411 (https://github.com/PodUtils/podnet/issues/411)
@@ -3163,7 +3195,7 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3172,8 +3204,8 @@ quotes it with `shell_quote`. A path with a space works with `--write` and fails
 
 ## Premise
 
-- `src/warp/nc.rs:281-289` (raw `{exe}` at `:285`). `src/warp/ssh_config.rs:34-36`, `:60-68`.
-- The only test of the printed block: `src/warp/nc.rs:342-346` (plain path).
+- `src/warp/nc.rs:294-303` (raw `{exe}` at `:285`). `src/warp/ssh_config.rs:34-36`, `:65-73`.
+- The only test of the printed block: `src/warp/nc.rs:356-360` (plain path).
 - The issue says the double quotes of the `GIT_SSH_COMMAND` comment are right. They are not: the shell that runs
   `ProxyCommand` splits the path at a space inside `"..."` of the outer option too. The comment needs the quote of the
   path inside the value (`ProxyCommand='...'` with the `'\''` form).
@@ -3189,6 +3221,10 @@ quotes it with `shell_quote`. A path with a space works with `--write` and fails
 `cargo test -p podnet --lib warp::nc` (new test: for `/b/podnet`, `/opt/c f/podnet` and a path with a quote, the printed
 `ProxyCommand` line equals the line of `ssh_config::block`).
 
+## Done
+
+2026-11-09, commit 3f9c205 (`T-214: warp ssh-config prints a ProxyCommand with the quote of --write`). `ssh_config::proxy_command` gives the command line to both builders (`--write` and the printed block). The `GIT_SSH_COMMAND` comment is quoted in two levels (the shell that reads the line, and the shell that runs `ssh`). Test: `warp::nc::tests::the_printed_block_quotes_the_path_as_the_written_block` (`/b/podnet`, `/opt/c f/podnet`, `/o'q/podnet`; the export line runs through `sh` and gives back the path). `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
+
 # T-215: `warp proxy --dns` has a bound and a counter (GitHub #412)
 
 **Source:** GitHub #412 (https://github.com/PodUtils/podnet/issues/412)
@@ -3196,7 +3232,7 @@ quotes it with `shell_quote`. A path with a space works with `--write` and fails
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3205,8 +3241,8 @@ session is up, each task waits in `live.get()` for up to 20 s. `--max-connection
 
 ## Premise
 
-- `src/warp/proxy.rs:195-217` (`serve_dns`), `:134-145` (`admit`), `:160-187` (`health_log`), `:108-120` (`Stats`),
-  `:407-409` (length check in `forward_dns_to`).
+- `src/warp/proxy.rs:195-217` (`serve_dns`), `:139-150` (`admit`), `:160-187` (`health_log`), `:110-125` (`Stats`),
+  `:383-385` (length check in `forward_dns_to`).
 - `src/warp/live.rs:25` (`WAIT_FOR_NEW` 20 s).
 - `src/warp/proxy.rs` has 1902 lines (allowlist): put the new code in a new file.
 
@@ -3221,6 +3257,10 @@ session is up, each task waits in `live.get()` for up to 20 s. `--max-connection
 
 `cargo test -p podnet --lib warp::proxy::dns_bound` (new test: a burst larger than the bound gives at most the bound in
 flight and a count of drops; a 1-byte datagram spawns nothing).
+
+## Done
+
+2026-11-09, commit be1c8dc (`T-215: warp proxy --dns has a bound and a counter`). `serve_dns` moved to `src/warp/proxy/dns_bound.rs` (`src/warp/proxy.rs` 1902 to 1878 lines). A semaphore of 256 places (`MAX_DNS_TASKS`) bounds the queries in flight; an excess datagram is dropped and counted in `Stats.dns_dropped`, which the health line prints. A datagram under 12 bytes starts no task. One task for each query; the first answer wins. Tests: `warp::proxy::dns_bound::tests::{a_burst_gives_at_most_the_bound_in_flight, a_short_datagram_starts_nothing}`. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-216: Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04)
 

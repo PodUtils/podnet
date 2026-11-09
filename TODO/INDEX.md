@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 157 open, 1 partial, 17 blocked, 47 done.**
+**222 entries: 150 open, 2 partial, 17 blocked, 53 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 7 | 1 | 2 | 14 | 24 |
-| P2 | 104 | 0 | 10 | 23 | 137 |
-| P3 | 45 | 0 | 5 | 10 | 60 |
-| **All** | 157 | 1 | 17 | 47 | 222 |
+| P2 | 98 | 1 | 10 | 28 | 137 |
+| P3 | 44 | 0 | 5 | 11 | 60 |
+| **All** | 150 | 2 | 17 | 53 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -218,7 +218,7 @@ M8 Overlays, M9 Later.
 | [T-170](fixes.md) | P2 | S | M5 | defect | open | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
 | [T-171](fixes.md) | P2 | S | M5 | defect | open | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
 | [T-172](later.md) | P3 | M | M9 | feature | blocked | A pin of the new public name while the process runs (GitHub #367) |
-| [T-173](fixes.md) | P2 | S | M5 | feature | open | A WARP identity of another uid, with a consent variable (GitHub #368) |
+| [T-173](fixes.md) | P2 | S | M5 | feature | partial | A WARP identity of another uid, with a consent variable (GitHub #368) |
 | [T-174](pods.md) | P3 | M | M7 | feature | open | netns: a veth wire when `/dev/net/tun` is not there (GitHub #369) |
 | [T-175](crates.md) | P2 | M | M3 | feature | blocked | DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370) |
 | [T-176](later.md) | P3 | S | M9 | research | open | Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372) |
@@ -253,14 +253,14 @@ M8 Overlays, M9 Later.
 | [T-205](fixes.md) | P3 | S | M5 | defect | open | A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402) |
 | [T-206](fixes.md) | P2 | S | M5 | feature | open | `agent status --json` (GitHub #403) |
 | [T-207](fixes.md) | P2 | S | M5 | defect | open | The library static path decodes `+` as a literal plus (GitHub #404) |
-| [T-208](fixes.md) | P2 | S | M5 | defect | open | `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405) |
-| [T-209](fixes.md) | P2 | S | M5 | defect | open | `warp status` names the `warp-tun` instance (GitHub #406) |
+| [T-208](fixes.md) | P2 | S | M5 | defect | done | `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405) |
+| [T-209](fixes.md) | P2 | S | M5 | defect | done | `warp status` names the `warp-tun` instance (GitHub #406) |
 | [T-210](fixes.md) | P3 | S | M5 | defect | open | The WARP+ label names the paid account types (GitHub #407) |
-| [T-211](fixes.md) | P2 | S | M5 | defect | open | `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408) |
+| [T-211](fixes.md) | P2 | S | M5 | defect | done | `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408) |
 | [T-212](fixes.md) | P3 | S | M5 | docs | done | The README states that the rules apply to `warp proxy --l4` (GitHub #409) |
-| [T-213](fixes.md) | P2 | M | M5 | defect | open | The WireGuard endpoint of a device record has one derivation (GitHub #410) |
-| [T-214](fixes.md) | P3 | S | M5 | defect | open | `warp ssh-config` prints a `ProxyCommand` with the same quote as `--write` (GitHub #411) |
-| [T-215](fixes.md) | P2 | S | M5 | defect | open | `warp proxy --dns` has a bound and a counter (GitHub #412) |
+| [T-213](fixes.md) | P2 | M | M5 | defect | done | The WireGuard endpoint of a device record has one derivation (GitHub #410) |
+| [T-214](fixes.md) | P3 | S | M5 | defect | done | `warp ssh-config` prints a `ProxyCommand` with the same quote as `--write` (GitHub #411) |
+| [T-215](fixes.md) | P2 | S | M5 | defect | done | `warp proxy --dns` has a bound and a counter (GitHub #412) |
 | [T-216](fixes.md) | P1 | S | M5 | feature | open | Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04) |
 | [T-217](fixes.md) | P1 | S | M5 | feature | open | `doctor --json`: a fixed block for the egress lanes (PodUtils/podcrates#35, A-C-10) |
 | [T-218](rename.md) | P0 | M | M1 | release | open | A connector profile that holds within a minor version (PodUtils/podcrates#35, A-N-05) |

@@ -394,7 +394,7 @@ pub(crate) enum WarpCommand {
         /// manager gives them to the programs of the next login (a
         /// desktop, a user unit). podnet warp down removes the file. A file
         /// of that name that podnet did not write is not changed.
-        #[arg(long)]
+        #[arg(long, conflicts_with = "tun")]
         env_d: bool,
         /// Seconds to wait for WARP to be ready.
         #[arg(long, default_value_t = 90)]
@@ -409,7 +409,7 @@ pub(crate) enum WarpCommand {
         replace: bool,
         /// Also answer DNS on this UDP address (for example
         /// 127.0.0.1:5353): each query goes through WARP to 1.1.1.1.
-        #[arg(long, value_name = "ADDR")]
+        #[arg(long, value_name = "ADDR", conflicts_with = "tun")]
         dns: Option<std::net::SocketAddr>,
         /// Clients must give this user (SOCKS5 user and password, or HTTP
         /// Basic), with the password of --proxy-password-file.
@@ -418,7 +418,8 @@ pub(crate) enum WarpCommand {
             value_name = "USER",
             env = "PODNET_PROXY_USER",
             hide_env_values = true,
-            requires = "proxy_password_file"
+            requires = "proxy_password_file",
+            conflicts_with = "tun"
         )]
         proxy_user: Option<String>,
         /// The file with the password of --proxy-user on its first line
@@ -428,7 +429,8 @@ pub(crate) enum WarpCommand {
             value_name = "FILE",
             env = "PODNET_PROXY_PASSWORD_FILE",
             hide_env_values = true,
-            requires = "proxy_user"
+            requires = "proxy_user",
+            conflicts_with = "tun"
         )]
         proxy_password_file: Option<PathBuf>,
     },

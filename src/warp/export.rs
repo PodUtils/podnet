@@ -177,7 +177,7 @@ impl Config {
         }
         let endpoint = match endpoint {
             Some(e) => e.to_string(),
-            None => record_endpoint(&peer.endpoint)?,
+            None => wireguard_endpoint(&peer.endpoint)?,
         };
         let some = |s: &str| (!s.is_empty()).then(|| s.to_string());
         Ok(Config {
@@ -237,15 +237,17 @@ impl Config {
     }
 }
 
-/// The endpoint of the record: `host` (with port 2408 when it has none),
-/// else the IPv4 address on port 2408.
-fn record_endpoint(endpoint: &register::Endpoint) -> Result<String> {
+/// The WireGuard endpoints of a device record, in order (T-213): `host` (with
+/// port 2408 when it has none), the IPv4 address and the IPv6 address on port
+/// 2408. `ports` of the record is not read.
+fn wireguard_candidates(endpoint: &register::Endpoint) -> Vec<String> {
+    let mut out = Vec::new();
     let host = endpoint.host.trim();
     if !host.is_empty() {
         let has_port = host
             .rsplit_once(':')
             .is_some_and(|(h, p)| !h.is_empty() && !h.ends_with(':') && p.parse::<u16>().is_ok());
-        return Ok(if has_port {
+        out.push(if has_port {
             host.to_string()
         } else {
             format!("{host}:{WG_PORT}")
@@ -254,9 +256,59 @@ fn record_endpoint(endpoint: &register::Endpoint) -> Result<String> {
     let v4 = endpoint.v4.trim();
     let ip = v4.rsplit_once(':').map_or(v4, |(ip, _)| ip);
     if ip.parse::<std::net::Ipv4Addr>().is_ok() {
-        return Ok(format!("{ip}:{WG_PORT}"));
+        out.push(format!("{ip}:{WG_PORT}"));
     }
-    bail!("the device record has no endpoint; give --endpoint HOST:PORT")
+    let v6 = endpoint.v6.trim().trim_start_matches('[');
+    let v6 = v6.split(']').next().unwrap_or(v6);
+    if v6.parse::<std::net::Ipv6Addr>().is_ok() {
+        out.push(format!("[{v6}]:{WG_PORT}"));
+    }
+    out
+}
+
+/// The failure of a record with no usable endpoint: it names the fields that
+/// the record has.
+fn no_endpoint(endpoint: &register::Endpoint) -> anyhow::Error {
+    let present: Vec<&str> = [
+        ("host", &endpoint.host),
+        ("v4", &endpoint.v4),
+        ("v6", &endpoint.v6),
+    ]
+    .into_iter()
+    .filter(|(_, v)| !v.trim().is_empty())
+    .map(|(k, _)| k)
+    .collect();
+    let present = if present.is_empty() {
+        "none".to_string()
+    } else {
+        present.join(", ")
+    };
+    anyhow::anyhow!(
+        "the device record has no usable WireGuard endpoint (fields present: {present}); give --endpoint HOST:PORT"
+    )
+}
+
+/// The WireGuard endpoint of the record as text, for `warp export`: the first
+/// of `host`, `v4` and `v6`.
+pub fn wireguard_endpoint(endpoint: &register::Endpoint) -> Result<String> {
+    wireguard_candidates(endpoint)
+        .into_iter()
+        .next()
+        .ok_or_else(|| no_endpoint(endpoint))
+}
+
+/// The WireGuard endpoint of the record as an address, for the WireGuard leg:
+/// the first literal address of the list of [`wireguard_endpoint`]; else the
+/// first name of it that the system resolver gives.
+pub fn wireguard_socket_addr(endpoint: &register::Endpoint) -> Result<std::net::SocketAddr> {
+    use std::net::ToSocketAddrs as _;
+    let list = wireguard_candidates(endpoint);
+    if let Some(addr) = list.iter().find_map(|c| c.parse().ok()) {
+        return Ok(addr);
+    }
+    list.iter()
+        .find_map(|c| c.to_socket_addrs().ok()?.next())
+        .ok_or_else(|| no_endpoint(endpoint))
 }
 
 #[cfg(test)]
@@ -323,13 +375,17 @@ mod tests {
     }
 
     fn exported(host: &str, v4: &str) -> Exported {
+        exported_v6(host, v4, "")
+    }
+
+    fn exported_v6(host: &str, v4: &str, v6: &str) -> Exported {
         let device: Device = serde_json::from_value(serde_json::json!({
             "id": "dev",
             "account": {"id": "acc"},
             "token": "t",
             "config": {
                 "client_id": "AQID",
-                "peers": [{"public_key": "PEER=", "endpoint": {"host": host, "v4": v4}}],
+                "peers": [{"public_key": "PEER=", "endpoint": {"host": host, "v4": v4, "v6": v6}}],
                 "interface": {"addresses": {"v4": "172.16.0.2", "v6": "2606:4700:110::2"}},
             },
         }))
@@ -375,5 +431,54 @@ mod tests {
             "engage.example:2408"
         );
         assert!(Config::of(&exported("", ""), None, 25).is_err());
+    }
+
+    // T-213: the export and the WireGuard leg read the same fields of the
+    // record, in the same order.
+    #[test]
+    fn the_two_wireguard_readers_agree_on_the_record_shapes() {
+        // The leg decodes the keys: give it 32 bytes (base64 of zeros).
+        let key = "A".repeat(43) + "=";
+        let keyed = |mut e: Exported| {
+            e.private_key = key.clone();
+            e.device.config.peers[0].public_key = key.clone();
+            e
+        };
+        let (exported, exported_v6) = (
+            |h: &str, v4: &str| keyed(exported(h, v4)),
+            |h: &str, v4: &str, v6: &str| keyed(exported_v6(h, v4, v6)),
+        );
+        let wg = |e: &Exported| {
+            crate::warp::wg::Peer::from_exported(e, None).map(|p| p.endpoint.to_string())
+        };
+        let text = |e: &Exported| Config::of(e, None, 25).map(|c| c.endpoint);
+        for (record, want) in [
+            (exported("162.159.192.1", ""), "162.159.192.1:2408"),
+            (exported("162.159.192.1:500", ""), "162.159.192.1:500"),
+            (exported("", "162.159.192.1:0"), "162.159.192.1:2408"),
+            (
+                exported_v6("", "", "2606:4700:103::2"),
+                "[2606:4700:103::2]:2408",
+            ),
+            (
+                exported_v6("", "", "[2606:4700:103::2]:443"),
+                "[2606:4700:103::2]:2408",
+            ),
+        ] {
+            assert_eq!(text(&record).unwrap(), want);
+            assert_eq!(wg(&record).unwrap(), want);
+        }
+        // A name and an address: the export keeps the name; the leg takes the
+        // address (no lookup).
+        let both = exported("engage.example", "162.159.192.1");
+        assert_eq!(text(&both).unwrap(), "engage.example:2408");
+        assert_eq!(wg(&both).unwrap(), "162.159.192.1:2408");
+        // No field: both fail, and the message names the fields present.
+        for err in [text(&exported("", "")), wg(&exported("", "bad"))] {
+            let err = format!("{:#}", err.unwrap_err());
+            assert!(err.contains("fields present"), "{err}");
+        }
+        let err = format!("{:#}", wg(&exported("", "bad")).unwrap_err());
+        assert!(err.contains("v4"), "{err}");
     }
 }
