@@ -2207,7 +2207,7 @@ The tests cover: refuse, allow with the variable, mode still checked, no registr
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -2240,9 +2240,9 @@ cargo run -q -- doctor --agent --json
 
 A unit test gives a row with a passing index and a failing file host and expects `fail` and the name of the host.
 
-## Blocker
+## Correction
 
-The session of `PodUtils/podcrates` (the crate `pod-services`): the file host of pip is a file of that crate. Send a COORD issue (to podcrates). The entry is unblocked when the file exists.
+2026-11-09: the blocker cleared. podcrates v0.8.0 has `pod_services::get("pypi-files")` (podcrates T-127); podnet takes v0.8.0 in 0df677d.
 
 # T-183: One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379)
 

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 223 entries: 126 open, 2 partial, 17 blocked, 78 done.
+`TODO/INDEX.md` holds 223 entries: 129 open, 2 partial, 14 blocked, 78 done.
 
 ## State
 
@@ -8,8 +8,11 @@
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
 - podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns` and `pod-services`
-  (`PodUtils/podcrates` v0.7.0). Next: `pod-ws` (`src/ws.rs`). A session reads the state
+  (`PodUtils/podcrates` v0.8.0). Next: `pod-ws` (`src/ws.rs`). A session reads the state
   of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
+- Frozen (fixes only, each as a COORD issue): the SOCKS5 datagram path of
+  `crates/podnet-netns/src/upstream.rs` (in `pod_proxy::udp`, PodUtils/podcrates#42), and
+  `tests/test_host/mod.rs` (in `pod-testkit`).
 - Keep this section short. Write the current state only; git keeps the history.
 
 ## Work order
@@ -59,8 +62,7 @@ not wait for a larger one.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161, T-162, T-163,
-    T-200 (`pod-relay`), T-175 (`pod-dns`, `pod-proxy`), T-172 (`pod-dns`), T-166 (`pod-services`),
-    T-182 (`pod-services`).
+    T-200 (`pod-relay`), T-166 (`pod-services`). T-172, T-175 and T-182 can go now (podcrates v0.8.0).
 12. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait): T-216, T-217 (the schema of `doctor --json`), T-222, T-218
     (the connector profile), T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).

@@ -744,7 +744,7 @@ T-049 is done; podcrates answers the COORD issue for `edge_h2.rs`.
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -774,9 +774,9 @@ checks (T-097) resolve names on this chain.
 cargo test -p podnet resolve:: -- doh_queries_share_one_connection
 ```
 
-## Blocker
+## Correction
 
-The session of `PodUtils/podcrates` (the crates `pod-dns` and `pod-proxy`): the DoH connection is code of these crates. Send a COORD issue (to podcrates). The entry is unblocked when a release of these crates reuses one connection for each resolver server.
+2026-11-09: the blocker cleared. podcrates v0.8.0 has `pod_dns::Kept` and `Way::kept` (podcrates T-125); podnet takes v0.8.0 in 0df677d.
 
 # T-200: The reverse road of the relay uses the alternate hosts (GitHub #397)
 

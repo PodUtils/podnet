@@ -885,7 +885,7 @@ T-165.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -909,13 +909,14 @@ a second time. A supervisor cannot give a pin to a running start.
 cargo test -p podnet resolve::tests::a_later_pin_reaches_the_resolver
 ```
 
-## Blocker
-
-The session of `PodUtils/podcrates` (the crate `pod-dns`): a refresh of a pin while the process runs is code of that crate. Send a COORD issue (to podcrates). The entry is unblocked when `pod-dns` has the call and podnet takes it.
 
 ## Start condition
 
 podcrates gives the changeable pin table.
+
+## Correction
+
+2026-11-09: the blocker cleared. podcrates v0.8.0 has `Resolver::set_pins` of pod-dns (podcrates T-126); podnet takes v0.8.0 in 0df677d.
 
 # T-176: Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372)
 
