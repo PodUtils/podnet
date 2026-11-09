@@ -423,6 +423,8 @@ after the rename of the repository.
 
 The owner, 2026-11-05 (`docs/decisions.md`, Order): no release `v0.4.0-beta.1` now.
 
+The owner, 2026-11-09 (`docs/decisions.md`, Releases): betas are allowed; no crates.io.
+
 ## Prove
 
 ```sh
@@ -434,7 +436,7 @@ sh scripts/agent/check.sh
 
 T-016, T-017, T-019 and T-020 are done.
 
-The owner allows releases again (`docs/decisions.md`, Order of 2026-11-06: no release now).
+The owner allows releases again: done, 2026-11-09 (`docs/decisions.md`, Releases: betas, no crates.io).
 
 ## Correction
 
@@ -480,6 +482,8 @@ dry run, then `publish=vX`, then a check of `release-proofs.yml`.
 
 The owner, 2026-11-05 (`docs/decisions.md`, Order): no release `v0.4.0-beta.1` now.
 
+The owner, 2026-11-09 (`docs/decisions.md`, Releases): betas are allowed; no crates.io.
+
 ## Prove
 
 ```sh
@@ -493,7 +497,7 @@ curl -fsSL https://raw.githubusercontent.com/PodUtils/podnet/main/scripts/instal
 
 T-021 and T-022 are done.
 
-The owner allows releases again (`docs/decisions.md`, Order of 2026-11-06: no release now).
+The owner allows releases again: done, 2026-11-09 (`docs/decisions.md`, Releases: betas, no crates.io).
 
 # T-024: The update checks pass against a podnet release again
 
@@ -541,7 +545,7 @@ The live step "update to v0.4.0-beta.1" passes.
 
 T-023 is done.
 
-The owner allows releases again (`docs/decisions.md`, Order of 2026-11-06: no release now).
+The owner allows releases again: done, 2026-11-09 (`docs/decisions.md`, Releases: betas, no crates.io).
 
 # T-025: The image `ghcr.io/podutils/podnet` is public
 

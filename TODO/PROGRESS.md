@@ -6,9 +6,9 @@
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
-  beside the take of the shared crates (T-137). There is no release now.
+  beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
 - podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns` and `pod-services`
-  (`PodUtils/podcrates` v0.6.0). Next: `pod-ws` (`src/ws.rs`). A session reads the state
+  (`PodUtils/podcrates` v0.7.0). Next: `pod-ws` (`src/ws.rs`). A session reads the state
   of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Keep this section short. Write the current state only; git keeps the history.
 
@@ -21,7 +21,8 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Waits for the owner:** the releases T-022, T-023, T-024 and T-025 (no release now).
+3. **Releases:** T-022, T-023, T-024 and T-025 can go now (betas, 2026-11-09). Cut a beta when a
+   batch of fixes is green.
 
 ### The order of podnet's own work
 
@@ -30,8 +31,7 @@ one. In a milestone: P1, then P2, then P3. At one priority, an S entry goes firs
 not wait for a larger one.
 
 1. **M0, the record and the guards:** T-012.
-2. **M1, the rename:** T-022, T-023 and T-024, then T-025, when the owner allows releases
-   again.
+2. **M1, the rename:** T-022, T-023 and T-024, then T-025 (betas are allowed, 2026-11-09).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands before T-040 starts, or after it ends.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
@@ -86,6 +86,10 @@ These entries stay open. The condition in each entry tells when it can start.
 ## Calls made without a ruling
 
 Each call is in its entry, and the work goes on with it until the owner rules otherwise:
+
+- 2026-11-09, the triage of #347 to #412: the `## Decision` of T-144, T-151, T-152, T-153,
+  T-159, T-160, T-161, T-165, T-166, T-169, T-173, T-174, T-179, T-182, T-183, T-187, T-196,
+  T-200, T-204, T-206 and T-055 (the gsr transport: no entry; `pod-gsr` is deferred).
 
 - T-016: the shim names `podnet-vnet` (`PODNET_VNET_*`) and `podnet-socks` (`PODNET_SOCKS_*`).
 - T-046: the test helpers go into `podnet-core` behind a feature; `pod-testkit` of

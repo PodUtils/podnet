@@ -148,10 +148,9 @@ issues are the channel, and each session watches them
   commit. Do not merge the Dependabot branch.
 - Platforms: Linux only. No Windows or macOS builds. Build static Linux
   binaries for all major architectures with cargo-zigbuild (zig cc).
-- Releases: no podnet release now (`docs/decisions.md`, 2026-11-05,
-  Order). When the owner allows releases again: cut the next prerelease
-  (`v0.4.0-beta.N`) unattended when a batch of fixes is green: dry run,
-  then `publish=vX`, then check `release-proofs.yml`.
+- Releases (2026-11-09): betas are allowed, no crates.io. Cut the next
+  prerelease (`v0.4.0-beta.N`) unattended when a batch of fixes is green:
+  dry run, then `publish=vX`, then check `release-proofs.yml`.
 - Order (2026-11-06): the work on podnet's own code goes on, in the work
   order of `TODO/PROGRESS.md`. The take of each shared crate of
   `PodUtils/podcrates` goes on beside it (T-137). Code that a crate of
