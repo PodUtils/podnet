@@ -3159,7 +3159,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3186,6 +3186,10 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 `cargo test -p podnet --lib origin::static_files::tests::percent_decoding` (changed test).
 `cargo test -p podnet --lib static_paths_agree_on_plus` (new test).
+
+## Done
+
+2026-11-09, commit 76ec99a. `origin::static_files::percent_decode` keeps `+`; `resolve` refuses a bad escape (`%zz`, a short `%`), as `service::percent_decode_path` does. Tests: `origin::static_files::tests::percent_decoding`, `a_plus_in_a_path_is_a_plus` (the files `a b.txt` and `a+b.txt`), `service::tests::static_paths_agree_on_plus` (the two decoders). CI: at the merge.
 
 # T-208: `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405)
 

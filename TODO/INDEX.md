@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 116 open, 3 partial, 17 blocked, 87 done.**
+**223 entries: 115 open, 3 partial, 17 blocked, 88 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 4 | 1 | 2 | 17 | 24 |
-| P2 | 74 | 2 | 10 | 51 | 137 |
+| P2 | 73 | 2 | 10 | 52 | 137 |
 | P3 | 37 | 0 | 5 | 19 | 61 |
-| **All** | 116 | 3 | 17 | 87 | 223 |
+| **All** | 115 | 3 | 17 | 88 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -252,7 +252,7 @@ M8 Overlays, M9 Later.
 | [T-204](fixes.md) | P2 | S | M5 | defect | done | `tunnel --config` refuses the origin flags (GitHub #401) |
 | [T-205](fixes.md) | P3 | S | M5 | defect | done | A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402) |
 | [T-206](fixes.md) | P2 | S | M5 | feature | done | `agent status --json` (GitHub #403) |
-| [T-207](fixes.md) | P2 | S | M5 | defect | open | The library static path decodes `+` as a literal plus (GitHub #404) |
+| [T-207](fixes.md) | P2 | S | M5 | defect | done | The library static path decodes `+` as a literal plus (GitHub #404) |
 | [T-208](fixes.md) | P2 | S | M5 | defect | done | `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405) |
 | [T-209](fixes.md) | P2 | S | M5 | defect | done | `warp status` names the `warp-tun` instance (GitHub #406) |
 | [T-210](fixes.md) | P3 | S | M5 | defect | open | The WARP+ label names the paid account types (GitHub #407) |
