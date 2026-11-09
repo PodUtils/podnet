@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**222 entries: 161 open, 1 partial, 17 blocked, 43 done.**
+**222 entries: 157 open, 1 partial, 17 blocked, 47 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 7 | 1 | 2 | 14 | 24 |
 | P2 | 104 | 0 | 10 | 23 | 137 |
-| P3 | 49 | 0 | 5 | 6 | 60 |
-| **All** | 161 | 1 | 17 | 43 | 222 |
+| P3 | 45 | 0 | 5 | 10 | 60 |
+| **All** | 157 | 1 | 17 | 47 | 222 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -204,12 +204,12 @@ M8 Overlays, M9 Later.
 | [T-156](pods.md) | P2 | M | M7 | feature | open | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |
 | [T-157](pods.md) | P2 | M | M7 | feature | open | pod: `--default-action` and a JSON flow record (GitHub #355) |
 | [T-158](pods.md) | P3 | M | M7 | feature | open | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
-| [T-159](fixes.md) | P3 | S | M5 | docs | open | research documents are readings; fix the stale counts of the record (GitHub #356) |
+| [T-159](fixes.md) | P3 | S | M5 | docs | done | research documents are readings; fix the stale counts of the record (GitHub #356) |
 | [T-160](fixes.md) | P2 | S | M5 | defect | open | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
 | [T-161](crates.md) | P2 | M | M3 | feature | blocked | relay node: renew the pair before it expires (GitHub #358) |
 | [T-162](crates.md) | P3 | M | M3 | feature | blocked | relay: a host that stalls is tried last on the next connect (GitHub #359) |
 | [T-163](crates.md) | P2 | M | M3 | feature | blocked | relay: the session budget comes from the pool document (GitHub #360) |
-| [T-164](fixes.md) | P3 | S | M5 | docs | open | Document `--no-verify` in the README, and say what it does not do (GitHub #361) |
+| [T-164](fixes.md) | P3 | S | M5 | docs | done | Document `--no-verify` in the README, and say what it does not do (GitHub #361) |
 | [T-165](later.md) | P3 | M | M9 | feature | open | The SSH forward-relay leg: supervise the session after `run()` returns (GitHub #362) |
 | [T-166](later.md) | P3 | M | M9 | feature | blocked | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
 | [T-167](services.md) | P2 | M | M6 | feature | open | `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364) |
@@ -243,7 +243,7 @@ M8 Overlays, M9 Later.
 | [T-195](fixes.md) | P2 | S | M5 | defect | open | `relay stop` checks the pair before it stops the local node (GitHub #392) |
 | [T-196](fixes.md) | P2 | M | M5 | defect | open | The relay node drains and waits after a local end of stream (GitHub #393) |
 | [T-197](fixes.md) | P2 | S | M5 | defect | open | The pair file is always mode 0600, and `load` checks the file (GitHub #394) |
-| [T-198](fixes.md) | P3 | S | M5 | docs | open | `docs/protocol.md` and the test agree on the number of seed alternates (GitHub #395) |
+| [T-198](fixes.md) | P3 | S | M5 | docs | done | `docs/protocol.md` and the test agree on the number of seed alternates (GitHub #395) |
 | [T-199](fixes.md) | P2 | M | M5 | defect | open | `relay connect --listen` has the instance surface of `connect -L` (GitHub #396) |
 | [T-200](crates.md) | P2 | M | M3 | feature | blocked | The reverse road of the relay uses the alternate hosts (GitHub #397) |
 | [T-201](fixes.md) | P3 | S | M5 | defect | open | `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398) |
@@ -257,7 +257,7 @@ M8 Overlays, M9 Later.
 | [T-209](fixes.md) | P2 | S | M5 | defect | open | `warp status` names the `warp-tun` instance (GitHub #406) |
 | [T-210](fixes.md) | P3 | S | M5 | defect | open | The WARP+ label names the paid account types (GitHub #407) |
 | [T-211](fixes.md) | P2 | S | M5 | defect | open | `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408) |
-| [T-212](fixes.md) | P3 | S | M5 | docs | open | The README states that the rules apply to `warp proxy --l4` (GitHub #409) |
+| [T-212](fixes.md) | P3 | S | M5 | docs | done | The README states that the rules apply to `warp proxy --l4` (GitHub #409) |
 | [T-213](fixes.md) | P2 | M | M5 | defect | open | The WireGuard endpoint of a device record has one derivation (GitHub #410) |
 | [T-214](fixes.md) | P3 | S | M5 | defect | open | `warp ssh-config` prints a `ProxyCommand` with the same quote as `--write` (GitHub #411) |
 | [T-215](fixes.md) | P2 | S | M5 | defect | open | `warp proxy --dns` has a bound and a counter (GitHub #412) |

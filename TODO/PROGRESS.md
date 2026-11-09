@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 222 entries: 161 open, 1 partial, 17 blocked, 43 done.
+`TODO/INDEX.md` holds 222 entries: 157 open, 1 partial, 17 blocked, 47 done.
 
 ## State
 
@@ -41,7 +41,6 @@ not wait for a larger one.
    - relay (no growth of `src/relay_reverse.rs`): T-194, T-195, T-197, T-196, T-199.
    - tunnel, share, serve and the CLI: T-160, T-169 to T-171, T-201 to T-207.
    - WARP: T-173, T-208 to T-211, T-213 to T-215.
-   - documents: T-159, T-164, T-198, T-212.
    - T-182 is blocked (the file host of pip, `pod-services`).
 4. **M2, the splits:** T-032; T-033 to T-041; T-042,
    T-043, T-044; T-045; then T-015.

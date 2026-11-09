@@ -1769,7 +1769,7 @@ cargo test --test pod_seccomp_diff -- seccomp_errnos_match_the_host
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1809,6 +1809,10 @@ grep -L "Reading of the tree" docs/research/podnet/architecture.md docs/research
 ```
 
 The `grep -L` prints no file name after the fix.
+
+## Done
+
+2026-11-09, commit 3321ed6. Each research document and `docs/reports/aerrand-agent.md` has the banner `Reading of the tree at COMMIT`. T-040 has a Correction (the counts, T-063 to T-067 done). No checker (Decision). `scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-160: tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357)
 
@@ -1872,7 +1876,7 @@ cargo test --test cli -- tunnel_ready_document_marks_an_unresolved_name
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1902,6 +1906,10 @@ Operators of restricted hosts need the flag: the fresh `*.trycloudflare.com` nam
 grep -c -e '--no-verify' README.md
 cargo test --test cli -- help
 ```
+
+## Done
+
+2026-11-09, commit b9af908. The README has a `--no-verify` bullet beside `--no-tls-verify`. The help line says that origin TLS checks stay on. The name stays. `scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-169: `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366)
 
@@ -2614,7 +2622,7 @@ Tests: a 0644 file becomes 0600 after `save`; a symlink is replaced; `load` refu
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2637,6 +2645,10 @@ Tests: a 0644 file becomes 0600 after `save`; a symlink is replaced; `load` refu
 cargo test -p podnet --lib relay_pool::
 cargo todo check
 ```
+
+## Done
+
+2026-11-09, commit b9af908. `docs/protocol.md` says that the seed holds 6 hosts and the client takes 3 (`MAX_ALTERNATES`). `docs/decisions.md` has the ruling. The test `the_alternates_come_from_the_cache_else_the_seed` checks `seed().len() >= MAX_ALTERNATES`. `scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-199: `relay connect --listen` has the instance surface of `connect -L` (GitHub #396)
 
@@ -3079,7 +3091,7 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3103,6 +3115,10 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 `grep -n "rules do not apply" README.md` prints nothing.
 `cargo test -p podnet --lib warp::rules` (the existing `decide_static` test passes).
+
+## Done
+
+2026-11-09, commit b9af908. The README says that the rules apply to `warp proxy --l4`. `grep -n "rules do not apply" README.md` prints nothing. Test: `warp::rules` lib tests. `scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-213: The WireGuard endpoint of a device record has one derivation (GitHub #410)
 
