@@ -3168,7 +3168,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 ## Premise
 
-- `src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-85` (`resolve`), test `:603-607` asserts `"a b"`.
+- `src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-89` (`resolve`), test `:603-607` asserts `"a b"`.
 - `src/service.rs:217-232`, `:183`. `src/ingress.rs:184-187`, test `:616-629` (`"a + stays a +"`).
 - `README.md:485-486`.
 - One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:249-251`, test
