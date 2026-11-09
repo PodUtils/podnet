@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 138 open, 2 partial, 17 blocked, 66 done.**
+**223 entries: 137 open, 2 partial, 17 blocked, 67 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 6 | 1 | 2 | 15 | 24 |
 | P2 | 88 | 1 | 10 | 38 | 137 |
-| P3 | 43 | 0 | 5 | 13 | 61 |
-| **All** | 138 | 2 | 17 | 66 | 223 |
+| P3 | 42 | 0 | 5 | 14 | 61 |
+| **All** | 137 | 2 | 17 | 67 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -200,7 +200,7 @@ M8 Overlays, M9 Later.
 | [T-152](pods.md) | P3 | S | M7 | research | open | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
 | [T-153](later.md) | P3 | L | M9 | feature | open | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
 | [T-154](fixes.md) | P2 | M | M5 | chore | open | seccomp: fuzz targets for the notification handlers (GitHub #353) |
-| [T-155](fixes.md) | P3 | M | M5 | chore | open | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
+| [T-155](fixes.md) | P3 | M | M5 | chore | done | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
 | [T-156](pods.md) | P2 | M | M7 | feature | open | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |
 | [T-157](pods.md) | P2 | M | M7 | feature | open | pod: `--default-action` and a JSON flow record (GitHub #355) |
 | [T-158](pods.md) | P3 | M | M7 | feature | open | pod: `--learn` and `--fail-on-violation` (GitHub #355) |

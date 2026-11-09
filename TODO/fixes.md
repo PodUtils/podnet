@@ -1851,7 +1851,7 @@ T-040 is done.
 **Milestone:** M5
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1878,6 +1878,21 @@ addresses and the cmsg. A rewrite of a handler can pass the hand-written C tests
 ```sh
 cargo test --test pod_seccomp_diff -- seccomp_errnos_match_the_host
 ```
+
+## Done
+
+2026-11-09, commit 46b130b (`T-155: a differential check of the socket calls against the host kernel`).
+Steps 1, 2 and 4: `tests/pod_seccomp_diff.rs` compiles one C driver (32 lines: 16 TCP calls,
+then 16 UDP calls of T-143 to T-149). It prints the result or the errno name of each call, and the
+family, the address and the class of the port (0, fixed, ephemeral) of each address. The test runs
+the driver on the host kernel and in `podnet pod --backend seccomp`, and compares the lines. A
+difference fails the test, except an item of `ALLOWED`, which names its entry; an item that no
+longer differs fails the test too. The check finds six TCP gaps; they are the new entry T-223, and
+the six lines of `ALLOWED` name it. Each UDP line agrees. CI runs the test in `cargo test
+--workspace` (`.github/workflows/ci.yml`); it takes less than one second here. Step 3 (`diff-trace`)
+is not built: the entry builds it only when step 2 works, and nothing asks for it now. The test
+passes on this host (user namespaces and seccomp user notification work here). `sh
+scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-159: research documents are readings; fix the stale counts of the record (GitHub #356)
 
