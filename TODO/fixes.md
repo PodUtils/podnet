@@ -3032,7 +3032,7 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3062,6 +3062,10 @@ The lead, 2026-11-09: `tunnel --config` with an origin flag is refused with exit
 `cargo test -p podnet --test cli tunnel_config_with_origin_flag_is_usage_error` (new test: `--config F --port 8080`
 exits 64 and names `--port`; same for `--forward` and `--no-tls-verify`).
 `cargo test -p podnet --test cli` (the `--config` tests without an origin flag still pass).
+
+## Done
+
+2026-11-09, commit 71a0afe. `tunnel --config` with an origin flag exits 64 and names each flag given and `ingress:`. The help of each flag and the README section say it. Tests: `tunnel_config_with_origin_flag_is_usage_error` (`tests/tunnel_config.rs`: `--port`, `--forward`, `--no-tls-verify`), `origin_flags_are_named` (bin tests). The existing `--config` tests pass. CI: at the merge.
 
 # T-205: A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402)
 
