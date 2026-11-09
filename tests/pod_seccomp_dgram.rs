@@ -9,6 +9,7 @@ use std::os::unix::net::UnixListener;
 use std::process::Output;
 
 mod dgram;
+mod test_host;
 
 use dgram::{build, compiler, expect_lines, pod, seccomp_available};
 

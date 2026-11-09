@@ -10,6 +10,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::Command;
 
+mod test_host;
+
 /// The known differences: (the label of the line, the entry, the gap).
 const ALLOWED: &[(&str, &str, &str)] = &[
     (
@@ -217,6 +219,9 @@ fn lines(mut command: Command) -> BTreeMap<String, String> {
 
 #[test]
 fn seccomp_errnos_match_the_host() {
+    // The host side needs a loopback and a free bind(AF_INET): with no
+    // network the kernel gives other answers, and the comparison is void.
+    test_host::need_loopback!();
     let Some(cc) = compiler() else {
         eprintln!("skipping: no C compiler");
         return;

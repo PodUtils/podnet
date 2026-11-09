@@ -108,8 +108,13 @@ impl Proxy {
     }
 
     /// Compile `source` and run it in the pod, with `args`. `None` when the
-    /// host has no C compiler or no seccomp user notification.
+    /// host has no C compiler, no seccomp user notification or no loopback
+    /// (the relay of the pod reaches its upstream through loopback).
     pub fn run(&self, source: &str, args: &[&str]) -> Option<Output> {
+        if let Err(why) = crate::test_host::loopback() {
+            crate::test_host::skip_line(&why);
+            return None;
+        }
         let Some(cc) = compiler() else {
             eprintln!("skipping: no C compiler");
             return None;
