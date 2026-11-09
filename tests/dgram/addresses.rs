@@ -1,5 +1,6 @@
 //! T-144: `bind` on a UDP socket is recorded; `getsockname` and
-//! `getpeername` give the addresses of the kernel.
+//! `getpeername` give the addresses of the kernel. T-146: `connect` with
+//! `AF_UNSPEC` dissolves the association.
 
 use super::{expect_lines, Form, Proxy, C_HEAD};
 
@@ -141,6 +142,56 @@ fn seccomp_udp_getsockname_of_a_connected_socket_is_local() {
         &[
             "local: family 2 0.0.0.0 ephemeral",
             "after send: family 2 0.0.0.0 ephemeral",
+        ],
+    );
+}
+
+/// `connect(AF_UNSPEC)` dissolves the association: the socket has no peer,
+/// `send` with no address gets `EDESTADDRREQ`, and `recvfrom` gives the
+/// source again.
+const UNSPEC: &str = r#"
+int main(void) {
+    alarm(20);
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    struct sockaddr_in to = addr4("192.0.2.10", 7777);
+    connect(fd, (struct sockaddr *)&to, sizeof to);
+    show("connected", fd, 1);
+    struct sockaddr unspec;
+    memset(&unspec, 0, sizeof unspec);
+    unspec.sa_family = AF_UNSPEC;
+    printf("unspec: %d\n", connect(fd, &unspec, sizeof unspec));
+    show("after", fd, 1);
+    printf("send: %s\n", send(fd, "PING", 4, 0) < 0 && errno == EDESTADDRREQ ? "EDESTADDRREQ" : "other");
+    struct sockaddr_in other = addr4("192.0.2.11", 7778);
+    sendto(fd, "PING", 4, 0, (struct sockaddr *)&other, sizeof other);
+    char b[64];
+    struct sockaddr_in from;
+    socklen_t fl = sizeof from;
+    struct pollfd p = { .fd = fd, .events = POLLIN };
+    ssize_t n = poll(&p, 1, 5000) == 1
+        ? recvfrom(fd, b, sizeof b - 1, 0, (struct sockaddr *)&from, &fl) : -1;
+    if (n >= 0) b[n] = 0;
+    char ip[32] = "?";
+    inet_ntop(AF_INET, &from.sin_addr, ip, sizeof ip);
+    printf("recvfrom: %s from %s:%d\n", n > 0 ? b : "none", ip, ntohs(from.sin_port));
+    return 0;
+}
+"#;
+
+#[test]
+fn seccomp_udp_af_unspec_disconnects() {
+    let proxy = Proxy::start(Form::Stream);
+    let Some(out) = proxy.run(&format!("{C_HEAD}{NAME}{UNSPEC}"), &[]) else {
+        return;
+    };
+    expect_lines(
+        &out,
+        &[
+            "connected: family 2 192.0.2.10 7777",
+            "unspec: 0",
+            "after: ENOTCONN",
+            "send: EDESTADDRREQ",
+            "recvfrom: ECHO:PING from 192.0.2.11:7778",
         ],
     );
 }

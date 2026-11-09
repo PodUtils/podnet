@@ -91,6 +91,14 @@ pub(crate) fn handle_connect(
         return Ok(());
     }
     let addr = read_mem(mem, a[1], (a[2] as usize).min(128))?;
+    // T-146: `AF_UNSPEC` dissolves the association of a datagram socket, as
+    // in the kernel.
+    if is_datagram && addr.len() >= 2 && u16::from_ne_bytes([addr[0], addr[1]]) == 0 {
+        if let Some(Sock::Datagram(udp)) = map.get(&key) {
+            udp.inbox.set_dest(None);
+        }
+        return notif_respond(lfd, id, 0, 0);
+    }
     let Some((_family, ip, port)) = parse_sockaddr(&addr) else {
         return notif_respond(lfd, id, -1, libc::EAFNOSUPPORT);
     };

@@ -178,6 +178,9 @@ see it. Use a unix socket for it (`-L unix:///path`).
   gives the bound address, else the unspecified address of the family: with
   an ephemeral port after a `connect` or a relayed datagram, with port 0
   before. `getpeername` gives the address of `connect`, else `ENOTCONN`.
+  `connect` with `AF_UNSPEC` dissolves the association, as in the kernel:
+  then `getpeername` gives `ENOTCONN`, `send` with no address gives
+  `EDESTADDRREQ`, and `recvfrom` gives the source of each datagram again.
   No datagram arrives at a bound port: the relay carries only the answers to
   the datagrams that the socket sent. An ICMP socket keeps only the
   identifier of `bind` (its port), and its `getsockname` gives the
