@@ -578,3 +578,246 @@ Done so far:
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
   like each other crate.
+
+# T-161: relay node: renew the pair before it expires (GitHub #358)
+
+**Source:** GitHub #358 (https://github.com/PodUtils/podnet/issues/358)
+**Category:** feature
+**Milestone:** M3
+**Priority:** P2
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+A pair lasts at most 72 h (`src/cli/cmd/relay.rs:29`). The node stops with "the pair NAME expired;
+make a new pair" (`relay_reverse.rs:290-298`, the matching branch of the same file). A node with an explicit name cannot follow
+to a next pair (`cmd/relay.rs:118-121`). A node that has no name rolls to the next stored pair, which
+an operator must mint and distribute (`relay_reverse.rs:403-440`). Unattended hosts (T-001, GitHub #89)
+stop after 72 h. Proposed: `POST /v1/pair/NAME/renew` with the node token; the answer has a new
+`expires`; node token only (the connect token must not extend its own life).
+
+## Premise
+
+- Read: no renew call exists in `relay_reverse.rs`. `Relay::post_json` sends any path with a token
+  (`ws_relay.rs:572`).
+- Measured on 2026-11-09: the published contract `https://tcp.ssh.relay.ajam.dev/llms-full.txt` says for
+  close 1001 "The 72h pair TTL elapsed. Create a new pair with `POST /v1/pair`". It lists no renew call.
+  So the client change needs a relay-server change first. The server is not in this repository.
+- Self-minting needs no server change for the mint, but the connector must learn the new name and
+  token, so it does not remove the operator.
+- `src/relay_reverse.rs` goes to `pod-relay` (T-049, not released in podcrates). T-087 covers session
+  resume, not the pair lease.
+
+## Approach
+
+1. Ask podcrates: a COORD issue `(to podcrates)` for `pod-relay` (renew call, node thresholds at half
+   the TTL and at the first warning band). The owner of the relay adds the endpoint (see Decision).
+2. After `pod-relay` exists and the endpoint exists: take it (T-049, T-137). Add the podnet test.
+3. Keep the clean stop when the renewal fails.
+
+## Decision
+
+The lead, 2026-11-09: add a renew call to the relay server through the session of `PodUtils/podcrates` (`pod-relay`), not in podnet. The call is `POST /v1/pair/NAME/renew`, with the node token only. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test --test relay_reverse -- a_node_renews_its_pair_before_the_expiry a_lapsed_renewal_stops_the_node
+```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-relay`) and the owner of the relay server. The relay publishes no renew call, and the relay client is code of `pod-relay`. Send a COORD issue (to podcrates). The entry is unblocked when the relay has the call and podnet takes the client with T-049.
+
+## Start condition
+
+The relay publishes a renew call, and T-049 is done.
+
+# T-162: relay: a host that stalls is tried last on the next connect (GitHub #359)
+
+**Source:** GitHub #359 (https://github.com/PodUtils/podnet/issues/359)
+**Category:** feature
+**Milestone:** M3
+**Priority:** P3
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+The relay host order is fixed at start. A host that accepts TCP and stalls the upgrade stays first, and
+each reconnect waits the 2 s stagger before the second host starts. The pool is read again only after a
+mint, and only the cache file changes, not the running list.
+
+## Premise
+
+- Read: `Relay::new` builds the list once (`ws_relay.rs:231-271`); `connect` never changes it
+  (`:428-497`); `refresh_pool` writes the cache only (`:389-421`) and does not run for a listed list
+  (`:363`). `alternates_of` takes pool order (`relay_pool.rs:108-121`); `STALE_AFTER` is 7 days.
+- Correction of the issue: a stalled host costs the stagger (2 s), not the full timeout. The race starts
+  the next host after the stagger and the first success wins (`src/race.rs:1-9`). The loopback test of
+  the issue must assert a connect time near 2 s before and near 0 s after, not a full timeout.
+- Precedent: the front door orders the address that worked first (`src/warp/mod.rs:975`, issue 124).
+- `ws_relay.rs` and `relay_pool.rs` go to `pod-relay` (T-049): a new feature waits for the crate.
+  T-056 and T-058 plan the dialer combinators; T-097 plans router health.
+
+## Approach
+
+1. Ask podcrates for the health memory in `pod-relay` (COORD `(to podcrates)`): count failures and
+   losses of a race for each host; demote after 2; restore on success; the order stays stable.
+2. After the take, adopt the pool at an exhausted connect.
+3. Add the loopback test in podnet's tests for the taken crate.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib -- a_stalled_relay_host_is_demoted_after_two_losses a_demoted_relay_host_recovers_on_success
+```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-relay`): the health memory of the relay hosts is code of that crate. Send a COORD issue (to podcrates). The entry is unblocked when podnet takes `pod-relay` with T-049.
+
+## Start condition
+
+T-049 is done.
+
+# T-163: relay: the session budget comes from the pool document (GitHub #360)
+
+**Source:** GitHub #360 (https://github.com/PodUtils/podnet/issues/360)
+**Category:** feature
+**Milestone:** M3
+**Priority:** P2
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+`SESSION_BYTES` (60 MiB) and `SESSION_AGE` (11.5 h) are constants for the default deployment
+(`ws_relay.rs:49-52`). A relay that the user selects (`PODNET_RELAY`) has other limits. A smaller cap
+cuts streams with no replacement. A larger cap wastes sessions.
+
+## Premise
+
+- Read: constants at `ws_relay.rs:49-52`. `RelayBudget::meter` applies them (`:66`) and `meter_with`
+  takes values (`:70`). Other users: `src/warp/session.rs:413` (through `meter`), `src/edge_h2.rs:408`
+  and `:749` (direct, outside `RelayBudget`). `parse_pool` reads only `pool[].host`
+  (`relay_pool.rs:83-100`). `CachedPool` has no limits (`:120-128`).
+- Measured on 2026-11-09: `https://tcp.ssh.relay.ajam.dev/relays.json` already has a `limits` object
+  with `max_session_ms` 43200000, `max_session_bytes` 67108864, `idle_timeout_ms` 180000 and
+  `connect_timeout_ms` 10000. The key names differ from the issue (`session_bytes`). No relay-server
+  change is needed for the default deployment.
+- `docs/decisions.md:71` (2026-11-05): the limits of `/relays.json` are data of `pod-services`; the
+  relay client goes to `pod-relay`.
+- `src/edge_h2.rs` is frozen (pod-core): fixes only.
+- Not measured: the limits of a third-party relay.
+
+## Approach
+
+1. Ask podcrates (COORD `(to podcrates)`): `pod-relay` parses `limits` with the published names, stores
+   them with the cached pool, and passes them to `meter_with`. The floor: the constants. Accept values
+   in a clamped range. Keep the 60/64 and 11.5/12 margins.
+2. For `edge_h2.rs:408` and `:749`: send a COORD issue `(to podcrates)` with the minimal plumbing change
+   (pod-core owns that code). Do it in podnet only as a fix when podcrates agrees.
+3. After the take, add the tests in podnet.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib -- a_pool_with_limits_sets_the_budget a_pool_with_no_limits_keeps_the_constants
+```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crates `pod-relay`, `pod-core` and `pod-services`): the limits of `/relays.json` are data of `pod-services`, the budget is code of `pod-relay`, and `src/edge_h2.rs` is frozen code of `pod-core`. Send a COORD issue (to podcrates). The entry is unblocked when podcrates answers and podnet takes `pod-relay` with T-049.
+
+## Start condition
+
+T-049 is done; podcrates answers the COORD issue for `edge_h2.rs`.
+
+# T-175: DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370)
+
+**Source:** GitHub #370 (https://github.com/PodUtils/podnet/issues/370)
+**Category:** feature
+**Milestone:** M3
+**Priority:** P2
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+Each DoH query opens a TCP and TLS connection through the egress and sends one request: `get.rs`
+(`get_now`), `h2.rs:67` ("of its own"), `ask.rs:92`. The HTTP/1.1 client sends `Connection: close`
+(`pod-proxy` `http.rs:116`). A lookup costs a CONNECT and a TLS handshake each time. The router health
+checks (T-097) resolve names on this chain.
+
+## Premise
+
+- Read in the cargo checkout of podcrates; podnet only consumes it (`src/resolve.rs:80-104`,
+  `names: Names::Last` at `:96`). The fix belongs to `pod-dns` and `pod-proxy`.
+- A second part is in podnet: no startup note when the egress takes names only. Each resolver then pays
+  one failed literal try.
+- Not measured: the 3x cost of the issue.
+
+## Approach
+
+1. COORD issue `(to podcrates)`: a kept connection for each `(server, dial)` in `Resolver`, idle close
+   after about 5 s, one reconnect, the deadline for one exchange; `keep-alive` in `exchange`.
+2. Then take the tag (T-137). Add the test of the issue: N queries, one connection at a loopback DoH server.
+3. In podnet: one startup line when `names_inside()` is true and literals cannot pass.
+
+## Prove
+
+```sh
+cargo test -p podnet resolve:: -- doh_queries_share_one_connection
+```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crates `pod-dns` and `pod-proxy`): the DoH connection is code of these crates. Send a COORD issue (to podcrates). The entry is unblocked when a release of these crates reuses one connection for each resolver server.
+
+# T-200: The reverse road of the relay uses the alternate hosts (GitHub #397)
+
+**Source:** GitHub #397 (https://github.com/PodUtils/podnet/issues/397)
+**Category:** feature
+**Milestone:** M3
+**Priority:** P2
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+`Relay::connect` races all hosts with a 2 s stagger. `Relay::websocket` and `Relay::post_json` use `hosts[0]` only.
+`relay node` builds `Relay::single` (no pool). `relay pair` and `relay stop` build `Relay::new` (the alternates load and
+are never used). A node whose primary host stops answering retries that host for ever (1 s to 30 s backoff).
+`relay pair --json` prints the primary only.
+
+## Premise
+
+- `src/ws_relay.rs:561-568` (`websocket`, `hosts[0]`), `:572-592` (`post_json`, `self.url()`), `:326-328` (`url()`),
+  `:428-497` (`connect`), `:254-264` (`new` adds up to 3 alternates), `:275-284` (`single`).
+- `src/relay_reverse.rs:413` (`run_node` builds `Relay::single`), `:287-329` (reconnect loop).
+- `src/cli/cmd/relay.rs:76`, `:123` (validation only), `:222`.
+- Not measured: whether the relay accepts a node socket for a pair on every host of the deployment.
+  `docs/protocol.md:209-215` measures the forward road only.
+
+## Approach
+
+1. Ask in a COORD issue `(to podcrates)`: failover on the reverse road in `pod-relay`, with the measurement of item 2.
+2. Measure first (live step): a pair minted on host A, a node socket on host B of the same pool.
+3. After the take (T-049): one host loop for `connect`, `websocket` and `post_json`; `run_node` uses `Relay::new`; the
+   pair output lists the hosts (additive JSON key). Keep the `Relay::single` tests.
+4. If the relay refuses the alternate, keep one host and print a clear error.
+
+## Decision
+
+The lead, 2026-11-09: the failover of the reverse road is done in `pod-relay` of `PodUtils/podcrates`, not in podnet. podnet takes it with T-049. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+`cargo test -p podnet --test relay_reverse node_moves_to_alternate_host` (new test: two fake relays, stop A).
+`cargo test -p podnet --test relay_reverse` (old tests still pass).
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-relay`): the reverse road is code of that crate. Send a COORD issue (to podcrates). The entry is unblocked when podnet takes `pod-relay` with T-049.

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**141 entries: 91 open, 1 partial, 7 blocked, 42 done.**
+**215 entries: 157 open, 1 partial, 15 blocked, 42 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 0 | 0 |
-| P1 | 2 | 1 | 0 | 14 | 17 |
-| P2 | 67 | 0 | 5 | 22 | 94 |
-| P3 | 22 | 0 | 2 | 6 | 30 |
-| **All** | 91 | 1 | 7 | 42 | 141 |
+| P1 | 5 | 1 | 0 | 14 | 20 |
+| P2 | 103 | 0 | 10 | 22 | 135 |
+| P3 | 49 | 0 | 5 | 6 | 60 |
+| **All** | 157 | 1 | 15 | 42 | 215 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -187,3 +187,77 @@ M8 Overlays, M9 Later.
 | [T-139](fixes.md) | P2 | S | M5 | defect | done | The start of a session changes the global git identity and can drop commits of main |
 | [T-140](fixes.md) | P2 | S | M5 | feature | done | `data_path` and the time of the last TCP probe in `status`, the ready document and `warp status` |
 | [T-141](fixes.md) | P1 | S | M5 | defect | done | live: two runs in a row failed after the take of pod-dns and pod-services (GitHub #325) |
+| [T-142](fixes.md) | P2 | M | M5 | defect | open | seccomp: closing a UDP socket stops its relay and frees three descriptors (GitHub #347) |
+| [T-143](fixes.md) | P1 | M | M5 | defect | open | seccomp: a datagram written with `write(2)` leaves the pod (GitHub #347) |
+| [T-144](fixes.md) | P2 | S | M5 | defect | open | seccomp: `bind` on a datagram socket is recorded, and `getsockname` reports it (GitHub #348) |
+| [T-145](fixes.md) | P2 | S | M5 | defect | open | fake DNS: the pool refuses at its end, and names match without case (GitHub #349) |
+| [T-146](fixes.md) | P2 | S | M5 | defect | open | seccomp: `connect(AF_UNSPEC)` dissolves the association of a datagram socket (GitHub #350) |
+| [T-147](fixes.md) | P2 | S | M5 | defect | open | seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350) |
+| [T-148](fixes.md) | P3 | S | M5 | defect | open | seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350) |
+| [T-149](fixes.md) | P3 | S | M5 | research | open | seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350) |
+| [T-150](pods.md) | P3 | S | M7 | feature | open | seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351) |
+| [T-151](pods.md) | P3 | M | M7 | measurement | open | seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351) |
+| [T-152](pods.md) | P3 | S | M7 | research | open | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
+| [T-153](later.md) | P3 | L | M9 | feature | open | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
+| [T-154](fixes.md) | P2 | M | M5 | chore | open | seccomp: fuzz targets for the notification handlers (GitHub #353) |
+| [T-155](fixes.md) | P3 | M | M5 | chore | open | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
+| [T-156](pods.md) | P2 | M | M7 | feature | open | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |
+| [T-157](pods.md) | P2 | M | M7 | feature | open | pod: `--default-action` and a JSON flow record (GitHub #355) |
+| [T-158](pods.md) | P3 | M | M7 | feature | open | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
+| [T-159](fixes.md) | P3 | S | M5 | docs | open | research documents are readings; fix the stale counts of the record (GitHub #356) |
+| [T-160](fixes.md) | P2 | S | M5 | defect | open | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
+| [T-161](crates.md) | P2 | M | M3 | feature | blocked | relay node: renew the pair before it expires (GitHub #358) |
+| [T-162](crates.md) | P3 | M | M3 | feature | blocked | relay: a host that stalls is tried last on the next connect (GitHub #359) |
+| [T-163](crates.md) | P2 | M | M3 | feature | blocked | relay: the session budget comes from the pool document (GitHub #360) |
+| [T-164](fixes.md) | P3 | S | M5 | docs | open | Document `--no-verify` in the README, and say what it does not do (GitHub #361) |
+| [T-165](later.md) | P3 | M | M9 | feature | open | The SSH forward-relay leg: supervise the session after `run()` returns (GitHub #362) |
+| [T-166](later.md) | P3 | M | M9 | feature | blocked | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
+| [T-167](services.md) | P2 | M | M6 | feature | open | `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364) |
+| [T-168](services.md) | P2 | S | M6 | feature | open | A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365) |
+| [T-169](fixes.md) | P2 | S | M5 | defect | open | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
+| [T-170](fixes.md) | P2 | S | M5 | defect | open | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
+| [T-171](fixes.md) | P2 | S | M5 | defect | open | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
+| [T-172](later.md) | P3 | M | M9 | feature | blocked | A pin of the new public name while the process runs (GitHub #367) |
+| [T-173](fixes.md) | P2 | S | M5 | feature | open | A WARP identity of another uid, with a consent variable (GitHub #368) |
+| [T-174](pods.md) | P3 | M | M7 | feature | open | netns: a veth wire when `/dev/net/tun` is not there (GitHub #369) |
+| [T-175](crates.md) | P2 | M | M3 | feature | blocked | DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370) |
+| [T-176](later.md) | P3 | S | M9 | research | open | Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372) |
+| [T-177](services.md) | P3 | S | M6 | feature | open | Router: `podnet route check`, a dry run of the rules (GitHub #375) |
+| [T-178](later.md) | P3 | M | M9 | feature | open | Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375) |
+| [T-179](later.md) | P3 | S | M9 | research | open | Research: a direction split for asymmetric uplinks (GitHub #375) |
+| [T-180](services.md) | P3 | M | M6 | feature | open | Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376) |
+| [T-181](pods.md) | P3 | M | M7 | feature | open | seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376) |
+| [T-182](fixes.md) | P2 | M | M5 | defect | blocked | `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378) |
+| [T-183](fixes.md) | P2 | S | M5 | defect | open | One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379) |
+| [T-184](fixes.md) | P2 | S | M5 | defect | open | `doctor`: the relay row follows `--relay` and keeps a loopback relay (GitHub #380) |
+| [T-185](fixes.md) | P1 | M | M5 | defect | open | A deadline for the client handshake of `net proxy`, `net tailscale` and `pod --serve` (GitHub #384) |
+| [T-186](fixes.md) | P1 | S | M5 | defect | open | `net tailscale` and the other unix listeners claim the socket path first (GitHub #385) |
+| [T-187](fixes.md) | P2 | M | M5 | defect | open | `net proxy --forward`: a real target may be a name, and the dial reports its hop (GitHub #386) |
+| [T-188](fixes.md) | P2 | S | M5 | defect | open | `net proxy --forward` reports a failed bind before it prints the forward (GitHub #387) |
+| [T-189](fixes.md) | P2 | S | M5 | defect | open | The switch counts each packet that it drops (GitHub #388, part 1) |
+| [T-190](fixes.md) | P2 | M | M5 | defect | open | A stack over a switch link has bounded queues (GitHub #388, part 2) |
+| [T-191](fixes.md) | P3 | S | M5 | defect | open | The listener table of `net doctor` names each command that listens (GitHub #389, part 1) |
+| [T-192](fixes.md) | P3 | S | M5 | defect | open | A refused TCP bind exits 69 in each listener command (GitHub #389, part 2; GitHub #385 step 5) |
+| [T-193](fixes.md) | P2 | M | M5 | defect | open | `net proxy --map` fills the gateway resolver and the shim table (GitHub #390) |
+| [T-194](fixes.md) | P2 | S | M5 | defect | open | A relay `close` aborts the session task of the node (GitHub #391) |
+| [T-195](fixes.md) | P2 | S | M5 | defect | open | `relay stop` checks the pair before it stops the local node (GitHub #392) |
+| [T-196](fixes.md) | P2 | M | M5 | defect | open | The relay node drains and waits after a local end of stream (GitHub #393) |
+| [T-197](fixes.md) | P2 | S | M5 | defect | open | The pair file is always mode 0600, and `load` checks the file (GitHub #394) |
+| [T-198](fixes.md) | P3 | S | M5 | docs | open | `docs/protocol.md` and the test agree on the number of seed alternates (GitHub #395) |
+| [T-199](fixes.md) | P2 | M | M5 | defect | open | `relay connect --listen` has the instance surface of `connect -L` (GitHub #396) |
+| [T-200](crates.md) | P2 | M | M3 | feature | blocked | The reverse road of the relay uses the alternate hosts (GitHub #397) |
+| [T-201](fixes.md) | P3 | S | M5 | defect | open | `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398) |
+| [T-202](fixes.md) | P3 | S | M5 | defect | open | `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399) |
+| [T-203](fixes.md) | P2 | S | M5 | defect | open | The ready line of `share --json` has `schema` and `podnet` (GitHub #400) |
+| [T-204](fixes.md) | P2 | S | M5 | defect | open | `tunnel --config` refuses the origin flags (GitHub #401) |
+| [T-205](fixes.md) | P3 | S | M5 | defect | open | A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402) |
+| [T-206](fixes.md) | P2 | S | M5 | feature | open | `agent status --json` (GitHub #403) |
+| [T-207](fixes.md) | P2 | S | M5 | defect | open | The library static path decodes `+` as a literal plus (GitHub #404) |
+| [T-208](fixes.md) | P2 | S | M5 | defect | open | `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405) |
+| [T-209](fixes.md) | P2 | S | M5 | defect | open | `warp status` names the `warp-tun` instance (GitHub #406) |
+| [T-210](fixes.md) | P3 | S | M5 | defect | open | The WARP+ label names the paid account types (GitHub #407) |
+| [T-211](fixes.md) | P2 | S | M5 | defect | open | `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408) |
+| [T-212](fixes.md) | P3 | S | M5 | docs | open | The README states that the rules apply to `warp proxy --l4` (GitHub #409) |
+| [T-213](fixes.md) | P2 | M | M5 | defect | open | The WireGuard endpoint of a device record has one derivation (GitHub #410) |
+| [T-214](fixes.md) | P3 | S | M5 | defect | open | `warp ssh-config` prints a `ProxyCommand` with the same quote as `--write` (GitHub #411) |
+| [T-215](fixes.md) | P2 | S | M5 | defect | open | `warp proxy --dns` has a bound and a counter (GitHub #412) |

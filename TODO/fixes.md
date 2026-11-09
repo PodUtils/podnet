@@ -1354,3 +1354,1854 @@ passes; the control gives `[]`. Live run 42226303514 at 3db91c7: success, each s
 42222918056 at 61c70aa: success. The check of the DoH server comes back with the next podcrates
 tag (#322). GitHub #325 is closed with this evidence.
 
+
+# T-142: seccomp: closing a UDP socket stops its relay and frees three descriptors (GitHub #347)
+
+**Source:** GitHub #347 (https://github.com/PodUtils/podnet/issues/347) (defect 2)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+A program opens a UDP socket, sends one datagram to a port other than 53, and closes the socket. The
+supervisor keeps the relay reader task. The task keeps three descriptors: the supervisor end of the
+socketpair, the copy of the program end in the `Inbox`, and the relay `UdpSocket` (or, for the
+unix-proxy form `UdpRelay::Stream`, the control connection). Observed by the reporter: 11 descriptors
+at the start, 311 after 100 sockets, 311 after the close. A long-lived pod runs out of descriptors, and
+`socket(2)` then fails with `EIO` (`seccomp.rs:840`).
+
+## Premise
+
+- Read: `ensure_udp_relay` spawns the readers (`seccomp.rs:1216`, `:1226`, `:1246`). They own strong
+  clones of `pair`, `inbox` and `udp`. The UDP reader exits only on a `recv_from` error.
+- Read: `handle_close` (`fdtable.rs:145`) and `sweep` (`fdtable.rs:85`) remove the table entry only.
+  Nothing stops the relay.
+- Read: the test `seccomp_closed_sockets_free_their_entries` (`tests/pod_seccomp_fds.rs:260`) makes
+  5000 sockets that never send. It cannot see the leak.
+- Not measured: the count of 3 per socket. No build ran in this triage.
+- Existing tests have a SOCKS5 UDP-in-stream stand-in (`tests/pod_seccomp.rs:435`).
+
+## Approach
+
+1. Move `ensure_udp_relay`, `relay_datagram` and `UdpRelay` out of `seccomp.rs` into a new file
+   (the file is at its cap and cannot grow).
+2. Give each `Sock::Datagram` a stop signal (a `tokio::sync::watch` sender or a `CancellationToken`).
+   Select on it in both reader loops. Drop of the entry sends it.
+3. Send the stop from `handle_close`, `sweep` and the shutdown near `drain_relays` (`seccomp.rs:851`).
+4. Correct `crates/podnet-netns/README.md:81-83` so that it separates `read` and `write` on TCP from
+   the UDP path (the write part belongs to T-143).
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_dgram -- seccomp_udp_close_frees_the_relay_descriptors seccomp_udp_exit_frees_the_relay_descriptors seccomp_udp_stream_control_ends_on_close
+```
+
+The first test opens 100 UDP sockets, sends one datagram on each, closes each, and counts
+`/proc/PID/fd` of the supervisor (not `/proc/self/fd`). It expects the count before the test. The
+second test uses a child that exits (the `sweep` path) or `close_range`. The third test checks that the
+control connection of the stream form ends.
+
+# T-143: seccomp: a datagram written with `write(2)` leaves the pod (GitHub #347)
+
+**Source:** GitHub #347 (https://github.com/PodUtils/podnet/issues/347) (defect 1)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`write(2)` on an emulated datagram socket returns success, and the datagram never leaves the pod. The
+reply never comes. `sendto`, `send`, `sendmsg` and `sendmmsg` work. Programs write datagrams with
+`write` after `connect` (C code, Python `os.write`, some Go paths). The README says that `write` works
+on the pair (`crates/podnet-netns/README.md:81-83`). That is true for TCP only.
+
+## Premise
+
+- Read: `write` is not in `intercepted_syscalls()` (`seccomp.rs:61-84`, 20 syscalls). The kernel
+  writes the datagram into the socketpair. Nothing reads the supervisor end: the only use of `pair` is
+  `try_send` in `Inbox::deliver` (`inbox.rs:79-110`). A reader on the supervisor end sees only what the
+  program wrote, so it does not race with `deliver`.
+- Read: `handle_connect` records `dest` for a datagram socket (`connect.rs:97-101`).
+- A seccomp filter cannot test membership of the descriptor table, so intercepting `write` costs a
+  notification for each write of each program. That cost is not measured.
+- Not run: the Python repro of the issue (needs a SOCKS5 server with UDP ASSOCIATE).
+
+## Approach
+
+1. Start T-142 first: the reader selects on the same stop signal.
+2. Spawn a task that reads the supervisor end of each datagram pair. It forwards `(dest, payload)` to
+   the dispatcher over a channel. The dispatcher owns the table and calls the relay path.
+   (`relay_datagram` takes `&mut` table, so the task cannot call it.) A datagram with no `dest` is
+   dropped with one log line under `-v`.
+3. Keep `dest` current: T-146 clears it on `AF_UNSPEC`, so share it in an `Arc<Mutex<_>>` or send it
+   with the channel message.
+4. Do not intercept `write` (cost). Write the limit in the README: an unconnected `write` gives no
+   `EDESTADDRREQ`.
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_dgram -- seccomp_udp_write_after_connect_is_relayed seccomp_udp_sendto_still_works
+```
+
+The first test makes a `SOCK_DGRAM`, calls `connect`, calls `write`, and reads the echo from the
+stand-in proxy. It fails on c52b8e0.
+
+# T-144: seccomp: `bind` on a datagram socket is recorded, and `getsockname` reports it (GitHub #348)
+
+**Source:** GitHub #348 (https://github.com/PodUtils/podnet/issues/348)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`bind(2)` on an emulated UDP socket answers success and records nothing. `getsockname` then gives
+`0.0.0.0:0`, also for `bind(0.0.0.0:5353)`. A program that publishes its port (RTP, mDNS, a DNS stub)
+advertises port 0. A datagram sent to the bound port is never delivered: only replies to a relayed
+`sendto` reach the inbox.
+
+## Premise
+
+- Read: `Sock::Datagram` has `dest` and no `bound` (`seccomp.rs:575-581`). The bind arm is
+  `seccomp.rs:1338`. `getsockname` answers from `dest` for both `getsockname` and `getpeername`
+  (`sockopt.rs:183`).
+- Read: for `getpeername` on an unconnected datagram socket, the code answers success with 0.0.0.0:0.
+  The kernel answers `ENOTCONN`. The issue says it "still fails with ENOTCONN": it does not fail today.
+- Read: for a connected datagram socket, `getsockname` answers the peer address (`dest`). The kernel
+  answers the local address. This is a second defect in the same line.
+- Read: `ephemeral_port(fd)` exists (`sockopt.rs:59`) and gives a stable port per descriptor for TCP.
+- Not measured: the output of the Python repro.
+
+## Approach
+
+1. Add `bound: Option<(IpAddr, u16)>` to `Sock::Datagram`. Record it in the bind arm. Port 0 gets
+   `ephemeral_port(fd)`, as the connected TCP entry does (no new allocator).
+2. `getsockname` answers `bound`, else the unspecified address with a stable port. `getpeername`
+   answers `dest`, else `ENOTCONN`.
+3. `Sock::Icmp` stays as it is. State this in the README.
+4. State in the README (line 160 area) that a datagram sent to the bound port is not delivered.
+   Keep the change independent of T-147.
+
+## Decision
+
+The lead, 2026-11-09: record the address of a `bind` on a datagram socket. Port 0 gets a stable port from `ephemeral_port(fd)`. The README says that no datagram arrives at a bound port. Do not refuse `bind`. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_dgram -- seccomp_udp_bind_is_read_back seccomp_udp_getpeername_is_enotconn_when_unconnected seccomp_udp_getsockname_of_a_connected_socket_is_local
+```
+
+# T-145: fake DNS: the pool refuses at its end, and names match without case (GitHub #349)
+
+**Source:** GitHub #349 (https://github.com/PodUtils/podnet/issues/349)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+1. The pool of 131072 addresses (198.18.0.0/15) wraps (`fakedns.rs:65`). Name 131073 gets the address
+   of name 1. `by_ip` then names the newer host, so a connection to the older address goes to the
+   wrong host.
+2. Names match with case. `dns::normalize` (`dns.rs:19`) has no caller. `Example.COM` and
+   `example.com` get two addresses and use two pool slots. A `--map` pin is stored as typed
+   (`fakedns.rs:46-50`, `cli.rs:166-174`).
+3. The AAAA address derives from the v4 address (`fakedns.rs:77-84`), so it has defect 1 too.
+
+## Premise
+
+- Read: all lines above. Wrap arithmetic: after 131071 more names, `next % FAKE_IP_COUNT` is 0 again.
+  Not run.
+- Read: `answer` has three call sites (`netns.rs:879`, `seccomp.rs:987`, `seccomp.rs:1160`).
+  `build_response` takes any rcode (`dns.rs:129`). There is no SERVFAIL constant (`dns.rs:15-16`).
+- `FakeDns` cannot know live flows, so LRU eviction needs the backend layer. It is out of this entry.
+
+## Approach
+
+1. Call `normalize` in `ParsedQuery::parse`, in `address_for`, in `name_for` and in `pin`. A pin whose
+   name already holds a pool address keeps the pool address. State it in the README.
+2. `address_for` returns `Option<Ipv4Addr>`. At `next >= FAKE_IP_COUNT` it returns `None`, with no
+   insert. Add `RCODE_SERVFAIL = 2`. `answer` returns SERVFAIL on `None`.
+3. Update `README.md:195-201`: the pool bound, case-insensitivity, SERVFAIL at the end.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib -- fake_pool_refuses_past_its_end fake_names_ignore_case fake_pin_does_not_evict_a_live_name servfail_answers_a_name_that_does_not_fit
+```
+
+# T-146: seccomp: `connect(AF_UNSPEC)` dissolves the association of a datagram socket (GitHub #350)
+
+**Source:** GitHub #350 (https://github.com/PodUtils/podnet/issues/350) (item 1)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+On Linux, `connect` with `AF_UNSPEC` on a UDP socket disconnects it (DHCP renewal, QUIC migration). Here
+the child gets `EAFNOSUPPORT` and `dest` stays.
+
+## Premise
+
+- Read: `handle_connect` parses with `parse_sockaddr`, which takes only `AF_INET` and `AF_INET6`
+  (`seccomp.rs:411-429`). The error is at `connect.rs:95`. The datagram arm sets `dest`
+  (`connect.rs:97-101`).
+- Read: `handle_recv` serves the inbox only when `dest` is `None` (`inbox.rs:452`), so the socket
+  works after the disconnect.
+- Not run: the C snippet of the issue.
+
+## Approach
+
+1. In `handle_connect`, for a datagram socket whose family field is `AF_UNSPEC` (0) and whose length is
+   at least 2: set `dest = None` and answer 0. No local port is minted.
+2. A later `sendto` with no address then answers `EDESTADDRREQ` (as today for `dest` = `None`).
+3. Order: after T-143, because the pair reader reads `dest`.
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_dgram -- seccomp_udp_af_unspec_disconnects
+```
+
+# T-147: seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350)
+
+**Source:** GitHub #350 (https://github.com/PodUtils/podnet/issues/350) (item 2)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A connected UDP socket reads datagrams from any source that the relay returns. The kernel delivers only
+the datagrams of the peer.
+
+## Premise
+
+- Read: `Inbox::deliver` (`inbox.rs:79`) sends into the pair with no check of the source. Both relay
+  reader tasks call it (`seccomp.rs:1226`, `:1246`). `Inbox::new` has no `dest`.
+- Read: the ruling of 2026-11-04 (`docs/decisions.md:35`): a read of a connected socket stays direct,
+  so the filter must act at delivery.
+- Open: the form of the filter key. The relay source is a `WireSource` (name or address), the `dest` is
+  a fake or real address. Compare after `name_for_ip` mapping.
+
+## Approach
+
+1. Give `Inbox` a shared cell with the recorded `dest`. `deliver` drops a datagram whose source differs
+   (no queue: a chatty source must not grow memory).
+2. Unconnected sockets keep their behaviour. T-146 clears the cell.
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_dgram -- seccomp_connected_udp_drops_other_sources seccomp_unconnected_udp_keeps_all_sources
+```
+
+# T-148: seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350)
+
+**Source:** GitHub #350 (https://github.com/PodUtils/podnet/issues/350) (item 3)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`setsockopt(IP_TTL, 7)` then `getsockopt(IP_TTL)` gives 0 on a datagram socket. The kernel gives 7.
+
+## Premise
+
+- Read: `options_of` returns `None` for `Sock::Datagram` and `Sock::Icmp` (`sockopt.rs:64-69`).
+  `setsockopt` answers 0 and drops the value (`sockopt.rs:93-100`). `getsockopt` writes zeros
+  (`sockopt.rs:151`). T-063 did the same for TCP.
+- `Sock::Icmp` is a struct in `icmp.rs`; it needs an `options` field.
+- The value has no upstream effect (SOCKS5 carries no TTL). It is an echo only.
+
+## Approach
+
+1. Add an `options` map to `Sock::Datagram` and to `Icmp`. Return it from `options_of`.
+2. State in the README that `IP_TTL` and `IP_MTU` are echoes.
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_dgram -- seccomp_udp_ip_ttl_round_trips seccomp_icmp_socket_keeps_its_options
+```
+
+# T-149: seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350)
+
+**Source:** GitHub #350 (https://github.com/PodUtils/podnet/issues/350) (item 4)
+**Category:** research
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The program never sees `ECONNREFUSED` from an ICMP port-unreachable, never sees `EMSGSIZE` with the
+path MTU, and `IP_MTU` has no value. `recvmsg(MSG_ERRQUEUE)` returns `EAGAIN` from the empty queue of
+the AF_UNIX pair.
+
+## Premise
+
+- Read: the relay peers with the SOCKS5 proxy, so an ICMP error at the target does not reach a
+  supervisor socket. The SOCKS5 UDP header has no ICMP or TTL field. `handle_recv` passes
+  `MSG_ERRQUEUE` to the kernel (`inbox.rs:459`).
+- Options: (a) carry a signal in the relay protocol (needs a relay change); (b) make `ECONNREFUSED`
+  after repeated send failures; (c) document that the fidelity stops at the proxy.
+
+## Approach
+
+1. Choose (c) first and write it in `crates/podnet-netns/README.md` and `pod doctor` text.
+2. Answer `recvmsg(MSG_ERRQUEUE)` in the supervisor (`EAGAIN`) so that the answer does not depend on the
+   AF_UNIX kernel socket.
+3. Record (a) and (b) as later work only when a program needs them.
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_dgram -- seccomp_udp_errqueue_read_is_eagain
+grep -n "ICMP error" crates/podnet-netns/README.md
+```
+
+# T-154: seccomp: fuzz targets for the notification handlers (GitHub #353)
+
+**Source:** GitHub #353 (https://github.com/PodUtils/podnet/issues/353) (part 1)
+**Category:** chore
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+Each handler parses bytes that the program controls: sockaddr, msghdr, cmsg (`handle_sendto`
+`seccomp.rs:947`, `handle_sendmmsg` `:1019`, `sockopt.rs`, `recvmmsg.rs`). `fuzz/fuzz_targets/` has 15
+parser targets and none for these handlers. Past bugs of this class: #301, #302, #303, #305.
+
+## Premise
+
+- Read: `read_mem` is `pread` on an fd at an offset (`seccomp.rs:285-300`). `write_mem` writes through
+  the same fd (`:303-330`). A memfd with the child memory image is a drop-in `mem`: no `MemSource`
+  trait is needed.
+- Read: the replies are ioctls on the notify fd (`notif_respond` `:491`, `notif_continue` `:514`,
+  `notif_addfd_*`). This is the seam to abstract, so that a target can read the reply.
+- `seccomp.rs` is at 1516 lines and cannot grow. T-040 splits it and makes a memory-access module.
+- `fuzz/` is its own workspace (nightly, glibc). Its targets call `podnet::fuzzing`.
+
+## Approach
+
+1. After T-040: put the reply primitives behind a small trait with one real implementation (ioctl) and
+   one in-memory implementation.
+2. Add targets `seccomp_sendto`, `seccomp_sendmsg`, `seccomp_sockopt` (fresh state for each input).
+   The oracle: the handler always answers, never panics, never hangs.
+3. Add each target to `fuzz/Cargo.toml` and `.github/workflows/fuzz.yml` (a fixed short budget).
+4. A crash input becomes a unit test first (the rule of `fuzz/Cargo.toml`).
+
+## Prove
+
+```sh
+cargo check --manifest-path fuzz/Cargo.toml --bins
+cd fuzz && cargo +nightly fuzz run seccomp_sendto -- -max_total_time=60
+```
+
+## Start condition
+
+T-040 is done.
+
+# T-155: seccomp: a differential check of the socket calls against the host kernel (GitHub #353)
+
+**Source:** GitHub #353 (https://github.com/PodUtils/podnet/issues/353) (part 2)
+**Category:** chore
+**Milestone:** M5
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+No test runs one scripted syscall sequence natively and in the pod and compares the errno, the returned
+addresses and the cmsg. A rewrite of a handler can pass the hand-written C tests and still differ.
+
+## Premise
+
+- Read: the end-to-end tests are in `tests/pod_seccomp*.rs` (for example `:1588`, `:1657`, `:1717`,
+  `:1810`). `tests/pod_seccomp.rs` is at its cap (2021).
+- No packetdrill in the tree (grep).
+- This work finds the gaps of T-143, T-144, T-146 to T-148 as a list. Start with the TCP surface.
+
+## Approach
+
+1. Write a table of C calls with the expected errno from the host (a small driver, run twice).
+2. Run it natively and with `podnet pod --backend seccomp`. Fail on any difference, except an allowed
+   list (each item names its P-A or T entry).
+3. Add `diff-trace -- cmd` only when step 2 works (errno sequence only: no address normalization).
+4. Run it in `ci.yml` (seconds).
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp_diff -- seccomp_errnos_match_the_host
+```
+
+# T-159: research documents are readings; fix the stale counts of the record (GitHub #356)
+
+**Source:** GitHub #356 (https://github.com/PodUtils/podnet/issues/356)
+**Category:** docs
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`docs/research/` and `docs/reports/` name the path crates/pod-netns/ (69 hits), the file src/proxy_auth.rs (moved to
+`pod-proxy`) and old test paths. Counts differ: `netns.rs` 1199 (now 1200), `warp/up.rs` 1043 (now 847),
+`warp/route.rs` 790 (now 799). No check reads these documents. The issue offers (1) a checker with an
+allowlist, or (2) a statement that they are snapshots.
+
+## Premise
+
+- Read: `TODO/RULES.md:56` says that these directories "are readings at a time". `TODO/todo.toml:15`
+  lists them as `readings`. `architecture.md:3` names its commit (`3bed023`, 2026-11-04).
+  `tests/docs.rs:74-85` reads eight documents, not these.
+- Read: the live plan is the record. T-040 (`TODO/split.md:736`) still says that `seccomp.rs` has 1,900
+  lines, and "do this entry before T-063 starts, or after T-067 is done". Now `seccomp.rs` has 1516
+  lines and T-063 to T-067 are done. This is a stale figure in the record, not in a reading.
+- Measured: `grep -rn "crates/pod-netns/" docs/research docs/reports` gives 35, 8, 6, 6, 5, 5, 2, 2 hits
+  in the eight files that the issue lists.
+
+## Approach
+
+1. Add a banner on top of each affected reading: "Reading of the tree at COMMIT. Paths and counts are
+   history. The plan is the record (`TODO/`)." (the form of RULES.md).
+2. Correct T-040 (a Correction section): the current counts and the done state of T-063 to T-067.
+   Check the other entries that cite `architecture.md` for counts (`grep -n "lines" TODO/*.md`).
+3. Do not add a checker (see Decision).
+
+## Decision
+
+The lead, 2026-11-09: mark the research documents as readings at a time with a banner (`TODO/RULES.md` already treats `docs/research/` as readings). Do not add a path checker. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo todo check
+grep -L "Reading of the tree" docs/research/podnet/architecture.md docs/research/podnet/parity-checklist.md
+```
+
+The `grep -L` prints no file name after the fix.
+
+# T-160: tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357)
+
+**Source:** GitHub #357 (https://github.com/PodUtils/podnet/issues/357)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The verify loop retries for 180 s. At the end it exits 69 and shuts the tunnel down, also when each
+attempt failed at name resolution, before the edge. The tunnel registered and the URL answers from
+outside. Reported: Debian 13 container, egress only through an HTTP CONNECT proxy that resolves names
+itself. The error: `could not verify https://NAME.trycloudflare.com in 180 s: ... the proxy ... refused
+CONNECT ...: 502`, exit 69, and `curl --proxy ... URL` gives 200. `--no-verify` is all or nothing.
+
+## Premise
+
+- Read: `verify_fetch` (`src/tunnel.rs:1230-1311`). The Dns arm (`:1276-1279`) and the other `Err` arm
+  (`:1280-1283`) only change the retry text. After the loop only `last_status` can demote the verdict
+  (`:1301-1306`). Otherwise `fault(Unavailable)` (`:1307-1310`).
+- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-176`).
+  `run_demo` passes a body token, so the warn branch cannot apply; it prints PROOF from `check.dns`
+  (`run.rs:153-160`). `wants_verify` (`tunnel.rs:1208`) has no caller. The ready document has
+  `"verified": bool` (`run.rs:196-215`).
+- Read: the test `a_failed_verify_exits_69_after_the_budget` (`tunnel.rs:1489`) uses HTTP 530. It must
+  stay fatal.
+- A refusal of CONNECT is also how a proxy says "not on my allow-list" (see Decision). The message must say
+  "not proved".
+- `src/tunnel.rs` is at its 1599 cap.
+
+## Approach
+
+1. Move `verify_fetch` and `Verified` into a new file of the tunnel module. Track `resolution_only`
+   for each attempt: hop `Dns`, or a `Refusal` of CONNECT in the error chain (`err.chain()` downcast;
+   `src/fetch.rs:71-83`). Any other `Err` clears it.
+2. After the loop, when `resolution_only` holds: log a warning in STE ("the tunnel is registered; this
+   host cannot resolve the name yet; the URL is not proved") and return `Ok(Verified { dns: "none" })`.
+   Apply this also when a body token is set (the demo).
+3. Ready document: keep `verified: false` and add `"unverified": "resolution"`. `run_demo` prints a
+   line that does not say PROOF.
+4. Keep `--no-verify`. Add a value for a strict mode (see Decision).
+
+## Decision
+
+The lead, 2026-11-09: demote the verify verdict also when the failure is a proxy refusal of CONNECT. The text says "not proved" and the tunnel stays up. Add a strict switch for the operator who wants exit 69 in that case. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib -- a_name_that_does_not_resolve_keeps_the_tunnel_up a_failed_verify_exits_69_after_the_budget
+cargo test --test cli -- tunnel_ready_document_marks_an_unresolved_name
+```
+
+# T-164: Document `--no-verify` in the README, and say what it does not do (GitHub #361)
+
+**Source:** GitHub #361 (https://github.com/PodUtils/podnet/issues/361)
+**Category:** docs
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`--no-verify` (shared by `tunnel`, `serve`, `share` and `demo`) is not in the README. It skips the
+fetch of the public URL after the registration. It does not change the check of an origin
+certificate: `--no-tls-verify` does that (README.md:303). The name reads as "do not check TLS".
+Operators of restricted hosts need the flag: the fresh `*.trycloudflare.com` name resolves late there.
+
+## Premise
+
+- `src/cli/opts.rs:58-60` declares it (`global = true`); `src/cli/opts.rs:173` sets `config.verify`.
+- `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `src/tunnel.rs:1230`
+  runs the fetch. `src/net.rs` takes `no_tls_verify` from the ingress rule. The two flags share no state.
+- `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1208`) has no caller.
+- Not measured: the runtime fetch on a restricted host.
+
+## Approach
+
+1. Add one bullet beside `--no-tls-verify` (README.md:303): what it skips and what it keeps.
+2. Keep the name. Reword the help line: "Do not fetch the public URL to prove reachability. Origin TLS
+   checks stay on." A rename waits for the third state of #357.
+3. Optional: a test that each flag of `TunnelOpts` has a README mention.
+
+## Prove
+
+```sh
+grep -c -e '--no-verify' README.md
+cargo test --test cli -- help
+```
+
+# T-169: `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366)
+
+**Source:** GitHub #366 (https://github.com/PodUtils/podnet/issues/366)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+On a host with no IPv4 route, `tunnel --transport warp` tries the IPv4 door first (device record order),
+fails with `Network unreachable`, then the IPv6 door, and can reach the WebSocket relay first. `warp`
+has `--masque-endpoint`; `tunnel` has none.
+
+## Premise
+
+- `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:823-834`). Neither
+  `TunnelOpts` (`src/cli/opts.rs:20-105`) nor `TunnelArgs` has the flag. `with_masque` exists
+  (`src/warp/mod.rs:284`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
+- `open_on` (`src/warp/mod.rs:821-846`) uses `endpoint_order` (`:99-120`): the record order, IPv4 first.
+  `has_default_route(true)` (v6) only decides whether the IPv6 door is included.
+- The log lines of the issue are from beta.6 on one host. The silent-drop timing is read, not measured.
+
+## Approach
+
+1. Fix: in the `endpoint == None` branch, with no IPv4 default route (`has_default_route(false)`) and no
+   won door, put the IPv6 door first. Dual-stack keeps the order. Log the family of a failed door.
+2. Flag: `--masque-endpoint IP:PORT` in `TunnelOpts`, through `Config`, to `warp_targets`
+   (as `--warp-identity`, `src/cli/opts.rs:172`, `src/tunnel.rs:157,262`).
+
+## Decision
+
+The lead, 2026-11-09: item 1 (the family order) is a fix and lands now. Item 2 (the flag `--masque-endpoint`) is a feature in code that moves to `pod-warp` and `pod-cloudflare`: send it as a COORD issue (to podcrates) and take it with the crates (T-050, T-052). The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test -p podnet endpoint_order_puts_v6_first_without_a_v4_route
+cargo test --test cli -- tunnel_takes_masque_endpoint
+```
+
+# T-170: Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367)
+
+**Source:** GitHub #367 (https://github.com/PodUtils/podnet/issues/367)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`provision` retries each transport error up to `PROVISION_ATTEMPTS = 5` (2, 4, 8, 16 s). Only `Hop::Proxy`,
+`Hop::Tls` and `Hop::Network` end the loop; `Hop::Dns` falls into the retry arm. With no resolver, five
+attempts repeat the same failure for about 30 s.
+
+## Premise
+
+- `src/quicktunnel.rs:308-310` (budget and attempts), `:341-353` (the arms; `Hop::Dns` goes to
+  `ProvisionError::Http(_)` at `:353`).
+- `crate::resolve::answering_step(host)` (`src/resolve.rs:150`) names the step that answers now.
+- `src/quicktunnel.rs` is Cloudflare adapter code (pod-cloudflare, T-029/T-052): a fix is allowed.
+- Not measured: the 30 s run of the issue.
+
+## Approach
+
+1. Retry a `Hop::Dns` failure once. Retry again only when `answering_step` of the API host changed.
+2. End with the `Hop::Dns` hint (`src/hop.rs:45`).
+
+## Prove
+
+```sh
+cargo test -p podnet quicktunnel::tests::a_dns_failure_is_retried_once
+```
+
+# T-171: The verify loop names the remedy when the public name does not resolve (GitHub #367)
+
+**Source:** GitHub #367 (https://github.com/PodUtils/podnet/issues/367)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`verify_fetch` retries 180 s (`VERIFY_BUDGET`, `src/tunnel.rs:1315`). On a host with no resolver the
+error text repeats `system resolver: no answer ... Network unreachable`. The final error
+(`src/tunnel.rs:1307-1310`) names no remedy: `--resolve HOST=IP`, or `--no-verify`.
+
+## Premise
+
+- The loop keeps `last = "waiting for DNS: ..."` (`src/tunnel.rs:1276-1279`). `Verified.dns` records the
+  step on success only. `Hop::Dns` has a hint (`src/hop.rs:45`).
+- `run_tunnel`, `run_share` and `run_demo` (`src/cli/cmd/run.rs`) wait for the verify.
+- Overlap: #357 (exit 69 and teardown on an unresolved name). Do both in one pass; the verdict of the
+  loop after the budget is #357's subject.
+
+## Approach
+
+1. After the provision, if `answering_step(host)` is `none`, print one line with the name, the chain
+   state and the two remedies.
+2. Add the hint to the final error.
+
+## Prove
+
+```sh
+cargo test -p podnet tunnel::tests::verify_failure_names_the_remedy
+```
+
+# T-173: A WARP identity of another uid, with a consent variable (GitHub #368)
+
+**Source:** GitHub #368 (https://github.com/PodUtils/podnet/issues/368)
+**Category:** feature
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`check_private` refuses an identity file whose owner is another uid, also with `--identity PATH`. The
+state directory has `PODNET_FOREIGN_HOME=allow`; the identity file has no override. Root cannot read the
+device that a service user saved. A second device spends a registration (`docs/decisions.md`, WARP devices).
+
+## Premise
+
+- `src/warp/mod.rs:942-968` (owner and mode checks, bare `bail!`); readers: `load` (`:379`) and
+  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:457-476`) refuses and does not write over the file.
+- `src/state.rs:67-118` has the model. `src/manual/facts.rs:126` lists `PODNET_FOREIGN_HOME`.
+- `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
+- Not measured: two real users (a registration is spent).
+
+## Approach
+
+1. Allow an owner mismatch with the consent variable (see Decision); keep the mode check; warn.
+2. Give the refusal `Fault::Config` and name the variable. Name it in the state-directory error too.
+3. Keep: a refused file never leads to a registration.
+4. Update `src/manual/facts.rs`.
+
+## Decision
+
+The lead, 2026-11-09: the consent variable is a new `PODNET_FOREIGN_IDENTITY=allow`, not `PODNET_FOREIGN_HOME`: the existing word covers writes in a directory, and an identity is a credential. The exit code and the message (item 2) land now. The feature (item 1) goes as a COORD issue (to podcrates) and is taken with `pod-warp` (T-050). The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test -p podnet warp::private_file_tests
+```
+
+The tests cover: refuse, allow with the variable, mode still checked, no registration after a refusal.
+
+# T-182: `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378)
+
+**Source:** GitHub #378 (https://github.com/PodUtils/podnet/issues/378)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+`podnet doctor --agent` checks one TLS handshake for each row. Three rows name the host of the index, and the tool gets its files from another host: `pip` (`pypi.org`, files from `files.pythonhosted.org`), `cargo` (`index.crates.io`, files from `static.crates.io`) and `docker pull` (`registry-1.docker.io`, blobs by a 307 to another host, `production.cloudfront.docker.com` at the time of the issue). A host that reaches the index and not the files shows `ok`. `npm`, `go modules` and `github.com` use one host.
+
+## Premise
+
+- `Task` has one `host` and one `port`, and `Check::Tls` is one handshake (`src/agent.rs:25-39`). The three rows are at `src/agent.rs:55-59`, `:67-71` and `:79-83`. The table prints one target (`src/agent.rs:491-506`).
+- `registry-1.docker.io` is in pod-services as the endpoint `registry` of `docker-hub-registry`. The other hosts are not in pod-services (read of `services/` at podcrates v0.7.0).
+- `src/agent.rs` is a taken source of pod-services (not frozen).
+- Not measured: the three answers of the issue (curl of 2026-11-07).
+
+## Approach
+
+1. Add an optional second target to `Task` (the host of the files). A row is `ok` only when both answer. Name the failed host in the row: `index ok, files fail`. Add the second host to the JSON of `--agent`.
+2. `docker pull`: read the host of the blob from the 307 of one blob request. This adds no hardcoded host. `cargo`: the `dl` key of `config.json` names `static.crates.io`.
+3. `pip`: the host of the files is a new host of another party. Do not hardcode it (`docs/decisions.md`, Services crate): ask podcrates for service files (COORD issue `(to podcrates)`), then read them with `crate::services::endpoint`. Start condition: the file of `pod-services` exists.
+4. Keep `npm`, `go modules` and the two `github.com` rows as they are.
+
+## Decision
+
+The lead, 2026-11-09: the docker and cargo file hosts come from the answers of the index (no hardcoded host). The pip file host comes from a file of `pod-services` that podcrates adds. The entry waits for that file. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib agent::
+cargo run -q -- doctor --agent --json
+```
+
+A unit test gives a row with a passing index and a failing file host and expects `fail` and the name of the host.
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-services`): the file host of pip is a file of that crate. Send a COORD issue (to podcrates). The entry is unblocked when the file exists.
+
+# T-183: One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379)
+
+**Source:** GitHub #379 (https://github.com/PodUtils/podnet/issues/379)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`HTTPS_PROXY=http://gw` gives `gw:8080` in podnet (`HTTP_PORT = 8080`, comment "as in curl") and `gw:80` in podssh (`pod-proxy` default). curl reads a missing proxy port as 1080 (manual, `--proxy`). The comment names a program whose value it is not. A change of the value also moves which `NO_PROXY` entries match (`no_proxy_ports`).
+
+## Premise
+
+- `src/egress.rs:45-46` sets 8080 and `rules()` passes it as `http_port` (`src/egress.rs:52-63`); `parse()` uses it (`:66`).
+- `pod-proxy` `HTTP_PORT = 80` (`proxy/parse.rs:21`) is the default of `Rules` (`env.rs:141`). A consumer can set another value (`env.rs:124`).
+- The tests assert the constant, not a number (`src/egress.rs:461,475`).
+- `docs/decisions.md` has no ruling on this value. Not measured: curl behaviour (read from the issue).
+
+## Approach
+
+1. The value is 80 (see Decision): the default of `pod-proxy`; delete the override in `rules()` and `parse()`.
+2. Write the reason once, with the true program names (Go and Python requests read 80). Record the ruling in `docs/decisions.md`.
+3. Change the tests to assert the number, and add the same case with a comment to the podssh side as a COORD issue `(to podssh)`.
+
+## Decision
+
+The lead, 2026-11-09: the default port of an `http://` proxy URL with no port is 80 (the value of `pod-proxy`, podssh, Go and Python). Not 8080. Record the ruling in `docs/decisions.md`. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib egress::
+grep -n "HTTP_PORT" src/egress.rs
+```
+
+The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled number).
+
+# T-184: `doctor`: the relay row follows `--relay` and keeps a loopback relay (GitHub #380)
+
+**Source:** GitHub #380 (https://github.com/PodUtils/podnet/issues/380)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`podnet doctor` builds the relay row with `Relay::from_env(None)` and keeps it only when the URL starts with `https://` (`src/doctor.rs:159-170`). The user cannot pass the relay on the command line, and a loopback relay (`http://127.0.0.1:PORT`, allowed by `src/ws_relay.rs:113-165`) gives no row. `bug-report --doctor` has the same table. `--transport relay` is not seen either.
+
+## Premise
+
+- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:38-48`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-29`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
+- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:244-248`).
+- `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
+
+## Approach
+
+1. Add `--relay URL` to `DoctorArgs` (env `PODNET_RELAY`). Add a `relay: Option<String>` to `doctor::Options` and pass it to `targets(relay)`.
+2. Keep a loopback `http://` relay as a row with a plain check and the words `loopback relay, no TLS`.
+3. Do not add a `--transport` flag to doctor. Name the relay row always when a relay is given.
+4. Tests of `targets()` for: no relay, an `https://` relay, a comma list, a loopback relay.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib doctor::
+python3 scripts/check-size.py
+```
+
+# T-185: A deadline for the client handshake of `net proxy`, `net tailscale` and `pod --serve` (GitHub #384)
+
+**Source:** GitHub #384 (https://github.com/PodUtils/podnet/issues/384)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** M
+**Status:** open
+
+## Problem
+
+A client that connects and sends nothing, or one byte of a SOCKS5 greeting, holds its task and socket until the process ends. Each connection is unauthenticated. The accept loops have no cap. The WARP door has the fix (`REQUEST_LIMIT`, 30 s, `src/warp/proxy.rs:612`). `CLIENT_TIMEOUT` (300 s) wraps only the copy.
+
+## Premise
+
+- `src/vnet/proxy.rs:84-96`: `fill_buf`, `socks5_read_request` and `http_read_connect` have no timeout. The copy is wrapped at `:128-135`. Accept loops: `:271-296`.
+- `crates/podnet-netns/src/tailscale.rs:377,383,387`: same reads. The dial and the copy have a timeout (`:399`, `:419`).
+- `crates/podnet-netns/src/frontdoor.rs:79,121`: same reads in the door of `pod --serve` (not in the issue).
+- `src/warp/proxy.rs:628-630,657-661,703-706`: the precedent.
+- Not run.
+
+## Approach
+
+1. One constant `REQUEST_LIMIT` (30 s) in `podnet-netns` (`socks.rs`). Wrap the first byte and the request read in each of the three doors. The warp door uses the same constant.
+2. On expiry send a SOCKS5 reply `0x04` or an HTTP `504`, then close (`fail_with`, `src/vnet/proxy.rs:171-190`).
+3. Fix the comment of `CLIENT_TIMEOUT`: it bounds the copy only.
+4. Count live client tasks (as `SocketCount::live`, `src/vnet/stack.rs:642-648`). A cap is a later choice.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib vnet::proxy::
+cargo test -p podnet-netns tailscale
+```
+
+Tests drive `handle_connection` over a duplex with tokio paused time: no byte, one byte `0x05`, and a CONNECT head with no blank line. Each ends within the limit with an answer.
+
+# T-186: `net tailscale` and the other unix listeners claim the socket path first (GitHub #385)
+
+**Source:** GitHub #385 (https://github.com/PodUtils/podnet/issues/385)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`bind_unix` of the tailnet door removes the path and binds (`crates/podnet-netns/src/tailscale.rs:355-359`). It deletes a regular file and takes over a live socket. The ruling "Sockets" (`docs/decisions.md:22`): a live socket is 69, a file that is not a socket is 64, a stale socket is removed. The default path is `unix:/tmp/podnet-socks.sock` (`src/cli/cmd/net/mod.rs:65`).
+
+## Premise
+
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:317`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
+- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1368`.
+- `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:347`).
+- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:53-59`).
+
+## Approach
+
+1. Move the claim logic to `podnet_netns::listen` (with `Fault` mapping kept in the root by a thin wrapper), or call `claim_socket_path` in `net_tailscale` before `tailscale::serve`. Use it in `bind_unix` of the tailnet door and of `frontdoor.rs`.
+2. Tests for three cases: live socket (69), regular file (64), stale socket (removed).
+3. Name the exit codes in the help of `net tailscale` and in `docs/virtual-network.md`. Do not edit `docs/releases/v0.3.0-beta.12.md` (a reading at a time).
+4. The seccomp inbound path (`seccomp.rs:1368`) is a path that the supervisor makes: leave it, and say why in the commit.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib net::
+cargo test -p podnet-netns tailscale
+```
+
+# T-187: `net proxy --forward`: a real target may be a name, and the dial reports its hop (GitHub #386)
+
+**Source:** GitHub #386 (https://github.com/PodUtils/podnet/issues/386)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs:150-154`) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:119-120` say `host:port`. The dial is a bare `TcpStream::connect` (`:165-172`): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`src/vnet/proxy.rs:218`). Measured by the issue: a dead `--proxy` changed nothing.
+
+## Premise
+
+- `connect_origin` (`src/net.rs:89-114`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:180-198`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:80-84`).
+- `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
+- The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:195-199`).
+
+## Approach
+
+1. `RealTarget::Tcp` holds host and port. Accept a name and `[v6]:port`. Dial with a timeout.
+2. Apply the Decision for the proxy. Log the target, the proxy label and the hop with `egress::error_of` words.
+3. Keep `unix:` as it is. Update the help and the document in the same change.
+
+## Decision
+
+The lead, 2026-11-09: `--forward` uses the proxy of the process for a non-loopback target (with `NO_PROXY`). It dials direct for a loopback target and for `unix:`. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib cli::cmd::net::proxy
+```
+
+Unit tests: a literal, a name, a unix path, and the error words without a network.
+
+# T-188: `net proxy --forward` reports a failed bind before it prints the forward (GitHub #387)
+
+**Source:** GitHub #387 (https://github.com/PodUtils/podnet/issues/387)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`forward` binds inside a spawned task and returns a `JoinHandle` (`src/vnet/proxy.rs:195-213`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:116`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`src/vnet/switch.rs:688-692`).
+
+## Premise
+
+- Refusals: `src/vnet/stack.rs:815-832` (`AddrNotAvailable`, `PermissionDenied`, `AddrInUse`).
+- `spawn_forwards` cannot return a result (`src/vnet/proxy.rs:240-246`).
+- The `--map` entry outside the subnet fails only at the first request (note of the issue: not verified).
+
+## Approach
+
+1. Bind first (async `forward`, or a `oneshot`). Return the result to `net_proxy`.
+2. Map `AddrNotAvailable` to `Fault::Usage`, `AddrInUse` and `PermissionDenied` to `Fault::Unavailable`. Print the line after the bind.
+3. Reject a repeated `VIRT` at parse time with its name.
+4. Keep the per-connection warn at `src/vnet/proxy.rs:218-220`.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib vnet::proxy::
+```
+
+Tests: a forward outside the subnet returns the error; a second forward of one address returns `AddrInUse`; a valid forward still serves.
+
+# T-189: The switch counts each packet that it drops (GitHub #388, part 1)
+
+**Source:** GitHub #388 (https://github.com/PodUtils/podnet/issues/388)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `src/vnet/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:398`). No counter, no log, no accessor. The `spoofed` counter (`:138`) has no accessor. The rule of the project: a drop is counted (`src/vnet/stack.rs:171-175`). The fault injector counts are not readable either (`:54-111`).
+
+## Premise
+
+- Read only. No run. `src/vnet/switch.rs` has 711 lines.
+
+## Approach
+
+1. Count each failed `try_send` for each peer. Log the first drop of each peer at warn (peer id, addresses, depth).
+2. A snapshot method of `Switch`: for each peer, sent and dropped; plus `spoofed` and the injector counts. Print the totals at stop.
+3. Policy for a full queue stays a drop with a count (backpressure needs a change of the reader: later).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib vnet::switch::
+```
+
+A test fills the queue of a peer that does not read and reads a non-zero drop count.
+
+# T-190: A stack over a switch link has bounded queues (GitHub #388, part 2)
+
+**Source:** GitHub #388 (https://github.com/PodUtils/podnet/issues/388)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`NetStack::over_link` builds `LinkDevice::tunnel(config.mtu)`: both queues are unbounded and the stack does not hold when full (`src/vnet/stack.rs:1436-1441`, `src/vnet/device.rs:276-285`). A slow pump grows the heap. The WARP stack uses `tunnel_bounded` and `with_inbound_limit` (`src/warp/ip.rs:454-455`, 512 and 4096 packets).
+
+## Premise
+
+- `over_link` has one production caller (`src/cli/cmd/net/proxy.rs:41`) and the switch tests (`src/vnet/switch/tests.rs`).
+- `src/vnet/stack.rs` has 2103 lines in `scripts/size-allow.txt` and can only shrink. Two new `StackConfig` fields grow it.
+
+## Approach
+
+1. Add `LinkDevice::link(mtu)` in `src/vnet/device.rs` (639 lines): a bounded tunnel with the limits as named constants. In `stack.rs` replace the name `tunnel` by `link` (same line count). No `StackConfig` field now; fields wait for T-034.
+2. Check that `device_stats()` shows the drops.
+3. Existing switch tests, including the 64 KiB transfer with faults (`docs/virtual-network.md`), pass.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib vnet::
+python3 scripts/check-size.py
+```
+
+# T-191: The listener table of `net doctor` names each command that listens (GitHub #389, part 1)
+
+**Source:** GitHub #389 (https://github.com/PodUtils/podnet/issues/389)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`NEEDS` (`src/vnet/doctor.rs:91-96`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`src/vnet/switch.rs:350-352`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:114` repeats the short list.
+
+## Premise
+
+- Printed at `src/cli/cmd/net/mod.rs:252-253`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
+- `README.md:903-905` uses `net switch --listen tcp://` as its example.
+
+## Approach
+
+1. Rewrite `NEEDS` with each command and the default form. Fix `docs/target-environment.md:114`.
+2. A test reads the `--listen` flags of the command tree and fails when a command is not in `NEEDS` (a generated table is a later step).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib vnet::doctor::
+cargo test -p podnet --test cli doctor_tells_listen_from_bind
+```
+
+# T-192: A refused TCP bind exits 69 in each listener command (GitHub #389, part 2; GitHub #385 step 5)
+
+**Source:** GitHub #389 (https://github.com/PodUtils/podnet/issues/389)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:177`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:69-71` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+
+## Premise
+
+- Read only. The unix binds use `claim_socket_path` and give 69 for a live socket.
+
+## Approach
+
+1. One helper `bind_tcp(addr)` in the root crate that binds and maps `AddrInUse`, `PermissionDenied` and `AddrNotAvailable` to `Fault::Unavailable`. Use it at the five sites. For `podnet-netns`, wrap at the caller in `net_tailscale`.
+2. A test binds twice on one port and expects 69.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib net::
+cargo test -p podnet --test cli
+```
+
+# T-193: `net proxy --map` fills the gateway resolver and the shim table (GitHub #390)
+
+**Source:** GitHub #390 (https://github.com/PodUtils/podnet/issues/390)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:90-102`). The stack gets `dns: None` (`src/vnet/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`:732-742`, `:1050-1053`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:21-25`, `src/vnet/shim.rs:53,82-90`). `docs/virtual-network.md:200-202` and `net addresses` advertise the resolver.
+
+## Premise
+
+- `vnet::dns::Resolver` exists and is tested: `from_lines` (`src/vnet/dns.rs:57`), `hosts_pairs` (`:138`), fields `upstream` and `catch_all` (`:26,29`) that nothing sets.
+- `src/vnet/stack.rs` allowlist (2103 lines): no new test in that file before T-034. A test can use the public `StackConfig.dns` from `src/vnet/dns.rs` or `tests/`.
+
+## Approach
+
+1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
+2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
+3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
+4. Update the help and `docs/virtual-network.md:200-202`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib vnet::dns::
+cargo test -p podnet --test vnet
+```
+
+A test answers a DNS query for a mapped name at the gateway address.
+
+# T-194: A relay `close` aborts the session task of the node (GitHub #391)
+
+**Source:** GitHub #391 (https://github.com/PodUtils/podnet/issues/391)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The `close` control message removes the entry of the session and drops its `AbortHandle` (`src/relay_reverse.rs:522-526`). A dropped handle does not stop the task. If the task waits in `write_all` to a target that does not read (`:719-727`), it stays with its socket and its queued frames. The binary-frame arm aborts (`:547-551`).
+
+## Premise
+
+- The comment at `:523-524` says that dropping the sender ends the task. It does not, for a blocked write.
+- The same removal at `:573-575` (`OutKind::End`) is safe: the task has returned.
+- The test `a_local_side_that_does_not_read_stops_no_other_session` (`tests/relay_reverse.rs:483`) reaches only the binary-frame arm. The fake relay sends `close` at `:179`.
+- Trade: an abort drops the target connection with no FIN (reset instead of half-close).
+
+## Approach
+
+1. In the `close` arm take the entry and call `abort()`. Fix the comment.
+2. A helper `end_session(&mut sessions, id)` for each removal, so that a removal always means aborted or done.
+3. New test `a_relay_close_ends_a_session_whose_target_does_not_read`.
+
+## Prove
+
+```sh
+cargo test --test relay_reverse -- a_relay_close_ends_a_session_whose_target_does_not_read
+cargo test --test relay_reverse
+```
+
+# T-195: `relay stop` checks the pair before it stops the local node (GitHub #392)
+
+**Source:** GitHub #392 (https://github.com/PodUtils/podnet/issues/392)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:207-224`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:215-217`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
+
+## Premise
+
+- The local-first order has a good reason (`src/cli/cmd/relay.rs:209-210`): a stopped node does not connect again.
+- Read only. No run.
+
+## Approach
+
+1. Before the first local stop, check that `pair.stop_token` is not empty and that the relay URL parses. Same faults and messages as now.
+2. When the relay call fails after the local stop, say that the relay side is live, give the time left (`relay_reverse::left`) and the pair file path.
+3. A retry of the POST on a transport error or 5xx is optional (short, capped). Skip it if it grows the file.
+
+## Prove
+
+```sh
+cargo test --test relay_reverse relay_stop
+```
+
+A test: a pair with an empty stop token stops no instance, exits 69 and keeps the file.
+
+# T-196: The relay node drains and waits after a local end of stream (GitHub #393)
+
+**Source:** GitHub #393 (https://github.com/PodUtils/podnet/issues/393)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`session` ends when the local read returns 0 (`src/relay_reverse.rs:706`, select at `:728-731`) and sends `close` at once (`:733`). The operator side keeps the session open after its input ends (`EOF_IDLE`, `:775`, `:863`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, `:895`). The forward leg has the right shape (`src/relay.rs:263-297`).
+
+## Premise
+
+- The queued frames in `data_rx` are dropped when the first half ends.
+- Whether the relay forwards the operator bytes after the `close` of the node is not known (not in this repository).
+- A wait after every target close would add delay to ordinary sessions: the Decision sets a short grace time.
+
+## Approach
+
+1. When the local read returns 0, send no `close`. Keep `to_local` running until the relay closes the id, a write fails, or the grace time of the Decision passes with no frame.
+2. Before `close`, write the queued frames to the target.
+3. Log the reason (`target closed its write side`).
+4. T-087 rewrites this framing: do T-194 to T-197 first, and port the result.
+
+## Decision
+
+The lead, 2026-11-09: the node ends when the relay closes the id, when a write to the target fails, or after about 2 s with no frame from the operator. It does not wait the 15 s of `EOF_IDLE`. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test --test relay_reverse -- a_half_closing_target_gets_the_whole_input
+cargo test --test relay_reverse
+```
+
+A fake relay and a target that writes, shuts down its write half, then reads to the end: it reads each byte of the operator.
+
+# T-197: The pair file is always mode 0600, and `load` checks the file (GitHub #394)
+
+**Source:** GitHub #394 (https://github.com/PodUtils/podnet/issues/394)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`save` opens the pair file with `.mode(0o600)` (`src/relay_reverse.rs:147-152`). The kernel applies the mode only to a new file. An old file of mode 0644 keeps it, and `relay pair` prints `mode 0600` (`src/cli/cmd/relay.rs:99`). `save` follows a symlink. `load` uses `read_to_string` (`:165`) with no check of type, owner, mode or size. The file holds three tokens. The token cache has all four checks and a rename write (`src/relay_pool.rs:163-195`).
+
+## Premise
+
+- `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`src/state.rs:344-363`).
+- `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs:149-186`).
+- `DirBuilder::mode(0o700)` applies only to a new directory (`:141-144`).
+- The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:1119`.
+
+## Approach
+
+1. `save` calls `state::replace_file(.., 0o600)`.
+2. `load` applies the four checks of `read_private` (share one function) and fails with a message that names the reason.
+3. Refuse a `relay` directory that the group or others can write.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib relay_reverse::
+```
+
+Tests: a 0644 file becomes 0600 after `save`; a symlink is replaced; `load` refuses a 0644 file, a symlink and an oversize file.
+
+# T-198: `docs/protocol.md` and the test agree on the number of seed alternates (GitHub #395)
+
+**Source:** GitHub #395 (https://github.com/PodUtils/podnet/issues/395)
+**Category:** docs
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`docs/protocol.md:209` says the alternates are the first 3 hosts of the pool. The text after it says the default relay uses 6 hosts until a pool is cached. The code takes 3 (`MAX_ALTERNATES`, `src/relay_pool.rs:39`, `:119`). The seed has 6 endpoints (`ajam-relay.toml`). A connect with no pool tries the primary and 3 hosts. The stagger is 2 s each (`src/ws_relay.rs:200`).
+
+## Premise
+
+- The test pins the count of alternates only (`src/relay_pool.rs:320`).
+- `docs/decisions.md` (2026-11-04, Relay) says only that the alternates are the hosts of the podssh seed.
+
+## Approach
+
+1. Call: 3 stays (code, test and the delay of 6 s at most). Record it in `docs/decisions.md`.
+2. Fix the paragraph: the seed holds 6 hosts, the client takes the first 3. Name `MAX_ALTERNATES`.
+3. Test: `seed().len() >= MAX_ALTERNATES` (not `== 6`: the seed is data of pod-services).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib relay_pool::
+cargo todo check
+```
+
+# T-199: `relay connect --listen` has the instance surface of `connect -L` (GitHub #396)
+
+**Source:** GitHub #396 (https://github.com/PodUtils/podnet/issues/396)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`podnet relay connect NAME --listen LISTEN` is a server. It has no `--detach`, `--name`, `--replace`, `--no-restart` or
+`--ready-timeout`. `podnet ps` and `podnet stop` cannot see it. An accept error ends it with exit 1 (no supervisor can
+restart it). The unix socket file stays after exit. The refusal text of `claim_socket_path` names `podnet ps`,
+`podnet stop NAME` and `--replace`, and none of them works for this command. `connect -L` has all of this (issues 202,
+207).
+
+## Premise
+
+- `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:49-64`. `RelayCommand::Node` has it: `:44-45`.
+- `detach_of` has no arm for it: `src/cli/opts.rs:240-243`. `connect` has one: `:233`.
+- Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:186`, `:198`. `connect -L` logs and returns:
+  `src/cli/cmd/connect.rs:185-188`.
+- The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
+  `SocketFile` is in `src/cli/cmd/connect.rs:196-216` (`pub(crate)`).
+- Message: `src/net.rs:38-44`.
+- `src/main.rs:148` allows `--replace` without `--detach` only for `Command::Connect`.
+
+## Approach
+
+1. Flatten `DetachArgs` into `Connect`. Add the arm to `detach_of`. Allow `--replace` as for `connect -L` in `main.rs`.
+   The flags have no effect without `--listen`.
+2. On accept error: warn and return (as `connect -L`), so a supervisor restarts the process.
+3. Use `SocketFile` for the unix listener. Pass the real `replace` to `claim_socket_path`.
+4. Change the `net.rs` message to name only remedies that exist for the caller.
+5. Do not change the stdin and stdout mode.
+
+## Prove
+
+`cargo test -p podnet --test cli relay_connect_listen_detach` (new test: `--detach --name fwd` starts, `ps --json` lists
+`fwd`, `stop fwd` ends it).
+`cargo test -p podnet relay_connect_unix_socket_removed` (new test: the socket file is gone after a clean stop).
+`cargo run -q -- relay connect x --listen tcp://127.0.0.1:0 --detach --help` exits 0 (flag exists).
+
+# T-201: `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398)
+
+**Source:** GitHub #398 (https://github.com/PodUtils/podnet/issues/398)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`WebSocketTunnel::connect` opens TCP with `Direct::new().connect`. `Direct` uses the system resolver only: it ignores
+`--proxy`, `NO_PROXY`, `--resolve` and DoH. `parse_ws_url` has no bracket handling, so `wss://[::1]:8443/ws` fails. The
+TLS config is `util::tls::client_config(..)` with no ALPN pin. The trait arguments `host` and `port` are dropped. No
+command builds the type (latent).
+
+## Premise
+
+- `src/transport/websocket.rs:181-185` (direct dial, `host` and `port` dropped), `:142-150` (`rsplit_once(':')`),
+  `:193-197` (TLS).
+- The precedent: `src/ws.rs:120-123`, `:155` (`crate::egress::dial`), `:161` (ALPN `http/1.1`);
+  `src/ws_relay.rs:605-619`; `Host::parse`, `src/ws_relay.rs:137-149`.
+- `grep -rn WebSocketTunnel src` finds only the module and one test (`src/transport/mod.rs:474`).
+
+## Approach
+
+1. Replace the direct dial with `crate::egress::dial(&url_host, url_port, None, timeout)`. Map the error to
+   `TransportError::Unreachable`.
+2. Strip the brackets of an IPv6 host for the dial and the server name. Add them back in the `Host` header.
+3. Build the TLS config from `crate::trust::context()` with ALPN `http/1.1`, as `ws.rs` does.
+4. Document in the type that the destination is its URL (the addressing mode is #377, outside this entry).
+
+## Prove
+
+`cargo test -p podnet --lib transport::websocket` (new tests: `wss://[::1]:8443/ws` gives host `::1`; a loopback server
+with a refusing proxy shows that the proxy is asked).
+`cargo test -p podnet --lib websocket_transport_reports_its_name`.
+
+# T-202: `serve` of a directory with no `index.html` logs no WARN for the 404 at `/` (GitHub #399)
+
+**Source:** GitHub #399 (https://github.com/PodUtils/podnet/issues/399)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`Show::root_404` makes the verify accept a 404 at `/` as the normal answer (issue 119, commit 0775407). No code sets it
+to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN ... the origin answered HTTP 404`.
+
+## Premise
+
+- `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:114` (field), `:124` (`root_404: false`),
+  `src/cli/cmd/run.rs:31` (read).
+- `serve` passes `args.common.show()`: `src/cli/cmd/share.rs:149-151`.
+- The warn branch: `src/tunnel.rs:1266-1270`. `static_router` gives 404 at `/` with no index: `src/service.rs:110-150`.
+- `src/config.rs` is in the size allowlist: do not add the field there.
+
+## Approach
+
+1. In `serve()` (share.rs), set `show.root_404 = !args.spa && !args.dir.join("index.html").is_file()` on a local copy of
+   `Show`. Pass it to `preflight` and `run_tunnel`.
+2. Do not touch `config.rs`. (`tunnel --config` with a static catch-all stays out of scope.)
+
+## Prove
+
+`cargo test -p podnet --lib serve_show_root_404` (new test: a helper that builds the `Show` for an empty directory gives
+true; for a directory with `index.html` gives false).
+`cargo test -p podnet --lib verify_accepts_404_at_info` (new test: a local server with status 404 and `accepted=&[404]`
+returns `Ok`).
+
+# T-203: The ready line of `share --json` has `schema` and `podnet` (GitHub #400)
+
+**Source:** GitHub #400 (https://github.com/PodUtils/podnet/issues/400)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::stamped`, `src/status.rs:119-127`).
+`run_share` prints its ready document with a bare `serde_json::json!`.
+
+## Premise
+
+- `src/cli/cmd/run.rs:79-90` (no `stamped`). The only `stamped` call of `run.rs` is `:248` (`announce`).
+- `grep -rn "status::stamped" src/cli` gives 8 hits, none in `run_share`.
+- The `verified` line is unstamped in every command (`run.rs:119`, `:155`). It stays as it is.
+
+## Approach
+
+1. Move the document to a helper `share_ready_doc(..) -> Value` and wrap it with `podnet::status::stamped`.
+2. Add a unit test of the helper. Keep the `verified` line as it is.
+
+## Prove
+
+`cargo test -p podnet --lib share_ready_doc_is_stamped` (new test: `schema == 1`, non-empty `podnet`).
+`cargo test -p podnet` (the other documents keep both keys).
+
+# T-204: `tunnel --config` refuses the origin flags (GitHub #401)
+
+**Source:** GitHub #401 (https://github.com/PodUtils/podnet/issues/401)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+With `--config FILE`, the code skips the flag-built ingress. `--forward`, `--url`, `--unix`, `--port`, `--tcp`,
+`--hello-world`, `--no-tls-verify`, `--http-host-header` and `--strip-accept-encoding` have no effect, and nothing says
+so. The README (`:307-362`) documents the precedence of the token and protocol flags only.
+
+## Premise
+
+- Guard: `src/cli/cmd/tunnel.rs:98` (`if args.config.is_none()`). The flags are read at `:100-124`, `:207`.
+  The three per-origin flags are declared at `:56-64`.
+- The token case already has a usage error: `src/cli/cmd/tunnel.rs:73-89` (issue 172).
+- Existing tests with `--config`: `tests/cli.rs:71`, `:610`, `:1237`, `:1298` (none gives an origin flag).
+
+## Approach
+
+1. Make the combination a usage error (exit 64) that names each flag given and points to `ingress:` of the file.
+   (see Decision.)
+2. Say in the help text of each flag that it does not apply with `--config`. Add one sentence to the README section.
+
+## Decision
+
+The lead, 2026-11-09: `tunnel --config` with an origin flag is refused with exit 64. A silent drop is the defect. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+`cargo test -p podnet --test cli tunnel_config_with_origin_flag_is_usage_error` (new test: `--config F --port 8080`
+exits 64 and names `--port`; same for `--forward` and `--no-tls-verify`).
+`cargo test -p podnet --test cli` (the `--config` tests without an origin flag still pass).
+
+# T-205: A nested detached start does not inherit `PODNET_DETACH_SUPERVISED` (GitHub #402)
+
+**Source:** GitHub #402 (https://github.com/PodUtils/podnet/issues/402)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`start_inner` copies each `PODNET_*` variable of its environment into the child. The copy includes
+`PODNET_DETACH_SUPERVISED`. A detached child that starts a detached instance with `--no-restart` makes a grandchild that
+takes the child lock and writes a record with `supervisor: None`. `targets()` then returns an empty list. `podnet stop`
+sends no SIGTERM, waits the full timeout and sends SIGKILL.
+
+## Premise
+
+- `src/detach.rs:164-190` (`child_begin` reads the variable). `:513-520` sets 4 detach variables and not this one.
+  `:892` is the only writer (the supervisor).
+- `src/autostart.rs:178-182` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
+- `src/detach.rs:709-716` (`targets()` gives `Vec::new()` for this record).
+- The default start (restart on) runs `--detach-supervise`: the supervisor sets the variable for its own child, so that
+  path is right. The defect needs `--no-restart`. I did not run it.
+- `src/detach.rs` is in the size allowlist (1210 lines): add no net line.
+
+## Approach
+
+1. Add `.env_remove(SUPERVISED_VARIABLE)` in `start_inner` (offset by removing a line).
+2. Exclude `PODNET_DETACH_SUPERVISED` in `split_secrets` (as `PODNET_ERROR_PROGRAM`).
+3. Add a test of the argv and environment of the child, and a test of `targets()` for "no supervisor, instance lock free,
+   child lock held".
+
+## Prove
+
+`cargo test -p podnet --lib detach::` (new tests: `child_env_has_no_supervised_variable`,
+`split_secrets_skips_supervised_variable`).
+`cargo test -p podnet --test detach` (existing tests pass).
+
+# T-206: `agent status --json` (GitHub #403)
+
+**Source:** GitHub #403 (https://github.com/PodUtils/podnet/issues/403)
+**Category:** feature
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`agent status` prints text only. `agent up` and `doctor --agent --json` print stamped JSON. `Status` has no fields, so
+`podnet agent status --json` exits 64. The report type already derives `Serialize`.
+
+## Premise
+
+- `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
+- `src/cli/cmd/instances.rs:10-41` (`instances_ps(json)` prints its own document).
+- `src/cli/cmd/host.rs:230-240` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:997-1003`.
+- `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
+
+## Approach
+
+1. Add `#[arg(long)] json: bool` to `Status`.
+2. With `--json`, print one stamped document `{"instances": [...], "report": {...}}`. Share the list builder with
+   `instances_ps` (do not call it: it prints). The text form stays as it is.
+3. Exit code stays 0 (see Decision).
+4. Add the flag to the README.
+
+## Decision
+
+The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result of each task, is in the JSON. A change of the exit code can come later when a user asks. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+`cargo test -p podnet --lib agent_status_accepts_json_flag` (new test: `Cli::try_parse_from(["podnet","agent","status","--json"])`).
+`cargo test -p podnet --test commands agent_status` (new JSON test: `schema == 1`, keys `instances` and `report`; the text test passes).
+
+# T-207: The library static path decodes `+` as a literal plus (GitHub #404)
+
+**Source:** GitHub #404 (https://github.com/PodUtils/podnet/issues/404)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`origin::static_files::percent_decode` turns `+` into a space. `service::percent_decode_path` (the CLI), and
+`ingress::decode_path`, keep `+`. A `+` in a URL path is a literal plus. The README says both paths follow the same rules.
+
+## Premise
+
+- `src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-85` (`resolve`), test `:603-607` asserts `"a b"`.
+- `src/service.rs:217-232`, `:183`. `src/ingress.rs:184-187`, test `:616-629` (`"a + stays a +"`).
+- `README.md:482-483`.
+- One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:249-251`, test
+  `:606`). The CLI decoder returns `None` (`src/service.rs:222-225`), so the request is refused. A short escape at the
+  end (`i + 2 < len`) also differs.
+
+## Approach
+
+1. Remove the `+` arm. Change the test to assert `"a+b"` and `"a b"` for `%20`.
+2. Add a test that sends the same path to `StaticDir::respond` and `static_router` over one file set (a file `a b.txt`
+   and a file `a+b.txt`).
+3. Decide the bad-escape case in the same test. Recommendation: the library refuses it as the CLI does.
+
+## Prove
+
+`cargo test -p podnet --lib origin::static_files::tests::percent_decoding` (changed test).
+`cargo test -p podnet --lib static_paths_agree_on_plus` (new test).
+
+# T-208: `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405)
+
+**Source:** GitHub #405 (https://github.com/PodUtils/podnet/issues/405)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`podnet warp up --tun` builds the argv of `warp tun --default-route --detach`. It does not pass `--replace`. A second
+`warp up --tun --replace` with other arguments gets the refusal "use --replace" and exit 69. `--env-d`, `--dns`,
+`--proxy-user` and `--proxy-password-file` are also dropped with exit 0 (`--persist` has `conflicts_with`).
+
+## Premise
+
+- `src/cli/cmd/warp/up.rs:19-28` (the `tun: true` arm matches `..`), `:403-415` (`warp_up_tun_args`), `:206-210` (the
+  proxy path pushes `--replace`).
+- `src/cli/cmd/warp/args.rs:391-433` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:511-526` (`Tun` has
+  `DetachArgs`, so `--replace` exists there, and has no `--dns`).
+- `src/detach.rs:486-493` (the refusal text).
+
+## Approach
+
+1. Pass `replace` into `warp_up_tun_args`. Push `--replace` when set.
+2. Add `conflicts_with = "tun"` to `env_d`, `dns`, `proxy_user` and `proxy_password_file` (they describe a proxy; the
+   tunnel has none). Do not add a feature to forward them.
+3. Test the full argv of `warp up --tun` for each flag set.
+
+## Prove
+
+`cargo test -p podnet --lib warp_up_tun_args` (new tests: `--replace` present only when set; `Cli::try_parse_from` of
+`warp up --tun --env-d` is a clap error).
+
+# T-209: `warp status` names the `warp-tun` instance (GitHub #406)
+
+**Source:** GitHub #406 (https://github.com/PodUtils/podnet/issues/406)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`warp up --tun` starts the instance `warp-tun`. `warp status` reads the instance `warp` only. On a host that runs the
+tunnel, it prints `warp up     not running (podnet warp up starts it)` and `instance: {"running": false}`. A script
+then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:488`).
+
+## Premise
+
+- `src/warp/live/instance.rs:70-76` (`instance_state` reads `INSTANCE`), `:79-96` (`instance_state_in` takes a name),
+  `:104-131` (the line). `src/warp/up.rs:20-22` (two names), `:547-552` (`down` knows both).
+- `src/main.rs:349-362` (inside `warp_other`: T-031 moves it; `main.rs` is in the size allowlist: add no net line).
+- `warp tun` has no `Live` and so no `data_path` (the issue notes it; not part of this entry).
+
+## Approach
+
+1. Add `instance_state_tun()` (name `TUN_INSTANCE`). Add a key `tun_instance` to the JSON beside `instance` (additive).
+2. The text line names each running instance. When only the tunnel runs, it points to `podnet warp down`.
+3. Do the change after T-031, or keep the edit in `main.rs` to two lines.
+
+## Prove
+
+`cargo test -p podnet --lib warp::live::instance` (new tests: `instance_state_in(dir, "warp-tun")` is running with a tun
+record; the line for neither, proxy only, tun only).
+
+# T-210: The WARP+ label names the paid account types (GitHub #407)
+
+**Source:** GitHub #407 (https://github.com/PodUtils/podnet/issues/407)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`warp_plus_label` gives `yes` for each non-empty `account_type` that is not exactly `free`, or when `premium_data > 0`.
+`warp status`, `warp status --json` (`warp_plus_active`) and `warp license` use it. The issue says a free account with
+another type is shown as WARP+.
+
+## Premise
+
+- `src/warp/identity.rs:157-171`. Users: `src/main.rs:351`, `:365-368`, `:400-403`. Test: `src/main.rs:1792-1795`.
+- The issue says the fixture type `limited` is a free type. This is not shown: `src/warp/register.rs:703` is a test of
+  the redaction of a licence key, and the test at `main.rs:1794` uses `limited` with `premium_data` 10 as WARP+.
+  The tree has no list of the types that the service sends. A closed list of paid types could hide a real paid account.
+- Earlier report: `docs/reports/aerrand-agent.md:639` (the raw `warp_plus` field).
+
+## Approach
+
+1. Measure first: run `podnet warp status --json` on a free device and, when possible, on one with a licence. Record the
+   `account_type` and `premium_data` values in `docs/reports/`.
+2. Then name the paid types from the measurement. Keep `premium_data > 0` as sufficient. Add a test for each value
+   measured and one for an unknown type (decide its result with the measurement).
+
+## Prove
+
+`cargo test -p podnet --lib warp_plus_label` (new cases from the measured values).
+`podnet warp status --json | jq '.account_type, .premium_data, .warp_plus_active'` on a live device (the measurement).
+
+# T-211: `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408)
+
+**Source:** GitHub #408 (https://github.com/PodUtils/podnet/issues/408)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`warp down` removes `~/.config/fish/conf.d/podnet-warp.fish` with no content check, and prints "removed". `persist`
+overwrites that path with `std::fs::write`. The environment.d file is checked (`env_d_is_ours`), the shell files keep the
+text outside the markers.
+
+## Premise
+
+- `src/warp/up.rs:569-573` (remove), `:463-470` (write), `:424-430` (`fish_file`), `:434-444` (`fish_block` starts with
+  the shared `BEGIN` marker), `:513-515` and `:574-587` (the model).
+- `src/warp/up.rs` has 847 lines (allowlist): put the new code in a new small file, or remove lines elsewhere.
+
+## Approach
+
+1. A fish file is ours when its first line is `BEGIN` (already true for each file that earlier builds wrote: no new mark,
+   no stale file). The issue proposes a new mark. That mark would leave the old files on disk.
+2. `down`: remove only such a file. Else print that it is not a file of podnet and keep it.
+3. `persist`: refuse to overwrite a file that is not ours, with an error that names the path. Run the check before any
+   other write (as `check_env_d`).
+
+## Prove
+
+`cargo test -p podnet --lib warp::up` (new tests: `fish_file_is_ours` for the block text, an empty text, a user text).
+A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `podnet warp down`, and check the file stays.
+
+# T-212: The README states that the rules apply to `warp proxy --l4` (GitHub #409)
+
+**Source:** GitHub #409 (https://github.com/PodUtils/podnet/issues/409)
+**Category:** docs
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`README.md:700-701` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
+
+## Premise
+
+- `README.md:697-701`. `src/warp/proxy.rs:533-553` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
+- `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
+- No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
+
+## Approach
+
+1. Change the README sentence: UDP is not served; the rules apply; a `cidr:` rule decides an address, a name with no
+   other rule takes `--rule-default`.
+2. Do not change T-002 (the feature stays blocked).
+
+## Prove
+
+`grep -n "rules do not apply" README.md` prints nothing.
+`cargo test -p podnet --lib warp::rules` (the existing `decide_static` test passes).
+
+# T-213: The WireGuard endpoint of a device record has one derivation (GitHub #410)
+
+**Source:** GitHub #410 (https://github.com/PodUtils/podnet/issues/410)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`warp export` reads `host`, then `v4` (`record_endpoint`). The WireGuard leg reads `v4` only (`Peer::from_exported`).
+A record with only `host` exports and does not connect. A record with only `v6` fails in both, though MASQUE dials it.
+`Endpoint.ports` is read nowhere.
+
+## Premise
+
+- `src/warp/register.rs:181-190` (`Endpoint`; frozen file: no edit). `src/warp/export.rs:242-260`, `:30` (`WG_PORT`).
+- `src/warp/wg.rs:482-489` (v4 only; the message `:485-487`).
+- MASQUE reads `v4` and `v6`: `src/warp/register.rs:634-673`.
+- `grep -rn "\.ports" src/warp` finds no reader.
+- Test to extend: `src/warp/export.rs:343-378`.
+
+## Approach
+
+1. One function `wireguard_endpoint(&Endpoint, Option<SocketAddr>)` in `export.rs`. Order: `host`, `v4`, `v6` (brackets
+   for `v6`). Port 2408. Both callers use it. The failure names the fields that were present.
+2. Do not read `ports` in this entry. Measure first what a real record holds (a list of ports, and which one WireGuard
+   uses). Open a new entry if it differs from 2408.
+3. Test: `Config::of` and `Peer::from_exported` give the same address for 4 record shapes.
+
+## Prove
+
+`cargo test -p podnet --lib warp::export` (new tests: host only, v4 only, v6 only, none).
+`cargo test -p podnet --lib warp::wg` (the existing tests pass).
+
+# T-214: `warp ssh-config` prints a `ProxyCommand` with the same quote as `--write` (GitHub #411)
+
+**Source:** GitHub #411 (https://github.com/PodUtils/podnet/issues/411)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`nc::ssh_config` (the printed block) puts the binary path in `ProxyCommand` with no quote. `ssh_config::block` (`--write`)
+quotes it with `shell_quote`. A path with a space works with `--write` and fails when pasted.
+
+## Premise
+
+- `src/warp/nc.rs:281-289` (raw `{exe}` at `:285`). `src/warp/ssh_config.rs:34-36`, `:60-68`.
+- The only test of the printed block: `src/warp/nc.rs:342-346` (plain path).
+- The issue says the double quotes of the `GIT_SSH_COMMAND` comment are right. They are not: the shell that runs
+  `ProxyCommand` splits the path at a space inside `"..."` of the outer option too. The comment needs the quote of the
+  path inside the value (`ProxyCommand='...'` with the `'\''` form).
+
+## Approach
+
+1. Move the `ProxyCommand` line into one function that both builders call (`shell_quote` of the path).
+2. Fix the `GIT_SSH_COMMAND` comment for a path with a space or a quote.
+3. Keep the printed block without markers.
+
+## Prove
+
+`cargo test -p podnet --lib warp::nc` (new test: for `/b/podnet`, `/opt/c f/podnet` and a path with a quote, the printed
+`ProxyCommand` line equals the line of `ssh_config::block`).
+
+# T-215: `warp proxy --dns` has a bound and a counter (GitHub #412)
+
+**Source:** GitHub #412 (https://github.com/PodUtils/podnet/issues/412)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`serve_dns` spawns one task for each datagram: no limit, no counter, and the length check is inside the task. While no
+session is up, each task waits in `live.get()` for up to 20 s. `--max-connections` and the health line do not cover it.
+
+## Premise
+
+- `src/warp/proxy.rs:195-217` (`serve_dns`), `:134-145` (`admit`), `:160-187` (`health_log`), `:108-120` (`Stats`),
+  `:407-409` (length check in `forward_dns_to`).
+- `src/warp/live.rs:25` (`WAIT_FOR_NEW` 20 s).
+- `src/warp/proxy.rs` has 1902 lines (allowlist): put the new code in a new file.
+
+## Approach
+
+1. A separate constant bound for DNS tasks (a few hundred), with a semaphore. Drop the excess. Count the drops in `Stats`
+   and print them in the health line.
+2. Drop a datagram under 12 bytes before the spawn, with a debug line.
+3. Keep one task for each query and the first answer wins.
+
+## Prove
+
+`cargo test -p podnet --lib warp::proxy::dns_bound` (new test: a burst larger than the bound gives at most the bound in
+flight and a count of drops; a 1-byte datagram spawns nothing).

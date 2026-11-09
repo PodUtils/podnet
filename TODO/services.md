@@ -1086,3 +1086,156 @@ T-104 and T-105 are done.
 podnet. Read whether `pod-testkit` or `pod-wormhole` of PodUtils/podcrates has the interop harness; when it
 has not, write the harness in podnet (it is a CI file, no code of a crate).
 
+
+# T-167: `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364)
+
+**Source:** GitHub #364 (https://github.com/PodUtils/podnet/issues/364)
+**Category:** feature
+**Milestone:** M6
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The socks shim routes a stream `connect` to the front door only for `100.64.0.0/10` and
+`fd7a:115c:a1e0::/48`, or for each connect with `PODNET_SOCKS_ALL=1` (`shim/podnet-socks.c:206-223`).
+A client with a hardcoded origin (`127.0.0.1:3000`, a fixed LAN address) needs only that address routed.
+The abstract-name shim has no option to hand a chosen address to the SOCKS door.
+
+## Premise
+
+- `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`shim/podnet-socks.c:81-92`).
+- `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:104-110`). `ShimOptions`
+  (`src/vnet/shim.rs:30-45`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
+- The variable list is in `src/manual/facts.rs:296`. `docs/virtual-network.md` has no text on socksify
+  (README.md:921 only), so item 4 of the issue needs a new section.
+- Names are set by T-016 (`PODNET_SOCKS_*`).
+- Not measured: the external shim of the issue.
+
+## Approach
+
+1. `PODNET_SOCKS_CIDRS` (CIDR or `ip:port`, comma list, fixed table). Keep the tailnet default.
+2. `net socksify --cidr C` (repeatable) puts it in the printed environment.
+3. `net shim --socks-route ADDR` with the front-door path, in `ShimOptions::environment`. Ship 1 and 3 together.
+4. Log each route with `PODNET_SOCKS_LOG`.
+5. Update `src/manual/facts.rs`; add the three-tier model to `docs/virtual-network.md`.
+
+## Prove
+
+```sh
+cargo test --test shim_socks -- cidr_list_routes_only_listed
+cargo test --test cli -- socksify_takes_cidrs
+```
+
+# T-168: A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365)
+
+**Source:** GitHub #365 (https://github.com/PodUtils/podnet/issues/365)
+**Category:** feature
+**Milestone:** M6
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+On a host with no `/etc/passwd`, `ssh` fails and `ssh-keygen` exits 0 and writes no key (`getpwuid`
+fails). The preload `shim/fakepwd.c` exists, but the only command is `net ts-shims`, named for
+Tailscale and described only for Tailscale SSH.
+
+## Premise
+
+- `net ts-shims` already takes `--out --user --uid --gid --shell --json` and prints `LD_PRELOAD`
+  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:118-157`,
+  `src/vnet/tailscale_ssh.rs:160-202`). It also writes `getent`, `id` and a compiled shim: more than a client needs.
+- `docs/target-environment.md:104` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
+  No doctor row names the silent `ssh-keygen`.
+- `tools/ts-sshd.sh:118-128` uses the preload for `ssh-keygen`.
+- Not measured: `ssh-keygen` on a host without passwd in this session.
+
+## Approach
+
+1. Add `net passwd-shim` as the name of the same code (`ts-shims` stays as an alias). No new build code.
+2. Document the failure signature (silent exit 0 of `ssh-keygen`) in README and `docs/target-environment.md`.
+3. `doctor`: one line when `/etc/passwd` has no entry for the uid.
+4. Keep the name `SANDHOME_PASSWD` and the `LD_PRELOAD` merge.
+
+## Prove
+
+```sh
+cargo test --test cli -- passwd_shim_prints_the_preload
+sh -c 'podnet net passwd-shim --json | grep -q SANDHOME_PASSWD'
+```
+
+# T-177: Router: `podnet route check`, a dry run of the rules (GitHub #375)
+
+**Source:** GitHub #375 (https://github.com/PodUtils/podnet/issues/375)
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+T-098 has doors and rules with no way to ask "which member takes this flow" without traffic. mwan3 has such a simulator.
+
+## Premise
+
+- `src/warp/rules.rs:30-56` (`Action`: `reject` and `block` both parse), `Table::for_name`
+  (`:122`), `Table::for_ip` (`:133`). The router rules do not exist (T-098).
+
+## Approach
+
+1. `route check --door D [--to HOST:PORT] [--proto tcp|udp]`: print the rule (position, pattern), the
+   member or group, the seeded pick, the health row, the resolver. Exit 0 for an up member; exit 1 for
+   `reject`, no member up, or a down member. No dial.
+2. The check and the router share one function and one rules snapshot.
+3. The output is the table of the test of the rule engine.
+
+## Prove
+
+```sh
+cargo test --workspace -- route_check_agrees_with_the_router
+```
+
+## Start condition
+
+T-097 and T-098 are done.
+
+# T-180: Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376)
+
+**Source:** GitHub #376 (https://github.com/PodUtils/podnet/issues/376)
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+T-097 gives a read-only `route status`. An operator of an N-identity pool cannot pin a member, rotate
+its identity, force a reconnect or change the probe interval without a restart, which drops each flow.
+
+## Premise
+
+- T-095 keeps one state directory for each identity. `warp rotate` and `--session-max-age` exist for one session.
+- `STATS` is global (`src/warp/proxy.rs:116`). The loopback and credential gate is at
+  `src/warp/proxy.rs:436-441`; the PIN gate is `src/gate.rs`.
+- The WARP service limits new devices for each address (T-101 Premise; `docs/decisions.md`).
+
+## Approach
+
+1. A control listener with the same gate: `GET /route/status`, `POST /route/select`, `/route/rotate`,
+   `/route/reconnect`, `PATCH /route/interval`. The JSON is the one of `route status --json`.
+2. Rotate swaps make-before-break and reuses the state directory. Rate-limit and log each registration.
+
+## Prove
+
+```sh
+cargo test --workspace -- route_control_rotate_reuses_the_state_dir route_control_needs_the_gate
+```
+
+## Start condition
+
+T-095 and T-097 are done.

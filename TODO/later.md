@@ -730,3 +730,303 @@ void. The owner (`docs/decisions.md`, Relay contract watch): the weekly watch of
 (step 3, against `https://tcp.ssh.relay.ajam.dev/llms-full.txt`) belongs to `pod-relay` in
 `PodUtils/podcrates`, not to podnet. podnet's part: check that podcrates has the watch, else open
 an issue there; then set this entry to done.
+
+# T-153: netns: a backend with an in-namespace netfilter data plane (GitHub #352)
+
+**Source:** GitHub #352 (https://github.com/PodUtils/podnet/issues/352)
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** open
+
+## Problem
+
+Same as T-152. The goal: kernel-delivered TCP and UDP for the netns backend, no smoltcp on the hot path,
+no flow table of T-111.
+
+## Premise
+
+- Depends on T-152. T-111 (open, M7) plans the userspace flow table. This entry must not replace it
+  before the owner rules (see Decision).
+- The nfnetlink client is new code (the vnet ACL avoids kernel netfilter, `src/vnet/policy.rs`). T-120
+  plans an nf_tables writer for root-host router mode (`TODO/later.md`).
+- Files of `podnet-netns` stay under 800 lines: new files for the client and the listeners.
+- ICMP echo cannot be REDIRECTed (martian). Ping works through the ping-socket path only.
+
+## Approach
+
+1. Add `--backend netns-kernel` (or a mode). In the child, after unshare and before exec: install the
+   rules, make the listeners, send their descriptors to the parent over the `SCM_RIGHTS` pair.
+2. The parent serves them with `connect_upstream` (`upstream.rs:346`) per flow.
+3. Set `ping_group_range` to the mapped gid range.
+4. Add the doctor class and the `auto` order (`lib.rs:197-205`). Update the README.
+
+## Decision
+
+The lead, 2026-11-09: the netfilter plane is a parked option, not a replacement of the flow table of T-111. Decide after the measurement of the entry before it. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test --test pod_netns_kernel -- netns_kernel_relays_tcp netns_kernel_two_udp_flows_to_one_port_lose_nothing
+```
+
+## Start condition
+
+T-152 gives a pass on the target hosts, and the lead decides from the result (see Decision).
+
+# T-165: The SSH forward-relay leg: supervise the session after `run()` returns (GitHub #362)
+
+**Source:** GitHub #362 (https://github.com/PodUtils/podnet/issues/362)
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`relay::run` (`src/relay.rs:432`) dials the relay, requests one remote forward, reads the URL from the
+banner and returns `(TunnelHandle, Handle<Client>)`. Nothing watches the session after that. When the
+relay ends the connection or the forward, the URL is dead and the caller is not told. The default
+relay's free tier ends the tunnel after 60 minutes (the banner text of the test at `src/relay.rs:569`).
+A reconnect gives a new port and a new URL. The reverse road (`relay node`, `src/relay_reverse.rs`)
+reconnects with a 1 s to 30 s backoff; this leg does not.
+
+## Premise
+
+- `inactivity_timeout` is 3600 s (`src/relay.rs:444`); the forward is requested once (`:474-477`).
+- `grep -rn "relay::run\|RelayConfig" src tests examples` finds no caller outside `src/relay.rs`.
+  `ShareLink::from_relay` (`src/feature/mod.rs:1263`) has no caller outside a test. No CLI uses the leg.
+- Not measured: the 60 minute expiry on a live relay; the `Handle::is_closed` behaviour of russh 0.64.1.
+
+## Approach
+
+1. A supervisor task: detect the end (`Handle::is_closed`, a failed keepalive, EOF of the banner
+   channel), then reconnect with the capped backoff of `relay_reverse.rs`.
+2. Give the new URL to the caller (a channel or a callback) at each reconnect.
+3. Log one line that names the relay and the reason of the end.
+4. `doctor`: add one line to the row at `src/doctor.rs:1116-1122` about the fixed session age.
+5. Do not hardcode 60 minutes.
+
+## Decision
+
+The lead, 2026-11-09: keep the SSH forward-relay leg as a library with no caller. Park this entry. Expose the leg only after a ruling of the owner. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test -p podnet relay::tests::the_supervisor_reconnects_and_announces_the_new_url
+```
+
+The test uses a local SSH server of russh that closes the session, and checks two URLs.
+
+## Start condition
+
+The owner decides that this leg gets a CLI. Until then, the leg stays library-only.
+
+# T-166: The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363)
+
+**Source:** GitHub #363 (https://github.com/PodUtils/podnet/issues/363)
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+`RelayConfig::default()` has one relay (`src/relay.rs:42`), the user `podnet` (`:66`), and one URL rule
+(`pick_tunnel_url`, `:399-412`): the first token that starts with `http(s)://` and does not hold the
+dashboard host of that one relay. Another relay that prints a bare host, a URL split over two data
+frames, or its own dashboard URL fails or gives the wrong URL.
+
+## Premise
+
+- The fields of `RelayConfig` are `pub`; no flag sets them (no caller, see T-165). `--relay` is the
+  flag of the WebSocket relay.
+- `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`src/relay.rs:504`), so a URL that
+  crosses two chunks is lost. The pinned tests are at `src/relay.rs:566-598`.
+- The dashboard host is already a fact of `pod-services` (`src/relay.rs:407`).
+- Not measured: the other relays of the survey (local artefacts of the issue).
+
+## Approach
+
+1. Collect the banner over chunks, then pick the URL.
+2. Exclude every known dashboard host, not only one. Prefer the tunnel domain of the relay.
+3. Read the endpoint, the user and the URL-line shape of each relay from `pod-services`. A new
+   relay fact is an ask to podcrates (COORD, `(to podcrates)`). Add no host in podnet.
+4. An address list tried in order (as README.md:433-435 for the WebSocket relay).
+5. CLI flags only with the CLI of T-165.
+
+## Decision
+
+The lead, 2026-11-09: keep the SSH forward-relay leg as a library with no caller. Park this entry. The relay facts go to `pod-services` of `PodUtils/podcrates` (an ask). The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+cargo test -p podnet relay::tests -- picks_the_tunnel_url url_across_two_frames
+```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-services`): the relay facts (relay host, user, URL rule) are data of that crate. Send a COORD issue (to podcrates). The entry is unblocked when `pod-services` has the facts.
+
+## Start condition
+
+T-165.
+
+# T-172: A pin of the new public name while the process runs (GitHub #367)
+
+**Source:** GitHub #367 (https://github.com/PodUtils/podnet/issues/367)
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+The name `*.trycloudflare.com` is known only after the provision. `--resolve` is one string, set once.
+`PINS` (`src/resolve.rs:41`) and the resolver `SETTINGS` (`:81`) are `OnceLock`s; `set_pins` has no effect
+a second time. A supervisor cannot give a pin to a running start.
+
+## Premise
+
+- The pins are in `pod_dns::Settings` (`src/resolve.rs:94-100`, `pins: pins()`). A refresh needs a
+  settings or pins handle that can change in `pod-dns`.
+
+## Approach
+
+1. COORD ask to podcrates: a pin table of the resolver that can change.
+2. Then re-read `PODNET_RESOLVE` at each verify attempt (or a pin file).
+
+## Prove
+
+```sh
+cargo test -p podnet resolve::tests::a_later_pin_reaches_the_resolver
+```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-dns`): a refresh of a pin while the process runs is code of that crate. Send a COORD issue (to podcrates). The entry is unblocked when `pod-dns` has the call and podnet takes it.
+
+## Start condition
+
+podcrates gives the changeable pin table.
+
+# T-176: Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372)
+
+**Source:** GitHub #371 (https://github.com/PodUtils/podnet/issues/371) and https://github.com/PodUtils/podnet/issues/372
+**Category:** research
+**Milestone:** M9
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+No entry plans a router that ends guest TCP on smoltcp (T-095 to T-098 are doors with per-flow dials).
+If one is built, a prototype found: (1) a closed flow holds its tuple up to 10 s (`TimeWait` close delay);
+a new SYN for a stale tuple gets no answer; (2) dial before the handshake (`HeldSyn`) is better than a
+dial at `SynReceived`; (3) a guest UDP socket needs a bounded pending queue and a stop-reading-the-wire
+signal; a partial write must keep the byte offset; the socket buffer must hold 65535 plus metadata, and
+an oversized datagram needs its own counter.
+
+## Premise
+
+- Present in podnet: `HeldSyn` (`crates/podnet-netns/src/netns.rs:396,529,921`); `reap_closed`
+  (`:625`) reaps at `Closed`; the vnet stack treats `TimeWait` as closed (`src/vnet/stack.rs:1303-1320`)
+  and defers `close` until the queues are empty (`:1287-1300`). `NetStack` defaults hold the payload at
+  64 KiB (`:114-115`). Async writers use `write_all` (`upstream.rs:626`, `framing.rs:43`).
+- No present defect. smoltcp lines are not re-read; the prototype is not in the repo.
+- Overlap: #352 (netns netfilter), T-111 (takes datagrams before smoltcp).
+
+## Approach
+
+Keep the list in the Problem as the acceptance rules of any such router. Do no work now.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns -- a_stale_tuple_is_released_by_a_new_syn a_partial_stream_write_keeps_the_record_stream_aligned
+```
+
+## Start condition
+
+A guest-wire router (smoltcp) is planned.
+
+# T-178: Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375)
+
+**Source:** GitHub #375 (https://github.com/PodUtils/podnet/issues/375)
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+T-096 has one pick: weighted. Operators ask for named policies. `protect` probes degraded members at a
+bounded rate and never picks them while a member is up.
+
+## Premise
+
+- T-096 Approach 1 and 3. The plan has no policy flag. The seeded test style is in the Prove of T-096.
+- The policies read the health state of T-097 and change no transition.
+
+## Approach
+
+1. `--group-policy NAME=POLICY`, default `weighted`. Each policy is a pure function over member snapshots.
+2. Seeded unit tests for each.
+
+## Prove
+
+```sh
+cargo test --workspace -- group_policy_picks_by_name
+```
+
+## Start condition
+
+T-096 and T-097 are done. The measured need is not shown: the issue gives field designs only.
+
+# T-179: Research: a direction split for asymmetric uplinks (GitHub #375)
+
+**Source:** GitHub #375 (https://github.com/PodUtils/podnet/issues/375)
+**Category:** research
+**Milestone:** M9
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A fast-download line beside a slow-upload line fits a split: the request leg on one uplink, the
+response leg on another, with the exit of each flow kept at the terminating side. It needs a relay node
+or a chain member that ends a leg.
+
+## Premise
+
+- It contradicts T-096: "One flow uses one uplink". Adopting it changes that contract (owner; see Decision).
+- `src/race.rs:54` is the per-leg primitive; `src/warp/forward.rs` ends one leg and re-dials the other.
+
+## Approach
+
+Write the design in `docs/research/podnet/`: the flow id, the direction bit, the exit table, the cleanup.
+Do no code.
+
+## Decision
+
+The lead, 2026-11-09: research only. Do not adopt a direction split now: it breaks "one flow uses one uplink" of T-096. The owner can rule otherwise (`docs/decisions.md`).
+
+## Prove
+
+```sh
+grep -n "direction split" docs/research/podnet/*.md
+```
+
+## Start condition
+
+The owner changes the T-096 contract.
