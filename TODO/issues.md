@@ -46,5 +46,68 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #344 | [gh action] requested: a run of live.yml | closed (live 42292490990 at 416574b: success) | none |
 | #345 | [gh action] requested: a run of ci.yml | closed (ci 42296502041 at c52b8e0: success) | none |
 | #346 | [gh action] requested: a run of live.yml | closed (live 42296493409 at c52b8e0: success) | none |
+| #347 | seccomp: write(2) on UDP dropped; closed UDP leaks 3 fds | open | T-142, T-143 |
+| #348 | seccomp: UDP bind records nothing; getsockname port 0 | open | T-144 |
+| #349 | fake-IP pool wraps at 131072; names case-sensitive | open | T-145 |
+| #350 | seccomp UDP: AF_UNSPEC, source filter, sockopts, ICMP | open | T-146, T-147, T-148, T-149 |
+| #351 | seccomp TCP copied in user space | open | T-150, T-151 |
+| #352 | netns: in-namespace netfilter in place of smoltcp | open | T-152, T-153 |
+| #353 | no fuzz targets for seccomp handlers | open | T-154, T-155 |
+| #354 | pod rules: no reject action (also no `block`) | open | T-156 |
+| #355 | pod: default-deny, flow log, learn | open | T-157, T-158 |
+| #356 | research documents cite old paths | open | T-159 |
+| #357 | verify: young name exits 69, tears down a working tunnel | open | T-160 |
+| #358 | relay node: pair cannot be renewed | open | T-161 |
+| #359 | relay alternates chosen once (cost is the 2 s stagger) | open | T-162 |
+| #360 | relay session budget is a constant | open | T-163 |
+| #361 | `--no-verify` undocumented, name misleads | open | T-164 |
+| #362 | ssh relay leg: no supervision (no caller) | open | T-165 |
+| #363 | ssh relay leg: one relay, one user | open | T-166 |
+| #364 | net socksify: no per-destination routing | open | T-167 |
+| #365 | fakepwd only via ts-shims (partly: it works, gap is name/docs) | open | T-168 |
+| #366 | tunnel: no `--masque-endpoint`; v4 door first | open | T-169 |
+| #367 | provision retries DNS; verify has no pin path | open | T-170, T-171, T-172 |
+| #368 | WARP identity of another uid refused | open | T-173 |
+| #369 | netns veth wire without /dev/net/tun | open | T-174 |
+| #370 | one TLS connection per DoH query | open | T-175 |
+| #371 | TCP flow terminators (design limits, no present defect) | open | T-176 |
+| #372 | router datagram carrier | open | T-098, T-099, T-111 |
+| #373 | router health: hysteresis, cooldown | open | T-096, T-097 |
+| #374 | router probes via own member; resolver | open | T-097, T-098 |
+| #375 | `route check`, group policies, direction split | open | T-177, T-178, T-179 |
+| #376 | router control, typed selection, seccomp budget | open | T-096, T-180, T-181 |
+| #377 | Transport trait addressing; gsr transport | open | T-055, T-058 |
+| #378 | doctor --agent checks index host, not file host | open | T-182 |
+| #379 | http:// proxy default port 8080 vs 80 | open | T-183 |
+| #380 | doctor relay row from PODNET_RELAY only (partly) | open | T-184 |
+| #384 | net proxy handshake has no deadline (pod --serve too) | open | T-061, T-185 |
+| #385 | net tailscale unix bind deletes a live path (frontdoor too) | open | T-186 |
+| #386 | net proxy --forward dials direct (partly disputed) | open | T-187 |
+| #387 | --forward prints before bind; bind failure only logged | open | T-188 |
+| #388 | vnet switch: uncounted drops, unbounded queues | open | T-189, T-190 |
+| #389 | net doctor listener table incomplete | open | T-191, T-192 |
+| #390 | net proxy --map reaches the door only | open | T-193 |
+| #391 | relay node: close drops the abort handle | open | T-194 |
+| #392 | relay stop: wrong order | open | T-195 |
+| #393 | relay node: no drain after local EOF | open | T-196 |
+| #394 | relay pair file: mode and read checks | open | T-197 |
+| #395 | docs say 6 seed hosts, client takes 3 | open | T-198 |
+| #396 | relay connect --listen: no --detach, record, restart | open | T-199 |
+| #397 | relay reverse road uses host 0 only | open | T-200 |
+| #398 | WebSocketTunnel dials direct (latent, no caller) | open | T-201 |
+| #399 | serve: root_404 never set | open | T-202 |
+| #400 | share --json: no schema, no podnet key | open | T-203 |
+| #401 | tunnel --config drops origin flags | open | T-204 |
+| #402 | detach: nested start inherits the env (only --no-restart) | open | T-205 |
+| #403 | agent status has no --json | open | T-206 |
+| #404 | static: `+` decoded differently (one more divergence) | open | T-207 |
+| #405 | warp up --tun drops --replace and others | open | T-208 |
+| #406 | warp status never names warp-tun | open | T-209 |
+| #407 | warp: every type but "free" reads as WARP+ (partly) | open | T-210 |
+| #408 | warp down removes the fish file without an owner check | open | T-211 |
+| #409 | README says --l4 ignores rules; code applies them | open | T-212 |
+| #410 | WireGuard endpoint: v6 and ports unread | open | T-213 |
+| #411 | warp ssh-config: path not quoted | open | T-214 |
+| #412 | warp proxy --dns: one task per datagram | open | T-215 |
 
-#312 to #315 and #318 are pull requests.
+#313, #314, #318 and #381 to #383 are open pull requests. #312 and #315 are closed; they are pull requests.
