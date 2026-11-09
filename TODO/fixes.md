@@ -1660,7 +1660,7 @@ passes on this host. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1687,6 +1687,19 @@ the datagrams of the peer.
 ```sh
 cargo test --test pod_seccomp_dgram -- seccomp_connected_udp_drops_other_sources seccomp_unconnected_udp_keeps_all_sources
 ```
+
+## Done
+
+2026-11-09, commit f2568d4 (`T-147: a connected UDP socket takes datagrams from its peer only`).
+The shared cell is the address of `connect` in the inbox (`Inbox::dest`, from T-143).
+`Inbox::deliver` (`crates/podnet-netns/src/inbox.rs`) compares the `sockaddr` of the source, as
+`Inbox::address` maps it (a name, or the host address of a proxy answer for a name, gives the fake
+IP), with the `sockaddr` of `connect`, and drops a datagram of another source before the send into
+the socketpair (no queue). A DNS answer has the resolver address as its source, so it passes. The
+README states the filter. Tests in `tests/dgram/source.rs`: `seccomp_connected_udp_drops_other_sources`
+(both forms of the relay) and `seccomp_unconnected_udp_keeps_all_sources`. On the tree before the
+fix the first test fails (`first: NOISE`); with the fix both pass on this host. `sh
+scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-148: seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350)
 
