@@ -385,7 +385,7 @@ repository that is not in the session), and the end of the download (the proxy a
 **Milestone:** M1
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -442,6 +442,15 @@ The owner allows releases again: done, 2026-11-09 (`docs/decisions.md`, Releases
 
 2026-11-05, no release now (the ruling "Order"). This entry waits. The Cargo.toml `rust-version` is 1.99
 and the workspace version is `0.3.0-beta.12`; the version change is part of this entry.
+
+## Done
+
+2026-11-09, commit 8709d20. `Cargo.toml` (the workspace and the `podnet-netns` path dependency), `Cargo.lock` and
+`fuzz/Cargo.lock` have `0.4.0-beta.1`. `docs/releases/v0.4.0-beta.1.md` has the head (the cfrs releases, their
+identity and assets), the `podnet-TARGET` assets, the checks, the move from cfrs, a `## Breaking` list of the rename
+and of the output changes, and the changes of 2026-11-06 to 2026-11-09 by area. `tests/docs.rs` scans each
+`vX.Y.Z-beta.N` (new test `the_tag_scan_reads_each_beta_tag`; `each_tag_in_the_documents_has_a_release_note`
+uses it). `docs/maintenance.md` says that betas are allowed. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-023: Publish `v0.4.0-beta.1`: the dry run, the publish and the release proofs
 

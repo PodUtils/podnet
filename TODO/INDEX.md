@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 113 open, 3 partial, 14 blocked, 93 done.**
+**223 entries: 112 open, 3 partial, 14 blocked, 94 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
-| P1 | 4 | 1 | 2 | 17 | 24 |
+| P1 | 3 | 1 | 2 | 18 | 24 |
 | P2 | 72 | 2 | 8 | 55 | 137 |
 | P3 | 36 | 0 | 4 | 21 | 61 |
-| **All** | 113 | 3 | 14 | 93 | 223 |
+| **All** | 112 | 3 | 14 | 94 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -67,7 +67,7 @@ M8 Overlays, M9 Later.
 | [T-019](rename.md) | P1 | M | M1 | chore | done | Drop the `pod-netns` binary, and move its integration tests to the root crate |
 | [T-020](rename.md) | P1 | S | M1 | chore | done | Rename the crate `pod-netns` to `podnet-netns` |
 | [T-021](rename.md) | P1 | S | M1 | chore | done | Verify the GitHub redirects after the transfer of the repository to PodUtils |
-| [T-022](rename.md) | P1 | S | M1 | release | open | The version `0.4.0-beta.1`, and its release note with each breaking change |
+| [T-022](rename.md) | P1 | S | M1 | release | done | The version `0.4.0-beta.1`, and its release note with each breaking change |
 | [T-023](rename.md) | P1 | S | M1 | release | open | Publish `v0.4.0-beta.1`: the dry run, the publish and the release proofs |
 | [T-024](rename.md) | P2 | S | M1 | chore | open | The update checks pass against a podnet release again |
 | [T-025](rename.md) | P2 | S | M1 | chore | open | The image `ghcr.io/podutils/podnet` is public |
