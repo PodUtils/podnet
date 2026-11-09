@@ -21,9 +21,11 @@ use tracing::{debug, info, warn};
 
 use super::ip::{TcpConn, WarpStack};
 
+mod dns_bound;
 pub mod names;
 use crate::services::check_name;
 pub use crate::services::tunnel_resolver;
+pub use dns_bound::serve_dns;
 pub use names::{order, resolve, resolve_all};
 /// The longest time for a DNS answer through the tunnel.
 const DNS_TIMEOUT: Duration = Duration::from_secs(5);
@@ -110,6 +112,8 @@ pub struct Stats {
     pub active: std::sync::atomic::AtomicU64,
     pub total: std::sync::atomic::AtomicU64,
     pub refused: std::sync::atomic::AtomicU64,
+    /// The DNS datagrams that `--dns` dropped at its bound (T-215).
+    pub dns_dropped: std::sync::atomic::AtomicU64,
 }
 
 /// The counters of this process.
@@ -117,6 +121,7 @@ pub static STATS: Stats = Stats {
     active: std::sync::atomic::AtomicU64::new(0),
     total: std::sync::atomic::AtomicU64::new(0),
     refused: std::sync::atomic::AtomicU64::new(0),
+    dns_dropped: std::sync::atomic::AtomicU64::new(0),
 };
 
 /// The most clients at the same time (`--max-connections`); 0 is no limit.
@@ -172,6 +177,7 @@ pub fn health_log(live: Arc<super::Live<WarpStack>>) {
                     clients = STATS.active.load(Relaxed),
                     since_start = STATS.total.load(Relaxed),
                     refused = STATS.refused.load(Relaxed),
+                    dns_dropped = STATS.dns_dropped.load(Relaxed),
                     reconnects = live.reconnects(),
                     tunnel = super::rules::COUNTERS.tunnel.load(Relaxed),
                     direct = super::rules::COUNTERS.direct.load(Relaxed),
@@ -183,36 +189,6 @@ pub fn health_log(live: Arc<super::Live<WarpStack>>) {
                 );
             }
         });
-    });
-}
-
-/// A DNS forwarder (issue 117): each query that comes to `socket` goes
-/// through the WARP session of `live` to [`tunnel_resolver`], and the
-/// answer goes back. For a program that sends its own DNS on UDP (a host
-/// with a fake or broken resolver).
-pub fn serve_dns(live: Arc<super::Live<WarpStack>>, socket: tokio::net::UdpSocket) {
-    let socket = Arc::new(socket);
-    if let Ok(addr) = socket.local_addr() {
-        info!(%addr, "the DNS forwarder through WARP is listening");
-    }
-    tokio::spawn(async move {
-        let mut buf = vec![0u8; 4096];
-        while let Ok((n, from)) = socket.recv_from(&mut buf).await {
-            let query = buf[..n].to_vec();
-            let socket = socket.clone();
-            let live = live.clone();
-            tokio::spawn(async move {
-                let Ok(stack) = live.get().await else { return };
-                match forward_dns(&stack, &query).await {
-                    Ok(answer) => {
-                        let _ = socket.send_to(&answer, from).await;
-                    }
-                    Err(err) => {
-                        debug!(error = %format!("{err:#}"), "a DNS query through WARP failed")
-                    }
-                }
-            });
-        }
     });
 }
 

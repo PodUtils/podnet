@@ -2183,7 +2183,7 @@ python3 scripts/check-size.py
 
 ## Problem
 
-A client that connects and sends nothing, or one byte of a SOCKS5 greeting, holds its task and socket until the process ends. Each connection is unauthenticated. The accept loops have no cap. The WARP door has the fix (`REQUEST_LIMIT`, 30 s, `src/warp/proxy.rs:612`). `CLIENT_TIMEOUT` (300 s) wraps only the copy.
+A client that connects and sends nothing, or one byte of a SOCKS5 greeting, holds its task and socket until the process ends. Each connection is unauthenticated. The accept loops have no cap. The WARP door has the fix (`REQUEST_LIMIT`, 30 s, `src/warp/proxy.rs:588`). `CLIENT_TIMEOUT` (300 s) wraps only the copy.
 
 ## Premise
 
@@ -2224,7 +2224,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:317`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:87`, `src/vnet/switch.rs:372`, `src/vnet/proxy.rs:317`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp.rs:1368`.
 - `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:347`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:53-59`).
@@ -2417,7 +2417,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:177`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:69-71` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:350-352`, `crates/podnet-netns/src/tailscale.rs:321-322`, `src/cli/cmd/relay.rs:177`, and also `src/vnet/proxy.rs:264-266` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
@@ -3108,7 +3108,7 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Premise
 
-- `README.md:697-701`. `src/warp/proxy.rs:533-553` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:697-701`. `src/warp/proxy.rs:509-529` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
@@ -3213,8 +3213,8 @@ session is up, each task waits in `live.get()` for up to 20 s. `--max-connection
 
 ## Premise
 
-- `src/warp/proxy.rs:195-217` (`serve_dns`), `:134-145` (`admit`), `:160-187` (`health_log`), `:108-120` (`Stats`),
-  `:407-409` (length check in `forward_dns_to`).
+- `src/warp/proxy.rs:195-217` (`serve_dns`), `:139-150` (`admit`), `:160-187` (`health_log`), `:110-125` (`Stats`),
+  `:383-385` (length check in `forward_dns_to`).
 - `src/warp/live.rs:25` (`WAIT_FOR_NEW` 20 s).
 - `src/warp/proxy.rs` has 1902 lines (allowlist): put the new code in a new file.
 

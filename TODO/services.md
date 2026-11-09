@@ -1252,8 +1252,8 @@ its identity, force a reconnect or change the probe interval without a restart, 
 ## Premise
 
 - T-095 keeps one state directory for each identity. `warp rotate` and `--session-max-age` exist for one session.
-- `STATS` is global (`src/warp/proxy.rs:116`). The loopback and credential gate is at
-  `src/warp/proxy.rs:436-441`; the PIN gate is `src/gate.rs`.
+- `STATS` is global (`src/warp/proxy.rs:120`). The loopback and credential gate is at
+  `src/warp/proxy.rs:412-417`; the PIN gate is `src/gate.rs`.
 - The WARP service limits new devices for each address (T-101 Premise; `docs/decisions.md`).
 
 ## Approach
