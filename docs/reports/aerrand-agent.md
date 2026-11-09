@@ -1,5 +1,7 @@
 # Reports of aerrand-agent
 
+> Reading of the tree at bcd9aa7 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
+
 GitHub suspended the account `aerrand-agent` on 2026-11-04 and deleted its
 issues. This file keeps each issue and each comment as it was, from the
 events API of the repository (`IssuesEvent`, `IssueCommentEvent`) and a

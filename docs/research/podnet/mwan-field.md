@@ -1,5 +1,7 @@
 # mwan, the lab kit and the beta.12 field report: what podnet needs
 
+> Reading of the tree at 3bed023 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
+
 Sources (read only):
 
 * `att/58330911-mwan-standalone/mwan/`: README.md (121 lines), main.go (423),

@@ -1,5 +1,7 @@
 # Parity checklist: cfrs 0.3.0-beta.12 (3bed023) -> podnet
 
+> Reading of the tree at 3bed023 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
+
 Tick each item when podnet has it with the same behaviour, or when a
 ruling in `docs/decisions.md` records the change. Generated from
 `cfrs man --json` of the binary of 3bed023 and from a scan of the

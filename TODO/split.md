@@ -781,6 +781,11 @@ gh workflow run live.yml
 
 T-008, T-009 and T-019 are done.
 
+## Correction
+
+2026-11-09, T-063 to T-067 are done. The Problem counts are old: `seccomp.rs` has 1516 lines and `netns.rs` has 1200
+lines now. The third step of the Approach (the order) holds: this entry runs after T-067.
+
 # T-041: Split the four large test files
 
 **Source:** `docs/research/podnet/architecture.md`, section 2.4.

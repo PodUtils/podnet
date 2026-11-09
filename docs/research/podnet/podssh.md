@@ -1,5 +1,7 @@
 # Study: podssh, for podnet
 
+> Reading of the tree at bcd9aa7 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
+
 Source: read-only clone `/workspace/azathothas/podssh` at `427f890`
 ("The record: the twelfth round of drafts"), read on 2026-11-05.
 License of podssh: 0BSD (`LICENSE`, "Copyright (C) 2026 Azathothas").

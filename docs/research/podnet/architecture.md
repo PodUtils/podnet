@@ -1,5 +1,7 @@
 # podnet: target architecture, file splits, parity inventory
 
+> Reading of the tree at 3bed023 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
+
 Study of `/workspace/cfrs` at `3bed023` (2026-11-04, `v0.3.0-beta.12` + 3
 commits). Read only. Data and scripts of this study:
 `study/data/` (`man.json` = `cfrs man --json` of `target/debug/cfrs`

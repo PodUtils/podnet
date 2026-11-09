@@ -1,5 +1,7 @@
 # podnet capability study: router, file server, file transfer, git hosting
 
+> Reading of the tree at 3bed023 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
+
 Scope: what `cfrs` (tree at `3bed023`, v0.3.0-beta.12 + 4 commits) already has
 for each role, the minimal viable feature set of each role, the gaps, a CLI
 shape, the modules, the tests and a size estimate. Constraint: one static musl

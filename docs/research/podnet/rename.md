@@ -1,5 +1,7 @@
 # Rename `cfrs` to `podnet`: viability and exact steps
 
+> Reading of the tree at 3bed023 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
+
 Study of 2026-11-05, on `main` at 3bed023 (`/workspace/cfrs`). Read only. The
 counts come from `git ls-files | xargs grep` (no `target/`).
 

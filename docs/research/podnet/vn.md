@@ -1,5 +1,7 @@
 # The `vn` kit (version 3): what podnet takes from it
 
+> Reading of the tree at 3bed023 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
+
 Sources (read only, untrusted):
 `att/3389cc8a-vn-v3/vn/` (README.md 220 lines, NOTES.md 50, THIRD_PARTY.md
 31, LICENSE 14, Cargo.toml 8, Cargo.lock 974 (109 crates), crates/vn/ 5 172
