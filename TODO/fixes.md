@@ -2191,7 +2191,7 @@ python3 scripts/check-size.py
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2232,7 +2232,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2258,6 +2258,10 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 cargo test -p podnet --lib net::
 cargo test -p podnet-netns tailscale
 ```
+
+## Done
+
+2026-11-09, commit 864fea6. net tailscale and the front door claim the path first (listen::claim_unix_path, listen::bind_claimed). Tests: listen::tests::a_claim_refuses_a_live_socket_and_a_file_and_removes_a_stale_socket, net::tests::a_claim_gives_69_for_a_live_socket_64_for_a_file_and_removes_a_stale_one. check.sh: exit 0. CI: at the merge.
 
 # T-187: `net proxy --forward`: a real target may be a name, and the dial reports its hop (GitHub #386)
 
