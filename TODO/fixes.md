@@ -2100,7 +2100,7 @@ cargo test --test cli -- tunnel_takes_masque_endpoint
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2126,6 +2126,10 @@ attempts repeat the same failure for about 30 s.
 ```sh
 cargo test -p podnet quicktunnel::tests::a_dns_failure_is_retried_once
 ```
+
+## Done
+
+2026-11-09, commit 99aa461. `provision` retries a `Hop::Dns` failure once, then again only when `answering_step` of the API host changed (`src/quicktunnel/retry.rs`). The error ends with the `Hop::Dns` hint through the hop of the error. Test: `quicktunnel::retry::tests::a_dns_failure_is_retried_once` (the decision, not a live run). CI: at the merge.
 
 # T-171: The verify loop names the remedy when the public name does not resolve (GitHub #367)
 
