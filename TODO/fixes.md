@@ -1596,7 +1596,7 @@ the datagrams of the peer.
 
 - Read: `Inbox::deliver` (`inbox.rs:79`) sends into the pair with no check of the source. Both relay
   reader tasks call it (`seccomp.rs:1226`, `:1246`). `Inbox::new` has no `dest`.
-- Read: the ruling of 2026-11-04 (`docs/decisions.md:35`): a read of a connected socket stays direct,
+- Read: the ruling of 2026-11-04 (`docs/decisions.md:36`): a read of a connected socket stays direct,
   so the filter must act at delivery.
 - Open: the form of the filter key. The relay source is a `WireSource` (name or address), the `dest` is
   a fake or real address. Compare after `name_for_ip` mapping.
@@ -2127,7 +2127,7 @@ The session of `PodUtils/podcrates` (the crate `pod-services`): the file host of
 
 ## Premise
 
-- `src/egress.rs:45-46` sets 8080 and `rules()` passes it as `http_port` (`src/egress.rs:52-63`); `parse()` uses it (`:66`).
+- `src/egress.rs:45-46` sets 8080 and `rules()` passes it as `http_port` (`src/egress.rs:50-61`); `parse()` uses it (`:66`).
 - `pod-proxy` `HTTP_PORT = 80` (`proxy/parse.rs:21`) is the default of `Rules` (`env.rs:141`). A consumer can set another value (`env.rs:124`).
 - The tests assert the constant, not a number (`src/egress.rs:461,475`).
 - `docs/decisions.md` has no ruling on this value. Not measured: curl behaviour (read from the issue).
@@ -2278,7 +2278,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`src/net.rs:89-114`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:180-198`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:80-84`).
+- `connect_origin` (`src/net.rs:89-114`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:178-196`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:80-84`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:185-189`).
 

@@ -20,6 +20,7 @@ form of the rulings that apply to each session.
 | 2026-11-04 | Compatibility | podnet is a beta: breaking changes are allowed. Before a stable release or a crates.io publish, weigh each breaking change. |
 | 2026-11-04 | Exit codes | `wait --timeout` exits 124 at its limit. `relay connect` uses the sysexits codes of the other commands. |
 | 2026-11-04 | Sockets | One rule for each Unix socket that podnet binds: a live socket is an error (69), a file that is not a socket is an error (64), a stale socket is removed. |
+| 2026-11-09 | Proxy port | The port of an `http://` proxy URL with no port is 80: the value of `pod-proxy` and podssh. It is not 8080. The owner can rule otherwise. |
 | 2026-11-04 | Doctor | One verdict vocabulary for each check. |
 | 2026-11-04 | State files | Root with the `HOME` of another user writes no file there by default (warning, or an error). `PODNET_FOREIGN_HOME=allow` allows it. |
 | 2026-11-04 | Relay | The alternates of the default relay are the hosts of the podssh seed until a pool of `/relays.json` is cached. |
