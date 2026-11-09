@@ -1492,7 +1492,7 @@ merge.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1532,6 +1532,24 @@ The lead, 2026-11-09: record the address of a `bind` on a datagram socket. Port 
 ```sh
 cargo test --test pod_seccomp_dgram -- seccomp_udp_bind_is_read_back seccomp_udp_getpeername_is_enotconn_when_unconnected seccomp_udp_getsockname_of_a_connected_socket_is_local
 ```
+
+## Done
+
+2026-11-09, commit bd0db77 (`T-144: bind on a UDP socket is recorded, and getsockname reports it`), as
+the Decision says. `Udp::bind` and `Udp::name` (`crates/podnet-netns/src/udp.rs`): the entry keeps
+the address of `bind`; port 0 gets `ephemeral_port(fd)`; a second `bind` gets `EINVAL`.
+`getsockname` gives the bound address, else the unspecified address of the family of the socket,
+with an ephemeral port after a `connect` or a relayed datagram and port 0 before (as the kernel
+binds at the first send). `getpeername` gives the address of `connect`, else `ENOTCONN`. A connected
+socket gives the unspecified local address, as a connected TCP socket does: the kernel gives the
+address of the route. The README states that no datagram arrives at a bound port, and that the ICMP
+socket keeps only its identifier. Tests in `tests/dgram/addresses.rs`:
+`seccomp_udp_bind_is_read_back`, `seccomp_udp_getpeername_is_enotconn_when_unconnected`,
+`seccomp_udp_getsockname_of_a_connected_socket_is_local`. On the tree before the fix the three fail
+(`bound: 0.0.0.0 0`, `unconnected: 0.0.0.0 0`, `local: 192.0.2.10 7777`); with the fix the three
+pass on this host. The same C programs, run with no pod, give the same lines except the local
+address of a connected socket (the kernel gives the address of the route). `sh
+scripts/agent/check.sh` exits 0. CI: at the merge.
 
 # T-145: fake DNS: the pool refuses at its end, and names match without case (GitHub #349)
 
