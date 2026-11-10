@@ -3637,6 +3637,48 @@ failed at 60 s); the egress loop did. Debug build, the same test: 1 MiB in 1.2 s
 is at most 64 KiB held in each direction, plus the smoltcp buffers. `sh scripts/agent/check.sh`,
 `unshare -n -- cargo test --workspace` and `sh scripts/restricted-host.sh`: pass. CI: at the push.
 
+# T-227: Publish `v0.4.0-beta.2`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md` (Releases, 2026-11-09): cut the next prerelease when a batch of fixes is green;
+`docs/maintenance.md`, section "Release".
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The fixes after `v0.4.0-beta.1` (T-150, T-151, T-157, T-158, T-181, T-225, T-226 and others) are on
+`main` only. A tester of a release binary does not get them.
+
+## Premise
+
+- `v0.4.0-beta.1` is the newest release (T-023).
+- `main` is green at `99014d5` (ci 42801224616, live 42801224536, secrets 42801224821).
+
+## Approach
+
+1. Set the version `0.4.0-beta.2` in `Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`.
+2. Write `docs/releases/v0.4.0-beta.2.md`, with `## Breaking`.
+3. Push, and wait until `ci` and `live` pass on that commit.
+4. Dispatch `release.yml` on `main` with `publish` empty (the dry run), then with
+   `publish=v0.4.0-beta.2`.
+5. Check the files of the release and `release-proofs.yml`.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next
+prerelease unattended when a batch is green.
+
+## Prove
+
+```sh
+cargo test -p podnet --test docs
+sh scripts/agent/check.sh
+```
+
 # T-216: Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04)
 
 **Source:** PodUtils/podcrates#35 (cfb), ask A-N-04, routed by PodUtils/podcrates#40.
