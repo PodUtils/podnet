@@ -3544,7 +3544,7 @@ flight and a count of drops; a 1-byte datagram spawns nothing).
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3576,6 +3576,16 @@ a wake-up that does not come: the QUIC send path of a tunnel over WARP can stall
 cargo test -p podnet --lib warp::quic::tests
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-10, commit 8bd5331. `SendPoller` waits on `SendReady`, an `AtomicWaker` (as the receive side): the
+poller registers the waker of the task, then checks the capacity again (and a closed queue ends the wait). The
+writer task wakes it when it takes a datagram from the queue and at its end. Test:
+`warp::quic::tests::a_drain_after_pending_wakes_the_send_poller`; it failed on the old poller ("the poller was
+not woken") and passes now. `sh scripts/agent/check.sh`, `unshare -n -- cargo test --workspace` and
+`sh scripts/restricted-host.sh`: pass. podcrates knows the fix through the message of its session; pod-quic
+(podcrates T-019) takes the socket with it. CI: at the push.
 
 # T-216: Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04)
 
