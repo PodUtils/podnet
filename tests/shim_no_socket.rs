@@ -25,8 +25,9 @@
 //! compiler, matching `shim_direct.rs`.
 
 mod afinet_audit;
+mod shim_harness;
 
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use podnet::vnet::shim;
 
@@ -35,23 +36,8 @@ use podnet::vnet::shim;
 /// `LD_PRELOAD` is only set when `preload` is `Some`, so the same helper runs
 /// the unshimmed control case with nothing else changed.
 fn run(source: &str, preload: Option<&std::path::Path>) -> Option<(Option<i32>, String)> {
-    let cc = shim::compiler().ok()?;
     let dir = tempfile::tempdir().ok()?;
-    let path = dir.path().join("prog");
-    let src_path = dir.path().join("prog.c");
-    std::fs::write(&src_path, source).ok()?;
-    let status = Command::new(&cc)
-        .arg("-O2")
-        .arg("-o")
-        .arg(&path)
-        .arg(&src_path)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .ok()?;
-    if !status.success() {
-        return None;
-    }
+    let path = shim_harness::compile_quiet(dir.path(), "prog", source)?;
     let mut command = Command::new(&path);
     if let Some(shim) = preload {
         command.env("LD_PRELOAD", shim);
@@ -82,10 +68,7 @@ struct ShimGuard {
 }
 
 fn shim_or_skip(test: &str) -> Option<ShimGuard> {
-    if shim::compiler().is_err() {
-        eprintln!("{test}: skipping, no C compiler");
-        return None;
-    }
+    shim_harness::compiler_or_skip(test)?;
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(_) => {

@@ -647,30 +647,30 @@ T-008, T-009 and T-012 are done.
 
 2026-11-05, The named modules `src/warp/mod.rs` and `src/warp/proxy.rs` move to PodUtils/podcrates (`pod-warp`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. No file of this entry stays in podnet. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
-# T-037: Split `src/relay_reverse.rs` and `src/share.rs`
+# T-037: Split `src/relay_reverse.rs` and `src/share/mod.rs`
 
 **Source:** `docs/research/podnet/architecture.md`, section 2.2 (the two rows).
 **Category:** chore
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`src/relay_reverse.rs` has 1,139 lines and `src/share.rs` 1,901.
+`src/relay_reverse.rs` has 1,139 lines and `src/share/mod.rs` 1,901.
 
 ## Premise
 
 - `tests/relay_reverse.rs` calls `relay_reverse::{node, run_node, connect}` against a fake relay.
-- `src/share.rs` holds the upload router (its `upload_receive` alone has 195 lines), the
+- `src/share/mod.rs` holds the upload router (its `upload_receive` alone has 195 lines), the
   download router and 756 lines of tests.
 
 ## Approach
 
 1. `src/relay_reverse.rs`: the pair functions in a mod.rs; files for the node, for `connect` and
    for the tests.
-2. `src/share.rs`: the types and the app in a mod.rs; files for the upload part and the download
+2. `src/share/mod.rs`: the types and the app in a mod.rs; files for the upload part and the download
    part; the tests to a tests directory with an upload part and a download part.
 
 ## Prove
@@ -688,7 +688,16 @@ T-008 and T-009 are done.
 
 ## Correction
 
-2026-11-05, The named modules `src/relay_reverse.rs` move to PodUtils/podcrates (`pod-relay`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/share.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+2026-11-05, The named modules `src/relay_reverse.rs` move to PodUtils/podcrates (`pod-relay`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/share/mod.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+
+## Done
+
+2026-11-09, commit ba9be1d (`T-037: split src/share.rs into src/share/`). `src/share/mod.rs` (431
+lines) holds the types, the app and the shared helpers; `upload.rs` (508) and `download.rs` (221)
+hold the two routers; `src/share/tests/upload.rs` (440) and `src/share/tests/download.rs` (292) hold the tests.
+`src/relay_reverse.rs` is not split (the Correction). Parity: commands 1295, items 1293, tests 1108,
+equal before and after. check.sh, `unshare -n` tests and `scripts/restricted-host.sh` pass. CI: at
+the merge.
 
 # T-038: Split `src/feature/mod.rs` and `src/proxy.rs`
 
@@ -697,7 +706,7 @@ T-008 and T-009 are done.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -733,6 +742,16 @@ T-008 and T-009 are done.
 ## Correction
 
 2026-11-05, The named modules `src/proxy.rs` move to PodUtils/podcrates (`pod-cloudflare`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/feature/mod.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+
+## Done
+
+2026-11-09, commit fee6f4f (`T-038: split src/feature/mod.rs into src/feature/`). `src/feature/mod.rs`
+(83 lines) holds `FeatureError` and the re-exports; `access.rs` (575), `qr.rs` (96),
+`static_server.rs` (414) and `share_link.rs` (232) hold the parts; `src/feature/tests/` holds the
+tests, one file for each part. `src/proxy.rs` is not split (the Correction). The finding of
+TruffleHog in the doc comment of `ShareLink` moved to `src/feature/share_link.rs:42`
+(`.github/secrets-allow.txt`). Parity: commands 1295, items 1293, tests 1108, equal before and
+after. check.sh passes. CI: at the merge.
 
 # T-039: Split `src/edge_h2.rs` and `src/tunnel.rs`
 
@@ -848,12 +867,12 @@ tests: exit 0 (22 skipped). CI: at the merge.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`tests/cli.rs` has 2,305 lines, the seccomp tests of the pod 2,018, `tests/shim_direct.rs` 822
-and `tests/detach.rs` 812.
+`tests/cli/main.rs` has 2,305 lines, the seccomp tests of the pod 2,018, `tests/shim_direct.rs` 822
+and `tests/detach/main.rs` 812.
 
 ## Premise
 
@@ -865,13 +884,13 @@ and `tests/detach.rs` 812.
 
 ## Approach
 
-1. `tests/cli.rs`: a cli directory with the helpers in main.rs, and modules for the exit codes,
+1. `tests/cli/main.rs`: a cli directory with the helpers in main.rs, and modules for the exit codes,
    the log, the manual, detach and autostart, net, warp and serve.
-2. The seccomp tests (`tests/pod_seccomp.rs`): a `pod_seccomp` directory with the SOCKS5 stand-in and the helpers in main.rs,
+2. The seccomp tests (`tests/pod_seccomp/main.rs`): a `pod_seccomp` directory with the SOCKS5 stand-in and the helpers in main.rs,
    and modules for TCP, UDP, listen, DNS and the rules.
 3. `tests/shim_direct.rs`: move the compile and run harness to a shared module, and use it from
    `tests/shim_no_socket.rs` and `tests/af_inet_kernel.rs`.
-4. `tests/detach.rs`: a detach directory with modules for the supervisor, the names and the logs.
+4. `tests/detach/main.rs`: a detach directory with modules for the supervisor, the names and the logs.
 
 ## Prove
 
@@ -884,6 +903,21 @@ cargo test --workspace -- --list 2>/dev/null | grep -c ': test$'
 ## Start condition
 
 T-019 is done.
+
+## Done
+
+2026-11-09, commits 0824db1, 1cbdad4, 3e89ce7, 88674cf. Each large test file is a directory with a
+`main.rs`: `tests/pod_seccomp/` (main.rs 268 lines; tcp, udp, listen, dns, rules), `tests/cli/`
+(main.rs 60 lines; exit_codes, startup, manual, log, autostart, net, warp, serve) and
+`tests/detach/` (main.rs 123 lines; supervisor, names, logs). The test targets keep their names.
+The harness of `tests/shim_direct.rs` (`have_compiler`, `build_program`, `run_pair`) is in
+`tests/shim_harness/mod.rs`; `tests/shim_no_socket.rs` and `tests/af_inet_kernel.rs` use it
+(`compile_quiet`, `compiler_or_skip`). `tests/shim_direct.rs` has 708 lines. The four rows are out
+of `scripts/size-allow.txt`. Parity: commands 1295, items 1293, tests 1108; each test name has a new
+module path only. check.sh and the targets cli, pod_seccomp, detach, shim_direct, shim_no_socket and
+af_inet_kernel pass under `unshare -n`. The workspace run under `unshare -n` fails the test
+`signals::sighup_and_sigterm_stop_with_run_for_and_exit_0` (10 s limit); it passes alone and also
+failed in the same way after T-037. CI: at the merge.
 
 # T-042: Cut the upward references 1 to 7: `net`, `util`, `fetch`, `hop`, `report`, `detach` and `relay_reverse`
 

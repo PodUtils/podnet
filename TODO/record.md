@@ -193,13 +193,13 @@ does. A move of their code in M2 can break them, and no test fails.
 
 - `docs/research/podnet/parity-checklist.md`, section 14, lists these commands. It also lists
   `warp license`, `warp rotate` and `warp shell`, which need WARP: T-012 tests them.
-- `tests/cli.rs` runs other commands of the binary on the loopback. `tests/detach.rs` tests
+- `tests/cli/main.rs` runs other commands of the binary on the loopback. `tests/detach/main.rs` tests
   `wait`.
 - A test that binds TCP starts with `need_loopback!()` (`tests/test_host/mod.rs`).
 
 ## Approach
 
-1. Add a test in `tests/cli.rs` for each command: `bug-report` (the report names the version
+1. Add a test in `tests/cli/main.rs` for each command: `bug-report` (the report names the version
    and holds no secret of the environment), `qr` (the matrix of a known URL), `net demo` (it
    ends with exit 0), `autostart run` (it starts the recorded command), `agent status` (the JSON
    document when no agent runs).

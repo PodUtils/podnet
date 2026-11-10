@@ -95,7 +95,7 @@ edge; it does not listen. The commands below listen:
 A TCP address that is not a loopback address is open to the network. podnet
 does not refuse it, because some hosts permit no other listener.
 
-`tests/cli.rs` (`the_listen_defaults_agree_with_the_manual`) checks the
+`tests/cli/manual.rs` (`the_listen_defaults_agree_with_the_manual`) checks the
 defaults in this table against `podnet man --json`.
 
 ## Secrets
@@ -115,7 +115,7 @@ These rules apply to each secret:
   `<hidden>`. Each error line and each line of the failure report goes
   through `report::mask`, which hides the user and the password of each URL,
   the value of each proxy variable that has a user part, and the token.
-* `tests/cli.rs` (`the_log_holds_no_secret`) runs podnet with `RUST_LOG=trace`
+* `tests/cli/log.rs` (`the_log_holds_no_secret`) runs podnet with `RUST_LOG=trace`
   and a token, a WARP identity and a proxy password. The test fails when one
   of them is in the output.
 

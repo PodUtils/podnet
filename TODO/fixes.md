@@ -36,7 +36,7 @@ handshake. With `--backend netns`, the same program works. The reporter lost abo
 - The evidence log shows `ss_family: 1` for the local and the peer address
   (`docs/reports/field-report-2026-11-05-evidence.log`).
 - Read: `getpeername` of a tracked stream gives the local bound address, not the peer.
-- The only test of the addresses uses a UDP socket (`tests/pod_seccomp.rs`).
+- The only test of the addresses uses a UDP socket (`tests/pod_seccomp/main.rs`).
   `crates/podnet-netns/README.md` says that each socket shows its logical address.
 - Not proven: that the AF_UNIX addresses, not the options, cause the resets. A run of
   radicle-node decides it.
@@ -70,7 +70,7 @@ connected TCP socket is the entry `Sock::Connected` (`crates/podnet-netns/src/so
 the program closes it: its peer, a local address and its options. `setsockopt` keeps the value;
 `getsockopt` gives it. `getpeername` of a stream with no connect gives `ENOTCONN`. A second
 `connect` gives `EISCONN`, a `bind` after the connect `EINVAL`. The test is in a new file,
-`tests/pod_seccomp_tcp.rs` (`tests/pod_seccomp.rs` is in the size allowlist): it passes. Plant: no
+`tests/pod_seccomp_tcp.rs` (`tests/pod_seccomp/main.rs` is in the size allowlist): it passes. Plant: no
 entry after the connect; the test fails with the values of the field report (`setsockopt` -1,
 `ss_family` 1). The words of `pod doctor` about these calls stay true (they name the case with no
 write to the memory of the program). The run of radicle-node under `warp exec` is not done: this
@@ -157,7 +157,7 @@ T-063 is done.
 
 2026-11-06, commit 7c3d1d8 (`T-064: seccomp: key the socket table by the socket inode`). The key
 of the table is the inode of the socket of the program end (`crates/podnet-netns/src/fdtable.rs`).
-The tests are in a new file, `tests/pod_seccomp_fds.rs` (`tests/pod_seccomp.rs` is in the size
+The tests are in a new file, `tests/pod_seccomp_fds.rs` (`tests/pod_seccomp/main.rs` is in the size
 allowlist). `seccomp_close_in_a_child_keeps_the_parent_entry`: the parent connects through the
 proxy after a child closes its copy; it passes. `seccomp_dup_keeps_the_udp_destination`: a copy by
 `dup`, `dup2`, `dup3`, `F_DUPFD` and `F_DUPFD_CLOEXEC` keeps the destination of a connected UDP
@@ -213,8 +213,8 @@ T-064 is done.
 
 2026-11-06:
 
-- The test is in `tests/pod_seccomp_handoff.rs`, not in `tests/pod_seccomp.rs`.
-  `tests/pod_seccomp.rs` is in `scripts/size-allow.txt` and cannot get larger. The Prove names
+- The test is in `tests/pod_seccomp_handoff.rs`, not in `tests/pod_seccomp/main.rs`.
+  `tests/pod_seccomp/main.rs` is in `scripts/size-allow.txt` and cannot get larger. The Prove names
   the new test target.
 - `setsockopt(TCP_NODELAY)` on the handed descriptor cannot give 0 from the kernel. The handed
   socket is the `AF_UNIX` socket to the proxy, and the kernel gives `EOPNOTSUPP` for an
@@ -291,7 +291,7 @@ answer; an echo to 192.0.2.1 gets `EACCES`.
 
 ## Correction
 
-2026-11-06. The three tests are in a new file, `tests/pod_seccomp_dgram.rs`: `tests/pod_seccomp.rs`
+2026-11-06. The three tests are in a new file, `tests/pod_seccomp_dgram.rs`: `tests/pod_seccomp/main.rs`
 is in the size allowlist with no free lines. Run them with
 `cargo test --test pod_seccomp_dgram`. The seccomp pod has no address of its own; its gateway is
 `10.66.255.254`, the gateway of the netns backend (`TUN_GW`). An IPv6 ICMP socket gets its own
@@ -350,7 +350,7 @@ it returns in less than 100 ms.
 
 ## Correction
 
-- 2026-11-06: `tests/pod_seccomp.rs` is at its size limit (`scripts/size-allow.txt`). The test is in
+- 2026-11-06: `tests/pod_seccomp/main.rs` is at its size limit (`scripts/size-allow.txt`). The test is in
   `tests/pod_seccomp_slow_dial.rs`. The command is
   `cargo test --test pod_seccomp_slow_dial -- seccomp_a_slow_dial_does_not_stop_other_calls`.
 - 2026-11-06: the code has no non-blocking connect (`EINPROGRESS`). A `connect` of a socket with
@@ -477,7 +477,7 @@ and the RST for a SYN-ACK. `tun::run` sends the SYN each 30 s, takes the answer 
 and ends after 3 probes with no answer; it also ends at `--session-max-age`. A TUN of `from_fd`
 (the raw pod) has no address and no probe. `warp_tun_probe_takes_its_answer_out` and
 `warp_tun_probe_ends_a_dead_session` test the probe; `warp_tun_takes_session_max_age` is in
-`tests/commands.rs` (`tests/cli.rs` cannot grow). Control: before, `warp tun --session-max-age 60`
+`tests/commands.rs` (`tests/cli/main.rs` cannot grow). Control: before, `warp tun --session-max-age 60`
 exits 64. No live run: this host has no TUN device for a test.
 
 # T-070: `warp exec`, `warp shell` and `warp nc` find a running `warp up` with another state directory
@@ -975,7 +975,7 @@ cargo test --test cli -- pod_doctor_json_has_the_schema_and_the_verdicts
 2026-11-06, commit 43b3559 (`T-078: pod doctor uses the verdict words of doctor and has a schema
 key`). `crates/podnet-netns/src/doctor.rs`: `ok` or `fail` for each probe and backend; the JSON
 form has `schema` 1, `verdict` for each capability and `verdicts`; the old keys stay; exit 3 stays.
-The test is in `tests/commands.rs` (`tests/cli.rs` cannot grow) and passes. The `## Breaking` list
+The test is in `tests/commands.rs` (`tests/cli/main.rs` cannot grow) and passes. The `## Breaking` list
 is in the draft note `docs/releases/v0.4.0-beta.1.md`.
 
 # T-079: Read the numbers of #206 and #184 in a live run
@@ -1382,7 +1382,7 @@ at the start, 311 after 100 sockets, 311 after the close. A long-lived pod runs 
 - Read: the test `seccomp_closed_sockets_free_their_entries` (`tests/pod_seccomp_fds.rs:260`) makes
   5000 sockets that never send. It cannot see the leak.
 - Not measured: the count of 3 per socket. No build ran in this triage.
-- Existing tests have a SOCKS5 UDP-in-stream stand-in (`tests/pod_seccomp.rs:435`).
+- Existing tests have a SOCKS5 UDP-in-stream stand-in (`seccomp_backend_relays_udp_in_the_stream`, `tests/pod_seccomp/udp.rs`).
 
 ## Approach
 
@@ -1880,7 +1880,7 @@ addresses and the cmsg. A rewrite of a handler can pass the hand-written C tests
 ## Premise
 
 - Read: the end-to-end tests are in `tests/pod_seccomp*.rs` (for example `:1588`, `:1657`, `:1717`,
-  `:1810`). `tests/pod_seccomp.rs` is at its cap (2021).
+  `:1810`). `tests/pod_seccomp/main.rs` is at its cap (2021).
 - No packetdrill in the tree (grep).
 - This work finds the gaps of T-143, T-144, T-146 to T-148 as a list. Start with the TCP surface.
 
@@ -1934,7 +1934,7 @@ allowlist, or (2) a statement that they are snapshots.
 - Read: `TODO/RULES.md:56` says that these directories "are readings at a time". `TODO/todo.toml:15`
   lists them as `readings`. `architecture.md:3` names its commit (`3bed023`, 2026-11-04).
   `tests/docs.rs:74-85` reads eight documents, not these.
-- Read: the live plan is the record. T-040 (`TODO/split.md:791`) still says that `seccomp.rs` has 1,900
+- Read: the live plan is the record. T-040 (`TODO/split.md:810`) still says that `seccomp.rs` has 1,900
   lines, and "do this entry before T-063 starts, or after T-067 is done". Now `seccomp.rs` has 1516
   lines and T-063 to T-067 are done. This is a stale figure in the record, not in a reading.
 - Measured: `grep -rn "crates/pod-netns/" docs/research docs/reports` gives 35, 8, 6, 6, 5, 5, 2, 2 hits
@@ -2606,7 +2606,7 @@ python3 scripts/check-size.py
 
 ## Premise
 
-- Printed at `src/cli/cmd/net/mod.rs:267-268`. `tests/cli.rs` has `doctor_tells_listen_from_bind`.
+- Printed at `src/cli/cmd/net/mod.rs:267-268`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
 - `README.md:906-908` uses `net switch --listen tcp://` as its example.
 
 ## Approach
@@ -2931,7 +2931,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 
 ## Done
 
-2026-11-09, commit 456c7d9 (`T-199: relay connect --listen has the instance surface of connect -L`). `relay connect` flattens `DetachArgs` (the positional is the field `pair`: the id `name` clashed with `--name`); `detach_of` has an arm that applies only with `--listen`; `--replace` works as for `connect -L` (`replaces_a_socket` in `src/cli/opts.rs`). An accept error ends the command with exit 69 (a supervisor starts it again). The unix listener uses `connect::unix_listener` (`SocketFile` removes the file at the end; the real `replace` reaches `claim_socket_path`). The ready document has `pair` and `listen`. A detached start moves `--token` of `relay connect` to `PODNET_RELAY_CONNECT_TOKEN` in the secret file (`split_secrets`, `SECRET_VARIABLES`); before, it went to `TUNNEL_TOKEN` and the child had no token. The message of `claim_socket_path` stays: `podnet ps`, `podnet stop NAME` and `--replace` now exist for this caller. The tests are in the new file `tests/relay_listen.rs` (`tests/cli.rs` is in the size allowlist): `relay_connect_listen_detach` (start with `--detach --name fwd`, `ps --json` lists `fwd`, no token in the record, `stop fwd` ends it) and `relay_connect_unix_socket_removed` (the socket file is gone after SIGTERM); both fail before the change. `relay connect x --listen tcp://127.0.0.1:0 --detach --help` exits 0. `cargo test --workspace --no-fail-fast` passes; the other checks of `scripts/agent/check.sh` exit 0. CI: at the merge.
+2026-11-09, commit 456c7d9 (`T-199: relay connect --listen has the instance surface of connect -L`). `relay connect` flattens `DetachArgs` (the positional is the field `pair`: the id `name` clashed with `--name`); `detach_of` has an arm that applies only with `--listen`; `--replace` works as for `connect -L` (`replaces_a_socket` in `src/cli/opts.rs`). An accept error ends the command with exit 69 (a supervisor starts it again). The unix listener uses `connect::unix_listener` (`SocketFile` removes the file at the end; the real `replace` reaches `claim_socket_path`). The ready document has `pair` and `listen`. A detached start moves `--token` of `relay connect` to `PODNET_RELAY_CONNECT_TOKEN` in the secret file (`split_secrets`, `SECRET_VARIABLES`); before, it went to `TUNNEL_TOKEN` and the child had no token. The message of `claim_socket_path` stays: `podnet ps`, `podnet stop NAME` and `--replace` now exist for this caller. The tests are in the new file `tests/relay_listen.rs` (`tests/cli/main.rs` is in the size allowlist): `relay_connect_listen_detach` (start with `--detach --name fwd`, `ps --json` lists `fwd`, no token in the record, `stop fwd` ends it) and `relay_connect_unix_socket_removed` (the socket file is gone after SIGTERM); both fail before the change. `relay connect x --listen tcp://127.0.0.1:0 --detach --help` exits 0. `cargo test --workspace --no-fail-fast` passes; the other checks of `scripts/agent/check.sh` exit 0. CI: at the merge.
 
 # T-201: `WebSocketTunnel` dials through the egress layer and parses IPv6 (GitHub #398)
 
@@ -3068,7 +3068,7 @@ so. The README (`:307-362`) documents the precedence of the token and protocol f
 - Guard: `src/cli/cmd/tunnel.rs:136` (`if args.config.is_none()`). The flags are read at `:138-162`, `:245`.
   The three per-origin flags are declared at `:62-73`.
 - The token case already has a usage error: `src/cli/cmd/tunnel.rs:111-127` (issue 172).
-- Existing tests with `--config`: `tests/cli.rs:71`, `:610`, `:1237`, `:1298` (none gives an origin flag).
+- Existing tests with `--config`: `a_bad_configuration_exits_78` and `bad_credentials_exit_78` (`tests/cli/exit_codes.rs`), `check_mode` and `the_config_file_gives_the_protocol_and_the_connections` (`tests/cli/startup.rs`) (none gives an origin flag).
 
 ## Approach
 

@@ -253,7 +253,7 @@ T-008 is done (the parity snapshot).
 ## Done
 
 2026-11-05, the rename commit of 2026-11-05. The binary target and its `main.rs` are gone. The tests moved to
-`tests/pod_seccomp.rs` (30 tests) and `tests/pod_usage.rs` (3 tests); they run `podnet pod`.
+`tests/pod_seccomp/main.rs` (30 tests) and `tests/pod_usage.rs` (3 tests); they run `podnet pod`.
 No assertion changed. `crates/podnet-netns/tests/raw.rs` stays in the crate: it uses the library only. The release,
 the proofs, the install script and the image do not ship the binary.
 

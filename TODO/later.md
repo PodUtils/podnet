@@ -592,7 +592,7 @@ with the commit that takes `pod-session`, `pod-e2e` and `pod-identity`. podnet h
 ## Problem
 
 `src/lib.rs` has the macro `update_atomic!`, a loop of `compare_exchange_weak`, in place of the
-deprecated `fetch_update` (#214). `src/share.rs` and `src/gate.rs` use it.
+deprecated `fetch_update` (#214). `src/share/mod.rs` and `src/gate.rs` use it.
 
 ## Premise
 
@@ -798,7 +798,7 @@ reconnects with a 1 s to 30 s backoff; this leg does not.
 
 - `inactivity_timeout` is 3600 s (`src/relay.rs:444`); the forward is requested once (`:474-477`).
 - `grep -rn "relay::run\|RelayConfig" src tests examples` finds no caller outside `src/relay.rs`.
-  `ShareLink::from_relay` (`src/feature/mod.rs:1263`) has no caller outside a test. No CLI uses the leg.
+  `ShareLink::from_relay` (`src/feature/share_link.rs:119`) has no caller outside a test. No CLI uses the leg.
 - Not measured: the 60 minute expiry on a live relay; the `Handle::is_closed` behaviour of russh 0.64.1.
 
 ## Approach
