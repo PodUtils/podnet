@@ -288,7 +288,7 @@ pub(crate) fn warn(text: &str) {
 fn backend_line(kind: BackendKind) -> &'static str {
     match kind {
         BackendKind::Seccomp => "seccomp backend: socket options and addresses are emulated; use --backend netns when a program fails",
-        _ => "netns backend: UDP other than DNS does not go through, and a loopback listener of the program is not seen from outside; use --backend seccomp when a program needs them",
+        _ => "netns backend: a loopback listener of the program is not seen from outside, and a UDP datagram larger than 1500 bytes does not go through; use --backend seccomp when a program needs them",
     }
 }
 

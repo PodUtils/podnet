@@ -5,11 +5,13 @@ mod backend;
 mod fdpass;
 mod packet;
 mod tun;
+mod udpflow;
 
 pub(crate) use backend::*;
 pub(crate) use fdpass::*;
 pub(crate) use packet::*;
 pub(crate) use tun::*;
+pub(crate) use udpflow::{UdpFlows, UdpRoute};
 
 /// A std `Ipv4Addr` as smoltcp's wire type.
 pub(crate) fn smol_v4(addr: Ipv4Addr) -> Ipv4Address {
@@ -124,16 +126,18 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
         let mut report = Vec::with_capacity(REAPER_REPORT);
         let mut first: Option<i32> = None;
         loop {
-            backend.device.read_ready();
+            backend.read_tun();
             backend.tick().await?;
             // Wake on TUN input or a short timer, whichever comes first. The
             // readiness must be cleared after the TUN is drained: if it stays
             // set, this loop never parks, and the I/O driver never marks an
             // upstream socket readable.
+            // A full UDP queue (T-111) stops the read of the TUN.
+            let paused = backend.udp.paused();
             tokio::select! {
-                guard = async_fd.readable() => {
+                guard = async_fd.readable(), if !paused => {
                     if let Ok(mut guard) = guard {
-                        backend.device.read_ready();
+                        backend.read_tun();
                         guard.clear_ready();
                     }
                 }

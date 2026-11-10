@@ -49,6 +49,8 @@ pub(crate) struct Backend {
     /// Sockets aborted after the last poll. They stay until the next poll
     /// has sent their RST.
     pub(crate) aborting: Vec<SocketHandle>,
+    /// The UDP flows of the program other than DNS (T-111).
+    pub(crate) udp: UdpFlows,
     pub(crate) proxies: Vec<Proxy>,
     pub(crate) rules: Vec<Rule>,
     pub(crate) verbose: bool,
@@ -95,6 +97,7 @@ impl Backend {
             held: HashMap::new(),
             predialed: HashMap::new(),
             aborting: Vec::new(),
+            udp: UdpFlows::new(),
             proxies,
             rules,
             verbose,
@@ -257,8 +260,23 @@ impl Backend {
         }
     }
 
+    /// Read the TUN, unless a full UDP queue pauses the read.
+    pub(crate) fn read_tun(&mut self) {
+        if !self.udp.paused() {
+            self.device.read_ready();
+        }
+    }
+
     pub(crate) async fn tick(&mut self) -> Result<()> {
         self.answer_dns();
+        let route = UdpRoute {
+            proxies: &self.proxies,
+            rules: &self.rules,
+            dns: &self.dns,
+            verbose: self.verbose,
+        };
+        self.udp
+            .relay(&mut self.device.rx, &mut self.device.tx, &route);
         self.hold_syns().await;
         self.observe_syns();
         self.interface

@@ -263,6 +263,7 @@ int main(void) {
 
 mod dns;
 mod listen;
+mod netns_udp;
 mod outlive;
 mod rules;
 mod tcp;

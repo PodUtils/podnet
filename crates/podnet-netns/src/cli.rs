@@ -26,7 +26,7 @@ pub(crate) struct Args {
     pub(crate) serve: Option<crate::listen::ProxyListen>,
     pub(crate) backend: BackendKind,
     /// `--prefer-udp`: `auto` takes the seccomp backend first (it carries
-    /// all UDP; the netns backend carries DNS only).
+    /// UDP datagrams of any size).
     pub(crate) prefer_udp: bool,
     /// `--name-backend`: print one line that names the backend that runs
     /// and its limits (T-071).
@@ -88,8 +88,9 @@ Options:
                            listener of the program is in the network of the
                            pod: a loopback TCP listener is not seen from
                            outside; use a unix socket (connect -L unix:///PATH)
-      --prefer-udp         With auto: seccomp first when it works (all UDP
-                           goes through; netns carries DNS only)
+      --prefer-udp         With auto: seccomp first when it works (UDP
+                           datagrams of any size go through; netns carries
+                           a datagram of 1500 bytes at most)
       --name-backend       Print one line on stderr that names the backend
                            that runs and its limits (also after auto)
       --inbound-dir <DIR>  Where a bound port is exposed as a unix socket

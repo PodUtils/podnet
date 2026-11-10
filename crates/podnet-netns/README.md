@@ -24,7 +24,7 @@ podnet pod doctor --json
 | `-r, --rule SPEC` | A route for some destinations: `domain:NAME=PROXY`, `domain:.NAME=PROXY` (the name and each name under it) `cidr:ADDR/PREFIX=PROXY` (IPv4 or IPv6) or `cidr:@FILE=PROXY` (one prefix on each line of FILE; `#` starts a comment). PROXY can be `direct` (TCP from podnet-netns, no proxy). The first rule that matches is used. |
 | `--map NAME=ADDR` | Resolve `NAME` to `ADDR`, with no upstream. |
 | `--backend NAME` | `auto` (default), `netns` or `seccomp`. |
-| `--prefer-udp` | With `auto`: `seccomp` first when it works, because it carries all UDP (`netns` carries DNS only). `podnet warp run` sets it. |
+| `--prefer-udp` | With `auto`: `seccomp` first when it works, because it carries UDP datagrams of each size (`netns` carries a datagram of 1500 bytes at most). `podnet warp run` sets it. |
 | `--name-backend` | Write one line on stderr that names the backend that runs (also after `auto`) and its limits. `podnet warp exec` and `podnet warp shell` set it. `PODNET_NETNS_QUIET` (`podnet -q`) removes the line. |
 | `--keep-proxy-env` | Keep `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY` and their lower-case forms for the program. By default the program does not get them: the pod is its egress, and a program that used them would send to a host proxy that it cannot reach. |
 | `--inbound-dir DIR` | Seccomp backend only: where a port that the program listens on becomes a unix socket (`DIR/<port>.sock`). The default is `$XDG_RUNTIME_DIR/podnet-netns-inbound` when that directory is of the user, else `$TMPDIR/podnet-netns-inbound-<uid>`. A new directory gets mode 0700. A directory of another user, a symbolic link, or a directory that the group or others can write is refused (exit 3). With `--backend netns` it is a usage error (exit 64); when `auto` picks netns, a warning says that it is not used. |
@@ -79,9 +79,25 @@ socket) when there is one, else to TCP on the host.
   the fake-IP pool. The answer comes from the address that the program sent
   the query to.
 
+* The parent takes each other UDP datagram of the program before the stack
+  (T-111). Each flow (source, source port, destination, destination port)
+  has its own task, so two flows to one port stay apart. The task sends the
+  datagrams to the first proxy of the chain of the destination: in the
+  stream of the proxy (SOCKS5 command `0x83`) for a proxy on a unix socket,
+  else with `UDP ASSOCIATE`. A `direct` rule sends them from a UDP socket
+  of the host. A fake address goes to the proxy as its name. Each reply
+  comes from the address that the program sent to.
+* A flow with no datagram for 60 seconds ends. The table holds 256 flows;
+  a new flow above that ends the flow that was idle longest.
+* Each flow has a queue of 64 datagrams. When the queue is full, the
+  parent stops the read of the TUN until the queue has room: the kernel of
+  the pod then counts the loss. A full queue does not end the flow.
+* A datagram of the program that is larger than the MTU (1500 bytes) is a
+  fragment, and it does not go through. A larger reply goes to the program
+  as fragments.
+
 Needs: unprivileged user namespaces and `/dev/net/tun`. This backend carries
-TCP and DNS. It does not carry other UDP, and no backend of the pod carries
-ICMP (`ping`) to the internet. The `seccomp` backend answers an echo to the
+TCP and UDP. No backend of the pod carries ICMP (`ping`) to the internet. The `seccomp` backend answers an echo to the
 gateway of the pod (see below).
 
 A listener of the program (for example `podnet connect -L tcp://127.0.0.1:8080`)
