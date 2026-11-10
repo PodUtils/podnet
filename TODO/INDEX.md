@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 78 open, 3 partial, 19 blocked, 124 done.**
+**224 entries: 77 open, 3 partial, 19 blocked, 125 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
 | P2 | 45 | 2 | 13 | 77 | 137 |
-| P3 | 30 | 0 | 4 | 27 | 61 |
-| **All** | 78 | 3 | 19 | 124 | 224 |
+| P3 | 29 | 0 | 4 | 28 | 61 |
+| **All** | 77 | 3 | 19 | 125 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -197,7 +197,7 @@ M8 Overlays, M9 Later.
 | [T-149](fixes.md) | P3 | S | M5 | research | done | seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350) |
 | [T-150](pods.md) | P3 | S | M7 | feature | done | seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351) |
 | [T-151](pods.md) | P3 | M | M7 | measurement | done | seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351) |
-| [T-152](pods.md) | P3 | S | M7 | research | open | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
+| [T-152](pods.md) | P3 | S | M7 | research | done | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
 | [T-153](later.md) | P3 | L | M9 | feature | open | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
 | [T-154](fixes.md) | P2 | M | M5 | chore | done | seccomp: fuzz targets for the notification handlers (GitHub #353) |
 | [T-155](fixes.md) | P3 | M | M5 | chore | done | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |

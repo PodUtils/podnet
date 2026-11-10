@@ -449,7 +449,7 @@ at the merge. GitHub #351 (fixes 1 to 3) closes at the merge.
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -489,6 +489,36 @@ The lead, 2026-11-09: keep the flow table of T-111 as planned. This measurement 
 unshare -Urn sh -c 'nft add table ip t && nft "add chain ip t out { type nat hook output priority -100 ; }" && nft add rule ip t out tcp dport 80 redirect to :9999'
 cargo test -p podnet-netns --lib -- doctor_netfilter_row_has_a_verdict
 ```
+
+## Done
+
+2026-11-10, commit 07d150b (`T-152: pod doctor: a probe of netfilter in a user and net namespace`).
+`crates/podnet-netns/src/nfprobe.rs`: the row `netfilter in a namespace (not a backend)` of `pod
+doctor`. In a forked child: `unshare(CLONE_NEWUSER | CLONE_NEWNET)`, the uid and gid maps, `lo` up;
+through nfnetlink a table, a chain `type nat hook output priority -100` and the rule `tcp dport 80
+redirect to :9999`; `SO_ORIGINAL_DST` of a connect to 127.0.0.1:80; a UDP datagram to
+127.0.0.1:5353 and its entry in a ctnetlink dump. The results:
+
+- This host (Firecracker VM, kernel 6.18.44, nf_tables and conntrack built in: `/proc/modules` is
+  empty): each step passes as root and as uid 65534 (`setpriv --reuid=65534 --regid=65534
+  --clear-groups podnet pod doctor`): "nft table, nat chain and REDIRECT: ok; SO_ORIGINAL_DST: port
+  80; UDP conntrack (ctnetlink): ok". The `nft` command and a C client give the same result.
+- `/proc/self/net/nf_conntrack` in the namespace of uid 65534 gives "Permission denied"; root reads
+  it. Thus the probe and a backend read conntrack through ctnetlink.
+- With user namespaces refused (`max_user_namespaces` 0 in an outer namespace): the row fails at
+  `unshare(NEWUSER|NEWNET)` with `ENOSPC`, as the netns backend.
+- Not measured: the CI runner (ubuntu-24.04, AppArmor can restrict unprivileged user namespaces;
+  the job `test` of `.github/workflows/ci.yml` now prints the row), a container (the Docker
+  daemon does not run on this host; the default seccomp profile of Docker refuses
+  `unshare(CLONE_NEWUSER)`), and the autoload of `nf_tables`, `nft_redir` and `nf_conntrack` as
+  modules.
+
+For T-153: the plane works on this host for an unprivileged user; T-153 waits for the row of the CI
+runner and of a container (its Start condition). The Prove commands: the `unshare -Urn` command
+succeeds; 1 passed (`doctor_netfilter_row_has_a_verdict`). Also:
+`the_batch_has_its_lengths_and_the_dump_parses`. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`:
+each step 0. CI: at the merge (the row of the runner is in the log of the job `test`). GitHub #352
+stays open for T-153.
 
 # T-156: pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354)
 
