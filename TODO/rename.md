@@ -508,6 +508,18 @@ T-021 and T-022 are done.
 
 The owner allows releases again: done, 2026-11-09 (`docs/decisions.md`, Releases: betas, no crates.io).
 
+## Done
+
+2026-11-10. The tag `v0.4.0-beta.1` is at e756ce2 (ci 42724748795 and live 42724748679 at
+e756ce2: success). The dry run of `release.yml` (42727786723) built the eight targets, the notes and
+the bundle. The publish (`publish=v0.4.0-beta.1`, 42729876736, and the run on the tag 42729897311):
+success; the release is a prerelease with 13 assets (`podnet-TARGET` for eight targets, `podnet.1`,
+`SHA256SUMS`, `SHA256SUMS.sigstore.json`, `provenance.sigstore.json`,
+`THIRD-PARTY-LICENSES.md`). `release-proofs.yml` (42731594509): success. `publish.yml`
+(42729901968) failed in its dry run: the pack cannot resolve the `pod-*` crates, which are not on
+crates.io; nothing went to crates.io. 707435f makes the pack run only when the switch `crates-io`
+is true. The install line of the README on a clean runner is not run here.
+
 # T-024: The update checks pass against a podnet release again
 
 **Source:** `docs/research/podnet/rename.md`, section 5, step 6.
