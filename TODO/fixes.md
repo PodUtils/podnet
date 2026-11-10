@@ -1998,7 +1998,7 @@ CONNECT ...: 502`, exit 69, and `curl --proxy ... URL` gives 200. `--no-verify` 
 - Read: `verify_fetch` (`src/tunnel.rs:1230-1311`). The Dns arm (`:1276-1279`) and the other `Err` arm
   (`:1280-1283`) only change the retry text. After the loop only `last_status` can demote the verdict
   (`:1301-1306`). Otherwise `fault(Unavailable)` (`:1307-1310`).
-- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-185`).
+- Read: the three front ends each shut down and return the error (`src/cli/cmd/run.rs:17-198`).
   `run_demo` passes a body token, so the warn branch cannot apply; it prints PROOF from `check.dns`
   (`run.rs:153-160`). `wants_verify` (`tunnel.rs:1208`) has no caller. The ready document has
   `"verified": bool` (`run.rs:196-215`).
@@ -2053,7 +2053,7 @@ Operators of restricted hosts need the flag: the fresh `*.trycloudflare.com` nam
 
 ## Premise
 
-- `src/cli/opts.rs:58-60` declares it (`global = true`); `src/cli/opts.rs:173` sets `config.verify`.
+- `src/cli/opts.rs:59-61` declares it (`global = true`); `src/cli/opts.rs:174` sets `config.verify`.
 - `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `src/tunnel.rs:1230`
   runs the fetch. `crates/podnet-core/src/net.rs` takes `no_tls_verify` from the ingress rule. The two flags share no state.
 - `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1220`) has no caller.
@@ -2095,7 +2095,7 @@ has `--masque-endpoint`; `tunnel` has none.
 ## Premise
 
 - `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:827-838`). Neither
-  `TunnelOpts` (`src/cli/opts.rs:20-105`) nor `TunnelArgs` has the flag. `with_masque` exists
+  `TunnelOpts` (`src/cli/opts.rs:21-106`) nor `TunnelArgs` has the flag. `with_masque` exists
   (`src/warp/mod.rs:262`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
 - `open_on` (`src/warp/mod.rs:799-828`) uses `endpoint_order` (`:101-122`): the record order, IPv4 first.
   `has_default_route(true)` (v6) only decides whether the IPv6 door is included.
@@ -2106,7 +2106,7 @@ has `--masque-endpoint`; `tunnel` has none.
 1. Fix: in the `endpoint == None` branch, with no IPv4 default route (`has_default_route(false)`) and no
    won door, put the IPv6 door first. Dual-stack keeps the order. Log the family of a failed door.
 2. Flag: `--masque-endpoint IP:PORT` in `TunnelOpts`, through `Config`, to `warp_targets`
-   (as `--warp-identity`, `src/cli/opts.rs:172`, `src/tunnel.rs:157,262`).
+   (as `--warp-identity`, `src/cli/opts.rs:173`, `src/tunnel.rs:157,262`).
 
 ## Decision
 
@@ -2352,7 +2352,7 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 
 ## Premise
 
-- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:38-48`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
+- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:39-49`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
 - `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:248-253`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
@@ -2618,7 +2618,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:288-289`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:1045-1047` uses `net switch --listen tcp://` as its example.
+- `README.md:1076-1078` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -2916,7 +2916,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 ## Premise
 
 - `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:49-70`. `RelayCommand::Node` has it: `:44-45`.
-- `detach_of` has no arm for it: `src/cli/opts.rs:255-264`. `connect` has one: `:246`.
+- `detach_of` has no arm for it: `src/cli/opts.rs:260-269`. `connect` has one: `:251`.
 - Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:186`, `:198`. `connect -L` logs and returns:
   `src/cli/cmd/connect.rs:208-211`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
@@ -3002,8 +3002,8 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 
 ## Premise
 
-- `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:114` (field), `:124` (`root_404: false`),
-  `src/cli/cmd/run.rs:32` (read).
+- `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:115` (field), `:125` (`root_404: false`),
+  `src/cli/cmd/run.rs:44` (read).
 - `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:201`.
 - The warn branch: `src/tunnel.rs:1266-1270`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
@@ -3041,9 +3041,9 @@ Each JSON document of podnet has the keys `schema` (1) and `podnet` (`status::st
 
 ## Premise
 
-- `src/cli/cmd/run.rs:82-92` (no `stamped`). The only `stamped` call of `run.rs` is `:279` (`announce`).
+- `src/cli/cmd/run.rs:95-105` (no `stamped`). The only `stamped` call of `run.rs` is `:292` (`announce`).
 - `grep -rn "status::stamped" src/cli` gives 8 hits, none in `run_share`.
-- The `verified` line is unstamped in every command (`run.rs:119`, `:154`). It stays as it is.
+- The `verified` line is unstamped in every command (`run.rs:119`, `:167`). It stays as it is.
 
 ## Approach
 
@@ -3162,7 +3162,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1163-1169`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1194-1200`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3203,10 +3203,10 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 ## Premise
 
 - `crates/podnet-serve/src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-89` (`resolve`), test `:603-607` asserts `"a b"`.
-- `crates/podnet-serve/src/files/mod.rs:257-272`, `:170`. `crates/podnet-serve/src/ingress.rs:197-200`, test `:632-645` (`"a + stays a +"`).
+- `crates/podnet-serve/src/files/mod.rs:257-272`, `:170`. `crates/podnet-serve/src/ingress.rs:200-203`, test `:635-648` (`"a + stays a +"`).
 - `README.md:502-503`.
 - One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:252-254`, test
-  `:716`). The CLI decoder returns `None` (`crates/podnet-serve/src/files/mod.rs:262-265`), so the request is refused. A short escape at the
+  `:747`). The CLI decoder returns `None` (`crates/podnet-serve/src/files/mod.rs:262-265`), so the request is refused. A short escape at the
   end (`i + 2 < len`) also differs.
 
 ## Approach
@@ -3397,12 +3397,12 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Problem
 
-`README.md:823-824` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`README.md:854-855` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
 `-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
 
 ## Premise
 
-- `README.md:820-824`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:851-855`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
@@ -3750,7 +3750,7 @@ cfb reads the document to qualify a host. The keys must not change within schema
 
 ## Premise
 
-- Read: `src/doctor.rs:243` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
+- Read: `src/doctor.rs:245` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
 - Read: `podnet doctor` has `--samples` and `--timeout` (`src/cli/cmd/host.rs`). It has no `--quick`. The default budget of the samples is 10 s (`Options::budget`).
 - Not measured: the time of a full run on a host with no egress.
 
@@ -3783,7 +3783,7 @@ Ask A-C-10 (P1): "A fixed JSON schema of the egress lanes for the node probe of 
 
 ## Premise
 
-- Read: `src/doctor.rs:221` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
+- Read: `src/doctor.rs:223` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
 - Read: the verdict words of the doctor are `ok`, `no` and others (`Verdict::name`). The lanes use `ok`, `fail` and `unknown`, so a map is necessary.
 - `ws_upgrade` has no probe now. `proxy` is the row of the proxy (T-184).
 

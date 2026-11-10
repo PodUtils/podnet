@@ -121,6 +121,7 @@ fn the_roads_follow_the_legs() {
             skew: None,
             detail: String::new(),
         },
+        git: git_check::git("git"),
     };
     let roads = report.roads();
     assert_eq!(roads[0].0, "direct");
@@ -175,4 +176,22 @@ fn a_proxy_refusal_is_an_answer() {
     );
     let lost = anyhow::anyhow!("connection reset by peer");
     assert!(matches!(classify(&lost, Duration::ZERO), Sample::Lost(_)));
+}
+
+/// T-094: the doctor reports a missing git, and the version of git.
+#[test]
+fn doctor_reports_a_missing_git() {
+    let missing = git_check::git("podnet-no-such-git");
+    assert_eq!(missing.verdict, Verdict::Refused);
+    assert!(missing.detail.contains("not on PATH"), "{}", missing.detail);
+    assert!(
+        missing.line().contains("git    fail:"),
+        "{}",
+        missing.line()
+    );
+    assert_eq!(missing.to_json()["status"], "fail");
+    let found = git_check::git("git");
+    if found.verdict == Verdict::Ok {
+        assert!(found.version.as_deref().unwrap().starts_with("git version"));
+    }
 }

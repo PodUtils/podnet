@@ -214,8 +214,49 @@ pub async fn create_repo(
             String::from_utf8_lossy(&out.stderr).trim()
         ));
     }
-    tracing::info!(repository = %name, "git: a push made a new repository");
+    tracing::info!(repository = %name, "git: a new bare repository");
     repo_dir(&root, &name)
+}
+
+/// The paths of the repositories under `root`, sorted: each directory
+/// with `HEAD` and `objects` (a bare repository), or with `.git` (a work
+/// tree), at most [`MAX_DEPTH`] levels down. A name that starts with `.`
+/// and a symlink are skipped. A repository holds no other repository.
+pub fn repos(root: &Path) -> Vec<String> {
+    let mut found = Vec::new();
+    walk(root, "", 0, &mut found);
+    found.sort();
+    found
+}
+
+/// The most levels of [`repos`] under the root.
+pub const MAX_DEPTH: usize = 4;
+
+fn walk(dir: &Path, rel: &str, depth: usize, found: &mut Vec<String>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+        if name.starts_with('.') || !entry.file_type().is_ok_and(|t| t.is_dir()) {
+            continue;
+        }
+        let path = entry.path();
+        let sub = if rel.is_empty() {
+            name
+        } else {
+            format!("{rel}/{name}")
+        };
+        if (path.join("HEAD").is_file() && path.join("objects").is_dir())
+            || path.join(".git").is_dir()
+        {
+            found.push(sub);
+        } else if depth + 1 < MAX_DEPTH {
+            walk(&path, &sub, depth + 1, found);
+        }
+    }
 }
 
 /// A value of `GIT_PROTOCOL` that git can send: `version=2` and other

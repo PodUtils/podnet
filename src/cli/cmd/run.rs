@@ -20,6 +20,18 @@ pub(crate) async fn run_tunnel(
     run_for: Option<u64>,
     controls: Vec<Arc<ShareControl>>,
 ) -> Result<()> {
+    run_tunnel_then(config, show, run_for, controls, &|_| {}).await
+}
+
+/// [`run_tunnel`], and `ready` gets the public URL before the ready
+/// document (`git serve` records it for `git urls`, T-094).
+pub(crate) async fn run_tunnel_then(
+    config: Config,
+    show: Show,
+    run_for: Option<u64>,
+    controls: Vec<Arc<ShareControl>>,
+    ready: &(dyn Fn(Option<&str>) + Sync),
+) -> Result<()> {
     let verify = config.verify;
     let handle = Tunnel::builder().config(config).build()?.start().await?;
     let mut unverified = None;
@@ -54,6 +66,7 @@ pub(crate) async fn run_tunnel(
             unverified = checked.unverified;
         }
     }
+    ready(handle.url());
     podnet::detach::ready(tunnel_doc(&handle, handle.url(), verify, unverified));
     serve_until(&handle, wait(deadline, controls)).await?;
     handle.shutdown().await;

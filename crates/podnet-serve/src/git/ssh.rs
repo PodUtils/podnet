@@ -83,6 +83,22 @@ pub fn load_or_create_host_key(path: &Path) -> Result<PrivateKey> {
     Ok(key)
 }
 
+/// The SHA-256 fingerprint of the public part of `key`
+/// (`SHA256:BASE64`), as `ssh-keygen -l` prints it.
+pub fn fingerprint(key: &PrivateKey) -> String {
+    key.public_key()
+        .fingerprint(russh::keys::ssh_key::HashAlg::Sha256)
+        .to_string()
+}
+
+/// The public part of `key` as one line of OpenSSH (`ssh-ed25519 BASE64`),
+/// for a `known_hosts` file.
+pub fn public_line(key: &PrivateKey) -> String {
+    key.public_key()
+        .to_openssh()
+        .unwrap_or_else(|_| fingerprint(key))
+}
+
 /// True for the algorithms that the server accepts for a user key.
 pub fn key_allowed(algorithm: &Algorithm) -> bool {
     matches!(algorithm, Algorithm::Ed25519 | Algorithm::Ecdsa { .. })

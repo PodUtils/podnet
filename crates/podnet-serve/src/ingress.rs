@@ -74,6 +74,8 @@ pub enum Service {
     /// The file server of `podnet serve` (T-088): the files of a
     /// directory, with a listing, and the options of [`crate::files::FilesConfig`].
     Files(crate::files::FilesConfig),
+    /// The smart HTTP router of `podnet git serve` (T-094).
+    Git(crate::git::http::HttpOptions),
     /// Prometheus metrics for this tunnel.
     Metrics,
     /// Upload / download / proxy session (the quickbridge feature set).
@@ -153,6 +155,7 @@ impl Service {
                     files.root.display()
                 )
             }
+            Service::Git(git) => format!("git:{}", git.root.display()),
             Service::Metrics => "metrics".into(),
             Service::Share(config) => config.describe(),
         }

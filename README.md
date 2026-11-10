@@ -591,6 +591,37 @@ applies them to the directory index and to the SPA index.
 it, and `write_to` writes the head and the body. A file of any size is
 served with a bounded memory.
 
+### Git hosting
+
+`podnet git` serves the git repositories of a root with the installed
+`git` (`git http-backend`, `git upload-pack`, `git receive-pack`):
+
+```sh
+podnet git init --root ./repos app      # the bare repository ./repos/app.git
+podnet git serve --root ./repos --anon-read \
+  --push-user me --push-password-file ./pass   # smart HTTP through a quick tunnel
+podnet git serve --root ./repos --local 127.0.0.1:8080 --ssh 127.0.0.1:2222 \
+  --users users --authorized-keys ~/.ssh/authorized_keys --via none
+podnet git serve --root ./repos --via relay --pair NAME \
+  --authorized-keys ~/.ssh/authorized_keys     # SSH through a relay pair
+podnet git urls --root ./repos          # the clone URLs and the host key
+```
+
+- A fetch needs the read role: `--anon-read`, or a user of `--users`. A
+  push needs the write role: `--push-user`, a write user of `--users`, or
+  a key of `--authorized-keys` (ed25519 and ECDSA only).
+- `--create-on-push`: a push of a write user to a new path makes a bare
+  repository there.
+- The SSH host key is ed25519. podnet makes it one time
+  (`git/ssh_host_ed25519_key` in the state directory, or `--host-key`).
+- The operator of a relay pair clones with
+  `GIT_SSH_COMMAND="ssh -o ProxyCommand='podnet relay connect NAME'" git clone ssh://git@NAME/REPO`.
+- Limits: the quick tunnel takes at most 100 MB in one request body, so a
+  larger push over HTTPS fails; a clone has no limit. A session through
+  the relay ends at 64 MiB, so a larger clone or push through the relay
+  fails.
+- `podnet doctor` reports a missing `git`.
+
 ### Share files
 
 ```sh

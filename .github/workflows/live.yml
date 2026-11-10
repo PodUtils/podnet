@@ -194,6 +194,35 @@ jobs:
           test "$(code -u "$auth" -T "$RUNNER_TEMP/one.bin" "$url/in/one.bin")" = 201
           cmp "$RUNNER_TEMP/one.bin" "$www/in/one.bin"
           target/release/podnet stop files
+      # T-094: git hosting through a quick tunnel: a clone over HTTPS, an
+      # anonymous push refused (401), and a push with credentials.
+      - name: Git over HTTPS through a quick tunnel
+        timeout-minutes: 5
+        run: |
+          set -eu
+          export PODNET_RUN_DIR="$RUNNER_TEMP/git-run"
+          export GIT_TERMINAL_PROMPT=0
+          umask 077
+          pass="$RUNNER_TEMP/git-pass"
+          head -c 18 /dev/urandom | base64 | tr -d '/+=' > "$pass"
+          echo "::add-mask::$(cat "$pass")"
+          repos="$RUNNER_TEMP/repos"
+          mkdir -p "$repos"
+          target/release/podnet git init --root "$repos" app
+          sh scripts/live-run.sh gitserve timeout 120 target/release/podnet git serve --root "$repos" --anon-read --push-user live --push-password-file "$pass" --detach --name gitserve
+          url=$(tail -1 gitserve.out | jq -r .url)
+          url=${url%/}
+          work="$RUNNER_TEMP/gitwork"
+          git -c init.defaultBranch=main init -q "$work"
+          git -C "$work" -c user.name=live -c user.email=live@podnet commit -q --allow-empty -m one
+          if git -C "$work" push -q "$url/app" HEAD:main; then
+            echo "an anonymous push passes"; exit 1
+          fi
+          git -C "$work" push -q "https://live:$(cat "$pass")@${url#https://}/app" HEAD:main
+          git clone -q "$url/app" "$RUNNER_TEMP/gitclone"
+          test "$(git -C "$RUNNER_TEMP/gitclone" log -1 --format=%s)" = one
+          target/release/podnet git urls --root "$repos" --json | jq -e '.running' > /dev/null
+          target/release/podnet stop gitserve
       # UDP 7844 dropped: --protocol auto registers over HTTP/2 after the
       # stagger, and the log names the leg that won.
       - name: Quick tunnel with UDP 7844 dropped (HTTP/2 fallback)
@@ -509,6 +538,36 @@ jobs:
           curl -fsS -o "$RUNNER_TEMP/relay.back" http://127.0.0.1:18091/relay.bin
           cmp "$RUNNER_TEMP/relay.bin" "$RUNNER_TEMP/relay.back"
           target/release/podnet stop filesconnect
+          target/release/podnet relay stop "$name" > /dev/null
+      # T-094: git over SSH through the reverse relay: git serve --via
+      # relay, and ssh with podnet relay connect as the ProxyCommand.
+      - name: Git over SSH through the reverse relay
+        timeout-minutes: 5
+        run: |
+          set -eu
+          export PODNET_RUN_DIR="$RUNNER_TEMP/git-relay-run"
+          umask 077
+          target/release/podnet relay pair --json > git-pair.json
+          name=$(jq -r .name git-pair.json)
+          echo "::add-mask::$name"
+          echo "::add-mask::$(jq -r .connect_token git-pair.json)"
+          repos="$RUNNER_TEMP/repos-relay"
+          mkdir -p "$repos"
+          target/release/podnet git init --root "$repos" app > /dev/null
+          ssh-keygen -q -t ed25519 -N '' -f "$RUNNER_TEMP/git_key"
+          cp "$RUNNER_TEMP/git_key.pub" "$RUNNER_TEMP/git_keys"
+          key="$RUNNER_TEMP/git-host-key"
+          target/release/podnet git serve --root "$repos" --via relay --pair "$name" --authorized-keys "$RUNNER_TEMP/git_keys" --host-key "$key" --detach --name gitrelay > /dev/null
+          echo "$name $(target/release/podnet git urls --root "$repos" --host-key "$key" --json | jq -r .host_key)" > "$RUNNER_TEMP/git_known"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/git_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/git_known -o HostKeyAlias=$name -o ProxyCommand='$PWD/target/release/podnet relay connect $name'"
+          work="$RUNNER_TEMP/gitrelaywork"
+          git -c init.defaultBranch=main init -q "$work"
+          head -c 1048576 /dev/urandom > "$work/one.bin"
+          git -C "$work" add one.bin
+          git -C "$work" -c user.name=live -c user.email=live@podnet commit -q -m one
+          git -C "$work" push -q "ssh://git@$name/app" HEAD:main
+          git clone -q "ssh://git@$name/app" "$RUNNER_TEMP/gitrelayclone"
+          cmp "$work/one.bin" "$RUNNER_TEMP/gitrelayclone/one.bin"
           target/release/podnet relay stop "$name" > /dev/null
       - name: WARP account and probe
         timeout-minutes: 4

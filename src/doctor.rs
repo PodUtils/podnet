@@ -188,6 +188,8 @@ pub struct Report {
     pub legs: Vec<Leg>,
     /// The clock of this host against the Date of an API (issue 128).
     pub clock: Clock,
+    /// The installed git, for git serve (T-094).
+    pub git: Git,
 }
 
 /// The clock of this host against the `Date` header of an answer.
@@ -256,6 +258,7 @@ impl Report {
                 "skew_s": self.clock.skew,
                 "detail": self.clock.detail,
             },
+            "git": self.git.to_json(),
             "proxy": self.proxy,
             "paths": self.paths.iter().map(|p| json!({
                 "id": p.target.id,
@@ -375,6 +378,7 @@ impl Report {
             self.clock.verdict.name(),
             self.clock.detail
         ));
+        out.push_str(&self.git.line());
         out.push_str("\nroads\n");
         for (road, verdict, reason) in self.roads() {
             out.push_str(&format!("  {road:<10} {:<8} {reason}\n", verdict.name()));
@@ -441,12 +445,15 @@ pub async fn run(options: Options) -> Report {
         names,
         legs,
         clock,
+        git: git_check::git("git"),
     }
 }
 
 mod clock_check;
+mod git_check;
 use clock_check::clock;
 pub use clock_check::parse_imf_fixdate;
+pub use git_check::Git;
 mod tls_check;
 use tls_check::tls;
 
