@@ -682,7 +682,7 @@ the merge.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -718,6 +718,16 @@ T-008 and T-009 are done.
 ## Correction
 
 2026-11-05, The named modules `src/proxy.rs` move to PodUtils/podcrates (`pod-cloudflare`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/feature/mod.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+
+## Done
+
+2026-11-09, commit fee6f4f (`T-038: split src/feature/mod.rs into src/feature/`). `src/feature/mod.rs`
+(83 lines) holds `FeatureError` and the re-exports; `access.rs` (575), `qr.rs` (96),
+`static_server.rs` (414) and `share_link.rs` (232) hold the parts; `src/feature/tests/` holds the
+tests, one file for each part. `src/proxy.rs` is not split (the Correction). The finding of
+TruffleHog in the doc comment of `ShareLink` moved to `src/feature/share_link.rs:42`
+(`.github/secrets-allow.txt`). Parity: commands 1295, items 1293, tests 1108, equal before and
+after. check.sh passes. CI: at the merge.
 
 # T-039: Split `src/edge_h2.rs` and `src/tunnel.rs`
 
