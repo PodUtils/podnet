@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**232 entries: 68 open, 4 partial, 22 blocked, 138 done.**
+**232 entries: 66 open, 4 partial, 22 blocked, 140 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 37 | 3 | 14 | 85 | 139 |
+| P2 | 35 | 3 | 14 | 87 | 139 |
 | P3 | 28 | 0 | 6 | 30 | 64 |
-| **All** | 68 | 4 | 22 | 138 | 232 |
+| **All** | 66 | 4 | 22 | 140 | 232 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -100,8 +100,8 @@ M8 Overlays, M9 Later.
 | [T-052](crates.md) | P2 | M | M3 | chore | open | Move the Cloudflare adapter to the shared crate `pod-cloudflare` in `PodUtils/podcrates` |
 | [T-053](crates.md) | P2 | M | M3 | chore | open | The root package is the CLI and a facade that keeps each library path |
 | [T-054](crates.md) | P2 | S | M3 | release | open | A prerelease after the crate split, with the static builds of each target |
-| [T-055](adapters.md) | P2 | M | M4 | feature | open | The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link |
-| [T-056](adapters.md) | P2 | M | M4 | feature | open | Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network |
+| [T-055](adapters.md) | P2 | M | M4 | feature | done | The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link |
+| [T-056](adapters.md) | P2 | M | M4 | feature | done | Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network |
 | [T-057](adapters.md) | P2 | M | M4 | feature | open | A dialer and datagrams for WARP |
 | [T-058](adapters.md) | P2 | M | M4 | feature | open | The combinators `Chain`, `Rules`, `Race` and `Failover` |
 | [T-059](adapters.md) | P2 | M | M4 | feature | open | The registry of networks, the parser of network specs, and the rows of `doctor` |

@@ -12,7 +12,7 @@ stays (the owner's ruling of 2026-11-05 on regressions, `docs/decisions.md`).
 **Milestone:** M4
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -64,6 +64,29 @@ T-053 is done.
 (T-137). A shared crate takes a stream or dialer trait (T-137, Premise). Before step 1, find which shared crate
 holds the dialer trait and use it. Do not define a second trait in `podnet-core`.
 
+2026-11-10, the start condition: the types of this entry need only `crates/podnet-core`, which exists (T-046,
+T-047). The work starts before T-053. T-053 later gives the types again through the facade.
+
+2026-11-10, the shared crate: `pod-core` of PodUtils/podcrates (tag v0.14.0) holds `Target`, the dialer trait
+`Dial` (`label`, `dial`, `datagrams`, `names_inside`), `Datagrams` (the shape of the UDP socket of quinn),
+`BoxFuture` and `BoxedIo`. `crates/podnet-core/src/network.rs` gives them again and defines no second copy. The
+`Dialer` of the Approach is `pod_core::Dial`, and `udp` is `Dial::datagrams`. A peer target is a
+`pod_core::Target` with port 0 (`network::peer`), not a new target type. The addressing mode (GitHub #377) is a
+`Way`: a `Dial` and its `Addressing`. `Addressing::admit` is the check that `Chain`, `Rules` and `Race`
+(T-058) call at startup.
+
+## Done
+
+2026-11-10, commit d9ac293. `crates/podnet-core/src/network.rs` gives `Target`, `Dial`, `Datagrams`,
+`BoxFuture`, `BoxedIo`, `Connected`, `Failure`, `send_to` and `recv_from` of `pod-core` again, and adds
+`Addressing`, `peer`, `Way`, `Caps`, `Ctx`, `Export`, `Check`, `Link` and the trait `Network`. `src/lib.rs`
+gives the module as `podnet::network`. No command uses the types yet (T-060, T-061).
+`cargo test -p podnet-core -- network::`: 8 passed, among them
+`network::tests::a_peer_dialer_in_a_destination_chain_is_refused` (the fake peer dialer of GitHub #377 in a
+destination chain gives one error line of class `Usage`), `a_fake_dialer_carries_bytes_and_gives_no_udp` and
+`a_network_comes_up_and_its_link_closes`. `cargo doc -p podnet-core --no-deps`: no warning.
+`sh scripts/agent/check.sh`: each check 0 (1200 tests passed). CI: at the merge.
+
 # T-056: Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network
 
 **Source:** `docs/research/podnet/architecture.md`, sections 4.3 and 4.6, step F.
@@ -71,7 +94,7 @@ holds the dialer trait and use it. Do not define a second trait in `podnet-core`
 **Milestone:** M4
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -108,6 +131,38 @@ T-055 is done.
 
 2026-11-05, The dial functions of the egress proxy and of the relay are in `pod-proxy` and `pod-relay` after the
 takes. The wrappers use the paths of the shared crates.
+
+2026-11-10, the start condition: T-055 is done (d9ac293). `pod-relay` is not taken yet, so the relay wrapper
+calls `Relay::connect` of `src/ws_relay.rs`. The frozen files (`src/egress.rs`, `src/ws_relay.rs`) do not change:
+the wrappers are new code that calls their public functions. Each wrapper is a `pod_core::Dial`.
+
+2026-11-10, what the wrappers reuse: `pod-proxy` (through `src/egress.rs`) holds the proxy dialer.
+`egress::Egress` is a `Dial` already, so `dialers::proxy` and `dialers::process` give `egress::egress` and add no
+type. `dialers::Direct` calls `egress::dial_direct`, and its UDP is the `SystemDatagrams` of `pod-core` on an IPv4
+socket (that type sends to the address as it is: one family for each socket). `dialers::RelayDialer` calls
+`Relay::connect`, and resolves a name on this host with a `pod_core::Resolve` (the resolver chain of the process
+by default) to its IPv4 addresses. The wrappers of the upstream chain (`connect_upstream_async`), of the tailnet
+(`tailscale::Dialer`) and of the virtual network (`NetStack`) are in `crates/podnet-vnet/src/dialer.rs`: that crate
+uses `podnet-core` and `podnet-netns`, so no dependency is new. The UDP of the virtual network is
+`VnetDatagrams` (`crates/podnet-vnet/src/stack/datagrams.rs`). The upstream chain and the tailnet carry TCP only:
+`datagrams` gives the default error. The WARP dialer is T-057.
+
+## Done
+
+2026-11-10, commit 03a3b49. `src/dialers/` holds `Direct`, `proxy`, `process` and `RelayDialer`;
+`crates/podnet-vnet/src/dialer.rs` holds `VnetDialer`, `UpstreamChain` and `Tailnet`, and
+`crates/podnet-vnet/src/stack/datagrams.rs` holds `VnetDatagrams`. No command uses them yet (T-060, T-061).
+`cargo test --workspace -- dialer_`: 10 passed:
+`dialers::tests::dialer_direct_carries_tcp_and_udp_on_the_loopback`,
+`dialer_direct_gives_a_refusal_at_the_stage_connect`, `dialer_proxy_sends_the_name_to_a_socks5h_proxy` (a fake
+SOCKS5 proxy on a Unix socket), `dialer_relay_carries_tcp_to_an_address_and_to_a_name` (a fake relay of
+`/connect/IP/PORT`); `dialer::tests::dialer_vnet_carries_tcp_and_udp_between_two_stacks` (a pair of stacks on a
+switch), `dialer_vnet_refuses_a_name_that_is_not_in_its_table`,
+`dialer_upstream_chain_sends_the_name_to_a_socks5_hop`, `dialer_upstream_chain_needs_a_hop_and_hides_the_password`,
+`dialer_tailnet_dials_through_the_local_api` and `dialer_tailnet_gives_the_refusal_of_the_daemon` (a fake LocalAPI
+of `tailscaled`). The tests of the loopback call `need_loopback!`. `sh scripts/agent/check.sh`: each check 0
+(1210 tests passed). `unshare -n -- cargo test --offline --workspace --no-fail-fast`: exit 0.
+`sh scripts/restricted-host.sh --no-fail-fast`: exit 0 (113 tests skipped). CI: at the merge.
 
 # T-057: A dialer and datagrams for WARP
 
