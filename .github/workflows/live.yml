@@ -295,11 +295,10 @@ jobs:
             echo "a wrong pin was accepted"; exit 1
           fi
           grep -E 'NotValidForName|not valid for' pin.err
-      # podnet update against the real release v0.3.0-beta.1 of cfrs: the
-      # download, the Fulcio chain and the check of the identity run, and
-      # the identity of PodUtils/podnet refuses the release. This refusal
-      # is the check until the first podnet release.
-      - name: podnet update refuses v0.3.0-beta.1 of cfrs
+      # podnet update against the real release v0.4.0-beta.1 of podnet: the
+      # download, the Fulcio chain, the check of the identity and the
+      # install run. A release of cfrs stays refused.
+      - name: podnet update to v0.4.0-beta.1
         timeout-minutes: 6
         run: |
           set -eu
@@ -313,6 +312,9 @@ jobs:
           cat "$d/update.err"
           grep -q 'not https://github.com/PodUtils/podnet/' "$d/update.err"
           cmp "$d/podnet" target/release/podnet
+          timeout 300 "$d/podnet" update --version v0.4.0-beta.1
+          "$d/podnet" --version | grep -q '^podnet 0.4.0-beta.1'
+          cmp "$d/podnet.prev" target/release/podnet
           # --rollback (no network) swaps the binary and podnet.prev. The
           # kept binary is a copy of this build with one more byte.
           cp target/release/podnet "$d/podnet.prev"
