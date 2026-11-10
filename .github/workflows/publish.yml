@@ -8,7 +8,10 @@ name: publish
 #
 # * dry-run: `cargo publish --workspace --dry-run` packs each crate and
 #   builds its package. It reads the switch `crates-io` of
-#   [workspace.metadata.podnet] in Cargo.toml.
+#   [workspace.metadata.podnet] in Cargo.toml. With the switch false it
+#   packs nothing: the pod-* crates of PodUtils/podcrates are not on
+#   crates.io, so the pack cannot resolve them (no crates.io release now,
+#   docs/decisions.md, 2026-11-09, Releases).
 # * publish: only on a tag vX.Y.Z[-pre] of the workspace version, with the
 #   switch true at the tag and the ci run of the tag green.
 #
@@ -69,11 +72,14 @@ jobs:
           fi
           echo "the switch crates-io: $on; the ref: $GITHUB_REF_TYPE $GITHUB_REF_NAME; publish: $publish"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "on=$on" >> "$GITHUB_OUTPUT"
       - name: Toolchain
+        if: steps.switch.outputs.on == 'true'
         run: |
           sh scripts/retry.sh rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
           rustup default "$RUST_TOOLCHAIN"
       - name: Pack and build each crate
+        if: steps.switch.outputs.on == 'true'
         run: cargo publish --workspace --locked --dry-run
 
   publish:
