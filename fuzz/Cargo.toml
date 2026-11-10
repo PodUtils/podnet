@@ -135,3 +135,24 @@ path = "fuzz_targets/request_head.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "seccomp_sendto"
+path = "fuzz_targets/seccomp_sendto.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "seccomp_sendmsg"
+path = "fuzz_targets/seccomp_sendmsg.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "seccomp_sockopt"
+path = "fuzz_targets/seccomp_sockopt.rs"
+test = false
+doc = false
+bench = false

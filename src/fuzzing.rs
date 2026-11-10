@@ -10,6 +10,9 @@
 
 use crate::cloudflare::capnp::{Message, StructReader};
 
+/// The targets of the seccomp handlers of the pod (`podnet_netns::fuzzing`).
+pub use podnet_netns::fuzzing::{seccomp_sendmsg, seccomp_sendto, seccomp_sockopt};
+
 /// One fuzz target: it takes untrusted bytes.
 pub type Target = fn(&[u8]);
 
@@ -30,6 +33,9 @@ pub const TARGETS: &[(&str, Target)] = &[
     ("h2_header_block", h2_header_block),
     ("vnet_frame", vnet_frame),
     ("request_head", request_head),
+    ("seccomp_sendto", seccomp_sendto),
+    ("seccomp_sendmsg", seccomp_sendmsg),
+    ("seccomp_sockopt", seccomp_sockopt),
 ];
 
 /// Visit each pointer of a struct, to the depth `depth`.
@@ -293,6 +299,9 @@ pub fn seeds(target: &str) -> Vec<Vec<u8>> {
             "POST\0https://x/u\0x\0Transfer-Encoding\0chunked\0Connection\0close, X-Hop\0X-Hop\0one",
             "GET\0https://x/ws\0x\0Upgrade\0websocket\0X-A\0a\r\nInjected: 1",
         ]),
+        "seccomp_sendto" | "seccomp_sendmsg" | "seccomp_sockopt" => {
+            podnet_netns::fuzzing::seeds(target)
+        }
         _ => Vec::new(),
     }
 }

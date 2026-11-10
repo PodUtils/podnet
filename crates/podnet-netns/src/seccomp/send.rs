@@ -5,7 +5,7 @@
 use crate::prelude::*;
 
 pub(crate) async fn handle_sendto(
-    lfd: RawFd,
+    lfd: impl Answer,
     id: u64,
     a: [u64; 6],
     mem: RawFd,
@@ -48,7 +48,7 @@ pub(crate) async fn handle_sendto(
 /// example the A and the AAAA query in one call.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn handle_sendmmsg(
-    lfd: RawFd,
+    lfd: impl Answer,
     id: u64,
     a: [u64; 6],
     (mem, mem_writable): (RawFd, bool),
@@ -97,7 +97,7 @@ pub(crate) async fn handle_sendmmsg(
 }
 
 pub(crate) async fn handle_sendmsg(
-    lfd: RawFd,
+    lfd: impl Answer,
     id: u64,
     a: [u64; 6],
     mem: RawFd,

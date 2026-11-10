@@ -1,10 +1,11 @@
 name: fuzz
 
 # The fuzz targets of fuzz/ (cargo-fuzz, libFuzzer), each week and by hand.
-# Each target runs for `seconds` with a malloc limit of 64 MiB. A crash, a
-# timeout or a large allocation fails the job, and the input is kept as an
-# artifact. Rule: a crash input becomes a unit test first, then the fix
-# (example: capnp.rs fuzz_a_zero_size_struct_list_is_charged).
+# Each target runs for `seconds` (a seccomp_* target for 60) with a malloc
+# limit of 64 MiB. A crash, a timeout or a large allocation fails the job,
+# and the input is kept as an artifact. Rule: a crash input becomes a unit
+# test first, then the fix (example: capnp.rs
+# fuzz_a_zero_size_struct_list_is_charged).
 #
 # libFuzzer needs glibc: the runner is ubuntu-24.04, not musl. The nightly is
 # pinned: nightly-2026-10-31 cannot compile ssh-key 0.7.0-rc.11 (a query
@@ -67,8 +68,12 @@ jobs:
           failed=""
           for target in $(cargo +"$NIGHTLY" fuzz list | grep -vx seed); do
             echo "::group::$target"
+            # The seccomp targets have a fixed short budget: each input
+            # makes a runtime, a memfd and a socketpair.
+            budget=$SECONDS_EACH
+            case "$target" in seccomp_*) budget=60 ;; esac
             if ! cargo +"$NIGHTLY" fuzz run "$target" "corpus/$target" -- \
-                -max_total_time="$SECONDS_EACH" -malloc_limit_mb=64 -rss_limit_mb=2048 -timeout=10; then
+                -max_total_time="$budget" -malloc_limit_mb=64 -rss_limit_mb=2048 -timeout=10; then
               failed="$failed $target"
             fi
             echo "::endgroup::"

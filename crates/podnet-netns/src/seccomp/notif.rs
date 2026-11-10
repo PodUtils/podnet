@@ -102,47 +102,68 @@ pub(crate) fn child_fd_flags(pid: u32, fd: i32) -> Option<i32> {
     i32::from_str_radix(value.trim(), 8).ok()
 }
 
-/// Answer the notification `id`: the system call returns `val`, or fails
-/// with the errno `error` (a positive errno, for example `libc::EPERM`).
-pub(crate) fn notif_respond(lfd: RawFd, id: u64, val: i64, error: i32) -> Result<()> {
-    let resp = SeccompNotifResp {
-        id,
-        val,
-        // The kernel takes a nonzero error as the return value of the system
-        // call, so it must be the negative errno. Before (issue 98), a
-        // positive errno was a positive return: getpeername returned 95
-        // (EOPNOTSUPP), connect returned 111 (ECONNREFUSED), as successes.
-        error: -error.abs(),
-        flags: 0,
-    };
-    let r = unsafe { libc::ioctl(lfd, SECCOMP_IOCTL_NOTIF_SEND as _, &resp) };
-    if r < 0 {
-        let e = std::io::Error::last_os_error();
-        // ENOENT means the target died or the syscall was interrupted.
-        if e.raw_os_error() == Some(libc::ENOENT) {
-            return Ok(());
-        }
-        return Err(e).context("NOTIF_SEND");
-    }
-    Ok(())
+/// The answers to a notification. The notification descriptor ([`RawFd`])
+/// answers with `SECCOMP_IOCTL_NOTIF_SEND`. A fuzz target records the
+/// answers in memory (`crate::fuzzing`).
+pub(crate) trait Answer: Copy {
+    /// The system call returns `val`, or fails with the errno `error`.
+    fn respond(self, id: u64, val: i64, error: i32) -> Result<()>;
+    /// The kernel runs the system call.
+    fn proceed(self, id: u64) -> Result<()>;
 }
 
-pub(crate) fn notif_continue(lfd: RawFd, id: u64) -> Result<()> {
-    let resp = SeccompNotifResp {
-        id,
-        val: 0,
-        error: 0,
-        flags: SECCOMP_USER_NOTIF_FLAG_CONTINUE,
-    };
-    let r = unsafe { libc::ioctl(lfd, SECCOMP_IOCTL_NOTIF_SEND as _, &resp) };
-    if r < 0 {
-        let e = std::io::Error::last_os_error();
-        if e.raw_os_error() == Some(libc::ENOENT) {
-            return Ok(());
+impl Answer for RawFd {
+    fn respond(self, id: u64, val: i64, error: i32) -> Result<()> {
+        let resp = SeccompNotifResp {
+            id,
+            val,
+            // The kernel takes a nonzero error as the return value of the system
+            // call, so it must be the negative errno. Before (issue 98), a
+            // positive errno was a positive return: getpeername returned 95
+            // (EOPNOTSUPP), connect returned 111 (ECONNREFUSED), as successes.
+            error: -error.abs(),
+            flags: 0,
+        };
+        let r = unsafe { libc::ioctl(self, SECCOMP_IOCTL_NOTIF_SEND as _, &resp) };
+        if r < 0 {
+            let e = std::io::Error::last_os_error();
+            // ENOENT means the target died or the syscall was interrupted.
+            if e.raw_os_error() == Some(libc::ENOENT) {
+                return Ok(());
+            }
+            return Err(e).context("NOTIF_SEND");
         }
-        return Err(e).context("NOTIF_SEND(CONTINUE)");
+        Ok(())
     }
-    Ok(())
+
+    fn proceed(self, id: u64) -> Result<()> {
+        let resp = SeccompNotifResp {
+            id,
+            val: 0,
+            error: 0,
+            flags: SECCOMP_USER_NOTIF_FLAG_CONTINUE,
+        };
+        let r = unsafe { libc::ioctl(self, SECCOMP_IOCTL_NOTIF_SEND as _, &resp) };
+        if r < 0 {
+            let e = std::io::Error::last_os_error();
+            if e.raw_os_error() == Some(libc::ENOENT) {
+                return Ok(());
+            }
+            return Err(e).context("NOTIF_SEND(CONTINUE)");
+        }
+        Ok(())
+    }
+}
+
+/// Answer the notification `id`: the system call returns `val`, or fails
+/// with the errno `error` (a positive errno, for example `libc::EPERM`).
+pub(crate) fn notif_respond(lfd: impl Answer, id: u64, val: i64, error: i32) -> Result<()> {
+    lfd.respond(id, val, error)
+}
+
+/// Let the kernel run the system call of the notification `id`.
+pub(crate) fn notif_continue(lfd: impl Answer, id: u64) -> Result<()> {
+    lfd.proceed(id)
 }
 
 /// `SECCOMP_IOCTL_NOTIF_ID_VALID`: `_IOW('!', 2, __u64)`.
