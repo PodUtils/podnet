@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 112 open, 3 partial, 14 blocked, 94 done.**
+**223 entries: 110 open, 3 partial, 14 blocked, 96 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 3 | 1 | 2 | 18 | 24 |
-| P2 | 72 | 2 | 8 | 55 | 137 |
+| P2 | 70 | 2 | 8 | 57 | 137 |
 | P3 | 36 | 0 | 4 | 21 | 61 |
-| **All** | 112 | 3 | 14 | 94 | 223 |
+| **All** | 110 | 3 | 14 | 96 | 223 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -85,7 +85,7 @@ M8 Overlays, M9 Later.
 | [T-037](split.md) | P2 | M | M2 | chore | open | Split `src/relay_reverse.rs` and `src/share.rs` |
 | [T-038](split.md) | P2 | M | M2 | chore | open | Split `src/feature/mod.rs` and `src/proxy.rs` |
 | [T-039](split.md) | P2 | M | M2 | chore | open | Split `src/edge_h2.rs` and `src/tunnel.rs` |
-| [T-040](split.md) | P2 | L | M2 | chore | open | Split the seccomp backend and the netns backend of the pod crate |
+| [T-040](split.md) | P2 | L | M2 | chore | done | Split the seccomp backend and the netns backend of the pod crate |
 | [T-041](split.md) | P2 | M | M2 | chore | open | Split the four large test files |
 | [T-042](split.md) | P2 | M | M2 | chore | open | Cut the upward references 1 to 7: `net`, `util`, `fetch`, `hop`, `report`, `detach` and `relay_reverse` |
 | [T-043](split.md) | P2 | M | M2 | chore | open | Cut the upward references 8, 9 and 18: a WebSocket bridge and `Metered` in the core |
@@ -199,7 +199,7 @@ M8 Overlays, M9 Later.
 | [T-151](pods.md) | P3 | M | M7 | measurement | open | seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351) |
 | [T-152](pods.md) | P3 | S | M7 | research | open | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
 | [T-153](later.md) | P3 | L | M9 | feature | open | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
-| [T-154](fixes.md) | P2 | M | M5 | chore | open | seccomp: fuzz targets for the notification handlers (GitHub #353) |
+| [T-154](fixes.md) | P2 | M | M5 | chore | done | seccomp: fuzz targets for the notification handlers (GitHub #353) |
 | [T-155](fixes.md) | P3 | M | M5 | chore | done | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
 | [T-156](pods.md) | P2 | M | M7 | feature | open | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |
 | [T-157](pods.md) | P2 | M | M7 | feature | open | pod: `--default-action` and a JSON flow record (GitHub #355) |

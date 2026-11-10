@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 223 entries: 112 open, 3 partial, 14 blocked, 94 done.
+`TODO/INDEX.md` holds 223 entries: 110 open, 3 partial, 14 blocked, 96 done.
 
 ## State
 
@@ -36,12 +36,11 @@ not wait for a larger one.
 1. **M0, the record and the guards:** T-012.
 2. **M1, the rename:** T-023 and T-024, then T-025 (betas are allowed, 2026-11-09).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
-   entry of this list is done. A fix in a pod backend lands before T-040 starts, or after it ends.
+   entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
-   - pod backends (`podnet-netns`; before T-040): T-154.
    - tunnel, share, serve and the CLI: T-169.
    - WARP: T-173, T-210.
-4. **M2, the splits:** T-033 to T-041; T-042,
+4. **M2, the splits:** T-033 to T-039, T-041; T-042,
    T-043, T-044; T-045; then T-015.
 5. **M3, the crates:** T-046, T-047, T-048, T-051, T-053, then the prerelease T-054. T-049, T-050
    and T-052 are the takes of `pod-relay`, `pod-warp` and `pod-cloudflare` of `PodUtils/podcrates`

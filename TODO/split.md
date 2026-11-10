@@ -760,11 +760,11 @@ T-008 and T-009 are done.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`crates/podnet-netns/src/seccomp.rs` has 1,900 lines and `crates/podnet-netns/src/netns.rs` 1,199,
+crates/podnet-netns/src/seccomp.rs has 1,900 lines and crates/podnet-netns/src/netns.rs 1,199,
 with no test module. The fixes of M5 (T-063 to T-067) and the features of M7 change both files.
 
 ## Premise
@@ -778,8 +778,8 @@ with no test module. The fixes of M5 (T-063 to T-067) and the features of M7 cha
 
 ## Approach
 
-1. Split `crates/podnet-netns/src/seccomp.rs` into a seccomp directory, one commit for each new file.
-2. Split `crates/podnet-netns/src/netns.rs` into a netns directory, one commit for each new file.
+1. Split crates/podnet-netns/src/seccomp.rs into a seccomp directory, one commit for each new file.
+2. Split crates/podnet-netns/src/netns.rs into a netns directory, one commit for each new file.
 3. Do this entry before T-063 starts, or after T-067 is done.
 
 ## Prove
@@ -801,6 +801,21 @@ T-008, T-009 and T-019 are done.
 
 2026-11-09, T-063 to T-067 are done. The Problem counts are old: `seccomp.rs` has 1516 lines and `netns.rs` has 1200
 lines now. The third step of the Approach (the order) holds: this entry runs after T-067.
+
+## Done
+
+2026-11-09, commits 9a0e8af to 6f57e61 (`T-040: move the seccomp filter to seccomp/filter.rs` to
+`T-040: cite the new files of seccomp/ and netns/`). A pure move, one commit for each new file.
+`crates/podnet-netns/src/seccomp/` has `mod.rs` (384 lines: `Sock`, `run_seccomp`,
+`supervise_seccomp`, the relay count), `filter.rs` (239), `mem.rs` (166), `notif.rs` (155),
+`send.rs` (187) and `accept.rs` (193). `crates/podnet-netns/src/netns/` has `mod.rs` (294 lines:
+the constants, `run`, `child_setup`), `tun.rs` (217), `fdpass.rs` (122), `backend.rs` (481) and
+`packet.rs` (110). The two lines of `scripts/size-allow.txt` are removed. The SOCKS5 datagram path of
+`crates/podnet-netns/src/upstream.rs` did not change. `sh scripts/agent/parity-snapshot.sh`: 1295
+commands, 1302 public items and 1101 tests before and after, no item lost. `sh scripts/agent/check.sh`:
+exit 0. `unshare -n -- cargo test --offline --test pod_seccomp --test pod_seccomp_dgram --test
+pod_seccomp_diff --test pod_seccomp_nonblock`: exit 0. `sh scripts/restricted-host.sh` with the same
+tests: exit 0 (22 skipped). CI: at the merge.
 
 # T-041: Split the four large test files
 

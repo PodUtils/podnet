@@ -81,7 +81,7 @@ fn options_of(entry: &mut Sock) -> Option<&mut Options> {
 /// `getsockopt`. An `AF_UNIX` socketpair rejects the IP-level options,
 /// which makes the resolver of glibc give up before it sends.
 pub(crate) fn handle_setsockopt(
-    lfd: RawFd,
+    lfd: impl Answer,
     id: u64,
     a: [u64; 6],
     mem: RawFd,
@@ -109,7 +109,7 @@ pub(crate) fn handle_setsockopt(
 }
 
 pub(crate) fn handle_getsockopt(
-    lfd: RawFd,
+    lfd: impl Answer,
     id: u64,
     a: [u64; 6],
     mem: RawFd,
@@ -164,7 +164,7 @@ pub(crate) fn handle_getsockopt(
 /// T-223: a stream binds one time (then `EINVAL`), and port 0 gets an
 /// ephemeral port, as in the kernel.
 pub(crate) fn handle_bind(
-    lfd: RawFd,
+    lfd: impl Answer,
     id: u64,
     a: [u64; 6],
     mem: RawFd,
@@ -205,7 +205,7 @@ pub(crate) fn handle_bind(
 
 /// `getsockname` (`peer` false) and `getpeername` (`peer` true).
 pub(crate) fn handle_sockname(
-    lfd: RawFd,
+    lfd: impl Answer,
     id: u64,
     a: [u64; 6],
     mem: RawFd,
