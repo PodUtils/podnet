@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**227 entries: 68 open, 4 partial, 19 blocked, 136 done.**
+**228 entries: 68 open, 4 partial, 19 blocked, 137 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
-| P1 | 2 | 1 | 2 | 22 | 27 |
+| P1 | 2 | 1 | 2 | 23 | 28 |
 | P2 | 38 | 3 | 13 | 84 | 138 |
 | P3 | 27 | 0 | 4 | 30 | 61 |
-| **All** | 68 | 4 | 19 | 136 | 227 |
+| **All** | 68 | 4 | 19 | 137 | 228 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -273,3 +273,4 @@ M8 Overlays, M9 Later.
 | [T-225](fixes.md) | P1 | S | M5 | defect | done | The send poller of the WARP QUIC socket keeps its wake-up |
 | [T-226](fixes.md) | P1 | S | M5 | defect | done | The netns backend moves a large TCP download at full speed with a bounded buffer |
 | [T-227](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.2`: the dry run, the publish and the release proofs |
+| [T-228](fixes.md) | P1 | S | M5 | defect | done | Each sender that waits on the WARP QUIC socket gets its wake-up |

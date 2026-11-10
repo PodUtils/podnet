@@ -3679,6 +3679,52 @@ cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
 
+# T-228: Each sender that waits on the WARP QUIC socket gets its wake-up
+
+**Source:** The podcrates session (PodUtils/podcrates T-159, pod-quic), 2026-11-10: a second finding in
+`src/warp/quic.rs`, after T-225.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The HA connections of the quic+warp leg share one WARP socket. quinn polls `poll_writable` from the task
+of each connection, and each poller of the socket shares one `SendReady`. With T-225, `SendReady` is one
+`AtomicWaker`: a second sender that waits on a full queue overwrites the waker of the first. The first
+sender misses its wake-up, and its connection can stall while the queue is full.
+
+## Premise
+
+- Read: `src/warp/quic.rs`, `WarpUdpSocket::create_io_poller` (each poller gets a clone of the same
+  `SendReady`) and `SendReady` (one `AtomicWaker`).
+- The receive side has one poller (the driver of the endpoint): its `AtomicWaker` is sufficient.
+- Not measured: a stall in a live run.
+
+## Approach
+
+1. A test: two pollers wait on a full queue; one drain must wake both.
+2. `SendReady` keeps a list of wakers (one for each waiting task); the writer task wakes each one, and
+   each one checks the queue again.
+3. Tell podcrates: pod-quic (podcrates v0.14.0) has the same fix.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib warp::quic::tests
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-10, commit 1d556fb. `SendReady` is a list of wakers under a mutex: `register` adds the waker of a
+task when the list has none that `will_wake` it, and `wake` takes the list and wakes each waker. Test:
+`warp::quic::tests::two_senders_on_a_full_queue_each_wake`; it failed on the one `AtomicWaker` ("sender 0
+was not woken") and passes now. `a_drain_after_pending_wakes_the_send_poller` (T-225) passes. CI: at the
+push.
+
 # T-216: Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04)
 
 **Source:** PodUtils/podcrates#35 (cfb), ask A-N-04, routed by PodUtils/podcrates#40.
