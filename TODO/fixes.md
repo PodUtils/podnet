@@ -1934,7 +1934,7 @@ allowlist, or (2) a statement that they are snapshots.
 - Read: `TODO/RULES.md:56` says that these directories "are readings at a time". `TODO/todo.toml:15`
   lists them as `readings`. `architecture.md:3` names its commit (`3bed023`, 2026-11-04).
   `tests/docs.rs:74-85` reads eight documents, not these.
-- Read: the live plan is the record. T-040 (`TODO/split.md:767`) still says that `seccomp.rs` has 1,900
+- Read: the live plan is the record. T-040 (`TODO/split.md:791`) still says that `seccomp.rs` has 1,900
   lines, and "do this entry before T-063 starts, or after T-067 is done". Now `seccomp.rs` has 1516
   lines and T-063 to T-067 are done. This is a stale figure in the record, not in a reading.
 - Measured: `grep -rn "crates/pod-netns/" docs/research docs/reports` gives 35, 8, 6, 6, 5, 5, 2, 2 hits

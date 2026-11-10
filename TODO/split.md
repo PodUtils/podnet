@@ -452,7 +452,7 @@ reports no lost command, item or test. CI: at the merge.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -494,6 +494,18 @@ T-008 and T-009 are done.
 
 2026-11-05, The named modules `src/egress.rs` move to PodUtils/podcrates (`pod-proxy`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/detach.rs`, `src/update.rs` and `src/doctor.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
+## Done
+
+2026-11-09, commits d0a6df0 (detach), a8e648d (update) and 9d9b2ed (doctor). `src/egress.rs` is not
+split (the Correction). `src/detach/` has `supervise.rs`, `unix.rs` and `tests.rs` (`src/detach.rs`
+759 lines). `src/update/` has `cosign.rs` and `tests.rs` (`src/update.rs` 642 lines; the public
+paths stay by `pub use`). `src/doctor/` has `clock_check.rs`, `tls_check.rs` and `tests.rs`
+(`src/doctor.rs` 754 lines); the allow list of `trust::tests::no_other_code_sets_its_own_verifier`
+names `src/doctor/tls_check.rs`. Three rows left `scripts/size-allow.txt`. Citations of the record
+moved. `scripts/agent/parity-snapshot.sh`: 1,295 commands, 1,293 items and 1,108 tests before and
+after. `check.sh` exit 0 at each commit; `unshare -n -- cargo test --offline --workspace` exit 0;
+`scripts/restricted-host.sh` exit 0. CI: at the merge.
+
 # T-034: Split `src/vnet/stack.rs`
 
 **Source:** `docs/research/podnet/architecture.md`, section 2.2.
@@ -501,7 +513,7 @@ T-008 and T-009 are done.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -532,6 +544,18 @@ cargo test --test vnet_regressions --test vnet_proxy_forward --test tcp_window
 ## Start condition
 
 T-008 and T-009 are done.
+
+## Done
+
+2026-11-09, commit 8cb6ea8. `src/vnet/stack/` has `reactor.rs` (the file of `Core::new`, `listen`,
+`connect`, `bind_udp`; not named `core.rs`, because a module `core` hides the `core` crate),
+`service.rs` (`service`, `service_dns`, `accept_inbound`, `service_conns`, `service_udp`),
+`socket.rs` (`TcpStream`, `UdpSocket`, `TcpListener`, `SocketCount`), `proof.rs` (`ProofReport`
+and the loopback proofs) and `tests.rs`. `src/vnet/stack.rs` has 467 lines; its row left
+`scripts/size-allow.txt`. The public paths stay by `pub use`. The run loop stays in `stack.rs`
+beside `NetStack`. Citations of the record moved. Parity: 1,295 commands, 1,293 items and 1,108
+tests before and after. `check.sh` exit 0 (it runs `vnet_regressions`, `vnet_proxy_forward` and
+`tcp_window`). CI: at the merge.
 
 # T-035: Split `src/warp/ip.rs`, `src/warp/session.rs` and `src/warp/wg.rs`
 
