@@ -215,6 +215,10 @@ impl<S: AsyncWrite + Unpin> AsyncWrite for Counted<S> {
     }
 }
 
+/// The buffer of each direction of a relay (T-151): 64 KiB moves about
+/// 1.5 times the bytes of the 8 KiB default of tokio on a loopback test.
+pub(crate) const RELAY_BUFFER: usize = 64 * 1024;
+
 /// Copy both ways between the program side `program` and `upstream` until
 /// both end, and write the close line of `flow`.
 pub(crate) async fn relay<A, B>(program: A, upstream: B, flow: Option<u64>, target: &str)
@@ -223,11 +227,65 @@ where
     B: AsyncRead + AsyncWrite + Unpin,
 {
     let counts = Counts::default();
+    let _ = copy_counted(program, upstream, &counts).await;
+    counts.close(flow, "tcp", target);
+}
+
+/// Copy both ways with [`RELAY_BUFFER`], and add the bytes to `counts`.
+async fn copy_counted<A, B>(program: A, upstream: B, counts: &Counts) -> std::io::Result<(u64, u64)>
+where
+    A: AsyncRead + AsyncWrite + Unpin,
+    B: AsyncRead + AsyncWrite + Unpin,
+{
     let mut program = counts.program(program);
     let mut upstream = Counted {
         inner: upstream,
         read: counts.back.clone(),
     };
-    let _ = tokio::io::copy_bidirectional(&mut program, &mut upstream).await;
-    counts.close(flow, "tcp", target);
+    tokio::io::copy_bidirectional_with_sizes(
+        &mut program,
+        &mut upstream,
+        RELAY_BUFFER,
+        RELAY_BUFFER,
+    )
+    .await
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    // T-151: a relay with the large buffers keeps the byte totals.
+    #[test]
+    fn the_relay_keeps_the_byte_totals() {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let (program, mut client) = tokio::io::duplex(1 << 20);
+            let (upstream, mut server) = tokio::io::duplex(1 << 20);
+            let counts = super::Counts::default();
+            let relay = super::copy_counted(program, upstream, &counts);
+            let peers = async move {
+                let out = vec![7u8; 300_000];
+                client.write_all(&out).await.unwrap();
+                client.shutdown().await.unwrap();
+                let mut got = Vec::new();
+                server.read_to_end(&mut got).await.unwrap();
+                assert_eq!(got.len(), out.len());
+                server.write_all(&vec![1u8; 200_001]).await.unwrap();
+                server.shutdown().await.unwrap();
+                let mut back = Vec::new();
+                client.read_to_end(&mut back).await.unwrap();
+                assert_eq!(back.len(), 200_001);
+            };
+            let (copied, ()) = tokio::join!(relay, peers);
+            assert_eq!(copied.unwrap(), (300_000, 200_001));
+            let load =
+                |a: &std::sync::atomic::AtomicU64| a.load(std::sync::atomic::Ordering::Relaxed);
+            assert_eq!(load(&counts.out), 300_000);
+            assert_eq!(load(&counts.back), 200_001);
+        });
+    }
 }
