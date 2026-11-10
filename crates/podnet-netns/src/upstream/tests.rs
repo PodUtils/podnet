@@ -1,6 +1,6 @@
 #[test]
 fn a_udp_header_with_a_name() {
-    let d = super::wrap_udp_name(b"x", "stun.example", 19302);
+    let d = pod_proxy::udp::wrap_name(b"x", "stun.example", 19302).unwrap();
     assert_eq!(&d[..5], &[0, 0, 0, 3, 12]);
     assert_eq!(&d[5..17], b"stun.example");
     assert_eq!(&d[17..], &[0x4b, 0x66, b'x']);
@@ -263,4 +263,69 @@ fn cidr_matching_is_exact() {
     assert!(in_cidr("10.255.255.255".parse().unwrap(), net, 8));
     assert!(!in_cidr("11.0.0.1".parse().unwrap(), net, 8));
     assert!(in_cidr("1.2.3.4".parse().unwrap(), net, 0));
+}
+
+/// T-224: the glue of `pod_proxy::udp` sends the user and the password of
+/// the proxy unchanged (a `:` and a `@` in them too), asks for 0x83, and
+/// reads the reply 0x07 as `DialError::UdpRefused`.
+#[tokio::test]
+async fn udp_in_the_stream_goes_through_pod_proxy() {
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+    let (client, mut server) = tokio::io::duplex(1024);
+    let peer = tokio::spawn(async move {
+        let mut greeting = [0u8; 4];
+        server.read_exact(&mut greeting).await.unwrap();
+        assert_eq!(greeting, [5, 2, 0, 2]);
+        server.write_all(&[5, 2]).await.unwrap();
+        let mut auth = [0u8; 2 + 4 + 1 + 3];
+        server.read_exact(&mut auth).await.unwrap();
+        assert_eq!(&auth, b"\x01\x04u:@1\x03p%2");
+        server.write_all(&[1, 0]).await.unwrap();
+        let mut request = [0u8; 10];
+        server.read_exact(&mut request).await.unwrap();
+        assert_eq!(request, [5, 0x83, 0, 1, 0, 0, 0, 0, 0, 0]);
+        server
+            .write_all(&[5, 0x07, 0, 1, 0, 0, 0, 0, 0, 0])
+            .await
+            .unwrap();
+    });
+    let mut proxy = super::Proxy::parse("socks5://127.0.0.1:1080").unwrap();
+    proxy.user = Some("u:@1".into());
+    proxy.pass = Some("p%2".into());
+    let err = super::socks5_udp_in_stream(client, &proxy)
+        .await
+        .err()
+        .unwrap();
+    assert!(
+        matches!(
+            err.downcast_ref::<pod_proxy::DialError>(),
+            Some(pod_proxy::DialError::UdpRefused { .. })
+        ),
+        "{err:#}"
+    );
+    peer.await.unwrap();
+}
+
+/// T-224: a user over 255 bytes is refused before a byte goes to the proxy.
+#[tokio::test]
+async fn udp_associate_refuses_a_long_user() {
+    let (client, _server) = tokio::io::duplex(64);
+    let mut proxy = super::Proxy::parse("socks5://127.0.0.1:1080").unwrap();
+    proxy.user = Some("u".repeat(256));
+    let err = super::socks5_udp_associate(client, &proxy)
+        .await
+        .err()
+        .unwrap();
+    assert!(err.to_string().contains("RFC 1929"), "{err:#}");
+}
+
+/// T-224: a name over 255 bytes is an error of `pod_proxy::udp::wrap_name`
+/// (podnet cut it before).
+#[test]
+fn a_udp_header_refuses_a_name_over_255_bytes() {
+    assert!(pod_proxy::udp::wrap_name(b"x", &"a".repeat(255), 53).is_ok());
+    assert!(matches!(
+        pod_proxy::udp::wrap_name(b"x", &"a".repeat(256), 53),
+        Err(pod_proxy::DialError::InvalidTarget(_))
+    ));
 }

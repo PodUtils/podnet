@@ -2201,6 +2201,7 @@ version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "libc",
+ "pod-proxy",
  "serde_json",
  "smoltcp",
  "tempfile",

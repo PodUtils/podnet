@@ -210,10 +210,14 @@ pub async fn udp_via_running(
         tokio::sync::mpsc::Receiver<Vec<u8>>,
     )>,
 > {
-    use podnet_netns::upstream::{read_udp_frame, wrap_udp, wrap_udp_name, write_udp_frame};
+    use pod_proxy::udp::{read_frame, wrap, wrap_name, write_frame};
     let Ok(socket) = super::find::running(at) else {
         return Ok(None);
     };
+    // SOCKS5 carries a name of 255 bytes at most: refuse a longer one here.
+    if host.parse::<std::net::IpAddr>().is_err() {
+        wrap_name(&[], host, port)?;
+    }
     let proxy = podnet_netns::Proxy::parse(&format!("socks5://unix:{}", socket.display()))?;
     let stream = podnet_netns::upstream::dial_proxy(&proxy).await?;
     let stream = podnet_netns::upstream::socks5_udp_in_stream(stream, &proxy)
@@ -226,16 +230,19 @@ pub async fn udp_via_running(
     tokio::spawn(async move {
         while let Some(payload) = out_rx.recv().await {
             let framed = match host.parse::<std::net::IpAddr>() {
-                Ok(ip) => wrap_udp(&payload, ip, port),
-                Err(_) => wrap_udp_name(&payload, &host, port),
+                Ok(ip) => wrap(&payload, ip, port),
+                Err(_) => match wrap_name(&payload, &host, port) {
+                    Ok(framed) => framed,
+                    Err(_) => return,
+                },
             };
-            if write_udp_frame(&mut write, &framed).await.is_err() {
+            if write_frame(&mut write, &framed).await.is_err() {
                 return;
             }
         }
     });
     tokio::spawn(async move {
-        while let Ok(Some(datagram)) = read_udp_frame(&mut read).await {
+        while let Ok(Some(datagram)) = read_frame(&mut read).await {
             if let Some(payload) = udp_payload(&datagram) {
                 if back_tx.send(payload.to_vec()).await.is_err() {
                     return;

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**223 entries: 109 open, 3 partial, 14 blocked, 97 done.**
+**224 entries: 109 open, 4 partial, 14 blocked, 97 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
-| P1 | 2 | 1 | 2 | 19 | 24 |
+| P1 | 2 | 2 | 2 | 19 | 25 |
 | P2 | 70 | 2 | 8 | 57 | 137 |
 | P3 | 36 | 0 | 4 | 21 | 61 |
-| **All** | 109 | 3 | 14 | 97 | 223 |
+| **All** | 109 | 4 | 14 | 97 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -269,3 +269,4 @@ M8 Overlays, M9 Later.
 | [T-221](services.md) | P2 | M | M6 | feature | open | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
 | [T-222](fixes.md) | P2 | S | M5 | feature | open | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |
 | [T-223](fixes.md) | P3 | M | M5 | defect | done | seccomp: the TCP gaps that the differential check finds |
+| [T-224](crates.md) | P1 | S | M3 | chore | partial | podnet-netns calls `pod_proxy::udp` for the SOCKS5 datagram path |

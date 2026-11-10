@@ -337,7 +337,7 @@ goes inside the MASQUE session. The host opens only TCP 443.
   proxy cannot open it, the reply is `0x01` (general failure).
 * A host that refuses UDP on `127.0.0.1` uses the UDP association in the
   stream: the SOCKS5 command `0x83`
-  (`podnet_netns::upstream::CMD_UDP_IN_STREAM`) in place of `0x03`. The reply
+  (`pod_proxy::udp::CMD_UDP_IN_STREAM`) in place of `0x03`. The reply
   has no relay address. Each datagram then goes on the control connection
   as a frame: a length of 2 bytes (big-endian), then the datagram with its
   SOCKS5 UDP header (RFC 1928 section 7). The answers come back the same

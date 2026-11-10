@@ -827,3 +827,54 @@ The lead, 2026-11-09: the failover of the reverse road is done in `pod-relay` of
 ## Blocker
 
 The session of `PodUtils/podcrates` (the crate `pod-relay`): the reverse road is code of that crate. Send a COORD issue (to podcrates). The entry is unblocked when podnet takes `pod-relay` with T-049.
+
+# T-224: podnet-netns calls `pod_proxy::udp` for the SOCKS5 datagram path
+
+**Source:** T-137 (the take of v0.9.0 of `PodUtils/podcrates`); PodUtils/podcrates#42 and
+PodUtils/podcrates#43 (the module `udp` of `pod-proxy`, entry T-083 of podcrates).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+The SOCKS5 datagram path of `crates/podnet-netns/src/upstream.rs` (UDP ASSOCIATE, the command
+0x83, the frames and the datagram header) is frozen: `pod-proxy` v0.9.0 holds it as
+`pod_proxy::udp`. The freeze ends when podnet calls the crate. Until then podnet keeps a second
+copy of the same code.
+
+## Premise
+
+- `PodUtils/podcrates:crates/pod-proxy/SOURCES` at v0.9.0 (b7c3e6a) maps the lines 584-775 of
+  `crates/podnet-netns/src/upstream.rs` at `29ba18a` to `PodUtils/podcrates:crates/pod-proxy/src/socks5/udp.rs`.
+- `pod_proxy::udp` has `open_in_stream`, `associate`, `write_frame`, `read_frame`, `wrap`,
+  `wrap_name` and the constants `CMD_UDP_IN_STREAM` and `REPLY_COMMAND_NOT_SUPPORTED`. A reply
+  0x07 to 0x83 is `DialError::UdpRefused`. The functions take a `pod_proxy::Proxy` (the
+  credentials and the name in a message) and a stream that the caller dialed.
+- `wrap_name` refuses a name over 255 bytes (`DialError::InvalidTarget`); podnet's
+  `wrap_udp_name` cut the name. In a pod, `crate::dgram::fits_relay` refuses such a name with
+  EINVAL before the wrap (T-066), so a pod sees no change.
+- `pod-proxy` sends the user and the password of RFC 1929 with no check of their length;
+  podnet checks them first (`SOCKS5_CREDENTIAL_MAX`).
+- The callers: `crates/podnet-netns/src/udp.rs`, `crates/podnet-netns/src/frontdoor.rs`,
+  `crates/podnet-netns/src/inbox.rs` (a test), `src/warp/nc.rs` and `src/warp/proxy.rs`.
+- Not measured: a SOCKS5 server of another party with the command 0x83.
+
+## Approach
+
+1. Add `pod-proxy` to `crates/podnet-netns/Cargo.toml` with the git tag of the root.
+2. Remove the copy from `crates/podnet-netns/src/upstream.rs`. Keep two functions of glue,
+   `socks5_udp_in_stream` and `socks5_udp_associate`: they check the credentials, make the
+   `pod_proxy::Proxy` of podnet's `Proxy`, and call `open_in_stream` and `associate`.
+3. The callers call `pod_proxy::udp` for the constants, the frames and the headers.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns
+cargo test -p podnet --test pod_seccomp_dgram
+cargo test --workspace
+sh scripts/agent/check.sh
+```
