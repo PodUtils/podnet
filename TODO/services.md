@@ -1154,7 +1154,7 @@ has not, write the harness in podnet (it is a CI file, no code of a crate).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1187,6 +1187,20 @@ The abstract-name shim has no option to hand a chosen address to the SOCKS door.
 cargo test --test shim_socks -- cidr_list_routes_only_listed
 cargo test --test cli -- socksify_takes_cidrs
 ```
+
+## Done
+
+2026-11-09, commit 571d7b5. `PODNET_SOCKS_CIDRS` in `crates/podnet-vnet/shim/podnet-socks.c` (a fixed table of 32
+routes: `tailnet`, `ADDR`, `ADDR/BITS`, `IPV4:PORT`, `[IPV6]:PORT`; the list replaces the tailnet default; each
+route is logged with `PODNET_SOCKS_LOG`). `net socksify --cidr` (repeatable). `net shim --socks-route` and
+`--socks-socket` give `PODNET_VNET_SOCKS` and `PODNET_VNET_SOCKS_ROUTES` (`ShimOptions::environment`); the vnet shim
+sends a listed stream connect to the door. `src/manual/facts.rs` and `docs/virtual-network.md` section 5.5 (the
+three tiers). `cargo test --test shim_socks -- cidr_list_routes_only_listed`: 1 passed (the IPv6 lines need an
+AF_INET6 socket; this host has none, so they ran only in `vnet_shim_sends_a_socks_route_to_the_door`).
+`cargo test --test cli -- socksify_takes_cidrs`: 1 passed. Tests added: `cidr_list_routes_only_listed`,
+`vnet_shim_sends_a_socks_route_to_the_door`, `socksify_takes_cidrs`, `socks_routes_are_checked`.
+`sh scripts/agent/check.sh`, `unshare -n -- cargo test --offline --workspace --no-fail-fast`,
+`sh scripts/restricted-host.sh --no-fail-fast`: exit 0. Not measured: the external shim of the issue. CI: at the merge.
 
 # T-168: A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365)
 
