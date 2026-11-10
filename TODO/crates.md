@@ -204,7 +204,7 @@ layer check (`scripts/check-layers.py`, `core_tests`) and the table "The code" o
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -245,6 +245,43 @@ T-047 is done.
 (Rust 1.99). The userspace stack of `pod-netstack` (wave 2 of PodUtils/podcrates) uses smoltcp 0.14.
 Before the extraction, read whether the module `vnet` takes `pod-netstack` (T-137); if it does, do not extract the
 stack code into `podnet-vnet`.
+
+2026-11-10, the read of T-137. The module `vnet` does not take `pod-netstack`: T-137, step 2, puts the
+userspace stack of `src/warp/` on `pod-netstack`, and no `crates/*/SOURCES` of PodUtils/podcrates
+names a file of the module (`sh scripts/agent/podcrates.sh`). PodUtils/podcrates has no crate
+`pod-netstack` on main now. The extraction goes on. The module uses `state`, `net` and `udp` of the
+core and `podnet-netns`; it uses no module that goes to PodUtils/podcrates (`src/egress.rs`,
+`src/resolve.rs`, `src/ws.rs`, the relay, `src/warp/`, `src/cloudflare/`), so each file moves. The crate
+is the module itself: `crates/podnet-vnet/src/lib.rs` is the old `mod.rs`, and `podnet_vnet::stack` is
+the old `podnet::vnet::stack`. `crates/podnet-vnet/shim/unixsockd.c` and `crates/podnet-vnet/shim/loginshell` are not in an `include_str!`:
+`tools/ts-sshd.sh` compiles them, and they move with the other shims. No workflow compiles a shim:
+the binary has the C sources and compiles them at run time; `release.yml` names no shim path.
+
+## Done
+
+2026-11-10, commit b333b53. `crates/podnet-vnet` holds the module `vnet` (moved with `git mv`, the
+crate root is the old `mod.rs`) and the shims in `crates/podnet-vnet/shim/` (`podnet-vnet.c`, `podnet-socks.c`,
+`fakepwd.c`, `tsgetent`, `tsid`, `unixsockd.c`, `loginshell`). `src/lib.rs` gives the crate at its
+old path (`#[doc(inline)] pub use podnet_vnet as vnet`), so `crate::vnet::Item` and
+`podnet::vnet::Item` stay valid. No item became public. The package check of
+`.github/workflows/ci.yml` reads the five shims of `include_str!` in the package of `podnet-vnet`.
+`scripts/check-layers.py` has the crate in `CRATES` and `ONE_MODULE` (each file is the module
+`vnet`; a `podnet_vnet::` path is a reference to it). The test
+`manual::facts::tests::each_variable_in_the_manual_is_read_by_the_source` reads the directory shim
+of each crate. `tools/ts-sshd.sh`, the documents and the record name the new paths.
+
+- `sh scripts/agent/check.sh`: fmt 0, clippy 0, record 0, size 0, doc 0, layers 0, test 0.
+- `cargo test -p podnet-vnet`: 88 passed.
+- `cargo test --test shim_direct --test shim_no_socket --test shim_socks`: 11, 6 and 1 passed.
+- `cargo package --list -p podnet-vnet`: the directory shim has the seven files; the package of
+  `podnet` has no file of it.
+- `unshare -n -- cargo test --offline --workspace --no-fail-fast`: exit 0, 1109 passed, 0 failed.
+- `sh scripts/restricted-host.sh --no-fail-fast`: exit 0, 100 tests skipped.
+- `cargo check --manifest-path fuzz/Cargo.toml --bins`: exit 0.
+- Parity (`sh scripts/agent/parity-snapshot.sh`, against the tree before the move, with the map
+  `src/lib.rs podnet vnet::<TAB>src/lib.rs podnet_vnet `): commands 1295 of 1295, items 1786 of 1566,
+  tests 1110 of 1110. No item is lost.
+- CI: at the merge.
 
 # T-049: The relay client of podnet becomes the shared crate `pod-relay`
 
