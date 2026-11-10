@@ -53,7 +53,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #351 | seccomp TCP copied in user space | open | T-150, T-151 |
 | #352 | netns: in-namespace netfilter in place of smoltcp | open | T-152, T-153 |
 | #353 | no fuzz targets for seccomp handlers | open | T-154, T-155 |
-| #354 | pod rules: no reject action (also no `block`) | open | T-156 |
+| #354 | pod rules: no reject action (also no `block`) | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-156 |
 | #355 | pod: default-deny, flow log, learn | open | T-157, T-158 |
 | #356 | research documents cite old paths | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-159 |
 | #357 | verify: young name exits 69, tears down a working tunnel | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-160 |
@@ -63,8 +63,8 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #361 | `--no-verify` undocumented, name misleads | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-164 |
 | #362 | ssh relay leg: no supervision (no caller) | open | T-165 |
 | #363 | ssh relay leg: one relay, one user | open | T-166 |
-| #364 | net socksify: no per-destination routing | open | T-167 |
-| #365 | fakepwd only via ts-shims (partly: it works, gap is name/docs) | open | T-168 |
+| #364 | net socksify: no per-destination routing | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-167 |
+| #365 | fakepwd only via ts-shims (partly: it works, gap is name/docs) | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-168 |
 | #366 | tunnel: no `--masque-endpoint`; v4 door first | open | T-169 |
 | #367 | provision retries DNS; verify has no pin path | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-170, T-171, T-172 |
 | #368 | WARP identity of another uid refused | open | T-173 |

@@ -56,7 +56,7 @@
 351 issue open
 352 issue open
 353 issue open
-354 issue open
+354 issue closed
 355 issue open
 356 issue closed
 357 issue closed
@@ -66,8 +66,8 @@
 361 issue closed
 362 issue open
 363 issue open
-364 issue open
-365 issue open
+364 issue closed
+365 issue closed
 366 issue open
 367 issue closed
 368 issue open
