@@ -660,7 +660,7 @@ The owner can rule on this (see Decision). A pod-backend feature starts after T-
 **Milestone:** M7
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -690,3 +690,22 @@ cargo test -p podnet-netns fdtable:: -- refusals_are_counted_by_class
 ## Start condition
 
 After T-040 (the split of the seccomp backend) ends.
+
+## Done
+
+2026-11-10, commit 05c9468 (`T-181: seccomp: a budget of tracked sockets with counters and a doctor
+row`). Step 1: `crates/podnet-netns/src/fdtable.rs` counts each refused call by class (`table full`,
+`socketpair failed`, `other`); a failed socket pair now gives `EMFILE`, not `EIO`. `-v` prints each
+refusal; at the exit of the program the pod prints one line with the counts. Step 2: the default
+ceiling is `(RLIMIT_NOFILE - 64) / 2`, from 64 to 65536; the supervisor raises its soft limit to the
+hard limit after the fork of the program (the program keeps its limit). `--flow-budget N` (64 to
+1048576) sets it; a value above the default gives a warning. Step 3: `pod doctor` has the row
+`flow budget (seccomp)` (JSON `flow_budget`: `ceiling`, `nofile_soft`, `nofile_hard`,
+`refusal_classes`). The counts of a run are per pod: doctor names the classes, and the pod prints
+the counts. `crates/podnet-netns/README.md` documents both. Step 4 waits for the router. On this
+host (`RLIMIT_NOFILE` 20000/20000) the ceiling is 9968, before 4096. The Prove command: 1 passed
+(`refusals_are_counted_by_class`). Also: `the_ceiling_follows_rlimit_nofile`,
+`doctor_flow_budget_row_names_the_ceiling`, `seccomp_flow_budget_refuses_with_emfile_and_counts`
+(64 made, 36 `EMFILE`, the count line), `a_flow_budget_out_of_range_is_a_usage_error`. Not measured:
+the 5000-connection run of the issue. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI:
+at the merge. GitHub #376 closes at the merge.
