@@ -52,7 +52,7 @@ command. `cargo test --test connect -- connect_stdio_carries_a_stream`: 1 passed
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -74,6 +74,15 @@ a transfer in the same process must open a socket file to be reached.
 ```sh
 cargo test --test relay_reverse -- a_node_serves_an_in_process_handler
 ```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-relay`). The relay node (`Target`, `node`, `session`) is in
+`src/relay_reverse.rs` and `src/relay_reverse/session.rs`. These files go to `pod-relay` and take fixes only
+(`docs/decisions.md`, 2026-11-06, Order). A handler target is a new variant of `Target`: a feature of that code.
+No part of the entry lands in the crates of podnet: the users of the handler (T-091, T-094, T-104) do not exist.
+The entry is unblocked when podnet takes `pod-relay` (T-049, through T-137). Then add the target to `pod-relay`
+or use its handler target.
 
 # T-084: One HTTP authentication layer for the local listener, the tunnel and the relay
 
