@@ -229,7 +229,8 @@ fn sendto(data: &[u8]) -> Vec<Reply> {
         let State {
             map, dns, proxies, ..
         } = state;
-        crate::seccomp::handle_sendto(answers, ID, input.args, mem, (map, KEY), dns, proxies).await
+        let egress = crate::udp::Egress::of(proxies);
+        crate::seccomp::handle_sendto(answers, ID, input.args, mem, (map, KEY), dns, &egress).await
     })
 }
 
@@ -241,14 +242,16 @@ fn sendmsg(data: &[u8]) -> Vec<Reply> {
             map, dns, proxies, ..
         } = state;
         let entry = (map, KEY);
+        let egress = crate::udp::Egress::of(proxies);
+        let egress = &egress;
         match input.call() % 2 {
             0 => {
-                crate::seccomp::handle_sendmsg(answers, ID, input.args, mem, entry, dns, proxies)
+                crate::seccomp::handle_sendmsg(answers, ID, input.args, mem, entry, dns, egress)
                     .await
             }
             _ => {
                 let mem = (mem, input.writable());
-                crate::seccomp::handle_sendmmsg(answers, ID, input.args, mem, entry, dns, proxies)
+                crate::seccomp::handle_sendmmsg(answers, ID, input.args, mem, entry, dns, egress)
                     .await
             }
         }

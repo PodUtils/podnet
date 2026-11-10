@@ -100,7 +100,12 @@ pub(crate) async fn serve_one(
                 return serve_udp_in_stream(reader, chain).await;
             }
             let target = format!("{}:{}", request.host, request.port);
-            let selected = select_chain(rules, chain, &target);
+            let picked = select_chain(rules, chain, &target);
+            let Some(selected) = picked.chain() else {
+                crate::rules::note_refusal("front door", &target, picked.rule_name(), verbose);
+                let _ = socks::socks5_reply(&mut reader, 0x02, None).await;
+                return Ok(());
+            };
             if verbose {
                 eprintln!(
                     "podnet-netns: front door {target} via {}",
@@ -142,7 +147,12 @@ pub(crate) async fn serve_one(
                 }
             };
             let target = format!("{}:{}", request.host, request.port);
-            let selected = select_chain(rules, chain, &target);
+            let picked = select_chain(rules, chain, &target);
+            let Some(selected) = picked.chain() else {
+                crate::rules::note_refusal("front door", &target, picked.rule_name(), verbose);
+                let _ = socks::http_connect_reply(&mut reader, 403, "Forbidden").await;
+                return Ok(());
+            };
             let mut upstream = match within_timeout(
                 "front door connect",
                 connect_upstream_async(selected, &target),

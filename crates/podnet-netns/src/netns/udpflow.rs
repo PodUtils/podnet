@@ -267,7 +267,10 @@ impl UdpFlows {
     ) -> Result<(), Vec<u8>> {
         use tokio::sync::mpsc::error::TrySendError;
         if self.table.touch(&key, now).is_none() {
-            let flow = self.start(key, route);
+            let Some(flow) = self.start(key, route) else {
+                // A rule refuses the flow: the datagram is dropped.
+                return Ok(());
+            };
             self.table.insert(key, flow, now);
         }
         let Some(flow) = self.table.touch(&key, now) else {
@@ -285,14 +288,18 @@ impl UdpFlows {
         }
     }
 
-    /// Start the task of a new flow.
-    fn start(&self, key: UdpKey, route: &UdpRoute<'_>) -> UdpFlow {
+    /// Start the task of a new flow. `None` when a rule refuses it.
+    fn start(&self, key: UdpKey, route: &UdpRoute<'_>) -> Option<UdpFlow> {
         let name = route.dns.name_for(key.2).map(str::to_string);
         let target = match &name {
             Some(name) => format!("{name}:{}", key.3),
             None => format!("{}:{}", key.2, key.3),
         };
-        let chain = select_chain(route.rules, route.proxies, &target).to_vec();
+        let picked = select_chain(route.rules, route.proxies, &target);
+        let Some(chain) = picked.chain().map(<[Proxy]>::to_vec) else {
+            crate::rules::note_refusal("udp", &target, picked.rule_name(), route.verbose);
+            return None;
+        };
         if route.verbose {
             let hops: Vec<String> = chain.iter().take(1).map(Proxy::endpoint).collect();
             let via = match hops.is_empty() {
@@ -312,7 +319,7 @@ impl UdpFlows {
                 }
             }
         });
-        UdpFlow { queue, task }
+        Some(UdpFlow { queue, task })
     }
 }
 

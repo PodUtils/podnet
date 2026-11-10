@@ -35,6 +35,7 @@ pub mod fuzzing;
 pub mod listen;
 pub mod opening;
 pub mod raw;
+pub mod rules;
 pub mod socks;
 pub mod tailscale;
 pub mod upstream;
@@ -60,7 +61,7 @@ mod udp;
 
 pub use cli::{set_program_name, usage, usage_for};
 pub use listen::ProxyListen;
-pub use upstream::{Net, Proxy, ProxyKind, Rule, RuleMatch, Upstream};
+pub use upstream::{Net, Proxy, ProxyKind, Rule, RuleAction, RuleMatch, Upstream};
 
 /// The common imports of the internal modules.
 #[allow(unused_imports)]

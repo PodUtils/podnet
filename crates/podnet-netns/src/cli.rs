@@ -78,6 +78,10 @@ Options:
                                                        name under it)
                              cidr:10.0.0.0/8=socks5://host:port
                              cidr:10.0.0.0/8=direct   (no proxy)
+                             domain:.ads.example=reject  (refuse; also block):
+                             connect fails with ECONNREFUSED (netns: a RST),
+                             a datagram with EACCES (netns: dropped),
+                             --serve answers SOCKS5 0x02 or HTTP 403
                            With the seccomp backend, 127.0.0.0/8 goes direct
                            (or to a listener of the program itself)
       --map <NAME=ADDR>    Resolve NAME to ADDR locally, repeatable
@@ -190,14 +194,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             }
             "-r" | "--rule" => {
                 let spec = argv.get(i + 1).context("--rule needs a value")?;
-                let (lhs, rhs) = spec
-                    .split_once('=')
-                    .context("--rule needs KIND:VALUE=PROXY")?;
-                let matcher = RuleMatch::parse(lhs)?;
-                rules.push(Rule {
-                    matcher,
-                    proxy: Proxy::parse(rhs)?,
-                });
+                rules.push(Rule::parse(spec)?);
                 i += 2;
             }
             "--serve" => {

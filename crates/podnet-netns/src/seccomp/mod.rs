@@ -195,6 +195,11 @@ pub(crate) async fn supervise_seccomp(
         inbound_dir: &inbound_dir,
         verbose,
     };
+    let egress = crate::udp::Egress {
+        proxies: &proxies,
+        rules: &rules,
+        verbose,
+    };
     dns.v6 = true;
     for (name, ip) in &maps {
         dns.pin(name, *ip);
@@ -212,7 +217,7 @@ pub(crate) async fn supervise_seccomp(
             }
             // T-143: a datagram that the program wrote with `write(2)`.
             Some(written) = writes.recv() => {
-                crate::udp::relay_written(&mut map, written, &mut dns, &proxies, verbose).await;
+                crate::udp::relay_written(&mut map, written, &mut dns, &egress).await;
                 continue;
             }
             _ = tokio::time::sleep(Duration::from_millis(50)) => continue,
@@ -274,9 +279,9 @@ pub(crate) async fn supervise_seccomp(
             let entry = (&mut *map, key, req.pid);
             crate::connect::handle_connect(lfd, id, a, mem, entry, &mut dns, &mut dials, &route)
         } else if nr == libc::SYS_sendto as i32 {
-            handle_sendto(lfd, id, a, mem, (&mut map, key), &mut dns, &proxies).await
+            handle_sendto(lfd, id, a, mem, (&mut map, key), &mut dns, &egress).await
         } else if nr == libc::SYS_sendmsg as i32 {
-            handle_sendmsg(lfd, id, a, mem, (&mut map, key), &mut dns, &proxies).await
+            handle_sendmsg(lfd, id, a, mem, (&mut map, key), &mut dns, &egress).await
         } else if nr == libc::SYS_sendmmsg as i32 {
             handle_sendmmsg(
                 lfd,
@@ -285,7 +290,7 @@ pub(crate) async fn supervise_seccomp(
                 (mem, mem_writable),
                 (&mut map, key),
                 &mut dns,
-                &proxies,
+                &egress,
             )
             .await
         } else if nr == libc::SYS_setsockopt as i32 {

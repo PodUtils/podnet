@@ -171,6 +171,13 @@ pub(crate) fn handle_connect(
         (None, IpAddr::V4(v4)) => format!("{v4}:{port}"),
         (None, IpAddr::V6(v6)) => format!("[{v6}]:{port}"),
     };
+    // T-156: a rule that refuses the target answers at once.
+    let picked = select_chain(route.rules, route.proxies, &target);
+    let chain = picked.chain().map(<[Proxy]>::to_vec);
+    if chain.is_none() && !ip.is_loopback() {
+        crate::rules::note_refusal("connect", &target, picked.rule_name(), route.verbose);
+        return notif_respond(lfd, id, -1, libc::ECONNREFUSED);
+    }
     let nonblocking = is_nonblocking(pid, fd);
     let waiting = Waiting {
         connects: if nonblocking { Vec::new() } else { vec![id] },
@@ -201,7 +208,7 @@ pub(crate) fn handle_connect(
             let _ = tx.send(done);
         });
     } else {
-        let chain = select_chain(route.rules, route.proxies, &target).to_vec();
+        let chain = chain.unwrap_or_default();
         if route.verbose {
             eprintln!("podnet-netns: connect {target} via {}", chain[0].endpoint());
         }

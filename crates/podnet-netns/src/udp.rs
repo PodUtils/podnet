@@ -286,6 +286,24 @@ pub(crate) async fn relay_datagram(
     Ok(())
 }
 
+/// The way out of a datagram: the proxies and the rules of `-r`.
+pub(crate) struct Egress<'a> {
+    pub(crate) proxies: &'a [Proxy],
+    pub(crate) rules: &'a [Rule],
+    pub(crate) verbose: bool,
+}
+
+impl<'a> Egress<'a> {
+    /// The proxies with no rule.
+    pub(crate) fn of(proxies: &'a [Proxy]) -> Self {
+        Egress {
+            proxies,
+            rules: &[],
+            verbose: false,
+        }
+    }
+}
+
 /// Send `payload` of the socket `fd` to `ip:port` for the program: a query
 /// to port 53 gets its answer from the fake-IP pool, another datagram goes
 /// through the relay. Return the byte count, or the errno for the program.
@@ -293,7 +311,7 @@ pub(crate) async fn send_payload(
     map: &mut HashMap<Key, Sock>,
     fd: Key,
     dns: &mut FakeDns,
-    proxies: &[Proxy],
+    egress: &Egress<'_>,
     payload: &[u8],
     (ip, port): (IpAddr, u16),
 ) -> Result<usize, i32> {
@@ -311,8 +329,19 @@ pub(crate) async fn send_payload(
         return Ok(payload.len());
     }
     let name = dns.name_for_ip(ip).map(str::to_string);
+    // T-156: a rule that refuses the destination gives EACCES.
+    let target = match &name {
+        Some(name) => format!("{name}:{port}"),
+        None => SocketAddr::new(ip, port).to_string(),
+    };
+    let picked = select_chain(egress.rules, egress.proxies, &target);
+    if picked.chain().is_none() {
+        let rule = picked.rule_name();
+        crate::rules::note_refusal("udp", &target, rule, egress.verbose);
+        return Err(libc::EACCES);
+    }
     crate::dgram::fits_relay(payload.len(), ip, name.as_deref())?;
-    match relay_datagram(map, fd, &proxies[0], payload, (ip, name, port)).await {
+    match relay_datagram(map, fd, &egress.proxies[0], payload, (ip, name, port)).await {
         Ok(()) => Ok(payload.len()),
         Err(_) => Err(libc::ENETUNREACH),
     }
@@ -325,9 +354,9 @@ pub(crate) async fn relay_written(
     map: &mut HashMap<Key, Sock>,
     written: Written,
     dns: &mut FakeDns,
-    proxies: &[Proxy],
-    verbose: bool,
+    egress: &Egress<'_>,
 ) {
+    let verbose = egress.verbose;
     let Written { key, to, payload } = written;
     if !matches!(map.get(&key), Some(Sock::Datagram(_))) {
         return;
@@ -340,7 +369,7 @@ pub(crate) async fn relay_written(
         }
         return;
     };
-    if let Err(errno) = send_payload(map, key, dns, proxies, &payload, to).await {
+    if let Err(errno) = send_payload(map, key, dns, egress, &payload, to).await {
         if verbose {
             let error = std::io::Error::from_raw_os_error(errno);
             eprintln!("podnet-netns: a datagram written on a UDP socket is dropped: {error}");

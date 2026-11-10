@@ -115,7 +115,12 @@ impl Backend {
 
     /// Start the dial of the upstream of `target`.
     fn spawn_dial(&self, target: &str) -> tokio::task::JoinHandle<Result<Upstream>> {
-        let chain = select_chain(&self.rules, &self.proxies, target).to_vec();
+        let picked = select_chain(&self.rules, &self.proxies, target);
+        let Some(chain) = picked.chain().map(<[Proxy]>::to_vec) else {
+            // T-156: the dial fails at once, and the program gets a RST.
+            crate::rules::note_refusal("connect", target, picked.rule_name(), self.verbose);
+            return tokio::spawn(async { bail!("a rule refuses the target") });
+        };
         if self.verbose {
             let hops: Vec<String> = chain.iter().map(Proxy::endpoint).collect();
             eprintln!("podnet-netns: {target} via {}", hops.join(" -> "));
