@@ -843,7 +843,7 @@ tests: exit 0 (22 skipped). CI: at the merge.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -879,6 +879,21 @@ cargo test --workspace -- --list 2>/dev/null | grep -c ': test$'
 ## Start condition
 
 T-019 is done.
+
+## Done
+
+2026-11-09, commits 0824db1, 1cbdad4, 3e89ce7, 88674cf. Each large test file is a directory with a
+`main.rs`: `tests/pod_seccomp/` (main.rs 268 lines; tcp, udp, listen, dns, rules), `tests/cli/`
+(main.rs 60 lines; exit_codes, startup, manual, log, autostart, net, warp, serve) and
+`tests/detach/` (main.rs 123 lines; supervisor, names, logs). The test targets keep their names.
+The harness of `tests/shim_direct.rs` (`have_compiler`, `build_program`, `run_pair`) is in
+`tests/shim_harness/mod.rs`; `tests/shim_no_socket.rs` and `tests/af_inet_kernel.rs` use it
+(`compile_quiet`, `compiler_or_skip`). `tests/shim_direct.rs` has 708 lines. The four rows are out
+of `scripts/size-allow.txt`. Parity: commands 1295, items 1293, tests 1108; each test name has a new
+module path only. check.sh and the targets cli, pod_seccomp, detach, shim_direct, shim_no_socket and
+af_inet_kernel pass under `unshare -n`. The workspace run under `unshare -n` fails the test
+`signals::sighup_and_sigterm_stop_with_run_for_and_exit_0` (10 s limit); it passes alone and also
+failed in the same way after T-037. CI: at the merge.
 
 # T-042: Cut the upward references 1 to 7: `net`, `util`, `fetch`, `hop`, `report`, `detach` and `relay_reverse`
 
