@@ -475,8 +475,8 @@ listener and makes no tunnel:
   is not a socket is refused (exit 64). podnet removes its socket at the
   end.
 * An address in use is refused (exit 69).
-* `--auth-user` and `--check` are refused with `--local`. The other
-  tunnel flags have no effect.
+* `--check` is refused with `--local`. The other tunnel flags have no
+  effect, except `--auth-user` (see below).
 
 `podnet serve` serves only the files in `--dir`:
 
@@ -510,6 +510,40 @@ the path with the `/` (308).
 ```sh
 podnet serve --dir ./public --list --local 127.0.0.1:8080
 curl -fsS -H 'Accept: application/json' http://127.0.0.1:8080/docs/
+```
+
+#### Users, roles and a PIN
+
+The file server checks its visitors itself, on each listener (`--local`
+and the tunnel):
+
+* `--users FILE`: the users (HTTP Basic). Each line is
+  `USER:ROLE:HASH` or `USER:ROLE:@PASSWORD-FILE`. `ROLE` is `read` or
+  `write`; a write user can also read. A relative `PASSWORD-FILE` starts at
+  the directory of `FILE`. `FILE` and each password file must have mode
+  0600. An empty line and a line that starts with `#` are skipped.
+* `--auth-user USER --auth-password-file FILE`: one more user, with the
+  write role.
+* `--pin`: the files are locked with a 6-digit PIN, as `share --password`.
+  podnet prints the PIN (`pin` in the `--json` line). With no users, the
+  PIN gives the write role.
+* `--anon-read`: a GET or HEAD needs no user and no PIN. A change still
+  needs a write user (or the PIN).
+
+A request with no user or a wrong password gets 401 with a Basic
+challenge. A read user that sends a change gets 403.
+
+`podnet serve --hash-password` reads a password from the first line of
+stdin and prints its hash (`pbkdf2-sha256$ITERATIONS$SALT$KEY`, PBKDF2 with
+HMAC-SHA256, hex):
+
+```sh
+printf '%s\n' "$PASSWORD" | podnet serve --hash-password
+# pbkdf2-sha256$210000$...$...
+install -m 600 /dev/null users
+echo "alice:read:$(printf '%s\n' "$PASSWORD" | podnet serve --hash-password)" >> users
+podnet serve --dir ./public --list --users users --local 127.0.0.1:8080
+curl -fsS -u alice http://127.0.0.1:8080/
 ```
 
 The library type `podnet::origin::StaticDir` has the same rules. It also

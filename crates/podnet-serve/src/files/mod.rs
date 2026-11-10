@@ -14,7 +14,10 @@ use anyhow::{bail, Result};
 use axum::Router;
 use tower_http::services::{ServeDir, ServeFile};
 
+pub mod access;
 mod listing;
+
+pub use access::{hash_password, Access, Role, Users};
 
 /// The configuration of a file server on one directory.
 #[derive(Clone, Debug)]
@@ -27,6 +30,8 @@ pub struct FilesConfig {
     pub tar: bool,
     /// A directory with no `index.html` answers a listing (T-088).
     pub list: bool,
+    /// The users, the PIN and the anonymous read (T-089).
+    pub access: Access,
 }
 
 impl FilesConfig {
@@ -37,6 +42,7 @@ impl FilesConfig {
             spa: false,
             tar: false,
             list: false,
+            access: Access::default(),
         }
     }
 }
@@ -101,7 +107,14 @@ pub fn router(config: &FilesConfig) -> Result<Router> {
         tar: config.tar,
         list: config.list,
     });
-    Ok(router.layer(axum::middleware::from_fn_with_state(state, static_guard)))
+    let router = router.layer(axum::middleware::from_fn_with_state(state, static_guard));
+    if config.access.is_open() && !config.access.anon_read {
+        return Ok(router);
+    }
+    Ok(router.layer(axum::middleware::from_fn_with_state(
+        Arc::new(config.access.clone()),
+        access::layer,
+    )))
 }
 
 /// The state of [`static_guard`].

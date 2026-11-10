@@ -22,7 +22,8 @@ use cmd::host::{DoctorArgs, ManArgs, PortsArgs, QrArgs, UpdateArgs};
 use cmd::instances::{instances_logs, instances_ps, instances_stop, instances_wait};
 use cmd::net::{net, NetArgs};
 use cmd::relay::{relay, RelayArgs};
-use cmd::share::{demo, serve, share, DemoArgs, ServeArgs, ShareArgs};
+use cmd::serve::{serve, ServeArgs};
+use cmd::share::{demo, share, DemoArgs, ShareArgs};
 use cmd::tunnel::{tunnel, TunnelArgs};
 use cmd::warp::{warp, WarpArgs};
 

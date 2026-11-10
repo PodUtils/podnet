@@ -323,10 +323,10 @@ async fn check_session(
 }
 
 #[derive(Deserialize)]
-struct UnlockForm {
-    password: String,
+pub(crate) struct UnlockForm {
+    pub(crate) password: String,
     #[serde(default)]
-    next: String,
+    pub(crate) next: String,
 }
 
 /// The host of a request: the `Host` header, else the authority of the URI.
@@ -337,7 +337,7 @@ fn request_host<'a>(headers: &'a HeaderMap, uri: &'a Uri) -> Option<&'a str> {
         .or_else(|| uri.authority().map(|a| a.as_str()))
 }
 
-fn unlock_response(
+pub(crate) fn unlock_response(
     gate: &Gate,
     headers: &HeaderMap,
     uri: &Uri,
@@ -370,7 +370,7 @@ fn unlock_response(
     }
 }
 
-fn gate_blocked(
+pub(crate) fn gate_blocked(
     gate: &Gate,
     method: &http::Method,
     headers: &HeaderMap,

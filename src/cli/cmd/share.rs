@@ -1,4 +1,4 @@
-//! `podnet serve`, `podnet share` and `podnet demo`.
+//! `podnet share` and `podnet demo`.
 
 use std::path::PathBuf;
 
@@ -7,59 +7,13 @@ use clap::{Args, ValueEnum};
 
 use podnet::config::Config;
 use podnet::exit::{Fault, ResultExt};
-use podnet::files::FilesConfig;
 use podnet::gate::Gate;
 use podnet::ingress::{Ingress, Service};
 use podnet::share::ShareConfig;
 
-use crate::cli::cmd::connect::unix_listener;
-use crate::cli::cmd::run::{run_demo, run_share, run_tunnel};
+use crate::cli::cmd::run::{run_demo, run_share};
 use crate::cli::cmd::tunnel::preflight;
-use crate::cli::opts::{Show, TunnelOpts};
-use crate::cli::signals::sleep_or_signal;
-
-#[derive(Args, Debug)]
-pub(crate) struct ServeArgs {
-    #[command(flatten)]
-    pub(crate) common: TunnelOpts,
-    /// Directory to serve.
-    #[arg(long, value_name = "DIR")]
-    dir: PathBuf,
-    /// Single-page-app fallback to index.html.
-    #[arg(long)]
-    spa: bool,
-    /// Give a directory as one tar download: GET /PATH/?tar answers the
-    /// directory PATH as a ustar stream (application/x-tar). Names that
-    /// start with a dot and links out of the directory are left out.
-    #[arg(long)]
-    tar: bool,
-    /// A directory with no index.html answers a listing of its files:
-    /// HTML, or JSON with the header Accept: application/json. Names
-    /// that start with a dot and links out of the directory are left out.
-    #[arg(long)]
-    list: bool,
-    /// Serve the files on this local listener and make no tunnel:
-    /// HOST:PORT (or tcp://HOST:PORT), or unix:PATH (mode 0600). Port 0
-    /// takes a free port; podnet prints the bound address. A unix socket
-    /// that answers is refused (exit 69, --replace takes it over), a
-    /// stale socket is removed, a file that is not a socket is refused
-    /// (exit 64). The tunnel flags have no effect.
-    #[arg(long, value_name = "ADDR", conflicts_with = "check")]
-    local: Option<String>,
-    /// Named-tunnel token. Prefer the variable TUNNEL_TOKEN or
-    /// --token-file: other users of the host can read a command line.
-    #[arg(long, env = "TUNNEL_TOKEN", hide_env_values = true)]
-    token: Option<String>,
-    /// Read the named-tunnel token from this file (for example a secret
-    /// of a container). The token is not on the command line.
-    #[arg(
-        long,
-        value_name = "PATH",
-        env = "TUNNEL_TOKEN_FILE",
-        hide_env_values = true
-    )]
-    token_file: Option<PathBuf>,
-}
+use crate::cli::opts::TunnelOpts;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub(crate) enum ModeArg {
@@ -140,127 +94,6 @@ pub(crate) struct DemoArgs {
         hide_env_values = true
     )]
     token_file: Option<PathBuf>,
-}
-
-pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
-    if let Some(local) = &args.local {
-        return serve_local(&args, local).await;
-    }
-    let mut config = Config::default();
-    if let Some(token) = &args.token {
-        podnet::report::hide(token);
-        config.credentials = podnet::config::parse_token(token).fault(Fault::Config)?;
-    }
-    config.ingress = Ingress::new().catch_all(Service::Files(files_config(&args)));
-    config = args.common.apply(config)?;
-    let show = serve_show(args.common.show(), &args.dir, args.spa || args.list);
-    if args.common.check {
-        return preflight(&config, show).await;
-    }
-    run_tunnel(config, show, args.common.run_for, vec![]).await
-}
-
-/// The file server of `serve`.
-fn files_config(args: &ServeArgs) -> FilesConfig {
-    FilesConfig {
-        spa: args.spa,
-        tar: args.tar,
-        list: args.list,
-        ..FilesConfig::new(args.dir.clone())
-    }
-}
-
-/// `show` for `serve`: a directory with no `index.html`, and no `--spa`,
-/// answers 404 for `/`. That is its normal answer (T-202).
-fn serve_show(show: Show, dir: &std::path::Path, spa: bool) -> Show {
-    Show {
-        root_404: !spa && !dir.join("index.html").is_file(),
-        ..show
-    }
-}
-
-/// `serve --local ADDR` (issue 307): serve the static files on a local
-/// listener, with the router of the tunnel, and provision no tunnel.
-async fn serve_local(args: &ServeArgs, local: &str) -> Result<()> {
-    let usage = |msg: String| podnet::exit::fault(Fault::Usage, anyhow::anyhow!(msg));
-    if args.common.auth_user.is_some() {
-        return Err(usage(
-            "serve --local: --auth-user works only through a tunnel; a local listener checks no visitor"
-                .to_string(),
-        ));
-    }
-    let router = podnet::files::router(&files_config(args))?;
-    let show = args.common.show();
-    let (url, listen, server, _file) = if local.starts_with("unix:") {
-        #[cfg(unix)]
-        {
-            let path = match podnet::vnet::proxy::ProxyListen::parse(local) {
-                Ok(podnet::vnet::proxy::ProxyListen::Unix(path)) => path,
-                Ok(_) => unreachable!("a unix: address is a unix socket"),
-                Err(err) => return Err(usage(format!("--local {local}: {err:#}"))),
-            };
-            let (listener, file) = unix_listener(&path, args.common.detach.replace)?;
-            let name = format!("unix:{}", path.display());
-            let server = tokio::spawn(async move { axum::serve(listener, router).await });
-            (name.clone(), name, server, Some(file))
-        }
-        #[cfg(not(unix))]
-        bail!("unix sockets are not supported on this platform: {local}");
-    } else {
-        let addr = local.strip_prefix("tcp://").unwrap_or(local);
-        let listener = match tokio::net::TcpListener::bind(addr).await {
-            Ok(l) => l,
-            Err(err) if !addr.contains(':') || err.kind() == std::io::ErrorKind::InvalidInput => {
-                return Err(usage(format!(
-                    "--local {local}: give HOST:PORT (for example 127.0.0.1:8080) or unix:PATH ({err})"
-                )));
-            }
-            // An address in use, or an address of no interface: exit 69.
-            Err(err) => {
-                return Err(podnet::exit::fault(
-                    Fault::Unavailable,
-                    anyhow::anyhow!("--local {local}: binding {addr}: {err}"),
-                ));
-            }
-        };
-        let bound = listener.local_addr()?;
-        let server = tokio::spawn(async move { axum::serve(listener, router).await });
-        (
-            format!("http://{bound}/"),
-            format!("tcp://{bound}"),
-            server,
-            None,
-        )
-    };
-    podnet::detach::arm_stop();
-    if show.json {
-        let doc = serde_json::json!({
-            "event": "ready",
-            "url": url,
-            "listen": listen,
-            "dir": args.dir.display().to_string(),
-        });
-        println!("{}", podnet::status::stamped(doc));
-    } else {
-        println!(
-            "podnet: serve  {}  on {url}  (local, no tunnel)",
-            args.dir.display()
-        );
-    }
-    // A QR code of a unix socket has no use.
-    if show.qr && url.starts_with("http://") {
-        print!("{}", podnet::qr::render_terminal(&url)?);
-    }
-    podnet::detach::ready(serde_json::json!({ "url": url, "listen": listen }));
-    tokio::select! {
-        _ = sleep_or_signal(args.common.run_for) => {}
-        ended = server => {
-            ended
-                .context("the local server stopped")?
-                .context("the local server stopped")?;
-        }
-    }
-    Ok(())
 }
 
 /// The mode of `share` (issue 118): `--mode`, else the mode of the flags
@@ -417,20 +250,5 @@ fn default_upload_dir() -> PathBuf {
         downloads.join("podnet")
     } else {
         home.join("podnet-uploads")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn serve_show_root_404() {
-        let dir = tempfile::tempdir().unwrap();
-        let show = Show::default();
-        assert!(serve_show(show, dir.path(), false).root_404);
-        assert!(!serve_show(show, dir.path(), true).root_404);
-        std::fs::write(dir.path().join("index.html"), "x").unwrap();
-        assert!(!serve_show(show, dir.path(), false).root_404);
     }
 }

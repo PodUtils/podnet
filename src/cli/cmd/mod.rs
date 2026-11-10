@@ -9,6 +9,7 @@ pub(crate) mod instances;
 pub(crate) mod net;
 pub(crate) mod relay;
 pub(crate) mod run;
+pub(crate) mod serve;
 pub(crate) mod share;
 pub(crate) mod tunnel;
 pub(crate) mod warp;
