@@ -109,7 +109,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #410 | WireGuard endpoint: v6 and ports unread | closed (ci 42641451152, live 42641450984 at e784949) | T-213 |
 | #411 | warp ssh-config: path not quoted | closed (ci 42641451152, live 42641450984 at e784949) | T-214 |
 | #412 | warp proxy --dns: one task per datagram | closed (ci 42641451152, live 42641450984 at e784949) | T-215 |
-| #413 | COORD-006: asks of podnet for pod-relay, pod-dns, pod-proxy and pod-services | open (a COORD issue between sessions) | T-161, T-162, T-163, T-166, T-172, T-175, T-182, T-200 |
+| #413 | COORD-006: asks of podnet for pod-relay, pod-dns, pod-proxy and pod-services | open (a COORD issue between sessions) | T-083, T-161, T-162, T-163, T-166, T-172, T-175, T-182, T-200 |
 | #414 | COORD-007: podnet took v0.7.0 and the parts of pod-core; the asks of cfb; the view on pod-hold | closed (podcrates c229926 recorded it) | T-137, T-216 to T-222 |
 | #416 | COORD-008: podnet took v0.8.0; the freeze of the datagram path of upstream.rs is recorded | closed (podcrates recorded it) | T-137 |
 | #417 | COORD-009: podnet took v0.9.0; podnet-netns calls pod_proxy::udp, so the freeze of #42 can end | closed (podcrates recorded it) | T-137, T-224 |
