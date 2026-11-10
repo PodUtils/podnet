@@ -545,6 +545,21 @@ refused.
 2026-11-05, step 6: no copy of podssh code. When `pod-testkit` has no SSH server, open an issue in
 PodUtils/podcrates.
 
+2026-11-10, read in the tree:
+
+- `russh` is 0.65.1 (`Cargo.lock`), not 0.64. `crates/podnet-serve/Cargo.toml` has it with the
+  feature `ring`.
+- Step 6: `pod-testkit` v0.11.0 has no SSH server (its files are `lib.rs`, `host.rs`,
+  `screen.rs`). The tests need none: the server of this entry is the server under test, and the
+  russh client of the tree is the client. No issue to PodUtils/podcrates is necessary.
+- Step 2: an OpenSSH client sends the method `none` first. When `none` gives access for each
+  user, a client with a key gets read access and cannot push. With `anon_read`, `none` gives read
+  access only to the user `anonymous`, and a key that is not in `authorized_keys` gets read
+  access.
+- Prove: `git upload-pack --advertise-refs` is the stateless form and adds the capability
+  `no-done`. The test compares the bytes with `git upload-pack DIR` on a pipe, and the refs with
+  `--advertise-refs`.
+
 # T-094: `podnet git serve`: the repository root, `git init`, `git urls`, the tunnel, the relay and the live step
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 5.5 to 5.8.
