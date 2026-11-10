@@ -1,5 +1,5 @@
-//! The shim commands of `podnet net`: `shim`, `tailscale`, `socksify` and
-//! `ts-shims`.
+//! The shim commands of `podnet net`: `shim`, `tailscale`, `socksify`,
+//! `passwd-shim` and `ts-shims`.
 
 use anyhow::{Context, Result};
 
@@ -126,7 +126,13 @@ pub(crate) fn net_socksify(args: SocksifyArgs) -> Result<()> {
     print_environment(environment, args.json, "export ")
 }
 
-pub(crate) fn net_ts_shims(args: TsShimsArgs) -> Result<()> {
+/// Write the shims of `args`: the directory, the user and the shims.
+fn write_user_shims(
+    args: TsShimsArgs,
+) -> Result<(
+    podnet::vnet::tailscale_ssh::LocalUser,
+    podnet::vnet::tailscale_ssh::Shims,
+)> {
     use podnet::vnet::tailscale_ssh;
 
     let directory = args
@@ -148,8 +154,31 @@ pub(crate) fn net_ts_shims(args: TsShimsArgs) -> Result<()> {
         user.shell = shell;
     }
     let shims = tailscale_ssh::install(&directory, std::slice::from_ref(&user))?;
-    let environment = tailscale_ssh::client_environment(&shims);
-    if !args.json {
+    Ok((user, shims))
+}
+
+/// `net passwd-shim` (T-168): the user shims for any client. The shell form
+/// is for eval: the notes go to stderr, and stdout has only the exports.
+pub(crate) fn net_passwd_shim(args: TsShimsArgs) -> Result<()> {
+    let json = args.json;
+    let (user, shims) = write_user_shims(args)?;
+    let environment = podnet::vnet::tailscale_ssh::client_environment(&shims);
+    if !json {
+        eprintln!("podnet: passwd   {}", shims.passwd.display());
+        eprintln!(
+            "podnet: user     {} uid={} gid={}",
+            user.name, user.uid, user.gid
+        );
+        eprintln!("podnet: fakepwd  {}", shims.fakepwd.display());
+    }
+    print_environment(environment, json, "export ")
+}
+
+pub(crate) fn net_ts_shims(args: TsShimsArgs) -> Result<()> {
+    let json = args.json;
+    let (user, shims) = write_user_shims(args)?;
+    let environment = podnet::vnet::tailscale_ssh::client_environment(&shims);
+    if !json {
         println!("podnet: shims    {}", shims.dir.display());
         println!(
             "podnet: user     {} uid={} gid={}",
@@ -164,5 +193,5 @@ pub(crate) fn net_ts_shims(args: TsShimsArgs) -> Result<()> {
         );
         println!("podnet: note     --statedir lets the daemon keep its SSH host keys");
     }
-    print_environment(environment, args.json, "  export ")
+    print_environment(environment, json, "  export ")
 }

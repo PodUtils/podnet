@@ -269,12 +269,12 @@ pub const ENVIRONMENT: &[EnvVar] = &[
     },
     EnvVar {
         names: &["CC"],
-        used_by: "net shim, net socksify, net ts-shims",
+        used_by: "net shim, net socksify, net passwd-shim, net ts-shims",
         meaning: "The C compiler that builds the LD_PRELOAD shims. The default is cc, then gcc, then clang.",
     },
     EnvVar {
         names: &["USER"],
-        used_by: "net ts-shims",
+        used_by: "net passwd-shim, net ts-shims",
         meaning: "The default login name of the synthetic user.",
     },
     EnvVar {
@@ -304,7 +304,7 @@ pub const ENVIRONMENT: &[EnvVar] = &[
     },
     EnvVar {
         names: &["SANDHOME_PASSWD", "UNIXSOCKD_LOG"],
-        used_by: "net ts-shims, unixsockd",
+        used_by: "net passwd-shim, net ts-shims, unixsockd",
         meaning: "The passwd file that fakepwd.so reads; log each connection of unixsockd.",
     },
     EnvVar {

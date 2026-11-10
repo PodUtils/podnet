@@ -958,6 +958,23 @@ podnet pod -x tailscale:/run/tailscale/tailscaled.sock -- ssh host
 
 `tailscaled` must run with `--tun=userspace-networking`.
 
+## A user with no passwd entry
+
+On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.
+Then `ssh` stops, and `ssh-keygen` exits 0 and writes no key. `podnet net
+doctor` shows the row `passwd entry for this uid`. `podnet net passwd-shim`
+writes a passwd file and the preload `fakepwd.so`, and prints `LD_PRELOAD`
+(before an old value) and `SANDHOME_PASSWD`:
+
+```sh
+eval "$(podnet net passwd-shim)"
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ''
+```
+
+`--user`, `--uid`, `--gid` and `--shell` set the entry. `--json` prints the
+environment as one object. `net ts-shims` writes the same files, with
+`getent` and `id`, and prints the hints for `tailscaled`.
+
 ## Proxies and DNS
 
 Each connection of podnet (the quick-tunnel API, DNS over HTTPS, the HTTP/2

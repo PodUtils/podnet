@@ -17,7 +17,7 @@ use crate::cli::cmd::run::listen_doc;
 use crate::cli::opts::DetachArgs;
 use crate::cli::signals::sleep_or_signal;
 use proxy::{net_proxy, probability};
-use shim::{net_shim, net_socksify, net_tailscale, net_ts_shims};
+use shim::{net_passwd_shim, net_shim, net_socksify, net_tailscale, net_ts_shims};
 
 #[derive(Args, Debug)]
 #[command(subcommand_required = true, arg_required_else_help = false)]
@@ -52,8 +52,13 @@ pub(crate) enum NetCommand {
     Tailscale(TailscaleArgs),
     /// Build the LD_PRELOAD shim that sends tailnet connects to a front door.
     Socksify(SocksifyArgs),
-    /// Write the user-table shims that Tailscale SSH needs on a host with no
-    /// /etc/passwd.
+    /// Write a passwd file and the fakepwd preload for a client (ssh,
+    /// ssh-keygen, git) on a host with no /etc/passwd entry for this user.
+    /// Then ssh-keygen writes its key (with no shim it exits 0 and writes no
+    /// key). Use: eval "$(podnet net passwd-shim)".
+    PasswdShim(TsShimsArgs),
+    /// The same files as passwd-shim, with getent and id, and the hints for
+    /// tailscaled (Tailscale SSH).
     TsShims(TsShimsArgs),
 }
 
@@ -340,6 +345,7 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
         }
         NetCommand::Tailscale(args) => net_tailscale(args).await,
         NetCommand::Socksify(args) => net_socksify(args),
+        NetCommand::PasswdShim(args) => net_passwd_shim(args),
         NetCommand::TsShims(args) => net_ts_shims(args),
     }
 }

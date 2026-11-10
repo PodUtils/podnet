@@ -299,3 +299,50 @@ fn auth_user_flags() {
     let out = podnet(&["tunnel", "--hello-world", "--auth-user", "u", "--check"]);
     assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));
 }
+
+/// T-168: `net passwd-shim` writes the passwd shim and prints the preload:
+/// one JSON object, or `export` lines only on stdout (for eval). An old
+/// LD_PRELOAD stays after the shim.
+#[test]
+fn passwd_shim_prints_the_preload() {
+    if podnet::vnet::shim::compiler().is_err() {
+        eprintln!("skipping: no C compiler");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let out_dir = dir.path().join("shims");
+    let out = dir.path().join("shims");
+    let out = out.to_str().unwrap();
+    let json = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["net", "passwd-shim", "--out", out, "--user", "builder"])
+        .args(["--uid", "4242", "--json"])
+        .env("LD_PRELOAD", "/old.so")
+        .output()
+        .unwrap();
+    assert_eq!(json.status.code(), Some(0), "{}", stderr(&json));
+    let doc: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
+    let fakepwd = out_dir.join("fakepwd.so");
+    assert_eq!(
+        doc["LD_PRELOAD"],
+        format!("{}:/old.so", fakepwd.display()),
+        "{doc}"
+    );
+    let passwd = doc["SANDHOME_PASSWD"].as_str().unwrap();
+    let text = std::fs::read_to_string(passwd).unwrap();
+    assert!(text.contains("builder:x:4242:"), "{text}");
+    assert!(fakepwd.is_file());
+    let shell = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["net", "passwd-shim", "--out", out])
+        .env_remove("LD_PRELOAD")
+        .output()
+        .unwrap();
+    assert_eq!(shell.status.code(), Some(0), "{}", stderr(&shell));
+    let lines = String::from_utf8_lossy(&shell.stdout).into_owned();
+    assert!(lines.lines().all(|l| l.starts_with("export ")), "{lines}");
+    assert!(lines.contains("export SANDHOME_PASSWD="), "{lines}");
+    assert!(stderr(&shell).contains("podnet: fakepwd"));
+    // ts-shims stays, with its daemon hints.
+    let ts = podnet(&["net", "ts-shims", "--out", out]);
+    assert_eq!(ts.status.code(), Some(0), "{}", stderr(&ts));
+    assert!(String::from_utf8_lossy(&ts.stdout).contains("tailscaled"));
+}
