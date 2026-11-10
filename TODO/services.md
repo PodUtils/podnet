@@ -453,7 +453,7 @@ exit 0. CI: at the merge.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -485,6 +485,31 @@ gh workflow run live.yml
 ## Start condition
 
 T-083, T-085, T-088, T-089 and T-090 are done.
+
+## Correction
+
+2026-11-10, T-083 is blocked (the code of the relay node is frozen). `--via relay` does not need it: the
+file server listens on a private unix socket of the run directory, and `run_node` of the frozen relay code
+connects each session to it, with no change of that code (`src/cli/cmd/serve_relay.rs`). When podnet takes
+`pod-relay`, a handler target can replace the socket.
+
+Done in commit 3d9e225 (steps 1 to 3, and the text of step 4):
+
+- `podnet serve DIR` (or `--dir DIR`), `--local ADDR` more than one time, `--via tunnel|relay|none`
+  (`src/cli/cmd/serve.rs`), `--pair NAME` for the relay, with `--list`, `--upload`, `--tar` and the flags
+  of T-089. `--via tunnel` or `relay` with `--local` serves the local listeners too.
+- `share --local ADDR` for upload and download (`src/cli/cmd/share.rs`); `share --file DIR` gives the
+  directory as one tar stream (`crates/podnet-serve/src/share/download.rs`).
+- `.github/workflows/live.yml`: the steps "File server through a quick tunnel" (the listing, a range, a PUT
+  of 1 MiB, a 401) and "File server through the reverse relay".
+- Tests: `cargo test --test cli -- serve_dir_with_list_upload_and_users share_local_serves_a_directory`:
+  2 passed; `cargo test --test relay_reverse -- serve_via_relay_answers_through_the_relay` (a fake relay):
+  1 passed; `cargo test -p podnet-serve -- a_directory_downloads_as_one_tar`: 1 passed.
+  `sh scripts/agent/check.sh`, `unshare -n -- cargo test --offline --workspace --no-fail-fast` and
+  `sh scripts/restricted-host.sh --no-fail-fast`: exit 0.
+
+Left: the run of `gh workflow run live.yml` on a live host. Set the entry to done after a green run of
+the two new steps.
 
 # T-092: Git: a CGI runner for `git http-backend`, and the smart HTTP router
 
