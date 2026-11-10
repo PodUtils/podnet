@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 97 open, 3 partial, 18 blocked, 106 done.**
+**224 entries: 95 open, 3 partial, 18 blocked, 108 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 59 | 2 | 12 | 64 | 137 |
+| P2 | 57 | 2 | 12 | 66 | 137 |
 | P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 97 | 3 | 18 | 106 | 224 |
+| **All** | 95 | 3 | 18 | 108 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -78,7 +78,7 @@ M8 Overlays, M9 Later.
 | [T-030](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 4: the WARP arguments, the client and `warp up` |
 | [T-031](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 5: the other WARP subcommands |
 | [T-032](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 6: the unit tests go to the modules that they test |
-| [T-033](split.md) | P2 | M | M2 | chore | done | Split `src/egress.rs`, `src/detach.rs`, `src/update.rs` and `src/doctor.rs` |
+| [T-033](split.md) | P2 | M | M2 | chore | done | Split `src/egress.rs`, `crates/podnet-core/src/detach.rs`, `src/update.rs` and `src/doctor.rs` |
 | [T-034](split.md) | P2 | M | M2 | chore | done | Split `src/vnet/stack.rs` |
 | [T-035](split.md) | P2 | M | M2 | chore | open | Split `src/warp/ip.rs`, `src/warp/session.rs` and `src/warp/wg.rs` |
 | [T-036](split.md) | P2 | M | M2 | chore | open | Split `src/warp/mod.rs` and `src/warp/proxy.rs` |
@@ -91,8 +91,8 @@ M8 Overlays, M9 Later.
 | [T-043](split.md) | P2 | M | M2 | chore | blocked | Cut the upward references 8, 9 and 18: a WebSocket bridge and `Metered` in the core |
 | [T-044](split.md) | P2 | L | M2 | chore | blocked | Cut the upward references 10 to 17: the WARP QUIC configuration, `ShareLink`, `RULE_KEYS`, `connect_tunnel` and the edge side of `ws` |
 | [T-045](split.md) | P2 | S | M2 | chore | open | Each file is under 800 lines, and the allowlists of the size check and the layer check are empty |
-| [T-046](crates.md) | P2 | M | M3 | chore | open | Prepare the workspace for more crates: the print macros, the build facts, the scans, the package list and the test helpers |
-| [T-047](crates.md) | P2 | L | M3 | chore | open | Extract the crate `podnet-core` |
+| [T-046](crates.md) | P2 | M | M3 | chore | done | Prepare the workspace for more crates: the print macros, the build facts, the scans, the package list and the test helpers |
+| [T-047](crates.md) | P2 | L | M3 | chore | done | Extract the crate `podnet-core` |
 | [T-048](crates.md) | P2 | M | M3 | chore | open | Extract the crate `podnet-vnet`, with the C sources of the shims |
 | [T-049](crates.md) | P2 | S | M3 | chore | open | The relay client of podnet becomes the shared crate `pod-relay` |
 | [T-050](crates.md) | P2 | M | M3 | chore | open | Move the WARP adapter to the shared crate `pod-warp` in `PodUtils/podcrates` |

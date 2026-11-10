@@ -445,7 +445,7 @@ after; the compare needs a map of the 24 test paths (`tests::NAME` to `cli::...:
 reports no lost command, item or test. CI: at the merge.
 
 
-# T-033: Split `src/egress.rs`, `src/detach.rs`, `src/update.rs` and `src/doctor.rs`
+# T-033: Split `src/egress.rs`, `crates/podnet-core/src/detach.rs`, `src/update.rs` and `src/doctor.rs`
 
 **Source:** `docs/research/podnet/architecture.md`, section 2.2 (the four rows).
 **Category:** chore
@@ -456,20 +456,20 @@ reports no lost command, item or test. CI: at the merge.
 
 ## Problem
 
-`src/egress.rs` has 1,707 lines, `src/detach.rs` 1,210, `src/update.rs` 1,162 and `src/doctor.rs`
+`src/egress.rs` has 1,707 lines, `crates/podnet-core/src/detach.rs` 1,210, `src/update.rs` 1,162 and `src/doctor.rs`
 1,309.
 
 ## Premise
 
 - The fuzz targets use `egress::{Proxy, NoProxy, parse_status}` (`src/fuzzing.rs`).
-- `src/detach.rs` has two inline modules, `supervise` and `unix`.
+- `crates/podnet-core/src/detach.rs` has two inline modules, `supervise` and `unix`.
 
 ## Approach
 
 1. `src/egress.rs`: a mod.rs with the choice and the dial functions; files for `Proxy`, the HTTP
    CONNECT client, the SOCKS5 client, `NoProxy` and the `+exec:` carrier. Keep the `pub use` of
    the items of the fuzz targets.
-2. `src/detach.rs`: a mod.rs with the record functions; files for the start functions, for
+2. `crates/podnet-core/src/detach.rs`: a mod.rs with the record functions; files for the start functions, for
    `supervise`, for `unix` and for the tests.
 3. `src/update.rs`: a mod.rs with `Release`, `get`, `run` and `Outcome`; files for the cosign
    checks, for the install and rollback, and for the tests.
@@ -492,12 +492,12 @@ T-008 and T-009 are done.
 
 ## Correction
 
-2026-11-05, The named modules `src/egress.rs` move to PodUtils/podcrates (`pod-proxy`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/detach.rs`, `src/update.rs` and `src/doctor.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+2026-11-05, The named modules `src/egress.rs` move to PodUtils/podcrates (`pod-proxy`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `crates/podnet-core/src/detach.rs`, `src/update.rs` and `src/doctor.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
 ## Done
 
 2026-11-09, commits d0a6df0 (detach), a8e648d (update) and 9d9b2ed (doctor). `src/egress.rs` is not
-split (the Correction). `src/detach/` has `supervise.rs`, `unix.rs` and `tests.rs` (`src/detach.rs`
+split (the Correction). `crates/podnet-core/src/detach/` has `supervise.rs`, `unix.rs` and `tests.rs` (`crates/podnet-core/src/detach.rs`
 759 lines). `src/update/` has `cosign.rs` and `tests.rs` (`src/update.rs` 642 lines; the public
 paths stay by `pub use`). `src/doctor/` has `clock_check.rs`, `tls_check.rs` and `tests.rs`
 (`src/doctor.rs` 754 lines); the allow list of `trust::tests::no_other_code_sets_its_own_verifier`
@@ -942,17 +942,17 @@ to `rpc::Refused`; `report` uses `quicktunnel::retry_of`; `detach` uses `update:
 
 ## Approach
 
-1. Split `src/net.rs`. The core keeps `BoxedIo`, `AsyncReadWrite`, `claim_socket_path`,
+1. Split `crates/podnet-core/src/net.rs`. The core keeps `BoxedIo`, `AsyncReadWrite`, `claim_socket_path`,
    `init_crypto`, `local_name` and `connect_origin`. The origin dial functions and their
    connectors move to the origin module, with a `pub use` in `net`.
-2. Change the doc link of `src/util/mod.rs`.
-3. Move `MAX_HEADERS` to `src/util/http.rs`. `src/proxy.rs` re-exports it.
+2. Change the doc link of `crates/podnet-core/src/util/mod.rs`.
+3. Move `MAX_HEADERS` to `crates/podnet-core/src/util/http.rs`. `src/proxy.rs` re-exports it.
 4. Tag the hop at the error site in `src/cloudflare/rpc.rs`, or move a marker type `Refused` to
-   `src/hop.rs`.
+   `crates/podnet-core/src/hop.rs`.
 5. Move a type `Refusal` (status, code, retry_after_s) to the core. `src/quicktunnel.rs` attaches
-   it to its error. `src/report.rs` reads it by downcast.
+   it to its error. `crates/podnet-core/src/report.rs` reads it by downcast.
 6. Move `previous_of` from `src/update.rs` to the core.
-7. Move `utc_minutes` from `src/warp/register.rs` to a time module of `src/util/`.
+7. Move `utc_minutes` from `src/warp/register.rs` to a time module of `crates/podnet-core/src/util/`.
 8. Make one commit for each row. Remove each row from the allowlist of the layer check.
 
 ## Prove
@@ -977,12 +977,12 @@ the start. Cut only the references that stay in podnet.
 
 ## Done
 
-2026-11-10, commits 25378d9 (`detach -> update`: `previous_of` in `src/detach.rs`, a `pub use` in
+2026-11-10, commits 25378d9 (`detach -> update`: `previous_of` in `crates/podnet-core/src/detach.rs`, a `pub use` in
 `src/update.rs`), b87ba27 and 22b00a2 (`net -> ingress`: `dial`, `origin_label`, the TLS connectors
-and `note_unverified` in `src/origin/dial.rs`; the tests stay in `src/net.rs`), 42a9c93
+and `note_unverified` in `src/origin/dial.rs`; the tests stay in `crates/podnet-core/src/net.rs`), 42a9c93
 (`util -> feature`: the doc names `StaticResponse` as text), ffddf71 (`hop -> cloudflare`: the type
-`Refused` in `src/hop.rs`, a `pub use` in `src/cloudflare/rpc.rs`) and c154ccf
-(`report -> quicktunnel`: the type `Refusal` in `src/report.rs`; the binary gives
+`Refused` in `crates/podnet-core/src/hop.rs`, a `pub use` in `src/cloudflare/rpc.rs`) and c154ccf
+(`report -> quicktunnel`: the type `Refusal` in `crates/podnet-core/src/report.rs`; the binary gives
 `quicktunnel::retry_of` to `report::read_refusals_with`; a `pub use` in `src/quicktunnel.rs`).
 The rows of `fetch` and `relay_reverse` were not in `scripts/layers-allow.txt` at the start
 (`pod-proxy` and `pod_core::clock`). `scripts/layers-allow.txt` has five rows fewer;
@@ -1016,7 +1016,7 @@ The relay client uses `ws::bridge` and `edge_h2::Metered`, and `ws` uses
 
 1. Move the bridge items of `src/ws.rs` to a WebSocket bridge module of the core. Keep a
    `pub use` in `ws`.
-2. Move `Metered` to `src/metrics.rs`, with a `pub use` in `edge_h2`.
+2. Move `Metered` to `crates/podnet-core/src/metrics.rs`, with a `pub use` in `edge_h2`.
 3. Move `close_hint`, with the WebSocket close codes, to the bridge module.
 4. Remove the three rows from the allowlist of the layer check.
 
@@ -1072,11 +1072,11 @@ and `quic::transport_config`; `warp` uses `quicktunnel::parse_retry_after`; `fea
 
 1. `src/warp/quic.rs` keeps `WarpUdpSocket` and takes the client configuration as an argument.
    The client configuration (the edge roots, the ALPN, the MTU) moves to the tunnel side.
-2. Move `parse_retry_after` to `src/util/http.rs`.
+2. Move `parse_retry_after` to `crates/podnet-core/src/util/http.rs`.
 3. Give `ShareLink` a constructor from a URL and an id. Move the conversion from a quick tunnel to
    the Cloudflare side.
 4. Move `RULE_KEYS` to `src/ingress.rs`. `src/config.rs` re-exports it.
-5. Make `src/relay.rs` and `src/transport/` use `src/connect.rs` directly.
+5. Make `src/relay.rs` and `src/transport/` use `crates/podnet-core/src/connect.rs` directly.
 6. Move `serve_websocket` and `forward_path` from `src/ws.rs` to the tunnel side, beside
    `src/proxy.rs`.
 7. Make one commit for each row or pair of rows.
@@ -1096,7 +1096,7 @@ The allowlist of the layer check is empty.
 
 The session of `PodUtils/podcrates` and T-137. Four rows are cut (2026-11-10): `ingress -> config`
 (3714039: `RULE_KEYS` in `src/ingress.rs`, a `pub use` in `src/config.rs`), `relay -> proxy`
-(bc0f58d) and `transport -> proxy` (f1f69c4: they call `src/connect.rs`), `feature -> quicktunnel`
+(bc0f58d) and `transport -> proxy` (f1f69c4: they call `crates/podnet-core/src/connect.rs`), `feature -> quicktunnel`
 (799d4be: `ShareLink::from_quick_tunnel` takes the URL; a8a36bf: the layer check skips each file of
 a test module). Four rows stay in `scripts/layers-allow.txt`: `warp -> cloudflare` and
 `warp -> quicktunnel` (`src/warp/`: `pod-warp`, to `pod-cloudflare`), `ws -> cloudflare` and

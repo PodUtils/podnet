@@ -31,6 +31,7 @@ The repository is a Cargo workspace:
 | Crate | Contents |
 | --- | --- |
 | `podnet` (root) | The CLI and the library: the edge client (provisioning, discovery, QUIC, HTTP/2, Cap'n Proto and its RPC), the service layer, WARP, the virtual network. |
+| `crates/podnet-core` | A library: the core layer of podnet (the process, the files, the state, the reports, the supervisor). The other crates use it. |
 | `crates/podnet-netns` | A library: run a program with all its traffic sent through a proxy (`podnet pod`). |
 
 ## Install
@@ -369,7 +370,7 @@ ingress:
   rule with no `service`, a time with no unit (`connectTimeout: 5`) and a
   value of the wrong type each have their own message.
 
-podnet reads the YAML with its own reader (`src/yaml.rs`). The reader accepts
+podnet reads the YAML with its own reader (`crates/podnet-core/src/yaml.rs`). The reader accepts
 block mappings, block sequences, plain and quoted scalars on one line, and
 comments. It refuses anchors, aliases, tags, block scalars (`|`, `>`), flow
 collections that are not empty, tabs in the indentation, duplicate keys and

@@ -716,7 +716,7 @@ Ask A-N-05 (P0): "A signed prerelease named podnet that cfb can pin, and a conne
 
 ## Approach
 
-1. Write the profile in `docs/protocol.md`: the flags of `tunnel`, its exit codes (`src/exit.rs`), the keys of `ps --json`, `doctor --json` (T-216) and the body of `/ready`. State the rule: a change within a minor version only adds.
+1. Write the profile in `docs/protocol.md`: the flags of `tunnel`, its exit codes (`crates/podnet-core/src/exit.rs`), the keys of `ps --json`, `doctor --json` (T-216) and the body of `/ready`. State the rule: a change within a minor version only adds.
 2. Add tests that pin the flags (the help of `tunnel`), the exit codes, and the keys of the three JSON documents.
 3. Do T-022 and T-023 (the signed beta), and name the profile in the release note.
 4. The tunnel set (A-N-02, A-N-03, A-C-01, A-C-02) waits for the first crates.io release (`docs/decisions.md`, 2026-11-09, The tunnel set). The profile covers the connector as it is.

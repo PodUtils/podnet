@@ -122,7 +122,7 @@ These rules apply to each secret:
 ## TLS
 
 Each TLS connection that podnet opens as a client checks the certificate and
-the host name. `src/trust.rs` gives the roots:
+the host name. `crates/podnet-core/src/trust.rs` gives the roots:
 
 1. The file of `--ca-file`, else the file of `SSL_CERT_FILE`. podnet uses this
    file alone.

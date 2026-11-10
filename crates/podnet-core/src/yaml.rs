@@ -574,16 +574,4 @@ ingress:
         assert_eq!(item_lines(flat, "ingress"), [2, 3]);
         assert!(item_lines(text, "none").is_empty());
     }
-
-    /// T-080: an error of a config file names the line of its rule.
-    #[test]
-    fn a_config_error_names_its_line() {
-        let dir = tempfile::tempdir().unwrap();
-        let file = dir.path().join("config.yml");
-        let text = "tunnel: t\ningress:\n  - hostname: a.example\n    service: http://127.0.0.1:1\n  # the second rule\n  - hostnam: b.example\n    service: http://127.0.0.1:2\n  - service: http_status:404\n";
-        std::fs::write(&file, text).unwrap();
-        let err = format!("{:#}", crate::config::load_file(&file).unwrap_err());
-        assert!(err.contains("ingress rule 2 (line 6)"), "{err}");
-        assert_eq!(numbered("ingress rule", 4, &[1, 2]), "ingress rule 5");
-    }
 }

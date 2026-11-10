@@ -93,7 +93,7 @@ cargo test --workspace -- netns_pod_outlives_its_first_child
 
 ## Premise
 
-- `src/detach.rs` and `src/instances.rs` supervise the other server commands: `ps`, `stop`,
+- `crates/podnet-core/src/detach.rs` and `crates/podnet-core/src/instances.rs` supervise the other server commands: `ps`, `stop`,
   `logs` and `wait`.
 - Read: the arguments of `warp exec` have no detach options (`src/main.rs`).
 
@@ -458,7 +458,7 @@ cargo test --workspace -- reject_and_block_mean_the_same_in_both_rule_engines
 
 A flow that matches no rule reaches the default chain. There is no way to refuse every undeclared
 destination, and no machine record of (destination, rule, verdict). The `-v` log is for humans
-(`cli.rs:104`). The decision counters (`src/decisions.rs`) serve `warp proxy` only.
+(`cli.rs:104`). The decision counters (`crates/podnet-core/src/decisions.rs`) serve `warp proxy` only.
 
 ## Premise
 
@@ -532,7 +532,7 @@ namespace, with an `AF_PACKET` socket on one end, can carry the frames to the sa
 
 - `crates/podnet-netns/src/netns/tun.rs:41-43` opens the node; `send_fd`/`recv_fd` (`crates/podnet-netns/src/netns/fdpass.rs:51,85`) and the
   handoff (`crates/podnet-netns/src/netns/mod.rs:96,168`) are reusable. `doctor.rs:70,281` gates `auto` on the TUN probe.
-- smoltcp has `medium-ip` only (`Cargo.toml:117`, `crates/podnet-netns/Cargo.toml:29`): add `medium-ethernet`.
+- smoltcp has `medium-ip` only (`Cargo.toml:118`, `crates/podnet-netns/Cargo.toml:29`): add `medium-ethernet`.
 - `docs/research/podnet/vn.md:313` is plan item P5; `vn.md:411` asks if any target host has no TUN. No
   measured host lacks it (`docs/target-environment.md:33`).
 - The veth needs one small `RTM_NEWLINK` writer. Checksums: skip RX verification on this device.

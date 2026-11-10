@@ -500,7 +500,7 @@ only with both the state directory variable and the WARP socket variable set.
 
 - Read: `exec_in_pod`, `shell`, the `nc` path and the agent use `socket_path()`, which is the
   run directory and `warp.sock` (`src/warp/up.rs`, `src/warp/nc.rs`, `src/agent.rs`).
-- Read: `run_dir()` depends on the state directory (`src/instances.rs`).
+- Read: `run_dir()` depends on the state directory (`crates/podnet-core/src/instances.rs`).
 - Read: `warp up` writes `PODNET_WARP_SOCKET` to `warp.env` and to the program of the pod, but
   nothing reads it (`src/warp/up.rs`).
 - `warp.env` is in the same directory, so to read the env file alone does not help.
@@ -702,7 +702,7 @@ lands in podnet and the podcrates session ports it. After the take, the fix goes
 are in its settings (`pod_dns::Settings::pinned`). The fix lands in podnet and needs no change of
 `pod-dns`: `src/resolve.rs` gets `pinned(host)`, and the DNS of the WARP commands moves from
 `src/warp/proxy.rs` to `src/warp/proxy/names.rs`. The text of `ps` moves from `src/main.rs` to
-`src/instances/text.rs`. The test of `--list` is `warp_forward_list_prints_the_forwards_of_ps`.
+`crates/podnet-core/src/instances/text.rs`. The test of `--list` is `warp_forward_list_prints_the_forwards_of_ps`.
 
 ## Done
 
@@ -710,7 +710,7 @@ are in its settings (`pod_dns::Settings::pinned`). The fix lands in podnet and n
 forward --list (T-073)`). `pinned(host)` in `src/resolve.rs` gives the pins of `--resolve` and
 `PODNET_RESOLVE`. `resolve_all` and `resolve` (`src/warp/proxy/names.rs`) return the pins before
 a DNS query through the tunnel: `warp forward`, `warp proxy` and `warp nc`. `ps` prints each
-forward of an array `forward` as `LISTEN -> TO` (`src/instances/text.rs`). `warp forward --list`
+forward of an array `forward` as `LISTEN -> TO` (`crates/podnet-core/src/instances/text.rs`). `warp forward --list`
 prints the forwards of the detached instances. Control on the code before the fix:
 `warp_resolve_takes_the_pin_first` fails (6 DNS packets go into the stack),
 `ps_prints_each_forward` fails (no row `LISTEN -> TO`),
@@ -951,7 +951,7 @@ doctors and `status` use one vocabulary and a schema.
 ## Premise
 
 - `crates/podnet-netns/src/doctor.rs` writes the words of the pod.
-- `src/doctor.rs` and `src/report.rs` write the vocabulary of the other doctors.
+- `src/doctor.rs` and `crates/podnet-core/src/report.rs` write the vocabulary of the other doctors.
 
 ## Approach
 
@@ -1039,12 +1039,12 @@ must search for the place.
 
 ## Premise
 
-- `src/yaml.rs` keeps no positions.
+- `crates/podnet-core/src/yaml.rs` keeps no positions.
 - `src/config.rs` writes the errors with the rule and the key.
 
 ## Approach
 
-1. Keep the line and the column of each node in `src/yaml.rs`.
+1. Keep the line and the column of each node in `crates/podnet-core/src/yaml.rs`.
 2. Add the line to each error of `src/config.rs`, beside the rule and the key.
 
 ## Prove
@@ -1060,7 +1060,7 @@ The fuzz target `config_yaml` still builds.
 
 2026-11-06, commit 7e3d835 (`T-080: an error of an ingress rule names the line of the rule`).
 `yaml::item_lines` gives the line of each item of a top-level list; each error of an ingress rule
-names `ingress rule N (line L)`. A full map of positions in `src/yaml.rs` is not made: the errors
+names `ingress rule N (line L)`. A full map of positions in `crates/podnet-core/src/yaml.rs` is not made: the errors
 of the top-level keys name the key, which is unique in the file. `a_config_error_names_its_line`
 passes; `cargo check --manifest-path fuzz/Cargo.toml --bins` passes.
 
@@ -1584,7 +1584,7 @@ scripts/agent/check.sh` exits 0. CI: at the merge.
    name already holds a pool address keeps the pool address. State it in the README.
 2. `address_for` returns `Option<Ipv4Addr>`. At `next >= FAKE_IP_COUNT` it returns `None`, with no
    insert. Add `RCODE_SERVFAIL = 2`. `answer` returns SERVFAIL on `None`.
-3. Update `README.md:195-201`: the pool bound, case-insensitivity, SERVFAIL at the end.
+3. Update `README.md:196-202`: the pool bound, case-insensitivity, SERVFAIL at the end.
 
 ## Prove
 
@@ -2044,7 +2044,7 @@ Operators of restricted hosts need the flag: the fresh `*.trycloudflare.com` nam
 
 - `src/cli/opts.rs:58-60` declares it (`global = true`); `src/cli/opts.rs:173` sets `config.verify`.
 - `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `src/tunnel.rs:1230`
-  runs the fetch. `src/net.rs` takes `no_tls_verify` from the ingress rule. The two flags share no state.
+  runs the fetch. `crates/podnet-core/src/net.rs` takes `no_tls_verify` from the ingress rule. The two flags share no state.
 - `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`src/tunnel.rs:1220`) has no caller.
 - Not measured: the runtime fetch on a restricted host.
 
@@ -2138,7 +2138,7 @@ attempts repeat the same failure for about 30 s.
 ## Approach
 
 1. Retry a `Hop::Dns` failure once. Retry again only when `answering_step` of the API host changed.
-2. End with the `Hop::Dns` hint (`src/hop.rs:45`).
+2. End with the `Hop::Dns` hint (`crates/podnet-core/src/hop.rs:45`).
 
 ## Prove
 
@@ -2168,7 +2168,7 @@ error text repeats `system resolver: no answer ... Network unreachable`. The fin
 ## Premise
 
 - The loop keeps `last = "waiting for DNS: ..."` (`src/tunnel.rs:1276-1279`). `Verified.dns` records the
-  step on success only. `Hop::Dns` has a hint (`src/hop.rs:45`).
+  step on success only. `Hop::Dns` has a hint (`crates/podnet-core/src/hop.rs:45`).
 - `run_tunnel`, `run_share` and `run_demo` (`src/cli/cmd/run.rs`) wait for the verify.
 - Overlap: #357 (exit 69 and teardown on an unresolved name). Do both in one pass; the verdict of the
   loop after the budget is #357's subject.
@@ -2208,7 +2208,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 - `src/warp/mod.rs:922-929` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
   `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:435-454`) refuses and does not write over the file.
-- `src/state.rs:67-118` has the model. `src/manual/facts.rs:126` lists `PODNET_FOREIGN_HOME`.
+- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:126` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 
@@ -2419,9 +2419,9 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:433`, `src/vnet/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:22-47`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:433`, `src/vnet/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`crates/podnet-core/src/net.rs:22-47`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
-- `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:178`).
+- `crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `crates/podnet-core/src/net.rs:179`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:62-68`).
 
 ## Approach
@@ -2457,7 +2457,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:181-199`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:94-98`).
+- `connect_origin` (`crates/podnet-core/src/net.rs:104-129`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:181-199`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`crates/podnet-core/src/net.rs:95-99`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:185-189`).
 
@@ -2607,7 +2607,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:267-268`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:906-908` uses `net switch --listen tcp://` as its example.
+- `README.md:907-909` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -2636,7 +2636,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:262-264` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`crates/podnet-core/src/exit.rs:89-91` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `src/vnet/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:190`, and also `src/vnet/proxy.rs:262-264` and `src/warp/proxy.rs:71-73` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
@@ -2827,7 +2827,7 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 
 ## Premise
 
-- `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`src/state.rs:344-363`).
+- `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`crates/podnet-core/src/state.rs:344-363`).
 - `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs:151-188`).
 - `DirBuilder::mode(0o700)` applies only to a new directory (`:143-146`).
 - The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:879`.
@@ -2910,7 +2910,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
   `src/cli/cmd/connect.rs:185-188`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
   `SocketFile` is in `src/cli/cmd/connect.rs:196-216` (`pub(crate)`).
-- Message: `src/net.rs:28-34`.
+- Message: `crates/podnet-core/src/net.rs:28-34`.
 - `src/main.rs:141` allows `--replace` without `--detach` only for `Command::Connect`.
 
 ## Approach
@@ -3108,13 +3108,13 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 ## Premise
 
-- `src/detach.rs:166-192` (`child_begin` reads the variable). `:513-520` sets 4 detach variables and not this one.
-  `src/detach/supervise.rs:120` is the only writer (the supervisor).
-- `src/autostart.rs:178-182` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
-- `src/detach.rs:691-698` (`targets()` gives `Vec::new()` for this record).
+- `crates/podnet-core/src/detach.rs:166-192` (`child_begin` reads the variable). `:513-520` sets 4 detach variables and not this one.
+  `crates/podnet-core/src/detach/supervise.rs:120` is the only writer (the supervisor).
+- `crates/podnet-core/src/autostart.rs:178-182` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
+- `crates/podnet-core/src/detach.rs:691-698` (`targets()` gives `Vec::new()` for this record).
 - The default start (restart on) runs `--detach-supervise`: the supervisor sets the variable for its own child, so that
   path is right. The defect needs `--no-restart`. I did not run it.
-- `src/detach.rs` is in the size allowlist (1210 lines): add no net line.
+- `crates/podnet-core/src/detach.rs` is in the size allowlist (1210 lines): add no net line.
 
 ## Approach
 
@@ -3131,7 +3131,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 ## Done
 
-2026-11-09, commit e4ad540. `child_command` (`src/detach/spawn.rs`, moved out of `start_inner`) calls `env_remove(PODNET_DETACH_SUPERVISED)`; `kept_variable` keeps it out of an autostart entry (`split_secrets`). `src/detach.rs` is smaller by 19 lines. Tests: `detach::spawn::tests::child_env_has_no_supervised_variable`, `split_secrets_skips_supervised_variable`. The test of `targets()` for a record with no supervisor is not written. CI: at the merge.
+2026-11-09, commit e4ad540. `child_command` (`crates/podnet-core/src/detach/spawn.rs`, moved out of `start_inner`) calls `env_remove(PODNET_DETACH_SUPERVISED)`; `kept_variable` keeps it out of an autostart entry (`split_secrets`). `crates/podnet-core/src/detach.rs` is smaller by 19 lines. Tests: `detach::spawn::tests::child_env_has_no_supervised_variable`, `split_secrets_skips_supervised_variable`. The test of `targets()` for a record with no supervisor is not written. CI: at the merge.
 
 # T-206: `agent status --json` (GitHub #403)
 
@@ -3151,7 +3151,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1000-1006`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1001-1007`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3193,9 +3193,9 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 - `src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-89` (`resolve`), test `:603-607` asserts `"a b"`.
 - `src/service.rs:217-232`, `:183`. `src/ingress.rs:184-187`, test `:619-632` (`"a + stays a +"`).
-- `README.md:485-486`.
-- One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:249-251`, test
-  `:609`). The CLI decoder returns `None` (`src/service.rs:222-225`), so the request is refused. A short escape at the
+- `README.md:486-487`.
+- One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:250-252`, test
+  `:610`). The CLI decoder returns `None` (`src/service.rs:222-225`), so the request is refused. A short escape at the
   end (`i + 2 < len`) also differs.
 
 ## Approach
@@ -3235,7 +3235,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
   proxy path pushes `--replace`).
 - `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:513-528` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
-- `src/detach.rs:488-495` (the refusal text).
+- `crates/podnet-core/src/detach.rs:488-495` (the refusal text).
 
 ## Approach
 
@@ -3386,12 +3386,12 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Problem
 
-`README.md:703-704` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`README.md:704-705` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
 `-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
 
 ## Premise
 
-- `README.md:700-704`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:701-705`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.

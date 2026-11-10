@@ -9,7 +9,8 @@
 #
 # DIR gets commands.txt, items.txt and tests.txt, each sorted. MAP has one
 # "OLD NEW" pair on each line (# starts a comment): each OLD of a line of
-# BEFORE becomes NEW before the compare (for example "cfrs podnet").
+# BEFORE becomes NEW before the compare (for example "cfrs podnet"). A
+# line with a tab is "OLD<TAB>NEW": then OLD and NEW can hold spaces.
 # PARITY_BIN names the binary (default: target/debug/podnet, built here).
 # PARITY_SKIP is a list of parts to skip: commands, items, tests.
 set -u
@@ -100,7 +101,8 @@ old, new, mp = sys.argv[1], sys.argv[2], sys.argv[3]
 pairs = []
 if mp:
     for line in open(mp):
-        line = line.split("#", 1)[0].split()
+        line = line.split("#", 1)[0].rstrip("\n")
+        line = line.split("\t") if "\t" in line else line.split()
         if len(line) == 2:
             pairs.append(line)
 def fix(s):
