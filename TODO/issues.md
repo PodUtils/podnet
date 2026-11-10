@@ -113,5 +113,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #414 | COORD-007: podnet took v0.7.0 and the parts of pod-core; the asks of cfb; the view on pod-hold | closed (podcrates c229926 recorded it) | T-137, T-216 to T-222 |
 | #416 | COORD-008: podnet took v0.8.0; the freeze of the datagram path of upstream.rs is recorded | open (a COORD issue between sessions) | T-137 |
 | #417 | COORD-009: podnet took v0.9.0; podnet-netns calls pod_proxy::udp, so the freeze of #42 can end | open (a COORD issue between sessions) | T-137, T-224 |
+| #418 | COORD-010: podnet took v0.10.0 | open (a COORD issue between sessions) | T-137 |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
