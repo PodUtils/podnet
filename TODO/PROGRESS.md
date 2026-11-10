@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 224 entries: 90 open, 3 partial, 19 blocked, 112 done.
+`TODO/INDEX.md` holds 224 entries: 89 open, 3 partial, 19 blocked, 113 done.
 
 ## State
 
@@ -49,7 +49,7 @@ not wait for a larger one.
    `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
    server T-088, T-089, T-090, T-091; git T-092, T-093, T-094; the router T-095, T-096, T-097,
    T-098, T-099, T-100, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
-    The triage adds T-167 and T-168 (the shims of `net`), T-177 (`podnet route check`) and
+    The triage adds T-167 (the socks shim of `net`), T-177 (`podnet route check`) and
     T-180 (the router control); the router additions are in T-096 to T-099 (GitHub #372 to #374).
 8. **M7, the pods:** T-107, T-108, T-111, T-109, T-110, T-113, T-112. The triage adds T-156, T-157
    and T-158 (the reject action, the default action, learn), T-181 (the flow budget), T-150 and

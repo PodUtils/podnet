@@ -1195,7 +1195,7 @@ cargo test --test cli -- socksify_takes_cidrs
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1226,6 +1226,17 @@ Tailscale and described only for Tailscale SSH.
 cargo test --test cli -- passwd_shim_prints_the_preload
 sh -c 'podnet net passwd-shim --json | grep -q SANDHOME_PASSWD'
 ```
+
+## Done
+
+2026-11-09, commit 0c9d3ff. `podnet net passwd-shim` runs the code of `net ts-shims` (which stays): stdout has only
+`export` lines (for eval) or one JSON object; `LD_PRELOAD` keeps an old value after the shim. `net doctor` has
+the row `passwd entry for this uid` (`crates/podnet-vnet/src/doctor.rs` `passwd_probe`). README ("A user with no
+passwd entry") and `docs/target-environment.md` give the silent exit 0 of `ssh-keygen`.
+`cargo test --test cli -- passwd_shim_prints_the_preload`: 1 passed.
+`sh -c 'podnet net passwd-shim --json | grep -q SANDHOME_PASSWD'` (the debug binary): exit 0. Tests added:
+`passwd_shim_prints_the_preload`, `passwd_probe_names_the_shim`. `sh scripts/agent/check.sh`: exit 0.
+Not measured: `ssh-keygen` on a host with no passwd entry. CI: at the merge.
 
 # T-177: Router: `podnet route check`, a dry run of the rules (GitHub #375)
 
