@@ -50,11 +50,11 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #348 | seccomp: UDP bind records nothing; getsockname port 0 | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-144 |
 | #349 | fake-IP pool wraps at 131072; names case-sensitive | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-145 |
 | #350 | seccomp UDP: AF_UNSPEC, source filter, sockopts, ICMP | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-146, T-147, T-148, T-149 |
-| #351 | seccomp TCP copied in user space | open | T-150, T-151 |
+| #351 | seccomp TCP copied in user space | closed | T-150, T-151 |
 | #352 | netns: in-namespace netfilter in place of smoltcp | open | T-152, T-153 |
 | #353 | no fuzz targets for seccomp handlers | open | T-154, T-155 |
 | #354 | pod rules: no reject action (also no `block`) | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-156 |
-| #355 | pod: default-deny, flow log, learn | open | T-157, T-158 |
+| #355 | pod: default-deny, flow log, learn | closed | T-157, T-158 |
 | #356 | research documents cite old paths | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-159 |
 | #357 | verify: young name exits 69, tears down a working tunnel | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-160 |
 | #358 | relay node: pair cannot be renewed | open | T-161 |

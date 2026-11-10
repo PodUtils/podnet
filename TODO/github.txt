@@ -53,11 +53,11 @@
 348 issue closed
 349 issue closed
 350 issue closed
-351 issue open
+351 issue closed
 352 issue open
 353 issue open
 354 issue closed
-355 issue open
+355 issue closed
 356 issue closed
 357 issue closed
 358 issue open
