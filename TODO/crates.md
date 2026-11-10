@@ -111,7 +111,7 @@ of `CRATES` (self-test: 4 new cases).
 **Milestone:** M3
 **Priority:** P2
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -155,6 +155,47 @@ T-046 is done.
 `pod-proxy`, `src/resolve.rs` to `pod-dns`, and the WebSocket bridge of `src/ws.rs` to `pod-ws`
 (T-137). Extract `podnet-core` from what stays in podnet after these takes. Recount the module list
 when the entry starts. Step 4 names the MSRV job: it stays, and its plant step is gone.
+
+2026-11-10, the recount. The core holds 20 modules: `exit`, `hop`, `state`, `report`,
+`decisions`, `metrics`, `rlimit`, `yaml`, `race`, `util`, `qr`, `ports`, `net`, `trust`, `udp`,
+`connect`, `services`, `detach`, `instances`, `autostart` (about 8,000 lines). The differences from
+the Premise and from `docs/research/podnet/architecture.md`, section 4.1: `src/egress.rs` and
+`src/fetch.rs` (they go to `pod-proxy`), `src/resolve.rs` (it goes to `pod-dns` and it uses
+`egress`) and the WebSocket bridge of `src/ws.rs` (it goes to `pod-ws`) stay in the root crate
+until podnet takes their crates. `proxy_auth` and `tls_fragment` are gone. `metrics` has no
+`Metered` now. `services` (glue over `pod-services`) is new in the core: `hop`, `util`, `trust`
+and `udp` use it. `error_line` of `report` reads the refusal of `egress`: it stays in
+`src/report.rs`, which gives the rest of the core `report` at its old path. The tests that read a
+higher layer (`warp`, `config`, `origin`) or a file of the repository (`Cargo.lock`, the scan of
+the verifiers) stay in the root crate. Step 4: the MSRV job reads `rust-version` of the root, and
+the core has the same; it needs no change. The fuzz manifest needs no change; `fuzz/Cargo.lock`
+gets the core.
+
+## Done
+
+2026-11-10, commit 4693062. `crates/podnet-core` holds the 20 modules of the Correction (moved
+with `git mv`). `src/lib.rs` gives each at its old path with `#[doc(inline)] pub use`, so
+`crate::exit::Item` and `podnet::exit::Item` stay valid. One item became public with
+`#[doc(hidden)]`: `net::split_host_port` (`src/origin/dial.rs` uses it). Five tests moved to the
+root crate: `core_tests::services::the_nameservers_of_the_service_are_1_1_1_1_and_1_0_0_1`,
+`core_tests::yaml::a_config_error_names_its_line`, the two tests of `core_tests::trust`, and
+`origin::dial::tests::an_unverified_origin_is_named_one_time`. The core tests take
+`need_loopback!` from `pod-testkit`. The documents, the plants of `.github/workflows/ci.yml`, the
+layer check (`scripts/check-layers.py`, `core_tests`) and the table "The code" of
+`docs/maintenance.md` name the new paths.
+
+- `sh scripts/agent/check.sh`: fmt 0, clippy 0, record 0, size 0, doc 0, layers 0, test 0.
+- `cargo test -p podnet-core`: 102 passed.
+- `unshare -n -- cargo test --offline --workspace --no-fail-fast`: exit 0, 1109 passed, 0 failed.
+- `sh scripts/restricted-host.sh --no-fail-fast`: exit 0, 101 tests skipped.
+- `cargo check --manifest-path fuzz/Cargo.toml --bins`: exit 0.
+- Parity (`sh scripts/agent/parity-snapshot.sh`, against the tree before T-046, with a map of the
+  moved tests; the map now takes `OLD<TAB>NEW`): commands 1295 of 1295, items 1566 of 1294 (the
+  1202 items of `podnet` all kept), tests 1110 of 1109. No item is lost.
+- The build after the split (as in T-046, step 6): the crates of the workspace 28.5 s; the rebuild
+  after a touch of `src/cli/cmd/warp/up.rs` 1.8 s, of `src/egress.rs` 5.0 s, and of
+  `crates/podnet-core/src/state.rs` 5.2 s.
+- CI and `gh workflow run live.yml`: at the merge.
 
 # T-048: Extract the crate `podnet-vnet`, with the C sources of the shims
 
