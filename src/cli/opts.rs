@@ -249,6 +249,8 @@ pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
             WarpCommand::Proxy { detach, .. } => Some(detach),
             WarpCommand::Forward { detach, .. } => Some(detach),
             WarpCommand::Tun { detach, .. } => Some(detach),
+            // T-109: the pod of warp exec under the supervisor.
+            WarpCommand::Exec { detach, .. } => Some(detach),
             _ => None,
         },
         Command::Relay(args) => match &args.command {

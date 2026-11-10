@@ -62,7 +62,18 @@ pub(crate) async fn before_client(args: &WarpArgs) -> Result<bool> {
             print!("{text}");
             Ok(())
         }
-        WarpCommand::Exec { rules, program, at } => {
+        WarpCommand::Exec {
+            rules,
+            program,
+            at,
+            detach,
+        } => {
+            // T-109: a named or detached pod is an instance.
+            if detach.detach || detach.name.is_some() {
+                let code = super::kept::run(at, rules, program).await?;
+                podnet::detach::unregister();
+                std::process::exit(code);
+            }
             Err(super::pod::exec_in_pod(at, rules, program))
         }
         WarpCommand::Shell(at) => Err(super::pod::shell(at)),

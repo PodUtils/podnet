@@ -442,13 +442,18 @@ pub(crate) enum WarpCommand {
     /// TCP listener (no proxy variables).
     Env,
     /// Run a program under the pod of the running podnet warp up: TCP, DNS
-    /// and UDP go through WARP, also for static binaries.
+    /// and UDP go through WARP, also for static binaries. With --detach or
+    /// --name, the pod is an instance (podnet ps, logs, stop): it lives
+    /// until each process of the pod ends, also a daemon that the program
+    /// started.
     Exec {
         /// A podnet-netns rule, repeatable (see podnet pod --help).
         #[arg(short = 'r', long = "rule", value_name = "SPEC")]
         rules: Vec<String>,
         #[command(flatten)]
         at: podnet::warp::pod::PodOptions,
+        #[command(flatten)]
+        detach: DetachArgs,
         /// The program and its arguments.
         #[arg(trailing_var_arg = true, required = true, allow_hyphen_values = true)]
         program: Vec<String>,

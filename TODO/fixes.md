@@ -2618,7 +2618,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:288-289`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:933-935` uses `net switch --listen tcp://` as its example.
+- `README.md:941-943` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -2916,7 +2916,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 ## Premise
 
 - `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:49-70`. `RelayCommand::Node` has it: `:44-45`.
-- `detach_of` has no arm for it: `src/cli/opts.rs:253-262`. `connect` has one: `:246`.
+- `detach_of` has no arm for it: `src/cli/opts.rs:255-264`. `connect` has one: `:246`.
 - Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:186`, `:198`. `connect -L` logs and returns:
   `src/cli/cmd/connect.rs:208-211`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
@@ -3162,7 +3162,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1051-1057`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1059-1065`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3242,9 +3242,9 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 ## Premise
 
-- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:403-415` (`warp_up_tun_args`), `:207-211` (the
+- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:414-426` (`warp_up_tun_args`), `:218-222` (the
   proxy path pushes `--replace`).
-- `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:513-528` (`Tun` has
+- `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:518-533` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
 - `crates/podnet-core/src/detach.rs:488-495` (the refusal text).
 

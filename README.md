@@ -815,6 +815,14 @@ podnet warp tun --interface podnet0        # TUN interface (needs CAP_NET_ADMIN)
     choice; `-q` removes the line. With `-v`, the pod logs each flow, and
     the seccomp backend logs each socket and each `setsockopt` that it
     emulates.
+  * `podnet warp exec --detach --name N -- CMD`: the pod is an instance
+    (see "Run in the background"). It lives until each process of the pod
+    ends, also a daemon that CMD starts (`rad node start`). `podnet ps`
+    lists it, `podnet logs N` shows the output of the pod, and
+    `podnet stop N` sends SIGTERM to each process of the pod (SIGKILL after
+    5 s). The supervisor starts the pod again when it ends; `--no-restart`
+    turns it off. `--name N` with no `--detach` runs the pod in the
+    foreground as the instance N.
   * `--persist`: a marked block in `~/.bashrc` and `~/.profile` loads the env
     file in each new shell, and an interactive shell runs under the pod.
   * `--env-d`: `$XDG_CONFIG_HOME/environment.d/90-podnet-warp.conf`
@@ -1132,8 +1140,8 @@ podnet stop web                                  # or: podnet stop --all
 ```
 
 `--detach` works with `tunnel`, `serve`, `share`, `demo`, `connect`,
-`warp proxy`, `warp forward`, `warp tun`, `relay node`, `net proxy` and
-`net switch`. The command runs in the foreground until it
+`warp proxy`, `warp forward`, `warp tun`, `warp exec`, `relay node`,
+`net proxy` and `net switch`. The command runs in the foreground until it
 is ready: until the public URL answers, or until the listener is bound.
 Then it leaves the terminal (`setsid`, SIGHUP ignored, stdin to
 `/dev/null`, stdout and stderr to its log), and the start prints one JSON
