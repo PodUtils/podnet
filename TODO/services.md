@@ -293,7 +293,7 @@ after the take.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -323,6 +323,24 @@ A name with `<script>` is escaped in the HTML listing.
 ## Start condition
 
 T-062 is done.
+
+## Correction
+
+2026-11-10, The listing does not use the traits of T-062. It is a part of the router of the files
+(`crates/podnet-serve/src/files/mod.rs`). The entry is done before T-062. `serve` takes the file server
+as the new service `Service::Files` (`crates/podnet-serve/src/ingress.rs`); `static:` and `spa:` keep
+`Service::Static`.
+
+## Done
+
+2026-11-10, commit c1d4daf. The static router and its guard are in `crates/podnet-serve/src/files/mod.rs`.
+`serve --list`: a directory with no `index.html` answers a listing (`crates/podnet-serve/src/files/listing.rs`).
+HTML escapes each name and percent-encodes each link; `Accept: application/json` gives
+`{"path", "entries": [{"name", "type", "size", "modified"}]}`. The listing hides the dotfiles, each link out
+of the root and each special file. A directory path with no `/` at its end gives 308 to the path with the `/`.
+`cargo test -p podnet-serve -- a_listing_escapes_names_and_hides_dotfiles a_listing_in_json`: 2 passed. Tests
+added: `a_listing_escapes_names_and_hides_dotfiles`, `a_listing_in_json`. The three tests of the static
+router moved with their names. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-089: File server: users with read and write roles, and a PIN, on each listener
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**226 entries: 75 open, 3 partial, 19 blocked, 129 done.**
+**226 entries: 74 open, 3 partial, 19 blocked, 130 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 22 | 27 |
-| P2 | 44 | 2 | 13 | 78 | 137 |
+| P2 | 43 | 2 | 13 | 79 | 137 |
 | P3 | 28 | 0 | 4 | 29 | 61 |
-| **All** | 75 | 3 | 19 | 129 | 226 |
+| **All** | 74 | 3 | 19 | 130 | 226 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -133,7 +133,7 @@ M8 Overlays, M9 Later.
 | [T-085](services.md) | P2 | M | M6 | feature | done | A ustar writer and reader, and a directory as one tar download of the file server |
 | [T-086](services.md) | P2 | L | M6 | feature | open | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
 | [T-087](services.md) | P2 | M | M6 | feature | open | `relay node` and `relay connect` resume a session past the limits of the relay |
-| [T-088](services.md) | P2 | S | M6 | feature | open | File server: a directory listing in HTML and JSON |
+| [T-088](services.md) | P2 | S | M6 | feature | done | File server: a directory listing in HTML and JSON |
 | [T-089](services.md) | P2 | M | M6 | feature | open | File server: users with read and write roles, and a PIN, on each listener |
 | [T-090](services.md) | P2 | M | M6 | feature | open | File server: uploads into the served tree with PUT and a multipart form |
 | [T-091](services.md) | P2 | M | M6 | feature | open | `podnet serve DIR --via`, a local `share`, a directory in `share`, and the live step of the file server |
