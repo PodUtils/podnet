@@ -131,7 +131,7 @@ impl Handler for Client {
 }
 
 /// A root with the bare repository `repo.git` and one commit on `main`.
-fn make_root() -> tempfile::TempDir {
+pub(super) fn make_root() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     let repo = dir.path().join("repo.git");
     let git = |args: &[&str], input: Option<&str>| -> String {

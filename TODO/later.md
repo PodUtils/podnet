@@ -807,7 +807,7 @@ reconnects with a 1 s to 30 s backoff; this leg does not.
    channel), then reconnect with the capped backoff of `relay_reverse.rs`.
 2. Give the new URL to the caller (a channel or a callback) at each reconnect.
 3. Log one line that names the relay and the reason of the end.
-4. `doctor`: add one line to the row at `src/doctor.rs:743-749` about the fixed session age.
+4. `doctor`: add one line to the row at `src/doctor.rs:750-756` about the fixed session age.
 5. Do not hardcode 60 minutes.
 
 ## Decision

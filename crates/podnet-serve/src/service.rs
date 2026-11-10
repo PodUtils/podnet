@@ -60,6 +60,7 @@ impl ServiceRuntime {
                     Built::Static(static_router_with(root, *spa, *tar)?)
                 }
                 Service::Files(files) => Built::Static(crate::files::router(files)?),
+                Service::Git(git) => Built::Static(crate::git::http::router(git.clone())?),
                 Service::Metrics => Built::Metrics,
                 Service::Share(config) => match config.mode {
                     ShareMode::Proxy => Built::ShareProxy {

@@ -320,6 +320,7 @@ fn service_files(service: &Service) -> Vec<String> {
         Service::Forward(ForwardTarget::Unix(path)) => vec![path.display().to_string()],
         Service::Static { root, .. } => vec![root.display().to_string()],
         Service::Files(files) => vec![files.root.display().to_string()],
+        Service::Git(git) => vec![git.root.display().to_string()],
         Service::Share(share) => match share.mode {
             ShareMode::Upload => vec![share.dest.display().to_string()],
             ShareMode::Download => share.file.iter().map(|p| p.display().to_string()).collect(),
@@ -359,6 +360,7 @@ async fn service(service: &Service, origin: &OriginOptions) -> Result<String, St
         }
         Service::Static { root, spa, .. } => static_dir(root, *spa),
         Service::Files(files) => static_dir(&files.root, files.spa),
+        Service::Git(git) => static_dir(&git.root, false),
         Service::Share(share) => match share.mode {
             ShareMode::Upload => upload_dir(&share.dest),
             ShareMode::Download => match &share.file {

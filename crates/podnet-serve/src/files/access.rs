@@ -234,6 +234,12 @@ impl Users {
     /// The role of the user of an `Authorization: Basic` value, or `None`
     /// for a wrong user or password.
     pub fn check_basic(&self, value: Option<&str>) -> Option<Role> {
+        self.check_basic_user(value).map(|(_, role)| role)
+    }
+
+    /// The user and the role of an `Authorization: Basic` value, or
+    /// `None` for a wrong user or password.
+    pub fn check_basic_user(&self, value: Option<&str>) -> Option<(String, Role)> {
         use base64::Engine as _;
         let (scheme, token) = value?.trim().split_once(' ')?;
         if !scheme.eq_ignore_ascii_case("basic") {
@@ -244,7 +250,7 @@ impl Users {
             .ok()?;
         let raw = String::from_utf8(raw).ok()?;
         let (name, password) = raw.split_once(':')?;
-        self.check(name, password)
+        Some((name.to_string(), self.check(name, password)?))
     }
 
     /// The role of `name` with `password`, or `None`.
@@ -324,9 +330,21 @@ impl Access {
     /// and no PIN, each visitor has the read role. With a PIN and no
     /// users, a visitor that unlocks the gate has the write role.
     pub(crate) fn role(&self, request: &axum::extract::Request) -> Result<Role, Box<Response>> {
-        let need = Role::needed(request.method());
+        self.grant(request, Role::needed(request.method()))
+            .map(|(role, _)| role)
+    }
+
+    /// The role and the user of a request that needs the role `need`, or
+    /// the answer that refuses it (git hosting, T-092: a push is a POST
+    /// that needs the write role, and a fetch is a POST that needs the
+    /// read role). The user is `None` with no users.
+    pub(crate) fn grant(
+        &self,
+        request: &axum::extract::Request,
+        need: Role,
+    ) -> Result<(Role, Option<String>), Box<Response>> {
         if self.anon_read && need == Role::Read {
-            return Ok(Role::Read);
+            return Ok((Role::Read, None));
         }
         if let Some(gate) = &self.pin {
             if let Some(locked) =
@@ -335,18 +353,19 @@ impl Access {
                 return Err(Box::new(locked));
             }
         }
-        let role = match &self.users {
+        let (role, user) = match &self.users {
             Some(users) => {
                 let value = request
                     .headers()
                     .get(http::header::AUTHORIZATION)
                     .and_then(|v| v.to_str().ok());
-                users
-                    .check_basic(value)
-                    .ok_or_else(|| Box::new(unauthorized()))?
+                let (user, role) = users
+                    .check_basic_user(value)
+                    .ok_or_else(|| Box::new(unauthorized()))?;
+                (role, Some(user))
             }
-            None if self.pin.is_some() => Role::Write,
-            None => Role::Read,
+            None if self.pin.is_some() => (Role::Write, None),
+            None => (Role::Read, None),
         };
         if role < need {
             return Err(Box::new(
@@ -357,7 +376,7 @@ impl Access {
                     .into_response(),
             ));
         }
-        Ok(role)
+        Ok((role, user))
     }
 }
 

@@ -11,6 +11,7 @@ use podnet::exit::{Fault, ResultExt};
 use podnet::ingress::Service;
 use podnet::{Protocol, Transport};
 
+use crate::cli::cmd::git::GitCommand;
 use crate::cli::cmd::net::NetCommand;
 use crate::cli::cmd::relay::RelayCommand;
 use crate::cli::cmd::warp::WarpCommand;
@@ -243,6 +244,10 @@ pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
         Command::Serve(args) => Some(&args.common.detach),
         Command::Share(args) => Some(&args.common.detach),
         Command::Demo(args) => Some(&args.common.detach),
+        Command::Git(args) => match &args.command {
+            GitCommand::Serve(args) => Some(&args.common.detach),
+            _ => None,
+        },
         // Issue 207: connect has --detach, --name and ps.
         Command::Connect(args) => Some(&args.detach),
         Command::Warp(args) => match &args.command {

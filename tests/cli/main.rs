@@ -52,6 +52,7 @@ fn trace(args: &[&str], env: &[(&str, &str)]) -> (Option<i32>, String) {
 
 mod autostart;
 mod exit_codes;
+mod git;
 mod log;
 mod manual;
 mod net;

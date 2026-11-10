@@ -655,3 +655,65 @@ async fn serve_via_relay_answers_through_the_relay() {
         "{left:?}"
     );
 }
+
+// T-094: `git serve --via relay --pair NAME` gives the SSH server of git
+// to the node of the pair: an operator session gets the SSH banner of
+// podnet, and the socket of the run directory goes at the end.
+#[tokio::test(flavor = "multi_thread")]
+async fn git_serve_via_relay_gives_the_ssh_server() {
+    test_host::need_loopback!();
+    let (url, state) = fake_relay(None).await;
+    let (home, run, repos) = (
+        tempfile::tempdir().unwrap(),
+        tempfile::tempdir().unwrap(),
+        tempfile::tempdir().unwrap(),
+    );
+    std::fs::set_permissions(
+        run.path(),
+        std::os::unix::fs::PermissionsExt::from_mode(0o700),
+    )
+    .unwrap();
+    save(&pair(&url), &home.path().join("relay")).unwrap();
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["git", "serve", "--root", repos.path().to_str().unwrap()])
+        .args(["--via", "relay", "--pair", NAME, "--anon-read"])
+        .env("PODNET_STATE_DIR", home.path())
+        .env("PODNET_RUN_DIR", run.path())
+        .env_remove("PODNET_RELAY")
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    wait_for_node(&state, 1).await;
+    let relay = Relay::new(&url, None).unwrap();
+    let (ours, theirs) = tokio::io::duplex(1 << 16);
+    let session = tokio::spawn(async move {
+        let (read, write) = tokio::io::split(theirs);
+        connect(&relay, NAME, "connect", read, write).await
+    });
+    let (mut read, mut write) = tokio::io::split(ours);
+    write.write_all(b"SSH-2.0-test\r\n").await.unwrap();
+    let mut banner = vec![0u8; 15];
+    let got = tokio::time::timeout(Duration::from_secs(20), read.read_exact(&mut banner)).await;
+    drop((read, write));
+    let _ = tokio::time::timeout(Duration::from_secs(5), session).await;
+    unsafe { libc::kill(child.id() as i32, libc::SIGTERM) };
+    let status = child.wait().unwrap();
+    assert!(got.is_ok_and(|r| r.is_ok()), "no banner");
+    assert_eq!(
+        &banner,
+        b"SSH-2.0-podnet_",
+        "{:?}",
+        String::from_utf8_lossy(&banner)
+    );
+    assert_eq!(status.code(), Some(0), "{status:?}");
+    let left: Vec<_> = std::fs::read_dir(run.path())
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name())
+        .collect();
+    assert!(
+        !left.iter().any(|n| n.to_string_lossy().ends_with(".sock")),
+        "{left:?}"
+    );
+    assert!(home.path().join("git/ssh_host_ed25519_key").is_file());
+}

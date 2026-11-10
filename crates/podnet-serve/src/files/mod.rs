@@ -286,4 +286,4 @@ pub(crate) fn percent_encode_segment(name: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

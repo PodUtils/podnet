@@ -18,6 +18,7 @@ use podnet::exit::Fault;
 use cmd::agent::{agent, AgentCommand};
 use cmd::autostart::{autostart, AutostartArgs};
 use cmd::connect::{connect, ConnectArgs};
+use cmd::git::{git, GitArgs};
 use cmd::host::{DoctorArgs, ManArgs, PortsArgs, QrArgs, UpdateArgs};
 use cmd::instances::{instances_logs, instances_ps, instances_stop, instances_wait};
 use cmd::net::{net, NetArgs};
@@ -91,6 +92,10 @@ pub(crate) enum Command {
     Serve(ServeArgs),
     /// Share files or a local port in a session with a PIN.
     Share(ShareArgs),
+    /// Git hosting with the installed git: serve the repositories of a
+    /// root over smart HTTP and SSH, make a repository, print the clone
+    /// URLs.
+    Git(GitArgs),
     /// Bridge a local socket to a remote WebSocket forward endpoint.
     Connect(ConnectArgs),
     /// List local TCP ports that are listening.
@@ -212,6 +217,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Tunnel(args) => tunnel(args).await,
         Command::Serve(args) => serve(args).await,
         Command::Share(args) => share(args).await,
+        Command::Git(args) => git(args).await,
         Command::Connect(args) => connect(args).await,
         Command::Update(args) => cmd::host::update(args).await,
         Command::Agent { command } => agent(command).await,

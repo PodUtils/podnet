@@ -44,6 +44,9 @@ pub struct Options {
     pub anon_read: bool,
     /// The `git` program.
     pub git: OsString,
+    /// A push to a path with no repository makes a bare repository there
+    /// ([`super::create_repo`]).
+    pub create_on_push: bool,
 }
 
 impl Options {
@@ -55,6 +58,7 @@ impl Options {
             authorized_keys: Vec::new(),
             anon_read: false,
             git: OsString::from("git"),
+            create_on_push: false,
         }
     }
 }
@@ -77,6 +81,22 @@ pub fn load_or_create_host_key(path: &Path) -> Result<PrivateKey> {
         .context("encoding the host key")?;
     podnet_core::state::replace_file(path, text.as_bytes(), 0o600)?;
     Ok(key)
+}
+
+/// The SHA-256 fingerprint of the public part of `key`
+/// (`SHA256:BASE64`), as `ssh-keygen -l` prints it.
+pub fn fingerprint(key: &PrivateKey) -> String {
+    key.public_key()
+        .fingerprint(russh::keys::ssh_key::HashAlg::Sha256)
+        .to_string()
+}
+
+/// The public part of `key` as one line of OpenSSH (`ssh-ed25519 BASE64`),
+/// for a `known_hosts` file.
+pub fn public_line(key: &PrivateKey) -> String {
+    key.public_key()
+        .to_openssh()
+        .unwrap_or_else(|_| fingerprint(key))
 }
 
 /// True for the algorithms that the server accepts for a user key.
@@ -215,16 +235,6 @@ impl Conn {
     }
 }
 
-/// A value of `GIT_PROTOCOL` that git can send: `version=2` and other
-/// `key=value` pairs with `:` between them.
-fn protocol_ok(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 256
-        && value
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b"=:.,-_".contains(&b))
-}
-
 impl russh::server::Handler for Conn {
     type Error = anyhow::Error;
 
@@ -282,7 +292,7 @@ impl russh::server::Handler for Conn {
         value: &str,
         session: &mut Session,
     ) -> Result<()> {
-        if name == "GIT_PROTOCOL" && protocol_ok(value) {
+        if name == "GIT_PROTOCOL" && super::protocol_ok(value) {
             self.protocol.insert(channel, value.to_string());
             session.channel_success(channel)?;
         } else {
@@ -311,7 +321,15 @@ impl russh::server::Handler for Conn {
         }
         let dir = match super::repo_dir(&self.options.root, &path) {
             Ok(dir) => dir,
-            Err(err) => return self.refuse(channel, &err, session),
+            Err(err) if !(service.writes() && self.options.create_on_push) => {
+                return self.refuse(channel, &err, session)
+            }
+            Err(_) => {
+                match super::create_repo(&self.options.root, &path, &self.options.git).await {
+                    Ok(dir) => dir,
+                    Err(err) => return self.refuse(channel, &err, session),
+                }
+            }
         };
         let Some(chan) = self.channels.remove(&channel) else {
             return self.refuse(channel, "the channel has a command already", session);

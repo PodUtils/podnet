@@ -470,6 +470,22 @@ pub const EXAMPLES: &[Example] = &[
         meaning: "Serve a directory on a unix socket. No tunnel.",
     },
     Example {
+        command: "podnet git init --root ./repos app",
+        meaning: "Make the bare repository ./repos/app.git.",
+    },
+    Example {
+        command: "podnet git serve --root ./repos --anon-read --push-user me --push-password-file ./pass",
+        meaning: "Serve the repositories through a quick tunnel: anyone can clone, the user me can push.",
+    },
+    Example {
+        command: "podnet git serve --root ./repos --via relay --authorized-keys ~/.ssh/authorized_keys",
+        meaning: "Serve the repositories over SSH through a relay pair: ssh -o ProxyCommand='podnet relay connect NAME'.",
+    },
+    Example {
+        command: "podnet git urls --root ./repos",
+        meaning: "The clone URLs of each repository, and the fingerprint of the SSH host key.",
+    },
+    Example {
         command: "podnet share --mode upload --password",
         meaning: "Receive files, with a PIN.",
     },

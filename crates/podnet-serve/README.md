@@ -13,7 +13,14 @@ installed `git` for a repository under a root. A key of the
 `authorized_keys` file can push. Only ed25519 and ECDSA keys are
 accepted. With anonymous read, the user `anonymous` and each other key
 can clone and fetch. The server refuses a shell, a pty and each port
-forward. The command `podnet git serve` (T-094) uses it.
+forward. The command `podnet git serve` uses it.
+
+The module `git::http` is the smart HTTP router of git. It runs
+`git http-backend` of the installed `git` under the CGI runner of
+`git::cgi`, for the requests of the smart protocol only. It uses the
+access of the file server: a fetch needs the read role, a push needs the
+write role, and a push with no credentials gets 401. A chunked body and a
+gzip body go to `git http-backend` as they come.
 
 It is a library of podnet, not a stable interface. Use the crate `podnet`.
 

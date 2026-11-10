@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**232 entries: 66 open, 4 partial, 22 blocked, 140 done.**
+**232 entries: 64 open, 5 partial, 22 blocked, 141 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 35 | 3 | 14 | 87 | 139 |
+| P2 | 33 | 4 | 14 | 88 | 139 |
 | P3 | 28 | 0 | 6 | 30 | 64 |
-| **All** | 66 | 4 | 22 | 140 | 232 |
+| **All** | 64 | 5 | 22 | 141 | 232 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -137,9 +137,9 @@ M8 Overlays, M9 Later.
 | [T-089](services.md) | P2 | M | M6 | feature | done | File server: users with read and write roles, and a PIN, on each listener |
 | [T-090](services.md) | P2 | M | M6 | feature | done | File server: uploads into the served tree with PUT and a multipart form |
 | [T-091](services.md) | P2 | M | M6 | feature | partial | `podnet serve DIR --via`, a local `share`, a directory in `share`, and the live step of the file server |
-| [T-092](services.md) | P2 | L | M6 | feature | open | Git: a CGI runner for `git http-backend`, and the smart HTTP router |
+| [T-092](services.md) | P2 | L | M6 | feature | done | Git: a CGI runner for `git http-backend`, and the smart HTTP router |
 | [T-093](services.md) | P2 | M | M6 | feature | done | Git: an SSH server for upload-pack and receive-pack |
-| [T-094](services.md) | P2 | M | M6 | feature | open | `podnet git serve`: the repository root, `git init`, `git urls`, the tunnel, the relay and the live step |
+| [T-094](services.md) | P2 | M | M6 | feature | partial | `podnet git serve`: the repository root, `git init`, `git urls`, the tunnel, the relay and the live step |
 | [T-095](services.md) | P2 | M | M6 | feature | open | Router: several WARP identities in one process, each with its own counters |
 | [T-096](services.md) | P2 | M | M6 | feature | open | Router: groups of networks with weights and a kill switch |
 | [T-097](services.md) | P2 | M | M6 | feature | open | Router: a TCP health check for each member, and `podnet route status` |
