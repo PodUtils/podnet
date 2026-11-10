@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 228 entries: 68 open, 4 partial, 19 blocked, 137 done.
+`TODO/INDEX.md` holds 228 entries: 67 open, 4 partial, 19 blocked, 138 done.
 
 ## State
 
@@ -11,7 +11,7 @@
   (`PodUtils/podcrates` v0.14.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-relay`. A session reads the state
   of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`).
-- The newest release is `v0.4.0-beta.1` (T-023).
+- The newest release is `v0.4.0-beta.2` (T-227).
 - Keep this section short. Write the current state only; git keeps the history.
 
 ## Work order

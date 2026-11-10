@@ -3645,7 +3645,7 @@ is at most 64 KiB held in each direction, plus the smoltcp buffers. `sh scripts/
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3678,6 +3678,14 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-10, commit 5465007 (the version and the note). The dry run 42815610031 and the release run
+42833480545 passed; the tag `v0.4.0-beta.2` is at 5465007. The release is a prerelease with the 8
+binaries, `podnet.1`, `SHA256SUMS`, `SHA256SUMS.sigstore.json`, `provenance.sigstore.json` and
+`THIRD-PARTY-LICENSES.md`. `release-proofs.yml` 42836050242: success. ci 42808911135 and live
+42810147582 at 5465007: success.
 
 # T-228: Each sender that waits on the WARP QUIC socket gets its wake-up
 
