@@ -35,7 +35,7 @@ use ssh_key::getrandom::SysRng;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 use tokio::net::UnixStream;
 
-use crate::proxy;
+use crate::connect;
 
 /// Default relay, reachable on port 443 through the CONNECT proxy: the
 /// endpoint `ssh` of `pinggy` (`pod-services`).
@@ -367,14 +367,14 @@ async fn connect_transport(config: &RelayConfig) -> Result<PrefixedStream, Relay
         return Ok(PrefixedStream::new(Vec::new(), stream));
     };
 
-    // `proxy::connect_tunnel` is blocking by design (the provisioning path uses
+    // `connect::connect_tunnel` is blocking by design (the provisioning path uses
     // it synchronously too), so keep it off the async worker.
     let proxy_addr = proxy_addr.clone();
     let host = host.clone();
     let timeout = config.connect_timeout;
 
     let (stream, leftover) = tokio::task::spawn_blocking(move || {
-        proxy::connect_tunnel(&proxy_addr, &host, port, timeout)
+        connect::connect_tunnel(&proxy_addr, &host, port, timeout)
     })
     .await
     .map_err(|e| RelayError::Transport(format!("proxy task failed: {e}")))?
