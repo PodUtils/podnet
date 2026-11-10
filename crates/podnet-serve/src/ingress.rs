@@ -84,7 +84,7 @@ impl Service {
         if value.starts_with("http://") || value.starts_with("https://") {
             // A URL with no host (http://) is refused here, before any
             // network work (issue 57), not at the first dial.
-            crate::net::parse_http_url(value)
+            podnet_core::net::parse_http_url(value)
                 .map_err(|e| anyhow::anyhow!("the origin {value}: {e}"))?;
             return Ok(Service::Http(value.to_string()));
         }
@@ -413,7 +413,8 @@ pub const RULE_KEYS: &[&str] = &["hostname", "path", "service", "originRequest"]
 /// so an unknown key is an error here too.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct RawIngress {
+#[doc(hidden)]
+pub struct RawIngress {
     #[serde(default)]
     pub hostname: Option<String>,
     #[serde(default)]
@@ -425,7 +426,8 @@ pub(crate) struct RawIngress {
 }
 
 #[derive(Deserialize, Default)]
-pub(crate) struct RawOriginOptions {
+#[doc(hidden)]
+pub struct RawOriginOptions {
     #[serde(default, rename = "noTLSVerify")]
     pub no_tls_verify: bool,
     #[serde(default, rename = "httpHostHeader")]
@@ -482,7 +484,8 @@ impl RawOriginOptions {
     }
 }
 
-pub(crate) fn ingress_from_raw(rules: Vec<RawIngress>) -> Result<Ingress> {
+#[doc(hidden)]
+pub fn ingress_from_raw(rules: Vec<RawIngress>) -> Result<Ingress> {
     let mut ingress = Ingress::new();
     use anyhow::Context as _;
     for (i, raw) in rules.into_iter().enumerate() {

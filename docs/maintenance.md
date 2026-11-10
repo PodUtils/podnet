@@ -216,9 +216,11 @@ Facts about `live.yml`:
 Betas are allowed; there is no crates.io release (`docs/decisions.md`,
 2026-11-09, Releases). When a batch of fixes is green (`CLAUDE.md`):
 
-1. Set the version in `Cargo.toml` (the package and the `podnet-core` and
-   `podnet-netns` dependencies), `Cargo.lock` and `fuzz/Cargo.lock` (the
-   packages `podnet`, `podnet-core` and `podnet-netns`).
+1. Set the version in `Cargo.toml` (the package and the `podnet-core`,
+   `podnet-netns` and `podnet-serve` dependencies; the `podnet-core`
+   dependency of `crates/podnet-serve/Cargo.toml`), `Cargo.lock` and
+   `fuzz/Cargo.lock` (the packages `podnet`, `podnet-core`, `podnet-netns`
+   and `podnet-serve`).
 2. Write `docs/releases/vX.Y.Z-beta.N.md` (copy the head of the notes before:
    binaries, the check of a download; then `## Breaking`, then the changes
    for a tester, what to report, the limits). `## Breaking` lists each flag,
@@ -238,8 +240,8 @@ Betas are allowed; there is no crates.io release (`docs/decisions.md`,
 
 At the first stable release (no `-beta.N`), also:
 
-* Set the version of the workspace and of the `podnet-core` and
-  `podnet-netns` dependencies to the stable version (#222): a prerelease version requirement does not
+* Set the version of the workspace and of the `podnet-core`,
+  `podnet-netns` and `podnet-serve` dependencies to the stable version (#222): a prerelease version requirement does not
   match a stable crate.
 * Rewrite the line of the README that says `:latest` has no image (#258).
 * Decide the crates.io publish of `podnet` (the name `cfrs` is taken by
@@ -258,7 +260,7 @@ At the first stable release (no `-beta.N`), also:
 | `src/tunnel.rs`, `crates/podnet-core/src/race.rs` | the tunnel: the legs (quic, http2, quic+warp, http2+relay), the race, reconnects, verify |
 | `src/cloudflare/` | the edge protocol (QUIC, HTTP/2, Cap'n Proto RPC): no dependency for it (`CLAUDE.md`) |
 | `src/proxy.rs`, `src/edge_h2.rs` | the streams of the edge to the origins and the built-in services |
-| `src/share/`, `src/service.rs`, `src/gate.rs` | `share`, `serve`, the PIN gate |
+| `crates/podnet-serve/src/share/`, `crates/podnet-serve/src/service.rs`, `crates/podnet-serve/src/gate.rs` | `share`, `serve`, the PIN gate |
 | `src/warp/` | WARP: registration, MASQUE session (`session.rs`), userspace stack (`ip.rs`), proxy, TUN and routes, `warp up` |
 | `src/ws_relay.rs`, `src/relay_reverse.rs` | the WebSocket relay: the forward leg, and `podnet relay` (reverse mode) |
 | `crates/podnet-core/src/detach.rs`, `crates/podnet-core/src/instances.rs` | `--detach`, the supervisor, `ps`, `stop`, `logs`, `wait` |
@@ -272,6 +274,7 @@ At the first stable release (no `-beta.N`), also:
 | `src/manual/` | `podnet man`; `facts.rs` lists each environment variable |
 | `crates/podnet-netns/` | `podnet pod`: the netns, seccomp and raw backends |
 | `crates/podnet-core/` | the core layer (T-047): `exit`, `hop`, `state`, `report`, `decisions`, `metrics`, `rlimit`, `yaml`, `race`, `util`, `qr`, `ports`, `net`, `trust`, `udp`, `connect`, `services`, `detach`, `instances`, `autostart`, the facts of the build (`podnet_core::build`) and a copy of the print macros. It uses no other crate of the workspace. `src/lib.rs` gives each module at its old path (`podnet::exit`). `src/report.rs` keeps `error_line` (it reads the refusal of `egress`), and `src/core_tests.rs` keeps the tests that read a higher layer or a file of the repository |
+| `crates/podnet-serve/` | the services (T-051): `share`, `gate`, `service`, `ingress`, `origin`, `feature`, `relay` and a copy of the print macros. It uses `podnet-core` and no other crate of the workspace. `src/lib.rs` gives each module at its old path (`podnet::share`). `src/transport/` (it dials through `egress`) and `src/ws.rs` stay in the root crate, and `src/serve_tests.rs` keeps the test that reads a higher layer |
 
 Shared crates (see "Shared crates" above): `pod-todo`, `pod-core`, `pod-tls` and `pod-proxy` come from
 `PodUtils/podcrates` by the git tag `v0.3.0` (T-137). `deny.toml` allows

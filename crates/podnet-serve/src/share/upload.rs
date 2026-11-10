@@ -323,7 +323,7 @@ pub(super) async fn upload_receive(
 
         let part = state.dest.join(format!(
             ".podnet-upload-{}.part",
-            &crate::util::random_token()[..16]
+            &podnet_core::util::random_token()[..16]
         ));
         // Issue 233: an upload is for the operator only (mode 0600). The
         // rename keeps the mode of the part file.
@@ -487,7 +487,10 @@ pub(super) async fn create_unique_with(
         } else if index < numbered {
             dir.join(format!("{stem}-{index}{ext}"))
         } else {
-            dir.join(format!("{stem}-{}{ext}", &crate::util::random_token()[..8]))
+            dir.join(format!(
+                "{stem}-{}{ext}",
+                &podnet_core::util::random_token()[..8]
+            ))
         };
         match tokio::fs::OpenOptions::new()
             .write(true)

@@ -15,7 +15,7 @@ use tokio_rustls::rustls::{ClientConfig, DigitallySignedStruct, SignatureScheme}
 use tokio_rustls::TlsConnector;
 
 use crate::ingress::{OriginOptions, Service};
-use crate::net::{connect_origin, init_crypto, parse_http_url, split_host_port, BoxedIo};
+use podnet_core::net::{connect_origin, init_crypto, parse_http_url, split_host_port, BoxedIo};
 
 /// Dial the origin for a forward service.
 pub async fn dial(service: &Service, options: &OriginOptions) -> Result<BoxedIo> {
@@ -121,7 +121,7 @@ fn verified_connector() -> TlsConnector {
     static ONCE: OnceLock<TlsConnector> = OnceLock::new();
     ONCE.get_or_init(|| {
         init_crypto();
-        let context = crate::trust::context();
+        let context = podnet_core::trust::context();
         let config = context
             .client_config_with(&[], &[])
             .map(Arc::new)

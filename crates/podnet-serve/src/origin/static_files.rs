@@ -8,7 +8,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use crate::util::http::{RequestHead, ResponseWriter};
+use podnet_core::util::http::{RequestHead, ResponseWriter};
 
 /// Serve a directory over HTTP.
 #[derive(Debug, Clone)]
@@ -191,7 +191,7 @@ fn send_file<W: ResponseWriter>(
                 .map(|d| d.as_secs())
                 .unwrap_or(0)
         );
-        if crate::util::http::etag_matches(inm, &tag) {
+        if podnet_core::util::http::etag_matches(inm, &tag) {
             return writer
                 .status(304)
                 .header("ETag", &tag)
@@ -363,7 +363,7 @@ mod tests {
         assert_eq!(out.status, 200);
         assert_eq!(out.total, size);
         assert!(
-            out.largest <= crate::util::http::BODY_CHUNK,
+            out.largest <= podnet_core::util::http::BODY_CHUNK,
             "{}",
             out.largest
         );

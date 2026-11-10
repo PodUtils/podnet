@@ -592,7 +592,7 @@ with the commit that takes `pod-session`, `pod-e2e` and `pod-identity`. podnet h
 ## Problem
 
 `src/lib.rs` has the macro `update_atomic!`, a loop of `compare_exchange_weak`, in place of the
-deprecated `fetch_update` (#214). `src/share/mod.rs` and `src/gate.rs` use it.
+deprecated `fetch_update` (#214). `crates/podnet-serve/src/share/mod.rs` and `crates/podnet-serve/src/gate.rs` use it.
 
 ## Premise
 
@@ -787,18 +787,18 @@ T-152 gives a pass on the target hosts, and the lead decides from the result (se
 
 ## Problem
 
-`relay::run` (`src/relay.rs:432`) dials the relay, requests one remote forward, reads the URL from the
+`relay::run` (`crates/podnet-serve/src/relay.rs:432`) dials the relay, requests one remote forward, reads the URL from the
 banner and returns `(TunnelHandle, Handle<Client>)`. Nothing watches the session after that. When the
 relay ends the connection or the forward, the URL is dead and the caller is not told. The default
-relay's free tier ends the tunnel after 60 minutes (the banner text of the test at `src/relay.rs:569`).
+relay's free tier ends the tunnel after 60 minutes (the banner text of the test at `crates/podnet-serve/src/relay.rs:569`).
 A reconnect gives a new port and a new URL. The reverse road (`relay node`, `src/relay_reverse.rs`)
 reconnects with a 1 s to 30 s backoff; this leg does not.
 
 ## Premise
 
-- `inactivity_timeout` is 3600 s (`src/relay.rs:444`); the forward is requested once (`:474-477`).
-- `grep -rn "relay::run\|RelayConfig" src tests examples` finds no caller outside `src/relay.rs`.
-  `ShareLink::from_relay` (`src/feature/share_link.rs:118`) has no caller outside a test. No CLI uses the leg.
+- `inactivity_timeout` is 3600 s (`crates/podnet-serve/src/relay.rs:444`); the forward is requested once (`:474-477`).
+- `grep -rn "relay::run\|RelayConfig" src tests examples` finds no caller outside `crates/podnet-serve/src/relay.rs`.
+  `ShareLink::from_relay` (`crates/podnet-serve/src/feature/share_link.rs:118`) has no caller outside a test. No CLI uses the leg.
 - Not measured: the 60 minute expiry on a live relay; the `Handle::is_closed` behaviour of russh 0.64.1.
 
 ## Approach
@@ -837,7 +837,7 @@ The owner decides that this leg gets a CLI. Until then, the leg stays library-on
 
 ## Problem
 
-`RelayConfig::default()` has one relay (`src/relay.rs:42`), the user `podnet` (`:66`), and one URL rule
+`RelayConfig::default()` has one relay (`crates/podnet-serve/src/relay.rs:42`), the user `podnet` (`:66`), and one URL rule
 (`pick_tunnel_url`, `:399-412`): the first token that starts with `http(s)://` and does not hold the
 dashboard host of that one relay. Another relay that prints a bare host, a URL split over two data
 frames, or its own dashboard URL fails or gives the wrong URL.
@@ -846,9 +846,9 @@ frames, or its own dashboard URL fails or gives the wrong URL.
 
 - The fields of `RelayConfig` are `pub`; no flag sets them (no caller, see T-165). `--relay` is the
   flag of the WebSocket relay.
-- `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`src/relay.rs:504`), so a URL that
-  crosses two chunks is lost. The pinned tests are at `src/relay.rs:566-598`.
-- The dashboard host is already a fact of `pod-services` (`src/relay.rs:407`).
+- `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`crates/podnet-serve/src/relay.rs:504`), so a URL that
+  crosses two chunks is lost. The pinned tests are at `crates/podnet-serve/src/relay.rs:566-598`.
+- The dashboard host is already a fact of `pod-services` (`crates/podnet-serve/src/relay.rs:407`).
 - Not measured: the other relays of the survey (local artefacts of the issue).
 
 ## Approach

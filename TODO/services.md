@@ -87,7 +87,7 @@ authentication.
 - Read: the Basic check is in `src/proxy.rs`, and its credentials in `PodUtils/podnet:src/proxy_auth.rs`
   (`Credentials`).
 - Read: `serve --local` refuses `--auth-user` (`src/main.rs`).
-- The PIN gate is `src/gate.rs`.
+- The PIN gate is `crates/podnet-serve/src/gate.rs`.
 
 ## Approach
 
@@ -124,7 +124,7 @@ podnet has no tar writer or reader. The file server cannot give a directory as o
 ## Premise
 
 - No crate of the lock gives tar today, and the design needs none (about 250 lines).
-- `src/service.rs` holds the static router and its guard.
+- `crates/podnet-serve/src/service.rs` holds the static router and its guard.
 
 ## Approach
 
@@ -274,9 +274,9 @@ directory.
 
 ## Premise
 
-- Read: the static router and its guard are in `src/service.rs`. The guard refuses a dot segment
+- Read: the static router and its guard are in `crates/podnet-serve/src/service.rs`. The guard refuses a dot segment
   and a path out of the root.
-- `src/gate.rs` has `escape_html`.
+- `crates/podnet-serve/src/gate.rs` has `escape_html`.
 
 ## Approach
 
@@ -346,7 +346,7 @@ random names.
 ## Premise
 
 - Read: `upload_receive` streams a multipart body with limits and files of mode 0600
-  (`src/share/mod.rs`).
+  (`crates/podnet-serve/src/share/mod.rs`).
 - The tunnel takes at most 100 MB in one request body.
 
 ## Approach
@@ -1253,7 +1253,7 @@ its identity, force a reconnect or change the probe interval without a restart, 
 
 - T-095 keeps one state directory for each identity. `warp rotate` and `--session-max-age` exist for one session.
 - `STATS` is global (`src/warp/proxy.rs:118`). The loopback and credential gate is at
-  `src/warp/proxy.rs:410-415`; the PIN gate is `src/gate.rs`.
+  `src/warp/proxy.rs:410-415`; the PIN gate is `crates/podnet-serve/src/gate.rs`.
 - The WARP service limits new devices for each address (T-101 Premise; `docs/decisions.md`).
 
 ## Approach

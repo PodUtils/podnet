@@ -115,7 +115,7 @@ pub(super) async fn download_file(
             .map(str::to_string)
     };
     if header_text(header::IF_NONE_MATCH)
-        .is_some_and(|v| crate::util::http::etag_matches(&v, &etag))
+        .is_some_and(|v| podnet_core::util::http::etag_matches(&v, &etag))
     {
         return Response::builder()
             .status(StatusCode::NOT_MODIFIED)

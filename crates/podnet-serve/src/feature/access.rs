@@ -321,7 +321,7 @@ impl AccessDecision {
                 code,
                 headers,
                 body,
-            } => crate::util::http::build_response(
+            } => podnet_core::util::http::build_response(
                 *code,
                 crate::origin::static_files::http_phrase(*code),
                 &headers

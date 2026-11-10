@@ -176,7 +176,7 @@ gets the core.
 2026-11-10, commit 4693062. `crates/podnet-core` holds the 20 modules of the Correction (moved
 with `git mv`). `src/lib.rs` gives each at its old path with `#[doc(inline)] pub use`, so
 `crate::exit::Item` and `podnet::exit::Item` stay valid. One item became public with
-`#[doc(hidden)]`: `net::split_host_port` (`src/origin/dial.rs` uses it). Five tests moved to the
+`#[doc(hidden)]`: `net::split_host_port` (`crates/podnet-serve/src/origin/dial.rs` uses it). Five tests moved to the
 root crate: `core_tests::services::the_nameservers_of_the_service_are_1_1_1_1_and_1_0_0_1`,
 `core_tests::yaml::a_config_error_names_its_line`, the two tests of `core_tests::trust`, and
 `origin::dial::tests::an_unverified_origin_is_named_one_time`. The core tests take
@@ -354,7 +354,7 @@ Rust 1.99. A fix in `src/warp/` before the take stays a fix, and the podcrates s
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -363,10 +363,10 @@ in the binary.
 
 ## Premise
 
-- The crate takes `src/share/mod.rs`, `src/gate.rs`, `src/service.rs`, `src/ingress.rs`,
-  `src/origin/`, `src/feature/`, `src/transport/`, `src/relay.rs` and the client of the
+- The crate takes `crates/podnet-serve/src/share/mod.rs`, `crates/podnet-serve/src/gate.rs`, `crates/podnet-serve/src/service.rs`, `crates/podnet-serve/src/ingress.rs`,
+  `crates/podnet-serve/src/origin/`, `crates/podnet-serve/src/feature/`, `src/transport/`, `crates/podnet-serve/src/relay.rs` and the client of the
   WebSocket forward.
-- `src/feature/`, `src/origin/`, `src/transport/` and `src/relay.rs` are a capability of the
+- `crates/podnet-serve/src/feature/`, `crates/podnet-serve/src/origin/`, `src/transport/` and `crates/podnet-serve/src/relay.rs` are a capability of the
   library. The owner's ruling on regressions keeps them.
 
 ## Approach
@@ -395,6 +395,44 @@ T-047 is done.
 
 2026-11-05, `podnet-serve` stays in podnet. The modules that use `PodUtils/podnet:src/proxy_auth.rs`, `src/egress.rs` or
 `src/ws.rs` use `pod-proxy` and `pod-ws` after T-137. Recount the module list when the entry starts.
+
+2026-11-10, the recount. The crate holds 7 modules: `share`, `gate`, `service`, `ingress`,
+`origin`, `feature` and `relay` (about 6,300 lines). The differences from the Premise:
+`src/transport/` stays in the root crate, because `src/transport/websocket.rs` dials through
+`src/egress.rs` (it goes to `pod-proxy`). The client of the WebSocket forward (`src/ws.rs`) stays
+in the root crate: it goes to `pod-ws`, and it uses `cloudflare`, `proxy` and `relay_reverse`.
+`ingress` uses `pod-proxy` (the credentials of a served proxy) and `origin` uses `pod-tls`: these
+are crates of PodUtils/podcrates, not modules of the root. The test
+`feature::tests::share_link::a_quick_tunnel_link_is_built_from_the_provisioned_url` reads
+`quicktunnel`: it moves to `src/serve_tests.rs` in the root crate. Three items of `ingress` that
+`src/config.rs` uses become public with `#[doc(hidden)]`: `RawIngress`, `RawOriginOptions` and
+`ingress_from_raw`.
+
+## Done
+
+2026-11-10, commit 585acd0. `crates/podnet-serve` holds the 7 modules of the Correction (moved with
+`git mv`): `share`, `gate`, `service`, `ingress`, `origin`, `feature`, `relay`. It depends on
+`podnet-core`. `src/lib.rs` gives each at its old path with `#[doc(inline)] pub use`, so
+`crate::share::Item` and `podnet::share::Item` stay valid. A module of the crate names the core as
+`podnet_core::MODULE`. Three items became public with `#[doc(hidden)]`: `ingress::RawIngress`,
+`ingress::RawOriginOptions`, `ingress::ingress_from_raw` (`src/config.rs` uses them). One test moved
+to the root crate: `serve_tests::feature::a_quick_tunnel_link_is_built_from_the_provisioned_url`.
+`src/transport/` and `src/ws.rs` stay in the root crate. The layer check
+(`scripts/check-layers.py`: `CRATES`, the paths `podnet_serve::`, `serve_tests`, three new self-test
+cases), a plant of `.github/workflows/ci.yml`, the table "The code" and the release steps of
+`docs/maintenance.md`, the crate table of `README.md` and the record name the new paths. The package
+list of `ci.yml` reads the members of the workspace: it takes the crate with no change.
+
+- `sh scripts/agent/check.sh`: fmt 0, clippy 0, record 0, size 0, doc 0, layers 0, test 0.
+- `cargo test -p podnet-serve`: 111 passed.
+- `cargo test --test api_surface`: 2 passed.
+- `unshare -n -- cargo test --offline --workspace --no-fail-fast`: exit 0, 1109 passed, 0 failed.
+- `sh scripts/restricted-host.sh --no-fail-fast`: exit 0, 100 tests skipped.
+- `cargo check --manifest-path fuzz/Cargo.toml --bins`: exit 0.
+- Parity (`sh scripts/agent/parity-snapshot.sh`, against the tree before the split, with a map of
+  the moved tests): commands 1295 of 1295, items 1657 of 1566 (the 1226 items of `podnet` all
+  kept), tests 1110 of 1110. No item is lost.
+- CI: at the merge.
 
 # T-052: Move the Cloudflare adapter to the shared crate `pod-cloudflare` in `PodUtils/podcrates`
 
