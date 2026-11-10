@@ -48,6 +48,8 @@ fn main() {
     // A detached child (issue 70) closes the descriptors that it got and
     // drops its flag before anything else.
     let args = podnet::detach::prepare(std::env::args_os().collect());
+    // Issue 210: the error report gives the refusal of a quick tunnel.
+    podnet::report::read_refusals_with(podnet::quicktunnel::retry_of);
     let args = cloudflared_compat(args);
     let argv: Vec<String> = args
         .iter()

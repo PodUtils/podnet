@@ -3,7 +3,6 @@
 feature -> quicktunnel
 ingress -> config
 relay -> proxy
-report -> quicktunnel
 transport -> proxy
 warp -> cloudflare
 warp -> quicktunnel

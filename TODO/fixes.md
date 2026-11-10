@@ -2129,8 +2129,8 @@ attempts repeat the same failure for about 30 s.
 
 ## Premise
 
-- `src/quicktunnel.rs:270-272` (budget and attempts), `:304-324` (the arms; `Hop::Dns` goes to
-  `ProvisionError::Http(_)` at `:324`).
+- `src/quicktunnel.rs:258-260` (budget and attempts), `:292-312` (the arms; `Hop::Dns` goes to
+  `ProvisionError::Http(_)` at `:312`).
 - `crate::resolve::answering_step(host)` (`src/resolve.rs:150`) names the step that answers now.
 - `src/quicktunnel.rs` is Cloudflare adapter code (pod-cloudflare, T-029/T-052): a fix is allowed.
 - Not measured: the 30 s run of the issue.
@@ -2911,7 +2911,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
   `SocketFile` is in `src/cli/cmd/connect.rs:196-216` (`pub(crate)`).
 - Message: `src/net.rs:28-34`.
-- `src/main.rs:139` allows `--replace` without `--detach` only for `Command::Connect`.
+- `src/main.rs:141` allows `--replace` without `--detach` only for `Command::Connect`.
 
 ## Approach
 
