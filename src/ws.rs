@@ -9,13 +9,18 @@
 //!
 //! One WebSocket message maps to one write, so binary framing is preserved and
 //! interactive protocols (SSH, RDP, databases, raw sockets) work unchanged.
+//!
+//! The WebSocket, its bridge and its client are `pod-ws` of
+//! PodUtils/podcrates, over podnet's dial, its TLS context and its user
+//! agent ([`way`]), with the limits of tokio-tungstenite. The relay client
+//! (`ws_relay.rs`) keeps a bridge of tokio-tungstenite ([`bridge`]) until
+//! `pod-relay`.
 
 use crate::cloudflare::stream as cqstream;
 use anyhow::{bail, Context, Result};
-use base64::Engine as _;
 use futures::{SinkExt as _, StreamExt as _};
+use pod_ws::{ConnectError, Limits};
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
-use tokio_tungstenite::tungstenite::protocol::Role;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 use tokio_util::compat::{FuturesAsyncReadCompatExt, FuturesAsyncWriteCompatExt};
@@ -25,8 +30,8 @@ use crate::metrics::Metrics;
 use crate::net::BoxedIo;
 use crate::proxy::{header_value, write_response_meta, EdgeReader, EdgeWriter};
 
-/// The RFC 6455 handshake GUID.
-const WS_GUID: &[u8] = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+/// The client WebSocket of podnet, as `pod-ws` gives it.
+pub type Session = pod_ws::RelaySession<pod_ws::url::Stream>;
 
 /// Default path for a `--forward` WebSocket endpoint.
 pub const DEFAULT_PATH: &str = "/__podnet/ws";
@@ -61,12 +66,29 @@ pub fn forward_url(url: &str, path: &str) -> Option<String> {
 }
 
 /// Compute `Sec-WebSocket-Accept` for a client's `Sec-WebSocket-Key`.
-pub fn accept_key(key: &str) -> String {
-    use sha1::{Digest, Sha1};
-    let mut hasher = Sha1::new();
-    hasher.update(key.as_bytes());
-    hasher.update(WS_GUID);
-    base64::engine::general_purpose::STANDARD.encode(hasher.finalize())
+pub use pod_ws::handshake::accept_key;
+
+/// The way out of a WebSocket of podnet: its dial (the egress layer:
+/// `--proxy`, NO_PROXY, `--resolve`, the system resolver and DoH), its TLS
+/// context (`--ca-file`, SSL_CERT_FILE) and its user agent.
+pub fn way() -> pod_ws::Way {
+    pod_ws::Way::new(
+        crate::trust::context().clone(),
+        crate::egress::egress(None),
+        format!("podnet/{}", env!("CARGO_PKG_VERSION")),
+    )
+}
+
+/// The byte counts of a bridge, in podnet's metrics.
+struct Counted<'a>(&'a Metrics);
+
+impl pod_ws::Tally for Counted<'_> {
+    fn add_in(&self, bytes: u64) {
+        self.0.add_in(bytes);
+    }
+    fn add_out(&self, bytes: u64) {
+        self.0.add_out(bytes);
+    }
 }
 
 /// Serve one inbound WebSocket upgrade from the edge, bridging it to `target`.
@@ -110,111 +132,94 @@ pub async fn serve_websocket(
     // WebSocket codec. `into_inner` recovers the quinn halves from the
     // futures-io wrappers used by the request framing.
     let socket = tokio::io::join(reader.compat(), writer.compat_write());
-    let ws = WebSocketStream::from_raw_socket(socket, Role::Server, None).await;
-    bridge(ws, io, metrics).await
+    let session =
+        pod_ws::server::session(socket, Vec::new(), None).with_limits(Limits::TUNGSTENITE);
+    pod_ws::bridge(session, io, &Counted(metrics))
+        .await
+        .context("the bridge of the forward WebSocket")
 }
 
 /// The time for each step (TCP, TLS, the upgrade) of a client WebSocket.
-pub const DIAL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
+pub const DIAL_TIMEOUT: std::time::Duration = pod_ws::bridge::DIAL_TIMEOUT;
 
 /// A client WebSocket to `url` (ws:// or wss://). The TCP goes through
 /// the egress layer of podnet (issue 191): `--proxy`, NO_PROXY,
 /// `--resolve`, the system resolver and DoH. TLS trusts the roots of
-/// podnet (`--ca-file`, SSL_CERT_FILE).
+/// podnet (`--ca-file`, SSL_CERT_FILE). Issue 205: the credential of a
+/// tunnel with --auth-user goes in `Authorization`. Issue 206: the time of
+/// each step, at -v.
 pub async fn dial(
     url: &str,
     timeout: std::time::Duration,
     authorization: Option<&str>,
-) -> Result<WebSocketStream<BoxedIo>> {
-    use tokio_tungstenite::tungstenite::client::IntoClientRequest as _;
-    let mut request = url
-        .into_client_request()
-        .with_context(|| format!("{url} is not a WebSocket URL"))?;
-    // Issue 205: the credential of a tunnel with --auth-user.
-    if let Some(value) = authorization {
-        request.headers_mut().insert(
-            http::header::AUTHORIZATION,
-            http::HeaderValue::from_str(value).context("the Authorization header")?,
-        );
-    }
-    let uri = request.uri();
-    let tls = match uri.scheme_str() {
-        Some("wss") => true,
-        Some("ws") => false,
-        _ => bail!("{url} is not a WebSocket URL: give ws:// or wss://"),
-    };
-    let host = uri
-        .host()
-        .with_context(|| format!("{url} has no host"))?
-        .trim_start_matches('[')
-        .trim_end_matches(']')
-        .to_string();
-    let port = uri.port_u16().unwrap_or(if tls { 443 } else { 80 });
-    // Issue 206: the time of each step, at -v.
-    let started = std::time::Instant::now();
-    let io = crate::egress::dial(&host, port, None, timeout)
+) -> Result<Session> {
+    let trust = pod_tls::Trust::Default;
+    pod_ws::bridge::dial(url, &way(), &trust, timeout, authorization)
         .await
-        .with_context(|| format!("TCP to {host}:{port}"))?;
-    let tcp_ms = started.elapsed().as_millis();
-    let io: BoxedIo = if tls {
-        // HTTP/1.1 only: a WebSocket upgrade does not go over HTTP/2.
-        let config = crate::trust::context().client_config_with(&[], &[b"http/1.1"])?;
-        let name = rustls::pki_types::ServerName::try_from(host.clone())
-            .with_context(|| format!("{host} is not a valid TLS name"))?;
-        let stream = tokio::time::timeout(
-            timeout,
-            tokio_rustls::TlsConnector::from(std::sync::Arc::new(config)).connect(name, io),
-        )
-        .await
-        .map_err(|_| {
-            crate::hop::at(
-                crate::hop::Hop::Network,
-                anyhow::anyhow!("TLS to {host}: no answer in {} s", timeout.as_secs()),
-            )
-        })?
-        .map_err(|err| {
-            let hop = crate::hop::tls_hop(&err);
-            crate::hop::at(
-                hop,
-                anyhow::Error::new(err).context(format!("TLS to {host}")),
-            )
-        })?;
-        Box::new(stream)
-    } else {
-        io
-    };
-    let tls_ms = started.elapsed().as_millis() - tcp_ms;
-    let upgrade = tokio::time::timeout(timeout, tokio_tungstenite::client_async(request, io)).await;
-    tracing::debug!(
-        tcp_ms,
-        tls_ms,
-        upgrade_ms = started.elapsed().as_millis() - tcp_ms - tls_ms,
-        "the WebSocket to {host}:{port}"
-    );
-    match upgrade {
-        Err(_) => bail!(
-            "the WebSocket upgrade at {url}: no answer in {} s",
-            timeout.as_secs()
+        .map_err(|err| failed(url, err))
+}
+
+/// A failure of [`dial`] in podnet's words, with its hop.
+fn failed(url: &str, err: ConnectError) -> anyhow::Error {
+    let host = pod_ws::url::WsUrl::parse(url)
+        .map(|u| u.host)
+        .unwrap_or_default();
+    match err {
+        ConnectError::Config(why) => anyhow::anyhow!("{url} is not a WebSocket URL: {why}"),
+        ConnectError::Refused { status: 401, .. } => anyhow::anyhow!(
+            "{url} refused the WebSocket upgrade: HTTP 401 (the tunnel needs --auth-user and --auth-password-file)"
         ),
-        Ok(Ok((ws, _response))) => Ok(ws),
-        Ok(Err(tokio_tungstenite::tungstenite::Error::Http(response))) => {
-            let status = response.status().as_u16();
-            if status == 401 {
-                bail!("{url} refused the WebSocket upgrade: HTTP 401 (the tunnel needs --auth-user and --auth-password-file)");
-            }
-            bail!("{url} refused the WebSocket upgrade: HTTP {status}")
+        ConnectError::Refused { status, .. } => {
+            anyhow::anyhow!("{url} refused the WebSocket upgrade: HTTP {status}")
         }
-        Ok(Err(err)) => Err(err).with_context(|| format!("the WebSocket upgrade at {url}")),
+        ConnectError::Timeout { step, after } if step.contains("TLS") => crate::hop::at(
+            crate::hop::Hop::Network,
+            anyhow::anyhow!("TLS to {host}: no answer in {} s", after.as_secs()),
+        ),
+        ConnectError::Timeout { after, .. } => anyhow::anyhow!(
+            "the WebSocket upgrade at {url}: no answer in {} s",
+            after.as_secs()
+        ),
+        ConnectError::Tls(failure) => {
+            let hop = if failure.cut.is_some() {
+                crate::hop::Hop::Network
+            } else {
+                crate::hop::Hop::Tls
+            };
+            crate::hop::at(hop, anyhow::anyhow!("TLS to {host}: {}", failure.why))
+        }
+        ConnectError::Dial(dial) => {
+            let failure = pod_core::Failure::from(dial);
+            let hop = match failure.stage {
+                pod_core::Stage::Proxy => Some(crate::hop::Hop::Proxy),
+                pod_core::Stage::Dns => Some(crate::hop::Hop::Dns),
+                _ => None,
+            };
+            let err = anyhow::Error::new(failure).context(format!("TCP to {host}"));
+            match hop {
+                Some(hop) => crate::hop::at(hop, err),
+                None => err,
+            }
+        }
+        other => anyhow::Error::new(other).context(format!("the WebSocket upgrade at {url}")),
     }
 }
 
 /// Connect a local socket to a remote WebSocket endpoint.
 pub async fn connect_bridge(url: &str, io: BoxedIo, authorization: Option<&str>) -> Result<()> {
-    let ws = dial(url, DIAL_TIMEOUT, authorization).await?;
-    bridge(ws, io, &Metrics::new()).await
+    let session = dial(url, DIAL_TIMEOUT, authorization).await?;
+    bridge_session(session, io, &Metrics::new()).await
 }
 
-/// Pump bytes both ways between a WebSocket and a raw stream.
+/// Pump bytes both ways between a WebSocket of [`dial`] and a raw stream.
+pub async fn bridge_session(session: Session, io: BoxedIo, metrics: &Metrics) -> Result<()> {
+    pod_ws::bridge(session, io, &Counted(metrics))
+        .await
+        .context("websocket bridge")
+}
+
+/// Pump bytes both ways between a WebSocket of tokio-tungstenite and a raw
+/// stream: the relay client (`ws_relay.rs`) until `pod-relay`.
 pub async fn bridge<S>(ws: WebSocketStream<S>, io: BoxedIo, metrics: &Metrics) -> Result<()>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
@@ -250,7 +255,7 @@ where
                                 code,
                                 reason = %frame.reason,
                                 "the far end closed the WebSocket{}",
-                                crate::relay_reverse::close_hint(code)
+                                pod_ws::close_hint(code)
                             );
                         } else {
                             tracing::debug!(code, reason = %frame.reason, "the WebSocket closed");
@@ -399,15 +404,6 @@ mod tests {
     }
 
     #[test]
-    fn accept_key_matches_rfc_example() {
-        // RFC 6455 section 1.3.
-        assert_eq!(
-            accept_key("dGhlIHNhbXBsZSBub25jZQ=="),
-            "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
-        );
-    }
-
-    #[test]
     fn parses_local_specs() {
         assert_eq!(
             LocalSpec::parse("tcp://8080").unwrap(),
@@ -429,142 +425,6 @@ mod tests {
         );
         assert!(LocalSpec::parse("http://x").is_err());
         assert!(LocalSpec::parse("tcp://nope").is_err());
-    }
-
-    #[tokio::test]
-    async fn bridge_moves_bytes_both_ways() {
-        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
-
-        let (edge_server, edge_client) = tokio::io::duplex(1 << 16);
-        let (target_a, mut target_b) = tokio::io::duplex(1 << 16);
-
-        let server = tokio::spawn(async move {
-            let ws = WebSocketStream::from_raw_socket(edge_server, Role::Server, None).await;
-            bridge(ws, Box::new(target_a), &Metrics::new()).await
-        });
-
-        // The handshake is covered by `accept_key_matches_rfc_example`; here we
-        // drive the framing directly on both ends.
-        let mut ws = WebSocketStream::from_raw_socket(edge_client, Role::Client, None).await;
-
-        // client -> target
-        ws.send(Message::Binary(bytes::Bytes::from_static(b"hello")))
-            .await
-            .unwrap();
-        let mut buf = [0u8; 5];
-        target_b.read_exact(&mut buf).await.unwrap();
-        assert_eq!(&buf, b"hello");
-
-        // target -> client
-        target_b.write_all(b"world").await.unwrap();
-        let message = ws.next().await.unwrap().unwrap();
-        assert_eq!(
-            message,
-            Message::Binary(bytes::Bytes::from_static(b"world"))
-        );
-
-        drop(ws);
-        let _ = server.await.unwrap();
-    }
-}
-
-#[cfg(test)]
-mod bench {
-    use super::*;
-    use std::time::{Duration, Instant};
-    use tokio::net::{TcpListener, TcpStream};
-
-    /// One direction of a delay line: each chunk goes out `delay` after it came in.
-    async fn delay_pipe(
-        mut r: tokio::net::tcp::OwnedReadHalf,
-        mut w: tokio::net::tcp::OwnedWriteHalf,
-        delay: Duration,
-    ) {
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(Instant, Vec<u8>)>();
-        let reader = async move {
-            let mut buf = vec![0u8; 64 * 1024];
-            loop {
-                let n = match r.read(&mut buf).await {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => n,
-                };
-                let _ = tx.send((Instant::now() + delay, buf[..n].to_vec()));
-            }
-        };
-        let writer = async move {
-            while let Some((at, chunk)) = rx.recv().await {
-                tokio::time::sleep_until(at.into()).await;
-                if w.write_all(&chunk).await.is_err() {
-                    break;
-                }
-            }
-            let _ = w.shutdown().await;
-        };
-        tokio::join!(reader, writer);
-    }
-
-    /// A TCP listener that forwards to `to` through a delay line.
-    async fn delay_line(to: std::net::SocketAddr, delay: Duration) -> std::net::SocketAddr {
-        let l = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = l.local_addr().unwrap();
-        tokio::spawn(async move {
-            while let Ok((a, _)) = l.accept().await {
-                let b = TcpStream::connect(to).await.unwrap();
-                let (ar, aw) = a.into_split();
-                let (br, bw) = b.into_split();
-                tokio::spawn(delay_pipe(ar, bw, delay));
-                tokio::spawn(delay_pipe(br, aw, delay));
-            }
-        });
-        addr
-    }
-
-    const SIZE: usize = 16 << 20;
-
-    #[tokio::test(flavor = "multi_thread")]
-    #[ignore = "a measure: it prints the throughput through a delay line and asserts nothing (cargo test -- --ignored throughput)"]
-    async fn throughput() {
-        let delay = Duration::from_millis(25);
-        // Raw TCP through the delay line.
-        let sink = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let sink_addr = sink.local_addr().unwrap();
-        tokio::spawn(async move {
-            let (mut s, _) = sink.accept().await.unwrap();
-            s.write_all(&vec![7u8; SIZE]).await.unwrap();
-        });
-        let via = delay_line(sink_addr, delay).await;
-        let t = Instant::now();
-        let mut c = TcpStream::connect(via).await.unwrap();
-        let mut got = Vec::new();
-        c.read_to_end(&mut got).await.unwrap();
-        eprintln!("raw tcp: {} bytes in {:?}", got.len(), t.elapsed());
-
-        // The WS bridge: origin -> server bridge -> delay line -> client bridge -> local.
-        let ws_l = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let ws_addr = ws_l.local_addr().unwrap();
-        tokio::spawn(async move {
-            let (s, _) = ws_l.accept().await.unwrap();
-            let ws = WebSocketStream::from_raw_socket(s, Role::Server, None).await;
-            let (origin_a, mut origin_b) = tokio::io::duplex(1 << 16);
-            tokio::spawn(async move {
-                origin_b.write_all(&vec![7u8; SIZE]).await.unwrap();
-                origin_b.shutdown().await.unwrap();
-                let mut sink = Vec::new();
-                let _ = origin_b.read_to_end(&mut sink).await;
-            });
-            let _ = bridge(ws, Box::new(origin_a), &Metrics::new()).await;
-        });
-        let via = delay_line(ws_addr, delay).await;
-        let (local_a, mut local_b) = tokio::io::duplex(1 << 16);
-        let t = Instant::now();
-        tokio::spawn(async move {
-            let s = TcpStream::connect(via).await.unwrap();
-            let ws = WebSocketStream::from_raw_socket(s, Role::Client, None).await;
-            let _ = bridge(ws, Box::new(local_a), &Metrics::new()).await;
-        });
-        let mut got = vec![0u8; SIZE];
-        local_b.read_exact(&mut got).await.unwrap();
-        eprintln!("ws bridge: {} bytes in {:?}", got.len(), t.elapsed());
     }
 }
 

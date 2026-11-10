@@ -671,15 +671,7 @@ where
 }
 
 /// What a close code of the relay means, for the error line.
-pub fn close_hint(code: u16) -> &'static str {
-    match code {
-        1001 => " (the relay goes away; open a new session)",
-        1009 => " (the session passed the byte limit of the relay; open a new session)",
-        1011 => " (an error of the relay)",
-        1013 => " (the relay is busy; try again later)",
-        _ => "",
-    }
-}
+pub use pod_ws::close_hint;
 
 #[cfg(test)]
 mod tests {

@@ -139,8 +139,7 @@ pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
                     )),
                 )
             })?;
-        let mut ws = ws;
-        let _ = tokio::time::timeout(Duration::from_secs(2), ws.close(None)).await;
+        let _ = tokio::time::timeout(Duration::from_secs(2), ws.send_close(1000, "")).await;
     }
     let mut tasks = Vec::new();
     let mut listens: Vec<String> = tcp.iter().map(|(name, _)| name.clone()).collect();

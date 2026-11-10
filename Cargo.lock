@@ -2064,8 +2064,8 @@ dependencies = [
 
 [[package]]
 name = "pod-core"
-version = "0.11.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.11.0#c660aca0a59311cf81c3a5be923f2b91d77eec65"
+version = "0.13.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.13.0#947603af8c2d2df1bf1d224cb2f90ea3dc703070"
 dependencies = [
  "libc",
  "rand",
@@ -2075,8 +2075,8 @@ dependencies = [
 
 [[package]]
 name = "pod-dns"
-version = "0.11.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.11.0#c660aca0a59311cf81c3a5be923f2b91d77eec65"
+version = "0.13.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.13.0#947603af8c2d2df1bf1d224cb2f90ea3dc703070"
 dependencies = [
  "base64",
  "bytes",
@@ -2096,8 +2096,8 @@ dependencies = [
 
 [[package]]
 name = "pod-proxy"
-version = "0.11.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.11.0#c660aca0a59311cf81c3a5be923f2b91d77eec65"
+version = "0.13.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.13.0#947603af8c2d2df1bf1d224cb2f90ea3dc703070"
 dependencies = [
  "base64",
  "libc",
@@ -2112,8 +2112,8 @@ dependencies = [
 
 [[package]]
 name = "pod-services"
-version = "0.11.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.11.0#c660aca0a59311cf81c3a5be923f2b91d77eec65"
+version = "0.13.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.13.0#947603af8c2d2df1bf1d224cb2f90ea3dc703070"
 dependencies = [
  "pod-core",
  "toml",
@@ -2121,16 +2121,16 @@ dependencies = [
 
 [[package]]
 name = "pod-testkit"
-version = "0.11.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.11.0#c660aca0a59311cf81c3a5be923f2b91d77eec65"
+version = "0.13.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.13.0#947603af8c2d2df1bf1d224cb2f90ea3dc703070"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "pod-tls"
-version = "0.11.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.11.0#c660aca0a59311cf81c3a5be923f2b91d77eec65"
+version = "0.13.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.13.0#947603af8c2d2df1bf1d224cb2f90ea3dc703070"
 dependencies = [
  "base64",
  "p256",
@@ -2147,8 +2147,28 @@ dependencies = [
 
 [[package]]
 name = "pod-todo"
-version = "0.11.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.11.0#c660aca0a59311cf81c3a5be923f2b91d77eec65"
+version = "0.13.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.13.0#947603af8c2d2df1bf1d224cb2f90ea3dc703070"
+
+[[package]]
+name = "pod-ws"
+version = "0.13.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.13.0#947603af8c2d2df1bf1d224cb2f90ea3dc703070"
+dependencies = [
+ "base64",
+ "bytes",
+ "h2",
+ "http",
+ "libc",
+ "pod-core",
+ "pod-proxy",
+ "pod-tls",
+ "rustls",
+ "rustls-pki-types",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+]
 
 [[package]]
 name = "podnet"
@@ -2174,6 +2194,7 @@ dependencies = [
  "pod-proxy",
  "pod-services",
  "pod-tls",
+ "pod-ws",
  "podnet-core",
  "podnet-netns",
  "podnet-serve",
@@ -2189,7 +2210,6 @@ dependencies = [
  "rustls-webpki",
  "serde",
  "serde_json",
- "sha1",
  "smoltcp",
  "ssh-key",
  "tempfile",

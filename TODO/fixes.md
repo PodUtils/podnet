@@ -2430,7 +2430,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`crates/podnet-core/src/net.rs:22-47`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:249`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`crates/podnet-core/src/net.rs:22-47`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
 - `crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `crates/podnet-core/src/net.rs:179`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:70-76`).
@@ -2841,7 +2841,7 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 - `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`crates/podnet-core/src/state.rs:344-363`).
 - `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs:151-188`).
 - `DirBuilder::mode(0o700)` applies only to a new directory (`:143-146`).
-- The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:879`.
+- The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs:871`.
 
 ## Approach
 
@@ -2918,9 +2918,9 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 - `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:49-70`. `RelayCommand::Node` has it: `:44-45`.
 - `detach_of` has no arm for it: `src/cli/opts.rs:253-262`. `connect` has one: `:246`.
 - Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:186`, `:198`. `connect -L` logs and returns:
-  `src/cli/cmd/connect.rs:209-212`.
+  `src/cli/cmd/connect.rs:208-211`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
-  `SocketFile` is in `src/cli/cmd/connect.rs:220-240` (`pub(crate)`).
+  `SocketFile` is in `src/cli/cmd/connect.rs:219-239` (`pub(crate)`).
 - Message: `crates/podnet-core/src/net.rs:28-34`.
 - `src/main.rs:141` allows `--replace` without `--detach` only for `Command::Connect`.
 

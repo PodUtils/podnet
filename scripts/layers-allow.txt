@@ -4,6 +4,5 @@ warp -> cloudflare
 warp -> quicktunnel
 ws -> cloudflare
 ws -> proxy
-ws -> relay_reverse
 ws_relay -> edge_h2
 ws_relay -> ws

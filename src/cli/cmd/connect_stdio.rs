@@ -26,7 +26,7 @@ pub(crate) async fn run(remote: &str, auth: Option<&str>) -> Result<()> {
             )
         })?;
     let io: BoxedIo = Box::new(StdioIo::new()?);
-    ws::bridge(socket, io, &podnet::metrics::Metrics::new()).await
+    ws::bridge_session(socket, io, &podnet::metrics::Metrics::new()).await
 }
 
 /// Stdin and stdout as one stream.
