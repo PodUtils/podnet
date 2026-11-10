@@ -370,7 +370,7 @@ GitHub #351 (fix 1) closes with T-151.
 **Milestone:** M7
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -404,6 +404,43 @@ python3 -m http.server 8000 &   # 1 GiB file served; a SOCKS5 proxy on 127.0.0.1
 podnet pod --backend seccomp -x socks5://127.0.0.1:1080 -- curl -o /dev/null -w '%{speed_download}\n' http://127.0.0.1:8000/1g
 cargo test --workspace -- seccomp_splice_relay_keeps_the_byte_totals
 ```
+
+## Correction
+
+2026-11-10: the measure (Done) gives a gap of less than 2 times, so step 2 (the splice loop) and
+step 3 (its doctor row) do not run, and the test `seccomp_splice_relay_keeps_the_byte_totals` does
+not exist. The relay keeps `copy_bidirectional` with a 64 KiB buffer for each direction;
+`cargo test -p podnet-netns --lib -- flowlog::tests::the_relay_keeps_the_byte_totals` proves the byte
+totals. The Prove runs with a non-loopback address: with seccomp, a connect to `127.0.0.0/8` goes
+direct and does not use `-x`.
+
+## Done
+
+2026-11-10, commit 4b758d0 (`T-151: seccomp: a relay buffer of 64 KiB for each direction`). The
+measure: this host (4 CPUs, kernel 6.18.44), the release binary, `curl -o /dev/null` of 1 GiB from an
+HTTP server in C on `192.0.2.2:18000`, a SOCKS5 proxy in C (256 KiB buffers, two threads) on TCP
+`127.0.0.1:18080` and on a unix socket. Three runs each, in MB/s:
+
+| Path | 8 KiB relay (before) | 64 KiB relay | 256 KiB relay |
+| --- | --- | --- | --- |
+| `curl` with no proxy | 3994 to 5430 | 4408 to 5590 | 3901 to 4948 |
+| `curl -x socks5://127.0.0.1:18080` outside the pod | 1572 to 1745 | (the same proxy) | 1594 to 1642 |
+| pod `seccomp`, `-x socks5://127.0.0.1:18080` (relay) | 1095 to 1208 | 1557 to 1824 | 1594 to 1915 |
+| pod `seccomp`, `-x unix:` with `--flow-log` (relay) | 1009 to 1161 | 1620 to 1761 | 1857 to 2109 |
+| pod `seccomp`, `-x unix:` (T-065 hand-off, no relay) | 2175 to 2838 | 2494 to 3064 | 2522 to 3196 |
+
+The gap of the Approach (the pod against the same `curl` outside the pod) was 1.4 times with 8 KiB
+and is 1.0 times with 64 KiB: the proxy is the limit. The relay against the hand-off on the same unix
+proxy was 2.2 times and is 1.7 times. Both are less than 2 times, so no splice loop and no TCP
+hand-off flag (the Decision). The change: `RELAY_BUFFER` (64 KiB) in
+`crates/podnet-netns/src/flowlog.rs`, the relay of each seccomp TCP flow. The cost: 128 KiB for
+each relayed flow, not 16 KiB. 256 KiB gave 10 to 20 % more on the unix relay for four times the
+memory. The tokio runtime has no splice. Tests: `the_relay_keeps_the_byte_totals` (1 passed), and
+`cargo test --test pod_seccomp_rules` (10 passed, the byte totals of the flow record). Also measured:
+the netns backend through the same TCP proxy moved 1 MiB at 9 MB/s, 8 MiB in 17 s (0.49 MB/s), and
+64 MiB did not end in 120 s; for 1 GiB its process grew to 1 GB of memory. That is a defect of the
+netns TCP path, not of this entry. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI:
+at the merge. GitHub #351 (fixes 1 to 3) closes at the merge.
 
 # T-152: netns: measure in-namespace netfilter on the target hosts (GitHub #352)
 
