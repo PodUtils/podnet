@@ -51,6 +51,7 @@ mod frontdoor;
 mod handoff;
 mod icmp;
 mod inbox;
+mod learn;
 mod netns;
 mod outlive;
 mod recvmmsg;
@@ -143,6 +144,15 @@ pub fn main_with_args(argv: &[String]) -> i32 {
             eprintln!("{}: {e:#}", cli::program_name());
             return USAGE;
         }
+    }
+    let learned = match &args.learned {
+        Some(Learned::Learn(path)) => learn::learn(path),
+        Some(Learned::Enforce(path)) => learn::enforce(path),
+        None => Ok(()),
+    };
+    if let Err(e) = learned {
+        eprintln!("{}: {e:#}", cli::program_name());
+        return USAGE;
     }
     if args.serve.is_some() {
         if args.proxies.is_empty() {

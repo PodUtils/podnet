@@ -33,6 +33,17 @@ pub(crate) struct Args {
     pub(crate) name_backend: bool,
     /// `--flow-log FILE`: the JSON record of each decision (T-157).
     pub(crate) flow_log: Option<std::path::PathBuf>,
+    /// `--learn FILE` or `--fail-on-violation FILE` (T-158).
+    pub(crate) learned: Option<Learned>,
+}
+
+/// The mode of the learned set (T-158).
+pub(crate) enum Learned {
+    /// `--learn FILE`: write the destinations of the run to FILE.
+    Learn(std::path::PathBuf),
+    /// `--fail-on-violation FILE`: refuse each destination that is not in
+    /// FILE, and fail the run.
+    Enforce(std::path::PathBuf),
 }
 
 /// The name in the help, the usage lines and the start of each message:
@@ -105,6 +116,15 @@ Options:
                            (time, target, rule or default, chain, verdict)
                            and one at the close of each relayed TCP flow
                            (bytes_out, bytes_in)
+      --learn <FILE>       Write each destination of the run to FILE, one
+                           PROTO TARGET line each. A flow that a rule
+                           refuses goes through the -x chain
+      --fail-on-violation <FILE>
+                           Refuse each destination that is not in FILE (a
+                           file of --learn). A learned destination that a
+                           rule refuses is also a violation. The pod writes
+                           each violation on stderr and exits 4 when the
+                           program exits 0
       --map <NAME=ADDR>    Resolve NAME to ADDR locally, repeatable
       --keep-proxy-env     Keep HTTPS_PROXY, HTTP_PROXY, ALL_PROXY and NO_PROXY
                            (and the lower-case forms) for the program; by
@@ -133,7 +153,8 @@ Options:
   -h, --help               Print help
 
 Exit status: the exit code of the program; 64 for a usage mistake (also no
-proxy at all); 3 when no backend can run on this host. The pod returns when
+proxy at all); 3 when no backend can run on this host; 4 for a violation of
+--fail-on-violation when the program exits 0. The pod returns when
 the program exits; a process that the program started keeps the network of
 the pod until it exits. doctor measures what
 the host permits and exits 3 when no backend can run.
@@ -158,6 +179,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut serve: Option<crate::listen::ProxyListen> = None;
     let mut default_reject = false;
     let mut flow_log = None;
+    let mut learned = None;
     let mut i = 0;
     while i < argv.len() {
         match argv[i].as_str() {
@@ -211,6 +233,21 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             "--flow-log" => {
                 let path = argv.get(i + 1).context("--flow-log needs a file")?;
                 flow_log = Some(std::path::PathBuf::from(path));
+                i += 2;
+            }
+            "--learn" | "--fail-on-violation" => {
+                let flag = argv[i].as_str();
+                let path = argv
+                    .get(i + 1)
+                    .with_context(|| format!("{flag} needs a file"))?;
+                if learned.is_some() {
+                    bail!("give --learn or --fail-on-violation one time");
+                }
+                let path = std::path::PathBuf::from(path);
+                learned = Some(match flag {
+                    "--learn" => Learned::Learn(path),
+                    _ => Learned::Enforce(path),
+                });
                 i += 2;
             }
             "--map" => {
@@ -293,6 +330,9 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     if default_reject {
         rules.push(Rule::default_reject());
     }
+    if learned.is_some() && serve.is_some() {
+        bail!("--learn and --fail-on-violation work with a program, not with --serve");
+    }
     if !doctor && serve.is_none() && program.is_empty() {
         bail!(
             "nothing to run; usage: {} [OPTIONS] -- PROGRAM",
@@ -315,5 +355,6 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         prefer_udp,
         name_backend,
         flow_log,
+        learned,
     })
 }

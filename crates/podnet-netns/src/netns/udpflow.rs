@@ -295,7 +295,7 @@ impl UdpFlows {
             Some(name) => format!("{name}:{}", key.3),
             None => format!("{}:{}", key.2, key.3),
         };
-        let picked = select_chain(route.rules, route.proxies, &target);
+        let picked = crate::learn::select(route.rules, route.proxies, &target, "udp");
         crate::flowlog::decided("udp", &target, &picked);
         let Some(chain) = picked.chain().map(<[Proxy]>::to_vec) else {
             crate::rules::note_refusal("udp", &target, picked.rule_name(), route.verbose);

@@ -262,3 +262,84 @@ fn netns_flow_log_has_one_line_per_decision() {
     assert_eq!(refused.len(), 2, "{log}");
     assert!(refused.iter().all(|l| l["rule"] == "default"), "{log}");
 }
+
+// T-158: learn the destinations of a run (a refusal goes through the -x
+// chain), then enforce them: the same run passes.
+#[test]
+fn seccomp_learn_then_enforce_passes() {
+    if !seccomp_ready() {
+        return;
+    }
+    let proxy = Proxy::start("learn");
+    let learned = proxy.dir.join("learned.txt");
+    let learned_arg = learned.display().to_string();
+    let output = proxy.run(
+        "seccomp",
+        TWO_TARGETS,
+        &["--learn", &learned_arg, "--default-action", "reject"],
+    );
+    let text = stdout(&output);
+    assert!(output.status.success(), "{text}");
+    assert!(text.contains("CONNECT:10.1.2.3:ok"), "learn allows: {text}");
+    let set = std::fs::read_to_string(&learned).unwrap();
+    let lines: Vec<&str> = set.lines().filter(|l| !l.starts_with('#')).collect();
+    assert_eq!(lines, ["tcp 10.1.2.3:80", "tcp 93.184.216.34:80"], "{set}");
+    let output = proxy.run(
+        "seccomp",
+        TWO_TARGETS,
+        &["--fail-on-violation", &learned_arg],
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(0), "{stderr}");
+    assert!(!stderr.contains("violation"), "{stderr}");
+    let text = stdout(&output);
+    assert!(text.contains("CONNECT:10.1.2.3:ok"), "{text}");
+}
+
+// T-158: a destination that learning never saw is refused, and the run
+// fails with exit 4 and names the destination.
+#[test]
+fn seccomp_enforce_fails_on_a_new_destination() {
+    if !seccomp_ready() {
+        return;
+    }
+    let proxy = Proxy::start("enforce");
+    let learned = proxy.dir.join("learned.txt");
+    std::fs::write(&learned, "# one destination\ntcp 93.184.216.34:80\n").unwrap();
+    let learned_arg = learned.display().to_string();
+    let output = proxy.run(
+        "seccomp",
+        TWO_TARGETS,
+        &["--fail-on-violation", &learned_arg],
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let text = stdout(&output);
+    assert_eq!(output.status.code(), Some(4), "{stderr}");
+    assert!(text.contains("CONNECT:93.184.216.34:ok"), "{text}");
+    assert!(
+        text.contains("CONNECT:10.1.2.3:Connection refused"),
+        "{text}"
+    );
+    assert!(
+        stderr.contains("violation: tcp 10.1.2.3:80: not in the learned set"),
+        "{stderr}"
+    );
+    let targets: Vec<String> = proxy.targets.try_iter().collect();
+    assert_eq!(targets, ["93.184.216.34:80"]);
+}
+
+#[test]
+fn a_learned_set_with_a_bad_line_is_a_usage_error() {
+    let dir = std::env::temp_dir().join(format!("podnet-learn-bad-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("learned.txt");
+    std::fs::write(&file, "icmp 10.0.0.1\n").unwrap();
+    let output = pod_command()
+        .args(["-x", "socks5://127.0.0.1:1", "--fail-on-violation"])
+        .arg(&file)
+        .args(["--", "true"])
+        .output()
+        .unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(output.status.code(), Some(64));
+}
