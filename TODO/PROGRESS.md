@@ -87,6 +87,9 @@ Each call is in its entry, and the work goes on with it until the owner rules ot
   T-159, T-160, T-161, T-165, T-166, T-169, T-173, T-174, T-179, T-182, T-183, T-187, T-196,
   T-200, T-204, T-206 and T-055 (the gsr transport: no entry; `pod-gsr` is deferred).
 
+- 2026-11-10: the start conditions of T-055, T-056 (T-053) and T-092 (T-084) do not stop their work
+  (`docs/decisions.md`, Start conditions); the time of pod-hold has come (T-232).
+
 - T-016: the shim names `podnet-vnet` (`PODNET_VNET_*`) and `podnet-socks` (`PODNET_SOCKS_*`).
 - T-046: the test helpers go into `podnet-core` behind a feature; `pod-testkit` of
   `PodUtils/podcrates` is read first.
