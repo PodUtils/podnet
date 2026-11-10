@@ -13,7 +13,6 @@
 899 src/relay_reverse.rs
 1901 src/share.rs
 1404 src/tunnel.rs
-2103 src/vnet/stack.rs
 1680 src/warp/ip.rs
 1039 src/warp/mod.rs
 1870 src/warp/proxy.rs
