@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**226 entries: 75 open, 3 partial, 19 blocked, 129 done.**
+**227 entries: 76 open, 3 partial, 19 blocked, 129 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 22 | 27 |
-| P2 | 44 | 2 | 13 | 78 | 137 |
+| P2 | 45 | 2 | 13 | 78 | 138 |
 | P3 | 28 | 0 | 4 | 29 | 61 |
-| **All** | 75 | 3 | 19 | 129 | 226 |
+| **All** | 76 | 3 | 19 | 129 | 227 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -272,3 +272,4 @@ M8 Overlays, M9 Later.
 | [T-224](crates.md) | P1 | S | M3 | chore | done | podnet-netns calls `pod_proxy::udp` for the SOCKS5 datagram path |
 | [T-225](fixes.md) | P1 | S | M5 | defect | done | The send poller of the WARP QUIC socket keeps its wake-up |
 | [T-226](fixes.md) | P1 | S | M5 | defect | done | The netns backend moves a large TCP download at full speed with a bounded buffer |
+| [T-227](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.2`: the dry run, the publish and the release proofs |
