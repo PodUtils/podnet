@@ -11,7 +11,7 @@ pub(crate) async fn handle_sendto(
     mem: RawFd,
     (map, fd): (&mut HashMap<Key, Sock>, Key),
     dns: &mut FakeDns,
-    proxies: &[Proxy],
+    egress: &crate::udp::Egress<'_>,
 ) -> Result<()> {
     let buf = a[1];
     let len = a[2] as usize;
@@ -38,7 +38,7 @@ pub(crate) async fn handle_sendto(
     let Ok(payload) = read_mem(mem, buf, len) else {
         return notif_respond(lfd, id, -1, libc::EFAULT);
     };
-    match crate::udp::send_payload(map, fd, dns, proxies, &payload, (ip, port)).await {
+    match crate::udp::send_payload(map, fd, dns, egress, &payload, (ip, port)).await {
         Ok(sent) => notif_respond(lfd, id, sent as i64, 0),
         Err(errno) => notif_respond(lfd, id, -1, errno),
     }
@@ -54,7 +54,7 @@ pub(crate) async fn handle_sendmmsg(
     (mem, mem_writable): (RawFd, bool),
     (map, fd): (&mut HashMap<Key, Sock>, Key),
     dns: &mut FakeDns,
-    proxies: &[Proxy],
+    egress: &crate::udp::Egress<'_>,
 ) -> Result<()> {
     // struct mmsghdr is a struct msghdr (56 bytes), a u32 msg_len and padding.
     // The layouts of the child are those of this target: same ABI.
@@ -77,7 +77,7 @@ pub(crate) async fn handle_sendmmsg(
     let mut sent = 0usize;
     for index in 0..count {
         let entry = msgvec + index as u64 * MMSGHDR_SIZE;
-        match send_msghdr(fd, entry, mem, map, dns, proxies).await? {
+        match send_msghdr(fd, entry, mem, map, dns, egress).await? {
             None => return notif_continue(lfd, id),
             Some(Ok(bytes)) => {
                 if mem_writable {
@@ -103,9 +103,9 @@ pub(crate) async fn handle_sendmsg(
     mem: RawFd,
     (map, fd): (&mut HashMap<Key, Sock>, Key),
     dns: &mut FakeDns,
-    proxies: &[Proxy],
+    egress: &crate::udp::Egress<'_>,
 ) -> Result<()> {
-    match send_msghdr(fd, a[1], mem, map, dns, proxies).await? {
+    match send_msghdr(fd, a[1], mem, map, dns, egress).await? {
         None => notif_continue(lfd, id),
         Some(Ok(bytes)) => notif_respond(lfd, id, bytes as i64, 0),
         Some(Err(errno)) => notif_respond(lfd, id, -1, errno),
@@ -120,7 +120,7 @@ pub(crate) async fn send_msghdr(
     mem: RawFd,
     map: &mut HashMap<Key, Sock>,
     dns: &mut FakeDns,
-    proxies: &[Proxy],
+    egress: &crate::udp::Egress<'_>,
 ) -> Result<Option<std::result::Result<usize, i32>>> {
     let recorded = match map.get(&fd) {
         Some(Sock::Datagram(udp)) => udp.inbox.dest(),
@@ -182,6 +182,6 @@ pub(crate) async fn send_msghdr(
         };
         payload.extend_from_slice(&part);
     }
-    let sent = crate::udp::send_payload(map, fd, dns, proxies, &payload, (ip, port)).await;
+    let sent = crate::udp::send_payload(map, fd, dns, egress, &payload, (ip, port)).await;
     Ok(Some(sent))
 }

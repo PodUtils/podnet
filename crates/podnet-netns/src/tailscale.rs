@@ -412,9 +412,7 @@ async fn handle_client_within<S>(
         Err(err) => {
             tokio::spawn(check_state(dialer.clone()));
             let message = err.to_string();
-            crate::warn(&format!(
-                "podnet-netns: tailscale: {host}:{port} failed: {message}"
-            ));
+            crate::warn(&format!("tailscale: {host}:{port} failed: {message}"));
             if is_socks {
                 let code = if err.kind() == io::ErrorKind::TimedOut {
                     0x04 // host unreachable

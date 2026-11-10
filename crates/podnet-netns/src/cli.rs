@@ -26,24 +26,38 @@ pub(crate) struct Args {
     pub(crate) serve: Option<crate::listen::ProxyListen>,
     pub(crate) backend: BackendKind,
     /// `--prefer-udp`: `auto` takes the seccomp backend first (it carries
-    /// all UDP; the netns backend carries DNS only).
+    /// UDP datagrams of any size).
     pub(crate) prefer_udp: bool,
     /// `--name-backend`: print one line that names the backend that runs
     /// and its limits (T-071).
     pub(crate) name_backend: bool,
+    /// `--flow-log FILE`: the JSON record of each decision (T-157).
+    pub(crate) flow_log: Option<std::path::PathBuf>,
 }
 
-/// The name in the help and the usage lines: `podnet-netns`, or `podnet pod`
-/// when podnet runs the pod ([`set_program_name`]).
+/// The name in the help, the usage lines and the start of each message:
+/// `podnet pod`, or the name that [`set_program_name`] gives.
 static PROGRAM_NAME: std::sync::OnceLock<&'static str> = std::sync::OnceLock::new();
 
-/// Set the name that the help shows (once, before [`crate::main_with_args`]).
+/// The line of `--version`, when the program gives one.
+static VERSION_LINE: std::sync::OnceLock<&'static str> = std::sync::OnceLock::new();
+
+/// Set the name that the help and each message show (once, before
+/// [`crate::main_with_args`]).
 pub fn set_program_name(name: &'static str) {
     let _ = PROGRAM_NAME.set(name);
 }
 
-fn program_name() -> &'static str {
-    PROGRAM_NAME.get().copied().unwrap_or("podnet-netns")
+/// Set the line that `--version` prints (once, before
+/// [`crate::main_with_args`]): the version line of the program that runs
+/// the pod. Without it, `--version` prints the program name and the
+/// version of this library.
+pub fn set_version_line(line: &'static str) {
+    let _ = VERSION_LINE.set(line);
+}
+
+pub(crate) fn program_name() -> &'static str {
+    PROGRAM_NAME.get().copied().unwrap_or("podnet pod")
 }
 
 /// The help, in the layout of the other podnet commands (issue 95).
@@ -78,8 +92,19 @@ Options:
                                                        name under it)
                              cidr:10.0.0.0/8=socks5://host:port
                              cidr:10.0.0.0/8=direct   (no proxy)
+                             domain:.ads.example=reject  (refuse; also block):
+                             connect fails with ECONNREFUSED (netns: a RST),
+                             a datagram with EACCES (netns: dropped),
+                             --serve answers SOCKS5 0x02 or HTTP 403
                            With the seccomp backend, 127.0.0.0/8 goes direct
                            (or to a listener of the program itself)
+      --default-action <A> allow (default) or reject: what the pod does with a
+                           target that no rule matches. reject refuses it as
+                           a reject rule does
+      --flow-log <FILE>    Append one JSON line to FILE for each decision
+                           (time, target, rule or default, chain, verdict)
+                           and one at the close of each relayed TCP flow
+                           (bytes_out, bytes_in)
       --map <NAME=ADDR>    Resolve NAME to ADDR locally, repeatable
       --keep-proxy-env     Keep HTTPS_PROXY, HTTP_PROXY, ALL_PROXY and NO_PROXY
                            (and the lower-case forms) for the program; by
@@ -88,8 +113,9 @@ Options:
                            listener of the program is in the network of the
                            pod: a loopback TCP listener is not seen from
                            outside; use a unix socket (connect -L unix:///PATH)
-      --prefer-udp         With auto: seccomp first when it works (all UDP
-                           goes through; netns carries DNS only)
+      --prefer-udp         With auto: seccomp first when it works (UDP
+                           datagrams of any size go through; netns carries
+                           a datagram of 1500 bytes at most)
       --name-backend       Print one line on stderr that names the backend
                            that runs and its limits (also after auto)
       --inbound-dir <DIR>  Where a bound port is exposed as a unix socket
@@ -107,7 +133,9 @@ Options:
   -h, --help               Print help
 
 Exit status: the exit code of the program; 64 for a usage mistake (also no
-proxy at all); 3 when no backend can run on this host. doctor measures what
+proxy at all); 3 when no backend can run on this host. The pod returns when
+the program exits; a process that the program started keeps the network of
+the pod until it exits. doctor measures what
 the host permits and exits 3 when no backend can run.
 "
     )
@@ -128,6 +156,8 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut inbound_dir_given = false;
     let mut keep_proxy_env = false;
     let mut serve: Option<crate::listen::ProxyListen> = None;
+    let mut default_reject = false;
+    let mut flow_log = None;
     let mut i = 0;
     while i < argv.len() {
         match argv[i].as_str() {
@@ -144,11 +174,15 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
                 }
             }
             "-V" | "--version" => {
-                println!(
-                    "podnet-netns {} ({})",
-                    env!("CARGO_PKG_VERSION"),
-                    env!("PODNET_BUILD_COMMIT")
-                );
+                match VERSION_LINE.get() {
+                    Some(line) => println!("{line}"),
+                    None => println!(
+                        "{} {} ({})",
+                        program_name(),
+                        env!("CARGO_PKG_VERSION"),
+                        env!("PODNET_BUILD_COMMIT")
+                    ),
+                }
                 std::process::exit(0);
             }
             "--keep-proxy-env" => {
@@ -162,6 +196,22 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             "--name-backend" => {
                 name_backend = true;
                 i += 1;
+            }
+            "--default-action" => {
+                let value = argv
+                    .get(i + 1)
+                    .context("--default-action needs allow or reject")?;
+                default_reject = match value.to_ascii_lowercase().as_str() {
+                    "allow" => false,
+                    "reject" | "block" => true,
+                    other => bail!("--default-action {other:?}: give allow or reject"),
+                };
+                i += 2;
+            }
+            "--flow-log" => {
+                let path = argv.get(i + 1).context("--flow-log needs a file")?;
+                flow_log = Some(std::path::PathBuf::from(path));
+                i += 2;
             }
             "--map" => {
                 let spec = argv.get(i + 1).context("--map needs NAME=ADDR")?;
@@ -187,14 +237,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             }
             "-r" | "--rule" => {
                 let spec = argv.get(i + 1).context("--rule needs a value")?;
-                let (lhs, rhs) = spec
-                    .split_once('=')
-                    .context("--rule needs KIND:VALUE=PROXY")?;
-                let matcher = RuleMatch::parse(lhs)?;
-                rules.push(Rule {
-                    matcher,
-                    proxy: Proxy::parse(rhs)?,
-                });
+                rules.push(Rule::parse(spec)?);
                 i += 2;
             }
             "--serve" => {
@@ -245,6 +288,11 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             }
         }
     }
+    // T-157: a target that no rule matches is refused: a last rule that
+    // matches each target.
+    if default_reject {
+        rules.push(Rule::default_reject());
+    }
     if !doctor && serve.is_none() && program.is_empty() {
         bail!(
             "nothing to run; usage: {} [OPTIONS] -- PROGRAM",
@@ -266,5 +314,6 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         backend,
         prefer_udp,
         name_backend,
+        flow_log,
     })
 }

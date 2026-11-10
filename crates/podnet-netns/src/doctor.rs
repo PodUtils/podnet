@@ -315,16 +315,18 @@ pub(crate) fn doctor(json: bool) -> i32 {
         return if any { 0 } else { EXIT_NO_BACKEND };
     }
 
-    println!("podnet-netns: capability report");
+    println!("{}: capability report", crate::cli::program_name());
     for p in &probes {
         println!("  {:<34} {:<5} {}", p.name, verdict(p.ok), p.detail);
     }
     println!(
-        "podnet-netns: backend netns:   {}",
+        "{}: backend netns:   {}",
+        crate::cli::program_name(),
         verdict(netns_available)
     );
     println!(
-        "podnet-netns: backend seccomp: {}",
+        "{}: backend seccomp: {}",
+        crate::cli::program_name(),
         if !seccomp_available {
             "fail"
         } else if probes[5].ok {
@@ -335,10 +337,11 @@ pub(crate) fn doctor(json: bool) -> i32 {
     );
     // T-149: the fidelity of UDP stops at the proxy.
     println!(
-        "podnet-netns: UDP goes through the proxy: no ICMP error gets to the program \
-         (no ECONNREFUSED, no EMSGSIZE of the path MTU, no IP_MTU)"
+        "{}: UDP goes through the proxy: no ICMP error gets to the program \
+         (no ECONNREFUSED, no EMSGSIZE of the path MTU, no IP_MTU)",
+        crate::cli::program_name()
     );
-    println!("podnet-netns: the host conditions that podnet handles: https://github.com/PodUtils/podnet/blob/main/docs/target-environment.md");
+    println!("{}: the host conditions that podnet handles: https://github.com/PodUtils/podnet/blob/main/docs/target-environment.md", crate::cli::program_name());
     if any {
         0
     } else {

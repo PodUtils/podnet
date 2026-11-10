@@ -362,7 +362,7 @@ fn pod_doctor_json_has_the_schema_and_the_verdicts() {
     assert!(!text.contains("available"), "{text}");
     assert!(
         text.lines()
-            .any(|l| l.starts_with("podnet-netns: backend netns:")),
+            .any(|l| l.starts_with("podnet pod: backend netns:")),
         "{text}"
     );
 }

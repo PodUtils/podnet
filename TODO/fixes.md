@@ -1116,7 +1116,7 @@ of `podnet-netns` has no row for the door. The check against a real `tailscaled`
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1148,6 +1148,17 @@ A test asserts that `podnet pod --version` starts with the name of the CLI and t
 ## Start condition
 
 T-019 and T-020 are done.
+
+## Done
+
+2026-11-10, commit 266e15a (`T-135: podnet pod prints its own program name in each message and in
+--version`). Each message of the pod library starts with `program_name()` (34 sites; the default
+is `podnet pod`). `set_version_line` gives the line of `--version`; `src/main.rs` passes the
+version line of podnet. Test: `podnet_pod_prints_its_own_program_name` (`tests/pod_usage.rs`):
+`podnet pod --version` equals `podnet --version`, and a usage error starts with `podnet pod: `.
+`cargo test --workspace pod`: 23 passed, 0 failed. `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`:
+each step 0. CI: at the merge.
+
 
 # T-138: live: two runs in a row failed on the edge and WARP services (GitHub #316)
 
@@ -1391,7 +1402,7 @@ at the start, 311 after 100 sockets, 311 after the close. A long-lived pod runs 
 2. Give each `Sock::Datagram` a stop signal (a `tokio::sync::watch` sender or a `CancellationToken`).
    Select on it in both reader loops. Drop of the entry sends it.
 3. Send the stop from `handle_close`, `sweep` and the shutdown near `drain_relays` (`seccomp.rs:851`).
-4. Correct `crates/podnet-netns/README.md:81-83` so that it separates `read` and `write` on TCP from
+4. Correct `crates/podnet-netns/README.md:119-121` so that it separates `read` and `write` on TCP from
    the UDP path (the write part belongs to T-143).
 
 ## Prove
@@ -1435,7 +1446,7 @@ lines. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 `write(2)` on an emulated datagram socket returns success, and the datagram never leaves the pod. The
 reply never comes. `sendto`, `send`, `sendmsg` and `sendmmsg` work. Programs write datagrams with
 `write` after `connect` (C code, Python `os.write`, some Go paths). The README says that `write` works
-on the pair (`crates/podnet-netns/README.md:81-83`). That is true for TCP only.
+on the pair (`crates/podnet-netns/README.md:119-121`). That is true for TCP only.
 
 ## Premise
 
@@ -2420,7 +2431,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 ## Premise
 
 - Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`crates/podnet-core/src/net.rs:22-47`): `podnet-netns` cannot call it.
-- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
+- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
 - `crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `crates/podnet-core/src/net.rs:179`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:70-76`).
 

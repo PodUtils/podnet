@@ -94,7 +94,8 @@ pub(crate) async fn handle_listen(
     notif_respond(lfd, id, 0, 0)?;
     // The listener is a real unix socket; say where it is.
     eprintln!(
-        "podnet-netns: listening on unix:{} (port {port})",
+        "{}: listening on unix:{} (port {port})",
+        crate::cli::program_name(),
         path.display()
     );
     Ok(())

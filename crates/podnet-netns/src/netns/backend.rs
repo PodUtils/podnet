@@ -14,7 +14,12 @@ pub(crate) struct HeldSyn {
     pub(crate) pkt: Vec<u8>,
     pub(crate) target: String,
     pub(crate) task: tokio::task::JoinHandle<Result<Upstream>>,
+    /// The number of the flow in the record of `--flow-log` (T-157).
+    pub(crate) flow: Option<u64>,
 }
+
+/// The dial of an upstream.
+pub(crate) type DialTask = tokio::task::JoinHandle<Result<Upstream>>;
 
 /// The time that the upstream of a released SYN waits for its socket.
 const PREDIALED_TTL: std::time::Duration = std::time::Duration::from_secs(30);
@@ -25,6 +30,20 @@ pub(crate) struct Flow {
     pub(crate) to_upstream: Vec<u8>,
     pub(crate) to_app: Vec<u8>,
     pub(crate) up_eof: bool,
+    /// The target, the number in the record and the byte counts (T-157).
+    pub(crate) record: (String, Option<u64>, crate::flowlog::Counts),
+}
+
+impl Flow {
+    fn new(upstream: Upstream, target: String, flow: Option<u64>) -> Self {
+        Flow {
+            upstream,
+            to_upstream: Vec::new(),
+            to_app: Vec::new(),
+            up_eof: false,
+            record: (target, flow, Default::default()),
+        }
+    }
 }
 
 pub(crate) struct Backend {
@@ -38,17 +57,19 @@ pub(crate) struct Backend {
     pub(crate) listeners: HashMap<SocketHandle, u16>,
     /// Upstream dials in progress, for connections that are established in
     /// the stack but have no flow yet.
-    pub(crate) dialing: HashMap<SocketHandle, (String, tokio::task::JoinHandle<Result<Upstream>>)>,
+    pub(crate) dialing: HashMap<SocketHandle, (String, DialTask, Option<u64>)>,
     pub(crate) flows: HashMap<SocketHandle, Flow>,
     /// Issue 190: each new SYN waits here while its upstream is dialed. The
     /// stack sees the SYN only when the dial succeeds; a failed dial gets a
     /// RST, so `connect()` of the program fails.
     pub(crate) held: HashMap<SynKey, HeldSyn>,
     /// The upstreams of released SYNs, until their socket is established.
-    pub(crate) predialed: HashMap<SynKey, (String, Upstream, std::time::Instant)>,
+    pub(crate) predialed: HashMap<SynKey, (String, Upstream, std::time::Instant, Option<u64>)>,
     /// Sockets aborted after the last poll. They stay until the next poll
     /// has sent their RST.
     pub(crate) aborting: Vec<SocketHandle>,
+    /// The UDP flows of the program other than DNS (T-111).
+    pub(crate) udp: UdpFlows,
     pub(crate) proxies: Vec<Proxy>,
     pub(crate) rules: Vec<Rule>,
     pub(crate) verbose: bool,
@@ -95,6 +116,7 @@ impl Backend {
             held: HashMap::new(),
             predialed: HashMap::new(),
             aborting: Vec::new(),
+            udp: UdpFlows::new(),
             proxies,
             rules,
             verbose,
@@ -110,21 +132,36 @@ impl Backend {
         }
     }
 
-    /// Start the dial of the upstream of `target`.
-    fn spawn_dial(&self, target: &str) -> tokio::task::JoinHandle<Result<Upstream>> {
-        let chain = select_chain(&self.rules, &self.proxies, target).to_vec();
+    /// Start the dial of the upstream of `target`. Give the number of the
+    /// flow in the record too.
+    fn spawn_dial(&self, target: &str) -> (DialTask, Option<u64>) {
+        let picked = select_chain(&self.rules, &self.proxies, target);
+        let flow = crate::flowlog::decided("tcp", target, &picked);
+        let Some(chain) = picked.chain().map(<[Proxy]>::to_vec) else {
+            // T-156: the dial fails at once, and the program gets a RST.
+            crate::rules::note_refusal("connect", target, picked.rule_name(), self.verbose);
+            return (
+                tokio::spawn(async { bail!("a rule refuses the target") }),
+                flow,
+            );
+        };
         if self.verbose {
             let hops: Vec<String> = chain.iter().map(Proxy::endpoint).collect();
-            eprintln!("podnet-netns: {target} via {}", hops.join(" -> "));
+            eprintln!(
+                "{}: {target} via {}",
+                crate::cli::program_name(),
+                hops.join(" -> ")
+            );
         }
         let dial_target = target.to_string();
-        tokio::spawn(async move {
+        let task = tokio::spawn(async move {
             within_timeout(
                 "upstream connect",
                 connect_upstream_async(&chain, &dial_target),
             )
             .await
-        })
+        });
+        (task, flow)
     }
 
     /// A socket of the stack has the addresses of `key`.
@@ -160,8 +197,14 @@ impl Backend {
                 kept.push_back(pkt);
             } else {
                 let target = self.target_of(key.2, key.3);
-                let task = self.spawn_dial(&target);
-                self.held.insert(key, HeldSyn { pkt, target, task });
+                let (task, flow) = self.spawn_dial(&target);
+                let held = HeldSyn {
+                    pkt,
+                    target,
+                    task,
+                    flow,
+                };
+                self.held.insert(key, held);
             }
         }
         self.device.rx = kept;
@@ -180,14 +223,15 @@ impl Backend {
             };
             match result {
                 Ok(upstream) => {
-                    self.predialed
-                        .insert(key, (held.target, upstream, std::time::Instant::now()));
+                    let at = std::time::Instant::now();
+                    let dialed = (held.target, upstream, at, held.flow);
+                    self.predialed.insert(key, dialed);
                     self.device.rx.push_front(held.pkt);
                 }
                 Err(e) => {
                     if self.verbose {
                         eprintln!(
-                            "podnet-netns: upstream for {} failed: {e:#}; the connect of the program is refused",
+                            "{}: upstream for {} failed: {e:#}; the connect of the program is refused", crate::cli::program_name(),
                             held.target
                         );
                     }
@@ -198,7 +242,7 @@ impl Backend {
             }
         }
         self.predialed
-            .retain(|_, (_, _, at)| at.elapsed() < PREDIALED_TTL);
+            .retain(|_, (_, _, at, _)| at.elapsed() < PREDIALED_TTL);
     }
 
     /// Each SYN needs a socket in the listen state for its port before
@@ -231,7 +275,10 @@ impl Backend {
                     let handle = self.sockets.add(socket);
                     self.listeners.insert(handle, port);
                     if self.verbose {
-                        eprintln!("podnet-netns: listening for outbound port {port}");
+                        eprintln!(
+                            "{}: listening for outbound port {port}",
+                            crate::cli::program_name()
+                        );
                     }
                 }
             }
@@ -257,8 +304,23 @@ impl Backend {
         }
     }
 
+    /// Read the TUN, unless a full UDP queue pauses the read.
+    pub(crate) fn read_tun(&mut self) {
+        if !self.udp.paused() {
+            self.device.read_ready();
+        }
+    }
+
     pub(crate) async fn tick(&mut self) -> Result<()> {
         self.answer_dns();
+        let route = UdpRoute {
+            proxies: &self.proxies,
+            rules: &self.rules,
+            dns: &self.dns,
+            verbose: self.verbose,
+        };
+        self.udp
+            .relay(&mut self.device.rx, &mut self.device.tx, &route);
         self.hold_syns().await;
         self.observe_syns();
         self.interface
@@ -321,52 +383,42 @@ impl Backend {
                 )
             };
             // The usual case: the upstream was dialed before the handshake.
-            if let Some((_, upstream, _)) = self.predialed.remove(&key) {
-                self.flows.insert(
-                    handle,
-                    Flow {
-                        upstream,
-                        to_upstream: Vec::new(),
-                        to_app: Vec::new(),
-                        up_eof: false,
-                    },
-                );
+            if let Some((target, upstream, _, flow)) = self.predialed.remove(&key) {
+                self.flows.insert(handle, Flow::new(upstream, target, flow));
                 continue;
             }
-            let task = self.spawn_dial(&target);
-            self.dialing.insert(handle, (target, task));
+            let (task, flow) = self.spawn_dial(&target);
+            self.dialing.insert(handle, (target, task, flow));
         }
 
         let ready: Vec<SocketHandle> = self
             .dialing
             .iter()
-            .filter(|(_, (_, task))| task.is_finished())
+            .filter(|(_, (_, task, _))| task.is_finished())
             .map(|(handle, _)| *handle)
             .collect();
         for handle in ready {
-            let (target, task) = self.dialing.remove(&handle).expect("listed above");
+            let (target, task, flow) = self.dialing.remove(&handle).expect("listed above");
             match task.await {
                 Ok(Ok(upstream)) => {
-                    self.flows.insert(
-                        handle,
-                        Flow {
-                            upstream,
-                            to_upstream: Vec::new(),
-                            to_app: Vec::new(),
-                            up_eof: false,
-                        },
-                    );
+                    self.flows.insert(handle, Flow::new(upstream, target, flow));
                 }
                 Ok(Err(e)) => {
                     if self.verbose {
-                        eprintln!("podnet-netns: upstream for {target} failed: {e:#}");
+                        eprintln!(
+                            "{}: upstream for {target} failed: {e:#}",
+                            crate::cli::program_name()
+                        );
                     }
                     self.sockets.get_mut::<tcp::Socket>(handle).abort();
                     self.aborting.push(handle);
                 }
                 Err(e) => {
                     if self.verbose {
-                        eprintln!("podnet-netns: dial task for {target} failed: {e}");
+                        eprintln!(
+                            "{}: dial task for {target} failed: {e}",
+                            crate::cli::program_name()
+                        );
                     }
                     self.sockets.get_mut::<tcp::Socket>(handle).abort();
                     self.aborting.push(handle);
@@ -398,6 +450,7 @@ impl Backend {
                 {
                     Ok(0) => break,
                     Ok(n) => {
+                        flow.record.2.add_out(n);
                         flow.to_upstream.drain(..n);
                     }
                     Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
@@ -416,7 +469,10 @@ impl Backend {
                         flow.up_eof = true;
                         break;
                     }
-                    Ok(n) => flow.to_app.extend_from_slice(&buf[..n]),
+                    Ok(n) => {
+                        flow.record.2.add_in(n);
+                        flow.to_app.extend_from_slice(&buf[..n]);
+                    }
                     Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                     Err(_) => {
                         close = true;
@@ -435,10 +491,21 @@ impl Backend {
 
             if (flow.up_eof && flow.to_app.is_empty()) || close || !socket.may_send() {
                 socket.close();
-                self.flows.remove(&handle);
+                let (target, number, counts) = &flow.record;
+                counts.close(*number, "tcp", target);
                 continue;
             }
             self.flows.insert(handle, flow);
+        }
+    }
+}
+
+impl Drop for Backend {
+    /// The flows that are open at the end of the pod get their close line.
+    fn drop(&mut self) {
+        for flow in self.flows.values() {
+            let (target, number, counts) = &flow.record;
+            counts.close(*number, "tcp", target);
         }
     }
 }

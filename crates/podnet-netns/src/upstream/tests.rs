@@ -69,17 +69,20 @@ fn direct_is_an_upstream() {
     let direct = super::Proxy::parse("direct").unwrap();
     assert_eq!(direct.kind, super::ProxyKind::Direct);
     assert_eq!(direct.endpoint(), "direct");
-    let rules = vec![super::Rule {
-        matcher: super::RuleMatch::parse("cidr:10.0.0.0/8").unwrap(),
-        proxy: direct,
-    }];
+    let rules = vec![super::Rule::parse("cidr:10.0.0.0/8=direct").unwrap()];
     let default = vec![super::Proxy::parse("socks5://127.0.0.1:1080").unwrap()];
     assert_eq!(
-        super::select_chain(&rules, &default, "10.1.2.3:22")[0].endpoint(),
+        super::select_chain(&rules, &default, "10.1.2.3:22")
+            .chain()
+            .unwrap()[0]
+            .endpoint(),
         "direct"
     );
     assert_eq!(
-        super::select_chain(&rules, &default, "1.1.1.1:443")[0].endpoint(),
+        super::select_chain(&rules, &default, "1.1.1.1:443")
+            .chain()
+            .unwrap()[0]
+            .endpoint(),
         "127.0.0.1:1080"
     );
 }
@@ -196,32 +199,21 @@ fn split_target_keeps_ipv4_and_names() {
 #[test]
 fn rules_select_chains_in_order() {
     let default = vec![Proxy::parse("socks5://127.0.0.1:1").unwrap()];
-    let rules = vec![
-        Rule {
-            matcher: RuleMatch::Domain("example.com".into()),
-            proxy: Proxy::parse("socks5://127.0.0.1:2").unwrap(),
-        },
-        Rule {
-            matcher: RuleMatch::parse("cidr:10.0.0.0/8").unwrap(),
-            proxy: Proxy::parse("socks5://127.0.0.1:3").unwrap(),
-        },
-        Rule {
-            matcher: RuleMatch::parse("cidr:2001:db8::/32").unwrap(),
-            proxy: Proxy::parse("socks5://127.0.0.1:4").unwrap(),
-        },
-    ];
-    assert_eq!(select_chain(&rules, &default, "example.com:80")[0].port, 2);
-    assert_eq!(select_chain(&rules, &default, "EXAMPLE.com:443")[0].port, 2);
-    assert_eq!(select_chain(&rules, &default, "10.1.2.3:443")[0].port, 3);
-    assert_eq!(select_chain(&rules, &default, "1.2.3.4:80")[0].port, 1);
-    assert_eq!(
-        select_chain(&rules, &default, "[2001:db8::7]:80")[0].port,
-        4
-    );
-    assert_eq!(
-        select_chain(&rules, &default, "[2001:db9::7]:80")[0].port,
-        1
-    );
+    let rules: Vec<Rule> = [
+        "domain:example.com=socks5://127.0.0.1:2",
+        "cidr:10.0.0.0/8=socks5://127.0.0.1:3",
+        "cidr:2001:db8::/32=socks5://127.0.0.1:4",
+    ]
+    .iter()
+    .map(|spec| Rule::parse(spec).unwrap())
+    .collect();
+    let port = |target: &str| select_chain(&rules, &default, target).chain().unwrap()[0].port;
+    assert_eq!(port("example.com:80"), 2);
+    assert_eq!(port("EXAMPLE.com:443"), 2);
+    assert_eq!(port("10.1.2.3:443"), 3);
+    assert_eq!(port("1.2.3.4:80"), 1);
+    assert_eq!(port("[2001:db8::7]:80"), 4);
+    assert_eq!(port("[2001:db9::7]:80"), 1);
 }
 #[test]
 fn ipv6_prefixes_and_prefix_files() {

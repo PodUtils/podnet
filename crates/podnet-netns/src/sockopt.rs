@@ -94,7 +94,8 @@ pub(crate) fn handle_setsockopt(
     let (level, name, optval, len) = (a[1] as i32, a[2] as i32, a[3], a[4] as usize);
     if verbose {
         eprintln!(
-            "podnet-netns: setsockopt answered by the pod (fd {}, level {level}, option {name})",
+            "{}: setsockopt answered by the pod (fd {}, level {level}, option {name})",
+            crate::cli::program_name(),
             a[0] as i32
         );
     }

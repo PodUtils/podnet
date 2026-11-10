@@ -66,6 +66,17 @@ pub(crate) fn run_seccomp(args: Args) -> Result<i32> {
     if args.proxies.is_empty() {
         bail!("the seccomp backend needs -x (there is no direct mode)");
     }
+    let verbose = args.verbose;
+    crate::outlive::split(verbose, |reporter| supervise_pod(args, reporter))
+}
+
+/// Start the program under the filter and supervise it. With a front
+/// ([`crate::outlive::Reporter::outlives`]), the supervisor reaps each
+/// orphan of the pod and stays until no task uses the filter (T-107).
+fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
+    if reporter.outlives() {
+        crate::outlive::become_subreaper()?;
+    }
     // Issue 306: the inbound directory is private before the program runs.
     crate::listen::private_dir(&args.inbound_dir)?;
     // A seccomp filter is per-thread unless TSYNC is used. Install it on a
@@ -141,7 +152,7 @@ pub(crate) fn run_seccomp(args: Args) -> Result<i32> {
         .build()?;
     runtime.block_on(supervise_seccomp(
         lfd,
-        pid,
+        (pid, reporter),
         args.proxies,
         args.rules,
         args.maps,
@@ -152,7 +163,7 @@ pub(crate) fn run_seccomp(args: Args) -> Result<i32> {
 
 pub(crate) async fn supervise_seccomp(
     lfd: RawFd,
-    pid: i32,
+    (pid, reporter): (i32, crate::outlive::Reporter),
     proxies: Vec<Proxy>,
     rules: Vec<Rule>,
     maps: Vec<(String, IpAddr)>,
@@ -165,20 +176,14 @@ pub(crate) async fn supervise_seccomp(
     let async_fd = crate::readable_copy(lfd)?;
 
     let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    {
-        let stop = shutdown.clone();
-        tokio::spawn(async move {
-            loop {
-                let mut status = 0;
-                let r = unsafe { libc::waitpid(pid, &mut status, libc::WNOHANG) };
-                if r == pid {
-                    stop.store(true, std::sync::atomic::Ordering::Relaxed);
-                    break;
-                }
-                tokio::time::sleep(Duration::from_millis(20)).await;
-            }
-        });
-    }
+    let first = Arc::new(std::sync::Mutex::new(None));
+    tokio::spawn(watch_children(
+        (pid, lfd),
+        reporter,
+        shutdown.clone(),
+        first.clone(),
+        verbose,
+    ));
 
     let mut map = crate::fdtable::Table::new(pid);
     let mut dns = FakeDns::new();
@@ -188,6 +193,11 @@ pub(crate) async fn supervise_seccomp(
         proxies: &proxies,
         rules: &rules,
         inbound_dir: &inbound_dir,
+        verbose,
+    };
+    let egress = crate::udp::Egress {
+        proxies: &proxies,
+        rules: &rules,
         verbose,
     };
     dns.v6 = true;
@@ -207,7 +217,7 @@ pub(crate) async fn supervise_seccomp(
             }
             // T-143: a datagram that the program wrote with `write(2)`.
             Some(written) = writes.recv() => {
-                crate::udp::relay_written(&mut map, written, &mut dns, &proxies, verbose).await;
+                crate::udp::relay_written(&mut map, written, &mut dns, &egress).await;
                 continue;
             }
             _ = tokio::time::sleep(Duration::from_millis(50)) => continue,
@@ -269,9 +279,9 @@ pub(crate) async fn supervise_seccomp(
             let entry = (&mut *map, key, req.pid);
             crate::connect::handle_connect(lfd, id, a, mem, entry, &mut dns, &mut dials, &route)
         } else if nr == libc::SYS_sendto as i32 {
-            handle_sendto(lfd, id, a, mem, (&mut map, key), &mut dns, &proxies).await
+            handle_sendto(lfd, id, a, mem, (&mut map, key), &mut dns, &egress).await
         } else if nr == libc::SYS_sendmsg as i32 {
-            handle_sendmsg(lfd, id, a, mem, (&mut map, key), &mut dns, &proxies).await
+            handle_sendmsg(lfd, id, a, mem, (&mut map, key), &mut dns, &egress).await
         } else if nr == libc::SYS_sendmmsg as i32 {
             handle_sendmmsg(
                 lfd,
@@ -280,7 +290,7 @@ pub(crate) async fn supervise_seccomp(
                 (mem, mem_writable),
                 (&mut map, key),
                 &mut dns,
-                &proxies,
+                &egress,
             )
             .await
         } else if nr == libc::SYS_setsockopt as i32 {
@@ -318,7 +328,7 @@ pub(crate) async fn supervise_seccomp(
         };
         if let Err(e) = outcome {
             if verbose {
-                eprintln!("podnet-netns: notif {nr}: {e:#}");
+                eprintln!("{}: notif {nr}: {e:#}", crate::cli::program_name());
             }
             // A handler that fails before it answers must not leave the child
             // blocked. If the handler answered already, the kernel refuses
@@ -341,13 +351,72 @@ pub(crate) async fn supervise_seccomp(
     map.retain(|_, sock| !matches!(sock, Sock::Datagram(_)));
     drain_relays(RELAY_DRAIN).await;
 
-    let mut status = 0;
-    unsafe { libc::waitpid(pid, &mut status, 0) };
-    Ok(if libc::WIFEXITED(status) {
-        libc::WEXITSTATUS(status)
-    } else {
-        128 + libc::WTERMSIG(status)
-    })
+    // The watcher reaps the first program; wait for its status.
+    loop {
+        if let Some(status) = *first.lock().unwrap_or_else(|e| e.into_inner()) {
+            return Ok(crate::outlive::exit_code(status));
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+/// Reap the first program `pid`, and put its status in `first`. Set
+/// `shutdown` when the pod ends: at the exit of the first program when no
+/// other task uses the filter `lfd` (or with no front), else when no child
+/// is left. With a front, reap each orphan of the pod, and give the code
+/// of the first program to the front at once (T-107).
+async fn watch_children(
+    (pid, lfd): (i32, RawFd),
+    reporter: crate::outlive::Reporter,
+    shutdown: Arc<std::sync::atomic::AtomicBool>,
+    first: Arc<std::sync::Mutex<Option<i32>>>,
+    verbose: bool,
+) {
+    use std::sync::atomic::Ordering;
+    let outlives = reporter.outlives();
+    let target = if outlives { -1 } else { pid };
+    let mut reaped = false;
+    loop {
+        let mut status = 0;
+        let r = unsafe { libc::waitpid(target, &mut status, libc::WNOHANG) };
+        if r == pid {
+            reaped = true;
+            *first.lock().unwrap_or_else(|e| e.into_inner()) = Some(status);
+            if !outlives || filter_unused(lfd) {
+                shutdown.store(true, Ordering::Relaxed);
+                return;
+            }
+            let code = crate::outlive::exit_code(status);
+            if verbose {
+                eprintln!(
+                    "{}: the program exited {code}; the pod stays while its other processes live",
+                    program_name()
+                );
+            }
+            reporter.report(code, verbose);
+            continue;
+        }
+        if r > 0 {
+            continue; // an orphan of the pod
+        }
+        if r < 0 && reaped {
+            shutdown.store(true, Ordering::Relaxed);
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+/// True when no task uses the filter of the notification descriptor `lfd`
+/// (POLLHUP).
+fn filter_unused(lfd: RawFd) -> bool {
+    let mut pfd = libc::pollfd {
+        fd: lfd,
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    unsafe { libc::poll(&mut pfd, 1, 0) };
+    pfd.revents & libc::POLLHUP != 0
 }
 
 /// The number of byte relays that are in progress.

@@ -21,10 +21,12 @@ podnet pod doctor --json
 | Option | Function |
 | --- | --- |
 | `-x, --proxy SPEC` | An upstream. Repeat it to make a chain. Forms: `socks5://[user:pass@]host:port`, `http://[user:pass@]host:port`, `socks5://unix:/path`, `http://unix:/path`, `tailscale:/path/to/tailscaled.sock`. Default: `$ALL_PROXY`, `$HTTPS_PROXY` or `$HTTP_PROXY`. A SOCKS5 user or password longer than 255 bytes is an error (the limit of RFC 1929). A SOCKS5 target name longer than 255 bytes is refused. |
-| `-r, --rule SPEC` | A route for some destinations: `domain:NAME=PROXY`, `domain:.NAME=PROXY` (the name and each name under it) `cidr:ADDR/PREFIX=PROXY` (IPv4 or IPv6) or `cidr:@FILE=PROXY` (one prefix on each line of FILE; `#` starts a comment). PROXY can be `direct` (TCP from podnet-netns, no proxy). The first rule that matches is used. |
+| `-r, --rule SPEC` | A route for some destinations: `domain:NAME=PROXY`, `domain:.NAME=PROXY` (the name and each name under it) `cidr:ADDR/PREFIX=PROXY` (IPv4 or IPv6) or `cidr:@FILE=PROXY` (one prefix on each line of FILE; `#` starts a comment). PROXY can be `direct` (TCP from podnet-netns, no proxy). PROXY can be `reject` or `block` (the words of the WARP rules): the pod refuses the flow. With `seccomp`, `connect` fails with `ECONNREFUSED` and a datagram send with `EACCES`. With `netns`, the program gets a RST, and the pod drops a datagram. `--serve` answers SOCKS5 reply `0x02` or HTTP 403. A TCP connect to `127.0.0.0/8` with `seccomp` does not read the rules. `-v` prints each refusal with the count. The first rule that matches is used. |
+| `--default-action ACTION` | `allow` (default) or `reject`: what the pod does with a target that no rule matches. `reject` refuses it as a `reject` rule does: with `seccomp`, `connect` fails with `ECONNREFUSED` and a datagram send with `EACCES`; with `netns`, the program gets a RST, and the pod drops a datagram. The rule name of the refusal is `default`. |
+| `--flow-log FILE` | Append one JSON line to `FILE` (mode 0600) for each decision: `time`, `event` (`dial`), `flow`, `proto` (`tcp` or `udp`), `target`, `rule` (the rule text, `default` or `loopback`), `chain` and `verdict` (`allow`, `direct` or `reject`). A UDP socket gets one line for each destination. Each relayed TCP flow also gets a line at its close (`event` `close`, `bytes_out` from the program, `bytes_in` to the program). With `seccomp`, the pod then relays each TCP flow: the program does not get the socket of the upstream. `-v` stays the log for humans. |
 | `--map NAME=ADDR` | Resolve `NAME` to `ADDR`, with no upstream. |
 | `--backend NAME` | `auto` (default), `netns` or `seccomp`. |
-| `--prefer-udp` | With `auto`: `seccomp` first when it works, because it carries all UDP (`netns` carries DNS only). `podnet warp run` sets it. |
+| `--prefer-udp` | With `auto`: `seccomp` first when it works, because it carries UDP datagrams of each size (`netns` carries a datagram of 1500 bytes at most). `podnet warp run` sets it. |
 | `--name-backend` | Write one line on stderr that names the backend that runs (also after `auto`) and its limits. `podnet warp exec` and `podnet warp shell` set it. `PODNET_NETNS_QUIET` (`podnet -q`) removes the line. |
 | `--keep-proxy-env` | Keep `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY` and their lower-case forms for the program. By default the program does not get them: the pod is its egress, and a program that used them would send to a host proxy that it cannot reach. |
 | `--inbound-dir DIR` | Seccomp backend only: where a port that the program listens on becomes a unix socket (`DIR/<port>.sock`). The default is `$XDG_RUNTIME_DIR/podnet-netns-inbound` when that directory is of the user, else `$TMPDIR/podnet-netns-inbound-<uid>`. A new directory gets mode 0700. A directory of another user, a symbolic link, or a directory that the group or others can write is refused (exit 3). With `--backend netns` it is a usage error (exit 64); when `auto` picks netns, a warning says that it is not used. |
@@ -35,6 +37,26 @@ podnet pod doctor --json
 backend can run. The seccomp probe runs in a child process. It sets
 `no_new_privs` before it installs its filter, as the backend does: an
 unprivileged process cannot install the filter without it.
+
+## The life of the pod
+
+`podnet pod` gives the exit code of its program at the exit of the program.
+A process that the program starts (a daemon) keeps the network of the pod:
+
+* The pod runs in a back process. The front process returns the exit code
+  of the program, and the back stays while a process of the pod lives.
+* `netns`: the first process of the namespace is a reaper
+  (`PR_SET_CHILD_SUBREAPER`). It starts the program and reaps each orphan.
+  The router ends when the reaper has no child.
+* `seccomp`: the supervisor is the reaper. It ends when no task uses the
+  filter, or when it has no child.
+* When no other process lives, the pod ends as before, and the front
+  returns after the relays finish.
+* After the exit of the program, the back puts `/dev/null` on its standard
+  input and output. With `-v`, it keeps its standard error when that is a
+  terminal or a file.
+* `podnet warp run` runs the pod on a thread: there the pod ends with its
+  program.
 
 ## Backends
 
@@ -59,9 +81,25 @@ socket) when there is one, else to TCP on the host.
   the fake-IP pool. The answer comes from the address that the program sent
   the query to.
 
+* The parent takes each other UDP datagram of the program before the stack
+  (T-111). Each flow (source, source port, destination, destination port)
+  has its own task, so two flows to one port stay apart. The task sends the
+  datagrams to the first proxy of the chain of the destination: in the
+  stream of the proxy (SOCKS5 command `0x83`) for a proxy on a unix socket,
+  else with `UDP ASSOCIATE`. A `direct` rule sends them from a UDP socket
+  of the host. A fake address goes to the proxy as its name. Each reply
+  comes from the address that the program sent to.
+* A flow with no datagram for 60 seconds ends. The table holds 256 flows;
+  a new flow above that ends the flow that was idle longest.
+* Each flow has a queue of 64 datagrams. When the queue is full, the
+  parent stops the read of the TUN until the queue has room: the kernel of
+  the pod then counts the loss. A full queue does not end the flow.
+* A datagram of the program that is larger than the MTU (1500 bytes) is a
+  fragment, and it does not go through. A larger reply goes to the program
+  as fragments.
+
 Needs: unprivileged user namespaces and `/dev/net/tun`. This backend carries
-TCP and DNS. It does not carry other UDP, and no backend of the pod carries
-ICMP (`ping`) to the internet. The `seccomp` backend answers an echo to the
+TCP and UDP. No backend of the pod carries ICMP (`ping`) to the internet. The `seccomp` backend answers an echo to the
 gateway of the pod (see below).
 
 A listener of the program (for example `podnet connect -L tcp://127.0.0.1:8080`)

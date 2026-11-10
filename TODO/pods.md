@@ -13,7 +13,7 @@ starts, or after it ends.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -46,6 +46,17 @@ connect succeeds.
 
 T-063 is done.
 
+## Done
+
+2026-11-10, commit c08818a (`T-108, T-107: the pod lives past its first program`). The supervisor
+runs in a back process (`crates/podnet-netns/src/outlive.rs`) and is the subreaper of the pod. At
+the exit of the first child, when other tasks use the filter, the front returns the exit code at
+once; the back reaps each orphan and ends at POLLHUP or when it has no child. With no other task,
+the pod drains the relays as before. Test: `seccomp_pod_outlives_its_first_child`
+(`tests/pod_seccomp/outlive.rs`). `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`: each step 0.
+CI: at the merge.
+
+
 # T-108: netns: the pod lives past its first program
 
 **Source:** `docs/research/podnet/mwan-field.md`, section 3 (F1, W-F1, part a).
@@ -53,7 +64,7 @@ T-063 is done.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -76,6 +87,17 @@ The netns backend ends its router when the first program exits, as the seccomp b
 ```sh
 cargo test --workspace -- netns_pod_outlives_its_first_child
 ```
+
+## Done
+
+2026-11-10, commit c08818a (`T-108, T-107: the pod lives past its first program`). The first
+process of the namespace is a reaper (`PR_SET_CHILD_SUBREAPER`): it starts the program, reaps each
+orphan, and reports the status of the program to the router. The pod runs in a back process
+(`crates/podnet-netns/src/outlive.rs`); the front returns the exit code at once, and the router
+stays until the reaper ends. Test: `netns_pod_outlives_its_first_child` (`tests/pod_seccomp/outlive.rs`):
+the pod returns in less than 2.5 s, and the daemon connects through the pod after 3 s.
+`TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`: each step 0. CI: at the merge.
+
 
 # T-109: `warp exec --detach --name N` keeps a pod under the supervisor
 
@@ -162,7 +184,7 @@ T-109 is done.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -195,6 +217,21 @@ emulates the sockets. Thus a user must choose between UDP and correct socket cal
 ```sh
 cargo test --workspace -- netns_backend_relays_udp netns_backend_relays_udp_in_the_stream netns_two_flows_to_one_port_lose_nothing netns_udp_flow_is_reaped an_empty_datagram_survives
 ```
+
+## Done
+
+2026-11-10, commit b63fa79 (`T-111: netns: generic UDP`). New file
+`crates/podnet-netns/src/netns/udpflow.rs`: the flow table (60 s idle, 256 flows, the longest idle
+flow goes at the cap), one task for each flow (0x83 in the stream for a unix proxy, else
+`UDP ASSOCIATE`, both with `pod_proxy::udp`; a `direct` rule uses a host UDP socket), the reply
+packets with the addresses swapped (fragments above the MTU), and a queue of 64 datagrams for each
+flow: a full queue holds the datagram and stops the read of the TUN, with no failover (GitHub
+#372). The Prove command: 5 passed (`netns_backend_relays_udp`,
+`netns_backend_relays_udp_in_the_stream`, `netns_two_flows_to_one_port_lose_nothing`,
+`netns_udp_flow_is_reaped`, `an_empty_datagram_survives`). Also: `a_large_reply_becomes_fragments`,
+`a_partial_stream_write_keeps_the_record_stream_aligned` (a stream that takes 5 bytes for each
+write). `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`: each step 0. CI: at the merge.
+
 
 # T-112: netns: the gateway address reaches the loopback of the host, when the user asks
 
@@ -410,7 +447,7 @@ cargo test -p podnet-netns --lib -- doctor_netfilter_row_has_a_verdict
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -445,6 +482,22 @@ cargo test --test pod_seccomp_rules -- seccomp_block_rule_refuses_connect seccom
 cargo test --workspace -- reject_and_block_mean_the_same_in_both_rule_engines
 ```
 
+## Done
+
+2026-11-10, commit 727dc98 (`T-156: pod: a reject action in -r, for TCP and for datagrams`). The
+matcher, `Rule`, `RuleAction { Proxy, Reject }` and `select_chain` are in
+`crates/podnet-netns/src/rules.rs`; `reject` and `block` parse at the `=` split. A refusal: seccomp
+`connect` gives `ECONNREFUSED`; a seccomp datagram (`sendto`, `sendmsg`, `sendmmsg`, `write`) gives
+`EACCES`; netns gives a RST and drops a datagram; the front door answers SOCKS5 0x02 and HTTP 403.
+`-v` prints each refusal with the count. A TCP connect to loopback with seccomp stays direct. The
+Prove commands: 2 passed (`seccomp_block_rule_refuses_connect`,
+`seccomp_reject_rule_refuses_a_datagram`) and 1 passed
+(`reject_and_block_mean_the_same_in_both_rule_engines`, `tests/rule_words.rs`). Also:
+`netns_block_rule_refuses_connect`, `a_rule_with_an_unknown_action_is_a_usage_error`,
+`a_reject_rule_refuses_and_names_the_rule`. `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`: each
+step 0. CI: at the merge. GitHub #354 closes at the merge.
+
+
 # T-157: pod: `--default-action` and a JSON flow record (GitHub #355)
 
 **Source:** GitHub #355 (https://github.com/PodUtils/podnet/issues/355) (fixes 1 to 3, 5)
@@ -452,7 +505,7 @@ cargo test --workspace -- reject_and_block_mean_the_same_in_both_rule_engines
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -480,6 +533,19 @@ destination, and no machine record of (destination, rule, verdict). The `-v` log
 ```sh
 cargo test --test pod_seccomp_rules -- seccomp_default_reject_refuses_an_undeclared_host seccomp_flow_log_has_one_line_per_decision
 ```
+
+## Done
+
+2026-11-10, commit c3ecc07 (`T-157: pod: --default-action and a JSON flow record`).
+`--default-action allow|reject`: `reject` adds a last rule (`RuleMatch::Any`, name `default`) that
+refuses as T-156 does. `--flow-log FILE` (`crates/podnet-netns/src/flowlog.rs`): one JSON line for
+each decision (time, target, rule or `default`, chain, verdict) and one at the close of each
+relayed TCP flow (`bytes_out`, `bytes_in`), for the seccomp connect and datagrams, the netns TCP and
+UDP flows and the front door. With `--flow-log`, the seccomp pod relays each TCP flow (no hand-off)
+to count the bytes. The README gives the semantics of each backend. The Prove command: 2 passed.
+Also: `netns_flow_log_has_one_line_per_decision`. `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`:
+each step 0. CI: at the merge. GitHub #355 (fixes 1 to 3, 5) closes at the merge.
+
 
 # T-158: pod: `--learn` and `--fail-on-violation` (GitHub #355)
 
@@ -576,7 +642,7 @@ counter. The pod sees a bare errno.
 
 ## Premise
 
-- `crates/podnet-netns/src/seccomp/mod.rs:384` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
+- `crates/podnet-netns/src/seccomp/mod.rs:453` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
   refuses), `socket.rs:19-21` (`EMFILE`), `seccomp/mod.rs:326-331` (`EIO` or `ECONNREFUSED`).
 - Not measured: the 5000-connection run of the issue.
 

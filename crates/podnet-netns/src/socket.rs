@@ -90,7 +90,11 @@ pub(crate) fn handle_socket(
         map.insert(key, entry);
     }
     if verbose {
-        eprintln!("podnet-netns: {}", emulation_line(domain, kind, icmp));
+        eprintln!(
+            "{}: {}",
+            crate::cli::program_name(),
+            emulation_line(domain, kind, icmp)
+        );
     }
     Ok(())
 }

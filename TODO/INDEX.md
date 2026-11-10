@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 88 open, 3 partial, 19 blocked, 114 done.**
+**224 entries: 82 open, 3 partial, 19 blocked, 120 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 50 | 2 | 13 | 72 | 137 |
-| P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 88 | 3 | 19 | 114 | 224 |
+| P2 | 45 | 2 | 13 | 77 | 137 |
+| P3 | 34 | 0 | 4 | 23 | 61 |
+| **All** | 82 | 3 | 19 | 120 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -152,11 +152,11 @@ M8 Overlays, M9 Later.
 | [T-104](services.md) | P2 | M | M6 | feature | open | The podnet relay as a carrier of a transfer |
 | [T-105](services.md) | P2 | M | M6 | feature | open | `podnet send` and `podnet receive` |
 | [T-106](services.md) | P2 | M | M6 | measurement | open | An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB |
-| [T-107](pods.md) | P2 | M | M7 | feature | open | seccomp: the pod lives past its first program |
-| [T-108](pods.md) | P2 | S | M7 | feature | open | netns: the pod lives past its first program |
+| [T-107](pods.md) | P2 | M | M7 | feature | done | seccomp: the pod lives past its first program |
+| [T-108](pods.md) | P2 | S | M7 | feature | done | netns: the pod lives past its first program |
 | [T-109](pods.md) | P2 | M | M7 | feature | open | `warp exec --detach --name N` keeps a pod under the supervisor |
 | [T-110](pods.md) | P2 | M | M7 | feature | open | `warp exec --join N` runs a command in a detached pod |
-| [T-111](pods.md) | P2 | M | M7 | feature | open | netns: generic UDP |
+| [T-111](pods.md) | P2 | M | M7 | feature | done | netns: generic UDP |
 | [T-112](pods.md) | P3 | S | M7 | feature | open | netns: the gateway address reaches the loopback of the host, when the user asks |
 | [T-113](pods.md) | P2 | S | M7 | feature | open | `warp exec` and `warp shell` try the netns backend first |
 | [T-114](overlays.md) | P2 | M | M8 | chore | open | A headscale harness in CI for the `tailscaled` sidecar |
@@ -180,7 +180,7 @@ M8 Overlays, M9 Later.
 | [T-132](later.md) | P3 | S | M9 | chore | open | `try_update` in place of the macro `update_atomic!` |
 | [T-133](later.md) | P3 | S | M9 | chore | done | Zig from the community mirrors in the release workflow |
 | [T-134](later.md) | P3 | M | M9 | chore | open | A weekly watch of the relay contract |
-| [T-135](fixes.md) | P3 | S | M5 | defect | open | `podnet pod` prints its own program name in each message and in `--version` |
+| [T-135](fixes.md) | P3 | S | M5 | defect | done | `podnet pod` prints its own program name in each message and in `--version` |
 | [T-136](rename.md) | P1 | S | M1 | defect | done | live: two runs in a row failed before the transfer of the repository (GitHub #311) |
 | [T-137](crates.md) | P1 | M | M3 | chore | partial | podnet uses the shared crates of `PodUtils/podcrates` |
 | [T-138](fixes.md) | P2 | S | M5 | defect | done | live: two runs in a row failed on the edge and WARP services (GitHub #316) |
@@ -201,8 +201,8 @@ M8 Overlays, M9 Later.
 | [T-153](later.md) | P3 | L | M9 | feature | open | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
 | [T-154](fixes.md) | P2 | M | M5 | chore | done | seccomp: fuzz targets for the notification handlers (GitHub #353) |
 | [T-155](fixes.md) | P3 | M | M5 | chore | done | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
-| [T-156](pods.md) | P2 | M | M7 | feature | open | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |
-| [T-157](pods.md) | P2 | M | M7 | feature | open | pod: `--default-action` and a JSON flow record (GitHub #355) |
+| [T-156](pods.md) | P2 | M | M7 | feature | done | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |
+| [T-157](pods.md) | P2 | M | M7 | feature | done | pod: `--default-action` and a JSON flow record (GitHub #355) |
 | [T-158](pods.md) | P3 | M | M7 | feature | open | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
 | [T-159](fixes.md) | P3 | S | M5 | docs | done | research documents are readings; fix the stale counts of the record (GitHub #356) |
 | [T-160](fixes.md) | P2 | S | M5 | defect | done | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |

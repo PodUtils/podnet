@@ -85,10 +85,10 @@ fn a_port_0_front_door_prints_the_bound_port() {
         .unwrap();
     let mut lines = std::io::BufReader::new(child.stderr.take().unwrap()).lines();
     let line = lines
-        .find_map(|l| l.ok().filter(|l| l.starts_with("podnet-netns: serving ")))
+        .find_map(|l| l.ok().filter(|l| l.starts_with("podnet pod: serving ")))
         .expect("a serving line");
     let addr: std::net::SocketAddr = line
-        .trim_start_matches("podnet-netns: serving tcp://")
+        .trim_start_matches("podnet pod: serving tcp://")
         .split_whitespace()
         .next()
         .unwrap()
@@ -99,4 +99,33 @@ fn a_port_0_front_door_prints_the_bound_port() {
     let _ = child.wait();
     assert_ne!(addr.port(), 0, "{line}");
     connect.unwrap_or_else(|e| panic!("connect to {addr}: {e}"));
+}
+
+// T-135: `podnet pod` names itself: `--version` prints the version line of
+// podnet, and each message starts with `podnet pod:`.
+#[test]
+fn podnet_pod_prints_its_own_program_name() {
+    let version = pod_command().arg("--version").output().unwrap();
+    assert!(version.status.success());
+    let line = String::from_utf8_lossy(&version.stdout).into_owned();
+    let top = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .arg("--version")
+        .output()
+        .unwrap();
+    assert!(line.starts_with("podnet "), "{line:?}");
+    assert!(!line.contains("podnet-netns"), "{line:?}");
+    assert_eq!(
+        line,
+        String::from_utf8_lossy(&top.stdout),
+        "the line of the CLI"
+    );
+
+    let error = pod_command()
+        .args(["-x", "bad", "--", "true"])
+        .output()
+        .unwrap();
+    assert_eq!(error.status.code(), Some(64));
+    let text = String::from_utf8_lossy(&error.stderr).into_owned();
+    assert!(text.starts_with("podnet pod: "), "{text:?}");
+    assert!(!text.contains("podnet-netns"), "{text:?}");
 }
