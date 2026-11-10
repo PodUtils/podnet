@@ -231,7 +231,7 @@ passed. Plant: `return Ok(())` at the start of each of the five arms in `src/mai
 **Milestone:** M0
 **Priority:** P2
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -279,6 +279,13 @@ cargo test --workspace -- warp_stand_in_
 
 Each new test name starts with `warp_stand_in_`. Plant: a wrong pinned key in the edge stand-in.
 The test of `warp proxy` must fail on the pin.
+
+## Blocker
+
+The WARP stand-ins (the registration API and the MASQUE edge) come through PodUtils/podcrates (the
+Correction). podcrates v0.10.0 has none: `pod-testkit` holds `host.rs` and `screen.rs` only, and
+podcrates T-028 (`pod-warp`) names the stand-in of `PodUtils/podssh:crates/podssh-warp` as its source.
+This entry starts when podnet takes a tag of podcrates with the stand-ins (T-137).
 
 ## Start condition
 

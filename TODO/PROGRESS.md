@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 224 entries: 101 open, 3 partial, 16 blocked, 104 done.
+`TODO/INDEX.md` holds 224 entries: 100 open, 3 partial, 17 blocked, 104 done.
 
 ## State
 
@@ -32,7 +32,7 @@ Finish each entry, close it in place, change this page in the same commit, then 
 one. In a milestone: P1, then P2, then P3. At one priority, an S entry goes first when it does
 not wait for a larger one.
 
-1. **M0, the record and the guards:** T-012.
+1. **M0, the record and the guards:** T-012 (blocked: the WARP stand-ins of `pod-warp`, T-137).
 2. **M1, the rename:** T-024, then T-025 (betas are allowed, 2026-11-09).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
