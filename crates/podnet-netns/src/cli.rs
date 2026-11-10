@@ -42,7 +42,7 @@ pub fn set_program_name(name: &'static str) {
     let _ = PROGRAM_NAME.set(name);
 }
 
-fn program_name() -> &'static str {
+pub(crate) fn program_name() -> &'static str {
     PROGRAM_NAME.get().copied().unwrap_or("podnet-netns")
 }
 
@@ -107,7 +107,9 @@ Options:
   -h, --help               Print help
 
 Exit status: the exit code of the program; 64 for a usage mistake (also no
-proxy at all); 3 when no backend can run on this host. doctor measures what
+proxy at all); 3 when no backend can run on this host. The pod returns when
+the program exits; a process that the program started keeps the network of
+the pod until it exits. doctor measures what
 the host permits and exits 3 when no backend can run.
 "
     )

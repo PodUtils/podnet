@@ -1391,7 +1391,7 @@ at the start, 311 after 100 sockets, 311 after the close. A long-lived pod runs 
 2. Give each `Sock::Datagram` a stop signal (a `tokio::sync::watch` sender or a `CancellationToken`).
    Select on it in both reader loops. Drop of the entry sends it.
 3. Send the stop from `handle_close`, `sweep` and the shutdown near `drain_relays` (`seccomp.rs:851`).
-4. Correct `crates/podnet-netns/README.md:81-83` so that it separates `read` and `write` on TCP from
+4. Correct `crates/podnet-netns/README.md:101-103` so that it separates `read` and `write` on TCP from
    the UDP path (the write part belongs to T-143).
 
 ## Prove
@@ -1435,7 +1435,7 @@ lines. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 `write(2)` on an emulated datagram socket returns success, and the datagram never leaves the pod. The
 reply never comes. `sendto`, `send`, `sendmsg` and `sendmmsg` work. Programs write datagrams with
 `write` after `connect` (C code, Python `os.write`, some Go paths). The README says that `write` works
-on the pair (`crates/podnet-netns/README.md:81-83`). That is true for TCP only.
+on the pair (`crates/podnet-netns/README.md:101-103`). That is true for TCP only.
 
 ## Premise
 

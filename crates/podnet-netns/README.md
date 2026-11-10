@@ -36,6 +36,26 @@ backend can run. The seccomp probe runs in a child process. It sets
 `no_new_privs` before it installs its filter, as the backend does: an
 unprivileged process cannot install the filter without it.
 
+## The life of the pod
+
+`podnet pod` gives the exit code of its program at the exit of the program.
+A process that the program starts (a daemon) keeps the network of the pod:
+
+* The pod runs in a back process. The front process returns the exit code
+  of the program, and the back stays while a process of the pod lives.
+* `netns`: the first process of the namespace is a reaper
+  (`PR_SET_CHILD_SUBREAPER`). It starts the program and reaps each orphan.
+  The router ends when the reaper has no child.
+* `seccomp`: the supervisor is the reaper. It ends when no task uses the
+  filter, or when it has no child.
+* When no other process lives, the pod ends as before, and the front
+  returns after the relays finish.
+* After the exit of the program, the back puts `/dev/null` on its standard
+  input and output. With `-v`, it keeps its standard error when that is a
+  terminal or a file.
+* `podnet warp run` runs the pod on a thread: there the pod ends with its
+  program.
+
 ## Backends
 
 `--backend auto` uses `netns` when the host permits `unshare`, else `seccomp`.

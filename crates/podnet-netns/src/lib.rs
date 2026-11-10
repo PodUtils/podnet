@@ -50,6 +50,7 @@ mod handoff;
 mod icmp;
 mod inbox;
 mod netns;
+mod outlive;
 mod recvmmsg;
 mod seccomp;
 mod socket;
