@@ -563,6 +563,16 @@ over 1 KiB (a gzip body) pass.
 
 T-084 is done.
 
+## Correction
+
+2026-11-10, the lead's call: T-084 is open (it waits on M4), and T-092 does not wait for it. The git
+router uses the access layer of the file server (`crates/podnet-serve/src/files/access.rs`, T-089: the
+read and write roles, the users file, `--anon-read`). The use is one call (`Access::grant`), so T-084 can
+replace it.
+
+2026-11-10, Premise: the tests ran with git 2.43.0 only. The minimum version of git for a chunked body is
+not measured here.
+
 # T-093: Git: an SSH server for upload-pack and receive-pack
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 1.5, 5.4 and 5.8;
