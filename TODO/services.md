@@ -519,7 +519,7 @@ owner's ruling of 2026-11-05 (`docs/decisions.md`, Git hosting).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -572,6 +572,25 @@ replace it.
 
 2026-11-10, Premise: the tests ran with git 2.43.0 only. The minimum version of git for a chunked body is
 not measured here.
+
+## Done
+
+2026-11-10, commit 60a1d80. `crates/podnet-serve/src/git/cgi.rs` is a CGI/1.1 runner: a clean environment,
+the meta-variables of the request (`CONTENT_LENGTH` only with a `Content-Length`; no `Authorization` and no
+`Cookie`), `REMOTE_USER` only after a good authentication, the parse of the CGI head (`Status:`), and the
+body in both directions as a stream. `crates/podnet-serve/src/git/http.rs` answers only the smart protocol
+(`info/refs?service=`, `git-upload-pack`, `git-receive-pack`); each other path, `..`, a dot segment and
+`/.git/config` get 404. A fetch needs the read role, a push the write role; a push with no credentials or a
+wrong password gets 401 with a Basic challenge. `create_repo` (for `--create-on-push` of T-094) makes a bare
+repository on a push of a write user, over HTTP and SSH.
+
+- `cargo test --workspace -- git_http_clone_fetch_and_push`: 1 passed (the git client: a clone, a fetch with
+  protocol v2 and a gzip body of 100 haves, an anonymous push and a wrong password refused, a push of
+  8 MiB with `http.postBuffer=1024` as a chunked body).
+- Tests added (in `crates/podnet-serve/src/git/http_tests.rs`): `git_http_clone_fetch_and_push`,
+  `git_http_refuses_paths_and_bad_credentials`, `git_http_create_on_push`,
+  `parse_takes_the_smart_protocol_only`, `cgi_head_and_variables`.
+- `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-093: Git: an SSH server for upload-pack and receive-pack
 
