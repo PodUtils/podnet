@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 104 open, 3 partial, 14 blocked, 103 done.**
+**224 entries: 101 open, 3 partial, 16 blocked, 104 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 65 | 2 | 8 | 62 | 137 |
+| P2 | 62 | 2 | 10 | 63 | 137 |
 | P3 | 36 | 0 | 4 | 21 | 61 |
-| **All** | 104 | 3 | 14 | 103 | 224 |
+| **All** | 101 | 3 | 16 | 104 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -87,9 +87,9 @@ M8 Overlays, M9 Later.
 | [T-039](split.md) | P2 | M | M2 | chore | open | Split `src/edge_h2.rs` and `src/tunnel.rs` |
 | [T-040](split.md) | P2 | L | M2 | chore | done | Split the seccomp backend and the netns backend of the pod crate |
 | [T-041](split.md) | P2 | M | M2 | chore | done | Split the four large test files |
-| [T-042](split.md) | P2 | M | M2 | chore | open | Cut the upward references 1 to 7: `net`, `util`, `fetch`, `hop`, `report`, `detach` and `relay_reverse` |
-| [T-043](split.md) | P2 | M | M2 | chore | open | Cut the upward references 8, 9 and 18: a WebSocket bridge and `Metered` in the core |
-| [T-044](split.md) | P2 | L | M2 | chore | open | Cut the upward references 10 to 17: the WARP QUIC configuration, `ShareLink`, `RULE_KEYS`, `connect_tunnel` and the edge side of `ws` |
+| [T-042](split.md) | P2 | M | M2 | chore | done | Cut the upward references 1 to 7: `net`, `util`, `fetch`, `hop`, `report`, `detach` and `relay_reverse` |
+| [T-043](split.md) | P2 | M | M2 | chore | blocked | Cut the upward references 8, 9 and 18: a WebSocket bridge and `Metered` in the core |
+| [T-044](split.md) | P2 | L | M2 | chore | blocked | Cut the upward references 10 to 17: the WARP QUIC configuration, `ShareLink`, `RULE_KEYS`, `connect_tunnel` and the edge side of `ws` |
 | [T-045](split.md) | P2 | S | M2 | chore | open | Each file is under 800 lines, and the allowlists of the size check and the layer check are empty |
 | [T-046](crates.md) | P2 | M | M3 | chore | open | Prepare the workspace for more crates: the print macros, the build facts, the scans, the package list and the test helpers |
 | [T-047](crates.md) | P2 | L | M3 | chore | open | Extract the crate `podnet-core` |

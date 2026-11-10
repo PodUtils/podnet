@@ -926,7 +926,7 @@ failed in the same way after T-037. CI: at the merge.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -975,6 +975,23 @@ T-010 is done.
 `src/warp/` leave podnet with `pod-proxy`, `pod-relay` and `pod-warp` (T-137). Read the rows again at
 the start. Cut only the references that stay in podnet.
 
+## Done
+
+2026-11-10, commits 25378d9 (`detach -> update`: `previous_of` in `src/detach.rs`, a `pub use` in
+`src/update.rs`), b87ba27 and 22b00a2 (`net -> ingress`: `dial`, `origin_label`, the TLS connectors
+and `note_unverified` in `src/origin/dial.rs`; the tests stay in `src/net.rs`), 42a9c93
+(`util -> feature`: the doc names `StaticResponse` as text), ffddf71 (`hop -> cloudflare`: the type
+`Refused` in `src/hop.rs`, a `pub use` in `src/cloudflare/rpc.rs`) and c154ccf
+(`report -> quicktunnel`: the type `Refusal` in `src/report.rs`; the binary gives
+`quicktunnel::retry_of` to `report::read_refusals_with`; a `pub use` in `src/quicktunnel.rs`).
+The rows of `fetch` and `relay_reverse` were not in `scripts/layers-allow.txt` at the start
+(`pod-proxy` and `pod_core::clock`). `scripts/layers-allow.txt` has five rows fewer;
+`python3 -I scripts/check-layers.py`: 0 faults. `scripts/agent/parity-snapshot.sh` with a map of
+the six moved items: 1,295 commands, 1,108 tests, 1,294 items (1,293 before; the new item is
+`report::read_refusals_with`), none lost. `sh scripts/agent/check.sh`,
+`unshare -n -- cargo test --offline --workspace --no-fail-fast` (1,107 passed, 1 ignored) and
+`sh scripts/restricted-host.sh --no-fail-fast`: exit 0. CI: at the merge.
+
 # T-043: Cut the upward references 8, 9 and 18: a WebSocket bridge and `Metered` in the core
 
 **Source:** `docs/research/podnet/architecture.md`, section 3.3 (rows 8, 9 and 18).
@@ -982,7 +999,7 @@ the start. Cut only the references that stay in podnet.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1012,6 +1029,15 @@ cargo test --test relay_reverse --test connect
 gh workflow run live.yml
 ```
 
+## Blocker
+
+The session of `PodUtils/podcrates` and T-137. The three rows of the entry stay in
+`scripts/layers-allow.txt`: `ws -> relay_reverse`, `ws_relay -> edge_h2` and `ws_relay -> ws`.
+Each starts and ends in frozen code: `src/ws.rs` (`pod-ws`), `src/ws_relay.rs` and
+`src/relay_reverse.rs` (`pod-relay`), `src/edge_h2.rs` (`pod-cloudflare`). A cut is a change in
+these files beyond a fix. The rows disappear when podnet takes `pod-ws`, `pod-relay` (T-049) and
+`pod-cloudflare` (T-052). Then remove the rows and close the entry.
+
 ## Start condition
 
 T-010 is done.
@@ -1028,7 +1054,7 @@ PodUtils/podcrates. The three rows disappear when podnet takes these crates. Rea
 **Milestone:** M2
 **Priority:** P2
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1065,6 +1091,18 @@ gh workflow run live.yml
 ```
 
 The allowlist of the layer check is empty.
+
+## Blocker
+
+The session of `PodUtils/podcrates` and T-137. Four rows are cut (2026-11-10): `ingress -> config`
+(3714039: `RULE_KEYS` in `src/ingress.rs`, a `pub use` in `src/config.rs`), `relay -> proxy`
+(bc0f58d) and `transport -> proxy` (f1f69c4: they call `src/connect.rs`), `feature -> quicktunnel`
+(799d4be: `ShareLink::from_quick_tunnel` takes the URL; a8a36bf: the layer check skips each file of
+a test module). Four rows stay in `scripts/layers-allow.txt`: `warp -> cloudflare` and
+`warp -> quicktunnel` (`src/warp/`: `pod-warp`, to `pod-cloudflare`), `ws -> cloudflare` and
+`ws -> proxy` (`src/ws.rs`: `pod-ws`, to `pod-cloudflare`). Each starts in frozen code; a cut is a
+change in it beyond a fix. The rows disappear when podnet takes `pod-ws`, `pod-warp` (T-050) and
+`pod-cloudflare` (T-052). Then remove the rows and close the entry.
 
 ## Start condition
 
