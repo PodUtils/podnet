@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 224 entries: 93 open, 3 partial, 18 blocked, 110 done.
+`TODO/INDEX.md` holds 224 entries: 92 open, 3 partial, 18 blocked, 111 done.
 
 ## State
 
@@ -45,7 +45,7 @@ not wait for a larger one.
    and T-052 are the takes of `pod-relay`, `pod-warp` and `pod-cloudflare` of `PodUtils/podcrates`
    (T-137): do not do them in podnet.
 6. **M4, the adapters:** T-055, T-056, T-057, T-058, T-059, T-060, T-061, T-062.
-7. **M6, the services:** the shared parts T-082, T-083, T-084, T-085, T-086 (a take of
+7. **M6, the services:** the shared parts T-083, T-084, T-085, T-086 (a take of
    `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
    server T-088, T-089, T-090, T-091; git T-092, T-093, T-094; the router T-095, T-096, T-097,
    T-098, T-099, T-100, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.

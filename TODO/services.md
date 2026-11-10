@@ -11,7 +11,7 @@ it comes through the shared crates of `PodUtils/podcrates` (`docs/decisions.md`,
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -36,6 +36,14 @@ cargo test --test connect -- connect_stdio_carries_a_stream
 ```
 
 The test runs a WebSocket forward on the loopback and pipes bytes through `connect --stdio`.
+
+## Done
+
+2026-11-09, commit f16a790. `podnet connect URL --stdio` carries one stream on stdin and stdout
+(`src/cli/cmd/connect_stdio.rs`). The end of stdin closes the WebSocket; the close of the remote ends the
+command. `cargo test --test connect -- connect_stdio_carries_a_stream`: 1 passed. Tests added:
+`connect_stdio_carries_a_stream`, `connect_stdio_ends_when_the_remote_closes`,
+`connect_stdio_exits_69_and_refuses_listeners`. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-083: A relay node serves a handler in the process, with no socket file
 

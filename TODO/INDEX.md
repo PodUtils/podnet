@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 93 open, 3 partial, 18 blocked, 110 done.**
+**224 entries: 92 open, 3 partial, 18 blocked, 111 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 55 | 2 | 12 | 68 | 137 |
+| P2 | 54 | 2 | 12 | 69 | 137 |
 | P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 93 | 3 | 18 | 110 | 224 |
+| **All** | 92 | 3 | 18 | 111 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -127,7 +127,7 @@ M8 Overlays, M9 Later.
 | [T-079](fixes.md) | P3 | S | M5 | measurement | done | Read the numbers of #206 and #184 in a live run |
 | [T-080](fixes.md) | P3 | M | M5 | feature | done | The errors of a config file name the line |
 | [T-081](fixes.md) | P2 | S | M5 | feature | done | The tailnet front door warns when `tailscaled` is not logged in |
-| [T-082](services.md) | P2 | S | M6 | feature | open | `connect --stdio` for an SSH `ProxyCommand` through `tunnel --forward` |
+| [T-082](services.md) | P2 | S | M6 | feature | done | `connect --stdio` for an SSH `ProxyCommand` through `tunnel --forward` |
 | [T-083](services.md) | P2 | S | M6 | feature | open | A relay node serves a handler in the process, with no socket file |
 | [T-084](services.md) | P2 | M | M6 | feature | open | One HTTP authentication layer for the local listener, the tunnel and the relay |
 | [T-085](services.md) | P2 | M | M6 | feature | open | A ustar writer and reader, and a directory as one tar download of the file server |
