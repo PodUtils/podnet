@@ -6,6 +6,7 @@ pub(crate) mod args;
 pub(crate) mod client;
 pub(crate) mod export;
 pub(crate) mod front;
+pub(crate) mod join;
 pub(crate) mod kept;
 pub(crate) mod pod;
 pub(crate) mod probe;

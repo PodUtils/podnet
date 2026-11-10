@@ -32,6 +32,7 @@
 
 pub mod dns;
 pub mod fuzzing;
+pub mod join;
 pub mod listen;
 pub mod opening;
 pub mod raw;
@@ -256,7 +257,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
 /// The proxy variables that a program in the pod does not get: the pod is
 /// its egress, and a program that used them would send to a host proxy that
 /// the pod cannot reach (issue 61).
-pub(crate) const PROXY_VARIABLES: &[&str] = &[
+pub const PROXY_VARIABLES: &[&str] = &[
     "ALL_PROXY",
     "all_proxy",
     "HTTPS_PROXY",

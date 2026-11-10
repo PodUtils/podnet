@@ -823,6 +823,13 @@ podnet warp tun --interface podnet0        # TUN interface (needs CAP_NET_ADMIN)
     5 s). The supervisor starts the pod again when it ends; `--no-restart`
     turns it off. `--name N` with no `--detach` runs the pod in the
     foreground as the instance N.
+  * `podnet warp exec --join N -- CMD`: CMD runs in the pod of the instance
+    N. It reaches the loopback listeners of the pod N, and a name gets the
+    address that the pod N gave it. With the netns backend, CMD enters the
+    namespaces of the pod N. With the seccomp backend, a new pod shares the
+    inbound listeners and the fake DNS table of the pod N
+    (`--session $RUN/N.pod` of `podnet pod`). `podnet stop N` does not stop
+    CMD.
   * `--persist`: a marked block in `~/.bashrc` and `~/.profile` loads the env
     file in each new shell, and an interactive shell runs under the pod.
   * `--env-d`: `$XDG_CONFIG_HOME/environment.d/90-podnet-warp.conf`

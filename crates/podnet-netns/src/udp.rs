@@ -328,7 +328,7 @@ pub(crate) async fn send_payload(
         inbox.deliver(&pair, source, &reply).await;
         return Ok(payload.len());
     }
-    let name = dns.name_for_ip(ip).map(str::to_string);
+    let name = dns.name_for_ip_synced(ip).map(str::to_string);
     // T-156: a rule that refuses the destination gives EACCES.
     let target = match &name {
         Some(name) => format!("{name}:{port}"),

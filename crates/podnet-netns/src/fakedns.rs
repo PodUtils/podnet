@@ -11,6 +11,9 @@ pub(crate) struct FakeDns {
     /// Answer AAAA with a fake IPv6 address (the seccomp backend only: the
     /// TUN of the netns backend has no IPv6).
     pub(crate) v6: bool,
+    /// The table that the pods of a session share (T-110): one line
+    /// `ADDRESS NAME` for each fake address, under `flock`.
+    pub(crate) shared: Option<std::path::PathBuf>,
 }
 
 impl FakeDns {
@@ -67,7 +70,76 @@ impl FakeDns {
             by_name: HashMap::new(),
             next: 0,
             v6: false,
+            shared: None,
         }
+    }
+
+    /// Read the shared table under its lock, and give the open file (still
+    /// locked) for an append. `None` with no shared table, or when the file
+    /// cannot be opened (a warning; the pod goes on with its own table).
+    fn sync(&mut self) -> Option<std::fs::File> {
+        use std::io::Read as _;
+        use std::os::unix::fs::OpenOptionsExt as _;
+        let path = self.shared.as_ref()?;
+        let opened = std::fs::OpenOptions::new()
+            .read(true)
+            .append(true)
+            .create(true)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW)
+            .open(path);
+        let mut file = match opened {
+            Ok(file) => file,
+            Err(e) => {
+                crate::warn(&format!(
+                    "warning: the fake DNS table {} cannot be opened ({e}); the pod uses its own",
+                    path.display()
+                ));
+                self.shared = None;
+                return None;
+            }
+        };
+        // SAFETY: flock() on a descriptor that `file` holds open.
+        if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } != 0 {
+            return None;
+        }
+        let mut text = String::new();
+        let _ = file.read_to_string(&mut text);
+        for line in text.lines() {
+            let Some((ip, name)) = line.split_once(' ') else {
+                continue;
+            };
+            let Ok(ip) = ip.parse::<Ipv4Addr>() else {
+                continue;
+            };
+            let index = u32::from(ip).wrapping_sub(FAKE_IP_BASE);
+            if index >= FAKE_IP_COUNT {
+                continue;
+            }
+            self.next = self.next.max(index + 1);
+            // A pin of this pod stays.
+            self.by_name.entry(name.to_string()).or_insert(ip);
+            self.by_ip.insert(ip, name.to_string());
+        }
+        Some(file)
+    }
+
+    /// The name of a fake address of either family. A fake address that
+    /// this pod does not know is read from the shared table (T-110).
+    pub(crate) fn name_for_ip_synced(&mut self, ip: IpAddr) -> Option<&str> {
+        let v4 = match ip {
+            IpAddr::V4(v4) => Some(v4),
+            IpAddr::V6(v6) => unfake_v6(v6),
+        };
+        let unknown = v4.is_some_and(|v4| {
+            u32::from(v4).wrapping_sub(FAKE_IP_BASE) < FAKE_IP_COUNT
+                && !self.by_ip.contains_key(&v4)
+        });
+        if unknown && self.shared.is_some() {
+            // The lock ends when the file closes.
+            drop(self.sync());
+        }
+        self.name_for_ip(ip)
     }
 
     /// The address of `name` (no case): its pin, its pool address, else the
@@ -79,11 +151,20 @@ impl FakeDns {
         if let Some(ip) = self.by_name.get(&name) {
             return Some(*ip);
         }
+        // T-110: another pod of the session can have given the name an
+        // address; the file stays locked until the append.
+        let mut shared = self.sync();
+        if let Some(ip) = self.by_name.get(&name) {
+            return Some(*ip);
+        }
         if self.next >= FAKE_IP_COUNT {
             return None;
         }
         let ip = Ipv4Addr::from((FAKE_IP_BASE + self.next).to_be_bytes());
         self.next += 1;
+        if let Some(file) = shared.as_mut() {
+            let _ = writeln!(file, "{ip} {name}");
+        }
         self.by_name.insert(name.clone(), ip);
         self.by_ip.insert(ip, name);
         Some(ip)
@@ -147,6 +228,30 @@ mod tests {
         assert_eq!(dns.name_for(first), Some("n0.example"));
         assert_eq!(dns.address_for("n0.example"), Some(first));
         assert_eq!(dns.by_ip.len(), FAKE_IP_COUNT as usize);
+    }
+
+    /// T-110: two pods of one session give a name the same address, and
+    /// each finds the name of an address that the other gave.
+    #[test]
+    fn two_pods_of_a_session_share_the_fake_addresses() {
+        let dir = tempfile::tempdir().unwrap();
+        let table = dir.path().join("dns");
+        let mut one = FakeDns::new();
+        let mut two = FakeDns::new();
+        one.shared = Some(table.clone());
+        two.shared = Some(table);
+        let a = one.address_for("a.example").unwrap();
+        let b = two.address_for("b.example").unwrap();
+        assert_ne!(a, b);
+        assert_eq!(two.address_for("A.example"), Some(a));
+        assert_eq!(one.name_for_ip_synced(IpAddr::V4(b)), Some("b.example"));
+        assert_eq!(
+            one.name_for_ip_synced(IpAddr::V6(fake_v6(b))),
+            Some("b.example")
+        );
+        // A pod with no session has its own table.
+        let mut own = FakeDns::new();
+        assert_eq!(own.address_for("b.example"), Some(a));
     }
 
     #[test]

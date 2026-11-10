@@ -168,7 +168,7 @@ pub(crate) fn handle_connect(
         }
         return notif_respond(lfd, id, 0, 0);
     }
-    let target = match (dns.name_for_ip(ip), ip) {
+    let target = match (dns.name_for_ip_synced(ip), ip) {
         (Some(name), _) => format!("{name}:{port}"),
         (None, IpAddr::V4(v4)) => format!("{v4}:{port}"),
         (None, IpAddr::V6(v6)) => format!("[{v6}]:{port}"),

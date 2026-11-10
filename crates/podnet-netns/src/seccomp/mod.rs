@@ -79,6 +79,10 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
     }
     // Issue 306: the inbound directory is private before the program runs.
     crate::listen::private_dir(&args.inbound_dir)?;
+    // T-110: the directory of the session is private too.
+    if let Some(dir) = args.dns_state.as_deref().and_then(std::path::Path::parent) {
+        crate::listen::private_dir(dir)?;
+    }
     // A seccomp filter is per-thread unless TSYNC is used. Install it on a
     // helper thread and fork there: the child inherits the filter, and the
     // listener fd stays in this process's fd table, so no SCM_RIGHTS handshake
@@ -168,7 +172,7 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
         args.rules,
         args.maps,
         args.verbose,
-        args.inbound_dir,
+        (args.inbound_dir, args.dns_state),
     ))
 }
 
@@ -179,7 +183,7 @@ pub(crate) async fn supervise_seccomp(
     rules: Vec<Rule>,
     maps: Vec<(String, IpAddr)>,
     verbose: bool,
-    inbound_dir: std::path::PathBuf,
+    (inbound_dir, dns_state): (std::path::PathBuf, Option<std::path::PathBuf>),
 ) -> Result<i32> {
     // NOTIF_RECV is non-blocking so the shutdown flag is observed; the fd is
     // also pollable, so the loop sleeps on readiness rather than spinning.
@@ -212,6 +216,7 @@ pub(crate) async fn supervise_seccomp(
         verbose,
     };
     dns.v6 = true;
+    dns.shared = dns_state;
     for (name, ip) in &maps {
         dns.pin(name, *ip);
     }

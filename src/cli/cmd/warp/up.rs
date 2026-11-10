@@ -67,10 +67,21 @@ pub(crate) async fn before_client(args: &WarpArgs) -> Result<bool> {
             program,
             at,
             detach,
+            join,
         } => {
+            // T-110: a program in the pod of the instance N.
+            if let Some(name) = join {
+                let code = super::join::join(name, program).await?;
+                std::process::exit(code);
+            }
             // T-109: a named or detached pod is an instance.
             if detach.detach || detach.name.is_some() {
-                let code = super::kept::run(at, rules, program).await?;
+                let name = detach
+                    .name
+                    .clone()
+                    .or_else(|| std::env::var(podnet::detach::NAME_VARIABLE).ok())
+                    .unwrap_or_default();
+                let code = super::kept::run(&name, at, rules, program).await?;
                 podnet::detach::unregister();
                 std::process::exit(code);
             }

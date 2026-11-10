@@ -1402,7 +1402,7 @@ at the start, 311 after 100 sockets, 311 after the close. A long-lived pod runs 
 2. Give each `Sock::Datagram` a stop signal (a `tokio::sync::watch` sender or a `CancellationToken`).
    Select on it in both reader loops. Drop of the entry sends it.
 3. Send the stop from `handle_close`, `sweep` and the shutdown near `drain_relays` (`seccomp.rs:851`).
-4. Correct `crates/podnet-netns/README.md:137-139` so that it separates `read` and `write` on TCP from
+4. Correct `crates/podnet-netns/README.md:138-140` so that it separates `read` and `write` on TCP from
    the UDP path (the write part belongs to T-143).
 
 ## Prove
@@ -1446,7 +1446,7 @@ lines. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 `write(2)` on an emulated datagram socket returns success, and the datagram never leaves the pod. The
 reply never comes. `sendto`, `send`, `sendmsg` and `sendmmsg` work. Programs write datagrams with
 `write` after `connect` (C code, Python `os.write`, some Go paths). The README says that `write` works
-on the pair (`crates/podnet-netns/README.md:137-139`). That is true for TCP only.
+on the pair (`crates/podnet-netns/README.md:138-140`). That is true for TCP only.
 
 ## Premise
 
@@ -2618,7 +2618,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:288-289`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:941-943` uses `net switch --listen tcp://` as its example.
+- `README.md:948-950` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -3162,7 +3162,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1059-1065`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1066-1072`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3242,9 +3242,9 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 ## Premise
 
-- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:414-426` (`warp_up_tun_args`), `:218-222` (the
+- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:425-437` (`warp_up_tun_args`), `:229-233` (the
   proxy path pushes `--replace`).
-- `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:518-533` (`Tun` has
+- `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:529-544` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
 - `crates/podnet-core/src/detach.rs:488-495` (the refusal text).
 

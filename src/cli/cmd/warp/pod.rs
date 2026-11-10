@@ -17,6 +17,16 @@ use std::path::Path;
 use podnet::warp::pod::PodOptions;
 use podnet::warp::up::{env_path, CA_VARIABLES, SHELL_VARIABLE};
 
+/// The pod of a command: the socket of `warp up`, the backend, the rules,
+/// and the directory of the session of a named pod (T-110).
+#[derive(Clone, Copy)]
+pub(crate) struct Pod<'a> {
+    pub(crate) socket: &'a Path,
+    pub(crate) backend: &'a str,
+    pub(crate) rules: &'a [String],
+    pub(crate) session: Option<&'a Path>,
+}
+
 /// True when podnet logs at the debug level (`podnet -v`): the pod then
 /// gets `-v`.
 fn verbose() -> bool {
@@ -25,13 +35,13 @@ fn verbose() -> bool {
 
 /// The arguments of `podnet pod` for the socket of `podnet warp up`. With
 /// no `--prefer-udp`, `auto` takes the netns backend first (T-113).
-pub(crate) fn pod_args(
-    socket: &Path,
-    backend: &str,
-    verbose: bool,
-    rules: &[String],
-    program: &[String],
-) -> Vec<String> {
+pub(crate) fn pod_args(pod: &Pod<'_>, verbose: bool, program: &[String]) -> Vec<String> {
+    let Pod {
+        socket,
+        backend,
+        rules,
+        session,
+    } = *pod;
     let mut argv = vec![
         "pod".to_string(),
         "--backend".to_string(),
@@ -40,6 +50,11 @@ pub(crate) fn pod_args(
     ];
     if verbose {
         argv.push("-v".into());
+    }
+    // T-110: the pods of a session share the state of the seccomp backend.
+    if let Some(dir) = session {
+        argv.push("--session".into());
+        argv.push(dir.display().to_string());
     }
     argv.push("-x".into());
     argv.push(format!("socks5://unix:{}", socket.display()));
@@ -81,7 +96,13 @@ pub(crate) fn exec_in_pod(
         Ok(e) => e,
         Err(e) => return e.into(),
     };
-    let err = pod_command(exe, &socket, &options.backend, rules, program).exec();
+    let pod = Pod {
+        socket: &socket,
+        backend: &options.backend,
+        rules,
+        session: None,
+    };
+    let err = pod_command(exe, &pod, program).exec();
     anyhow::Error::new(err).context("running podnet pod")
 }
 
@@ -89,15 +110,13 @@ pub(crate) fn exec_in_pod(
 /// PODNET_WARP_SOCKET, also when the shell did not read the env file.
 pub(crate) fn pod_command(
     exe: std::path::PathBuf,
-    socket: &Path,
-    backend: &str,
-    rules: &[String],
+    pod: &Pod<'_>,
     program: &[String],
 ) -> std::process::Command {
     let mut command = std::process::Command::new(exe);
     command
-        .args(pod_args(socket, backend, verbose(), rules, program))
-        .env("PODNET_WARP_SOCKET", socket)
+        .args(pod_args(pod, verbose(), program))
+        .env("PODNET_WARP_SOCKET", pod.socket)
         .envs(ca_exports());
     command
 }
@@ -116,7 +135,13 @@ pub(crate) fn shell(options: &PodOptions) -> anyhow::Error {
     ) {
         (Ok(socket), Ok(exe)) => {
             let program = std::slice::from_ref(&shell);
-            let err = pod_command(exe, &socket, &options.backend, &[], program)
+            let pod = Pod {
+                socket: &socket,
+                backend: &options.backend,
+                rules: &[],
+                session: None,
+            };
+            let err = pod_command(exe, &pod, program)
                 .env(SHELL_VARIABLE, "1")
                 .exec();
             eprintln!("podnet: warp shell: {err}; the shell starts with no pod");

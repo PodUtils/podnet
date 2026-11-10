@@ -105,12 +105,27 @@ const DETACH_VARIABLES: [&str; 5] = [
     podnet::detach::READY_TIMEOUT_VARIABLE,
 ];
 
+/// The directory of the session of the pod `name` (T-110): `NAME.pod` in
+/// the run directory. `warp exec --join` gives it to its own pod.
+pub(crate) fn session_dir(name: &str) -> Result<std::path::PathBuf> {
+    podnet::instances::check_name(name)?;
+    Ok(podnet::instances::run_dir()?.join(format!("{name}.pod")))
+}
+
 /// `warp exec --detach` (in the detached child) and `warp exec --name N`:
 /// run the pod as a child of this process, and wait until no process of
 /// the pod lives. Gives the exit code of the first program, or 0 after a
-/// stop signal.
-pub(crate) async fn run(options: &PodOptions, rules: &[String], program: &[String]) -> Result<i32> {
+/// stop signal. The ready document has what `warp exec --join` needs: the
+/// socket, the rules and the session of the pod (T-110).
+pub(crate) async fn run(
+    name: &str,
+    options: &PodOptions,
+    rules: &[String],
+    program: &[String],
+) -> Result<i32> {
     let socket = podnet::warp::find::running(&options.at)?;
+    let session = session_dir(name)?;
+    let _ = std::fs::remove_dir_all(&session);
     let exe = std::env::current_exe()?;
     // SAFETY: prctl() with integer arguments.
     if unsafe { libc::prctl(libc::PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) } != 0 {
@@ -124,9 +139,17 @@ pub(crate) async fn run(options: &PodOptions, rules: &[String], program: &[Strin
     podnet::detach::ready(serde_json::json!({
         "socket": socket.display().to_string(),
         "backend": options.backend,
+        "rules": rules,
+        "session": session.display().to_string(),
         "program": program,
     }));
-    let mut command = super::pod::pod_command(exe, &socket, &options.backend, rules, program);
+    let pod = super::pod::Pod {
+        socket: &socket,
+        backend: &options.backend,
+        rules,
+        session: Some(&session),
+    };
+    let mut command = super::pod::pod_command(exe, &pod, program);
     for name in DETACH_VARIABLES {
         command.env_remove(name);
     }
@@ -136,13 +159,15 @@ pub(crate) async fn run(options: &PodOptions, rules: &[String], program: &[Strin
         .context("running podnet pod")?;
     let first = child.id() as i32;
     let reaper = tokio::task::spawn_blocking(move || reap_all(first));
-    tokio::select! {
-        code = reaper => Ok(code.unwrap_or(podnet::exit::FAILURE)),
+    let code = tokio::select! {
+        code = reaper => code.unwrap_or(podnet::exit::FAILURE),
         _ = crate::cli::signals::shutdown_signal() => {
             let _ = tokio::task::spawn_blocking(stop_all).await;
-            Ok(0)
+            0
         }
-    }
+    };
+    let _ = std::fs::remove_dir_all(&session);
+    Ok(code)
 }
 
 #[cfg(test)]

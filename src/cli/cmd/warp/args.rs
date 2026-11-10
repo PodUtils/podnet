@@ -454,6 +454,17 @@ pub(crate) enum WarpCommand {
         at: podnet::warp::pod::PodOptions,
         #[command(flatten)]
         detach: DetachArgs,
+        /// Run the program in the pod of the instance NAME (warp exec with
+        /// --detach or --name): it reaches the loopback listeners and the
+        /// names of that pod. netns: the program enters the namespaces of
+        /// the pod. seccomp: a new pod shares the inbound listeners and the
+        /// fake DNS table of that pod
+        #[arg(
+            long,
+            value_name = "NAME",
+            conflicts_with_all = ["detach", "name", "no_restart", "replace", "rules"]
+        )]
+        join: Option<String>,
         /// The program and its arguments.
         #[arg(trailing_var_arg = true, required = true, allow_hyphen_values = true)]
         program: Vec<String>,
