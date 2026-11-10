@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 232 entries: 64 open, 5 partial, 22 blocked, 141 done.
+`TODO/INDEX.md` holds 232 entries: 64 open, 3 partial, 22 blocked, 143 done.
 
 ## State
 
@@ -8,9 +8,13 @@
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
 - podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws` and `pod-quic`
-  (`PodUtils/podcrates` v0.14.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-relay`. A session reads the state
+  (`PodUtils/podcrates` v0.14.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-hold` (podcrates T-166, T-232),
+  then `pod-session`, `pod-wormhole` (v0.15.0) and `pod-relay`. A session reads the state
   of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`).
+  From the import of `pod-hold` (podcrates T-166), also the generic core of `crates/podnet-netns`
+  (T-232).
+- The session paused on 2026-11-10: `docs/HANDOFF.md` gives the state and the next steps.
 - The newest release is `v0.4.0-beta.2` (T-227).
 - Keep this section short. Write the current state only; git keeps the history.
 
@@ -47,7 +51,7 @@ not wait for a larger one.
 6. **M4, the adapters:** T-057, T-058, T-059, T-060, T-061, T-062.
 7. **M6, the services:** the shared parts T-083, T-084, T-086 (a take of
    `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
-   server T-091; git T-094; the router T-095, T-096, T-097,
+   server and git: done; the router T-095, T-096, T-097,
    T-098, T-099, T-100, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The triage adds T-177 (`podnet route check`) and
     T-180 (the router control); the router additions are in T-096 to T-099 (GitHub #372 to #374).

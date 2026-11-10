@@ -114,10 +114,10 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #416 | COORD-008: podnet took v0.8.0; the freeze of the datagram path of upstream.rs is recorded | closed (podcrates recorded it) | T-137 |
 | #417 | COORD-009: podnet took v0.9.0; podnet-netns calls pod_proxy::udp, so the freeze of #42 can end | closed (podcrates recorded it) | T-137, T-224 |
 | #418 | COORD-010: podnet took v0.10.0 | closed (podcrates recorded it) | T-137 |
-| #419 | COORD-011: podnet took v0.11.0; podnet has a new crate podnet-core | open (a COORD issue between sessions) | T-137, T-047 |
+| #419 | COORD-011: podnet took v0.11.0; podnet has a new crate podnet-core | closed (podcrates recorded the later takes) | T-137, T-047 |
 | #420 | COORD-012: podnet took pod-ws of v0.13.0 | closed (podcrates recorded it) | T-137 |
 | #421 | COORD-013: podnet took pod-quic of v0.14.0 | closed (podcrates recorded it) | T-137, T-228 |
 | #422 | COORD-014: the podrunner entries and the time of pod-hold | open (a COORD issue between sessions) | T-229, T-230, T-231, T-232 |
-| #423 | live: two runs in a row failed (the new steps of the file server and git) | open | T-091, T-094 |
+| #423 | live: two runs in a row failed (the new steps of the file server and git) | closed | T-091, T-094 |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.

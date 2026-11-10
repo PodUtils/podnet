@@ -121,8 +121,8 @@
 416 issue closed
 417 issue closed
 418 issue closed
-419 issue open
+419 issue closed
 420 issue closed
 421 issue closed
 422 issue open
-423 issue open
+423 issue closed

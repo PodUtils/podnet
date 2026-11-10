@@ -453,7 +453,7 @@ exit 0. CI: at the merge.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -512,6 +512,11 @@ Left: the run of `gh workflow run live.yml` on a live host. Set the entry to don
 the two new steps.
 
 2026-11-10, the live run 42843879079 at 31d040f: the step "File server through the reverse relay" failed at once, as `scripts/live-throughput.sh` holds `127.0.0.1:18091`. The step now uses 18191 and stops its `filesrelay` instance. The entry stays partial until a live run passes.
+
+## Done
+
+2026-11-10: the live steps "File server through a quick tunnel" and "File server through the reverse relay" passed in the live run 42851836974 at 8383095 (ci 42851837015).
+
 
 # T-092: Git: a CGI runner for `git http-backend`, and the smart HTTP router
 
@@ -690,7 +695,7 @@ command `podnet git serve` stays for T-094.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -759,6 +764,11 @@ Left: the run of `gh workflow run live.yml` on a live host. Set the entry to don
 two new steps.
 
 2026-11-10, the live run 42849917945 at 9e8d177: the step "Git over HTTPS through a quick tunnel" pushed `main` with the password, but the clone had no commit: `git init` of the runner makes the HEAD of the bare repository `master`. The server is correct. Both git steps now clone with `-b main`. The entry stays partial until a live run passes.
+
+## Done
+
+2026-11-10: the live steps "Git over HTTPS through a quick tunnel" and "Git over SSH through the reverse relay" passed in the live run 42851836974 at 8383095 (ci 42851837015).
+
 
 # T-095: Router: several WARP identities in one process, each with its own counters
 
