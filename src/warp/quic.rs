@@ -210,20 +210,28 @@ impl AsyncUdpSocket for WarpUdpSocket {
     }
 }
 
-/// The wake-up of a poller that waits for room in the send queue (T-225).
-/// An `AtomicWaker` keeps the waker of the task between two polls; a
+/// The wake-up of each poller that waits for room in the send queue (T-225,
+/// T-228). The list keeps the waker of each task between two polls: a
 /// `Notified` future made in each poll drops out of the waiters at
-/// `Pending`, and a later drain then wakes nobody.
+/// `Pending`. The connections of one endpoint share the socket, so one waker
+/// slot is not sufficient: a second sender overwrites the waker of the first.
 #[derive(Clone, Default, Debug)]
-struct SendReady(Arc<AtomicWaker>);
+struct SendReady(Arc<std::sync::Mutex<Vec<std::task::Waker>>>);
 
 impl SendReady {
     fn register(&self, cx: &Context<'_>) {
-        self.0.register(cx.waker());
+        let mut wakers = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if !wakers.iter().any(|w| w.will_wake(cx.waker())) {
+            wakers.push(cx.waker().clone());
+        }
     }
 
+    /// Wake each waiting sender. Each one checks the queue again.
     fn wake(&self) {
-        self.0.wake();
+        let wakers = std::mem::take(&mut *self.0.lock().unwrap_or_else(|e| e.into_inner()));
+        for waker in wakers {
+            waker.wake();
+        }
     }
 }
 
@@ -347,5 +355,36 @@ mod tests {
             Pin::new(&mut poller).poll_writable(&mut cx),
             Poll::Ready(Ok(()))
         ));
+    }
+
+    // T-228: the connections of one endpoint share the socket. Two pollers
+    // wait on a full queue; one drain must wake both.
+    #[test]
+    fn two_senders_on_a_full_queue_each_wake() {
+        let (out, mut rx) = mpsc::channel::<(SocketAddr, Vec<u8>)>(1);
+        let to: SocketAddr = "192.0.2.1:7844".parse().unwrap();
+        out.try_send((to, vec![0])).unwrap();
+        let ready = SendReady::default();
+        let counts: Vec<Arc<Count>> = (0..2)
+            .map(|_| Arc::new(Count(std::sync::atomic::AtomicUsize::new(0))))
+            .collect();
+        for count in &counts {
+            let mut poller = SendPoller {
+                out: out.clone(),
+                ready: ready.clone(),
+            };
+            let waker = futures::task::waker(count.clone());
+            let mut cx = Context::from_waker(&waker);
+            assert!(Pin::new(&mut poller).poll_writable(&mut cx).is_pending());
+        }
+        rx.try_recv().unwrap();
+        ready.wake();
+        for (i, count) in counts.iter().enumerate() {
+            assert_eq!(
+                count.0.load(Ordering::SeqCst),
+                1,
+                "sender {i} was not woken"
+            );
+        }
     }
 }
