@@ -13,7 +13,7 @@ starts, or after it ends.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -46,6 +46,17 @@ connect succeeds.
 
 T-063 is done.
 
+## Done
+
+2026-11-10, commit c08818a (`T-108, T-107: the pod lives past its first program`). The supervisor
+runs in a back process (`crates/podnet-netns/src/outlive.rs`) and is the subreaper of the pod. At
+the exit of the first child, when other tasks use the filter, the front returns the exit code at
+once; the back reaps each orphan and ends at POLLHUP or when it has no child. With no other task,
+the pod drains the relays as before. Test: `seccomp_pod_outlives_its_first_child`
+(`tests/pod_seccomp/outlive.rs`). `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`: each step 0.
+CI: at the merge.
+
+
 # T-108: netns: the pod lives past its first program
 
 **Source:** `docs/research/podnet/mwan-field.md`, section 3 (F1, W-F1, part a).
@@ -53,7 +64,7 @@ T-063 is done.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -76,6 +87,17 @@ The netns backend ends its router when the first program exits, as the seccomp b
 ```sh
 cargo test --workspace -- netns_pod_outlives_its_first_child
 ```
+
+## Done
+
+2026-11-10, commit c08818a (`T-108, T-107: the pod lives past its first program`). The first
+process of the namespace is a reaper (`PR_SET_CHILD_SUBREAPER`): it starts the program, reaps each
+orphan, and reports the status of the program to the router. The pod runs in a back process
+(`crates/podnet-netns/src/outlive.rs`); the front returns the exit code at once, and the router
+stays until the reaper ends. Test: `netns_pod_outlives_its_first_child` (`tests/pod_seccomp/outlive.rs`):
+the pod returns in less than 2.5 s, and the daemon connects through the pod after 3 s.
+`TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`: each step 0. CI: at the merge.
+
 
 # T-109: `warp exec --detach --name N` keeps a pod under the supervisor
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 93 open, 3 partial, 18 blocked, 110 done.**
+**224 entries: 91 open, 3 partial, 18 blocked, 112 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 55 | 2 | 12 | 68 | 137 |
+| P2 | 53 | 2 | 12 | 70 | 137 |
 | P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 93 | 3 | 18 | 110 | 224 |
+| **All** | 91 | 3 | 18 | 112 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -152,8 +152,8 @@ M8 Overlays, M9 Later.
 | [T-104](services.md) | P2 | M | M6 | feature | open | The podnet relay as a carrier of a transfer |
 | [T-105](services.md) | P2 | M | M6 | feature | open | `podnet send` and `podnet receive` |
 | [T-106](services.md) | P2 | M | M6 | measurement | open | An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB |
-| [T-107](pods.md) | P2 | M | M7 | feature | open | seccomp: the pod lives past its first program |
-| [T-108](pods.md) | P2 | S | M7 | feature | open | netns: the pod lives past its first program |
+| [T-107](pods.md) | P2 | M | M7 | feature | done | seccomp: the pod lives past its first program |
+| [T-108](pods.md) | P2 | S | M7 | feature | done | netns: the pod lives past its first program |
 | [T-109](pods.md) | P2 | M | M7 | feature | open | `warp exec --detach --name N` keeps a pod under the supervisor |
 | [T-110](pods.md) | P2 | M | M7 | feature | open | `warp exec --join N` runs a command in a detached pod |
 | [T-111](pods.md) | P2 | M | M7 | feature | open | netns: generic UDP |
