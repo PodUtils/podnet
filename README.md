@@ -456,15 +456,28 @@ discovery.
 ### Serve a directory
 
 ```sh
-podnet serve --dir ./public
-podnet serve --dir ./app --spa          # send index.html for unknown paths
-podnet serve --dir ./public --local 127.0.0.1:8080      # this host only, no tunnel
-podnet serve --dir ./public --local unix:/run/site.sock # a unix socket, no tunnel
+podnet serve ./public                   # DIR, or --dir DIR
+podnet serve ./app --spa                # send index.html for unknown paths
+podnet serve ./public --local 127.0.0.1:8080      # this host only, no tunnel
+podnet serve ./public --local unix:/run/site.sock # a unix socket, no tunnel
+podnet serve ./public --local 127.0.0.1:8080 --via tunnel  # both
+podnet serve ./public --via relay --pair NAME     # through a relay pair
 ```
 
-With no `--local`, `podnet serve` makes a public quick tunnel (or the named
-tunnel of `--token`). `--local ADDR` serves the same files on a local
-listener and makes no tunnel:
+`--via` gives the road to the visitors:
+
+* `tunnel` (the default with no `--local`): a public quick tunnel, or the
+  named tunnel of `--token`.
+* `relay`: the node of a relay pair (`podnet relay pair`). `--pair NAME`
+  names the pair; the default is the pair with the most time left. The
+  files listen on a private unix socket in the run directory, and the node
+  connects each session of an operator to it. The operator runs
+  `podnet relay connect NAME --listen tcp://127.0.0.1:8080` and opens
+  `http://127.0.0.1:8080/`.
+* `none` (the default with `--local`): only the local listeners.
+
+`--local ADDR` (more than one is permitted) serves the same files on a
+local listener:
 
 * `ADDR` is `HOST:PORT`, `tcp://HOST:PORT` or `unix:PATH`.
 * Port 0 takes a free port. podnet prints the bound address
@@ -475,8 +488,9 @@ listener and makes no tunnel:
   is not a socket is refused (exit 64). podnet removes its socket at the
   end.
 * An address in use is refused (exit 69).
-* `--check` is refused with `--local`. The other tunnel flags have no
-  effect, except `--auth-user` (see below).
+* `--check` is refused with `--local`, and is for `--via tunnel` only.
+  With `--via none`, the tunnel flags have no effect, except `--auth-user`
+  (see below). The `--json` ready line has `listens`, each listener.
 
 `podnet serve` serves only the files in `--dir`:
 
@@ -514,8 +528,8 @@ curl -fsS -H 'Accept: application/json' http://127.0.0.1:8080/docs/
 
 #### Users, roles and a PIN
 
-The file server checks its visitors itself, on each listener (`--local`
-and the tunnel):
+The file server checks its visitors itself, on each listener (`--local`,
+the tunnel and the relay):
 
 * `--users FILE`: the users (HTTP Basic). Each line is
   `USER:ROLE:HASH` or `USER:ROLE:@PASSWORD-FILE`. `ROLE` is `read` or
@@ -582,6 +596,8 @@ served with a bounded memory.
 ```sh
 podnet share --mode upload --password                 # receive files, with a PIN
 podnet share --mode download --file ./report.pdf      # send one file
+podnet share --file ./photos                          # send a directory as one tar
+podnet share --file ./report.pdf --local 127.0.0.1:8080  # no tunnel
 podnet share --mode proxy --port 3000                 # share a local port, with a PIN
 podnet share --mode proxy --unix /run/api.sock        # share an HTTP unix socket, with a PIN
 podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
@@ -623,6 +639,13 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   answer before the end of the upload does not reach the visitor reliably
   through the edge. The page refuses such a selection before it sends. To
   send more, use more uploads.
+* A directory in `--file` goes as one ustar stream (`DIR.tar`), with the
+  rules of `serve --tar`: no dot name, no link out of the directory, no
+  FIFO, socket or device.
+* `--local ADDR` serves the session on a local listener (HOST:PORT,
+  tcp://HOST:PORT or unix:PATH, as `serve --local`) and makes no tunnel.
+  podnet prints the session URL (`url` and `path` in the `--json` line).
+  It is for upload and download; proxy mode needs the tunnel.
 * A download name that is not ASCII goes in `filename*=UTF-8''...` (RFC
   5987), with an ASCII `filename=`.
 * `--stop-after` stops the session after the first transfer. `--idle-secs`

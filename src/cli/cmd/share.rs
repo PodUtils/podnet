@@ -11,9 +11,11 @@ use podnet::gate::Gate;
 use podnet::ingress::{Ingress, Service};
 use podnet::share::ShareConfig;
 
-use crate::cli::cmd::run::{run_demo, run_share};
+use crate::cli::cmd::local::bind_local;
+use crate::cli::cmd::run::{run_demo, run_share, wait_with_idle};
 use crate::cli::cmd::tunnel::preflight;
 use crate::cli::opts::TunnelOpts;
+use crate::cli::signals::deadline_of;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub(crate) enum ModeArg {
@@ -35,7 +37,9 @@ pub(crate) struct ShareArgs {
     /// Directory that receives uploads.
     #[arg(long)]
     dir: Option<PathBuf>,
-    /// File to share (download mode).
+    /// File to share (download mode). A directory goes as one tar
+    /// stream (DIR.tar); names that start with a dot and links out of the
+    /// directory are left out.
     #[arg(long)]
     file: Option<PathBuf>,
     /// Local HTTP port to share (proxy mode).
@@ -59,6 +63,11 @@ pub(crate) struct ShareArgs {
     /// edge accepts at most 100 MB in one request.
     #[arg(long, value_name = "BYTES", default_value_t = podnet::share::MAX_REQUEST, value_parser = clap::value_parser!(u64).range(1..))]
     max_request: u64,
+    /// Serve the session on this local listener and make no tunnel:
+    /// HOST:PORT (or tcp://HOST:PORT), or unix:PATH (mode 0600), as serve
+    /// --local. Not for proxy mode. The tunnel flags have no effect.
+    #[arg(long, value_name = "ADDR", conflicts_with = "check")]
+    local: Option<String>,
     /// Named-tunnel token. Prefer the variable TUNNEL_TOKEN or
     /// --token-file: other users of the host can read a command line.
     #[arg(long, env = "TUNNEL_TOKEN", hide_env_values = true)]
@@ -141,6 +150,14 @@ pub(crate) fn share_mode(args: &ShareArgs) -> Result<ModeArg> {
 
 pub(crate) async fn share(args: ShareArgs) -> Result<()> {
     let mode = share_mode(&args)?;
+    if args.local.is_some() && mode == ModeArg::Proxy {
+        return Err(podnet::exit::fault(
+            Fault::Usage,
+            anyhow::anyhow!(
+                "share --local serves --mode upload and download; proxy mode needs the tunnel"
+            ),
+        ));
+    }
     let mut share_config = match mode {
         ModeArg::Upload => {
             let dir = args.dir.clone().unwrap_or_else(default_upload_dir);
@@ -195,6 +212,9 @@ pub(crate) async fn share(args: ShareArgs) -> Result<()> {
         share_config.max_request = args.max_request;
     }
 
+    if let Some(local) = &args.local {
+        return share_local(&args, share_config, local).await;
+    }
     let mut config = Config::default();
     if let Some(token) = &args.token {
         podnet::report::hide(token);
@@ -218,6 +238,54 @@ pub(crate) async fn share(args: ShareArgs) -> Result<()> {
         controls_hint,
     )
     .await
+}
+
+/// `share --local ADDR` (T-091): the session on a local listener, with no
+/// tunnel. The session ends as through a tunnel: --stop-after,
+/// --idle-secs, --run-for or a signal.
+async fn share_local(args: &ShareArgs, config: ShareConfig, local: &str) -> Result<()> {
+    let app = podnet::share::ShareApp::new(config.clone())?;
+    let local = bind_local(local, args.common.detach.replace, app.router()).await?;
+    let session = match local.url.strip_suffix('/') {
+        Some(base) => format!("{base}{}", config.url_path()),
+        None => format!("{} {}", local.url, config.url_path()),
+    };
+    let pin = config.gate.pin_display();
+    let show = args.common.show();
+    podnet::detach::arm_stop();
+    if show.json {
+        let doc = serde_json::json!({
+            "event": "ready",
+            "url": session,
+            "listen": local.listen,
+            "path": config.url_path(),
+            "pin": pin,
+        });
+        println!("{}", podnet::status::stamped(doc));
+    } else {
+        println!("  podnet: session  {session}  (local, no tunnel)");
+        if let Some(pin) = pin {
+            println!("  podnet: PIN      {pin}");
+        }
+    }
+    if show.qr && session.starts_with("http://") {
+        print!("{}", podnet::qr::render_terminal(&session)?);
+    }
+    podnet::detach::ready(serde_json::json!({
+        "url": session,
+        "listen": local.listen,
+        "pin": pin,
+    }));
+    let deadline = deadline_of(args.common.run_for);
+    tokio::select! {
+        _ = wait_with_idle(deadline, vec![app.control()], args.idle_secs) => {}
+        ended = local.server => {
+            ended
+                .context("the local server stopped")?
+                .context("the local server stopped")?;
+        }
+    }
+    Ok(())
 }
 
 pub(crate) async fn demo(args: DemoArgs) -> Result<()> {

@@ -2618,7 +2618,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:288-289`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:1003-1005` uses `net switch --listen tcp://` as its example.
+- `README.md:1026-1028` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -2724,7 +2724,7 @@ The `close` control message removes the entry of the session and drops its `Abor
 
 - The comment at `:523-524` says that dropping the sender ends the task. It does not, for a blocked write.
 - The same removal at `:573-575` (`OutKind::End`) is safe: the task has returned.
-- The test `a_local_side_that_does_not_read_stops_no_other_session` (`tests/relay_reverse.rs:483`) reaches only the binary-frame arm. The fake relay sends `close` at `:179`.
+- The test `a_local_side_that_does_not_read_stops_no_other_session` (`tests/relay_reverse.rs:322`) reaches only the binary-frame arm. The fake relay sends `close` at `tests/relay_reverse/fake.rs:173`.
 - Trade: an abort drops the target connection with no FIN (reset instead of half-close).
 
 ## Approach
@@ -2755,7 +2755,7 @@ cargo test --test relay_reverse
 
 ## Problem
 
-`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:231-255`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:143-145`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:185-194`).
+`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:231-255`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:143-145`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:24-33`).
 
 ## Premise
 
@@ -3004,7 +3004,7 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 
 - `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:114` (field), `:124` (`root_404: false`),
   `src/cli/cmd/run.rs:32` (read).
-- `serve` passes `args.common.show()`: `src/cli/cmd/share.rs:157-159`.
+- `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:201`.
 - The warn branch: `src/tunnel.rs:1266-1270`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
 
@@ -3162,7 +3162,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1121-1127`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1144-1150`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3204,9 +3204,9 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 - `crates/podnet-serve/src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-89` (`resolve`), test `:603-607` asserts `"a b"`.
 - `crates/podnet-serve/src/files/mod.rs:257-272`, `:170`. `crates/podnet-serve/src/ingress.rs:197-200`, test `:632-645` (`"a + stays a +"`).
-- `README.md:488-489`.
+- `README.md:502-503`.
 - One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:252-254`, test
-  `:693`). The CLI decoder returns `None` (`crates/podnet-serve/src/files/mod.rs:262-265`), so the request is refused. A short escape at the
+  `:716`). The CLI decoder returns `None` (`crates/podnet-serve/src/files/mod.rs:262-265`), so the request is refused. A short escape at the
   end (`i + 2 < len`) also differs.
 
 ## Approach
@@ -3397,12 +3397,12 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Problem
 
-`README.md:800-801` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`README.md:823-824` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
 `-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
 
 ## Premise
 
-- `README.md:797-801`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:820-824`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.

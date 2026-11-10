@@ -290,3 +290,46 @@ async fn the_session_id_is_checked() {
     let big = format!("password=1&next={}", "a".repeat(10_000));
     assert_eq!(send(&router, "POST", UNLOCK_PATH, &big).await.0, 413);
 }
+
+/// T-091: a directory in a download session goes as one tar stream of the
+/// tree (no dotfile), named DIR.tar. --stop-after ends the session after
+/// the last byte of a GET.
+#[tokio::test]
+async fn a_directory_downloads_as_one_tar() {
+    use tower::ServiceExt;
+    let base = tempfile::tempdir().unwrap();
+    let dir = base.path().join("photos");
+    std::fs::create_dir_all(dir.join("2026")).unwrap();
+    std::fs::write(dir.join("2026/a.jpg"), vec![3u8; 5000]).unwrap();
+    std::fs::write(dir.join(".secret"), "x").unwrap();
+    let config = ShareConfig::download(&dir).stop_after(true);
+    let token = config.token.clone();
+    let app = ShareApp::new(config).unwrap();
+    let control = app.control();
+    let landing = http::Request::get(format!("/s/{token}/"))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let response = app.router().oneshot(landing).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 1 << 20)
+        .await
+        .unwrap();
+    assert!(String::from_utf8_lossy(&body).contains("photos.tar"));
+    let get = http::Request::get(format!("/s/{token}/file"))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let response = app.router().oneshot(get).await.unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.headers()["content-type"], "application/x-tar");
+    assert_eq!(response.headers()["cache-control"], "no-store");
+    assert!(!control.stop_requested());
+    let body = axum::body::to_bytes(response.into_body(), 1 << 22)
+        .await
+        .unwrap();
+    assert!(control.stop_requested());
+    let mut reader = crate::tar::Reader::new(&body[..]);
+    let mut names = Vec::new();
+    while let Some(entry) = reader.next_entry().unwrap() {
+        names.push(entry.path);
+    }
+    assert_eq!(names, ["photos", "photos/2026", "photos/2026/a.jpg"]);
+}

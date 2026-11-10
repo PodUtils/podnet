@@ -458,6 +458,11 @@ fn upload_dir(dest: &Path) -> Result<String, String> {
 fn regular_file(file: &Path) -> Result<String, String> {
     let shown = file.display();
     let meta = std::fs::metadata(file).map_err(|e| format!("--file {shown}: {e}"))?;
+    // T-091: a directory goes as one tar stream.
+    if meta.is_dir() {
+        std::fs::read_dir(file).map_err(|e| format!("--file {shown}: cannot read it: {e}"))?;
+        return Ok(format!("{shown}: a readable directory (one tar stream)"));
+    }
     if !meta.is_file() {
         return Err(format!("--file {shown}: not a regular file"));
     }
@@ -632,9 +637,9 @@ mod tests {
         assert!(report.ok(), "{:?}", report.checks);
         assert!(!root.join("a").exists());
 
-        // A download --file that is a directory.
+        // T-091: a download --file that is a directory is one tar stream.
         let report = check(&with(Service::Share(ShareConfig::download(root)))).await;
-        assert!(failed(&report)[0].ends_with("not a regular file"));
+        assert!(report.ok(), "{:?}", report.checks);
     }
 
     #[tokio::test]
