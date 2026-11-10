@@ -23,7 +23,3 @@
 817 src/warp/up.rs
 965 src/warp/wg.rs
 994 src/ws_relay.rs
-2314 tests/cli.rs
-812 tests/detach.rs
-2021 tests/pod_seccomp.rs
-822 tests/shim_direct.rs

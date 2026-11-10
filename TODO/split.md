@@ -847,8 +847,8 @@ tests: exit 0 (22 skipped). CI: at the merge.
 
 ## Problem
 
-`tests/cli.rs` has 2,305 lines, the seccomp tests of the pod 2,018, `tests/shim_direct.rs` 822
-and `tests/detach.rs` 812.
+`tests/cli/main.rs` has 2,305 lines, the seccomp tests of the pod 2,018, `tests/shim_direct.rs` 822
+and `tests/detach/main.rs` 812.
 
 ## Premise
 
@@ -860,13 +860,13 @@ and `tests/detach.rs` 812.
 
 ## Approach
 
-1. `tests/cli.rs`: a cli directory with the helpers in main.rs, and modules for the exit codes,
+1. `tests/cli/main.rs`: a cli directory with the helpers in main.rs, and modules for the exit codes,
    the log, the manual, detach and autostart, net, warp and serve.
-2. The seccomp tests (`tests/pod_seccomp.rs`): a `pod_seccomp` directory with the SOCKS5 stand-in and the helpers in main.rs,
+2. The seccomp tests (`tests/pod_seccomp/main.rs`): a `pod_seccomp` directory with the SOCKS5 stand-in and the helpers in main.rs,
    and modules for TCP, UDP, listen, DNS and the rules.
 3. `tests/shim_direct.rs`: move the compile and run harness to a shared module, and use it from
    `tests/shim_no_socket.rs` and `tests/af_inet_kernel.rs`.
-4. `tests/detach.rs`: a detach directory with modules for the supervisor, the names and the logs.
+4. `tests/detach/main.rs`: a detach directory with modules for the supervisor, the names and the logs.
 
 ## Prove
 
