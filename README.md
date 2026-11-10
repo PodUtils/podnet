@@ -488,6 +488,17 @@ listener and makes no tunnel:
 Each other path answers 404. With `--spa`, an unknown path answers the
 `index.html` with status 200.
 
+With `--tar`, `GET /PATH/?tar` gives the directory `PATH` as one ustar
+archive (`application/x-tar`, `PATH.tar`). The archive has the same rules:
+no dot name, no link out of `--dir`, no FIFO, socket or device. A link to a
+directory is not followed. A name that does not fit in ustar (more than 255
+bytes) is left out with a warning. Without `--tar`, `?tar` has no effect.
+
+```sh
+podnet serve --dir ./public --tar --local 127.0.0.1:8080
+curl -fsS 'http://127.0.0.1:8080/docs/?tar' | tar -xf -
+```
+
 The library type `podnet::origin::StaticDir` has the same rules. It also
 applies them to the directory index and to the SPA index.
 `podnet::feature::StaticServer::respond` gives a `StaticResponse`. Its

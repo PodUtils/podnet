@@ -56,7 +56,9 @@ impl ServiceRuntime {
                 Service::Forward(target) => Built::ForwardWs(target.clone()),
                 Service::HelloWorld => Built::HelloWorld,
                 Service::Status(code) => Built::Status(*code),
-                Service::Static { root, spa } => Built::Static(static_router(root, *spa)?),
+                Service::Static { root, spa, tar } => {
+                    Built::Static(static_router_with(root, *spa, *tar)?)
+                }
                 Service::Metrics => Built::Metrics,
                 Service::Share(config) => match config.mode {
                     ShareMode::Proxy => Built::ShareProxy {
@@ -108,6 +110,12 @@ impl ServiceRuntime {
 /// The router of a `static:` or `spa:` origin: the guard of the root and the
 /// files of `root`. A missing directory is a usage error (exit 64).
 pub fn static_router(root: &Path, spa: bool) -> Result<Router> {
+    static_router_with(root, spa, false)
+}
+
+/// [`static_router`], and with `tar`, a GET of a directory with the query
+/// `?tar` gives the directory as one ustar stream (T-085).
+pub fn static_router_with(root: &Path, spa: bool, tar: bool) -> Result<Router> {
     // Issue 95: a bad --dir is a usage mistake (exit 64), and the text
     // says which mistake.
     if !root.is_dir() {
@@ -144,10 +152,19 @@ pub fn static_router(root: &Path, spa: bool) -> Result<Router> {
         });
         Router::new().fallback_service(dir.not_found_service(missing))
     };
-    Ok(router.layer(axum::middleware::from_fn_with_state(
-        canonical,
-        static_guard,
-    )))
+    let state = Arc::new(StaticState {
+        root: canonical.as_ref().clone(),
+        tar,
+    });
+    Ok(router.layer(axum::middleware::from_fn_with_state(state, static_guard)))
+}
+
+/// The state of [`static_guard`].
+struct StaticState {
+    /// The canonical root.
+    root: std::path::PathBuf,
+    /// Give a directory as a tar stream on `?tar`.
+    tar: bool,
 }
 
 /// The answer of [`static_guard`] for a path that is not served.
@@ -166,7 +183,7 @@ fn not_found() -> axum::response::Response {
 /// A link that is changed between this check and the open is still a race;
 /// the root must not be writable by an attacker.
 async fn static_guard(
-    axum::extract::State(root): axum::extract::State<Arc<std::path::PathBuf>>,
+    axum::extract::State(state): axum::extract::State<Arc<StaticState>>,
     mut request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
@@ -184,6 +201,7 @@ async fn static_guard(
         Some(p) => p,
         None => return not_found(),
     };
+    let root = &state.root;
     let mut path = root.as_path().to_path_buf();
     for segment in decoded.split('/').filter(|s| !s.is_empty()) {
         if segment.starts_with('.')
@@ -204,12 +222,25 @@ async fn static_guard(
         Err(_) => not_found(),
         Ok(_) => match std::fs::canonicalize(&path) {
             Ok(real) if real.starts_with(root.as_path()) => match std::fs::metadata(&real) {
+                Ok(meta) if meta.is_dir() && state.tar && wants_tar(&request) => {
+                    crate::tar_http::answer(root.clone(), real, request.method())
+                }
                 Ok(meta) if meta.is_file() || meta.is_dir() => next.run(request).await,
                 _ => not_found(),
             },
             _ => not_found(),
         },
     }
+}
+
+/// A GET or HEAD with the query key `tar` (`?tar`, `?tar=1`).
+fn wants_tar(request: &axum::extract::Request) -> bool {
+    let method = request.method();
+    (method == http::Method::GET || method == http::Method::HEAD)
+        && request
+            .uri()
+            .query()
+            .is_some_and(|q| q.split('&').any(|p| p == "tar" || p.starts_with("tar=")))
 }
 
 /// Decode the `%XX` escapes of a URL path. A bad escape or bytes that are
@@ -247,6 +278,82 @@ mod tests {
             .await
             .unwrap();
         (status, String::from_utf8_lossy(&body).into_owned())
+    }
+
+    /// T-085: `--tar` gives a directory as one ustar stream. The list of
+    /// `tar -tf` is the tree: no dotfile, no link out of the root.
+    #[tokio::test]
+    async fn a_directory_downloads_as_a_tar() {
+        use std::os::unix::fs::symlink;
+        let base = tempfile::tempdir().unwrap();
+        let root = base.path().join("www");
+        std::fs::create_dir_all(root.join("sub/deep")).unwrap();
+        std::fs::write(root.join("a.txt"), "alpha").unwrap();
+        std::fs::write(root.join("sub/b c.txt"), vec![9u8; 70_000]).unwrap();
+        std::fs::write(root.join("sub/deep/ü.bin"), [0u8, 255]).unwrap();
+        std::fs::write(root.join(".env"), "SECRET=1").unwrap();
+        std::fs::write(base.path().join("outside.txt"), "outside").unwrap();
+        symlink(base.path().join("outside.txt"), root.join("out-link")).unwrap();
+        symlink(root.join("a.txt"), root.join("in-link")).unwrap();
+        let router = static_router_with(&root, false, true).unwrap();
+        use tower::ServiceExt;
+        let request = http::Request::builder()
+            .uri("/?tar")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let response = router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), 200);
+        assert_eq!(response.headers()["content-type"], "application/x-tar");
+        let body = axum::body::to_bytes(response.into_body(), 1 << 22)
+            .await
+            .unwrap();
+        let mut reader = crate::tar::Reader::new(&body[..]);
+        let mut names = Vec::new();
+        while let Some(entry) = reader.next_entry().unwrap() {
+            if entry.path == "www/sub/b c.txt" {
+                let mut data = Vec::new();
+                reader.copy_data(&mut data).unwrap();
+                assert_eq!(data, vec![9u8; 70_000]);
+            }
+            names.push(entry.path);
+        }
+        let want = [
+            "www",
+            "www/a.txt",
+            "www/in-link",
+            "www/sub",
+            "www/sub/b c.txt",
+            "www/sub/deep",
+            "www/sub/deep/ü.bin",
+        ];
+        assert_eq!(names, want);
+        let file = base.path().join("www.tar");
+        std::fs::write(&file, &body).unwrap();
+        // GNU tar; another tar (no --quoting-style) leaves the own reader.
+        match std::process::Command::new("tar")
+            .args(["--quoting-style=literal", "-tf"])
+            .arg(&file)
+            .output()
+        {
+            Ok(out) if out.status.success() => {
+                let listed: Vec<String> = String::from_utf8(out.stdout)
+                    .unwrap()
+                    .lines()
+                    .map(|l| l.trim_end_matches('/').to_string())
+                    .collect();
+                assert_eq!(listed, want);
+            }
+            other => eprintln!("no GNU tar ({other:?}): only the own reader checks"),
+        }
+        // A sub directory, and HEAD.
+        let (status, body) = get(&router, "/sub/deep/?tar").await;
+        assert_eq!(status, 200);
+        assert!(body.starts_with("deep/"), "{body:?}");
+        // A file with ?tar is the file; a dot directory is not served.
+        assert_eq!(get(&router, "/a.txt?tar").await, (200, "alpha".into()));
+        // Without --tar, ?tar has no effect.
+        let plain = static_router(&root, false).unwrap();
+        assert_ne!(get(&plain, "/sub/?tar").await.1.get(..4), Some("sub/"));
     }
 
     /// A link out of the root, a relative link, a link to a directory out of

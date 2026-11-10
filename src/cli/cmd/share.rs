@@ -27,6 +27,11 @@ pub(crate) struct ServeArgs {
     /// Single-page-app fallback to index.html.
     #[arg(long)]
     spa: bool,
+    /// Give a directory as one tar download: GET /PATH/?tar answers the
+    /// directory PATH as a ustar stream (application/x-tar). Names that
+    /// start with a dot and links out of the directory are left out.
+    #[arg(long)]
+    tar: bool,
     /// Serve the files on this local listener and make no tunnel:
     /// HOST:PORT (or tcp://HOST:PORT), or unix:PATH (mode 0600). Port 0
     /// takes a free port; podnet prints the bound address. A unix socket
@@ -143,6 +148,7 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
     config.ingress = Ingress::new().catch_all(Service::Static {
         root: args.dir.clone(),
         spa: args.spa,
+        tar: args.tar,
     });
     config = args.common.apply(config)?;
     let show = serve_show(args.common.show(), &args.dir, args.spa);
@@ -171,7 +177,7 @@ async fn serve_local(args: &ServeArgs, local: &str) -> Result<()> {
                 .to_string(),
         ));
     }
-    let router = podnet::service::static_router(&args.dir, args.spa)?;
+    let router = podnet::service::static_router_with(&args.dir, args.spa, args.tar)?;
     let show = args.common.show();
     let (url, listen, server, _file) = if local.starts_with("unix:") {
         #[cfg(unix)]

@@ -356,7 +356,7 @@ async fn service(service: &Service, origin: &OriginOptions) -> Result<String, St
         Service::HelloWorld | Service::Status(_) | Service::Metrics => {
             Ok(format!("{label}: built in"))
         }
-        Service::Static { root, spa } => static_dir(root, *spa),
+        Service::Static { root, spa, .. } => static_dir(root, *spa),
         Service::Share(share) => match share.mode {
             ShareMode::Upload => upload_dir(&share.dest),
             ShareMode::Download => match &share.file {
@@ -603,6 +603,7 @@ mod tests {
         let report = check(&with(Service::Static {
             root: root.to_path_buf(),
             spa: true,
+            tar: false,
         }))
         .await;
         assert!(failed(&report)[0].contains("--spa needs an index.html"));
@@ -610,6 +611,7 @@ mod tests {
         let report = check(&with(Service::Static {
             root: root.to_path_buf(),
             spa: true,
+            tar: false,
         }))
         .await;
         assert!(report.ok(), "{:?}", report.checks);

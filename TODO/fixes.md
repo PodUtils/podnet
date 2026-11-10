@@ -2607,7 +2607,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:267-268`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:921-923` uses `net switch --listen tcp://` as its example.
+- `README.md:932-934` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -2993,7 +2993,7 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 
 - `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:114` (field), `:124` (`root_404: false`),
   `src/cli/cmd/run.rs:32` (read).
-- `serve` passes `args.common.show()`: `src/cli/cmd/share.rs:149-151`.
+- `serve` passes `args.common.show()`: `src/cli/cmd/share.rs:155-157`.
 - The warn branch: `src/tunnel.rs:1266-1270`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/service.rs:110-150`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
 
@@ -3151,7 +3151,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1015-1021`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1026-1032`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3192,10 +3192,10 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 ## Premise
 
 - `crates/podnet-serve/src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-89` (`resolve`), test `:603-607` asserts `"a b"`.
-- `crates/podnet-serve/src/service.rs:217-232`, `:183`. `crates/podnet-serve/src/ingress.rs:184-187`, test `:619-632` (`"a + stays a +"`).
+- `crates/podnet-serve/src/service.rs:248-263`, `:200`. `crates/podnet-serve/src/ingress.rs:187-190`, test `:622-635` (`"a + stays a +"`).
 - `README.md:488-489`.
 - One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:252-254`, test
-  `:611`). The CLI decoder returns `None` (`crates/podnet-serve/src/service.rs:222-225`), so the request is refused. A short escape at the
+  `:622`). The CLI decoder returns `None` (`crates/podnet-serve/src/service.rs:253-256`), so the request is refused. A short escape at the
   end (`i + 2 < len`) also differs.
 
 ## Approach
@@ -3386,12 +3386,12 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Problem
 
-`README.md:718-719` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`README.md:729-730` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
 `-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
 
 ## Premise
 
-- `README.md:715-719`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:726-730`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
