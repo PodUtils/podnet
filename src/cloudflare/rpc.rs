@@ -28,28 +28,7 @@ use super::schema::{
     METHOD_UNREGISTER_CONNECTION, REGISTRATION_SERVER_ID,
 };
 
-/// A refusal of the registration by the edge, with its retry flags.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Refused {
-    pub cause: String,
-    pub should_retry: bool,
-    pub retry_after: Duration,
-}
-
-impl std::fmt::Display for Refused {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "the edge refused the registration: {} (retry: {}, after {} s; podnet speaks {})",
-            self.cause,
-            if self.should_retry { "yes" } else { "no" },
-            self.retry_after.as_secs(),
-            crate::cloudflare::speaks()
-        )
-    }
-}
-
-impl std::error::Error for Refused {}
+pub use crate::hop::Refused;
 
 pub use super::schema::{ConnectionError, ConnectionOptions, RegistrationDetails, TunnelAuth};
 
