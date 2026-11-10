@@ -22,6 +22,8 @@ path = "src/lib.rs"
 podnet-core = { path = "../podnet-core", version = "0.4.0-beta.1" }
 podnet-netns = { path = "../podnet-netns", version = "0.4.0-beta.1" }
 anyhow = "1"
+# The keys of a wg-quick file (T-116). The root crate has the same version.
+base64 = "0.23"
 futures = "0.3"
 libc = "0.2"
 ring = "0.17"

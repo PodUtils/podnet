@@ -2289,6 +2289,7 @@ name = "podnet-vnet"
 version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
+ "base64",
  "futures",
  "libc",
  "pod-testkit",

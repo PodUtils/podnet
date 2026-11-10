@@ -126,6 +126,8 @@ pub mod transport;
 pub mod tunnel;
 pub mod update;
 pub mod warp;
+#[cfg(test)]
+mod wg_quick_tests;
 pub mod ws;
 pub mod ws_relay;
 
