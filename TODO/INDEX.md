@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 88 open, 3 partial, 18 blocked, 115 done.**
+**224 entries: 87 open, 3 partial, 18 blocked, 116 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
 | P2 | 50 | 2 | 12 | 73 | 137 |
-| P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 88 | 3 | 18 | 115 | 224 |
+| P3 | 34 | 0 | 4 | 23 | 61 |
+| **All** | 87 | 3 | 18 | 116 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -180,7 +180,7 @@ M8 Overlays, M9 Later.
 | [T-132](later.md) | P3 | S | M9 | chore | open | `try_update` in place of the macro `update_atomic!` |
 | [T-133](later.md) | P3 | S | M9 | chore | done | Zig from the community mirrors in the release workflow |
 | [T-134](later.md) | P3 | M | M9 | chore | open | A weekly watch of the relay contract |
-| [T-135](fixes.md) | P3 | S | M5 | defect | open | `podnet pod` prints its own program name in each message and in `--version` |
+| [T-135](fixes.md) | P3 | S | M5 | defect | done | `podnet pod` prints its own program name in each message and in `--version` |
 | [T-136](rename.md) | P1 | S | M1 | defect | done | live: two runs in a row failed before the transfer of the repository (GitHub #311) |
 | [T-137](crates.md) | P1 | M | M3 | chore | partial | podnet uses the shared crates of `PodUtils/podcrates` |
 | [T-138](fixes.md) | P2 | S | M5 | defect | done | live: two runs in a row failed on the edge and WARP services (GitHub #316) |

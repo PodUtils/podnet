@@ -1116,7 +1116,7 @@ of `podnet-netns` has no row for the door. The check against a real `tailscaled`
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1148,6 +1148,17 @@ A test asserts that `podnet pod --version` starts with the name of the CLI and t
 ## Start condition
 
 T-019 and T-020 are done.
+
+## Done
+
+2026-11-10, commit 266e15a (`T-135: podnet pod prints its own program name in each message and in
+--version`). Each message of the pod library starts with `program_name()` (34 sites; the default
+is `podnet pod`). `set_version_line` gives the line of `--version`; `src/main.rs` passes the
+version line of podnet. Test: `podnet_pod_prints_its_own_program_name` (`tests/pod_usage.rs`):
+`podnet pod --version` equals `podnet --version`, and a usage error starts with `podnet pod: `.
+`cargo test --workspace pod`: 23 passed, 0 failed. `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`:
+each step 0. CI: at the merge.
+
 
 # T-138: live: two runs in a row failed on the edge and WARP services (GitHub #316)
 
