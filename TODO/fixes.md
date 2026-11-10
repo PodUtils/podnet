@@ -1806,7 +1806,7 @@ crates/podnet-netns/README.md` gives one line. `sh scripts/agent/check.sh` exits
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1843,6 +1843,25 @@ cd fuzz && cargo +nightly fuzz run seccomp_sendto -- -max_total_time=60
 ## Start condition
 
 T-040 is done.
+
+## Done
+
+2026-11-09, commit 6389505 (`T-154: fuzz targets for the seccomp handlers`). A trait `Answer`
+(`crates/podnet-netns/src/seccomp/notif.rs`) holds `respond` and `proceed`: the notification
+descriptor answers with the ioctl, and a target records the answers in memory. The send handlers
+(`crates/podnet-netns/src/seccomp/send.rs`) and the four handlers of `crates/podnet-netns/src/sockopt.rs`
+take an `Answer`; the ADDFD calls are not in these handlers and did not change. New module
+`crates/podnet-netns/src/fuzzing.rs` with the targets `seccomp_sendto`, `seccomp_sendmsg` (also
+`sendmmsg`) and `seccomp_sockopt` (`setsockopt`, `getsockopt`, `bind`, `getsockname`,
+`getpeername`): a fresh state for each input, the memory of the program in a sealed memfd. The
+oracle: no panic, an end in 5 s, one answer, or an error with no answer. `src/fuzzing.rs`,
+`fuzz/Cargo.toml` and `fuzz/fuzz_targets/` have the three targets; `.github/workflows/fuzz.yml`
+gives each 60 s. No crash input: a stable random run of 3 x 60 s (4.5 million inputs) found no fault,
+and `fuzzing::tests::each_target_survives_mutations` runs the three targets. Tests:
+`fuzzing::tests::{each_seed_gets_its_answer, a_burst_of_queries_in_one_sendmmsg_gets_an_answer,
+an_empty_input_gets_an_answer}` of `podnet-netns`. `cargo check --manifest-path fuzz/Cargo.toml --bins`:
+exit 0. `sh scripts/agent/check.sh`: exit 0. The libFuzzer run (nightly) is not run here: the host has
+no nightly toolchain. CI: at the merge (`fuzz.yml` by hand).
 
 # T-155: seccomp: a differential check of the socket calls against the host kernel (GitHub #353)
 
