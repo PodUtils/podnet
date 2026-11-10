@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**226 entries: 75 open, 3 partial, 19 blocked, 129 done.**
+**226 entries: 74 open, 3 partial, 19 blocked, 130 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 22 | 27 |
-| P2 | 44 | 2 | 13 | 78 | 137 |
+| P2 | 43 | 2 | 13 | 79 | 137 |
 | P3 | 28 | 0 | 4 | 29 | 61 |
-| **All** | 75 | 3 | 19 | 129 | 226 |
+| **All** | 74 | 3 | 19 | 130 | 226 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -158,7 +158,7 @@ M8 Overlays, M9 Later.
 | [T-110](pods.md) | P2 | M | M7 | feature | open | `warp exec --join N` runs a command in a detached pod |
 | [T-111](pods.md) | P2 | M | M7 | feature | done | netns: generic UDP |
 | [T-112](pods.md) | P3 | S | M7 | feature | open | netns: the gateway address reaches the loopback of the host, when the user asks |
-| [T-113](pods.md) | P2 | S | M7 | feature | open | `warp exec` and `warp shell` try the netns backend first |
+| [T-113](pods.md) | P2 | S | M7 | feature | done | `warp exec` and `warp shell` try the netns backend first |
 | [T-114](overlays.md) | P2 | M | M8 | chore | open | A headscale harness in CI for the `tailscaled` sidecar |
 | [T-115](overlays.md) | P3 | S | M8 | feature | open | The tailnet as a network of the registry and of the router |
 | [T-116](overlays.md) | P3 | S | M8 | feature | done | WireGuard: read a wg-quick file into a peer, with optional reserved bytes |

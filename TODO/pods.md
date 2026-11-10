@@ -278,7 +278,7 @@ section 5 (question 5).
 **Milestone:** M7
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -314,6 +314,18 @@ cargo test --workspace -- warp_exec_tries_netns_first warp_exec_falls_back_to_se
 ## Start condition
 
 T-063, T-064, T-071 and T-111 are done.
+
+## Done
+
+2026-11-10, commit 44e323a (`T-113: warp exec and warp shell try the netns backend first`). The
+launcher of `warp exec` and `warp shell` is now in the CLI layer (`src/cli/cmd/warp/pod.rs`):
+`src/warp/pod.rs` is frozen for `pod-warp` and keeps its old functions with no caller. The pod
+gets no `--prefer-udp`: `auto` takes netns when the user and network namespace and the TUN work,
+else seccomp. The line of T-071 ends with `Choice: REASON` (the probe that failed, or
+`--backend NAME`). Test hook: `PODNET_NETNS_TEST_NO_NETNS`. Tests: `warp_exec_tries_netns_first`,
+`warp_exec_falls_back_to_seccomp` (`tests/pod_backend_line.rs`), `warp_exec_auto_has_no_prefer_udp`.
+The Prove command: 2 passed. README and the netns manual changed.
+`TMPDIR=/workspace/podnet/.work/tmp-m7c sh scripts/agent/check.sh`: each step 0. CI: at the merge.
 
 # T-150: seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351)
 
