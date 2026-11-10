@@ -554,7 +554,7 @@ each step 0. CI: at the merge. GitHub #355 (fixes 1 to 3, 5) closes at the merge
 **Milestone:** M7
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -578,6 +578,21 @@ A CI job needs to assert that a workload touched only the destinations that it d
 ```sh
 cargo test --test pod_seccomp_rules -- seccomp_learn_then_enforce_passes seccomp_enforce_fails_on_a_new_destination
 ```
+
+## Done
+
+2026-11-10, commit dea1f91 (`T-158: pod: --learn and --fail-on-violation`).
+`crates/podnet-netns/src/learn.rs`. `--learn FILE`: the pod records each destination (`tcp` or `udp`
+and the target); a flow that a rule refuses goes through the default `-x` chain; at the exit of the
+program the pod writes FILE, one `PROTO TARGET` line each. `--fail-on-violation FILE`: a destination
+that is not in FILE is refused (rule name `not-learned`) and is a violation; a learned destination
+that a rule refuses is a violation. The pod writes each violation on stderr; the exit status is 4
+when the program exits 0. A seccomp TCP connect to loopback is not recorded. Both work with
+`seccomp` and `netns`; with `--serve` they are a usage error. The Prove command: 2 passed
+(`seccomp_learn_then_enforce_passes`, `seccomp_enforce_fails_on_a_new_destination`). Also:
+`a_learned_set_with_a_bad_line_is_a_usage_error`, `learn::tests::a_learned_set_reads_back`.
+`TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI: at the merge. GitHub #355 (fix 4)
+closes at the merge.
 
 # T-174: netns: a veth wire when `/dev/net/tun` is not there (GitHub #369)
 

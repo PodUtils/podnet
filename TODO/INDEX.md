@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 82 open, 3 partial, 19 blocked, 120 done.**
+**224 entries: 81 open, 3 partial, 19 blocked, 121 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
 | P2 | 45 | 2 | 13 | 77 | 137 |
-| P3 | 34 | 0 | 4 | 23 | 61 |
-| **All** | 82 | 3 | 19 | 120 | 224 |
+| P3 | 33 | 0 | 4 | 24 | 61 |
+| **All** | 81 | 3 | 19 | 121 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -203,7 +203,7 @@ M8 Overlays, M9 Later.
 | [T-155](fixes.md) | P3 | M | M5 | chore | done | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
 | [T-156](pods.md) | P2 | M | M7 | feature | done | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |
 | [T-157](pods.md) | P2 | M | M7 | feature | done | pod: `--default-action` and a JSON flow record (GitHub #355) |
-| [T-158](pods.md) | P3 | M | M7 | feature | open | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
+| [T-158](pods.md) | P3 | M | M7 | feature | done | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
 | [T-159](fixes.md) | P3 | S | M5 | docs | done | research documents are readings; fix the stale counts of the record (GitHub #356) |
 | [T-160](fixes.md) | P2 | S | M5 | defect | done | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
 | [T-161](crates.md) | P2 | M | M3 | feature | blocked | relay node: renew the pair before it expires (GitHub #358) |
