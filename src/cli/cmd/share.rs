@@ -7,6 +7,7 @@ use clap::{Args, ValueEnum};
 
 use podnet::config::Config;
 use podnet::exit::{Fault, ResultExt};
+use podnet::files::FilesConfig;
 use podnet::gate::Gate;
 use podnet::ingress::{Ingress, Service};
 use podnet::share::ShareConfig;
@@ -32,6 +33,11 @@ pub(crate) struct ServeArgs {
     /// start with a dot and links out of the directory are left out.
     #[arg(long)]
     tar: bool,
+    /// A directory with no index.html answers a listing of its files:
+    /// HTML, or JSON with the header Accept: application/json. Names
+    /// that start with a dot and links out of the directory are left out.
+    #[arg(long)]
+    list: bool,
     /// Serve the files on this local listener and make no tunnel:
     /// HOST:PORT (or tcp://HOST:PORT), or unix:PATH (mode 0600). Port 0
     /// takes a free port; podnet prints the bound address. A unix socket
@@ -145,17 +151,23 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
         podnet::report::hide(token);
         config.credentials = podnet::config::parse_token(token).fault(Fault::Config)?;
     }
-    config.ingress = Ingress::new().catch_all(Service::Static {
-        root: args.dir.clone(),
-        spa: args.spa,
-        tar: args.tar,
-    });
+    config.ingress = Ingress::new().catch_all(Service::Files(files_config(&args)));
     config = args.common.apply(config)?;
-    let show = serve_show(args.common.show(), &args.dir, args.spa);
+    let show = serve_show(args.common.show(), &args.dir, args.spa || args.list);
     if args.common.check {
         return preflight(&config, show).await;
     }
     run_tunnel(config, show, args.common.run_for, vec![]).await
+}
+
+/// The file server of `serve`.
+fn files_config(args: &ServeArgs) -> FilesConfig {
+    FilesConfig {
+        spa: args.spa,
+        tar: args.tar,
+        list: args.list,
+        ..FilesConfig::new(args.dir.clone())
+    }
 }
 
 /// `show` for `serve`: a directory with no `index.html`, and no `--spa`,
@@ -177,7 +189,7 @@ async fn serve_local(args: &ServeArgs, local: &str) -> Result<()> {
                 .to_string(),
         ));
     }
-    let router = podnet::service::static_router_with(&args.dir, args.spa, args.tar)?;
+    let router = podnet::files::router(&files_config(args))?;
     let show = args.common.show();
     let (url, listen, server, _file) = if local.starts_with("unix:") {
         #[cfg(unix)]

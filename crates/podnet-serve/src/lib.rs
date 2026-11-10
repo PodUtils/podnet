@@ -1,7 +1,8 @@
 //! podnet-serve: the services of podnet: the file server and the file
 //! transfer (`share`), the gate of a shared page (`gate`), the service of
 //! an ingress rule (`service`, `ingress`), the origins (`origin`), the
-//! features beside the data path (`feature`), the client of the SSH
+//! features beside the data path (`feature`), the file server
+//! (`files`), the client of the SSH
 //! relay (`relay`) and git hosting (`git`). It uses the core (`podnet-core`) and no other crate of
 //! the workspace. It is a library of podnet, not a stable interface: use
 //! the crate `podnet`, which gives each module at its old path
@@ -70,6 +71,7 @@ macro_rules! update_atomic {
 }
 
 pub mod feature;
+pub mod files;
 pub mod gate;
 pub mod git;
 pub mod ingress;

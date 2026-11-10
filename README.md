@@ -499,6 +499,19 @@ podnet serve --dir ./public --tar --local 127.0.0.1:8080
 curl -fsS 'http://127.0.0.1:8080/docs/?tar' | tar -xf -
 ```
 
+With `--list`, a directory with no `index.html` answers a listing of its
+files. A browser gets HTML. A request with `Accept: application/json` gets
+`{"path": "/docs/", "entries": [{"name", "type", "size", "modified"}]}`,
+with `type` `dir` or `file` and `modified` in seconds after the Unix epoch.
+The listing has the same rules: no dot name, no link out of `--dir`, no
+FIFO, socket or device. A directory path with no `/` at its end goes to
+the path with the `/` (308).
+
+```sh
+podnet serve --dir ./public --list --local 127.0.0.1:8080
+curl -fsS -H 'Accept: application/json' http://127.0.0.1:8080/docs/
+```
+
 The library type `podnet::origin::StaticDir` has the same rules. It also
 applies them to the directory index and to the SPA index.
 `podnet::feature::StaticServer::respond` gives a `StaticResponse`. Its
