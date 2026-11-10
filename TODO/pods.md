@@ -93,7 +93,7 @@ cargo test --workspace -- netns_pod_outlives_its_first_child
 
 ## Premise
 
-- `src/detach.rs` and `src/instances.rs` supervise the other server commands: `ps`, `stop`,
+- `crates/podnet-core/src/detach.rs` and `crates/podnet-core/src/instances.rs` supervise the other server commands: `ps`, `stop`,
   `logs` and `wait`.
 - Read: the arguments of `warp exec` have no detach options (`src/main.rs`).
 
@@ -458,7 +458,7 @@ cargo test --workspace -- reject_and_block_mean_the_same_in_both_rule_engines
 
 A flow that matches no rule reaches the default chain. There is no way to refuse every undeclared
 destination, and no machine record of (destination, rule, verdict). The `-v` log is for humans
-(`cli.rs:104`). The decision counters (`src/decisions.rs`) serve `warp proxy` only.
+(`cli.rs:104`). The decision counters (`crates/podnet-core/src/decisions.rs`) serve `warp proxy` only.
 
 ## Premise
 

@@ -31,7 +31,7 @@ checks do not run, until they change.
 
 - The write-safe print macros and `update_atomic!` are defined in `src/lib.rs`.
 - `build.rs` sets the build commit, target and date for the root crate only. `src/fetch.rs`,
-  `src/report.rs`, `src/config.rs`, `src/quicktunnel.rs` and `src/tunnel.rs` read them.
+  `crates/podnet-core/src/report.rs`, `src/config.rs`, `src/quicktunnel.rs` and `src/tunnel.rs` read them.
 - The variable scan of `src/manual/facts.rs` reads fixed directories.
 - `.github/workflows/ci.yml` lists two packages for `cargo package --list`.
   `tests/docs.rs::podnet_netns_ships_the_license` checks the licence of one crate.
@@ -88,7 +88,7 @@ goes to `pod-testkit`) does not change.
 
 2026-11-10, commit dede6df. `crates/podnet-core` is a member of the workspace with
 `podnet_core::build` (`VERSION`, `COMMIT`, `version()`), its own `build.rs`, a copy of the print
-macros and `update_atomic!`, and `pod-testkit` as a dev-dependency. `src/report.rs` reads the
+macros and `update_atomic!`, and `pod-testkit` as a dev-dependency. `crates/podnet-core/src/report.rs` reads the
 version line from the core. The variable scan of `src/manual/facts.rs` reads `src`, `shim`,
 `build.rs`, and `src` and `build.rs` of each directory of `crates/`. `.github/workflows/ci.yml`
 packs each member that cargo may publish (`cargo metadata`) and checks `LICENSE`, `README.md`
@@ -151,7 +151,7 @@ T-046 is done.
 ## Correction
 
 2026-11-05, the module tls_fragment is gone (the split of the ClientHello is in `pod-tls`), and
-`src/trust.rs` is glue over `pod-tls`. `src/egress.rs`, `PodUtils/podnet:src/proxy_auth.rs` and `src/fetch.rs` move to
+`crates/podnet-core/src/trust.rs` is glue over `pod-tls`. `src/egress.rs`, `PodUtils/podnet:src/proxy_auth.rs` and `src/fetch.rs` move to
 `pod-proxy`, `src/resolve.rs` to `pod-dns`, and the WebSocket bridge of `src/ws.rs` to `pod-ws`
 (T-137). Extract `podnet-core` from what stays in podnet after these takes. Recount the module list
 when the entry starts. Step 4 names the MSRV job: it stays, and its plant step is gone.
@@ -552,7 +552,7 @@ adapter of podnet move to the shared repository (T-050, T-052).
 ## Approach
 
 1. When wave 1 exists: replace `crates/podnet-todo` with `pod-todo` (done), and the TLS, DNS and proxy
-   code of podnet (`src/trust.rs`, `src/resolve.rs`, `src/egress.rs`) with `pod-tls` (done), `pod-dns`
+   code of podnet (`crates/podnet-core/src/trust.rs`, `src/resolve.rs`, `src/egress.rs`) with `pod-tls` (done), `pod-dns`
    and `pod-proxy`.
 2. When wave 2 exists: replace the relay client (`src/ws_relay.rs`, `src/relay_reverse.rs`) with
    `pod-relay` (no crate `podnet-relay`: T-049), and the userspace stack and WireGuard of
@@ -584,7 +584,7 @@ Done so far:
 - `pod-todo` v0.1.0 (6c210ed): `crates/podnet-todo` is a wrapper (`main` calls
   `pod_todo::main()`; the facts of podnet are in `TODO/todo.toml`).
 - `pod-tls` and `pod-core` v0.2.0 (the patch `adoption/podnet/pod-tls.patch` of podcrates):
-  `src/trust.rs` is the glue (one context of the process on ring, the edge roots of Cloudflare as
+  `crates/podnet-core/src/trust.rs` is the glue (one context of the process on ring, the edge roots of Cloudflare as
   extra roots); the module `tls_fragment` is gone (the split is in `pod-tls`). Each `pod-*`
   dependency names `tag = "v0.2.0"`. The `rust-version` is 1.99 and each toolchain pin is 1.99.1;
   the `msrv` job has no plant step (no stable API is newer than 1.99).
@@ -595,7 +595,7 @@ Done so far:
   `tag = "v0.3.0"` with `version = "0.3.0"`.
 - `pod-dns` and `pod-services` v0.4.0 (bf0c7ca; the patch `adoption/podnet/pod-dns.patch` of
   podcrates): `src/resolve.rs` is the glue of `pod-dns`; each value of a service of another party
-  is a read of `pod-services` through `src/services.rs`; `report::log_filter` gives `-v` the debug
+  is a read of `pod-services` through `crates/podnet-core/src/services.rs`; `report::log_filter` gives `-v` the debug
   lines of the pod crates. Each `pod-*` dependency names `tag = "v0.4.0"`. The COORD issue is
   PodUtils/podnet#320.
 - v0.5.0 (dfd8bd8): each `pod-*` dependency names `tag = "v0.5.0"`; no API change for podnet.
@@ -689,7 +689,7 @@ mint, and only the cache file changes, not the running list.
   (`:428-497`); `refresh_pool` writes the cache only (`:389-421`) and does not run for a listed list
   (`:363`). `alternates_of` takes pool order (`relay_pool.rs:108-121`); `STALE_AFTER` is 7 days.
 - Correction of the issue: a stalled host costs the stagger (2 s), not the full timeout. The race starts
-  the next host after the stagger and the first success wins (`src/race.rs:1-9`). The loopback test of
+  the next host after the stagger and the first success wins (`crates/podnet-core/src/race.rs:1-9`). The loopback test of
   the issue must assert a connect time near 2 s before and near 0 s after, not a full timeout.
 - Precedent: the front door orders the address that worked first (`src/warp/mod.rs:948`, issue 124).
 - `ws_relay.rs` and `relay_pool.rs` go to `pod-relay` (T-049): a new feature waits for the crate.

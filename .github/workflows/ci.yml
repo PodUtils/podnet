@@ -110,15 +110,15 @@ jobs:
       - name: The check fails on its plant
         run: |
           set -u
-          sed -i '/fn the_probe_splits_open_and_closed_ports/{n;/need_loopback/d}' src/ports.rs
-          git diff --quiet -- src/ports.rs && { echo "the plant did not change src/ports.rs"; exit 1; }
+          sed -i '/fn the_probe_splits_open_and_closed_ports/{n;/need_loopback/d}' crates/podnet-core/src/ports.rs
+          git diff --quiet -- crates/podnet-core/src/ports.rs && { echo "the plant did not change crates/podnet-core/src/ports.rs"; exit 1; }
           if sh scripts/restricted-host.sh --lib ports::tests::the_probe_splits_open_and_closed_ports > "$RUNNER_TEMP/plant.log" 2>&1; then
             cat "$RUNNER_TEMP/plant.log"
             echo "the planted test passed"
             exit 1
           fi
           grep -m1 PermissionDenied "$RUNNER_TEMP/plant.log" || { cat "$RUNNER_TEMP/plant.log"; echo "the plant failed for another cause"; exit 1; }
-          git checkout -- src/ports.rs
+          git checkout -- crates/podnet-core/src/ports.rs
 
   # T-076: the tests in a network namespace with the loopback down, as the
   # runner user. A test that binds 127.0.0.1 must skip with need_loopback!().
@@ -145,8 +145,8 @@ jobs:
       - name: The check fails on its plant
         run: |
           set -u
-          sed -i '/fn the_probe_splits_open_and_closed_ports/{n;/need_loopback/d}' src/ports.rs
-          git diff --quiet -- src/ports.rs && { echo "the plant did not change src/ports.rs"; exit 1; }
+          sed -i '/fn the_probe_splits_open_and_closed_ports/{n;/need_loopback/d}' crates/podnet-core/src/ports.rs
+          git diff --quiet -- crates/podnet-core/src/ports.rs && { echo "the plant did not change crates/podnet-core/src/ports.rs"; exit 1; }
           if sudo unshare -n -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
             env HOME="$HOME" PATH="$PATH" \
             cargo test --offline --lib ports::tests::the_probe_splits_open_and_closed_ports > "$RUNNER_TEMP/plant.log" 2>&1; then
@@ -155,7 +155,7 @@ jobs:
             exit 1
           fi
           grep -m1 "test result: FAILED" "$RUNNER_TEMP/plant.log" || { cat "$RUNNER_TEMP/plant.log"; echo "the plant failed for another cause"; exit 1; }
-          git checkout -- src/ports.rs
+          git checkout -- crates/podnet-core/src/ports.rs
 
   # The rust-version of Cargo.toml builds the workspace. It is the Rust of
   # pod-tls (PodUtils/podcrates), the toolchain of CI: no stable API is newer,
@@ -371,9 +371,9 @@ jobs:
           rm src/planted_size.rs
 
           # A core module that uses an adapter, and a scan of nothing.
-          echo 'use crate::tunnel;' >> src/udp.rs
+          echo 'use crate::tunnel;' >> crates/podnet-core/src/udp.rs
           must_fail "check-layers.py, a reference from core to cloudflare" python3 -I scripts/check-layers.py
-          git checkout -- src/udp.rs
+          git checkout -- crates/podnet-core/src/udp.rs
           must_fail "check-layers.py, a scan of nothing" python3 -I scripts/check-layers.py --plant-empty
 
           exit "$fail"

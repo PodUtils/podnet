@@ -666,7 +666,7 @@ TCP (T-068).
 ## Premise
 
 - The probe of T-068 renews a WARP session that carries no TCP.
-- `src/metrics.rs` and `src/decisions.rs` give counters and decision lines.
+- `crates/podnet-core/src/metrics.rs` and `crates/podnet-core/src/decisions.rs` give counters and decision lines.
 - The mwan experiment leaks a socket for each probe, keeps no round-trip time, and puts a link
   back after one good probe.
 
@@ -806,13 +806,13 @@ too long for a command line.
 
 ## Premise
 
-- `src/yaml.rs` reads YAML with no new crate.
-- `src/detach.rs` and `src/autostart.rs` supervise a command and start it at boot.
+- `crates/podnet-core/src/yaml.rs` reads YAML with no new crate.
+- `crates/podnet-core/src/detach.rs` and `crates/podnet-core/src/autostart.rs` supervise a command and start it at boot.
 
 ## Approach
 
 1. Add `podnet route [--config FILE]`, with the keys of the flags in the file.
-2. Read the file with `src/yaml.rs`.
+2. Read the file with `crates/podnet-core/src/yaml.rs`.
 3. Make `--detach --name NAME` and `autostart add` work with it.
 
 ## Prove
@@ -1057,7 +1057,7 @@ The parts of T-102 and T-103 have no command.
    prints the code.
 2. Add `podnet receive` with `--out DIR`, `--yes` and `--via`. It reads the code from the prompt
    or from stdin, never from argv.
-3. Check the SHA-256 of each file. Map each fault to an exit code of `src/exit.rs`.
+3. Check the SHA-256 of each file. Map each fault to an exit code of `crates/podnet-core/src/exit.rs`.
 
 ## Prove
 
@@ -1287,7 +1287,7 @@ Ask A-N-11 (P1): "Install a connector as a system service: a hardened `systemd` 
 
 ## Premise
 
-- Read: `src/autostart.rs` writes a systemd user unit or a crontab line, with no root. It has no system unit and no own user.
+- Read: `crates/podnet-core/src/autostart.rs` writes a systemd user unit or a crontab line, with no root. It has no system unit and no own user.
 - The library that renders and installs a unit is `pod-unit` (PodUtils/podcrates, T-102). It does not exist in a release. The unit text is code of that crate.
 - Not read: how `warp.json` picks its directory (`src/warp/`, frozen for `pod-warp`).
 

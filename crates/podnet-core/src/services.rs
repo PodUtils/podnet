@@ -176,18 +176,3 @@ pub mod warp {
         text(WARP, "connect-uri")
     }
 }
-
-#[cfg(test)]
-mod tests {
-    /// The fallback nameservers of `warp tun` and the nameserver of the raw
-    /// pod (live run 42222905277: an empty list made warp run --backend
-    /// netns-raw panic after the take of pod-services).
-    // An endpoint of the role udp gives its address as its host, with no
-    // list of addresses: socket_addrs takes the host, ip_addrs does not.
-    #[test]
-    fn the_nameservers_of_the_service_are_1_1_1_1_and_1_0_0_1() {
-        let want: Vec<std::net::IpAddr> =
-            vec!["1.1.1.1".parse().unwrap(), "1.0.0.1".parse().unwrap()];
-        assert_eq!(crate::warp::route::nameservers_of_service(), want);
-    }
-}

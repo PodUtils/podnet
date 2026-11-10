@@ -1015,7 +1015,7 @@ or a chain member that ends a leg.
 ## Premise
 
 - It contradicts T-096: "One flow uses one uplink". Adopting it changes that contract (owner; see Decision).
-- `src/race.rs:54` is the per-leg primitive; `src/warp/forward.rs` ends one leg and re-dials the other.
+- `crates/podnet-core/src/race.rs:54` is the per-leg primitive; `src/warp/forward.rs` ends one leg and re-dials the other.
 
 ## Approach
 

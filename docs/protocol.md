@@ -142,7 +142,7 @@ Go function `SerializeHeaders` of cloudflared.
 
 `--protocol auto --transport auto` tries QUIC, then HTTP/2, then QUIC through
 WARP (section 5). The attempts are real registrations, in a staggered race
-(`src/race.rs`, `--leg-failover staggered`, the default):
+(`crates/podnet-core/src/race.rs`, `--leg-failover staggered`, the default):
 
 * The next leg starts when the leg before has not registered in 2 seconds,
   or at once when it fails. A filtered port does not answer, so a host that
@@ -166,7 +166,7 @@ with the limits of its steps, and 5 seconds at most between two tries.
 A try over more than one edge address can take longer than one try of the
 table. The time limit then stops it, and the next leg starts.
 
-UDP (`PODNET_UDP`, `src/udp.rs`): with `probe` (the default) and
+UDP (`PODNET_UDP`, `crates/podnet-core/src/udp.rs`): with `probe` (the default) and
 `--protocol auto`, podnet sends one QUIC packet with a reserved version (RFC
 9000 section 15) to an edge address on UDP 7844 while the quick tunnel is
 provisioned. The result is answered (a datagram came back), refused (the send

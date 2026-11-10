@@ -19,7 +19,50 @@ targets = ["x86_64-unknown-linux-gnu"]
 name = "podnet_core"
 path = "src/lib.rs"
 
+[dependencies]
+# The clock of an HTTP date, the services of other parties and the TLS
+# context, of PodUtils/podcrates at the git tag of the root.
+pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.10.0", version = "0.10.0" }
+pod-services = { git = "https://github.com/PodUtils/podcrates", tag = "v0.10.0", version = "0.10.0" }
+pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.10.0", version = "0.10.0" }
+anyhow = "1"
+futures = "0.3"
+getrandom = "0.4"
+libc = "0.2"
+qrcode = { version = "0.14", default-features = false }
+ring = "0.17"
+rustls = { version = "0.23", default-features = false, features = [
+    "ring",
+    "std",
+    "tls12",
+    "logging",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "io-util",
+    "io-std",
+    "net",
+    "time",
+    "sync",
+    "signal",
+    "fs",
+    "process",
+] }
+tokio-rustls = { version = "0.26", default-features = false, features = [
+    "ring",
+    "tls12",
+    "logging",
+] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
 [dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["test-util"] }
 # need_loopback! and need_localhost! of the tests (T-046), from the test kit
 # of PodUtils/podcrates at the git tag of the root.
 pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.10.0", version = "0.10.0" }

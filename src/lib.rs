@@ -75,63 +75,54 @@ macro_rules! update_atomic {
     }};
 }
 
+// The modules of the core layer (crates/podnet-core, T-047), at their
+// old paths.
+#[doc(inline)]
+pub use podnet_core::{
+    autostart, connect, decisions, detach, exit, hop, instances, metrics, net, ports, qr, race,
+    rlimit, services, state, trust, udp, util, yaml,
+};
+
 pub mod agent;
 pub mod agent_files;
-pub mod autostart;
 pub mod bug_report;
 pub mod cloudflare;
 pub mod config;
-pub mod connect;
-pub mod decisions;
-pub mod detach;
+#[cfg(test)]
+mod core_tests;
 pub mod doctor;
 pub mod edge_discovery;
 pub mod edge_h2;
 pub mod egress;
-pub mod exit;
 pub mod feature;
 pub mod fetch;
 #[doc(hidden)]
 pub mod fuzzing;
 pub mod gate;
-pub mod hop;
 pub mod ingress;
-pub mod instances;
 pub mod manual;
-pub mod metrics;
-pub mod net;
 pub mod origin;
-pub mod ports;
 pub mod preflight;
 pub mod proxy;
-pub mod qr;
 pub mod quicktunnel;
-pub mod race;
 pub mod relay;
 pub mod relay_pool;
 pub mod relay_reverse;
 pub mod report;
 pub mod resolve;
-pub mod rlimit;
 pub mod service;
-pub mod services;
 pub mod share;
-pub mod state;
 pub mod status;
 #[cfg(test)]
 #[path = "../tests/test_host/mod.rs"]
 mod test_host;
 pub mod transport;
-pub mod trust;
 pub mod tunnel;
-pub mod udp;
 pub mod update;
-pub mod util;
 pub mod vnet;
 pub mod warp;
 pub mod ws;
 pub mod ws_relay;
-pub mod yaml;
 
 pub use config::{Config, Credentials, Protocol, ReconnectPolicy, Transport};
 pub use egress::Proxy;

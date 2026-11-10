@@ -61,6 +61,8 @@ LAYER = {
     "cli": "podnet",
     # The modules of crates/podnet-core that are new there.
     "build": "core",
+    # The tests of the core that read a higher layer (src/core_tests.rs).
+    "core_tests": "podnet",
 }
 
 # The crates of the workspace (crates/NAME) and the layer of each. The

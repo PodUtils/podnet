@@ -1,6 +1,10 @@
-//! podnet-core: the core layer of podnet. The other crates of the
-//! workspace use it; it uses none of them. It is a library of podnet, not a
-//! stable interface: use the crate `podnet`.
+//! podnet-core: the core layer of podnet: the process (`exit`, `rlimit`,
+//! `report`), the files and the state (`state`, `yaml`), the network glue
+//! (`net`, `trust`, `udp`, `connect`, `services`, `hop`), and the
+//! supervisor of detached instances (`detach`, `instances`, `autostart`).
+//! The other crates of the workspace use it; it uses none of them. It is a
+//! library of podnet, not a stable interface: use the crate `podnet`, which
+//! gives each module at its old path (`podnet::exit`).
 
 // The macros below are a copy of the macros of `src/lib.rs` of podnet
 // (T-046). Each crate defines them at its root. One macro of this crate
@@ -12,7 +16,6 @@
 /// 74). The std macros panic when the write fails: a detached instance
 /// writes to its log, and a full disk or a closed stream must not stop it.
 /// A command that only prints keeps the default action of SIGPIPE.
-#[allow(unused_macros)]
 macro_rules! println {
     ($($arg:tt)*) => {{
         use ::std::io::Write as _;
@@ -28,7 +31,6 @@ macro_rules! print {
     }};
 }
 
-#[allow(unused_macros)]
 macro_rules! eprintln {
     ($($arg:tt)*) => {{
         use ::std::io::Write as _;
@@ -65,4 +67,24 @@ macro_rules! update_atomic {
     }};
 }
 
+pub mod autostart;
 pub mod build;
+pub mod connect;
+pub mod decisions;
+pub mod detach;
+pub mod exit;
+pub mod hop;
+pub mod instances;
+pub mod metrics;
+pub mod net;
+pub mod ports;
+pub mod qr;
+pub mod race;
+pub mod report;
+pub mod rlimit;
+pub mod services;
+pub mod state;
+pub mod trust;
+pub mod udp;
+pub mod util;
+pub mod yaml;

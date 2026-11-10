@@ -91,7 +91,8 @@ pub fn local_name(host: &str) -> Option<Vec<std::net::IpAddr>> {
 }
 
 /// `HOST:PORT` or `[V6]:PORT`.
-pub(crate) fn split_host_port(addr: &str) -> Option<(&str, u16)> {
+#[doc(hidden)]
+pub fn split_host_port(addr: &str) -> Option<(&str, u16)> {
     let (host, port) = addr.rsplit_once(':')?;
     let host = host.trim_start_matches('[').trim_end_matches(']');
     Some((host, port.parse().ok()?))
@@ -180,7 +181,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_second_bind_on_one_port_exits_69() {
-        crate::test_host::need_loopback!();
+        pod_testkit::need_loopback!();
         let first = bind_tcp(([127, 0, 0, 1], 0).into()).await.unwrap();
         let err = bind_tcp(first.local_addr().unwrap()).await.unwrap_err();
         assert_eq!(crate::exit::code_of(&err), crate::exit::UNAVAILABLE);
@@ -205,21 +206,6 @@ mod tests {
         assert!(!stale.exists());
     }
 
-    /// #248: the first dial of an origin with noTLSVerify warns; the next
-    /// dials of it do not.
-    #[test]
-    fn an_unverified_origin_is_named_one_time() {
-        assert!(crate::origin::dial::note_unverified(
-            "https://a.test.invalid:8443"
-        ));
-        assert!(!crate::origin::dial::note_unverified(
-            "https://a.test.invalid:8443"
-        ));
-        assert!(crate::origin::dial::note_unverified(
-            "https://b.test.invalid:8443"
-        ));
-    }
-
     // Issue 119: localhost needs no resolver (a host with no /etc/hosts).
     #[test]
     fn localhost_is_a_local_name() {
@@ -233,7 +219,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_origin_on_localhost_connects_and_a_refusal_names_the_address() {
-        crate::test_host::need_loopback!();
+        pod_testkit::need_loopback!();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         assert!(connect_origin("localhost", port).await.is_ok());

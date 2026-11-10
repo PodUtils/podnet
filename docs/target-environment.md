@@ -100,19 +100,19 @@ fail that check. The steps:
 
 | Condition | What podnet does | Mark | Code or test |
 | --- | --- | --- | --- |
-| `HOME` is not set | The state directory is `podnet-<uid>` in the temporary directory, never the current directory | measured (test) | `src/state.rs`; `tests/cli/startup.rs` `an_empty_environment_works` |
-| The uid has no passwd entry | podnet reads the home from `HOME` only and does not call `getpwuid` | inferred | `src/state.rs`; only the Tailscale SSH shim (`src/vnet/tailscale_ssh.rs`) handles `getpwuid` for a client |
-| The temporary directory is `noexec` | A shim goes to the first directory that is writable and not `noexec` | inferred | `src/state.rs` `exec_dir` |
-| A shim directory in `/tmp` exists already (another user made it) | podnet uses the directory only when it belongs to this user, is not a symlink, and other users cannot write it; else it tries the next directory. A cached library is used only when it is a file of this user that other users cannot write | measured (test) | `src/state.rs` `exec_dir_refuses_a_directory_open_to_others`; `src/vnet/shim.rs` `a_planted_library_is_not_used_from_the_cache` |
-| The state directory is read-only | podnet tries the next directory of the chain; a WARP registration does not start when no directory can be written | measured (test) | `src/state.rs`; `src/warp/mod.rs` `register_or_load` |
-| The proxy re-terminates TLS | Give its root with `--ca-file` or `SSL_CERT_FILE` for the API and DoH. The edge and MASQUE cannot pass through it: they need the Cloudflare chain, and MASQUE needs a client certificate | inferred | `src/trust.rs`; `tests/tls.rs` |
+| `HOME` is not set | The state directory is `podnet-<uid>` in the temporary directory, never the current directory | measured (test) | `crates/podnet-core/src/state.rs`; `tests/cli/startup.rs` `an_empty_environment_works` |
+| The uid has no passwd entry | podnet reads the home from `HOME` only and does not call `getpwuid` | inferred | `crates/podnet-core/src/state.rs`; only the Tailscale SSH shim (`src/vnet/tailscale_ssh.rs`) handles `getpwuid` for a client |
+| The temporary directory is `noexec` | A shim goes to the first directory that is writable and not `noexec` | inferred | `crates/podnet-core/src/state.rs` `exec_dir` |
+| A shim directory in `/tmp` exists already (another user made it) | podnet uses the directory only when it belongs to this user, is not a symlink, and other users cannot write it; else it tries the next directory. A cached library is used only when it is a file of this user that other users cannot write | measured (test) | `crates/podnet-core/src/state.rs` `exec_dir_refuses_a_directory_open_to_others`; `src/vnet/shim.rs` `a_planted_library_is_not_used_from_the_cache` |
+| The state directory is read-only | podnet tries the next directory of the chain; a WARP registration does not start when no directory can be written | measured (test) | `crates/podnet-core/src/state.rs`; `src/warp/mod.rs` `register_or_load` |
+| The proxy re-terminates TLS | Give its root with `--ca-file` or `SSL_CERT_FILE` for the API and DoH. The edge and MASQUE cannot pass through it: they need the Cloudflare chain, and MASQUE needs a client certificate | inferred | `crates/podnet-core/src/trust.rs`; `tests/tls.rs` |
 | The proxy refuses `CONNECT` to an IP address | DoH by name (`cloudflare-dns.com`, `dns.google`, `dns.google.com`) through the proxy | measured | `src/resolve.rs` `settings` (`pod_dns::Names::Last`) |
 | The proxy answers 407 | The error names each scheme of `Proxy-Authenticate`; podnet answers Basic and Digest (MD5, MD5-sess, SHA-256, SHA-256-sess), and the advice follows what it sent | measured (test) | `PodUtils/podcrates:crates/pod-proxy/src/proxy_auth.rs` `a_407_names_the_schemes`, `a_407_with_digest_does_not_say_basic_only`; `tests/egress.rs` `a_407_names_the_schemes` |
 | No `/proc` | The seccomp backend of `podnet pod` cannot read the memory of the program; `podnet pod doctor` reports it | inferred | `crates/podnet-netns/src/seccomp/mem.rs` |
 | `/proc/<pid>/mem` and `process_vm_writev` are refused | `getsockname` and `getpeername` answer `EOPNOTSUPP` under the seccomp backend; QUIC clients fail, and a program that reads its own address can crash (a Go `LocalAddr()` type assertion). A warning and the `write program memory` row of `pod doctor` say so; `--backend netns` avoids it | measured (issue 186) | `crates/podnet-netns/src/sockopt.rs` `handle_sockname`; `tests/pod_seccomp/tcp.rs` `getpeername_is_the_inet_address_or_eopnotsupp` |
 | The clock is wrong | A certificate error gives the clock of the host | measured (test) | `tests/tls.rs` `an_expired_certificate_names_the_host_clock` |
 | `bind` is allowed and `listen` is refused | `podnet net doctor` gives `listen(...) FAIL`; `warp proxy`, `connect -L`, `net proxy`, `net switch`, `net tailscale` and `relay connect --listen` need a listener (`net proxy`, `net switch` and `net tailscale` default to a unix path) | measured (test) | `src/vnet/doctor.rs`; `tests/cli/startup.rs` `doctor_tells_listen_from_bind` |
-| Outbound UDP is refused (EPERM, ICMP) | `--protocol auto` does not try QUIC on UDP 7844 | measured (test) | `src/udp.rs`; `tunnel::plan_with_udp` |
+| Outbound UDP is refused (EPERM, ICMP) | `--protocol auto` does not try QUIC on UDP 7844 | measured (test) | `crates/podnet-core/src/udp.rs`; `tunnel::plan_with_udp` |
 | No IPv6 (`EAFNOSUPPORT`) | Direct dials alternate the families and go on to the next address after 250 ms | inferred | `PodUtils/podcrates:crates/pod-proxy/src/race.rs` `dial_addrs` |
 
 ## Other networks to the front door
@@ -169,12 +169,12 @@ session.
 3. Resolve names with a chain that works with no system resolver. Code:
    `src/resolve.rs`.
 4. Check each TLS certificate; take extra roots only from the user. Code:
-   `src/trust.rs`.
+   `crates/podnet-core/src/trust.rs`.
 5. Write no file in the current directory unless the user names it; keep
-   secrets in private files. Code: `src/state.rs`, `src/warp/mod.rs`.
-6. Say which hop failed. Code: `src/hop.rs`.
+   secrets in private files. Code: `crates/podnet-core/src/state.rs`, `src/warp/mod.rs`.
+6. Say which hop failed. Code: `crates/podnet-core/src/hop.rs`.
 7. Start the next edge leg after a short stagger, not after a full time
-   limit. Code: `src/race.rs`.
+   limit. Code: `crates/podnet-core/src/race.rs`.
 
 The doctors (`podnet doctor`, `podnet net doctor`, `podnet pod doctor`) measure a host. Give
 their output in an issue, with `podnet status`.

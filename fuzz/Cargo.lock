@@ -2209,6 +2209,25 @@ dependencies = [
 [[package]]
 name = "podnet-core"
 version = "0.4.0-beta.1"
+dependencies = [
+ "anyhow",
+ "futures",
+ "getrandom 0.4.3",
+ "libc",
+ "pod-core",
+ "pod-services",
+ "pod-tls",
+ "qrcode",
+ "ring",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
 
 [[package]]
 name = "podnet-fuzz"

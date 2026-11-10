@@ -164,18 +164,18 @@ adapter that holds the stack (`pod-warp`): do this work after the take, or as a 
 
 Each way to combine networks exists once, inside one command: MASQUE over the relay over a
 proxy (`warp::Dial`, `MasqueOptions`), the rules of `warp proxy -r` (`src/warp/rules.rs`) and of
-`pod -r`, `NO_PROXY`, and the staggered race of the tunnel legs (`src/race.rs`).
+`pod -r`, `NO_PROXY`, and the staggered race of the tunnel legs (`crates/podnet-core/src/race.rs`).
 
 ## Premise
 
-- `src/race.rs` races staggered attempts and closes the losers.
+- `crates/podnet-core/src/race.rs` races staggered attempts and closes the losers.
 - The pod rules use `RuleMatch`, which `src/warp/rules.rs` shares.
 
 ## Approach
 
 1. `Chain`: an outer dialer carries an inner one.
 2. `Rules`: a dialer for each target, first match wins, with `RuleMatch`.
-3. `Race`: staggered attempts over several dialers, with `src/race.rs`.
+3. `Race`: staggered attempts over several dialers, with `crates/podnet-core/src/race.rs`.
 4. `Failover`: the next dialer after an error.
 5. Unit tests with fake dialers: the order, the stagger, the first rule, the failover.
 3. The combinators read the addressing mode of T-055 (GitHub #377): `Chain`, `Rules` and `Race`

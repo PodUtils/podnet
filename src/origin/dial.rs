@@ -199,3 +199,15 @@ pub fn origin_label(service: &Service) -> String {
         other => other.describe(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    /// #248: the first dial of an origin with noTLSVerify warns; the next
+    /// dials of it do not.
+    #[test]
+    fn an_unverified_origin_is_named_one_time() {
+        assert!(super::note_unverified("https://a.test.invalid:8443"));
+        assert!(!super::note_unverified("https://a.test.invalid:8443"));
+        assert!(super::note_unverified("https://b.test.invalid:8443"));
+    }
+}
