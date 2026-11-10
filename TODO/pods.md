@@ -505,7 +505,7 @@ step 0. CI: at the merge. GitHub #354 closes at the merge.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -533,6 +533,19 @@ destination, and no machine record of (destination, rule, verdict). The `-v` log
 ```sh
 cargo test --test pod_seccomp_rules -- seccomp_default_reject_refuses_an_undeclared_host seccomp_flow_log_has_one_line_per_decision
 ```
+
+## Done
+
+2026-11-10, commit c3ecc07 (`T-157: pod: --default-action and a JSON flow record`).
+`--default-action allow|reject`: `reject` adds a last rule (`RuleMatch::Any`, name `default`) that
+refuses as T-156 does. `--flow-log FILE` (`crates/podnet-netns/src/flowlog.rs`): one JSON line for
+each decision (time, target, rule or `default`, chain, verdict) and one at the close of each
+relayed TCP flow (`bytes_out`, `bytes_in`), for the seccomp connect and datagrams, the netns TCP and
+UDP flows and the front door. With `--flow-log`, the seccomp pod relays each TCP flow (no hand-off)
+to count the bytes. The README gives the semantics of each backend. The Prove command: 2 passed.
+Also: `netns_flow_log_has_one_line_per_decision`. `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`:
+each step 0. CI: at the merge. GitHub #355 (fixes 1 to 3, 5) closes at the merge.
+
 
 # T-158: pod: `--learn` and `--fail-on-violation` (GitHub #355)
 
