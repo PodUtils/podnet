@@ -20,7 +20,7 @@ Environment scan, cargo package and Versions).
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -74,6 +74,35 @@ T-045 is done.
 five crates. `pod-testkit` (wave 1 of PodUtils/podcrates) is a shared crate for tests. Before step
 5, read `pod-testkit`. When it has `need_loopback!` and `need_localhost!`, take them from it. When it has
 not, open an issue in PodUtils/podcrates. Step 1 to 4 stay.
+
+2026-11-10: step 1, 2 and 5 changed. Step 1: one macro of the core that makes `macro_rules!
+println` in the crate that calls it does not compile (E0659: the name is ambiguous with the
+`println!` of the prelude; measured with Rust 1.99.1). Each crate has a copy of the 25 lines.
+Step 2: the core has its own `build.rs` (as `crates/podnet-netns/build.rs`), not a value that the
+binary sets at start: a library user and the tests get the commit with no call. Step 5:
+`pod-testkit` at `v0.10.0` has `need_loopback!` and `need_localhost!`. The core takes them from it
+as a dev-dependency. The core has no feature `testkit`, and `tests/test_host/mod.rs` (frozen, it
+goes to `pod-testkit`) does not change.
+
+## Done
+
+2026-11-10, commit dede6df. `crates/podnet-core` is a member of the workspace with
+`podnet_core::build` (`VERSION`, `COMMIT`, `version()`), its own `build.rs`, a copy of the print
+macros and `update_atomic!`, and `pod-testkit` as a dev-dependency. `src/report.rs` reads the
+version line from the core. The variable scan of `src/manual/facts.rs` reads `src`, `shim`,
+`build.rs`, and `src` and `build.rs` of each directory of `crates/`. `.github/workflows/ci.yml`
+packs each member that cargo may publish (`cargo metadata`) and checks `LICENSE`, `README.md`
+and `Cargo.toml` in each list. `tests/docs.rs::each_crate_ships_the_license` (the former
+`podnet_netns_ships_the_license`) checks each crate. `scripts/check-layers.py` reads the crates
+of `CRATES` (self-test: 4 new cases).
+
+- `sh scripts/agent/check.sh`: fmt 0, clippy 0, record 0, size 0, doc 0, layers 0, test 0.
+- Parity (`sh scripts/agent/parity-snapshot.sh`, one rename in the map): commands 1295 of 1295,
+  items 1297 of 1294, tests 1110 of 1109.
+- Step 6, the build before the split (`cargo build --timings`, debug, `CARGO_PROFILE_DEV_DEBUG=0`,
+  4 jobs, the dependencies built): the crates of the workspace 30.5 s; the rebuild after a touch
+  of `src/cli/cmd/warp/up.rs` 2.0 s, and of `src/egress.rs` 5.6 s.
+- CI: at the merge.
 
 # T-047: Extract the crate `podnet-core`
 
