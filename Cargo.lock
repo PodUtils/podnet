@@ -2120,6 +2120,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "pod-testkit"
+version = "0.10.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.10.0#b21c1936ed1d43319a0bb5e4be60ff4bbc438a8b"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "pod-tls"
 version = "0.10.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.10.0#b21c1936ed1d43319a0bb5e4be60ff4bbc438a8b"
@@ -2166,6 +2174,7 @@ dependencies = [
  "pod-proxy",
  "pod-services",
  "pod-tls",
+ "podnet-core",
  "podnet-netns",
  "qrcode",
  "quinn",
@@ -2193,6 +2202,13 @@ dependencies = [
  "uuid",
  "webpki-roots",
  "x509-parser",
+]
+
+[[package]]
+name = "podnet-core"
+version = "0.4.0-beta.1"
+dependencies = [
+ "pod-testkit",
 ]
 
 [[package]]

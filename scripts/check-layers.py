@@ -14,6 +14,11 @@ crate may not use is a fault, except the references of the allowlist
 can only shrink: a row whose reference no longer exists is a
 fault too. src/main.rs is the binary: it may use each crate.
 
+Each crate of CRATES (crates/NAME/src) holds the modules of one layer:
+a top module there that LAYER puts in another layer is a fault. A
+`crate::MODULE` of such a file names a module of that crate, and a
+`podnet_core::MODULE` of each file is a reference to MODULE (T-046).
+
 A top module that LAYER does not name is a fault: give it a crate. A scan
 that reads fewer than MIN_FILES files is a fault.
 
@@ -54,6 +59,14 @@ LAYER = {
     "update": "podnet", "fuzzing": "podnet", "lib": "podnet",
     "test_host": "podnet", "services": "core", "main": "podnet",
     "cli": "podnet",
+    # The modules of crates/podnet-core that are new there.
+    "build": "core",
+}
+
+# The crates of the workspace (crates/NAME) and the layer of each. The
+# lib.rs of a crate is the module NAME (with `-` as `_`) of that layer.
+CRATES = {
+    "podnet-core": "core",
 }
 
 USES = {
@@ -127,8 +140,8 @@ def strip_tests(text):
 
 
 def refs_of(text):
-    """Yield each top module named after `crate::`."""
-    for m in re.finditer(r"\bcrate\s*::\s*", text):
+    """Yield each top module named after `crate::` or `podnet_core::`."""
+    for m in re.finditer(r"\b(?:crate|podnet_core)\s*::\s*", text):
         j = m.end()
         if text.startswith("{", j):
             depth = 0
@@ -175,6 +188,15 @@ def top_module(src, path):
 def scan(root):
     src = root / "src"
     files = sorted(src.rglob("*.rs")) if src.is_dir() else []
+    # The source directory of each file of a crate of CRATES, and its layer.
+    home = {}
+    for name, layer in CRATES.items():
+        csrc = root / "crates" / name / "src"
+        lib = name.replace("-", "_")
+        LAYER.setdefault(lib, layer)
+        for f in sorted(csrc.rglob("*.rs")) if csrc.is_dir() else []:
+            home[f] = (csrc, layer, lib)
+            files.append(f)
     faults = []
     edges = {}
     skip = set()
@@ -191,7 +213,16 @@ def scan(root):
     for f in files:
         if f in skip or any(d in f.parents for d in skip_dirs):
             continue
-        frm = top_module(src, f)
+        if f in home:
+            csrc, layer, lib = home[f]
+            frm = top_module(csrc, f)
+            if frm == "lib":
+                frm = lib
+            elif frm in LAYER and LAYER[frm] != layer:
+                faults.append(f"{f.relative_to(root)}: the module {frm} ({LAYER[frm]}) is in a crate of {layer}")
+                continue
+        else:
+            frm = top_module(src, f)
         if frm not in LAYER:
             faults.append(f"{f.relative_to(root)}: the module {frm} has no crate in LAYER")
             continue
@@ -257,7 +288,7 @@ def self_test():
             (d / "src" / f"util{i}.rs").write_text("")
         LAYER.update({f"util{i}": "core" for i in range(MIN_FILES)})
         for name, text in files.items():
-            p = d / "src" / name
+            p = d / name if name.startswith("crates/") else d / "src" / name
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(text)
         return d
@@ -275,6 +306,11 @@ def self_test():
         ("allowed", {"egress.rs": "use crate::tunnel;\n"}, "egress -> tunnel\n", False),
         ("stale row", {"egress.rs": ""}, "egress -> tunnel\n", True),
         ("unknown", {"zzz.rs": ""}, "", True),
+        ("core crate", {"crates/podnet-core/src/lib.rs": "pub mod exit;\n",
+                        "crates/podnet-core/src/exit.rs": "use crate::util::x;\n"}, "", False),
+        ("core crate upward", {"crates/podnet-core/src/exit.rs": "use crate::tunnel;\n"}, "", True),
+        ("wrong crate", {"crates/podnet-core/src/tunnel.rs": ""}, "", True),
+        ("core path", {"egress.rs": "use podnet_core::tunnel;\n"}, "", True),
     ]
     for name, files, allow, want in cases:
         d = tree(files)

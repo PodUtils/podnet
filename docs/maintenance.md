@@ -216,9 +216,9 @@ Facts about `live.yml`:
 Betas are allowed; there is no crates.io release (`docs/decisions.md`,
 2026-11-09, Releases). When a batch of fixes is green (`CLAUDE.md`):
 
-1. Set the version in `Cargo.toml` (the package and the `podnet-netns`
-   dependency), `Cargo.lock` and `fuzz/Cargo.lock` (the packages `podnet` and
-   `podnet-netns`).
+1. Set the version in `Cargo.toml` (the package and the `podnet-core` and
+   `podnet-netns` dependencies), `Cargo.lock` and `fuzz/Cargo.lock` (the
+   packages `podnet`, `podnet-core` and `podnet-netns`).
 2. Write `docs/releases/vX.Y.Z-beta.N.md` (copy the head of the notes before:
    binaries, the check of a download; then `## Breaking`, then the changes
    for a tester, what to report, the limits). `## Breaking` lists each flag,
@@ -238,8 +238,8 @@ Betas are allowed; there is no crates.io release (`docs/decisions.md`,
 
 At the first stable release (no `-beta.N`), also:
 
-* Set the version of the workspace and of the `podnet-netns` dependency to
-  the stable version (#222): a prerelease version requirement does not
+* Set the version of the workspace and of the `podnet-core` and
+  `podnet-netns` dependencies to the stable version (#222): a prerelease version requirement does not
   match a stable crate.
 * Rewrite the line of the README that says `:latest` has no image (#258).
 * Decide the crates.io publish of `podnet` (the name `cfrs` is taken by
@@ -271,6 +271,7 @@ At the first stable release (no `-beta.N`), also:
 | `src/vnet/` | `podnet net`: the userspace networks, the LD_PRELOAD shim |
 | `src/manual/` | `podnet man`; `facts.rs` lists each environment variable |
 | `crates/podnet-netns/` | `podnet pod`: the netns, seccomp and raw backends |
+| `crates/podnet-core/` | the core layer (T-047): the facts of the build (`build.rs`, `podnet_core::build`) and the print macros; it uses no other crate of the workspace |
 
 Shared crates (see "Shared crates" above): `pod-todo`, `pod-core`, `pod-tls` and `pod-proxy` come from
 `PodUtils/podcrates` by the git tag `v0.3.0` (T-137). `deny.toml` allows

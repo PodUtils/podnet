@@ -205,14 +205,36 @@ fn the_notebook_is_the_cell_of_the_readme() {
     }
 }
 
-/// #223: the crate podnet-netns ships the license text of the project.
+/// The crates of crates/ that cargo may publish: each one but those with
+/// `publish = false` in its Cargo.toml.
+fn published_crates() -> Vec<std::path::PathBuf> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut out: Vec<_> = std::fs::read_dir(root.join("crates"))
+        .unwrap()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|d| {
+            let manifest = std::fs::read_to_string(d.join("Cargo.toml")).unwrap_or_default();
+            !manifest.lines().any(|l| l.trim() == "publish = false")
+        })
+        .collect();
+    out.sort();
+    out
+}
+
+/// #223, T-046: each crate that cargo may publish ships the license text
+/// of the project.
 #[test]
-fn podnet_netns_ships_the_license() {
+fn each_crate_ships_the_license() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let main = std::fs::read(root.join("LICENSE")).unwrap();
-    let pod = std::fs::read(root.join("crates/podnet-netns/LICENSE"))
-        .expect("crates/podnet-netns/LICENSE");
-    assert_eq!(main, pod, "crates/podnet-netns/LICENSE is the root LICENSE");
+    let crates = published_crates();
+    assert!(crates.len() >= 2, "{crates:?}");
+    for dir in crates {
+        let copy = std::fs::read(dir.join("LICENSE"))
+            .unwrap_or_else(|e| panic!("{}/LICENSE: {e}", dir.display()));
+        assert_eq!(main, copy, "{}/LICENSE is the root LICENSE", dir.display());
+    }
 }
 
 /// #212: a relative link of the README is a 404 on the crate page, so
@@ -220,8 +242,10 @@ fn podnet_netns_ships_the_license() {
 #[test]
 fn the_readme_has_no_relative_link() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    for name in ["README.md", "crates/podnet-netns/README.md"] {
-        let text = std::fs::read_to_string(root.join(name)).unwrap();
+    let mut names = vec![root.join("README.md")];
+    names.extend(published_crates().into_iter().map(|d| d.join("README.md")));
+    for name in names {
+        let text = std::fs::read_to_string(&name).unwrap();
         let mut bad = Vec::new();
         for part in text.split("](").skip(1) {
             let target = part.split(')').next().unwrap_or("");
@@ -233,7 +257,11 @@ fn the_readme_has_no_relative_link() {
                 bad.push(target.to_string());
             }
         }
-        assert!(bad.is_empty(), "{name}: relative links: {bad:?}");
+        assert!(
+            bad.is_empty(),
+            "{}: relative links: {bad:?}",
+            name.display()
+        );
     }
 }
 

@@ -516,10 +516,21 @@ mod tests {
     fn names_in_source() -> BTreeSet<String> {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
         let mut files = Vec::new();
-        for dir in ["src", "crates/podnet-netns/src", "shim"] {
-            collect(&root.join(dir), &mut files);
-        }
+        // The root crate, each crate of crates/ and the shims (T-046).
+        collect(&root.join("src"), &mut files);
+        collect(&root.join("shim"), &mut files);
         files.push(root.join("build.rs"));
+        let mut crates: Vec<_> = std::fs::read_dir(root.join("crates"))
+            .expect("crates/")
+            .flatten()
+            .map(|e| e.path())
+            .collect();
+        crates.sort();
+        assert!(crates.len() >= 3, "{crates:?}");
+        for dir in crates {
+            collect(&dir.join("src"), &mut files);
+            files.push(dir.join("build.rs"));
+        }
         // Cargo sets these for build.rs; they are not variables of podnet.
         const CARGO_BUILD: &[&str] = &["TARGET"];
         let mut names = BTreeSet::new();

@@ -390,7 +390,7 @@ pub fn document(
         .unwrap_or_default();
     serde_json::json!({
         "schema": 1,
-        "podnet": concat!(env!("CARGO_PKG_VERSION"), " (", env!("PODNET_BUILD_COMMIT"), ")"),
+        "podnet": podnet_core::build::version(),
         "os": std::env::consts::OS,
         "arch": std::env::consts::ARCH,
         "command": command,

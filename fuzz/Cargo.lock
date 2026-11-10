@@ -2177,6 +2177,7 @@ dependencies = [
  "pod-proxy",
  "pod-services",
  "pod-tls",
+ "podnet-core",
  "podnet-netns",
  "qrcode",
  "quinn",
@@ -2204,6 +2205,10 @@ dependencies = [
  "webpki-roots",
  "x509-parser",
 ]
+
+[[package]]
+name = "podnet-core"
+version = "0.4.0-beta.1"
 
 [[package]]
 name = "podnet-fuzz"
