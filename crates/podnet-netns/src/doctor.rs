@@ -277,6 +277,8 @@ pub(crate) fn doctor(json: bool) -> i32 {
         probe_ptrace(),
         probe_seccomp_notif(),
         probe_mem_write(),
+        // T-152: a measure for the netfilter plane; no backend uses it.
+        crate::nfprobe::probe_netfilter(),
     ];
     let netns_available = (probes[0].ok || probes[1].ok) && probes[2].ok;
     let seccomp_available = probes[4].ok;

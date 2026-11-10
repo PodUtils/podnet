@@ -48,6 +48,14 @@ backend can run. The seccomp probe runs in a child process. It sets
 `no_new_privs` before it installs its filter, as the backend does: an
 unprivileged process cannot install the filter without it.
 
+The row `netfilter in a namespace (not a backend)` is a measure (T-152). No
+backend uses it. In a child process, in a new user and network namespace,
+the probe adds an nftables table, a `nat` chain of the output hook and the
+rule `tcp dport 80 redirect to :9999` through nfnetlink. Then it reads
+`SO_ORIGINAL_DST` of a redirected loopback connection and finds the
+conntrack entry of a UDP datagram through ctnetlink. The row names the
+first step that fails, with its error.
+
 ## The life of the pod
 
 `podnet pod` gives the exit code of its program at the exit of the program.

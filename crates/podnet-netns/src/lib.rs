@@ -53,6 +53,7 @@ mod icmp;
 mod inbox;
 mod learn;
 mod netns;
+mod nfprobe;
 mod outlive;
 mod recvmmsg;
 mod seccomp;
