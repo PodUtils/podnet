@@ -12,7 +12,7 @@ stays (the owner's ruling of 2026-11-05 on regressions, `docs/decisions.md`).
 **Milestone:** M4
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -74,6 +74,18 @@ T-047). The work starts before T-053. T-053 later gives the types again through 
 `pod_core::Target` with port 0 (`network::peer`), not a new target type. The addressing mode (GitHub #377) is a
 `Way`: a `Dial` and its `Addressing`. `Addressing::admit` is the check that `Chain`, `Rules` and `Race`
 (T-058) call at startup.
+
+## Done
+
+2026-11-10, commit d9ac293. `crates/podnet-core/src/network.rs` gives `Target`, `Dial`, `Datagrams`,
+`BoxFuture`, `BoxedIo`, `Connected`, `Failure`, `send_to` and `recv_from` of `pod-core` again, and adds
+`Addressing`, `peer`, `Way`, `Caps`, `Ctx`, `Export`, `Check`, `Link` and the trait `Network`. `src/lib.rs`
+gives the module as `podnet::network`. No command uses the types yet (T-060, T-061).
+`cargo test -p podnet-core -- network::`: 8 passed, among them
+`network::tests::a_peer_dialer_in_a_destination_chain_is_refused` (the fake peer dialer of GitHub #377 in a
+destination chain gives one error line of class `Usage`), `a_fake_dialer_carries_bytes_and_gives_no_udp` and
+`a_network_comes_up_and_its_link_closes`. `cargo doc -p podnet-core --no-deps`: no warning.
+`sh scripts/agent/check.sh`: each check 0 (1200 tests passed). CI: at the merge.
 
 # T-056: Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network
 

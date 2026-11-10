@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**228 entries: 67 open, 4 partial, 19 blocked, 138 done.**
+**228 entries: 66 open, 4 partial, 19 blocked, 139 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 37 | 3 | 13 | 85 | 138 |
+| P2 | 36 | 3 | 13 | 86 | 138 |
 | P3 | 27 | 0 | 4 | 30 | 61 |
-| **All** | 67 | 4 | 19 | 138 | 228 |
+| **All** | 66 | 4 | 19 | 139 | 228 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -100,7 +100,7 @@ M8 Overlays, M9 Later.
 | [T-052](crates.md) | P2 | M | M3 | chore | open | Move the Cloudflare adapter to the shared crate `pod-cloudflare` in `PodUtils/podcrates` |
 | [T-053](crates.md) | P2 | M | M3 | chore | open | The root package is the CLI and a facade that keeps each library path |
 | [T-054](crates.md) | P2 | S | M3 | release | open | A prerelease after the crate split, with the static builds of each target |
-| [T-055](adapters.md) | P2 | M | M4 | feature | open | The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link |
+| [T-055](adapters.md) | P2 | M | M4 | feature | done | The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link |
 | [T-056](adapters.md) | P2 | M | M4 | feature | open | Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network |
 | [T-057](adapters.md) | P2 | M | M4 | feature | open | A dialer and datagrams for WARP |
 | [T-058](adapters.md) | P2 | M | M4 | feature | open | The combinators `Chain`, `Rules`, `Race` and `Failover` |
