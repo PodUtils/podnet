@@ -3587,6 +3587,56 @@ not woken") and passes now. `sh scripts/agent/check.sh`, `unshare -n -- cargo te
 `sh scripts/restricted-host.sh`: pass. podcrates knows the fix through the message of its session; pod-quic
 (podcrates T-019) takes the socket with it. CI: at the push.
 
+# T-226: The netns backend moves a large TCP download at full speed with a bounded buffer
+
+**Source:** The measure of T-151 (2026-11-10): the netns backend through a TCP SOCKS5 proxy moved
+1 MiB at 9 MB/s, 8 MiB in 17 s, and 64 MiB did not end in 120 s; for 1 GiB its process grew to 1 GB.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The netns backend (`crates/podnet-netns/src/netns/backend.rs`) is slow on a large TCP download, and its
+memory grows with the size of the download.
+
+## Premise
+
+- Read: `Backend::shuttle` reads the upstream until `WouldBlock` with no limit, into `to_app`. Each
+  `drain(..n)` at the front of that buffer moves all of the bytes after it.
+- Read: `Backend::tick` calls `Interface::poll` one time. In smoltcp 0.12, one `poll_egress` sends at
+  most one segment for each socket. So the backend sends one segment on each tick of its loop (a TUN
+  input or 5 ms).
+- Measured: `netns_backend_moves_a_large_download` (48 MiB) failed at the `alarm(60)` of its client.
+
+## Approach
+
+1. A test: a SOCKS5 proxy on a unix socket sends 48 MiB; a client in the pod counts the bytes under
+   `alarm(60)`.
+2. Hold at most `TCP_BUF` bytes in each direction of a flow: read the upstream only when the socket
+   takes the held bytes, and read the socket only when the upstream takes them.
+3. After `shuttle`, call `poll_egress` again while `poll_at` says that a socket has a segment now,
+   at most 64 times in one tick.
+
+## Prove
+
+```sh
+cargo test -p podnet --test pod_seccomp netns_backend_moves_a_large_download
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-10, commit f81e7e6. `Backend::egress` calls `poll_egress` while `poll_at` is now (at most
+`EGRESS_ROUNDS`, 64). `send_held` and the bound `HELD` (`TCP_BUF`, 64 KiB) stop the read of the upstream
+and of the socket while the other side holds 64 KiB. The bound alone did not change the speed (the test
+failed at 60 s); the egress loop did. Debug build, the same test: 1 MiB in 1.2 s, 4 MiB in 8.1 s and
+8 MiB in 17.4 s before the egress loop; 8 MiB in 0.37 s and 48 MiB in 1.9 s after. The memory of a flow
+is at most 64 KiB held in each direction, plus the smoltcp buffers. `sh scripts/agent/check.sh`,
+`unshare -n -- cargo test --workspace` and `sh scripts/restricted-host.sh`: pass. CI: at the push.
+
 # T-216: Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04)
 
 **Source:** PodUtils/podcrates#35 (cfb), ask A-N-04, routed by PodUtils/podcrates#40.
