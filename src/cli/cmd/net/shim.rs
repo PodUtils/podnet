@@ -22,10 +22,18 @@ pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
         Some(shim) if args.out.is_none() => shim,
         _ => podnet::vnet::shim::build(&directory)?,
     };
+    // T-167: a bad route is a usage error before the shim is built.
+    let routes = podnet::vnet::shim::socks_route_list(&args.socks_routes).fault(Fault::Usage)?;
     let options = podnet::vnet::shim::ShimOptions {
         log: args.log,
         map_loopback: args.map_loopback,
         hosts,
+        socks_routes: if routes.is_empty() {
+            Vec::new()
+        } else {
+            vec![routes]
+        },
+        socks_socket: args.socks_socket.clone(),
         ..podnet::vnet::shim::ShimOptions::default()
     };
     let env = options.environment(&shim.path);
@@ -99,6 +107,8 @@ pub(crate) fn print_environment(
 }
 
 pub(crate) fn net_socksify(args: SocksifyArgs) -> Result<()> {
+    // T-167: a bad route is a usage error before the shim is built.
+    let cidrs = podnet::vnet::shim::socks_route_list(&args.cidrs).fault(Fault::Usage)?;
     let directory = args
         .out
         .clone()
@@ -116,6 +126,9 @@ pub(crate) fn net_socksify(args: SocksifyArgs) -> Result<()> {
         ("LD_PRELOAD".to_string(), preload),
         ("PODNET_SOCKS_PROXY".to_string(), args.socket.clone()),
     ];
+    if !cidrs.is_empty() {
+        environment.push(("PODNET_SOCKS_CIDRS".to_string(), cidrs));
+    }
     if args.log {
         environment.push(("PODNET_SOCKS_LOG".to_string(), "1".to_string()));
     }

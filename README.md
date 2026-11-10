@@ -958,6 +958,13 @@ podnet pod -x tailscale:/run/tailscale/tailscaled.sock -- ssh host
 
 `tailscaled` must run with `--tun=userspace-networking`.
 
+`net socksify --cidr ROUTE` routes only the listed destinations to the door
+(repeatable: `tailnet`, `ADDR`, `ADDR/BITS`, `IPV4:PORT` or `[IPV6]:PORT`),
+for example a client with the fixed origin `127.0.0.1:3000`. `net shim
+--socks-route ROUTE` does the same in the shim of the virtual network. See
+[`docs/virtual-network.md`](https://github.com/PodUtils/podnet/blob/main/docs/virtual-network.md),
+section 5.5.
+
 ## A user with no passwd entry
 
 On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.

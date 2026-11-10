@@ -2422,7 +2422,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 - Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`crates/podnet-core/src/net.rs:22-47`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
 - `crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `crates/podnet-core/src/net.rs:179`).
-- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:62-68`).
+- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:70-76`).
 
 ## Approach
 
@@ -2606,7 +2606,7 @@ python3 scripts/check-size.py
 
 ## Premise
 
-- Printed at `src/cli/cmd/net/mod.rs:272-273`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
+- Printed at `src/cli/cmd/net/mod.rs:288-289`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
 - `README.md:932-934` uses `net switch --listen tcp://` as its example.
 
 ## Approach
@@ -2669,7 +2669,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:91-103`). The stack gets `dns: None` (`crates/podnet-vnet/src/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`crates/podnet-vnet/src/stack/reactor.rs:136-146`, `crates/podnet-vnet/src/stack/service.rs:17-20`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:25-30`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:208-213` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:91-103`). The stack gets `dns: None` (`crates/podnet-vnet/src/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`crates/podnet-vnet/src/stack/reactor.rs:136-146`, `crates/podnet-vnet/src/stack/service.rs:17-20`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:27-38`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:241-246` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -2681,7 +2681,7 @@ cargo test -p podnet --test cli
 1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
 2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
 3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
-4. Update the help and `docs/virtual-network.md:208-213`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+4. Update the help and `docs/virtual-network.md:241-246`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
 
 ## Prove
 
@@ -3151,7 +3151,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1043-1049`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1050-1056`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach

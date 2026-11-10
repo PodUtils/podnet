@@ -293,14 +293,14 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "The path of a shim that is already built. podnet uses it instead of a build.",
     },
     EnvVar {
-        names: &["PODNET_VNET_LOG", "PODNET_VNET_MAP_LOOPBACK", "PODNET_VNET_LOCAL_ADDR", "PODNET_VNET_PREFIX", "PODNET_VNET_HOSTS", "PODNET_VNET_CONTROL", "PODNET_VNET_MAX_FDS"],
+        names: &["PODNET_VNET_LOG", "PODNET_VNET_MAP_LOOPBACK", "PODNET_VNET_LOCAL_ADDR", "PODNET_VNET_PREFIX", "PODNET_VNET_HOSTS", "PODNET_VNET_CONTROL", "PODNET_VNET_MAX_FDS", "PODNET_VNET_SOCKS", "PODNET_VNET_SOCKS_ROUTES"],
         used_by: "libpodnet-vnet.so",
-        meaning: "The shim of the virtual network: log each translation; map 127.0.0.1 to the local virtual address; the local virtual IPv4 address; the prefix of the abstract names; a name=address table; the abstract name of the control socket; the size of the descriptor table.",
+        meaning: "The shim of the virtual network: log each translation; map 127.0.0.1 to the local virtual address; the local virtual IPv4 address; the prefix of the abstract names; a name=address table; the abstract name of the control socket; the size of the descriptor table; the unix socket of a SOCKS5 front door; the comma list of destinations (tailnet, ADDR, ADDR/BITS, IPV4:PORT, [IPV6]:PORT) whose stream connects go to that door (net shim --socks-route).",
     },
     EnvVar {
-        names: &["PODNET_SOCKS_PROXY", "PODNET_SOCKS_LOG", "PODNET_SOCKS_ALL", "PODNET_SOCKS_MAX_FDS"],
+        names: &["PODNET_SOCKS_PROXY", "PODNET_SOCKS_LOG", "PODNET_SOCKS_ALL", "PODNET_SOCKS_CIDRS", "PODNET_SOCKS_MAX_FDS"],
         used_by: "libpodnet-socks.so",
-        meaning: "The tailnet shim: the unix socket of the SOCKS5 front door; log each redirect; redirect each connect, not only tailnet addresses; the size of the descriptor table.",
+        meaning: "The socks shim: the unix socket of the SOCKS5 front door; log each route and each redirect; redirect each connect; redirect only the destinations of a comma list (tailnet, ADDR, ADDR/BITS, IPV4:PORT, [IPV6]:PORT; net socksify --cidr) in place of the tailnet default; the size of the descriptor table.",
     },
     EnvVar {
         names: &["SANDHOME_PASSWD", "UNIXSOCKD_LOG"],

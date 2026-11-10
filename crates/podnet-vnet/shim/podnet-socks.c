@@ -12,6 +12,9 @@
  * 100.64.0.0/10 and fd7a:115c:a1e0::/48 (MagicDNS is 100.100.100.100). Every
  * other connect(2) is passed to the real libc untouched, so local services and
  * ordinary egress keep working. Set PODNET_SOCKS_ALL=1 to route everything.
+ * PODNET_SOCKS_CIDRS (a comma list of tailnet, ADDR, ADDR/BITS, IPV4:PORT or
+ * [IPV6]:PORT) replaces the tailnet default: only the listed destinations
+ * are routed.
  *
  * The destination descriptor keeps its number. `dup2(2)` swaps the address
  * family of the existing descriptor for the AF_UNIX one after the SOCKS5
@@ -78,6 +81,161 @@ static void resolve_real(void) {
     r_socket = dlsym(RTLD_NEXT, "socket");
 }
 
+static void logf_(const char *fmt, ...) {
+    if (!cfg.log) return;
+    va_list ap;
+    va_start(ap, fmt);
+    fputs("[podnet-socks] ", stderr);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+}
+
+/* ── routes to the SOCKS5 front door (T-167) ──────────────────────────────── */
+
+/* The same table is in podnet-socks.c and podnet-vnet.c (each shim is one
+   file); crates/podnet-vnet/src/shim.rs parse_socks_route checks the same
+   forms. */
+#define MAX_ROUTES 32
+
+struct route {
+    int family;              /* AF_INET or AF_INET6 */
+    unsigned char addr[16];
+    int bits;                /* prefix length */
+    unsigned port;           /* 0: each port */
+};
+
+static struct route routes[MAX_ROUTES];
+static int routes_len = -1;  /* -1: no list was given */
+
+static void route_add(int family, const unsigned char *addr, long bits, long port,
+                      const char *item) {
+    if (routes_len >= MAX_ROUTES) {
+        logf_("route %s: the table is full (%d routes); it is ignored\n", item, MAX_ROUTES);
+        return;
+    }
+    struct route *r = &routes[routes_len++];
+    memset(r, 0, sizeof *r);
+    r->family = family;
+    memcpy(r->addr, addr, family == AF_INET ? 4 : 16);
+    r->bits = (int)bits;
+    r->port = (unsigned)port;
+    logf_("route %s\n", item);
+}
+
+static int parse_number(const char *text, long min, long max, long *out) {
+    char *stop;
+    if (!*text) return -1;
+    long n = strtol(text, &stop, 10);
+    if (*stop || n < min || n > max) return -1;
+    *out = n;
+    return 0;
+}
+
+/* One item: tailnet, ADDR, ADDR/BITS, IPV4:PORT or [IPV6]:PORT. */
+static void route_parse(const char *item) {
+    char host[64];
+    unsigned char addr[16];
+    long bits = -1, port = 0;
+    char *mark;
+    if (strcmp(item, "tailnet") == 0) {
+        const unsigned char v4[4] = {100, 64, 0, 0};
+        const unsigned char v6[16] = {0xfd, 0x7a, 0x11, 0x5c, 0xa1, 0xe0};
+        route_add(AF_INET, v4, 10, 0, "tailnet 100.64.0.0/10");
+        route_add(AF_INET6, v6, 48, 0, "tailnet fd7a:115c:a1e0::/48");
+        return;
+    }
+    if (strlen(item) >= sizeof host) goto bad;
+    if (item[0] == '[') {
+        const char *end = strchr(item, ']');
+        if (!end) goto bad;
+        memcpy(host, item + 1, (size_t)(end - item - 1));
+        host[end - item - 1] = '\0';
+        if (end[1] == ':') {
+            if (parse_number(end + 2, 1, 65535, &port) < 0) goto bad;
+        } else if (end[1]) {
+            goto bad;
+        }
+        if (inet_pton(AF_INET6, host, addr) != 1) goto bad;
+        route_add(AF_INET6, addr, 128, port, item);
+        return;
+    }
+    snprintf(host, sizeof host, "%s", item);
+    if ((mark = strchr(host, '/'))) {
+        *mark = '\0';
+        if (parse_number(mark + 1, 0, 128, &bits) < 0) goto bad;
+    } else if ((mark = strchr(host, ':')) && !strchr(mark + 1, ':')) {
+        *mark = '\0';
+        if (parse_number(mark + 1, 1, 65535, &port) < 0) goto bad;
+    }
+    if (inet_pton(AF_INET, host, addr) == 1) {
+        if (bits > 32) goto bad;
+        route_add(AF_INET, addr, bits < 0 ? 32 : bits, port, item);
+        return;
+    }
+    if (port == 0 && inet_pton(AF_INET6, host, addr) == 1) {
+        route_add(AF_INET6, addr, bits < 0 ? 128 : bits, 0, item);
+        return;
+    }
+bad:
+    logf_("route %s: not tailnet, ADDR, ADDR/BITS, IPV4:PORT or [IPV6]:PORT; it is ignored\n",
+          item);
+}
+
+/* Read a comma list. A list replaces the default, also when no item is
+   good. */
+static void route_parse_list(const char *list) {
+    routes_len = 0;
+    char *copy = strdup(list);
+    if (!copy) return;
+    char *save = NULL;
+    for (char *tok = strtok_r(copy, ",", &save); tok; tok = strtok_r(NULL, ",", &save)) {
+        while (*tok == ' ') tok++;
+        size_t n = strlen(tok);
+        while (n && tok[n - 1] == ' ') tok[--n] = '\0';
+        if (*tok) route_parse(tok);
+    }
+    free(copy);
+}
+
+static int prefix_match(const unsigned char *a, const unsigned char *b, int bits) {
+    int whole = bits / 8, rest = bits % 8;
+    if (whole && memcmp(a, b, (size_t)whole) != 0) return 0;
+    if (!rest) return 1;
+    unsigned char mask = (unsigned char)(0xff << (8 - rest));
+    return (a[whole] & mask) == (b[whole] & mask);
+}
+
+/* 1 when a route of the table takes sa. An IPv4-mapped IPv6 address is
+   matched as IPv4. */
+static int route_match(const struct sockaddr *sa) {
+    int family;
+    const unsigned char *addr;
+    unsigned port;
+    if (sa->sa_family == AF_INET) {
+        const struct sockaddr_in *s = (const struct sockaddr_in *)sa;
+        family = AF_INET;
+        addr = (const unsigned char *)&s->sin_addr;
+        port = ntohs(s->sin_port);
+    } else if (sa->sa_family == AF_INET6) {
+        const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)sa;
+        family = AF_INET6;
+        addr = s->sin6_addr.s6_addr;
+        port = ntohs(s->sin6_port);
+        if (IN6_IS_ADDR_V4MAPPED(&s->sin6_addr)) {
+            family = AF_INET;
+            addr += 12;
+        }
+    } else {
+        return 0;
+    }
+    for (int i = 0; i < routes_len; i++) {
+        const struct route *r = &routes[i];
+        if (r->family != family || (r->port && r->port != port)) continue;
+        if (prefix_match(addr, r->addr, r->bits)) return 1;
+    }
+    return 0;
+}
+
 static void parse_config(void) {
     const char *v;
     memset(&cfg, 0, sizeof cfg);
@@ -89,20 +247,12 @@ static void parse_config(void) {
         long n = strtol(v, NULL, 10);
         if (n > 0) cfg.max_fds = (int)n;
     }
+    if ((v = getenv("PODNET_SOCKS_CIDRS")) && *v) route_parse_list(v);
 }
 
 static void ensure_init(void) {
     pthread_once(&init_once, resolve_real);
     pthread_once(&cfg_once, parse_config);
-}
-
-static void logf_(const char *fmt, ...) {
-    if (!cfg.log) return;
-    va_list ap;
-    va_start(ap, fmt);
-    fputs("[podnet-socks] ", stderr);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
 }
 
 /* ── fd state table ───────────────────────────────────────────────────────── */
@@ -217,6 +367,7 @@ static int is_tailnet_v6(const struct in6_addr *a) {
 
 static int should_route(const struct sockaddr *sa) {
     if (cfg.route_all) return 1;
+    if (routes_len >= 0) return route_match(sa);
     if (sa->sa_family == AF_INET) return is_tailnet_v4(&((const struct sockaddr_in *)sa)->sin_addr);
     if (sa->sa_family == AF_INET6) return is_tailnet_v6(&((const struct sockaddr_in6 *)sa)->sin6_addr);
     return 0;
@@ -387,7 +538,7 @@ int connect(int fd, const struct sockaddr *sa, socklen_t len) {
         return r_connect(fd, sa, len);
     }
     if (route_through_proxy(fd, sa) < 0) return -1;
-    logf_("connect fd=%d -> %s", fd, cfg.proxy);
+    logf_("connect fd=%d -> %s\n", fd, cfg.proxy);
     return 0;
 }
 
