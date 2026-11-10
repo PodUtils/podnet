@@ -401,7 +401,7 @@ line), `--anon-read`, `--hash-password`; `--auth-user` works with `--local`. The
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -432,6 +432,19 @@ A PUT gives 201. A PUT over the limit gives 413 and leaves no file. A PUT with `
 ## Start condition
 
 T-089 is done.
+
+## Done
+
+2026-11-10, commit 03bae2f. `crates/podnet-serve/src/files/upload.rs`: `serve --upload` takes a PUT of one
+file (201 new, 204 replaced, 409 with no directory) and a multipart form POST to a directory (a name in use
+gets a number; no file is replaced), for the write role. Each file goes to a hidden part file of mode 0600,
+then a rename gives it its name. `--max-upload BYTES` (default 100000000): a larger `Content-Length` gets
+413 before the body; a larger body gets 413 at the limit; no file and no part file stay. A dot segment
+(also `..` and `%2e%2e`), a link out of the root and a read user are refused. The listing shows the form to
+a write user. The streaming core reuses `next_chunk` and `create_unique` of `share`.
+`cargo test -p podnet-serve -- put_into_the_tree_is_atomic_and_bounded`: 1 passed. Tests added:
+`put_into_the_tree_is_atomic_and_bounded`, `a_form_uploads_into_a_directory`. `sh scripts/agent/check.sh`:
+exit 0. CI: at the merge.
 
 # T-091: `podnet serve DIR --via`, a local `share`, a directory in `share`, and the live step of the file server
 
