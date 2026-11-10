@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**228 entries: 66 open, 4 partial, 19 blocked, 139 done.**
+**228 entries: 65 open, 4 partial, 19 blocked, 140 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 36 | 3 | 13 | 86 | 138 |
+| P2 | 35 | 3 | 13 | 87 | 138 |
 | P3 | 27 | 0 | 4 | 30 | 61 |
-| **All** | 66 | 4 | 19 | 139 | 228 |
+| **All** | 65 | 4 | 19 | 140 | 228 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -101,7 +101,7 @@ M8 Overlays, M9 Later.
 | [T-053](crates.md) | P2 | M | M3 | chore | open | The root package is the CLI and a facade that keeps each library path |
 | [T-054](crates.md) | P2 | S | M3 | release | open | A prerelease after the crate split, with the static builds of each target |
 | [T-055](adapters.md) | P2 | M | M4 | feature | done | The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link |
-| [T-056](adapters.md) | P2 | M | M4 | feature | open | Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network |
+| [T-056](adapters.md) | P2 | M | M4 | feature | done | Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network |
 | [T-057](adapters.md) | P2 | M | M4 | feature | open | A dialer and datagrams for WARP |
 | [T-058](adapters.md) | P2 | M | M4 | feature | open | The combinators `Chain`, `Rules`, `Race` and `Failover` |
 | [T-059](adapters.md) | P2 | M | M4 | feature | open | The registry of networks, the parser of network specs, and the rows of `doctor` |
