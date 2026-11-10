@@ -460,7 +460,7 @@ uses it). `docs/maintenance.md` says that betas are allowed. `sh scripts/agent/c
 **Milestone:** M1
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
