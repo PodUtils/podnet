@@ -50,20 +50,11 @@
 //! file quietly skipping on its own breakage.
 
 mod afinet_audit;
+mod shim_harness;
 
 use afinet_audit::HelperError;
 use podnet::vnet::shim;
-
-/// The compiler, or skip with a printed reason.
-fn compiler_or_skip(test: &str) -> Option<String> {
-    match shim::compiler() {
-        Ok(cc) => Some(cc),
-        Err(_) => {
-            eprintln!("{test}: skipping, no C compiler");
-            None
-        }
-    }
-}
+use shim_harness::compiler_or_skip;
 
 /// The sealed-host errno for a refused `AF_INET` bind, or skip when the host is
 /// not sealed (in which case the rest of this file proves nothing).
