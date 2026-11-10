@@ -118,6 +118,6 @@
 413 issue open
 414 issue closed
 415 pull closed
-416 issue open
-417 issue open
-418 issue open
+416 issue closed
+417 issue closed
+418 issue closed
