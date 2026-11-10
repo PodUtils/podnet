@@ -18,6 +18,7 @@ use std::time::Duration;
 
 use tokio::io::{AsyncRead, AsyncWrite};
 
+pub mod dial;
 pub mod static_files;
 pub mod tcp;
 pub mod unix_socket;

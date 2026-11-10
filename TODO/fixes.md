@@ -2419,9 +2419,9 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:433`, `src/vnet/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:32-57`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `src/vnet/switch.rs:433`, `src/vnet/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`src/net.rs:22-47`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
-- `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:371`).
+- `src/net.rs` has no test of `claim_socket_path` (tests start at `src/net.rs:178`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:62-68`).
 
 ## Approach
@@ -2457,7 +2457,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`src/net.rs:113-138`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:181-199`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:104-108`).
+- `connect_origin` (`src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:181-199`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`src/net.rs:94-98`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`src/vnet/proxy.rs:185-189`).
 
@@ -2910,7 +2910,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
   `src/cli/cmd/connect.rs:185-188`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
   `SocketFile` is in `src/cli/cmd/connect.rs:196-216` (`pub(crate)`).
-- Message: `src/net.rs:38-44`.
+- Message: `src/net.rs:28-34`.
 - `src/main.rs:139` allows `--replace` without `--detach` only for `Command::Connect`.
 
 ## Approach

@@ -3,7 +3,6 @@
 feature -> quicktunnel
 hop -> cloudflare
 ingress -> config
-net -> ingress
 relay -> proxy
 report -> quicktunnel
 transport -> proxy
