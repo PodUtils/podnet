@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**228 entries: 67 open, 4 partial, 19 blocked, 138 done.**
+**232 entries: 68 open, 4 partial, 22 blocked, 138 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 37 | 3 | 13 | 85 | 138 |
-| P3 | 27 | 0 | 4 | 30 | 61 |
-| **All** | 67 | 4 | 19 | 138 | 228 |
+| P2 | 37 | 3 | 14 | 85 | 139 |
+| P3 | 28 | 0 | 6 | 30 | 64 |
+| **All** | 68 | 4 | 22 | 138 | 232 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -274,3 +274,7 @@ M8 Overlays, M9 Later.
 | [T-226](fixes.md) | P1 | S | M5 | defect | done | The netns backend moves a large TCP download at full speed with a bounded buffer |
 | [T-227](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.2`: the dry run, the publish and the release proofs |
 | [T-228](fixes.md) | P1 | S | M5 | defect | done | Each sender that waits on the WARP QUIC socket gets its wake-up |
+| [T-229](pods.md) | P2 | M | M7 | research | blocked | Measure `podnet pod` with the official runner and three CI payloads |
+| [T-230](pods.md) | P3 | S | M7 | feature | blocked | `pod doctor --json` states the hold level and what the seccomp backend does not hold |
+| [T-231](pods.md) | P3 | S | M7 | feature | blocked | `podnet pod` refuses a run with no hold, and can apply the rules to loopback |
+| [T-232](crates.md) | P3 | S | M3 | chore | open | The hand-off of the generic hold of the pod backends to `pod-hold` |

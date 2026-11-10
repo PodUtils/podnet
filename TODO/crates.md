@@ -1056,3 +1056,43 @@ other than 5, and the error words are those of `pod-proxy`. New tests:
 passed; `pod_seccomp_dgram`: 17 passed. `sh scripts/agent/check.sh`: exit 0 (1107 passed, 0
 failed); `unshare -n -- cargo test --offline --workspace --no-fail-fast`: exit 0;
 `sh scripts/restricted-host.sh --no-fail-fast`: exit 0. CI: at the merge.
+
+# T-232: The hand-off of the generic hold of the pod backends to `pod-hold`
+
+**Source:** PodUtils/podvm#228 (COORD-022 of podvm, 2026-11-10), ask 2; PodUtils/podnet#414
+(COORD-007, "The view on pod-hold"); PodUtils/podcrates T-109.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+podnet#414 put two conditions on the move of the generic hold to the shared crate `pod-hold`: the time
+(after T-040 and the M5 fixes of the seccomp backend), and the cut (the generic core only). podvm asks if
+the time has come.
+
+## Premise
+
+- T-040 and T-142 to T-158 are done at `31d040f`, except T-153 (parked research, M9).
+- The generic core: the seccomp user notification loop, the reading of the child memory, the descriptor
+  table and the reply, and the netns hold of a `connect`. The pod CLI, the rules of the upstreams and the
+  routes stay in `podnet-netns`.
+
+## Approach
+
+1. Tell podcrates that the time has come (a COORD issue (to podcrates)), with the cut of podnet#414.
+2. When podcrates publishes `pod-hold` with `adoption/podnet/pod-hold.patch`, take it (T-137).
+
+## Decision
+
+2026-11-10, a call of the podnet session: the time of podnet#414 has come. From the take, the files of the
+generic core take fixes only. The pod work that is left (T-174, T-229 to T-231) uses the CLI, the rules and
+the doctor, which stay in `podnet-netns`.
+
+## Prove
+
+```sh
+sh scripts/agent/podcrates.sh   # the pod-hold block of crates/pod-hold/SOURCES lists the files
+```

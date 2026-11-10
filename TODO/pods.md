@@ -843,3 +843,124 @@ host (`RLIMIT_NOFILE` 20000/20000) the ceiling is 9968, before 4096. The Prove c
 (64 made, 36 `EMFILE`, the count line), `a_flow_budget_out_of_range_is_a_usage_error`. Not measured:
 the 5000-connection run of the issue. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI:
 at the merge. GitHub #376 closes at the merge.
+
+# T-229: Measure `podnet pod` with the official runner and three CI payloads
+
+**Source:** PodUtils/podvm#228 (COORD-022 of podvm, 2026-11-10), ask 1; the podrunner design review
+(PodUtils/podcrates#47), WP-N1.
+**Category:** research
+**Milestone:** M7
+**Priority:** P2
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+`podnet pod` has never run the .NET runner of `actions/runner` or another CI payload. No test, document
+or entry of podnet has such a run. podrunner refuses a `trusted` job at the hold level `none`, so without a
+measure a host with no root runs no job.
+
+## Premise
+
+- Read: `--default-action reject` and `--flow-log FILE` exist (T-157); `-x http://unix:/PATH` takes a
+  unix proxy (`crates/podnet-netns/README.md`).
+- Not measured: the .NET runner, Node `fetch`, `actions/checkout` and `actions/setup-node` in a pod.
+
+## Approach
+
+1. Under `podnet pod --backend seccomp --default-action reject -x http://unix:/PATH --flow-log FILE`, run:
+   `config.sh --help` and `run.sh` of the runner archive (a release asset of `actions/runner`) to its first
+   long poll against a fake on loopback; a Node `fetch`; `actions/checkout` and `actions/setup-node` run by
+   `node` directly.
+2. For each flow of each payload: find it in the flow log, or name the way that it left (a unix socket,
+   loopback TCP, an inherited descriptor).
+3. Write the table and the log in `docs/reports/`.
+
+## Prove
+
+```sh
+sh scripts/pod-runner-measure.sh   # the measure of step 1; it writes docs/reports/pod-runner.md
+```
+
+## Blocker
+
+The owner: the decisions DR-1 (name the plan) and DR-2 (the code in PodUtils/podrunner) of the podrunner
+design review (PodUtils/podcrates#47). The owner ruled in podcrates on 2026-11-10 "leave #47 alone for
+now", and podvm asks for a record entry only. The entry is unblocked when the owner rules DR-1 and DR-2.
+
+# T-230: `pod doctor --json` states the hold level and what the seccomp backend does not hold
+
+**Source:** PodUtils/podvm#228 (COORD-022 of podvm, 2026-11-10), ask 1, item 2; the podrunner design review
+(PodUtils/podcrates#47), spec R2, section 1.2, items 1 to 3.
+**Category:** feature
+**Milestone:** M7
+**Priority:** P3
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+`podnet pod doctor --json` does not say how strong the hold of the seccomp backend is. A caller (podrunner)
+must know that the hold is `advisory`, and which ways out it does not hold.
+
+## Premise
+
+- Read: `crates/podnet-netns/src/doctor.rs` prints the rows and the JSON keys of `pod doctor`.
+- The seccomp backend does not hold unix, vsock and netlink sockets, loopback TCP, or inherited
+  descriptors (spec R2, section 1.2).
+
+## Approach
+
+1. Add a row and a JSON object `hold`: `level` (`advisory` for seccomp) and `not_held` (a list of names).
+2. A test pins the keys.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns doctor_hold_row_names_the_level
+```
+
+## Blocker
+
+The owner: the decisions DR-1 (name the plan) and DR-2 (the code in PodUtils/podrunner) of the podrunner
+design review (PodUtils/podcrates#47). The owner ruled in podcrates on 2026-11-10 "leave #47 alone for
+now", and podvm asks for a record entry only. The entry is unblocked when the owner rules DR-1 and DR-2.
+
+# T-231: `podnet pod` refuses a run with no hold, and can apply the rules to loopback
+
+**Source:** PodUtils/podvm#228 (COORD-022 of podvm, 2026-11-10), ask 1, item 3 (wanted, not blocking); the podrunner design review
+(PodUtils/podcrates#47), A-V-02 of PodUtils/podcrates#35.
+**Category:** feature
+**Milestone:** M7
+**Priority:** P3
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+When the supervisor cannot write the memory of the program, no hold mechanism works, but the pod runs.
+Loopback TCP goes direct under `seccomp` (`seccomp_backend_sends_loopback_direct`), and no option applies
+the rules to `127.0.0.0/8`.
+
+## Premise
+
+- Read: `tests/pod_seccomp/tcp.rs`, `seccomp_backend_sends_loopback_direct`.
+- Not measured: a host where `process_vm_writev` to the child fails.
+
+## Approach
+
+1. Probe the write to the memory of the program at the start; refuse the run with a clear error when it
+   fails.
+2. An opt-in flag applies the rules to `127.0.0.0/8` under `seccomp`.
+
+## Prove
+
+```sh
+cargo test --test pod_seccomp -- seccomp_rules_apply_to_loopback_when_asked
+```
+
+## Blocker
+
+The owner: the decisions DR-1 (name the plan) and DR-2 (the code in PodUtils/podrunner) of the podrunner
+design review (PodUtils/podcrates#47). The owner ruled in podcrates on 2026-11-10 "leave #47 alone for
+now", and podvm asks for a record entry only. The entry is unblocked when the owner rules DR-1 and DR-2.
