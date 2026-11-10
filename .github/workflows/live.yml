@@ -312,7 +312,9 @@ jobs:
           cat "$d/update.err"
           grep -q 'not https://github.com/PodUtils/podnet/' "$d/update.err"
           cmp "$d/podnet" target/release/podnet
-          timeout 300 "$d/podnet" update --version v0.4.0-beta.1
+          # This build can have the version of the release: --force installs
+          # it anyway, and keeps this build as podnet.prev.
+          timeout 300 "$d/podnet" update --version v0.4.0-beta.1 --force
           "$d/podnet" --version | grep -q '^podnet 0.4.0-beta.1'
           cmp "$d/podnet.prev" target/release/podnet
           # --rollback (no network) swaps the binary and podnet.prev. The
