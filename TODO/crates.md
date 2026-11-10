@@ -722,7 +722,13 @@ Done so far:
 - v0.9.0 (191f2b4): each `pod-*` dependency names `tag = "v0.9.0"`; no API change for podnet.
   T-224 (127c095) ends the freeze of the datagram path of `crates/podnet-netns/src/upstream.rs`:
   podnet-netns calls `pod_proxy::udp`.
-- Next: `pod-ws` (`src/ws.rs`).
+- `pod-ws` v0.13.0 (5eace6e; the patch `adoption/podnet/pod-ws.patch` of podcrates, PodUtils/podcrates#49):
+  `src/ws.rs` takes the WebSocket client, the server session, `accept_key` and `close_hint` of `pod-ws`,
+  and keeps its error words, `serve_websocket`, `forward_path`, `forward_url`, `LocalSpec` and the
+  tokio-tungstenite bridge of the relay client until `pod-relay`. Each `pod-*` dependency names
+  `tag = "v0.13.0"`. Each line of `adoption/podnet/pod-ws.run` passed; the static binary was built with
+  clang for musl, as `cargo-zigbuild` is not on the host. The freeze of `src/ws.rs` ends.
+- Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
   like each other crate.
