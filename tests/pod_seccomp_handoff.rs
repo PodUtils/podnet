@@ -205,3 +205,109 @@ fn seccomp_tcp_upstream_keeps_the_relay() {
         "{all}"
     );
 }
+
+/// The server: listen on port 8781, accept one connection, print the name
+/// of the accepted socket (`getsockname`), answer PING with PONG, close.
+const SERVER: &str = r#"
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+int main(void) {
+    alarm(20);
+    int s = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in a;
+    memset(&a, 0, sizeof a);
+    a.sin_family = AF_INET;
+    a.sin_port = htons(8781);
+    a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (bind(s, (struct sockaddr *)&a, sizeof a) != 0) { perror("bind"); return 1; }
+    if (listen(s, 4) != 0) { perror("listen"); return 1; }
+    int c = accept(s, NULL, NULL);
+    if (c < 0) { perror("accept"); return 1; }
+    struct sockaddr_un name;
+    memset(&name, 0, sizeof name);
+    socklen_t len = sizeof name;
+    getsockname(c, (struct sockaddr *)&name, &len);
+    printf("accepted_family %d\naccepted_path %s\n", name.sun_family, name.sun_path);
+    fflush(stdout);
+    char buf[16];
+    if (read(c, buf, sizeof buf) <= 0) { perror("read"); return 1; }
+    if (write(c, "PONG\n", 5) != 5) { perror("write"); return 1; }
+    close(c);
+    return 0;
+}
+"#;
+
+// T-150: the program holds the accepted unix stream itself: its name is
+// the inbound socket (a socket pair has no name), and no relay keeps the
+// pod after the program exits, while the client keeps its end open.
+#[test]
+fn seccomp_inbound_accept_leaves_no_relay() {
+    let Some(cc) = compiler() else {
+        eprintln!("skipping: no C compiler");
+        return;
+    };
+    if !seccomp_available() {
+        eprintln!("skipping: no SECCOMP_RET_USER_NOTIF");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("server.c");
+    std::fs::write(&src, SERVER).unwrap();
+    let server = dir.path().join("server");
+    let status = Command::new(&cc)
+        .arg("-O2")
+        .arg("-o")
+        .arg(&server)
+        .arg(&src)
+        .status()
+        .unwrap();
+    assert!(status.success(), "compiling the server failed");
+    let inbound = dir.path().join("in");
+    let child = pod()
+        .args(["--backend", "seccomp", "-v", "-x", "unix:/nonexistent.sock"])
+        .arg("--inbound-dir")
+        .arg(&inbound)
+        .arg("--")
+        .arg(&server)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let path = inbound.join("8781.sock");
+    let mut conn = None;
+    for _ in 0..200 {
+        if let Ok(c) = std::os::unix::net::UnixStream::connect(&path) {
+            conn = Some(c);
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    }
+    let mut conn = conn.expect("the inbound listener did not appear");
+    conn.write_all(b"PING\n").unwrap();
+    let mut buf = [0u8; 8];
+    let n = conn.read(&mut buf).unwrap();
+    assert_eq!(&buf[..n], b"PONG\n");
+    // The client keeps its end open: a relay would wait for it.
+    let start = Instant::now();
+    let out = child.wait_with_output().unwrap();
+    let took = start.elapsed();
+    drop(conn);
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    let all = format!("{stdout}\n{stderr}");
+    assert!(out.status.success(), "{all}");
+    assert!(has(&stdout, "accepted_family 1"), "{all}");
+    let want = format!("accepted_path {}", path.display());
+    assert!(has(&stdout, &want), "{all}");
+    assert!(
+        stderr.contains("accept on port 8781: the program holds the connection (no relay)"),
+        "{all}"
+    );
+    assert!(took < Duration::from_millis(2500), "{took:?}\n{all}");
+}

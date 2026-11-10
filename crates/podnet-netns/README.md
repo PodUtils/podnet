@@ -154,7 +154,9 @@ see it. Use a unix socket for it (`-L unix:///path`).
   `poll`, `select` and `epoll` wake for it. A non-blocking `accept` with no
   connection gets `EAGAIN`; a blocking `accept` waits without stopping the
   other system calls of the program. The peer address of an accepted
-  connection is not known (the client is a unix socket).
+  connection is not known (the client is a unix socket). The program gets
+  the accepted unix stream itself: the kernel moves the bytes, and the
+  supervisor starts no relay (T-150). `-v` prints one line for each accept.
 * UDP to port 53 is answered from the fake-IP pool. Other UDP goes through
   SOCKS5 UDP ASSOCIATE. `sendmmsg` sends all messages when the supervisor can
   write `msg_len` into the child. Else it sends one message and returns 1.

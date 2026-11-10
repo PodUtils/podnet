@@ -315,7 +315,7 @@ pub(crate) async fn supervise_seccomp(
                 a,
                 (&mut map, key),
                 nr == libc::SYS_accept4 as i32,
-                req.pid,
+                (req.pid, verbose),
             )
             .await
         } else if crate::inbox::is_recv(nr) {
