@@ -2419,7 +2419,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:226`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`crates/podnet-core/src/net.rs:22-47`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`crates/podnet-core/src/net.rs:22-47`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:55` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
 - `crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `crates/podnet-core/src/net.rs:179`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:62-68`).
@@ -2607,7 +2607,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:267-268`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:909-911` uses `net switch --listen tcp://` as its example.
+- `README.md:921-923` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
@@ -2907,9 +2907,9 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 - `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:49-70`. `RelayCommand::Node` has it: `:44-45`.
 - `detach_of` has no arm for it: `src/cli/opts.rs:253-262`. `connect` has one: `:246`.
 - Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:186`, `:198`. `connect -L` logs and returns:
-  `src/cli/cmd/connect.rs:185-188`.
+  `src/cli/cmd/connect.rs:209-212`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
-  `SocketFile` is in `src/cli/cmd/connect.rs:196-216` (`pub(crate)`).
+  `SocketFile` is in `src/cli/cmd/connect.rs:220-240` (`pub(crate)`).
 - Message: `crates/podnet-core/src/net.rs:28-34`.
 - `src/main.rs:141` allows `--replace` without `--detach` only for `Command::Connect`.
 
@@ -3151,7 +3151,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1003-1009`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1015-1021`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3386,12 +3386,12 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Problem
 
-`README.md:706-707` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`README.md:718-719` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
 `-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
 
 ## Premise
 
-- `README.md:703-707`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `README.md:715-719`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.

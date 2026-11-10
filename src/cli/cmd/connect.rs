@@ -21,8 +21,19 @@ pub(crate) struct ConnectArgs {
     /// Local listeners, repeatable: tcp://[bind:]port or unix:///path. In
     /// podnet pod with the netns backend, a TCP listener is in the network of
     /// the pod: use unix:///path to reach it from outside.
-    #[arg(short = 'L', long = "local", required = true)]
+    #[arg(
+        short = 'L',
+        long = "local",
+        required_unless_present = "stdio",
+        conflicts_with = "stdio"
+    )]
     locals: Vec<String>,
+    /// Carry one stream on stdin and stdout, with no listener. Use it as an
+    /// SSH ProxyCommand: ssh -o ProxyCommand='podnet connect URL --stdio'
+    /// HOST. podnet exits at the end of the stream. Exit 69: the remote
+    /// does not answer.
+    #[arg(long, conflicts_with_all = ["run_for", "no_check"])]
+    stdio: bool,
     /// Stay up for this many seconds instead of until Ctrl-C.
     #[arg(long)]
     run_for: Option<u64>,
@@ -66,6 +77,16 @@ pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
             ),
         ));
     }
+    let auth = auth_header(&args)?;
+    if args.stdio {
+        if args.detach.detach {
+            return Err(podnet::exit::fault(
+                Fault::Usage,
+                anyhow::anyhow!("--stdio needs stdin and stdout: --detach cannot be used"),
+            ));
+        }
+        return super::connect_stdio::run(&args.remote, auth.as_deref()).await;
+    }
     let mut locals = Vec::new();
     for raw in &args.locals {
         // Issue 249: a bad --local was exit 1.
@@ -75,16 +96,6 @@ pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
                 .fault(Fault::Usage)?,
         );
     }
-    // Issue 205: the credential of a tunnel with --auth-user.
-    let auth: Option<Arc<str>> = match (&args.auth_user, &args.auth_password_file) {
-        (Some(user), Some(file)) => Some(Arc::from(
-            podnet::ingress::credentials(user, file)
-                .context("--auth-password-file")
-                .fault(Fault::Config)?
-                .basic_header(),
-        )),
-        _ => None,
-    };
     let mut tcp = Vec::new();
     #[cfg(unix)]
     let mut unix = Vec::new();
@@ -165,6 +176,19 @@ pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
     #[cfg(unix)]
     drop(files);
     Ok(())
+}
+
+/// The Basic header of a tunnel with --auth-user (issue 205).
+fn auth_header(args: &ConnectArgs) -> Result<Option<Arc<str>>> {
+    Ok(match (&args.auth_user, &args.auth_password_file) {
+        (Some(user), Some(file)) => Some(Arc::from(
+            podnet::ingress::credentials(user, file)
+                .context("--auth-password-file")
+                .fault(Fault::Config)?
+                .basic_header(),
+        )),
+        _ => None,
+    })
 }
 
 async fn accept_loop(listener: tokio::net::TcpListener, remote: String, auth: Option<Arc<str>>) {

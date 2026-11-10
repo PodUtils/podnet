@@ -609,6 +609,18 @@ it. At the end, podnet removes the socket files that it made. `--detach` and
 document has `remote`, `listen` and `listeners`. At `-v`, each WebSocket
 logs the time of its TCP, TLS and upgrade steps.
 
+`podnet connect URL --stdio` carries one stream on stdin and stdout, with no
+listener. Use it as an SSH `ProxyCommand`:
+
+```sh
+ssh -o ProxyCommand='podnet connect wss://<random>.trycloudflare.com/__podnet/ws --stdio' user@host
+```
+
+The end of stdin closes the WebSocket. The close of the remote ends the
+command. `--stdio` takes `--auth-user` and `--auth-password-file`. It exits
+69 when the remote does not answer. It cannot be used with `-L` or
+`--detach`.
+
 ### Other commands
 
 ```sh
