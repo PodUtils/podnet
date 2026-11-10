@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**226 entries: 74 open, 3 partial, 19 blocked, 130 done.**
+**226 entries: 73 open, 3 partial, 19 blocked, 131 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 22 | 27 |
-| P2 | 43 | 2 | 13 | 79 | 137 |
+| P2 | 42 | 2 | 13 | 80 | 137 |
 | P3 | 28 | 0 | 4 | 29 | 61 |
-| **All** | 74 | 3 | 19 | 130 | 226 |
+| **All** | 73 | 3 | 19 | 131 | 226 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -154,7 +154,7 @@ M8 Overlays, M9 Later.
 | [T-106](services.md) | P2 | M | M6 | measurement | open | An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB |
 | [T-107](pods.md) | P2 | M | M7 | feature | done | seccomp: the pod lives past its first program |
 | [T-108](pods.md) | P2 | S | M7 | feature | done | netns: the pod lives past its first program |
-| [T-109](pods.md) | P2 | M | M7 | feature | open | `warp exec --detach --name N` keeps a pod under the supervisor |
+| [T-109](pods.md) | P2 | M | M7 | feature | done | `warp exec --detach --name N` keeps a pod under the supervisor |
 | [T-110](pods.md) | P2 | M | M7 | feature | open | `warp exec --join N` runs a command in a detached pod |
 | [T-111](pods.md) | P2 | M | M7 | feature | done | netns: generic UDP |
 | [T-112](pods.md) | P3 | S | M7 | feature | open | netns: the gateway address reaches the loopback of the host, when the user asks |

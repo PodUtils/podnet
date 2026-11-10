@@ -107,7 +107,7 @@ the pod returns in less than 2.5 s, and the daemon connects through the pod afte
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -136,6 +136,28 @@ The test uses the stand-in of T-012.
 ## Start condition
 
 T-107 and T-108 are done.
+
+## Correction
+
+2026-11-10: the test needs no stand-in of T-012 (blocked). `warp exec` reads only the socket of
+`warp up`: a unix socket that answers is the stand-in, as in `tests/pod_backend_line.rs`. The
+program of the test opens no connection.
+
+## Done
+
+2026-11-10, commit 6992453 (`T-109: warp exec --detach --name N keeps a pod under the supervisor`).
+`warp exec` takes `--detach`, `--name`, `--ready-timeout`, `--replace` and `--no-restart`. A
+named or detached pod is an instance (`src/cli/cmd/warp/kept.rs`): the command starts
+`podnet pod` as a child and is the subreaper of the pod, so a daemon of the program stays its
+descendant. The instance lives until each process of the pod ends, with the exit code of the
+first program. `podnet stop N` sends SIGTERM to each process of the pod, and SIGKILL after 5 s.
+The program does not get the variables of `--detach`. Test: `warp_exec_detach_lists_the_pod`
+(`tests/detach/warp_exec.rs`): the first program starts a daemon and exits; `ps` lists the pod,
+`logs` shows the output of the daemon, `stop` ends the daemon. Unit tests:
+`descendants_include_the_children_of_a_child`, `exit_codes_of_a_status`. The Prove command:
+1 passed. A manual run with `--backend netns` and with `--backend seccomp`: each pod in `ps`, its
+output in `logs`, no process left after `stop`.
+`TMPDIR=/workspace/podnet/.work/tmp-m7c sh scripts/agent/check.sh`: each step 0. CI: at the merge.
 
 # T-110: `warp exec --join N` runs a command in a detached pod
 
