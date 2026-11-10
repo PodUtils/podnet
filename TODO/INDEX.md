@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 95 open, 3 partial, 18 blocked, 108 done.**
+**224 entries: 94 open, 3 partial, 18 blocked, 109 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 57 | 2 | 12 | 66 | 137 |
+| P2 | 56 | 2 | 12 | 67 | 137 |
 | P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 95 | 3 | 18 | 108 | 224 |
+| **All** | 94 | 3 | 18 | 109 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -96,7 +96,7 @@ M8 Overlays, M9 Later.
 | [T-048](crates.md) | P2 | M | M3 | chore | open | Extract the crate `podnet-vnet`, with the C sources of the shims |
 | [T-049](crates.md) | P2 | S | M3 | chore | open | The relay client of podnet becomes the shared crate `pod-relay` |
 | [T-050](crates.md) | P2 | M | M3 | chore | open | Move the WARP adapter to the shared crate `pod-warp` in `PodUtils/podcrates` |
-| [T-051](crates.md) | P2 | M | M3 | chore | open | Extract the crate `podnet-serve`, with the library-only modules |
+| [T-051](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-serve`, with the library-only modules |
 | [T-052](crates.md) | P2 | M | M3 | chore | open | Move the Cloudflare adapter to the shared crate `pod-cloudflare` in `PodUtils/podcrates` |
 | [T-053](crates.md) | P2 | M | M3 | chore | open | The root package is the CLI and a facade that keeps each library path |
 | [T-054](crates.md) | P2 | S | M3 | release | open | A prerelease after the crate split, with the static builds of each target |
