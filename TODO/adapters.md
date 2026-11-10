@@ -132,6 +132,21 @@ T-055 is done.
 2026-11-05, The dial functions of the egress proxy and of the relay are in `pod-proxy` and `pod-relay` after the
 takes. The wrappers use the paths of the shared crates.
 
+2026-11-10, the start condition: T-055 is done (d9ac293). `pod-relay` is not taken yet, so the relay wrapper
+calls `Relay::connect` of `src/ws_relay.rs`. The frozen files (`src/egress.rs`, `src/ws_relay.rs`) do not change:
+the wrappers are new code that calls their public functions. Each wrapper is a `pod_core::Dial`.
+
+2026-11-10, what the wrappers reuse: `pod-proxy` (through `src/egress.rs`) holds the proxy dialer.
+`egress::Egress` is a `Dial` already, so `dialers::proxy` and `dialers::process` give `egress::egress` and add no
+type. `dialers::Direct` calls `egress::dial_direct`, and its UDP is the `SystemDatagrams` of `pod-core` on an IPv4
+socket (that type sends to the address as it is: one family for each socket). `dialers::RelayDialer` calls
+`Relay::connect`, and resolves a name on this host with a `pod_core::Resolve` (the resolver chain of the process
+by default) to its IPv4 addresses. The wrappers of the upstream chain (`connect_upstream_async`), of the tailnet
+(`tailscale::Dialer`) and of the virtual network (`NetStack`) are in `crates/podnet-vnet/src/dialer.rs`: that crate
+uses `podnet-core` and `podnet-netns`, so no dependency is new. The UDP of the virtual network is
+`VnetDatagrams` (`crates/podnet-vnet/src/stack/datagrams.rs`). The upstream chain and the tailnet carry TCP only:
+`datagrams` gives the default error. The WARP dialer is T-057.
+
 # T-057: A dialer and datagrams for WARP
 
 **Source:** `docs/research/podnet/architecture.md`, section 4.3.

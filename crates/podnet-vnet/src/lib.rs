@@ -35,6 +35,8 @@
 //! * [`socks`] — SOCKS5 and HTTP `CONNECT` for programs that cannot be
 //!   interposed.
 //! * [`control`] — the shim/stack control protocol.
+//! * [`dialer`] — the dialers of `podnet_core::network` over the stack, the
+//!   pod upstream chains and the tailnet front door.
 //! * [`shim`] — build and locate the `LD_PRELOAD` library.
 //!
 //! The CLI exposes it as `podnet net`; see the `net` command of the binary.
@@ -42,6 +44,7 @@
 pub mod addr;
 pub mod control;
 pub mod device;
+pub mod dialer;
 pub mod dns;
 pub mod doctor;
 pub mod framing;
@@ -64,7 +67,7 @@ pub use podnet_netns::upstream::{Proxy as UpstreamProxy, ProxyKind, Rule, Upstre
 pub use policy::{Acl, AclAction, AclRule};
 pub use proxy::{handle_connection, ProxyListen};
 pub use record::{PcapFile, RecordedPacket, Recorder, Replayer};
-pub use stack::{Clock, NetStack, StackConfig, StackEvent, TcpStream, UdpSocket};
+pub use stack::{Clock, NetStack, StackConfig, StackEvent, TcpStream, UdpSocket, VnetDatagrams};
 pub use tailscale_ssh::{LocalUser, Shims};
 
 // #215: the stack owns more than the 2 addresses that smoltcp allows by

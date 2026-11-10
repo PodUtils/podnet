@@ -217,10 +217,12 @@ fn endpoint_to_virt(endpoint: IpEndpoint) -> VirtAddr {
     VirtAddr::new(from_smoltcp(endpoint.addr), endpoint.port)
 }
 
+mod datagrams;
 mod proof;
 mod reactor;
 mod service;
 mod socket;
+pub use datagrams::VnetDatagrams;
 pub use proof::{loopback_proof, loopback_round_trip, ProofReport};
 use reactor::*;
 use socket::*;

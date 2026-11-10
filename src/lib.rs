@@ -101,6 +101,7 @@ pub mod cloudflare;
 pub mod config;
 #[cfg(test)]
 mod core_tests;
+pub mod dialers;
 pub mod doctor;
 pub mod edge_discovery;
 pub mod edge_h2;
