@@ -114,5 +114,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #416 | COORD-008: podnet took v0.8.0; the freeze of the datagram path of upstream.rs is recorded | closed (podcrates recorded it) | T-137 |
 | #417 | COORD-009: podnet took v0.9.0; podnet-netns calls pod_proxy::udp, so the freeze of #42 can end | closed (podcrates recorded it) | T-137, T-224 |
 | #418 | COORD-010: podnet took v0.10.0 | closed (podcrates recorded it) | T-137 |
+| #419 | COORD-011: podnet took v0.11.0; podnet has a new crate podnet-core | open (a COORD issue between sessions) | T-137, T-047 |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
