@@ -634,7 +634,7 @@ where
         let outcome = match command {
             0x01 => "socks_connect",
             0x03 => "udp_associate",
-            podnet_netns::upstream::CMD_UDP_IN_STREAM => "udp_in_stream",
+            pod_proxy::udp::CMD_UDP_IN_STREAM => "udp_in_stream",
             _ => "socks_unsupported",
         };
         crate::decisions::count("dispatch", outcome);
@@ -658,7 +658,7 @@ where
                     bail!("UDP ASSOCIATE is not available");
                 }
             },
-            podnet_netns::upstream::CMD_UDP_IN_STREAM => match udp {
+            pod_proxy::udp::CMD_UDP_IN_STREAM => match udp {
                 Some(stack) => return udp_in_stream(stream, stack).await,
                 None => {
                     socks::socks5_reply(&mut stream, 0x07, None).await?;
@@ -881,7 +881,7 @@ where
                 };
                 let target = client.lock().unwrap_or_else(|e| e.into_inner()).fixed;
                 if let Some(target) = target {
-                    let framed = podnet_netns::upstream::wrap_udp(&data, from.ip(), from.port());
+                    let framed = pod_proxy::udp::wrap(&data, from.ip(), from.port());
                     let _ = local.send_to(&framed, target).await;
                 }
             }
@@ -904,14 +904,14 @@ where
 }
 
 /// Serve one UDP association in the stream (issue 84,
-/// [`podnet_netns::upstream::CMD_UDP_IN_STREAM`]): each datagram in each
+/// [`pod_proxy::udp::CMD_UDP_IN_STREAM`]): each datagram in each
 /// direction is a frame on the control connection, so no UDP socket of the
 /// host is necessary. The association ends when the connection closes.
 async fn udp_in_stream<S>(mut control: S, stack: Arc<WarpStack>) -> Result<()>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    use podnet_netns::upstream::{read_udp_frame, wrap_udp, write_udp_frame};
+    use pod_proxy::udp::{read_frame, wrap, write_frame};
     let tunnel = match stack.udp_bind().await {
         Ok(tunnel) => tunnel,
         Err(err) => {
@@ -927,7 +927,7 @@ where
         let stack = stack.clone();
         async move {
             let mut names = Names::default();
-            while let Ok(Some(datagram)) = read_udp_frame(&mut read).await {
+            while let Ok(Some(datagram)) = read_frame(&mut read).await {
                 let Some((host, port, payload)) = socks::socks5_udp_unwrap(&datagram) else {
                     continue;
                 };
@@ -945,8 +945,8 @@ where
             let Ok((data, from)) = tunnel.recv_from(65_536).await else {
                 return;
             };
-            let framed = wrap_udp(&data, from.ip(), from.port());
-            if write_udp_frame(&mut write, &framed).await.is_err() {
+            let framed = wrap(&data, from.ip(), from.port());
+            if write_frame(&mut write, &framed).await.is_err() {
                 return;
             }
         }
@@ -1516,7 +1516,7 @@ mod tests {
         let owner = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let other = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let query = podnet_netns::dns::build_query(0x4242, "example.com", 1).unwrap();
-        let v4 = podnet_netns::upstream::wrap_udp(&query, "198.51.100.7".parse().unwrap(), 53);
+        let v4 = pod_proxy::udp::wrap(&query, "198.51.100.7".parse().unwrap(), 53);
         owner.send_to(&v4, relay).await.unwrap();
         let mut buf = [0u8; 1024];
         tokio::time::timeout(Duration::from_secs(5), owner.recv_from(&mut buf))
@@ -1526,7 +1526,7 @@ mod tests {
         // The other socket sends: it gets no answer, and the owner keeps the
         // association.
         let query = podnet_netns::dns::build_query(0x5151, "example.com", 1).unwrap();
-        let v4 = podnet_netns::upstream::wrap_udp(&query, "198.51.100.7".parse().unwrap(), 53);
+        let v4 = pod_proxy::udp::wrap(&query, "198.51.100.7".parse().unwrap(), 53);
         other.send_to(&v4, relay).await.unwrap();
         let got = tokio::time::timeout(Duration::from_millis(500), other.recv_from(&mut buf)).await;
         assert!(got.is_err(), "another sender gets no answer");
@@ -1558,13 +1558,9 @@ mod tests {
             );
             let udp = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
             let query = podnet_netns::dns::build_query(0x4242, "example.com", 1).unwrap();
-            let v6 = podnet_netns::upstream::wrap_udp(
-                &query,
-                "2606:4700:4700::1111".parse().unwrap(),
-                53,
-            );
+            let v6 = pod_proxy::udp::wrap(&query, "2606:4700:4700::1111".parse().unwrap(), 53);
             udp.send_to(&v6, relay).await.unwrap();
-            let v4 = podnet_netns::upstream::wrap_udp(&query, "198.51.100.7".parse().unwrap(), 53);
+            let v4 = pod_proxy::udp::wrap(&query, "198.51.100.7".parse().unwrap(), 53);
             udp.send_to(&v4, relay).await.unwrap();
             let mut buf = [0u8; 1024];
             let (n, _) = tokio::time::timeout(Duration::from_secs(5), udp.recv_from(&mut buf))

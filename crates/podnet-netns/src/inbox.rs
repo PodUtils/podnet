@@ -578,12 +578,12 @@ mod tests {
 
     #[test]
     fn a_source_is_read_from_the_socks5_header() {
-        let d = crate::upstream::wrap_udp(b"x", "10.0.0.1".parse().unwrap(), 53);
+        let d = pod_proxy::udp::wrap(b"x", "10.0.0.1".parse().unwrap(), 53);
         assert_eq!(
             udp_source(&d),
             Some((WireSource::Ip("10.0.0.1:53".parse().unwrap()), 10))
         );
-        let d = crate::upstream::wrap_udp_name(b"x", "stun.example", 19302);
+        let d = pod_proxy::udp::wrap_name(b"x", "stun.example", 19302).unwrap();
         assert_eq!(
             udp_source(&d),
             Some((WireSource::Name("stun.example".into(), 19302), 19))

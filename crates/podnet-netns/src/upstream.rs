@@ -1,5 +1,5 @@
 //! Shared upstream logic: proxy specs, routing rules, SOCKS5/HTTP handshakes,
-//! UDP association, and chaining.
+//! UDP association (the glue of `pod_proxy::udp`), and chaining.
 //!
 //! Both `podnet-netns` backends and any other caller use one implementation, so a
 //! new transport is added once rather than per backend.
@@ -555,103 +555,72 @@ where
     Ok(stream)
 }
 
-/// `UDP ASSOCIATE`: keep the TCP control connection and learn the relay address.
+/// `UDP ASSOCIATE` (`pod_proxy::udp::associate`): keep the TCP control
+/// connection and learn the relay address.
 pub async fn socks5_udp_associate<S>(stream: S, proxy: &Proxy) -> Result<(S, SocketAddr)>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    let mut stream = socks5_handshake(stream, proxy).await?;
-    // DST.ADDR/DST.PORT are the client's expected source; 0.0.0.0:0 means any.
-    stream
-        .write_all(&[0x05, 0x03, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
-        .await?;
-    let mut head = [0u8; 4];
-    stream.read_exact(&mut head).await?;
-    if head[1] != 0x00 {
-        bail!("SOCKS5 UDP ASSOCIATE failed: code {}", head[1]);
-    }
-    let relay = read_socks_addr(&mut stream, head[3]).await?;
-    Ok((stream, relay))
+    let shared = shared_proxy(proxy)?;
+    Ok(pod_proxy::udp::associate(stream, APP, &shared).await?)
 }
 
-/// The SOCKS5 command of a UDP association on the control connection
-/// itself (issue 84): after the reply, each datagram in each direction is a
-/// frame of a 2-byte length (big endian) and a SOCKS5 UDP datagram (header
-/// and payload). No UDP socket is necessary at either end, so a host that
-/// refuses AF_INET sockets keeps UDP. podnet (warp proxy, pod) serves it; a
-/// server that does not know it answers 0x07.
-pub const CMD_UDP_IN_STREAM: u8 = 0x83;
-
-/// The reply code of a SOCKS5 server for a command that it does not know.
-pub const REPLY_COMMAND_NOT_SUPPORTED: u8 = 0x07;
-
-/// Ask for a UDP association in the stream ([`CMD_UDP_IN_STREAM`]). An
-/// error with [`UdpInStreamRefused`] in it: the server does not know the
-/// command (the caller can use `UDP ASSOCIATE`).
+/// Ask for a UDP association in the stream (`pod_proxy::udp::open_in_stream`,
+/// the command 0x83, issue 84). An error with `pod_proxy::DialError::UdpRefused`
+/// in it: the server does not know the command (the caller can use
+/// `UDP ASSOCIATE`).
 pub async fn socks5_udp_in_stream<S>(stream: S, proxy: &Proxy) -> Result<S>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    let mut stream = socks5_handshake(stream, proxy).await?;
-    stream
-        .write_all(&[0x05, CMD_UDP_IN_STREAM, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
-        .await?;
-    let mut head = [0u8; 4];
-    stream.read_exact(&mut head).await?;
-    if head[1] == REPLY_COMMAND_NOT_SUPPORTED {
-        return Err(anyhow::Error::new(UdpInStreamRefused));
-    }
-    if head[1] != 0x00 {
-        bail!("SOCKS5 UDP in the stream failed: code {}", head[1]);
-    }
-    read_socks_addr(&mut stream, head[3]).await?;
-    Ok(stream)
+    let shared = shared_proxy(proxy)?;
+    Ok(pod_proxy::udp::open_in_stream(stream, APP, &shared).await?)
 }
 
-/// The server does not know [`CMD_UDP_IN_STREAM`].
-#[derive(Debug)]
-pub struct UdpInStreamRefused;
+/// The name of the program in the words of a refusal of `pod-proxy`.
+const APP: &str = "podnet";
 
-impl std::fmt::Display for UdpInStreamRefused {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("the proxy does not know the UDP-in-the-stream command")
-    }
+/// The `pod_proxy::Proxy` of a SOCKS5 proxy: its credentials and its name
+/// in a message. `pod-proxy` sends the credentials with no check of their
+/// length, so this function checks them first.
+fn shared_proxy(proxy: &Proxy) -> Result<pod_proxy::Proxy> {
+    check_socks5_credentials(proxy.user.as_deref(), proxy.pass.as_deref())?;
+    let spec = match &proxy.unix_path {
+        Some(path) => {
+            let path = std::path::absolute(path).unwrap_or_else(|_| path.into());
+            format!("socks5h+unix:{}", path.display())
+        }
+        None => {
+            let userinfo = match (&proxy.user, &proxy.pass) {
+                (None, _) => String::new(),
+                (Some(user), pass) => format!(
+                    "{}:{}@",
+                    percent_encode(user),
+                    percent_encode(pass.as_deref().unwrap_or(""))
+                ),
+            };
+            let host = match proxy.host.contains(':') && !proxy.host.starts_with('[') {
+                true => format!("[{}]", proxy.host),
+                false => proxy.host.clone(),
+            };
+            format!("socks5h://{userinfo}{host}:{}", proxy.port)
+        }
+    };
+    pod_proxy::Proxy::parse(&spec).map_err(|why| anyhow::anyhow!("the SOCKS5 proxy: {why}"))
 }
 
-impl std::error::Error for UdpInStreamRefused {}
-
-/// Write one frame of a UDP association in the stream.
-pub async fn write_udp_frame<W>(w: &mut W, datagram: &[u8]) -> std::io::Result<()>
-where
-    W: tokio::io::AsyncWrite + Unpin,
-{
-    use tokio::io::AsyncWriteExt;
-    let len = u16::try_from(datagram.len())
-        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "datagram too large"))?;
-    let mut frame = Vec::with_capacity(2 + datagram.len());
-    frame.extend_from_slice(&len.to_be_bytes());
-    frame.extend_from_slice(datagram);
-    w.write_all(&frame).await
-}
-
-/// Read one frame of a UDP association in the stream; none at the end of
-/// the stream.
-pub async fn read_udp_frame<R>(r: &mut R) -> std::io::Result<Option<Vec<u8>>>
-where
-    R: tokio::io::AsyncRead + Unpin,
-{
-    use tokio::io::AsyncReadExt;
-    let mut len = [0u8; 2];
-    match r.read_exact(&mut len).await {
-        Ok(_) => {}
-        Err(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
-        Err(err) => return Err(err),
+/// Escape each byte of `text` that is not unreserved (RFC 3986).
+fn percent_encode(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for byte in text.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                out.push(char::from(byte))
+            }
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
     }
-    let mut datagram = vec![0u8; u16::from_be_bytes(len) as usize];
-    r.read_exact(&mut datagram).await?;
-    Ok(Some(datagram))
+    out
 }
 
 pub(crate) async fn http_connect<S>(mut stream: S, proxy: &Proxy, target: &str) -> Result<S>
@@ -739,34 +708,6 @@ pub async fn dial_proxy(proxy: &Proxy) -> Result<Upstream> {
                 .with_context(|| format!("connect to proxy {}", proxy.endpoint()))?,
         )),
     }
-}
-
-/// Wrap a datagram in a SOCKS5 UDP request header.
-pub fn wrap_udp(payload: &[u8], ip: IpAddr, port: u16) -> Vec<u8> {
-    let mut out = vec![0u8, 0, 0];
-    match ip {
-        IpAddr::V4(v4) => {
-            out.push(0x01);
-            out.extend_from_slice(&v4.octets());
-        }
-        IpAddr::V6(v6) => {
-            out.push(0x04);
-            out.extend_from_slice(&v6.octets());
-        }
-    }
-    out.extend_from_slice(&port.to_be_bytes());
-    out.extend_from_slice(payload);
-    out
-}
-
-/// Like [`wrap_udp`], with a name as the destination (ATYP 3).
-pub fn wrap_udp_name(payload: &[u8], name: &str, port: u16) -> Vec<u8> {
-    let name = &name.as_bytes()[..name.len().min(255)];
-    let mut out = vec![0u8, 0, 0, 0x03, name.len() as u8];
-    out.extend_from_slice(name);
-    out.extend_from_slice(&port.to_be_bytes());
-    out.extend_from_slice(payload);
-    out
 }
 
 #[cfg(test)]

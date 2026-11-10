@@ -96,7 +96,7 @@ pub(crate) async fn serve_one(
             if cmd == 0x03 {
                 return serve_udp_associate(reader, chain, verbose).await;
             }
-            if cmd == crate::upstream::CMD_UDP_IN_STREAM {
+            if cmd == pod_proxy::udp::CMD_UDP_IN_STREAM {
                 return serve_udp_in_stream(reader, chain).await;
             }
             let target = format!("{}:{}", request.host, request.port);

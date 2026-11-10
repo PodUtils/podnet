@@ -86,7 +86,7 @@ mod prelude {
 
     pub(crate) use crate::upstream::{
         connect_upstream, connect_upstream_async, dial_proxy, select_chain, socks5_udp_associate,
-        within_timeout, wrap_udp, Proxy, ProxyKind, Rule, RuleMatch, Upstream,
+        within_timeout, Proxy, ProxyKind, Rule, RuleMatch, Upstream,
     };
 
     pub(crate) use crate::cli::*;

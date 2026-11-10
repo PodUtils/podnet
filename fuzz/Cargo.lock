@@ -2080,8 +2080,8 @@ dependencies = [
 
 [[package]]
 name = "pod-core"
-version = "0.8.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.8.0#f6801133552b0b343154bd3f9e608a4f966d0be4"
+version = "0.9.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
 dependencies = [
  "libc",
  "rand",
@@ -2091,8 +2091,8 @@ dependencies = [
 
 [[package]]
 name = "pod-dns"
-version = "0.8.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.8.0#f6801133552b0b343154bd3f9e608a4f966d0be4"
+version = "0.9.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
 dependencies = [
  "base64",
  "bytes",
@@ -2112,8 +2112,8 @@ dependencies = [
 
 [[package]]
 name = "pod-proxy"
-version = "0.8.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.8.0#f6801133552b0b343154bd3f9e608a4f966d0be4"
+version = "0.9.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
 dependencies = [
  "base64",
  "libc",
@@ -2128,8 +2128,8 @@ dependencies = [
 
 [[package]]
 name = "pod-services"
-version = "0.8.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.8.0#f6801133552b0b343154bd3f9e608a4f966d0be4"
+version = "0.9.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
 dependencies = [
  "pod-core",
  "toml",
@@ -2137,8 +2137,8 @@ dependencies = [
 
 [[package]]
 name = "pod-tls"
-version = "0.8.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.8.0#f6801133552b0b343154bd3f9e608a4f966d0be4"
+version = "0.9.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
 dependencies = [
  "base64",
  "p256",
@@ -2219,6 +2219,7 @@ version = "0.4.0-beta.1"
 dependencies = [
  "anyhow",
  "libc",
+ "pod-proxy",
  "serde_json",
  "smoltcp",
  "tokio",

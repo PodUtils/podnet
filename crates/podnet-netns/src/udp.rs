@@ -187,7 +187,7 @@ pub(crate) async fn ensure_udp_relay(
             // The writer ends when the entry drops its sender.
             tokio::spawn(async move {
                 while let Some(datagram) = rx.recv().await {
-                    if crate::upstream::write_udp_frame(&mut write, &datagram)
+                    if pod_proxy::udp::write_frame(&mut write, &datagram)
                         .await
                         .is_err()
                     {
@@ -197,8 +197,7 @@ pub(crate) async fn ensure_udp_relay(
             });
             tokio::spawn(async move {
                 let frames = async {
-                    while let Ok(Some(datagram)) = crate::upstream::read_udp_frame(&mut read).await
-                    {
+                    while let Ok(Some(datagram)) = pod_proxy::udp::read_frame(&mut read).await {
                         if let Some((source, off)) = crate::inbox::udp_source(&datagram) {
                             inbox.deliver(&pair, source, &datagram[off..]).await;
                         }
@@ -263,12 +262,12 @@ pub(crate) async fn relay_datagram(
         Some(name) => {
             let wire = crate::inbox::WireSource::Name(name.clone(), port);
             udp.inbox.remember(wire, ip, port);
-            crate::upstream::wrap_udp_name(payload, &name, port)
+            pod_proxy::udp::wrap_name(payload, &name, port)?
         }
         None => {
             let wire = crate::inbox::WireSource::Ip(SocketAddr::new(ip, port));
             udp.inbox.remember(wire, ip, port);
-            wrap_udp(payload, ip, port)
+            pod_proxy::udp::wrap(payload, ip, port)
         }
     };
     match &udp.relay {
