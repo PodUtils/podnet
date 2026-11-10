@@ -335,6 +335,7 @@ pub(crate) async fn send_payload(
         None => SocketAddr::new(ip, port).to_string(),
     };
     let picked = select_chain(egress.rules, egress.proxies, &target);
+    crate::flowlog::datagram(fd, &target, &picked);
     if picked.chain().is_none() {
         let rule = picked.rule_name();
         crate::rules::note_refusal("udp", &target, rule, egress.verbose);

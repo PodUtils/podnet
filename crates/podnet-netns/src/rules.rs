@@ -14,6 +14,8 @@ pub enum RuleMatch {
     Domain(String),
     /// One or more IPv4 or IPv6 prefixes (`cidr:NET`, or `cidr:@FILE`).
     Cidr(std::sync::Arc<[Net]>),
+    /// Each target: the rule of `--default-action reject` (T-157).
+    Any,
 }
 
 impl RuleMatch {
@@ -43,6 +45,7 @@ impl RuleMatch {
         match self {
             RuleMatch::Domain(d) => ip.is_none() && domain_matches(d, host),
             RuleMatch::Cidr(nets) => ip.is_some_and(|ip| nets.iter().any(|n| n.contains(ip))),
+            RuleMatch::Any => true,
         }
     }
 }
@@ -168,6 +171,16 @@ impl Rule {
             action: RuleAction::parse(rhs)?,
             spec: spec.to_string(),
         })
+    }
+
+    /// The last rule of `--default-action reject`: it refuses each target.
+    /// Its name in the log and in the record is `default`.
+    pub fn default_reject() -> Self {
+        Rule {
+            matcher: RuleMatch::Any,
+            action: RuleAction::Reject,
+            spec: "default".into(),
+        }
     }
 }
 

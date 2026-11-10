@@ -46,6 +46,7 @@ mod dgram;
 mod doctor;
 mod fakedns;
 mod fdtable;
+mod flowlog;
 mod frontdoor;
 mod handoff;
 mod icmp;
@@ -136,6 +137,12 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     };
     if args.doctor {
         return doctor(args.doctor_json);
+    }
+    if let Some(path) = &args.flow_log {
+        if let Err(e) = flowlog::open(path) {
+            eprintln!("{}: {e:#}", cli::program_name());
+            return USAGE;
+        }
     }
     if args.serve.is_some() {
         if args.proxies.is_empty() {

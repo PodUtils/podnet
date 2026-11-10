@@ -101,6 +101,7 @@ pub(crate) async fn serve_one(
             }
             let target = format!("{}:{}", request.host, request.port);
             let picked = select_chain(rules, chain, &target);
+            let flow = crate::flowlog::decided("tcp", &target, &picked);
             let Some(selected) = picked.chain() else {
                 crate::rules::note_refusal("front door", &target, picked.rule_name(), verbose);
                 let _ = socks::socks5_reply(&mut reader, 0x02, None).await;
@@ -130,7 +131,7 @@ pub(crate) async fn serve_one(
                 }
             };
             socks::socks5_reply(&mut reader, 0x00, None).await?;
-            let _ = tokio::io::copy_bidirectional(&mut reader, &mut upstream).await;
+            crate::flowlog::relay(&mut reader, &mut upstream, flow, &target).await;
             Ok(())
         }
         Some(_) => {
@@ -148,6 +149,7 @@ pub(crate) async fn serve_one(
             };
             let target = format!("{}:{}", request.host, request.port);
             let picked = select_chain(rules, chain, &target);
+            let flow = crate::flowlog::decided("tcp", &target, &picked);
             let Some(selected) = picked.chain() else {
                 crate::rules::note_refusal("front door", &target, picked.rule_name(), verbose);
                 let _ = socks::http_connect_reply(&mut reader, 403, "Forbidden").await;
@@ -166,7 +168,7 @@ pub(crate) async fn serve_one(
                 }
             };
             socks::http_connect_ok(&mut reader).await?;
-            let _ = tokio::io::copy_bidirectional(&mut reader, &mut upstream).await;
+            crate::flowlog::relay(&mut reader, &mut upstream, flow, &target).await;
             Ok(())
         }
         None => Ok(()),

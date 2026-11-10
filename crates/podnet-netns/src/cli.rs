@@ -31,6 +31,8 @@ pub(crate) struct Args {
     /// `--name-backend`: print one line that names the backend that runs
     /// and its limits (T-071).
     pub(crate) name_backend: bool,
+    /// `--flow-log FILE`: the JSON record of each decision (T-157).
+    pub(crate) flow_log: Option<std::path::PathBuf>,
 }
 
 /// The name in the help and the usage lines: `podnet-netns`, or `podnet pod`
@@ -84,6 +86,13 @@ Options:
                              --serve answers SOCKS5 0x02 or HTTP 403
                            With the seccomp backend, 127.0.0.0/8 goes direct
                            (or to a listener of the program itself)
+      --default-action <A> allow (default) or reject: what the pod does with a
+                           target that no rule matches. reject refuses it as
+                           a reject rule does
+      --flow-log <FILE>    Append one JSON line to FILE for each decision
+                           (time, target, rule or default, chain, verdict)
+                           and one at the close of each relayed TCP flow
+                           (bytes_out, bytes_in)
       --map <NAME=ADDR>    Resolve NAME to ADDR locally, repeatable
       --keep-proxy-env     Keep HTTPS_PROXY, HTTP_PROXY, ALL_PROXY and NO_PROXY
                            (and the lower-case forms) for the program; by
@@ -135,6 +144,8 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut inbound_dir_given = false;
     let mut keep_proxy_env = false;
     let mut serve: Option<crate::listen::ProxyListen> = None;
+    let mut default_reject = false;
+    let mut flow_log = None;
     let mut i = 0;
     while i < argv.len() {
         match argv[i].as_str() {
@@ -169,6 +180,22 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             "--name-backend" => {
                 name_backend = true;
                 i += 1;
+            }
+            "--default-action" => {
+                let value = argv
+                    .get(i + 1)
+                    .context("--default-action needs allow or reject")?;
+                default_reject = match value.to_ascii_lowercase().as_str() {
+                    "allow" => false,
+                    "reject" | "block" => true,
+                    other => bail!("--default-action {other:?}: give allow or reject"),
+                };
+                i += 2;
+            }
+            "--flow-log" => {
+                let path = argv.get(i + 1).context("--flow-log needs a file")?;
+                flow_log = Some(std::path::PathBuf::from(path));
+                i += 2;
             }
             "--map" => {
                 let spec = argv.get(i + 1).context("--map needs NAME=ADDR")?;
@@ -245,6 +272,11 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             }
         }
     }
+    // T-157: a target that no rule matches is refused: a last rule that
+    // matches each target.
+    if default_reject {
+        rules.push(Rule::default_reject());
+    }
     if !doctor && serve.is_none() && program.is_empty() {
         bail!(
             "nothing to run; usage: {} [OPTIONS] -- PROGRAM",
@@ -266,5 +298,6 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         backend,
         prefer_udp,
         name_backend,
+        flow_log,
     })
 }

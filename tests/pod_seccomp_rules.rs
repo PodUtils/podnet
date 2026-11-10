@@ -136,3 +136,129 @@ fn a_rule_with_an_unknown_action_is_a_usage_error() {
         .unwrap();
     assert_eq!(output.status.code(), Some(64));
 }
+
+/// Connect to 93.184.216.34:80 (write PING, read the answer), then to
+/// 10.1.2.3:80. Print the result of each connect.
+const TWO_TARGETS: &str = r#"
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+static int dial(const char *ip) {
+    int s = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in a; memset(&a, 0, sizeof a);
+    a.sin_family = AF_INET; a.sin_port = htons(80);
+    inet_pton(AF_INET, ip, &a.sin_addr);
+    int r = connect(s, (struct sockaddr *)&a, sizeof a);
+    printf("CONNECT:%s:%s\n", ip, r < 0 ? strerror(errno) : "ok");
+    return r < 0 ? -1 : s;
+}
+int main(void) {
+    alarm(10);
+    int s = dial("93.184.216.34");
+    if (s >= 0) {
+        write(s, "PING\n", 5);
+        char b[64] = {0};
+        int n = read(s, b, sizeof b - 1);
+        printf("READ:%d\n", n);
+        close(s);
+    }
+    dial("10.1.2.3");
+    return 0;
+}
+"#;
+
+#[test]
+fn seccomp_default_reject_refuses_an_undeclared_host() {
+    if !seccomp_ready() {
+        return;
+    }
+    let proxy = Proxy::start("default-reject");
+    let declared = format!("cidr:93.184.0.0/16=unix:{}", proxy.sock.display());
+    let output = proxy.run(
+        "seccomp",
+        TWO_TARGETS,
+        &["--default-action", "reject", "-r", &declared],
+    );
+    let text = stdout(&output);
+    assert!(text.contains("CONNECT:93.184.216.34:ok"), "{text}");
+    assert!(
+        text.contains("CONNECT:10.1.2.3:Connection refused"),
+        "{text}"
+    );
+    let targets: Vec<String> = proxy.targets.try_iter().collect();
+    assert_eq!(targets, ["93.184.216.34:80"]);
+}
+
+#[test]
+fn seccomp_flow_log_has_one_line_per_decision() {
+    if !seccomp_ready() {
+        return;
+    }
+    let proxy = Proxy::start("flow-log");
+    let log = proxy.dir.join("flows.jsonl");
+    let log_arg = log.display().to_string();
+    let output = proxy.run(
+        "seccomp",
+        TWO_TARGETS,
+        &["--flow-log", &log_arg, "-r", "cidr:10.0.0.0/8=reject"],
+    );
+    assert!(output.status.success());
+    let text = std::fs::read_to_string(&log).unwrap();
+    let lines: Vec<serde_json::Value> = text
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    let dials: Vec<&serde_json::Value> = lines.iter().filter(|l| l["event"] == "dial").collect();
+    assert_eq!(dials.len(), 2, "one line for each decision: {text}");
+    assert_eq!(dials[0]["target"], "93.184.216.34:80");
+    assert_eq!(dials[0]["rule"], "default");
+    assert_eq!(dials[0]["verdict"], "allow");
+    assert_eq!(
+        dials[0]["chain"][0],
+        format!("unix:{}", proxy.sock.display())
+    );
+    assert_eq!(dials[1]["target"], "10.1.2.3:80");
+    assert_eq!(dials[1]["rule"], "cidr:10.0.0.0/8=reject");
+    assert_eq!(dials[1]["verdict"], "reject");
+    assert!(dials.iter().all(|d| d["time"].as_f64().unwrap() > 1e9));
+    let closes: Vec<&serde_json::Value> = lines.iter().filter(|l| l["event"] == "close").collect();
+    assert_eq!(closes.len(), 1, "{text}");
+    assert_eq!(closes[0]["flow"], dials[0]["flow"]);
+    assert_eq!(closes[0]["bytes_out"], 5);
+    assert!(closes[0]["bytes_in"].as_u64().unwrap() >= 18, "{text}");
+}
+
+#[test]
+fn netns_flow_log_has_one_line_per_decision() {
+    if !have_compiler() || !netns_available() {
+        eprintln!("skipping: no compiler or no netns backend");
+        return;
+    }
+    let proxy = Proxy::start("netns-flow-log");
+    let log = proxy.dir.join("flows.jsonl");
+    let log_arg = log.display().to_string();
+    let output = proxy.run(
+        "netns",
+        TWO_TARGETS,
+        &["--flow-log", &log_arg, "--default-action", "reject"],
+    );
+    let text = stdout(&output);
+    assert!(
+        text.contains("CONNECT:10.1.2.3:Connection refused"),
+        "{text}"
+    );
+    let log = std::fs::read_to_string(&log).unwrap();
+    let lines: Vec<serde_json::Value> = log
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    let refused: Vec<&serde_json::Value> = lines
+        .iter()
+        .filter(|l| l["event"] == "dial" && l["verdict"] == "reject")
+        .collect();
+    assert_eq!(refused.len(), 2, "{log}");
+    assert!(refused.iter().all(|l| l["rule"] == "default"), "{log}");
+}
