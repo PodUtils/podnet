@@ -447,7 +447,7 @@ cargo test -p podnet-netns --lib -- doctor_netfilter_row_has_a_verdict
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -481,6 +481,22 @@ rules have `reject` and `block` (`src/warp/rules.rs:30-50`). A datagram send doe
 cargo test --test pod_seccomp_rules -- seccomp_block_rule_refuses_connect seccomp_reject_rule_refuses_a_datagram
 cargo test --workspace -- reject_and_block_mean_the_same_in_both_rule_engines
 ```
+
+## Done
+
+2026-11-10, commit 727dc98 (`T-156: pod: a reject action in -r, for TCP and for datagrams`). The
+matcher, `Rule`, `RuleAction { Proxy, Reject }` and `select_chain` are in
+`crates/podnet-netns/src/rules.rs`; `reject` and `block` parse at the `=` split. A refusal: seccomp
+`connect` gives `ECONNREFUSED`; a seccomp datagram (`sendto`, `sendmsg`, `sendmmsg`, `write`) gives
+`EACCES`; netns gives a RST and drops a datagram; the front door answers SOCKS5 0x02 and HTTP 403.
+`-v` prints each refusal with the count. A TCP connect to loopback with seccomp stays direct. The
+Prove commands: 2 passed (`seccomp_block_rule_refuses_connect`,
+`seccomp_reject_rule_refuses_a_datagram`) and 1 passed
+(`reject_and_block_mean_the_same_in_both_rule_engines`, `tests/rule_words.rs`). Also:
+`netns_block_rule_refuses_connect`, `a_rule_with_an_unknown_action_is_a_usage_error`,
+`a_reject_rule_refuses_and_names_the_rule`. `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`: each
+step 0. CI: at the merge. GitHub #354 closes at the merge.
+
 
 # T-157: pod: `--default-action` and a JSON flow record (GitHub #355)
 
