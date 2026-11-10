@@ -374,6 +374,9 @@ jobs:
           echo 'use crate::tunnel;' >> crates/podnet-core/src/udp.rs
           must_fail "check-layers.py, a reference from core to cloudflare" python3 -I scripts/check-layers.py
           git checkout -- crates/podnet-core/src/udp.rs
+          echo 'use crate::tunnel;' >> crates/podnet-serve/src/gate.rs
+          must_fail "check-layers.py, a reference from serve to cloudflare" python3 -I scripts/check-layers.py
+          git checkout -- crates/podnet-serve/src/gate.rs
           must_fail "check-layers.py, a scan of nothing" python3 -I scripts/check-layers.py --plant-empty
 
           exit "$fail"

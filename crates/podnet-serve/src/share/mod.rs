@@ -25,7 +25,7 @@ use serde::Deserialize;
 use tokio::sync::Notify;
 
 use crate::gate::{Gate, UNLOCK_PATH};
-use crate::util::{ensure_dir, human_bytes, sanitize_filename};
+use podnet_core::util::{ensure_dir, human_bytes, sanitize_filename};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShareMode {
@@ -81,7 +81,7 @@ impl ShareConfig {
     pub fn upload(dest: impl Into<PathBuf>) -> Self {
         Self {
             mode: ShareMode::Upload,
-            token: crate::util::random_token(),
+            token: podnet_core::util::random_token(),
             dest: dest.into(),
             file: None,
             target: None,
@@ -97,7 +97,7 @@ impl ShareConfig {
     pub fn download(file: impl Into<PathBuf>) -> Self {
         Self {
             mode: ShareMode::Download,
-            token: crate::util::random_token(),
+            token: podnet_core::util::random_token(),
             dest: PathBuf::new(),
             file: Some(file.into()),
             target: None,
@@ -113,7 +113,7 @@ impl ShareConfig {
     pub fn proxy(target: impl Into<String>) -> Self {
         Self {
             mode: ShareMode::Proxy,
-            token: crate::util::random_token(),
+            token: podnet_core::util::random_token(),
             dest: PathBuf::new(),
             file: None,
             target: Some(target.into()),
@@ -258,14 +258,14 @@ impl ShareApp {
                 Ok(meta) if meta.is_file() => {}
                 // Issue 249: exit 78, not 1.
                 Ok(_) => {
-                    return Err(crate::exit::fault(
-                        crate::exit::Fault::Config,
+                    return Err(podnet_core::exit::fault(
+                        podnet_core::exit::Fault::Config,
                         anyhow::anyhow!("--file {}: not a regular file", file.display()),
                     ))
                 }
                 Err(err) => {
-                    return Err(crate::exit::fault(
-                        crate::exit::Fault::Config,
+                    return Err(podnet_core::exit::fault(
+                        podnet_core::exit::Fault::Config,
                         anyhow::anyhow!("--file {}: {err}", file.display()),
                     ))
                 }

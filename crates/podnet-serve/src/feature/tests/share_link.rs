@@ -114,21 +114,6 @@ fn an_empty_note_is_dropped_rather_than_rendered_blank() {
 }
 
 #[test]
-fn a_quick_tunnel_link_is_built_from_the_provisioned_url() {
-    let tunnel = crate::quicktunnel::parse_quick_tunnel_response(
-        200,
-        r#"{"success":true,"result":{"id":"i","hostname":"foo.trycloudflare.com",
-            "account_tag":"a","secret":"GlUwcZAOuFFaHRtTTFqbk1WVmpWMHFzOGdSSUthbG1K"},"errors":[]}"#,
-    )
-    .expect("parse response");
-
-    let link = ShareLink::from_quick_tunnel(&tunnel.url()).expect("link");
-    assert_eq!(link.url(), "https://foo.trycloudflare.com");
-    assert_eq!(link.source(), ShareSource::QuickTunnel);
-    assert!(link.qr().expect("qr").contains('█'));
-}
-
-#[test]
 fn an_oversized_url_is_refused_before_it_reaches_the_encoder() {
     let long = format!("https://example.com/{}", "a".repeat(MAX_SHARE_URL_LEN));
     let err = ShareLink::new(&long, ShareSource::Manual).expect_err("too long");

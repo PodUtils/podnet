@@ -23,7 +23,7 @@
 //! * [`ShareLink`] validates a public URL before it is printed, because a share
 //!   link is the one string a user copies somewhere they cannot audit.
 
-use crate::util::http::{RequestHead, ResponseWriter};
+use podnet_core::util::http::{RequestHead, ResponseWriter};
 use std::io;
 use std::net::IpAddr;
 

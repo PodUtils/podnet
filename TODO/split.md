@@ -647,7 +647,7 @@ T-008, T-009 and T-012 are done.
 
 2026-11-05, The named modules `src/warp/mod.rs` and `src/warp/proxy.rs` move to PodUtils/podcrates (`pod-warp`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. No file of this entry stays in podnet. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
-# T-037: Split `src/relay_reverse.rs` and `src/share/mod.rs`
+# T-037: Split `src/relay_reverse.rs` and `crates/podnet-serve/src/share/mod.rs`
 
 **Source:** `docs/research/podnet/architecture.md`, section 2.2 (the two rows).
 **Category:** chore
@@ -658,19 +658,19 @@ T-008, T-009 and T-012 are done.
 
 ## Problem
 
-`src/relay_reverse.rs` has 1,139 lines and `src/share/mod.rs` 1,901.
+`src/relay_reverse.rs` has 1,139 lines and `crates/podnet-serve/src/share/mod.rs` 1,901.
 
 ## Premise
 
 - `tests/relay_reverse.rs` calls `relay_reverse::{node, run_node, connect}` against a fake relay.
-- `src/share/mod.rs` holds the upload router (its `upload_receive` alone has 195 lines), the
+- `crates/podnet-serve/src/share/mod.rs` holds the upload router (its `upload_receive` alone has 195 lines), the
   download router and 756 lines of tests.
 
 ## Approach
 
 1. `src/relay_reverse.rs`: the pair functions in a mod.rs; files for the node, for `connect` and
    for the tests.
-2. `src/share/mod.rs`: the types and the app in a mod.rs; files for the upload part and the download
+2. `crates/podnet-serve/src/share/mod.rs`: the types and the app in a mod.rs; files for the upload part and the download
    part; the tests to a tests directory with an upload part and a download part.
 
 ## Prove
@@ -688,18 +688,18 @@ T-008 and T-009 are done.
 
 ## Correction
 
-2026-11-05, The named modules `src/relay_reverse.rs` move to PodUtils/podcrates (`pod-relay`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/share/mod.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+2026-11-05, The named modules `src/relay_reverse.rs` move to PodUtils/podcrates (`pod-relay`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `crates/podnet-serve/src/share/mod.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
 ## Done
 
-2026-11-09, commit ba9be1d (`T-037: split src/share.rs into src/share/`). `src/share/mod.rs` (431
+2026-11-09, commit ba9be1d (`T-037: split crates/podnet-serve/src/share.rs into crates/podnet-serve/src/share/`). `crates/podnet-serve/src/share/mod.rs` (431
 lines) holds the types, the app and the shared helpers; `upload.rs` (508) and `download.rs` (221)
-hold the two routers; `src/share/tests/upload.rs` (440) and `src/share/tests/download.rs` (292) hold the tests.
+hold the two routers; `crates/podnet-serve/src/share/tests/upload.rs` (440) and `crates/podnet-serve/src/share/tests/download.rs` (292) hold the tests.
 `src/relay_reverse.rs` is not split (the Correction). Parity: commands 1295, items 1293, tests 1108,
 equal before and after. check.sh, `unshare -n` tests and `scripts/restricted-host.sh` pass. CI: at
 the merge.
 
-# T-038: Split `src/feature/mod.rs` and `src/proxy.rs`
+# T-038: Split `crates/podnet-serve/src/feature/mod.rs` and `src/proxy.rs`
 
 **Source:** `docs/research/podnet/architecture.md`, section 2.2 (the two rows).
 **Category:** chore
@@ -710,17 +710,17 @@ the merge.
 
 ## Problem
 
-`src/feature/mod.rs` has 2,139 lines and `src/proxy.rs` 2,034.
+`crates/podnet-serve/src/feature/mod.rs` has 2,139 lines and `src/proxy.rs` 2,034.
 
 ## Premise
 
-- The library-only subsystem of `src/feature/` has no caller in the binary. It stays, as a
+- The library-only subsystem of `crates/podnet-serve/src/feature/` has no caller in the binary. It stays, as a
   capability of the library (the owner's ruling on `StaticServer`, #276, `docs/decisions.md`).
 - The fuzz targets use `proxy::build_request_head` (`src/fuzzing.rs`).
 
 ## Approach
 
-1. `src/feature/mod.rs`: `FeatureError` and the re-exports in the mod.rs; files for the access
+1. `crates/podnet-serve/src/feature/mod.rs`: `FeatureError` and the re-exports in the mod.rs; files for the access
    control, the QR rendering, the static server and `ShareLink`; the tests split by file.
 2. `src/proxy.rs`: `serve_stream` and the dispatch in a mod.rs; files for the HTTP forward, the
    axum dispatch, the share proxy, the request and response heads, and the chunked copy; the
@@ -741,15 +741,15 @@ T-008 and T-009 are done.
 
 ## Correction
 
-2026-11-05, The named modules `src/proxy.rs` move to PodUtils/podcrates (`pod-cloudflare`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/feature/mod.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+2026-11-05, The named modules `src/proxy.rs` move to PodUtils/podcrates (`pod-cloudflare`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `crates/podnet-serve/src/feature/mod.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
 ## Done
 
-2026-11-09, commit fee6f4f (`T-038: split src/feature/mod.rs into src/feature/`). `src/feature/mod.rs`
+2026-11-09, commit fee6f4f (`T-038: split crates/podnet-serve/src/feature/mod.rs into crates/podnet-serve/src/feature/`). `crates/podnet-serve/src/feature/mod.rs`
 (83 lines) holds `FeatureError` and the re-exports; `access.rs` (575), `qr.rs` (96),
-`static_server.rs` (414) and `share_link.rs` (232) hold the parts; `src/feature/tests/` holds the
+`static_server.rs` (414) and `share_link.rs` (232) hold the parts; `crates/podnet-serve/src/feature/tests/` holds the
 tests, one file for each part. `src/proxy.rs` is not split (the Correction). The finding of
-TruffleHog in the doc comment of `ShareLink` moved to `src/feature/share_link.rs:42`
+TruffleHog in the doc comment of `ShareLink` moved to `crates/podnet-serve/src/feature/share_link.rs:42`
 (`.github/secrets-allow.txt`). Parity: commands 1295, items 1293, tests 1108, equal before and
 after. check.sh passes. CI: at the merge.
 
@@ -979,7 +979,7 @@ the start. Cut only the references that stay in podnet.
 
 2026-11-10, commits 25378d9 (`detach -> update`: `previous_of` in `crates/podnet-core/src/detach.rs`, a `pub use` in
 `src/update.rs`), b87ba27 and 22b00a2 (`net -> ingress`: `dial`, `origin_label`, the TLS connectors
-and `note_unverified` in `src/origin/dial.rs`; the tests stay in `crates/podnet-core/src/net.rs`), 42a9c93
+and `note_unverified` in `crates/podnet-serve/src/origin/dial.rs`; the tests stay in `crates/podnet-core/src/net.rs`), 42a9c93
 (`util -> feature`: the doc names `StaticResponse` as text), ffddf71 (`hop -> cloudflare`: the type
 `Refused` in `crates/podnet-core/src/hop.rs`, a `pub use` in `src/cloudflare/rpc.rs`) and c154ccf
 (`report -> quicktunnel`: the type `Refusal` in `crates/podnet-core/src/report.rs`; the binary gives
@@ -1075,8 +1075,8 @@ and `quic::transport_config`; `warp` uses `quicktunnel::parse_retry_after`; `fea
 2. Move `parse_retry_after` to `crates/podnet-core/src/util/http.rs`.
 3. Give `ShareLink` a constructor from a URL and an id. Move the conversion from a quick tunnel to
    the Cloudflare side.
-4. Move `RULE_KEYS` to `src/ingress.rs`. `src/config.rs` re-exports it.
-5. Make `src/relay.rs` and `src/transport/` use `crates/podnet-core/src/connect.rs` directly.
+4. Move `RULE_KEYS` to `crates/podnet-serve/src/ingress.rs`. `src/config.rs` re-exports it.
+5. Make `crates/podnet-serve/src/relay.rs` and `src/transport/` use `crates/podnet-core/src/connect.rs` directly.
 6. Move `serve_websocket` and `forward_path` from `src/ws.rs` to the tunnel side, beside
    `src/proxy.rs`.
 7. Make one commit for each row or pair of rows.
@@ -1095,7 +1095,7 @@ The allowlist of the layer check is empty.
 ## Blocker
 
 The session of `PodUtils/podcrates` and T-137. Four rows are cut (2026-11-10): `ingress -> config`
-(3714039: `RULE_KEYS` in `src/ingress.rs`, a `pub use` in `src/config.rs`), `relay -> proxy`
+(3714039: `RULE_KEYS` in `crates/podnet-serve/src/ingress.rs`, a `pub use` in `src/config.rs`), `relay -> proxy`
 (bc0f58d) and `transport -> proxy` (f1f69c4: they call `crates/podnet-core/src/connect.rs`), `feature -> quicktunnel`
 (799d4be: `ShareLink::from_quick_tunnel` takes the URL; a8a36bf: the layer check skips each file of
 a test module). Four rows stay in `scripts/layers-allow.txt`: `warp -> cloudflare` and

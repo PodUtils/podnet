@@ -341,7 +341,7 @@ service (files, git, router) needs one boundary.
 
 ## Premise
 
-- `src/service.rs` has the enum `Built` of the built-in services. `src/ingress.rs` matches the
+- `crates/podnet-serve/src/service.rs` has the enum `Built` of the built-in services. `crates/podnet-serve/src/ingress.rs` matches the
   rules of host and path.
 - `src/proxy.rs` dispatches an axum router behind the tunnel and streams the request body.
 

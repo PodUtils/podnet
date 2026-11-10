@@ -35,12 +35,12 @@ use ssh_key::getrandom::SysRng;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 use tokio::net::UnixStream;
 
-use crate::connect;
+use podnet_core::connect;
 
 /// Default relay, reachable on port 443 through the CONNECT proxy: the
 /// endpoint `ssh` of `pinggy` (`pod-services`).
 pub fn default_relay() -> String {
-    crate::services::endpoint("pinggy", "ssh").authority()
+    podnet_core::services::endpoint("pinggy", "ssh").authority()
 }
 
 /// Where the remote forward is requested, and where the origin lives.
@@ -74,7 +74,7 @@ impl Default for RelayConfig {
 /// directory of this user (`state::exec_dir`, mode 0700), not a fixed path
 /// in the shared `/tmp` that another user can make first.
 pub fn default_origin_socket() -> std::path::PathBuf {
-    match crate::state::exec_dir("podnet-relay") {
+    match podnet_core::state::exec_dir("podnet-relay") {
         Ok(dir) => dir.join("origin.sock"),
         Err(_) => {
             std::env::temp_dir().join(format!("podnet-origin-{}.sock", unsafe { libc::geteuid() }))
@@ -404,7 +404,7 @@ fn pick_tunnel_url(text: &str) -> Option<String> {
         .collect();
 
     for url in &candidates {
-        if !url.contains(crate::services::text("pinggy", "dashboard-host")) {
+        if !url.contains(podnet_core::services::text("pinggy", "dashboard-host")) {
             return Some((*url).to_string());
         }
     }

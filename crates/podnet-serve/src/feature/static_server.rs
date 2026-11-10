@@ -8,7 +8,7 @@ use super::*;
 
 /// An in-memory HTTP response, ready to be written to a socket.
 ///
-/// This exists because the origin layer's [`crate::util::http::ResponseWriter`]
+/// This exists because the origin layer's [`podnet_core::util::http::ResponseWriter`]
 /// trait is streaming: it is built for writing straight to a socket as bytes
 /// arrive. A tunnel that wants to inspect a response, record it, or decide
 /// whether to forward it needs the whole thing first, and buffering is the
@@ -50,7 +50,7 @@ impl BufferedResponse {
 
     /// Render as a complete HTTP/1.1 response.
     pub fn to_bytes(&self) -> Vec<u8> {
-        crate::util::http::build_response(
+        podnet_core::util::http::build_response(
             self.status,
             crate::origin::static_files::http_phrase(self.status),
             &self
@@ -68,7 +68,7 @@ impl BufferedResponse {
     }
 }
 
-impl crate::util::http::ResponseWriter for BufferedResponse {
+impl podnet_core::util::http::ResponseWriter for BufferedResponse {
     fn status(&mut self, code: u16) -> &mut Self {
         self.status = code;
         self
@@ -247,13 +247,13 @@ impl StaticResponse {
     }
 
     /// Write the head and the body to `out`, the body in chunks of at most
-    /// [`crate::util::http::BODY_CHUNK`] bytes. Gives the number of body
+    /// [`podnet_core::util::http::BODY_CHUNK`] bytes. Gives the number of body
     /// bytes. A body that ends before its length is an `UnexpectedEof`
     /// error.
     pub fn write_to<W: io::Write>(mut self, out: &mut W) -> io::Result<u64> {
         out.write_all(&self.head_bytes())?;
         let len = self.body.len();
-        let mut buf = vec![0u8; crate::util::http::BODY_CHUNK.min(len as usize)];
+        let mut buf = vec![0u8; podnet_core::util::http::BODY_CHUNK.min(len as usize)];
         let mut sent = 0u64;
         while sent < len {
             let n = match io::Read::read(&mut self.body, &mut buf) {
@@ -270,7 +270,7 @@ impl StaticResponse {
     }
 }
 
-impl crate::util::http::ResponseWriter for StaticResponse {
+impl podnet_core::util::http::ResponseWriter for StaticResponse {
     fn status(&mut self, code: u16) -> &mut Self {
         self.status = code;
         self

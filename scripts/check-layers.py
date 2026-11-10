@@ -17,7 +17,8 @@ fault too. src/main.rs is the binary: it may use each crate.
 Each crate of CRATES (crates/NAME/src) holds the modules of one layer:
 a top module there that LAYER puts in another layer is a fault. A
 `crate::MODULE` of such a file names a module of that crate, and a
-`podnet_core::MODULE` of each file is a reference to MODULE (T-046).
+`podnet_core::MODULE` or `podnet_serve::MODULE` of each file is a
+reference to MODULE (T-046, T-051).
 
 A top module that LAYER does not name is a fault: give it a crate. A scan
 that reads fewer than MIN_FILES files is a fault.
@@ -63,12 +64,15 @@ LAYER = {
     "build": "core",
     # The tests of the core that read a higher layer (src/core_tests.rs).
     "core_tests": "podnet",
+    # The tests of the services that read a higher layer (src/serve_tests.rs).
+    "serve_tests": "podnet",
 }
 
 # The crates of the workspace (crates/NAME) and the layer of each. The
 # lib.rs of a crate is the module NAME (with `-` as `_`) of that layer.
 CRATES = {
     "podnet-core": "core",
+    "podnet-serve": "serve",
 }
 
 USES = {
@@ -142,8 +146,9 @@ def strip_tests(text):
 
 
 def refs_of(text):
-    """Yield each top module named after `crate::` or `podnet_core::`."""
-    for m in re.finditer(r"\b(?:crate|podnet_core)\s*::\s*", text):
+    """Yield each top module named after `crate::`, `podnet_core::` or
+    `podnet_serve::`."""
+    for m in re.finditer(r"\b(?:crate|podnet_core|podnet_serve)\s*::\s*", text):
         j = m.end()
         if text.startswith("{", j):
             depth = 0
@@ -313,6 +318,9 @@ def self_test():
         ("core crate upward", {"crates/podnet-core/src/exit.rs": "use crate::tunnel;\n"}, "", True),
         ("wrong crate", {"crates/podnet-core/src/tunnel.rs": ""}, "", True),
         ("core path", {"egress.rs": "use podnet_core::tunnel;\n"}, "", True),
+        ("serve crate", {"crates/podnet-serve/src/gate.rs": "use podnet_core::util;\n"}, "", False),
+        ("serve crate upward", {"crates/podnet-serve/src/gate.rs": "use crate::tunnel;\n"}, "", True),
+        ("serve path", {"crates/podnet-core/src/exit.rs": "use podnet_serve::gate;\n"}, "", True),
     ]
     for name, files, allow, want in cases:
         d = tree(files)

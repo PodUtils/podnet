@@ -10,8 +10,8 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use crate::gate::Gate;
 use crate::ingress::{ForwardTarget, Ingress, OriginOptions, Service};
-use crate::metrics::Metrics;
 use crate::share::{ShareApp, ShareControl, ShareMode};
+use podnet_core::metrics::Metrics;
 
 /// A service prepared for dispatch.
 pub enum Built {
@@ -116,8 +116,8 @@ pub fn static_router(root: &Path, spa: bool) -> Result<Router> {
         } else {
             "does not exist"
         };
-        return Err(crate::exit::fault(
-            crate::exit::Fault::Usage,
+        return Err(podnet_core::exit::fault(
+            podnet_core::exit::Fault::Usage,
             anyhow::anyhow!("the directory to serve ({}) {why}", root.display()),
         ));
     }

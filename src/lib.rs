@@ -51,6 +51,7 @@ macro_rules! eprintln {
 /// (#214: `fetch_update` is deprecated in a later Rust; `try_update`
 /// needs a newer Rust than the MSRV). Gives the old value, or `Err` with
 /// the value when `f` gives `None`.
+#[allow(unused_macros)]
 macro_rules! update_atomic {
     ($atomic:expr, $f:expr) => {{
         let atomic = $atomic;
@@ -83,6 +84,11 @@ pub use podnet_core::{
     rlimit, services, state, trust, udp, util, yaml,
 };
 
+// The modules of the services (crates/podnet-serve, T-051), at their old
+// paths.
+#[doc(inline)]
+pub use podnet_serve::{feature, gate, ingress, origin, relay, service, share};
+
 pub mod agent;
 pub mod agent_files;
 pub mod bug_report;
@@ -94,24 +100,19 @@ pub mod doctor;
 pub mod edge_discovery;
 pub mod edge_h2;
 pub mod egress;
-pub mod feature;
 pub mod fetch;
 #[doc(hidden)]
 pub mod fuzzing;
-pub mod gate;
-pub mod ingress;
 pub mod manual;
-pub mod origin;
 pub mod preflight;
 pub mod proxy;
 pub mod quicktunnel;
-pub mod relay;
 pub mod relay_pool;
 pub mod relay_reverse;
 pub mod report;
 pub mod resolve;
-pub mod service;
-pub mod share;
+#[cfg(test)]
+mod serve_tests;
 pub mod status;
 #[cfg(test)]
 #[path = "../tests/test_host/mod.rs"]

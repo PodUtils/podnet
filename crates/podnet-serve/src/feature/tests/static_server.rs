@@ -91,7 +91,7 @@ fn a_large_file_is_streamed_completely() {
     struct Count(u64);
     impl std::io::Write for Count {
         fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
-            assert!(b.len() <= crate::util::http::BODY_CHUNK);
+            assert!(b.len() <= podnet_core::util::http::BODY_CHUNK);
             self.0 += b.len() as u64;
             Ok(b.len())
         }
@@ -229,7 +229,7 @@ fn an_spa_origin_falls_back_and_never_caches_the_shell() {
 
 #[test]
 fn a_buffered_response_records_what_was_written() {
-    use crate::util::http::ResponseWriter;
+    use podnet_core::util::http::ResponseWriter;
 
     let mut b = BufferedResponse::new();
     assert!(!b.is_started(), "a fresh buffer has no status yet");

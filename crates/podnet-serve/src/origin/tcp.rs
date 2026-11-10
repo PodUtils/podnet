@@ -71,7 +71,7 @@ impl TcpOrigin {
         match &self.tls {
             None => Ok(Box::new(tcp)),
             Some(tls) => {
-                let config = crate::util::tls::client_config(
+                let config = podnet_core::util::tls::client_config(
                     &tls.server_name,
                     tls.insecure,
                     tls.ca_file.as_deref(),
@@ -139,7 +139,7 @@ impl UnixOrigin {
         match &self.tls {
             None => Ok(Box::new(sock)),
             Some(tls) => {
-                let config = crate::util::tls::client_config(
+                let config = podnet_core::util::tls::client_config(
                     &tls.server_name,
                     tls.insecure,
                     tls.ca_file.as_deref(),

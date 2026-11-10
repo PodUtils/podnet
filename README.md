@@ -32,6 +32,7 @@ The repository is a Cargo workspace:
 | --- | --- |
 | `podnet` (root) | The CLI and the library: the edge client (provisioning, discovery, QUIC, HTTP/2, Cap'n Proto and its RPC), the service layer, WARP, the virtual network. |
 | `crates/podnet-core` | A library: the core layer of podnet (the process, the files, the state, the reports, the supervisor). The other crates use it. |
+| `crates/podnet-serve` | A library: the services of podnet (the file server, the file transfer, the gate, the ingress rules, the origins, the client of the SSH relay). It uses `podnet-core`. |
 | `crates/podnet-netns` | A library: run a program with all its traffic sent through a proxy (`podnet pod`). |
 
 ## Install

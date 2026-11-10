@@ -33,9 +33,15 @@ targets = ["x86_64-unknown-linux-gnu"]
 [workspace]
 # crates/podnet-todo checks the work record in TODO/ (`cargo todo`). It is
 # not a default member: no release builds it.
-members = [".", "crates/podnet-core", "crates/podnet-netns", "crates/podnet-todo"]
+members = [
+  ".",
+  "crates/podnet-core",
+  "crates/podnet-netns",
+  "crates/podnet-serve",
+  "crates/podnet-todo",
+]
 exclude = ["fuzz"]
-default-members = [".", "crates/podnet-core", "crates/podnet-netns"]
+default-members = [".", "crates/podnet-core", "crates/podnet-netns", "crates/podnet-serve"]
 
 [workspace.package]
 version = "0.4.0-beta.1"
@@ -57,6 +63,7 @@ path = "src/main.rs"
 [dependencies]
 podnet-core = { path = "crates/podnet-core", version = "0.4.0-beta.1" }
 podnet-netns = { path = "crates/podnet-netns", version = "0.4.0-beta.1" }
+podnet-serve = { path = "crates/podnet-serve", version = "0.4.0-beta.1" }
 # TLS of PodUtils/podcrates: the roots, the client configurations and the
 # split of the ClientHello, with podnet's settings (src/trust.rs), on ring.
 pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.11.0", version = "0.11.0" }

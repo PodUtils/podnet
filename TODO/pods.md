@@ -532,7 +532,7 @@ namespace, with an `AF_PACKET` socket on one end, can carry the frames to the sa
 
 - `crates/podnet-netns/src/netns/tun.rs:41-43` opens the node; `send_fd`/`recv_fd` (`crates/podnet-netns/src/netns/fdpass.rs:51,85`) and the
   handoff (`crates/podnet-netns/src/netns/mod.rs:96,168`) are reusable. `doctor.rs:70,281` gates `auto` on the TUN probe.
-- smoltcp has `medium-ip` only (`Cargo.toml:118`, `crates/podnet-netns/Cargo.toml:29`): add `medium-ethernet`.
+- smoltcp has `medium-ip` only (`Cargo.toml:125`, `crates/podnet-netns/Cargo.toml:29`): add `medium-ethernet`.
 - `docs/research/podnet/vn.md:313` is plan item P5; `vn.md:411` asks if any target host has no TUN. No
   measured host lacks it (`docs/target-environment.md:33`).
 - The veth needs one small `RTM_NEWLINK` writer. Checksums: skip RX verification on this device.
