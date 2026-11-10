@@ -305,6 +305,7 @@ mod upload;
 use download::*;
 pub use upload::CHUNK_LIMIT;
 use upload::*;
+pub(crate) use upload::{create_unique, next_chunk};
 
 /// A path under `/s/` must name the session id of this share: the id is the
 /// secret of the URL. A wrong id (compared in constant time) answers 404.

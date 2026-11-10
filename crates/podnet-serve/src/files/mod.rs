@@ -16,6 +16,7 @@ use tower_http::services::{ServeDir, ServeFile};
 
 pub mod access;
 mod listing;
+mod upload;
 
 pub use access::{hash_password, Access, Role, Users};
 
@@ -32,6 +33,10 @@ pub struct FilesConfig {
     pub list: bool,
     /// The users, the PIN and the anonymous read (T-089).
     pub access: Access,
+    /// Uploads into the tree (T-090): a PUT of a file and a multipart form
+    /// to a directory, for the write role, with at most this many bytes in
+    /// one request.
+    pub upload: Option<u64>,
 }
 
 impl FilesConfig {
@@ -43,6 +48,7 @@ impl FilesConfig {
             tar: false,
             list: false,
             access: Access::default(),
+            upload: None,
         }
     }
 }
@@ -79,6 +85,14 @@ pub fn router(config: &FilesConfig) -> Result<Router> {
             anyhow::anyhow!("the directory to serve ({}) {why}", root.display()),
         ));
     }
+    if config.upload.is_some() && !config.access.can_write() {
+        return Err(podnet_core::exit::fault(
+            podnet_core::exit::Fault::Usage,
+            anyhow::anyhow!(
+                "--upload needs a user with the write role (--users, --auth-user) or --pin"
+            ),
+        ));
+    }
     let canonical = Arc::new(
         root.canonicalize()
             .map_err(|e| anyhow::anyhow!("static root {}: {e}", root.display()))?,
@@ -106,8 +120,14 @@ pub fn router(config: &FilesConfig) -> Result<Router> {
         root: canonical.as_ref().clone(),
         tar: config.tar,
         list: config.list,
+        upload: config.upload,
     });
-    let router = router.layer(axum::middleware::from_fn_with_state(state, static_guard));
+    let mut router = router.layer(axum::middleware::from_fn_with_state(state, static_guard));
+    if config.upload.is_some() {
+        // The upload counts the bytes of each request: no body limit of
+        // axum for the multipart form.
+        router = router.layer(axum::extract::DefaultBodyLimit::disable());
+    }
     if config.access.is_open() && !config.access.anon_read {
         return Ok(router);
     }
@@ -125,6 +145,8 @@ struct StaticState {
     tar: bool,
     /// Give a listing of a directory with no `index.html`.
     list: bool,
+    /// The most bytes of one upload request, with uploads on.
+    upload: Option<u64>,
 }
 
 /// The answer of [`static_guard`] for a path that is not served.
@@ -182,6 +204,12 @@ async fn static_guard(
         request.headers_mut().remove(http::header::RANGE);
     }
     let root = &state.root;
+    if let Some(max) = state.upload {
+        let method = request.method();
+        if method == http::Method::PUT || method == http::Method::POST {
+            return upload::answer(root, max, request).await;
+        }
+    }
     let Some(path) = tree_path(root, request.uri().path()) else {
         return not_found();
     };
@@ -200,7 +228,7 @@ async fn static_guard(
                         && is_read(request.method())
                         && !real.join("index.html").is_file() =>
                 {
-                    listing::answer(root, &real, &request)
+                    listing::answer(root, &real, &request, state.upload.is_some())
                 }
                 Ok(meta) if meta.is_file() || meta.is_dir() => next.run(request).await,
                 _ => not_found(),

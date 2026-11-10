@@ -38,6 +38,17 @@ pub(crate) struct ServeArgs {
     /// that start with a dot and links out of the directory are left out.
     #[arg(long)]
     list: bool,
+    /// Accept uploads into the directory, for a write user (or the PIN):
+    /// PUT /PATH (curl -T FILE URL/PATH) writes one file, and a multipart
+    /// form POST to a directory adds files. A file goes to its name only
+    /// when it is complete. Names that start with a dot are refused.
+    #[arg(long)]
+    upload: bool,
+    /// The most bytes of one upload request. A larger request gets 413
+    /// and leaves no file. The Cloudflare edge accepts at most 100 MB in
+    /// one request.
+    #[arg(long, value_name = "BYTES", requires = "upload", default_value_t = podnet::share::MAX_REQUEST, value_parser = clap::value_parser!(u64).range(1..))]
+    max_upload: u64,
     /// The users of the file server (HTTP Basic), one on each line:
     /// USER:ROLE:HASH or USER:ROLE:@PASSWORD-FILE. ROLE is read or write.
     /// HASH comes from --hash-password. The file must have mode 0600.
@@ -162,6 +173,7 @@ fn files_config(args: &ServeArgs) -> Result<FilesConfig> {
         spa: args.spa,
         tar: args.tar,
         list: args.list,
+        upload: args.upload.then_some(args.max_upload),
         access: Access {
             users,
             pin: args.pin.then(Gate::pin),

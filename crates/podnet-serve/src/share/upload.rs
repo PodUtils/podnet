@@ -189,7 +189,7 @@ pub(super) fn refuse(status: StatusCode, message: String) -> Response {
 
 /// The next chunk of a multipart field, with the time limit [`CHUNK_LIMIT`].
 /// An error is the response to send.
-pub(super) async fn next_chunk(
+pub(crate) async fn next_chunk(
     field: &mut axum::extract::multipart::Field<'_>,
 ) -> Result<Option<bytes::Bytes>, Box<Response>> {
     match tokio::time::timeout(CHUNK_LIMIT, field.chunk()).await {
@@ -465,7 +465,7 @@ pub(super) const RANDOM_NAMES: u32 = 16;
 /// `stem-<8 random hex digits>.ext` (issue 234: before, the stem was full
 /// after 10 000 names, and each upload tried each name). Each try uses
 /// `create_new`, so two uploads at the same time never get the same file.
-pub(super) async fn create_unique(
+pub(crate) async fn create_unique(
     dir: &std::path::Path,
     name: &str,
 ) -> std::io::Result<(PathBuf, tokio::fs::File)> {

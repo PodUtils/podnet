@@ -80,7 +80,12 @@ fn wants_json(request: &axum::extract::Request) -> bool {
 /// The answer for a GET or HEAD of the directory `real`. A path with no
 /// `/` at its end is sent to the path with the `/` (308), so each relative
 /// link of the listing names an entry of this directory.
-pub(crate) fn answer(root: &Path, real: &Path, request: &axum::extract::Request) -> Response {
+pub(crate) fn answer(
+    root: &Path,
+    real: &Path,
+    request: &axum::extract::Request,
+    upload: bool,
+) -> Response {
     let path = request.uri().path();
     if !path.ends_with('/') {
         let target = match request.uri().query() {
@@ -100,7 +105,17 @@ pub(crate) fn answer(root: &Path, real: &Path, request: &axum::extract::Request)
     let mut response = if wants_json(request) {
         json(&shown, &list).into_response()
     } else {
-        Html(html(&shown, &list)).into_response()
+        // T-090: a write user gets the upload form.
+        let writer = request
+            .extensions()
+            .get::<super::access::Granted>()
+            .is_some_and(|g| g.0 == super::Role::Write);
+        let form = if upload && writer {
+            super::upload::form_html()
+        } else {
+            ""
+        };
+        Html(html(&shown, &list, form)).into_response()
     };
     response
         .headers_mut()
@@ -132,7 +147,7 @@ pub(crate) fn json(path: &str, list: &[Entry]) -> Response {
 
 /// The HTML listing. Each name is escaped, and each link is the name with
 /// each byte that is not unreserved as `%XX`.
-pub(crate) fn html(path: &str, list: &[Entry]) -> String {
+pub(crate) fn html(path: &str, list: &[Entry], form: &str) -> String {
     let title = escape_html(path);
     let mut rows = String::new();
     if path != "/" {
@@ -158,6 +173,6 @@ pub(crate) fn html(path: &str, list: &[Entry]) -> String {
          body{{font-family:system-ui,sans-serif;margin:2rem}}\
          td{{padding:.2rem 1rem .2rem 0}}td+td{{text-align:right;color:#666}}\
          </style></head><body><h1>Index of {title}</h1>\
-         <table>{rows}</table></body></html>"
+         <table>{rows}</table>{form}</body></html>"
     )
 }

@@ -374,11 +374,15 @@ fn unauthorized() -> Response {
         .into_response()
 }
 
+/// The role of a request, for the handlers after the layer.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Granted(pub(crate) Role);
+
 /// The layer of the access: the unlock of the PIN gate, then the role of
-/// the request.
+/// the request. A request that passes gets [`Granted`] as an extension.
 pub(crate) async fn layer(
     axum::extract::State(access): axum::extract::State<Arc<Access>>,
-    request: axum::extract::Request,
+    mut request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Response {
     if let Some(gate) = &access.pin {
@@ -387,7 +391,10 @@ pub(crate) async fn layer(
         }
     }
     match access.role(&request) {
-        Ok(_) => next.run(request).await,
+        Ok(role) => {
+            request.extensions_mut().insert(Granted(role));
+            next.run(request).await
+        }
         Err(refused) => *refused,
     }
 }

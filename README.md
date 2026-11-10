@@ -546,6 +546,30 @@ podnet serve --dir ./public --list --users users --local 127.0.0.1:8080
 curl -fsS -u alice http://127.0.0.1:8080/
 ```
 
+#### Uploads
+
+With `--upload`, a write user (or a visitor with the PIN) can add files:
+
+* `PUT /PATH` writes the body to the file `PATH` (`curl -T`). A new file
+  gets 201, a replaced file 204. The directory of `PATH` must exist (else
+  409).
+* A multipart form `POST` to a directory adds each file of the form to the
+  directory. A name in use gets a number (`name-1.ext`); no file is
+  replaced. The listing of `--list` shows the form to a write user.
+* A file goes to a hidden part file (mode 0600) first. A rename gives it
+  its name when it is complete: a reader never sees a part of a file.
+* `--max-upload BYTES` (default 100000000) is the most bytes of one
+  request. A larger `Content-Length` gets 413 before podnet reads the
+  body. A larger body with no `Content-Length` gets 413 at the limit. No
+  file stays.
+* A name that starts with a dot (also `..`), a link out of `--dir` and a
+  read user are refused (403 or 409).
+
+```sh
+podnet serve --dir ./share --list --upload --users users --local 127.0.0.1:8080
+curl -fsS -u bob -T report.pdf http://127.0.0.1:8080/inbox/report.pdf
+```
+
 The library type `podnet::origin::StaticDir` has the same rules. It also
 applies them to the directory index and to the SPA index.
 `podnet::feature::StaticServer::respond` gives a `StaticResponse`. Its
