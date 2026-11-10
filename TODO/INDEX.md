@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 82 open, 3 partial, 19 blocked, 120 done.**
+**225 entries: 83 open, 3 partial, 19 blocked, 120 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
-| P1 | 2 | 1 | 2 | 20 | 25 |
+| P1 | 3 | 1 | 2 | 20 | 26 |
 | P2 | 45 | 2 | 13 | 77 | 137 |
 | P3 | 34 | 0 | 4 | 23 | 61 |
-| **All** | 82 | 3 | 19 | 120 | 224 |
+| **All** | 83 | 3 | 19 | 120 | 225 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -270,3 +270,4 @@ M8 Overlays, M9 Later.
 | [T-222](fixes.md) | P2 | S | M5 | feature | open | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |
 | [T-223](fixes.md) | P3 | M | M5 | defect | done | seccomp: the TCP gaps that the differential check finds |
 | [T-224](crates.md) | P1 | S | M3 | chore | done | podnet-netns calls `pod_proxy::udp` for the SOCKS5 datagram path |
+| [T-225](fixes.md) | P1 | S | M5 | defect | open | The send poller of the WARP QUIC socket keeps its wake-up |

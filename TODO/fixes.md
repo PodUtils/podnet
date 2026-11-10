@@ -3536,6 +3536,47 @@ flight and a count of drops; a 1-byte datagram spawns nothing).
 
 2026-11-09, commit be1c8dc (`T-215: warp proxy --dns has a bound and a counter`). `serve_dns` moved to `src/warp/proxy/dns_bound.rs` (`src/warp/proxy.rs` 1902 to 1878 lines). A semaphore of 256 places (`MAX_DNS_TASKS`) bounds the queries in flight; an excess datagram is dropped and counted in `Stats.dns_dropped`, which the health line prints. A datagram under 12 bytes starts no task. One task for each query; the first answer wins. Tests: `warp::proxy::dns_bound::tests::{a_burst_gives_at_most_the_bound_in_flight, a_short_datagram_starts_nothing}`. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
+# T-225: The send poller of the WARP QUIC socket keeps its wake-up
+
+**Source:** The podcrates session (PodUtils/podcrates T-019, pod-quic), 2026-11-10: a finding in
+`src/warp/quic.rs`, read from the behaviour of tokio.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`SendPoller::poll_writable` (`src/warp/quic.rs`) makes a new `Notify::notified()` future on each call and
+drops it when the call returns `Pending`. tokio removes a dropped `Notified` from the list of waiters, so the
+`notify_waiters` of the writer task wakes nobody. When the send queue of the QUIC socket is full, quinn waits for
+a wake-up that does not come: the QUIC send path of a tunnel over WARP can stall until some other event polls it.
+
+## Premise
+
+- Read: `src/warp/quic.rs`, `SendPoller::poll_writable` (the `notified` future is local to the call; the
+  re-check of the capacity covers only a drain between the check and the registration) and the writer task of
+  `WarpUdpSocket::new` (`send_ready.notify_waiters()` after each send).
+- The receive side of the same socket uses an `AtomicWaker` that the reader task wakes; it has no such fault.
+- Not measured: a stall in a live run.
+
+## Approach
+
+1. A test: fill the queue, poll `poll_writable` until `Pending` with a waker that counts its wakes, drain one
+   slot as the writer task does, and assert one wake.
+2. Replace the `Notify` of the send side with an `AtomicWaker`: the poller registers the waker of the task,
+   then checks the capacity again; the writer task wakes it after each send and at its end.
+3. Tell podcrates (pod-quic takes this socket later): a COORD issue (to podcrates), as for each fix of code
+   that a crate will hold.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib warp::quic::tests
+sh scripts/agent/check.sh
+```
+
 # T-216: Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04)
 
 **Source:** PodUtils/podcrates#35 (cfb), ask A-N-04, routed by PodUtils/podcrates#40.

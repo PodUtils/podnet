@@ -21,7 +21,6 @@
 //!   datagram, so a full channel is backpressure rather than a spin.
 
 use std::collections::VecDeque;
-use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
@@ -33,7 +32,7 @@ use anyhow::{Context as _, Result};
 use futures::task::AtomicWaker;
 use quinn::udp::{RecvMeta, Transmit};
 use quinn::{AsyncUdpSocket, EndpointConfig, UdpPoller};
-use tokio::sync::{mpsc, Notify};
+use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use super::ip::{UdpConn, WarpStack};
@@ -51,7 +50,7 @@ pub struct WarpUdpSocket {
     out: mpsc::Sender<(SocketAddr, Vec<u8>)>,
     inbound: Inbound,
     recv_waker: Arc<AtomicWaker>,
-    send_ready: Arc<Notify>,
+    send_ready: SendReady,
     local: SocketAddr,
     sent: AtomicU64,
     received: AtomicU64,
@@ -74,7 +73,7 @@ impl WarpUdpSocket {
         let (out, mut out_rx) = mpsc::channel::<(SocketAddr, Vec<u8>)>(SEND_QUEUE);
         let inbound: Inbound = Arc::new(Mutex::new(VecDeque::new()));
         let recv_waker = Arc::new(AtomicWaker::new());
-        let send_ready = Arc::new(Notify::new());
+        let send_ready = SendReady::default();
         let closed = Arc::new(AtomicBool::new(false));
 
         let writer = {
@@ -83,12 +82,15 @@ impl WarpUdpSocket {
             let closed = closed.clone();
             tokio::spawn(async move {
                 while let Some((to, data)) = out_rx.recv().await {
+                    // The queue has room again: wake a parked poller.
+                    send_ready.wake();
                     if udp.send_to(data, to).await.is_err() {
                         closed.store(true, Ordering::Relaxed);
                         break;
                     }
-                    send_ready.notify_waiters();
                 }
+                // A poller waits no more on a queue that nobody drains.
+                send_ready.wake();
             })
         };
 
@@ -208,11 +210,28 @@ impl AsyncUdpSocket for WarpUdpSocket {
     }
 }
 
+/// The wake-up of a poller that waits for room in the send queue (T-225).
+/// An `AtomicWaker` keeps the waker of the task between two polls; a
+/// `Notified` future made in each poll drops out of the waiters at
+/// `Pending`, and a later drain then wakes nobody.
+#[derive(Clone, Default, Debug)]
+struct SendReady(Arc<AtomicWaker>);
+
+impl SendReady {
+    fn register(&self, cx: &Context<'_>) {
+        self.0.register(cx.waker());
+    }
+
+    fn wake(&self) {
+        self.0.wake();
+    }
+}
+
 /// The write-readiness half of the socket.
 #[derive(Debug)]
 struct SendPoller {
     out: mpsc::Sender<(SocketAddr, Vec<u8>)>,
-    ready: Arc<Notify>,
+    ready: SendReady,
 }
 
 impl UdpPoller for SendPoller {
@@ -221,15 +240,13 @@ impl UdpPoller for SendPoller {
         if this.out.capacity() > 0 {
             return Poll::Ready(Ok(()));
         }
-        let notified = this.ready.notified();
-        tokio::pin!(notified);
-        match notified.poll(cx) {
-            Poll::Ready(()) => Poll::Ready(Ok(())),
-            // A send may have drained the queue between the capacity check and
-            // the registration. Re-check before parking.
-            Poll::Pending if this.out.capacity() > 0 => Poll::Ready(Ok(())),
-            Poll::Pending => Poll::Pending,
+        // Register before the re-check, so a drain between the first check
+        // and the registration still wakes the task.
+        this.ready.register(cx);
+        if this.out.capacity() > 0 || this.out.is_closed() {
+            return Poll::Ready(Ok(()));
         }
+        Poll::Pending
     }
 }
 
@@ -284,10 +301,48 @@ mod tests {
         let (out, _rx) = mpsc::channel::<(SocketAddr, Vec<u8>)>(4);
         let mut poller = SendPoller {
             out,
-            ready: Arc::new(Notify::new()),
+            ready: SendReady::default(),
         };
         let waker = futures::task::noop_waker();
         let mut cx = Context::from_waker(&waker);
+        assert!(matches!(
+            Pin::new(&mut poller).poll_writable(&mut cx),
+            Poll::Ready(Ok(()))
+        ));
+    }
+
+    /// A waker that counts its wakes.
+    struct Count(std::sync::atomic::AtomicUsize);
+
+    impl futures::task::ArcWake for Count {
+        fn wake_by_ref(this: &Arc<Self>) {
+            this.0.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    // T-225: a full queue parks the poller; a drain after that must wake it.
+    #[test]
+    fn a_drain_after_pending_wakes_the_send_poller() {
+        let (out, mut rx) = mpsc::channel::<(SocketAddr, Vec<u8>)>(1);
+        let to: SocketAddr = "192.0.2.1:7844".parse().unwrap();
+        out.try_send((to, vec![0])).unwrap();
+        let ready = SendReady::default();
+        let mut poller = SendPoller {
+            out,
+            ready: ready.clone(),
+        };
+        let count = Arc::new(Count(std::sync::atomic::AtomicUsize::new(0)));
+        let waker = futures::task::waker(count.clone());
+        let mut cx = Context::from_waker(&waker);
+        assert!(Pin::new(&mut poller).poll_writable(&mut cx).is_pending());
+        // The writer task takes one datagram and tells the poller.
+        rx.try_recv().unwrap();
+        ready.wake();
+        assert_eq!(
+            count.0.load(Ordering::SeqCst),
+            1,
+            "the poller was not woken"
+        );
         assert!(matches!(
             Pin::new(&mut poller).poll_writable(&mut cx),
             Poll::Ready(Ok(()))
