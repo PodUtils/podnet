@@ -130,7 +130,7 @@ impl Transport for SshRelay {
                     let proxy = proxy.clone();
                     let host = relay_host.clone();
                     let (stream, leftover) = tokio::task::spawn_blocking(move || {
-                        crate::proxy::connect_tunnel(&proxy, &host, relay_port, timeout)
+                        crate::connect::connect_tunnel(&proxy, &host, relay_port, timeout)
                     })
                     .await
                     .map_err(|e| TransportError::Unreachable(format!("proxy task: {e}")))?

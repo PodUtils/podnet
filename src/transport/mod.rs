@@ -226,7 +226,7 @@ impl Transport for HttpConnect {
         Box<dyn std::future::Future<Output = Result<TransportStream, TransportError>> + Send + 'a>,
     > {
         Box::pin(async move {
-            let tunnel = crate::proxy::connect_tunnel_with_auth(
+            let tunnel = crate::connect::connect_tunnel_with_auth(
                 &self.proxy_addr,
                 host,
                 port,
