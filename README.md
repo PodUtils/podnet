@@ -809,9 +809,10 @@ podnet warp tun --interface podnet0        # TUN interface (needs CAP_NET_ADMIN)
   * `podnet warp exec -- CMD` and `podnet warp shell`: the command runs under
     the pod of the socket: TCP, DNS and UDP go through WARP, also for static
     binaries, with no proxy variable. `--backend auto|netns|seccomp` selects
-    the backend of the pod (default `auto`: seccomp first when it works).
-    The pod writes one line on stderr that names the backend that runs and
-    its limits; `-q` removes the line. With `-v`, the pod logs each flow, and
+    the backend of the pod (default `auto`: netns first, then seccomp when
+    the user namespace or the TUN fails). The pod writes one line on stderr
+    that names the backend that runs, its limits and the reason of the
+    choice; `-q` removes the line. With `-v`, the pod logs each flow, and
     the seccomp backend logs each socket and each `setsockopt` that it
     emulates.
   * `--persist`: a marked block in `~/.bashrc` and `~/.profile` loads the env

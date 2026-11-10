@@ -30,7 +30,7 @@ podnet pod doctor --json
 | `--map NAME=ADDR` | Resolve `NAME` to `ADDR`, with no upstream. |
 | `--backend NAME` | `auto` (default), `netns` or `seccomp`. |
 | `--prefer-udp` | With `auto`: `seccomp` first when it works, because it carries UDP datagrams of each size (`netns` carries a datagram of 1500 bytes at most). `podnet warp run` sets it. |
-| `--name-backend` | Write one line on stderr that names the backend that runs (also after `auto`) and its limits. `podnet warp exec` and `podnet warp shell` set it. `PODNET_NETNS_QUIET` (`podnet -q`) removes the line. |
+| `--name-backend` | Write one line on stderr that names the backend that runs (also after `auto`), its limits and the reason of the choice (`Choice: ...`). `podnet warp exec` and `podnet warp shell` set it. `PODNET_NETNS_QUIET` (`podnet -q`) removes the line. |
 | `--keep-proxy-env` | Keep `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY` and their lower-case forms for the program. By default the program does not get them: the pod is its egress, and a program that used them would send to a host proxy that it cannot reach. |
 | `--inbound-dir DIR` | Seccomp backend only: where a port that the program listens on becomes a unix socket (`DIR/<port>.sock`). The default is `$XDG_RUNTIME_DIR/podnet-netns-inbound` when that directory is of the user, else `$TMPDIR/podnet-netns-inbound-<uid>`. A new directory gets mode 0700. A directory of another user, a symbolic link, or a directory that the group or others can write is refused (exit 3). With `--backend netns` it is a usage error (exit 64); when `auto` picks netns, a warning says that it is not used. |
 | `--serve LISTEN` | Serve SOCKS5, HTTP `CONNECT` and UDP ASSOCIATE on `unix:/path` or `tcp://host:port`, through the `-x` chain. |
@@ -78,7 +78,7 @@ A process that the program starts (a daemon) keeps the network of the pod:
 
 ## Backends
 
-`--backend auto` uses `netns` when the host permits `unshare`, else `seccomp`.
+`--backend auto` uses `netns` when the host permits `unshare` and a TUN in the namespace, else `seccomp`.
 With the `seccomp` backend, a TCP connect to `127.0.0.0/8` does not go to
 the proxy: it goes to a listener of the program itself (its inbound
 socket) when there is one, else to TCP on the host.

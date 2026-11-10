@@ -63,9 +63,9 @@ pub(crate) async fn before_client(args: &WarpArgs) -> Result<bool> {
             Ok(())
         }
         WarpCommand::Exec { rules, program, at } => {
-            Err(podnet::warp::pod::exec_in_pod(at, rules, program))
+            Err(super::pod::exec_in_pod(at, rules, program))
         }
-        WarpCommand::Shell(at) => Err(podnet::warp::pod::shell(at)),
+        WarpCommand::Shell(at) => Err(super::pod::shell(at)),
         WarpCommand::SshConfig {
             host,
             write,

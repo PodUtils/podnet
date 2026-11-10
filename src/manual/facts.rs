@@ -148,6 +148,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "A test hook of the seccomp backend: no-fd does not open the memory of the program for writing (process_vm_writev is used); none also does not use process_vm_writev (getsockname and getpeername fail with EOPNOTSUPP).",
     },
     EnvVar {
+        names: &["PODNET_NETNS_TEST_NO_NETNS"],
+        used_by: "pod (tests only)",
+        meaning: "A test hook of --backend auto: set and not empty, the netns backend cannot run, and auto takes the seccomp backend.",
+    },
+    EnvVar {
         names: &["PODNET_WARP_API"],
         used_by: "warp (each command that calls the WARP API)",
         meaning: "The one base of the WARP API: https://HOST[:PORT] (http:// for a loopback host only). Without it, podnet tries https://api.cloudflareclient.com, then https://api.devices.cloudflare.com after a dial, TLS or 5xx failure. Another value is a configuration error (exit 78).",

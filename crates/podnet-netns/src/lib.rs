@@ -214,30 +214,35 @@ pub fn main_with_args(argv: &[String]) -> i32 {
         }
     };
     let name_backend = args.name_backend;
-    let netns = |args: Args| {
-        name_the_backend(name_backend, BackendKind::Netns);
+    let netns = |args: Args, reason: &str| {
+        name_the_backend(name_backend, BackendKind::Netns, reason);
         run(args)
     };
-    let seccomp = |args: Args| {
-        name_the_backend(name_backend, BackendKind::Seccomp);
+    let seccomp = |args: Args, reason: &str| {
+        name_the_backend(name_backend, BackendKind::Seccomp, reason);
         run_seccomp(args)
     };
     let result = match args.backend {
-        BackendKind::Netns => netns(args),
-        BackendKind::Seccomp => seccomp(args),
-        BackendKind::Auto if args.prefer_udp && doctor::probe_seccomp_notif().ok => seccomp(args),
-        BackendKind::Auto => {
-            // The netns backend needs unshare and a TUN; without them the
-            // seccomp backend is the only thing that can work.
-            if probe_unshare(libc::CLONE_NEWNET).ok
-                || probe_unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET).ok
-            {
-                warn_inbound("netns");
-                netns(args)
-            } else {
-                seccomp(args)
-            }
+        BackendKind::Netns => netns(args, "--backend netns"),
+        BackendKind::Seccomp => seccomp(args, "--backend seccomp"),
+        BackendKind::Auto if args.prefer_udp && doctor::probe_seccomp_notif().ok => {
+            seccomp(args, "auto with --prefer-udp takes seccomp first")
         }
+        // T-113: the netns backend needs unshare and a TUN; without them
+        // the seccomp backend is the only thing that can work.
+        BackendKind::Auto => match netns_probe() {
+            Ok(()) => {
+                warn_inbound("netns");
+                netns(
+                    args,
+                    "auto takes netns first; the user and network namespace and the TUN work here",
+                )
+            }
+            Err(why) => seccomp(
+                args,
+                &format!("auto takes netns first, but netns cannot run here ({why})"),
+            ),
+        },
     };
     match result {
         Ok(code) => code,
@@ -318,11 +323,33 @@ fn backend_line(kind: BackendKind) -> &'static str {
     }
 }
 
-/// Print [`backend_line`] once on stderr when `on`, unless [`quiet`].
-fn name_the_backend(on: bool, kind: BackendKind) {
+/// Print [`backend_line`] and the reason of the choice (T-113) once on
+/// stderr when `on`, unless [`quiet`].
+fn name_the_backend(on: bool, kind: BackendKind, reason: &str) {
     if on {
-        warn(backend_line(kind));
+        warn(&format!("{}. Choice: {reason}", backend_line(kind)));
     }
+}
+
+/// The test hook of the choice of `auto` (T-113): set and not empty, the
+/// netns backend cannot run.
+const TEST_NO_NETNS_VARIABLE: &str = "PODNET_NETNS_TEST_NO_NETNS";
+
+/// Whether the netns backend can run here: `unshare` of a network namespace
+/// (as root) or of a user and a network namespace, with `lo` and a TUN in
+/// it. Gives the reason when it cannot.
+fn netns_probe() -> std::result::Result<(), String> {
+    if std::env::var_os(TEST_NO_NETNS_VARIABLE).is_some_and(|v| !v.is_empty()) {
+        return Err(format!("{TEST_NO_NETNS_VARIABLE} is set"));
+    }
+    if probe_unshare(libc::CLONE_NEWNET).ok {
+        return Ok(());
+    }
+    let probe = probe_unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET);
+    if probe.ok {
+        return Ok(());
+    }
+    Err(format!("{}: {}", probe.name, probe.detail))
 }
 
 /// Add `single-request` to `RES_OPTIONS` of a program environment (issue

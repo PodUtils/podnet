@@ -28,8 +28,8 @@ pub(crate) struct Args {
     /// `--prefer-udp`: `auto` takes the seccomp backend first (it carries
     /// UDP datagrams of any size).
     pub(crate) prefer_udp: bool,
-    /// `--name-backend`: print one line that names the backend that runs
-    /// and its limits (T-071).
+    /// `--name-backend`: print one line that names the backend that runs,
+    /// its limits (T-071) and the reason of the choice (T-113).
     pub(crate) name_backend: bool,
     /// `--flow-log FILE`: the JSON record of each decision (T-157).
     pub(crate) flow_log: Option<std::path::PathBuf>,
@@ -143,7 +143,8 @@ Options:
                            datagrams of any size go through; netns carries
                            a datagram of 1500 bytes at most)
       --name-backend       Print one line on stderr that names the backend
-                           that runs and its limits (also after auto)
+                           that runs, its limits and the reason of the
+                           choice (also after auto)
       --inbound-dir <DIR>  Where a bound port is exposed as a unix socket
                            (seccomp backend only). The directory must be of
                            this user and not writable by the group or by

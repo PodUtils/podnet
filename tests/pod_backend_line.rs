@@ -91,6 +91,17 @@ impl Host {
 
     /// `podnet GLOBAL warp exec --socket S --backend B -- PROGRAM`.
     fn warp_exec(&self, global: &[&str], backend: &str, program: &Path) -> Output {
+        self.warp_exec_with(global, backend, program, &[])
+    }
+
+    /// [`Host::warp_exec`] with the variables `env`.
+    fn warp_exec_with(
+        &self,
+        global: &[&str],
+        backend: &str,
+        program: &Path,
+        env: &[(&str, &str)],
+    ) -> Output {
         let home = self.dir.path().join("home");
         std::fs::create_dir_all(&home).unwrap();
         let out = podnet()
@@ -104,6 +115,8 @@ impl Host {
             .env("XDG_RUNTIME_DIR", self.dir.path())
             .env_remove("PODNET_WARP_SOCKET")
             .env_remove("PODNET_NETNS_QUIET")
+            .env_remove("PODNET_NETNS_TEST_NO_NETNS")
+            .envs(env.iter().copied())
             .output()
             .unwrap();
         assert!(out.status.success(), "{}", stderr(&out));
@@ -237,4 +250,54 @@ fn seccomp_logs_its_emulation_at_info() {
     let err = stderr(&out);
     assert!(!err.contains("socket emulated"), "{err}");
     assert!(!err.contains("setsockopt answered"), "{err}");
+}
+
+/// T-113: `auto` of `warp exec` takes the netns backend first, and the line
+/// gives the reason.
+#[test]
+fn warp_exec_tries_netns_first() {
+    let (netns, _) = backends();
+    if !netns {
+        eprintln!("skipping: the netns backend cannot run on this host");
+        return;
+    }
+    let host = Host::new();
+    let out = host.warp_exec(&[], "auto", Path::new("true"));
+    let lines = backend_lines(&out);
+    assert_eq!(lines.len(), 1, "{}", stderr(&out));
+    assert!(lines[0].contains("netns backend: "), "{lines:?}");
+    assert!(
+        lines[0].contains("Choice: auto takes netns first; "),
+        "{lines:?}"
+    );
+    // An explicit backend gives that reason.
+    let out = host.warp_exec(&[], "netns", Path::new("true"));
+    assert!(
+        backend_lines(&out)[0].contains("Choice: --backend netns"),
+        "{}",
+        stderr(&out)
+    );
+}
+
+/// T-113: when the netns backend cannot run, `auto` of `warp exec` takes
+/// the seccomp backend, and the line names the failure.
+#[test]
+fn warp_exec_falls_back_to_seccomp() {
+    let (_, seccomp) = backends();
+    if !seccomp {
+        eprintln!("skipping: no SECCOMP_RET_USER_NOTIF");
+        return;
+    }
+    let host = Host::new();
+    let hook = [("PODNET_NETNS_TEST_NO_NETNS", "1")];
+    let out = host.warp_exec_with(&[], "auto", Path::new("true"), &hook);
+    let lines = backend_lines(&out);
+    assert_eq!(lines.len(), 1, "{}", stderr(&out));
+    assert!(lines[0].contains("seccomp backend: "), "{lines:?}");
+    assert!(
+        lines[0].contains(
+            "Choice: auto takes netns first, but netns cannot run here (PODNET_NETNS_TEST_NO_NETNS is set)"
+        ),
+        "{lines:?}"
+    );
 }
