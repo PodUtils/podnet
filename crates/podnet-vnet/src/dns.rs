@@ -23,7 +23,7 @@ pub use podnet_netns::dns::*;
 pub struct Resolver {
     entries: HashMap<String, Vec<IpAddr>>,
     /// When a name is unknown, forward here instead of answering NXDOMAIN.
-    pub upstream: Option<crate::vnet::addr::VirtAddr>,
+    pub upstream: Option<crate::addr::VirtAddr>,
     /// Answer every unknown A/AAAA with this address (a single-upstream
     /// configuration).
     pub catch_all: Option<IpAddr>,
@@ -90,7 +90,7 @@ impl Resolver {
     pub fn from_maps(
         maps: &[String],
         files: &[std::path::PathBuf],
-        subnet: &crate::vnet::addr::VirtualSubnet,
+        subnet: &crate::addr::VirtualSubnet,
     ) -> Result<Self> {
         let mut lines: Vec<String> = Vec::new();
         for entry in maps {
@@ -218,10 +218,7 @@ mod tests {
     #[test]
     fn unknown_name_forwards_with_upstream() {
         let mut resolver = Resolver::new();
-        resolver.upstream = Some(crate::vnet::addr::VirtAddr::v4(
-            "10.66.0.1".parse().unwrap(),
-            53,
-        ));
+        resolver.upstream = Some(crate::addr::VirtAddr::v4("10.66.0.1".parse().unwrap(), 53));
         let query = build_query(1, "nope", TYPE_A).unwrap();
         assert!(resolver.handle(&query).is_none());
     }

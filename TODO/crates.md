@@ -208,8 +208,8 @@ layer check (`scripts/check-layers.py`, `core_tests`) and the table "The code" o
 
 ## Problem
 
-The userspace network (`src/vnet/`, about 8,400 lines) is in the root crate. Its shims are C
-files under `shim/`, which `src/vnet/shim.rs` includes with `include_str!`.
+The userspace network (the module `vnet`, about 8,400 lines) is in the root crate. Its shims are C
+files in the directory shim of the root, which `vnet::shim` includes with `include_str!`.
 
 ## Premise
 
@@ -221,7 +221,7 @@ files under `shim/`, which `src/vnet/shim.rs` includes with `include_str!`.
 
 ## Approach
 
-1. Make crates/podnet-vnet with `src/vnet/`. Move the files of `shim/` into the crate.
+1. Make crates/podnet-vnet with the module `vnet`. Move the files of the directory shim into the crate.
 2. Move the package check of the shim to `podnet-vnet`.
 3. Keep `tests/shim_direct.rs`, `tests/shim_no_socket.rs`, `tests/shim_socks.rs` and
    `tests/af_inet_kernel.rs` in the root crate: they run the binary.
@@ -241,9 +241,9 @@ T-047 is done.
 
 ## Correction
 
-2026-11-05, `src/vnet/` uses smoltcp 0.12 (`Cargo.toml`). The pin has no reason in the toolchain now
+2026-11-05, the module `vnet` uses smoltcp 0.12 (`Cargo.toml`). The pin has no reason in the toolchain now
 (Rust 1.99). The userspace stack of `pod-netstack` (wave 2 of PodUtils/podcrates) uses smoltcp 0.14.
-Before the extraction, read whether `src/vnet/` takes `pod-netstack` (T-137); if it does, do not extract the
+Before the extraction, read whether the module `vnet` takes `pod-netstack` (T-137); if it does, do not extract the
 stack code into `podnet-vnet`.
 
 # T-049: The relay client of podnet becomes the shared crate `pod-relay`

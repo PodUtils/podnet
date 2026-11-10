@@ -186,7 +186,7 @@ impl Replayer {
     /// Feed every packet into a queue, respecting relative timing from
     /// `start_ms` by returning the elapsed schedule. The caller drives the
     /// clock; nothing here sleeps.
-    pub fn push_due(&mut self, queue: &crate::vnet::device::PacketQueue, now_ms: i64) -> usize {
+    pub fn push_due(&mut self, queue: &crate::device::PacketQueue, now_ms: i64) -> usize {
         let due = self.due(now_ms);
         let count = due.len();
         for packet in due {

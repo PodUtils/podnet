@@ -79,7 +79,7 @@ M8 Overlays, M9 Later.
 | [T-031](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 5: the other WARP subcommands |
 | [T-032](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 6: the unit tests go to the modules that they test |
 | [T-033](split.md) | P2 | M | M2 | chore | done | Split `src/egress.rs`, `crates/podnet-core/src/detach.rs`, `src/update.rs` and `src/doctor.rs` |
-| [T-034](split.md) | P2 | M | M2 | chore | done | Split `src/vnet/stack.rs` |
+| [T-034](split.md) | P2 | M | M2 | chore | done | Split `crates/podnet-vnet/src/stack.rs` |
 | [T-035](split.md) | P2 | M | M2 | chore | open | Split `src/warp/ip.rs`, `src/warp/session.rs` and `src/warp/wg.rs` |
 | [T-036](split.md) | P2 | M | M2 | chore | open | Split `src/warp/mod.rs` and `src/warp/proxy.rs` |
 | [T-037](split.md) | P2 | M | M2 | chore | done | Split `src/relay_reverse.rs` and `src/share/mod.rs` |

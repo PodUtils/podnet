@@ -13,7 +13,7 @@
 //! carries the connection over the tailnet, running the same `UserDial` path
 //! the built-in SOCKS5 server uses. This module speaks that protocol and puts
 //! a SOCKS5 / HTTP `CONNECT` front door in front of it, on an `AF_UNIX`
-//! socket. `shim/podnet-socks.c` then redirects the `connect(2)` calls of an
+//! socket. `crates/podnet-vnet/shim/podnet-socks.c` then redirects the `connect(2)` calls of an
 //! unmodified program to that front door.
 //!
 //! Nothing here patches, recompiles or re-links Tailscale. It is the daemon's

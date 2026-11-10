@@ -3,7 +3,7 @@
  *
  * For a dynamic program (OpenSSH's `ssh`, a shell, anything glibc) on a host
  * that has no /etc/passwd. Tailscale's own static daemon cannot use this; it
- * is shimmed with shim/tsgetent and shim/tsid instead, because it shells out
+ * is shimmed with crates/podnet-vnet/shim/tsgetent and crates/podnet-vnet/shim/tsid instead, because it shells out
  * to those commands rather than calling libc.
  *
  * The table is named by $SANDHOME_PASSWD. When it is unset, or a name is not

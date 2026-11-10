@@ -12,7 +12,7 @@
  * stack's control socket, bind(2) also registers the endpoint so the stack
  * can bridge it to a tunnel.
  *
- * This file is compiled from the embedded copy in src/vnet/shim.rs, so a
+ * This file is compiled from the embedded copy in crates/podnet-vnet/src/shim.rs, so a
  * podnet binary can build it anywhere. It is deliberately C: interposition has
  * to happen at the libc symbol boundary, before any Rust constructor runs.
  */
@@ -291,7 +291,7 @@ static void fd_record_peer(int fd, const struct sockaddr *sa, socklen_t len) {
 
 /* ── address translation ──────────────────────────────────────────────────── */
 
-/* RFC 5952 formatting, matching src/vnet/addr.rs byte for byte. */
+/* RFC 5952 formatting, matching crates/podnet-vnet/src/addr.rs byte for byte. */
 static void format_v6(const unsigned char *addr, char *out, size_t out_len) {
     uint16_t groups[8];
     for (int i = 0; i < 8; i++) groups[i] = (uint16_t)((addr[2 * i] << 8) | addr[2 * i + 1]);

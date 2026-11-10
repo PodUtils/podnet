@@ -477,11 +477,11 @@ impl TxToken for LinkTx {
 /// device.
 pub struct RecordingDevice<D: Device> {
     inner: D,
-    recorder: crate::vnet::record::Recorder,
+    recorder: crate::record::Recorder,
 }
 
 impl<D: Device> RecordingDevice<D> {
-    pub fn new(inner: D, recorder: crate::vnet::record::Recorder) -> Self {
+    pub fn new(inner: D, recorder: crate::record::Recorder) -> Self {
         Self { inner, recorder }
     }
 
@@ -489,7 +489,7 @@ impl<D: Device> RecordingDevice<D> {
         self.inner
     }
 
-    pub fn recorder(&self) -> &crate::vnet::record::Recorder {
+    pub fn recorder(&self) -> &crate::record::Recorder {
         &self.recorder
     }
 }
@@ -533,7 +533,7 @@ impl<D: Device> Device for RecordingDevice<D> {
 
 pub struct RecordRx<'a, R> {
     inner: R,
-    recorder: &'a crate::vnet::record::Recorder,
+    recorder: &'a crate::record::Recorder,
 }
 
 impl<R: RxToken> RxToken for RecordRx<'_, R> {
@@ -543,7 +543,7 @@ impl<R: RxToken> RxToken for RecordRx<'_, R> {
     {
         let recorder = self.recorder;
         self.inner.consume(|buffer| {
-            recorder.record(crate::vnet::record::Direction::Inbound, buffer);
+            recorder.record(crate::record::Direction::Inbound, buffer);
             f(buffer)
         })
     }
@@ -551,7 +551,7 @@ impl<R: RxToken> RxToken for RecordRx<'_, R> {
 
 pub struct RecordTx<'a, T> {
     inner: T,
-    recorder: &'a crate::vnet::record::Recorder,
+    recorder: &'a crate::record::Recorder,
 }
 
 impl<T: TxToken> TxToken for RecordTx<'_, T> {
@@ -562,7 +562,7 @@ impl<T: TxToken> TxToken for RecordTx<'_, T> {
         let recorder = self.recorder;
         self.inner.consume(len, |buffer| {
             let result = f(buffer);
-            recorder.record(crate::vnet::record::Direction::Outbound, buffer);
+            recorder.record(crate::record::Direction::Outbound, buffer);
             result
         })
     }

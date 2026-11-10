@@ -2,7 +2,7 @@
 //!
 //! A switch is a hub. Each peer connects to it with a byte stream (a unix
 //! socket, a TCP connection, or a `podnet` WebSocket forward through a tunnel)
-//! and sends IP packets in the framing of [`crate::vnet::framing`]. The switch
+//! and sends IP packets in the framing of [`crate::framing`]. The switch
 //! learns the source address of each peer and sends each packet to the peer
 //! that owns its destination address. It floods a packet for an address that
 //! it does not know yet to all other peers.
@@ -22,9 +22,9 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tracing::{debug, info, warn};
 
-use crate::vnet::device::PacketQueue;
-use crate::vnet::framing::{FrameDecoder, FrameEncoder};
-use crate::vnet::stack::NetStack;
+use crate::device::PacketQueue;
+use crate::framing::{FrameDecoder, FrameEncoder};
+use crate::stack::NetStack;
 
 /// The number of packets a slow peer may have in its queue.
 const PEER_QUEUE: usize = 1024;
@@ -410,7 +410,7 @@ async fn serve_for(listen: ProxyListen, token: Option<String>, owner: u32) -> Re
             };
             check_token(&token)?;
             let token: Arc<str> = token.into();
-            let listener = crate::net::bind_tcp(*addr).await?;
+            let listener = podnet_core::net::bind_tcp(*addr).await?;
             // Issue 300: keep the bound address (the port that the kernel
             // chose for port 0), not the requested one.
             listen = ProxyListen::Tcp(listener.local_addr()?);
@@ -430,7 +430,7 @@ async fn serve_for(listen: ProxyListen, token: Option<String>, owner: u32) -> Re
             })
         }
         ProxyListen::Unix(path) => {
-            crate::net::claim_socket_path(path, false)?;
+            podnet_core::net::claim_socket_path(path, false)?;
             let listener = podnet_netns::listen::bind_private(path)
                 .with_context(|| format!("binding unix:{}", path.display()))?;
             tokio::spawn(async move {
@@ -658,12 +658,11 @@ fn serve_control_for(stack: Arc<NetStack>, name: &str, owner: u32) -> Result<Joi
                 debug!(uid = ?uid, "dropped a control datagram of another user");
                 continue;
             }
-            let Ok(Some((message, _))) = crate::vnet::control::ControlMessage::decode(&buf[..n])
-            else {
+            let Ok(Some((message, _))) = crate::control::ControlMessage::decode(&buf[..n]) else {
                 debug!("dropped a control datagram that does not decode");
                 continue;
             };
-            if let crate::vnet::control::ControlMessage::RegisterBind { addr, .. } = message {
+            if let crate::control::ControlMessage::RegisterBind { addr, .. } = message {
                 if exported.insert(addr) {
                     if let Err(err) = export(stack.clone(), addr).await {
                         debug!(%addr, error = %err, "could not export a shim listener");
@@ -722,7 +721,7 @@ fn recv_with_uid(fd: std::os::fd::RawFd, buf: &mut [u8]) -> std::io::Result<(usi
 /// socket of the shim program that bound `addr` on this host. A socket of
 /// another user at that name gets no connection (issue 308).
 #[cfg(target_os = "linux")]
-pub async fn export(stack: Arc<NetStack>, addr: crate::vnet::addr::VirtAddr) -> Result<()> {
+pub async fn export(stack: Arc<NetStack>, addr: crate::addr::VirtAddr) -> Result<()> {
     let mut listener = stack.listen(addr).await?;
     let name = addr.abstract_name()?;
     info!(%addr, "exported a shim listener to the switch");
@@ -750,7 +749,7 @@ pub async fn export(stack: Arc<NetStack>, addr: crate::vnet::addr::VirtAddr) -> 
 /// stack (and so through the switch). A client of another user is refused
 /// (issue 308).
 #[cfg(target_os = "linux")]
-pub fn import(stack: Arc<NetStack>, addr: crate::vnet::addr::VirtAddr) -> Result<JoinHandle<()>> {
+pub fn import(stack: Arc<NetStack>, addr: crate::addr::VirtAddr) -> Result<JoinHandle<()>> {
     let listener = abstract_listener(&addr.abstract_name()?)?;
     info!(%addr, "imported a remote address for shim programs");
     Ok(tokio::spawn(async move {

@@ -1131,15 +1131,15 @@ has not, write the harness in podnet (it is a CI file, no code of a crate).
 ## Problem
 
 The socks shim routes a stream `connect` to the front door only for `100.64.0.0/10` and
-`fd7a:115c:a1e0::/48`, or for each connect with `PODNET_SOCKS_ALL=1` (`shim/podnet-socks.c:206-223`).
+`fd7a:115c:a1e0::/48`, or for each connect with `PODNET_SOCKS_ALL=1` (`crates/podnet-vnet/shim/podnet-socks.c:206-223`).
 A client with a hardcoded origin (`127.0.0.1:3000`, a fixed LAN address) needs only that address routed.
 The abstract-name shim has no option to hand a chosen address to the SOCKS door.
 
 ## Premise
 
-- `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`shim/podnet-socks.c:81-92`).
+- `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`crates/podnet-vnet/shim/podnet-socks.c:81-92`).
 - `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:115-121`). `ShimOptions`
-  (`src/vnet/shim.rs:30-45`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
+  (`crates/podnet-vnet/src/shim.rs:30-45`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
 - The variable list is in `src/manual/facts.rs:301`. `docs/virtual-network.md` has no text on socksify
   (README.md:921 only), so item 4 of the issue needs a new section.
 - Names are set by T-016 (`PODNET_SOCKS_*`).
@@ -1172,14 +1172,14 @@ cargo test --test cli -- socksify_takes_cidrs
 ## Problem
 
 On a host with no `/etc/passwd`, `ssh` fails and `ssh-keygen` exits 0 and writes no key (`getpwuid`
-fails). The preload `shim/fakepwd.c` exists, but the only command is `net ts-shims`, named for
+fails). The preload `crates/podnet-vnet/shim/fakepwd.c` exists, but the only command is `net ts-shims`, named for
 Tailscale and described only for Tailscale SSH.
 
 ## Premise
 
 - `net ts-shims` already takes `--out --user --uid --gid --shell --json` and prints `LD_PRELOAD`
   (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:129-168`,
-  `src/vnet/tailscale_ssh.rs:160-202`). It also writes `getent`, `id` and a compiled shim: more than a client needs.
+  `crates/podnet-vnet/src/tailscale_ssh.rs:160-202`). It also writes `getent`, `id` and a compiled shim: more than a client needs.
 - `docs/target-environment.md:104` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
   No doctor row names the silent `ssh-keygen`.
 - `tools/ts-sshd.sh:118-128` uses the preload for `ssh-keygen`.

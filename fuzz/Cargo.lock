@@ -2179,6 +2179,7 @@ dependencies = [
  "pod-tls",
  "podnet-core",
  "podnet-netns",
+ "podnet-vnet",
  "qrcode",
  "quinn",
  "rcgen",
@@ -2247,6 +2248,23 @@ dependencies = [
  "serde_json",
  "smoltcp",
  "tokio",
+]
+
+[[package]]
+name = "podnet-vnet"
+version = "0.4.0-beta.1"
+dependencies = [
+ "anyhow",
+ "futures",
+ "libc",
+ "podnet-core",
+ "podnet-netns",
+ "ring",
+ "serde",
+ "serde_json",
+ "smoltcp",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

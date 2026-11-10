@@ -32,7 +32,7 @@ state and run paths, the units, the metrics, the wire paths and the release asse
 ## Approach
 
 1. Move the three files with the name in their path: images/cfrs to `images/podnet`,
-   shim/cfrsnet.c to `shim/podnet-vnet.c`, shim/cfrssocks.c to `shim/podnet-socks.c`.
+   shim/cfrsnet.c to `crates/podnet-vnet/shim/podnet-vnet.c`, shim/cfrssocks.c to `crates/podnet-vnet/shim/podnet-socks.c`.
 2. Run the ordered `sed` of `docs/research/podnet/rename.md`, section 5, step 2, on each tracked
    file but `docs/releases/`, `docs/reports/`, `docs/research/`, `tests/data/` and the lock files.
    It keeps `talaria0101/cfrs` and `nemo-010/cfrs`.
@@ -41,7 +41,7 @@ state and run paths, the units, the metrics, the wire paths and the release asse
 4. Do the hand edits that the tests need. In `src/update.rs`: `identity_in(repo, tag)` and
    `verify_bundle_for`, with the fixture of v0.3.0-beta.1 checked under the cfrs identity and
    refused under the podnet identity; the fixture asset name `cfrs-x86_64-unknown-linux-musl`.
-   In `src/vnet/addr.rs`: the longest abstract name is 59 bytes. In `src/warp/up.rs`: the sorted
+   In `crates/podnet-vnet/src/addr.rs`: the longest abstract name is 59 bytes. In `src/warp/up.rs`: the sorted
    list of the proxy variables.
 5. Do the hand edits that no test catches, in `.github/workflows/live.yml`. The step "update to
    v0.3.0-beta.1" asserts the refusal "not https://github.com/PodUtils/podnet/" until T-024.
@@ -276,7 +276,7 @@ The core network crate keeps the old name in its directory, its package, its lib
 
 - `pod-netns` has 341 occurrences in 55 files, and `pod_netns` 85 in 20
   (`docs/research/podnet/rename.md`, section 5, step 4).
-- The root crate uses the library in `src/main.rs`, `src/vnet/`, `src/warp/` and
+- The root crate uses the library in `src/main.rs`, `crates/podnet-vnet/src/`, `src/warp/` and
   `src/manual/model.rs`.
 - The tests of the manual scan `crates/podnet-netns/src` for variables (`src/manual/facts.rs`).
 

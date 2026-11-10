@@ -2,7 +2,7 @@
 //!
 //! `docs/virtual-network.md` section 5.2 describes a SOCKS5 front door on a
 //! unix socket that forwards a virtual endpoint to a real one. The unit test in
-//! `src/vnet/proxy.rs` covers the same shape with an in-process echo; this one
+//! `crates/podnet-vnet/src/proxy.rs` covers the same shape with an in-process echo; this one
 //! uses a real `AF_UNIX` client so the whole documented path is exercised:
 //! client socket, SOCKS handshake, stack connect, forward, real destination and
 //! the reply back to the client.

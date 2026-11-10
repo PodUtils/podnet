@@ -26,9 +26,9 @@ use tokio::task::JoinHandle;
 
 use podnet_netns::opening::{read_opening, Opening, REQUEST_LIMIT};
 
-use crate::vnet::addr::VirtAddr;
-use crate::vnet::socks::{self, ProxyHost};
-use crate::vnet::stack::NetStack;
+use crate::addr::VirtAddr;
+use crate::socks::{self, ProxyHost};
+use crate::stack::NetStack;
 
 pub use podnet_netns::listen::ProxyListen;
 
@@ -68,7 +68,7 @@ pub fn resolve_target(
 ///
 /// The protocol is detected from the first byte (SOCKS5 begins with `0x05`),
 /// so one listener serves both SOCKS5 and HTTP `CONNECT` clients.
-pub use crate::vnet::stack::TcpStream;
+pub use crate::stack::TcpStream;
 
 /// How long the copy of one proxied client connection may take. It does not
 /// bound the opening: `REQUEST_LIMIT` bounds that.
@@ -260,7 +260,7 @@ pub async fn serve(
     let mut listen = listen;
     let accepts = match &listen {
         ProxyListen::Tcp(bind) => {
-            let listener = crate::net::bind_tcp(*bind).await?;
+            let listener = podnet_core::net::bind_tcp(*bind).await?;
             // Issue 300: keep the bound address (the port that the kernel
             // chose for port 0), not the requested one.
             listen = ProxyListen::Tcp(listener.local_addr()?);
@@ -310,7 +310,7 @@ pub async fn serve(
 
 #[cfg(unix)]
 fn bind_unix(path: &std::path::Path) -> Result<tokio::net::UnixListener> {
-    crate::net::claim_socket_path(path, false)?;
+    podnet_core::net::claim_socket_path(path, false)?;
     podnet_netns::listen::bind_private(path)
         .with_context(|| format!("binding unix:{}", path.display()))
 }

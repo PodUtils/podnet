@@ -30,9 +30,10 @@ The repository is a Cargo workspace:
 
 | Crate | Contents |
 | --- | --- |
-| `podnet` (root) | The CLI and the library: the edge client (provisioning, discovery, QUIC, HTTP/2, Cap'n Proto and its RPC), the service layer, WARP, the virtual network. |
+| `podnet` (root) | The CLI and the library: the edge client (provisioning, discovery, QUIC, HTTP/2, Cap'n Proto and its RPC), the service layer, WARP. |
 | `crates/podnet-core` | A library: the core layer of podnet (the process, the files, the state, the reports, the supervisor). The other crates use it. |
 | `crates/podnet-netns` | A library: run a program with all its traffic sent through a proxy (`podnet pod`). |
+| `crates/podnet-vnet` | A library: the userspace virtual network (`podnet net`) and the C sources of its `LD_PRELOAD` shims. |
 
 ## Install
 

@@ -297,7 +297,7 @@ podnet can dial a WireGuard peer, but cannot be one. A WireGuard endpoint with n
 ## Premise
 
 - `src/warp/wg.rs` has the initiator, and a responder for its tests (`respond`).
-- `src/vnet/device.rs` has a link device for smoltcp.
+- `crates/podnet-vnet/src/device.rs` has a link device for smoltcp.
 
 ## Approach
 
@@ -749,7 +749,7 @@ no flow table of T-111.
 
 - Depends on T-152. T-111 (open, M7) plans the userspace flow table. This entry must not replace it
   before the owner rules (see Decision).
-- The nfnetlink client is new code (the vnet ACL avoids kernel netfilter, `src/vnet/policy.rs`). T-120
+- The nfnetlink client is new code (the vnet ACL avoids kernel netfilter, `crates/podnet-vnet/src/policy.rs`). T-120
   plans an nf_tables writer for root-host router mode (`TODO/later.md`).
 - Files of `podnet-netns` stay under 800 lines: new files for the client and the listeners.
 - ICMP echo cannot be REDIRECTed (martian). Ping works through the ping-socket path only.
@@ -943,8 +943,8 @@ an oversized datagram needs its own counter.
 ## Premise
 
 - Present in podnet: `HeldSyn` (`crates/podnet-netns/src/netns/backend.rs:13,146`, `crates/podnet-netns/src/netns/packet.rs:62`); `reap_closed`
-  (`crates/podnet-netns/src/netns/backend.rs:242`) reaps at `Closed`; the vnet stack treats `TimeWait` as closed (`src/vnet/stack/service.rs:270-287`)
-  and defers `close` until the queues are empty (`src/vnet/stack/service.rs:254-267`). `NetStack` defaults hold the payload at
+  (`crates/podnet-netns/src/netns/backend.rs:242`) reaps at `Closed`; the vnet stack treats `TimeWait` as closed (`crates/podnet-vnet/src/stack/service.rs:270-287`)
+  and defers `close` until the queues are empty (`crates/podnet-vnet/src/stack/service.rs:254-267`). `NetStack` defaults hold the payload at
   64 KiB (`:114-115`). Async writers use `write_all` (`upstream.rs:626`, `framing.rs:43`).
 - No present defect. smoltcp lines are not re-read; the prototype is not in the repo.
 - Overlap: #352 (netns netfilter), T-111 (takes datagrams before smoltcp).

@@ -39,14 +39,14 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 
-use crate::vnet::shim;
+use crate::shim;
 
 /// The fake `getent`, with `@PASSWD@`/`@GROUP@` placeholders.
-pub const GETENT_SHIM: &str = include_str!("../../shim/tsgetent");
+pub const GETENT_SHIM: &str = include_str!("../shim/tsgetent");
 /// The fake `id`, with `@PASSWD@`/`@GID@` placeholders.
-pub const ID_SHIM: &str = include_str!("../../shim/tsid");
+pub const ID_SHIM: &str = include_str!("../shim/tsid");
 /// The `getpwuid(3)`/`getpwnam(3)` preload for dynamic clients.
-pub const FAKEPWD_SOURCE: &str = include_str!("../../shim/fakepwd.c");
+pub const FAKEPWD_SOURCE: &str = include_str!("../shim/fakepwd.c");
 /// The compiled name of [`FAKEPWD_SOURCE`].
 pub const FAKEPWD_FILE: &str = "fakepwd.so";
 
@@ -161,7 +161,7 @@ pub fn install(dir: &Path, users: &[LocalUser]) -> Result<Shims> {
     // Issue 247: the directory must belong to this user, and other users
     // must not write it. Each file is written new and renamed into place,
     // so a planted symlink is replaced and not followed.
-    crate::state::prepare(dir)
+    podnet_core::state::prepare(dir)
         .with_context(|| format!("checking the shim directory {}", dir.display()))?;
 
     let passwd = dir.join("passwd");
@@ -170,10 +170,10 @@ pub fn install(dir: &Path, users: &[LocalUser]) -> Result<Shims> {
     let id = dir.join("id");
     let fallback_gid = users.first().map_or(0, |u| u.gid);
 
-    crate::state::replace_file(&passwd, render_passwd(users).as_bytes(), 0o644)?;
-    crate::state::replace_file(&group, render_group(users).as_bytes(), 0o644)?;
-    crate::state::replace_file(&getent, render_getent(&passwd, &group).as_bytes(), 0o755)?;
-    crate::state::replace_file(&id, render_id(&passwd, fallback_gid).as_bytes(), 0o755)?;
+    podnet_core::state::replace_file(&passwd, render_passwd(users).as_bytes(), 0o644)?;
+    podnet_core::state::replace_file(&group, render_group(users).as_bytes(), 0o644)?;
+    podnet_core::state::replace_file(&getent, render_getent(&passwd, &group).as_bytes(), 0o755)?;
+    podnet_core::state::replace_file(&id, render_id(&passwd, fallback_gid).as_bytes(), 0o755)?;
 
     let compiled = shim::compile_source(FAKEPWD_SOURCE, FAKEPWD_FILE, dir)?;
 
@@ -226,7 +226,7 @@ mod tests {
         let shims = install(&dir, &[LocalUser::new("user", 966, 965)]).unwrap();
         assert_eq!(std::fs::read_to_string(&victim).unwrap(), "keep");
         for path in [&shims.passwd, &shims.group, &shims.getent, &shims.id] {
-            assert!(crate::state::own_file(path), "{}", path.display());
+            assert!(podnet_core::state::own_file(path), "{}", path.display());
         }
         let _ = std::fs::remove_dir_all(&dir);
     }

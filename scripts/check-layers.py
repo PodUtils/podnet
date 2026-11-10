@@ -18,6 +18,10 @@ Each crate of CRATES (crates/NAME/src) holds the modules of one layer:
 a top module there that LAYER puts in another layer is a fault. A
 `crate::MODULE` of such a file names a module of that crate, and a
 `podnet_core::MODULE` of each file is a reference to MODULE (T-046).
+A crate of ONE_MODULE is one module of LAYER (crates/podnet-vnet is the
+module vnet, T-048): each of its files is that module, a `crate::` of it
+is a reference to itself, and a `podnet_vnet::` of each file is a
+reference to that module.
 
 A top module that LAYER does not name is a fault: give it a crate. A scan
 that reads fewer than MIN_FILES files is a fault.
@@ -69,6 +73,12 @@ LAYER = {
 # lib.rs of a crate is the module NAME (with `-` as `_`) of that layer.
 CRATES = {
     "podnet-core": "core",
+    "podnet-vnet": "vnet",
+}
+
+# The crates of CRATES that are one module of LAYER, and that module.
+ONE_MODULE = {
+    "podnet-vnet": "vnet",
 }
 
 USES = {
@@ -141,9 +151,15 @@ def strip_tests(text):
     return "".join(out), files
 
 
-def refs_of(text):
-    """Yield each top module named after `crate::` or `podnet_core::`."""
-    for m in re.finditer(r"\b(?:crate|podnet_core)\s*::\s*", text):
+def refs_of(text, own=True):
+    """Yield each top module named after `crate::` (when own is true) or
+    `podnet_core::`, and the module of each `podnet_vnet::`."""
+    for m in re.finditer(r"\b(crate|podnet_core|podnet_vnet)\s*::\s*", text):
+        if m.group(1) == "podnet_vnet":
+            yield ONE_MODULE["podnet-vnet"]
+            continue
+        if m.group(1) == "crate" and not own:
+            continue
         j = m.end()
         if text.startswith("{", j):
             depth = 0
@@ -196,6 +212,8 @@ def scan(root):
         csrc = root / "crates" / name / "src"
         lib = name.replace("-", "_")
         LAYER.setdefault(lib, layer)
+        if name in ONE_MODULE:
+            lib = ONE_MODULE[name]
         for f in sorted(csrc.rglob("*.rs")) if csrc.is_dir() else []:
             home[f] = (csrc, layer, lib)
             files.append(f)
@@ -218,7 +236,9 @@ def scan(root):
         if f in home:
             csrc, layer, lib = home[f]
             frm = top_module(csrc, f)
-            if frm == "lib":
+            if lib in ONE_MODULE.values():
+                frm = lib
+            elif frm == "lib":
                 frm = lib
             elif frm in LAYER and LAYER[frm] != layer:
                 faults.append(f"{f.relative_to(root)}: the module {frm} ({LAYER[frm]}) is in a crate of {layer}")
@@ -228,7 +248,8 @@ def scan(root):
         if frm not in LAYER:
             faults.append(f"{f.relative_to(root)}: the module {frm} has no crate in LAYER")
             continue
-        for to in refs_of(stripped[f]):
+        own = not (f in home and home[f][2] in ONE_MODULE.values())
+        for to in refs_of(stripped[f], own):
             if to in ("self", "super") or to == frm or to[0].isupper():
                 continue
             if to not in LAYER:
@@ -313,6 +334,12 @@ def self_test():
         ("core crate upward", {"crates/podnet-core/src/exit.rs": "use crate::tunnel;\n"}, "", True),
         ("wrong crate", {"crates/podnet-core/src/tunnel.rs": ""}, "", True),
         ("core path", {"egress.rs": "use podnet_core::tunnel;\n"}, "", True),
+        ("vnet crate", {"crates/podnet-vnet/src/lib.rs": "pub mod doctor;\n",
+                        "crates/podnet-vnet/src/doctor.rs": "use crate::proxy;\nuse podnet_core::util;\n"},
+         "", False),
+        ("vnet crate upward", {"crates/podnet-vnet/src/dns.rs": "use podnet_core::util;\nuse podnet_core::tunnel;\n"},
+         "", True),
+        ("vnet path", {"egress.rs": "use podnet_vnet::stack;\n"}, "", True),
     ]
     for name, files, allow, want in cases:
         d = tree(files)

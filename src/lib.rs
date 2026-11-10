@@ -83,6 +83,11 @@ pub use podnet_core::{
     rlimit, services, state, trust, udp, util, yaml,
 };
 
+// The userspace virtual network (crates/podnet-vnet, T-048), at its old
+// path.
+#[doc(inline)]
+pub use podnet_vnet as vnet;
+
 pub mod agent;
 pub mod agent_files;
 pub mod bug_report;
@@ -119,7 +124,6 @@ mod test_host;
 pub mod transport;
 pub mod tunnel;
 pub mod update;
-pub mod vnet;
 pub mod warp;
 pub mod ws;
 pub mod ws_relay;
