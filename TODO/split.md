@@ -623,7 +623,7 @@ T-008, T-009 and T-012 are done.
 
 2026-11-05, The named modules `src/warp/mod.rs` and `src/warp/proxy.rs` move to PodUtils/podcrates (`pod-warp`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. No file of this entry stays in podnet. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
-# T-037: Split `src/relay_reverse.rs` and `src/share.rs`
+# T-037: Split `src/relay_reverse.rs` and `src/share/mod.rs`
 
 **Source:** `docs/research/podnet/architecture.md`, section 2.2 (the two rows).
 **Category:** chore
@@ -634,19 +634,19 @@ T-008, T-009 and T-012 are done.
 
 ## Problem
 
-`src/relay_reverse.rs` has 1,139 lines and `src/share.rs` 1,901.
+`src/relay_reverse.rs` has 1,139 lines and `src/share/mod.rs` 1,901.
 
 ## Premise
 
 - `tests/relay_reverse.rs` calls `relay_reverse::{node, run_node, connect}` against a fake relay.
-- `src/share.rs` holds the upload router (its `upload_receive` alone has 195 lines), the
+- `src/share/mod.rs` holds the upload router (its `upload_receive` alone has 195 lines), the
   download router and 756 lines of tests.
 
 ## Approach
 
 1. `src/relay_reverse.rs`: the pair functions in a mod.rs; files for the node, for `connect` and
    for the tests.
-2. `src/share.rs`: the types and the app in a mod.rs; files for the upload part and the download
+2. `src/share/mod.rs`: the types and the app in a mod.rs; files for the upload part and the download
    part; the tests to a tests directory with an upload part and a download part.
 
 ## Prove
@@ -664,7 +664,7 @@ T-008 and T-009 are done.
 
 ## Correction
 
-2026-11-05, The named modules `src/relay_reverse.rs` move to PodUtils/podcrates (`pod-relay`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/share.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+2026-11-05, The named modules `src/relay_reverse.rs` move to PodUtils/podcrates (`pod-relay`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/share/mod.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
 # T-038: Split `src/feature/mod.rs` and `src/proxy.rs`
 

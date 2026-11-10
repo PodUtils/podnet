@@ -293,7 +293,7 @@ in the binary.
 
 ## Premise
 
-- The crate takes `src/share.rs`, `src/gate.rs`, `src/service.rs`, `src/ingress.rs`,
+- The crate takes `src/share/mod.rs`, `src/gate.rs`, `src/service.rs`, `src/ingress.rs`,
   `src/origin/`, `src/feature/`, `src/transport/`, `src/relay.rs` and the client of the
   WebSocket forward.
 - `src/feature/`, `src/origin/`, `src/transport/` and `src/relay.rs` are a capability of the

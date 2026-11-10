@@ -592,7 +592,7 @@ with the commit that takes `pod-session`, `pod-e2e` and `pod-identity`. podnet h
 ## Problem
 
 `src/lib.rs` has the macro `update_atomic!`, a loop of `compare_exchange_weak`, in place of the
-deprecated `fetch_update` (#214). `src/share.rs` and `src/gate.rs` use it.
+deprecated `fetch_update` (#214). `src/share/mod.rs` and `src/gate.rs` use it.
 
 ## Premise
 

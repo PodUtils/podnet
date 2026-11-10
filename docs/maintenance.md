@@ -258,7 +258,7 @@ At the first stable release (no `-beta.N`), also:
 | `src/tunnel.rs`, `src/race.rs` | the tunnel: the legs (quic, http2, quic+warp, http2+relay), the race, reconnects, verify |
 | `src/cloudflare/` | the edge protocol (QUIC, HTTP/2, Cap'n Proto RPC): no dependency for it (`CLAUDE.md`) |
 | `src/proxy.rs`, `src/edge_h2.rs` | the streams of the edge to the origins and the built-in services |
-| `src/share.rs`, `src/service.rs`, `src/gate.rs` | `share`, `serve`, the PIN gate |
+| `src/share/`, `src/service.rs`, `src/gate.rs` | `share`, `serve`, the PIN gate |
 | `src/warp/` | WARP: registration, MASQUE session (`session.rs`), userspace stack (`ip.rs`), proxy, TUN and routes, `warp up` |
 | `src/ws_relay.rs`, `src/relay_reverse.rs` | the WebSocket relay: the forward leg, and `podnet relay` (reverse mode) |
 | `src/detach.rs`, `src/instances.rs` | `--detach`, the supervisor, `ps`, `stop`, `logs`, `wait` |

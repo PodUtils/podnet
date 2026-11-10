@@ -346,7 +346,7 @@ random names.
 ## Premise
 
 - Read: `upload_receive` streams a multipart body with limits and files of mode 0600
-  (`src/share.rs`).
+  (`src/share/mod.rs`).
 - The tunnel takes at most 100 MB in one request body.
 
 ## Approach
