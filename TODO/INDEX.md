@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 91 open, 3 partial, 18 blocked, 112 done.**
+**224 entries: 90 open, 3 partial, 18 blocked, 113 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 53 | 2 | 12 | 70 | 137 |
+| P2 | 52 | 2 | 12 | 71 | 137 |
 | P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 91 | 3 | 18 | 112 | 224 |
+| **All** | 90 | 3 | 18 | 113 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -156,7 +156,7 @@ M8 Overlays, M9 Later.
 | [T-108](pods.md) | P2 | S | M7 | feature | done | netns: the pod lives past its first program |
 | [T-109](pods.md) | P2 | M | M7 | feature | open | `warp exec --detach --name N` keeps a pod under the supervisor |
 | [T-110](pods.md) | P2 | M | M7 | feature | open | `warp exec --join N` runs a command in a detached pod |
-| [T-111](pods.md) | P2 | M | M7 | feature | open | netns: generic UDP |
+| [T-111](pods.md) | P2 | M | M7 | feature | done | netns: generic UDP |
 | [T-112](pods.md) | P3 | S | M7 | feature | open | netns: the gateway address reaches the loopback of the host, when the user asks |
 | [T-113](pods.md) | P2 | S | M7 | feature | open | `warp exec` and `warp shell` try the netns backend first |
 | [T-114](overlays.md) | P2 | M | M8 | chore | open | A headscale harness in CI for the `tailscaled` sidecar |

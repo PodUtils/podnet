@@ -184,7 +184,7 @@ T-109 is done.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -217,6 +217,21 @@ emulates the sockets. Thus a user must choose between UDP and correct socket cal
 ```sh
 cargo test --workspace -- netns_backend_relays_udp netns_backend_relays_udp_in_the_stream netns_two_flows_to_one_port_lose_nothing netns_udp_flow_is_reaped an_empty_datagram_survives
 ```
+
+## Done
+
+2026-11-10, commit b63fa79 (`T-111: netns: generic UDP`). New file
+`crates/podnet-netns/src/netns/udpflow.rs`: the flow table (60 s idle, 256 flows, the longest idle
+flow goes at the cap), one task for each flow (0x83 in the stream for a unix proxy, else
+`UDP ASSOCIATE`, both with `pod_proxy::udp`; a `direct` rule uses a host UDP socket), the reply
+packets with the addresses swapped (fragments above the MTU), and a queue of 64 datagrams for each
+flow: a full queue holds the datagram and stops the read of the TUN, with no failover (GitHub
+#372). The Prove command: 5 passed (`netns_backend_relays_udp`,
+`netns_backend_relays_udp_in_the_stream`, `netns_two_flows_to_one_port_lose_nothing`,
+`netns_udp_flow_is_reaped`, `an_empty_datagram_survives`). Also: `a_large_reply_becomes_fragments`,
+`a_partial_stream_write_keeps_the_record_stream_aligned` (a stream that takes 5 bytes for each
+write). `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`: each step 0. CI: at the merge.
+
 
 # T-112: netns: the gateway address reaches the loopback of the host, when the user asks
 
