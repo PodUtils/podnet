@@ -248,6 +248,9 @@ int main(void) {
 // pod after the program exits, while the client keeps its end open.
 #[test]
 fn seccomp_inbound_accept_leaves_no_relay() {
+    // The server binds 127.0.0.1 (the job restricted-host of ci.yml refuses
+    // bind(AF_INET) in the program).
+    test_host::need_loopback!();
     let Some(cc) = compiler() else {
         eprintln!("skipping: no C compiler");
         return;

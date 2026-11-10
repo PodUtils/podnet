@@ -359,8 +359,9 @@ task. `-v` prints `accept on port N: the program holds the connection (no relay)
 reads no byte of an inbound connection, so no case keeps the relay (step 3). The Prove commands: 1
 passed (`seccomp_inbound_accept_leaves_no_relay`: the accepted socket has the name of the inbound
 socket, and the pod exits in less than 2.5 s while the client holds its end open) and 2 passed.
-Before the fix, the new test failed (`accepted_path` empty: a socket pair). The new test passes
-under `unshare -n`. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI: at the merge.
+Before the fix, the new test failed (`accepted_path` empty: a socket pair). The new test calls
+`test_host::need_loopback!()` (the server binds 127.0.0.1): it skips under `unshare -n` and in
+`scripts/restricted-host.sh`. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI: at the merge.
 GitHub #351 (fix 1) closes with T-151.
 
 # T-151: seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351)
