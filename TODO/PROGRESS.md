@@ -8,11 +8,10 @@
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
 - podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns` and `pod-services`
-  (`PodUtils/podcrates` v0.8.0). Next: `pod-ws` (`src/ws.rs`). A session reads the state
+  (`PodUtils/podcrates` v0.9.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-ws` (`src/ws.rs`). A session reads the state
   of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
-- Frozen (fixes only, each as a COORD issue): the SOCKS5 datagram path of
-  `crates/podnet-netns/src/upstream.rs` (in `pod_proxy::udp`, PodUtils/podcrates#42), and
-  `tests/test_host/mod.rs` (in `pod-testkit`).
+- Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`).
+- The newest release is `v0.4.0-beta.1` (T-023).
 - Keep this section short. Write the current state only; git keeps the history.
 
 ## Work order
