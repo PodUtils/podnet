@@ -104,7 +104,7 @@ T-059 and T-114 are done.
 **Milestone:** M8
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -136,6 +136,36 @@ cargo test --workspace -- wg_quick_file_parses wg_reserved_bytes_are_zero_by_def
 2026-11-05, The wg-quick reader and the reserved bytes belong to the WireGuard code, which moves to `pod-wg`
 (wave 2 of PodUtils/podcrates) from `src/warp/wg.rs`. Do this work in `pod-wg` after the take, or as an
 issue in PodUtils/podcrates. podnet only takes the crate (T-137).
+
+2026-11-10, read in the tree: the reader of the format is not WireGuard code. It lands in
+`crates/podnet-vnet/src/wg_quick.rs` and changes no file of `src/warp/` (the files that go to
+`pod-warp` and `pod-wg` take fixes only). Step 2 needs no change of `src/warp/wg.rs`: its `Keys`
+takes the reserved bytes from the caller (`src/warp/wg.rs:214`), and the reader gives zeros when
+the file has no `Reserved`. The handshake test builds a `Peer` of `src/warp/wg.rs` from the file
+in a test module of the root crate (`src/wg_quick_tests.rs`). When `pod-wg` exists, the reader
+can move there with the take (T-137).
+
+- The new dependency of `podnet-vnet` is `base64 = "0.23"`, for the keys. The root crate has the
+  same version, so the tree gets no new crate.
+- `src/warp/wg.rs` uses a zero preshared key (`src/warp/wg.rs:324`). The reader keeps
+  `PresharedKey`; T-117 must refuse a file with a `PresharedKey` until the WireGuard code takes
+  one.
+
+## Done
+
+2026-11-09, commit 1d44c85. `crates/podnet-vnet/src/wg_quick.rs` reads a wg-quick file;
+`src/wg_quick_tests.rs` makes a handshake with a peer from a file. The network form (`wg:FILE`)
+stays for T-117.
+
+- `cargo test --workspace -- wg_quick_file_parses wg_reserved_bytes_are_zero_by_default
+  wg_handshake_with_the_test_responder`: 3 passed.
+- New tests (5): `wg_quick_file_parses`, `wg_reserved_bytes_are_zero_by_default`,
+  `wg_quick_file_errors_name_the_line`, `wg_quick_file_reads_by_path` (in
+  `crates/podnet-vnet/src/wg_quick.rs`), `wg_handshake_with_the_test_responder` (in
+  `src/wg_quick_tests.rs`, with `need_loopback!`).
+- `sh scripts/agent/check.sh`: exit 0. `unshare -n -- cargo test --offline --workspace
+  --no-fail-fast`: exit 0. `sh scripts/restricted-host.sh --no-fail-fast`: exit 0. CI: at the
+  merge.
 
 # T-117: WireGuard: `wg:FILE` as a network over UDP or over a carrier
 

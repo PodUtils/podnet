@@ -56,6 +56,7 @@ LAYER = {
     "share": "serve", "gate": "serve", "service": "serve", "ingress": "serve",
     "origin": "serve", "feature": "serve", "transport": "serve",
     "relay": "serve", "ws": "serve", "tar": "serve", "tar_http": "serve",
+    "git": "serve",
     "cloudflare": "cloudflare", "tunnel": "cloudflare", "edge_h2": "cloudflare",
     "edge_discovery": "cloudflare", "quicktunnel": "cloudflare",
     "config": "cloudflare", "proxy": "cloudflare",
@@ -70,6 +71,8 @@ LAYER = {
     "core_tests": "podnet",
     # The tests of the services that read a higher layer (src/serve_tests.rs).
     "serve_tests": "podnet",
+    # The tests of the wg-quick reader with the WARP adapter (src/wg_quick_tests.rs).
+    "wg_quick_tests": "podnet",
 }
 
 # The crates of the workspace (crates/NAME) and the layer of each. The

@@ -52,6 +52,7 @@ pub mod shim;
 pub mod stack;
 pub mod switch;
 pub mod tailscale_ssh;
+pub mod wg_quick;
 
 pub use podnet_netns::{socks, tailscale, upstream};
 

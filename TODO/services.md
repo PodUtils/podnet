@@ -497,7 +497,7 @@ T-084 is done.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -544,6 +544,38 @@ refused.
 
 2026-11-05, step 6: no copy of podssh code. When `pod-testkit` has no SSH server, open an issue in
 PodUtils/podcrates.
+
+2026-11-10, read in the tree:
+
+- `russh` is 0.65.1 (`Cargo.lock`), not 0.64. `crates/podnet-serve/Cargo.toml` has it with the
+  feature `ring`.
+- Step 6: `pod-testkit` v0.11.0 has no SSH server (its files are `lib.rs`, `host.rs`,
+  `screen.rs`). The tests need none: the server of this entry is the server under test, and the
+  russh client of the tree is the client. No issue to PodUtils/podcrates is necessary.
+- Step 2: an OpenSSH client sends the method `none` first. When `none` gives access for each
+  user, a client with a key gets read access and cannot push. With `anon_read`, `none` gives read
+  access only to the user `anonymous`, and a key that is not in `authorized_keys` gets read
+  access.
+- Prove: `git upload-pack --advertise-refs` is the stateless form and adds the capability
+  `no-done`. The test compares the bytes with `git upload-pack DIR` on a pipe, and the refs with
+  `--advertise-refs`.
+
+## Done
+
+2026-11-09, commit 93751c9. `crates/podnet-serve/src/git/ssh.rs` is the russh server;
+`crates/podnet-serve/src/git/mod.rs` reads the exec command and maps the path under the root. The
+command `podnet git serve` stays for T-094.
+
+- `cargo test --workspace -- git_ssh_upload_pack_matches_git git_ssh_refuses_an_unknown_key`: 2
+  passed.
+- New tests (7, in `crates/podnet-serve/src/git/tests.rs`): `git_ssh_upload_pack_matches_git`
+  (the bytes, the refs, protocol v2, receive-pack with a key),
+  `git_ssh_refuses_an_unknown_key` (also `anon_read` and the user `anonymous`),
+  `git_ssh_refuses_a_shell_and_other_commands`, `parse_exec_takes_the_git_commands_only`,
+  `repo_dir_stays_in_the_root`, `host_key_is_made_once_with_mode_0600`,
+  `authorized_keys_takes_ed25519_and_ecdsa_only`. They use a unix socket: they pass under
+  `unshare -n`.
+- `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-094: `podnet git serve`: the repository root, `git init`, `git urls`, the tunnel, the relay and the live step
 

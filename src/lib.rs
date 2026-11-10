@@ -87,7 +87,7 @@ pub use podnet_core::{
 // The modules of the services (crates/podnet-serve, T-051), at their old
 // paths.
 #[doc(inline)]
-pub use podnet_serve::{feature, gate, ingress, origin, relay, service, share};
+pub use podnet_serve::{feature, gate, git, ingress, origin, relay, service, share};
 
 // The userspace virtual network (crates/podnet-vnet, T-048), at its old
 // path.
@@ -126,6 +126,8 @@ pub mod transport;
 pub mod tunnel;
 pub mod update;
 pub mod warp;
+#[cfg(test)]
+mod wg_quick_tests;
 pub mod ws;
 pub mod ws_relay;
 
