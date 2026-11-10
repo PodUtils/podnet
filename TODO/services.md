@@ -688,7 +688,7 @@ command `podnet git serve` stays for T-094.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -723,6 +723,38 @@ gh workflow run live.yml
 ## Start condition
 
 T-082, T-092 and T-093 are done.
+
+## Correction
+
+2026-11-10, the lead's call: T-082, T-092 and T-093 are done, so the start condition holds. `--via tunnel`
+and `--via relay` reuse the glue of `podnet serve DIR --via` (T-091): the ingress service `git:` behind the
+quick tunnel (the router of T-092), and a private unix socket of the run directory that `run_node` of the
+frozen relay code connects to, with no change of a frozen file. `--via relay` carries the SSH server (the
+live step of the Approach uses ssh through the relay); smart HTTP stays on `--local` and the tunnel.
+
+2026-11-10, read in the tree: `git urls` cannot ask a server for its URLs. `git serve` writes a record of its
+URLs (mode 0600) to `git/serve-HASH.json` in the state directory, and removes it at its end. `git urls`
+reads it, lists the repositories under the root, and prints the fingerprint of the host key. `--auth-user`
+of the tunnel options is refused: `--push-user` gives the push user.
+
+Done in commit 84b5c5e (steps 1 to 4, and the text of step 5):
+
+- `podnet git serve --root DIR` with `--local ADDR` (more than one), `--ssh LISTEN`, `--via
+  tunnel|relay|none`, `--pair`, `--anon-read`, `--push-user` with `--push-password-file`, `--users`,
+  `--authorized-keys`, `--create-on-push`, `--host-key` and `--detach` (`src/cli/cmd/git_serve.rs`);
+  `podnet git init` and `podnet git urls` (`src/cli/cmd/git.rs`).
+- `podnet doctor` reports the version of git, or that git is missing (`src/doctor/git_check.rs`). The
+  limits are in the help of `git serve` (the manual) and in `README.md`, Git hosting.
+- `.github/workflows/live.yml`: the steps "Git over HTTPS through a quick tunnel" and "Git over SSH through
+  the reverse relay".
+- Tests: `cargo test --test cli -- git_serve_init_and_urls`: 1 passed; `cargo test --test relay_reverse --
+  git_serve_via_relay_gives_the_ssh_server` (a fake relay): 1 passed; `cargo test --lib --
+  doctor_reports_a_missing_git`: 1 passed. `sh scripts/agent/check.sh`,
+  `unshare -n -- cargo test --offline --workspace --no-fail-fast` and
+  `sh scripts/restricted-host.sh --no-fail-fast`: exit 0.
+
+Left: the run of `gh workflow run live.yml` on a live host. Set the entry to done after a green run of the
+two new steps.
 
 # T-095: Router: several WARP identities in one process, each with its own counters
 
