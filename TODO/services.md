@@ -758,6 +758,8 @@ Done in commit 84b5c5e (steps 1 to 4, and the text of step 5):
 Left: the run of `gh workflow run live.yml` on a live host. Set the entry to done after a green run of the
 two new steps.
 
+2026-11-10, the live run 42849917945 at 9e8d177: the step "Git over HTTPS through a quick tunnel" pushed `main` with the password, but the clone had no commit: `git init` of the runner makes the HEAD of the bare repository `master`. The server is correct. Both git steps now clone with `-b main`. The entry stays partial until a live run passes.
+
 # T-095: Router: several WARP identities in one process, each with its own counters
 
 **Source:** `docs/research/podnet/capabilities.md`, section 2;

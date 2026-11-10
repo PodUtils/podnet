@@ -219,7 +219,7 @@ jobs:
             echo "an anonymous push passes"; exit 1
           fi
           git -C "$work" push -q "https://live:$(cat "$pass")@${url#https://}/app" HEAD:main
-          git clone -q "$url/app" "$RUNNER_TEMP/gitclone"
+          git clone -q -b main "$url/app" "$RUNNER_TEMP/gitclone"
           test "$(git -C "$RUNNER_TEMP/gitclone" log -1 --format=%s)" = one
           target/release/podnet git urls --root "$repos" --json | jq -e '.running' > /dev/null
           target/release/podnet stop gitserve
@@ -567,7 +567,7 @@ jobs:
           git -C "$work" add one.bin
           git -C "$work" -c user.name=live -c user.email=live@podnet commit -q -m one
           git -C "$work" push -q "ssh://git@$name/app" HEAD:main
-          git clone -q "ssh://git@$name/app" "$RUNNER_TEMP/gitrelayclone"
+          git clone -q -b main "ssh://git@$name/app" "$RUNNER_TEMP/gitrelayclone"
           cmp "$work/one.bin" "$RUNNER_TEMP/gitrelayclone/one.bin"
           target/release/podnet stop gitrelay
           target/release/podnet relay stop "$name" > /dev/null
