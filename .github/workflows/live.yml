@@ -318,7 +318,9 @@ jobs:
           "$d/podnet" --version | grep -q '^podnet 0.4.0-beta.1'
           cmp "$d/podnet.prev" target/release/podnet
           # --rollback (no network) swaps the binary and podnet.prev. The
-          # kept binary is a copy of this build with one more byte.
+          # binary is this build again; the kept binary is a copy of this
+          # build with one more byte.
+          cp target/release/podnet "$d/podnet"
           cp target/release/podnet "$d/podnet.prev"
           printf x >> "$d/podnet.prev"
           "$d/podnet" update --rollback
