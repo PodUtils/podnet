@@ -3109,7 +3109,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 ## Premise
 
 - `src/detach.rs:166-192` (`child_begin` reads the variable). `:513-520` sets 4 detach variables and not this one.
-  `:874` is the only writer (the supervisor).
+  `src/detach/supervise.rs:120` is the only writer (the supervisor).
 - `src/autostart.rs:178-182` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
 - `src/detach.rs:691-698` (`targets()` gives `Vec::new()` for this record).
 - The default start (restart on) runs `--detach-supervise`: the supervisor sets the variable for its own child, so that
