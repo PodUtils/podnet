@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 94 open, 3 partial, 18 blocked, 109 done.**
+**224 entries: 93 open, 3 partial, 18 blocked, 110 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 56 | 2 | 12 | 67 | 137 |
+| P2 | 55 | 2 | 12 | 68 | 137 |
 | P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 94 | 3 | 18 | 109 | 224 |
+| **All** | 93 | 3 | 18 | 110 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -79,7 +79,7 @@ M8 Overlays, M9 Later.
 | [T-031](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 5: the other WARP subcommands |
 | [T-032](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 6: the unit tests go to the modules that they test |
 | [T-033](split.md) | P2 | M | M2 | chore | done | Split `src/egress.rs`, `crates/podnet-core/src/detach.rs`, `src/update.rs` and `src/doctor.rs` |
-| [T-034](split.md) | P2 | M | M2 | chore | done | Split `src/vnet/stack.rs` |
+| [T-034](split.md) | P2 | M | M2 | chore | done | Split `crates/podnet-vnet/src/stack.rs` |
 | [T-035](split.md) | P2 | M | M2 | chore | open | Split `src/warp/ip.rs`, `src/warp/session.rs` and `src/warp/wg.rs` |
 | [T-036](split.md) | P2 | M | M2 | chore | open | Split `src/warp/mod.rs` and `src/warp/proxy.rs` |
 | [T-037](split.md) | P2 | M | M2 | chore | done | Split `src/relay_reverse.rs` and `crates/podnet-serve/src/share/mod.rs` |
@@ -93,7 +93,7 @@ M8 Overlays, M9 Later.
 | [T-045](split.md) | P2 | S | M2 | chore | open | Each file is under 800 lines, and the allowlists of the size check and the layer check are empty |
 | [T-046](crates.md) | P2 | M | M3 | chore | done | Prepare the workspace for more crates: the print macros, the build facts, the scans, the package list and the test helpers |
 | [T-047](crates.md) | P2 | L | M3 | chore | done | Extract the crate `podnet-core` |
-| [T-048](crates.md) | P2 | M | M3 | chore | open | Extract the crate `podnet-vnet`, with the C sources of the shims |
+| [T-048](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-vnet`, with the C sources of the shims |
 | [T-049](crates.md) | P2 | S | M3 | chore | open | The relay client of podnet becomes the shared crate `pod-relay` |
 | [T-050](crates.md) | P2 | M | M3 | chore | open | Move the WARP adapter to the shared crate `pod-warp` in `PodUtils/podcrates` |
 | [T-051](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-serve`, with the library-only modules |

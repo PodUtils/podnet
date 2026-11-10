@@ -61,7 +61,7 @@ async fn udp_loopback_round_trip() {
 
 #[tokio::test]
 async fn virtual_dns_answers_at_the_gateway() {
-    use crate::vnet::dns::{build_query, parse_answers, TYPE_A};
+    use crate::dns::{build_query, parse_answers, TYPE_A};
     let resolver = Arc::new(Resolver::new().with("web", "10.66.0.2".parse().unwrap()));
     let config = StackConfig {
         dns: Some(resolver),

@@ -18,7 +18,7 @@ stays (the owner's ruling of 2026-11-05 on regressions, `docs/decisions.md`).
 
 Five dial functions exist with no common interface: `egress::dial` (`src/egress.rs`), the WARP
 dial of `src/warp/proxy.rs`, `Relay::connect` (`src/ws_relay.rs`), the tailnet dialer of
-`crates/podnet-netns/src/tailscale.rs` and the stack of `src/vnet/stack.rs`. Each front door and
+`crates/podnet-netns/src/tailscale.rs` and the stack of `crates/podnet-vnet/src/stack.rs`. Each front door and
 each command calls one of them by name. A router, a group or a new overlay needs one interface.
 
 ## Premise
@@ -84,7 +84,7 @@ The dial functions of T-055 have no `Dialer` form.
 - The relay: `Relay::connect` reaches a public IPv4 TCP address only (`src/ws_relay.rs`).
 - The pod upstream chains and the tailnet: `crates/podnet-netns/src/upstream.rs` and
   `crates/podnet-netns/src/tailscale.rs`.
-- The virtual network: `NetStack` (`src/vnet/stack.rs`).
+- The virtual network: `NetStack` (`crates/podnet-vnet/src/stack.rs`).
 
 ## Approach
 
@@ -292,7 +292,7 @@ T-059 is done.
 
 Four front doors share one parser of SOCKS5 and HTTP CONNECT (`crates/podnet-netns/src/socks.rs`),
 but each has its own accept loop and its own dial side: `src/warp/proxy.rs`,
-`crates/podnet-netns/src/frontdoor.rs`, `src/vnet/proxy.rs` and `crates/podnet-netns/src/tailscale.rs`.
+`crates/podnet-netns/src/frontdoor.rs`, `crates/podnet-vnet/src/proxy.rs` and `crates/podnet-netns/src/tailscale.rs`.
 The router of M6 needs a door over any network.
 
 ## Premise

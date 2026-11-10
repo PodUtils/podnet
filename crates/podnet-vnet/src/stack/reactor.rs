@@ -112,8 +112,8 @@ impl Core {
         let mut iface_config = IfaceConfig::new(HardwareAddress::Ip);
         iface_config.random_seed = config.random_seed;
         let mut iface = Interface::new(iface_config, &mut device, SmolInstant::ZERO);
-        let gateway_v4 = config.subnet.gateway(crate::vnet::addr::Family::V4);
-        let gateway_v6 = config.subnet.gateway(crate::vnet::addr::Family::V6);
+        let gateway_v4 = config.subnet.gateway(crate::addr::Family::V4);
+        let gateway_v6 = config.subnet.gateway(crate::addr::Family::V6);
         iface.update_ip_addrs(|addrs| {
             let prefix = config.subnet.v4_prefix;
             let _ = addrs.push(IpCidr::new(IpAddress::Ipv4(config.local_v4), prefix));

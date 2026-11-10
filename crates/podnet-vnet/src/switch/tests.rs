@@ -1,6 +1,6 @@
 use super::*;
-use crate::vnet::addr::VirtAddr;
-use crate::vnet::stack::StackConfig;
+use crate::addr::VirtAddr;
+use crate::stack::StackConfig;
 use std::net::Ipv4Addr;
 
 #[test]
@@ -145,7 +145,7 @@ fn a_spoofed_source_address_is_dropped() {
 /// gets "refused" and no packet; two stacks with the token talk.
 #[tokio::test]
 async fn a_tcp_switch_takes_peers_with_its_token_only() {
-    crate::test_host::need_loopback!();
+    pod_testkit::need_loopback!();
     let listen = ProxyListen::parse("tcp://127.0.0.1:0").unwrap();
     let err = serve(listen.clone(), None).await.err().expect("no token");
     assert!(err.to_string().contains("token"), "{err}");
@@ -263,7 +263,7 @@ async fn a_stack_reaches_its_own_listener_through_a_switch() {
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn a_control_datagram_of_another_user_is_dropped() {
-    use crate::vnet::control::ControlMessage;
+    use crate::control::ControlMessage;
     use std::os::linux::net::SocketAddrExt;
     let stack = Arc::new(NetStack::over_link(config(2)));
     let send = |name: &str, addr: VirtAddr| {

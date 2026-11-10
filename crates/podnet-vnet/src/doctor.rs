@@ -75,8 +75,8 @@ pub fn render(probes: &[Probe]) -> String {
 /// The UDP egress probe (QUIC to the edge on 7844) as a probe line:
 /// answered is ok, refused is fail, no answer is unknown.
 pub fn udp_probe(target: std::net::SocketAddr) -> Probe {
-    use crate::udp::Egress;
-    let result = match crate::udp::probe(target, crate::udp::DOCTOR_DEADLINE) {
+    use podnet_core::udp::Egress;
+    let result = match podnet_core::udp::probe(target, podnet_core::udp::DOCTOR_DEADLINE) {
         Egress::Answered(d) => ProbeResult::Ok(format!("answered: {d}")),
         Egress::Refused(d) => ProbeResult::Fail(format!("refused: {d}")),
         Egress::Unknown(d) => ProbeResult::Unknown(format!("unknown: {d}")),
@@ -448,7 +448,7 @@ mod linux {
 
     fn compiler_probe() -> Probe {
         let program = std::env::var("CC").unwrap_or_else(|_| "cc".to_string());
-        let found = crate::vnet::shim::which(&program);
+        let found = crate::shim::which(&program);
         let result = match found {
             Some(path) => {
                 // Compile a trivial shared object to prove the whole path works.

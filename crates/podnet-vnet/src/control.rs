@@ -16,7 +16,7 @@
 
 use anyhow::{bail, Result};
 
-use crate::vnet::addr::{Family, VirtAddr};
+use crate::addr::{Family, VirtAddr};
 
 /// Protocol version exchanged in [`ControlMessage::Hello`].
 pub const CONTROL_VERSION: u16 = 1;

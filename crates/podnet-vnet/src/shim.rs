@@ -11,7 +11,7 @@ use std::process::Command;
 use anyhow::{bail, Context, Result};
 
 /// The shim source, compiled into the binary.
-pub const SHIM_SOURCE: &str = include_str!("../../shim/podnet-vnet.c");
+pub const SHIM_SOURCE: &str = include_str!("../shim/podnet-vnet.c");
 /// The shim's file name on a unix host.
 pub const SHIM_FILE: &str = "libpodnet-vnet.so";
 
@@ -21,7 +21,7 @@ pub const SHIM_FILE: &str = "libpodnet-vnet.so";
 /// `AF_UNIX` SOCKS5 front door for a tailnet address, and leaves every other
 /// socket alone. The abstract-name shim and this one are alternative front
 /// ends, not layers, so they are built and preloaded separately.
-pub const SOCKS_SHIM_SOURCE: &str = include_str!("../../shim/podnet-socks.c");
+pub const SOCKS_SHIM_SOURCE: &str = include_str!("../shim/podnet-socks.c");
 /// The socksifying shim's file name on a unix host.
 pub const SOCKS_SHIM_FILE: &str = "libpodnet-socks.so";
 
@@ -221,12 +221,12 @@ pub(crate) fn compile_source(source_text: &str, file_name: &str, directory: &Pat
     // Only rewrite when the content differs, so a rebuild loop is cheap and an
     // editor's mtime is not fought.
     // Issue 247: a source of another user, or a symlink, is replaced.
-    let needs_write = !crate::state::own_file(&source)
+    let needs_write = !podnet_core::state::own_file(&source)
         || std::fs::read(&source)
             .map(|existing| existing != source_text.as_bytes())
             .unwrap_or(true);
     if needs_write {
-        crate::state::replace_file(&source, source_text.as_bytes(), 0o644)
+        podnet_core::state::replace_file(&source, source_text.as_bytes(), 0o644)
             .context("writing the shim source")?;
     }
     let output = directory.join(file_name);
@@ -286,7 +286,7 @@ pub(crate) fn compile_source(source_text: &str, file_name: &str, directory: &Pat
     }
     // The compiler writes a new file; a rename puts it at `output`, so a
     // symlink at `output` is replaced and not followed.
-    let built = crate::state::temp_name(&output);
+    let built = podnet_core::state::temp_name(&output);
     let mut command = Command::new(&cc);
     command
         .arg("-O2")
@@ -328,8 +328,8 @@ pub(crate) fn compile_source(source_text: &str, file_name: &str, directory: &Pat
             return Err(err).with_context(|| format!("writing {}", output.display()));
         }
     }
-    let _ = crate::state::replace_file(&stamp_path, format!("{stamp}\n").as_bytes(), 0o644);
-    let _ = crate::state::replace_file(
+    let _ = podnet_core::state::replace_file(&stamp_path, format!("{stamp}\n").as_bytes(), 0o644);
+    let _ = podnet_core::state::replace_file(
         &source_stamp_path,
         format!("{source_stamp}\n").as_bytes(),
         0o644,
@@ -345,8 +345,8 @@ pub(crate) fn compile_source(source_text: &str, file_name: &str, directory: &Pat
 /// Issue 247: the stamp is a hash of public text, so a library that another
 /// user put in the directory, or a symlink, is not used.
 fn cached(output: &Path, stamp_path: &Path, stamp: &str) -> bool {
-    crate::state::own_file(output)
-        && crate::state::own_file(stamp_path)
+    podnet_core::state::own_file(output)
+        && podnet_core::state::own_file(stamp_path)
         && std::fs::read_to_string(stamp_path).is_ok_and(|s| s.trim() == stamp)
 }
 

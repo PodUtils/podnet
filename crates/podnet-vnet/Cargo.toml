@@ -1,0 +1,58 @@
+[package]
+name = "podnet-vnet"
+version.workspace = true
+edition = "2021"
+rust-version = "1.99"
+license = "0BSD"
+description = "The userspace virtual network of podnet: the smoltcp stack, the switch, the SOCKS5 and HTTP CONNECT proxy, and the C sources of the LD_PRELOAD shims. A library of podnet, not a stable interface."
+repository = "https://github.com/PodUtils/podnet"
+homepage = "https://github.com/PodUtils/podnet"
+readme = "README.md"
+keywords = ["network", "userspace", "smoltcp", "sandbox"]
+categories = ["network-programming"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[lib]
+name = "podnet_vnet"
+path = "src/lib.rs"
+
+[dependencies]
+podnet-core = { path = "../podnet-core", version = "0.4.0-beta.1" }
+podnet-netns = { path = "../podnet-netns", version = "0.4.0-beta.1" }
+anyhow = "1"
+futures = "0.3"
+libc = "0.2"
+ring = "0.17"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# The same version and features as the root crate (Cargo.toml of podnet).
+smoltcp = { version = "=0.12.0", default-features = false, features = [
+    "std",
+    "medium-ip",
+    "proto-ipv4",
+    "proto-ipv6",
+    "socket-tcp",
+    "socket-udp",
+    "socket-tcp-reno",
+    "socket-tcp-cubic",
+    "assembler-max-segment-count-32",
+] }
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "io-util",
+    "net",
+    "time",
+    "sync",
+    "fs",
+    "process",
+] }
+tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+# need_loopback! of the tests, from the test kit of PodUtils/podcrates at
+# the git tag of the root.
+pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.11.0", version = "0.11.0" }

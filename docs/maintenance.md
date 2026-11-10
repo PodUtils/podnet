@@ -217,10 +217,11 @@ Betas are allowed; there is no crates.io release (`docs/decisions.md`,
 2026-11-09, Releases). When a batch of fixes is green (`CLAUDE.md`):
 
 1. Set the version in `Cargo.toml` (the package and the `podnet-core`,
-   `podnet-netns` and `podnet-serve` dependencies; the `podnet-core`
-   dependency of `crates/podnet-serve/Cargo.toml`), `Cargo.lock` and
-   `fuzz/Cargo.lock` (the packages `podnet`, `podnet-core`, `podnet-netns`
-   and `podnet-serve`).
+   `podnet-netns`, `podnet-serve` and `podnet-vnet` dependencies; the
+   `podnet-core` dependency of `crates/podnet-serve/Cargo.toml` and of
+   `crates/podnet-vnet/Cargo.toml`), `Cargo.lock` and `fuzz/Cargo.lock` (the
+   packages `podnet`, `podnet-core`, `podnet-netns`, `podnet-serve` and
+   `podnet-vnet`).
 2. Write `docs/releases/vX.Y.Z-beta.N.md` (copy the head of the notes before:
    binaries, the check of a download; then `## Breaking`, then the changes
    for a tester, what to report, the limits). `## Breaking` lists each flag,
@@ -241,7 +242,7 @@ Betas are allowed; there is no crates.io release (`docs/decisions.md`,
 At the first stable release (no `-beta.N`), also:
 
 * Set the version of the workspace and of the `podnet-core`,
-  `podnet-netns` and `podnet-serve` dependencies to the stable version (#222): a prerelease version requirement does not
+  `podnet-netns`, `podnet-serve` and `podnet-vnet` dependencies to the stable version (#222): a prerelease version requirement does not
   match a stable crate.
 * Rewrite the line of the README that says `:latest` has no image (#258).
 * Decide the crates.io publish of `podnet` (the name `cfrs` is taken by
@@ -270,7 +271,7 @@ At the first stable release (no `-beta.N`), also:
 | `src/ws.rs` | the WebSocket client. It moves to `pod-ws` of `PodUtils/podcrates` (T-137) |
 | `crates/podnet-core/src/trust.rs` | glue over `pod-tls`: one TLS context of the process on ring, with the edge roots of Cloudflare as extra roots |
 | `crates/podnet-todo/` | `cargo todo`: a wrapper over `pod-todo`; the facts of podnet are in `TODO/todo.toml` |
-| `src/vnet/` | `podnet net`: the userspace networks, the LD_PRELOAD shim |
+| `crates/podnet-vnet/` | `podnet net` (T-048): the userspace networks (the stack, the switch, the proxy, the resolver, the policy) and the C sources of the LD_PRELOAD shims in `shim/` (`include_str!` of `shim.rs` and `tailscale_ssh.rs`). It uses `podnet-core` and `podnet-netns`. `src/lib.rs` gives it at its old path (`podnet::vnet`) |
 | `src/manual/` | `podnet man`; `facts.rs` lists each environment variable |
 | `crates/podnet-netns/` | `podnet pod`: the netns, seccomp and raw backends |
 | `crates/podnet-core/` | the core layer (T-047): `exit`, `hop`, `state`, `report`, `decisions`, `metrics`, `rlimit`, `yaml`, `race`, `util`, `qr`, `ports`, `net`, `trust`, `udp`, `connect`, `services`, `detach`, `instances`, `autostart`, the facts of the build (`podnet_core::build`) and a copy of the print macros. It uses no other crate of the workspace. `src/lib.rs` gives each module at its old path (`podnet::exit`). `src/report.rs` keeps `error_line` (it reads the refusal of `egress`), and `src/core_tests.rs` keeps the tests that read a higher layer or a file of the repository |

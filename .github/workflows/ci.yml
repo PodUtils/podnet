@@ -75,7 +75,9 @@ jobs:
               grep -qx "$f" "$out/pkg-$p.txt" || { echo "$p: no $f in the package"; exit 1; }
             done
           done
-          grep -qx 'shim/podnet-vnet.c' "$out/pkg-podnet.txt"
+          for f in podnet-vnet.c podnet-socks.c fakepwd.c tsgetent tsid; do
+            grep -qx "shim/$f" "$out/pkg-podnet-vnet.txt" || { echo "podnet-vnet: no shim/$f in the package"; exit 1; }
+          done
           if grep -E '^(\.github|\.claude|docs|scripts|fuzz|TODO)/|^(err\.txt|CLAUDE\.md)$' "$out/pkg-podnet.txt"; then
             echo "files of the repository in the package"; exit 1
           fi

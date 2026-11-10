@@ -17,7 +17,7 @@
  * family of the existing descriptor for the AF_UNIX one after the SOCKS5
  * handshake completes, so the rest of the program sees a connected stream.
  *
- * This file is compiled from the embedded copy in src/vnet/shim.rs.
+ * This file is compiled from the embedded copy in crates/podnet-vnet/src/shim.rs.
  */
 #define _GNU_SOURCE
 #include <arpa/inet.h>

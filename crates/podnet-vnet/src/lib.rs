@@ -1,6 +1,9 @@
-//! A userspace virtual network for sealed sandboxes.
+//! podnet-vnet: a userspace virtual network for sealed sandboxes. It is a
+//! library of podnet, not a stable interface: use the crate `podnet`, which
+//! gives this crate at its old path (`podnet::vnet`). The C sources of the
+//! shims are in the directory `shim/` of this crate.
 //!
-//! This module implements the design in `docs/virtual-network.md`:
+//! This crate implements the design in `docs/virtual-network.md`:
 //! a private
 //! IPv4/IPv6 address space that exists without a network namespace, without a
 //! TUN/TAP device, and without `CAP_NET_ADMIN`. Two layers compose:

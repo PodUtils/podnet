@@ -8,7 +8,7 @@
 # login shell then runs under sandhome's userspace pty (fakepty) and its line
 # discipline (errandsh).
 #
-# OpenSSH will not listen on a unix socket, so shim/unixsockd.c is the missing
+# OpenSSH will not listen on a unix socket, so crates/podnet-vnet/shim/unixsockd.c is the missing
 # listener: it accepts on a unix socket and hands each connection to `sshd -i`.
 # `tailscale serve --tcp` then exposes that socket on the tailnet, which is
 # stock Tailscale.
@@ -87,12 +87,12 @@ take fakepty.c "$FAKEPTY_SHA"
 chmod 755 "$dir/errandsh" "$dir/faketty"
 
 cc -O2 -shared -fPIC -o "$dir/fakepty.so" "$dir/fakepty.c" -ldl
-cc -O2 -o "$dir/unixsockd" "$here/../shim/unixsockd.c"
+cc -O2 -o "$dir/unixsockd" "$here/../crates/podnet-vnet/shim/unixsockd.c"
 
 sed -e "s|@DIR@|$dir|g" \
     -e "s|@FAKEPWD@|$shims/fakepwd.so|g" \
     -e "s|@PASSWD@|$shims/passwd|g" \
-    "$here/../shim/loginshell" > "$dir/loginshell"
+    "$here/../crates/podnet-vnet/shim/loginshell" > "$dir/loginshell"
 chmod 755 "$dir/loginshell"
 
 # Point the synthetic users at that login shell.

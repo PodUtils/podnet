@@ -2,7 +2,7 @@
 //!
 //! A [`NetStack`] owns a private IPv4/IPv6 address space and implements the
 //! TCP and UDP state machines for it. Its link layer is an in-process packet
-//! queue ([`crate::vnet::device::LinkDevice`]), so the stack never issues a
+//! queue ([`crate::device::LinkDevice`]), so the stack never issues a
 //! kernel `AF_INET` call. Two modes:
 //!
 //! * **loopback** — the link's transmit path feeds its own receive path, so a
@@ -33,10 +33,10 @@ use smoltcp::wire::{HardwareAddress, IpAddress, IpCidr, IpEndpoint, IpListenEndp
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::sync::{mpsc, oneshot, Notify};
 
-use crate::vnet::addr::{VirtAddr, VirtualSubnet};
-use crate::vnet::device::{DeviceStats, DeviceStatsSnapshot, LinkDevice, PacketQueue};
-use crate::vnet::dns::Resolver;
-use crate::vnet::policy::Acl;
+use crate::addr::{VirtAddr, VirtualSubnet};
+use crate::device::{DeviceStats, DeviceStatsSnapshot, LinkDevice, PacketQueue};
+use crate::dns::Resolver;
+use crate::policy::Acl;
 
 /// A monotonic millisecond clock for smoltcp.
 #[derive(Clone, Debug)]
@@ -267,8 +267,8 @@ impl NetStack {
         // A packet to an address of this stack stays in it (issue 65).
         device.add_local(IpAddr::V4(config.local_v4));
         device.add_local(IpAddr::V6(config.local_v6));
-        device.add_local(config.subnet.gateway(crate::vnet::addr::Family::V4));
-        device.add_local(config.subnet.gateway(crate::vnet::addr::Family::V6));
+        device.add_local(config.subnet.gateway(crate::addr::Family::V4));
+        device.add_local(config.subnet.gateway(crate::addr::Family::V6));
         let link_in = device.inbound();
         let link_out = device.outbound();
         let device_stats = device.stats();
