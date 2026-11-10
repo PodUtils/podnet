@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 81 open, 3 partial, 19 blocked, 121 done.**
+**224 entries: 80 open, 3 partial, 19 blocked, 122 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
 | P2 | 44 | 2 | 13 | 78 | 137 |
-| P3 | 34 | 0 | 4 | 23 | 61 |
-| **All** | 81 | 3 | 19 | 121 | 224 |
+| P3 | 33 | 0 | 4 | 24 | 61 |
+| **All** | 80 | 3 | 19 | 122 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -161,7 +161,7 @@ M8 Overlays, M9 Later.
 | [T-113](pods.md) | P2 | S | M7 | feature | open | `warp exec` and `warp shell` try the netns backend first |
 | [T-114](overlays.md) | P2 | M | M8 | chore | open | A headscale harness in CI for the `tailscaled` sidecar |
 | [T-115](overlays.md) | P3 | S | M8 | feature | open | The tailnet as a network of the registry and of the router |
-| [T-116](overlays.md) | P3 | S | M8 | feature | open | WireGuard: read a wg-quick file into a peer, with optional reserved bytes |
+| [T-116](overlays.md) | P3 | S | M8 | feature | done | WireGuard: read a wg-quick file into a peer, with optional reserved bytes |
 | [T-117](overlays.md) | P3 | M | M8 | feature | open | WireGuard: `wg:FILE` as a network over UDP or over a carrier |
 | [T-118](overlays.md) | P3 | M | M8 | research | open | Research: NetBird, Firezone and ZeroTier as networks |
 | [T-119](later.md) | P3 | M | M9 | feature | open | Router kernel mode: tables, rules and multipath routes through rtnetlink |
