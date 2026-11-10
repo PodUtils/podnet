@@ -728,6 +728,12 @@ Done so far:
   tokio-tungstenite bridge of the relay client until `pod-relay`. Each `pod-*` dependency names
   `tag = "v0.13.0"`. Each line of `adoption/podnet/pod-ws.run` passed; the static binary was built with
   clang for musl, as `cargo-zigbuild` is not on the host. The freeze of `src/ws.rs` ends.
+- `pod-quic` v0.14.0 (b7b0aef; the patch `adoption/podnet/pod-quic.patch` of podcrates, PodUtils/podcrates#50):
+  podnet moves from quinn to noq through `pod-quic` (`cloudflare/{mod,quic,rpc}`, `proxy`, `tunnel`,
+  `warp/{h3,l4,quic,session}`, `ws`); no quinn stays in the tree. `warp::quic::endpoint` and
+  `client_config` stay as glue. `src/warp/quic.rs` takes the version of the patch: `pod-quic` has the
+  shared waker of T-228. Each `pod-*` dependency names `tag = "v0.14.0"`. Each line of
+  `adoption/podnet/pod-quic.run` passed; the static binary was built with clang for musl.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

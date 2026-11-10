@@ -3723,7 +3723,8 @@ sh scripts/agent/check.sh
 task when the list has none that `will_wake` it, and `wake` takes the list and wakes each waker. Test:
 `warp::quic::tests::two_senders_on_a_full_queue_each_wake`; it failed on the one `AtomicWaker` ("sender 0
 was not woken") and passes now. `a_drain_after_pending_wakes_the_send_poller` (T-225) passes. CI: at the
-push.
+push. The take of `pod-quic` (b7b0aef) replaces the socket; `pod-quic` has the same fix
+(`two_senders_on_a_full_way_each_wake`).
 
 # T-216: Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04)
 
