@@ -273,20 +273,20 @@ pub fn response_status(section: &[u8]) -> Result<u16> {
 
 /// The write half of an HTTP/3 session.
 pub struct H3Tx {
-    conn: quinn::Connection,
-    send: quinn::SendStream,
+    conn: noq::Connection,
+    send: noq::SendStream,
     /// The control stream: it must stay open for the life of the session.
-    _control: quinn::SendStream,
+    _control: noq::SendStream,
     /// The endpoint (its UDP socket) of the connection.
-    _endpoint: quinn::Endpoint,
+    _endpoint: noq::Endpoint,
     /// The Quarter Stream ID and the Context ID 0 of each datagram.
     prefix: Vec<u8>,
 }
 
 /// The read half of an HTTP/3 session.
 pub struct H3Rx {
-    conn: quinn::Connection,
-    recv: quinn::RecvStream,
+    conn: noq::Connection,
+    recv: noq::RecvStream,
     frames: Frames,
     quarter: u64,
 }
@@ -300,13 +300,13 @@ pub enum Incoming {
 }
 
 /// The QUIC client configuration of the session.
-fn client_config(tls: Arc<rustls::ClientConfig>) -> Result<quinn::ClientConfig> {
-    let crypto = quinn::crypto::rustls::QuicClientConfig::try_from(tls)
-        .map_err(|err| anyhow::anyhow!("rustls to quinn: {err}"))?;
-    let mut config = quinn::ClientConfig::new(Arc::new(crypto));
-    let mut transport = quinn::TransportConfig::default();
+fn client_config(tls: Arc<rustls::ClientConfig>) -> Result<noq::ClientConfig> {
+    let crypto = noq::crypto::rustls::QuicClientConfig::try_from(tls)
+        .map_err(|err| anyhow::anyhow!("rustls to noq: {err}"))?;
+    let mut config = noq::ClientConfig::new(Arc::new(crypto));
+    let mut transport = noq::TransportConfig::default();
     transport.max_idle_timeout(Some(
-        quinn::IdleTimeout::try_from(IDLE_TIMEOUT).expect("a valid idle timeout"),
+        noq::IdleTimeout::try_from(IDLE_TIMEOUT).expect("a valid idle timeout"),
     ));
     transport.keep_alive_interval(Some(KEEP_ALIVE));
     transport.initial_mtu(INITIAL_MTU);
@@ -319,9 +319,9 @@ fn client_config(tls: Arc<rustls::ClientConfig>) -> Result<quinn::ClientConfig> 
 /// A QUIC connection with HTTP/3 (the control stream is open, the streams
 /// of the server are read and dropped).
 pub struct H3Conn {
-    pub conn: quinn::Connection,
-    control: quinn::SendStream,
-    endpoint: quinn::Endpoint,
+    pub conn: noq::Connection,
+    control: noq::SendStream,
+    endpoint: noq::Endpoint,
 }
 
 /// QUIC with HTTP/3 to `endpoint` (UDP), with the TLS config `tls` (its
@@ -336,7 +336,7 @@ pub async fn open(
     } else {
         "[::]:0".parse().expect("an address")
     };
-    let mut quic = quinn::Endpoint::client(bind).context("a UDP socket for HTTP/3")?;
+    let quic = pod_quic::endpoint::bind(bind).context("a UDP socket for HTTP/3")?;
     quic.set_default_client_config(client_config(tls)?);
     let conn = quic
         .connect(endpoint, sni)
@@ -377,9 +377,9 @@ pub async fn open(
 /// Send the request `headers` on a new stream, and read the status of the
 /// answer. The stream, and the frames after the answer.
 pub async fn request(
-    conn: &quinn::Connection,
+    conn: &noq::Connection,
     headers: &[u8],
-) -> Result<(quinn::SendStream, quinn::RecvStream, Frames, u16)> {
+) -> Result<(noq::SendStream, noq::RecvStream, Frames, u16)> {
     let (mut send, mut recv) = conn.open_bi().await.context("an HTTP/3 request stream")?;
     send.write_all(&frame(FRAME_HEADERS, headers))
         .await
@@ -392,8 +392,8 @@ pub async fn request(
             }
             continue;
         }
-        match recv.read_chunk(64 * 1024, true).await {
-            Ok(Some(chunk)) => frames.push(&chunk.bytes),
+        match recv.read_chunk(64 * 1024).await {
+            Ok(Some(chunk)) => frames.push(&chunk),
             Ok(None) => bail!("the front door closed the request stream with no answer"),
             Err(err) => bail!("reading the HTTP/3 answer: {err}"),
         }
@@ -469,7 +469,7 @@ impl H3Tx {
                 d.extend_from_slice(packet);
                 match self.conn.send_datagram_wait(d.freeze()).await {
                     Ok(()) => continue,
-                    Err(quinn::SendDatagramError::TooLarge) => {}
+                    Err(noq::SendDatagramError::TooLarge) => {}
                     Err(err) => bail!("an HTTP/3 datagram: {err}"),
                 }
             }
@@ -491,7 +491,7 @@ impl H3Tx {
     }
 
     /// The connection, for the liveness check.
-    pub fn connection(&self) -> quinn::Connection {
+    pub fn connection(&self) -> noq::Connection {
         self.conn.clone()
     }
 }
@@ -513,11 +513,11 @@ impl H3Rx {
                             return Ok(Some(Incoming::Packet(packet)));
                         }
                     }
-                    Err(quinn::ConnectionError::LocallyClosed) => return Ok(None),
+                    Err(noq::ConnectionError::LocallyClosed) => return Ok(None),
                     Err(err) => bail!("the HTTP/3 session: {err}"),
                 },
-                chunk = self.recv.read_chunk(64 * 1024, true) => match chunk {
-                    Ok(Some(chunk)) => self.frames.push(&chunk.bytes),
+                chunk = self.recv.read_chunk(64 * 1024) => match chunk {
+                    Ok(Some(chunk)) => self.frames.push(&chunk),
                     Ok(None) => return Ok(None),
                     Err(err) => bail!("reading the CONNECT-IP stream: {err}"),
                 },
@@ -535,7 +535,7 @@ impl H3Rx {
 
 /// Ready with an error when the QUIC connection closes (the keepalive and
 /// the idle timeout of QUIC find a dead path).
-pub async fn closed(conn: quinn::Connection) -> Result<()> {
+pub async fn closed(conn: noq::Connection) -> Result<()> {
     let reason = conn.closed().await;
     bail!("the HTTP/3 session closed: {reason}")
 }

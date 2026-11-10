@@ -314,8 +314,9 @@ IPv6 address in `2606:4700:110::/48`).
 
 ### 5.3 The edge through WARP
 
-`podnet::warp::quic::endpoint` makes a `quinn::Endpoint` whose UDP socket is a
-UDP socket of the `WarpStack`. The QUIC connection to the edge (UDP 7844) thus
+`podnet::warp::quic::endpoint` makes a `noq::Endpoint` whose UDP socket is a
+UDP socket of the `WarpStack` (`pod_quic::queued::QueuedDatagrams` of
+PodUtils/podcrates). The QUIC connection to the edge (UDP 7844) thus
 goes inside the MASQUE session. The host opens only TCP 443.
 
 ### 5.4 Limits

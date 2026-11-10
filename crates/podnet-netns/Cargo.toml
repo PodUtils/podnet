@@ -24,7 +24,7 @@ anyhow = "1"
 libc = "0.2"
 # The SOCKS5 datagram path (UDP ASSOCIATE, the command 0x83, the frames and
 # the datagram header) of PodUtils/podcrates, at the git tag of the root.
-pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.13.0", version = "0.13.0" }
+pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.14.0", version = "0.14.0" }
 serde_json = "1"
 smoltcp = { version = "=0.12.0", default-features = false, features = [
     "std",

@@ -687,8 +687,8 @@ pub fn plan_with_udp(
 enum First {
     Quic(
         Vec<edge::EdgeAddr>,
-        quinn::Endpoint,
-        quinn::Connection,
+        noq::Endpoint,
+        noq::Connection,
         rpc::ControlSession,
         String,
     ),
@@ -814,7 +814,7 @@ async fn direct_targets() -> Result<Vec<edge::EdgeAddr>> {
 
 async fn warp_targets(
     identity: Option<&std::path::Path>,
-) -> Result<(Vec<edge::EdgeAddr>, Arc<WarpLink>, quinn::Endpoint)> {
+) -> Result<(Vec<edge::EdgeAddr>, Arc<WarpLink>, noq::Endpoint)> {
     let discovered = match edge_override()? {
         Some(list) => list,
         None => crate::edge_discovery::discover(IpVersionFilter::V4Only)
@@ -855,7 +855,7 @@ async fn warp_targets(
 /// opens a new session with the same device (no new registration).
 pub(crate) struct WarpLink {
     client: WarpClient,
-    current: tokio::sync::Mutex<(crate::warp::WarpStack, quinn::Endpoint, std::time::Instant)>,
+    current: tokio::sync::Mutex<(crate::warp::WarpStack, noq::Endpoint, std::time::Instant)>,
 }
 
 /// A new session at most this often for failed reconnects (an HA leg must
@@ -863,7 +863,7 @@ pub(crate) struct WarpLink {
 const WARP_REBUILD_GAP: Duration = Duration::from_secs(10);
 
 impl WarpLink {
-    async fn endpoint(&self, stale: bool) -> Result<quinn::Endpoint> {
+    async fn endpoint(&self, stale: bool) -> Result<noq::Endpoint> {
         let mut current = self.current.lock().await;
         let closed = current.0.is_closed();
         if closed || (stale && current.2.elapsed() >= WARP_REBUILD_GAP) {
@@ -889,14 +889,14 @@ impl WarpLink {
 #[derive(Clone)]
 enum EndpointSource {
     /// A kernel UDP socket: always the same endpoint.
-    Fixed(quinn::Endpoint),
+    Fixed(noq::Endpoint),
     /// The WARP session: a new one when it closed (see [`WarpLink`]).
     Warp(Arc<WarpLink>),
 }
 
 impl EndpointSource {
     /// The endpoint for reconnect attempt `attempt` (1 for the first).
-    async fn endpoint(&self, attempt: u32) -> Result<quinn::Endpoint> {
+    async fn endpoint(&self, attempt: u32) -> Result<noq::Endpoint> {
         match self {
             EndpointSource::Fixed(endpoint) => Ok(endpoint.clone()),
             EndpointSource::Warp(link) => link.endpoint(attempt >= 3).await,
@@ -905,13 +905,13 @@ impl EndpointSource {
 }
 
 async fn connect_once(
-    endpoint: &quinn::Endpoint,
+    endpoint: &noq::Endpoint,
     auth: &rpc::TunnelAuth,
     tunnel_id: Uuid,
     conn_index: u8,
     replace_existing: bool,
     edges: &[edge::EdgeAddr],
-) -> Result<(quinn::Connection, rpc::ControlSession, String)> {
+) -> Result<(noq::Connection, rpc::ControlSession, String)> {
     if edges.is_empty() {
         bail!("no edge addresses to dial");
     }
@@ -940,7 +940,7 @@ async fn reactor(
     auth: rpc::TunnelAuth,
     tunnel_id: Uuid,
     source: EndpointSource,
-    mut conn: quinn::Connection,
+    mut conn: noq::Connection,
     mut control: rpc::ControlSession,
     metrics: Metrics,
     mut shutdown: watch::Receiver<bool>,
@@ -979,10 +979,10 @@ async fn reactor(
                         warn!(
                             conn_index,
                             error = %err,
-                            rtt_ms = stats.path.rtt.as_millis() as u64,
+                            rtt_ms = conn.rtt(noq::PathId::ZERO).unwrap_or_default().as_millis() as u64,
                             received = stats.udp_rx.bytes,
                             sent = stats.udp_tx.bytes,
-                            lost_packets = stats.path.lost_packets,
+                            lost_packets = stats.lost_packets,
                             "edge closed the connection; a reconnect follows"
                         );
                         true

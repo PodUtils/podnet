@@ -92,7 +92,7 @@ impl Drop for ControlSession {
 
 /// Open the control stream on `conn` and register the connection.
 pub async fn register_connection(
-    conn: &quinn::Connection,
+    conn: &noq::Connection,
     auth: &TunnelAuth,
     tunnel_id: Uuid,
     conn_index: u8,

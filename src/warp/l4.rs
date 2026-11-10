@@ -99,7 +99,7 @@ impl L4 {
     }
 
     /// The connection of now: a new one when there is none, or it closed.
-    pub async fn connection(&self) -> Result<quinn::Connection> {
+    pub async fn connection(&self) -> Result<noq::Connection> {
         let mut slot = self.conn.lock().await;
         if let Some(c) = slot.as_ref() {
             if c.conn.close_reason().is_none() {
@@ -138,8 +138,8 @@ impl L4 {
 /// Copy the pipe to DATA frames of the stream, and the DATA frames of the
 /// stream to the pipe.
 async fn pump(
-    mut send: quinn::SendStream,
-    mut recv: quinn::RecvStream,
+    mut send: noq::SendStream,
+    mut recv: noq::RecvStream,
     mut frames: h3::Frames,
     pipe: DuplexStream,
 ) {
@@ -174,8 +174,8 @@ async fn pump(
                     Err(_) => break 'outer,
                 }
             }
-            match recv.read_chunk(64 * 1024, true).await {
-                Ok(Some(chunk)) => frames.push(&chunk.bytes),
+            match recv.read_chunk(64 * 1024).await {
+                Ok(Some(chunk)) => frames.push(&chunk),
                 _ => break,
             }
         }
@@ -202,9 +202,9 @@ mod tests {
             .with_single_cert(server_id.cert_chain(), server_id.private_key())
             .unwrap();
         tls.alpn_protocols = vec![h3::ALPN.to_vec()];
-        let crypto = quinn::crypto::rustls::QuicServerConfig::try_from(Arc::new(tls)).unwrap();
-        let server = quinn::Endpoint::server(
-            quinn::ServerConfig::with_crypto(Arc::new(crypto)),
+        let crypto = noq::crypto::rustls::QuicServerConfig::try_from(Arc::new(tls)).unwrap();
+        let server = pod_quic::endpoint::server(
+            pod_quic::endpoint::server_config(Arc::new(crypto)).unwrap(),
             "127.0.0.1:0".parse().unwrap(),
         )
         .unwrap();
@@ -224,8 +224,8 @@ mod tests {
                         send.write_all(&h3::frame(0x00, &payload)).await.unwrap();
                     }
                 }
-                match recv.read_chunk(65536, true).await {
-                    Ok(Some(chunk)) => frames.push(&chunk.bytes),
+                match recv.read_chunk(65536).await {
+                    Ok(Some(chunk)) => frames.push(&chunk),
                     _ => break,
                 }
             }

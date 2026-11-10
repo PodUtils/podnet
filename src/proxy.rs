@@ -43,8 +43,8 @@ pub type EdgeWriter = std::pin::Pin<Box<dyn futures::io::AsyncWrite + Send>>;
 pub async fn serve_stream(
     runtime: std::sync::Arc<ServiceRuntime>,
     ingress: std::sync::Arc<Ingress>,
-    mut send: quinn::SendStream,
-    mut recv: quinn::RecvStream,
+    mut send: noq::SendStream,
+    mut recv: noq::RecvStream,
 ) {
     let mut signature = [0u8; 6];
     if let Err(err) = recv.read_exact(&mut signature).await {
@@ -76,8 +76,8 @@ async fn serve_inner(
     runtime: &ServiceRuntime,
     ingress: &Ingress,
     signature: [u8; 6],
-    send: quinn::SendStream,
-    recv: quinn::RecvStream,
+    send: noq::SendStream,
+    recv: noq::RecvStream,
 ) -> Result<()> {
     use tokio::io::AsyncReadExt as _;
     use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
@@ -1390,8 +1390,8 @@ mod tests {
         assert!(
             matches!(
                 err,
-                quinn::ReadToEndError::Read(quinn::ReadError::Reset(code))
-                    if code == quinn::VarInt::from_u32(RPC_STREAM_REFUSED)
+                noq::ReadToEndError::Read(noq::ReadError::Reset(code))
+                    if code == noq::VarInt::from_u32(RPC_STREAM_REFUSED)
             ),
             "{err:?}"
         );

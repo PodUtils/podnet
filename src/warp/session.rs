@@ -221,7 +221,7 @@ pub struct Keepalive {
 
 enum KeepInner {
     H2(h2::PingPong),
-    H3(quinn::Connection),
+    H3(noq::Connection),
     Wg(super::wg::WgKeepalive),
 }
 
@@ -833,9 +833,9 @@ mod tests {
             .with_single_cert(server_id.cert_chain(), server_id.private_key())
             .unwrap();
         tls.alpn_protocols = vec![h3::ALPN.to_vec()];
-        let crypto = quinn::crypto::rustls::QuicServerConfig::try_from(Arc::new(tls)).unwrap();
-        let config = quinn::ServerConfig::with_crypto(Arc::new(crypto));
-        let server = quinn::Endpoint::server(config, "127.0.0.1:0".parse().unwrap()).unwrap();
+        let crypto = noq::crypto::rustls::QuicServerConfig::try_from(Arc::new(tls)).unwrap();
+        let config = pod_quic::endpoint::server_config(Arc::new(crypto)).unwrap();
+        let server = pod_quic::endpoint::server(config, "127.0.0.1:0".parse().unwrap()).unwrap();
         let addr = server.local_addr().unwrap();
         let task = tokio::spawn(async move {
             let conn = server.accept().await.unwrap().await.unwrap();
@@ -848,8 +848,8 @@ mod tests {
                     }
                     continue;
                 }
-                let chunk = recv.read_chunk(65536, true).await.unwrap().unwrap();
-                frames.push(&chunk.bytes);
+                let chunk = recv.read_chunk(65536).await.unwrap().unwrap();
+                frames.push(&chunk);
             };
             assert!(headers.windows(13).any(|w| w == b"cf-connect-ip"));
             assert_eq!(&headers[2..5], &[0xcf, 0xd7, 0xc1]);
@@ -868,8 +868,8 @@ mod tests {
                         send.write_all(&h3::frame(0x00, &payload)).await.unwrap();
                     }
                 }
-                match recv.read_chunk(65536, true).await {
-                    Ok(Some(chunk)) => frames.push(&chunk.bytes),
+                match recv.read_chunk(65536).await {
+                    Ok(Some(chunk)) => frames.push(&chunk),
                     _ => break,
                 }
             }

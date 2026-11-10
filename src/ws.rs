@@ -129,7 +129,7 @@ pub async fn serve_websocket(
     write_response_meta(&mut writer, 101, &headers).await?;
 
     // The edge stream is a QUIC bidi pair; join it into one socket for the
-    // WebSocket codec. `into_inner` recovers the quinn halves from the
+    // WebSocket codec. `into_inner` recovers the noq halves from the
     // futures-io wrappers used by the request framing.
     let socket = tokio::io::join(reader.compat(), writer.compat_write());
     let session =

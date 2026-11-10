@@ -26,7 +26,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use quinn::{ClientConfig, Endpoint, TransportConfig};
+use noq::{ClientConfig, Endpoint, TransportConfig};
 
 use super::{EdgeAddr, EdgeError};
 
@@ -47,7 +47,7 @@ pub use super::MAX_EDGE_STREAMS;
 pub fn transport_config(initial_mtu: u16) -> TransportConfig {
     let mut transport = TransportConfig::default();
     transport.max_idle_timeout(Some(
-        quinn::IdleTimeout::try_from(MAX_IDLE_TIMEOUT).expect("30 s is a valid idle timeout"),
+        noq::IdleTimeout::try_from(MAX_IDLE_TIMEOUT).expect("30 s is a valid idle timeout"),
     ));
     transport.keep_alive_interval(Some(KEEP_ALIVE_INTERVAL));
     transport.initial_mtu(initial_mtu);
@@ -58,17 +58,17 @@ pub fn transport_config(initial_mtu: u16) -> TransportConfig {
 /// The rustls config for the QUIC edge.
 ///
 /// Split out from [`client_config`] so the ALPN and the trust roots can be
-/// asserted on directly: quinn's own config has no getters, so a test that
-/// reads back a quinn config would prove nothing.
+/// asserted on directly: noq's own config has no getters, so a test that
+/// reads back a noq config would prove nothing.
 pub fn tls_config() -> Result<Arc<rustls::ClientConfig>, EdgeError> {
     super::edge_tls_config(super::quic_alpn()).map_err(EdgeError::Connect)
 }
 
-/// Build a quinn client config for the edge.
+/// Build a noq client config for the edge.
 pub fn client_config() -> Result<ClientConfig, EdgeError> {
     let tls = tls_config()?;
 
-    let quic_tls = quinn::crypto::rustls::QuicClientConfig::try_from(tls)
+    let quic_tls = noq::crypto::rustls::QuicClientConfig::try_from(tls)
         .map_err(|e| EdgeError::Connect(format!("quic tls config: {e}")))?;
 
     let mut config = ClientConfig::new(Arc::new(quic_tls));
@@ -85,15 +85,17 @@ pub fn client_config() -> Result<ClientConfig, EdgeError> {
 /// configuration.
 pub fn build_endpoint() -> anyhow::Result<Endpoint> {
     let bind: std::net::SocketAddr = "[::]:0".parse().expect("a valid address");
-    let mut endpoint = match Endpoint::client(bind) {
+    let endpoint = match pod_quic::endpoint::bind(bind) {
         Ok(endpoint) => endpoint,
         // A host without IPv6 refuses `[::]`; use IPv4 only.
-        Err(_) => Endpoint::client("0.0.0.0:0".parse().expect("a valid address")).map_err(|e| {
-            anyhow::anyhow!(
-                "could not open a local UDP socket: {e}. QUIC needs UDP; \
+        Err(_) => pod_quic::endpoint::bind("0.0.0.0:0".parse().expect("a valid address")).map_err(
+            |e| {
+                anyhow::anyhow!(
+                    "could not open a local UDP socket: {e}. QUIC needs UDP; \
                  where it is blocked, use --protocol http2"
-            )
-        })?,
+                )
+            },
+        )?,
     };
     endpoint.set_default_client_config(client_config().map_err(|e| anyhow::anyhow!("{e}"))?);
     Ok(endpoint)
@@ -101,7 +103,7 @@ pub fn build_endpoint() -> anyhow::Result<Endpoint> {
 
 /// Complete a QUIC handshake with `addr`. The SNI is `quic.cftunnel.com`
 /// for every address.
-pub async fn dial(endpoint: &Endpoint, addr: &EdgeAddr) -> anyhow::Result<quinn::Connection> {
+pub async fn dial(endpoint: &Endpoint, addr: &EdgeAddr) -> anyhow::Result<noq::Connection> {
     let socket = addr.socket();
     let connecting = endpoint
         .connect(socket, super::quic_sni())
@@ -114,10 +116,7 @@ pub async fn dial(endpoint: &Endpoint, addr: &EdgeAddr) -> anyhow::Result<quinn:
 }
 
 /// Try the addresses in sequence. Return the first connection.
-pub async fn dial_any(
-    endpoint: &Endpoint,
-    edges: &[EdgeAddr],
-) -> anyhow::Result<quinn::Connection> {
+pub async fn dial_any(endpoint: &Endpoint, edges: &[EdgeAddr]) -> anyhow::Result<noq::Connection> {
     let mut failures = Vec::new();
     for addr in edges {
         match dial(endpoint, addr).await {
@@ -142,9 +141,9 @@ pub(crate) mod testing {
 
     pub struct Pair {
         /// The connection on the side of the edge.
-        pub edge: quinn::Connection,
+        pub edge: noq::Connection,
         /// The connection on the side of podnet.
-        pub client: quinn::Connection,
+        pub client: noq::Connection,
         _endpoints: (Endpoint, Endpoint),
     }
 
@@ -161,9 +160,9 @@ pub(crate) mod testing {
             .with_single_cert(vec![cert.der().clone()], key_der)
             .unwrap();
         server_tls.alpn_protocols = vec![b"podnet-test".to_vec()];
-        let server_crypto = quinn::crypto::rustls::QuicServerConfig::try_from(server_tls).unwrap();
-        let server = Endpoint::server(
-            quinn::ServerConfig::with_crypto(Arc::new(server_crypto)),
+        let server_crypto = noq::crypto::rustls::QuicServerConfig::try_from(server_tls).unwrap();
+        let server = pod_quic::endpoint::server(
+            pod_quic::endpoint::server_config(Arc::new(server_crypto)).unwrap(),
             "127.0.0.1:0".parse().unwrap(),
         )
         .unwrap();
@@ -171,10 +170,10 @@ pub(crate) mod testing {
         let tls = crate::trust::context()
             .client_config_with(&[cert.pem().as_bytes()], &[b"podnet-test"])
             .unwrap();
-        let crypto = quinn::crypto::rustls::QuicClientConfig::try_from(tls).unwrap();
+        let crypto = noq::crypto::rustls::QuicClientConfig::try_from(tls).unwrap();
         let mut config = ClientConfig::new(Arc::new(crypto));
         config.transport_config(Arc::new(transport_config(1252)));
-        let client = Endpoint::client("127.0.0.1:0".parse().unwrap()).unwrap();
+        let client = pod_quic::endpoint::bind("127.0.0.1:0".parse().unwrap()).unwrap();
         let connecting = client.connect_with(config, addr, "edge.test").unwrap();
         let (edge, client_conn) = tokio::join!(
             async { server.accept().await.unwrap().await.unwrap() },
@@ -194,7 +193,7 @@ mod tests {
 
     /// A local QUIC server opens 200 streams to the client and keeps them
     /// open, as the edge does with 200 requests at the same time. With the
-    /// default of quinn (100), the stream after the 100th waits.
+    /// default of noq (100), the stream after the 100th waits.
     #[tokio::test]
     async fn the_edge_can_open_200_streams_at_the_same_time() {
         crate::test_host::need_loopback!();
@@ -247,10 +246,10 @@ mod tests {
     }
 
     #[test]
-    fn quinn_accepts_the_tls_config_it_is_given() {
-        // The failure this catches is real: rustls 0.23 and quinn disagree
-        // about crypto provider versions, and quinn's try_from is where that
+    fn noq_accepts_the_tls_config_it_is_given() {
+        // The failure this catches is real: rustls 0.23 and noq disagree
+        // about crypto provider versions, and noq's try_from is where that
         // surfaces, with an error that reads as a TLS problem at handshake.
-        client_config().expect("quinn accepts the edge tls config");
+        client_config().expect("noq accepts the edge tls config");
     }
 }

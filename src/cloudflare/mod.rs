@@ -71,7 +71,7 @@ pub fn h2_sni() -> &'static str {
 
 /// The most streams that the edge can open at the same time, on QUIC and
 /// on HTTP/2. The edge opens one stream for each visitor request, and a
-/// quick tunnel allows 200 requests at the same time. The default of quinn
+/// quick tunnel allows 200 requests at the same time. The default of noq
 /// is 100.
 pub const MAX_EDGE_STREAMS: u32 = 256;
 
