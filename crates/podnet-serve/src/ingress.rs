@@ -71,6 +71,9 @@ pub enum Service {
     /// A directory served from disk (a `spa` fallback serves index.html;
     /// with `tar`, `DIR/?tar` gives a directory as one tar stream).
     Static { root: PathBuf, spa: bool, tar: bool },
+    /// The file server of `podnet serve` (T-088): the files of a
+    /// directory, with a listing, and the options of [`crate::files::FilesConfig`].
+    Files(crate::files::FilesConfig),
     /// Prometheus metrics for this tunnel.
     Metrics,
     /// Upload / download / proxy session (the quickbridge feature set).
@@ -142,6 +145,13 @@ impl Service {
             Service::Status(code) => format!("http_status:{code}"),
             Service::Static { root, spa, .. } => {
                 format!("{}:{}", if *spa { "spa" } else { "static" }, root.display())
+            }
+            Service::Files(files) => {
+                format!(
+                    "{}:{}",
+                    if files.spa { "spa" } else { "static" },
+                    files.root.display()
+                )
             }
             Service::Metrics => "metrics".into(),
             Service::Share(config) => config.describe(),

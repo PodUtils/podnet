@@ -319,6 +319,7 @@ fn service_files(service: &Service) -> Vec<String> {
         Service::Unix(path) | Service::UnixTls(path) => vec![path.display().to_string()],
         Service::Forward(ForwardTarget::Unix(path)) => vec![path.display().to_string()],
         Service::Static { root, .. } => vec![root.display().to_string()],
+        Service::Files(files) => vec![files.root.display().to_string()],
         Service::Share(share) => match share.mode {
             ShareMode::Upload => vec![share.dest.display().to_string()],
             ShareMode::Download => share.file.iter().map(|p| p.display().to_string()).collect(),
@@ -357,6 +358,7 @@ async fn service(service: &Service, origin: &OriginOptions) -> Result<String, St
             Ok(format!("{label}: built in"))
         }
         Service::Static { root, spa, .. } => static_dir(root, *spa),
+        Service::Files(files) => static_dir(&files.root, files.spa),
         Service::Share(share) => match share.mode {
             ShareMode::Upload => upload_dir(&share.dest),
             ShareMode::Download => match &share.file {
@@ -456,6 +458,11 @@ fn upload_dir(dest: &Path) -> Result<String, String> {
 fn regular_file(file: &Path) -> Result<String, String> {
     let shown = file.display();
     let meta = std::fs::metadata(file).map_err(|e| format!("--file {shown}: {e}"))?;
+    // T-091: a directory goes as one tar stream.
+    if meta.is_dir() {
+        std::fs::read_dir(file).map_err(|e| format!("--file {shown}: cannot read it: {e}"))?;
+        return Ok(format!("{shown}: a readable directory (one tar stream)"));
+    }
     if !meta.is_file() {
         return Err(format!("--file {shown}: not a regular file"));
     }
@@ -630,9 +637,9 @@ mod tests {
         assert!(report.ok(), "{:?}", report.checks);
         assert!(!root.join("a").exists());
 
-        // A download --file that is a directory.
+        // T-091: a download --file that is a directory is one tar stream.
         let report = check(&with(Service::Share(ShareConfig::download(root)))).await;
-        assert!(failed(&report)[0].ends_with("not a regular file"));
+        assert!(report.ok(), "{:?}", report.checks);
     }
 
     #[tokio::test]

@@ -351,7 +351,7 @@ pub(crate) fn idle_watch(
 
 /// [`wait`] that also ends after `idle_secs` with no request (a planned
 /// end too).
-async fn wait_with_idle(
+pub(crate) async fn wait_with_idle(
     deadline: Option<tokio::time::Instant>,
     controls: Vec<Arc<ShareControl>>,
     idle_secs: u64,

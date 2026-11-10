@@ -166,6 +166,34 @@ jobs:
           test "$(code -u "live:$(cat "$pass")" "$url")" = 200
           curl -fsS -u "live:$(cat "$pass")" "$url" | grep -q 'Hello, world'
           target/release/podnet stop auth
+      # T-091: the file server through a quick tunnel, with --list, --upload
+      # and --users: the listing, a range, a PUT of 1 MiB and a 401.
+      - name: File server through a quick tunnel
+        timeout-minutes: 4
+        run: |
+          set -eu
+          export PODNET_RUN_DIR="$RUNNER_TEMP/run"
+          umask 077
+          pass="$RUNNER_TEMP/files-pass"
+          head -c 18 /dev/urandom | base64 > "$pass"
+          echo "::add-mask::$(cat "$pass")"
+          www="$RUNNER_TEMP/www"
+          mkdir -p "$www/in"
+          printf '0123456789' > "$www/a.txt"
+          printf 'live:write:@%s\n' "$pass" > "$RUNNER_TEMP/files-users"
+          sh scripts/live-run.sh files timeout 120 target/release/podnet serve "$www" --list --upload --users "$RUNNER_TEMP/files-users" --detach --name files
+          url=$(tail -1 files.out | jq -r .url)
+          url=${url%/}
+          auth="live:$(cat "$pass")"
+          code() { curl -sS --retry 5 --retry-all-errors --retry-delay 2 -o /dev/null -w '%{http_code}' "$@"; }
+          test "$(code "$url/")" = 401
+          test "$(code -u live:wrong "$url/")" = 401
+          curl -fsS -u "$auth" -H 'Accept: application/json' "$url/" | jq -e '.entries[] | select(.name == "a.txt")' > /dev/null
+          test "$(curl -fsS -u "$auth" -r 2-4 "$url/a.txt")" = 234
+          head -c 1048576 /dev/urandom > "$RUNNER_TEMP/one.bin"
+          test "$(code -u "$auth" -T "$RUNNER_TEMP/one.bin" "$url/in/one.bin")" = 201
+          cmp "$RUNNER_TEMP/one.bin" "$www/in/one.bin"
+          target/release/podnet stop files
       # UDP 7844 dropped: --protocol auto registers over HTTP/2 after the
       # stagger, and the log names the leg that won.
       - name: Quick tunnel with UDP 7844 dropped (HTTP/2 fallback)
@@ -458,6 +486,30 @@ jobs:
           if target/release/podnet ps --json | jq -e '.instances[] | select(.name == "relaynode")' > /dev/null; then
             echo "the node instance runs after relay stop"; exit 1
           fi
+      # T-091: the file server through the reverse relay: serve --via relay,
+      # and relay connect --listen on the side of the operator.
+      - name: File server through the reverse relay
+        timeout-minutes: 4
+        run: |
+          set -eu
+          export PODNET_RUN_DIR="$RUNNER_TEMP/files-relay-run"
+          umask 077
+          target/release/podnet relay pair --json > files-pair.json
+          name=$(jq -r .name files-pair.json)
+          echo "::add-mask::$name"
+          echo "::add-mask::$(jq -r .connect_token files-pair.json)"
+          www="$RUNNER_TEMP/www-relay"
+          mkdir -p "$www"
+          printf 'over the relay' > "$www/a.txt"
+          target/release/podnet serve "$www" --via relay --pair "$name" --list --detach --name filesrelay > /dev/null
+          target/release/podnet relay connect "$name" --listen tcp://127.0.0.1:18091 --detach --name filesconnect > /dev/null
+          test "$(curl -fsS --retry 5 --retry-all-errors --retry-delay 2 http://127.0.0.1:18091/a.txt)" = 'over the relay'
+          head -c 1048576 /dev/urandom > "$RUNNER_TEMP/relay.bin"
+          cp "$RUNNER_TEMP/relay.bin" "$www/relay.bin"
+          curl -fsS -o "$RUNNER_TEMP/relay.back" http://127.0.0.1:18091/relay.bin
+          cmp "$RUNNER_TEMP/relay.bin" "$RUNNER_TEMP/relay.back"
+          target/release/podnet stop filesconnect
+          target/release/podnet relay stop "$name" > /dev/null
       - name: WARP account and probe
         timeout-minutes: 4
         run: |

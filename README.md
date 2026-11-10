@@ -456,15 +456,28 @@ discovery.
 ### Serve a directory
 
 ```sh
-podnet serve --dir ./public
-podnet serve --dir ./app --spa          # send index.html for unknown paths
-podnet serve --dir ./public --local 127.0.0.1:8080      # this host only, no tunnel
-podnet serve --dir ./public --local unix:/run/site.sock # a unix socket, no tunnel
+podnet serve ./public                   # DIR, or --dir DIR
+podnet serve ./app --spa                # send index.html for unknown paths
+podnet serve ./public --local 127.0.0.1:8080      # this host only, no tunnel
+podnet serve ./public --local unix:/run/site.sock # a unix socket, no tunnel
+podnet serve ./public --local 127.0.0.1:8080 --via tunnel  # both
+podnet serve ./public --via relay --pair NAME     # through a relay pair
 ```
 
-With no `--local`, `podnet serve` makes a public quick tunnel (or the named
-tunnel of `--token`). `--local ADDR` serves the same files on a local
-listener and makes no tunnel:
+`--via` gives the road to the visitors:
+
+* `tunnel` (the default with no `--local`): a public quick tunnel, or the
+  named tunnel of `--token`.
+* `relay`: the node of a relay pair (`podnet relay pair`). `--pair NAME`
+  names the pair; the default is the pair with the most time left. The
+  files listen on a private unix socket in the run directory, and the node
+  connects each session of an operator to it. The operator runs
+  `podnet relay connect NAME --listen tcp://127.0.0.1:8080` and opens
+  `http://127.0.0.1:8080/`.
+* `none` (the default with `--local`): only the local listeners.
+
+`--local ADDR` (more than one is permitted) serves the same files on a
+local listener:
 
 * `ADDR` is `HOST:PORT`, `tcp://HOST:PORT` or `unix:PATH`.
 * Port 0 takes a free port. podnet prints the bound address
@@ -475,8 +488,9 @@ listener and makes no tunnel:
   is not a socket is refused (exit 64). podnet removes its socket at the
   end.
 * An address in use is refused (exit 69).
-* `--auth-user` and `--check` are refused with `--local`. The other
-  tunnel flags have no effect.
+* `--check` is refused with `--local`, and is for `--via tunnel` only.
+  With `--via none`, the tunnel flags have no effect, except `--auth-user`
+  (see below). The `--json` ready line has `listens`, each listener.
 
 `podnet serve` serves only the files in `--dir`:
 
@@ -499,6 +513,77 @@ podnet serve --dir ./public --tar --local 127.0.0.1:8080
 curl -fsS 'http://127.0.0.1:8080/docs/?tar' | tar -xf -
 ```
 
+With `--list`, a directory with no `index.html` answers a listing of its
+files. A browser gets HTML. A request with `Accept: application/json` gets
+`{"path": "/docs/", "entries": [{"name", "type", "size", "modified"}]}`,
+with `type` `dir` or `file` and `modified` in seconds after the Unix epoch.
+The listing has the same rules: no dot name, no link out of `--dir`, no
+FIFO, socket or device. A directory path with no `/` at its end goes to
+the path with the `/` (308).
+
+```sh
+podnet serve --dir ./public --list --local 127.0.0.1:8080
+curl -fsS -H 'Accept: application/json' http://127.0.0.1:8080/docs/
+```
+
+#### Users, roles and a PIN
+
+The file server checks its visitors itself, on each listener (`--local`,
+the tunnel and the relay):
+
+* `--users FILE`: the users (HTTP Basic). Each line is
+  `USER:ROLE:HASH` or `USER:ROLE:@PASSWORD-FILE`. `ROLE` is `read` or
+  `write`; a write user can also read. A relative `PASSWORD-FILE` starts at
+  the directory of `FILE`. `FILE` and each password file must have mode
+  0600. An empty line and a line that starts with `#` are skipped.
+* `--auth-user USER --auth-password-file FILE`: one more user, with the
+  write role.
+* `--pin`: the files are locked with a 6-digit PIN, as `share --password`.
+  podnet prints the PIN (`pin` in the `--json` line). With no users, the
+  PIN gives the write role.
+* `--anon-read`: a GET or HEAD needs no user and no PIN. A change still
+  needs a write user (or the PIN).
+
+A request with no user or a wrong password gets 401 with a Basic
+challenge. A read user that sends a change gets 403.
+
+`podnet serve --hash-password` reads a password from the first line of
+stdin and prints its hash (`pbkdf2-sha256$ITERATIONS$SALT$KEY`, PBKDF2 with
+HMAC-SHA256, hex):
+
+```sh
+printf '%s\n' "$PASSWORD" | podnet serve --hash-password
+# pbkdf2-sha256$210000$...$...
+install -m 600 /dev/null users
+echo "alice:read:$(printf '%s\n' "$PASSWORD" | podnet serve --hash-password)" >> users
+podnet serve --dir ./public --list --users users --local 127.0.0.1:8080
+curl -fsS -u alice http://127.0.0.1:8080/
+```
+
+#### Uploads
+
+With `--upload`, a write user (or a visitor with the PIN) can add files:
+
+* `PUT /PATH` writes the body to the file `PATH` (`curl -T`). A new file
+  gets 201, a replaced file 204. The directory of `PATH` must exist (else
+  409).
+* A multipart form `POST` to a directory adds each file of the form to the
+  directory. A name in use gets a number (`name-1.ext`); no file is
+  replaced. The listing of `--list` shows the form to a write user.
+* A file goes to a hidden part file (mode 0600) first. A rename gives it
+  its name when it is complete: a reader never sees a part of a file.
+* `--max-upload BYTES` (default 100000000) is the most bytes of one
+  request. A larger `Content-Length` gets 413 before podnet reads the
+  body. A larger body with no `Content-Length` gets 413 at the limit. No
+  file stays.
+* A name that starts with a dot (also `..`), a link out of `--dir` and a
+  read user are refused (403 or 409).
+
+```sh
+podnet serve --dir ./share --list --upload --users users --local 127.0.0.1:8080
+curl -fsS -u bob -T report.pdf http://127.0.0.1:8080/inbox/report.pdf
+```
+
 The library type `podnet::origin::StaticDir` has the same rules. It also
 applies them to the directory index and to the SPA index.
 `podnet::feature::StaticServer::respond` gives a `StaticResponse`. Its
@@ -511,6 +596,8 @@ served with a bounded memory.
 ```sh
 podnet share --mode upload --password                 # receive files, with a PIN
 podnet share --mode download --file ./report.pdf      # send one file
+podnet share --file ./photos                          # send a directory as one tar
+podnet share --file ./report.pdf --local 127.0.0.1:8080  # no tunnel
 podnet share --mode proxy --port 3000                 # share a local port, with a PIN
 podnet share --mode proxy --unix /run/api.sock        # share an HTTP unix socket, with a PIN
 podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
@@ -552,6 +639,13 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   answer before the end of the upload does not reach the visitor reliably
   through the edge. The page refuses such a selection before it sends. To
   send more, use more uploads.
+* A directory in `--file` goes as one ustar stream (`DIR.tar`), with the
+  rules of `serve --tar`: no dot name, no link out of the directory, no
+  FIFO, socket or device.
+* `--local ADDR` serves the session on a local listener (HOST:PORT,
+  tcp://HOST:PORT or unix:PATH, as `serve --local`) and makes no tunnel.
+  podnet prints the session URL (`url` and `path` in the `--json` line).
+  It is for upload and download; proxy mode needs the tunnel.
 * A download name that is not ASCII goes in `filename*=UTF-8''...` (RFC
   5987), with an ASCII `filename=`.
 * `--stop-after` stops the session after the first transfer. `--idle-secs`

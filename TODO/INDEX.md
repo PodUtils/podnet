@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**227 entries: 72 open, 3 partial, 19 blocked, 133 done.**
+**227 entries: 68 open, 4 partial, 19 blocked, 136 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 22 | 27 |
-| P2 | 42 | 2 | 13 | 81 | 138 |
+| P2 | 38 | 3 | 13 | 84 | 138 |
 | P3 | 27 | 0 | 4 | 30 | 61 |
-| **All** | 72 | 3 | 19 | 133 | 227 |
+| **All** | 68 | 4 | 19 | 136 | 227 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -133,10 +133,10 @@ M8 Overlays, M9 Later.
 | [T-085](services.md) | P2 | M | M6 | feature | done | A ustar writer and reader, and a directory as one tar download of the file server |
 | [T-086](services.md) | P2 | L | M6 | feature | open | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
 | [T-087](services.md) | P2 | M | M6 | feature | open | `relay node` and `relay connect` resume a session past the limits of the relay |
-| [T-088](services.md) | P2 | S | M6 | feature | open | File server: a directory listing in HTML and JSON |
-| [T-089](services.md) | P2 | M | M6 | feature | open | File server: users with read and write roles, and a PIN, on each listener |
-| [T-090](services.md) | P2 | M | M6 | feature | open | File server: uploads into the served tree with PUT and a multipart form |
-| [T-091](services.md) | P2 | M | M6 | feature | open | `podnet serve DIR --via`, a local `share`, a directory in `share`, and the live step of the file server |
+| [T-088](services.md) | P2 | S | M6 | feature | done | File server: a directory listing in HTML and JSON |
+| [T-089](services.md) | P2 | M | M6 | feature | done | File server: users with read and write roles, and a PIN, on each listener |
+| [T-090](services.md) | P2 | M | M6 | feature | done | File server: uploads into the served tree with PUT and a multipart form |
+| [T-091](services.md) | P2 | M | M6 | feature | partial | `podnet serve DIR --via`, a local `share`, a directory in `share`, and the live step of the file server |
 | [T-092](services.md) | P2 | L | M6 | feature | open | Git: a CGI runner for `git http-backend`, and the smart HTTP router |
 | [T-093](services.md) | P2 | M | M6 | feature | done | Git: an SSH server for upload-pack and receive-pack |
 | [T-094](services.md) | P2 | M | M6 | feature | open | `podnet git serve`: the repository root, `git init`, `git urls`, the tunnel, the relay and the live step |

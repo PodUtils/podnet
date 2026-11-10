@@ -2,7 +2,7 @@
 //! reimplemented as a library service so a tunnel can expose it directly.
 //!
 //! - **Upload**: a multipart form saves files into a directory.
-//! - **Download**: serves one file (or a clipboard snapshot) once.
+//! - **Download**: serves one file, or a directory as one tar stream.
 //! - **Proxy**: forwards everything to an existing local HTTP port.
 //!
 //! A random token lives in the URL path; an optional 6-digit PIN gate adds a
@@ -233,6 +233,8 @@ struct DownloadState {
     token: String,
     file: PathBuf,
     name: String,
+    /// The file is a directory: it goes as one tar stream (T-091).
+    dir: bool,
     stop_after: bool,
     gate: Gate,
     control: Arc<ShareControl>,
@@ -255,12 +257,16 @@ impl ShareApp {
         }
         if let Some(file) = &config.file {
             match std::fs::metadata(file) {
-                Ok(meta) if meta.is_file() => {}
+                // T-091: a directory goes as one tar stream.
+                Ok(meta) if meta.is_file() || meta.is_dir() => {}
                 // Issue 249: exit 78, not 1.
                 Ok(_) => {
                     return Err(podnet_core::exit::fault(
                         podnet_core::exit::Fault::Config,
-                        anyhow::anyhow!("--file {}: not a regular file", file.display()),
+                        anyhow::anyhow!(
+                            "--file {}: not a regular file or a directory",
+                            file.display()
+                        ),
                     ))
                 }
                 Err(err) => {
@@ -305,6 +311,7 @@ mod upload;
 use download::*;
 pub use upload::CHUNK_LIMIT;
 use upload::*;
+pub(crate) use upload::{create_unique, next_chunk};
 
 /// A path under `/s/` must name the session id of this share: the id is the
 /// secret of the URL. A wrong id (compared in constant time) answers 404.
@@ -323,10 +330,10 @@ async fn check_session(
 }
 
 #[derive(Deserialize)]
-struct UnlockForm {
-    password: String,
+pub(crate) struct UnlockForm {
+    pub(crate) password: String,
     #[serde(default)]
-    next: String,
+    pub(crate) next: String,
 }
 
 /// The host of a request: the `Host` header, else the authority of the URI.
@@ -337,7 +344,7 @@ fn request_host<'a>(headers: &'a HeaderMap, uri: &'a Uri) -> Option<&'a str> {
         .or_else(|| uri.authority().map(|a| a.as_str()))
 }
 
-fn unlock_response(
+pub(crate) fn unlock_response(
     gate: &Gate,
     headers: &HeaderMap,
     uri: &Uri,
@@ -370,7 +377,7 @@ fn unlock_response(
     }
 }
 
-fn gate_blocked(
+pub(crate) fn gate_blocked(
     gate: &Gate,
     method: &http::Method,
     headers: &HeaderMap,

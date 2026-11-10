@@ -8,14 +8,27 @@ pub(super) fn download_router(config: &ShareConfig, control: Arc<ShareControl>) 
         .file
         .clone()
         .context("download session needs a file")?;
-    let name = file
+    let dir = file.is_dir();
+    // A directory: the canonical path, so that the guard of the tar
+    // stream knows its root.
+    let file = if dir {
+        file.canonicalize()
+            .with_context(|| format!("--file {}", file.display()))?
+    } else {
+        file
+    };
+    let mut name = file
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "download".into());
+    if dir {
+        name.push_str(".tar");
+    }
     let state = Arc::new(DownloadState {
         token: config.token.clone(),
         file,
         name,
+        dir,
         stop_after: config.stop_after,
         gate: config.gate.clone(),
         control,
@@ -77,6 +90,9 @@ pub(super) async fn download_file(
         return response;
     }
     state.control.touch();
+    if state.dir {
+        return download_tree(&state, &method);
+    }
     // podssh #105: open with O_NONBLOCK (an open of a FIFO does not
     // block), then serve only a regular file. A FIFO put at the path after
     // the start blocked the request.
@@ -182,6 +198,25 @@ pub(super) async fn download_file(
     response
         .body(body)
         .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
+
+/// T-091: the shared directory as one tar stream. With --stop-after, the
+/// session ends when the last byte has gone out in a GET.
+fn download_tree(state: &DownloadState, method: &http::Method) -> Response {
+    let response = crate::tar_http::answer(state.file.clone(), state.file.clone(), method);
+    if !state.stop_after || method == http::Method::HEAD || !response.status().is_success() {
+        return response;
+    }
+    use futures::StreamExt;
+    let control = state.control.clone();
+    response.map(|body| {
+        let done = futures::stream::once(async move {
+            control.request_stop();
+            None::<Result<bytes::Bytes, axum::Error>>
+        })
+        .filter_map(|item| async move { item });
+        Body::from_stream(body.into_data_stream().chain(done))
+    })
 }
 
 /// Parse a Range header for a file of `len` bytes: `Ok(Some((start, end)))`

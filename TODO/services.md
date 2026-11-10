@@ -293,7 +293,7 @@ after the take.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -324,6 +324,24 @@ A name with `<script>` is escaped in the HTML listing.
 
 T-062 is done.
 
+## Correction
+
+2026-11-10, The listing does not use the traits of T-062. It is a part of the router of the files
+(`crates/podnet-serve/src/files/mod.rs`). The entry is done before T-062. `serve` takes the file server
+as the new service `Service::Files` (`crates/podnet-serve/src/ingress.rs`); `static:` and `spa:` keep
+`Service::Static`.
+
+## Done
+
+2026-11-10, commit c1d4daf. The static router and its guard are in `crates/podnet-serve/src/files/mod.rs`.
+`serve --list`: a directory with no `index.html` answers a listing (`crates/podnet-serve/src/files/listing.rs`).
+HTML escapes each name and percent-encodes each link; `Accept: application/json` gives
+`{"path", "entries": [{"name", "type", "size", "modified"}]}`. The listing hides the dotfiles, each link out
+of the root and each special file. A directory path with no `/` at its end gives 308 to the path with the `/`.
+`cargo test -p podnet-serve -- a_listing_escapes_names_and_hides_dotfiles a_listing_in_json`: 2 passed. Tests
+added: `a_listing_escapes_names_and_hides_dotfiles`, `a_listing_in_json`. The three tests of the static
+router moved with their names. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
+
 # T-089: File server: users with read and write roles, and a PIN, on each listener
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 3.1 to 3.3.
@@ -331,7 +349,7 @@ T-062 is done.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -357,6 +375,25 @@ cargo test -p podnet-serve -- serve_users_have_roles serve_pin_unlocks
 
 T-084 is done.
 
+## Correction
+
+2026-11-10, T-084 is open: the shared layer does not exist. The access of the file server is a layer of its
+own router (`crates/podnet-serve/src/files/access.rs`), so it works on each listener. T-084 can make it the
+shared layer. A users line with a password file is `USER:ROLE:@PASSWORD-FILE`. `--auth-user` of `serve` is a
+write user of the file server: the tunnel does not check it for `serve`.
+
+## Done
+
+2026-11-10, commit 73e250e. `crates/podnet-serve/src/files/access.rs`: Basic users with the roles read and
+write (a PBKDF2-HMAC-SHA256 hash, or a password file of mode 0600; the users file has mode 0600), the PIN
+gate of `share`, and an anonymous read. 401 with a Basic challenge for no user or a wrong password; 403 for
+a change by a read user. CLI: `serve --users FILE`, `--pin` (the PIN is printed, and is in the `--json`
+line), `--anon-read`, `--hash-password`; `--auth-user` works with `--local`. The command moved to
+`src/cli/cmd/serve.rs`. `cargo test -p podnet-serve -- serve_users_have_roles serve_pin_unlocks`: 2 passed.
+`cargo test --test cli -- serve_local_checks_users_and_the_pin`: 1 passed. Tests added:
+`serve_users_have_roles`, `serve_pin_unlocks`, `serve_local_checks_users_and_the_pin`.
+`sh scripts/agent/check.sh`: exit 0. CI: at the merge.
+
 # T-090: File server: uploads into the served tree with PUT and a multipart form
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 3.1 to 3.5.
@@ -364,7 +401,7 @@ T-084 is done.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -396,6 +433,19 @@ A PUT gives 201. A PUT over the limit gives 413 and leaves no file. A PUT with `
 
 T-089 is done.
 
+## Done
+
+2026-11-10, commit 03bae2f. `crates/podnet-serve/src/files/upload.rs`: `serve --upload` takes a PUT of one
+file (201 new, 204 replaced, 409 with no directory) and a multipart form POST to a directory (a name in use
+gets a number; no file is replaced), for the write role. Each file goes to a hidden part file of mode 0600,
+then a rename gives it its name. `--max-upload BYTES` (default 100000000): a larger `Content-Length` gets
+413 before the body; a larger body gets 413 at the limit; no file and no part file stay. A dot segment
+(also `..` and `%2e%2e`), a link out of the root and a read user are refused. The listing shows the form to
+a write user. The streaming core reuses `next_chunk` and `create_unique` of `share`.
+`cargo test -p podnet-serve -- put_into_the_tree_is_atomic_and_bounded`: 1 passed. Tests added:
+`put_into_the_tree_is_atomic_and_bounded`, `a_form_uploads_into_a_directory`. `sh scripts/agent/check.sh`:
+exit 0. CI: at the merge.
+
 # T-091: `podnet serve DIR --via`, a local `share`, a directory in `share`, and the live step of the file server
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 3.2, 3.3 and 3.5.
@@ -403,7 +453,7 @@ T-089 is done.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -435,6 +485,31 @@ gh workflow run live.yml
 ## Start condition
 
 T-083, T-085, T-088, T-089 and T-090 are done.
+
+## Correction
+
+2026-11-10, T-083 is blocked (the code of the relay node is frozen). `--via relay` does not need it: the
+file server listens on a private unix socket of the run directory, and `run_node` of the frozen relay code
+connects each session to it, with no change of that code (`src/cli/cmd/serve_relay.rs`). When podnet takes
+`pod-relay`, a handler target can replace the socket.
+
+Done in commit 3d9e225 (steps 1 to 3, and the text of step 4):
+
+- `podnet serve DIR` (or `--dir DIR`), `--local ADDR` more than one time, `--via tunnel|relay|none`
+  (`src/cli/cmd/serve.rs`), `--pair NAME` for the relay, with `--list`, `--upload`, `--tar` and the flags
+  of T-089. `--via tunnel` or `relay` with `--local` serves the local listeners too.
+- `share --local ADDR` for upload and download (`src/cli/cmd/share.rs`); `share --file DIR` gives the
+  directory as one tar stream (`crates/podnet-serve/src/share/download.rs`).
+- `.github/workflows/live.yml`: the steps "File server through a quick tunnel" (the listing, a range, a PUT
+  of 1 MiB, a 401) and "File server through the reverse relay".
+- Tests: `cargo test --test cli -- serve_dir_with_list_upload_and_users share_local_serves_a_directory`:
+  2 passed; `cargo test --test relay_reverse -- serve_via_relay_answers_through_the_relay` (a fake relay):
+  1 passed; `cargo test -p podnet-serve -- a_directory_downloads_as_one_tar`: 1 passed.
+  `sh scripts/agent/check.sh`, `unshare -n -- cargo test --offline --workspace --no-fail-fast` and
+  `sh scripts/restricted-host.sh --no-fail-fast`: exit 0.
+
+Left: the run of `gh workflow run live.yml` on a live host. Set the entry to done after a green run of
+the two new steps.
 
 # T-092: Git: a CGI runner for `git http-backend`, and the smart HTTP router
 
