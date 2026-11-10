@@ -322,7 +322,7 @@ T-063, T-064, T-071 and T-111 are done.
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -349,6 +349,19 @@ other end and the accepted connection in user space (`copy_bidirectional`, `secc
 cargo test --test pod_seccomp_handoff -- seccomp_inbound_accept_leaves_no_relay
 cargo test --test pod_seccomp -- seccomp_backend_accepts_inbound seccomp_inbound_wakes_epoll_and_accept_does_not_block_the_child
 ```
+
+## Done
+
+2026-11-10, commit 974fce0 (`T-150: seccomp: the program holds an accepted inbound connection`).
+`install_accepted` (`crates/podnet-netns/src/seccomp/accept.rs`) installs the accepted unix stream in
+the program (`notif_addfd_send`) with the `O_NONBLOCK` of its `accept4`. No socket pair and no relay
+task. `-v` prints `accept on port N: the program holds the connection (no relay)`. The supervisor
+reads no byte of an inbound connection, so no case keeps the relay (step 3). The Prove commands: 1
+passed (`seccomp_inbound_accept_leaves_no_relay`: the accepted socket has the name of the inbound
+socket, and the pod exits in less than 2.5 s while the client holds its end open) and 2 passed.
+Before the fix, the new test failed (`accepted_path` empty: a socket pair). The new test passes
+under `unshare -n`. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI: at the merge.
+GitHub #351 (fix 1) closes with T-151.
 
 # T-151: seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351)
 

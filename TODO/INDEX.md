@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 81 open, 3 partial, 19 blocked, 121 done.**
+**224 entries: 80 open, 3 partial, 19 blocked, 122 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
 | P2 | 45 | 2 | 13 | 77 | 137 |
-| P3 | 33 | 0 | 4 | 24 | 61 |
-| **All** | 81 | 3 | 19 | 121 | 224 |
+| P3 | 32 | 0 | 4 | 25 | 61 |
+| **All** | 80 | 3 | 19 | 122 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -195,7 +195,7 @@ M8 Overlays, M9 Later.
 | [T-147](fixes.md) | P2 | S | M5 | defect | done | seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350) |
 | [T-148](fixes.md) | P3 | S | M5 | defect | done | seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350) |
 | [T-149](fixes.md) | P3 | S | M5 | research | done | seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350) |
-| [T-150](pods.md) | P3 | S | M7 | feature | open | seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351) |
+| [T-150](pods.md) | P3 | S | M7 | feature | done | seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351) |
 | [T-151](pods.md) | P3 | M | M7 | measurement | open | seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351) |
 | [T-152](pods.md) | P3 | S | M7 | research | open | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
 | [T-153](later.md) | P3 | L | M9 | feature | open | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
