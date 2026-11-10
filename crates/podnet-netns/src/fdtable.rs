@@ -12,10 +12,15 @@
 //! refers to the socket. Some descriptors close with no `close` call (the
 //! exit of a process, `execve` with close-on-exec, `close_range`). A sweep
 //! removes the entries of these sockets: it runs when the table doubles,
-//! and before the table refuses a socket at [`MAX_TRACKED_FDS`].
+//! and before the table refuses a socket at its ceiling ([`ceiling`]).
+//!
+//! The budget (T-181): the ceiling is `--flow-budget N`, else it comes from
+//! `RLIMIT_NOFILE` ([`derived_ceiling`]). Each refused `socket` call is
+//! counted by its class ([`Refusal`]).
 
 use std::collections::HashSet;
 use std::os::unix::ffi::OsStrExt;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 use crate::prelude::*;
 
@@ -25,6 +30,153 @@ pub(crate) type Key = u64;
 
 /// The table size of the first sweep.
 const FIRST_SWEEP: usize = 64;
+
+/// The supervisor descriptors of one tracked socket: its end of the pair
+/// and the upstream (a datagram socket: its end, a copy and the relay).
+const FDS_PER_SOCKET: u64 = 2;
+/// The descriptors of the supervisor that are not tracked sockets.
+const RESERVE: u64 = 64;
+/// The smallest and the largest ceiling.
+pub(crate) const MIN_CEILING: usize = 64;
+pub(crate) const MAX_CEILING: usize = 1 << 20;
+/// The ceiling of the derived budget.
+const MAX_DERIVED: usize = 65_536;
+
+/// The ceiling of the table of this pod.
+static CEILING: AtomicUsize = AtomicUsize::new(MAX_TRACKED_FDS);
+
+/// The ceiling of the table: the number of sockets of the program that the
+/// supervisor tracks at one time.
+pub(crate) fn ceiling() -> usize {
+    CEILING.load(Ordering::Relaxed)
+}
+
+/// Set the ceiling (`--flow-budget`, or [`derived_ceiling`]).
+pub(crate) fn set_ceiling(n: usize) {
+    CEILING.store(n.clamp(MIN_CEILING, MAX_CEILING), Ordering::Relaxed);
+}
+
+/// The soft and the hard `RLIMIT_NOFILE` of this process.
+// rlim_t is u32 on some 32-bit targets.
+#[allow(clippy::unnecessary_cast)]
+pub(crate) fn nofile() -> (u64, u64) {
+    let mut limit = libc::rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+    // SAFETY: getrlimit writes one rlimit.
+    if unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut limit) } != 0 {
+        return (1024, 1024);
+    }
+    (limit.rlim_cur as u64, limit.rlim_max as u64)
+}
+
+/// Raise the soft `RLIMIT_NOFILE` of the supervisor to the hard limit.
+/// Call it after the fork of the program: the program keeps its limit.
+pub(crate) fn raise_nofile() {
+    let (soft, hard) = nofile();
+    if soft < hard {
+        let limit = libc::rlimit {
+            rlim_cur: hard as libc::rlim_t,
+            rlim_max: hard as libc::rlim_t,
+        };
+        // SAFETY: setrlimit reads one rlimit.
+        unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &limit) };
+    }
+}
+
+/// The ceiling for a descriptor limit `limit` of the supervisor: the
+/// descriptors above a reserve, two for each socket, from 64 to 65536.
+pub(crate) fn derived_ceiling(limit: u64) -> usize {
+    let n = limit.saturating_sub(RESERVE) / FDS_PER_SOCKET;
+    (n.min(MAX_DERIVED as u64) as usize).max(MIN_CEILING)
+}
+
+/// The class of a refused `socket` call (T-181).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Refusal {
+    /// The table is at its ceiling (`EMFILE`).
+    TableFull,
+    /// The supervisor could not make the socket pair (its own descriptor
+    /// limit; `EMFILE`).
+    SocketPair,
+    /// A handler failed before it answered (`EIO`, or `ECONNREFUSED` for
+    /// `connect`).
+    Other,
+}
+
+impl Refusal {
+    const ALL: [Refusal; 3] = [Refusal::TableFull, Refusal::SocketPair, Refusal::Other];
+
+    /// The name of the class in the log and in the record.
+    pub(crate) fn name(self) -> &'static str {
+        match self {
+            Refusal::TableFull => "table full",
+            Refusal::SocketPair => "socketpair failed",
+            Refusal::Other => "other",
+        }
+    }
+}
+
+/// The counters of the refusals, one for each class.
+#[derive(Default)]
+pub(crate) struct Refusals([AtomicU64; 3]);
+
+impl Refusals {
+    /// Count one refusal of `class`. Return the new count of the class.
+    pub(crate) fn count(&self, class: Refusal) -> u64 {
+        self.0[class as usize].fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    /// The count of each class, in the order of [`Refusal::ALL`].
+    pub(crate) fn counts(&self) -> [(Refusal, u64); 3] {
+        Refusal::ALL.map(|class| (class, self.0[class as usize].load(Ordering::Relaxed)))
+    }
+
+    /// One line with each count, or `None` when no call was refused.
+    pub(crate) fn summary(&self) -> Option<String> {
+        let counts = self.counts();
+        let total: u64 = counts.iter().map(|(_, n)| n).sum();
+        if total == 0 {
+            return None;
+        }
+        let parts: Vec<String> = counts
+            .iter()
+            .map(|(class, n)| format!("{} {n}", class.name()))
+            .collect();
+        Some(format!(
+            "{total} socket calls refused ({}); the flow budget is {} (--flow-budget)",
+            parts.join(", "),
+            ceiling()
+        ))
+    }
+}
+
+/// The refusals of this pod.
+pub(crate) static REFUSALS: Refusals = Refusals([const { AtomicU64::new(0) }; 3]);
+
+/// Count a refusal of `class`; with `verbose`, print one line.
+pub(crate) fn refuse(class: Refusal, what: &str, verbose: bool) {
+    let n = REFUSALS.count(class);
+    if verbose {
+        eprintln!(
+            "{}: {what} refused: {} ({n} of this class; the flow budget is {})",
+            crate::cli::program_name(),
+            class.name(),
+            ceiling()
+        );
+    }
+}
+
+/// Print the summary of the refusals one time, unless no call was refused.
+pub(crate) fn report_refusals() {
+    static DONE: std::sync::Once = std::sync::Once::new();
+    DONE.call_once(|| {
+        if let Some(line) = REFUSALS.summary() {
+            crate::warn(&line);
+        }
+    });
+}
 
 pub(crate) struct Table {
     socks: HashMap<Key, Sock>,
@@ -63,7 +215,7 @@ impl Table {
     /// socket). Record the process of the task for the sweep.
     pub(crate) fn key_of(&mut self, pid: u32, fd: i32) -> Key {
         if !self.tasks.contains_key(&pid) {
-            if self.tasks.len() >= 4 * MAX_TRACKED_FDS {
+            if self.tasks.len() >= 4 * ceiling() {
                 self.tasks.retain(|tid, _| alive(*tid as i32));
             }
             self.tasks.insert(pid, tgid_of(pid));
@@ -76,9 +228,9 @@ impl Table {
     pub(crate) fn has_room(&mut self) -> bool {
         if self.socks.len() >= self.sweep_at {
             self.sweep();
-            self.sweep_at = (self.socks.len() * 2).clamp(FIRST_SWEEP, MAX_TRACKED_FDS);
+            self.sweep_at = (self.socks.len() * 2).clamp(FIRST_SWEEP, ceiling());
         }
-        self.socks.len() < MAX_TRACKED_FDS
+        self.socks.len() < ceiling()
     }
 
     /// Remove each entry whose socket no process of the pod holds.
@@ -221,6 +373,34 @@ fn alive(pid: i32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // T-181: each class has its own counter, and the summary names each.
+    #[test]
+    fn refusals_are_counted_by_class() {
+        let refusals = Refusals::default();
+        assert!(refusals.summary().is_none());
+        assert_eq!(refusals.count(Refusal::TableFull), 1);
+        assert_eq!(refusals.count(Refusal::TableFull), 2);
+        assert_eq!(refusals.count(Refusal::SocketPair), 1);
+        let counts = refusals.counts();
+        assert_eq!(counts[0], (Refusal::TableFull, 2));
+        assert_eq!(counts[1], (Refusal::SocketPair, 1));
+        assert_eq!(counts[2], (Refusal::Other, 0));
+        let line = refusals.summary().unwrap();
+        assert!(
+            line.starts_with("3 socket calls refused (table full 2, socketpair failed 1, other 0)"),
+            "{line}"
+        );
+    }
+
+    // T-181: the ceiling follows the descriptor limit, within its bounds.
+    #[test]
+    fn the_ceiling_follows_rlimit_nofile() {
+        assert_eq!(derived_ceiling(1024), 480);
+        assert_eq!(derived_ceiling(20_000), 9968);
+        assert_eq!(derived_ceiling(100), MIN_CEILING);
+        assert_eq!(derived_ceiling(u64::MAX), 65_536);
+    }
 
     #[test]
     fn a_socket_link_gives_its_inode() {

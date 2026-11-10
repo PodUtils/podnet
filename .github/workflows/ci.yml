@@ -50,6 +50,10 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --locked --workspace
+      # T-152: the row of the netfilter probe on the runner (a measure; it
+      # does not fail the job).
+      - name: Netfilter in a namespace (pod doctor)
+        run: ./target/debug/podnet pod doctor | grep -i netfilter || true
       # #213: rustdoc with no warning (a broken link renders as plain text
       # on docs.rs).
       - name: Docs

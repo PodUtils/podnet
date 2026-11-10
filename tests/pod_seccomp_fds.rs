@@ -69,6 +69,11 @@ fn socks5(listener: UnixListener) {
 /// Compile `source` and run it in the pod with the SOCKS5 stand-in. `None`
 /// when the host has no C compiler or no seccomp user notification.
 fn run_in_pod(source: &str) -> Option<Output> {
+    run_in_pod_with(source, &[])
+}
+
+/// [`run_in_pod`] with the pod options `options`.
+fn run_in_pod_with(source: &str, options: &[&str]) -> Option<Output> {
     let Some(cc) = compiler() else {
         eprintln!("skipping: no C compiler");
         return None;
@@ -86,6 +91,7 @@ fn run_in_pod(source: &str) -> Option<Output> {
         .args(["--backend", "seccomp"])
         .arg("-x")
         .arg(format!("unix:{}", sock.display()))
+        .args(options)
         .arg("--")
         .arg(&program)
         .output()
@@ -262,4 +268,54 @@ fn seccomp_closed_sockets_free_their_entries() {
         return;
     };
     expect_lines(&out, &["made 5000".to_string()]);
+}
+
+/// Make 100 TCP sockets and keep each open. Print the count of each result.
+const KEPT_SOCKETS: &str = r#"
+#include <errno.h>
+#include <stdio.h>
+#include <sys/socket.h>
+
+int main(void) {
+    int made = 0, emfile = 0, other = 0;
+    for (int i = 0; i < 100; i++) {
+        int fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (fd >= 0) made++;
+        else if (errno == EMFILE) emfile++;
+        else other++;
+    }
+    printf("made %d\nemfile %d\nother %d\n", made, emfile, other);
+    return 0;
+}
+"#;
+
+// T-181: above the flow budget, a socket call gets EMFILE, and the pod
+// counts the refusals by class.
+#[test]
+fn seccomp_flow_budget_refuses_with_emfile_and_counts() {
+    let Some(out) = run_in_pod_with(KEPT_SOCKETS, &["--flow-budget", "64"]) else {
+        return;
+    };
+    expect_lines(&out, &["made 64", "emfile 36", "other 0"].map(String::from));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("36 socket calls refused (table full 36, socketpair failed 0, other 0); the flow budget is 64"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_flow_budget_out_of_range_is_a_usage_error() {
+    let out = pod()
+        .args([
+            "-x",
+            "socks5://127.0.0.1:1",
+            "--flow-budget",
+            "10",
+            "--",
+            "true",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(64));
 }

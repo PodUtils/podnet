@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**225 entries: 80 open, 3 partial, 19 blocked, 123 done.**
+**225 entries: 75 open, 3 partial, 19 blocked, 128 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 21 | 26 |
 | P2 | 44 | 2 | 13 | 78 | 137 |
-| P3 | 33 | 0 | 4 | 24 | 61 |
-| **All** | 80 | 3 | 19 | 123 | 225 |
+| P3 | 28 | 0 | 4 | 29 | 61 |
+| **All** | 75 | 3 | 19 | 128 | 225 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -195,15 +195,15 @@ M8 Overlays, M9 Later.
 | [T-147](fixes.md) | P2 | S | M5 | defect | done | seccomp: a connected datagram socket takes datagrams from its peer only (GitHub #350) |
 | [T-148](fixes.md) | P3 | S | M5 | defect | done | seccomp: datagram and ICMP sockets keep their IP-level options (GitHub #350) |
 | [T-149](fixes.md) | P3 | S | M5 | research | done | seccomp: decide and document the ICMP error and PMTU limit of the UDP relay (GitHub #350) |
-| [T-150](pods.md) | P3 | S | M7 | feature | open | seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351) |
-| [T-151](pods.md) | P3 | M | M7 | measurement | open | seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351) |
-| [T-152](pods.md) | P3 | S | M7 | research | open | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
+| [T-150](pods.md) | P3 | S | M7 | feature | done | seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351) |
+| [T-151](pods.md) | P3 | M | M7 | measurement | done | seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351) |
+| [T-152](pods.md) | P3 | S | M7 | research | done | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
 | [T-153](later.md) | P3 | L | M9 | feature | open | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
 | [T-154](fixes.md) | P2 | M | M5 | chore | done | seccomp: fuzz targets for the notification handlers (GitHub #353) |
 | [T-155](fixes.md) | P3 | M | M5 | chore | done | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
 | [T-156](pods.md) | P2 | M | M7 | feature | done | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |
 | [T-157](pods.md) | P2 | M | M7 | feature | done | pod: `--default-action` and a JSON flow record (GitHub #355) |
-| [T-158](pods.md) | P3 | M | M7 | feature | open | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
+| [T-158](pods.md) | P3 | M | M7 | feature | done | pod: `--learn` and `--fail-on-violation` (GitHub #355) |
 | [T-159](fixes.md) | P3 | S | M5 | docs | done | research documents are readings; fix the stale counts of the record (GitHub #356) |
 | [T-160](fixes.md) | P2 | S | M5 | defect | done | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
 | [T-161](crates.md) | P2 | M | M3 | feature | blocked | relay node: renew the pair before it expires (GitHub #358) |
@@ -226,7 +226,7 @@ M8 Overlays, M9 Later.
 | [T-178](later.md) | P3 | M | M9 | feature | open | Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375) |
 | [T-179](later.md) | P3 | S | M9 | research | open | Research: a direction split for asymmetric uplinks (GitHub #375) |
 | [T-180](services.md) | P3 | M | M6 | feature | open | Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376) |
-| [T-181](pods.md) | P3 | M | M7 | feature | open | seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376) |
+| [T-181](pods.md) | P3 | M | M7 | feature | done | seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376) |
 | [T-182](fixes.md) | P2 | M | M5 | defect | done | `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378) |
 | [T-183](fixes.md) | P2 | S | M5 | defect | done | One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379) |
 | [T-184](fixes.md) | P2 | S | M5 | defect | done | `doctor`: the relay row follows `--relay` and keeps a loopback relay (GitHub #380) |

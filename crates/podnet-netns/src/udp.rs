@@ -334,7 +334,7 @@ pub(crate) async fn send_payload(
         Some(name) => format!("{name}:{port}"),
         None => SocketAddr::new(ip, port).to_string(),
     };
-    let picked = select_chain(egress.rules, egress.proxies, &target);
+    let picked = crate::learn::select(egress.rules, egress.proxies, &target, "udp");
     crate::flowlog::datagram(fd, &target, &picked);
     if picked.chain().is_none() {
         let rule = picked.rule_name();

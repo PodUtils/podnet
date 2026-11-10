@@ -277,10 +277,13 @@ pub(crate) fn doctor(json: bool) -> i32 {
         probe_ptrace(),
         probe_seccomp_notif(),
         probe_mem_write(),
+        // T-152: a measure for the netfilter plane; no backend uses it.
+        crate::nfprobe::probe_netfilter(),
     ];
     let netns_available = (probes[0].ok || probes[1].ok) && probes[2].ok;
     let seccomp_available = probes[4].ok;
     let any = netns_available || seccomp_available;
+    let budget = flow_budget();
 
     if json {
         let mut root = serde_json::Map::new();
@@ -307,6 +310,7 @@ pub(crate) fn doctor(json: bool) -> i32 {
         root.insert("backend_netns".into(), netns_available.into());
         root.insert("backend_seccomp".into(), seccomp_available.into());
         root.insert("backend_available".into(), any.into());
+        root.insert("flow_budget".into(), budget.json());
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::Value::Object(root))
@@ -335,6 +339,7 @@ pub(crate) fn doctor(json: bool) -> i32 {
             "ok (getsockname/getpeername: fail)"
         }
     );
+    println!("{}: {}", crate::cli::program_name(), budget.line());
     // T-149: the fidelity of UDP stops at the proxy.
     println!(
         "{}: UDP goes through the proxy: no ICMP error gets to the program \
@@ -346,6 +351,48 @@ pub(crate) fn doctor(json: bool) -> i32 {
         0
     } else {
         EXIT_NO_BACKEND
+    }
+}
+
+/// The flow budget of the seccomp backend on this host (T-181).
+pub(crate) struct FlowBudget {
+    /// The ceiling of the tracked sockets that the pod takes by default.
+    pub(crate) ceiling: usize,
+    pub(crate) soft: u64,
+    pub(crate) hard: u64,
+}
+
+/// The budget of a pod that starts here: the supervisor takes the hard
+/// `RLIMIT_NOFILE`, and the ceiling follows it.
+pub(crate) fn flow_budget() -> FlowBudget {
+    let (soft, hard) = crate::fdtable::nofile();
+    FlowBudget {
+        ceiling: crate::fdtable::derived_ceiling(hard.max(soft)),
+        soft,
+        hard,
+    }
+}
+
+impl FlowBudget {
+    /// The row of the text report.
+    pub(crate) fn line(&self) -> String {
+        format!(
+            "flow budget (seccomp): {} tracked sockets (RLIMIT_NOFILE soft {}, hard {}; \
+             --flow-budget changes it). Above it a socket call gets EMFILE; the pod \
+             counts each refusal by class (table full, socketpair failed, other) and \
+             prints the counts at the exit of the program",
+            self.ceiling, self.soft, self.hard
+        )
+    }
+
+    /// The object of the JSON report.
+    pub(crate) fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "ceiling": self.ceiling,
+            "nofile_soft": self.soft,
+            "nofile_hard": self.hard,
+            "refusal_classes": ["table full", "socketpair failed", "other"],
+        })
     }
 }
 
@@ -363,6 +410,20 @@ pub fn verdict(ok: bool) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    // T-181: the doctor row names the ceiling and the descriptor limits.
+    #[test]
+    fn doctor_flow_budget_row_names_the_ceiling() {
+        let budget = super::flow_budget();
+        assert!(budget.ceiling >= crate::fdtable::MIN_CEILING);
+        let line = budget.line();
+        assert!(
+            line.contains(&format!("{} tracked sockets", budget.ceiling)),
+            "{line}"
+        );
+        assert!(line.contains("RLIMIT_NOFILE"), "{line}");
+        assert_eq!(budget.json()["ceiling"], budget.ceiling);
+    }
+
     /// Issue 299: the probe must agree with the filter of the backend. A
     /// task with no `CAP_SYS_ADMIN` and `no_new_privs` clear (an unprivileged
     /// user) can install the filter of the backend, because the backend sets

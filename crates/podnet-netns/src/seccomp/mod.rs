@@ -146,6 +146,17 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
             let _ = tx.send(Ok((lfd, pid)));
         })?;
     let (lfd, pid) = rx.recv().context("filter thread died")??;
+    // T-181: the program has its own limit now; the supervisor takes the
+    // hard limit, and the budget of tracked sockets follows it.
+    crate::fdtable::raise_nofile();
+    let derived = crate::fdtable::derived_ceiling(crate::fdtable::nofile().0);
+    let budget = args.flow_budget.unwrap_or(derived);
+    if budget > derived {
+        crate::warn(&format!(
+            "warning: --flow-budget {budget} is above {derived}, the budget that RLIMIT_NOFILE permits; a socket pair can fail"
+        ));
+    }
+    crate::fdtable::set_ceiling(budget);
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -315,7 +326,7 @@ pub(crate) async fn supervise_seccomp(
                 a,
                 (&mut map, key),
                 nr == libc::SYS_accept4 as i32,
-                req.pid,
+                (req.pid, verbose),
             )
             .await
         } else if crate::inbox::is_recv(nr) {
@@ -330,6 +341,7 @@ pub(crate) async fn supervise_seccomp(
             if verbose {
                 eprintln!("{}: notif {nr}: {e:#}", crate::cli::program_name());
             }
+            crate::fdtable::refuse(crate::fdtable::Refusal::Other, "a call", verbose);
             // A handler that fails before it answers must not leave the child
             // blocked. If the handler answered already, the kernel refuses
             // this second answer with ENOENT, which is correct.

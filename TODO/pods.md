@@ -322,7 +322,7 @@ T-063, T-064, T-071 and T-111 are done.
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -350,6 +350,20 @@ cargo test --test pod_seccomp_handoff -- seccomp_inbound_accept_leaves_no_relay
 cargo test --test pod_seccomp -- seccomp_backend_accepts_inbound seccomp_inbound_wakes_epoll_and_accept_does_not_block_the_child
 ```
 
+## Done
+
+2026-11-10, commit 974fce0 (`T-150: seccomp: the program holds an accepted inbound connection`).
+`install_accepted` (`crates/podnet-netns/src/seccomp/accept.rs`) installs the accepted unix stream in
+the program (`notif_addfd_send`) with the `O_NONBLOCK` of its `accept4`. No socket pair and no relay
+task. `-v` prints `accept on port N: the program holds the connection (no relay)`. The supervisor
+reads no byte of an inbound connection, so no case keeps the relay (step 3). The Prove commands: 1
+passed (`seccomp_inbound_accept_leaves_no_relay`: the accepted socket has the name of the inbound
+socket, and the pod exits in less than 2.5 s while the client holds its end open) and 2 passed.
+Before the fix, the new test failed (`accepted_path` empty: a socket pair). The new test calls
+`test_host::need_loopback!()` (the server binds 127.0.0.1): it skips under `unshare -n` and in
+`scripts/restricted-host.sh`. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI: at the merge.
+GitHub #351 (fix 1) closes with T-151.
+
 # T-151: seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351)
 
 **Source:** GitHub #351 (https://github.com/PodUtils/podnet/issues/351) (fixes 2 and 3)
@@ -357,7 +371,7 @@ cargo test --test pod_seccomp -- seccomp_backend_accepts_inbound seccomp_inbound
 **Milestone:** M7
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -392,6 +406,43 @@ podnet pod --backend seccomp -x socks5://127.0.0.1:1080 -- curl -o /dev/null -w 
 cargo test --workspace -- seccomp_splice_relay_keeps_the_byte_totals
 ```
 
+## Correction
+
+2026-11-10: the measure (Done) gives a gap of less than 2 times, so step 2 (the splice loop) and
+step 3 (its doctor row) do not run, and the test `seccomp_splice_relay_keeps_the_byte_totals` does
+not exist. The relay keeps `copy_bidirectional` with a 64 KiB buffer for each direction;
+`cargo test -p podnet-netns --lib -- flowlog::tests::the_relay_keeps_the_byte_totals` proves the byte
+totals. The Prove runs with a non-loopback address: with seccomp, a connect to `127.0.0.0/8` goes
+direct and does not use `-x`.
+
+## Done
+
+2026-11-10, commit 4b758d0 (`T-151: seccomp: a relay buffer of 64 KiB for each direction`). The
+measure: this host (4 CPUs, kernel 6.18.44), the release binary, `curl -o /dev/null` of 1 GiB from an
+HTTP server in C on `192.0.2.2:18000`, a SOCKS5 proxy in C (256 KiB buffers, two threads) on TCP
+`127.0.0.1:18080` and on a unix socket. Three runs each, in MB/s:
+
+| Path | 8 KiB relay (before) | 64 KiB relay | 256 KiB relay |
+| --- | --- | --- | --- |
+| `curl` with no proxy | 3994 to 5430 | 4408 to 5590 | 3901 to 4948 |
+| `curl -x socks5://127.0.0.1:18080` outside the pod | 1572 to 1745 | (the same proxy) | 1594 to 1642 |
+| pod `seccomp`, `-x socks5://127.0.0.1:18080` (relay) | 1095 to 1208 | 1557 to 1824 | 1594 to 1915 |
+| pod `seccomp`, `-x unix:` with `--flow-log` (relay) | 1009 to 1161 | 1620 to 1761 | 1857 to 2109 |
+| pod `seccomp`, `-x unix:` (T-065 hand-off, no relay) | 2175 to 2838 | 2494 to 3064 | 2522 to 3196 |
+
+The gap of the Approach (the pod against the same `curl` outside the pod) was 1.4 times with 8 KiB
+and is 1.0 times with 64 KiB: the proxy is the limit. The relay against the hand-off on the same unix
+proxy was 2.2 times and is 1.7 times. Both are less than 2 times, so no splice loop and no TCP
+hand-off flag (the Decision). The change: `RELAY_BUFFER` (64 KiB) in
+`crates/podnet-netns/src/flowlog.rs`, the relay of each seccomp TCP flow. The cost: 128 KiB for
+each relayed flow, not 16 KiB. 256 KiB gave 10 to 20 % more on the unix relay for four times the
+memory. The tokio runtime has no splice. Tests: `the_relay_keeps_the_byte_totals` (1 passed), and
+`cargo test --test pod_seccomp_rules` (10 passed, the byte totals of the flow record). Also measured:
+the netns backend through the same TCP proxy moved 1 MiB at 9 MB/s, 8 MiB in 17 s (0.49 MB/s), and
+64 MiB did not end in 120 s; for 1 GiB its process grew to 1 GB of memory. That is a defect of the
+netns TCP path, not of this entry. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI:
+at the merge. GitHub #351 (fixes 1 to 3) closes at the merge.
+
 # T-152: netns: measure in-namespace netfilter on the target hosts (GitHub #352)
 
 **Source:** GitHub #352 (https://github.com/PodUtils/podnet/issues/352)
@@ -399,7 +450,7 @@ cargo test --workspace -- seccomp_splice_relay_keeps_the_byte_totals
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -439,6 +490,36 @@ The lead, 2026-11-09: keep the flow table of T-111 as planned. This measurement 
 unshare -Urn sh -c 'nft add table ip t && nft "add chain ip t out { type nat hook output priority -100 ; }" && nft add rule ip t out tcp dport 80 redirect to :9999'
 cargo test -p podnet-netns --lib -- doctor_netfilter_row_has_a_verdict
 ```
+
+## Done
+
+2026-11-10, commit 07d150b (`T-152: pod doctor: a probe of netfilter in a user and net namespace`).
+`crates/podnet-netns/src/nfprobe.rs`: the row `netfilter in a namespace (not a backend)` of `pod
+doctor`. In a forked child: `unshare(CLONE_NEWUSER | CLONE_NEWNET)`, the uid and gid maps, `lo` up;
+through nfnetlink a table, a chain `type nat hook output priority -100` and the rule `tcp dport 80
+redirect to :9999`; `SO_ORIGINAL_DST` of a connect to 127.0.0.1:80; a UDP datagram to
+127.0.0.1:5353 and its entry in a ctnetlink dump. The results:
+
+- This host (Firecracker VM, kernel 6.18.44, nf_tables and conntrack built in: `/proc/modules` is
+  empty): each step passes as root and as uid 65534 (`setpriv --reuid=65534 --regid=65534
+  --clear-groups podnet pod doctor`): "nft table, nat chain and REDIRECT: ok; SO_ORIGINAL_DST: port
+  80; UDP conntrack (ctnetlink): ok". The `nft` command and a C client give the same result.
+- `/proc/self/net/nf_conntrack` in the namespace of uid 65534 gives "Permission denied"; root reads
+  it. Thus the probe and a backend read conntrack through ctnetlink.
+- With user namespaces refused (`max_user_namespaces` 0 in an outer namespace): the row fails at
+  `unshare(NEWUSER|NEWNET)` with `ENOSPC`, as the netns backend.
+- Not measured: the CI runner (ubuntu-24.04, AppArmor can restrict unprivileged user namespaces;
+  the job `test` of `.github/workflows/ci.yml` now prints the row), a container (the Docker
+  daemon does not run on this host; the default seccomp profile of Docker refuses
+  `unshare(CLONE_NEWUSER)`), and the autoload of `nf_tables`, `nft_redir` and `nf_conntrack` as
+  modules.
+
+For T-153: the plane works on this host for an unprivileged user; T-153 waits for the row of the CI
+runner and of a container (its Start condition). The Prove commands: the `unshare -Urn` command
+succeeds; 1 passed (`doctor_netfilter_row_has_a_verdict`). Also:
+`the_batch_has_its_lengths_and_the_dump_parses`. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`:
+each step 0. CI: at the merge (the row of the runner is in the log of the job `test`). GitHub #352
+stays open for T-153.
 
 # T-156: pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354)
 
@@ -554,7 +635,7 @@ each step 0. CI: at the merge. GitHub #355 (fixes 1 to 3, 5) closes at the merge
 **Milestone:** M7
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -578,6 +659,21 @@ A CI job needs to assert that a workload touched only the destinations that it d
 ```sh
 cargo test --test pod_seccomp_rules -- seccomp_learn_then_enforce_passes seccomp_enforce_fails_on_a_new_destination
 ```
+
+## Done
+
+2026-11-10, commit dea1f91 (`T-158: pod: --learn and --fail-on-violation`).
+`crates/podnet-netns/src/learn.rs`. `--learn FILE`: the pod records each destination (`tcp` or `udp`
+and the target); a flow that a rule refuses goes through the default `-x` chain; at the exit of the
+program the pod writes FILE, one `PROTO TARGET` line each. `--fail-on-violation FILE`: a destination
+that is not in FILE is refused (rule name `not-learned`) and is a violation; a learned destination
+that a rule refuses is a violation. The pod writes each violation on stderr; the exit status is 4
+when the program exits 0. A seccomp TCP connect to loopback is not recorded. Both work with
+`seccomp` and `netns`; with `--serve` they are a usage error. The Prove command: 2 passed
+(`seccomp_learn_then_enforce_passes`, `seccomp_enforce_fails_on_a_new_destination`). Also:
+`a_learned_set_with_a_bad_line_is_a_usage_error`, `learn::tests::a_learned_set_reads_back`.
+`TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI: at the merge. GitHub #355 (fix 4)
+closes at the merge.
 
 # T-174: netns: a veth wire when `/dev/net/tun` is not there (GitHub #369)
 
@@ -632,7 +728,7 @@ The owner can rule on this (see Decision). A pod-backend feature starts after T-
 **Milestone:** M7
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -642,7 +738,7 @@ counter. The pod sees a bare errno.
 
 ## Premise
 
-- `crates/podnet-netns/src/seccomp/mod.rs:453` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
+- `crates/podnet-netns/src/seccomp/mod.rs:465` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
   refuses), `socket.rs:19-21` (`EMFILE`), `seccomp/mod.rs:326-331` (`EIO` or `ECONNREFUSED`).
 - Not measured: the 5000-connection run of the issue.
 
@@ -662,3 +758,22 @@ cargo test -p podnet-netns fdtable:: -- refusals_are_counted_by_class
 ## Start condition
 
 After T-040 (the split of the seccomp backend) ends.
+
+## Done
+
+2026-11-10, commit 05c9468 (`T-181: seccomp: a budget of tracked sockets with counters and a doctor
+row`). Step 1: `crates/podnet-netns/src/fdtable.rs` counts each refused call by class (`table full`,
+`socketpair failed`, `other`); a failed socket pair now gives `EMFILE`, not `EIO`. `-v` prints each
+refusal; at the exit of the program the pod prints one line with the counts. Step 2: the default
+ceiling is `(RLIMIT_NOFILE - 64) / 2`, from 64 to 65536; the supervisor raises its soft limit to the
+hard limit after the fork of the program (the program keeps its limit). `--flow-budget N` (64 to
+1048576) sets it; a value above the default gives a warning. Step 3: `pod doctor` has the row
+`flow budget (seccomp)` (JSON `flow_budget`: `ceiling`, `nofile_soft`, `nofile_hard`,
+`refusal_classes`). The counts of a run are per pod: doctor names the classes, and the pod prints
+the counts. `crates/podnet-netns/README.md` documents both. Step 4 waits for the router. On this
+host (`RLIMIT_NOFILE` 20000/20000) the ceiling is 9968, before 4096. The Prove command: 1 passed
+(`refusals_are_counted_by_class`). Also: `the_ceiling_follows_rlimit_nofile`,
+`doctor_flow_budget_row_names_the_ceiling`, `seccomp_flow_budget_refuses_with_emfile_and_counts`
+(64 made, 36 `EMFILE`, the count line), `a_flow_budget_out_of_range_is_a_usage_error`. Not measured:
+the 5000-connection run of the issue. `TMPDIR=/tmp/tm7b sh scripts/agent/check.sh`: each step 0. CI:
+at the merge. GitHub #376 closes at the merge.

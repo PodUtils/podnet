@@ -114,27 +114,28 @@ fn drain_one(drain: &std::os::unix::net::UnixStream) {
     };
 }
 
-/// Give the connection `conn` to the child as the answer of `accept`.
+/// Give the connection `conn` to the child as the answer of `accept`. The
+/// accepted unix stream goes to the child itself (T-150): the kernel moves
+/// the bytes, and no relay task runs. The supervisor reads no byte of an
+/// inbound connection, so no case needs a relay.
 fn install_accepted(
     lfd: RawFd,
     id: u64,
     conn: tokio::net::UnixStream,
-    nonblocking: bool,
-    newfd_flags: u32,
+    (nonblocking, newfd_flags): (bool, u32),
+    (port, verbose): (u16, bool),
 ) -> Result<()> {
-    let (ours, theirs) = std::os::unix::net::UnixStream::pair()?;
-    set_nonblocking(ours.as_raw_fd())?;
-    if nonblocking {
-        set_nonblocking(theirs.as_raw_fd())?;
-    }
+    // into_std keeps O_NONBLOCK; the child gets the mode of its accept4.
+    let conn = conn.into_std()?;
+    conn.set_nonblocking(nonblocking)?;
     // ADDFD with SEND already answers the syscall with the installed fd.
-    notif_addfd_send(lfd, id, theirs.as_raw_fd(), newfd_flags)?;
-    drop(theirs);
-    let mut ours = tokio::net::UnixStream::from_std(ours)?;
-    let mut conn = conn;
-    spawn_relay(async move {
-        let _ = tokio::io::copy_bidirectional(&mut ours, &mut conn).await;
-    });
+    notif_addfd_send(lfd, id, conn.as_raw_fd(), newfd_flags)?;
+    if verbose {
+        eprintln!(
+            "{}: accept on port {port}: the program holds the connection (no relay)",
+            crate::cli::program_name()
+        );
+    }
     Ok(())
 }
 
@@ -148,7 +149,7 @@ pub(crate) async fn handle_accept(
     a: [u64; 6],
     (map, key): (&mut HashMap<Key, Sock>, Key),
     accept4: bool,
-    pid: u32,
+    (pid, verbose): (u32, bool),
 ) -> Result<()> {
     let fd = a[0] as i32;
     // The caller's flags are on accept4 only; ADDFD takes just O_CLOEXEC.
@@ -158,19 +159,23 @@ pub(crate) async fn handle_accept(
         newfd_flags |= libc::O_CLOEXEC as u32;
     }
     let nonblocking_conn = flags & libc::SOCK_NONBLOCK != 0;
-    let (rx, drain) = {
+    let (rx, drain, port) = {
         let Some(Sock::Stream {
-            inbound: Some(inc), ..
+            inbound: Some(inc),
+            bound,
+            ..
         }) = map.get(&key)
         else {
             return notif_continue(lfd, id);
         };
-        (inc.rx.clone(), inc.drain.clone())
+        let port = bound.map_or(0, |(_, port)| port);
+        (inc.rx.clone(), inc.drain.clone(), port)
     };
+    let modes = (nonblocking_conn, newfd_flags);
     let queued = rx.try_lock().ok().and_then(|mut rx| rx.try_recv().ok());
     if let Some(conn) = queued {
         drain_one(&drain);
-        return install_accepted(lfd, id, conn, nonblocking_conn, newfd_flags);
+        return install_accepted(lfd, id, conn, modes, (port, verbose));
     }
     let listener_nonblocking = child_fd_flags(pid, fd).is_some_and(|f| f & libc::O_NONBLOCK != 0);
     if listener_nonblocking {
@@ -183,7 +188,7 @@ pub(crate) async fn handle_accept(
                 drain_one(&drain);
                 // ENOENT: the child left the accept (a signal); the
                 // connection is closed.
-                let _ = install_accepted(lfd, id, conn, nonblocking_conn, newfd_flags);
+                let _ = install_accepted(lfd, id, conn, modes, (port, verbose));
             }
             None => {
                 let _ = notif_respond(lfd, id, -1, libc::EINVAL);

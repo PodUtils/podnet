@@ -41,6 +41,10 @@ impl Reporter {
     /// The back then lets go of the standard input and output of the
     /// caller, so a pipe of the caller can close.
     pub(crate) fn report(&self, code: i32, verbose: bool) {
+        // T-158: the learned set is written, or its violations change the
+        // code, at the exit of the first program.
+        let code = crate::learn::finish(code);
+        crate::fdtable::report_refusals();
         let Some(fd) = self.0.lock().ok().and_then(|mut fd| fd.take()) else {
             return;
         };
@@ -119,7 +123,9 @@ pub(crate) fn exit_code(status: i32) -> i32 {
 /// [`Reporter::none`].
 pub(crate) fn split(verbose: bool, body: impl FnOnce(Reporter) -> Result<i32>) -> Result<i32> {
     if threads() != Some(1) {
-        return body(Reporter::none());
+        let code = body(Reporter::none()).map(crate::learn::finish);
+        crate::fdtable::report_refusals();
+        return code;
     }
     let mut fds = [0 as RawFd; 2];
     if unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {

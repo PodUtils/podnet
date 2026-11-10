@@ -135,7 +135,7 @@ impl Backend {
     /// Start the dial of the upstream of `target`. Give the number of the
     /// flow in the record too.
     fn spawn_dial(&self, target: &str) -> (DialTask, Option<u64>) {
-        let picked = select_chain(&self.rules, &self.proxies, target);
+        let picked = crate::learn::select(&self.rules, &self.proxies, target, "tcp");
         let flow = crate::flowlog::decided("tcp", target, &picked);
         let Some(chain) = picked.chain().map(<[Proxy]>::to_vec) else {
             // T-156: the dial fails at once, and the program gets a RST.

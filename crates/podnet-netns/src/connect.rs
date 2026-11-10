@@ -174,7 +174,10 @@ pub(crate) fn handle_connect(
         (None, IpAddr::V6(v6)) => format!("[{v6}]:{port}"),
     };
     // T-156: a rule that refuses the target answers at once.
-    let picked = select_chain(route.rules, route.proxies, &target);
+    let picked = match ip.is_loopback() {
+        true => select_chain(route.rules, route.proxies, &target),
+        false => crate::learn::select(route.rules, route.proxies, &target, "tcp"),
+    };
     let chain = picked.chain().map(<[Proxy]>::to_vec);
     let flow = match ip.is_loopback() {
         true => crate::flowlog::dial("tcp", &target, "loopback", Some(&[])),
