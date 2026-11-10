@@ -418,3 +418,68 @@ fn so_error_gives_the_error_of_a_failed_connect() {
     assert!(stdout.contains("SOERROR1:0:0:4\n"), "{stdout:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A client that reads the stream to its end and prints the byte count.
+const COUNT_CLIENT: &str = r#"
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+int main(void) {
+    alarm(60);
+    int s = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in a; memset(&a, 0, sizeof a);
+    a.sin_family = AF_INET; a.sin_port = htons(80);
+    inet_pton(AF_INET, "93.184.216.34", &a.sin_addr);
+    if (connect(s, (struct sockaddr *)&a, sizeof a) < 0) { perror("connect"); return 1; }
+    static char buf[65536];
+    long total = 0;
+    ssize_t n;
+    while ((n = read(s, buf, sizeof buf)) > 0) total += n;
+    printf("BYTES:%ld\n", total);
+    return 0;
+}
+"#;
+
+/// The netns backend moves a download of 48 MiB in the 60 s of the client
+/// (T-226). Before, it sent one segment on each tick of its loop and read the
+/// upstream with no limit: 8 MiB took 17 s, and 64 MiB did not end in 120 s.
+#[test]
+fn netns_backend_moves_a_large_download() {
+    if !have_compiler() || !netns_available() {
+        eprintln!("skipping: no compiler or no netns backend");
+        return;
+    }
+    const SIZE: usize = 48 << 20;
+    let dir = std::env::temp_dir().join(format!("podnet-netns-large-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let sock = dir.join("socks.sock");
+    let listener = UnixListener::bind(&sock).unwrap();
+    std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            let Ok(mut c) = conn else { break };
+            std::thread::spawn(move || {
+                if read_request(&mut c).is_none() {
+                    return;
+                }
+                let _ = c.write_all(&[5, 0, 0, 1, 0, 0, 0, 0, 0, 0]);
+                let block = vec![7u8; 1 << 20];
+                for _ in 0..SIZE >> 20 {
+                    if c.write_all(&block).is_err() {
+                        return;
+                    }
+                }
+            });
+        }
+    });
+    let program = build_program(&dir, "count-client", COUNT_CLIENT, false);
+    let started = std::time::Instant::now();
+    let stdout = run_on("netns", &[&sock], &program);
+    assert!(stdout.contains(&format!("BYTES:{SIZE}")), "{stdout:?}");
+    eprintln!(
+        "48 MiB through the netns backend in {:?}",
+        started.elapsed()
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

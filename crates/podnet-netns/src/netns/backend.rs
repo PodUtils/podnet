@@ -330,9 +330,27 @@ impl Backend {
         self.aborting.clear();
         self.accept_flows().await;
         self.shuttle().await;
+        self.egress();
         self.reap_closed();
         self.device.flush();
         Ok(())
+    }
+
+    /// Send the segments that the sockets have now.
+    ///
+    /// One `poll_egress` sends at most one segment for each socket. Without
+    /// this loop, a download moved one segment on each tick of the loop.
+    pub(crate) fn egress(&mut self) {
+        for _ in 0..EGRESS_ROUNDS {
+            let now = SmolInstant::now();
+            match self.interface.poll_at(now, &self.sockets) {
+                Some(at) if at <= now => {
+                    self.interface
+                        .poll_egress(now, &mut self.device, &mut self.sockets);
+                }
+                _ => break,
+            }
+        }
     }
 
     /// Answer each IPv4 UDP query to port 53 from the fake-IP pool, before
@@ -434,10 +452,11 @@ impl Backend {
             let socket = self.sockets.get_mut::<tcp::Socket>(handle);
             let mut close = false;
 
-            // app → upstream
-            while socket.can_recv() {
+            // app → upstream. Hold at most HELD bytes: the receive window
+            // of the socket stops the program while the upstream is slow.
+            while socket.can_recv() && flow.to_upstream.len() < HELD {
                 match socket.recv(|buf| {
-                    let n = buf.len().min(64 * 1024);
+                    let n = buf.len().min(HELD - flow.to_upstream.len());
                     flow.to_upstream.extend_from_slice(&buf[..n]);
                     (n, ())
                 }) {
@@ -461,9 +480,13 @@ impl Backend {
                 }
             }
 
-            // upstream → app
+            // upstream → app. Hold at most HELD bytes: the upstream is read
+            // only when the socket takes the held bytes. Before, the read had
+            // no limit, the buffer grew with the download, and each drain
+            // moved all of it.
+            send_held(socket, &mut flow.to_app);
             let mut buf = [0u8; 16 * 1024];
-            loop {
+            while flow.to_app.len() < HELD {
                 match poll_once(flow.upstream.read(&mut buf)).unwrap_or_else(would_block) {
                     Ok(0) => {
                         flow.up_eof = true;
@@ -480,14 +503,7 @@ impl Backend {
                     }
                 }
             }
-            while !flow.to_app.is_empty() && socket.can_send() {
-                match socket.send_slice(&flow.to_app) {
-                    Ok(n) => {
-                        flow.to_app.drain(..n);
-                    }
-                    Err(_) => break,
-                }
-            }
+            send_held(socket, &mut flow.to_app);
 
             if (flow.up_eof && flow.to_app.is_empty()) || close || !socket.may_send() {
                 socket.close();
@@ -520,6 +536,25 @@ pub(crate) fn tcp_socket() -> tcp::Socket<'static> {
     // cubic by default.
     socket.set_congestion_control(tcp::CongestionControl::None);
     socket
+}
+
+/// The most `poll_egress` calls in one tick: more than a full send buffer
+/// of `TCP_BUF` in segments of the MTU.
+const EGRESS_ROUNDS: usize = 64;
+
+/// The most bytes that a TCP flow holds in each direction.
+const HELD: usize = super::TCP_BUF;
+
+/// Give the held bytes to the TCP socket of the program, as many as it takes.
+fn send_held(socket: &mut tcp::Socket, held: &mut Vec<u8>) {
+    while !held.is_empty() && socket.can_send() {
+        match socket.send_slice(held) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => {
+                held.drain(..n);
+            }
+        }
+    }
 }
 
 /// Poll `future` one time. Return its output, or `None` when it is pending.
