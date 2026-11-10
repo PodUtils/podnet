@@ -204,7 +204,10 @@ pub(crate) fn handle_connect(
         // Loopback does not go to the proxy (issue 80): a listener of the
         // program itself (its inbound socket), else TCP on this host.
         if route.verbose {
-            eprintln!("podnet-netns: connect {target} direct (loopback)");
+            eprintln!(
+                "{}: connect {target} direct (loopback)",
+                crate::cli::program_name()
+            );
         }
         let inbound_dir = route.inbound_dir.to_path_buf();
         tokio::spawn(async move {
@@ -217,7 +220,11 @@ pub(crate) fn handle_connect(
     } else {
         let chain = chain.unwrap_or_default();
         if route.verbose {
-            eprintln!("podnet-netns: connect {target} via {}", chain[0].endpoint());
+            eprintln!(
+                "{}: connect {target} via {}",
+                crate::cli::program_name(),
+                chain[0].endpoint()
+            );
         }
         tokio::spawn(async move {
             // With --flow-log, the pod relays each flow, and counts its
@@ -264,7 +271,10 @@ pub(crate) fn finish(
     if !waiting.nonblocking && waiting.connects.is_empty() {
         // No call waits for the blocking dial: drop the connection.
         if verbose {
-            eprintln!("podnet-netns: connect {target}: the call left; drop the dial");
+            eprintln!(
+                "{}: connect {target}: the call left; drop the dial",
+                crate::cli::program_name()
+            );
         }
         return;
     }
@@ -318,7 +328,7 @@ pub(crate) fn finish(
                     // T-065: the program holds the upstream; no relay.
                     if verbose {
                         let what = "the program holds the upstream socket (no relay)";
-                        eprintln!("podnet-netns: connect {target}: {what}");
+                        eprintln!("{}: connect {target}: {what}", crate::cli::program_name());
                     }
                     map.insert(new_key, Sock::Connected(entry));
                     answer(0);
@@ -345,7 +355,10 @@ pub(crate) fn finish(
         },
         Err(e) => {
             if verbose {
-                eprintln!("podnet-netns: upstream for {target} failed: {e:#}");
+                eprintln!(
+                    "{}: upstream for {target} failed: {e:#}",
+                    crate::cli::program_name()
+                );
             }
             // Keep the error for SO_ERROR when no call took it (issue 302,
             // T-223): the kernel clears it when `connect` returns it.

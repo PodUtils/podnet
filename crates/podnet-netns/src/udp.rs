@@ -365,7 +365,8 @@ pub(crate) async fn relay_written(
     let Some(to) = to else {
         if verbose {
             eprintln!(
-                "podnet-netns: a datagram written on a UDP socket with no connect is dropped"
+                "{}: a datagram written on a UDP socket with no connect is dropped",
+                crate::cli::program_name()
             );
         }
         return;
@@ -373,7 +374,10 @@ pub(crate) async fn relay_written(
     if let Err(errno) = send_payload(map, key, dns, egress, &payload, to).await {
         if verbose {
             let error = std::io::Error::from_raw_os_error(errno);
-            eprintln!("podnet-netns: a datagram written on a UDP socket is dropped: {error}");
+            eprintln!(
+                "{}: a datagram written on a UDP socket is dropped: {error}",
+                crate::cli::program_name()
+            );
         }
     }
 }

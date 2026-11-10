@@ -29,7 +29,11 @@ pub(crate) async fn serve_front_door(
     let (listener, bound) = bind_front_door(&listen).await?;
     // Issue 300: the bound address, so a TCP port 0 shows the port that
     // the kernel chose.
-    eprintln!("podnet-netns: serving {bound} ({} upstream)", chain.len());
+    eprintln!(
+        "{}: serving {bound} ({} upstream)",
+        crate::cli::program_name(),
+        chain.len()
+    );
     loop {
         let conn = listener.accept().await?;
         let chain = chain.clone();
@@ -37,7 +41,7 @@ pub(crate) async fn serve_front_door(
         tokio::spawn(async move {
             if let Err(e) = serve_one(conn, &chain, &rules, verbose).await {
                 if verbose {
-                    eprintln!("podnet-netns: front door: {e:#}");
+                    eprintln!("{}: front door: {e:#}", crate::cli::program_name());
                 }
             }
         });
@@ -109,7 +113,8 @@ pub(crate) async fn serve_one(
             };
             if verbose {
                 eprintln!(
-                    "podnet-netns: front door {target} via {}",
+                    "{}: front door {target} via {}",
+                    crate::cli::program_name(),
                     selected[0].endpoint()
                 );
             }
@@ -261,7 +266,10 @@ pub(crate) async fn serve_udp_associate(
     let (_up_control, up_addr) = socks5_udp_associate(up_control, proxy).await?;
     let up = Arc::new(tokio::net::UdpSocket::bind("0.0.0.0:0").await?);
     if verbose {
-        eprintln!("podnet-netns: front door UDP relay {addr} -> {up_addr}");
+        eprintln!(
+            "{}: front door UDP relay {addr} -> {up_addr}",
+            crate::cli::program_name()
+        );
     }
 
     let client: Arc<tokio::sync::Mutex<Option<SocketAddr>>> =

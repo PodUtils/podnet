@@ -223,9 +223,9 @@ fn seccomp_logs_its_emulation_at_info() {
     let out = host.pod(&["--backend", "seccomp", "-v"], &client);
     let err = stderr(&out);
     for want in [
-        "podnet-netns: socket emulated as a socket pair (IPv4 TCP)",
-        "podnet-netns: socket emulated as a socket pair (IPv6 UDP)",
-        "podnet-netns: setsockopt answered by the pod (fd ",
+        "podnet pod: socket emulated as a socket pair (IPv4 TCP)",
+        "podnet pod: socket emulated as a socket pair (IPv6 UDP)",
+        "podnet pod: setsockopt answered by the pod (fd ",
     ] {
         assert!(
             err.lines().any(|l| l.starts_with(want)),

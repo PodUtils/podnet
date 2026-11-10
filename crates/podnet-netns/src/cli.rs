@@ -35,17 +35,29 @@ pub(crate) struct Args {
     pub(crate) flow_log: Option<std::path::PathBuf>,
 }
 
-/// The name in the help and the usage lines: `podnet-netns`, or `podnet pod`
-/// when podnet runs the pod ([`set_program_name`]).
+/// The name in the help, the usage lines and the start of each message:
+/// `podnet pod`, or the name that [`set_program_name`] gives.
 static PROGRAM_NAME: std::sync::OnceLock<&'static str> = std::sync::OnceLock::new();
 
-/// Set the name that the help shows (once, before [`crate::main_with_args`]).
+/// The line of `--version`, when the program gives one.
+static VERSION_LINE: std::sync::OnceLock<&'static str> = std::sync::OnceLock::new();
+
+/// Set the name that the help and each message show (once, before
+/// [`crate::main_with_args`]).
 pub fn set_program_name(name: &'static str) {
     let _ = PROGRAM_NAME.set(name);
 }
 
+/// Set the line that `--version` prints (once, before
+/// [`crate::main_with_args`]): the version line of the program that runs
+/// the pod. Without it, `--version` prints the program name and the
+/// version of this library.
+pub fn set_version_line(line: &'static str) {
+    let _ = VERSION_LINE.set(line);
+}
+
 pub(crate) fn program_name() -> &'static str {
-    PROGRAM_NAME.get().copied().unwrap_or("podnet-netns")
+    PROGRAM_NAME.get().copied().unwrap_or("podnet pod")
 }
 
 /// The help, in the layout of the other podnet commands (issue 95).
@@ -162,11 +174,15 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
                 }
             }
             "-V" | "--version" => {
-                println!(
-                    "podnet-netns {} ({})",
-                    env!("CARGO_PKG_VERSION"),
-                    env!("PODNET_BUILD_COMMIT")
-                );
+                match VERSION_LINE.get() {
+                    Some(line) => println!("{line}"),
+                    None => println!(
+                        "{} {} ({})",
+                        program_name(),
+                        env!("CARGO_PKG_VERSION"),
+                        env!("PODNET_BUILD_COMMIT")
+                    ),
+                }
                 std::process::exit(0);
             }
             "--keep-proxy-env" => {

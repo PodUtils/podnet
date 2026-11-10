@@ -328,7 +328,7 @@ pub(crate) async fn supervise_seccomp(
         };
         if let Err(e) = outcome {
             if verbose {
-                eprintln!("podnet-netns: notif {nr}: {e:#}");
+                eprintln!("{}: notif {nr}: {e:#}", crate::cli::program_name());
             }
             // A handler that fails before it answers must not leave the child
             // blocked. If the handler answered already, the kernel refuses

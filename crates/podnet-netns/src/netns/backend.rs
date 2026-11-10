@@ -147,7 +147,11 @@ impl Backend {
         };
         if self.verbose {
             let hops: Vec<String> = chain.iter().map(Proxy::endpoint).collect();
-            eprintln!("podnet-netns: {target} via {}", hops.join(" -> "));
+            eprintln!(
+                "{}: {target} via {}",
+                crate::cli::program_name(),
+                hops.join(" -> ")
+            );
         }
         let dial_target = target.to_string();
         let task = tokio::spawn(async move {
@@ -227,7 +231,7 @@ impl Backend {
                 Err(e) => {
                     if self.verbose {
                         eprintln!(
-                            "podnet-netns: upstream for {} failed: {e:#}; the connect of the program is refused",
+                            "{}: upstream for {} failed: {e:#}; the connect of the program is refused", crate::cli::program_name(),
                             held.target
                         );
                     }
@@ -271,7 +275,10 @@ impl Backend {
                     let handle = self.sockets.add(socket);
                     self.listeners.insert(handle, port);
                     if self.verbose {
-                        eprintln!("podnet-netns: listening for outbound port {port}");
+                        eprintln!(
+                            "{}: listening for outbound port {port}",
+                            crate::cli::program_name()
+                        );
                     }
                 }
             }
@@ -398,14 +405,20 @@ impl Backend {
                 }
                 Ok(Err(e)) => {
                     if self.verbose {
-                        eprintln!("podnet-netns: upstream for {target} failed: {e:#}");
+                        eprintln!(
+                            "{}: upstream for {target} failed: {e:#}",
+                            crate::cli::program_name()
+                        );
                     }
                     self.sockets.get_mut::<tcp::Socket>(handle).abort();
                     self.aborting.push(handle);
                 }
                 Err(e) => {
                     if self.verbose {
-                        eprintln!("podnet-netns: dial task for {target} failed: {e}");
+                        eprintln!(
+                            "{}: dial task for {target} failed: {e}",
+                            crate::cli::program_name()
+                        );
                     }
                     self.sockets.get_mut::<tcp::Socket>(handle).abort();
                     self.aborting.push(handle);

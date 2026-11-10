@@ -60,7 +60,7 @@ mod sockopt;
 mod tcp;
 mod udp;
 
-pub use cli::{set_program_name, usage, usage_for};
+pub use cli::{set_program_name, set_version_line, usage, usage_for};
 pub use listen::ProxyListen;
 pub use upstream::{Net, Proxy, ProxyKind, Rule, RuleAction, RuleMatch, Upstream};
 
@@ -131,7 +131,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     let args = match parse_args(argv) {
         Ok(a) => a,
         Err(e) => {
-            eprintln!("podnet-netns: {e:#}");
+            eprintln!("{}: {e:#}", crate::cli::program_name());
             return USAGE;
         }
     };
@@ -146,7 +146,10 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     }
     if args.serve.is_some() {
         if args.proxies.is_empty() {
-            eprintln!("podnet-netns: --serve needs at least one -x upstream");
+            eprintln!(
+                "{}: --serve needs at least one -x upstream",
+                crate::cli::program_name()
+            );
             return USAGE;
         }
         let listen = args.serve.clone().unwrap();
@@ -156,7 +159,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
         {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("podnet-netns: {e:#}");
+                eprintln!("{}: {e:#}", crate::cli::program_name());
                 return EXIT_NO_BACKEND;
             }
         };
@@ -169,7 +172,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
         match outcome {
             Ok(()) => return 0,
             Err(e) => {
-                eprintln!("podnet-netns: {e:#}");
+                eprintln!("{}: {e:#}", crate::cli::program_name());
                 return EXIT_NO_BACKEND;
             }
         }
@@ -178,14 +181,18 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     // (exit 64), not a host that has no backend (exit 3).
     if args.proxies.is_empty() && args.rules.is_empty() {
         eprintln!(
-            "podnet-netns: no proxy: give -x PROXY, or set ALL_PROXY, HTTPS_PROXY or HTTP_PROXY"
+            "{}: no proxy: give -x PROXY, or set ALL_PROXY, HTTPS_PROXY or HTTP_PROXY",
+            crate::cli::program_name()
         );
         return USAGE;
     }
     warn_unreachable(&args.proxies);
     // Inbound listeners exist on the seccomp backend only (issue 69).
     if args.inbound_dir_given && matches!(args.backend, BackendKind::Netns) {
-        eprintln!("podnet-netns: --inbound-dir works with --backend seccomp only");
+        eprintln!(
+            "{}: --inbound-dir works with --backend seccomp only",
+            crate::cli::program_name()
+        );
         return USAGE;
     }
     let warn_inbound = |backend: &str| {
@@ -224,7 +231,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     match result {
         Ok(code) => code,
         Err(e) => {
-            eprintln!("podnet-netns: {e:#}");
+            eprintln!("{}: {e:#}", crate::cli::program_name());
             EXIT_NO_BACKEND
         }
     }
@@ -288,7 +295,7 @@ pub fn quiet() -> bool {
 /// Print a warning on stderr, unless [`quiet`].
 pub(crate) fn warn(text: &str) {
     if !quiet() {
-        eprintln!("podnet-netns: {text}");
+        eprintln!("{}: {text}", crate::cli::program_name());
     }
 }
 

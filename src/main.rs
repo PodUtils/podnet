@@ -60,7 +60,7 @@ fn main() {
         std::process::exit(podnet::exit::USAGE);
     }
     if argv.get(1).map(String::as_str) == Some("pod") {
-        podnet_netns::set_program_name("podnet pod");
+        pod_names();
         std::process::exit(podnet_netns::main_with_args(&argv[2..]));
     }
     let cli = match top_command()
@@ -110,7 +110,7 @@ fn main() {
             eprintln!("podnet: podnet pod does not use {option}; give the proxy to the pod with -x (podnet pod --help)");
             std::process::exit(podnet::exit::USAGE);
         }
-        podnet_netns::set_program_name("podnet pod");
+        pod_names();
         std::process::exit(podnet_netns::main_with_args(&pod_args_of(&argv, args)));
     }
     // Issue 126: a server command holds one descriptor for each connection.
@@ -280,4 +280,17 @@ fn main() {
         podnet::report::send(command.as_deref(), code, Some(&err));
         std::process::exit(code);
     }
+}
+
+/// The names of `podnet pod` (T-135): its messages start with
+/// `podnet pod:`, and `--version` prints the version line of podnet.
+fn pod_names() {
+    podnet_netns::set_program_name("podnet pod");
+    podnet_netns::set_version_line(concat!(
+        "podnet ",
+        env!("CARGO_PKG_VERSION"),
+        " (",
+        env!("PODNET_BUILD_COMMIT"),
+        ")"
+    ));
 }
