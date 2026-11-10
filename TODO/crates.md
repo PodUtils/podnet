@@ -574,6 +574,9 @@ Done so far:
 - v0.6.0 (872a276): `rules()` sets `http_proxy_vars`; `live.yml` checks the DoH server again. The
   COORD issue is PodUtils/podnet#333. CI run 42263403147 at 872a276 and live run 42265938003 at 4094fee:
   success.
+- v0.9.0 (191f2b4): each `pod-*` dependency names `tag = "v0.9.0"`; no API change for podnet.
+  T-224 (127c095) ends the freeze of the datagram path of `crates/podnet-netns/src/upstream.rs`:
+  podnet-netns calls `pod_proxy::udp`.
 - Next: `pod-ws` (`src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
@@ -836,7 +839,7 @@ PodUtils/podcrates#43 (the module `udp` of `pod-proxy`, entry T-083 of podcrates
 **Milestone:** M3
 **Priority:** P1
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -878,3 +881,21 @@ cargo test -p podnet --test pod_seccomp_dgram
 cargo test --workspace
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-09, commit 127c095. `crates/podnet-netns/src/upstream.rs` has no copy of the datagram
+path: 111 lines out, 52 in (the glue `shared_proxy` and its percent escape). The callers in
+`crates/podnet-netns/src/udp.rs`, `crates/podnet-netns/src/frontdoor.rs`, `src/warp/nc.rs` and
+`src/warp/proxy.rs` call `pod_proxy::udp`. `UdpInStreamRefused` is gone: a reply 0x07 to 0x83 is
+`pod_proxy::DialError::UdpRefused` in the `anyhow` error. A name over 255 bytes: in a pod,
+`crate::dgram::fits_relay` refuses it with EINVAL before the wrap, as before; `podnet warp nc`
+refuses it with `invalid destination: ... is longer than the 255 bytes of SOCKS5` before the
+association (before, the name was cut). Other changes: `pod-proxy` refuses a reply with a version
+other than 5, and the error words are those of `pod-proxy`. New tests:
+`upstream::tests::udp_in_the_stream_goes_through_pod_proxy`,
+`upstream::tests::udp_associate_refuses_a_long_user`,
+`upstream::tests::a_udp_header_refuses_a_name_over_255_bytes`. `cargo test -p podnet-netns`: 68
+passed; `pod_seccomp_dgram`: 17 passed. `sh scripts/agent/check.sh`: exit 0 (1107 passed, 0
+failed); `unshare -n -- cargo test --offline --workspace --no-fail-fast`: exit 0;
+`sh scripts/restricted-host.sh --no-fail-fast`: exit 0. CI: at the merge.
