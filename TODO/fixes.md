@@ -1934,7 +1934,7 @@ allowlist, or (2) a statement that they are snapshots.
 - Read: `TODO/RULES.md:56` says that these directories "are readings at a time". `TODO/todo.toml:15`
   lists them as `readings`. `architecture.md:3` names its commit (`3bed023`, 2026-11-04).
   `tests/docs.rs:74-85` reads eight documents, not these.
-- Read: the live plan is the record. T-040 (`TODO/split.md:767`) still says that `seccomp.rs` has 1,900
+- Read: the live plan is the record. T-040 (`TODO/split.md:791`) still says that `seccomp.rs` has 1,900
   lines, and "do this entry before T-063 starts, or after T-067 is done". Now `seccomp.rs` has 1516
   lines and T-063 to T-067 are done. This is a stale figure in the record, not in a reading.
 - Measured: `grep -rn "crates/pod-netns/" docs/research docs/reports` gives 35, 8, 6, 6, 5, 5, 2, 2 hits
@@ -2389,7 +2389,7 @@ A client that connects and sends nothing, or one byte of a SOCKS5 greeting, hold
 1. One constant `REQUEST_LIMIT` (30 s) in `podnet-netns` (`socks.rs`). Wrap the first byte and the request read in each of the three doors. The warp door uses the same constant.
 2. On expiry send a SOCKS5 reply `0x04` or an HTTP `504`, then close (`fail_with`, `src/vnet/proxy.rs:161-180`).
 3. Fix the comment of `CLIENT_TIMEOUT`: it bounds the copy only.
-4. Count live client tasks (as `SocketCount::live`, `src/vnet/stack.rs:642-648`). A cap is a later choice.
+4. Count live client tasks (as `SocketCount::live`, `src/vnet/stack/socket.rs:372-378`). A cap is a later choice.
 
 ## Prove
 
@@ -2498,7 +2498,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 
 ## Premise
 
-- Refusals: `src/vnet/stack.rs:815-832` (`AddrNotAvailable`, `PermissionDenied`, `AddrInUse`).
+- Refusals: `src/vnet/stack/reactor.rs:219-236` (`AddrNotAvailable`, `PermissionDenied`, `AddrInUse`).
 - `spawn_forwards` cannot return a result (`src/vnet/proxy.rs:237-244`).
 - The `--map` entry outside the subnet fails only at the first request (note of the issue: not verified).
 
@@ -2567,7 +2567,7 @@ A test fills the queue of a peer that does not read and reads a non-zero drop co
 
 ## Problem
 
-`NetStack::over_link` builds `LinkDevice::tunnel(config.mtu)`: both queues are unbounded and the stack does not hold when full (`src/vnet/stack.rs:1436-1441`, `src/vnet/device.rs:304-313`). A slow pump grows the heap. The WARP stack uses `tunnel_bounded` and `with_inbound_limit` (`src/warp/ip.rs:454-455`, 512 and 4096 packets).
+`NetStack::over_link` builds `LinkDevice::tunnel(config.mtu)`: both queues are unbounded and the stack does not hold when full (`src/vnet/stack.rs:261-266`, `src/vnet/device.rs:304-313`). A slow pump grows the heap. The WARP stack uses `tunnel_bounded` and `with_inbound_limit` (`src/warp/ip.rs:454-455`, 512 and 4096 packets).
 
 ## Premise
 
@@ -2669,7 +2669,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:91-103`). The stack gets `dns: None` (`src/vnet/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`:732-742`, `:1050-1053`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:25-30`, `src/vnet/shim.rs:53,82-90`). `docs/virtual-network.md:208-213` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:91-103`). The stack gets `dns: None` (`src/vnet/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`src/vnet/stack/reactor.rs:136-146`, `src/vnet/stack/service.rs:17-20`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:25-30`, `src/vnet/shim.rs:53,82-90`). `docs/virtual-network.md:208-213` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -3109,7 +3109,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 ## Premise
 
 - `src/detach.rs:166-192` (`child_begin` reads the variable). `:513-520` sets 4 detach variables and not this one.
-  `:874` is the only writer (the supervisor).
+  `src/detach/supervise.rs:120` is the only writer (the supervisor).
 - `src/autostart.rs:178-182` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
 - `src/detach.rs:691-698` (`targets()` gives `Vec::new()` for this record).
 - The default start (restart on) runs `--detach-supervise`: the supervisor sets the variable for its own child, so that

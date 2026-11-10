@@ -6,8 +6,6 @@
 944 src/cloudflare/capnp.rs
 1123 src/cloudflare/http2.rs
 1207 src/config.rs
-1192 src/detach.rs
-1254 src/doctor.rs
 1608 src/edge_h2.rs
 2142 src/feature/mod.rs
 2034 src/proxy.rs
@@ -15,8 +13,6 @@
 899 src/relay_reverse.rs
 1901 src/share.rs
 1404 src/tunnel.rs
-1191 src/update.rs
-2103 src/vnet/stack.rs
 1680 src/warp/ip.rs
 1039 src/warp/mod.rs
 1870 src/warp/proxy.rs
