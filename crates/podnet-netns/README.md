@@ -30,6 +30,7 @@ podnet pod doctor --json
 | `--map NAME=ADDR` | Resolve `NAME` to `ADDR`, with no upstream. |
 | `--backend NAME` | `auto` (default), `netns` or `seccomp`. |
 | `--prefer-udp` | With `auto`: `seccomp` first when it works, because it carries UDP datagrams of each size (`netns` carries a datagram of 1500 bytes at most). `podnet warp run` sets it. |
+| `--host-gateway` | Netns backend: a TCP connect to the gateway of the pod (`10.66.255.254`) and a port goes to `127.0.0.1` and that port on the host, and a UDP datagram to the gateway (not port 53) goes from a UDP socket of the host. Off by default: the connect gets a RST, and the datagram is dropped. |
 | `--session DIR` | Seccomp backend: the pods of DIR share the inbound listeners (`DIR/inbound`, unless `--inbound-dir`) and the fake DNS table (`DIR/dns`, one line `ADDRESS NAME` for each fake address, under `flock`). A name thus gets the same address in each pod of DIR. The netns backend does not use it. `podnet warp exec --detach` and `--join` set it. |
 | `--name-backend` | Write one line on stderr that names the backend that runs (also after `auto`), its limits and the reason of the choice (`Choice: ...`). `podnet warp exec` and `podnet warp shell` set it. `PODNET_NETNS_QUIET` (`podnet -q`) removes the line. |
 | `--keep-proxy-env` | Keep `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY` and their lower-case forms for the program. By default the program does not get them: the pod is its egress, and a program that used them would send to a host proxy that it cannot reach. |

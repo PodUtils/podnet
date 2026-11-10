@@ -925,7 +925,10 @@ Two backends are available. `--backend auto` (the default) selects one.
 
 Both backends answer DNS from a fake-IP pool (`198.18.0.0/15`; the
 `seccomp` backend answers AAAA from `fd63:6672:7300::/96` too) and send the
-name to the upstream. Thus no DNS query leaves the host. See
+name to the upstream. Thus no DNS query leaves the host. With the `netns`
+backend, `--host-gateway` lets the program reach a service on the loopback
+of the host at the gateway `10.66.255.254` (TCP and UDP, as the gateway of
+podman and slirp4netns); without it, the gateway refuses. See
 [`crates/podnet-netns/README.md`](https://github.com/PodUtils/podnet/blob/main/crates/podnet-netns/README.md) for all options.
 
 ## Virtual network: `podnet net`

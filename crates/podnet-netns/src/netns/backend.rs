@@ -70,6 +70,10 @@ pub(crate) struct Backend {
     pub(crate) aborting: Vec<SocketHandle>,
     /// The UDP flows of the program other than DNS (T-111).
     pub(crate) udp: UdpFlows,
+    /// `--host-gateway` (T-112): a flow to the gateway goes to the loopback
+    /// of the host. Off: a TCP connect to the gateway gets a RST, and a
+    /// datagram to it (not DNS) is dropped.
+    pub(crate) host_gateway: bool,
     pub(crate) proxies: Vec<Proxy>,
     pub(crate) rules: Vec<Rule>,
     pub(crate) verbose: bool,
@@ -117,6 +121,7 @@ impl Backend {
             predialed: HashMap::new(),
             aborting: Vec::new(),
             udp: UdpFlows::new(),
+            host_gateway: false,
             proxies,
             rules,
             verbose,
@@ -164,6 +169,35 @@ impl Backend {
         (task, flow)
     }
 
+    /// The dial of a connection to the gateway on `port` (T-112): TCP to
+    /// 127.0.0.1 and `port` on the host with `--host-gateway`, else a
+    /// refusal (the program gets a RST).
+    fn spawn_gateway_dial(&self, port: u16) -> DialTask {
+        let on = self.host_gateway;
+        if self.verbose {
+            let what = match on {
+                true => format!("127.0.0.1:{port} of the host (--host-gateway)"),
+                false => "a refusal (no --host-gateway)".to_string(),
+            };
+            eprintln!(
+                "{}: {TUN_GW}:{port} (the gateway) goes to {what}",
+                crate::cli::program_name()
+            );
+        }
+        tokio::spawn(async move {
+            if !on {
+                bail!("the gateway refuses the connect (no --host-gateway)");
+            }
+            let target = format!("127.0.0.1:{port}");
+            let stream = within_timeout(
+                "host gateway connect",
+                crate::upstream::connect_direct(&target),
+            )
+            .await?;
+            Ok(Box::new(stream) as Upstream)
+        })
+    }
+
     /// A socket of the stack has the addresses of `key`.
     fn has_connection(&self, key: &SynKey) -> bool {
         let (src, sport, dst, dport) = *key;
@@ -197,7 +231,10 @@ impl Backend {
                 kept.push_back(pkt);
             } else {
                 let target = self.target_of(key.2, key.3);
-                let (task, flow) = self.spawn_dial(&target);
+                let (task, flow) = match key.2 == TUN_GW {
+                    true => (self.spawn_gateway_dial(key.3), None),
+                    false => self.spawn_dial(&target),
+                };
                 let held = HeldSyn {
                     pkt,
                     target,
@@ -317,6 +354,7 @@ impl Backend {
             proxies: &self.proxies,
             rules: &self.rules,
             dns: &self.dns,
+            host_gateway: self.host_gateway,
             verbose: self.verbose,
         };
         self.udp

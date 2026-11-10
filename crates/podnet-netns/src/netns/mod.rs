@@ -119,8 +119,10 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
     let rules = args.rules.clone();
     let maps = args.maps.clone();
     let verbose = args.verbose;
+    let host_gateway = args.host_gateway;
     let result = runtime.block_on(async move {
         let mut backend = Backend::new(tun_fd, proxies, rules, maps, verbose)?;
+        backend.host_gateway = host_gateway;
         let fd = backend.device.fd;
         let async_fd = crate::readable_copy(fd)?;
         let mut report = Vec::with_capacity(REAPER_REPORT);

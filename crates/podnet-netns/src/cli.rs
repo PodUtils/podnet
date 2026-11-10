@@ -24,6 +24,9 @@ pub(crate) struct Args {
     /// `--session DIR` (T-110): the fake DNS table of the seccomp backend
     /// that other pods of DIR share (`DIR/dns`).
     pub(crate) dns_state: Option<std::path::PathBuf>,
+    /// `--host-gateway` (T-112): the gateway of the netns backend reaches
+    /// the loopback of the host.
+    pub(crate) host_gateway: bool,
     /// `--keep-proxy-env`: the program keeps the proxy variables.
     pub(crate) keep_proxy_env: bool,
     pub(crate) serve: Option<crate::listen::ProxyListen>,
@@ -154,6 +157,11 @@ Options:
                            others; a new one gets mode 0700
                            [default: $XDG_RUNTIME_DIR/podnet-netns-inbound,
                            else $TMPDIR/podnet-netns-inbound-UID]
+      --host-gateway       Netns backend: a TCP connect to the gateway of the
+                           pod (10.66.255.254) and a port goes to 127.0.0.1
+                           and that port on the host; a UDP datagram to the
+                           gateway (not port 53) goes from a UDP socket of
+                           the host. Off by default: the connect is refused
       --session <DIR>      Seccomp backend: share the inbound listeners
                            (DIR/inbound, unless --inbound-dir) and the fake
                            DNS table (DIR/dns) with each pod of DIR. The
@@ -192,6 +200,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut inbound_dir = crate::listen::default_inbound_dir();
     let mut inbound_dir_given = false;
     let mut session: Option<std::path::PathBuf> = None;
+    let mut host_gateway = false;
     let mut keep_proxy_env = false;
     let mut serve: Option<crate::listen::ProxyListen> = None;
     let mut default_reject = false;
@@ -321,6 +330,10 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
                 inbound_dir_given = true;
                 i += 2;
             }
+            "--host-gateway" => {
+                host_gateway = true;
+                i += 1;
+            }
             "--session" => {
                 session = Some(std::path::PathBuf::from(
                     argv.get(i + 1).context("--session needs a value")?,
@@ -392,6 +405,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         inbound_dir,
         inbound_dir_given,
         dns_state,
+        host_gateway,
         keep_proxy_env,
         serve,
         backend,

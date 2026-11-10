@@ -140,11 +140,14 @@ pub(crate) struct UdpRoute<'a> {
     pub(crate) proxies: &'a [Proxy],
     pub(crate) rules: &'a [Rule],
     pub(crate) dns: &'a FakeDns,
+    /// T-112: a flow to the gateway goes to the loopback of the host.
+    pub(crate) host_gateway: bool,
     pub(crate) verbose: bool,
 }
 
 /// The flow and the payload of a UDP datagram of the program: IPv4, not a
-/// fragment, not to the gateway, not to a broadcast or multicast address.
+/// fragment, not to a broadcast or multicast address. A datagram to the
+/// gateway is a flow too (T-112); the DNS of the gateway is answered before.
 pub(crate) fn parse_udp(pkt: &[u8]) -> Option<(UdpKey, &[u8])> {
     if pkt.len() < 28 || pkt[0] >> 4 != 4 || pkt[9] != libc::IPPROTO_UDP as u8 {
         return None;
@@ -156,7 +159,7 @@ pub(crate) fn parse_udp(pkt: &[u8]) -> Option<(UdpKey, &[u8])> {
     }
     let src = Ipv4Addr::new(pkt[12], pkt[13], pkt[14], pkt[15]);
     let dst = Ipv4Addr::new(pkt[16], pkt[17], pkt[18], pkt[19]);
-    if dst == TUN_GW || dst.is_broadcast() || dst.is_multicast() || dst.is_loopback() {
+    if dst.is_broadcast() || dst.is_multicast() || dst.is_loopback() {
         return None;
     }
     let udp = &pkt[ihl..];
@@ -288,8 +291,25 @@ impl UdpFlows {
         }
     }
 
-    /// Start the task of a new flow. `None` when a rule refuses it.
+    /// Start the task of a new flow. `None` when a rule refuses it, or for
+    /// the gateway with no `--host-gateway`.
     fn start(&self, key: UdpKey, route: &UdpRoute<'_>) -> Option<UdpFlow> {
+        if key.2 == TUN_GW {
+            if route.verbose {
+                let what = match route.host_gateway {
+                    true => format!("127.0.0.1:{} of the host (--host-gateway)", key.3),
+                    false => "nothing: it is dropped (no --host-gateway)".to_string(),
+                };
+                eprintln!(
+                    "{}: udp {TUN_GW}:{} (the gateway) goes to {what}",
+                    program_name(),
+                    key.3
+                );
+            }
+            // T-112: a direct flow to the loopback of the host.
+            let host = route.host_gateway.then(|| "127.0.0.1".to_string())?;
+            return Some(self.spawn_flow(key, Some(host), None, route.verbose));
+        }
         let name = route.dns.name_for(key.2).map(str::to_string);
         let target = match &name {
             Some(name) => format!("{name}:{}", key.3),
@@ -309,18 +329,34 @@ impl UdpFlows {
             };
             eprintln!("{}: udp {target} via {via}", program_name());
         }
+        Some(self.spawn_flow(key, name, chain.first().cloned(), route.verbose))
+    }
+
+    /// The task of a flow: its datagrams go to `proxy`, else from a UDP
+    /// socket of the host to `name` (or to the destination of `key`).
+    fn spawn_flow(
+        &self,
+        key: UdpKey,
+        name: Option<String>,
+        proxy: Option<Proxy>,
+        verbose: bool,
+    ) -> UdpFlow {
         let (queue, datagrams) = tokio::sync::mpsc::channel(UDP_QUEUE);
         let replies = self.replies_tx.clone();
-        let verbose = route.verbose;
+        let target = format!(
+            "{}:{}",
+            name.as_deref().unwrap_or(&key.2.to_string()),
+            key.3
+        );
         let task = tokio::spawn(async move {
             let ends = Ends { key, name, replies };
-            if let Err(e) = carry(chain.first(), datagrams, ends).await {
+            if let Err(e) = carry(proxy.as_ref(), datagrams, ends).await {
                 if verbose {
                     eprintln!("{}: udp {target}: {e:#}", program_name());
                 }
             }
         });
-        Some(UdpFlow { queue, task })
+        UdpFlow { queue, task }
     }
 }
 
