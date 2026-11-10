@@ -569,6 +569,7 @@ jobs:
           git -C "$work" push -q "ssh://git@$name/app" HEAD:main
           git clone -q "ssh://git@$name/app" "$RUNNER_TEMP/gitrelayclone"
           cmp "$work/one.bin" "$RUNNER_TEMP/gitrelayclone/one.bin"
+          target/release/podnet stop gitrelay
           target/release/podnet relay stop "$name" > /dev/null
       - name: WARP account and probe
         timeout-minutes: 4
