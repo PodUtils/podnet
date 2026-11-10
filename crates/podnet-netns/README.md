@@ -26,6 +26,7 @@ podnet pod doctor --json
 | `--flow-log FILE` | Append one JSON line to `FILE` (mode 0600) for each decision: `time`, `event` (`dial`), `flow`, `proto` (`tcp` or `udp`), `target`, `rule` (the rule text, `default` or `loopback`), `chain` and `verdict` (`allow`, `direct` or `reject`). A UDP socket gets one line for each destination. Each relayed TCP flow also gets a line at its close (`event` `close`, `bytes_out` from the program, `bytes_in` to the program). With `seccomp`, the pod then relays each TCP flow: the program does not get the socket of the upstream. `-v` stays the log for humans. |
 | `--learn FILE` | Write each destination of the run to `FILE` at the exit of the program: one line `PROTO TARGET` (`tcp` or `udp`) for each destination. A flow that a rule refuses goes through the `-x` chain, so the run sees each destination. A TCP connect to `127.0.0.0/8` with `seccomp` is not recorded. |
 | `--fail-on-violation FILE` | Read a file of `--learn`. The pod refuses each destination that is not in `FILE`, as a `reject` rule does (the rule name is `not-learned`). A destination of `FILE` that a rule refuses is also a violation. At the exit of the program, the pod writes each violation on stderr. When the program exits 0 and a violation occurred, the exit status is 4. A bad line in `FILE` is a usage error (exit 64). Not with `--serve`. |
+| `--flow-budget N` | Seccomp backend: the most sockets of the program that the pod tracks at one time (64 to 1048576). A `socket` call above it gets `EMFILE`. The default comes from `RLIMIT_NOFILE`: the supervisor raises its soft limit to the hard limit after the start of the program (the program keeps its limit), takes 64 descriptors as a reserve and two descriptors for each socket, and stops at 65536. `pod doctor` shows the default. A budget above the default gives a warning. The netns backend does not use it. |
 | `--map NAME=ADDR` | Resolve `NAME` to `ADDR`, with no upstream. |
 | `--backend NAME` | `auto` (default), `netns` or `seccomp`. |
 | `--prefer-udp` | With `auto`: `seccomp` first when it works, because it carries UDP datagrams of each size (`netns` carries a datagram of 1500 bytes at most). `podnet warp run` sets it. |
@@ -34,6 +35,13 @@ podnet pod doctor --json
 | `--inbound-dir DIR` | Seccomp backend only: where a port that the program listens on becomes a unix socket (`DIR/<port>.sock`). The default is `$XDG_RUNTIME_DIR/podnet-netns-inbound` when that directory is of the user, else `$TMPDIR/podnet-netns-inbound-<uid>`. A new directory gets mode 0700. A directory of another user, a symbolic link, or a directory that the group or others can write is refused (exit 3). With `--backend netns` it is a usage error (exit 64); when `auto` picks netns, a warning says that it is not used. |
 | `--serve LISTEN` | Serve SOCKS5, HTTP `CONNECT` and UDP ASSOCIATE on `unix:/path` or `tcp://host:port`, through the `-x` chain. |
 | `-v, --verbose` | Log each flow. With `seccomp`, also log each socket that the pod makes as a socket pair and each `setsockopt` that the pod answers. |
+
+The pod counts each refused `socket` call of the seccomp backend by class:
+`table full` (the flow budget), `socketpair failed` (the descriptor limit of
+the supervisor) and `other` (a handler failed: `EIO`, or `ECONNREFUSED` for
+`connect`). At the exit of the program, the pod writes one line with the
+counts on stderr when a call was refused. `-v` writes one line for each
+refusal.
 
 `podnet pod doctor` prints what the host permits. The exit status is 3 when no
 backend can run. The seccomp probe runs in a child process. It sets

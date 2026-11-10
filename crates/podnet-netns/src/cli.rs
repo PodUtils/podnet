@@ -35,6 +35,8 @@ pub(crate) struct Args {
     pub(crate) flow_log: Option<std::path::PathBuf>,
     /// `--learn FILE` or `--fail-on-violation FILE` (T-158).
     pub(crate) learned: Option<Learned>,
+    /// `--flow-budget N`: the ceiling of the tracked sockets (T-181).
+    pub(crate) flow_budget: Option<usize>,
 }
 
 /// The mode of the learned set (T-158).
@@ -125,6 +127,10 @@ Options:
                            rule refuses is also a violation. The pod writes
                            each violation on stderr and exits 4 when the
                            program exits 0
+      --flow-budget <N>    Seccomp backend: the most sockets of the program
+                           that the pod tracks at one time (64 to 1048576).
+                           A socket call above it gets EMFILE. Default: from
+                           RLIMIT_NOFILE (pod doctor shows it)
       --map <NAME=ADDR>    Resolve NAME to ADDR locally, repeatable
       --keep-proxy-env     Keep HTTPS_PROXY, HTTP_PROXY, ALL_PROXY and NO_PROXY
                            (and the lower-case forms) for the program; by
@@ -180,6 +186,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut default_reject = false;
     let mut flow_log = None;
     let mut learned = None;
+    let mut flow_budget = None;
     let mut i = 0;
     while i < argv.len() {
         match argv[i].as_str() {
@@ -248,6 +255,18 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
                     "--learn" => Learned::Learn(path),
                     _ => Learned::Enforce(path),
                 });
+                i += 2;
+            }
+            "--flow-budget" => {
+                let value = argv.get(i + 1).context("--flow-budget needs a number")?;
+                let n: usize = value
+                    .parse()
+                    .ok()
+                    .filter(|n| {
+                        (crate::fdtable::MIN_CEILING..=crate::fdtable::MAX_CEILING).contains(n)
+                    })
+                    .with_context(|| format!("--flow-budget {value:?}: give 64 to 1048576"))?;
+                flow_budget = Some(n);
                 i += 2;
             }
             "--map" => {
@@ -356,5 +375,6 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         name_backend,
         flow_log,
         learned,
+        flow_budget,
     })
 }

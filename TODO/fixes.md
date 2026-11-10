@@ -1390,7 +1390,7 @@ at the start, 311 after 100 sockets, 311 after the close. A long-lived pod runs 
   clones of `pair`, `inbox` and `udp`. The UDP reader exits only on a `recv_from` error.
 - Read: `handle_close` (`fdtable.rs:145`) and `sweep` (`fdtable.rs:85`) remove the table entry only.
   Nothing stops the relay.
-- Read: the test `seccomp_closed_sockets_free_their_entries` (`tests/pod_seccomp_fds.rs:260`) makes
+- Read: the test `seccomp_closed_sockets_free_their_entries` (`tests/pod_seccomp_fds.rs:266`) makes
   5000 sockets that never send. It cannot see the leak.
 - Not measured: the count of 3 per socket. No build ran in this triage.
 - Existing tests have a SOCKS5 UDP-in-stream stand-in (`seccomp_backend_relays_udp_in_the_stream`, `tests/pod_seccomp/udp.rs`).
@@ -1402,7 +1402,7 @@ at the start, 311 after 100 sockets, 311 after the close. A long-lived pod runs 
 2. Give each `Sock::Datagram` a stop signal (a `tokio::sync::watch` sender or a `CancellationToken`).
    Select on it in both reader loops. Drop of the entry sends it.
 3. Send the stop from `handle_close`, `sweep` and the shutdown near `drain_relays` (`seccomp.rs:851`).
-4. Correct `crates/podnet-netns/README.md:121-123` so that it separates `read` and `write` on TCP from
+4. Correct `crates/podnet-netns/README.md:129-131` so that it separates `read` and `write` on TCP from
    the UDP path (the write part belongs to T-143).
 
 ## Prove
@@ -1446,7 +1446,7 @@ lines. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 `write(2)` on an emulated datagram socket returns success, and the datagram never leaves the pod. The
 reply never comes. `sendto`, `send`, `sendmsg` and `sendmmsg` work. Programs write datagrams with
 `write` after `connect` (C code, Python `os.write`, some Go paths). The README says that `write` works
-on the pair (`crates/podnet-netns/README.md:121-123`). That is true for TCP only.
+on the pair (`crates/podnet-netns/README.md:129-131`). That is true for TCP only.
 
 ## Premise
 

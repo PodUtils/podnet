@@ -18,6 +18,7 @@ pub(crate) fn handle_socket(
     verbose: bool,
 ) -> Result<()> {
     if !map.has_room() {
+        crate::fdtable::refuse(crate::fdtable::Refusal::TableFull, "socket", verbose);
         return notif_respond(lfd, id, -1, libc::EMFILE);
     }
     let domain = a[0] as i32;
@@ -43,7 +44,9 @@ pub(crate) fn handle_socket(
         // A std pair is blocking on both ends; only the supervisor's end is
         // made non-blocking, so the child gets a blocking socket unless it
         // asked for SOCK_NONBLOCK.
-        let (ours, theirs) = std::os::unix::net::UnixStream::pair()?;
+        let Ok((ours, theirs)) = std::os::unix::net::UnixStream::pair() else {
+            return refuse_pair(lfd, id, verbose);
+        };
         set_nonblocking(ours.as_raw_fd())?;
         if nonblocking {
             set_nonblocking(theirs.as_raw_fd())?;
@@ -63,7 +66,9 @@ pub(crate) fn handle_socket(
             },
         );
     } else {
-        let (ours, theirs) = std::os::unix::net::UnixDatagram::pair()?;
+        let Ok((ours, theirs)) = std::os::unix::net::UnixDatagram::pair() else {
+            return refuse_pair(lfd, id, verbose);
+        };
         set_nonblocking(ours.as_raw_fd())?;
         if nonblocking {
             set_nonblocking(theirs.as_raw_fd())?;
@@ -97,6 +102,13 @@ pub(crate) fn handle_socket(
         );
     }
     Ok(())
+}
+
+/// The supervisor cannot make the socket pair (its descriptor limit): the
+/// program gets `EMFILE`, and the refusal is counted (T-181).
+fn refuse_pair(lfd: RawFd, id: u64, verbose: bool) -> Result<()> {
+    crate::fdtable::refuse(crate::fdtable::Refusal::SocketPair, "socket", verbose);
+    notif_respond(lfd, id, -1, libc::EMFILE)
 }
 
 /// The line of `-v` for a socket that the pod makes as a socket pair.
