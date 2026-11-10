@@ -349,7 +349,7 @@ router moved with their names. `sh scripts/agent/check.sh`: exit 0. CI: at the m
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -374,6 +374,25 @@ cargo test -p podnet-serve -- serve_users_have_roles serve_pin_unlocks
 ## Start condition
 
 T-084 is done.
+
+## Correction
+
+2026-11-10, T-084 is open: the shared layer does not exist. The access of the file server is a layer of its
+own router (`crates/podnet-serve/src/files/access.rs`), so it works on each listener. T-084 can make it the
+shared layer. A users line with a password file is `USER:ROLE:@PASSWORD-FILE`. `--auth-user` of `serve` is a
+write user of the file server: the tunnel does not check it for `serve`.
+
+## Done
+
+2026-11-10, commit 73e250e. `crates/podnet-serve/src/files/access.rs`: Basic users with the roles read and
+write (a PBKDF2-HMAC-SHA256 hash, or a password file of mode 0600; the users file has mode 0600), the PIN
+gate of `share`, and an anonymous read. 401 with a Basic challenge for no user or a wrong password; 403 for
+a change by a read user. CLI: `serve --users FILE`, `--pin` (the PIN is printed, and is in the `--json`
+line), `--anon-read`, `--hash-password`; `--auth-user` works with `--local`. The command moved to
+`src/cli/cmd/serve.rs`. `cargo test -p podnet-serve -- serve_users_have_roles serve_pin_unlocks`: 2 passed.
+`cargo test --test cli -- serve_local_checks_users_and_the_pin`: 1 passed. Tests added:
+`serve_users_have_roles`, `serve_pin_unlocks`, `serve_local_checks_users_and_the_pin`.
+`sh scripts/agent/check.sh`: exit 0. CI: at the merge.
 
 # T-090: File server: uploads into the served tree with PUT and a multipart form
 
