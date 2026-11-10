@@ -279,7 +279,7 @@ write). `TMPDIR=/tmp/tm7 sh scripts/agent/check.sh`: each step 0. CI: at the mer
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -307,6 +307,21 @@ cargo test --workspace -- netns_host_gateway_reaches_the_host_loopback netns_wit
 ## Start condition
 
 T-111 is done.
+
+## Done
+
+2026-11-10, commit af529c1 (`T-112: netns: the gateway address reaches the loopback of the host, when
+the user asks`). `podnet pod --host-gateway`, off by default. With it, the netns backend dials a
+TCP connect to the gateway `10.66.255.254` and a port as TCP to `127.0.0.1` and that port of the
+host (`crates/podnet-netns/src/netns/backend.rs`), and a UDP datagram to the gateway (not port 53)
+is a direct flow from a UDP socket of the host to `127.0.0.1` (`crates/podnet-netns/src/netns/udpflow.rs`).
+Without it, the connect gets a RST at once, and the datagram is dropped (before, the flow went to
+the proxy). The seccomp backend does not use it (127.0.0.0/8 goes to the host there). Tests:
+`netns_host_gateway_reaches_the_host_loopback`, `netns_without_host_gateway_is_refused`
+(`tests/pod_seccomp/host_gateway.rs`). The Prove command: 2 passed.
+`TMPDIR=/workspace/podnet/.work/tmp-m7c sh scripts/agent/check.sh`: each step 0.
+`unshare -n -- cargo test --offline --workspace --no-fail-fast`: exit 0.
+`sh scripts/restricted-host.sh --no-fail-fast`: exit 0 (108 tests skipped). CI: at the merge.
 
 # T-113: `warp exec` and `warp shell` try the netns backend first
 
