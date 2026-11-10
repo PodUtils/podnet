@@ -80,8 +80,8 @@ macro_rules! update_atomic {
 // old paths.
 #[doc(inline)]
 pub use podnet_core::{
-    autostart, connect, decisions, detach, exit, hop, instances, metrics, net, ports, qr, race,
-    rlimit, services, state, trust, udp, util, yaml,
+    autostart, connect, decisions, detach, exit, hop, instances, metrics, net, network, ports, qr,
+    race, rlimit, services, state, trust, udp, util, yaml,
 };
 
 // The modules of the services (crates/podnet-serve, T-051), at their old

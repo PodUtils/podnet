@@ -66,7 +66,7 @@ LAYER = {
     "test_host": "podnet", "services": "core", "main": "podnet",
     "cli": "podnet",
     # The modules of crates/podnet-core that are new there.
-    "build": "core",
+    "build": "core", "network": "core",
     # The tests of the core that read a higher layer (src/core_tests.rs).
     "core_tests": "podnet",
     # The tests of the services that read a higher layer (src/serve_tests.rs).

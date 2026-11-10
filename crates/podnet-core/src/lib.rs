@@ -1,7 +1,9 @@
 //! podnet-core: the core layer of podnet: the process (`exit`, `rlimit`,
 //! `report`), the files and the state (`state`, `yaml`), the network glue
-//! (`net`, `trust`, `udp`, `connect`, `services`, `hop`), and the
-//! supervisor of detached instances (`detach`, `instances`, `autostart`).
+//! (`net`, `trust`, `udp`, `connect`, `services`, `hop`), the network
+//! types (`network`: a target, a dialer, datagrams, a network and its
+//! link), and the supervisor of detached instances (`detach`, `instances`,
+//! `autostart`).
 //! The other crates of the workspace use it; it uses none of them. It is a
 //! library of podnet, not a stable interface: use the crate `podnet`, which
 //! gives each module at its old path (`podnet::exit`).
@@ -77,6 +79,7 @@ pub mod hop;
 pub mod instances;
 pub mod metrics;
 pub mod net;
+pub mod network;
 pub mod ports;
 pub mod qr;
 pub mod race;

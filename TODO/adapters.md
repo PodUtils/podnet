@@ -64,6 +64,17 @@ T-053 is done.
 (T-137). A shared crate takes a stream or dialer trait (T-137, Premise). Before step 1, find which shared crate
 holds the dialer trait and use it. Do not define a second trait in `podnet-core`.
 
+2026-11-10, the start condition: the types of this entry need only `crates/podnet-core`, which exists (T-046,
+T-047). The work starts before T-053. T-053 later gives the types again through the facade.
+
+2026-11-10, the shared crate: `pod-core` of PodUtils/podcrates (tag v0.14.0) holds `Target`, the dialer trait
+`Dial` (`label`, `dial`, `datagrams`, `names_inside`), `Datagrams` (the shape of the UDP socket of quinn),
+`BoxFuture` and `BoxedIo`. `crates/podnet-core/src/network.rs` gives them again and defines no second copy. The
+`Dialer` of the Approach is `pod_core::Dial`, and `udp` is `Dial::datagrams`. A peer target is a
+`pod_core::Target` with port 0 (`network::peer`), not a new target type. The addressing mode (GitHub #377) is a
+`Way`: a `Dial` and its `Addressing`. `Addressing::admit` is the check that `Chain`, `Rules` and `Race`
+(T-058) call at startup.
+
 # T-056: Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network
 
 **Source:** `docs/research/podnet/architecture.md`, sections 4.3 and 4.6, step F.
