@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 109 open, 3 partial, 14 blocked, 98 done.**
+**224 entries: 108 open, 3 partial, 14 blocked, 99 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 70 | 2 | 8 | 57 | 137 |
+| P2 | 69 | 2 | 8 | 58 | 137 |
 | P3 | 36 | 0 | 4 | 21 | 61 |
-| **All** | 109 | 3 | 14 | 98 | 224 |
+| **All** | 108 | 3 | 14 | 99 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -82,7 +82,7 @@ M8 Overlays, M9 Later.
 | [T-034](split.md) | P2 | M | M2 | chore | open | Split `src/vnet/stack.rs` |
 | [T-035](split.md) | P2 | M | M2 | chore | open | Split `src/warp/ip.rs`, `src/warp/session.rs` and `src/warp/wg.rs` |
 | [T-036](split.md) | P2 | M | M2 | chore | open | Split `src/warp/mod.rs` and `src/warp/proxy.rs` |
-| [T-037](split.md) | P2 | M | M2 | chore | open | Split `src/relay_reverse.rs` and `src/share/mod.rs` |
+| [T-037](split.md) | P2 | M | M2 | chore | done | Split `src/relay_reverse.rs` and `src/share/mod.rs` |
 | [T-038](split.md) | P2 | M | M2 | chore | open | Split `src/feature/mod.rs` and `src/proxy.rs` |
 | [T-039](split.md) | P2 | M | M2 | chore | open | Split `src/edge_h2.rs` and `src/tunnel.rs` |
 | [T-040](split.md) | P2 | L | M2 | chore | done | Split the seccomp backend and the netns backend of the pod crate |

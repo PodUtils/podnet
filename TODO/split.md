@@ -630,7 +630,7 @@ T-008, T-009 and T-012 are done.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -665,6 +665,15 @@ T-008 and T-009 are done.
 ## Correction
 
 2026-11-05, The named modules `src/relay_reverse.rs` move to PodUtils/podcrates (`pod-relay`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. Split only the files that stay in podnet: `src/share/mod.rs`. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+
+## Done
+
+2026-11-09, commit ba9be1d (`T-037: split src/share.rs into src/share/`). `src/share/mod.rs` (431
+lines) holds the types, the app and the shared helpers; `upload.rs` (508) and `download.rs` (221)
+hold the two routers; `src/share/tests/upload.rs` (440) and `src/share/tests/download.rs` (292) hold the tests.
+`src/relay_reverse.rs` is not split (the Correction). Parity: commands 1295, items 1293, tests 1108,
+equal before and after. check.sh, `unshare -n` tests and `scripts/restricted-host.sh` pass. CI: at
+the merge.
 
 # T-038: Split `src/feature/mod.rs` and `src/proxy.rs`
 
