@@ -502,13 +502,14 @@ jobs:
           mkdir -p "$www"
           printf 'over the relay' > "$www/a.txt"
           target/release/podnet serve "$www" --via relay --pair "$name" --list --detach --name filesrelay > /dev/null
-          target/release/podnet relay connect "$name" --listen tcp://127.0.0.1:18091 --detach --name filesconnect > /dev/null
-          test "$(curl -fsS --retry 5 --retry-all-errors --retry-delay 2 http://127.0.0.1:18091/a.txt)" = 'over the relay'
+          target/release/podnet relay connect "$name" --listen tcp://127.0.0.1:18191 --detach --name filesconnect > /dev/null
+          test "$(curl -fsS --retry 5 --retry-all-errors --retry-delay 2 http://127.0.0.1:18191/a.txt)" = 'over the relay'
           head -c 1048576 /dev/urandom > "$RUNNER_TEMP/relay.bin"
           cp "$RUNNER_TEMP/relay.bin" "$www/relay.bin"
-          curl -fsS -o "$RUNNER_TEMP/relay.back" http://127.0.0.1:18091/relay.bin
+          curl -fsS -o "$RUNNER_TEMP/relay.back" http://127.0.0.1:18191/relay.bin
           cmp "$RUNNER_TEMP/relay.bin" "$RUNNER_TEMP/relay.back"
           target/release/podnet stop filesconnect
+          target/release/podnet stop filesrelay
           target/release/podnet relay stop "$name" > /dev/null
       - name: WARP account and probe
         timeout-minutes: 4

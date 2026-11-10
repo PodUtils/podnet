@@ -511,6 +511,8 @@ Done in commit 3d9e225 (steps 1 to 3, and the text of step 4):
 Left: the run of `gh workflow run live.yml` on a live host. Set the entry to done after a green run of
 the two new steps.
 
+2026-11-10, the live run 42843879079 at 31d040f: the step "File server through the reverse relay" failed at once, as `scripts/live-throughput.sh` holds `127.0.0.1:18091`. The step now uses 18191 and stops its `filesrelay` instance. The entry stays partial until a live run passes.
+
 # T-092: Git: a CGI runner for `git http-backend`, and the smart HTTP router
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 5.2, 5.3 (design A) and 5.8; the
