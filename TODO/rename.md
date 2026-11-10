@@ -527,7 +527,7 @@ is true. The install line of the README on a clean runner is not run here.
 **Milestone:** M1
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -568,6 +568,15 @@ T-023 is done.
 
 The owner allows releases again: done, 2026-11-09 (`docs/decisions.md`, Releases: betas, no crates.io).
 
+## Done
+
+2026-11-09, commit 94cc57c. The unit test `update::tests::the_bundle_of_a_podnet_release` checks the
+bundle of v0.4.0-beta.1 on the default path (the identity of PodUtils/podnet), and the refusal
+for another tag, a changed SHA256SUMS and the cfrs identity. `the_bundle_of_a_release` stays.
+The live step "podnet update to v0.4.0-beta.1" in `.github/workflows/live.yml` installs the
+release and checks `podnet.prev`; it cannot run here. The lead dispatches `live.yml`.
+`sh scripts/agent/check.sh` exit 0. CI: at the merge.
+
 # T-025: The image `ghcr.io/podutils/podnet` is public
 
 **Source:** `docs/research/podnet/rename.md`, sections 4 and 5, step 7.
@@ -575,7 +584,7 @@ The owner allows releases again: done, 2026-11-09 (`docs/decisions.md`, Releases
 **Milestone:** M1
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -605,6 +614,14 @@ token of a workflow cannot change the visibility of a package.
 docker logout ghcr.io
 docker pull ghcr.io/podutils/podnet:beta
 ```
+
+## Blocker
+
+The owner sets the package `podnet` of PodUtils public in the GitHub package settings
+(Package settings, Danger Zone, Change visibility). On 2026-11-10 the anonymous token request
+for `repository:podutils/podnet:pull` answers 401 and the tag list with a token answers 403
+`DENIED`, after the release v0.4.0-beta.1. The token of a workflow cannot change the visibility.
+Then run the Prove commands again.
 
 ## Start condition
 

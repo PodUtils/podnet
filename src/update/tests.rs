@@ -132,6 +132,42 @@ const OLD: &str = "Azathothas/cfrs";
 const SUMS: &[u8] = include_bytes!("../../tests/data/v0.3.0-beta.1.SHA256SUMS");
 const BUNDLE: &[u8] = include_bytes!("../../tests/data/v0.3.0-beta.1.SHA256SUMS.sigstore.json");
 
+const PODNET_SUMS: &[u8] = include_bytes!("../../tests/data/v0.4.0-beta.1.SHA256SUMS");
+const PODNET_BUNDLE: &[u8] =
+    include_bytes!("../../tests/data/v0.4.0-beta.1.SHA256SUMS.sigstore.json");
+
+/// The real files of v0.4.0-beta.1 of PodUtils/podnet: the bundle passes
+/// on the default path for its tag, and fails for another tag, for a
+/// changed SHA256SUMS and for the cfrs identity.
+#[test]
+fn the_bundle_of_a_podnet_release() {
+    verify_bundle(PODNET_BUNDLE, PODNET_SUMS, "v0.4.0-beta.1").unwrap();
+
+    let err = verify_bundle(PODNET_BUNDLE, PODNET_SUMS, "v0.4.0-beta.2")
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("not https://github.com/PodUtils/podnet/.github/workflows/release.yml@refs/tags/v0.4.0-beta.2"), "{err}");
+
+    let mut changed = PODNET_SUMS.to_vec();
+    changed[0] = if changed[0] == b'0' { b'1' } else { b'0' };
+    let err = verify_bundle(PODNET_BUNDLE, &changed, "v0.4.0-beta.1")
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("digest"), "{err}");
+
+    let err = verify_bundle_for(
+        PODNET_BUNDLE,
+        PODNET_SUMS,
+        &identity_in(OLD, "v0.4.0-beta.1"),
+    )
+    .unwrap_err()
+    .to_string();
+    assert!(
+        err.contains("not https://github.com/Azathothas/cfrs/"),
+        "{err}"
+    );
+}
+
 /// The real files of v0.3.0-beta.1: the bundle passes for its tag, and
 /// fails for another tag, for a changed SHA256SUMS and for a changed
 /// signature.

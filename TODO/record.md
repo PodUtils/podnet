@@ -411,7 +411,7 @@ the record agrees.
 **Milestone:** M2
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -445,3 +445,12 @@ step must fail.
 ## Start condition
 
 T-045 is done: each file is under 800 lines, and the splits are over.
+
+## Done
+
+2026-11-09, commit 6a63aae. The job `record` of `.github/workflows/ci.yml` checks out with `fetch-depth: 2`
+and runs `cargo todo check --base HEAD~1`. `cargo todo check --base HEAD~1` passes here and
+`python3 -I scripts/check-workflows.py` reports 0 faults. T-045 is still open: until it is done,
+an entry cites paths with no line. The plant (a commit that leaves a line citation) runs in CI: at
+the merge.
+

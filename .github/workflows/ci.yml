@@ -253,6 +253,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
       - name: Toolchain
         run: |
           sh scripts/retry.sh rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
@@ -261,6 +262,8 @@ jobs:
         run: cargo test --locked -p podnet-todo
       - name: The record agrees (cargo todo check)
         run: cargo run --locked -q -p podnet-todo -- check
+      - name: The last commit left no citation unmoved
+        run: cargo run --locked -q -p podnet-todo -- check --base HEAD~1
 
   # #214: clippy of the newest stable Rust. A new lint of a new Rust does
   # not stop a release (the pinned toolchain decides); this job shows it.

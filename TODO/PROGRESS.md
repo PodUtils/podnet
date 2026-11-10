@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 224 entries: 100 open, 3 partial, 17 blocked, 104 done.
+`TODO/INDEX.md` holds 224 entries: 97 open, 3 partial, 18 blocked, 106 done.
 
 ## State
 
@@ -23,7 +23,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** T-024 and T-025 can go now (betas, 2026-11-09). Cut a beta when a
+3. **Releases:** T-025 can go now (betas, 2026-11-09). Cut a beta when a
    batch of fixes is green.
 
 ### The order of podnet's own work
@@ -33,14 +33,14 @@ one. In a milestone: P1, then P2, then P3. At one priority, an S entry goes firs
 not wait for a larger one.
 
 1. **M0, the record and the guards:** T-012 (blocked: the WARP stand-ins of `pod-warp`, T-137).
-2. **M1, the rename:** T-024, then T-025 (betas are allowed, 2026-11-09).
+2. **M1, the rename:** T-025 (betas are allowed, 2026-11-09).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - tunnel, share, serve and the CLI: T-169.
    - WARP: T-173, T-210.
 4. **M2, the splits:** T-035, T-036, T-039 (moved files: podcrates); T-043 and T-044 (blocked:
-   the rows left go with the takes, T-137); T-045; then T-015.
+   the rows left go with the takes, T-137); T-045.
 5. **M3, the crates:** T-046, T-047, T-048, T-051, T-053, then the prerelease T-054. T-049, T-050
    and T-052 are the takes of `pod-relay`, `pod-warp` and `pod-cloudflare` of `PodUtils/podcrates`
    (T-137): do not do them in podnet.
@@ -108,6 +108,7 @@ Each call is in its entry, and the work goes on with it until the owner rules ot
 
 | Entry | Action |
 | --- | --- |
+| T-025 | Set the package `ghcr.io/podutils/podnet` public (GitHub package settings of PodUtils: the anonymous pull is refused) |
 | T-007 | Reserve the crate names `podnet-core`, `podnet-netns`, `podnet-vnet` and `podnet-serve` (0.0.0 placeholders, as `podnet`) |
 
 ## Questions for the owner
