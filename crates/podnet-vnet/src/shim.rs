@@ -42,6 +42,83 @@ pub struct ShimOptions {
     pub control: Option<String>,
     /// Size of the shim's per-fd table, used to size the shim's arrays.
     pub max_fds: usize,
+    /// The routes of [`parse_socks_route`] whose stream connects go to the
+    /// SOCKS5 front door `socks_socket` (T-167), not to an abstract name.
+    pub socks_routes: Vec<String>,
+    /// The unix socket of the front door of `socks_routes`.
+    pub socks_socket: String,
+}
+
+/// The default unix socket of the SOCKS5 front door (`net tailscale`).
+pub const DEFAULT_SOCKS_SOCKET: &str = "/tmp/podnet-socks.sock";
+
+/// The most routes that the C shims keep (`MAX_ROUTES`).
+pub const MAX_SOCKS_ROUTES: usize = 32;
+
+/// Check one route of `PODNET_SOCKS_CIDRS` and `PODNET_VNET_SOCKS_ROUTES`
+/// (T-167): `tailnet` (100.64.0.0/10 and fd7a:115c:a1e0::/48), `ADDR`,
+/// `ADDR/BITS`, `IPV4:PORT` or `[IPV6]:PORT`. Gives the route as the shims
+/// read it.
+pub fn parse_socks_route(text: &str) -> Result<String> {
+    use std::net::IpAddr;
+    let text = text.trim();
+    let forms = "give tailnet, ADDR, ADDR/BITS, IPV4:PORT or [IPV6]:PORT";
+    let port = |p: &str| match p.parse::<u16>() {
+        Ok(n) if n > 0 => Ok(()),
+        _ => bail!("the route {text:?} has a bad port: {forms}"),
+    };
+    if text == "tailnet" {
+        return Ok(text.to_string());
+    }
+    if let Some(rest) = text.strip_prefix('[') {
+        let Some((addr, tail)) = rest.split_once(']') else {
+            bail!("the route {text:?} has no ]: {forms}");
+        };
+        if addr.parse::<std::net::Ipv6Addr>().is_err() {
+            bail!("the route {text:?} has no IPv6 address in []: {forms}");
+        }
+        if !tail.is_empty() {
+            port(tail.strip_prefix(':').unwrap_or("-"))?;
+        }
+        return Ok(text.to_string());
+    }
+    if let Some((addr, bits)) = text.split_once('/') {
+        let max = match addr.parse::<IpAddr>() {
+            Ok(IpAddr::V4(_)) => 32,
+            Ok(IpAddr::V6(_)) => 128,
+            Err(_) => bail!("the route {text:?} has no address before /: {forms}"),
+        };
+        match bits.parse::<u8>() {
+            Ok(n) if n <= max => return Ok(text.to_string()),
+            _ => bail!("the route {text:?} has a prefix length that is not 0 to {max}"),
+        }
+    }
+    if text.parse::<IpAddr>().is_ok() {
+        return Ok(text.to_string());
+    }
+    if let Some((addr, p)) = text.rsplit_once(':') {
+        if addr.parse::<std::net::Ipv4Addr>().is_ok() {
+            port(p)?;
+            return Ok(text.to_string());
+        }
+    }
+    bail!("the route {text:?} is not an address: {forms}")
+}
+
+/// Check each route and join them for the environment. More than
+/// [`MAX_SOCKS_ROUTES`] is an error.
+pub fn socks_route_list(routes: &[String]) -> Result<String> {
+    if routes.len() > MAX_SOCKS_ROUTES {
+        bail!(
+            "{} routes: the shim keeps {MAX_SOCKS_ROUTES} at most",
+            routes.len()
+        );
+    }
+    let checked = routes
+        .iter()
+        .map(|r| parse_socks_route(r))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(checked.join(","))
 }
 
 impl Default for ShimOptions {
@@ -53,6 +130,8 @@ impl Default for ShimOptions {
             hosts: Vec::new(),
             control: None,
             max_fds: 65536,
+            socks_routes: Vec::new(),
+            socks_socket: DEFAULT_SOCKS_SOCKET.into(),
         }
     }
 }
@@ -89,6 +168,13 @@ impl ShimOptions {
             env.push(("PODNET_VNET_HOSTS".into(), table));
         }
         env.push(("PODNET_VNET_MAX_FDS".into(), self.max_fds.to_string()));
+        if !self.socks_routes.is_empty() {
+            env.push(("PODNET_VNET_SOCKS".into(), self.socks_socket.clone()));
+            env.push((
+                "PODNET_VNET_SOCKS_ROUTES".into(),
+                self.socks_routes.join(","),
+            ));
+        }
         env
     }
 }
@@ -405,6 +491,54 @@ mod tests {
         assert_eq!(env["PODNET_VNET_LOG"], "1");
         assert_eq!(env["PODNET_VNET_MAP_LOOPBACK"], "1");
         assert_eq!(env["PODNET_VNET_HOSTS"], "web=10.66.0.2");
+    }
+
+    // T-167: the forms of a route of the socks shims.
+    #[test]
+    fn socks_routes_are_checked() {
+        for good in [
+            "tailnet",
+            "127.0.0.1",
+            "127.0.0.1:3000",
+            "10.0.0.0/8",
+            "0.0.0.0/0",
+            "fd00::/8",
+            "::1",
+            "[::1]:8080",
+            "[fd7a::1]",
+        ] {
+            assert_eq!(parse_socks_route(good).unwrap(), good);
+        }
+        for bad in [
+            "",
+            "web:80",
+            "10.0.0.0/33",
+            "::/129",
+            "127.0.0.1:0",
+            "127.0.0.1:x",
+            "[::1",
+            "[::1]80",
+            "a,b",
+            "10.0.0.1/8:80",
+        ] {
+            assert!(parse_socks_route(bad).is_err(), "{bad:?}");
+        }
+        let many: Vec<String> = (0..33).map(|i| format!("10.0.0.{i}")).collect();
+        assert!(socks_route_list(&many).is_err());
+        assert_eq!(
+            socks_route_list(&["tailnet".into(), "127.0.0.1:3000".into()]).unwrap(),
+            "tailnet,127.0.0.1:3000"
+        );
+        let options = ShimOptions {
+            socks_routes: vec!["127.0.0.1:3000".into()],
+            ..ShimOptions::default()
+        };
+        let env: std::collections::HashMap<_, _> = options
+            .environment(Path::new("/tmp/libpodnet-vnet.so"))
+            .into_iter()
+            .collect();
+        assert_eq!(env["PODNET_VNET_SOCKS"], DEFAULT_SOCKS_SOCKET);
+        assert_eq!(env["PODNET_VNET_SOCKS_ROUTES"], "127.0.0.1:3000");
     }
 
     #[test]

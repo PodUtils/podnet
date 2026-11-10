@@ -17,7 +17,7 @@ use crate::cli::cmd::run::listen_doc;
 use crate::cli::opts::DetachArgs;
 use crate::cli::signals::sleep_or_signal;
 use proxy::{net_proxy, probability};
-use shim::{net_shim, net_socksify, net_tailscale, net_ts_shims};
+use shim::{net_passwd_shim, net_shim, net_socksify, net_tailscale, net_ts_shims};
 
 #[derive(Args, Debug)]
 #[command(subcommand_required = true, arg_required_else_help = false)]
@@ -52,8 +52,13 @@ pub(crate) enum NetCommand {
     Tailscale(TailscaleArgs),
     /// Build the LD_PRELOAD shim that sends tailnet connects to a front door.
     Socksify(SocksifyArgs),
-    /// Write the user-table shims that Tailscale SSH needs on a host with no
-    /// /etc/passwd.
+    /// Write a passwd file and the fakepwd preload for a client (ssh,
+    /// ssh-keygen, git) on a host with no /etc/passwd entry for this user.
+    /// Then ssh-keygen writes its key (with no shim it exits 0 and writes no
+    /// key). Use: eval "$(podnet net passwd-shim)".
+    PasswdShim(TsShimsArgs),
+    /// The same files as passwd-shim, with getent and id, and the hints for
+    /// tailscaled (Tailscale SSH).
     TsShims(TsShimsArgs),
 }
 
@@ -84,7 +89,14 @@ pub(crate) struct SocksifyArgs {
     /// is not --proxy: that is the global proxy URL of podnet.
     #[arg(long, value_name = "PATH", default_value = "/tmp/podnet-socks.sock")]
     socket: String,
-    /// Log each redirect to stderr.
+    /// Route only these destinations, repeatable (exported as
+    /// PODNET_SOCKS_CIDRS): tailnet, ADDR, ADDR/BITS, IPV4:PORT or
+    /// [IPV6]:PORT. With no --cidr, the shim routes the tailnet only
+    /// (100.64.0.0/10 and fd7a:115c:a1e0::/48). Example: --cidr
+    /// 127.0.0.1:3000.
+    #[arg(long = "cidr", value_name = "ROUTE")]
+    cidrs: Vec<String>,
+    /// Log each route and each redirect to stderr.
     #[arg(long)]
     log: bool,
     /// Print the environment as JSON instead of shell assignments.
@@ -134,6 +146,15 @@ pub(crate) struct ShimArgs {
     /// Read name entries from a file, repeatable.
     #[arg(long = "map-file", value_name = "PATH")]
     map_files: Vec<PathBuf>,
+    /// Send a stream connect to this destination to the SOCKS5 front door
+    /// of --socks-socket, not to the virtual network, repeatable: tailnet,
+    /// ADDR, ADDR/BITS, IPV4:PORT or [IPV6]:PORT.
+    #[arg(long = "socks-route", value_name = "ROUTE")]
+    socks_routes: Vec<String>,
+    /// The unix socket of the SOCKS5 front door of --socks-route (for
+    /// example of podnet net tailscale).
+    #[arg(long, value_name = "PATH", default_value = podnet::vnet::shim::DEFAULT_SOCKS_SOCKET, requires = "socks_routes")]
+    socks_socket: String,
     /// Print the environment as JSON instead of shell assignments.
     #[arg(long)]
     json: bool,
@@ -340,6 +361,7 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
         }
         NetCommand::Tailscale(args) => net_tailscale(args).await,
         NetCommand::Socksify(args) => net_socksify(args),
+        NetCommand::PasswdShim(args) => net_passwd_shim(args),
         NetCommand::TsShims(args) => net_ts_shims(args),
     }
 }

@@ -1,5 +1,5 @@
-//! The shim commands of `podnet net`: `shim`, `tailscale`, `socksify` and
-//! `ts-shims`.
+//! The shim commands of `podnet net`: `shim`, `tailscale`, `socksify`,
+//! `passwd-shim` and `ts-shims`.
 
 use anyhow::{Context, Result};
 
@@ -22,10 +22,18 @@ pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
         Some(shim) if args.out.is_none() => shim,
         _ => podnet::vnet::shim::build(&directory)?,
     };
+    // T-167: a bad route is a usage error before the shim is built.
+    let routes = podnet::vnet::shim::socks_route_list(&args.socks_routes).fault(Fault::Usage)?;
     let options = podnet::vnet::shim::ShimOptions {
         log: args.log,
         map_loopback: args.map_loopback,
         hosts,
+        socks_routes: if routes.is_empty() {
+            Vec::new()
+        } else {
+            vec![routes]
+        },
+        socks_socket: args.socks_socket.clone(),
         ..podnet::vnet::shim::ShimOptions::default()
     };
     let env = options.environment(&shim.path);
@@ -99,6 +107,8 @@ pub(crate) fn print_environment(
 }
 
 pub(crate) fn net_socksify(args: SocksifyArgs) -> Result<()> {
+    // T-167: a bad route is a usage error before the shim is built.
+    let cidrs = podnet::vnet::shim::socks_route_list(&args.cidrs).fault(Fault::Usage)?;
     let directory = args
         .out
         .clone()
@@ -116,6 +126,9 @@ pub(crate) fn net_socksify(args: SocksifyArgs) -> Result<()> {
         ("LD_PRELOAD".to_string(), preload),
         ("PODNET_SOCKS_PROXY".to_string(), args.socket.clone()),
     ];
+    if !cidrs.is_empty() {
+        environment.push(("PODNET_SOCKS_CIDRS".to_string(), cidrs));
+    }
     if args.log {
         environment.push(("PODNET_SOCKS_LOG".to_string(), "1".to_string()));
     }
@@ -126,7 +139,13 @@ pub(crate) fn net_socksify(args: SocksifyArgs) -> Result<()> {
     print_environment(environment, args.json, "export ")
 }
 
-pub(crate) fn net_ts_shims(args: TsShimsArgs) -> Result<()> {
+/// Write the shims of `args`: the directory, the user and the shims.
+fn write_user_shims(
+    args: TsShimsArgs,
+) -> Result<(
+    podnet::vnet::tailscale_ssh::LocalUser,
+    podnet::vnet::tailscale_ssh::Shims,
+)> {
     use podnet::vnet::tailscale_ssh;
 
     let directory = args
@@ -148,8 +167,31 @@ pub(crate) fn net_ts_shims(args: TsShimsArgs) -> Result<()> {
         user.shell = shell;
     }
     let shims = tailscale_ssh::install(&directory, std::slice::from_ref(&user))?;
-    let environment = tailscale_ssh::client_environment(&shims);
-    if !args.json {
+    Ok((user, shims))
+}
+
+/// `net passwd-shim` (T-168): the user shims for any client. The shell form
+/// is for eval: the notes go to stderr, and stdout has only the exports.
+pub(crate) fn net_passwd_shim(args: TsShimsArgs) -> Result<()> {
+    let json = args.json;
+    let (user, shims) = write_user_shims(args)?;
+    let environment = podnet::vnet::tailscale_ssh::client_environment(&shims);
+    if !json {
+        eprintln!("podnet: passwd   {}", shims.passwd.display());
+        eprintln!(
+            "podnet: user     {} uid={} gid={}",
+            user.name, user.uid, user.gid
+        );
+        eprintln!("podnet: fakepwd  {}", shims.fakepwd.display());
+    }
+    print_environment(environment, json, "export ")
+}
+
+pub(crate) fn net_ts_shims(args: TsShimsArgs) -> Result<()> {
+    let json = args.json;
+    let (user, shims) = write_user_shims(args)?;
+    let environment = podnet::vnet::tailscale_ssh::client_environment(&shims);
+    if !json {
         println!("podnet: shims    {}", shims.dir.display());
         println!(
             "podnet: user     {} uid={} gid={}",
@@ -164,5 +206,5 @@ pub(crate) fn net_ts_shims(args: TsShimsArgs) -> Result<()> {
         );
         println!("podnet: note     --statedir lets the daemon keep its SSH host keys");
     }
-    print_environment(environment, args.json, "  export ")
+    print_environment(environment, json, "  export ")
 }

@@ -68,8 +68,9 @@ pub enum Service {
     HelloWorld,
     /// A fixed status code.
     Status(u16),
-    /// A directory served from disk (a `spa` fallback serves index.html).
-    Static { root: PathBuf, spa: bool },
+    /// A directory served from disk (a `spa` fallback serves index.html;
+    /// with `tar`, `DIR/?tar` gives a directory as one tar stream).
+    Static { root: PathBuf, spa: bool, tar: bool },
     /// Prometheus metrics for this tunnel.
     Metrics,
     /// Upload / download / proxy session (the quickbridge feature set).
@@ -104,12 +105,14 @@ impl Service {
             return Ok(Service::Static {
                 root: PathBuf::from(rest),
                 spa: false,
+                tar: false,
             });
         }
         if let Some(rest) = value.strip_prefix("spa:") {
             return Ok(Service::Static {
                 root: PathBuf::from(rest),
                 spa: true,
+                tar: false,
             });
         }
         if let Some(rest) = value.strip_prefix("http_status:") {
@@ -137,7 +140,7 @@ impl Service {
             Service::Forward(target) => format!("forward:{}", target.describe()),
             Service::HelloWorld => "hello_world".into(),
             Service::Status(code) => format!("http_status:{code}"),
-            Service::Static { root, spa } => {
+            Service::Static { root, spa, .. } => {
                 format!("{}:{}", if *spa { "spa" } else { "static" }, root.display())
             }
             Service::Metrics => "metrics".into(),

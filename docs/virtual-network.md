@@ -203,6 +203,39 @@ podnet net switch --listen unix:/tmp/sw.sock &
 podnet net proxy --switch unix:/tmp/sw.sock --address 10.66.0.3 --drop 0.1 --seed 7
 ```
 
+### 5.5 Routes to a SOCKS5 front door
+
+A program can send a TCP connect to a SOCKS5 front door on a unix socket
+(`podnet net tailscale`, `podnet net proxy`). There are three tiers:
+
+| Tier | Shim | Destinations to the door | Other connects |
+| --- | --- | --- | --- |
+| Tailnet (the default) | `libpodnet-socks.so` (`net socksify`) | `100.64.0.0/10` and `fd7a:115c:a1e0::/48` | the real network |
+| Chosen | `libpodnet-socks.so` (`net socksify --cidr ROUTE`) | only the listed routes | the real network |
+| All | `libpodnet-socks.so` with `PODNET_SOCKS_ALL=1` | each TCP connect | none |
+
+A route is `tailnet`, `ADDR`, `ADDR/BITS`, `IPV4:PORT` or `[IPV6]:PORT`.
+`--cidr` is repeatable. The list replaces the tailnet default: add `tailnet`
+to keep it. The shim keeps 32 routes at most. An IPv4-mapped IPv6 address
+matches as IPv4. With `--log` (`PODNET_SOCKS_LOG=1`), the shim logs each
+route at the first connect, and each redirect.
+
+```sh
+eval "$(podnet net socksify --socket /tmp/podnet-socks.sock --cidr 127.0.0.1:3000 --cidr tailnet)"
+```
+
+The shim of the virtual network (`net shim`) takes the same routes with
+`--socks-route ROUTE` and `--socks-socket PATH` (`PODNET_VNET_SOCKS` and
+`PODNET_VNET_SOCKS_ROUTES`). A stream connect to a listed destination goes to
+the door. Each other connect goes to its abstract name, as before.
+
+```sh
+podnet net shim --socks-route 192.168.1.5:5432 --socks-socket /tmp/podnet-socks.sock
+```
+
+podnet checks each route and exits 64 at a bad route. The C shims ignore a
+bad route of the environment, and log it with the log variable.
+
 ## 6. Resolver, policy and capture
 
 * `vnet::dns::Resolver` answers A and AAAA queries for a name table at

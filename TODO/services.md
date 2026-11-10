@@ -11,7 +11,7 @@ it comes through the shared crates of `PodUtils/podcrates` (`docs/decisions.md`,
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -37,6 +37,14 @@ cargo test --test connect -- connect_stdio_carries_a_stream
 
 The test runs a WebSocket forward on the loopback and pipes bytes through `connect --stdio`.
 
+## Done
+
+2026-11-09, commit f16a790. `podnet connect URL --stdio` carries one stream on stdin and stdout
+(`src/cli/cmd/connect_stdio.rs`). The end of stdin closes the WebSocket; the close of the remote ends the
+command. `cargo test --test connect -- connect_stdio_carries_a_stream`: 1 passed. Tests added:
+`connect_stdio_carries_a_stream`, `connect_stdio_ends_when_the_remote_closes`,
+`connect_stdio_exits_69_and_refuses_listeners`. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
+
 # T-083: A relay node serves a handler in the process, with no socket file
 
 **Source:** `docs/research/podnet/capabilities.md`, section 6 (enabler 2).
@@ -44,7 +52,7 @@ The test runs a WebSocket forward on the loopback and pipes bytes through `conne
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -66,6 +74,15 @@ a transfer in the same process must open a socket file to be reached.
 ```sh
 cargo test --test relay_reverse -- a_node_serves_an_in_process_handler
 ```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-relay`). The relay node (`Target`, `node`, `session`) is in
+`src/relay_reverse.rs` and `src/relay_reverse/session.rs`. These files go to `pod-relay` and take fixes only
+(`docs/decisions.md`, 2026-11-06, Order). A handler target is a new variant of `Target`: a feature of that code.
+No part of the entry lands in the crates of podnet: the users of the handler (T-091, T-094, T-104) do not exist.
+The entry is unblocked when podnet takes `pod-relay` (T-049, through T-137). Then add the target to `pod-relay`
+or use its handler target.
 
 # T-084: One HTTP authentication layer for the local listener, the tunnel and the relay
 
@@ -115,7 +132,7 @@ T-062 is done.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -139,6 +156,17 @@ cargo test -p podnet-serve -- ustar_round_trip_keeps_odd_names a_directory_downl
 ```
 
 The second test compares `tar -tf` of the download with the tree.
+
+## Done
+
+2026-11-09, commit 6fafd3f. `crates/podnet-serve/src/tar.rs`: a ustar writer and reader (files and directories,
+the ustar prefix, base-256 sizes; the reader and `unpack` refuse links, absolute names and `..`).
+`crates/podnet-serve/src/tar_http.rs`: `serve --tar` gives `GET /PATH/?tar` as one stream.
+`cargo test -p podnet-serve -- ustar_round_trip_keeps_odd_names a_directory_downloads_as_a_tar`: 2 passed (the
+second compares `tar --quoting-style=literal -tf` with the tree). Tests added: `ustar_round_trip_keeps_odd_names`,
+`ustar_refuses_names_that_do_not_fit_or_leave_the_root`, `ustar_big_sizes_use_base_256`,
+`unpack_writes_below_the_root_only`, `a_directory_downloads_as_a_tar`. `sh scripts/agent/check.sh`: exit 0.
+No new dependency. CI: at the merge.
 
 # T-086: Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates
 
@@ -1126,20 +1154,20 @@ has not, write the harness in podnet (it is a CI file, no code of a crate).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
 The socks shim routes a stream `connect` to the front door only for `100.64.0.0/10` and
-`fd7a:115c:a1e0::/48`, or for each connect with `PODNET_SOCKS_ALL=1` (`crates/podnet-vnet/shim/podnet-socks.c:206-223`).
+`fd7a:115c:a1e0::/48`, or for each connect with `PODNET_SOCKS_ALL=1` (`crates/podnet-vnet/shim/podnet-socks.c:356-374`).
 A client with a hardcoded origin (`127.0.0.1:3000`, a fixed LAN address) needs only that address routed.
 The abstract-name shim has no option to hand a chosen address to the SOCKS door.
 
 ## Premise
 
-- `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`crates/podnet-vnet/shim/podnet-socks.c:81-92`).
-- `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:115-121`). `ShimOptions`
-  (`crates/podnet-vnet/src/shim.rs:30-45`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
+- `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`crates/podnet-vnet/shim/podnet-socks.c:239-251`).
+- `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:125-134`). `ShimOptions`
+  (`crates/podnet-vnet/src/shim.rs:30-50`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
 - The variable list is in `src/manual/facts.rs:301`. `docs/virtual-network.md` has no text on socksify
   (README.md:921 only), so item 4 of the issue needs a new section.
 - Names are set by T-016 (`PODNET_SOCKS_*`).
@@ -1160,6 +1188,20 @@ cargo test --test shim_socks -- cidr_list_routes_only_listed
 cargo test --test cli -- socksify_takes_cidrs
 ```
 
+## Done
+
+2026-11-09, commit 571d7b5. `PODNET_SOCKS_CIDRS` in `crates/podnet-vnet/shim/podnet-socks.c` (a fixed table of 32
+routes: `tailnet`, `ADDR`, `ADDR/BITS`, `IPV4:PORT`, `[IPV6]:PORT`; the list replaces the tailnet default; each
+route is logged with `PODNET_SOCKS_LOG`). `net socksify --cidr` (repeatable). `net shim --socks-route` and
+`--socks-socket` give `PODNET_VNET_SOCKS` and `PODNET_VNET_SOCKS_ROUTES` (`ShimOptions::environment`); the vnet shim
+sends a listed stream connect to the door. `src/manual/facts.rs` and `docs/virtual-network.md` section 5.5 (the
+three tiers). `cargo test --test shim_socks -- cidr_list_routes_only_listed`: 1 passed (the IPv6 lines need an
+AF_INET6 socket; this host has none, so they ran only in `vnet_shim_sends_a_socks_route_to_the_door`).
+`cargo test --test cli -- socksify_takes_cidrs`: 1 passed. Tests added: `cidr_list_routes_only_listed`,
+`vnet_shim_sends_a_socks_route_to_the_door`, `socksify_takes_cidrs`, `socks_routes_are_checked`.
+`sh scripts/agent/check.sh`, `unshare -n -- cargo test --offline --workspace --no-fail-fast`,
+`sh scripts/restricted-host.sh --no-fail-fast`: exit 0. Not measured: the external shim of the issue. CI: at the merge.
+
 # T-168: A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365)
 
 **Source:** GitHub #365 (https://github.com/PodUtils/podnet/issues/365)
@@ -1167,7 +1209,7 @@ cargo test --test cli -- socksify_takes_cidrs
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1178,7 +1220,7 @@ Tailscale and described only for Tailscale SSH.
 ## Premise
 
 - `net ts-shims` already takes `--out --user --uid --gid --shell --json` and prints `LD_PRELOAD`
-  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:129-168`,
+  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:142-181`,
   `crates/podnet-vnet/src/tailscale_ssh.rs:160-202`). It also writes `getent`, `id` and a compiled shim: more than a client needs.
 - `docs/target-environment.md:104` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
   No doctor row names the silent `ssh-keygen`.
@@ -1198,6 +1240,17 @@ Tailscale and described only for Tailscale SSH.
 cargo test --test cli -- passwd_shim_prints_the_preload
 sh -c 'podnet net passwd-shim --json | grep -q SANDHOME_PASSWD'
 ```
+
+## Done
+
+2026-11-09, commit 0c9d3ff. `podnet net passwd-shim` runs the code of `net ts-shims` (which stays): stdout has only
+`export` lines (for eval) or one JSON object; `LD_PRELOAD` keeps an old value after the shim. `net doctor` has
+the row `passwd entry for this uid` (`crates/podnet-vnet/src/doctor.rs` `passwd_probe`). README ("A user with no
+passwd entry") and `docs/target-environment.md` give the silent exit 0 of `ssh-keygen`.
+`cargo test --test cli -- passwd_shim_prints_the_preload`: 1 passed.
+`sh -c 'podnet net passwd-shim --json | grep -q SANDHOME_PASSWD'` (the debug binary): exit 0. Tests added:
+`passwd_shim_prints_the_preload`, `passwd_probe_names_the_shim`. `sh scripts/agent/check.sh`: exit 0.
+Not measured: `ssh-keygen` on a host with no passwd entry. CI: at the merge.
 
 # T-177: Router: `podnet route check`, a dry run of the rules (GitHub #375)
 

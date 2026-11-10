@@ -23,13 +23,10 @@ where
         return;
     };
     while let Some(Ok(message)) = ws.next().await {
-        if message.is_binary() || message.is_text() {
-            if ws.send(message).await.is_err() {
-                return;
-            }
-        } else if message.is_close() {
+        if (message.is_binary() || message.is_text()) && ws.send(message).await.is_err() {
             return;
         }
+        // A close message: the next read sends the answer and ends.
     }
 }
 
@@ -364,4 +361,123 @@ fn connect_detach_is_in_ps_and_stops() {
     }
     assert!(!sock.exists(), "the socket file is left");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+// T-082: connect --stdio carries stdin to the WebSocket and the WebSocket to
+// stdout, and exits 0 at the end of stdin.
+#[tokio::test(flavor = "multi_thread")]
+async fn connect_stdio_carries_a_stream() {
+    test_host::need_loopback!();
+    let port = echo_server().await;
+    let remote = format!("ws://127.0.0.1:{port}/__podnet/ws");
+    let mut child = podnet(&["--no-proxy", "connect", &remote, "--stdio"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let out = tokio::task::spawn_blocking(move || {
+        let mut stdin = child.stdin.take().unwrap();
+        let mut stdout = child.stdout.take().unwrap();
+        // No new line: the bytes must not wait in a line buffer.
+        let data: Vec<u8> = (0..70_000u32).map(|i| (i % 251) as u8).collect();
+        stdin.write_all(b"ping").unwrap();
+        let mut back = [0u8; 4];
+        stdout.read_exact(&mut back).unwrap();
+        assert_eq!(&back, b"ping");
+        stdin.write_all(&data).unwrap();
+        let mut back = vec![0u8; data.len()];
+        stdout.read_exact(&mut back).unwrap();
+        assert_eq!(back, data);
+        drop(stdin);
+        let mut rest = Vec::new();
+        stdout.read_to_end(&mut rest).unwrap();
+        assert!(rest.is_empty(), "{} more bytes", rest.len());
+        child.wait_with_output().unwrap()
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+// T-082: --stdio exits 69 when the remote does not answer, and refuses -L.
+#[test]
+fn connect_stdio_exits_69_and_refuses_listeners() {
+    let out = podnet(&[
+        "--proxy",
+        "http://127.0.0.1:1",
+        "connect",
+        "ws://dead.invalid/__podnet/ws",
+        "--stdio",
+    ])
+    .stdin(Stdio::null())
+    .output()
+    .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(69), "{err}");
+    let out = podnet(&[
+        "connect",
+        "ws://127.0.0.1:9/__podnet/ws",
+        "--stdio",
+        "-L",
+        "tcp://1",
+    ])
+    .output()
+    .unwrap();
+    assert_eq!(out.status.code(), Some(64));
+}
+
+// T-082: --stdio exits when the remote closes, while stdin stays open.
+#[tokio::test(flavor = "multi_thread")]
+async fn connect_stdio_ends_when_the_remote_closes() {
+    test_host::need_loopback!();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        while let Ok((socket, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                let Ok(mut ws) = tokio_tungstenite::accept_async(socket).await else {
+                    return;
+                };
+                let bye = tokio_tungstenite::tungstenite::Message::binary(b"bye".to_vec());
+                let _ = ws.send(bye).await;
+                let _ = ws.close(None).await;
+                while let Some(Ok(_)) = ws.next().await {}
+            });
+        }
+    });
+    let remote = format!("ws://127.0.0.1:{port}/__podnet/ws");
+    let mut child = podnet(&["--no-proxy", "connect", &remote, "--stdio"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let out = tokio::task::spawn_blocking(move || {
+        let stdin = child.stdin.take().unwrap();
+        let start = Instant::now();
+        let status = loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                break status;
+            }
+            assert!(start.elapsed() < Duration::from_secs(20), "no exit");
+            std::thread::sleep(Duration::from_millis(50));
+        };
+        drop(stdin);
+        let mut text = String::new();
+        child
+            .stdout
+            .take()
+            .unwrap()
+            .read_to_string(&mut text)
+            .unwrap();
+        (status, text)
+    })
+    .await
+    .unwrap();
+    assert_eq!(out.0.code(), Some(0));
+    assert_eq!(out.1, "bye");
 }

@@ -72,6 +72,37 @@ pub fn render(probes: &[Probe]) -> String {
     out
 }
 
+/// The name of the passwd probe.
+pub const PASSWD_PROBE: &str = "passwd entry for this uid";
+
+/// Look for `uid` in the passwd file `path` (T-168). With no entry,
+/// `getpwuid` fails: `ssh` stops, and `ssh-keygen` exits 0 and writes no
+/// key.
+pub fn passwd_probe(path: &std::path::Path, uid: u32) -> Probe {
+    let result = match std::fs::read_to_string(path) {
+        Ok(text) => match text.lines().find_map(|line| {
+            let mut fields = line.split(':');
+            let name = fields.next()?;
+            let id = fields.nth(1)?.parse::<u32>().ok()?;
+            (id == uid).then(|| name.to_string())
+        }) {
+            Some(name) => ProbeResult::Ok(format!("uid {uid} is {name}")),
+            None => ProbeResult::Fail(format!(
+                "no entry for uid {uid} in {}: ssh fails, ssh-keygen exits 0 and writes no key (eval \"$(podnet net passwd-shim)\")",
+                path.display()
+            )),
+        },
+        Err(err) => ProbeResult::Fail(format!(
+            "{}: {err}: ssh fails, ssh-keygen exits 0 and writes no key (eval \"$(podnet net passwd-shim)\")",
+            path.display()
+        )),
+    };
+    Probe {
+        name: PASSWD_PROBE,
+        result,
+    }
+}
+
 /// The UDP egress probe (QUIC to the edge on 7844) as a probe line:
 /// answered is ok, refused is fail, no answer is unknown.
 pub fn udp_probe(target: std::net::SocketAddr) -> Probe {
@@ -600,6 +631,12 @@ mod linux {
                 None => ProbeResult::Unsupported,
             },
         });
+        // SAFETY: getuid has no failure.
+        let uid = unsafe { libc::getuid() };
+        probes.push(super::passwd_probe(
+            std::path::Path::new("/etc/passwd"),
+            uid,
+        ));
         probes.push(Probe {
             name: "arch",
             result: ProbeResult::Ok(std::env::consts::ARCH.to_string()),
@@ -649,6 +686,33 @@ mod tests {
         let v = verdict(&scratch);
         assert!(v.contains("cannot create a scratch dir"), "{v}");
         assert!(v.contains("TMPDIR"), "{v}");
+    }
+
+    // T-168: a passwd file with no entry for the uid is one fail line that
+    // names the shim.
+    #[test]
+    fn passwd_probe_names_the_shim() {
+        let dir = std::env::temp_dir().join(format!("podnet-passwd-probe-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("passwd");
+        std::fs::write(
+            &file,
+            "root:x:0:0:root:/root:/bin/sh\nme:x:1000:1000::/home/me:/bin/sh\n",
+        )
+        .unwrap();
+        assert_eq!(
+            passwd_probe(&file, 1000).result,
+            ProbeResult::Ok("uid 1000 is me".into())
+        );
+        match passwd_probe(&file, 4242).result {
+            ProbeResult::Fail(why) => {
+                assert!(why.contains("uid 4242"), "{why}");
+                assert!(why.contains("podnet net passwd-shim"), "{why}");
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(!passwd_probe(&dir.join("none"), 0).result.is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

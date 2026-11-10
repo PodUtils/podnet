@@ -299,3 +299,103 @@ fn auth_user_flags() {
     let out = podnet(&["tunnel", "--hello-world", "--auth-user", "u", "--check"]);
     assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));
 }
+
+/// T-168: `net passwd-shim` writes the passwd shim and prints the preload:
+/// one JSON object, or `export` lines only on stdout (for eval). An old
+/// LD_PRELOAD stays after the shim.
+#[test]
+fn passwd_shim_prints_the_preload() {
+    if podnet::vnet::shim::compiler().is_err() {
+        eprintln!("skipping: no C compiler");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let out_dir = dir.path().join("shims");
+    let out = dir.path().join("shims");
+    let out = out.to_str().unwrap();
+    let json = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["net", "passwd-shim", "--out", out, "--user", "builder"])
+        .args(["--uid", "4242", "--json"])
+        .env("LD_PRELOAD", "/old.so")
+        .output()
+        .unwrap();
+    assert_eq!(json.status.code(), Some(0), "{}", stderr(&json));
+    let doc: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
+    let fakepwd = out_dir.join("fakepwd.so");
+    assert_eq!(
+        doc["LD_PRELOAD"],
+        format!("{}:/old.so", fakepwd.display()),
+        "{doc}"
+    );
+    let passwd = doc["SANDHOME_PASSWD"].as_str().unwrap();
+    let text = std::fs::read_to_string(passwd).unwrap();
+    assert!(text.contains("builder:x:4242:"), "{text}");
+    assert!(fakepwd.is_file());
+    let shell = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["net", "passwd-shim", "--out", out])
+        .env_remove("LD_PRELOAD")
+        .output()
+        .unwrap();
+    assert_eq!(shell.status.code(), Some(0), "{}", stderr(&shell));
+    let lines = String::from_utf8_lossy(&shell.stdout).into_owned();
+    assert!(lines.lines().all(|l| l.starts_with("export ")), "{lines}");
+    assert!(lines.contains("export SANDHOME_PASSWD="), "{lines}");
+    assert!(stderr(&shell).contains("podnet: fakepwd"));
+    // ts-shims stays, with its daemon hints.
+    let ts = podnet(&["net", "ts-shims", "--out", out]);
+    assert_eq!(ts.status.code(), Some(0), "{}", stderr(&ts));
+    assert!(String::from_utf8_lossy(&ts.stdout).contains("tailscaled"));
+}
+
+/// T-167: `net socksify --cidr` puts the routes in PODNET_SOCKS_CIDRS, and
+/// `net shim --socks-route` puts them in PODNET_VNET_SOCKS_ROUTES with the
+/// door. A bad route is exit 64 before a build.
+#[test]
+fn socksify_takes_cidrs() {
+    let bad = podnet(&["net", "socksify", "--cidr", "web:80", "--json"]);
+    assert_eq!(bad.status.code(), Some(64), "{}", stderr(&bad));
+    assert!(stderr(&bad).contains("web:80"), "{}", stderr(&bad));
+    let bad = podnet(&["net", "shim", "--socks-route", "10.0.0.0/40", "--json"]);
+    assert_eq!(bad.status.code(), Some(64), "{}", stderr(&bad));
+    if podnet::vnet::shim::compiler().is_err() {
+        eprintln!("skipping the build: no C compiler");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().to_str().unwrap();
+    let json = podnet(&[
+        "net",
+        "socksify",
+        "--out",
+        out,
+        "--cidr",
+        "127.0.0.1:3000",
+        "--cidr",
+        "tailnet",
+        "--json",
+    ]);
+    assert_eq!(json.status.code(), Some(0), "{}", stderr(&json));
+    let doc: serde_json::Value = serde_json::from_slice(&json.stdout).unwrap();
+    assert_eq!(doc["PODNET_SOCKS_CIDRS"], "127.0.0.1:3000,tailnet", "{doc}");
+    let none = podnet(&["net", "socksify", "--out", out, "--json"]);
+    let doc: serde_json::Value = serde_json::from_slice(&none.stdout).unwrap();
+    assert!(doc.get("PODNET_SOCKS_CIDRS").is_none(), "{doc}");
+    let shim = podnet(&[
+        "net",
+        "shim",
+        "--out",
+        out,
+        "--socks-route",
+        "[::1]:8080",
+        "--socks-socket",
+        "/tmp/door.sock",
+        "--json",
+    ]);
+    assert_eq!(shim.status.code(), Some(0), "{}", stderr(&shim));
+    let doc: serde_json::Value = serde_json::from_slice(&shim.stdout).unwrap();
+    assert_eq!(doc["PODNET_VNET_SOCKS"], "/tmp/door.sock", "{doc}");
+    assert_eq!(doc["PODNET_VNET_SOCKS_ROUTES"], "[::1]:8080", "{doc}");
+    // --socks-socket needs --socks-route.
+    let alone = podnet(&["net", "shim", "--socks-socket", "/tmp/door.sock"]);
+    assert_eq!(alone.status.code(), Some(64), "{}", stderr(&alone));
+}

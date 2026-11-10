@@ -488,6 +488,17 @@ listener and makes no tunnel:
 Each other path answers 404. With `--spa`, an unknown path answers the
 `index.html` with status 200.
 
+With `--tar`, `GET /PATH/?tar` gives the directory `PATH` as one ustar
+archive (`application/x-tar`, `PATH.tar`). The archive has the same rules:
+no dot name, no link out of `--dir`, no FIFO, socket or device. A link to a
+directory is not followed. A name that does not fit in ustar (more than 255
+bytes) is left out with a warning. Without `--tar`, `?tar` has no effect.
+
+```sh
+podnet serve --dir ./public --tar --local 127.0.0.1:8080
+curl -fsS 'http://127.0.0.1:8080/docs/?tar' | tar -xf -
+```
+
 The library type `podnet::origin::StaticDir` has the same rules. It also
 applies them to the directory index and to the SPA index.
 `podnet::feature::StaticServer::respond` gives a `StaticResponse`. Its
@@ -608,6 +619,18 @@ it. At the end, podnet removes the socket files that it made. `--detach` and
 `--name` work as for `tunnel` (see "Run in the background"); the ready
 document has `remote`, `listen` and `listeners`. At `-v`, each WebSocket
 logs the time of its TCP, TLS and upgrade steps.
+
+`podnet connect URL --stdio` carries one stream on stdin and stdout, with no
+listener. Use it as an SSH `ProxyCommand`:
+
+```sh
+ssh -o ProxyCommand='podnet connect wss://<random>.trycloudflare.com/__podnet/ws --stdio' user@host
+```
+
+The end of stdin closes the WebSocket. The close of the remote ends the
+command. `--stdio` takes `--auth-user` and `--auth-password-file`. It exits
+69 when the remote does not answer. It cannot be used with `-L` or
+`--detach`.
 
 ### Other commands
 
@@ -934,6 +957,30 @@ podnet pod -x tailscale:/run/tailscale/tailscaled.sock -- ssh host
 ```
 
 `tailscaled` must run with `--tun=userspace-networking`.
+
+`net socksify --cidr ROUTE` routes only the listed destinations to the door
+(repeatable: `tailnet`, `ADDR`, `ADDR/BITS`, `IPV4:PORT` or `[IPV6]:PORT`),
+for example a client with the fixed origin `127.0.0.1:3000`. `net shim
+--socks-route ROUTE` does the same in the shim of the virtual network. See
+[`docs/virtual-network.md`](https://github.com/PodUtils/podnet/blob/main/docs/virtual-network.md),
+section 5.5.
+
+## A user with no passwd entry
+
+On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.
+Then `ssh` stops, and `ssh-keygen` exits 0 and writes no key. `podnet net
+doctor` shows the row `passwd entry for this uid`. `podnet net passwd-shim`
+writes a passwd file and the preload `fakepwd.so`, and prints `LD_PRELOAD`
+(before an old value) and `SANDHOME_PASSWD`:
+
+```sh
+eval "$(podnet net passwd-shim)"
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ''
+```
+
+`--user`, `--uid`, `--gid` and `--shell` set the entry. `--json` prints the
+environment as one object. `net ts-shims` writes the same files, with
+`getent` and `id`, and prints the hints for `tailscaled`.
 
 ## Proxies and DNS
 

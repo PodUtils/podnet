@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 93 open, 3 partial, 18 blocked, 110 done.**
+**224 entries: 88 open, 3 partial, 19 blocked, 114 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 55 | 2 | 12 | 68 | 137 |
+| P2 | 50 | 2 | 13 | 72 | 137 |
 | P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 93 | 3 | 18 | 110 | 224 |
+| **All** | 88 | 3 | 19 | 114 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -127,10 +127,10 @@ M8 Overlays, M9 Later.
 | [T-079](fixes.md) | P3 | S | M5 | measurement | done | Read the numbers of #206 and #184 in a live run |
 | [T-080](fixes.md) | P3 | M | M5 | feature | done | The errors of a config file name the line |
 | [T-081](fixes.md) | P2 | S | M5 | feature | done | The tailnet front door warns when `tailscaled` is not logged in |
-| [T-082](services.md) | P2 | S | M6 | feature | open | `connect --stdio` for an SSH `ProxyCommand` through `tunnel --forward` |
-| [T-083](services.md) | P2 | S | M6 | feature | open | A relay node serves a handler in the process, with no socket file |
+| [T-082](services.md) | P2 | S | M6 | feature | done | `connect --stdio` for an SSH `ProxyCommand` through `tunnel --forward` |
+| [T-083](services.md) | P2 | S | M6 | feature | blocked | A relay node serves a handler in the process, with no socket file |
 | [T-084](services.md) | P2 | M | M6 | feature | open | One HTTP authentication layer for the local listener, the tunnel and the relay |
-| [T-085](services.md) | P2 | M | M6 | feature | open | A ustar writer and reader, and a directory as one tar download of the file server |
+| [T-085](services.md) | P2 | M | M6 | feature | done | A ustar writer and reader, and a directory as one tar download of the file server |
 | [T-086](services.md) | P2 | L | M6 | feature | open | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
 | [T-087](services.md) | P2 | M | M6 | feature | open | `relay node` and `relay connect` resume a session past the limits of the relay |
 | [T-088](services.md) | P2 | S | M6 | feature | open | File server: a directory listing in HTML and JSON |
@@ -212,8 +212,8 @@ M8 Overlays, M9 Later.
 | [T-164](fixes.md) | P3 | S | M5 | docs | done | Document `--no-verify` in the README, and say what it does not do (GitHub #361) |
 | [T-165](later.md) | P3 | M | M9 | feature | open | The SSH forward-relay leg: supervise the session after `run()` returns (GitHub #362) |
 | [T-166](later.md) | P3 | M | M9 | feature | blocked | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
-| [T-167](services.md) | P2 | M | M6 | feature | open | `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364) |
-| [T-168](services.md) | P2 | S | M6 | feature | open | A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365) |
+| [T-167](services.md) | P2 | M | M6 | feature | done | `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364) |
+| [T-168](services.md) | P2 | S | M6 | feature | done | A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365) |
 | [T-169](fixes.md) | P2 | S | M5 | defect | partial | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
 | [T-170](fixes.md) | P2 | S | M5 | defect | done | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
 | [T-171](fixes.md) | P2 | S | M5 | defect | done | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
