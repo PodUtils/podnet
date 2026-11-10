@@ -102,12 +102,41 @@ pub fn of(err: &anyhow::Error) -> Option<Hop> {
         .map(|e| e.hop);
     tagged.or_else(|| {
         err.chain()
-            .any(|e| {
-                e.downcast_ref::<crate::cloudflare::rpc::Refused>()
-                    .is_some()
-            })
+            .any(|e| e.downcast_ref::<Refused>().is_some())
             .then_some(Hop::EdgeRegister)
     })
+}
+
+/// A refusal of the registration by the edge, with its retry flags.
+/// [`of`] gives it the hop [`Hop::EdgeRegister`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Refused {
+    pub cause: String,
+    pub should_retry: bool,
+    pub retry_after: std::time::Duration,
+}
+
+impl std::fmt::Display for Refused {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "the edge refused the registration: {} (retry: {}, after {} s; podnet speaks {})",
+            self.cause,
+            if self.should_retry { "yes" } else { "no" },
+            self.retry_after.as_secs(),
+            speaks()
+        )
+    }
+}
+
+impl std::error::Error for Refused {}
+
+/// The cloudflared release whose protocol podnet speaks: the fact
+/// `cloudflared-tag` of the edge (the same text as `speaks` of the
+/// Cloudflare adapter).
+fn speaks() -> String {
+    let tag = crate::services::text(crate::services::EDGE, "cloudflared-tag");
+    format!("cloudflared {tag}")
 }
 
 /// Extension for `Result`: `.hop(Hop::Proxy)`.

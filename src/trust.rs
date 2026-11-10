@@ -106,7 +106,7 @@ mod tests {
     }
 
     /// Only these files may set a certificate verifier of their own: the
-    /// origin option noTLSVerify (util/tls.rs, net.rs), the MASQUE key pin
+    /// origin option noTLSVerify (util/tls.rs, origin/dial.rs), the MASQUE key pin
     /// (warp/session.rs, which always compares the key), and the doctor
     /// (doctor/tls_check.rs: it records the chain, gives the decision to webpki, and
     /// closes each session after the handshake with no data).
@@ -114,7 +114,7 @@ mod tests {
     fn no_other_code_sets_its_own_verifier() {
         const ALLOWED: &[&str] = &[
             "src/doctor/tls_check.rs",
-            "src/net.rs",
+            "src/origin/dial.rs",
             "src/util/tls.rs",
             "src/warp/session.rs",
         ];

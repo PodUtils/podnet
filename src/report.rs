@@ -352,6 +352,30 @@ impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for TeeStderr {
     }
 }
 
+/// The refusal of a provision in an error chain (issue 210): what a
+/// supervisor needs, as fields, not as text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Refusal {
+    /// The HTTP status.
+    pub status: u16,
+    /// The Cloudflare error code of the body (`error code: 1015`).
+    pub code: Option<u32>,
+    /// The `Retry-After` of the answer, in seconds.
+    pub retry_after_s: Option<u64>,
+    /// True for 429 and 5xx: a later try can work.
+    pub retryable: bool,
+}
+
+/// The function that finds a [`Refusal`] in an error chain. The binary
+/// sets it (the quick tunnel of the Cloudflare adapter).
+static REFUSAL_READER: OnceLock<fn(&anyhow::Error) -> Option<Refusal>> = OnceLock::new();
+
+/// Set the function that finds a [`Refusal`] in an error chain. The first
+/// call sets it; a later call changes nothing.
+pub fn read_refusals_with(read: fn(&anyhow::Error) -> Option<Refusal>) {
+    let _ = REFUSAL_READER.set(read);
+}
+
 /// The report as JSON.
 pub fn document(
     command: Option<&str>,
@@ -360,7 +384,7 @@ pub fn document(
 ) -> serde_json::Value {
     let error_hop = error.and_then(crate::hop::of).map(|h| h.name());
     // Issue 210: the refusal of a provision as fields.
-    let refusal = error.and_then(crate::quicktunnel::retry_of);
+    let refusal = error.and_then(|e| REFUSAL_READER.get().and_then(|read| read(e)));
     let error: Vec<String> = error
         .map(|e| e.chain().map(|c| clean(&mask(&c.to_string()))).collect())
         .unwrap_or_default();

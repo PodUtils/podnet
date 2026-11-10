@@ -122,7 +122,7 @@ fn a_quick_tunnel_link_is_built_from_the_provisioned_url() {
     )
     .expect("parse response");
 
-    let link = ShareLink::from_quick_tunnel(&tunnel).expect("link");
+    let link = ShareLink::from_quick_tunnel(&tunnel.url()).expect("link");
     assert_eq!(link.url(), "https://foo.trycloudflare.com");
     assert_eq!(link.source(), ShareSource::QuickTunnel);
     assert!(link.qr().expect("qr").contains('█'));

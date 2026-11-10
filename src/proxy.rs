@@ -18,7 +18,7 @@ use tower::ServiceExt;
 use crate::gate::UNLOCK_PATH;
 use crate::ingress::{Ingress, OriginOptions, Service};
 use crate::metrics::Metrics;
-use crate::net::{self, BoxedIo};
+use crate::net::BoxedIo;
 use crate::service::{Built, ServiceRuntime};
 use crate::share::ShareControl;
 use crate::util::path_and_query;
@@ -305,7 +305,7 @@ async fn forward_http(
             return Err(err);
         }
     };
-    let mut io = net::dial(service, options).await?;
+    let mut io = crate::origin::dial::dial(service, options).await?;
     tokio::io::AsyncWriteExt::write_all(&mut io, head.as_bytes()).await?;
 
     if upgrade || is_chunked(request) {
@@ -400,14 +400,14 @@ async fn forward_tcp(
         static WARNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
         if !WARNED.swap(true, std::sync::atomic::Ordering::Relaxed) {
             tracing::warn!(
-                origin = %crate::net::origin_label(service),
+                origin = %crate::origin::dial::origin_label(service),
                 "an HTTP request came to a raw TCP origin; podnet answers 501 (use --forward and podnet connect)"
             );
         }
         return write_simple_response(&mut writer, 501, "text/plain; charset=utf-8", TCP_HTTP_BODY)
             .await;
     }
-    let io = net::dial(service, options).await?;
+    let io = crate::origin::dial::dial(service, options).await?;
     cqstream::write_connect_response(&mut writer, "", &[]).await?;
     let (mut io_r, mut io_w) = tokio::io::split(io);
     let in_metrics = metrics.clone();

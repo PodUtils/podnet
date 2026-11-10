@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 224 entries: 104 open, 3 partial, 14 blocked, 103 done.
+`TODO/INDEX.md` holds 224 entries: 101 open, 3 partial, 16 blocked, 104 done.
 
 ## State
 
@@ -39,8 +39,8 @@ not wait for a larger one.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - tunnel, share, serve and the CLI: T-169.
    - WARP: T-173, T-210.
-4. **M2, the splits:** T-035, T-036, T-039 (moved files: podcrates); T-042,
-   T-043, T-044; T-045; then T-015.
+4. **M2, the splits:** T-035, T-036, T-039 (moved files: podcrates); T-043 and T-044 (blocked:
+   the rows left go with the takes, T-137); T-045; then T-015.
 5. **M3, the crates:** T-046, T-047, T-048, T-051, T-053, then the prerelease T-054. T-049, T-050
    and T-052 are the takes of `pod-relay`, `pod-warp` and `pod-cloudflare` of `PodUtils/podcrates`
    (T-137): do not do them in podnet.

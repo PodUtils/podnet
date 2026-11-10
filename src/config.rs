@@ -373,8 +373,7 @@ pub const CLOUDFLARED_KEYS: &[&str] = &[
     "token",
 ];
 
-/// The keys of an ingress rule.
-pub const RULE_KEYS: &[&str] = &["hostname", "path", "service", "originRequest"];
+pub use crate::ingress::RULE_KEYS;
 
 /// The keys of `originRequest` that cloudflared knows. podnet reads
 /// `noTLSVerify`, `httpHostHeader`, `connectTimeout`, `tlsTimeout`,

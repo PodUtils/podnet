@@ -286,7 +286,7 @@ pub async fn check(config: &Config) -> Report {
         ingress.push(json!({
             "hostname": rule.hostname,
             "path": rule.path.as_ref().map(|p| p.as_str()),
-            "service": crate::net::origin_label(&rule.service),
+            "service": crate::origin::dial::origin_label(&rule.service),
         }));
         files.extend(service_files(&rule.service));
         let result = service(&rule.service, &rule.origin).await;
@@ -330,7 +330,7 @@ fn service_files(service: &Service) -> Vec<String> {
 
 /// Check one service of the ingress.
 async fn service(service: &Service, origin: &OriginOptions) -> Result<String, String> {
-    let label = crate::net::origin_label(service);
+    let label = crate::origin::dial::origin_label(service);
     match service {
         Service::Http(_) | Service::Unix(_) | Service::UnixTls(_) | Service::Tcp(_) => {
             dial(service, origin).await?;
@@ -380,10 +380,10 @@ async fn service(service: &Service, origin: &OriginOptions) -> Result<String, St
 async fn dial(service: &Service, origin: &OriginOptions) -> Result<(), String> {
     let mut options = origin.clone();
     options.connect_timeout = Some(options.connect_timeout.unwrap_or(CONNECT_LIMIT));
-    crate::net::dial(service, &options)
+    crate::origin::dial::dial(service, &options)
         .await
         .map(drop)
-        .map_err(|e| format!("{}: {e:#}", crate::net::origin_label(service)))
+        .map_err(|e| format!("{}: {e:#}", crate::origin::dial::origin_label(service)))
 }
 
 fn static_dir(root: &Path, spa: bool) -> Result<String, String> {

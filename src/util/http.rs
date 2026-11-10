@@ -173,7 +173,7 @@ pub trait ResponseWriter {
     ///
     /// The default copies the file with [`ResponseWriter::body_reader`]. A
     /// writer that sends the body later can keep the file and read it then
-    /// (issue 296: [`crate::feature::StaticResponse`]).
+    /// (issue 296: the `StaticResponse` of the static file service).
     fn body_file(&mut self, len: u64, file: std::fs::File) -> io::Result<()> {
         let mut file = file;
         self.body_reader(len, &mut file)

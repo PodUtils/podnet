@@ -12,7 +12,7 @@ use super::*;
 /// are running, and so a link that fails to load can be attributed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShareSource {
-    /// An anonymous quick tunnel from [`crate::quicktunnel`].
+    /// An anonymous quick tunnel of the Cloudflare adapter.
     QuickTunnel,
     /// A public URL published by an SSH relay, [`crate::relay`].
     Relay,
@@ -108,11 +108,10 @@ impl ShareLink {
         })
     }
 
-    /// Build from a provisioned quick tunnel.
-    pub fn from_quick_tunnel(
-        tunnel: &crate::quicktunnel::QuickTunnel,
-    ) -> Result<Self, FeatureError> {
-        ShareLink::new(&tunnel.url(), ShareSource::QuickTunnel)
+    /// Build from the URL of a provisioned quick tunnel
+    /// (`QuickTunnel::url` of the Cloudflare adapter).
+    pub fn from_quick_tunnel(url: &str) -> Result<Self, FeatureError> {
+        ShareLink::new(url, ShareSource::QuickTunnel)
     }
 
     /// Build from a relay's published handle.

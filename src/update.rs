@@ -417,12 +417,7 @@ pub async fn run(tag: Option<&str>, check: bool, force: bool) -> Result<Outcome>
 /// How long the new binary may take to print its version.
 pub const TRIAL_LIMIT: Duration = Duration::from_secs(10);
 
-/// The kept binary beside `path`: `podnet.prev` for `podnet`.
-pub fn previous_of(path: &Path) -> PathBuf {
-    let mut name = path.file_name().unwrap_or_default().to_os_string();
-    name.push(".prev");
-    path.with_file_name(name)
-}
+pub use crate::detach::previous_of;
 
 /// Run `path --version` with no stdin, for at most `limit`. It must exit 0,
 /// and its first line must start with `want`. A text file that is busy

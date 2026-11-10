@@ -22,7 +22,7 @@ use tokio_util::compat::{FuturesAsyncReadCompatExt, FuturesAsyncWriteCompatExt};
 
 use crate::ingress::{ForwardTarget, OriginOptions, Service};
 use crate::metrics::Metrics;
-use crate::net::{self, BoxedIo};
+use crate::net::BoxedIo;
 use crate::proxy::{header_value, write_response_meta, EdgeReader, EdgeWriter};
 
 /// The RFC 6455 handshake GUID.
@@ -87,7 +87,7 @@ pub async fn serve_websocket(
         ForwardTarget::Tcp(addr) => Service::Tcp(addr.clone()),
         ForwardTarget::Unix(path) => Service::Unix(path.clone()),
     };
-    let io = match net::dial(&service, &OriginOptions::default()).await {
+    let io = match crate::origin::dial::dial(&service, &OriginOptions::default()).await {
         Ok(io) => io,
         Err(err) => {
             const TEXT: &str = "podnet: the forward target does not answer\n";

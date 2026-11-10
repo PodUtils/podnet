@@ -750,6 +750,13 @@ pub fn unreadable(dir: &Path, name: &str) -> anyhow::Error {
     )
 }
 
+/// The kept binary beside `path`: `podnet.prev` for `podnet`.
+pub fn previous_of(path: &Path) -> PathBuf {
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".prev");
+    path.with_file_name(name)
+}
+
 /// The supervisor of a detached child (issue 73). It has no async runtime.
 mod supervise;
 

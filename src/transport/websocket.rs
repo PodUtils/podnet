@@ -179,7 +179,7 @@ fn ws_key() -> Result<String, ()> {
     std::fs::File::open("/dev/urandom")
         .and_then(|mut f| f.read_exact(&mut bytes))
         .map_err(|_| ())?;
-    Ok(crate::proxy::base64_encode_pub(&bytes))
+    Ok(crate::connect::base64_encode_pub(&bytes))
 }
 
 impl Transport for WebSocketTunnel {

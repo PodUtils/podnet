@@ -7,10 +7,11 @@ Each top module of src/ belongs to one target crate of the split
 (docs/research/podnet/architecture.md, section 4.1; LAYER below). A crate
 may use only the crates of USES. Each `crate::MODULE` of a file of src/
 (also in a `use crate::{...}` group, also in a doc link) outside the
-`#[cfg(test)]` items is one reference. A reference from a module to a module
-of a crate that its crate may not use is a fault, except the references of
-the allowlist (scripts/layers-allow.txt: `FROM -> TO` on each line). The
-allowlist can only shrink: a row whose reference no longer exists is a
+`#[cfg(test)]` items and outside the files of a test module is one
+reference. A reference from a module to a module of a crate that its
+crate may not use is a fault, except the references of the allowlist
+(scripts/layers-allow.txt: `FROM -> TO` on each line). The allowlist
+can only shrink: a row whose reference no longer exists is a
 fault too. src/main.rs is the binary: it may use each crate.
 
 A top module that LAYER does not name is a fault: give it a crate. A scan
@@ -177,16 +178,18 @@ def scan(root):
     faults = []
     edges = {}
     skip = set()
+    skip_dirs = set()
     stripped = {}
     for f in files:
         text, tests = strip_tests(f.read_text(encoding="utf-8"))
         base = f.parent if f.name in ("mod.rs", "lib.rs", "main.rs") else f.with_suffix("")
         for t in tests:
             skip.add(base / (t + ".rs"))
-            skip.add(base / t / "mod.rs")
+            # The files of a test module are test code too.
+            skip_dirs.add(base / t)
         stripped[f] = text
     for f in files:
-        if f in skip:
+        if f in skip or any(d in f.parents for d in skip_dirs):
             continue
         frm = top_module(src, f)
         if frm not in LAYER:
@@ -265,6 +268,10 @@ def self_test():
         ("group", {"egress.rs": "use crate::{util, tunnel::A};\n"}, "", True),
         ("test item", {"egress.rs": "#[cfg(test)]\nmod tests { use crate::tunnel; }\n"}, "", False),
         ("test file", {"egress.rs": "#[cfg(test)]\nmod t;\n", "egress/t.rs": "use crate::tunnel;\n"}, "", False),
+        ("test subtree", {"egress.rs": "#[cfg(test)]\nmod t;\n", "egress/t/mod.rs": "mod u;\n",
+                          "egress/t/u.rs": "use crate::tunnel;\n"}, "", False),
+        ("not a test subtree", {"egress.rs": "mod t;\n", "egress/t/mod.rs": "mod u;\n",
+                                "egress/t/u.rs": "use crate::tunnel;\n"}, "", True),
         ("allowed", {"egress.rs": "use crate::tunnel;\n"}, "egress -> tunnel\n", False),
         ("stale row", {"egress.rs": ""}, "egress -> tunnel\n", True),
         ("unknown", {"zzz.rs": ""}, "", True),

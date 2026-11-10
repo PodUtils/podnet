@@ -5,10 +5,10 @@
 # Do not add a file, and do not raise a count: split the file.
 944 src/cloudflare/capnp.rs
 1123 src/cloudflare/http2.rs
-1207 src/config.rs
+1206 src/config.rs
 1608 src/edge_h2.rs
 2034 src/proxy.rs
-861 src/quicktunnel.rs
+850 src/quicktunnel.rs
 899 src/relay_reverse.rs
 1404 src/tunnel.rs
 1680 src/warp/ip.rs

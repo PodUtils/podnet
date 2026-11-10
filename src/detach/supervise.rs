@@ -99,7 +99,7 @@ fn run_inner(args: &[OsString]) -> Result<i32> {
     let previous = std::env::current_exe()
         .ok()
         .and_then(|p| p.canonicalize().ok())
-        .map(|p| crate::update::previous_of(&p))
+        .map(|p| previous_of(&p))
         .filter(|p| p.exists());
     let mut program = current;
     let mut ready_seen = false;

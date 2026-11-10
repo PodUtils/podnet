@@ -179,19 +179,7 @@ impl std::fmt::Display for ProvisionError {
 
 /// The cause of a failed request comes through `source`, so that its hop
 /// and its text stay in the chain.
-/// The refusal of a provision in an error chain (issue 210): what a
-/// supervisor needs, as fields, not as text.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Refusal {
-    /// The HTTP status.
-    pub status: u16,
-    /// The Cloudflare error code of the body (`error code: 1015`).
-    pub code: Option<u32>,
-    /// The `Retry-After` of the answer, in seconds.
-    pub retry_after_s: Option<u64>,
-    /// True for 429 and 5xx: a later try can work.
-    pub retryable: bool,
-}
+pub use crate::report::Refusal;
 
 /// The [`Refusal`] in the chain of `err`, when there is one.
 pub fn retry_of(err: &anyhow::Error) -> Option<Refusal> {
@@ -627,6 +615,7 @@ mod tests {
         assert!(!retry_of(&other).unwrap().retryable);
         assert!(retry_of(&anyhow::anyhow!("other")).is_none());
         // The error report has the fields.
+        crate::report::read_refusals_with(retry_of);
         let doc = crate::report::document(Some("tunnel"), 75, Some(&err));
         assert_eq!(doc["retry_after_s"], 1379);
         assert_eq!(doc["code"], 1015);
