@@ -2064,8 +2064,8 @@ dependencies = [
 
 [[package]]
 name = "pod-core"
-version = "0.9.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
+version = "0.10.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.10.0#b21c1936ed1d43319a0bb5e4be60ff4bbc438a8b"
 dependencies = [
  "libc",
  "rand",
@@ -2075,8 +2075,8 @@ dependencies = [
 
 [[package]]
 name = "pod-dns"
-version = "0.9.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
+version = "0.10.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.10.0#b21c1936ed1d43319a0bb5e4be60ff4bbc438a8b"
 dependencies = [
  "base64",
  "bytes",
@@ -2096,8 +2096,8 @@ dependencies = [
 
 [[package]]
 name = "pod-proxy"
-version = "0.9.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
+version = "0.10.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.10.0#b21c1936ed1d43319a0bb5e4be60ff4bbc438a8b"
 dependencies = [
  "base64",
  "libc",
@@ -2112,8 +2112,8 @@ dependencies = [
 
 [[package]]
 name = "pod-services"
-version = "0.9.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
+version = "0.10.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.10.0#b21c1936ed1d43319a0bb5e4be60ff4bbc438a8b"
 dependencies = [
  "pod-core",
  "toml",
@@ -2121,8 +2121,8 @@ dependencies = [
 
 [[package]]
 name = "pod-tls"
-version = "0.9.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
+version = "0.10.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.10.0#b21c1936ed1d43319a0bb5e4be60ff4bbc438a8b"
 dependencies = [
  "base64",
  "p256",
@@ -2139,8 +2139,8 @@ dependencies = [
 
 [[package]]
 name = "pod-todo"
-version = "0.9.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.9.0#b7c3e6a00e14a47c87c413ff36625f89bd621467"
+version = "0.10.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.10.0#b21c1936ed1d43319a0bb5e4be60ff4bbc438a8b"
 
 [[package]]
 name = "podnet"
