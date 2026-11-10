@@ -406,7 +406,10 @@ impl Ingress {
 
 // ── YAML parsing (cloudflared-compatible subset) ─────────────────────────────
 
-/// Issue 241: the keys of a rule are exactly [`crate::config::RULE_KEYS`],
+/// The keys of an ingress rule.
+pub const RULE_KEYS: &[&str] = &["hostname", "path", "service", "originRequest"];
+
+/// Issue 241: the keys of a rule are exactly [`RULE_KEYS`],
 /// so an unknown key is an error here too.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
