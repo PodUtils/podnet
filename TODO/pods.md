@@ -167,7 +167,7 @@ output in `logs`, no process left after `stop`.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -197,6 +197,23 @@ The test runs with each backend.
 ## Start condition
 
 T-109 is done.
+
+## Done
+
+2026-11-10, commit 101d6e2 (`T-110: warp exec --join N runs a command in a detached pod`).
+`warp exec --join N -- CMD` reads the ready document of the instance N (its socket, its rules
+and its session `RUN/N.pod`), and finds a process of the pod: another network namespace (netns)
+or more seccomp filters (seccomp). netns: CMD enters the user, the mount and the network
+namespace of that process with `setns` (`crates/podnet-netns/src/join.rs`): it has the loopback,
+the fake DNS and the `resolv.conf` of the pod. seccomp: a new pod with `--session RUN/N.pod`; the
+new option `podnet pod --session DIR` shares the inbound listeners (`DIR/inbound`) and the fake
+DNS table (`DIR/dns`, one line for each fake address, under `flock`). Tests:
+`warp_exec_join_reaches_a_listener_of_the_pod` (`tests/detach/warp_exec.rs`, each backend of the
+host: a listener of the pod on 127.0.0.1 answers the joined program, and a name gets the address
+of the pod N), `two_pods_of_a_session_share_the_fake_addresses`, `this_process_is_in_no_pod`,
+`a_named_pod_gives_its_session`. Plant: with no shared DNS table, the seccomp case fails
+(`198.18.0.0` against `198.18.0.1`). The Prove command: 1 passed.
+`TMPDIR=/workspace/podnet/.work/tmp-m7c sh scripts/agent/check.sh`: each step 0. CI: at the merge.
 
 # T-111: netns: generic UDP
 

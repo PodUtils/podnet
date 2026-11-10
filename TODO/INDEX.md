@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**226 entries: 73 open, 3 partial, 19 blocked, 131 done.**
+**226 entries: 72 open, 3 partial, 19 blocked, 132 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 22 | 27 |
-| P2 | 42 | 2 | 13 | 80 | 137 |
+| P2 | 41 | 2 | 13 | 81 | 137 |
 | P3 | 28 | 0 | 4 | 29 | 61 |
-| **All** | 73 | 3 | 19 | 131 | 226 |
+| **All** | 72 | 3 | 19 | 132 | 226 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -155,7 +155,7 @@ M8 Overlays, M9 Later.
 | [T-107](pods.md) | P2 | M | M7 | feature | done | seccomp: the pod lives past its first program |
 | [T-108](pods.md) | P2 | S | M7 | feature | done | netns: the pod lives past its first program |
 | [T-109](pods.md) | P2 | M | M7 | feature | done | `warp exec --detach --name N` keeps a pod under the supervisor |
-| [T-110](pods.md) | P2 | M | M7 | feature | open | `warp exec --join N` runs a command in a detached pod |
+| [T-110](pods.md) | P2 | M | M7 | feature | done | `warp exec --join N` runs a command in a detached pod |
 | [T-111](pods.md) | P2 | M | M7 | feature | done | netns: generic UDP |
 | [T-112](pods.md) | P3 | S | M7 | feature | open | netns: the gateway address reaches the loopback of the host, when the user asks |
 | [T-113](pods.md) | P2 | S | M7 | feature | done | `warp exec` and `warp shell` try the netns backend first |
