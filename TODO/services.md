@@ -132,7 +132,7 @@ T-062 is done.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -156,6 +156,17 @@ cargo test -p podnet-serve -- ustar_round_trip_keeps_odd_names a_directory_downl
 ```
 
 The second test compares `tar -tf` of the download with the tree.
+
+## Done
+
+2026-11-09, commit 6fafd3f. `crates/podnet-serve/src/tar.rs`: a ustar writer and reader (files and directories,
+the ustar prefix, base-256 sizes; the reader and `unpack` refuse links, absolute names and `..`).
+`crates/podnet-serve/src/tar_http.rs`: `serve --tar` gives `GET /PATH/?tar` as one stream.
+`cargo test -p podnet-serve -- ustar_round_trip_keeps_odd_names a_directory_downloads_as_a_tar`: 2 passed (the
+second compares `tar --quoting-style=literal -tf` with the tree). Tests added: `ustar_round_trip_keeps_odd_names`,
+`ustar_refuses_names_that_do_not_fit_or_leave_the_root`, `ustar_big_sizes_use_base_256`,
+`unpack_writes_below_the_root_only`, `a_directory_downloads_as_a_tar`. `sh scripts/agent/check.sh`: exit 0.
+No new dependency. CI: at the merge.
 
 # T-086: Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates
 

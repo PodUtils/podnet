@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**224 entries: 91 open, 3 partial, 19 blocked, 111 done.**
+**224 entries: 90 open, 3 partial, 19 blocked, 112 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 20 | 25 |
-| P2 | 53 | 2 | 13 | 69 | 137 |
+| P2 | 52 | 2 | 13 | 70 | 137 |
 | P3 | 35 | 0 | 4 | 22 | 61 |
-| **All** | 91 | 3 | 19 | 111 | 224 |
+| **All** | 90 | 3 | 19 | 112 | 224 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -130,7 +130,7 @@ M8 Overlays, M9 Later.
 | [T-082](services.md) | P2 | S | M6 | feature | done | `connect --stdio` for an SSH `ProxyCommand` through `tunnel --forward` |
 | [T-083](services.md) | P2 | S | M6 | feature | blocked | A relay node serves a handler in the process, with no socket file |
 | [T-084](services.md) | P2 | M | M6 | feature | open | One HTTP authentication layer for the local listener, the tunnel and the relay |
-| [T-085](services.md) | P2 | M | M6 | feature | open | A ustar writer and reader, and a directory as one tar download of the file server |
+| [T-085](services.md) | P2 | M | M6 | feature | done | A ustar writer and reader, and a directory as one tar download of the file server |
 | [T-086](services.md) | P2 | L | M6 | feature | open | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
 | [T-087](services.md) | P2 | M | M6 | feature | open | `relay node` and `relay connect` resume a session past the limits of the relay |
 | [T-088](services.md) | P2 | S | M6 | feature | open | File server: a directory listing in HTML and JSON |
