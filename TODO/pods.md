@@ -1288,7 +1288,7 @@ cargo test -p podnet-netns --lib a_mapped_loopback_address_is_loopback
 
 ## Done
 
-2026-11-11, 092cdc2. `is_loopback_target` takes the canonical form of the address, so `::ffff:127.0.0.0/104` is
+2026-11-11, e78bde9. `is_loopback_target` takes the canonical form of the address, so `::ffff:127.0.0.0/104` is
 loopback, as `127.0.0.0/8` and `::1`. Test: `a_mapped_loopback_address_is_loopback` (it fails with the old test of
 `is_loopback()` on `::ffff:127.0.0.1`). Not measured end to end here: this sandbox has no IPv6 (`AF_INET6` gives
 EAFNOSUPPORT); the test `held` of `PodUtils/podrunner:crates/podrunner-broker-fake` proves the path on its runner.
