@@ -7,7 +7,7 @@
 //! * `minrtt`: the head, the member with the least `rtt_floor`. The head
 //!   changes only when another member is better by a margin for a dwell
 //!   of probe rounds ([`next_head`]).
-//! * `leastload`: the least busy member (see [`key`]).
+//! * `leastload`: the least busy member (the sort key of `policy::key`).
 //! * `protect`: a weighted pick among the members that are `Up`. A member
 //!   in `Cooldown` or `Probation` gets no flow while a member is `Up`; the
 //!   probe of each interval is the only traffic that it gets.
