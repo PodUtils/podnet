@@ -2125,7 +2125,7 @@ None.
 
 ## Done
 
-2026-11-11, commit e1c0c90. The script `scripts/ci/probe-hosted.py` (python3 standard library only) opens each
+2026-11-11, commit 614740c. The script `scripts/ci/probe-hosted.py` (python3 standard library only) opens each
 mailbox (WebSocket upgrade, then the `welcome` message), a piping-server stream (PUT and GET of 32 random
 bytes on a random path; the bytes are compared) and one n0 iroh relay (HTTPS 200 on `/`). It prints one line
 for each service: name, ok or fail, ms, reason. A failed service prints `::warning::`; the exit code stays 0.
