@@ -278,8 +278,14 @@ pub(super) fn rerun_in_namespace(module: &str, name: &str) {
     };
     let text =
         String::from_utf8_lossy(&out.stdout).into_owned() + &String::from_utf8_lossy(&out.stderr);
-    if !out.status.success() && text.contains("unshare failed") {
-        eprintln!("skip: the host does not allow a user and network namespace");
+    // A failure of unshare itself (before the test runs): "unshare failed:
+    // ..." or "unshare: write failed /proc/self/uid_map" (AppArmor on GitHub
+    // runners). The test binary never prints a line that starts so.
+    let refused = text
+        .lines()
+        .any(|l| l.starts_with("unshare failed") || l.starts_with("unshare: "));
+    if !out.status.success() && refused {
+        eprintln!("skip: the host does not allow a user and network namespace: {text}");
         return;
     }
     assert!(out.status.success(), "{text}");
