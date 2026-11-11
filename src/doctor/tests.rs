@@ -122,6 +122,7 @@ fn the_roads_follow_the_legs() {
             detail: String::new(),
         },
         git: git_check::git("git"),
+        ssh_relay: SshRelay::none(),
         quick: false,
     };
     let roads = report.roads();
@@ -224,6 +225,7 @@ fn doctor_json_dns_keys_are_fixed() {
             detail: String::new(),
         },
         git: git_check::git("git"),
+        ssh_relay: SshRelay::none(),
         quick: false,
     };
     let json = report.to_json();
@@ -260,6 +262,7 @@ fn the_lanes_follow_the_legs_and_paths() {
             detail: String::new(),
         },
         git: git_check::git("git"),
+        ssh_relay: SshRelay::none(),
         quick: false,
     };
     let lane =
@@ -282,4 +285,88 @@ fn the_lanes_follow_the_legs_and_paths() {
     );
     assert_eq!(report.to_json()["lanes"]["proxy"]["ms"], 40.0);
     assert_eq!(report.to_json()["lanes"]["tunnel_quic"]["verdict"], "fail");
+}
+
+fn ssh_target() -> SshRelayTarget {
+    SshRelayTarget {
+        address: "relay.example:443".into(),
+        user: "tester".into(),
+        proxy: None,
+        source: "flag".into(),
+    }
+}
+
+// T-165: no relay is given, so the row is unknown with a reason.
+#[test]
+fn the_ssh_relay_row_is_unknown_without_a_relay() {
+    let row = SshRelay::none();
+    assert_eq!(row.verdict, Verdict::Unknown);
+    assert_eq!(row.detail, "no SSH relay is given");
+    let json = row.to_json();
+    assert_eq!(json["verdict"], "unknown");
+    assert_eq!(json["status"], "unknown");
+    assert_eq!(json["relay"], Value::Null);
+    assert_eq!(json["auth"], Value::Null);
+}
+
+// T-165: a passed probe is ok; a refusal is fail; a stage with no answer
+// in time is unknown.
+#[test]
+fn the_ssh_relay_verdict_follows_the_probe() {
+    use crate::relay::probe::{Failure, Probe, Stage};
+    let passed = Probe {
+        connect: Some(Duration::from_millis(3)),
+        banner: Some("SSH-2.0-test".into()),
+        auth: Some(true),
+        total: Duration::from_millis(20),
+        failure: None,
+    };
+    let (verdict, detail) = ssh_relay_check::judge(&ssh_target(), &passed);
+    assert_eq!(verdict, Verdict::Ok);
+    assert!(
+        detail.contains("SSH-2.0-test") && detail.contains("20"),
+        "{detail}"
+    );
+    let failed = |timed_out| Probe {
+        failure: Some(Failure {
+            stage: Stage::Auth,
+            timed_out,
+            reason: "the relay rejected the user".into(),
+        }),
+        ..Probe::default()
+    };
+    let (verdict, detail) = ssh_relay_check::judge(&ssh_target(), &failed(false));
+    assert_eq!(verdict, Verdict::Refused);
+    assert!(detail.contains("auth failed"), "{detail}");
+    let (verdict, _) = ssh_relay_check::judge(&ssh_target(), &failed(true));
+    assert_eq!(verdict, Verdict::Unknown);
+}
+
+// T-165: the relay of a running ssh-relay instance comes from its record.
+#[test]
+fn the_ssh_relay_target_comes_from_the_record_of_an_instance() {
+    let mut record = crate::instances::Record {
+        name: "leg".into(),
+        command: "ssh-relay".into(),
+        args: [
+            "--server",
+            "r.example:443",
+            "--user=bob",
+            "--connect-proxy",
+            "p:3128",
+        ]
+        .map(String::from)
+        .to_vec(),
+        ..Default::default()
+    };
+    let target = ssh_relay_check::target_of_record(&record).unwrap();
+    assert_eq!(target.address, "r.example:443");
+    assert_eq!(target.user, "bob");
+    assert_eq!(target.proxy.as_deref(), Some("p:3128"));
+    assert_eq!(target.source, "instance leg");
+    record.command = "tunnel".into();
+    assert_eq!(ssh_relay_check::target_of_record(&record), None);
+    record.command = "ssh-relay".into();
+    record.args.clear();
+    assert_eq!(ssh_relay_check::target_of_record(&record), None);
 }

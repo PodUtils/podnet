@@ -449,6 +449,7 @@ one of `answered`, `refused` and `unknown`.
 | `paths` | array | One object for each TCP path (the hops). |
 | `clock` | object | The clock against the `Date` of an API. |
 | `git` | object | The installed git. |
+| `ssh_relay` | object | The SSH relay of `podnet ssh-relay`. |
 | `proxy` | object | The proxy of the run. |
 | `udp` | object | The UDP 7844 probe. |
 
@@ -471,6 +472,17 @@ Each object of `paths`:
   null).
 * `git`: `verdict`, `status` and `detail` (strings), `version` (string or
   null).
+* `ssh_relay`: `verdict`, `status` and `detail` (strings); `relay` (string
+  or null: `HOST:PORT`), `user` (string or null) and `source` (string or
+  null: `flag` or `instance NAME`); `connect_ms` and `total_ms` (number or
+  null); `banner` (string or null: the SSH identification of the relay);
+  `auth` (bool or null: the relay accepted the user). The probe opens no
+  session and asks for no forward. The relay comes from `--ssh-relay
+  HOST:PORT` with `--ssh-user USER`, else from the first running
+  `ssh-relay` instance (`podnet ps`). With neither, `verdict` is `unknown`
+  and `detail` is `no SSH relay is given`. A stage that fails has `fail`
+  and the stage in `detail` (`connect`, `banner`, `handshake` or `auth`). A
+  stage with no answer in three times `--timeout` has `unknown`.
 * `proxy`: `url` (string or null), `credentials` (bool or null), `direct`
   (strings), `text` (string).
 * `udp`: `target`, `verdict`, `status` and `detail` (strings).

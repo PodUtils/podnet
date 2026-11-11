@@ -37,6 +37,7 @@ use tokio::net::UnixStream;
 
 use podnet_core::connect;
 
+pub mod probe;
 pub mod supervise;
 
 /// Default relay, reachable on port 443 through the CONNECT proxy: the

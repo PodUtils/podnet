@@ -35,6 +35,24 @@ pub(crate) struct DoctorArgs {
     /// relay is allowed).
     #[arg(long, env = "PODNET_RELAY", hide_env_values = true, value_name = "URL")]
     relay: Option<String>,
+    /// Also test the SSH relay of `podnet ssh-relay`: the TCP connect, the
+    /// SSH banner and the auth with --ssh-user, with no session. Default: the
+    /// relay of a running `ssh-relay` instance; else the row is `unknown`.
+    #[arg(
+        long,
+        value_name = "HOST:PORT",
+        requires = "ssh_user",
+        conflicts_with = "agent"
+    )]
+    ssh_relay: Option<String>,
+    /// The SSH user of --ssh-relay.
+    #[arg(
+        long,
+        value_name = "USER",
+        requires = "ssh_relay",
+        conflicts_with = "agent"
+    )]
+    ssh_user: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -258,7 +276,23 @@ pub(crate) async fn doctor(args: DoctorArgs) -> Result<()> {
             ..podnet::doctor::Options::default()
         }
     };
+    let ssh_relay = match (args.ssh_relay, args.ssh_user) {
+        (Some(address), Some(user)) => {
+            podnet::relay::check_address(&address)
+                .map_err(anyhow::Error::from)
+                .map_err(|e| e.context("--ssh-relay"))
+                .fault(podnet::exit::Fault::Usage)?;
+            Some(podnet::doctor::SshRelayTarget {
+                address,
+                user,
+                proxy: None,
+                source: "flag".into(),
+            })
+        }
+        _ => None,
+    };
     let report = podnet::doctor::run(podnet::doctor::Options {
+        ssh_relay,
         timeout: Duration::from_secs(args.timeout),
         relay: args.relay.filter(|r| !r.trim().is_empty()),
         ..base

@@ -213,6 +213,7 @@ mod fake {
     struct Conn {
         number: usize,
         end: End,
+        reject: bool,
         channels: Vec<Channel<Msg>>,
     }
 
@@ -224,6 +225,12 @@ mod fake {
             _: &str,
             _: VerifiedPublicKey<'_>,
         ) -> anyhow::Result<Auth> {
+            if self.reject {
+                return Ok(Auth::Reject {
+                    proceed_with_methods: None,
+                    partial_success: false,
+                });
+            }
             Ok(Auth::Accept)
         }
 
@@ -273,6 +280,11 @@ mod fake {
 
     /// Start the relay. Give its address and the count of connections.
     pub async fn start(end: End) -> (String, Arc<AtomicUsize>) {
+        start_with(end, false).await
+    }
+
+    /// As [`start`]; with `reject` the relay refuses each key.
+    pub async fn start_with(end: End, reject: bool) -> (String, Arc<AtomicUsize>) {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap().to_string();
         let key = PrivateKey::random(&mut UnwrapErr(SysRng), Algorithm::Ed25519).unwrap();
@@ -290,6 +302,7 @@ mod fake {
                 let conn = Conn {
                     number,
                     end,
+                    reject,
                     channels: Vec::new(),
                 };
                 let config = config.clone();
@@ -409,4 +422,104 @@ async fn the_supervisor_ends_when_nobody_listens_to_its_events() {
     )
     .await
     .expect("the supervisor returns");
+}
+
+mod probe_tests {
+    use super::*;
+    use probe::{probe, Stage};
+
+    const LIMIT: Duration = Duration::from_secs(10);
+
+    fn config(address: String) -> RelayConfig {
+        test_config(address)
+    }
+
+    /// A listener that runs `serve` for each connection. Gives its address.
+    async fn listener<F, Fut>(serve: F) -> String
+    where
+        F: Fn(tokio::net::TcpStream) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = ()> + Send + 'static,
+    {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap().to_string();
+        tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                tokio::spawn(serve(stream));
+            }
+        });
+        address
+    }
+
+    #[tokio::test]
+    async fn the_probe_passes_each_stage_of_a_good_relay() {
+        pod_testkit::need_loopback!();
+        let (address, count) = fake::start(fake::End::Channel).await;
+        let got = probe(&config(address), LIMIT).await;
+        assert_eq!(got.failure, None);
+        assert!(got.connect.is_some());
+        assert!(got.banner.as_deref().unwrap().starts_with("SSH-2.0-"));
+        assert_eq!(got.auth, Some(true));
+        assert!(got.total >= got.connect.unwrap());
+        // One connection, and no session: the fake would have set a banner
+        // for a shell request, and the probe asks for none.
+        assert_eq!(count.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn the_probe_names_the_connect_stage_when_nobody_listens() {
+        pod_testkit::need_loopback!();
+        let free = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = free.local_addr().unwrap().to_string();
+        drop(free);
+        let got = probe(&config(address), LIMIT).await;
+        let failure = got.failure.expect("a failure");
+        assert_eq!(failure.stage, Stage::Connect);
+        assert!(!failure.timed_out, "{failure:?}");
+        assert_eq!(got.connect, None);
+        assert_eq!(got.banner, None);
+    }
+
+    #[tokio::test]
+    async fn the_probe_names_the_banner_stage_for_a_server_that_is_not_ssh() {
+        pod_testkit::need_loopback!();
+        let address = listener(|mut stream| async move {
+            let _ = stream.write_all(b"HTTP/1.1 400 Bad Request\r\n\r\n").await;
+        })
+        .await;
+        let got = probe(&config(address), LIMIT).await;
+        let failure = got.failure.expect("a failure");
+        assert_eq!(failure.stage, Stage::Banner);
+        assert!(!failure.timed_out, "{failure:?}");
+        assert!(got.connect.is_some());
+        assert_eq!(got.banner, None);
+    }
+
+    #[tokio::test]
+    async fn the_probe_names_the_auth_stage_when_the_relay_rejects_the_user() {
+        pod_testkit::need_loopback!();
+        let (address, _) = fake::start_with(fake::End::Channel, true).await;
+        let got = probe(&config(address), LIMIT).await;
+        let failure = got.failure.expect("a failure");
+        assert_eq!(failure.stage, Stage::Auth);
+        assert!(!failure.timed_out, "{failure:?}");
+        assert!(failure.reason.contains("test"), "{failure:?}");
+        assert!(got.banner.is_some());
+        assert_eq!(got.auth, Some(false));
+    }
+
+    #[tokio::test]
+    async fn the_probe_times_out_on_a_relay_that_sends_nothing() {
+        pod_testkit::need_loopback!();
+        let address = listener(|stream| async move {
+            // Hold the connection open and send no byte.
+            let _stream = stream;
+            tokio::time::sleep(Duration::from_secs(30)).await;
+        })
+        .await;
+        let got = probe(&config(address), Duration::from_millis(300)).await;
+        let failure = got.failure.expect("a failure");
+        assert_eq!(failure.stage, Stage::Banner);
+        assert!(failure.timed_out, "{failure:?}");
+        assert!(got.total < Duration::from_secs(5), "{:?}", got.total);
+    }
 }

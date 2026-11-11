@@ -44,6 +44,9 @@ pub struct Options {
     pub timeout: Duration,
     /// The relay to test (`--relay`); else `PODNET_RELAY`, else the default.
     pub relay: Option<String>,
+    /// The SSH relay of `podnet ssh-relay` to test (`--ssh-relay`); else the
+    /// relay of a running `ssh-relay` instance.
+    pub ssh_relay: Option<SshRelayTarget>,
     /// The time limit of the whole run (`--quick`). A part that does not end
     /// in time gets the verdict `unknown`.
     pub deadline: Option<Duration>,
@@ -71,6 +74,7 @@ impl Default for Options {
             budget: Duration::from_secs(10),
             timeout: Duration::from_secs(3),
             relay: None,
+            ssh_relay: None,
             deadline: None,
         }
     }
@@ -208,6 +212,8 @@ pub struct Report {
     pub clock: Clock,
     /// The installed git, for git serve (T-094).
     pub git: Git,
+    /// The SSH relay of `podnet ssh-relay` (T-165).
+    pub ssh_relay: SshRelay,
     /// True for a run of `--quick`.
     pub quick: bool,
 }
@@ -330,6 +336,7 @@ impl Report {
             self.clock.detail
         ));
         out.push_str(&self.git.line());
+        out.push_str(&self.ssh_relay.line());
         out.push_str("\nroads\n");
         for (road, verdict, reason) in self.roads() {
             out.push_str(&format!("  {road:<10} {:<8} {reason}\n", verdict.name()));
@@ -414,6 +421,17 @@ pub async fn run(options: Options) -> Report {
             detail: LATE.into(),
         },
     };
+    let ssh_relay = match options
+        .ssh_relay
+        .clone()
+        .or_else(ssh_relay_check::instance_target)
+    {
+        Some(target) => tokio::select! {
+            r = ssh_relay_check::ssh_relay(target, options.timeout * 3) => r,
+            () = late() => SshRelay::late(),
+        },
+        None => SshRelay::none(),
+    };
     Report {
         proxy,
         paths,
@@ -422,6 +440,7 @@ pub async fn run(options: Options) -> Report {
         legs,
         clock,
         git: git_check::git("git"),
+        ssh_relay,
         quick: options.deadline.is_some(),
     }
 }
@@ -454,6 +473,8 @@ use clock_check::clock;
 pub use clock_check::parse_imf_fixdate;
 pub use git_check::Git;
 pub use json::{lanes, Lane, LANES};
+mod ssh_relay_check;
+pub use ssh_relay_check::{SshRelay, SshRelayTarget};
 mod tls_check;
 use tls_check::tls;
 

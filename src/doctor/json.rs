@@ -26,6 +26,7 @@ impl Report {
                 "detail": self.clock.detail,
             },
             "git": self.git.to_json(),
+            "ssh_relay": self.ssh_relay.to_json(),
             "proxy": self.proxy,
             "paths": self.paths.iter().map(|p| json!({
                 "id": p.target.id,
