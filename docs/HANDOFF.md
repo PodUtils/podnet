@@ -8,9 +8,8 @@ file when each step below is done.
 
 * All work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1
   (`rustup default 1.99.1`; the image has 1.97 as its default).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.20.0`
-  (T-137). podcrates v0.21.0 is released (PodUtils/podcrates#65); its
-  hand-offs for podnet are not read yet.
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.21.0`
+  (T-137), with the watches of `pod-services` (0b945a3, COORD-030 #448).
 * The newest release is `v0.4.0-beta.3` at 649c8e3. The work after it is in no
   release.
 
@@ -45,7 +44,7 @@ tests skip on the CI jobs that cannot run them.
    rebased commit, run `gen-llms.py`, run `check.sh`, push.
 4. **T-121** (the mwan export) needs the interface and the table of each WAN:
    do it after T-119.
-5. **podcrates v0.21.0:** read `sh scripts/agent/podcrates.sh` and take the
+5. **podcrates:** at each new tag, read `sh scripts/agent/podcrates.sh` and take the
    crates whose hand-off is at the tag (T-137).
 6. **The next beta:** the batch above is green when CI is green. Name the
    speed limit of `warp --cc reno|cubic` on smoltcp 0.14 (PodUtils/podcrates#66,
