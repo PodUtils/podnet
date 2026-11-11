@@ -966,7 +966,7 @@ the levels. One object for each backend, not one `level`: the backend of a run i
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1011,7 +1011,7 @@ the program ran with no flow. Now `run_seccomp` stops at its start with exit sta
 
 ## Done
 
-2026-11-11, commit COMMIT (item 2) and ae5d1e3, c0180cc (item 1). `podnet pod --loopback-rules`: the seccomp
+2026-11-11, commit 8dd7776 (item 2) and ae5d1e3, c0180cc (item 1). `podnet pod --loopback-rules`: the seccomp
 backend reads the rules for a TCP connect to `127.0.0.0/8` and `::1` (`crates/podnet-netns/src/connect.rs`,
 podnet's part beside `pod_hold::connect`). A refused one gets `ECONNREFUSED` with the rule in the flow log;
 an allowed one goes direct, as before. Off by default: the behaviour of a pod with no flag stays. Test:

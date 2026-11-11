@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**236 entries: 56 open, 6 partial, 19 blocked, 155 done.**
+**236 entries: 56 open, 5 partial, 19 blocked, 156 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
 | P2 | 26 | 4 | 13 | 100 | 143 |
-| P3 | 27 | 1 | 4 | 32 | 64 |
-| **All** | 56 | 6 | 19 | 155 | 236 |
+| P3 | 27 | 0 | 4 | 33 | 64 |
+| **All** | 56 | 5 | 19 | 156 | 236 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -276,7 +276,7 @@ M8 Overlays, M9 Later.
 | [T-228](fixes.md) | P1 | S | M5 | defect | done | Each sender that waits on the WARP QUIC socket gets its wake-up |
 | [T-229](pods.md) | P2 | M | M7 | research | done | Measure `podnet pod` with the official runner and three CI payloads |
 | [T-230](pods.md) | P3 | S | M7 | feature | done | `pod doctor --json` states the hold level and what the seccomp backend does not hold |
-| [T-231](pods.md) | P3 | S | M7 | feature | partial | `podnet pod` refuses a run with no hold, and can apply the rules to loopback |
+| [T-231](pods.md) | P3 | S | M7 | feature | done | `podnet pod` refuses a run with no hold, and can apply the rules to loopback |
 | [T-232](crates.md) | P3 | S | M3 | chore | done | The hand-off of the generic hold of the pod backends to `pod-hold` |
 | [T-233](pods.md) | P2 | S | M5 | defect | done | seccomp: a dual-stack connect to the IPv4-mapped form of a fake address goes to the proxy as an address |
 | [T-234](pods.md) | P2 | S | M5 | defect | done | netns: `parse_tcp_syn` reads a SYN in a header under 20 bytes and in a later fragment |
