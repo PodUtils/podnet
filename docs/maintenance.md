@@ -34,6 +34,13 @@ state of the open work.
 
 ## Tools
 
+* **`llms.txt` and `llms-full.txt`** (repository root): `scripts/gen-llms.py
+  BINARY` writes them from `podnet man` and the documents of its list `DOCS`.
+  The test `llms_files_are_current` fails when a file is old. After a change
+  of a command, of the manual, of the version or of a listed document, run
+  `cargo build -p podnet`, then `python3 -I scripts/gen-llms.py
+  target/debug/podnet`, and commit both files. The release workflow builds
+  both files again from the release binary and attaches them.
 * **Reads of GitHub** (issues, runs, jobs, logs): `curl` to
   `https://forge.web.pkgforge.dev/github/...`, the read-only mirror of the
   GitHub REST API. Add a query parameter that changes (for example

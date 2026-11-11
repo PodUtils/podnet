@@ -54,6 +54,7 @@ a tag has. Each release also has these files:
 | `SHA256SUMS.sigstore.json` | The keyless cosign signature of `SHA256SUMS`. |
 | `provenance.sigstore.json` | The SLSA provenance of the binaries. |
 | `podnet.1` | The manual page (`podnet man --roff`). |
+| `llms.txt`, `llms-full.txt` | The index, and the manual with the documents, for agents. |
 | `THIRD-PARTY-LICENSES.md` | The license texts of the crates in the binaries. |
 
 Verify the files before you use them. Download the binary, `SHA256SUMS` and
@@ -1440,6 +1441,7 @@ podnet man warp run             # one command
 podnet man exit-status          # one topic: environment, files, exit-status, examples, pod
 podnet man --roff > podnet.1      # a man(7) page (also a release asset)
 podnet man --json               # the tables, for a program
+podnet warp run --help --json   # the same JSON for one command (at each level)
 podnet status                   # one JSON line about this host; no network
 podnet ports --json             # the listening TCP ports, as one JSON object
 podnet completions bash > ~/.local/share/bash-completion/completions/podnet

@@ -1,0 +1,96 @@
+# podnet
+
+> Cloudflare tunnels and the WARP client for hosts with strong network limits. Version 0.4.0-beta.3.
+
+podnet is one binary for Cloudflare quick tunnels (trycloudflare), named tunnels and the Cloudflare WARP client. It is made for hosts with strong network limits: no root, no TUN device, no network namespace, no UDP, no AF_INET bind, or only TCP 443 out.
+A tunnel reaches the edge with one of four legs: QUIC on UDP 7844, HTTP/2 on TCP 7844 (directly or through HTTPS_PROXY), QUIC inside a WARP MASQUE tunnel on TCP 443, or HTTP/2 through the WebSocket relay on TCP 443 (--transport relay). With --protocol auto and --transport auto, podnet tries the first three in that order.
+podnet pod runs a program with all its traffic sent through a proxy, with no LD_PRELOAD (podnet-netns). podnet net gives programs virtual IP addresses on a host that refuses AF_INET binds.
+This manual is generated from the command tree of the binary. podnet man --roff writes it as a man(7) page, and podnet man --json writes its tables.
+
+Run `podnet man` for the manual, `podnet man --json` for the manual as JSON,
+and `podnet COMMAND --help --json` for one command as JSON.
+llms-full.txt has the manual and the documents in one file.
+
+## Commands
+
+- `podnet tunnel`: Expose a service (cloudflared-style)
+- `podnet serve`: Serve a directory over a tunnel
+- `podnet share`: Share files or a local port in a session with a PIN
+- `podnet git`: Git hosting with the installed git: serve the repositories of a root over smart HTTP and SSH, make a repository, print the clone URLs
+- `podnet git serve`: Serve the git repositories under a root: smart HTTP on --local, through a quick tunnel or both, and SSH on --ssh or through a relay pair. It runs the installed git (git http-backend, git upload-pack, git receive-pack)
+- `podnet git init`: Make a bare repository NAME under the root (NAME.git when NAME has no .git at its end)
+- `podnet git urls`: Print the clone URLs of each repository under the root, from the last git serve of the root, and the fingerprint of the SSH host key
+- `podnet connect`: Bridge a local socket to a remote WebSocket forward endpoint
+- `podnet forward`: Forward local ports through a network: -L LISTEN=HOST:PORT, with --network SPEC (direct, a proxy, the relay, a tailnet)
+- `podnet route`: A router of networks, groups and doors from a config file (--config FILE), with health probes and --detach
+- `podnet ports`: List local TCP ports that are listening
+- `podnet bug-report`: Print a text for a bug report: the version, podnet status, the detached instances and the end of their logs, and the names of the variables that are set. Device IDs, tunnel IDs, tokens and credentials are hidden. No network unless --doctor
+- `podnet completions`: Print a completion script for a shell: bash, zsh, fish, elvish or powershell
+- `podnet update`: Replace this binary with the binary of a release, after checking its signature (cosign, release.yml at the tag) and its SHA-256
+- `podnet qr`: Print a QR code for a URL
+- `podnet demo`: Test the full path: a built-in origin, a tunnel, a fetch of the URL
+- `podnet net`: Userspace virtual networking (no kernel interfaces)
+- `podnet net demo`: Prove the userspace TCP handshake + transfer in-process
+- `podnet net doctor`: Probe what this host permits
+- `podnet net shim`: Build (or locate) the LD_PRELOAD shim and print how to use it
+- `podnet net addresses`: Print the default virtual address plan
+- `podnet net proxy`: Run a SOCKS5 / HTTP CONNECT proxy into the virtual network
+- `podnet net switch`: Run a switch that connects stacks on this host and on other hosts
+- `podnet net tailscale`: Run a SOCKS5 / HTTP CONNECT front door to a tailnet through tailscaled
+- `podnet net socksify`: Build the LD_PRELOAD shim that sends tailnet connects to a front door
+- `podnet net passwd-shim`: Write a passwd file and the fakepwd preload for a client (ssh, ssh-keygen, git) on a host with no /etc/passwd entry for this user. Then ssh-keygen writes its key (with no shim it exits 0 and writes no key). Use: eval "$(podnet net passwd-shim)"
+- `podnet net ts-shims`: The same files as passwd-shim, with getent and id, and the hints for tailscaled (Tailscale SSH)
+- `podnet warp`: Cloudflare WARP client: registration, account, proxy, run
+- `podnet warp register`: Register a device (or load the saved one) and print it
+- `podnet warp status`: Print the device and the account (type, WARP+ state, quota)
+- `podnet warp license`: Attach a WARP+ license key to the device
+- `podnet warp rotate`: Make a new MASQUE key and enrol it. The old key stops working
+- `podnet warp delete`: Remove the device from the WARP service and delete the saved file
+- `podnet warp probe`: Open the tunnel and test TCP connects through it. Exit 69 when a target fails
+- `podnet warp exit`: Open the tunnel and print its exit: the data center (colo), the country and the address that a destination sees (from http://1.1.1.1/cdn-cgi/trace), and the IPv6 egress address (the trace at 2606:4700:4700::1111, else the TXT of whoami.cloudflare). Exit 69 when there is no answer
+- `podnet warp export`: Print a WireGuard config of a new WARP device (wg-quick or JSON), for other clients. The device and its private key are in warp-wg.json of the state directory, not in warp.json. Its data path is WireGuard on UDP (port 2408), not MASQUE on TCP 443. The output holds the private key: a terminal is refused with no --out (--out - prints it), and a redirected file becomes mode 0600. WARP reads 3 reserved bytes in each message; kernel WireGuard and wg-quick send zeros. --check tells if the device needs the bytes
+- `podnet warp scan`: Measure front doors of WARP: the TCP connect and the TLS handshake with the pinned key, for each --candidate and the front doors of the device record. The fastest goes first. Exit 69 when none answers
+- `podnet warp forward`: Forward local listeners through WARP (as ssh -L): each connection to LISTEN goes through the tunnel to HOST:PORT
+- `podnet warp proxy`: Run a local SOCKS5 and HTTP CONNECT proxy whose traffic goes through WARP (the proxy mode of the WARP client)
+- `podnet warp up`: Start WARP for this sandbox, in the background: a detached warp proxy on 127.0.0.1:PORT and on a unix socket, and an env file with the proxy variables. Later shells join it with `eval "$(podnet warp env)"`, `podnet warp exec -- CMD`, `podnet warp shell`, or --persist
+- `podnet warp down`: Stop what podnet warp up started, and remove its env file and its block in ~/.bashrc and ~/.profile
+- `podnet warp env`: Print the proxy variables of the running podnet warp up, for `eval "$(podnet warp env)"`. Exit 69 with no output when warp up has no TCP listener (no proxy variables)
+- `podnet warp exec`: Run a program under the pod of the running podnet warp up: TCP, DNS and UDP go through WARP, also for static binaries. With --detach or --name, the pod is an instance (podnet ps, logs, stop): it lives until each process of the pod ends, also a daemon that the program started
+- `podnet warp shell`: Run $SHELL under the pod of the running podnet warp up. When it does not run, the shell starts as it is (with the proxy variables when the env file is there)
+- `podnet warp nc`: A byte pipe from stdin and stdout to HOST:PORT through WARP, for `ssh -o ProxyCommand='podnet warp nc %h %p'` and git over SSH. It uses the running podnet warp up, else a WARP session of its own
+- `podnet warp ssh-config`: Print an SSH config block and GIT_SSH_COMMAND that use podnet warp nc. With --write, --remove or --check: own the block in the SSH config file, between two marker lines
+- `podnet warp tun`: Make a TUN interface whose packets go through WARP. Needs CAP_NET_ADMIN and /dev/net/tun. Routes are not changed
+- `podnet warp run`: Run a program with all its traffic sent through WARP. No root and no TUN device are necessary (podnet-netns)
+- `podnet relay`: Inbound access to this host through the WebSocket relay (--relay): pair, run a node for a local port, connect as the operator
+- `podnet relay pair`: Ask the relay for a pair: a name, a node token (kept in a file of mode 0600 in the state directory) and a connect token for the operator. A pair lasts at most 72 h
+- `podnet relay node`: Hold the node socket of a pair, and connect each session of an operator to a local service. A lost socket is opened again
+- `podnet relay connect`: Open a session to a node and copy stdin and stdout (an SSH ProxyCommand), or each connection of --listen
+- `podnet relay stop`: Stop a node and its sessions at the relay (POST /v1/stop), and remove the local pair file
+- `podnet pod`: Run a program with all its traffic sent through a proxy (podnet-netns)
+- `podnet man`: Show the manual, generated from this binary
+- `podnet status`: Print one line of JSON about this host. It opens no connection
+- `podnet doctor`: Test the path from this host to the edge: the proxy, TCP and TLS to the APIs, the edge (7844) and MASQUE (443), and UDP 7844. Exit 0 when at least one leg (quic, http2, quic+warp) can work, 1 when none can
+- `podnet autostart`: Start a podnet command at boot, with no root: a systemd user unit (it stops at logout unless linger is on), else an @reboot line in the crontab
+- `podnet autostart add`: Add an entry that runs `podnet ARGS`. The token and a proxy password go to a private env file (mode 0600), not to the unit, the crontab or the command line. Exit 69 when this host has no systemd user manager and no crontab
+- `podnet autostart remove`: Remove an entry: its unit or its crontab line, and its files. Other units and crontab lines stay as they are
+- `podnet autostart list`: List the entries
+- `podnet autostart run`: Run an entry in the place of this process: the unit and the crontab line call this. It reads NAME.args and NAME.env in DIR
+- `podnet agent`: One command for a sandbox with basic networking: test what works, start WARP when it is needed, expose ports, and print what works now and the commands to use
+- `podnet agent up`: Test the host (podnet doctor --agent), start podnet warp up when direct networking does not do each task, start a detached quick tunnel for each --expose PORT, and print one JSON document
+- `podnet agent down`: Stop what podnet agent up started and put back each change
+- `podnet agent status`: Print the state: the instances, podnet warp up, and the doctor
+- `podnet ps`: List the instances that run in the background (--detach)
+- `podnet stop`: Stop a detached instance: SIGTERM, then SIGKILL after --timeout
+- `podnet logs`: Print the log of a detached instance
+- `podnet wait`: Wait until a detached instance is ready, and print its ready document
+
+## Documents
+
+- [README.md](https://github.com/PodUtils/podnet/blob/main/README.md): Install, quick start, and the use of each command.
+- [docs/protocol.md](https://github.com/PodUtils/podnet/blob/main/docs/protocol.md): The edge protocol and the relay protocol.
+- [docs/virtual-network.md](https://github.com/PodUtils/podnet/blob/main/docs/virtual-network.md): The virtual network: design and use.
+- [docs/target-environment.md](https://github.com/PodUtils/podnet/blob/main/docs/target-environment.md): The hosts that podnet is for, and their limits.
+
+## Manual
+
+- [llms-full.txt](llms-full.txt): the manual and the documents.

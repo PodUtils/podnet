@@ -77,6 +77,12 @@ jobs:
             grep -q '  podnet\.1$' SHA256SUMS || { echo "SHA256SUMS has no line for podnet.1"; exit 1; }
             want=$((n + 1))
           fi
+          if [ -f llms.txt ]; then
+            for f in llms.txt llms-full.txt; do
+              grep -q "  $f\$" SHA256SUMS || { echo "SHA256SUMS has no line for $f"; exit 1; }
+            done
+            want=$((want + 2))
+          fi
           lines=$(wc -l < SHA256SUMS)
           test "$want" -eq "$lines" || { echo "SHA256SUMS has $lines lines, not $want"; exit 1; }
           sha256sum -c SHA256SUMS

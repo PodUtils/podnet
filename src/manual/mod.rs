@@ -51,6 +51,42 @@ fn split_sections(manual: &Manual, text: &str) -> Option<Vec<String>> {
     (parts.len() > 1).then_some(parts)
 }
 
+/// T-222: the request that `--help --json` makes. `argv` is the whole
+/// command line. The answer is the JSON of `podnet man --json SECTION` for
+/// the command that the words of `argv` name; the root has no section. It is
+/// `None` when the line has no help flag or no `--json`, and for `pod`, which
+/// has its own help.
+pub fn help_json_request(manual: &Manual, argv: &[String]) -> Option<Request> {
+    let words: Vec<&str> = argv
+        .iter()
+        .skip(1)
+        .map(String::as_str)
+        .take_while(|a| *a != "--")
+        .collect();
+    if !words.contains(&"--json") || !words.iter().any(|a| matches!(*a, "--help" | "-h")) {
+        return None;
+    }
+    let mut path: Vec<&str> = Vec::new();
+    for word in words.iter().filter(|w| !w.starts_with('-')) {
+        let mut next = path.clone();
+        next.push(word);
+        if manual.command(&next.join(" ")).is_some() {
+            path = next;
+        } else if !path.is_empty() {
+            break;
+        }
+    }
+    if path.first() == Some(&"pod") {
+        return None;
+    }
+    Some(Request {
+        section: (!path.is_empty()).then(|| path.join(" ")),
+        no_pager: true,
+        roff: false,
+        json: true,
+    })
+}
+
 /// The bytes for `req`, or the refusal for a request that cannot be served.
 pub fn body(manual: &Manual, req: &Request) -> Result<String, String> {
     if req.json && req.roff {
