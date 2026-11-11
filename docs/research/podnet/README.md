@@ -35,6 +35,7 @@ evidence behind it.
 | `mwan-field.md` | The multi-WAN experiment, the lab kit bugs, the field report of beta.12 |
 | `vn.md` | The vn virtual network prototype: what to port |
 | `podssh.md` | The TODO model of podssh, its overlays, its conventions |
+| `overlays.md` | NetBird, Firezone and ZeroTier as networks (T-118, 2026-11-11) |
 | `podssh-copy.md` | What podnet copies from podssh, and in which order |
 
 The field report itself is in `docs/reports/field-report-2026-11-05.md`.
