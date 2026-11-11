@@ -247,7 +247,7 @@ The new entries and the research note pass the checker.
 
 ## Done
 
-2026-11-11, commit 8571fa3. Research note: `docs/research/podnet/overlays.md`. Each fact is marked read or
+2026-11-11, commit e501467. Research note: `docs/research/podnet/overlays.md`. Each fact is marked read or
 inferred, with URL and date. Nothing was run and no account was used.
 
 - NetBird: passes. Netstack mode (`NB_USE_NETSTACK_MODE=true`, SOCKS5 on `127.0.0.1:1080`, TCP only, peers
@@ -263,6 +263,7 @@ inferred, with URL and date. Nothing was run and no account was used.
   maintained SOCKS5 sidecar or a license change.
 - Not proven: netstack mode on a real host; use of `HTTPS_PROXY` by the NetBird client; `netbird up -F`
   with no root.
+The lead opened E1 and E2 as T-246, and E3 as T-247 (blocked: a NetBird account).
 
 # T-243: `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434)
 
