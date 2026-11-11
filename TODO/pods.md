@@ -1002,7 +1002,7 @@ PodUtils/podrunner `(to podnet)`.
 (podcrates T-169, PodUtils/podcrates#55). Item 2 waits for the take of that release; then the choice of
 the loopback route is podnet's part of the trait of the consumer. Item 1 is done.
 
-Done so far: item 1 (ae5d1e3). The memory read is the condition, not the write: the backend reads the
+Done so far: item 1 (ae5d1e3; c0180cc: the child of the probe waits on a pipe, as a child that exits at once gave `ESRCH` under load). The memory read is the condition, not the write: the backend reads the
 address of each `connect`, and a failed read refuses the `connect` (`ECONNREFUSED`, `seccomp/mod.rs`), so
 the program ran with no flow. Now `run_seccomp` stops at its start with exit status 3 and one line
 (`seccomp_can_hold`); the row `read program memory` of `pod doctor` shows the probe. Test:
