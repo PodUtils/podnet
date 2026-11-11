@@ -4,6 +4,7 @@ pub(crate) mod agent;
 pub(crate) mod autostart;
 pub(crate) mod connect;
 mod connect_stdio;
+pub(crate) mod forward;
 pub(crate) mod git;
 mod git_serve;
 pub(crate) mod host;

@@ -16,7 +16,7 @@ pub(crate) const HELP_GROUPS: &[(&str, &[&str])] = &[
     ),
     (
         "Reach the internet from a limited host",
-        &["agent", "warp", "pod", "net", "connect", "relay"],
+        &["agent", "warp", "pod", "net", "connect", "forward", "relay"],
     ),
     (
         "Run in the background",

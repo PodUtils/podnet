@@ -108,6 +108,7 @@ pub mod edge_h2;
 pub mod egress;
 pub mod fetch;
 #[doc(hidden)]
+pub mod forwards;
 pub mod fuzzing;
 pub mod manual;
 pub mod networks;

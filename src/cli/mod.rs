@@ -105,6 +105,9 @@ pub(crate) enum Command {
     Git(GitArgs),
     /// Bridge a local socket to a remote WebSocket forward endpoint.
     Connect(ConnectArgs),
+    /// Forward local ports through a network: -L LISTEN=HOST:PORT, with
+    /// --network SPEC (direct, a proxy, the relay, a tailnet).
+    Forward(cmd::forward::ForwardArgs),
     /// List local TCP ports that are listening.
     Ports(PortsArgs),
     /// Print a text for a bug report: the version, podnet status, the
@@ -237,6 +240,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         } => instances_logs(&name, follow, lines).await,
         Command::Wait { name, timeout } => instances_wait(&name, timeout),
         Command::Completions { shell } => cmd::host::completions(shell),
+        Command::Forward(args) => cmd::forward::forward(args).await,
         Command::Ports(args) => cmd::host::ports(args).await,
         Command::Qr(args) => cmd::host::qr(args),
         Command::Demo(args) => demo(args).await,
