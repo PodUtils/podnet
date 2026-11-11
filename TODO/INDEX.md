@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**232 entries: 64 open, 3 partial, 22 blocked, 143 done.**
+**232 entries: 63 open, 3 partial, 22 blocked, 144 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
 | P2 | 33 | 2 | 14 | 90 | 139 |
-| P3 | 28 | 0 | 6 | 30 | 64 |
-| **All** | 64 | 3 | 22 | 143 | 232 |
+| P3 | 27 | 0 | 6 | 31 | 64 |
+| **All** | 63 | 3 | 22 | 144 | 232 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -277,4 +277,4 @@ M8 Overlays, M9 Later.
 | [T-229](pods.md) | P2 | M | M7 | research | blocked | Measure `podnet pod` with the official runner and three CI payloads |
 | [T-230](pods.md) | P3 | S | M7 | feature | blocked | `pod doctor --json` states the hold level and what the seccomp backend does not hold |
 | [T-231](pods.md) | P3 | S | M7 | feature | blocked | `podnet pod` refuses a run with no hold, and can apply the rules to loopback |
-| [T-232](crates.md) | P3 | S | M3 | chore | open | The hand-off of the generic hold of the pod backends to `pod-hold` |
+| [T-232](crates.md) | P3 | S | M3 | chore | done | The hand-off of the generic hold of the pod backends to `pod-hold` |

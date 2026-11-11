@@ -1,19 +1,17 @@
 # Progress
 
-`TODO/INDEX.md` holds 232 entries: 64 open, 3 partial, 22 blocked, 143 done.
+`TODO/INDEX.md` holds 232 entries: 63 open, 3 partial, 22 blocked, 144 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws` and `pod-quic`
-  (`PodUtils/podcrates` v0.14.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-hold` (podcrates T-166, T-232),
-  then `pod-session`, `pod-wormhole` (v0.15.0) and `pod-relay`. A session reads the state
+- podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`
+  and `pod-hold` (`PodUtils/podcrates` v0.15.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-relay`,
+  then `pod-session` and `pod-wormhole` when podcrates writes their hand-off for podnet. A session reads the state
   of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`).
-  From the import of `pod-hold` (podcrates T-166), also the generic core of `crates/podnet-netns`
-  (T-232).
 - The session paused on 2026-11-10: `docs/HANDOFF.md` gives the state and the next steps.
 - The newest release is `v0.4.0-beta.2` (T-227).
 - Keep this section short. Write the current state only; git keeps the history.

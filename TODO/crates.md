@@ -1073,7 +1073,7 @@ failed); `unshare -n -- cargo test --offline --workspace --no-fail-fast`: exit 0
 **Milestone:** M3
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1104,3 +1104,10 @@ the doctor, which stay in `podnet-netns`.
 ```sh
 sh scripts/agent/podcrates.sh   # the pod-hold block of crates/pod-hold/SOURCES lists the files
 ```
+
+## Done
+
+2026-11-11, commit b759937. podnet took `pod-hold` of podcrates v0.15.0 (T-137): the generic core of the
+hold (the cut of podnet#414) is glue over `pod-hold`. The adoption run passed each line except the
+static build with zig (no zig on the host). The questions of podcrates T-169 (the dial state of a held
+`connect`) and T-170 (the netns hold of a SYN) are answered in a COORD issue (to podcrates).
