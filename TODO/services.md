@@ -980,6 +980,17 @@ and does not read the window, so the window changes no health transition. `podne
 floor and the last sample. The input is for `minrtt` (T-178). Test: `observe` gives equal results with the
 window on and off for one sequence of passes and fails.
 
+2026-11-11, 10831a3: item 11 and most of item 4 are done. The key `health` of the router file (T-100) takes
+`down_after` (K), `up_after` (R), `cooldown` and `timeout` beside `interval`; `Health::thresholds` checks
+K > R > 1 and R > K/2, and the probe of the router uses them. The key `control: unix:/PATH` makes the
+router serve `GET /route/status` (the document of `Router::status`) on a socket of mode 0600. `podnet route
+--status unix:/PATH [--json]` prints each door, each group and each member (health, round-trip time,
+flows, weight); it exits 69 when no router answers. Tests: `route_config_thresholds_reach_the_router`,
+`router_status_json_keys_over_the_control_socket`, and new cases of `route_config_errors_name_the_key`.
+Left: the bytes of each member (the meter of the doors), the rows of the metrics, the floor of the
+round-trip time of the comment on #375, and items 3, 7, 9 and 10 (the WARP adapter, frozen for
+`pod-warp`, T-050).
+
 # T-098: Router: doors with a default network, and rules to a network, a group or a refusal
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 2.1 to 2.3; GitHub #372 and #374.

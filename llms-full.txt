@@ -1299,13 +1299,21 @@ COMMANDS
             The form of the log on stderr: text, or json (one object for each
             line). Default: text. Values: text, json.
 
-    podnet route [OPTIONS] --config <FILE>
+    podnet route [OPTIONS]
         A router of networks, groups and doors from a config file (--config
         FILE), with health probes and --detach
 
         --config <FILE>
             The config file of the router: networks, groups, health and doors
-            (YAML; podnet man route names the keys). Required.
+            (YAML; podnet man route names the keys)
+
+        --status <unix:/PATH>
+            Print the state of a running router: each group and member
+            (health, round-trip time, flows), from its control socket (the key
+            `control` of its file). Exit 69 when no router answers
+
+        --json
+            With --status: print the JSON document
 
         --check
             Read the file and bring up nothing: exit 0 when it is valid, 64
