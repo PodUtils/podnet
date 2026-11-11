@@ -4066,7 +4066,7 @@ and the same fix of `bind_unix` of `pod-broker` (a COORD issue to podcrates).
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -4135,6 +4135,21 @@ of the fake `curl` is empty. Both orders of a duplicated line give "exactly one 
 no binary is installed. The suite fails when `--proto '=https'` is removed from `download()`. The suite
 leaves no file in the `TMPDIR` of the lab. `podnet update --version v1.2.3` with a SHA256SUMS that lists
 the asset twice fails with the same wording.
+
+## Done
+
+2026-11-11, commit 5ac044a. `scripts/install.sh` has `valid_tag` (the rule of `src/update.rs`) in
+`resolve_tag` for the `latest` result, `v*` and a bare version; it fails with "not a release tag" before
+any download. It checks `PODNET_REPO` as OWNER/NAME. `check_sum` needs exactly one two-field line with a
+64-hex hash, else "SHA256SUMS must have exactly one valid line for NAME (found N)". `sum_of` in
+`src/update/cosign.rs` does the same. Tests: `strict::curl_gets_https_only_flags`,
+`strict::a_script_without_proto_fails_the_flag_test`, `strict::hostile_versions_stop_before_any_download`,
+`strict::a_bad_repo_stops_before_any_download`, `strict::sha256sums_needs_exactly_one_valid_line`
+(`tests/install_script/strict.rs`), and `update::tests::sha256sums_must_have_exactly_one_valid_line`. The fake
+`curl` logs its full arguments; `Lab::run` sets `TMPDIR` and asserts it is empty after each run. Against
+the old script 3 of the new tests fail; against the new one all 28 pass. Not proven: the other downloaders
+(wget, aria2c) get no flag test; the TERM case relies on the existing test with the clean check; no live
+run.
 
 # T-240: `warp tun --default-route`: keep the resolver backup on disk, restore it after a kill, set the mode of `resolv.conf`, and test the route table with `ip route get` (GitHub #431)
 
