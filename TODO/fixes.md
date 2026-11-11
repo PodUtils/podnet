@@ -3834,7 +3834,7 @@ cargo todo check
 
 ## Done
 
-2026-11-11, commit 622450d (`T-222: --help --json, llms.txt and llms-full.txt`). `--help --json` (or
+2026-11-11, commit 981ee40 (`T-222: --help --json, llms.txt and llms-full.txt`). `--help --json` (or
 `-h --json`) at each level prints the JSON of `podnet man --json` for the command that the words of
 the line name (`manual::help_json_request`, called in `src/main.rs` before the parse). The root
 gives the whole manual. `pod` keeps its own help. `scripts/gen-llms.py BINARY` writes `llms.txt` (the
