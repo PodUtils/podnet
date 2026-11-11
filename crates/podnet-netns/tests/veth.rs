@@ -133,6 +133,12 @@ fn veth_wire_carries_a_tcp_flow() {
         eprintln!("skipping: the netns backend cannot run here: {stderr}");
         return;
     }
+    if stderr.contains("SIOCSIFFLAGS lo") {
+        // The namespace has no capability: lo cannot be set up, before the
+        // wire (the row "lo cannot be set up" of pod doctor; GitHub runners).
+        eprintln!("skipping: the namespace cannot set up lo here: {stderr}");
+        return;
+    }
     assert!(
         stderr.contains("the wire of the namespace is a veth pair"),
         "the pod did not take the veth wire: {stderr}"
