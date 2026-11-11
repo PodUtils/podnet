@@ -1042,6 +1042,17 @@ way is an error at the start). A door of T-061 over a `RulesFile` is a door of t
 `--door LISTEN=NET` belongs to the command `podnet route` (T-099, T-100); item 3, the resolver of each
 member, lands with the DNS door of T-099.
 
+2026-11-11, 463aecd: item 1 is the key `doors` of the router file (T-100), not a flag: each door has `listen`
+(TCP or `unix:`), `via` (a network or a group) and `rules`. A door can have a DNS door: `dns: ADDR:PORT` and
+`dns_upstream: HOST:PORT` answer on UDP and TCP over the dial of the door (`forwards::serve_dns` of T-099).
+The upstream is needed in the file: the router names no resolver of another party. Item 3: a name of a
+flow goes to its member (`names_inside`), and the DNS door resolves over the way that the rules give, so a
+member resolves through its own network. Test: `route_door_dns_reaches_the_router`, new cases of
+`route_config_errors_name_the_key`. Measured: a router with a DNS door over `direct` gave the answer of a
+local upstream (id 1234, flags 8180). Left: UDP ASSOCIATE in the door (`crates/podnet-vnet/src/door.rs`
+answers "command not supported"; T-061), and the `WrongEgress` member of item 3 (the egress check of T-097
+item 9, which waits for `pod-warp`).
+
 # T-099: Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose`
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 2.1 to 2.3;
