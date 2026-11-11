@@ -45,7 +45,7 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
 3. **T-248** (the guest-wire router) after T-249.
 4. **podcrates:** at each new tag, `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at
    the tag (T-137). #448 waits for the `taken` line of the watches of `pod-services`; #455 is its T-224.
-5. **The next beta:** when the batch after 9df5438 is green (T-132, T-165, T-255, v0.25.0, T-249).
+5. **The next beta (T-256, v0.4.0-beta.5):** the version and the notes are on `main`; when `ci` and `live` pass on the head, cut it (steps 4 to 6 of "Release" of `docs/maintenance.md`). The local branch of T-249 holds an entry T-256 of its own: give it the next free id at its merge.
 
 ## Open COORD issues
 

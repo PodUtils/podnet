@@ -4522,3 +4522,44 @@ study (`att/562a2c99-cfrs-standalone/cfrs/`, `att/522011b9-cfrs-field-report/`, 
 `cfrs-field-evidence-seccomp-rst.log`) in `mwan-field.md`: they are names of source files, as the source
 repositories are. Not done: the line references of the studies (for example main.rs:5446) are those of 3bed023 and
 are not updated one by one.
+
+# T-256: Publish `v0.4.0-beta.5`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md` (Releases, 2026-11-09): cut the next prerelease when a batch of fixes is green;
+`docs/maintenance.md`, section "Release".
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The work after `v0.4.0-beta.4` (T-132, T-165, T-255, the take of podcrates v0.25.0) is on `main` only.
+PodUtils/podrunner#64 waits for T-255 in a release.
+
+## Premise
+
+- `v0.4.0-beta.4` is the newest release (T-245).
+
+## Approach
+
+1. Set the version `0.4.0-beta.5` in `Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, and regenerate the llms files.
+2. Write `docs/releases/v0.4.0-beta.5.md`, with `## Breaking`.
+3. Push, and wait until `ci` and `live` pass on that commit.
+4. Dispatch `release.yml` on `main` with `publish` empty (the dry run), then with
+   `publish=v0.4.0-beta.5`.
+5. Check the files of the release and `release-proofs.yml`.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next
+prerelease unattended when a batch is green.
+
+## Prove
+
+```sh
+cargo test -p podnet --test docs
+sh scripts/agent/check.sh
+```

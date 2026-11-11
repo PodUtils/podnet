@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**255 entries: 38 open, 10 partial, 23 blocked, 184 done.**
+**256 entries: 39 open, 10 partial, 23 blocked, 184 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 21 | 6 | 14 | 112 | 153 |
+| P2 | 22 | 6 | 14 | 112 | 154 |
 | P3 | 17 | 3 | 7 | 46 | 73 |
-| **All** | 38 | 10 | 23 | 184 | 255 |
+| **All** | 39 | 10 | 23 | 184 | 256 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -301,3 +301,4 @@ M8 Overlays, M9 Later.
 | [T-253](services.md) | P3 | S | M6 | measurement | done | Live: probe the hosted mailboxes and relays from a proxy-only runner |
 | [T-254](fixes.md) | P2 | M | M5 | chore | done | Housekeeping: one footnote for cfrs, no narrative history |
 | [T-255](pods.md) | P2 | S | M7 | defect | done | seccomp: an IPv4-mapped loopback address is loopback |
+| [T-256](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.5`: the dry run, the publish and the release proofs |
