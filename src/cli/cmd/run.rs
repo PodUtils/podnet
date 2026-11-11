@@ -221,22 +221,69 @@ fn tunnel_doc(
     verified: bool,
     unverified: Option<&str>,
 ) -> serde_json::Value {
+    let forward = handle
+        .forward_path()
+        .map(|path| (url.and_then(|u| podnet::ws::forward_url(u, path)), path));
+    detach_doc(
+        url,
+        verified,
+        unverified,
+        &handle.tunnel_id().to_string(),
+        handle.locations(),
+        handle.leg(),
+        forward,
+    )
+}
+
+/// The keys of the ready document of a tunnel (T-218: the connector profile,
+/// `docs/protocol.md`, section 10). A key is added, never removed.
+fn detach_doc(
+    url: Option<&str>,
+    verified: bool,
+    unverified: Option<&str>,
+    tunnel_id: &str,
+    locations: &[String],
+    leg: &str,
+    forward: Option<(Option<String>, &str)>,
+) -> serde_json::Value {
     let mut doc = serde_json::json!({
         "url": url,
         "verified": verified && url.is_some() && unverified.is_none(),
-        "tunnel_id": handle.tunnel_id().to_string(),
-        "locations": handle.locations(),
-        "leg": handle.leg(),
+        "tunnel_id": tunnel_id,
+        "locations": locations,
+        "leg": leg,
     });
     if let Some(why) = unverified {
         doc["unverified"] = why.into();
     }
     // Issue 203: the endpoint for podnet connect.
-    if let Some(path) = handle.forward_path() {
-        doc["forward"] = url.and_then(|u| podnet::ws::forward_url(u, path)).into();
+    if let Some((forward, path)) = forward {
+        doc["forward"] = forward.into();
         doc["forward_path"] = path.into();
     }
     doc
+}
+
+/// The ready line of `tunnel --json` (T-218: the connector profile).
+fn ready_line(
+    url: Option<&str>,
+    tunnel_id: &str,
+    locations: &[String],
+    leg: &str,
+    forward: Option<(Option<String>, &str)>,
+) -> serde_json::Value {
+    let mut doc = serde_json::json!({
+        "event": "ready",
+        "url": url,
+        "tunnel_id": tunnel_id,
+        "locations": locations,
+        "leg": leg,
+    });
+    if let Some((forward, path)) = forward {
+        doc["forward"] = forward.into();
+        doc["forward_path"] = path.into();
+    }
+    podnet::status::stamped(doc)
 }
 
 /// The ready line of `share --json`: stamped with `schema` and `podnet` (T-203).
@@ -278,18 +325,14 @@ fn announce(handle: &podnet::TunnelHandle, show: Show) -> Result<()> {
     // (before, only after the verify).
     podnet::detach::arm_stop();
     if show.json {
-        let mut doc = serde_json::json!({
-            "event": "ready",
-            "url": handle.url(),
-            "tunnel_id": handle.tunnel_id().to_string(),
-            "locations": handle.locations(),
-            "leg": handle.leg(),
-        });
-        if let Some(path) = handle.forward_path() {
-            doc["forward"] = handle.forward().into();
-            doc["forward_path"] = path.into();
-        }
-        let doc = podnet::status::stamped(doc);
+        let forward = handle.forward_path().map(|path| (handle.forward(), path));
+        let doc = ready_line(
+            handle.url(),
+            &handle.tunnel_id().to_string(),
+            handle.locations(),
+            handle.leg(),
+            forward,
+        );
         println!("{doc}");
     } else {
         announce_text(handle);
@@ -398,6 +441,72 @@ fn _mode(mode: ShareMode) -> ShareMode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn keys(doc: &serde_json::Value) -> Vec<&str> {
+        let mut keys: Vec<&str> = doc
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(|k| k.as_str())
+            .collect();
+        keys.sort();
+        keys
+    }
+
+    // T-218: the keys of the ready line and of the ready document are the
+    // keys of the connector profile (`docs/protocol.md`, section 10).
+    #[test]
+    fn the_ready_keys_are_fixed() {
+        let loc = ["fra01".to_string()];
+        let line = ready_line(Some("https://x/"), "id", &loc, "quic", None);
+        assert_eq!(
+            keys(&line),
+            [
+                "event",
+                "leg",
+                "locations",
+                "podnet",
+                "schema",
+                "tunnel_id",
+                "url"
+            ]
+        );
+        let fwd = Some((Some("wss://x/f".to_string()), "/f"));
+        let line = ready_line(Some("https://x/"), "id", &loc, "quic", fwd.clone());
+        assert_eq!(
+            keys(&line),
+            [
+                "event",
+                "forward",
+                "forward_path",
+                "leg",
+                "locations",
+                "podnet",
+                "schema",
+                "tunnel_id",
+                "url"
+            ]
+        );
+        let doc = detach_doc(Some("https://x/"), true, None, "id", &loc, "quic", None);
+        assert_eq!(
+            keys(&doc),
+            ["leg", "locations", "tunnel_id", "url", "verified"]
+        );
+        let doc = detach_doc(None, false, Some("resolution"), "id", &loc, "quic", fwd);
+        assert_eq!(
+            keys(&doc),
+            [
+                "forward",
+                "forward_path",
+                "leg",
+                "locations",
+                "tunnel_id",
+                "unverified",
+                "url",
+                "verified"
+            ]
+        );
+    }
 
     #[test]
     fn share_ready_doc_is_stamped() {

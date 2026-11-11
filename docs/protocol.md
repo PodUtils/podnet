@@ -490,6 +490,87 @@ sample of the lane) and `reason` (string).
 | `ws_upgrade` | no probe: always `unknown` | null |
 | `proxy` | the paths that go through a proxy: `ok` when one works, `fail` when each fails, else `unknown` (`no proxy is set` without a proxy) | the best of the working paths |
 
+## 10. The connector profile
+
+A connector is a program that starts `podnet tunnel` and reads its output.
+This section lists what such a program can rely on. The newest signed
+release that has the profile is v0.4.0-beta.3.
+
+The rule: within a minor version (0.4.x), a change to the profile only adds.
+A flag, an exit code, a JSON key or a value word is never removed or renamed.
+A consumer ignores a key that it does not know. The test
+`connector_profile_is_pinned` (`tests/cli/profile.rs`) checks the lists below
+against the binary and against this file. The test `the_ready_keys_are_fixed`
+(`src/cli/cmd/run.rs`) pins the keys of the ready line.
+
+### Flags of `podnet tunnel`
+
+`--auth-password-file`, `--auth-user`, `--ca-file`, `--check`, `--color`,
+`--config`, `--credentials-file`, `--detach`, `--egress`, `--forward`,
+`--ha-connections`, `--hello-world`, `--help`, `--http-host-header`, `--json`,
+`--leg-failover`, `--log-format`, `--name`, `--no-proxy`, `--no-restart`,
+`--no-tls-verify`, `--no-verify`, `--port`, `--protocol`, `--proxy`, `--qr`,
+`--quiet`, `--ready-timeout`, `--relay`, `--replace`, `--resolve`,
+`--run-for`, `--service-url`, `--strip-accept-encoding`, `--tcp`, `--token`,
+`--token-file`, `--transport`, `--unix`, `--url`, `--user-agent`, `--verbose`,
+`--warp-identity`.
+
+### Exit codes
+
+The list is `podnet man exit-status`. An error with no class exits 1.
+
+| Code | Name |
+| --- | --- |
+| 0 | `success` |
+| 1 | `failure` |
+| 3 | `no-backend` |
+| 64 | `usage` |
+| 69 | `unavailable` |
+| 75 | `tempfail` |
+| 78 | `config` |
+| 124 | `timeout` |
+
+### Readiness
+
+podnet has no HTTP endpoint `/ready` and no metrics listener (`--metrics` is
+refused with exit 64). A connector reads the ready line instead. With
+`--json`, `tunnel` prints it on stdout when the tunnel is up. With
+`--detach`, the same data is the ready document: the last line of stdout of
+the start, and the key `ready` of an instance in `ps --json`.
+
+The ready line has `event` (always `ready`), `schema` (1), `podnet` (the
+version), `url` (string or null), `tunnel_id` (string), `locations` (array of
+strings) and `leg` (string). With `--forward` it also has `forward` (string
+or null) and `forward_path` (string).
+
+The ready document has `url` (string or null), `verified` (bool), `tunnel_id`,
+`locations` and `leg`. It has `unverified` (string) when the check of the
+public URL did not finish, and `forward` and `forward_path` as the ready line
+does.
+
+### `podnet ps --json`
+
+One object with `schema` (1), `podnet` (the version), `dir` (string: the run
+directory) and `instances` (array). Each instance has these keys:
+
+| Key | Type |
+| --- | --- |
+| `name` | string |
+| `state` | string (`starting` or `ready`) |
+| `pid` | number |
+| `supervisor` | number or null |
+| `command` | string |
+| `args` | array of strings |
+| `cwd` | string |
+| `started` | number (Unix seconds) |
+| `restarts` | number |
+| `log` | string (a path) |
+| `ready` | object or null (the ready document) |
+
+### `podnet doctor --json`
+
+Section 9. The test `doctor_json_keys_are_fixed` (`tests/doctor.rs`) pins it.
+
 ## Failure causes
 
 The error line of podnet names the hop that failed, and a second line says
