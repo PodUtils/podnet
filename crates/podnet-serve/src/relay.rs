@@ -37,6 +37,8 @@ use tokio::net::UnixStream;
 
 use podnet_core::connect;
 
+pub mod supervise;
+
 /// Default relay, reachable on port 443 through the CONNECT proxy: the
 /// endpoint `ssh` of `pinggy` (`pod-services`).
 pub fn default_relay() -> String {
@@ -56,6 +58,57 @@ pub struct RelayConfig {
     pub unix_socket: std::path::PathBuf,
     /// Timeout for the CONNECT proxy handshake.
     pub connect_timeout: Duration,
+    /// Which URL of the banner of the relay is the tunnel URL.
+    pub url_rule: UrlRule,
+    /// The SSH session ends after this time with no data from the relay.
+    /// `None`: it does not end for that reason.
+    pub inactivity: Option<Duration>,
+    /// A keepalive request goes to the relay at this interval, and the
+    /// session ends after more than three unanswered requests. `None`: no keepalive.
+    pub keepalive: Option<Duration>,
+}
+
+/// The rule that picks the tunnel URL out of the banner of a relay.
+///
+/// A token is a candidate when it starts with `http://` or `https://`.
+/// The first candidate that holds no text of `skip` and each text of
+/// `hold` is the tunnel URL.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UrlRule {
+    /// A candidate that holds one of these texts is not the tunnel URL
+    /// (the dashboard of the relay).
+    pub skip: Vec<String>,
+    /// A candidate must hold each of these texts (the tunnel domain of the
+    /// relay).
+    pub hold: Vec<String>,
+}
+
+impl Default for UrlRule {
+    /// The rule of the default relay: not its dashboard.
+    fn default() -> Self {
+        Self {
+            skip: vec![podnet_core::services::text("pinggy", "dashboard-host").to_string()],
+            hold: Vec::new(),
+        }
+    }
+}
+
+impl UrlRule {
+    /// The tunnel URL in `text`, or `None`.
+    ///
+    /// The relay prints an upgrade pitch (which points at its dashboard) and
+    /// then the tunnel hostname(s). Both are URLs, so the rule must exclude
+    /// the dashboard or it gets picked as the tunnel.
+    pub fn pick(&self, text: &str) -> Option<String> {
+        text.split_whitespace()
+            .filter(|t| t.starts_with("http://") || t.starts_with("https://"))
+            .map(|t| t.trim_end_matches([',', '.', ')', '"']))
+            .find(|url| {
+                !self.skip.iter().any(|s| url.contains(s.as_str()))
+                    && self.hold.iter().all(|h| url.contains(h.as_str()))
+            })
+            .map(str::to_string)
+    }
 }
 
 impl Default for RelayConfig {
@@ -66,6 +119,9 @@ impl Default for RelayConfig {
             username: "podnet".to_string(),
             unix_socket: default_origin_socket(),
             connect_timeout: Duration::from_secs(15),
+            url_rule: UrlRule::default(),
+            inactivity: Some(Duration::from_secs(3600)),
+            keepalive: None,
         }
     }
 }
@@ -390,27 +446,6 @@ async fn connect_transport(config: &RelayConfig) -> Result<PrefixedStream, Relay
     Ok(PrefixedStream::new(leftover, stream))
 }
 
-/// Choose the tunnel URL out of a line of relay output.
-///
-/// The relay prints an upgrade pitch (which points at its dashboard) and then
-/// the tunnel hostname(s). Both are `https://` URLs, so the dashboard must be
-/// excluded or it gets picked as the "tunnel". Prefer a URL whose host is not
-/// the dashboard.
-fn pick_tunnel_url(text: &str) -> Option<String> {
-    let candidates: Vec<&str> = text
-        .split_whitespace()
-        .filter(|t| t.starts_with("http://") || t.starts_with("https://"))
-        .map(|t| t.trim_end_matches([',', '.', ')', '"']))
-        .collect();
-
-    for url in &candidates {
-        if !url.contains(podnet_core::services::text("pinggy", "dashboard-host")) {
-            return Some((*url).to_string());
-        }
-    }
-    None
-}
-
 /// Split `host:port`, rejecting anything else.
 fn split_address(address: &str) -> Result<(String, u16), RelayError> {
     let (host, port) = address
@@ -425,12 +460,37 @@ fn split_address(address: &str) -> Result<(String, u16), RelayError> {
     Ok((host.to_string(), port))
 }
 
+/// Check that `address` is `host:port`.
+pub fn check_address(address: &str) -> Result<(), RelayError> {
+    split_address(address).map(|_| ())
+}
+
+/// A live session of the relay: the URL, the SSH handle and the banner channel.
+///
+/// The session ends when the relay closes the connection or the banner
+/// channel. Dropping the value closes the tunnel.
+pub struct Live {
+    /// The public URL and the remote port.
+    pub tunnel: TunnelHandle,
+    /// The SSH connection.
+    pub handle: Handle<Client>,
+    /// The session channel that carries the banner of the relay.
+    pub banner: Channel<Msg>,
+}
+
 /// Establish the tunnel and return the public URL plus a live session handle.
 ///
 /// The returned handle owns the session's event loop; dropping it closes the
 /// tunnel.
 pub async fn run(config: RelayConfig) -> Result<(TunnelHandle, Handle<Client>), RelayError> {
-    let stream = connect_transport(&config).await?;
+    let session = open(&config).await?;
+    Ok((session.tunnel, session.handle))
+}
+
+/// Establish the tunnel and return the live [`Live`], with the banner
+/// channel. [`supervise::supervise`] watches it.
+pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
+    let stream = connect_transport(config).await?;
 
     // The relay authenticates by publickey. Generate an ephemeral Ed25519 key
     // per run from the OS entropy source; it is never persisted because the
@@ -441,7 +501,8 @@ pub async fn run(config: RelayConfig) -> Result<(TunnelHandle, Handle<Client>), 
     );
 
     let ssh_config = Config {
-        inactivity_timeout: Some(Duration::from_secs(3600)),
+        inactivity_timeout: config.inactivity,
+        keepalive_interval: config.keepalive,
         preferred: russh::Preferred::DEFAULT,
         ..Config::default()
     };
@@ -501,7 +562,7 @@ pub async fn run(config: RelayConfig) -> Result<(TunnelHandle, Handle<Client>), 
             Some(ChannelMsg::Data { data }) => {
                 let text = String::from_utf8_lossy(&data);
                 eprint!("  [relay] {text}");
-                if let Some(url) = pick_tunnel_url(&text) {
+                if let Some(url) = config.url_rule.pick(&text) {
                     break url;
                 }
             }
@@ -512,160 +573,12 @@ pub async fn run(config: RelayConfig) -> Result<(TunnelHandle, Handle<Client>), 
         }
     };
 
-    Ok((TunnelHandle { url, remote_port }, handle))
+    Ok(Live {
+        tunnel: TunnelHandle { url, remote_port },
+        handle,
+        banner: session_channel,
+    })
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// #230: the default origin socket is in a private directory of this
-    /// user, not a fixed path of the shared /tmp.
-    #[test]
-    fn the_default_origin_socket_is_private() {
-        use std::os::unix::fs::MetadataExt as _;
-        let path = RelayConfig::default().unix_socket;
-        assert_ne!(path, std::path::PathBuf::from("/tmp/podnet-origin.sock"));
-        if let Some(dir) = path
-            .parent()
-            .filter(|d| d.is_dir() && *d != std::env::temp_dir())
-        {
-            let meta = std::fs::metadata(dir).unwrap();
-            assert_eq!(meta.uid(), unsafe { libc::geteuid() });
-            assert_eq!(meta.mode() & 0o077, 0, "{}", dir.display());
-        }
-    }
-
-    #[test]
-    fn splits_a_valid_host_port() {
-        let (host, port) = split_address("free.pinggy.io:443").expect("should split");
-        assert_eq!(host, "free.pinggy.io");
-        assert_eq!(port, 443);
-    }
-
-    #[test]
-    fn rejects_addresses_without_a_port() {
-        for bad in ["free.pinggy.io", "", "host:not-a-port", ":443"] {
-            assert!(
-                split_address(bad).is_err(),
-                "{bad:?} should be rejected as an address"
-            );
-        }
-    }
-
-    #[test]
-    fn default_config_targets_port_443() {
-        // 443, not 22: some egress proxies permit only 443.
-        let cfg = RelayConfig::default();
-        assert!(
-            cfg.address.ends_with(":443"),
-            "default relay must be on 443"
-        );
-    }
-
-    #[test]
-    fn picks_the_tunnel_url_and_not_the_dashboard() {
-        // This is the real relay output shape observed on 2026-10-09.
-        let line = "  You are not authenticated.\n  Your tunnel will expire in 60 minutes. \
-Upgrade to Pinggy Pro to get unrestricted tunnels. https://dashboard.pinggy.io\n  \
-https://blirg-2400-1a00-5b2f-821c-869e-56ff-fe03-2b71.free.pinggy.net\n  \
-https://jcydy-2400-1a00-5b2f-821c-869e-56ff-fe03-2b71.run.pinggy-free.link\n";
-        let url = pick_tunnel_url(line).expect("a tunnel url");
-        assert_eq!(
-            url,
-            "https://blirg-2400-1a00-5b2f-821c-869e-56ff-fe03-2b71.free.pinggy.net"
-        );
-        assert!(
-            !url.contains("dashboard"),
-            "dashboard must never be chosen: {url}"
-        );
-    }
-
-    #[test]
-    fn trailing_punctuation_is_stripped_from_a_url() {
-        let line = "visit https://x.free.pinggy.net.";
-        assert_eq!(
-            pick_tunnel_url(line).as_deref(),
-            Some("https://x.free.pinggy.net")
-        );
-    }
-
-    #[test]
-    fn a_dashboard_only_line_yields_no_tunnel_url() {
-        // Guards against silently returning the dashboard as if it were a tunnel.
-        let line = "Upgrade for more at https://dashboard.pinggy.io\n";
-        assert_eq!(pick_tunnel_url(line), None);
-    }
-
-    /// Drives the production copy logic (`copy_bidirectional`) over in-memory
-    /// duplex pipes shaped like an SSH channel and a unix origin.
-    ///
-    /// Both halves share ONE origin connection and both must run to completion.
-    /// This is the regression for the live bug: the request reached the origin,
-    /// but the response never reached the visitor. An empty-body GET, whose
-    /// request leg finishes immediately, is exactly the shape that exposed it.
-    #[tokio::test]
-    async fn copy_bidirectional_carries_request_and_response_on_one_origin_connection() {
-        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
-
-        // podnet_channel: the SSH channel the relay opened (relay <-> podnet).
-        let (mut relay, mut podnet_channel) = tokio::io::duplex(4096);
-        // podnet_origin: the unix-socket origin (origin <-> podnet).
-        let (mut origin, mut podnet_origin) = tokio::io::duplex(4096);
-
-        // The relay writes the visitor's request, then reads the reply back.
-        let relay_task = tokio::spawn(async move {
-            relay
-                .write_all(b"GET /hello HTTP/1.1\r\nHost: x\r\n\r\n")
-                .await
-                .unwrap();
-            relay.shutdown().await.unwrap();
-            let mut back = Vec::new();
-            relay.read_to_end(&mut back).await.unwrap();
-            back
-        });
-
-        // The origin reads to end-of-request, replies, then closes, like an
-        // HTTP/1.1 server that answers one request and closes the connection.
-        let origin_task = tokio::spawn(async move {
-            let mut request = Vec::new();
-            origin.read_to_end(&mut request).await.unwrap();
-            origin
-                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK")
-                .await
-                .unwrap();
-            origin.shutdown().await.unwrap();
-            request
-        });
-
-        // podnet splices the channel into the origin, both directions, bounded so
-        // a regression fails the test instead of hanging the suite.
-        let (mut cr, mut cw) = tokio::io::split(&mut podnet_channel);
-        let (mut or, mut ow) = tokio::io::split(&mut podnet_origin);
-        tokio::time::timeout(
-            std::time::Duration::from_secs(10),
-            copy_bidirectional(&mut cr, &mut cw, &mut or, &mut ow),
-        )
-        .await
-        .expect("splice must not hang")
-        .expect("splice completes");
-
-        let request = origin_task.await.unwrap();
-        assert!(
-            String::from_utf8_lossy(&request).contains("GET /hello"),
-            "origin should have received the request, got {:?}",
-            String::from_utf8_lossy(&request)
-        );
-
-        let to_relay = relay_task.await.unwrap();
-        let response = String::from_utf8_lossy(&to_relay);
-        assert!(
-            response.starts_with("HTTP/1.1 200 OK"),
-            "relay should have received the status line, got {response:?}"
-        );
-        assert!(
-            response.ends_with("OK"),
-            "relay should have received the response body, got {response:?}"
-        );
-    }
-}
+mod tests;

@@ -1505,6 +1505,130 @@ COMMANDS
             The form of the log on stderr: text, or json (one object for each
             line). Default: text. Values: text, json.
 
+    podnet ssh-relay [OPTIONS] --server <HOST:PORT> --user <USER> <--url-match
+    <TEXT>|--url-skip <TEXT>>
+        Publish a unix socket through an SSH relay (a remote forward on port
+        443), and keep the session: when the relay ends it, podnet connects
+        again with a backoff and prints the new URL. The relay, the user and
+        the URL rule are flags
+
+        --server <HOST:PORT>
+            The SSH server of the relay: HOST:PORT. Use a port that the egress
+            allows (443 for most proxies). Required.
+
+        --user <USER>
+            The SSH user of the relay. The relay takes an ephemeral key.
+            Required.
+
+        --url-match <TEXT>
+            Which URL of the banner of the relay is the tunnel URL: it holds
+            this text (the tunnel domain of the relay). Repeatable: the URL
+            holds each text. Give --url-match or --url-skip, or both
+
+        --url-skip <TEXT>
+            Which URL of the banner is not the tunnel URL: it holds this text
+            (the dashboard of the relay). Repeatable: the URL holds none of
+            the texts
+
+        --socket <PATH>
+            The unix socket of the origin: the relay opens one channel for
+            each visitor, and podnet connects it to this socket. The origin
+            listens on the socket before the first visitor comes. Default:
+            origin.sock in the private run directory of this user
+
+        --connect-proxy <HOST:PORT>
+            Reach the relay through this HTTP CONNECT proxy: HOST:PORT.
+            Default: a direct connection
+
+        --json
+            Print each URL as one JSON line on stdout: {"event": "ready" or
+            "reconnected", "url", "remote_port", "relay"}
+
+        --detach
+            Run in the background: podnet prints one JSON document when the
+            command is ready (its URL or its listen address) and exits 0. The
+            instance keeps running when the shell or the terminal closes.
+            podnet ps, logs, wait and stop manage it
+
+        --name <NAME>
+            The name of the detached instance. Default: the command and a hash
+            of its arguments. A second start with the same name and the same
+            arguments gives the same instance. With no --detach: register this
+            process under the name (it is not forked and not restarted);
+            podnet ps, logs, wait and stop see it
+
+        --ready-timeout <SECS>
+            With --detach: seconds to wait for the instance to be ready (else
+            exit 124). Default: 60.
+
+        --replace
+            Stop a running instance of the same name that has other arguments,
+            and start this one (needs --detach). connect: also take a unix
+            socket of -L that another process serves (by default, a socket
+            that answers is refused, exit 69; a stale socket file is replaced)
+
+        --no-restart
+            Do not start the instance again when it ends. Without it, a
+            supervisor starts it again with a backoff (1 s to 30 s), but not
+            after exit 64 or 78, and not after a planned end (--stop-after,
+            --idle-secs, --run-for). A quick tunnel gets a new URL; podnet ps
+            shows it. With --name and no --detach, there is no supervisor
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH)
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+        Examples:
+        Publish a unix socket through an SSH relay. The URL is in the ready
+        document; podnet ps shows the URL after each reconnect.
+            $ podnet ssh-relay --server relay.example.net:443 --user podnet
+            --url-skip dashboard.example.net --socket
+            /run/user/1000/origin.sock --detach
+
     podnet bench [OPTIONS] <URL>
         Send GET requests to a URL through the way out (--egress, --proxy) and
         measure the latency (p50, p95, p99), the rate and the errors
@@ -8345,6 +8469,12 @@ EXAMPLES
     Give the SSH server of this host to the operators of the pair, through the
     relay.
         $ podnet relay node --to 127.0.0.1:22
+
+    Publish a unix socket through an SSH relay. The URL is in the ready
+    document; podnet ps shows the URL after each reconnect.
+        $ podnet ssh-relay --server relay.example.net:443 --user podnet
+        --url-skip dashboard.example.net --socket /run/user/1000/origin.sock
+        --detach
 
     Say whether a newer release exists. podnet update installs it after it
     checks the cosign signature and the SHA-256.

@@ -443,6 +443,10 @@ pub const EXAMPLES: &[Example] = &[
         meaning: "Give the SSH server of this host to the operators of the pair, through the relay.",
     },
     Example {
+        command: "podnet ssh-relay --server relay.example.net:443 --user podnet --url-skip dashboard.example.net --socket /run/user/1000/origin.sock --detach",
+        meaning: "Publish a unix socket through an SSH relay. The URL is in the ready document; podnet ps shows the URL after each reconnect.",
+    },
+    Example {
         command: "podnet update --check",
         meaning: "Say whether a newer release exists. podnet update installs it after it checks the cosign signature and the SHA-256.",
     },

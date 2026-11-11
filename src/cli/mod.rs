@@ -27,6 +27,7 @@ use cmd::net::{net, NetArgs};
 use cmd::relay::{relay, RelayArgs};
 use cmd::serve::{serve, ServeArgs};
 use cmd::share::{demo, share, DemoArgs, ShareArgs};
+use cmd::ssh_relay::{ssh_relay, SshRelayArgs};
 use cmd::tunnel::{tunnel, TunnelArgs};
 use cmd::warp::{warp, WarpArgs};
 
@@ -117,6 +118,11 @@ pub(crate) enum Command {
     /// A router of networks, groups and doors from a config file (--config
     /// FILE), with health probes and --detach.
     Route(cmd::route::RouteArgs),
+    /// Publish a unix socket through an SSH relay (a remote forward on port
+    /// 443), and keep the session: when the relay ends it, podnet connects
+    /// again with a backoff and prints the new URL. The relay, the user and
+    /// the URL rule are flags.
+    SshRelay(SshRelayArgs),
     /// Send GET requests to a URL through the way out (--egress, --proxy) and
     /// measure the latency (p50, p95, p99), the rate and the errors.
     Bench(BenchArgs),
@@ -262,6 +268,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Net(args) => net(args).await,
         Command::Warp(args) => warp(*args).await,
         Command::Relay(args) => relay(args).await,
+        Command::SshRelay(args) => ssh_relay(args).await,
         Command::Pod { .. } => Err(podnet::exit::fault(
             Fault::Usage,
             anyhow::anyhow!("podnet pod runs before the runtime"),

@@ -12,7 +12,16 @@ use crate::cli::Cli;
 pub(crate) const HELP_GROUPS: &[(&str, &[&str])] = &[
     (
         "Publish a local service",
-        &["tunnel", "expose", "serve", "share", "git", "demo", "qr"],
+        &[
+            "tunnel",
+            "expose",
+            "ssh-relay",
+            "serve",
+            "share",
+            "git",
+            "demo",
+            "qr",
+        ],
     ),
     (
         "Reach the internet from a limited host",

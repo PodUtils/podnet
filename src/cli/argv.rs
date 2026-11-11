@@ -192,7 +192,14 @@ pub(crate) fn no_terminal() -> bool {
 }
 
 /// The commands that serve until a stop signal.
-const SERVER_COMMANDS: &[&str] = &["tunnel", "serve", "share", "connect", "relay node"];
+const SERVER_COMMANDS: &[&str] = &[
+    "tunnel",
+    "serve",
+    "share",
+    "connect",
+    "relay node",
+    "ssh-relay",
+];
 
 /// E12: one line for a server command in the foreground with no terminal
 /// (a tool call of an agent waits for its end): --detach or --run-for.
