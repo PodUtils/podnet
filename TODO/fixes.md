@@ -3741,7 +3741,7 @@ push. The take of `pod-quic` (b7b0aef) replaces the socket; `pod-quic` has the s
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3768,6 +3768,10 @@ cargo test -p podnet --test doctor -- doctor_json_keys_are_fixed doctor_quick_en
 cargo todo check
 ```
 
+## Done
+
+2026-11-11, commit b02e057. `docs/protocol.md` section 9 gives schema 1: each key, its type and the verdict words. `podnet doctor --quick` makes one sample for each path and ends the run in 15 s (`Options::quick`, `Options::deadline`); a path, the UDP probe or the clock that is late gets `unknown` with the reason `no answer in the time limit of --quick`. The key `quick` (bool) is new. The JSON code moved to `src/doctor/json.rs`. Tests: `doctor_json_keys_are_fixed` and `doctor_quick_ends_in_the_limit` (`tests/doctor.rs`, fail-first: with the limit off the run took 18.26 s and the test failed), `doctor::tests::doctor_json_dns_keys_are_fixed`. check.sh: exit 0. CI: at the merge. Not proven: the time of a full run on a host with no egress (the fake host is a proxy that is slow, not a real network).
+
 # T-217: `doctor --json`: a fixed block for the egress lanes (PodUtils/podcrates#35, A-C-10)
 
 **Source:** PodUtils/podcrates#35 (cfb), ask A-C-10, routed by PodUtils/podcrates#40.
@@ -3775,7 +3779,7 @@ cargo todo check
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3800,6 +3804,10 @@ Ask A-C-10 (P1): "A fixed JSON schema of the egress lanes for the node probe of 
 cargo test -p podnet --test doctor -- doctor_json_has_the_seven_lanes
 cargo todo check
 ```
+
+## Done
+
+2026-11-11, commit 489f3c8. `lanes` in `doctor --json` has the seven lanes, each `{verdict, ms, reason}`; the table of the sources is in `src/doctor/json.rs` (`lanes`) and in `docs/protocol.md` section 9. `masque_udp443` and `ws_upgrade` have no probe and give `unknown` with a reason. `proxy` is the verdict of the paths that go through a proxy. Tests: `doctor_json_has_the_seven_lanes` (`tests/doctor.rs`, fail-first: without the key it panicked on `doctor["lanes"]`), `doctor::tests::the_lanes_follow_the_legs_and_paths`; `doctor_json_keys_are_fixed` pins the keys of `lanes`. check.sh: exit 0. CI: at the merge. Not proven: a real `ok` of `masque_tcp443` and `tunnel_quic_warp` (no network here). Not done: the probes of `masque_udp443` and `ws_upgrade`.
 
 # T-222: `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19)
 

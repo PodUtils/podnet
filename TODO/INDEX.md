@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**244 entries: 51 open, 8 partial, 19 blocked, 166 done.**
+**244 entries: 49 open, 8 partial, 19 blocked, 168 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
-| P1 | 2 | 1 | 2 | 23 | 28 |
+| P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 22 | 6 | 12 | 107 | 147 |
 | P3 | 26 | 1 | 5 | 36 | 68 |
-| **All** | 51 | 8 | 19 | 166 | 244 |
+| **All** | 49 | 8 | 19 | 168 | 244 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -261,8 +261,8 @@ M8 Overlays, M9 Later.
 | [T-213](fixes.md) | P2 | M | M5 | defect | done | The WireGuard endpoint of a device record has one derivation (GitHub #410) |
 | [T-214](fixes.md) | P3 | S | M5 | defect | done | `warp ssh-config` prints a `ProxyCommand` with the same quote as `--write` (GitHub #411) |
 | [T-215](fixes.md) | P2 | S | M5 | defect | done | `warp proxy --dns` has a bound and a counter (GitHub #412) |
-| [T-216](fixes.md) | P1 | S | M5 | feature | open | Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04) |
-| [T-217](fixes.md) | P1 | S | M5 | feature | open | `doctor --json`: a fixed block for the egress lanes (PodUtils/podcrates#35, A-C-10) |
+| [T-216](fixes.md) | P1 | S | M5 | feature | done | Freeze `doctor --json` as schema 1, with `--quick` (PodUtils/podcrates#35, A-N-04) |
+| [T-217](fixes.md) | P1 | S | M5 | feature | done | `doctor --json`: a fixed block for the egress lanes (PodUtils/podcrates#35, A-C-10) |
 | [T-218](rename.md) | P0 | M | M1 | release | open | A connector profile that holds within a minor version (PodUtils/podcrates#35, A-N-05) |
 | [T-219](services.md) | P1 | M | M6 | feature | blocked | `podnet service install`: a hardened system unit (PodUtils/podcrates#35, A-N-11) |
 | [T-220](services.md) | P1 | S | M6 | feature | blocked | `relay node` as a system service, with no operator act (PodUtils/podcrates#35, A-N-12) |
