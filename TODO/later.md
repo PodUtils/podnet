@@ -1262,7 +1262,7 @@ None: the owner ruled. The option needs the router of T-100 and the groups of T-
 ## Correction
 
 2026-11-11, the owner ruled (`docs/decisions.md`, Direction split): the split is an option of a group, off by
-default. The Approach "do no code" is replaced: the part that podnet can do now is built (commit bbfbc31); the
+default. The Approach "do no code" is replaced: the part that podnet can do now is built (commit 56b3027); the
 rest is left (below).
 
 Design.
