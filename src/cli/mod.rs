@@ -105,8 +105,13 @@ pub(crate) enum Command {
     Git(GitArgs),
     /// Bridge a local socket to a remote WebSocket forward endpoint.
     Connect(ConnectArgs),
-    /// Forward local ports through a network: -L LISTEN=HOST:PORT, with
-    /// --network SPEC (direct, a proxy, the relay, a tailnet).
+    /// Publish a local service by one word: --via tunnel (a Cloudflare
+    /// tunnel), relay (a node of the reverse relay) or switch (a virtual
+    /// address). It runs `tunnel`, `relay node` or `net proxy --forward`.
+    Expose(cmd::expose::ExposeArgs),
+    /// Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or
+    /// UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC
+    /// (direct, a proxy, the relay, a tailnet).
     Forward(cmd::forward::ForwardArgs),
     /// A router of networks, groups and doors from a config file (--config
     /// FILE), with health probes and --detach.
@@ -243,6 +248,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         } => instances_logs(&name, follow, lines).await,
         Command::Wait { name, timeout } => instances_wait(&name, timeout),
         Command::Completions { shell } => cmd::host::completions(shell),
+        Command::Expose(args) => cmd::expose::expose(args).await,
         Command::Forward(args) => cmd::forward::forward(args).await,
         Command::Route(args) => cmd::route::route(args).await,
         Command::Ports(args) => cmd::host::ports(args).await,
