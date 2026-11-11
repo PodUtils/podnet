@@ -108,6 +108,9 @@ pub(crate) enum Command {
     /// Forward local ports through a network: -L LISTEN=HOST:PORT, with
     /// --network SPEC (direct, a proxy, the relay, a tailnet).
     Forward(cmd::forward::ForwardArgs),
+    /// A router of networks, groups and doors from a config file (--config
+    /// FILE), with health probes and --detach.
+    Route(cmd::route::RouteArgs),
     /// List local TCP ports that are listening.
     Ports(PortsArgs),
     /// Print a text for a bug report: the version, podnet status, the
@@ -241,6 +244,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Wait { name, timeout } => instances_wait(&name, timeout),
         Command::Completions { shell } => cmd::host::completions(shell),
         Command::Forward(args) => cmd::forward::forward(args).await,
+        Command::Route(args) => cmd::route::route(args).await,
         Command::Ports(args) => cmd::host::ports(args).await,
         Command::Qr(args) => cmd::host::qr(args),
         Command::Demo(args) => demo(args).await,

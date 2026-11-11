@@ -120,5 +120,6 @@ fn listing(dir: &Path) -> Vec<String> {
 
 mod logs;
 mod names;
+mod route;
 mod supervisor;
 mod warp_exec;

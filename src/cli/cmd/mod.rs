@@ -12,6 +12,7 @@ pub(crate) mod instances;
 pub(crate) mod local;
 pub(crate) mod net;
 pub(crate) mod relay;
+pub(crate) mod route;
 pub(crate) mod run;
 pub(crate) mod serve;
 mod serve_relay;

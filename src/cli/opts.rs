@@ -250,6 +250,8 @@ pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
         },
         // Issue 207: connect has --detach, --name and ps.
         Command::Connect(args) => Some(&args.detach),
+        // T-100: the router.
+        Command::Route(args) => Some(&args.detach),
         Command::Warp(args) => match &args.command {
             WarpCommand::Proxy { detach, .. } => Some(detach),
             WarpCommand::Forward { detach, .. } => Some(detach),

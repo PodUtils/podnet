@@ -120,6 +120,7 @@ pub mod relay_reverse;
 pub mod report;
 pub mod resolve;
 pub mod roads;
+pub mod router;
 #[cfg(test)]
 mod serve_tests;
 pub mod status;
