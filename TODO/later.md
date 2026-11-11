@@ -575,7 +575,7 @@ T-091 is done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -605,6 +605,34 @@ cargo todo check
 2026-11-05, The iroh road is `pod-iroh` (wave 4 of PodUtils/podcrates) and the relay role is
 `pod-relay-serve`. The toolchain is Rust 1.99, so the line "needs Rust 1.91" of the Premise is not a
 constraint. The measures of the Approach stay: they decide whether podnet takes these crates.
+
+## Done
+
+2026-11-11, commit 285dc9f. Research note: `docs/research/podnet/iroh-relay.md`. Each fact is marked read,
+measured or inferred, with URL and date. No account was used. No binary was built, so the size of the
+binary is not measured.
+
+- The iroh road does not need aws-lc. `tls-ring` is a default feature of `iroh` and `iroh-relay`. Only
+  `tls-aws-lc-rs` links `aws-lc-sys`. With `default-features = false` and `tls-ring`, the road adds 63
+  crates to the lock of podnet (measured with a scratch lock file). The "about 520 packages" is the whole
+  lock of podssh. Rust 1.91 is no limit.
+- Through a proxy-only egress, iroh works only over its relay: `CONNECT` to the relay name, then a
+  WebSocket upgrade to `/relay`. It takes an `http://` or `https://` proxy URL only. A SOCKS5, unix or
+  exec network spec needs a shim. Public n0 relays are for development and hobby use, with rate limits.
+- The relay role of podssh (about 14,150 lines) should not be ported whole. Its own TLS stack and its
+  QUIC, HTTP/2 and cleartext roads are not needed. The mailbox server (629 lines) is the first small
+  part. The call: B and C go on after the takes of T-137; the iroh road waits for `pod-iroh` and a spike;
+  the self-hosted iroh relay is declined.
+- Not proven: the binary size, the start on a host with no UDP `bind` or netlink, the speed through a
+  proxy, the line count of each part of the relay role, `cargo deny` on the 63 crates.
+- Proposed entries (the lead opens them; each needs the ruling of the owner): E1 spike of an iroh
+  `Endpoint` with ring (binary size, sandbox start, path through a `CONNECT` proxy to a local
+  `iroh-relay`) (M); E2 `podnet relay serve --mailbox`, the magic-wormhole mailbox server on axum with an
+  interop test (M); E3 `podnet relay serve` forward road and mint on the take of `pod-relay-serve` (L);
+  E4 `send --mailbox URL` and `receive --mailbox URL` (S); E5 the iroh road as a network row behind a
+  feature, with a `CONNECT` shim (L, after E1 and `pod-iroh`).
+- Questions for the owner (note, section 6): accept the mailbox server; accept the relay role in parts;
+  defer the iroh road; decline the self-hosted iroh relay.
 
 # T-131: A crate that podnet and podssh share for the layer, the channel and the identity
 

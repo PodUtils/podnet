@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**247 entries: 43 open, 11 partial, 20 blocked, 173 done.**
+**247 entries: 42 open, 11 partial, 20 blocked, 174 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 22 | 7 | 12 | 107 | 148 |
-| P3 | 21 | 3 | 6 | 40 | 70 |
-| **All** | 43 | 11 | 20 | 173 | 247 |
+| P3 | 20 | 3 | 6 | 41 | 70 |
+| **All** | 42 | 11 | 20 | 174 | 247 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -175,7 +175,7 @@ M8 Overlays, M9 Later.
 | [T-127](later.md) | P3 | L | M9 | feature | open | Egress through VLESS, Shadowsocks and Wisp |
 | [T-128](later.md) | P3 | L | M9 | feature | open | The DERP carrier through `pod-derp` |
 | [T-129](later.md) | P3 | M | M9 | feature | open | An ACME client for a public listener |
-| [T-130](later.md) | P3 | M | M9 | research | open | Research: the iroh road, and a relay and mailbox of podnet's own |
+| [T-130](later.md) | P3 | M | M9 | research | done | Research: the iroh road, and a relay and mailbox of podnet's own |
 | [T-131](later.md) | P3 | L | M9 | chore | open | A crate that podnet and podssh share for the layer, the channel and the identity |
 | [T-132](later.md) | P3 | S | M9 | chore | open | `try_update` in place of the macro `update_atomic!` |
 | [T-133](later.md) | P3 | S | M9 | chore | done | Zig from the community mirrors in the release workflow |
