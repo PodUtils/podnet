@@ -133,7 +133,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #435 | tunnel --inspect: capture, ring, redaction, replay (donor review) | open (T-244 is blocked on pod-cloudflare) | T-244 |
 | #436 | podnet receive: containment of the received entries (donor review) | open (a correction of T-105) | T-105 |
 | #437 | COORD-019: proposals for podcrates from the donor review (to podcrates) | open (a COORD issue between sessions) | none |
-| #438 | COORD-020: proposals for podssh from the donor review (to podssh) | open (a COORD issue between sessions) | none |
+| #438 | COORD-020: proposals for podssh from the donor review (to podssh) | closed (podssh recorded them in its record, PodUtils/podssh#188) | none |
 | #439 | COORD-021: proposals for podrunner from the donor review, part 1 of 2 (to podrunner) | open (a COORD issue between sessions) | none |
 | #440 | COORD-022: proposals for podrunner from the donor review, part 2 of 2 (to podrunner) | open (a COORD issue between sessions) | none |
 | #441 | COORD-023: proposals for the stub repositories from the donor review, part 1 of 3 (to all) | open (a COORD issue between sessions) | none |
