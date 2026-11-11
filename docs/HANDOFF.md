@@ -32,25 +32,23 @@ tests skip on the CI jobs that cannot run them.
 
 ## Next steps
 
-1. **CI:** the runs after fc97ef9 were queued at 11:45 UTC. Read the first
-   completed run at or after 0a2b2a8. Then close #431 (T-240), #432 (T-241),
-   #369 (T-174) and #375 for T-177 only (T-178 and T-179 stay), with the
-   commits and the run.
-2. **T-236:** the code is in e6eda36. The entry waits for the live step "Git
-   over SSH through the reverse relay" to pass. Read the next live run.
-3. **Agents in flight** (worktrees under `.claude/worktrees/`): T-119 (the
-   kernel mode of the router) and T-246 (`netbird:`). T-126 waits for
-   `pod-egress` (cb80aca). Merge each: rebase on `main`, take `--ours` for
-   `TODO/INDEX.md` and `TODO/PROGRESS.md` and run `cargo todo set`, cite the
-   rebased commit, run `gen-llms.py`, run `check.sh`, push.
-4. **T-121** (the mwan export) needs the interface and the table of each WAN:
-   do it after T-119.
-5. **podcrates:** at each new tag, read `sh scripts/agent/podcrates.sh` and take the
-   crates whose hand-off is at the tag (T-137).
-6. **The next beta (T-245):** the notes are drafted in
-   `docs/releases/v0.4.0-beta.4.md`. When `ci` and `live` pass on `main`, set
-   the version, add the work of the agents to the notes, and follow the
-   Approach of T-245.
+1. **The cut of v0.4.0-beta.4 (T-245):** the version and the notes are on
+   `main` (70946b3, fbe9cd2). When `ci` and `live` pass on the head, follow
+   steps 4 to 6 of "Release" in `docs/maintenance.md`: the dry run of
+   `release.yml`, then `publish=v0.4.0-beta.4`, then `release-proofs.yml`.
+   This release is the first with `llms.txt` and `llms-full.txt` (T-222).
+   Then write the Done section of T-245.
+2. **podcrates:** podnet is at v0.22.0 with `pod-wg` (089e1c9, #447). Close
+   #447 when podcrates writes the `taken` line; close #448 likewise.
+3. **Agents in flight:** T-122 (the study of a native git server). Merge it
+   as the others: rebase on `main`, take `--ours` for `TODO/INDEX.md` and
+   `TODO/PROGRESS.md` and run `cargo todo set`, cite the rebased commit, run
+   `gen-llms.py`, run `check.sh`, push.
+4. **Issues to close with the release:** #375 for T-177 (T-178 and T-179
+   stay); #433 when T-242 has its WARP half.
+5. **The work order:** most open entries wait for a crate of podcrates
+   (`pod-warp`, `pod-relay`, `pod-egress`, `pod-iroh`) or for the owner.
+   Read `TODO/PROGRESS.md` for the rest.
 
 ## Open COORD issues
 
@@ -60,7 +58,7 @@ tests skip on the CI jobs that cannot run them.
 | #425 (COORD-016, to podrunner) | podrunner reads it. |
 | #444 (COORD-026) | podcrates: the umask window of `pod-broker`. |
 | #448 (COORD-030) | podcrates: the `taken` line of the watches of `pod-services` (0b945a3). |
-| #447 (COORD-029) | podcrates: the take of `pod-wg`; `src/warp/wg.rs` takes fixes only until then. |
+| #447 (COORD-029) | podcrates: the `taken` line of `pod-wg` (089e1c9). |
 
 ## Tools of the session
 
