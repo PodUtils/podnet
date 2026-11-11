@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 232 entries: 64 open, 3 partial, 19 blocked, 146 done.
+`TODO/INDEX.md` holds 233 entries: 65 open, 3 partial, 19 blocked, 146 done.
 
 ## State
 
@@ -11,7 +11,9 @@
   and `pod-hold` (`PodUtils/podcrates` v0.15.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-relay`,
   then `pod-session` and `pod-wormhole` when podcrates writes their hand-off for podnet. A session reads the state
   of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
-- Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`).
+- Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`);
+  `crates/podnet-netns/src/connect.rs` and `crates/podnet-netns/src/netns/packet.rs` (podcrates T-169 and T-170,
+  PodUtils/podcrates#55).
 - The session paused on 2026-11-10: `docs/HANDOFF.md` gives the state and the next steps.
 - The newest release is `v0.4.0-beta.2` (T-227).
 - Keep this section short. Write the current state only; git keeps the history.

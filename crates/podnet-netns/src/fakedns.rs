@@ -184,9 +184,16 @@ pub(crate) fn fake_v6(v4: Ipv4Addr) -> Ipv6Addr {
 }
 
 /// The fake IPv4 address of a fake IPv6 address, or `None` for any other.
+/// A fake address is the prefix `FAKE_IP6_PREFIX` and the IPv4 address, or
+/// the IPv4-mapped form `::ffff:198.18.x.y` of an address of the pool: a
+/// dual-stack socket (.NET, Java) connects to that form (T-233).
 pub(crate) fn unfake_v6(v6: Ipv6Addr) -> Option<Ipv4Addr> {
     let o = v6.octets();
-    (o[..12] == FAKE_IP6_PREFIX[..12]).then(|| Ipv4Addr::new(o[12], o[13], o[14], o[15]))
+    if o[..12] == FAKE_IP6_PREFIX[..12] {
+        return Some(Ipv4Addr::new(o[12], o[13], o[14], o[15]));
+    }
+    v6.to_ipv4_mapped()
+        .filter(|v4| u32::from(*v4).wrapping_sub(FAKE_IP_BASE) < FAKE_IP_COUNT)
 }
 
 #[cfg(test)]
@@ -208,6 +215,22 @@ mod tests {
             dns.name_for_ip(IpAddr::V6(fake_v6(fake))),
             Some("example.com")
         );
+    }
+
+    /// T-233: a dual-stack socket (.NET, Java) connects to the IPv4-mapped
+    /// form `::ffff:198.18.x.y` of a fake address. It maps back to the name;
+    /// a mapped address out of the pool does not.
+    #[test]
+    fn a_v4_mapped_fake_address_maps_back() {
+        let mut dns = FakeDns::new();
+        let fake = dns.address_for("api.github.com").unwrap();
+        let mapped = IpAddr::V6(fake.to_ipv6_mapped());
+        assert_eq!(dns.name_for_ip(mapped), Some("api.github.com"));
+        assert_eq!(dns.name_for_ip_synced(mapped), Some("api.github.com"));
+        assert_eq!(unfake_v6(fake.to_ipv6_mapped()), Some(fake));
+        let real: Ipv6Addr = "::ffff:140.82.114.6".parse().unwrap();
+        assert_eq!(unfake_v6(real), None);
+        assert_eq!(dns.name_for_ip(IpAddr::V6(real)), None);
     }
 
     fn query(name: &str) -> crate::dns::ParsedQuery {

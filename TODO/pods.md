@@ -964,3 +964,40 @@ cargo test --test pod_seccomp -- seccomp_rules_apply_to_loopback_when_asked
 2026-11-11: the owner ruled DR-1 and DR-2 yes (PodUtils/podcrates#55, COORD-030; podcrates call C49). The
 entry has no wait now. A lead session of PodUtils/podrunner runs: it writes to podnet by a COORD issue of
 PodUtils/podrunner `(to podnet)`.
+
+# T-233: seccomp: a dual-stack connect to the IPv4-mapped form of a fake address goes to the proxy as an address
+
+**Source:** T-229 (the measure with the runner of `actions/runner` v2.338.2, 2026-11-11).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Under `podnet pod --backend seccomp -x http://unix:PATH`, `config.sh` of the runner (.NET) first dials
+`[::ffff:198.18.0.0]:443`: a dual-stack `AF_INET6` socket and the IPv4-mapped form of the fake address of
+`api.github.com`. The flow log and the proxy see the address, not the name. The proxy cannot reach
+`198.18.0.0`, so that dial fails, and .NET tries again with an `AF_INET` socket.
+
+## Premise
+
+- Measured: the flow log of the trial has `[::ffff:198.18.0.0]:443` (verdict `allow`), then
+  `api.github.com:443`, for each of the three tries of the registration; the witness proxy
+  (`scripts/pod-runner-proxy.py`) has `CONNECT [::ffff:198.18.0.0]:443`.
+- Read: `crates/podnet-netns/src/fakedns.rs`, `unfake_v6` maps only the prefix `FAKE_IP6_PREFIX` back;
+  `name_for_ip` and `name_for_ip_synced` use it (callers: `connect.rs:171`, `udp.rs:331`).
+- `.NET` and Java open dual-stack sockets by default.
+
+## Approach
+
+1. `unfake_v6` also maps `::ffff:A.B.C.D` when `A.B.C.D` is in the pool (`198.18.0.0/15`).
+2. A unit test of the mapped form, and of a mapped address out of the pool.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib a_v4_mapped_fake_address_maps_back
+sh scripts/pod-runner-measure.sh   # no flow of the runner has a target in 198.18.0.0/15
+```
