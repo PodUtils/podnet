@@ -235,12 +235,13 @@ const PROBE_NO_NNP_BASE: i32 = 200;
 /// address of each `connect` and `sendto` there. With no read, no call can
 /// be held (T-231).
 pub(crate) fn probe_mem_read() -> Probe {
-    let pid = unsafe { libc::fork() };
-    if pid == 0 {
-        let mut b = [0u8; 1];
-        unsafe { libc::read(0, b.as_mut_ptr() as *mut _, 0) };
-        unsafe { libc::_exit(0) };
-    }
+    let Some((pid, hold)) = waiting_child() else {
+        return Probe {
+            name: "read program memory",
+            ok: false,
+            detail: format!("fork: {}", std::io::Error::last_os_error()),
+        };
+    };
     let path = CString::new(format!("/proc/{pid}/mem")).unwrap();
     let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_CLOEXEC) };
     let (ok, detail) = if fd >= 0 {
@@ -253,10 +254,7 @@ pub(crate) fn probe_mem_read() -> Probe {
             format!("{error}; the seccomp backend cannot read the address of a connect"),
         )
     };
-    unsafe {
-        libc::kill(pid, libc::SIGKILL);
-        libc::waitpid(pid, std::ptr::null_mut(), 0);
-    }
+    release(pid, hold);
     Probe {
         name: "read program memory",
         ok,
@@ -264,13 +262,56 @@ pub(crate) fn probe_mem_read() -> Probe {
     }
 }
 
-pub(crate) fn probe_mem_write() -> Probe {
+/// A child that waits until [`release`]: it blocks on the read end of a
+/// pipe. A child that exits at once is a zombie, and the open of its
+/// `/proc/<pid>/mem` then fails with `ESRCH` (T-231). The pid and the write
+/// end of the pipe, or `None` when the pipe or the fork fails.
+fn waiting_child() -> Option<(libc::pid_t, libc::c_int)> {
+    let mut fds = [0 as libc::c_int; 2];
+    // SAFETY: `fds` has room for the two descriptors.
+    if unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
+        return None;
+    }
+    // SAFETY: the child calls only close(2), read(2) and _exit(2).
     let pid = unsafe { libc::fork() };
     if pid == 0 {
         let mut b = [0u8; 1];
-        unsafe { libc::read(0, b.as_mut_ptr() as *mut _, 0) };
-        unsafe { libc::_exit(0) };
+        // SAFETY: the read end of the pipe; the read returns when the
+        // parent closes the write end.
+        unsafe {
+            libc::close(fds[1]);
+            libc::read(fds[0], b.as_mut_ptr() as *mut _, 1);
+            libc::_exit(0);
+        }
     }
+    // SAFETY: the parent does not use the read end.
+    unsafe { libc::close(fds[0]) };
+    if pid < 0 {
+        // SAFETY: the write end of the pipe of this function.
+        unsafe { libc::close(fds[1]) };
+        return None;
+    }
+    Some((pid, fds[1]))
+}
+
+/// End the child of [`waiting_child`] and reap it.
+fn release(pid: libc::pid_t, hold: libc::c_int) {
+    // SAFETY: the write end of the pipe, and a child of this process.
+    unsafe {
+        libc::close(hold);
+        libc::kill(pid, libc::SIGKILL);
+        libc::waitpid(pid, std::ptr::null_mut(), 0);
+    }
+}
+
+pub(crate) fn probe_mem_write() -> Probe {
+    let Some((pid, hold)) = waiting_child() else {
+        return Probe {
+            name: "write program memory",
+            ok: false,
+            detail: format!("fork: {}", std::io::Error::last_os_error()),
+        };
+    };
     let path = CString::new(format!("/proc/{pid}/mem")).unwrap();
     let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDWR | libc::O_CLOEXEC) };
     // Issue 98: process_vm_writev is the second path of the supervisor.
@@ -291,10 +332,7 @@ pub(crate) fn probe_mem_write() -> Probe {
             )
         }
     };
-    unsafe {
-        libc::kill(pid, libc::SIGKILL);
-        libc::waitpid(pid, std::ptr::null_mut(), 0);
-    }
+    release(pid, hold);
     Probe {
         name: "write program memory",
         ok,
@@ -543,6 +581,18 @@ mod tests {
         assert!(text.contains("use --backend netns"), "{text}");
         let ok = super::Probe { ok: true, ..probe };
         assert!(crate::seccomp_can_hold(&ok).is_ok());
+    }
+
+    // T-231: the child of a probe waits, so its memory can be opened each
+    // time. A child that exited at once gave ESRCH under load.
+    #[test]
+    fn the_memory_probes_hold_their_child() {
+        for _ in 0..200 {
+            let read = super::probe_mem_read();
+            assert!(read.ok, "{}", read.detail);
+        }
+        let write = super::probe_mem_write();
+        assert!(write.ok, "{}", write.detail);
     }
 
     // T-230: the object `hold` names the level of each backend and what it
