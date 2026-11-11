@@ -45,7 +45,12 @@ pub(crate) async fn before_client(args: &WarpArgs) -> Result<bool> {
             };
             warp_up(args, *port, files, *ready_timeout, *replace, *dns, auth)
         }
-        WarpCommand::Down => podnet::warp::up::down(),
+        WarpCommand::Down => {
+            let done = podnet::warp::up::down();
+            // A killed `warp tun --default-route` leaves resolv.conf changed.
+            podnet::warp::route::resolv::reconcile_system();
+            done
+        }
         WarpCommand::Env => {
             let text = podnet::warp::up::env_text()?;
             // Issue 255: no proxy variables is not a success: a script

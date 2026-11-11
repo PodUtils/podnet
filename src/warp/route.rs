@@ -17,9 +17,11 @@
 
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::os::fd::{AsRawFd as _, FromRawFd as _, OwnedFd};
-use std::path::PathBuf;
 
 use anyhow::{bail, Context as _, Result};
+
+pub mod resolv;
+use resolv::Dns;
 
 /// The gateway and the device of the IPv4 default route.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -359,18 +361,6 @@ const HALVES6: [(Ipv6Addr, u16); 2] = [
     (Ipv6Addr::new(0x8000, 0, 0, 0, 0, 0, 0, 0), 1),
 ];
 
-/// What `Routes` changed in the resolver.
-#[derive(Debug)]
-enum Dns {
-    Resolved,
-    File {
-        backup: String,
-        link: Option<PathBuf>,
-    },
-}
-
-const RESOLV: &str = "/etc/resolv.conf";
-
 /// The routes and the resolver of `--default-route`; dropped, it puts each
 /// change back.
 #[derive(Debug)]
@@ -520,17 +510,7 @@ impl Drop for Routes {
                     .args(["revert", &self.tun])
                     .status();
             }
-            Some(Dns::File { backup, link }) => {
-                let _ = std::fs::remove_file(RESOLV);
-                match link {
-                    Some(target) => {
-                        let _ = std::os::unix::fs::symlink(target, RESOLV);
-                    }
-                    None => {
-                        let _ = std::fs::write(RESOLV, backup);
-                    }
-                }
-            }
+            Some(Dns::File { paths, .. }) => resolv::undo(&paths),
             None => {}
         }
         tracing::info!(tun = %self.tun, "the routes and the resolver are as before");
@@ -564,7 +544,7 @@ pub fn nameservers_of_service() -> Vec<std::net::IpAddr> {
 
 /// The text of a resolv.conf with `servers`.
 pub fn resolv_text(servers: &[std::net::IpAddr]) -> String {
-    let mut text = String::from("# podnet warp tun --default-route: DNS through WARP\n");
+    let mut text = format!("{}\n", resolv::MARKER);
     for s in servers {
         text.push_str(&format!("nameserver {s}\n"));
     }
@@ -589,10 +569,7 @@ fn set_dns(tun: &str) -> Result<Dns> {
             .status();
         return Ok(Dns::Resolved);
     }
-    let link = std::fs::read_link(RESOLV).ok();
-    let backup = std::fs::read_to_string(RESOLV).unwrap_or_default();
-    replace_file(std::path::Path::new(RESOLV), &resolv_text(&nameservers()))?;
-    Ok(Dns::File { backup, link })
+    resolv::set_file(&resolv::Paths::system()?, &resolv_text(&nameservers()))
 }
 
 /// Add each item with `apply(item, true)`. When one fails, remove the
@@ -608,24 +585,6 @@ fn install_all<T>(items: &[T], mut apply: impl FnMut(&T, bool) -> Result<()>) ->
         }
     }
     Ok(())
-}
-
-/// Write `text` as the file `path` (#278). A new file in the same
-/// directory is renamed over the old one: a failure keeps the old file,
-/// and a symbolic link is replaced, not written through. Where a rename
-/// over the file is not possible (a bind mount: EBUSY, EXDEV), the file is
-/// written in place.
-fn replace_file(path: &std::path::Path, text: &str) -> Result<()> {
-    let temp = path.with_extension(format!("podnet-{}", std::process::id()));
-    std::fs::write(&temp, text).with_context(|| format!("writing {}", temp.display()))?;
-    match std::fs::rename(&temp, path) {
-        Ok(()) => Ok(()),
-        Err(err) => {
-            let _ = std::fs::remove_file(&temp);
-            tracing::debug!(error = %err, path = %path.display(), "no rename over the file; it is written in place");
-            std::fs::write(path, text).with_context(|| format!("writing {}", path.display()))
-        }
-    }
 }
 
 #[cfg(test)]
@@ -646,37 +605,6 @@ mod tests {
         .unwrap_err();
         assert!(err.to_string().contains("no route"));
         assert_eq!(log, [(1, true), (2, true), (1, false)]);
-    }
-
-    /// #278: the file is replaced by a rename: a link is replaced, not
-    /// written through, and a failed write keeps the old file.
-    #[test]
-    fn the_resolv_conf_is_replaced_and_never_removed_first() {
-        let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("stub.conf");
-        std::fs::write(&target, "nameserver 127.0.0.53\n").unwrap();
-        let path = dir.path().join("resolv.conf");
-        std::os::unix::fs::symlink(&target, &path).unwrap();
-        replace_file(&path, "nameserver 1.1.1.1\n").unwrap();
-        assert_eq!(
-            std::fs::read_to_string(&path).unwrap(),
-            "nameserver 1.1.1.1\n"
-        );
-        assert!(!std::fs::symlink_metadata(&path)
-            .unwrap()
-            .file_type()
-            .is_symlink());
-        assert_eq!(
-            std::fs::read_to_string(&target).unwrap(),
-            "nameserver 127.0.0.53\n"
-        );
-        // A directory that can not take the new file: the old file stays.
-        let missing = dir.path().join("no-such-dir").join("resolv.conf");
-        assert!(replace_file(&missing, "x").is_err());
-        assert_eq!(
-            std::fs::read_to_string(&path).unwrap(),
-            "nameserver 1.1.1.1\n"
-        );
     }
 
     #[test]
