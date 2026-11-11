@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 244 entries: 54 open, 8 partial, 19 blocked, 163 done.
+`TODO/INDEX.md` holds 244 entries: 53 open, 8 partial, 19 blocked, 164 done.
 
 ## State
 
@@ -40,7 +40,7 @@ not wait for a larger one.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - tunnel, share, serve and the CLI: T-169.
    - WARP: T-173, T-210.
-   - the donor review (GitHub #429 to #434): T-240 and T-241 are fixes of the WARP code, which
+   - the donor review (GitHub #429 to #434): T-240 is a fix of the WARP code, which
      waits for `pod-warp` and takes fixes.
 4. **M2, the splits:** T-035, T-036, T-039 (moved files: podcrates); T-043 and T-044 (blocked:
    the rows left go with the takes, T-137); T-045.

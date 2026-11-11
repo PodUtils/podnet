@@ -4248,7 +4248,7 @@ function `replace_file` gives the mode 0644 under the umask 077 and under the um
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -4323,3 +4323,25 @@ get the same device id. A child process killed with `kill -9` after the POST and
 call sends `PATCH` for the same id, sends no second `POST`, and the final file has `tunnel_type`
 `masque`. A partial file with an unknown `state` is refused with its name in the message. A connect failure
 on the first host still falls over.
+
+## Done
+
+2026-11-11, commit b064e21. `src/warp/enrol.rs` (new): `register_or_load` takes `PATH.lock` (flock, 60 s, mode
+0600, kept), saves the record with `state: "created"` after `POST /reg`, sends `PATCH` and saves the complete
+record (no `state`). A stored `created` record resumes with `PATCH` and no `POST`; a 401 or 404 removes it and
+registers anew. A failed `PATCH` with an HTTP answer deletes the new device (best effort) and the record.
+`load` refuses a `created` record; an unknown `state` is refused with its name. `src/warp/register.rs`: a `POST`
+with any HTTP answer is not sent to the second host; `check` returns `ApiError`. `src/warp/export.rs`: the
+WireGuard registration takes the same lock and checks the file first. `DeviceHints` moved to
+`src/warp/hints.rs` (size allowlist lowered). Tests: `cargo test -p podnet --test warp_register` (6, five of
+them fail on the old code: `two_register_or_load_calls_make_one_post`, `a_kill_after_the_post_resumes_with_a_patch`,
+`a_patch_404_registers_anew`, `a_failed_patch_deletes_the_new_device`,
+`a_partial_file_with_an_unknown_state_is_refused`; the sixth is the child of the kill test) and
+`cargo test -p podnet --lib -- warp::register warp::enrol` (`a_503_on_the_post_is_not_sent_to_the_second_host`
+fails with the old condition; `a_held_lock_gives_exit_75_after_the_wait`). `a_503_...` is a lib test, not a
+`--test warp_register` test, as the fallover needs two API hosts. `sh scripts/agent/check.sh`: fmt, clippy,
+record, size, doc, layers 0. Not proven: the live WARP service; that a create is applied before a 5xx answer;
+a kill between the answer of `POST` and the first save still loses that device (item 8). The WireGuard export
+has one remote call, so it has no `created` state. `tunnel` and `warp --identity`-less runs still register
+with no save. Frozen files changed: `src/warp/mod.rs`, `src/warp/register.rs`, `src/warp/export.rs`; new
+`src/warp/enrol.rs`, `src/warp/hints.rs`.
