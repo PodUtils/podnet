@@ -22,6 +22,9 @@ fn route_config_errors_name_the_key() {
         ("networks:\n  home: direct\ngroups:\n  home: home*1\ndoors:\n  - listen: unix:/x\n    via: home\n", "groups.home"),
         ("networks:\n  home: direct\nhealth:\n  target: nohost\ndoors:\n  - listen: unix:/x\n    via: home\n", "health.target"),
         ("networks:\n  home: direct\ndoors:\n  - listen: ftp://x\n    via: home\n", "doors[0].listen"),
+        ("networks:\n  home: direct\nhealth:\n  target: h:1\n  down_after: 2\n  up_after: 2\ndoors:\n  - listen: unix:/x\n    via: home\n", "health"),
+        ("networks:\n  home: direct\nhealth:\n  target: h:1\n  interval: 0\ndoors:\n  - listen: unix:/x\n    via: home\n", "health.interval"),
+        ("networks:\n  home: direct\ncontrol: 127.0.0.1:9\ndoors:\n  - listen: unix:/x\n    via: home\n", "control"),
         ("networks:\n\thome: direct\n", "line 2"),
     ];
     for (text, key) in cases {
@@ -137,4 +140,66 @@ fn route_check_picks_a_member_of_a_group() {
     let decision = plan.decide(0, &target);
     assert_eq!(decision.member, None);
     assert!(!decision.passes(&plan.groups));
+}
+
+/// T-097 item 11: the thresholds of the file go to the probe of the router.
+#[test]
+fn route_config_thresholds_reach_the_router() {
+    let text = GOOD.replace(
+        "  interval: 5\n",
+        "  interval: 5\n  down_after: 3\n  up_after: 2\n  cooldown: 7\n  timeout: 2\n",
+    );
+    let plan = Router::plan(&parse(&text).unwrap()).unwrap();
+    let (_, t) = plan.health.unwrap();
+    assert_eq!((t.down_after, t.up_after), (3, 2));
+    assert_eq!(t.interval, Duration::from_secs(5));
+    assert_eq!(t.cooldown, Duration::from_secs(7));
+    assert_eq!(t.timeout, Duration::from_secs(2));
+    let plan = Router::plan(&parse(GOOD).unwrap()).unwrap();
+    let (_, t) = plan.health.unwrap();
+    assert_eq!(
+        t,
+        crate::network::Thresholds {
+            interval: Duration::from_secs(5),
+            ..Default::default()
+        }
+    );
+}
+
+/// T-097 item 4, the Prove `router_status_json_keys`: the control socket
+/// gives the status document of the router, with the keys of each member;
+/// another request gets 404.
+#[tokio::test]
+async fn router_status_json_keys_over_the_control_socket() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("r.ctl");
+    let router = Arc::new(Router::plan(&parse(GOOD).unwrap()).unwrap());
+    let listener = tokio::net::UnixListener::bind(&path).unwrap();
+    tokio::spawn(router.clone().serve_control(listener));
+    let status = read_status(&path).await.unwrap();
+    assert_eq!(status["doors"][0]["listen"], "unix:/tmp/r.sock");
+    let group = &status["groups"][0];
+    assert_eq!(group["group"], "egress");
+    assert_eq!(group["refused"], 0);
+    for member in group["members"].as_array().unwrap() {
+        let mut keys: Vec<&str> = member
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(|k| k.as_str())
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(keys, ["flows", "health", "name", "rtt_ms", "way", "weight"]);
+    }
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+    let mut other = tokio::net::UnixStream::connect(&path).await.unwrap();
+    other
+        .write_all(b"POST /route/select HTTP/1.0\r\n\r\n")
+        .await
+        .unwrap();
+    let mut answer = String::new();
+    other.read_to_string(&mut answer).await.unwrap();
+    assert!(answer.starts_with("HTTP/1.0 404"), "{answer}");
+    let err = read_status(&dir.path().join("none.ctl")).await.unwrap_err();
+    assert!(format!("{err:#}").contains("none.ctl"), "{err:#}");
 }

@@ -14,8 +14,16 @@ use crate::cli::signals::sleep_or_signal;
 pub(crate) struct RouteArgs {
     /// The config file of the router: networks, groups, health and doors
     /// (YAML; podnet man route names the keys).
-    #[arg(long, value_name = "FILE")]
-    pub(crate) config: std::path::PathBuf,
+    #[arg(long, value_name = "FILE", required_unless_present = "status")]
+    pub(crate) config: Option<std::path::PathBuf>,
+    /// Print the state of a running router: each group and member (health,
+    /// round-trip time, flows), from its control socket (the key `control`
+    /// of its file). Exit 69 when no router answers
+    #[arg(long, value_name = "unix:/PATH", conflicts_with_all = ["config", "check"])]
+    pub(crate) status: Option<String>,
+    /// With --status: print the JSON document
+    #[arg(long, requires = "status")]
+    pub(crate) json: bool,
     /// Read the file and bring up nothing: exit 0 when it is valid, 64 with
     /// the key that is wrong.
     #[arg(long)]
@@ -37,14 +45,20 @@ pub(crate) struct RouteArgs {
 
 /// Run the router until a signal or --run-for.
 pub(crate) async fn route(args: RouteArgs) -> Result<()> {
-    let config = podnet::router::load(&args.config).fault(Fault::Usage)?;
+    if let Some(control) = &args.status {
+        return print_status(control, args.json).await;
+    }
+    let Some(path) = &args.config else {
+        return Err(anyhow::anyhow!("give --config FILE")).fault(Fault::Usage);
+    };
+    let config = podnet::router::load(path).fault(Fault::Usage)?;
     if let Some(to) = &args.to {
         return check_target(&config, to, args.door);
     }
     if args.check {
         println!(
             "podnet: route  {}: {} networks, {} groups, {} doors",
-            args.config.display(),
+            path.display(),
             config.networks.len(),
             config.groups.len(),
             config.doors.len()
@@ -81,6 +95,17 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
                 servers.spawn(door.clone().serve_unix(listener));
             }
         }
+    }
+    if let Some(control) = &config.control {
+        let Ok(ProxyListen::Unix(path)) = ProxyListen::parse(control) else {
+            return Err(anyhow::anyhow!("control: give unix:/PATH")).fault(Fault::Usage);
+        };
+        podnet::net::claim_socket_path(&path, args.detach.replace)?;
+        let listener = podnet_netns::listen::bind_private(&path)
+            .with_context(|| format!("control unix:{}", path.display()))
+            .map_err(podnet::net::bind_fault)?;
+        println!("podnet: route  control unix:{}", path.display());
+        servers.spawn(router.clone().serve_control(listener));
     }
     podnet::detach::ready(router.status());
     let probing = router.clone();
@@ -137,4 +162,46 @@ fn check_target(config: &podnet::router::Config, to: &str, only: Option<usize>) 
             many.join(", ")
         )),
     }
+}
+
+/// `route --status unix:/PATH [--json]` (T-097): the state of a running
+/// router.
+async fn print_status(control: &str, json: bool) -> Result<()> {
+    let Ok(ProxyListen::Unix(path)) = ProxyListen::parse(control) else {
+        return Err(anyhow::anyhow!("--status {control:?}: give unix:/PATH")).fault(Fault::Usage);
+    };
+    let status = podnet::router::read_status(&path)
+        .await
+        .fault(Fault::Unavailable)?;
+    if json {
+        println!("{status:#}");
+        return Ok(());
+    }
+    for door in status["doors"].as_array().into_iter().flatten() {
+        println!(
+            "door {}  via {}",
+            door["listen"].as_str().unwrap_or("?"),
+            door["via"].as_str().unwrap_or("?")
+        );
+    }
+    for group in status["groups"].as_array().into_iter().flatten() {
+        println!(
+            "group {}  refused {}",
+            group["group"].as_str().unwrap_or("?"),
+            group["refused"]
+        );
+        for m in group["members"].as_array().into_iter().flatten() {
+            let rtt = m["rtt_ms"]
+                .as_f64()
+                .map_or("-".to_string(), |ms| format!("{ms:.1} ms"));
+            println!(
+                "  {}  {}  rtt {rtt}  flows {}  weight {}",
+                m["name"].as_str().unwrap_or("?"),
+                m["health"].as_str().unwrap_or("?"),
+                m["flows"],
+                m["weight"]
+            );
+        }
+    }
+    Ok(())
 }

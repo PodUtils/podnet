@@ -10,6 +10,11 @@
 //! health:              # the probe of the members of each group (T-097)
 //!   target: 1.1.1.1:443
 //!   interval: 10
+//!   down_after: 4      # K misses take a member down (K > R > 1, R > K/2)
+//!   up_after: 3        # R passes take it up
+//!   cooldown: 30       # seconds in cooldown before up
+//!   timeout: 5         # seconds of one probe
+//! control: unix:/run/r.ctl  # optional: `podnet route --status` reads it
 //! doors:               # SOCKS5 and HTTP CONNECT doors (T-061)
 //!   - listen: unix:/run/r.sock
 //!     via: egress      # a network or a group
@@ -43,6 +48,9 @@ pub struct Config {
     pub groups: BTreeMap<String, String>,
     #[serde(default)]
     pub health: Option<Health>,
+    /// `unix:/PATH`: the control socket (mode 0600) of `route --status`.
+    #[serde(default)]
+    pub control: Option<String>,
     pub doors: Vec<DoorConfig>,
 }
 
@@ -55,6 +63,43 @@ pub struct Health {
     /// Seconds between two probes (default 10).
     #[serde(default)]
     pub interval: Option<u64>,
+    /// K: the misses in a row that take a member down (default 4).
+    #[serde(default)]
+    pub down_after: Option<u32>,
+    /// R: the passes in a row that take a member up (default 3).
+    #[serde(default)]
+    pub up_after: Option<u32>,
+    /// The least seconds in cooldown before up (default 30).
+    #[serde(default)]
+    pub cooldown: Option<u64>,
+    /// The seconds of one probe (default 5).
+    #[serde(default)]
+    pub timeout: Option<u64>,
+}
+
+impl Health {
+    /// The thresholds of the file over the defaults. They must give K > R >
+    /// 1 and R > K/2, and an interval and a timeout of 1 s or more.
+    pub fn thresholds(&self) -> Result<Thresholds> {
+        let d = Thresholds::default();
+        let secs = |key: &str, value: Option<u64>, default: Duration| -> Result<Duration> {
+            match value {
+                Some(0) => bail!("health.{key}: give 1 or more seconds"),
+                Some(n) => Ok(Duration::from_secs(n)),
+                None => Ok(default),
+            }
+        };
+        let t = Thresholds {
+            down_after: self.down_after.unwrap_or(d.down_after),
+            up_after: self.up_after.unwrap_or(d.up_after),
+            cooldown: Duration::from_secs(self.cooldown.unwrap_or(d.cooldown.as_secs())),
+            interval: secs("interval", self.interval, d.interval)?,
+            timeout: secs("timeout", self.timeout, d.timeout)?,
+        };
+        t.check()
+            .map_err(|e| anyhow::anyhow!("health: {}", e.text()))?;
+        Ok(t)
+    }
 }
 
 /// One door.
@@ -113,6 +158,13 @@ pub fn parse(text: &str) -> Result<Config> {
             .target
             .parse::<Target>()
             .map_err(|_| anyhow::anyhow!("health.target: give HOST:PORT"))?;
+        health.thresholds()?;
+    }
+    if let Some(control) = &config.control {
+        match ProxyListen::parse(control) {
+            Ok(ProxyListen::Unix(_)) => {}
+            _ => bail!("control: give unix:/PATH"),
+        }
     }
     Ok(config)
 }
@@ -134,7 +186,7 @@ pub struct Router {
     pub ways: HashMap<String, Way>,
     pub groups: Vec<(String, Arc<Balance>)>,
     pub doors: Vec<RouterDoor>,
-    pub health: Option<(Target, Duration)>,
+    pub health: Option<(Target, Thresholds)>,
 }
 
 /// The choice of a door for one target (T-177): the rule, the way and the
@@ -270,7 +322,7 @@ impl Router {
                 h.target
                     .parse()
                     .map_err(|_| anyhow::anyhow!("health.target"))?,
-                Duration::from_secs(h.interval.unwrap_or(10).max(1)),
+                h.thresholds()?,
             )),
             None => None,
         };
@@ -320,17 +372,56 @@ impl Router {
         })
     }
 
+    /// Answer `GET /route/status` on the control socket with
+    /// [`Router::status`] (T-097), until the listener fails. The mode of the
+    /// socket (0600) is the gate. Each other request gets 404.
+    pub async fn serve_control(self: Arc<Self>, listener: tokio::net::UnixListener) -> Result<()> {
+        loop {
+            let (mut stream, _) = listener.accept().await.context("the control socket")?;
+            let router = self.clone();
+            tokio::spawn(async move {
+                let answer = router.answer(&mut stream);
+                let _ = tokio::time::timeout(CONTROL_LIMIT, answer).await;
+            });
+        }
+    }
+
+    async fn answer(&self, stream: &mut tokio::net::UnixStream) -> std::io::Result<()> {
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+        let mut head = Vec::new();
+        let mut buf = [0u8; 512];
+        while !head.windows(4).any(|w| w == b"\r\n\r\n") && head.len() < 8192 {
+            let n = stream.read(&mut buf).await?;
+            if n == 0 {
+                break;
+            }
+            head.extend_from_slice(&buf[..n]);
+        }
+        let head = String::from_utf8_lossy(&head);
+        let (code, body) = if head.starts_with("GET /route/status ") {
+            ("200 OK", self.status().to_string())
+        } else {
+            (
+                "404 Not Found",
+                r#"{"error":"the control socket answers GET /route/status only"}"#.to_string(),
+            )
+        };
+        let reply = format!(
+            "HTTP/1.0 {code}\r\ncontent-type: application/json\r\ncontent-length: {}\r\n\r\n{body}",
+            body.len()
+        );
+        stream.write_all(reply.as_bytes()).await?;
+        stream.shutdown().await
+    }
+
     /// Probe each member of each group, each interval, until the end. The
     /// control of an interval passes when one member or more reached the
     /// target: a failure of each member is an outage of the host.
     pub async fn probe_forever(&self) {
-        let Some((target, interval)) = self.health.clone() else {
+        let Some((target, thresholds)) = self.health.clone() else {
             return std::future::pending().await;
         };
-        let thresholds = Thresholds {
-            interval,
-            ..Thresholds::default()
-        };
+        let interval = thresholds.interval;
         loop {
             for (_, group) in &self.groups {
                 let mut results = Vec::new();
@@ -348,6 +439,49 @@ impl Router {
             tokio::time::sleep(interval).await;
         }
     }
+}
+
+/// The time limit of one exchange on the control socket.
+const CONTROL_LIMIT: Duration = Duration::from_secs(5);
+
+/// The status document of the router of the control socket `path`
+/// (`podnet route --status`).
+pub async fn read_status(path: &Path) -> Result<serde_json::Value> {
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+    let exchange = async {
+        let mut stream = tokio::net::UnixStream::connect(path)
+            .await
+            .with_context(|| format!("the control socket unix:{}", path.display()))?;
+        stream
+            .write_all(b"GET /route/status HTTP/1.0\r\n\r\n")
+            .await?;
+        let mut answer = Vec::new();
+        (&mut stream)
+            .take(16 << 20)
+            .read_to_end(&mut answer)
+            .await?;
+        Ok::<_, anyhow::Error>(answer)
+    };
+    let answer = tokio::time::timeout(CONTROL_LIMIT, exchange)
+        .await
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "the control socket unix:{} gave no answer in 5 s",
+                path.display()
+            )
+        })??;
+    let split = answer
+        .windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .context("the control socket gave no HTTP answer")?;
+    let status_line = String::from_utf8_lossy(&answer[..split]);
+    if !status_line.starts_with("HTTP/1.0 200") {
+        bail!(
+            "the control socket answered: {}",
+            status_line.lines().next().unwrap_or("")
+        );
+    }
+    serde_json::from_slice(&answer[split + 4..]).context("the status of the control socket")
 }
 
 #[cfg(test)]
