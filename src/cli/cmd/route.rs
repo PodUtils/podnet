@@ -28,6 +28,11 @@ pub(crate) struct RouteArgs {
     /// the key that is wrong.
     #[arg(long)]
     pub(crate) check: bool,
+    /// Print the kernel section of the file in another form, and run
+    /// nothing. mwan-json: the JSON file of the mwan director (wans and
+    /// clients). Exit 64 when the file has no kernel section
+    #[arg(long, value_name = "FORMAT", value_parser = ["mwan-json"], conflicts_with_all = ["check", "status"])]
+    pub(crate) export: Option<String>,
     /// With --check: a dry run for the target HOST:PORT. Print the rule, the
     /// network or the group, and the member of each door, with no dial. Exit
     /// 1 when a door refuses the target or its group has no member up
@@ -52,6 +57,18 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
         return Err(anyhow::anyhow!("give --config FILE")).fault(Fault::Usage);
     };
     let config = podnet::router::load(path).fault(Fault::Usage)?;
+    if args.export.is_some() {
+        let Some(section) = &config.kernel else {
+            return Err(anyhow::anyhow!(
+                "--export mwan-json: the file has no kernel section"
+            ))
+            .fault(Fault::Usage);
+        };
+        let plan = podnet::router::kernel::Plan::new(section).fault(Fault::Usage)?;
+        let target = config.health.as_ref().map(|h| h.target.as_str());
+        println!("{:#}", plan.mwan_json(target));
+        return Ok(());
+    }
     if let Some(to) = &args.to {
         return check_target(&config, to, args.door);
     }

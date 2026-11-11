@@ -178,6 +178,33 @@ impl Plan {
         })
     }
 
+    /// The plan in the JSON form of the mwan director (T-121): `wans` with
+    /// `name`, `iface`, `table`, `weight` and the optional `gateway` and
+    /// `check_target`, and `clients` (none: the router file has no source
+    /// rules).
+    pub fn mwan_json(&self, check_target: Option<&str>) -> serde_json::Value {
+        let wans: Vec<serde_json::Value> = self
+            .wans
+            .iter()
+            .map(|w| {
+                let mut wan = serde_json::json!({
+                    "name": w.name,
+                    "iface": w.dev,
+                    "table": w.table,
+                    "weight": w.weight,
+                });
+                if let Some(gateway) = w.gateway {
+                    wan["gateway"] = gateway.to_string().into();
+                }
+                if let Some(target) = check_target {
+                    wan["check_target"] = target.into();
+                }
+                wan
+            })
+            .collect();
+        serde_json::json!({ "wans": wans, "clients": [] })
+    }
+
     /// The rules of the plan, by priority.
     pub fn rules(&self) -> Vec<Rule> {
         let mut rules = vec![Rule {

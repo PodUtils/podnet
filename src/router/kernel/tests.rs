@@ -281,3 +281,28 @@ fn route_kernel_tables_and_rules_in_a_namespace() {
         eprintln!("{line}");
     }
 }
+
+/// T-121, the Prove: the plan in the JSON form of the mwan director.
+#[test]
+fn route_export_mwan_json() {
+    let mut a = wan("a", "tun0");
+    a.gateway = Some("10.0.0.1".into());
+    a.weight = Some(2);
+    let plan = Plan::new(&section(vec![a, wan("b", "tun1")])).unwrap();
+    let doc = plan.mwan_json(Some("1.1.1.1:443"));
+    assert_eq!(
+        doc,
+        serde_json::json!({
+            "wans": [
+                {"name": "a", "iface": "tun0", "table": 100, "weight": 2,
+                 "gateway": "10.0.0.1", "check_target": "1.1.1.1:443"},
+                {"name": "b", "iface": "tun1", "table": 101, "weight": 1,
+                 "check_target": "1.1.1.1:443"},
+            ],
+            "clients": [],
+        })
+    );
+    let bare = plan.mwan_json(None);
+    assert!(bare["wans"][1].get("check_target").is_none());
+    assert!(bare["wans"][1].get("gateway").is_none());
+}
