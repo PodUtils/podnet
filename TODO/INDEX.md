@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**247 entries: 40 open, 11 partial, 20 blocked, 176 done.**
+**247 entries: 39 open, 10 partial, 22 blocked, 176 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 21 | 7 | 12 | 108 | 148 |
-| P3 | 19 | 3 | 6 | 42 | 70 |
-| **All** | 40 | 11 | 20 | 176 | 247 |
+| P2 | 21 | 6 | 13 | 108 | 148 |
+| P3 | 18 | 3 | 7 | 42 | 70 |
+| **All** | 39 | 10 | 22 | 176 | 247 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -255,7 +255,7 @@ M8 Overlays, M9 Later.
 | [T-207](fixes.md) | P2 | S | M5 | defect | done | The library static path decodes `+` as a literal plus (GitHub #404) |
 | [T-208](fixes.md) | P2 | S | M5 | defect | done | `warp up --tun` forwards `--replace` and refuses the flags it cannot forward (GitHub #405) |
 | [T-209](fixes.md) | P2 | S | M5 | defect | done | `warp status` names the `warp-tun` instance (GitHub #406) |
-| [T-210](fixes.md) | P3 | S | M5 | defect | open | The WARP+ label names the paid account types (GitHub #407) |
+| [T-210](fixes.md) | P3 | S | M5 | defect | blocked | The WARP+ label names the paid account types (GitHub #407) |
 | [T-211](fixes.md) | P2 | S | M5 | defect | done | `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408) |
 | [T-212](fixes.md) | P3 | S | M5 | docs | done | The README states that the rules apply to `warp proxy --l4` (GitHub #409) |
 | [T-213](fixes.md) | P2 | M | M5 | defect | done | The WireGuard endpoint of a device record has one derivation (GitHub #410) |
@@ -266,7 +266,7 @@ M8 Overlays, M9 Later.
 | [T-218](rename.md) | P0 | M | M1 | release | done | A connector profile that holds within a minor version (PodUtils/podcrates#35, A-N-05) |
 | [T-219](services.md) | P1 | M | M6 | feature | blocked | `podnet service install`: a hardened system unit (PodUtils/podcrates#35, A-N-11) |
 | [T-220](services.md) | P1 | S | M6 | feature | blocked | `relay node` as a system service, with no operator act (PodUtils/podcrates#35, A-N-12) |
-| [T-221](services.md) | P2 | M | M6 | feature | partial | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
+| [T-221](services.md) | P2 | M | M6 | feature | blocked | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
 | [T-222](fixes.md) | P2 | S | M5 | feature | done | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |
 | [T-223](fixes.md) | P3 | M | M5 | defect | done | seccomp: the TCP gaps that the differential check finds |
 | [T-224](crates.md) | P1 | S | M3 | chore | done | podnet-netns calls `pod_proxy::udp` for the SOCKS5 datagram path |

@@ -959,7 +959,8 @@ reconnects with a 1 s to 30 s backoff; this leg does not.
 
 ## Decision
 
-The lead, 2026-11-09: keep the SSH forward-relay leg as a library with no caller. Park this entry. Expose the leg only after a ruling of the owner. The owner can rule otherwise (`docs/decisions.md`).
+The owner, 2026-11-11 (`docs/decisions.md`, The SSH forward-relay leg): the leg gets a CLI. This replaces the call of
+the lead of 2026-11-09.
 
 ## Prove
 
@@ -971,7 +972,8 @@ The test uses a local SSH server of russh that closes the session, and checks tw
 
 ## Start condition
 
-The owner decides that this leg gets a CLI. Until then, the leg stays library-only.
+None: the owner ruled. The relay facts of T-166 come from `pod-services`; until then the CLI takes the
+relay, the user and the URL rule as flags.
 
 # T-166: The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363)
 
@@ -1009,7 +1011,8 @@ frames, or its own dashboard URL fails or gives the wrong URL.
 
 ## Decision
 
-The lead, 2026-11-09: keep the SSH forward-relay leg as a library with no caller. Park this entry. The relay facts go to `pod-services` of `PodUtils/podcrates` (an ask). The owner can rule otherwise (`docs/decisions.md`).
+The owner, 2026-11-11 (`docs/decisions.md`, The SSH forward-relay leg): the leg gets a CLI (T-165); the relay facts
+(relay host, user, URL rule) are data of `pod-services` of `PodUtils/podcrates`.
 
 ## Prove
 
@@ -1100,6 +1103,11 @@ an oversized datagram needs its own counter.
 
 Keep the list in the Problem as the acceptance rules of any such router. Do no work now.
 
+## Decision
+
+The owner, 2026-11-11 (`docs/decisions.md`, Guest-wire router): plan a router that ends guest TCP on smoltcp. This entry
+holds its constraints; the router itself is new work.
+
 ## Prove
 
 ```sh
@@ -1108,7 +1116,7 @@ cargo test -p podnet-netns -- a_stale_tuple_is_released_by_a_new_syn a_partial_s
 
 ## Start condition
 
-A guest-wire router (smoltcp) is planned.
+None: the owner ruled. The netstack of `pod-netstack` (taken at v0.20.0) carries the guest wire.
 
 # T-178: Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375)
 
@@ -1212,7 +1220,9 @@ Do no code.
 
 ## Decision
 
-The lead, 2026-11-09: research only. Do not adopt a direction split now: it breaks "one flow uses one uplink" of T-096. The owner can rule otherwise (`docs/decisions.md`).
+The owner, 2026-11-11 (`docs/decisions.md`, Direction split): adopt the split of the directions of a flow as an
+option of a group. It is configurable and off by default; one flow on one uplink stays the default contract
+of T-096.
 
 ## Prove
 
@@ -1222,7 +1232,7 @@ grep -n "direction split" docs/research/podnet/*.md
 
 ## Start condition
 
-The owner changes the T-096 contract.
+None: the owner ruled. The option needs the router of T-100 and the groups of T-096 (done).
 
 # T-244: `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435)
 

@@ -1796,7 +1796,7 @@ T-219 (`pod-unit`), T-161 and T-087 (`pod-relay`, PodUtils/podcrates). The entry
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** blocked
 
 ## Problem
 
@@ -1820,6 +1820,12 @@ Ask A-N-15 (P2): "A bench command, and a live step that runs it against podnet a
 cargo test -p podnet --test commands -- bench_json_has_the_fixed_keys
 cargo todo check
 ```
+
+## Blocker
+
+The owner, 2026-11-11 (`docs/decisions.md`, Deferred and blocked work): steps 1 to 3 are done (861ebc4); step 4, the
+live step with `cloudflared` on one runner, needs a Cloudflare test account. A local server cannot stand
+in for the edge.
 
 ## Start condition
 

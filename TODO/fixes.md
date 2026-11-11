@@ -3316,7 +3316,7 @@ status` keeps its text (not part of this fix). `sh scripts/agent/check.sh`: exit
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -3343,6 +3343,12 @@ another type is shown as WARP+.
 
 `cargo test -p podnet --lib warp_plus_label` (new cases from the measured values).
 `podnet warp status --json | jq '.account_type, .premium_data, .warp_plus_active'` on a live device (the measurement).
+
+## Blocker
+
+The owner, 2026-11-11 (`docs/decisions.md`, Deferred and blocked work): the measure needs a device with a paid licence
+(one `podnet warp status --json` of a free device and one of a licensed device). A mock cannot give the
+`account_type` values of the live service.
 
 ## Correction
 

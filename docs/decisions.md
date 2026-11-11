@@ -80,11 +80,22 @@ form of the rulings that apply to each session.
 | 2026-11-11 | pod-hold: the dial state and the hold of a SYN (a call of the podnet session) | The cut of PodUtils/podnet#414 ("the netns hold of a `connect`") holds both asks of podcrates: the dial state of a held `connect` of the seccomp hold (`crates/podnet-netns/src/connect.rs`, podcrates T-169) and the netns hold of a SYN (podcrates T-170). podcrates can import the state of `connect.rs` now, behind a trait of the consumer for the dial. The helpers of `netns/packet.rs` can come now. The hold of a SYN in `netns/backend.rs` comes after T-174 (the veth wire changes the backend) and after podnet moves to the smoltcp of `pod-netstack`; podnet writes a COORD issue at that point. The owner can rule otherwise. |
 | 2026-11-11 | Way out and way in (T-060) | The owner: "whichever is better, we are beta and must make right decisions even if breaking, that allow us to extend features later". The call of the session: the way out of each command is `--egress SPEC` (a spec of the registry of networks); the road to the visitors of `serve` and `git serve` is `--ingress tunnel|relay|none` (it was `--via`). |
 | 2026-11-11 | pod-netstack: the cut (a call of the podnet session) | The answer to PodUtils/podcrates#61 (PodUtils/podnet#427): the stack of `podnet-vnet` (`stack.rs`, `stack/reactor.rs`, `stack/socket.rs`, `stack/datagrams.rs`, `stack/service.rs`, `device.rs`) goes to `pod-netstack` now, with the ACL and the gateway DNS as hooks of the consumer and the recorder behind a trait `PacketTap`. The policy, the resolver, the recorder, the switch and the doors stay. The netns router (`netns/backend.rs`, `udpflow.rs`) moves onto `pod-netstack` after T-174. From the import, the files of the cut take fixes only. The owner can rule otherwise. |
+| 2026-11-11 | Deferred and blocked work (the owner) | An entry that needs an account, a token or a capture of an official client to test, and that a local or mock server cannot stand in for, stays deferred or blocked: T-002, T-003, T-210, T-247, and the live step of T-221. |
+| 2026-11-11 | #89, the tracking issue (the owner) | Edit #89 into a detailed guide that a new client can test from, with more scenarios (T-001). Do not close it. |
+| 2026-11-11 | The SSH forward-relay leg (the owner) | It gets a CLI (T-165), with the relay facts as data of `pod-services` (T-166). This replaces the call of the lead of 2026-11-09. |
+| 2026-11-11 | Direction split (the owner) | Adopt the split of the directions of a flow (T-179) as an option of a group: configurable, off by default. One flow on one uplink stays the default contract of T-096. |
+| 2026-11-11 | crates.io (the owner) | The ruling of 2026-11-04 stands: betas only, no crates.io, no stable release now (T-005, T-006). |
+| 2026-11-11 | Guest-wire router (the owner) | Plan a router that ends guest TCP on smoltcp, with the constraints of T-176. |
+| 2026-11-11 | Group policies (the owner) | Finish T-178 with the byte meter of the doors; no field measure is needed. |
+| 2026-11-11 | Relays and mailboxes (the owner) | Plan an own mailbox server (`relay serve --mailbox`, `send` and `receive --mailbox`), the iroh road after `pod-iroh`, and each service that someone else already hosts and that fits the purpose (a study in progress). No self-hosted iroh relay. |
+| 2026-11-11 | Native git server (the owner) | No ruling yet: the owner asked for the latest facts first (a study in progress); then the question comes again. |
 
 ## Superseded
 
 | Date | Ruling | Superseded by |
 | --- | --- | --- |
+| 2026-11-09 | The SSH forward-relay leg: a library with no caller (a call of the lead). | 2026-11-11, The SSH forward-relay leg (the owner): a CLI. |
+| 2026-11-09 | Direction split: research only (a call of the lead). | 2026-11-11, Direction split (the owner): an option, off by default. |
 | 2026-11-01 | Releases: cut the next prerelease unattended when a batch of fixes is green. | 2026-11-04, Releases: no release until the owner says go. |
 | 2026-11-04 | Releases: no release until the owner says go. | 2026-11-04, Releases: unattended again. |
 | 2026-11-05 | Crates: eight crates, with `podnet-warp` and `podnet-cloudflare`. | 2026-11-05, Shared crates: five crates in podnet; `pod-warp` and `pod-cloudflare` in `PodUtils/podcrates`. |
@@ -100,4 +111,4 @@ form of the rulings that apply to each session.
 
 Write each new question here, with the part of the work that it blocks.
 
-None now.
+- Native git server (T-122): spike first, a full native server, a shipped or fetched static `git`, or not now. It waits for the study of the latest facts.
