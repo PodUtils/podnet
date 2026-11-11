@@ -110,6 +110,7 @@ pub mod fetch;
 #[doc(hidden)]
 pub mod fuzzing;
 pub mod manual;
+pub mod networks;
 pub mod preflight;
 pub mod proxy;
 pub mod quicktunnel;

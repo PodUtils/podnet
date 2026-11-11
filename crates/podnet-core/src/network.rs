@@ -174,6 +174,11 @@ impl Caps {
         (Caps::KERNEL_IFACE, "kernel-iface"),
     ];
 
+    /// The bits of `self` and of `other` (the `|` of a constant).
+    pub const fn with(self, other: Caps) -> Caps {
+        Caps(self.0 | other.0)
+    }
+
     /// True when each bit of `other` is in `self`.
     pub fn contains(self, other: Caps) -> bool {
         self.0 & other.0 == other.0
@@ -233,6 +238,9 @@ pub struct Check {
     pub name: String,
     /// The target to reach.
     pub target: Target,
+    /// True: after the TCP connect, the row checks TLS with the name of
+    /// the target.
+    pub tls: bool,
 }
 
 /// The function that ends a link.

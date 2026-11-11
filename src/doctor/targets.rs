@@ -56,23 +56,23 @@ pub fn targets(relay: Option<&str>) -> Vec<Target> {
     .collect()
 }
 
-/// The row of the relay: `relay`, else `PODNET_RELAY`, else the default. An
-/// `https://` relay gets a TLS check. A loopback `http://` relay gets a plain
-/// check.
+/// The row of the relay: `relay`, else `PODNET_RELAY`, else the default. The
+/// row is the check of the relay network of the registry (T-059): an
+/// `https://` relay gets a TLS check, a loopback `http://` relay a plain one.
 pub(super) fn relay_target(relay: Option<&str>) -> Option<Target> {
-    let relay = crate::ws_relay::Relay::from_env(relay).ok()?;
-    let tls = if relay.url().starts_with("https://") {
-        Tls::Web
-    } else if relay.url().starts_with("http://") {
-        Tls::Plain
-    } else {
-        return None;
+    let spec = match relay {
+        Some(url) => format!("relay:{url}"),
+        None => "relay".to_string(),
     };
+    let network = crate::networks::parse(&spec).ok()?;
+    let check = crate::network::Network::checks(&network)
+        .into_iter()
+        .find(|c| c.name == "relay")?;
     Some(Target {
         id: "relay",
-        host: relay.host().to_string(),
-        port: relay.port(),
-        tls,
+        host: check.target.host(),
+        port: check.target.port(),
+        tls: if check.tls { Tls::Web } else { Tls::Plain },
     })
 }
 

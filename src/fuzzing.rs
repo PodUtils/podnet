@@ -128,6 +128,15 @@ pub fn proxy_url(data: &[u8]) {
         let shown = proxy.label();
         assert!(!shown.contains('@'), "{shown}");
     }
+    // The same text as a network spec (T-059): the parse and the label
+    // never panic, and an error is one line.
+    match crate::networks::parse(spec) {
+        Ok(network) => {
+            let _ = network.label();
+            let _ = crate::network::Network::checks(&network);
+        }
+        Err(e) => assert!(!e.text().contains('\n') || spec.contains('\n'), "{e}"),
+    }
 }
 
 /// A `NO_PROXY` list.
