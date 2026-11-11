@@ -212,7 +212,7 @@ no `kernel`.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -243,6 +243,37 @@ cargo todo check
 ## Start condition
 
 T-094 is done.
+
+## Done
+
+2026-11-11, commit 027537b. Research note: `docs/research/podnet/native-git.md`. Each fact is marked read,
+measured or inferred, with URL and date. The local measures are lock files and source line counts of scratch
+projects. No binary was built, so the size of the binary is not measured. No code was added.
+
+- `gix 0.90.0` has no server for upload-pack and receive-pack. Its status page leaves "upload-pack /
+  receive-pack server plumbing" and "general purpose `accept(...)` for servers" unchecked. It has the
+  parts of the data layer: the pkt-line codec, pack writing, pack reading with thin-pack completion, ref
+  transactions, bare init.
+- `gix-pack` has no delta compression: it copies deltas from packs and sends loose objects whole. `gix` has
+  no hook runner, no `fsck` checks, no bitmaps, no repack.
+- Protocol: upload-pack needs v0, v1 and v2. Git itself ignores v2 in receive-pack and uses v0 (read in
+  `builtin/receive-pack.c`), so push needs v0 and v1 only.
+- Crates (measured, scratch lock files, musl normal graph): the data layer has 64 crates (about 39 not in the
+  lock of podnet); `gix` with no default features 88; `gix` with default features 136. Each `gix` crate is
+  `MIT OR Apache-2.0`. No graph links ring, aws-lc, openssl or a C build (`sha1dc` has `build = false`). Keep
+  the HTTP client features of `gix` off. ring against aws-lc does not arise for the server.
+- podnet writes about 3,700 lines (inferred): the advertisements, `ls-refs`, upload-pack v0, v1 and v2, want
+  validation, the pack stream, receive-pack, the push ingest with connectivity check, the ref update with the
+  report, the glue for HTTP and SSH, and a maintenance pass. Other native servers are fetch-only or young
+  (`ggueret/git-server`, `git-internal`, `guts-git`).
+- The call: a `--git-backend git|native|auto` trait. The `git` program stays the default where it exists.
+  Write upload-pack first, then receive-pack.
+- Not proven: the binary size, the speed on a large repository, `cargo deny`, the line counts (estimates).
+- Proposed entries (the lead opens them; each needs the ruling of the owner, note section 8): G1 spike of the
+  data layer in a scratch binary, size and lock (S); G2 backend trait and `--git-backend`, `doctor` reports it
+  (M); G3 native upload-pack, v0, v1, v2, HTTP and SSH (L); G4 native receive-pack with the connectivity check
+  and the ref update (L); G5 native hooks and `git-upload-archive` (M); G6 pack quality, a repack with deltas
+  (M).
 
 # T-123: Tailscale in the process: take the fork of tailscale-rs through `pod-ts`
 

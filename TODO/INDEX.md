@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**247 entries: 41 open, 11 partial, 20 blocked, 175 done.**
+**247 entries: 40 open, 11 partial, 20 blocked, 176 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 21 | 7 | 12 | 108 | 148 |
-| P3 | 20 | 3 | 6 | 41 | 70 |
-| **All** | 41 | 11 | 20 | 175 | 247 |
+| P3 | 19 | 3 | 6 | 42 | 70 |
+| **All** | 40 | 11 | 20 | 176 | 247 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -167,7 +167,7 @@ M8 Overlays, M9 Later.
 | [T-119](later.md) | P3 | M | M9 | feature | done | Router kernel mode: tables, rules and multipath routes through rtnetlink |
 | [T-120](later.md) | P3 | M | M9 | feature | partial | Router kernel mode: masquerade, an MSS clamp, an unreachable kill switch and `rp_filter` |
 | [T-121](later.md) | P3 | S | M9 | feature | done | Router: export the groups as a JSON file of the mwan form |
-| [T-122](later.md) | P3 | M | M9 | research | open | Research: a native git server with no installed `git` |
+| [T-122](later.md) | P3 | M | M9 | research | done | Research: a native git server with no installed `git` |
 | [T-123](later.md) | P3 | M | M9 | feature | open | Tailscale in the process: take the fork of tailscale-rs through `pod-ts` |
 | [T-124](later.md) | P3 | L | M9 | feature | open | Tailscale in the process: an adapter crate behind a feature that is off by default, with the static build proven |
 | [T-125](later.md) | P3 | L | M9 | feature | open | A userspace WireGuard responder: `podnet wg serve` |
