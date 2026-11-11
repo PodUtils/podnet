@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 254 entries: 41 open, 10 partial, 23 blocked, 180 done.
+`TODO/INDEX.md` holds 254 entries: 40 open, 11 partial, 23 blocked, 180 done.
 
 ## State
 
@@ -55,7 +55,7 @@ not wait for a larger one.
     T-180 (the router control); the router additions are in T-097 to T-099 (GitHub #372 to #374).
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
     The owner's rulings of 2026-11-11 add: T-179 (the
-    direction split, an option, off by default), T-165 (the CLI of the SSH forward-relay leg).
+    direction split, an option, off by default), T-165 (partial: `podnet ssh-relay` is built; its row of `doctor` is left).
     The study of hosted relays (`docs/research/podnet/hosted-relays.md`) adds T-251 (the hosted mailboxes on 443,
     after T-102) and T-252 (a piping-server transit, after T-103).
 8. **M7, the pods:** T-249 (blocked, #454: the netns router on
@@ -84,7 +84,7 @@ These entries stay open. The condition in each entry tells when it can start.
 | T-131 | T-137 takes `pod-session`, `pod-e2e` and `pod-identity` (the owner chose the source: a git tag) |
 | T-132 | The ruling "Order" ends (`try_update` is stable at the `rust-version` 1.99) |
 | T-153 | T-152 gives a pass on the target hosts (the netfilter plane; T-111 stays) |
-| T-165 | The owner rules that the SSH forward-relay leg gets a CLI |
+| T-165 | partial: the row of `doctor` for the SSH relay is left (Approach 4) |
 | T-176 | A guest-wire router (smoltcp) is planned |
 | T-237 | T-061 has moved `pod --serve` onto `Door` (tier A can land earlier) |
 | T-179 | partial: the UDP split is built (an option, off by default); the TCP split waits for a far end that joins two connections |

@@ -936,7 +936,7 @@ T-152 gives a pass on the target hosts, and the lead decides from the result (se
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -981,6 +981,54 @@ The test uses a local SSH server of russh that closes the session, and checks tw
 None: the owner ruled. The relay facts of T-166 come from `pod-services`; until then the CLI takes the
 relay, the user and the URL rule as flags.
 
+## Correction
+
+2026-11-11: Approach 4 (a `doctor` line about the fixed session age) is not done. The rows of `src/doctor.rs`
+that the entry cites are the legs of the edge. `doctor` has no probe of the SSH relay, so the line has no row
+to join. Add the line when `doctor` gets a probe of this relay (T-166 gives the relay as data).
+
+2026-11-11, the lead: the entry is partial, not done: Approach 4 (a row of `doctor` for the SSH relay)
+is left. The Done section below holds what is built.
+
+## Done
+
+2026-11-11, commit a27579d. The command `podnet ssh-relay` runs the leg and keeps its session.
+- `--server HOST:PORT`, `--user USER` and a URL rule (`--url-match TEXT`, `--url-skip TEXT`, each repeatable,
+  at least one of the two) are required flags. A missing flag is a usage error (exit 64) that names the flag
+  (clap). A bad `HOST:PORT` is exit 64 too. `--socket PATH` (the origin), `--connect-proxy HOST:PORT` and
+  `--json` are optional. The command has `--detach`, `--name`, `--ready-timeout`, `--replace` and
+  `--no-restart`. The help group is "Publish a local service".
+- `relay::supervise::supervise` opens a session (`relay::open`, which keeps the banner channel), waits for the
+  end (the banner channel closes, or `Handle::is_closed`, polled each second), and opens the next session
+  after a backoff of 1 s doubled to 30 s. A session that lasts 10 s resets the backoff. It sends
+  `Event::Up(TunnelHandle)` and `Event::Down { reason }` over a channel, and logs one line (the relay and the
+  reason). It returns when the receiver is dropped.
+- The command sets a keepalive of 30 s and no inactivity limit (`RelayConfig::inactivity`, `keepalive`), so no
+  fixed 60 min is in the code. `relay::run` and its default (inactivity 3600 s) are as before.
+- The ready document is `{url, remote_port, relay}`. After a reconnect the command prints the new URL and puts
+  it into the record, so `podnet ps --json` shows it (`name` and `pid` stay).
+- `relay::UrlRule` (`skip`, `hold`) replaces the fixed rule of `pick_tunnel_url`. Its default is the old rule.
+- The tests of `relay.rs` moved to `relay/tests.rs`.
+
+Tests (the three reconnect tests of `relay::tests` and the test of the binary failed with the reconnect disabled,
+`return` before the sleep, then passed; 3 runs of each):
+- `cargo test -p podnet-serve relay::tests` (14 passed): `the_supervisor_reconnects_and_announces_the_new_url`
+  (a fake russh relay on loopback closes the banner channel of connection 1; the events are Up tunnel1, Down,
+  Up tunnel2, and then none), `the_supervisor_sees_a_connection_that_the_relay_ends`,
+  `the_supervisor_tries_again_when_the_relay_is_not_there`,
+  `the_supervisor_ends_when_nobody_listens_to_its_events`, `a_url_rule_skips_and_holds_texts`,
+  `the_backoff_doubles_to_its_limit`.
+- `cargo test --test ssh_relay` (2 passed): `ssh_relay_detach_reconnects_and_ps_shows_the_new_url` (the
+  binary with `--detach --no-restart` against a fake relay; the new URL is in `podnet ps --json`; with the
+  supervisor disabled the instance ends and the test fails), `ssh_relay_with_a_missing_flag_is_a_usage_error`
+  (exit 64, the flag in the message).
+- `cargo test -p podnet ssh_relay` (unit tests of the parse and of the record amend).
+- `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers and test are 0.
+
+Not proven: a live relay (the 60 min expiry and the `is_closed` behaviour of russh on a real relay), the
+keepalive that finds a dead session (the fake relay ends sessions with a close, not with silence), and a
+connection through `--connect-proxy`.
+
 # T-166: The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363)
 
 **Source:** GitHub #363 (https://github.com/PodUtils/podnet/issues/363)
@@ -1002,7 +1050,7 @@ frames, or its own dashboard URL fails or gives the wrong URL.
 - The fields of `RelayConfig` are `pub`; no flag sets them (no caller, see T-165). `--relay` is the
   flag of the WebSocket relay.
 - `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`crates/podnet-serve/src/relay.rs:504`), so a URL that
-  crosses two chunks is lost. The pinned tests are at `crates/podnet-serve/src/relay.rs:566-598`.
+  crosses two chunks is lost. The pinned tests are in `crates/podnet-serve/src/relay/tests.rs`.
 - The dashboard host is already a fact of `pod-services` (`crates/podnet-serve/src/relay.rs:407`).
 - Not measured: the other relays of the survey (local artefacts of the issue).
 
@@ -1033,6 +1081,21 @@ The session of `PodUtils/podcrates` (the crate `pod-services`): the relay facts 
 ## Start condition
 
 T-165.
+
+## Correction
+
+2026-11-11: T-165 is done (commit a27579d): `podnet ssh-relay` takes the relay (`--server`), the user (`--user`)
+and the URL rule (`--url-match`, `--url-skip`) as required flags, and `RelayConfig` has the field `url_rule`
+(`relay::UrlRule`, with `skip` and `hold` lists). This closes Approach 5 and the line of the Premise that says
+that no flag sets the fields. What stays for the data of `pod-services`:
+- The relay endpoint, the user and the URL rule of each known relay as facts. The flags then get defaults from
+  these facts (a name of a relay, or no flag for the default relay), and a flag still overrides them. Ask
+  podcrates with a COORD issue (to podcrates); add no host in podnet.
+- Approach 1: the banner is still read chunk by chunk (`UrlRule::pick` runs on each `ChannelMsg::Data`), so a URL
+  that crosses two chunks is lost.
+- Approach 4: an address list tried in order.
+- Approach 2 is part met: `--url-skip` is repeatable, so a command line can exclude more than one dashboard
+  host. The known hosts are still not data.
 
 # T-172: A pin of the new public name while the process runs (GitHub #367)
 
