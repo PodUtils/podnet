@@ -68,7 +68,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #366 | tunnel: no `--masque-endpoint`; v4 door first | open | T-169 |
 | #367 | provision retries DNS; verify has no pin path | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-170, T-171, T-172 |
 | #368 | WARP identity of another uid refused | open | T-173 |
-| #369 | netns veth wire without /dev/net/tun | open | T-174 |
+| #369 | netns veth wire without /dev/net/tun | closed | T-174 |
 | #370 | one TLS connection per DoH query | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-175 |
 | #371 | TCP flow terminators (design limits, no present defect) | open | T-176 |
 | #372 | router datagram carrier | open | T-098, T-099, T-111 |
@@ -126,8 +126,8 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #428 | pod --serve door: early reply and pipelined SOCKS5 upstream handshake (donor review) | open | T-237 |
 | #429 | listen::bind_private: the socket has the umask mode between bind and chmod (donor review) | closed (fixed in 3c6173f) | T-238 |
 | #430 | install.sh and update: tag check, strict SHA256SUMS, install tests that can fail (donor review) | closed | T-239 |
-| #431 | warp tun --default-route: resolver backup on disk, restore after a kill, route table test (donor review) | open | T-240 |
-| #432 | warp: registration under a lock, save before the enrolment step (donor review) | open | T-241 |
+| #431 | warp tun --default-route: resolver backup on disk, restore after a kill, route table test (donor review) | closed | T-240 |
+| #432 | warp: registration under a lock, save before the enrolment step (donor review) | closed | T-241 |
 | #433 | rules: a shadowed rule warns, a shadowed reject fails (donor review) | open | T-242 |
 | #434 | net tailscale: --tailnet guard and the TS_FORCE_NOISE_443 hint (donor review) | closed | T-243 |
 | #435 | tunnel --inspect: capture, ring, redaction, replay (donor review) | open (T-244 is blocked on pod-cloudflare) | T-244 |

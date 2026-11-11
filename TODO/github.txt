@@ -71,7 +71,7 @@
 366 issue open
 367 issue closed
 368 issue open
-369 issue open
+369 issue closed
 370 issue closed
 371 issue open
 372 issue open
@@ -133,8 +133,8 @@
 428 issue open
 429 issue closed
 430 issue closed
-431 issue open
-432 issue open
+431 issue closed
+432 issue closed
 433 issue open
 434 issue closed
 435 issue open
