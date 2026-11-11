@@ -325,3 +325,105 @@ async fn router_group_splits_two_socks5_upstreams_and_fails_closed() {
     let (a2, b2) = (seen_a.lock().unwrap().len(), seen_b.lock().unwrap().len());
     assert_eq!((a2, b2), (a, b), "no upstream got the refused flow");
 }
+
+/// T-098: the rules of the router send each target to its network or
+/// group, refuse with `reject`, and follow a change of the file with no
+/// restart. Unix sockets only (the job restricted-host).
+#[tokio::test]
+async fn router_rules_pick_the_network() {
+    use std::collections::HashMap;
+
+    use podnet_core::network::{Balance, Member, Way};
+
+    use crate::routes::RulesFile;
+
+    let dir = tempfile::tempdir().unwrap();
+    let (pw, pr, pd) = (
+        dir.path().join("warp.sock"),
+        dir.path().join("relay.sock"),
+        dir.path().join("direct.sock"),
+    );
+    let (seen_w, seen_r, seen_d) = (fake_socks5(&pw), fake_socks5(&pr), fake_socks5(&pd));
+    let way = |path: &Path| {
+        let spec = format!("unix:{}", path.display());
+        Way::destination(Arc::new(UpstreamChain::parse(&[spec.as_str()]).unwrap()))
+    };
+    let group = Balance::new(
+        "both",
+        vec![Member::new("w", way(&pw), 1), Member::new("r", way(&pr), 1)],
+    )
+    .unwrap();
+    let mut ways = HashMap::new();
+    ways.insert("warp".to_string(), way(&pw));
+    ways.insert("relay".to_string(), way(&pr));
+    ways.insert("both".to_string(), Way::destination(Arc::new(group)));
+    let file = dir.path().join("rules");
+    std::fs::write(
+        &file,
+        "# the rules\ndomain:.corp.test=relay\ncidr:10.9.0.0/16=warp\ndomain:.ads.test=reject\ndomain:.many.test=both\n",
+    )
+    .unwrap();
+    let rules = RulesFile::open(&file, ways.clone(), Some(way(&pd))).unwrap();
+    for host in ["git.corp.test", "10.9.1.1", "x.example", "a.many.test"] {
+        let mut conn = rules.dial(&Target::new(host, 443), soon()).await.unwrap();
+        ping(&mut conn).await;
+    }
+    assert!(seen_r
+        .lock()
+        .unwrap()
+        .contains(&"git.corp.test:443".to_string()));
+    assert!(!seen_w
+        .lock()
+        .unwrap()
+        .contains(&"git.corp.test:443".to_string()));
+    assert!(seen_w.lock().unwrap().contains(&"10.9.1.1:443".to_string()));
+    assert_eq!(*seen_d.lock().unwrap(), ["x.example:443"]);
+    let both = seen_w.lock().unwrap().len() + seen_r.lock().unwrap().len();
+    assert_eq!(both, 3, "the group took a.many.test through one member");
+    let many = |seen: &Arc<Mutex<Vec<String>>>| {
+        seen.lock()
+            .unwrap()
+            .iter()
+            .filter(|t| *t == "a.many.test:443")
+            .count()
+    };
+    assert_eq!(many(&seen_w) + many(&seen_r), 1);
+    let err = rules
+        .dial(&Target::new("t.ads.test", 443), soon())
+        .await
+        .expect_err("reject");
+    assert_eq!(err.class, Class::Policy);
+
+    // A change of the file: the next flow reads it.
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    std::fs::write(&file, "domain:.corp.test=warp\n").unwrap();
+    let mut conn = rules
+        .dial(&Target::new("new.corp.test", 443), soon())
+        .await
+        .unwrap();
+    ping(&mut conn).await;
+    assert!(seen_w
+        .lock()
+        .unwrap()
+        .contains(&"new.corp.test:443".to_string()));
+    // A broken file keeps the last rules.
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    std::fs::write(&file, "domain:.corp.test=nowhere\n").unwrap();
+    let mut conn = rules
+        .dial(&Target::new("again.corp.test", 443), soon())
+        .await
+        .unwrap();
+    ping(&mut conn).await;
+    assert!(seen_w
+        .lock()
+        .unwrap()
+        .contains(&"again.corp.test:443".to_string()));
+    // A rule to an unknown way is an error at the start.
+    let bad = dir.path().join("bad");
+    std::fs::write(&bad, "domain:.x.test=nowhere\n").unwrap();
+    let err = RulesFile::open(&bad, ways, None).err().unwrap();
+    assert!(
+        format!("{err:#}").contains("is not a network or a group"),
+        "{err:#}"
+    );
+}

@@ -52,6 +52,7 @@ pub mod framing;
 pub mod policy;
 pub mod proxy;
 pub mod record;
+pub mod routes;
 pub mod shim;
 pub mod stack;
 pub mod switch;
