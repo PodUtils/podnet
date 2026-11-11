@@ -221,6 +221,9 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     };
     let seccomp = |args: Args, reason: &str| {
         name_the_backend(name_backend, BackendKind::Seccomp, reason);
+        // T-231: with no read of the memory of the program, the pod sees no
+        // address and refuses each connect: refuse the run at its start.
+        seccomp_can_hold(&doctor::probe_mem_read())?;
         run_seccomp(args)
     };
     let result = match args.backend {
@@ -252,6 +255,20 @@ pub fn main_with_args(argv: &[String]) -> i32 {
             EXIT_NO_BACKEND
         }
     }
+}
+
+/// Refuse the seccomp backend when the supervisor cannot read the memory of
+/// a program (`probe`, `doctor::probe_mem_read`): no call can be held, and
+/// the program would run with each connect refused (T-231).
+pub(crate) fn seccomp_can_hold(probe: &doctor::Probe) -> Result<()> {
+    if probe.ok {
+        return Ok(());
+    }
+    bail!(
+        "the seccomp backend cannot hold this program: the pod cannot read its memory ({}); \
+         use --backend netns, or run the pod where /proc/<pid>/mem of a child can be opened",
+        probe.detail
+    )
 }
 
 /// The proxy variables that a program in the pod does not get: the pod is

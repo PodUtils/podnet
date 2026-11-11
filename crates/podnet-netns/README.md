@@ -58,6 +58,27 @@ rule `tcp dport 80 redirect to :9999` through nfnetlink. Then it reads
 conntrack entry of a UDP datagram through ctnetlink. The row names the
 first step that fails, with its error.
 
+The rows `hold netns` and `hold seccomp`, and the object `hold` of
+`--json`, give the hold of each backend on this host (T-230). The object
+has `netns` and `seccomp`, each with `level` and `not_held` (a list of
+names):
+
+| Level | Meaning |
+| --- | --- |
+| `enforced` | The kernel keeps the program in the network namespace of the pod (netns). |
+| `advisory` | The supervisor holds the `AF_INET` and `AF_INET6` sockets of the kinds stream and datagram (seccomp). Each other socket goes to the kernel. |
+| `none` | The backend cannot run here. |
+
+`not_held` of seccomp: unix, netlink and vsock sockets, raw and packet
+sockets (they need `CAP_NET_RAW`), loopback TCP (`127.0.0.0/8`), and the
+descriptors that the program inherits. `not_held` of netns: the unix sockets
+of the file system and the descriptors that the program inherits.
+
+The row `read program memory` is the read of `/proc/<pid>/mem` of a child.
+The seccomp backend reads the address of each `connect` there. When the
+read fails, `hold seccomp` is `none`, and a pod with the seccomp backend
+stops at its start with exit status 3 (T-231).
+
 ## The life of the pod
 
 `podnet pod` gives the exit code of its program at the exit of the program.

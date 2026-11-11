@@ -231,6 +231,39 @@ const PROBE_NO_NNP_BASE: i32 = 200;
 
 /// Can the supervisor write a child's memory? That is what faking
 /// `getsockname`/`getpeername`/`accept` addresses needs.
+/// The read of the memory of a program: the seccomp backend reads the
+/// address of each `connect` and `sendto` there. With no read, no call can
+/// be held (T-231).
+pub(crate) fn probe_mem_read() -> Probe {
+    let pid = unsafe { libc::fork() };
+    if pid == 0 {
+        let mut b = [0u8; 1];
+        unsafe { libc::read(0, b.as_mut_ptr() as *mut _, 0) };
+        unsafe { libc::_exit(0) };
+    }
+    let path = CString::new(format!("/proc/{pid}/mem")).unwrap();
+    let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_CLOEXEC) };
+    let (ok, detail) = if fd >= 0 {
+        unsafe { libc::close(fd) };
+        (true, "O_RDONLY on /proc/<pid>/mem".to_string())
+    } else {
+        let error = std::io::Error::last_os_error();
+        (
+            false,
+            format!("{error}; the seccomp backend cannot read the address of a connect"),
+        )
+    };
+    unsafe {
+        libc::kill(pid, libc::SIGKILL);
+        libc::waitpid(pid, std::ptr::null_mut(), 0);
+    }
+    Probe {
+        name: "read program memory",
+        ok,
+        detail,
+    }
+}
+
 pub(crate) fn probe_mem_write() -> Probe {
     let pid = unsafe { libc::fork() };
     if pid == 0 {
@@ -279,9 +312,11 @@ pub(crate) fn doctor(json: bool) -> i32 {
         probe_mem_write(),
         // T-152: a measure for the netfilter plane; no backend uses it.
         crate::nfprobe::probe_netfilter(),
+        probe_mem_read(),
     ];
     let netns_available = (probes[0].ok || probes[1].ok) && probes[2].ok;
     let seccomp_available = probes[4].ok;
+    let hold = Hold::of(netns_available, seccomp_available && probes[7].ok);
     let any = netns_available || seccomp_available;
     let budget = flow_budget();
 
@@ -311,6 +346,7 @@ pub(crate) fn doctor(json: bool) -> i32 {
         root.insert("backend_seccomp".into(), seccomp_available.into());
         root.insert("backend_available".into(), any.into());
         root.insert("flow_budget".into(), budget.json());
+        root.insert("hold".into(), hold.json());
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::Value::Object(root))
@@ -340,6 +376,9 @@ pub(crate) fn doctor(json: bool) -> i32 {
         }
     );
     println!("{}: {}", crate::cli::program_name(), budget.line());
+    for line in hold.lines() {
+        println!("{}: {line}", crate::cli::program_name());
+    }
     // T-149: the fidelity of UDP stops at the proxy.
     println!(
         "{}: UDP goes through the proxy: no ICMP error gets to the program \
@@ -396,6 +435,70 @@ impl FlowBudget {
     }
 }
 
+/// The ways out that the seccomp backend does not hold: it holds only the
+/// `AF_INET` and `AF_INET6` sockets of the kinds stream and datagram, and
+/// each other socket is the kernel's.
+pub const SECCOMP_NOT_HELD: &[&str] = &[
+    "unix sockets",
+    "netlink sockets",
+    "vsock sockets",
+    "raw and packet sockets (they need CAP_NET_RAW)",
+    "loopback TCP (127.0.0.0/8)",
+    "descriptors that the program inherits",
+];
+
+/// The ways out that the netns backend does not hold: the namespace holds
+/// each IP socket of the program.
+pub const NETNS_NOT_HELD: &[&str] = &[
+    "unix sockets of the file system",
+    "descriptors that the program inherits",
+];
+
+/// The hold of each backend on this host (T-230): `enforced` (the kernel
+/// keeps the program in its network namespace), `advisory` (the supervisor
+/// holds the calls that it intercepts; other calls go to the kernel) or
+/// `none` (the backend cannot run here).
+pub(crate) struct Hold {
+    netns: &'static str,
+    seccomp: &'static str,
+}
+
+impl Hold {
+    /// The hold of a host where the netns backend can run (`netns`), and
+    /// where the seccomp backend can run and read the memory of a program
+    /// (`seccomp`).
+    pub(crate) fn of(netns: bool, seccomp: bool) -> Hold {
+        Hold {
+            netns: if netns { "enforced" } else { "none" },
+            seccomp: if seccomp { "advisory" } else { "none" },
+        }
+    }
+
+    /// The object `hold` of the JSON report.
+    pub(crate) fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "netns": { "level": self.netns, "not_held": NETNS_NOT_HELD },
+            "seccomp": { "level": self.seccomp, "not_held": SECCOMP_NOT_HELD },
+        })
+    }
+
+    /// The rows of the text report.
+    pub(crate) fn lines(&self) -> [String; 2] {
+        [
+            format!(
+                "hold netns:   {} (not held: {})",
+                self.netns,
+                NETNS_NOT_HELD.join(", ")
+            ),
+            format!(
+                "hold seccomp: {} (not held: {})",
+                self.seccomp,
+                SECCOMP_NOT_HELD.join(", ")
+            ),
+        ]
+    }
+}
+
 /// The version of the JSON form of `pod doctor` (T-078).
 pub const SCHEMA: u32 = 1;
 
@@ -422,6 +525,61 @@ mod tests {
         );
         assert!(line.contains("RLIMIT_NOFILE"), "{line}");
         assert_eq!(budget.json()["ceiling"], budget.ceiling);
+    }
+
+    // T-231: a host where the pod cannot read the memory of a program
+    // refuses the seccomp backend at the start, with the reason and the way
+    // out.
+    #[test]
+    fn seccomp_refuses_a_run_with_no_read_of_the_memory() {
+        let probe = super::Probe {
+            name: "read program memory",
+            ok: false,
+            detail: "Permission denied (os error 13)".into(),
+        };
+        let err = crate::seccomp_can_hold(&probe).expect_err("no read");
+        let text = format!("{err}");
+        assert!(text.starts_with("the seccomp backend cannot hold this program: the pod cannot read its memory (Permission denied (os error 13))"), "{text}");
+        assert!(text.contains("use --backend netns"), "{text}");
+        let ok = super::Probe { ok: true, ..probe };
+        assert!(crate::seccomp_can_hold(&ok).is_ok());
+    }
+
+    // T-230: the object `hold` names the level of each backend and what it
+    // does not hold.
+    #[test]
+    fn doctor_hold_row_names_the_level() {
+        let hold = super::Hold::of(true, true);
+        let json = hold.json();
+        assert_eq!(json["netns"]["level"], "enforced");
+        assert_eq!(json["seccomp"]["level"], "advisory");
+        let keys: Vec<&String> = json["seccomp"].as_object().unwrap().keys().collect();
+        assert_eq!(keys, ["level", "not_held"]);
+        let not_held = json["seccomp"]["not_held"].as_array().unwrap();
+        assert!(not_held.iter().any(|v| v == "loopback TCP (127.0.0.0/8)"));
+        assert!(not_held.iter().any(|v| v == "unix sockets"));
+        assert_eq!(json["netns"]["not_held"].as_array().unwrap().len(), 2);
+        let none = super::Hold::of(false, false).json();
+        assert_eq!(
+            (
+                none["netns"]["level"].as_str(),
+                none["seccomp"]["level"].as_str()
+            ),
+            (Some("none"), Some("none"))
+        );
+        let [netns, seccomp] = hold.lines();
+        assert!(
+            netns.starts_with("hold netns:   enforced (not held: unix sockets of the file system"),
+            "{netns}"
+        );
+        assert!(
+            seccomp.starts_with("hold seccomp: advisory (not held: unix sockets,"),
+            "{seccomp}"
+        );
+        // This host: the probe of the read runs and names its way.
+        let read = super::probe_mem_read();
+        assert_eq!(read.name, "read program memory");
+        assert!(!read.detail.is_empty());
     }
 
     /// Issue 299: the probe must agree with the filter of the backend. A
