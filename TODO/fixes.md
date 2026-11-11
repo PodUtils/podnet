@@ -4242,7 +4242,7 @@ function `replace_file` gives the mode 0644 under the umask 077 and under the um
 
 ## Done
 
-2026-11-11, commit d0b7d29 (`T-240: warp tun --default-route keeps the resolver record on disk, restores
+2026-11-11, commit 57eaa34 (`T-240: warp tun --default-route keeps the resolver record on disk, restores
 it after a kill, sets the mode`). The resolver code moved to the new file `src/warp/route/resolv.rs`
 (`src/warp/route.rs`: 799 to 727 lines). `set_file` takes the flock `STATE/resolv.lock`
 (refusal: "another warp tun runs"), restores a record of a dead process, writes the record
