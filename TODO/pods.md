@@ -852,7 +852,7 @@ at the merge. GitHub #376 closes at the merge.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -882,11 +882,11 @@ measure a host with no root runs no job.
 sh scripts/pod-runner-measure.sh   # the measure of step 1; it writes docs/reports/pod-runner.md
 ```
 
-## Blocker
+## Correction
 
-The owner: the decisions DR-1 (name the plan) and DR-2 (the code in PodUtils/podrunner) of the podrunner
-design review (PodUtils/podcrates#47). The owner ruled in podcrates on 2026-11-10 "leave #47 alone for
-now", and podvm asks for a record entry only. The entry is unblocked when the owner rules DR-1 and DR-2.
+2026-11-11: the owner ruled DR-1 and DR-2 yes (PodUtils/podcrates#55, COORD-030; podcrates call C49). The
+entry has no wait now. A lead session of PodUtils/podrunner runs: it writes to podnet by a COORD issue of
+PodUtils/podrunner `(to podnet)`.
 
 # T-230: `pod doctor --json` states the hold level and what the seccomp backend does not hold
 
@@ -896,7 +896,7 @@ now", and podvm asks for a record entry only. The entry is unblocked when the ow
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -920,11 +920,11 @@ must know that the hold is `advisory`, and which ways out it does not hold.
 cargo test -p podnet-netns doctor_hold_row_names_the_level
 ```
 
-## Blocker
+## Correction
 
-The owner: the decisions DR-1 (name the plan) and DR-2 (the code in PodUtils/podrunner) of the podrunner
-design review (PodUtils/podcrates#47). The owner ruled in podcrates on 2026-11-10 "leave #47 alone for
-now", and podvm asks for a record entry only. The entry is unblocked when the owner rules DR-1 and DR-2.
+2026-11-11: the owner ruled DR-1 and DR-2 yes (PodUtils/podcrates#55, COORD-030; podcrates call C49). The
+entry has no wait now. A lead session of PodUtils/podrunner runs: it writes to podnet by a COORD issue of
+PodUtils/podrunner `(to podnet)`.
 
 # T-231: `podnet pod` refuses a run with no hold, and can apply the rules to loopback
 
@@ -934,7 +934,7 @@ now", and podvm asks for a record entry only. The entry is unblocked when the ow
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -959,8 +959,8 @@ the rules to `127.0.0.0/8`.
 cargo test --test pod_seccomp -- seccomp_rules_apply_to_loopback_when_asked
 ```
 
-## Blocker
+## Correction
 
-The owner: the decisions DR-1 (name the plan) and DR-2 (the code in PodUtils/podrunner) of the podrunner
-design review (PodUtils/podcrates#47). The owner ruled in podcrates on 2026-11-10 "leave #47 alone for
-now", and podvm asks for a record entry only. The entry is unblocked when the owner rules DR-1 and DR-2.
+2026-11-11: the owner ruled DR-1 and DR-2 yes (PodUtils/podcrates#55, COORD-030; podcrates call C49). The
+entry has no wait now. A lead session of PodUtils/podrunner runs: it writes to podnet by a COORD issue of
+PodUtils/podrunner `(to podnet)`.
