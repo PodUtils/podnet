@@ -61,6 +61,17 @@ fn build(dir: &std::path::Path, name: &str, source: &str) -> std::path::PathBuf 
     out
 }
 
+/// Kill the server when the test ends: a server of a failed test holds the
+/// port, and the next run fails with "Address already in use".
+struct Reap(std::process::Child);
+
+impl Drop for Reap {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
 #[test]
 fn shim_datagram_of_another_user_is_dropped() {
     if unsafe { libc::geteuid() } != 0 {
@@ -82,14 +93,21 @@ fn shim_datagram_of_another_user_is_dropped() {
         let _ = std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755));
     }
     let _ = std::fs::set_permissions(&shim.path, std::fs::Permissions::from_mode(0o755));
-    let mut child = Command::new(&server)
-        .env("LD_PRELOAD", &shim.path)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
-    assert_eq!(lines.next().unwrap().unwrap(), "ready");
+    let mut child = Reap(
+        Command::new(&server)
+            .env("LD_PRELOAD", &shim.path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap(),
+    );
+    let mut lines = BufReader::new(child.0.stdout.take().unwrap()).lines();
+    let ready = lines.next().unwrap().unwrap_or_default();
+    if ready != "ready" {
+        let mut err = String::new();
+        let _ = std::io::Read::read_to_string(&mut child.0.stderr.take().unwrap(), &mut err);
+        panic!("the server did not start: {err}");
+    }
     let send = |text: &str, uid: Option<u32>| {
         let mut cmd = Command::new(&sender);
         cmd.arg(text).env("LD_PRELOAD", &shim.path);
@@ -106,9 +124,9 @@ fn shim_datagram_of_another_user_is_dropped() {
     send("other", Some(65534));
     send("own", None);
     let got = lines.next().unwrap().unwrap();
-    let status = child.wait().unwrap();
+    let status = child.0.wait().unwrap();
     let mut err = String::new();
-    std::io::Read::read_to_string(&mut child.stderr.take().unwrap(), &mut err).unwrap();
+    std::io::Read::read_to_string(&mut child.0.stderr.take().unwrap(), &mut err).unwrap();
     assert!(status.success(), "{err}");
     assert_eq!(got, "got own", "{err}");
     assert!(err.contains("dropped a datagram of user 65534"), "{err}");
