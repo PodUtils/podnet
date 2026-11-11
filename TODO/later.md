@@ -10,7 +10,7 @@ owner's ruling of 2026-11-05 (`docs/decisions.md`, Router).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -54,6 +54,32 @@ T-100 is done.
 
 2026-11-05, the route code is `src/warp/route.rs`, in the WARP adapter that moves to `pod-warp` (T-050). Read
 where the code is when this entry starts.
+
+## Done
+
+2026-11-11, commit d373600. The router file has the optional key `kernel` (`src/router/kernel.rs`).
+Each WAN has a table with a default route and a rule `fwmark M lookup T`. An aggregate table has a
+multipath default route with weights. The rule `lookup main suppress_prefixlength 0` has the first
+priority. An old file stays valid; a file with `kernel` needs no door. `podnet route --config`
+applies the plan after the doors are up and removes it at the end. The code writes rtnetlink
+(`RTM_NEWROUTE` with `NLM_F_REPLACE` and `RTA_MULTIPATH`, `RTM_NEWRULE`, `RTM_DELRULE`) and uses no
+`ip` program. `apply` adds the new rules first (`NLM_F_EXCL`, EEXIST is success) and then deletes
+the old rules that the new plan does not hold: the kernel has no replace for a rule, so the change
+is made before the break and there is no moment with no rule. Tests in `src/router/kernel/tests.rs`:
+`route_kernel_tables_and_rules_in_a_namespace` (runs itself in `unshare -rn`, makes bridge links,
+applies a plan, changes it, removes it, and compares the rules and routes that a netlink dump reads
+with the plan; it skips with a message when the host does not allow the namespace),
+`kernel_plan_puts_the_suppress_rule_before_the_rules_of_the_clients`,
+`kernel_config_errors_name_the_key`, `kernel_section_keeps_each_old_file_valid`,
+`kernel_requests_encode_rules_and_a_multipath_route`. check.sh: exit 0.
+
+Not proven: the test reads the kernel with a netlink dump, not with `ip rule show` (the host has no
+`ip`). The test uses bridge links because the host kernel has no `dummy` module. The path
+`podnet route --config FILE` with `kernel` is run by hand only as far as the error "Network is
+down" (exit 69) for a WAN link that is down; it has no automatic test. No traffic test of the
+weights or of the fwmark was made. The writer is new code in `src/router/kernel.rs`; it does not
+change `src/warp/route.rs` (frozen). Moving the writer to `pod-warp` or another crate of podcrates
+is not part of this entry.
 
 # T-120: Router kernel mode: masquerade, an MSS clamp, an unreachable kill switch and `rp_filter`
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**247 entries: 47 open, 10 partial, 20 blocked, 170 done.**
+**247 entries: 46 open, 10 partial, 20 blocked, 171 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 22 | 7 | 12 | 107 | 148 |
-| P3 | 25 | 2 | 6 | 37 | 70 |
-| **All** | 47 | 10 | 20 | 170 | 247 |
+| P3 | 24 | 2 | 6 | 38 | 70 |
+| **All** | 46 | 10 | 20 | 171 | 247 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -164,7 +164,7 @@ M8 Overlays, M9 Later.
 | [T-116](overlays.md) | P3 | S | M8 | feature | done | WireGuard: read a wg-quick file into a peer, with optional reserved bytes |
 | [T-117](overlays.md) | P3 | M | M8 | feature | open | WireGuard: `wg:FILE` as a network over UDP or over a carrier |
 | [T-118](overlays.md) | P3 | M | M8 | research | done | Research: NetBird, Firezone and ZeroTier as networks |
-| [T-119](later.md) | P3 | M | M9 | feature | open | Router kernel mode: tables, rules and multipath routes through rtnetlink |
+| [T-119](later.md) | P3 | M | M9 | feature | done | Router kernel mode: tables, rules and multipath routes through rtnetlink |
 | [T-120](later.md) | P3 | M | M9 | feature | open | Router kernel mode: masquerade, an MSS clamp, an unreachable kill switch and `rp_filter` |
 | [T-121](later.md) | P3 | S | M9 | feature | open | Router: export the groups as a JSON file of the mwan form |
 | [T-122](later.md) | P3 | M | M9 | research | open | Research: a native git server with no installed `git` |
