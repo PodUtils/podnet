@@ -66,6 +66,17 @@ The owner. The ruling "Deferred issues" of 2026-11-04 in
 owner. The entry is unblocked when the owner closes the issue, or names
 the work that remains.
 
+## Correction
+
+2026-11-11, the owner (`docs/decisions.md`, #89): edit #89 into a guide that a new client can test from, and
+keep it open. Done the same day: the body of GitHub #89 is now "Test guide: podnet on a host with limited
+networking": the install and its checks, the doctors, `agent up`, WARP with no root, the publish of a local
+service, the relay, `--detach` and autostart, the pods, the router (with a full router file), forwards,
+`bench`, the overlays, the manual, what to report, and the work that needs an account. Each command of it was
+checked against the help of the binary of 0.4.0-beta.4. The old tracking list stays at its end (each item
+done). The entry stays blocked: #89 stays open as the guide of the owner.
+
+
 # T-002: `warp proxy --l4`: the L4 door answers 403 to each form of the CONNECT (GitHub #140)
 
 **Source:** GitHub #140.
