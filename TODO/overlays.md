@@ -216,7 +216,7 @@ the smoltcp 0.14 stack of `pod-netstack`, not on a smoltcp 0.12 stack of podnet.
 **Milestone:** M8
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -244,6 +244,25 @@ cargo todo check
 ```
 
 The new entries and the research note pass the checker.
+
+## Done
+
+2026-11-11, commit 8571fa3. Research note: `docs/research/podnet/overlays.md`. Each fact is marked read or
+inferred, with URL and date. Nothing was run and no account was used.
+
+- NetBird: passes. Netstack mode (`NB_USE_NETSTACK_MODE=true`, SOCKS5 on `127.0.0.1:1080`, TCP only, peers
+  by IP address only, no authentication) fits the `proxy` row today. Client BSD-3-Clause; management,
+  signal and relay AGPLv3; self-hostable. Proposed entries (the lead opens them): E1 `netbird:[PORT]` spec
+  as sugar for the SOCKS5 listener (S); E2 docs and a doctor row (XS); E3 live proof on a proxy-only host
+  (M, blocked until a key exists).
+- Firezone: no entry. The headless client opens `/dev/net/tun` and needs `CAP_NET_ADMIN`. The data path is
+  UDP (WireGuard, TURN). Production self-hosting is not supported. The portal is ELv2. Recheck when a
+  userspace or proxy client ships.
+- ZeroTier: no entry. The daemon needs a TUN. The only no-TUN path is libzt (BSL 1.1, FFI, lwIP). The data
+  path is UDP 9993 with a slow TCP relay. The controller license is non-commercial only. Recheck on a
+  maintained SOCKS5 sidecar or a license change.
+- Not proven: netstack mode on a real host; use of `HTTPS_PROXY` by the NetBird client; `netbird up -F`
+  with no root.
 
 # T-243: `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434)
 
@@ -349,3 +368,81 @@ three of the first four fail.
 Not proven: any real `tailscaled`; the `CurrentTailnet` field name (from upstream source, not pinned); the
 exit codes 78 and 69 end to end through the binary (the tests prove the error type that the command maps);
 the stall of port 80 (not reproduced). The hop `pod -x tailscale:SOCKET` has no guard.
+
+# T-246: NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode
+
+**Source:** T-118, `docs/research/podnet/overlays.md` (proposed entries E1 and E2).
+**Category:** feature
+**Milestone:** M8
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+NetBird joins a host with no TUN in netstack mode (`NB_USE_NETSTACK_MODE=true`). The daemon then gives a
+SOCKS5 listener on `127.0.0.1:1080`, with TCP only, the peers by IP address only and no authentication. podnet
+can use it as `socks5://127.0.0.1:1080`, but nothing names it, and a name target fails with an unclear
+error.
+
+## Premise
+
+- Read: `docs/research/podnet/overlays.md` (the NetBird row, 2026-11-11). Not measured: no NetBird account was
+  used (T-247).
+- `src/networks.rs` parses the specs of the registry; `tailscale:` is a network of the same kind (a local
+  daemon of an overlay).
+
+## Approach
+
+1. Add `netbird:[PORT]` (default 1080) to the registry: a SOCKS5 way to `127.0.0.1:PORT` that dials an
+   address only. A name target fails with one line that names the limit of netstack mode.
+2. Add a row of `podnet net doctor` for the listener: it answers the SOCKS5 greeting, or not.
+3. Document netstack mode and its limits (no DNS, TCP only, no authentication) in the README.
+
+## Prove
+
+```sh
+cargo test --workspace -- network_spec_netbird netbird_refuses_a_name
+```
+
+## Start condition
+
+T-059 is done.
+
+# T-247: NetBird: measure netstack mode on a proxy-only host
+
+**Source:** T-118, `docs/research/podnet/overlays.md` (proposed entry E3).
+**Category:** measurement
+**Milestone:** M8
+**Priority:** P3
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+T-246 rests on documents only. No run shows that the NetBird client joins through `HTTPS_PROXY`, runs with
+no root (`netbird up -F`), and carries a TCP flow through its SOCKS5 listener on a host of
+`docs/target-environment.md`.
+
+## Premise
+
+- Read: `docs/research/podnet/overlays.md`. The measure needs a NetBird account or a setup key, and a peer.
+
+## Approach
+
+1. Run the client in netstack mode as a user with no root, with only an HTTP proxy for egress.
+2. Dial a peer through `netbird:` (T-246) and record the result in `docs/reports/`.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Blocker
+
+No NetBird account or setup key exists for the tests. The owner gives one, or the entry stays blocked.
+
+## Start condition
+
+T-246 is done, and a NetBird setup key is a secret of the live job.

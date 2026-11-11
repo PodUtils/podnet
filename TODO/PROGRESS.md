@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 245 entries: 47 open, 10 partial, 19 blocked, 169 done.
+`TODO/INDEX.md` holds 247 entries: 47 open, 10 partial, 20 blocked, 170 done.
 
 ## State
 
@@ -55,7 +55,7 @@ not wait for a larger one.
     T-180 (the router control); the router additions are in T-097 to T-099 (GitHub #372 to #374).
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
 8. **M7, the pods:** no open entry (the veth wire is done).
-9. **M8, the overlays:** T-114, T-115, T-117, T-118.
+9. **M8, the overlays:** T-114, T-115, T-117, T-246 (NetBird), T-247 (blocked: a NetBird account).
 10. **M9, later:** T-119 to T-130, T-132 and T-134, each when its start condition holds.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
