@@ -4404,7 +4404,7 @@ with no save. Frozen files changed: `src/warp/mod.rs`, `src/warp/register.rs`, `
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -4440,6 +4440,15 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-11, 9df5438 (the head of the release: ci 43068690494, live 43068690426, deny and secrets: success). The dry
+run 43099493695 and the release run 43104434114 passed; the dispatch 43104388861 made the tag `v0.4.0-beta.4` at
+9df5438. The release is a prerelease with the 8 binaries, `podnet.1`, `llms.txt` and `llms-full.txt` (the first
+release with them, T-222), `SHA256SUMS`, `SHA256SUMS.sigstore.json`, `provenance.sigstore.json` and
+`THIRD-PARTY-LICENSES.md`. `release-proofs.yml` 43107969792: success.
+
 
 # T-254: Housekeeping: one footnote for cfrs, no narrative history
 

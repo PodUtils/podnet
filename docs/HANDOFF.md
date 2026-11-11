@@ -8,11 +8,11 @@ file when each step below is done.
 
 * All work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1
   (`rustup default 1.99.1`; the image has 1.97 as its default).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.22.0`
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.25.0`
   (T-137), with the watches of `pod-services` (0b945a3, #448) and `pod-wg`
   (089e1c9, #447).
-* The newest release is `v0.4.0-beta.3` at 649c8e3. The work after it is in no
-  release.
+* The newest release is `v0.4.0-beta.4` at 9df5438 (T-245; release run 43104434114,
+  release-proofs 43107969792). The work after it is in no release.
 
 ## Work of this session after v0.4.0-beta.3
 
@@ -31,29 +31,21 @@ server; the claim test makes its stale socket with `mknod`; each probe child of
 `pod doctor` closes its inherited descriptors; the veth test and the register
 tests skip on the CI jobs that cannot run them.
 
-## Next steps (the night queue of 2026-11-11, unattended)
+## Next steps
 
 Run two worktree agents at a time at most. Merge each as before: rebase on `main`, take `--ours` for
 `TODO/INDEX.md` and `TODO/PROGRESS.md` and run `cargo todo set`, cite the rebased commit, run
-`gen-llms.py`, run `check.sh`, push. Push in batches: each push replaces the queued run of `live`.
+`gen-llms.py`, run `check.sh`, push. Push in batches.
 
-1. **The cut of v0.4.0-beta.4 (T-245):** when `ci` and `live` pass on the head, follow steps 4 to 6 of
-   "Release" in `docs/maintenance.md`; then the Done section of T-245. Map #447, #452 and #453 as closed
-   in `TODO/issues.md` and `TODO/github.txt` in the same batch.
-2. **T-254 (housekeeping):** an agent removes each mention of cfrs but one footnote in README.md, and the
-   narrative history of the documents. It leaves `docs/releases/`, `docs/reports/`, the record and the
-   frozen files. A second pass may cover `docs/research/`. Each cfrs mention in a frozen file goes to
-   podcrates as a COORD issue.
-3. **T-249:** blocked on four APIs of `pod-netstack` (any IP, a listener on any destination, the
-   checksums of the link device, UDP on any address; #454). Restart it on the tag that has them; then a
-   COORD issue with the commit for PodUtils/podnet#451.
-4. **T-250:** the first `ci` run with the step "Netns tests as root" green. Then a COORD issue with the
-   run for podcrates T-201, and T-250 done.
-5. **Then, one at a time beside one other:** T-178 (the byte meter of the doors; finish), T-179 (the
-   direction split, an option, off by default), T-165 (the CLI of the SSH forward-relay leg), T-253 (a live
-   probe of the hosted services), T-248 (the guest-wire router, after T-249).
-6. **podcrates:** at each new tag, `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is
-   at the tag (T-137). #448 waits for the `taken` line of the watches of `pod-services`.
+1. **T-249:** the netns router onto `pod-netstack`; podcrates v0.25.0 has its four calls. Then a COORD
+   issue with the commit (#451), and close #454.
+2. **Replies:** podcrates #76 (the take of v0.25.0 at e64fb99; `crates/podnet-netns/src/netns/veth.rs` takes
+   fixes only until the take of `pod-hold` with the wire, its T-201); podrunner #64 (T-255, the mapped
+   loopback address, done).
+3. **T-248** (the guest-wire router) after T-249.
+4. **podcrates:** at each new tag, `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at
+   the tag (T-137). #448 waits for the `taken` line of the watches of `pod-services`; #455 is its T-224.
+5. **The next beta:** when the batch after 9df5438 is green (T-132, T-165, T-255, v0.25.0, T-249).
 
 ## Open COORD issues
 

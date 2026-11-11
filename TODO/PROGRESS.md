@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 255 entries: 39 open, 10 partial, 23 blocked, 183 done.
+`TODO/INDEX.md` holds 255 entries: 39 open, 10 partial, 22 blocked, 184 done.
 
 ## State
 
@@ -25,7 +25,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). Next: T-245 (`v0.4.0-beta.4`).
+3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). The newest is `v0.4.0-beta.4`.
 
 ### The order of podnet's own work
 
@@ -58,7 +58,7 @@ not wait for a larger one.
     direction split, an option, off by default).
     The study of hosted relays (`docs/research/podnet/hosted-relays.md`) adds T-251 (the hosted mailboxes on 443,
     after T-102) and T-252 (a piping-server transit, after T-103).
-8. **M7, the pods:** T-249 (blocked, #454: the netns router on
+8. **M7, the pods:** T-249 (the netns router on
    `pod-netstack`; the hold of a SYN in `pod-hold` waits for it, PodUtils/podcrates#68).
 9. **M8, the overlays:** T-114, T-115, T-117, T-247 (blocked: a NetBird account).
 10. **M9, later:** T-120 to T-129 and T-134, each when its start condition holds; T-248 (the

@@ -1136,7 +1136,7 @@ T-170 step 2 (the hold of a SYN of `netns/backend.rs`).
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1162,12 +1162,6 @@ podcrates T-170 step 2 (the hold of a SYN in `pod-hold`) waits for this move, an
 cargo test -p podnet-netns
 cargo test -p podnet-netns --test veth
 ```
-
-## Blocker
-
-`pod-netstack` of PodUtils/podcrates lacks four APIs at v0.22.0: any IP, a TCP listener on any destination,
-the checksums of the link device, UDP on any address (the Correction; PodUtils/podnet#454). The entry is
-unblocked at the tag that has them.
 
 ## Start condition
 
@@ -1199,6 +1193,11 @@ move can go on. The device alone (`LinkDevice` with a pump of the TUN or of the 
 but then the backend keeps its own `Interface` and the router does not run on the interface of the stack.
 
 The lead sends these APIs to podcrates in a COORD issue. The state stays `open`.
+
+2026-11-11: podcrates v0.25.0 has the four calls (PodUtils/podcrates#76): `StackConfig::any_ip`,
+`NetStack::listen_any`, `StackConfig::checksum` and `LinkDevice::with_checksum`, `NetStack::bind_udp_any` with
+`UdpSocket::send_to_from` and `recv_from_to`. podnet is at v0.25.0 (e64fb99). The entry is open again.
+
 
 # T-250: CI: a root step that runs the netns tests that skip on a runner
 

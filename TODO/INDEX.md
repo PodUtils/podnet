@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**255 entries: 39 open, 10 partial, 23 blocked, 183 done.**
+**255 entries: 39 open, 10 partial, 22 blocked, 184 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 22 | 6 | 14 | 111 | 153 |
+| P2 | 22 | 6 | 13 | 112 | 153 |
 | P3 | 17 | 3 | 7 | 46 | 73 |
-| **All** | 39 | 10 | 23 | 183 | 255 |
+| **All** | 39 | 10 | 22 | 184 | 255 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -290,11 +290,11 @@ M8 Overlays, M9 Later.
 | [T-242](services.md) | P3 | M | M6 | feature | partial | Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433) |
 | [T-243](overlays.md) | P3 | M | M8 | feature | done | `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434) |
 | [T-244](later.md) | P3 | L | M9 | feature | blocked | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
-| [T-245](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |
+| [T-245](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |
 | [T-246](overlays.md) | P3 | S | M8 | feature | done | NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode |
 | [T-247](overlays.md) | P3 | M | M8 | measurement | blocked | NetBird: measure netstack mode on a proxy-only host |
 | [T-248](later.md) | P3 | L | M9 | feature | open | Router: a guest-wire router that ends guest TCP on smoltcp |
-| [T-249](pods.md) | P2 | M | M7 | chore | blocked | netns: the router of the namespace runs on the interface of `pod-netstack` |
+| [T-249](pods.md) | P2 | M | M7 | chore | open | netns: the router of the namespace runs on the interface of `pod-netstack` |
 | [T-250](pods.md) | P2 | S | M7 | chore | done | CI: a root step that runs the netns tests that skip on a runner |
 | [T-251](services.md) | P2 | S | M6 | feature | open | Transfer: the hosted magic-wormhole mailboxes on 443 as the default, with a choice that the code carries |
 | [T-252](services.md) | P3 | M | M6 | feature | open | Transfer: a piping-server relay as a transit carrier of last resort |
