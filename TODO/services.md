@@ -1032,7 +1032,7 @@ member, lands with the DNS door of T-099.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1066,6 +1066,17 @@ cargo test --workspace -- a_partial_stream_write_keeps_the_record_stream_aligned
 ## Start condition
 
 T-059 and T-062 are done.
+
+## Correction
+
+2026-11-11: the network is a flag of its own, `--network SPEC`, not a prefix of the target: `LISTEN=NET:HOST:PORT`
+cannot tell the end of a spec of a URL (`socks5h://HOST:PORT`) from the host. Done so far (1058f08): `src/forwards.rs`
+(`Rule`, `serve_tcp`, `serve_unix`) and `podnet forward -L LISTEN=HOST:PORT [--network SPEC] [--run-for N]`
+(`src/cli/cmd/forward.rs`). Tests: `cargo test -p podnet --lib forward_` (the parse; `forward_over_a_network`).
+Measured in this sandbox: a forward on a unix socket through the HTTP proxy of the sandbox to
+`api.github.com:443` answered HTTP 200 to curl. Left: `warp forward` as an alias waits for `pod-warp`
+(`src/warp/forward.rs` is frozen); the UDP forwards, the pump of item 4 and the DNS door need
+`Dial::datagrams` of each network; `podnet expose` (item 3).
 
 # T-100: Router: a config file, and `podnet route` with `--detach` and autostart
 
