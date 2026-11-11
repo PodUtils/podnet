@@ -4389,3 +4389,48 @@ a kill between the answer of `POST` and the first save still loses that device (
 has one remote call, so it has no `created` state. `tunnel` and `warp --identity`-less runs still register
 with no save. Frozen files changed: `src/warp/mod.rs`, `src/warp/register.rs`, `src/warp/export.rs`; new
 `src/warp/enrol.rs`, `src/warp/hints.rs`.
+
+# T-245: Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md` (Releases, 2026-11-09): cut the next prerelease when a batch of fixes is green;
+`docs/maintenance.md`, section "Release".
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The work after `v0.4.0-beta.3` (T-097 to T-100, T-174, T-177, T-178, T-216 to T-218, T-221, T-222,
+T-239 to T-243, the take of podcrates v0.21.0) is on `main` only. A tester of a release binary does not
+get it.
+
+## Premise
+
+- `v0.4.0-beta.3` is the newest release (T-235).
+- `sh scripts/agent/check.sh` passes on `main` at 54bd958.
+- The release adds `llms.txt` and `llms-full.txt` to the files and to `SHA256SUMS` (T-222). No release
+  run made them yet.
+
+## Approach
+
+1. Set the version `0.4.0-beta.4` in `Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, and regenerate the llms files.
+2. Write `docs/releases/v0.4.0-beta.4.md`, with `## Breaking`.
+3. Push, and wait until `ci` and `live` pass on that commit.
+4. Dispatch `release.yml` on `main` with `publish` empty (the dry run), then with
+   `publish=v0.4.0-beta.4`.
+5. Check the files of the release and `release-proofs.yml`.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next
+prerelease unattended when a batch is green.
+
+## Prove
+
+```sh
+cargo test -p podnet --test docs
+sh scripts/agent/check.sh
+```

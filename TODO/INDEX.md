@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**244 entries: 46 open, 10 partial, 19 blocked, 169 done.**
+**245 entries: 47 open, 10 partial, 19 blocked, 169 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 21 | 7 | 12 | 107 | 147 |
+| P2 | 22 | 7 | 12 | 107 | 148 |
 | P3 | 25 | 2 | 5 | 36 | 68 |
-| **All** | 46 | 10 | 19 | 169 | 244 |
+| **All** | 47 | 10 | 19 | 169 | 245 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -290,3 +290,4 @@ M8 Overlays, M9 Later.
 | [T-242](services.md) | P3 | M | M6 | feature | partial | Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433) |
 | [T-243](overlays.md) | P3 | M | M8 | feature | done | `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434) |
 | [T-244](later.md) | P3 | L | M9 | feature | blocked | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
+| [T-245](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |
