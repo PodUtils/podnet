@@ -739,7 +739,7 @@ T-216 is done (the schema of `doctor --json`).
 
 ## Done
 
-2026-11-11, commit 14bad0a. `docs/protocol.md` section 10 is the connector profile: the rule (a change within a
+2026-11-11, commit 47f289a. `docs/protocol.md` section 10 is the connector profile: the rule (a change within a
 minor version only adds), the 42 flags of `tunnel`, the exit codes, the ready line and the ready document, the
 keys of `ps --json`, and a link to section 9 (`doctor --json`). It names v0.4.0-beta.3 as the newest signed
 release (T-022 and T-023 are done by the releases; no release was cut). podnet has no HTTP `/ready` and no
