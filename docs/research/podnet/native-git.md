@@ -348,3 +348,32 @@ The lead opens these. Each needs the ruling of the owner on the question that is
 | <https://docs.rs/crate/git-internal/0.8.5/source/docs/git-protocol-guide.md> (search result only) | 2026-11-11 |
 | <https://github.com/go-git/go-git/issues/234> (search result only) | 2026-11-11 |
 | Registry copies: `gix 0.90.0`, `gix-pack 0.77.0`, `gix-protocol 0.68.0`, `gix-transport 0.62.0`, `gix-packetline 0.24.1`, `gix-negotiate 0.38.0`, `sha1dc 0.1.5` (same text as `https://docs.rs/crate/NAME/VERSION/source/`) | 2026-11-11 |
+
+## Update of 2026-11-11 (the latest facts)
+
+Read on 2026-11-11 (each source below).
+
+- gix: no change (gix 0.90.0, gix-pack 0.77.0, 2026-10-22). Its maintainer closed two server pull
+  requests on 2026-08-06 (#2465 upload-pack; #2887 upload-pack, receive-pack and a server transport)
+  and asked the authors to keep a server in a fork. No delta compression in gix-pack (issue #2611).
+- New: grit-lib 0.5.33 (MIT, GitButler, `gitbutlerapp/grit`, 2026-11-09) has
+  `grit_lib::remote::serve::{UploadPack, ReceivePack}` over byte streams: upload-pack v0, v1, v2 with
+  shallow and filters; receive-pack with a policy, hooks, a connectivity check; delta compression.
+  A smoke test (a gnu build, git 2.43 as the client) passed clone v0, v1, v2, `--depth 1`, push,
+  an incremental pull and `git fsck`; its pack of a loose-only test repository was smaller than that
+  of `git upload-pack`. About 150 crates; 11.7 MB stripped for a small test binary (gnu). Risks: large
+  server defects fixed from 2026-11-02 to 2026-11-10 (grit issues #1744, #2134, #2287, #2390, #2568),
+  mostly written by agents, an API break before 0.6.
+- Other young crates: mizzle, puregit, git-zero-server, alkgit (none tested). gunnar is AGPL-3.0
+  (excluded). radicle-node spawns `git upload-pack`. libgit2 has no server and needs C. A static `git`
+  exists only from a third-party packager (`darkvertex/static-git`, git 2.56.0).
+
+The owner, 2026-11-11: no native server in podnet now. A shared crate `pod-git` of
+`PodUtils/podcrates` holds it, with the contract and the acceptance of PodUtils/podnet#453.
+
+Sources: https://github.com/GitoxideLabs/gitoxide/pull/2887, /pull/2465, /issues/2611,
+https://raw.githubusercontent.com/GitoxideLabs/gitoxide/main/crate-status.md,
+https://github.com/gitbutlerapp/grit (ROADMAP.md, issues), https://crates.io/crates/grit-lib,
+https://github.com/willstott101/mizzle, https://github.com/KarpelesLab/puregit,
+https://gunnar.rs/nordisk/gunnar, https://github.com/darkvertex/static-git,
+https://github.com/libgit2/libgit2.

@@ -279,6 +279,12 @@ projects. No binary was built, so the size of the binary is not measured. No cod
 The call of the lead (2026-11-11): no entry is opened now. The `git` program stays the backend: hosts of
 `docs/target-environment.md` with no `git` are not measured as a need yet, and a native server is about 3,700
 lines of new code. G1 (the spike of the size) opens first when a need is measured or the owner asks.
+
+The owner, 2026-11-11 (`docs/decisions.md`, Native git server): not now in podnet. The latest facts are in
+the update of `docs/research/podnet/native-git.md` (grit-lib 0.5.33). A crate `pod-git` of
+`PodUtils/podcrates` holds a native server later: PodUtils/podnet#453 gives its contract and its acceptance.
+
+
 # T-123: Tailscale in the process: take the fork of tailscale-rs through `pod-ts`
 
 **Source:** `docs/research/podnet/podssh.md`, sections 2.1 and 2.3 (step 4);

@@ -147,5 +147,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #449 | COORD-031: podnet freezes the files of pod-relay, pod-warp and pod-cloudflare at 7c5f87e; asks for T-028 and T-029 (to podcrates) | open (a COORD issue between sessions) | none |
 | #450 | COORD-032: the file-transfer of magic-wormhole has no owner; no hand-off for pod-session, pod-e2e, pod-identity (to podcrates) | open (a COORD issue between sessions) | none |
 | #451 | COORD-033: pod-hold: the veth wire is done, the netns router moves onto pod-netstack, a root CI step runs the tests (to podcrates) | open (a COORD issue between sessions) | none |
+| #452 | COORD-034: the answer to podcrates #74: the words of podnet's transit hints; the traits of the registry; the lint (to podcrates) | open (a COORD issue between sessions) | none |
+| #453 | COORD-035: a new shared crate pod-git: a git server with no installed git; the contract and the acceptance of podnet (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
