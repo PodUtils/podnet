@@ -253,7 +253,7 @@ The new entries and the research note pass the checker.
 **Milestone:** M8
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -327,3 +327,25 @@ With no `--tailnet`, the behaviour is unchanged (the existing warning test passe
 `office` (by name, or by the suffix `office.ts.net`) opens the door. `NeedsLogin` for longer than the wait
 exits 69. A fake that changes to `lab` after the start: the next dial gets the refusal and one log line, and
 a connection opened before stays up.
+
+## Done
+
+2026-11-11, commit ccd55ae. `podnet net tailscale --tailnet NAME` (or `PODNET_TAILNET`) waits up to 20 s
+for `tailscaled` to be `Running` in NAME (the tailnet name or the DNS suffix, case-insensitive), before it
+binds. Another tailnet exits 78 with `the daemon is in tailnet "lab", not "office"; nothing was bound`. A
+daemon that is not ready exits 69 and names the last `BackendState`. After the start, the door reads the
+status each 30 s and after each failed dial. In another tailnet it answers new dials with SOCKS5 code 2 and
+HTTP 403, logs one line, and keeps open connections. A status that is too large, not JSON or not 200 is an
+error, never `Ready`. `podnet net doctor` has the row `tailscaled (LocalAPI)` (socket, `BackendState`, name,
+suffix, `TS_FORCE_NOISE_443`; `unknown` when the daemon does not answer). The README names
+`TS_FORCE_NOISE_443`. The code is in `crates/podnet-netns/src/tailscale/status.rs`.
+
+Tests (`crates/podnet-netns/src/tailscale/guard_tests.rs`, fake LocalAPI on a unix socket):
+`tailscale_tailnet_mismatch_refuses_before_the_bind`, `tailscale_tailnet_match_opens_the_door`,
+`tailscale_needs_login_ends_with_69`, `tailscale_tailnet_change_refuses_new_dials`,
+`tailscale_unreadable_status_is_not_ready`, `tailscale_guard_rules_and_describe`. With the guard disabled,
+three of the first four fail.
+
+Not proven: any real `tailscaled`; the `CurrentTailnet` field name (from upstream source, not pinned); the
+exit codes 78 and 69 end to end through the binary (the tests prove the error type that the command maps);
+the stall of port 80 (not reproduced). The hop `pod -x tailscale:SOCKET` has no guard.
