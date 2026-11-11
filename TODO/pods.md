@@ -789,7 +789,7 @@ The owner can rule on this (see Decision). A pod-backend feature starts after T-
 
 ## Done
 
-2026-11-11, commit d346d16. `crates/podnet-netns/src/netns/veth.rs`: when the namespace cannot open
+2026-11-11, commit 295a41d. `crates/podnet-netns/src/netns/veth.rs`: when the namespace cannot open
 `/dev/net/tun`, the child makes a veth pair (`eth0`, `wire0`) with one `RTM_NEWLINK` request, gives
 `eth0` the address and the route of the TUN with ioctls, turns off its offloads (checksum, TSO, GSO),
 and sends an `AF_PACKET` socket on `wire0` to the parent. The device of the stack
