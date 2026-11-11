@@ -3926,7 +3926,7 @@ tests exit 0. CI: at the merge.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3960,3 +3960,12 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-11, commits 05bcf44 (the version and the notes) and 649c8e3 (the head of the release: ci
+42942255003, live 42942255041, deny and secrets: success). The dry run 42946309363 and the release run
+42949492119 passed; the dispatch 42948701660 made the tag `v0.4.0-beta.3` at 649c8e3. The release is a
+prerelease with the 8 binaries, `podnet.1`, `SHA256SUMS`, `SHA256SUMS.sigstore.json`,
+`provenance.sigstore.json` and `THIRD-PARTY-LICENSES.md`. `release-proofs.yml` 42952184194: success.
+

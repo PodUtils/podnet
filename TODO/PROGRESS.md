@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 236 entries: 57 open, 6 partial, 19 blocked, 154 done.
+`TODO/INDEX.md` holds 236 entries: 56 open, 6 partial, 19 blocked, 155 done.
 
 ## State
 
@@ -15,7 +15,7 @@
   `crates/podnet-netns/src/connect.rs` and `crates/podnet-netns/src/netns/packet.rs` (podcrates T-169 and T-170,
   PodUtils/podcrates#55).
 - The session paused on 2026-11-10: `docs/HANDOFF.md` gives the state and the next steps.
-- The newest release is `v0.4.0-beta.2` (T-227).
+- The newest release is `v0.4.0-beta.3` (T-235).
 - Keep this section short. Write the current state only; git keeps the history.
 
 ## Work order
