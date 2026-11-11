@@ -666,7 +666,7 @@ destination, and no machine record of (destination, rule, verdict). The `-v` log
   The dial log is `connect.rs:133-135`. `copy_bidirectional` at `connect.rs:214` knows the byte totals
   at the close.
 - The refuse action itself is T-156. The datagram path is T-156 too.
-- The ACL of the vnet has `default_deny` (`crates/podnet-vnet/src/policy.rs:265`): the same posture.
+- The ACL of the vnet has `default_deny` (`crates/podnet-vnet/src/policy.rs:273`): the same posture.
 
 ## Approach
 
@@ -760,7 +760,7 @@ namespace, with an `AF_PACKET` socket on one end, can carry the frames to the sa
 
 - `crates/podnet-netns/src/netns/tun.rs:41-43` opens the node; `send_fd`/`recv_fd` (`crates/podnet-netns/src/netns/fdpass.rs:51,85`) and the
   handoff (`crates/podnet-netns/src/netns/mod.rs:96,168`) are reusable. `doctor.rs:70,281` gates `auto` on the TUN probe.
-- smoltcp has `medium-ip` only (`Cargo.toml:139`, `crates/podnet-netns/Cargo.toml:34`): add `medium-ethernet`.
+- smoltcp has `medium-ip` only (`Cargo.toml:140`, `crates/podnet-netns/Cargo.toml:36`): add `medium-ethernet`.
 - `docs/research/podnet/vn.md:313` is plan item P5; `vn.md:411` asks if any target host has no TUN. No
   measured host lacks it (`docs/target-environment.md:33`).
 - The veth needs one small `RTM_NEWLINK` writer. Checksums: skip RX verification on this device.

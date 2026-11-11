@@ -14,7 +14,9 @@
 //!    ([`addr`]). The kernel only ever sees `AF_UNIX`.
 //! 2. **A userspace IP stack** ([`stack`]) — a `smoltcp` interface whose link
 //!    layer is an in-process packet queue ([`device`]) or a tunnel. It owns
-//!    the addresses, the TCP and UDP state machines, and the routing.
+//!    the addresses, the TCP and UDP state machines, and the routing. The
+//!    stack and its devices are the crate `pod-netstack` of
+//!    PodUtils/podcrates; [`policy`], [`dns`] and [`record`] are its hooks.
 //!
 //! Either layer works alone: two interposed programs on the same host talk
 //! over abstract names with no stack, and the stack gives an addressed
@@ -73,11 +75,5 @@ pub use stack::{Clock, NetStack, StackConfig, StackEvent, TcpStream, UdpSocket, 
 pub use tailscale_ssh::{LocalUser, Shims};
 
 // #215: the stack owns more than the 2 addresses that smoltcp allows by
-// default (the local address, the gateway, their IPv6 counterparts, each
-// address of a virtual listener). .cargo/config.toml sets the limit for a
-// build in the repository; a build without it (cargo install, a crate that
-// depends on podnet) fails here, not later with lost addresses.
-const _: () = assert!(
-    smoltcp::config::IFACE_MAX_ADDR_COUNT >= 8,
-    "build podnet with the environment variable SMOLTCP_IFACE_MAX_ADDR_COUNT=8 (.cargo/config.toml of the repository sets it)"
-);
+// default. .cargo/config.toml sets SMOLTCP_IFACE_MAX_ADDR_COUNT for a build
+// in the repository; pod-netstack fails a build without it.

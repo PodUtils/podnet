@@ -6,6 +6,14 @@ the smoltcp stack, the switch, the policy, the virtual resolver, the SOCKS5
 and HTTP `CONNECT` proxy, and the `LD_PRELOAD` shims. The C sources of the
 shims are in `shim/`. It uses the crates `podnet-core` and `podnet-netns`.
 
+The stack and its link devices are the crate `pod-netstack` of
+[PodUtils/podcrates](https://github.com/PodUtils/podcrates), on smoltcp
+0.14; `stack` and `device` give them at their old paths. This crate gives
+its policy to the hooks of the stack: the `Acl` is the `admit` of
+`StackConfig`, the resolver its `gateway_service` (`10.66.0.1:53`), and the
+`Recorder` the packet tap of a `RecordingDevice`. A build needs
+`SMOLTCP_IFACE_MAX_ADDR_COUNT = "8"` (`.cargo/config.toml`).
+
 The module `wg_quick` reads a wg-quick file (`[Interface]` and `[Peer]`)
 into a WireGuard peer. A `Reserved` field of a `[Peer]` gives bytes 1 to
 3 of each message. With no `Reserved` field, these bytes are zero. The

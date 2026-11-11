@@ -126,7 +126,7 @@ impl Dial for VnetDialer {
             Ok(Connected {
                 io: Box::new(stream),
                 peer: Some(SocketAddr::new(to.ip, to.port)),
-                local: Some(SocketAddr::new(local.ip, local.port)),
+                local: Some(local),
             })
         })
     }

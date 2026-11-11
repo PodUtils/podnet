@@ -30,15 +30,18 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
     // T-193: one resolver for the door, the gateway (10.66.0.1:53) and the
     // stack; a bad entry is a usage error before anything starts.
     let defaults = podnet::vnet::StackConfig::default();
-    let names =
-        podnet::vnet::dns::Resolver::from_maps(&args.maps, &args.map_files, &defaults.subnet)
-            .fault(Fault::Usage)?;
+    let names = podnet::vnet::dns::Resolver::from_maps(
+        &args.maps,
+        &args.map_files,
+        &defaults.subnet.into(),
+    )
+    .fault(Fault::Usage)?;
     let names = Arc::new(names);
     let mut _link = None;
     let net = match &args.switch {
         None => Arc::new(podnet::vnet::NetStack::loopback_with(
             podnet::vnet::StackConfig {
-                dns: Some(names.clone()),
+                gateway_service: Some(names.clone()),
                 ..defaults
             },
         )),
@@ -49,7 +52,7 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
                 .fault(Fault::Usage)?;
             let config = podnet::vnet::StackConfig {
                 local_v4: address,
-                dns: Some(names.clone()),
+                gateway_service: Some(names.clone()),
                 ..defaults
             };
             let net = Arc::new(podnet::vnet::NetStack::over_link(config));

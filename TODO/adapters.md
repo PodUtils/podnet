@@ -144,14 +144,14 @@ socket (that type sends to the address as it is: one family for each socket). `d
 by default) to its IPv4 addresses. The wrappers of the upstream chain (`connect_upstream_async`), of the tailnet
 (`tailscale::Dialer`) and of the virtual network (`NetStack`) are in `crates/podnet-vnet/src/dialer.rs`: that crate
 uses `podnet-core` and `podnet-netns`, so no dependency is new. The UDP of the virtual network is
-`VnetDatagrams` (`crates/podnet-vnet/src/stack/datagrams.rs`). The upstream chain and the tailnet carry TCP only:
+`VnetDatagrams` (`UdpDatagrams` of `PodUtils/podcrates:crates/pod-netstack/src/stack/datagrams.rs`). The upstream chain and the tailnet carry TCP only:
 `datagrams` gives the default error. The WARP dialer is T-057.
 
 ## Done
 
 2026-11-10, commit 03a3b49. `src/dialers/` holds `Direct`, `proxy`, `process` and `RelayDialer`;
 `crates/podnet-vnet/src/dialer.rs` holds `VnetDialer`, `UpstreamChain` and `Tailnet`, and
-`crates/podnet-vnet/src/stack/datagrams.rs` holds `VnetDatagrams`. No command uses them yet (T-060, T-061).
+`PodUtils/podcrates:crates/pod-netstack/src/stack/datagrams.rs` holds `VnetDatagrams` (as `UdpDatagrams`). No command uses them yet (T-060, T-061).
 `cargo test --workspace -- dialer_`: 10 passed:
 `dialers::tests::dialer_direct_carries_tcp_and_udp_on_the_loopback`,
 `dialer_direct_gives_a_refusal_at_the_stage_connect`, `dialer_proxy_sends_the_name_to_a_socks5h_proxy` (a fake

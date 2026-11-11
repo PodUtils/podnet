@@ -5,15 +5,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use podnet::vnet::dns::{build_query, parse_answers, Resolver, TYPE_A};
-use podnet::vnet::{NetStack, StackConfig, VirtAddr};
+use podnet::vnet::{NetStack, StackConfig, VirtAddr, VirtualSubnet};
 
 #[tokio::test]
 async fn a_mapped_name_is_answered_at_the_gateway() {
-    let subnet = StackConfig::default().subnet;
+    let subnet = VirtualSubnet::from(StackConfig::default().subnet);
     let resolver =
         Resolver::from_maps(&["web=10.66.0.2".to_string()], &[], &subnet).expect("the map");
     let config = StackConfig {
-        dns: Some(Arc::new(resolver)),
+        gateway_service: Some(Arc::new(resolver)),
         ..StackConfig::default()
     };
     let mut net = NetStack::loopback_with(config);
@@ -38,7 +38,7 @@ async fn a_mapped_name_is_answered_at_the_gateway() {
 
 #[test]
 fn a_map_outside_the_subnet_or_with_a_bad_form_is_refused() {
-    let subnet = StackConfig::default().subnet;
+    let subnet = VirtualSubnet::from(StackConfig::default().subnet);
     assert!(Resolver::from_maps(&["web=192.168.1.1".to_string()], &[], &subnet).is_err());
     assert!(Resolver::from_maps(&["web".to_string()], &[], &subnet).is_err());
     let dir = tempfile::tempdir().unwrap();

@@ -12,7 +12,7 @@ file when each step below is done.
   1.99.1`; the image has 1.97 as its default).
 * podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns`,
   `pod-services`, `pod-ws`, `pod-quic` and `pod-hold` of
-  `PodUtils/podcrates` by the git tag `v0.17.0` (T-137, T-232).
+  `PodUtils/podcrates` by the git tag `v0.20.0` (T-137, T-232).
 * The newest release is `v0.4.0-beta.3` at 649c8e3 (T-235; release run
   42949492119, release-proofs 42952184194). The work after 649c8e3 (T-061
   partial, T-097 partial) is in no release.
@@ -25,7 +25,7 @@ T-058 (the combinators), T-059 (the registry of networks), T-060
 with a kill switch), T-097 (partial: the generic health), T-229 (the
 measure with the runner), T-230 (the object `hold`), T-231 item 1, T-232
 (the take of `pod-hold`), T-231 (`--loopback-rules`), T-233, T-234 and T-236
-(defects), T-235 (`v0.4.0-beta.3`), the takes of podcrates v0.17.0.
+(defects), T-235 (`v0.4.0-beta.3`), the takes of podcrates v0.20.0.
 
 ## Next steps
 
@@ -35,7 +35,7 @@ measure with the runner), T-230 (the object `hold`), T-231 item 1, T-232
    JSON line on stdout; the step does not print `up97.err`). Read the next
    live runs; open an entry when one fails again. T-236 fixed the third
    (git over the relay at c0180cc).
-2. **T-137:** podnet is on podcrates v0.17.0 and took `pod_hold::connect`
+2. **T-137:** podnet is on podcrates v0.20.0 and took `pod_hold::connect`
    and `pod_hold::packet` (e4d4049, COORD-017 #426). Step 2 of podcrates
    T-170 (the hold of a SYN of `netns/backend.rs`) waits for T-174 and the
    smoltcp of `pod-netstack`; write a COORD issue then.

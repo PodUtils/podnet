@@ -57,6 +57,18 @@ pub struct Recorder {
     state: Arc<Mutex<RecorderState>>,
 }
 
+/// The recorder is the packet tap of a device of `pod-netstack`
+/// ([`crate::device::RecordingDevice`]).
+impl pod_netstack::device::PacketTap for Recorder {
+    fn packet(&self, direction: pod_netstack::device::Direction, packet: &[u8]) {
+        let direction = match direction {
+            pod_netstack::device::Direction::Inbound => Direction::Inbound,
+            pod_netstack::device::Direction::Outbound => Direction::Outbound,
+        };
+        self.record(direction, packet);
+    }
+}
+
 impl Default for Recorder {
     fn default() -> Self {
         Self::new()
@@ -358,5 +370,27 @@ mod tests {
         recorder.save_json(&path).unwrap();
         let replayer = Replayer::load_json(&path).unwrap();
         assert_eq!(replayer.remaining(), 1);
+    }
+
+    /// The recorder is the packet tap of a recording device: it keeps each
+    /// packet of each direction.
+    #[test]
+    fn the_recorder_taps_a_recording_device() {
+        use smoltcp::phy::{Device, RxToken, TxToken};
+        use smoltcp::time::Instant;
+
+        let recorder = Recorder::new();
+        let device = crate::device::LinkDevice::loopback(1280);
+        let mut device = crate::device::RecordingDevice::new(device, recorder.clone());
+        let token = device.transmit(Instant::ZERO).unwrap();
+        token.consume(3, |buf| buf.copy_from_slice(b"out"));
+        let (rx, _tx) = device.receive(Instant::ZERO).unwrap();
+        rx.consume(|buf| assert_eq!(buf, b"out"));
+        let packets = device.tap().packets();
+        assert_eq!(packets.len(), 2);
+        assert_eq!(packets[0].direction, Direction::Outbound);
+        assert_eq!(packets[1].direction, Direction::Inbound);
+        assert_eq!(packets[1].data, b"out");
+        assert_eq!(recorder.len(), 2, "a clone shares the packets");
     }
 }

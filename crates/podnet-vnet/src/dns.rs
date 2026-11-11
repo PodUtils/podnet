@@ -176,6 +176,20 @@ impl Resolver {
     }
 }
 
+/// The resolver is the UDP service of the stack at the gateway's port 53
+/// (`StackConfig::gateway_service` of `pod-netstack`). An unknown name with
+/// no upstream is answered `NXDOMAIN`; a name for the upstream gets no
+/// answer here (the host process owns the real forwarding path).
+impl pod_netstack::GatewayService for Resolver {
+    fn port(&self) -> u16 {
+        53
+    }
+
+    fn answer(&self, _from: std::net::SocketAddr, request: &[u8]) -> Option<Vec<u8>> {
+        self.handle(request)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

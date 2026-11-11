@@ -94,7 +94,7 @@ async fn dialer_vnet_carries_tcp_and_udp_between_two_stacks() {
         .expect("the datagram in time")
         .unwrap();
     assert_eq!(&buf[..n], b"query");
-    assert_eq!(SocketAddr::new(from.ip, from.port), local);
+    assert_eq!(from, local);
     answer.send_to(b"answer", from).await.unwrap();
     let (n, from) = tokio::time::timeout(Duration::from_secs(10), recv_from(&*datagrams, &mut buf))
         .await

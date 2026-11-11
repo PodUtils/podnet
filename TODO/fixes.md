@@ -2400,7 +2400,7 @@ A client that connects and sends nothing, or one byte of a SOCKS5 greeting, hold
 1. One constant `REQUEST_LIMIT` (30 s) in `podnet-netns` (`socks.rs`). Wrap the first byte and the request read in each of the three doors. The warp door uses the same constant.
 2. On expiry send a SOCKS5 reply `0x04` or an HTTP `504`, then close (`fail_with`, `crates/podnet-vnet/src/proxy.rs:161-180`).
 3. Fix the comment of `CLIENT_TIMEOUT`: it bounds the copy only.
-4. Count live client tasks (as `SocketCount::live`, `crates/podnet-vnet/src/stack/socket.rs:372-378`). A cap is a later choice.
+4. Count live client tasks (as `SocketCount::live`, `PodUtils/podcrates:crates/pod-netstack/src/stack/socket.rs`). A cap is a later choice.
 
 ## Prove
 
@@ -2505,11 +2505,11 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 
 ## Problem
 
-`forward` binds inside a spawned task and returns a `JoinHandle` (`crates/podnet-vnet/src/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:117`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`crates/podnet-vnet/src/switch.rs:752-756`).
+`forward` binds inside a spawned task and returns a `JoinHandle` (`crates/podnet-vnet/src/proxy.rs:185-203`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:120`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`crates/podnet-vnet/src/switch.rs:752-756`).
 
 ## Premise
 
-- Refusals: `crates/podnet-vnet/src/stack/reactor.rs:219-236` (`AddrNotAvailable`, `PermissionDenied`, `AddrInUse`).
+- Refusals: `PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs` (`AddrNotAvailable`, `PermissionDenied`, `AddrInUse`).
 - `spawn_forwards` cannot return a result (`crates/podnet-vnet/src/proxy.rs:237-244`).
 - The `--map` entry outside the subnet fails only at the first request (note of the issue: not verified).
 
@@ -2543,7 +2543,7 @@ Tests: a forward outside the subnet returns the error; a second forward of one a
 
 ## Problem
 
-`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `crates/podnet-vnet/src/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:463`). No counter, no log, no accessor. The `spoofed` counter (`:153`) has no accessor. The rule of the project: a drop is counted (`crates/podnet-vnet/src/stack.rs:171-175`). The fault injector counts are not readable either (`:54-111`).
+`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `crates/podnet-vnet/src/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:463`). No counter, no log, no accessor. The `spoofed` counter (`:153`) has no accessor. The rule of the project: a drop is counted (`NetStats::dropped`, `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`). The fault injector counts are not readable either (`crates/podnet-vnet/src/switch.rs:54-111`).
 
 ## Premise
 
@@ -2578,11 +2578,11 @@ A test fills the queue of a peer that does not read and reads a non-zero drop co
 
 ## Problem
 
-`NetStack::over_link` builds `LinkDevice::tunnel(config.mtu)`: both queues are unbounded and the stack does not hold when full (`crates/podnet-vnet/src/stack.rs:263-268`, `crates/podnet-vnet/src/device.rs:304-313`). A slow pump grows the heap. The WARP stack uses `tunnel_bounded` and `with_inbound_limit` (`src/warp/ip.rs:454-455`, 512 and 4096 packets).
+`NetStack::over_link` builds `LinkDevice::tunnel(config.mtu)`: both queues are unbounded and the stack does not hold when full (`NetStack::over_link`, `LinkDevice::tunnel`; now `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`, `PodUtils/podcrates:crates/pod-netstack/src/device.rs`). A slow pump grows the heap. The WARP stack uses `tunnel_bounded` and `with_inbound_limit` (`src/warp/ip.rs:454-455`, 512 and 4096 packets).
 
 ## Premise
 
-- `over_link` has one production caller (`src/cli/cmd/net/proxy.rs:55`) and the switch tests (`crates/podnet-vnet/src/switch/tests.rs`).
+- `over_link` has one production caller (`src/cli/cmd/net/proxy.rs:58`) and the switch tests (`crates/podnet-vnet/src/switch/tests.rs`).
 - `crates/podnet-vnet/src/stack.rs` has 2103 lines in `scripts/size-allow.txt` and can only shrink. Two new `StackConfig` fields grow it.
 
 ## Approach
@@ -2680,7 +2680,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:91-103`). The stack gets `dns: None` (`crates/podnet-vnet/src/stack.rs:119`), so nothing listens on `10.66.0.1:53` (`crates/podnet-vnet/src/stack/reactor.rs:136-146`, `crates/podnet-vnet/src/stack/service.rs:17-20`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:27-38`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:241-246` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:27-38`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:241-246` and `net addresses` advertise the resolver.
 
 ## Premise
 

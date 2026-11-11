@@ -1,6 +1,10 @@
 //! A download through the tunnel device must fill a 512 KiB window at an RTT
 //! of 40 ms (issue 100). The test runs two smoltcp stacks over two tunnel
-//! devices with a link of 20 ms in each direction, on a virtual clock.
+//! devices with a link of 20 ms in each direction, on a virtual clock. The
+//! sockets have no congestion controller, as the stacks of podnet (the vnet
+//! and WARP with no --cc): on smoltcp 0.14 a controller grows by one segment
+//! for each ACK, and this link gives one ACK for each round trip
+//! (PodUtils/podcrates, pod-netstack).
 
 use std::collections::VecDeque;
 
@@ -31,10 +35,12 @@ fn node(addr: [u8; 4]) -> Node {
             .ok();
     });
     let mut sockets = SocketSet::new(Vec::new());
-    let handle = sockets.add(tcp::Socket::new(
+    let mut socket = tcp::Socket::new(
         tcp::SocketBuffer::new(vec![0; BUFFER]),
         tcp::SocketBuffer::new(vec![0; BUFFER]),
-    ));
+    );
+    socket.set_congestion_control(tcp::CongestionControl::None);
+    let handle = sockets.add(socket);
     Node {
         device,
         iface,

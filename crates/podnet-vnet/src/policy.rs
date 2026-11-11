@@ -256,6 +256,14 @@ impl Default for Acl {
     }
 }
 
+/// The ACL is the admit of the stack (`StackConfig::admit` of
+/// `pod-netstack`): it is asked at each bind, connect and UDP send.
+impl pod_netstack::Admit for Acl {
+    fn admits(&self, target: std::net::SocketAddr) -> bool {
+        self.allows(&target.ip(), target.port())
+    }
+}
+
 impl Acl {
     pub fn allow_all() -> Self {
         Self::default()

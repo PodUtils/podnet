@@ -756,6 +756,13 @@ Done so far:
   `rst_reply_for_syn` and `ipv4_checksum` of `pod_hold::packet` and keeps `dns_reply_packet`. Four tests moved
   to `pod-hold` with their names. Each line of the `.run` passed, except the static build with zig (no zig
   on the host) and the check of the toolchains of podcrates (no change of a toolchain).
+- `pod-netstack` v0.20.0 (the patch `adoption/podnet/pod-netstack.patch` of podcrates, PodUtils/podcrates#64): the
+  stack of `podnet-vnet` (the cut of PodUtils/podnet#427) is the crate, on smoltcp 0.14; `Acl`, the resolver and
+  `Recorder` are podnet's parts behind `Admit`, `GatewayService` and `PacketTap`. Each smoltcp of podnet is 0.14;
+  `.cargo/config.toml` sets `SMOLTCP_IFACE_MAX_ADDR_COUNT = "8"`. `tests/tcp_window.rs` uses
+  `CongestionControl::None`, the default of podnet's stacks: on smoltcp 0.14, Reno and CUBIC grow the window by
+  one segment for each ACK, so `warp --cc reno|cubic` is slower (podcrates T-188). Each pod-* dependency names
+  `tag = "v0.20.0"`. Each line of the `.run` passed, except the zig build and the check of the toolchains.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

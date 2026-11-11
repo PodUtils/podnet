@@ -257,6 +257,30 @@ pub struct VirtualSubnet {
     pub v6_prefix: u8,
 }
 
+/// The subnet of the stack of `pod-netstack` (`StackConfig::subnet`) has
+/// the same fields.
+impl From<pod_netstack::Subnet> for VirtualSubnet {
+    fn from(value: pod_netstack::Subnet) -> Self {
+        Self {
+            v4: value.v4,
+            v4_prefix: value.v4_prefix,
+            v6: value.v6,
+            v6_prefix: value.v6_prefix,
+        }
+    }
+}
+
+impl From<VirtualSubnet> for pod_netstack::Subnet {
+    fn from(value: VirtualSubnet) -> Self {
+        Self {
+            v4: value.v4,
+            v4_prefix: value.v4_prefix,
+            v6: value.v6,
+            v6_prefix: value.v6_prefix,
+        }
+    }
+}
+
 impl Default for VirtualSubnet {
     fn default() -> Self {
         Self {
