@@ -4402,7 +4402,7 @@ with no save. Frozen files changed: `src/warp/mod.rs`, `src/warp/register.rs`, `
 
 ## Problem
 
-The work after `v0.4.0-beta.3` (T-097 to T-100, T-174, T-177, T-178, T-216 to T-218, T-221, T-222,
+The work after `v0.4.0-beta.3` (T-097 to T-100, T-118, T-119, T-121, T-174, T-177, T-178, T-216 to T-218, T-221, T-222,
 T-239 to T-243, the take of podcrates v0.21.0) is on `main` only. A tester of a release binary does not
 get it.
 
