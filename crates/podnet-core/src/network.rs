@@ -22,11 +22,24 @@
 //!   name or a shared secret, with no port; GitHub #377). A consumer that
 //!   dials a destination refuses a peer dialer ([`Addressing::admit`]);
 //! * [`Network`], [`Link`], [`Caps`], [`Ctx`], [`Export`] and [`Check`]:
-//!   an adapter, and what it gives when it is up.
+//!   an adapter, and what it gives when it is up;
+//! * the combinators (T-058): [`Chain`] (an outer network carries an inner
+//!   one), [`Rules`] (a way for each target), [`Race`] (staggered
+//!   attempts) and [`Failover`] (the next way after an error).
 
 use std::fmt;
 use std::ops::BitOr;
 use std::sync::Arc;
+
+pub mod chain;
+pub mod failover;
+pub mod race;
+pub mod rules;
+
+pub use chain::Chain;
+pub use failover::Failover;
+pub use race::Race;
+pub use rules::{matcher, Choice, Matcher, Rule, Rules};
 
 pub use pod_core::datagrams::{recv_from, send_to};
 pub use pod_core::{
@@ -305,5 +318,7 @@ pub trait Network: Send + Sync {
     }
 }
 
+#[cfg(test)]
+mod fakes;
 #[cfg(test)]
 mod tests;

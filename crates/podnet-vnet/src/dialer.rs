@@ -9,6 +9,9 @@
 //!   one tailnet hop);
 //! * [`Tailnet`]: `tailscale::Dialer::dial` (`ts-dial` over the LocalAPI
 //!   of `tailscaled`).
+//!
+//! [`PodRule`] gives a rule of `podnet pod -r` (`RuleMatch`) to the
+//! combinator `Rules` of `podnet_core::network` (T-058).
 
 use std::future::Future;
 use std::io;
@@ -17,9 +20,12 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::Arc;
 
-use podnet_core::network::{BoxFuture, Class, Connected, Datagrams, Dial, Failure, Stage, Target};
+use podnet_core::network::{
+    BoxFuture, Class, Connected, Datagrams, Dial, Failure, Matcher, Stage, Target,
+};
 use podnet_netns::tailscale;
 use podnet_netns::upstream::{self, Proxy, ProxyKind};
+use podnet_netns::RuleMatch;
 use tokio::time::Instant;
 
 use crate::addr::VirtAddr;
@@ -278,6 +284,37 @@ impl Dial for Tailnet {
 
     fn names_inside(&self) -> bool {
         true
+    }
+}
+
+/// A rule of `podnet pod -r` (`domain:NAME`, `domain:.NAME`, `cidr:NET`,
+/// `cidr:@FILE`) as a [`Matcher`] of `Rules` (T-058). A `domain:` rule
+/// matches a name only; a `cidr:` rule matches an address only.
+pub struct PodRule {
+    spec: String,
+    rule: RuleMatch,
+}
+
+impl PodRule {
+    /// Parse `spec` as `podnet pod -r` does.
+    pub fn parse(spec: &str) -> anyhow::Result<PodRule> {
+        Ok(PodRule {
+            spec: spec.to_string(),
+            rule: RuleMatch::parse(spec)?,
+        })
+    }
+}
+
+impl Matcher for PodRule {
+    fn label(&self) -> String {
+        self.spec.clone()
+    }
+
+    fn matches(&self, target: &Target) -> bool {
+        match target {
+            Target::Name { host, .. } => self.rule.matches(host, None),
+            Target::Addr(addr) => self.rule.matches(&addr.ip().to_string(), Some(addr.ip())),
+        }
     }
 }
 

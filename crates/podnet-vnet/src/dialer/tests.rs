@@ -253,3 +253,36 @@ async fn dialer_tailnet_gives_the_refusal_of_the_daemon() {
     assert_eq!(err.stage, Stage::Connect);
     assert!(err.to_string().contains("status 403"), "{err}");
 }
+
+#[test]
+fn a_pod_rule_matches_a_name_or_an_address_as_pod_r_does() {
+    let corp = PodRule::parse("domain:.corp.test").unwrap();
+    assert_eq!(corp.label(), "domain:.corp.test");
+    assert!(corp.matches(&Target::new("git.corp.test", 443)));
+    assert!(corp.matches(&Target::new("corp.test", 443)));
+    assert!(!corp.matches(&Target::new("corp.test.example", 443)));
+    assert!(!corp.matches(&Target::new("10.1.2.3", 443)));
+    let lan = PodRule::parse("cidr:10.0.0.0/8").unwrap();
+    assert!(lan.matches(&Target::new("10.1.2.3", 443)));
+    assert!(!lan.matches(&Target::new("192.0.2.1", 443)));
+    assert!(!lan.matches(&Target::new("git.corp.test", 443)));
+    assert!(PodRule::parse("port:22").is_err());
+}
+
+#[tokio::test]
+async fn the_rules_combinator_takes_pod_rules() {
+    use podnet_core::network::{Rule, Rules};
+    let refuse = Rule {
+        matcher: Arc::new(PodRule::parse("cidr:10.0.0.0/8").unwrap()),
+        way: None,
+    };
+    let rules = Rules::new(vec![refuse], None).unwrap();
+    let err = rules
+        .dial(
+            &Target::new("10.0.0.1", 22),
+            Instant::now() + Duration::from_secs(5),
+        )
+        .await
+        .expect_err("refused");
+    assert_eq!(err.text(), "the rule cidr:10.0.0.0/8 refuses 10.0.0.1:22");
+}
