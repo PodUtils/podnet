@@ -12,9 +12,9 @@
 891 src/relay_reverse.rs
 1404 src/tunnel.rs
 1680 src/warp/ip.rs
-1039 src/warp/mod.rs
+1002 src/warp/mod.rs
 1870 src/warp/proxy.rs
-892 src/warp/register.rs
+855 src/warp/register.rs
 1211 src/warp/session.rs
 817 src/warp/up.rs
 965 src/warp/wg.rs

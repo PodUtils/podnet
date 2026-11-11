@@ -73,9 +73,12 @@ pub fn load(path: &Path) -> Result<Exported> {
 
 /// The exported device of `path`; a new one when there is none or `new`.
 pub async fn load_or_register(path: &Path, new: bool, proxy: Option<&Proxy>) -> Result<Exported> {
+    // T-241: one registration at a time, and the file is writable first.
+    let _held = super::enrol::lock(path, super::enrol::LOCK_WAIT).await?;
     if crate::state::exists(path)? && !new {
         return load(path);
     }
+    crate::state::check_file_writable(path)?;
     let (private_key, public_key) = keypair()?;
     let device = register::create_device_with_key(&public_key, proxy)
         .await

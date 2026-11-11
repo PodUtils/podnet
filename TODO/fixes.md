@@ -2096,8 +2096,8 @@ has `--masque-endpoint`; `tunnel` has none.
 
 - `warp_targets` builds the client with no `with_masque` (`src/tunnel.rs:827-838`). Neither
   `TunnelOpts` (`src/cli/opts.rs:21-106`) nor `TunnelArgs` has the flag. `with_masque` exists
-  (`src/warp/mod.rs:262`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
-- `open_on` (`src/warp/mod.rs:799-828`) uses `endpoint_order` (`:101-122`): the record order, IPv4 first.
+  (`src/warp/mod.rs:264`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
+- `open_on` (`src/warp/mod.rs:762-791`) uses `endpoint_order` (`:103-124`): the record order, IPv4 first.
   `has_default_route(true)` (v6) only decides whether the IPv6 door is included.
 - The log lines of the issue are from beta.6 on one host. The silent-drop timing is read, not measured.
 
@@ -2217,8 +2217,8 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 ## Premise
 
-- `src/warp/mod.rs:922-929` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
-  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:435-454`) refuses and does not write over the file.
+- `src/warp/mod.rs:885-892` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
+  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:415-417`) refuses and does not write over the file.
 - `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:126` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
@@ -3327,7 +3327,7 @@ another type is shown as WARP+.
 ## Premise
 
 - `src/warp/identity.rs:157-171`. Users: `src/cli/cmd/warp/account.rs:35`, `:53-56`, `:88-91`. Test: `src/cli/cmd/warp/cli_tests.rs:128-131`.
-- The issue says the fixture type `limited` is a free type. This is not shown: `src/warp/register.rs:687` is a test of
+- The issue says the fixture type `limited` is a free type. This is not shown: `src/warp/register.rs:627` is a test of
   the redaction of a licence key, and the test at `main.rs:894` uses `limited` with `premium_data` 10 as WARP+.
   The tree has no list of the types that the service sends. A closed list of paid types could hide a real paid account.
 - Earlier report: `docs/reports/aerrand-agent.md:639` (the raw `warp_plus` field).
@@ -3346,7 +3346,7 @@ another type is shown as WARP+.
 
 ## Correction
 
-2026-11-09: the measurement of Approach 1 is not possible in this session. No record of the `account_type` values of the live service exists in the tree: `grep -rn account_type docs tests src` finds the report line `docs/reports/aerrand-agent.md:639` (type `free` with `warp_plus` true), the fixtures `src/warp/register.rs:687` and `src/cli/cmd/warp/cli_tests.rs:130` (`limited`, made up), and no list of the paid types. A registration spends a device and needs the live service (`docs/decisions.md`, WARP devices). The code stays as it is. Start condition: one `podnet warp status --json` of a free device and one of a device with a licence, recorded in `docs/reports/`.
+2026-11-09: the measurement of Approach 1 is not possible in this session. No record of the `account_type` values of the live service exists in the tree: `grep -rn account_type docs tests src` finds the report line `docs/reports/aerrand-agent.md:639` (type `free` with `warp_plus` true), the fixtures `src/warp/register.rs:627` and `src/cli/cmd/warp/cli_tests.rs:130` (`limited`, made up), and no list of the paid types. A registration spends a device and needs the live service (`docs/decisions.md`, WARP devices). The code stays as it is. Start condition: one `podnet warp status --json` of a free device and one of a device with a licence, recorded in `docs/reports/`.
 
 # T-211: `warp down` and `warp up --persist` own the fish file only when podnet wrote it (GitHub #408)
 
@@ -3439,11 +3439,11 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 
 ## Premise
 
-- `src/warp/register.rs:181-190` (`Endpoint`; frozen file: no edit). `src/warp/export.rs:242-260`, `:30` (`WG_PORT`).
+- `src/warp/register.rs:185-194` (`Endpoint`; frozen file: no edit). `src/warp/export.rs:245-263`, `:30` (`WG_PORT`).
 - `src/warp/wg.rs:482-489` (v4 only; the message `:485-487`).
-- MASQUE reads `v4` and `v6`: `src/warp/register.rs:618-657`.
+- MASQUE reads `v4` and `v6`: `src/warp/register.rs:558-597`.
 - `grep -rn "\.ports" src/warp` finds no reader.
-- Test to extend: `src/warp/export.rs:399-434`.
+- Test to extend: `src/warp/export.rs:402-437`.
 
 ## Approach
 
@@ -4268,16 +4268,16 @@ create call makes the next run send `PATCH` for the same device id and no second
 - This is a defect of the WARP code (`src/warp/`). That code waits for `pod-warp` (T-050), and it takes
   fixes. The record needs a `state` field in `warp.json`: a format change. Breaking changes are allowed
   (beta).
-- `src/warp/mod.rs:435-454` (`register_or_load`): `check_file_writable` at `src/warp/mod.rs:450`, the
+- `src/warp/mod.rs:415-417` (`register_or_load`): `check_file_writable` at `src/warp/mod.rs:450`, the
   registration at `:451`, the save at `:452`, with no lock between. A stored device that is not enrolled
   for MASQUE counts as "register again", not as "resume" (`src/warp/mod.rs:438-446`).
-- `src/warp/mod.rs:200-239` (`register_with`): `create_device`, then `enrol_masque`; the token stays in
+- `src/warp/mod.rs:202-241` (`register_with`): `create_device`, then `enrol_masque`; the token stays in
   memory.
 - The call sites with no lock: `src/cli/cmd/warp/client.rs:153`, `src/tunnel.rs:828` (only with
   `--warp-identity PATH`; without it `tunnel` registers a new device on each run and saves nothing),
   `src/cli/cmd/warp/front.rs:188`, and the WireGuard `load_or_register` (`src/warp/export.rs:75`; the
   callers `src/cli/cmd/warp/client.rs:38` and `src/cli/cmd/warp/client.rs:57`).
-- `src/warp/register.rs:65-91` (`send_api_to`): a status of 500 or more, or a transport error, goes to the
+- `src/warp/register.rs:67-95` (`send_api_to`): a status of 500 or more, or a transport error, goes to the
   next API host for each request, the registration POST included (`src/warp/register.rs:77`).
 - `instances::lock` and `try_lock` exist in `crates/podnet-core/src/instances.rs`; `delete_device` exists
   in `src/warp/register.rs`. `docs/decisions.md:34` has the rule of the registration.

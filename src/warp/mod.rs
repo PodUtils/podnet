@@ -34,11 +34,13 @@
 pub mod capsule;
 mod door;
 use door::endpoint_order;
+mod enrol;
 pub mod exit;
 pub mod export;
 pub mod find;
 pub mod forward;
 pub mod h3;
+mod hints;
 pub mod identity;
 pub mod ip;
 pub mod l4;
@@ -329,39 +331,14 @@ impl WarpClient {
     /// The file holds the private key. It is written with mode 0600 and the
     /// caller owns where it goes.
     pub fn save(&self, path: &std::path::Path) -> Result<()> {
-        #[derive(serde::Serialize)]
-        struct Stored<'a> {
-            device: &'a Device,
-            cert_pem: String,
-            key_pem: String,
-        }
-        let (cert_pem, key_pem) = self.identity.to_pem()?;
-        let text = serde_json::to_string_pretty(&Stored {
-            device: &self.device,
-            cert_pem,
-            key_pem,
-        })
-        .context("serialising the WARP identity")?;
-        write_private(path, text.as_bytes())
-            .with_context(|| format!("writing the WARP identity to {}", path.display()))
+        enrol::save(path, &self.device, &self.identity)
     }
 
-    /// Read a client written by [`WarpClient::save`].
+    /// Read a client written by [`WarpClient::save`]. A record with the
+    /// state `created` (a device with no MASQUE key) is refused.
     pub fn load(path: &std::path::Path) -> Result<Self> {
-        #[derive(serde::Deserialize)]
-        struct Stored {
-            device: Device,
-            cert_pem: String,
-            key_pem: String,
-        }
-        check_private(path)?;
-        let text = std::fs::read_to_string(path)
-            .with_context(|| format!("reading the WARP identity from {}", path.display()))?;
-        let stored: Stored = serde_json::from_str(&text)
-            .with_context(|| format!("parsing the WARP identity in {}", path.display()))?;
-        let identity = Identity::from_pem(&stored.cert_pem, &stored.key_pem)
-            .context("rebuilding the MASQUE identity")?;
-        let mut client = Self::from_parts(stored.device, identity);
+        let (device, identity) = enrol::load(path)?;
+        let mut client = Self::from_parts(device, identity);
         client.leg_file = Some(leg_file_of(path));
         // Issue 133: the door that carried data last goes first.
         if let Ok(text) = std::fs::read_to_string(door_file_of(path)) {
@@ -432,25 +409,11 @@ impl WarpClient {
     ///
     /// A file that cannot be read, or that other users can read, is an
     /// error: podnet does not write over it.
+    ///
+    /// The call holds the lock `PATH.lock` and saves the device after the
+    /// first remote call (T-241): see `src/warp/enrol.rs`.
     pub async fn register_or_load(path: &std::path::Path) -> Result<Self> {
-        // Issue 178: a stat error is an error, not a missing file.
-        if crate::state::exists(path)? {
-            let client = Self::load(path)?;
-            if client.device.tunnel_type == "masque" {
-                return Ok(client);
-            }
-            tracing::debug!(
-                tunnel_type = %client.device.tunnel_type,
-                "the stored device is not enrolled for MASQUE; registering again"
-            );
-        } else {
-            tracing::debug!(path = %path.display(), "no stored WARP identity; registering a new device");
-        }
-        // A failed save after the registration spends a device: check first.
-        crate::state::check_file_writable(path)?;
-        let client = Self::register().await?;
-        client.save(path)?;
-        Ok(client)
+        enrol::register_or_load(path, enrol::LOCK_WAIT).await
     }
 
     /// The default place for the saved identity: `warp.json` in the state

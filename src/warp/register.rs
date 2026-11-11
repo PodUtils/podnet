@@ -54,7 +54,9 @@ pub fn api_bases(value: Option<&str>) -> Result<Vec<String>> {
 }
 
 /// Send `request` (made for [`api_base`]) to each API base in turn, until
-/// one answers with a status under 500. The error names each base.
+/// one answers with a status under 500. The error names each base. The
+/// registration `POST` goes on only after a failure with no answer: any
+/// answer of the service is final (T-241), as it may have made a device.
 async fn send_api(request: Request) -> Result<Response> {
     let bases = api_bases(std::env::var(API_VARIABLE).ok().as_deref())
         .map_err(|e| crate::exit::fault(crate::exit::Fault::Config, e))?;
@@ -74,7 +76,9 @@ async fn send_api_to(request: Request, bases: &[String]) -> Result<Response> {
         let mut attempt = request.clone();
         attempt.url = format!("{base}{path}");
         match crate::fetch::send(attempt).await {
-            Ok(response) if response.status < 500 || i + 1 == count => return Ok(response),
+            Ok(response) if response.status < 500 || i + 1 == count || request.method == "POST" => {
+                return Ok(response)
+            }
             Ok(response) => failures.push(format!("{base}: HTTP {}", response.status)),
             Err(err) if i + 1 == count => {
                 return Err(err.context(if failures.is_empty() {
@@ -244,74 +248,9 @@ struct EnrolRequest {
     name: Option<String>,
 }
 
-/// The name, the model and the locale that a new device declares (issue
-/// 141). The default gives the bytes of before: model `PC`, locale
-/// `en_US`, no name.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct DeviceHints {
-    pub name: Option<String>,
-    pub model: Option<String>,
-    pub locale: Option<String>,
-}
-
-/// The variables of [`DeviceHints`].
-pub const DEVICE_NAME_VARIABLE: &str = "PODNET_WARP_DEVICE_NAME";
-pub const DEVICE_MODEL_VARIABLE: &str = "PODNET_WARP_DEVICE_MODEL";
-pub const DEVICE_LOCALE_VARIABLE: &str = "PODNET_WARP_DEVICE_LOCALE";
-
-static HINTS: std::sync::OnceLock<DeviceHints> = std::sync::OnceLock::new();
-
-impl DeviceHints {
-    /// The hints of the variables.
-    pub fn from_env() -> Self {
-        let var = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
-        Self {
-            name: var(DEVICE_NAME_VARIABLE),
-            model: var(DEVICE_MODEL_VARIABLE),
-            locale: var(DEVICE_LOCALE_VARIABLE),
-        }
-    }
-
-    /// A name of 1 to 64 printable characters, a model of 1 to 32, a
-    /// locale as `ll_CC`.
-    pub fn check(&self) -> Result<()> {
-        let printable = |s: &str| s.chars().all(|c| !c.is_control());
-        if let Some(name) = &self.name {
-            if name.is_empty() || name.chars().count() > 64 || !printable(name) {
-                bail!("the device name has 1 to 64 printable characters: {name:?}");
-            }
-        }
-        if let Some(model) = &self.model {
-            if model.is_empty() || model.chars().count() > 32 || !printable(model) {
-                bail!("the device model has 1 to 32 printable characters: {model:?}");
-            }
-        }
-        if let Some(locale) = &self.locale {
-            let b = locale.as_bytes();
-            let ok = b.len() == 5
-                && b[..2].iter().all(u8::is_ascii_lowercase)
-                && b[2] == b'_'
-                && b[3..].iter().all(u8::is_ascii_uppercase);
-            if !ok {
-                bail!("the device locale is as en_US: {locale:?}");
-            }
-        }
-        Ok(())
-    }
-
-    /// Set the hints of this process (the flags). A later call does
-    /// nothing.
-    pub fn set(self) -> Result<()> {
-        self.check()?;
-        let _ = HINTS.set(self);
-        Ok(())
-    }
-
-    /// The hints of this process: the flags, else the variables.
-    pub fn current() -> Self {
-        HINTS.get().cloned().unwrap_or_else(Self::from_env)
-    }
-}
+pub use super::hints::{
+    DeviceHints, DEVICE_LOCALE_VARIABLE, DEVICE_MODEL_VARIABLE, DEVICE_NAME_VARIABLE,
+};
 
 fn now_rfc3339_millis() -> String {
     let now = SystemTime::now()
@@ -390,7 +329,8 @@ fn with_json<T: Serialize>(request: Request, body: &T) -> Result<Request> {
 /// answer of `POST /reg` holds the token.
 fn check(resp: Response) -> Result<Device> {
     if !resp.is_success() {
-        bail!("WARP API answered HTTP {}: {}", resp.status, resp.text());
+        let (status, body) = (resp.status, resp.text());
+        return Err(ApiError { status, body }.into());
     }
     serde_json::from_slice(&resp.body)
         .with_context(|| format!("decoding the WARP API answer ({} bytes)", resp.body.len()))
@@ -780,6 +720,29 @@ mod tests {
             .await
             .expect_err("each base failed");
         assert!(format!("{err:#}").contains("HTTP 503"), "{err:#}");
+    }
+
+    // T-241: the registration POST may have made a device. Any answer is
+    // final; only a failure with no answer goes to the second host.
+    #[tokio::test]
+    async fn a_503_on_the_post_is_not_sent_to_the_second_host() {
+        crate::test_host::need_loopback!();
+        let dead = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let dead_base = format!("http://{}", dead.local_addr().unwrap());
+        drop(dead);
+        let good = answering(200).await;
+        let busy = answering(503).await;
+        let post = || {
+            Request::new("POST", format!("{}/{}/reg", api_base(), api_version()))
+                .timeout(std::time::Duration::from_secs(5))
+                .via(None)
+        };
+        let answer = send_api_to(post(), &[busy.clone(), good.clone()])
+            .await
+            .unwrap();
+        assert_eq!(answer.status, 503, "an answer of the service is final");
+        let answer = send_api_to(post(), &[dead_base, good]).await.unwrap();
+        assert_eq!(answer.status, 200, "no answer: the second host");
     }
 
     // Issue 187: a 429 of the registration names the remedy.
