@@ -30,7 +30,7 @@ ring = "0.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # The same version and features as the root crate (Cargo.toml of podnet).
-smoltcp = { version = "=0.12.0", default-features = false, features = [
+smoltcp = { version = "=0.14.0", default-features = false, features = [
     "std",
     "medium-ip",
     "proto-ipv4",
