@@ -321,3 +321,16 @@ fn a_udp_header_refuses_a_name_over_255_bytes() {
         Err(pod_proxy::DialError::InvalidTarget(_))
     ));
 }
+
+/// T-060: the forms SCHEME+unix:/PATH of the proxy of the process are
+/// hops of the pod too.
+#[test]
+fn egress_alias_the_plus_unix_forms_are_pod_hops() {
+    let p = super::Proxy::parse("socks5h+unix:/tmp/w.sock").unwrap();
+    assert_eq!(p.kind, super::ProxyKind::Socks5);
+    assert_eq!(p.unix_path.as_deref(), Some("/tmp/w.sock"));
+    let p = super::Proxy::parse("http+unix:/tmp/w.sock").unwrap();
+    assert_eq!(p.kind, super::ProxyKind::Http);
+    assert_eq!(p.unix_path.as_deref(), Some("/tmp/w.sock"));
+    assert!(super::Proxy::parse("http+unix:").is_err());
+}

@@ -172,6 +172,16 @@ pub(crate) fn usage_hints(err: &clap::Error) -> Vec<String> {
                 ));
                 return lines;
             }
+            // T-060: the road of serve and git serve is --ingress; --egress
+            // is the way out of each command.
+            if name == "--via" {
+                lines.push(
+                    "hint: --via is gone: the road to the visitors of serve and git serve is \
+                     --ingress tunnel|relay|none, and the way out of a command is --egress SPEC"
+                        .to_string(),
+                );
+                return lines;
+            }
         }
         _ => return lines,
     }

@@ -589,7 +589,7 @@ async fn a_half_closing_target_gets_the_whole_input() {
     );
 }
 
-// T-091: `serve DIR --via relay --pair NAME` serves the files through the
+// T-091: `serve DIR --ingress relay --pair NAME` serves the files through the
 // node of the pair: an operator session gets the HTTP answer of the file.
 #[tokio::test(flavor = "multi_thread")]
 async fn serve_via_relay_answers_through_the_relay() {
@@ -611,7 +611,7 @@ async fn serve_via_relay_answers_through_the_relay() {
         .args([
             "serve",
             www.path().to_str().unwrap(),
-            "--via",
+            "--ingress",
             "relay",
             "--pair",
             NAME,
@@ -656,7 +656,7 @@ async fn serve_via_relay_answers_through_the_relay() {
     );
 }
 
-// T-094: `git serve --via relay --pair NAME` gives the SSH server of git
+// T-094: `git serve --ingress relay --pair NAME` gives the SSH server of git
 // to the node of the pair: an operator session gets the SSH banner of
 // podnet, and the socket of the run directory goes at the end.
 #[tokio::test(flavor = "multi_thread")]
@@ -676,7 +676,7 @@ async fn git_serve_via_relay_gives_the_ssh_server() {
     save(&pair(&url), &home.path().join("relay")).unwrap();
     let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_podnet"))
         .args(["git", "serve", "--root", repos.path().to_str().unwrap()])
-        .args(["--via", "relay", "--pair", NAME, "--anon-read"])
+        .args(["--ingress", "relay", "--pair", NAME, "--anon-read"])
         .env("PODNET_STATE_DIR", home.path())
         .env("PODNET_RUN_DIR", run.path())
         .env_remove("PODNET_RELAY")

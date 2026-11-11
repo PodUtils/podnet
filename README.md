@@ -460,11 +460,11 @@ podnet serve ./public                   # DIR, or --dir DIR
 podnet serve ./app --spa                # send index.html for unknown paths
 podnet serve ./public --local 127.0.0.1:8080      # this host only, no tunnel
 podnet serve ./public --local unix:/run/site.sock # a unix socket, no tunnel
-podnet serve ./public --local 127.0.0.1:8080 --via tunnel  # both
-podnet serve ./public --via relay --pair NAME     # through a relay pair
+podnet serve ./public --local 127.0.0.1:8080 --ingress tunnel  # both
+podnet serve ./public --ingress relay --pair NAME     # through a relay pair
 ```
 
-`--via` gives the road to the visitors:
+`--ingress` gives the road to the visitors:
 
 * `tunnel` (the default with no `--local`): a public quick tunnel, or the
   named tunnel of `--token`.
@@ -488,8 +488,8 @@ local listener:
   is not a socket is refused (exit 64). podnet removes its socket at the
   end.
 * An address in use is refused (exit 69).
-* `--check` is refused with `--local`, and is for `--via tunnel` only.
-  With `--via none`, the tunnel flags have no effect, except `--auth-user`
+* `--check` is refused with `--local`, and is for `--ingress tunnel` only.
+  With `--ingress none`, the tunnel flags have no effect, except `--auth-user`
   (see below). The `--json` ready line has `listens`, each listener.
 
 `podnet serve` serves only the files in `--dir`:
@@ -601,8 +601,8 @@ podnet git init --root ./repos app      # the bare repository ./repos/app.git
 podnet git serve --root ./repos --anon-read \
   --push-user me --push-password-file ./pass   # smart HTTP through a quick tunnel
 podnet git serve --root ./repos --local 127.0.0.1:8080 --ssh 127.0.0.1:2222 \
-  --users users --authorized-keys ~/.ssh/authorized_keys --via none
-podnet git serve --root ./repos --via relay --pair NAME \
+  --users users --authorized-keys ~/.ssh/authorized_keys --ingress none
+podnet git serve --root ./repos --ingress relay --pair NAME \
   --authorized-keys ~/.ssh/authorized_keys     # SSH through a relay pair
 podnet git urls --root ./repos          # the clone URLs and the host key
 ```

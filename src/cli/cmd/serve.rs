@@ -18,9 +18,9 @@ use crate::cli::cmd::tunnel::preflight;
 use crate::cli::opts::{Show, TunnelOpts};
 use crate::cli::signals::sleep_or_signal;
 
-/// The road of the files to the visitors (`--via`).
+/// The road of the files to the visitors (`--ingress`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
-pub(crate) enum Via {
+pub(crate) enum Road {
     /// A Cloudflare tunnel: a quick tunnel, or the named tunnel of --token.
     Tunnel,
     /// A node of a relay pair (podnet relay pair); the operator reaches
@@ -80,14 +80,14 @@ pub(crate) struct ServeArgs {
     anon_read: bool,
     /// Read a password from the first line of stdin, print its hash for
     /// --users, and exit.
-    #[arg(long, conflicts_with_all = ["path", "dir", "users", "pin", "anon_read", "local", "via"])]
+    #[arg(long, conflicts_with_all = ["path", "dir", "users", "pin", "anon_read", "local", "ingress"])]
     hash_password: bool,
     /// The road to the visitors: tunnel (the default with no --local),
-    /// relay, or none (the default with --local). --via tunnel or relay
+    /// relay, or none (the default with --local). --ingress tunnel or relay
     /// with --local serves the local listeners too.
     #[arg(long, value_enum)]
-    via: Option<Via>,
-    /// With --via relay: the pair name. Default: the pair with the most
+    ingress: Option<Road>,
+    /// With --ingress relay: the pair name. Default: the pair with the most
     /// time left; at its expiry the node takes the next stored pair.
     #[arg(long, value_name = "NAME")]
     pair: Option<String>,
@@ -96,7 +96,7 @@ pub(crate) struct ServeArgs {
     /// 0600). Port 0 takes a free port; podnet prints the bound address. A
     /// unix socket that answers is refused (exit 69, --replace takes it
     /// over), a stale socket is removed, a file that is not a socket is
-    /// refused (exit 64). With no --via, podnet makes no tunnel.
+    /// refused (exit 64). With no --ingress, podnet makes no tunnel.
     #[arg(long, value_name = "ADDR", conflicts_with = "check")]
     local: Vec<String>,
     /// Named-tunnel token. Prefer the variable TUNNEL_TOKEN or
@@ -134,20 +134,20 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
             "serve: give the directory to serve: podnet serve DIR",
         ));
     }
-    let via = args.via.unwrap_or(if args.local.is_empty() {
-        Via::Tunnel
+    let ingress = args.ingress.unwrap_or(if args.local.is_empty() {
+        Road::Tunnel
     } else {
-        Via::None
+        Road::None
     });
-    if via == Via::None && args.local.is_empty() {
-        return Err(usage("serve --via none needs --local ADDR"));
+    if ingress == Road::None && args.local.is_empty() {
+        return Err(usage("serve --ingress none needs --local ADDR"));
     }
-    if args.pair.is_some() && via != Via::Relay {
-        return Err(usage("serve --pair is for --via relay"));
+    if args.pair.is_some() && ingress != Road::Relay {
+        return Err(usage("serve --pair is for --ingress relay"));
     }
-    if args.common.check && via != Via::Tunnel {
+    if args.common.check && ingress != Road::Tunnel {
         return Err(usage(
-            "serve --check checks a tunnel: it is for --via tunnel",
+            "serve --check checks a tunnel: it is for --ingress tunnel",
         ));
     }
     let mut files = files_config(&args)?;
@@ -166,9 +166,9 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
     for local in &args.local {
         locals.push(bind_local(local, args.common.detach.replace, router.clone()).await?);
     }
-    match via {
-        Via::None => serve_local(&args, locals, pin).await,
-        Via::Relay => {
+    match ingress {
+        Road::None => serve_local(&args, locals, pin).await,
+        Road::Relay => {
             announce_locals(show, args.dir(), &locals);
             crate::cli::cmd::serve_relay::serve_relay(
                 args.pair.as_deref(),
@@ -180,14 +180,14 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
             )
             .await
         }
-        Via::Tunnel => {
+        Road::Tunnel => {
             announce_locals(show, args.dir(), &locals);
             serve_tunnel(&args, files).await
         }
     }
 }
 
-/// `serve --via tunnel`: the files through a Cloudflare tunnel.
+/// `serve --ingress tunnel`: the files through a Cloudflare tunnel.
 async fn serve_tunnel(args: &ServeArgs, files: FilesConfig) -> Result<()> {
     let mut config = Config::default();
     if let Some(token) = &args.token {

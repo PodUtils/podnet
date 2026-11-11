@@ -515,7 +515,7 @@ jobs:
           if target/release/podnet ps --json | jq -e '.instances[] | select(.name == "relaynode")' > /dev/null; then
             echo "the node instance runs after relay stop"; exit 1
           fi
-      # T-091: the file server through the reverse relay: serve --via relay,
+      # T-091: the file server through the reverse relay: serve --ingress relay,
       # and relay connect --listen on the side of the operator.
       - name: File server through the reverse relay
         timeout-minutes: 4
@@ -530,7 +530,7 @@ jobs:
           www="$RUNNER_TEMP/www-relay"
           mkdir -p "$www"
           printf 'over the relay' > "$www/a.txt"
-          target/release/podnet serve "$www" --via relay --pair "$name" --list --detach --name filesrelay > /dev/null
+          target/release/podnet serve "$www" --ingress relay --pair "$name" --list --detach --name filesrelay > /dev/null
           target/release/podnet relay connect "$name" --listen tcp://127.0.0.1:18191 --detach --name filesconnect > /dev/null
           test "$(curl -fsS --retry 5 --retry-all-errors --retry-delay 2 http://127.0.0.1:18191/a.txt)" = 'over the relay'
           head -c 1048576 /dev/urandom > "$RUNNER_TEMP/relay.bin"
@@ -540,7 +540,7 @@ jobs:
           target/release/podnet stop filesconnect
           target/release/podnet stop filesrelay
           target/release/podnet relay stop "$name" > /dev/null
-      # T-094: git over SSH through the reverse relay: git serve --via
+      # T-094: git over SSH through the reverse relay: git serve --ingress
       # relay, and ssh with podnet relay connect as the ProxyCommand.
       - name: Git over SSH through the reverse relay
         timeout-minutes: 5
@@ -558,7 +558,7 @@ jobs:
           ssh-keygen -q -t ed25519 -N '' -f "$RUNNER_TEMP/git_key"
           cp "$RUNNER_TEMP/git_key.pub" "$RUNNER_TEMP/git_keys"
           key="$RUNNER_TEMP/git-host-key"
-          target/release/podnet git serve --root "$repos" --via relay --pair "$name" --authorized-keys "$RUNNER_TEMP/git_keys" --host-key "$key" --detach --name gitrelay > /dev/null
+          target/release/podnet git serve --root "$repos" --ingress relay --pair "$name" --authorized-keys "$RUNNER_TEMP/git_keys" --host-key "$key" --detach --name gitrelay > /dev/null
           echo "$name $(target/release/podnet git urls --root "$repos" --host-key "$key" --json | jq -r .host_key)" > "$RUNNER_TEMP/git_known"
           export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/git_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/git_known -o HostKeyAlias=$name -o ProxyCommand='$PWD/target/release/podnet relay connect $name'"
           work="$RUNNER_TEMP/gitrelaywork"

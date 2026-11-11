@@ -180,6 +180,22 @@ impl SpecNetwork {
         }
     }
 
+    /// The URL of the relay network: `Some(None)` for `relay` (the relay of
+    /// `PODNET_RELAY`, else the default), `Some(Some(URL))` for `relay:URL`,
+    /// `None` for each other network.
+    pub fn relay_url(&self) -> Option<Option<&str>> {
+        match &self.kind {
+            Kind::Relay(url) => Some(url.as_deref()),
+            _ => None,
+        }
+    }
+
+    /// True when the spec is a proxy of the process (`--proxy`), not a hop
+    /// that only `podnet pod -x` takes.
+    pub fn is_process_proxy(&self) -> bool {
+        matches!(self.kind, Kind::Proxy(_))
+    }
+
     /// The row of this network in [`networks`].
     pub fn row(&self) -> &'static Row {
         let scheme = self.scheme();

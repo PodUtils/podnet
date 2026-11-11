@@ -3,12 +3,12 @@
 //!
 //! * `--local ADDR`: the HTTP router on a local listener (as `serve
 //!   --local`).
-//! * `--via tunnel`: the HTTP router through a quick tunnel (the ingress
+//! * `--ingress tunnel`: the HTTP router through a quick tunnel (the ingress
 //!   service `git:`).
 //! * `--ssh LISTEN`: the SSH server on HOST:PORT or unix:PATH.
-//! * `--via relay`: the SSH server on a private unix socket of the run
+//! * `--ingress relay`: the SSH server on a private unix socket of the run
 //!   directory, and a node of a relay pair that connects each session to
-//!   it (as `serve --via relay`). The operator uses `podnet relay connect
+//!   it (as `serve --ingress relay`). The operator uses `podnet relay connect
 //!   NAME` as the ProxyCommand of ssh.
 //!
 //! The URLs go to a record in the state directory for `podnet git urls`.
@@ -28,7 +28,7 @@ use podnet::ingress::{Ingress, Service};
 use crate::cli::cmd::connect::unix_listener;
 use crate::cli::cmd::git::{default_host_key, real_root, record_path};
 use crate::cli::cmd::local::bind_local;
-use crate::cli::cmd::serve::Via;
+use crate::cli::cmd::serve::Road;
 use crate::cli::cmd::tunnel::preflight;
 use crate::cli::opts::{Show, TunnelOpts};
 use crate::cli::signals::sleep_or_signal;
@@ -55,8 +55,8 @@ pub(crate) struct GitServeArgs {
     /// tunnel; the default with no --local and no --ssh), relay (SSH
     /// through a relay pair), or none (only --local and --ssh).
     #[arg(long, value_enum)]
-    via: Option<Via>,
-    /// With --via relay: the pair name. Default: the pair with the most
+    ingress: Option<Road>,
+    /// With --ingress relay: the pair name. Default: the pair with the most
     /// time left.
     #[arg(long, value_name = "NAME")]
     pair: Option<String>,
@@ -149,21 +149,21 @@ type Servers = tokio::task::JoinSet<Result<()>>;
 
 pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
     let root = real_root(&args.root)?;
-    let via = args
-        .via
+    let ingress = args
+        .ingress
         .unwrap_or(if args.local.is_empty() && args.ssh.is_none() {
-            Via::Tunnel
+            Road::Tunnel
         } else {
-            Via::None
+            Road::None
         });
-    if via == Via::None && args.local.is_empty() && args.ssh.is_none() {
-        return Err(usage("--via none needs --local or --ssh"));
+    if ingress == Road::None && args.local.is_empty() && args.ssh.is_none() {
+        return Err(usage("--ingress none needs --local or --ssh"));
     }
-    if args.pair.is_some() && via != Via::Relay {
-        return Err(usage("--pair is for --via relay"));
+    if args.pair.is_some() && ingress != Road::Relay {
+        return Err(usage("--pair is for --ingress relay"));
     }
-    if args.common.check && via != Via::Tunnel {
-        return Err(usage("--check checks a tunnel: it is for --via tunnel"));
+    if args.common.check && ingress != Road::Tunnel {
+        return Err(usage("--check checks a tunnel: it is for --ingress tunnel"));
     }
     if args.common.auth_user.is_some() {
         return Err(usage("give the HTTP user with --push-user or --users"));
@@ -216,7 +216,7 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
         files.push(file);
         servers.spawn(async move { Ok(server.await??) });
     }
-    let ssh_needed = args.ssh.is_some() || via == Via::Relay;
+    let ssh_needed = args.ssh.is_some() || ingress == Road::Relay;
     let ssh = if ssh_needed {
         let key_path = match &args.host_key {
             Some(path) => path.clone(),
@@ -261,8 +261,8 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
         }
     }
     let _record = RecordFile(record_path(&root).ok());
-    let result = match via {
-        Via::None => {
+    let result = match ingress {
+        Road::None => {
             urls.record(None);
             podnet::detach::arm_stop();
             let doc = urls.doc(None);
@@ -274,11 +274,11 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
             podnet::detach::ready(doc);
             run_until(args.common.run_for, &mut servers).await
         }
-        Via::Relay => {
-            let (config, options) = ssh.expect("--via relay serves SSH");
+        Road::Relay => {
+            let (config, options) = ssh.expect("--ingress relay serves SSH");
             serve_relay(&args, &mut urls, config, options, &mut servers).await
         }
-        Via::Tunnel => serve_tunnel(&args, &urls, http, &mut servers).await,
+        Road::Tunnel => serve_tunnel(&args, &urls, http, &mut servers).await,
     };
     drop(files);
     result
@@ -356,7 +356,7 @@ async fn run_until(run_for: Option<u64>, servers: &mut Servers) -> Result<()> {
     }
 }
 
-/// `--via tunnel`: the HTTP router through a quick tunnel.
+/// `--ingress tunnel`: the HTTP router through a quick tunnel.
 async fn serve_tunnel(
     args: &GitServeArgs,
     urls: &Urls,
@@ -392,7 +392,7 @@ async fn serve_tunnel(
     }
 }
 
-/// `--via relay`: the SSH server behind the node of a relay pair.
+/// `--ingress relay`: the SSH server behind the node of a relay pair.
 async fn serve_relay(
     args: &GitServeArgs,
     urls: &mut Urls,

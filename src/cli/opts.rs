@@ -280,6 +280,10 @@ pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
 /// Apply --proxy, --no-proxy and --resolve.
 pub(crate) fn network_options(cli: &Cli) -> Result<()> {
     use podnet::egress::Proxy;
+    // T-060: main rewrites each --egress into its old flag before the parse.
+    if let Some(spec) = cli.egress.first() {
+        bail!("--egress {spec}: give --egress before the -- of the program");
+    }
     // The pins first: the first dialer, of --proxy or --no-proxy, takes them.
     if let Some(list) = &cli.resolve {
         podnet::resolve::set_pins(list).context("--resolve")?;

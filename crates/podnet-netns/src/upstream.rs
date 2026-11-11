@@ -64,16 +64,33 @@ impl Proxy {
             });
         }
         // unix:/path or socks5+unix:/path — a SOCKS5 proxy on a unix socket.
+        // socks5h+unix:/path is the form of the proxy of the process (T-060).
         if let Some(path) = spec
             .strip_prefix("unix:")
             .or_else(|| spec.strip_prefix("socks5+unix:"))
             .or_else(|| spec.strip_prefix("socks5+unix://"))
+            .or_else(|| spec.strip_prefix("socks5h+unix:"))
         {
             if path.is_empty() {
                 bail!("unix proxy {spec:?} has no path");
             }
             return Ok(Self {
                 kind: ProxyKind::Socks5,
+                host: String::new(),
+                port: 0,
+                user: None,
+                pass: None,
+                unix_path: Some(path.to_string()),
+            });
+        }
+        // http+unix:/path: HTTP CONNECT on a unix socket, the form of the
+        // proxy of the process (T-060); http://unix:/path is the same.
+        if let Some(path) = spec.strip_prefix("http+unix:") {
+            if path.is_empty() {
+                bail!("the unix proxy {spec:?} has no path");
+            }
+            return Ok(Self {
+                kind: ProxyKind::Http,
                 host: String::new(),
                 port: 0,
                 user: None,

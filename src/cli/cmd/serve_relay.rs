@@ -1,4 +1,4 @@
-//! `serve --via relay` (T-091): the file server behind a node of a relay
+//! `serve --ingress relay` (T-091): the file server behind a node of a relay
 //! pair. The router listens on a private unix socket in the run
 //! directory, and the node of the pair connects each session of an
 //! operator to it (as `serve --local unix:PATH` with `relay node --to

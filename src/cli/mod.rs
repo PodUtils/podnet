@@ -7,6 +7,7 @@ pub(crate) mod cmd;
 pub(crate) mod help;
 pub(crate) mod opts;
 pub(crate) mod signals;
+pub(crate) mod way;
 
 use std::path::PathBuf;
 
@@ -61,6 +62,12 @@ pub(crate) struct Cli {
     /// Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     #[arg(long, global = true)]
     pub(crate) no_proxy: bool,
+    /// The way out, as a network spec: direct (as --no-proxy), a proxy URL
+    /// (as --proxy), relay or relay:URL (as --transport relay and --relay).
+    /// With podnet pod, each --egress is one -x hop of the chain, in its order
+    /// (also tailscale:/PATH and unix:/PATH).
+    #[arg(long, global = true, value_name = "SPEC")]
+    pub(crate) egress: Vec<String>,
     /// Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
     /// adds to it. TLS still checks the name of the certificate.
     #[arg(long, global = true, value_name = "HOST=IP")]
@@ -257,3 +264,5 @@ mod argv_tests;
 mod help_tests;
 #[cfg(test)]
 mod signals_tests;
+#[cfg(test)]
+mod way_tests;

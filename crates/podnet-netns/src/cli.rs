@@ -103,8 +103,11 @@ Options:
                              http://[user:pass@]host:port
                              socks5://unix:/path     (unix-socket proxy)
                              http://unix:/path       (HTTP CONNECT on a unix socket)
+                             socks5h+unix:/path, http+unix:/path (the same)
                              tailscale:/path/to/tailscaled.sock
-                           Default: $ALL_PROXY, $HTTPS_PROXY or $HTTP_PROXY
+                           Default: $ALL_PROXY, $HTTPS_PROXY or $HTTP_PROXY.
+                           --egress SPEC is the same option (its name in each
+                           podnet command)
   -r, --rule <SPEC>        Per-destination route; first match wins:
                              domain:NAME=socks5://host:port
                              domain:.example.com=...  (the name and each
@@ -306,7 +309,8 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
                 verbose = true;
                 i += 1;
             }
-            "-x" | "--proxy" => {
+            // T-060: --egress is the name of -x in each podnet command.
+            "-x" | "--proxy" | "--egress" => {
                 let spec = argv.get(i + 1).context("--proxy needs a value")?;
                 proxies.push(Proxy::parse(spec)?);
                 i += 2;

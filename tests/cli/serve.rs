@@ -437,9 +437,9 @@ fn serve_dir_with_list_upload_and_users() {
         assert!(!sock.exists(), "{} stays", sock.display());
     }
 
-    // --via none needs --local; --upload needs a write user.
+    // --ingress none needs --local; --upload needs a write user.
     let dir_arg = dir.to_str().unwrap();
-    let out = podnet(&["serve", dir_arg, "--via", "none"]);
+    let out = podnet(&["serve", dir_arg, "--ingress", "none"]);
     assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));
     let out = podnet(&["serve", dir_arg, "--local", &addrs[0], "--upload"]);
     assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));

@@ -51,6 +51,15 @@ fn main() {
     // Issue 210: the error report gives the refusal of a quick tunnel.
     podnet::report::read_refusals_with(podnet::quicktunnel::retry_of);
     let args = cloudflared_compat(args);
+    // T-060: each --egress becomes its old flag (--no-proxy, --proxy,
+    // --transport relay, or -x of the pod).
+    let args = match cli::way::egress_aliases(args) {
+        Ok(args) => args,
+        Err(err) => {
+            eprintln!("podnet: {err}");
+            std::process::exit(podnet::exit::USAGE);
+        }
+    };
     let argv: Vec<String> = args
         .iter()
         .map(|a| a.to_string_lossy().into_owned())
