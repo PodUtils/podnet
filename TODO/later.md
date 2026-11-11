@@ -778,7 +778,7 @@ The `rust-version` of `Cargo.toml` is at or above the release in which `try_upda
 
 ## Done
 
-2026-11-11, commit 34730ad. The macro `update_atomic!` is removed from `src/lib.rs`,
+2026-11-11, commit 7963170. The macro `update_atomic!` is removed from `src/lib.rs`,
 `crates/podnet-core/src/lib.rs` and `crates/podnet-serve/src/lib.rs`. The three uses call
 `AtomicX::try_update(Ordering::SeqCst, Ordering::SeqCst, f)`: `PinGate::unlock` in
 `crates/podnet-serve/src/gate.rs`, and `reserve_bytes` and the file-slot reserve in
