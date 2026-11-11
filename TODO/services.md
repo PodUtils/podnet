@@ -1234,6 +1234,14 @@ The step "router" passes.
 
 T-100 is done.
 
+## Correction
+
+2026-11-11: the start condition is not enough. Step 1 needs the network `warp` of the registry
+(`src/networks.rs` has no WARP spec), and that network is T-057 (a dialer and datagrams for WARP), which
+waits for `pod-warp` (T-050). The step with `relay` and `direct` alone proves no WARP. T-101 starts when
+T-057 is done.
+
+
 # T-102: Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole`
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.2 and 3 (C8);
