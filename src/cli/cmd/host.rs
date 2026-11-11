@@ -15,6 +15,11 @@ pub(crate) struct DoctorArgs {
     /// Print one JSON document.
     #[arg(long)]
     json: bool,
+    /// A short run: one sample for each path, and 15 s for the whole run. A
+    /// part that does not end in time gets the verdict `unknown`. The JSON
+    /// document keeps the same keys.
+    #[arg(long, conflicts_with_all = ["agent", "samples"])]
+    quick: bool,
     /// Test what dev work can do here: git over HTTPS and SSH, the package
     /// registries, UDP DNS, IPv6 and localhost, directly, through the proxy
     /// and through a running podnet warp up; then print the commands to run.
@@ -245,11 +250,18 @@ pub(crate) async fn doctor(args: DoctorArgs) -> Result<()> {
     }
     podnet::udp::check_edge_env()?;
     podnet::udp::Choice::from_env()?;
+    let base = if args.quick {
+        podnet::doctor::Options::quick()
+    } else {
+        podnet::doctor::Options {
+            samples: args.samples as usize,
+            ..podnet::doctor::Options::default()
+        }
+    };
     let report = podnet::doctor::run(podnet::doctor::Options {
-        samples: args.samples as usize,
         timeout: Duration::from_secs(args.timeout),
         relay: args.relay.filter(|r| !r.trim().is_empty()),
-        ..podnet::doctor::Options::default()
+        ..base
     })
     .await;
     if args.json {

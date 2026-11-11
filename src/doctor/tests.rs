@@ -122,6 +122,7 @@ fn the_roads_follow_the_legs() {
             detail: String::new(),
         },
         git: git_check::git("git"),
+        quick: false,
     };
     let roads = report.roads();
     assert_eq!(roads[0].0, "direct");
@@ -194,4 +195,38 @@ fn doctor_reports_a_missing_git() {
     if found.verdict == Verdict::Ok {
         assert!(found.version.as_deref().unwrap().starts_with("git version"));
     }
+}
+
+/// T-216: the keys of the `dns` object of a path are fixed in schema 1.
+#[test]
+fn doctor_json_dns_keys_are_fixed() {
+    let keys = |v: &Value| {
+        let mut k: Vec<String> = v.as_object().unwrap().keys().cloned().collect();
+        k.sort();
+        k
+    };
+    let mut ok = path("api", "api.example", 443, true);
+    ok.dns = Some(Ok((
+        vec!["192.0.2.1".parse().unwrap()],
+        Duration::from_millis(3),
+    )));
+    let mut failed = path("warp-api", "warp.example", 443, false);
+    failed.dns = Some(Err("no such name".into()));
+    let report = Report {
+        proxy: Value::Null,
+        paths: vec![ok, failed],
+        udp: ("1.2.3.4:7844".parse().unwrap(), Egress::Unknown("x".into())),
+        names: None,
+        legs: Vec::new(),
+        clock: Clock {
+            verdict: Verdict::Unknown,
+            skew: None,
+            detail: String::new(),
+        },
+        git: git_check::git("git"),
+        quick: false,
+    };
+    let json = report.to_json();
+    assert_eq!(keys(&json["paths"][0]["dns"]), ["addresses", "ms"]);
+    assert_eq!(keys(&json["paths"][1]["dns"]), ["error"]);
 }

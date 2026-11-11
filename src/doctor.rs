@@ -44,6 +44,23 @@ pub struct Options {
     pub timeout: Duration,
     /// The relay to test (`--relay`); else `PODNET_RELAY`, else the default.
     pub relay: Option<String>,
+    /// The time limit of the whole run (`--quick`). A part that does not end
+    /// in time gets the verdict `unknown`.
+    pub deadline: Option<Duration>,
+}
+
+/// The time limit of `--quick`.
+pub const QUICK_LIMIT: Duration = Duration::from_secs(15);
+
+impl Options {
+    /// The limits of `--quick`: one sample for each path, 15 s for the run.
+    pub fn quick() -> Self {
+        Self {
+            samples: 1,
+            deadline: Some(QUICK_LIMIT),
+            ..Self::default()
+        }
+    }
 }
 
 impl Default for Options {
@@ -54,6 +71,7 @@ impl Default for Options {
             budget: Duration::from_secs(10),
             timeout: Duration::from_secs(3),
             relay: None,
+            deadline: None,
         }
     }
 }
@@ -190,6 +208,8 @@ pub struct Report {
     pub clock: Clock,
     /// The installed git, for git serve (T-094).
     pub git: Git,
+    /// True for a run of `--quick`.
+    pub quick: bool,
 }
 
 /// The clock of this host against the `Date` header of an answer.
@@ -240,75 +260,6 @@ impl Report {
                 })
             })
             .collect()
-    }
-
-    pub fn to_json(&self) -> Value {
-        let ms = |d: Option<Duration>| d.map(|d| (d.as_secs_f64() * 10000.0).round() / 10.0);
-        crate::status::stamped(json!({
-            "ok": self.ok(),
-            "roads": self.roads().iter().map(|(road, verdict, reason)| json!({
-                "road": road,
-                "verdict": verdict.name(),
-                "status": verdict.name(),
-                "reason": reason,
-            })).collect::<Vec<_>>(),
-            "clock": {
-                "verdict": self.clock.verdict.name(),
-                "status": self.clock.verdict.name(),
-                "skew_s": self.clock.skew,
-                "detail": self.clock.detail,
-            },
-            "git": self.git.to_json(),
-            "proxy": self.proxy,
-            "paths": self.paths.iter().map(|p| json!({
-                "id": p.target.id,
-                "target": p.target.authority(),
-                "via": p.via,
-                "verdict": p.verdict.name(),
-                "status": p.verdict.name(),
-                "detail": p.detail,
-                "samples": {
-                    "sent": p.sent,
-                    "answered": p.answered,
-                    "loss": p.loss(),
-                    "best_ms": ms(p.best),
-                    "median_ms": ms(p.median),
-                    "p95_ms": ms(p.p95),
-                    "jitter_ms": ms(p.jitter),
-                },
-                "tls": p.tls.as_ref().map(|t| json!({
-                    "verdict": t.verdict.name(),
-                    "status": t.verdict.name(),
-                    "issuer": t.issuer,
-                    "detail": t.detail,
-                })),
-                "dns": p.dns.as_ref().map(|d| match d {
-                    Ok((addrs, took)) => json!({
-                        "addresses": addrs.iter().map(|a| a.to_string()).collect::<Vec<_>>(),
-                        "ms": ms(Some(*took)),
-                    }),
-                    Err(e) => json!({ "error": e }),
-                }),
-            })).collect::<Vec<_>>(),
-            "udp": {
-                "target": self.udp.0.to_string(),
-                "verdict": self.udp.1.name(),
-                "status": match self.udp.1 {
-                    Egress::Answered(_) => "ok",
-                    Egress::Refused(_) => "fail",
-                    Egress::Unknown(_) => "unknown",
-                },
-                "detail": self.udp.1.detail(),
-            },
-            "names": self.names,
-            "next": self.next(),
-            "legs": self.legs.iter().map(|l| json!({
-                "leg": l.name,
-                "verdict": l.verdict.name(),
-                "status": l.verdict.name(),
-                "reason": l.reason,
-            })).collect::<Vec<_>>(),
-        }))
     }
 
     pub fn text(&self) -> String {
@@ -430,14 +381,39 @@ pub async fn run(options: Options) -> Report {
     let udp = tokio::task::spawn_blocking(move || {
         crate::udp::probe(udp_target, crate::udp::DOCTOR_DEADLINE)
     });
-    let paths =
-        futures::future::join_all(targets.into_iter().map(|t| path(t, &options, start))).await;
-    let udp = udp
-        .await
-        .unwrap_or_else(|e| Egress::Unknown(format!("the probe did not run: {e}")));
+    // The end of the run (`--quick`); a part that is late gets `unknown`.
+    let end = options.deadline.map(|d| tokio::time::Instant::now() + d);
+    let late = || async move {
+        match end {
+            Some(end) => tokio::time::sleep_until(end).await,
+            None => std::future::pending().await,
+        }
+    };
+    let paths = futures::future::join_all(targets.into_iter().map(|t| {
+        let unfinished = unfinished(&t, options.deadline);
+        let options = &options;
+        async move {
+            tokio::select! {
+                p = path(t, options, start) => p,
+                () = late() => unfinished,
+            }
+        }
+    }))
+    .await;
+    let udp = tokio::select! {
+        r = udp => r.unwrap_or_else(|e| Egress::Unknown(format!("the probe did not run: {e}"))),
+        () = late() => Egress::Unknown(LATE.into()),
+    };
     let names = names(&paths);
     let legs = legs(&paths, &udp);
-    let clock = clock(&paths, options.timeout).await;
+    let clock = tokio::select! {
+        c = clock(&paths, options.timeout) => c,
+        () = late() => Clock {
+            verdict: Verdict::Unknown,
+            skew: None,
+            detail: LATE.into(),
+        },
+    };
     Report {
         proxy,
         paths,
@@ -446,11 +422,34 @@ pub async fn run(options: Options) -> Report {
         legs,
         clock,
         git: git_check::git("git"),
+        quick: options.deadline.is_some(),
+    }
+}
+
+/// The reason of a part that did not end in the time limit.
+const LATE: &str = "no answer in the time limit of --quick";
+
+/// The path of a target that did not end in the time limit.
+fn unfinished(target: &Target, limit: Option<Duration>) -> Path {
+    Path {
+        target: target.clone(),
+        via: crate::egress::proxy_for(&target.host, target.port).map(|p| p.label()),
+        verdict: Verdict::Unknown,
+        detail: format!("{LATE} ({} s)", limit.unwrap_or_default().as_secs()),
+        sent: 0,
+        answered: 0,
+        best: None,
+        median: None,
+        p95: None,
+        jitter: None,
+        tls: None,
+        dns: None,
     }
 }
 
 mod clock_check;
 mod git_check;
+mod json;
 use clock_check::clock;
 pub use clock_check::parse_imf_fixdate;
 pub use git_check::Git;

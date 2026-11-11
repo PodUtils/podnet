@@ -18,6 +18,9 @@ enum Action {
     Silent,
     /// 200, then TLS with the certificate of the test CA.
     Terminate,
+    /// 200 after 8 s, then no byte: the connect is slow and the TLS never
+    /// starts.
+    Slow,
 }
 
 const PASSWORD: &str = "doctor-secret-pw";
@@ -93,6 +96,11 @@ fn handle(mut stream: TcpStream, rule: fn(&str) -> Action, config: Arc<rustls::S
             let _ = stream.write_all(b"HTTP/1.1 200 Connection established\r\n\r\n");
             std::thread::sleep(Duration::from_secs(5));
         }
+        Action::Slow => {
+            std::thread::sleep(Duration::from_secs(8));
+            let _ = stream.write_all(b"HTTP/1.1 200 Connection established\r\n\r\n");
+            std::thread::sleep(Duration::from_secs(30));
+        }
         Action::Terminate => {
             let _ = stream.write_all(b"HTTP/1.1 200 Connection established\r\n\r\n");
             let conn = rustls::ServerConnection::new(config).unwrap();
@@ -106,17 +114,19 @@ fn handle(mut stream: TcpStream, rule: fn(&str) -> Action, config: Arc<rustls::S
 /// Run `podnet doctor --json` through the proxy on `port`. Gives the exit code,
 /// the JSON document and all the output.
 fn doctor(port: u16) -> (Option<i32>, serde_json::Value, String) {
+    doctor_with(port, &["--samples", "2", "--timeout", "1"])
+}
+
+/// As [`doctor`], with the given arguments after `doctor --json`.
+fn doctor_with(port: u16, extra: &[&str]) -> (Option<i32>, serde_json::Value, String) {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_podnet"));
     cmd.args([
         "--proxy",
         &format!("http://tester:{PASSWORD}@127.0.0.1:{port}"),
         "doctor",
         "--json",
-        "--samples",
-        "2",
-        "--timeout",
-        "1",
     ])
+    .args(extra)
     // A TEST-NET address: no answer, and no proxy rule exempts it.
     .env("PODNET_EDGE", "192.0.2.1:7844")
     .env_remove("PODNET_ERROR_PROGRAM")
@@ -235,4 +245,105 @@ fn a_proxy_that_answers_200_and_carries_nothing() {
             .contains("the proxy answers and carries nothing"),
         "{all}"
     );
+}
+
+/// The sorted keys of a JSON object.
+fn keys(v: &serde_json::Value) -> Vec<&str> {
+    let mut keys: Vec<&str> = v.as_object().unwrap().keys().map(String::as_str).collect();
+    keys.sort_unstable();
+    keys
+}
+
+/// T-216: the keys of `doctor --json` are the keys of schema 1
+/// (`docs/protocol.md`, section 9). A key is added, never removed or renamed.
+#[test]
+fn doctor_json_keys_are_fixed() {
+    test_host::need_loopback!();
+    let port = proxy(|authority| {
+        if authority.ends_with(":7844") {
+            Action::Refuse
+        } else {
+            Action::Terminate
+        }
+    });
+    let (_, doc, all) = doctor_with(port, &["--quick", "--timeout", "1"]);
+    assert_eq!(doc["schema"], 1, "{all}");
+    assert_eq!(doc["quick"], true, "{all}");
+    assert_eq!(
+        keys(&doc),
+        [
+            "clock", "git", "legs", "names", "next", "ok", "paths", "podnet", "proxy", "quick",
+            "roads", "schema", "udp"
+        ]
+    );
+    assert_eq!(
+        keys(&doc["clock"]),
+        ["detail", "skew_s", "status", "verdict"]
+    );
+    assert_eq!(
+        keys(&doc["git"]),
+        ["detail", "status", "verdict", "version"]
+    );
+    assert_eq!(
+        keys(&doc["proxy"]),
+        ["credentials", "direct", "text", "url"]
+    );
+    assert_eq!(keys(&doc["udp"]), ["detail", "status", "target", "verdict"]);
+    for road in doc["roads"].as_array().unwrap() {
+        assert_eq!(keys(road), ["reason", "road", "status", "verdict"]);
+    }
+    for leg in doc["legs"].as_array().unwrap() {
+        assert_eq!(keys(leg), ["leg", "reason", "status", "verdict"]);
+    }
+    let paths = doc["paths"].as_array().unwrap();
+    assert!(paths.len() >= 5, "{all}");
+    for p in paths {
+        assert_eq!(
+            keys(p),
+            ["detail", "dns", "id", "samples", "status", "target", "tls", "verdict", "via"]
+        );
+        assert_eq!(
+            keys(&p["samples"]),
+            [
+                "answered",
+                "best_ms",
+                "jitter_ms",
+                "loss",
+                "median_ms",
+                "p95_ms",
+                "sent"
+            ]
+        );
+    }
+    // A path with a TLS result has these keys.
+    let tls = &path(&doc, "api")["tls"];
+    assert_eq!(
+        keys(tls),
+        ["detail", "issuer", "status", "verdict"],
+        "{all}"
+    );
+}
+
+/// T-216: `--quick` ends in the limit of 15 s. The fake proxy connects in 8 s
+/// and then never speaks TLS; with `--timeout 10` the path alone needs 18 s.
+#[test]
+fn doctor_quick_ends_in_the_limit() {
+    test_host::need_loopback!();
+    let port = proxy(|_| Action::Slow);
+    let begin = std::time::Instant::now();
+    let (_, doc, all) = doctor_with(port, &["--quick", "--timeout", "10"]);
+    let took = begin.elapsed();
+    assert!(took < Duration::from_secs(17), "{took:?}\n{all}");
+    assert!(took >= Duration::from_secs(14), "{took:?}");
+    assert_eq!(doc["quick"], true);
+    let api = path(&doc, "api");
+    assert_eq!(api["verdict"], "unknown", "{all}");
+    assert!(
+        api["detail"].as_str().unwrap().contains("time limit"),
+        "{all}"
+    );
+    for leg in doc["legs"].as_array().unwrap() {
+        assert_ne!(leg["verdict"], "ok", "{all}");
+    }
+    assert!(doc["udp"]["detail"].is_string());
 }
