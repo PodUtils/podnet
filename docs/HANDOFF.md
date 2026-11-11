@@ -49,6 +49,7 @@ measure with the runner), T-230 (the object `hold`), T-231 item 1, T-232
 | Issue | Waits for |
 | --- | --- |
 | #413 (COORD-006) | podcrates: the asks for `pod-relay`, `pod-dns`, `pod-proxy`, `pod-services` and `pod-warp`. Close it when each ask is in a release that podnet took. |
+| #427 (COORD-018, to podcrates) | podcrates imports the stack of `podnet-vnet` into `pod-netstack`; from the import those files take fixes only. Close it at the take. |
 | #425 (COORD-016, to podrunner) | podrunner reads it. Close it when podrunner answers or closes its COORD-001. |
 
 ## Tools of the session
