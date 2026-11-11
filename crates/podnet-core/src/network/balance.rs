@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use tokio::time::Instant;
 
+use super::health::{ProbeResult, Step, Thresholds, Tracker};
 use super::race::admit;
 use super::{BoxFuture, Class, Connected, Datagrams, Dial, Failure, Stage, Target, Way};
 
@@ -44,6 +45,16 @@ impl Health {
     pub fn takes_flows(self) -> bool {
         self != Health::Down
     }
+
+    /// `up`, `cooldown`, `probation` or `down`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Health::Up => "up",
+            Health::Cooldown => "cooldown",
+            Health::Probation => "probation",
+            Health::Down => "down",
+        }
+    }
 }
 
 /// One member of a group: a way and its weight (1 or more).
@@ -52,6 +63,8 @@ pub struct Member {
     pub way: Way,
     pub weight: u32,
     health: AtomicU8,
+    tracker: Mutex<Tracker>,
+    flows: AtomicU64,
 }
 
 impl Member {
@@ -61,7 +74,14 @@ impl Member {
             way,
             weight,
             health: AtomicU8::new(Health::Up.value()),
+            tracker: Mutex::new(Tracker::default()),
+            flows: AtomicU64::new(0),
         }
+    }
+
+    /// The flows that the pick gave this member.
+    pub fn flows(&self) -> u64 {
+        self.flows.load(Ordering::Relaxed)
     }
 
     pub fn health(&self) -> Health {
@@ -139,6 +159,49 @@ impl Balance {
         }
     }
 
+    /// Take the probe `result` of the member `index` (T-097): its tracker
+    /// steps, and the pick follows the new health. `control` is the result
+    /// of the control probe of this interval.
+    pub fn observe(
+        &self,
+        index: usize,
+        result: ProbeResult,
+        control: bool,
+        now: Instant,
+        t: &Thresholds,
+    ) -> Option<Step> {
+        let member = self.members.get(index)?;
+        let step = member
+            .tracker
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .observe(result, control, now, t);
+        member.health.store(step.health.value(), Ordering::Relaxed);
+        Some(step)
+    }
+
+    /// The status of the group (`podnet route status --json`, T-097): each
+    /// member with its health, its weight, the time of its last probe that
+    /// passed and its flows, and the refusals of the kill switch.
+    pub fn status(&self) -> serde_json::Value {
+        let members: Vec<serde_json::Value> = self
+            .members
+            .iter()
+            .map(|m| {
+                let rtt = m.tracker.lock().unwrap_or_else(|e| e.into_inner()).rtt();
+                serde_json::json!({
+                    "name": m.name,
+                    "way": m.way.label(),
+                    "weight": m.weight,
+                    "health": m.health().name(),
+                    "rtt_ms": rtt.map(|d| d.as_secs_f64() * 1000.0),
+                    "flows": m.flows(),
+                })
+            })
+            .collect();
+        serde_json::json!({ "group": self.name, "members": members, "refused": self.refused() })
+    }
+
     /// The count of the flows that the kill switch refused.
     pub fn refused(&self) -> u64 {
         self.refused.load(Ordering::Relaxed)
@@ -159,6 +222,7 @@ impl Balance {
         let mut at = self.next() % total;
         for member in self.members.iter().filter(|m| m.health().takes_flows()) {
             if at < u64::from(member.weight) {
+                member.flows.fetch_add(1, Ordering::Relaxed);
                 return Selection::One(member);
             }
             at -= u64::from(member.weight);
