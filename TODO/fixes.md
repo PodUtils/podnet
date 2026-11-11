@@ -4326,7 +4326,7 @@ on the first host still falls over.
 
 ## Done
 
-2026-11-11, commit b064e21. `src/warp/enrol.rs` (new): `register_or_load` takes `PATH.lock` (flock, 60 s, mode
+2026-11-11, commit f08840c. `src/warp/enrol.rs` (new): `register_or_load` takes `PATH.lock` (flock, 60 s, mode
 0600, kept), saves the record with `state: "created"` after `POST /reg`, sends `PATCH` and saves the complete
 record (no `state`). A stored `created` record resumes with `PATCH` and no `POST`; a 401 or 404 removes it and
 registers anew. A failed `PATCH` with an HTTP answer deletes the new device (best effort) and the record.
