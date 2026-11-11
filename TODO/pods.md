@@ -1052,3 +1052,39 @@ sh scripts/pod-runner-measure.sh   # no flow of the runner has a target in 198.1
 None`). The measure of T-229 (`docs/reports/pod-runner.md`): `config.sh` of the runner makes 3 flows to
 `api.github.com:443`, each by its name, and no flow to `198.18.0.0/15`.
 
+
+# T-234: netns: `parse_tcp_syn` reads a SYN in a header under 20 bytes and in a later fragment
+
+**Source:** PodUtils/podcrates#55 (COORD-030, the state line of 2026-11-11 01:40 UTC): the import of
+`netns/packet.rs` into `pod_hold::packet` (podcrates T-170, step 1).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+podcrates: "A defect of your `parse_tcp_syn`: it takes an IHL under 5 (it then reads the ports and the
+flags from the IP header) and a fragment past the first (no TCP header). `pod_hold::packet` refuses both;
+the test `a_header_shorter_than_20_bytes_is_no_syn` fails on your check. Port the fix, or take it with the
+next tag."
+
+## Premise
+
+- Read: `crates/podnet-netns/src/netns/packet.rs`, `parse_tcp_syn` checks `pkt.len() < ihl + 20` only;
+  `rst_reply_for_syn` calls it. The netns router holds each SYN that it parses (`hold_syns`).
+- Measured: the two tests of `pod_hold::packet`, ported, fail on the old code (`IHL 0` gives
+  `Some((10.2.0.2, 16384, ...))`; a fragment with offset 1 gives a SYN).
+- The file is frozen for the import of podcrates (T-170): a fix is allowed.
+
+## Approach
+
+1. Refuse an IHL under 5 and a fragment offset other than 0, as `pod_hold::packet` does.
+2. Port the two tests with their names.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib no_syn
+```

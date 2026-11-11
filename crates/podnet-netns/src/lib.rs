@@ -474,6 +474,45 @@ mod tests {
         assert!(a.octets()[0] == 198 && a.octets()[1] == 18);
     }
 
+    /// T-234 (the tests of `pod_hold::packet`): a SYN of 40 bytes from
+    /// 10.0.0.2:40000 to 93.184.216.34:443.
+    fn syn_packet() -> Vec<u8> {
+        let mut pkt = vec![0u8; 40];
+        pkt[0] = 0x45;
+        pkt[9] = 6;
+        pkt[12..16].copy_from_slice(&[10, 0, 0, 2]);
+        pkt[16..20].copy_from_slice(&[93, 184, 216, 34]);
+        pkt[20..22].copy_from_slice(&40000u16.to_be_bytes());
+        pkt[22..24].copy_from_slice(&443u16.to_be_bytes());
+        pkt[33] = 0x02;
+        pkt
+    }
+
+    /// T-234: an IHL under 5 puts the TCP header inside the IP header; it
+    /// is no SYN.
+    #[test]
+    fn a_header_shorter_than_20_bytes_is_no_syn() {
+        for ihl in 0u8..5 {
+            let mut pkt = syn_packet();
+            pkt[0] = 0x40 | ihl;
+            // The byte that the short header reads as the flags is a SYN.
+            pkt[usize::from(ihl) * 4 + 13] = 0x02;
+            assert_eq!(parse_tcp_syn(&pkt), None, "IHL {ihl}");
+            assert_eq!(crate::netns::rst_reply_for_syn(&pkt), None, "IHL {ihl}");
+        }
+    }
+
+    /// T-234: a fragment past the first holds no TCP header.
+    #[test]
+    fn a_fragment_past_the_first_is_no_syn() {
+        let mut pkt = syn_packet();
+        pkt[6..8].copy_from_slice(&1u16.to_be_bytes());
+        assert_eq!(parse_tcp_syn(&pkt), None);
+        // The first fragment (the flag MF, offset 0) holds the TCP header.
+        pkt[6..8].copy_from_slice(&0x2000u16.to_be_bytes());
+        assert!(parse_tcp_syn(&pkt).is_some());
+    }
+
     #[test]
     fn parses_a_tcp_syn() {
         let mut pkt = vec![0u8; 40];

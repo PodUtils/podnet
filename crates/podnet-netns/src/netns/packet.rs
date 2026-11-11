@@ -95,7 +95,10 @@ pub(crate) fn parse_tcp_syn(pkt: &[u8]) -> Option<(Ipv4Addr, u16, Ipv4Addr, u16)
         return None;
     }
     let ihl = (pkt[0] & 0x0f) as usize * 4;
-    if pkt.len() < ihl + 20 {
+    // T-234: an IHL under 5 puts the TCP header inside the IP header, and a
+    // later fragment holds no TCP header: neither is a SYN to read.
+    let offset = u16::from_be_bytes([pkt[6], pkt[7]]) & 0x1fff;
+    if ihl < 20 || offset != 0 || pkt.len() < ihl + 20 {
         return None;
     }
     let flags = pkt[ihl + 13];
