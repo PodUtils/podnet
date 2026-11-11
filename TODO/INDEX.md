@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**247 entries: 45 open, 10 partial, 20 blocked, 172 done.**
+**247 entries: 44 open, 10 partial, 20 blocked, 173 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 22 | 7 | 12 | 107 | 148 |
-| P3 | 23 | 2 | 6 | 39 | 70 |
-| **All** | 45 | 10 | 20 | 172 | 247 |
+| P3 | 22 | 2 | 6 | 40 | 70 |
+| **All** | 44 | 10 | 20 | 173 | 247 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -291,5 +291,5 @@ M8 Overlays, M9 Later.
 | [T-243](overlays.md) | P3 | M | M8 | feature | done | `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434) |
 | [T-244](later.md) | P3 | L | M9 | feature | blocked | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
 | [T-245](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |
-| [T-246](overlays.md) | P3 | S | M8 | feature | open | NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode |
+| [T-246](overlays.md) | P3 | S | M8 | feature | done | NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode |
 | [T-247](overlays.md) | P3 | M | M8 | measurement | blocked | NetBird: measure netstack mode on a proxy-only host |

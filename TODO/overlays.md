@@ -377,7 +377,7 @@ the stall of port 80 (not reproduced). The hop `pod -x tailscale:SOCKET` has no 
 **Milestone:** M8
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -409,6 +409,28 @@ cargo test --workspace -- network_spec_netbird netbird_refuses_a_name
 ## Start condition
 
 T-059 is done.
+
+## Done
+
+2026-11-11, commit b6f877a. `netbird` and `netbird:[PORT]` (default 1080) are a row of the registry
+(`src/networks.rs`, `src/networks/netbird.rs`): a dialer to the SOCKS5 listener at `127.0.0.1:PORT`, TCP only.
+An address target dials the listener. A name target fails with one line (`NetBird netstack mode has no DNS and
+takes the IP address of a peer only`) and sends nothing to the listener. `podnet net doctor` has the row
+`NetBird (SOCKS5 listener)`: a SOCKS5 greeting to `NB_SOCKS5_LISTENER_PORT`, else 1080; no answer is
+`unknown`. `--egress netbird:PORT` with `podnet pod` becomes the hop `-x 127.0.0.1:PORT`. The README has the
+section "NetBird in netstack mode" (limits: TCP only, IP addresses only, no authentication). The manual lists
+`NB_SOCKS5_LISTENER_PORT`.
+
+- Tests (all in the lib): `network_spec_netbird_takes_a_port_and_has_a_row`,
+  `network_spec_netbird_dials_an_address_through_the_listener` (fake SOCKS5 listener on the loopback),
+  `netbird_refuses_a_name_with_one_line_and_no_dial`,
+  `network_spec_netbird_doctor_greeting_answers_or_names_the_fault`,
+  `egress_alias_pod_takes_netbird_as_a_socks5_hop_on_the_loopback`: 5 passed. Before the change the tests did
+  not compile (no `netbird_greeting`).
+- `sh scripts/agent/check.sh`: exit 0.
+- Not proven: a real NetBird daemon (T-247). The fake listener follows RFC 1928, not the NetBird code. The
+  `--egress netbird:PORT` form works with `podnet pod` only; a command of the process gets the usage error
+  "a hop of podnet pod".
 
 # T-247: NetBird: measure netstack mode on a proxy-only host
 
