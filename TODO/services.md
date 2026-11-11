@@ -1796,7 +1796,7 @@ The live step "Git over SSH through the reverse relay" passes.
 **Milestone:** M6
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1822,8 +1822,8 @@ rule today) when the shadowed action is `reject` and the flag that allows it is 
 - `src/warp/rules.rs:1-12` documents that the first rule that matches wins. `Table::build`
   (`src/warp/rules.rs:100`) joins the flags and the file and compares nothing. `for_name`
   (`src/warp/rules.rs:122-129`) takes `.find`.
-- The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:240-260`) is the same loop;
-  `domain_matches` (`crates/podnet-netns/src/rules.rs:197-204`): `NAME` matches the name only, `.NAME`
+- The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:242-262`) is the same loop;
+  `domain_matches` (`crates/podnet-netns/src/rules.rs:199-206`): `NAME` matches the name only, `.NAME`
   matches the name and each name under it.
 - `warp proxy --check` is handled in `src/cli/cmd/warp/front.rs:25-41` (the flag `check: bool` is in the
   arguments of the command): it builds the table, prints each rule and exits 0, or 64 for a bad rule.
@@ -1877,3 +1877,25 @@ The two-line file above gives the warning and exit 64. The reverse order gives n
 ## Start condition
 
 The pod half has none. The WARP half waits for the take of `pod-warp` (T-050).
+
+## Correction
+
+2026-11-11. The pod half and the router half are done. The WARP half is left: `warp proxy -r` and `--rules`
+(`src/warp/rules.rs`, `Table::build`) get no lint, because that code goes to `pod-warp` (T-050). After the take,
+call `podnet_netns::rules::shadow::check` from the table build, with the place `--rule N` or `FILE:LINE`, and write a COORD
+issue (to podcrates) with the ask. The router file has no command flag yet: `RulesFile::open_with` takes
+`allow_shadowed`, and the caller that builds the router from a command line (T-098) must pass the flag.
+
+## Done
+
+2026-11-11, commit bebfb53. `crates/podnet-netns/src/rules/shadow.rs` holds the lint (`covers`, `shadowed`, `check`).
+`podnet pod -r` warns for a shadowed rule and exits 64 for a shadowed `reject`; `--allow-shadowed-rules` makes it a
+warning. The router file (`routes::parse_with`, `RulesFile::open_with`) does the same, with the line numbers of the file.
+Tests: `shadowed_rule_is_reported`, `shadowed_reject_is_an_error`, `reversed_order_gives_no_report`,
+`same_action_gives_no_report`, `exact_rule_does_not_cover_a_subdomain`, `rule_lint_agrees_with_the_lookup`,
+`pod_args_shadowed_reject_is_an_error`, `router_shadowed_reject_is_an_error`. With `covers` forced to false, 3 of the
+first 6 failed. Time of 10 000 rules (debug build, 4 cores, 1 run): 17 ms for domains, 92 ms for prefixes (an index by
+label and by prefix, not a pair loop). Not proven: the WARP half; a prefix file of 1 000 000 lines; the
+exit code 64 of the real binary (the test calls `parse_args`). `check.sh`: fmt, clippy, record, size, doc, layers 0; test:
+the shim tests `shim_datagram_of_another_user_is_dropped` and `the_shim_takes_the_same_user_only` fail with
+"Permission denied" (user switch in this sandbox; not run on old code), each other test passes.
