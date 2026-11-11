@@ -3978,7 +3978,7 @@ prerelease with the 8 binaries, `podnet.1`, `SHA256SUMS`, `SHA256SUMS.sigstore.j
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3991,11 +3991,11 @@ above. The check to satisfy is: no other user can connect, at any instant.
 
 ## Premise
 
-- `crates/podnet-netns/src/listen.rs:123-131` (`bind_private`) calls `UnixListener::bind(path)`, then
+- `crates/podnet-netns/src/listen.rs:127-170` (`bind_private`) calls `UnixListener::bind(path)`, then
   `set_permissions(path, 0o600)`.
 - The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:250`,
   `src/warp/proxy.rs:86`, `crates/podnet-vnet/src/proxy.rs:314`, `crates/podnet-vnet/src/switch.rs:434`,
-  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:159-162`),
+  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:250-253`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
 - `crates/podnet-netns/src/seccomp/accept.rs:46` is not exposed: it calls `private_dir` first
   (`crates/podnet-netns/src/seccomp/accept.rs:43`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:44`).
@@ -4037,6 +4037,26 @@ directory of the socket has the mode 0700 and that the final path does not exist
 final path has the mode 0600 when `bind_private` returns. Two concurrent calls on one path: one succeeds,
 the other gives `AddrInUse`, and neither removes the socket of the other. A crash after the bind and
 before the rename leaves no socket under the final name.
+
+## Correction
+
+2026-11-11: the moved socket keeps the name of its bind (`getsockname`, the name of an accepted socket):
+the staging path. The seccomp inbound listener needs the name of its path (T-150), and it binds in its
+own directory of mode 0700 (`private_dir`), so it takes `bind_in_private_dir` (a bind at the path, then
+0600) and no staging. A path too long for the staging name falls back to that bind too. The test of the
+umasks runs in a new process (the test binary again, `PODNET_TEST_UMASK`), not a fork: a fork copied the
+socket of a parallel test. For the same reason the probe child of `pod doctor` (T-231) closes each
+inherited descriptor but its pipe.
+
+## Done
+
+2026-11-11, commit 3c6173f. `crates/podnet-netns/src/listen.rs`: `bind_private` binds in `.pnb-HEX/s` (mode 0700)
+beside the path, sets 0600, moves the socket with `renameat2(RENAME_NOREPLACE)` (else `link` and `unlink`) and
+removes the directory; an existing path is `AddrInUse`. Tests: `cargo test -p podnet-netns --lib -- bind_private
+a_claim_refuses` (4: the seam asserts the 0700 directory and no final path before the chmod; the umasks 000, 002
+and 022 give 0600; two binds of one path give one winner and `AddrInUse`; the claim). `sh scripts/agent/check.sh`:
+each step 0. Not done here: the start-up sweep of item 4 (a crash leaves an empty 0700 directory `.pnb-HEX`),
+and the same fix of `bind_unix` of `pod-broker` (a COORD issue to podcrates).
 
 # T-239: `install.sh` checks the release tag and reads SHA256SUMS strictly, `podnet update` does the same, and the install tests assert the downloader flags (GitHub #430)
 
