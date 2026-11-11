@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**236 entries: 61 open, 4 partial, 19 blocked, 152 done.**
+**236 entries: 60 open, 4 partial, 19 blocked, 153 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 31 | 2 | 13 | 97 | 143 |
+| P2 | 30 | 2 | 13 | 98 | 143 |
 | P3 | 27 | 1 | 4 | 32 | 64 |
-| **All** | 61 | 4 | 19 | 152 | 236 |
+| **All** | 60 | 4 | 19 | 153 | 236 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -129,7 +129,7 @@ M8 Overlays, M9 Later.
 | [T-081](fixes.md) | P2 | S | M5 | feature | done | The tailnet front door warns when `tailscaled` is not logged in |
 | [T-082](services.md) | P2 | S | M6 | feature | done | `connect --stdio` for an SSH `ProxyCommand` through `tunnel --forward` |
 | [T-083](services.md) | P2 | S | M6 | feature | blocked | A relay node serves a handler in the process, with no socket file |
-| [T-084](services.md) | P2 | M | M6 | feature | open | One HTTP authentication layer for the local listener, the tunnel and the relay |
+| [T-084](services.md) | P2 | M | M6 | feature | done | One HTTP authentication layer for the local listener, the tunnel and the relay |
 | [T-085](services.md) | P2 | M | M6 | feature | done | A ustar writer and reader, and a directory as one tar download of the file server |
 | [T-086](services.md) | P2 | L | M6 | feature | open | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
 | [T-087](services.md) | P2 | M | M6 | feature | open | `relay node` and `relay connect` resume a session past the limits of the relay |

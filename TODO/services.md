@@ -91,7 +91,7 @@ or use its handler target.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -124,6 +124,25 @@ unix-socket listener.
 ## Start condition
 
 T-062 is done.
+
+## Correction
+
+2026-11-11: T-089 gave the file server the users, the roles and the PIN on each listener (with
+`--local`), and `serve --local` takes `--auth-user` and `--auth-password-file`
+(`serve_local_checks_users_and_the_pin`, `tests/cli/serve.rs`): Approach 3 is done there. The tunnel keeps
+its own Basic check of `src/proxy.rs` (the Cloudflare adapter moves to `pod-cloudflare`, T-052); a road
+gets the layer on its router (T-062), so the tunnel road, the relay road and the vnet road take it with no
+change of the edge code. The Prove filter is `auth_layer_` and `serve_local_checks_users_and_the_pin`.
+
+## Done
+
+2026-11-11, commit 700e2b6. `podnet_serve::files::guard(router, access)`: the access layer of the file server
+for any router (401 with no right credential, 403 for a change by a read user, the PIN gate and its unlock
+path, the anonymous read). `files::router` uses it; `podnet::road` and `podnet::roads` export it with
+`Access`, `Users` and `Role`. Tests: `cargo test -p podnet-serve --lib auth_layer_` (2: on the local road
+over a unix socket, 401, 401 with a bad password, 200 for a read, 403 for a PUT of a read user, 200 for a
+PUT of a write user; an open access adds no layer), `cargo test -p podnet --test cli -- serve` (8).
+
 
 # T-085: A ustar writer and reader, and a directory as one tar download of the file server
 
