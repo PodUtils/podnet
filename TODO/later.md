@@ -970,7 +970,7 @@ A guest-wire router (smoltcp) is planned.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1018,6 +1018,25 @@ give input to the Approach. No code changes.
   A move of the head needs a margin of `max(5 ms, 10%)` for a dwell of consecutive probe rounds (the donor's
   values; re-derive them for TCP-connect probes). Existing flows never move.
 - The two comments do not conflict. The measured need (Start condition) is still not shown by the donor.
+
+2026-11-11, bf80498, done by the owner's call (the work goes on with no measured need). The router file takes
+`policies: NAME: POLICY` (`weighted` default, `rr`, `minrtt`, `leastload`, `protect`); a file with no key keeps
+the old form and the weighted pick. There is no flag `--group-policy`: the router has no group flag (T-100).
+The policies are pure functions in `crates/podnet-core/src/network/policy.rs`; `Balance::pick_at` takes the
+time. `Tracker` keeps a window of passing probe times (`health.window`, default 8, 0 to 64; 0 is off) and gives
+`rtt_floor()`; it changes no health step. `minrtt` keeps a head that moves for a margin of `max(5 ms, 10%)`
+over 3 probe rounds in a row (`Balance::end_round`, called by the probe loop). `leastload` sorts on (bucket of
+the decayed bytes, open dials, `load / 4096`, a rotating tie-break); an open dial is a guard that drops at the
+end of the dial. `protect` picks by weight among `Up` members, and among the degraded members only when none
+is `Up`; the probe of each interval is the only rate of probe. The status document has `policy`, `head`,
+`rtt_floor_ms` and `opens`; `podnet route --status` prints them. Tests: `group_policy_picks_by_name`,
+`group_policy_leastload_reads_bytes_not_flow_counts`, `group_policy_leastload_spreads_opens_and_returns_them`,
+`group_policy_leastload_bucket_falls_back_with_the_clock`,
+`group_policy_minrtt_head_needs_a_margin_and_a_dwell`, `router_health_rtt_window_changes_no_step`,
+`route_config_policy_reaches_the_group_and_the_status`. Left: nothing feeds `Member::add_bytes` (the meter of
+the doors; the donor's unsent-bytes key is not there), so `leastload` reads open dials only until it does; the
+first-byte release of an open (the guard drops at the end of the dial); the margin and dwell are the donor's
+values and are not measured for TCP-connect probes; no field measure of any policy.
 
 # T-179: Research: a direction split for asymmetric uplinks (GitHub #375)
 
