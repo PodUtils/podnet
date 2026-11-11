@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 236 entries: 60 open, 4 partial, 19 blocked, 153 done.
+`TODO/INDEX.md` holds 236 entries: 59 open, 4 partial, 19 blocked, 154 done.
 
 ## State
 
@@ -51,10 +51,10 @@ not wait for a larger one.
 6. **M4, the adapters:** T-057, T-061.
 7. **M6, the services:** the shared parts T-083, T-086 (a take of
    `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
-   server and git: done; the router T-095, T-096, T-097,
+   server and git: done; the router T-095, T-097,
    T-098, T-099, T-100, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The triage adds T-177 (`podnet route check`) and
-    T-180 (the router control); the router additions are in T-096 to T-099 (GitHub #372 to #374).
+    T-180 (the router control); the router additions are in T-097 to T-099 (GitHub #372 to #374).
 8. **M7, the pods:** T-231 item 2 (waits for the take of `connect.rs`, podcrates T-169; the asks of podvm and podrunner; DR-1 and DR-2 are yes, 2026-11-11), then T-174 (the veth wire; from the triage).
 9. **M8, the overlays:** T-114, T-115, T-117, T-118.
 10. **M9, later:** T-119 to T-130, T-132 and T-134, each when its start condition holds.

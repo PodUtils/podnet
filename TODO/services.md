@@ -836,7 +836,7 @@ T-057 is done.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -876,6 +876,25 @@ The unit tests pick with a seed. The loopback test runs two fake SOCKS5 upstream
 ## Start condition
 
 T-058 is done.
+
+## Correction
+
+2026-11-11: `Selection` has `One` and `None`; `Replicate` (optional in the Approach) waits for a measured
+need. The flag `--group NAME=a*2,b*1` belongs to `podnet route` (T-099, T-100): `parse_group` reads it now,
+and the command takes it with its doors. The same member for each pair of a UDP client and a destination
+is the affinity of the UDP door (T-099); `Balance::datagrams` keeps one member for each socket.
+
+## Done
+
+2026-11-11, commit 07c21b4. `crates/podnet-core/src/network/balance.rs`: `Balance` (a `Dial`: a weighted pick
+of splitmix64, seeded from `getrandom` or by `with_seed`; `set_health`; `refused`), `Member`, `Health`
+(`Up`, `Cooldown`, `Probation` take flows; `Down` does not), `Selection` and `parse_group`. With no healthy
+member a flow and a datagram socket get one line with the class `policy`, and no way is dialed. Tests:
+`cargo test -p podnet-core --lib router_group` (3: the split 2:1 of 3000 picks within 5 %, the down member,
+the kill switch with no dial; the parse; the refusals of a peer way and a weight 0) and
+`cargo test -p podnet-vnet --lib router_group` (two fake SOCKS5 upstreams on unix sockets: 20 flows on both,
+and no flow to either after the kill switch).
+
 
 # T-097: Router: a TCP health check for each member, and `podnet route status`
 
