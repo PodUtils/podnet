@@ -24,6 +24,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet expose`: Publish a local service by one word: --via tunnel (a Cloudflare tunnel), relay (a node of the reverse relay) or switch (a virtual address). It runs `tunnel`, `relay node` or `net proxy --forward`
 - `podnet forward`: Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC (direct, a proxy, the relay, a tailnet)
 - `podnet route`: A router of networks, groups and doors from a config file (--config FILE), with health probes and --detach
+- `podnet bench`: Send GET requests to a URL through the way out (--egress, --proxy) and measure the latency (p50, p95, p99), the rate and the errors
 - `podnet ports`: List local TCP ports that are listening
 - `podnet bug-report`: Print a text for a bug report: the version, podnet status, the detached instances and the end of their logs, and the names of the variables that are set. Device IDs, tunnel IDs, tokens and credentials are hidden. No network unless --doctor
 - `podnet completions`: Print a completion script for a shell: bash, zsh, fish, elvish or powershell

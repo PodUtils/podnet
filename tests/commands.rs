@@ -449,3 +449,133 @@ fn agent_status_json_has_the_instances_and_the_report() {
     assert!(doc["instances"].is_array(), "{doc}");
     assert!(doc["report"]["rows"].is_array(), "{doc}");
 }
+
+/// Start `podnet serve --local 127.0.0.1:0` on a directory with `a.txt` and
+/// give the child and its base URL. The child stops at the drop.
+struct Server {
+    child: std::process::Child,
+    base: String,
+    _dir: tempfile::TempDir,
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+fn local_server(env: &Env) -> Server {
+    use std::io::BufRead;
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.txt"), "alpha").unwrap();
+    let mut child = env
+        .cmd(&["serve", "--dir", dir.path().to_str().unwrap()])
+        .args(["--local", "127.0.0.1:0"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let stdout = child.stdout.take().unwrap();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut line = String::new();
+        let _ = std::io::BufReader::new(stdout).read_line(&mut line);
+        let _ = tx.send(line);
+    });
+    let line = rx
+        .recv_timeout(std::time::Duration::from_secs(20))
+        .unwrap_or_default();
+    let start = line.find("http://").expect(&line);
+    let base = line[start..].split_whitespace().next().unwrap().to_string();
+    Server {
+        child,
+        base,
+        _dir: dir,
+    }
+}
+
+/// T-221: `bench URL --json` has the fixed keys of schema 1.
+#[test]
+fn bench_json_has_the_fixed_keys() {
+    test_host::need_loopback!();
+    let env = Env::new();
+    let server = local_server(&env);
+    let url = format!("{}a.txt", server.base);
+    let out = env.run(&[
+        "--egress",
+        "direct",
+        "bench",
+        &url,
+        "--json",
+        "--duration",
+        "1",
+        "--connections",
+        "2",
+    ]);
+    let doc: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert!(out.status.success(), "{doc}");
+    let mut keys: Vec<&str> = doc
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        [
+            "bytes",
+            "connections",
+            "duration_s",
+            "errors",
+            "first_error",
+            "latency_ms",
+            "ok",
+            "podnet",
+            "rate",
+            "requests",
+            "schema",
+            "url",
+        ],
+        "{doc}"
+    );
+    assert_eq!(doc["schema"], 1);
+    assert_eq!(doc["url"], url.as_str());
+    assert_eq!(doc["connections"], 2);
+    assert_eq!(doc["errors"], 0, "{doc}");
+    assert!(doc["ok"].as_u64().unwrap() > 0, "{doc}");
+    assert_eq!(doc["requests"], doc["ok"]);
+    assert_eq!(
+        doc["bytes"].as_u64().unwrap(),
+        doc["ok"].as_u64().unwrap() * 5
+    );
+    assert!(doc["rate"].as_f64().unwrap() > 0.0, "{doc}");
+    let lat = doc["latency_ms"].as_object().unwrap();
+    let mut names: Vec<&str> = lat.keys().map(String::as_str).collect();
+    names.sort_unstable();
+    assert_eq!(names, ["max", "min", "p50", "p95", "p99"], "{doc}");
+    let v = |k: &str| lat[k].as_f64().unwrap();
+    assert!(v("min") <= v("p50") && v("p50") <= v("p95"), "{doc}");
+    assert!(v("p95") <= v("p99") && v("p99") <= v("max"), "{doc}");
+}
+
+/// T-221: an HTTP error status counts as an error, and a run with no good
+/// request exits with a failure.
+#[test]
+fn bench_counts_http_errors() {
+    test_host::need_loopback!();
+    let env = Env::new();
+    let server = local_server(&env);
+    let url = format!("{}missing", server.base);
+    let out = env.run(&["--no-proxy", "bench", &url, "--json", "--duration", "1"]);
+    assert!(!out.status.success());
+    let doc: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert!(doc["errors"].as_u64().unwrap() > 0, "{doc}");
+    assert_eq!(doc["ok"], 0, "{doc}");
+    assert_eq!(doc["first_error"], "HTTP 404", "{doc}");
+    assert!(doc["latency_ms"]["p50"].is_null(), "{doc}");
+    // A URL that is not http gives a usage error.
+    let out = env.run(&["bench", "ftp://x/"]);
+    assert_eq!(out.status.code(), Some(64));
+}

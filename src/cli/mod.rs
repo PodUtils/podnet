@@ -18,6 +18,7 @@ use podnet::exit::Fault;
 
 use cmd::agent::{agent, AgentCommand};
 use cmd::autostart::{autostart, AutostartArgs};
+use cmd::bench::{bench, BenchArgs};
 use cmd::connect::{connect, ConnectArgs};
 use cmd::git::{git, GitArgs};
 use cmd::host::{DoctorArgs, ManArgs, PortsArgs, QrArgs, UpdateArgs};
@@ -116,6 +117,9 @@ pub(crate) enum Command {
     /// A router of networks, groups and doors from a config file (--config
     /// FILE), with health probes and --detach.
     Route(cmd::route::RouteArgs),
+    /// Send GET requests to a URL through the way out (--egress, --proxy) and
+    /// measure the latency (p50, p95, p99), the rate and the errors.
+    Bench(BenchArgs),
     /// List local TCP ports that are listening.
     Ports(PortsArgs),
     /// Print a text for a bug report: the version, podnet status, the
@@ -251,6 +255,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Expose(args) => cmd::expose::expose(args).await,
         Command::Forward(args) => cmd::forward::forward(args).await,
         Command::Route(args) => cmd::route::route(args).await,
+        Command::Bench(args) => bench(args).await,
         Command::Ports(args) => cmd::host::ports(args).await,
         Command::Qr(args) => cmd::host::qr(args),
         Command::Demo(args) => demo(args).await,
