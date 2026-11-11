@@ -37,9 +37,9 @@ tests skip on the CI jobs that cannot run them.
    commits and the run.
 2. **T-236:** the code is in e6eda36. The entry waits for the live step "Git
    over SSH through the reverse relay" to pass. Read the next live run.
-3. **Agents in flight** (worktrees under `.claude/worktrees/`): T-126 (an
-   `https://` proxy and wstunnel as networks) and T-119 (the kernel mode of
-   the router). Merge each: rebase on `main`, take `--ours` for
+3. **Agents in flight** (worktrees under `.claude/worktrees/`): T-119 (the
+   kernel mode of the router). T-126 waits for `pod-egress` (cb80aca). Merge
+   each: rebase on `main`, take `--ours` for
    `TODO/INDEX.md` and `TODO/PROGRESS.md` and run `cargo todo set`, cite the
    rebased commit, run `gen-llms.py`, run `check.sh`, push.
 4. **T-121** (the mwan export) needs the interface and the table of each WAN:
@@ -57,6 +57,7 @@ tests skip on the CI jobs that cannot run them.
 | #413 (COORD-006) | podcrates: the asks for `pod-relay`, `pod-dns`, `pod-proxy`, `pod-services` and `pod-warp`. |
 | #425 (COORD-016, to podrunner) | podrunner reads it. |
 | #444 (COORD-026) | podcrates: the umask window of `pod-broker`. |
+| #448 (COORD-030) | podcrates: the `taken` line of the watches of `pod-services` (0b945a3). |
 | #447 (COORD-029) | podcrates: the take of `pod-wg`; `src/warp/wg.rs` takes fixes only until then. |
 
 ## Tools of the session
