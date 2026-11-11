@@ -7,9 +7,9 @@
 //! Two backends are available:
 //!
 //! * `netns`: the child gets a new user and network namespace. A TUN device is
-//!   its only interface. A `smoltcp` stack on the host side of the TUN sends
-//!   each flow to the upstream proxy. This backend needs unprivileged user
-//!   namespaces and `/dev/net/tun`.
+//!   its only interface (a veth pair when the namespace cannot open
+//!   `/dev/net/tun`). A `smoltcp` stack on the host side sends each flow to
+//!   the upstream proxy. This backend needs unprivileged user namespaces.
 //! * `seccomp`: a `SECCOMP_RET_USER_NOTIF` filter stops the socket system
 //!   calls of the child. The supervisor answers them and gives the child
 //!   connected descriptors with `SECCOMP_IOCTL_NOTIF_ADDFD`. This backend needs
@@ -239,7 +239,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
                 warn_inbound("netns");
                 netns(
                     args,
-                    "auto takes netns first; the user and network namespace and the TUN work here",
+                    "auto takes netns first; the user and network namespace and the TUN (or a veth pair) work here",
                 )
             }
             Err(why) => seccomp(

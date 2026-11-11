@@ -102,7 +102,7 @@ A process that the program starts (a daemon) keeps the network of the pod:
 
 ## Backends
 
-`--backend auto` uses `netns` when the host permits `unshare` and a TUN in the namespace, else `seccomp`.
+`--backend auto` uses `netns` when the host permits `unshare` and a TUN or a veth pair in the namespace, else `seccomp`.
 With the `seccomp` backend, a TCP connect to `127.0.0.0/8` does not go to
 the proxy: it goes to a listener of the program itself (its inbound
 socket) when there is one, else to TCP on the host.
@@ -111,6 +111,14 @@ socket) when there is one, else to TCP on the host.
 
 * The child calls `unshare(CLONE_NEWUSER | CLONE_NEWNET)` (or
   `CLONE_NEWNET` with privileges). The parent writes the uid and gid maps.
+* When the namespace cannot open `/dev/net/tun`, the child makes a veth pair
+  instead (T-174): `eth0` gets the address and the route of the TUN, and an
+  `AF_PACKET` socket on the other end (`wire0`) carries the frames. The
+  parent answers ARP for the gateway and gives the IP packets to the same
+  stack. The offloads of `eth0` (checksum, TSO, GSO) are off. `-v` prints
+  `the wire of the namespace is a veth pair`. `pod doctor` has the row
+  `veth wire (no TUN)`. `PODNET_NETNS_TEST_VETH=1` makes the veth wire also
+  where the TUN opens (a test hook).
 * The child brings up `lo` and makes a TUN device with `ioctl` calls (not with
   `ip`), then gives the TUN descriptor to the parent with `SCM_RIGHTS`.
 * The parent runs a `smoltcp` stack on the TUN. For each SYN of the program,
@@ -141,7 +149,7 @@ socket) when there is one, else to TCP on the host.
   fragment, and it does not go through. A larger reply goes to the program
   as fragments.
 
-Needs: unprivileged user namespaces and `/dev/net/tun`. This backend carries
+Needs: unprivileged user namespaces, and `/dev/net/tun` or a veth pair. This backend carries
 TCP and UDP. No backend of the pod carries ICMP (`ping`) to the internet. The `seccomp` backend answers an echo to the
 gateway of the pod (see below).
 

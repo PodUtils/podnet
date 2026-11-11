@@ -6,12 +6,14 @@ mod fdpass;
 mod packet;
 mod tun;
 mod udpflow;
+mod veth;
 
 pub(crate) use backend::*;
 pub(crate) use fdpass::*;
 pub(crate) use packet::*;
 pub(crate) use tun::*;
 pub(crate) use udpflow::{UdpFlows, UdpRoute};
+pub(crate) use veth::{create_veth, open_wire};
 
 /// A std `Ipv4Addr` as smoltcp's wire type.
 pub(crate) fn smol_v4(addr: Ipv4Addr) -> Ipv4Address {
@@ -107,6 +109,12 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
     let result = runtime.block_on(async move {
         let mut backend = Backend::new(tun_fd, proxies, rules, maps, verbose)?;
         backend.host_gateway = host_gateway;
+        if verbose && backend.device.wire == Wire::Veth {
+            eprintln!(
+                "{}: the wire of the namespace is a veth pair (no TUN)",
+                program_name()
+            );
+        }
         let fd = backend.device.fd;
         let async_fd = crate::readable_copy(fd)?;
         let mut report = Vec::with_capacity(REAPER_REPORT);
@@ -222,13 +230,21 @@ pub(crate) fn child_setup(sock: RawFd, args: &Args) -> Result<()> {
     let userns = pod_hold::netns::enter()?;
     pod_hold::netns::announce(sock, userns)?;
     bringup_loopback()?;
-    let tun = create_tun("eth0")?;
+    // The TUN, else a veth pair (T-174).
+    let tun = open_wire("eth0")?;
     send_fd(sock, tun.as_raw_fd())?;
-    std::mem::forget(tun); // the parent owns its own handle; keep ours open too
-                           // The resolver of the host (often 127.0.0.53) is on the loopback of the
-                           // host, which this namespace does not have: give the program a
-                           // resolv.conf with the gateway of the TUN, where the pod answers DNS
-                           // (issue 61). A failure leaves the host file, with a warning.
+    if veth::is_veth(tun.as_raw_fd()) {
+        // The pair stays with no descriptor. A packet socket that the
+        // reaper keeps open gets a copy of each frame: close it.
+        drop(tun);
+    } else {
+        // The parent owns its own handle; keep ours open too.
+        std::mem::forget(tun);
+    }
+    // The resolver of the host (often 127.0.0.53) is on the loopback of the
+    // host, which this namespace does not have: give the program a
+    // resolv.conf with the gateway of the TUN, where the pod answers DNS
+    // (issue 61). A failure leaves the host file, with a warning.
     if let Err(e) = private_resolv_conf() {
         crate::warn(&format!(
             "warning: the program keeps the resolver of the host ({e:#})"

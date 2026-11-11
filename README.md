@@ -1045,7 +1045,7 @@ Two backends are available. `--backend auto` (the default) selects one.
 
 | Backend | Needs | Mechanism |
 | --- | --- | --- |
-| `netns` | unprivileged user namespaces and `/dev/net/tun` | The program gets a network namespace. A TUN device is its only interface. A userspace TCP/IP stack sends each flow to the upstream. |
+| `netns` | unprivileged user namespaces, and `/dev/net/tun` or a veth pair | The program gets a network namespace. A TUN device (else a veth pair) is its only interface. A userspace TCP/IP stack sends each flow to the upstream. |
 | `seccomp` | seccomp with `SECCOMP_RET_USER_NOTIF` | A seccomp filter stops the socket system calls. The supervisor answers them and gives the program connected descriptors. |
 
 Both backends answer DNS from a fake-IP pool (`198.18.0.0/15`; the
