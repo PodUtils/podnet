@@ -608,7 +608,7 @@ constraint. The measures of the Approach stay: they decide whether podnet takes 
 
 ## Done
 
-2026-11-11, commit 285dc9f. Research note: `docs/research/podnet/iroh-relay.md`. Each fact is marked read,
+2026-11-11, commit 662ba0c. Research note: `docs/research/podnet/iroh-relay.md`. Each fact is marked read,
 measured or inferred, with URL and date. No account was used. No binary was built, so the size of the
 binary is not measured.
 
@@ -634,6 +634,10 @@ binary is not measured.
 - Questions for the owner (note, section 6): accept the mailbox server; accept the relay role in parts;
   defer the iroh road; decline the self-hosted iroh relay.
 
+
+The call of the lead (2026-11-11): no entry is opened now. E1 and E5 wait for a release of `pod-iroh`. E2 and E4
+go with the transfer (T-102 to T-105: the mailbox client, `send` and `receive`), which waits for the takes of
+`pod-wormhole` and `pod-transit`. E3 waits for the take of `pod-relay-serve`. A self-hosted iroh relay is declined.
 # T-131: A crate that podnet and podssh share for the layer, the channel and the identity
 
 **Source:** `docs/research/podnet/podssh-copy.md`, section 4 (option B); the owner's ruling of
