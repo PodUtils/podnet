@@ -1042,7 +1042,7 @@ Not proven: a live relay (the 60 min expiry and the `is_closed` behaviour of rus
 keepalive that finds a dead session (the fake relay ends sessions with a close, not with silence), and a
 connection through `--connect-proxy`.
 
-2026-11-11, commit 034007c. Approach 4 is done: `podnet doctor` has a row `ssh_relay`.
+2026-11-11, commit 7395b6a. Approach 4 is done: `podnet doctor` has a row `ssh_relay`.
 - `relay::probe::probe` (`crates/podnet-serve/src/relay/probe.rs`) runs four stages with one time limit: the TCP
   connect (through `--connect-proxy` when the config has one), the SSH identification line, the SSH handshake and
   the publickey auth with the user. It opens no session channel and asks for no forward, so the relay publishes no URL.
