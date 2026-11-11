@@ -147,4 +147,4 @@
 442 issue open
 443 issue open
 444 issue open
-445 issue open
+445 issue closed

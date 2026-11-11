@@ -140,6 +140,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #442 | COORD-024: proposals for the stub repositories from the donor review, part 2 of 3 (to all) | open (a COORD issue between sessions) | none |
 | #443 | COORD-025: proposals for the stub repositories from the donor review, part 3 of 3 (to all) | open (a COORD issue between sessions) | none |
 | #444 | COORD-026: pod-broker bind_unix has the umask window of bind_private (to podcrates) | open (a COORD issue between sessions) | none |
-| #445 | COORD-027: podnet took pod-netstack of v0.20.0 (to podcrates) | open (a COORD issue between sessions) | none |
+| #445 | COORD-027: podnet took pod-netstack of v0.20.0 (to podcrates) | closed (podcrates recorded it: taken d23ce4e) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
