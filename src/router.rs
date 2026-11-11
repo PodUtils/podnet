@@ -19,6 +19,8 @@
 //!   - listen: unix:/run/r.sock
 //!     via: egress      # a network or a group
 //!     rules: /etc/r.rules   # optional: the rules of T-098
+//!     dns: 127.0.0.1:5353   # optional: a DNS door (UDP and TCP) over the same way
+//!     dns_upstream: 10.0.0.53:53  # the resolver at the far end (needed with dns)
 //! ```
 
 use std::collections::{BTreeMap, HashMap};
@@ -113,6 +115,36 @@ pub struct DoorConfig {
     /// A rules file (T-098): its rules go first; `via` is the default.
     #[serde(default)]
     pub rules: Option<PathBuf>,
+    /// `ADDR:PORT` of a DNS door (UDP and TCP) over the dial of the door.
+    #[serde(default)]
+    pub dns: Option<String>,
+    /// `HOST:PORT` of the resolver at the far end of the way (needed with
+    /// `dns`: the router names no resolver of its own).
+    #[serde(default)]
+    pub dns_upstream: Option<String>,
+}
+
+impl DoorConfig {
+    /// The DNS door: its address and its upstream, or `None`.
+    pub fn dns(&self, i: usize) -> Result<Option<(std::net::SocketAddr, Target)>> {
+        match (&self.dns, &self.dns_upstream) {
+            (None, None) => Ok(None),
+            (None, Some(_)) => bail!("doors[{i}].dns_upstream: give doors[{i}].dns too"),
+            (Some(_), None) => bail!("doors[{i}].dns: give doors[{i}].dns_upstream (HOST:PORT)"),
+            (Some(dns), Some(upstream)) => {
+                let addr = dns
+                    .parse()
+                    .map_err(|_| anyhow::anyhow!("doors[{i}].dns: give ADDR:PORT"))?;
+                let upstream: Target = upstream
+                    .parse()
+                    .map_err(|_| anyhow::anyhow!("doors[{i}].dns_upstream: give HOST:PORT"))?;
+                if upstream.port() == 0 {
+                    bail!("doors[{i}].dns_upstream: the port must be 1 to 65535");
+                }
+                Ok(Some((addr, upstream)))
+            }
+        }
+    }
 }
 
 /// Read the config file `path`. An error names the key or the line.
@@ -152,6 +184,7 @@ pub fn parse(text: &str) -> Result<Config> {
             );
         }
         ProxyListen::parse(&door.listen).map_err(|e| anyhow::anyhow!("doors[{i}].listen: {e}"))?;
+        door.dns(i)?;
     }
     if let Some(health) = &config.health {
         health
@@ -179,6 +212,10 @@ pub struct RouterDoor {
     pub via: String,
     /// The rules file of the door, if any.
     pub rules: Option<Arc<RulesFile>>,
+    /// The DNS door over the same dial: its address and its upstream.
+    pub dns: Option<(std::net::SocketAddr, Target)>,
+    /// The dial of the door (its rules, or the way of `via`).
+    pub dial: Arc<dyn Dial>,
 }
 
 /// A router that is up: its ways, its groups and its doors.
@@ -315,6 +352,8 @@ impl Router {
                 label: dial.label(),
                 via: door.via.clone(),
                 rules,
+                dns: door.dns(i)?,
+                dial,
             });
         }
         let health = match &config.health {

@@ -96,6 +96,16 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
             }
         }
     }
+    for d in &router.doors {
+        if let Some((addr, upstream)) = &d.dns {
+            println!("podnet: route  dns {addr}  via {}  to {upstream}", d.label);
+            servers.spawn(podnet::forwards::serve_dns(
+                *addr,
+                d.dial.clone(),
+                upstream.clone(),
+            ));
+        }
+    }
     if let Some(control) = &config.control {
         let Ok(ProxyListen::Unix(path)) = ProxyListen::parse(control) else {
             return Err(anyhow::anyhow!("control: give unix:/PATH")).fault(Fault::Usage);

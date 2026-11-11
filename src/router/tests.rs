@@ -24,6 +24,9 @@ fn route_config_errors_name_the_key() {
         ("networks:\n  home: direct\ndoors:\n  - listen: ftp://x\n    via: home\n", "doors[0].listen"),
         ("networks:\n  home: direct\nhealth:\n  target: h:1\n  down_after: 2\n  up_after: 2\ndoors:\n  - listen: unix:/x\n    via: home\n", "health"),
         ("networks:\n  home: direct\nhealth:\n  target: h:1\n  interval: 0\ndoors:\n  - listen: unix:/x\n    via: home\n", "health.interval"),
+        ("networks:\n  home: direct\ndoors:\n  - listen: unix:/x\n    via: home\n    dns: 127.0.0.1:53\n", "doors[0].dns"),
+        ("networks:\n  home: direct\ndoors:\n  - listen: unix:/x\n    via: home\n    dns: x\n    dns_upstream: 10.0.0.1:53\n", "doors[0].dns"),
+        ("networks:\n  home: direct\ndoors:\n  - listen: unix:/x\n    via: home\n    dns_upstream: 10.0.0.1:53\n", "doors[0].dns_upstream"),
         ("networks:\n  home: direct\ncontrol: 127.0.0.1:9\ndoors:\n  - listen: unix:/x\n    via: home\n", "control"),
         ("networks:\n\thome: direct\n", "line 2"),
     ];
@@ -202,4 +205,21 @@ async fn router_status_json_keys_over_the_control_socket() {
     assert!(answer.starts_with("HTTP/1.0 404"), "{answer}");
     let err = read_status(&dir.path().join("none.ctl")).await.unwrap_err();
     assert!(format!("{err:#}").contains("none.ctl"), "{err:#}");
+}
+
+/// T-098 item 1: a door can have a DNS door over its own dial.
+#[test]
+fn route_door_dns_reaches_the_router() {
+    let text = GOOD.replace(
+        "    via: egress\n",
+        "    via: egress\n    dns: 127.0.0.1:5353\n    dns_upstream: 10.0.0.53:53\n",
+    );
+    let plan = Router::plan(&parse(&text).unwrap()).unwrap();
+    let (addr, upstream) = plan.doors[0].dns.clone().unwrap();
+    assert_eq!(addr.to_string(), "127.0.0.1:5353");
+    assert_eq!(upstream.to_string(), "10.0.0.53:53");
+    assert_eq!(plan.doors[0].dial.label(), plan.doors[0].label);
+    assert!(Router::plan(&parse(GOOD).unwrap()).unwrap().doors[0]
+        .dns
+        .is_none());
 }
