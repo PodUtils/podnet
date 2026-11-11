@@ -707,7 +707,7 @@ step of the second batch passed with no 429. GitHub #311 is closed.
 **Milestone:** M1
 **Priority:** P0
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -736,3 +736,22 @@ cargo todo check
 ## Start condition
 
 T-216 is done (the schema of `doctor --json`).
+
+## Done
+
+2026-11-11, commit 14bad0a. `docs/protocol.md` section 10 is the connector profile: the rule (a change within a
+minor version only adds), the 42 flags of `tunnel`, the exit codes, the ready line and the ready document, the
+keys of `ps --json`, and a link to section 9 (`doctor --json`). It names v0.4.0-beta.3 as the newest signed
+release (T-022 and T-023 are done by the releases; no release was cut). podnet has no HTTP `/ready` and no
+metrics listener (`--metrics` exits 64), so the profile pins the ready line of `tunnel --json` and the ready
+document of `--detach` in its place. `run.rs` has the pure functions `ready_line` and `detach_doc` for it.
+Tests: `connector_profile_is_pinned` (`tests/cli/profile.rs`: flags, exit codes, keys of `ps --json`, and each
+item against the text of section 10) and `the_ready_keys_are_fixed` (`src/cli/cmd/run.rs`). Each fails when
+a flag is removed from the profile (`profile lacks --run-for`), when the `ps` key `restarts` is renamed, and
+when `tunnel_id` is renamed in the ready line; each passes with the code restored. `doctor --json` keys stay
+pinned by `doctor_json_keys_are_fixed` (T-216). `sh scripts/agent/check.sh`: fmt 0, clippy 0, record 0,
+size 0, doc 0, layers 0, test 0. `llms-full.txt` is regenerated. Not proven: the exit code of `tunnel` in each
+failure (the test pins the table and exit 64 for a bad command and a bad flag, not 69, 75 or 78 from a live
+run, which `tests/cli/exit_codes.rs` covers in part). Item 4 (the tunnel set) waits for the first crates.io
+release.
+
