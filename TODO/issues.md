@@ -124,7 +124,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #426 | COORD-017: podnet took v0.17.0 and pod_hold::connect and pod_hold::packet | closed (podcrates recorded it: taken e4d4049) | none |
 | #427 | COORD-018: the cut of pod-netstack (to podcrates) | open (a COORD issue between sessions) | none |
 | #428 | pod --serve door: early reply and pipelined SOCKS5 upstream handshake (donor review) | open | T-237 |
-| #429 | listen::bind_private: the socket has the umask mode between bind and chmod (donor review) | open | T-238 |
+| #429 | listen::bind_private: the socket has the umask mode between bind and chmod (donor review) | closed (fixed in 3c6173f) | T-238 |
 | #430 | install.sh and update: tag check, strict SHA256SUMS, install tests that can fail (donor review) | open | T-239 |
 | #431 | warp tun --default-route: resolver backup on disk, restore after a kill, route table test (donor review) | open | T-240 |
 | #432 | warp: registration under a lock, save before the enrolment step (donor review) | open | T-241 |
@@ -139,5 +139,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #441 | COORD-023: proposals for the stub repositories from the donor review, part 1 of 3 (to all) | open (a COORD issue between sessions) | none |
 | #442 | COORD-024: proposals for the stub repositories from the donor review, part 2 of 3 (to all) | open (a COORD issue between sessions) | none |
 | #443 | COORD-025: proposals for the stub repositories from the donor review, part 3 of 3 (to all) | open (a COORD issue between sessions) | none |
+| #444 | COORD-026: pod-broker bind_unix has the umask window of bind_private (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
