@@ -1175,7 +1175,7 @@ for `veth_wire_carries_a_tcp_flow` to pass in the CI of podnet).
 **Milestone:** M7
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1205,3 +1205,12 @@ The step passes in a run of `ci`, with no skip line.
 ## Start condition
 
 None.
+
+## Correction
+
+2026-11-11, 1ee0cae: the step "Netns tests as root" of the job `test` runs `scripts/ci/root-netns-tests.sh`. It builds
+the test binaries as the runner user (`cargo test --no-run`), runs `veth_wire` of `podnet-netns --test veth` and
+`router::kernel` of the library of podnet with `sudo -E`, and fails on a failed test or a skip line. Measured
+here (as root): `veth_wire_carries_a_tcp_flow` 1 passed, `router::kernel` 10 passed, no skip line. Left: the
+first passing run of `ci`, and the COORD issue for podcrates T-201 (PodUtils/podnet#451).
+
