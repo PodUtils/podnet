@@ -4449,7 +4449,7 @@ done with it and never mention it again"; `CLAUDE.md` (Writing: keep only techni
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -4483,3 +4483,16 @@ only.
 ## Start condition
 
 None.
+
+## Correction
+
+2026-11-11, fbfd6da and 32a66e5: the first pass. One footnote stays at the end of README.md. The other mentions
+are gone from README.md, SECURITY.md, CLAUDE.md, `docs/maintenance.md`, `docs/target-environment.md`,
+`scripts/`, `live.yml` (the A/B step against the binary of v0.3.0-beta.6 is gone) and the code; the fixtures of
+v0.3.0-beta.1 (signed by the old repository) are gone, and the test of `podnet update` runs on the bundle of
+v0.4.0-beta.1. No alias of an old name existed in the code. Kept: the source repositories of the License line
+of `CLAUDE.md`, and `-e CFRS_BUILD_COMMIT` of `scripts/rebuild.sh` (a rebuild of a tag up to v0.3.0-beta.12
+needs it). No frozen file named cfrs. The narrative of README.md, `docs/target-environment.md`, `src/update.rs`
+and `src/status.rs` is cut; dead code is gone (`net.rs`, `run.rs`, `socks.rs`). Left: `docs/research/` (a
+second pass).
+

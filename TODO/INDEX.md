@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**254 entries: 44 open, 10 partial, 23 blocked, 177 done.**
+**254 entries: 43 open, 11 partial, 23 blocked, 177 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 23 | 7 | 14 | 108 | 152 |
+| P2 | 22 | 8 | 14 | 108 | 152 |
 | P3 | 21 | 2 | 7 | 43 | 73 |
-| **All** | 44 | 10 | 23 | 177 | 254 |
+| **All** | 43 | 11 | 23 | 177 | 254 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -299,4 +299,4 @@ M8 Overlays, M9 Later.
 | [T-251](services.md) | P2 | S | M6 | feature | open | Transfer: the hosted magic-wormhole mailboxes on 443 as the default, with a choice that the code carries |
 | [T-252](services.md) | P3 | M | M6 | feature | open | Transfer: a piping-server relay as a transit carrier of last resort |
 | [T-253](services.md) | P3 | S | M6 | measurement | open | Live: probe the hosted mailboxes and relays from a proxy-only runner |
-| [T-254](fixes.md) | P2 | M | M5 | chore | open | Housekeeping: one footnote for cfrs, no narrative history |
+| [T-254](fixes.md) | P2 | M | M5 | chore | partial | Housekeeping: one footnote for cfrs, no narrative history |
