@@ -273,7 +273,7 @@ line (`Addressing::admit`). `PodRule` gives a rule of `pod -r` to `Rules`. Tests
 **Milestone:** M4
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -306,6 +306,33 @@ cargo check --manifest-path fuzz/Cargo.toml --bins
 ## Start condition
 
 T-056 and T-057 are done.
+
+## Correction
+
+2026-11-11, the call of 2026-11-10 (`docs/decisions.md`, Start conditions): the registry and the parser
+need no frozen file, so they start before T-057. Three parts differ from the Approach:
+
+- The table has one row for each network that has a `Network` now: `direct`, `proxy`, `relay` and
+  `tailscale`. The spec `warp` is named and refused with the class `unsupported`; its row comes with
+  T-057. The cargo features `warp`, `cloudflare`, `relay` and `vnet` do not exist yet: the WARP and
+  Cloudflare adapters move to `PodUtils/podcrates` (T-050, T-052), and the features come with the facade
+  (T-053).
+- A spec that both old parsers take goes to the proxy of the process (`pod-proxy`: Digest, `socks5h`,
+  the commands). A spec with no scheme (`HOST:PORT`) is a SOCKS5 hop, as `pod -x` reads it (the proxy of
+  the process reads it as HTTP).
+- `doctor` reads the row of the relay from `Network::checks`. The rows of the edge, the WARP API and
+  MASQUE become checks of their networks with T-057 and T-052.
+
+## Done
+
+2026-11-11, commit 851a7ea. `src/networks.rs`: `networks()` (the table: scheme, forms, about, caps),
+`parse()` (one usage line with no password on an error) and `SpecNetwork` (a `Network`: `up` gives its way
+and refuses a way below it with the class `unsupported`; `checks` names the proxy on TCP and the relay).
+`Check` has `tls`; `Caps` has the const `with`. `src/doctor/targets.rs` builds the relay row from the
+check of the relay network. The fuzz target `proxy_url` parses the text as a spec too. Tests:
+`cargo test -p podnet --lib -- network_spec_` (7), the doctor tests, `cargo check --manifest-path
+fuzz/Cargo.toml --bins`.
+
 
 # T-060: `--via SPEC` on each command, with each old network flag as an alias
 

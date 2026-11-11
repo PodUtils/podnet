@@ -585,6 +585,10 @@ T-052 is done.
 a shared crate needs a `#[doc(hidden)] pub mod fuzzing` in that crate: open an issue in
 PodUtils/podcrates.
 
+2026-11-11, T-059: the registry of networks (`src/networks.rs`) has no cargo features yet. The facade adds
+the features `warp`, `cloudflare`, `relay` and `vnet`, and each row of the table depends on its feature.
+
+
 # T-054: A prerelease after the crate split, with the static builds of each target
 
 **Source:** `docs/research/podnet/architecture.md`, section 4.2 (the rows Release build and
