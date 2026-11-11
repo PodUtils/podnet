@@ -43,6 +43,9 @@ pub(crate) struct Args {
     pub(crate) learned: Option<Learned>,
     /// `--flow-budget N`: the ceiling of the tracked sockets (T-181).
     pub(crate) flow_budget: Option<usize>,
+    /// `--loopback-rules` (T-231): the seccomp backend applies the rules to
+    /// a TCP connect to 127.0.0.0/8 and ::1.
+    pub(crate) loopback_rules: bool,
 }
 
 /// The mode of the learned set (T-158).
@@ -123,6 +126,10 @@ Options:
       --default-action <A> allow (default) or reject: what the pod does with a
                            target that no rule matches. reject refuses it as
                            a reject rule does
+      --loopback-rules     Seccomp backend: apply the rules to a TCP connect to
+                           127.0.0.0/8 and ::1 (by default it goes direct). A
+                           refused one gets ECONNREFUSED; an allowed one goes
+                           direct
       --flow-log <FILE>    Append one JSON line to FILE for each decision
                            (time, target, rule or default, chain, verdict)
                            and one at the close of each relayed TCP flow
@@ -208,6 +215,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut serve: Option<crate::listen::ProxyListen> = None;
     let mut default_reject = false;
     let mut flow_log = None;
+    let mut loopback_rules = false;
     let mut learned = None;
     let mut flow_budget = None;
     let mut i = 0;
@@ -259,6 +267,10 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
                     other => bail!("--default-action {other:?}: give allow or reject"),
                 };
                 i += 2;
+            }
+            "--loopback-rules" => {
+                loopback_rules = true;
+                i += 1;
             }
             "--flow-log" => {
                 let path = argv.get(i + 1).context("--flow-log needs a file")?;
@@ -418,5 +430,6 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         flow_log,
         learned,
         flow_budget,
+        loopback_rules,
     })
 }

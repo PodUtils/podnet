@@ -804,7 +804,7 @@ counter. The pod sees a bare errno.
 
 ## Premise
 
-- `crates/podnet-netns/src/seccomp/mod.rs:368` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
+- `crates/podnet-netns/src/seccomp/mod.rs:369` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
   refuses), `socket.rs:19-21` (`EMFILE`), `seccomp/mod.rs:326-331` (`EIO` or `ECONNREFUSED`).
 - Not measured: the 5000-connection run of the issue.
 
@@ -1008,6 +1008,16 @@ address of each `connect`, and a failed read refuses the `connect` (`ECONNREFUSE
 the program ran with no flow. Now `run_seccomp` stops at its start with exit status 3 and one line
 (`seccomp_can_hold`); the row `read program memory` of `pod doctor` shows the probe. Test:
 `seccomp_refuses_a_run_with_no_read_of_the_memory`.
+
+## Done
+
+2026-11-11, commit COMMIT (item 2) and ae5d1e3, c0180cc (item 1). `podnet pod --loopback-rules`: the seccomp
+backend reads the rules for a TCP connect to `127.0.0.0/8` and `::1` (`crates/podnet-netns/src/connect.rs`,
+podnet's part beside `pod_hold::connect`). A refused one gets `ECONNREFUSED` with the rule in the flow log;
+an allowed one goes direct, as before. Off by default: the behaviour of a pod with no flag stays. Test:
+`cargo test --test pod_seccomp -- seccomp_rules_apply_to_loopback_when_asked` (a reject rule hides the
+local service; a direct rule reaches it). The README of `podnet-netns` and `pod --help` name the option.
+
 
 # T-233: seccomp: a dual-stack connect to the IPv4-mapped form of a fake address goes to the proxy as an address
 

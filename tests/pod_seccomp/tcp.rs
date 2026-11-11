@@ -483,3 +483,55 @@ fn netns_backend_moves_a_large_download() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// T-231: with --loopback-rules, a reject rule refuses a loopback connect
+/// (the client sees no answer of the local service), and a direct rule
+/// still reaches it.
+#[test]
+fn seccomp_rules_apply_to_loopback_when_asked() {
+    test_host::need_loopback!();
+    if !have_compiler() || !seccomp_available() {
+        eprintln!("skipping: no compiler or no SECCOMP_RET_USER_NOTIF");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("podnet-netns-looprules-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        while let Ok((mut conn, _)) = listener.accept() {
+            let mut buf = [0u8; 16];
+            let _ = conn.read(&mut buf);
+            let _ = conn.write_all(b"LOCAL-SERVICE\n");
+        }
+    });
+    let source = CLIENT
+        .replace("htons(80)", &format!("htons({port})"))
+        .replace("93.184.216.34", "127.0.0.1");
+    let program = build_program(&dir, "client-looprules", &source, false);
+    let proxy = format!("unix:{}", dir.join("no-proxy.sock").display());
+    let run = |rule: &str| {
+        pod_command()
+            .args(["--backend", "seccomp", "--loopback-rules", "-r", rule, "-x"])
+            .arg(&proxy)
+            .arg("--")
+            .arg(&program)
+            .output()
+            .unwrap()
+    };
+    let refused = run("cidr:127.0.0.0/8=reject");
+    let stdout = String::from_utf8_lossy(&refused.stdout);
+    assert!(
+        !stdout.contains("LOCAL-SERVICE"),
+        "the rule refuses the loopback connect: stdout={stdout:?} stderr={:?}",
+        String::from_utf8_lossy(&refused.stderr)
+    );
+    let allowed = run("cidr:127.0.0.0/8=direct");
+    let stdout = String::from_utf8_lossy(&allowed.stdout);
+    assert!(
+        allowed.status.success() && stdout.contains("LOCAL-SERVICE"),
+        "stdout={stdout:?} stderr={:?}",
+        String::from_utf8_lossy(&allowed.stderr)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

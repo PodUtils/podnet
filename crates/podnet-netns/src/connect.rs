@@ -98,6 +98,20 @@ fn is_nonblocking(pid: u32, fd: i32) -> bool {
 }
 
 /// The settings of the pod that a dial uses.
+/// `--loopback-rules` (T-231): the rules decide a loopback connect too. A
+/// loopback target that a rule (or `--default-action reject`) refuses is
+/// refused; an allowed one goes direct, as before.
+static LOOPBACK_RULES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Set `--loopback-rules` for the process.
+pub(crate) fn set_loopback_rules(on: bool) {
+    LOOPBACK_RULES.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+fn loopback_rules() -> bool {
+    LOOPBACK_RULES.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 pub(crate) struct Route<'a> {
     pub(crate) proxies: &'a [Proxy],
     pub(crate) rules: &'a [Rule],
@@ -157,16 +171,18 @@ pub(crate) fn handle_connect(
         (None, IpAddr::V6(v6)) => format!("[{v6}]:{port}"),
     };
     // T-156: a rule that refuses the target answers at once.
-    let picked = match ip.is_loopback() {
-        true => select_chain(route.rules, route.proxies, &target),
-        false => crate::learn::select(route.rules, route.proxies, &target, "tcp"),
+    // T-231: with --loopback-rules, the rules decide a loopback target too.
+    let ruled = !ip.is_loopback() || loopback_rules();
+    let picked = match ruled {
+        false => select_chain(route.rules, route.proxies, &target),
+        true => crate::learn::select(route.rules, route.proxies, &target, "tcp"),
     };
     let chain = picked.chain().map(<[Proxy]>::to_vec);
-    let flow = match ip.is_loopback() {
-        true => crate::flowlog::dial("tcp", &target, "loopback", Some(&[])),
-        false => crate::flowlog::decided("tcp", &target, &picked),
+    let flow = match (ip.is_loopback(), chain.is_some() || !ruled) {
+        (true, true) => crate::flowlog::dial("tcp", &target, "loopback", Some(&[])),
+        _ => crate::flowlog::decided("tcp", &target, &picked),
     };
-    if chain.is_none() && !ip.is_loopback() {
+    if chain.is_none() && ruled {
         crate::rules::note_refusal("connect", &target, picked.rule_name(), route.verbose);
         return notif_respond(lfd, id, -1, libc::ECONNREFUSED);
     }
