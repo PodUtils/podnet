@@ -32,8 +32,8 @@ measure with the runner), T-230 (the object `hold`), T-231 item 1, T-232
 1. **T-235:** when `ci` and `live` pass at the head of `main`, dispatch
    `release.yml` with `publish` empty (the dry run), then with
    `publish=v0.4.0-beta.3`; check `release-proofs.yml`; set T-235 `done`.
-   The notes of the release name the work up to T-236; add the later work
-   (T-062, T-084, T-096, T-097) to them before the cut when it is on `main`.
+   The notes name the work up to T-236 and T-097; add each later change
+   to them before the cut.
 2. **Live steps that failed once each** (no code of them changed): "SSH
    through the reverse relay" at 520b307 (a reset session, then a hang of
    5 minutes), and "warp up with its TCP listener refused" at 05bcf44 (no
