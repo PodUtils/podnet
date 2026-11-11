@@ -272,7 +272,8 @@ fn waiting_child() -> Option<(libc::pid_t, libc::c_int)> {
     if unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
         return None;
     }
-    // SAFETY: the child calls only close(2), read(2) and _exit(2).
+    // SAFETY: the child calls only close(2), close_range(2), read(2) and
+    // _exit(2).
     let pid = unsafe { libc::fork() };
     if pid == 0 {
         let mut b = [0u8; 1];
@@ -280,6 +281,23 @@ fn waiting_child() -> Option<(libc::pid_t, libc::c_int)> {
         // parent closes the write end.
         unsafe {
             libc::close(fds[1]);
+            // The child holds no descriptor of the parent but its pipe: a
+            // socket that the parent closes must not stay open here.
+            let read_end = fds[0] as libc::c_uint;
+            if read_end > 3 {
+                libc::syscall(
+                    libc::SYS_close_range,
+                    3 as libc::c_uint,
+                    read_end - 1,
+                    0 as libc::c_uint,
+                );
+            }
+            libc::syscall(
+                libc::SYS_close_range,
+                read_end + 1,
+                libc::c_uint::MAX,
+                0 as libc::c_uint,
+            );
             libc::read(fds[0], b.as_mut_ptr() as *mut _, 1);
             libc::_exit(0);
         }

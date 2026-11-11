@@ -43,7 +43,7 @@ pub(crate) async fn handle_listen(
     crate::listen::private_dir(inbound_dir)?;
     let path = inbound_dir.join(format!("{port}.sock"));
     let _ = std::fs::remove_file(&path);
-    let listener = crate::listen::bind_private(&path)
+    let listener = crate::listen::bind_in_private_dir(&path)
         .with_context(|| format!("bind inbound listener {}", path.display()))?;
 
     // The new listener fd of the child: one end of a socketpair, with the

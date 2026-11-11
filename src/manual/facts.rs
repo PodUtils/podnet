@@ -148,6 +148,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "A test hook of the seccomp backend: no-fd does not open the memory of the program for writing (process_vm_writev is used); none also does not use process_vm_writev (getsockname and getpeername fail with EOPNOTSUPP).",
     },
     EnvVar {
+        names: &["PODNET_TEST_UMASK"],
+        used_by: "pod (tests only)",
+        meaning: "A test hook of the unix listeners: the test of bind_private runs again in a new process with this umask (octal).",
+    },
+    EnvVar {
         names: &["PODNET_NETNS_TEST_NO_NETNS"],
         used_by: "pod (tests only)",
         meaning: "A test hook of --backend auto: set and not empty, the netns backend cannot run, and auto takes the seccomp backend.",
