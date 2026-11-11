@@ -1131,7 +1131,7 @@ None: the owner ruled. The netstack of `pod-netstack` (taken at v0.20.0) carries
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1198,6 +1198,24 @@ is `Up`; the probe of each interval is the only rate of probe. The status docume
 the doors; the donor's unsent-bytes key is not there), so `leastload` reads open dials only until it does; the
 first-byte release of an open (the guard drops at the end of the dial); the margin and dwell are the donor's
 values and are not measured for TCP-connect probes; no field measure of any policy.
+
+## Done
+
+2026-11-11, be594df. The byte meter of the group members is there (`crates/podnet-core/src/network/meter.rs`).
+`Balance::dial` wraps the stream of each flow in `Metered`. The wrapper counts the bytes in both
+directions as the copy runs (two atomic adds for each chunk: the pending load and the total), and gives
+them to the member that carried the flow. Each door, and each rules file, dials through the group, so
+each flow of a door is counted; `Connected` (pod-core) is not changed. The pick folds the pending bytes
+into the decayed load (`Member::add_bytes` keeps its form), so `leastload` reads the bytes. The open dial
+(`OpenGuard`, now owned) ends at the first byte in either direction, on a dropped flow and on a failed
+dial. The status document has the key `bytes` for each member; `podnet route --status` prints it. The keys
+are only added.
+Tests (each failed before the change, with the wrap disabled): `group_meter_counts_bytes_in_both_directions_as_the_flow_runs`,
+`group_meter_open_ends_at_the_first_byte`, `group_meter_feeds_leastload_with_the_bytes_of_the_flows`,
+`front_door_gives_the_bytes_of_a_flow_to_its_member`; the pinned key tests `router_status_json_keys` and
+`router_status_json_keys_over_the_control_socket` have the key `bytes`. `sh scripts/agent/check.sh` is 0.
+Not proven: the margin and the dwell of `minrtt` for TCP-connect probes; a field measure of any policy
+(the owner ruled that none is needed). UDP datagrams are not metered.
 
 # T-179: Research: a direction split for asymmetric uplinks (GitHub #375)
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**254 entries: 44 open, 11 partial, 23 blocked, 176 done.**
+**254 entries: 44 open, 10 partial, 23 blocked, 177 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 23 | 7 | 14 | 108 | 152 |
-| P3 | 21 | 3 | 7 | 42 | 73 |
-| **All** | 44 | 11 | 23 | 176 | 254 |
+| P3 | 21 | 2 | 7 | 43 | 73 |
+| **All** | 44 | 10 | 23 | 177 | 254 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -223,7 +223,7 @@ M8 Overlays, M9 Later.
 | [T-175](crates.md) | P2 | M | M3 | feature | done | DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370) |
 | [T-176](later.md) | P3 | S | M9 | research | open | Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372) |
 | [T-177](services.md) | P3 | S | M6 | feature | done | Router: `podnet route check`, a dry run of the rules (GitHub #375) |
-| [T-178](later.md) | P3 | M | M9 | feature | partial | Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375) |
+| [T-178](later.md) | P3 | M | M9 | feature | done | Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375) |
 | [T-179](later.md) | P3 | S | M9 | research | open | Research: a direction split for asymmetric uplinks (GitHub #375) |
 | [T-180](services.md) | P3 | M | M6 | feature | open | Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376) |
 | [T-181](pods.md) | P3 | M | M7 | feature | done | seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376) |

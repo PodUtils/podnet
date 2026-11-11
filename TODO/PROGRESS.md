@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 254 entries: 44 open, 11 partial, 23 blocked, 176 done.
+`TODO/INDEX.md` holds 254 entries: 44 open, 10 partial, 23 blocked, 177 done.
 
 ## State
 
@@ -54,7 +54,7 @@ not wait for a larger one.
     The triage adds
     T-180 (the router control); the router additions are in T-097 to T-099 (GitHub #372 to #374).
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
-    The owner's rulings of 2026-11-11 add: T-178 (finish: the byte meter of the doors), T-179 (the
+    The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default), T-165 (the CLI of the SSH forward-relay leg).
     The study of hosted relays (`docs/research/podnet/hosted-relays.md`) adds T-251 (the hosted mailboxes on 443,
     after T-102), T-252 (a piping-server transit, after T-103) and T-253 (a live probe of the hosted services).
