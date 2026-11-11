@@ -4138,7 +4138,7 @@ the asset twice fails with the same wording.
 
 ## Done
 
-2026-11-11, commit 5ac044a. `scripts/install.sh` has `valid_tag` (the rule of `src/update.rs`) in
+2026-11-11, commit be5259e. `scripts/install.sh` has `valid_tag` (the rule of `src/update.rs`) in
 `resolve_tag` for the `latest` result, `v*` and a bare version; it fails with "not a release tag" before
 any download. It checks `PODNET_REPO` as OWNER/NAME. `check_sum` needs exactly one two-field line with a
 64-hex hash, else "SHA256SUMS must have exactly one valid line for NAME (found N)". `sum_of` in
