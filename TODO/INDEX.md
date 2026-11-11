@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**232 entries: 63 open, 3 partial, 22 blocked, 144 done.**
+**232 entries: 62 open, 3 partial, 22 blocked, 145 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 33 | 2 | 14 | 90 | 139 |
+| P2 | 32 | 2 | 14 | 91 | 139 |
 | P3 | 27 | 0 | 6 | 31 | 64 |
-| **All** | 63 | 3 | 22 | 144 | 232 |
+| **All** | 62 | 3 | 22 | 145 | 232 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -103,7 +103,7 @@ M8 Overlays, M9 Later.
 | [T-055](adapters.md) | P2 | M | M4 | feature | done | The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link |
 | [T-056](adapters.md) | P2 | M | M4 | feature | done | Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network |
 | [T-057](adapters.md) | P2 | M | M4 | feature | open | A dialer and datagrams for WARP |
-| [T-058](adapters.md) | P2 | M | M4 | feature | open | The combinators `Chain`, `Rules`, `Race` and `Failover` |
+| [T-058](adapters.md) | P2 | M | M4 | feature | done | The combinators `Chain`, `Rules`, `Race` and `Failover` |
 | [T-059](adapters.md) | P2 | M | M4 | feature | open | The registry of networks, the parser of network specs, and the rows of `doctor` |
 | [T-060](adapters.md) | P2 | M | M4 | feature | open | `--via SPEC` on each command, with each old network flag as an alias |
 | [T-061](adapters.md) | P2 | M | M4 | feature | open | One front door over a dialer for `warp proxy`, `pod --serve`, `net proxy` and `net tailscale` |

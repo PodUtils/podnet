@@ -213,7 +213,7 @@ adapter that holds the stack (`pod-warp`): do this work after the take, or as a 
 **Milestone:** M4
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -245,6 +245,25 @@ cargo test -p podnet-core -- network::chain network::rules network::race network
 ## Start condition
 
 T-056 and T-057 are done.
+
+## Correction
+
+2026-11-11, the call of 2026-11-10 (`docs/decisions.md`, Start conditions): the combinators need
+only `podnet-core` and no frozen file, so they start before T-057 (the dialer of WARP). The match
+of `Rules` is the trait `Matcher` of `podnet-core`: `podnet-core` uses no other crate of the
+workspace, so the adapter of `RuleMatch` (`PodRule`) is in `crates/podnet-vnet/src/dialer.rs`.
+
+## Done
+
+2026-11-11, commit 8d85f9f. `crates/podnet-core/src/network/`: `chain.rs` (`Chain`: each network
+comes up over the way of the network below it; a failure closes each layer that came up, the
+highest first; a layer below another must give a way that dials a destination), `rules.rs`
+(`Rules`, `Rule`, `Matcher`, `matcher`, `Choice`: the first rule that matches wins; a rule or a
+default with no way refuses with the class `policy`; UDP takes the default way), `race.rs`
+(`Race`: staggered attempts with `race::race`, the losers closed) and `failover.rs` (`Failover`:
+the next way after an error). `Rules`, `Race` and `Failover` refuse a peer way with one error
+line (`Addressing::admit`). `PodRule` gives a rule of `pod -r` to `Rules`. Tests: 25 in
+`podnet-core` (`network::`), 2 in `podnet-vnet` (`pod_rule`, `rules_combinator`).
 
 # T-059: The registry of networks, the parser of network specs, and the rows of `doctor`
 
