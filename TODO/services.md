@@ -1016,7 +1016,7 @@ T-061 and T-096 are done.
 ## Correction
 
 2026-11-11: T-061 is partial (the door over a dialer is done; the WARP door waits for `pod-warp`), and this
-entry needs only the generic door. Done so far (2595ba2): `crates/podnet-vnet/src/routes.rs`, `parse` (the rules
+entry needs only the generic door. Done so far (02c4bec): `crates/podnet-vnet/src/routes.rs`, `parse` (the rules
 `domain:` and `cidr:` of `pod -r` to a named way, a group or `reject`) and `RulesFile` (a `Dial`: the file is
 read again when its time of change moves; a broken file keeps the last rules with a warning; an unknown
 way is an error at the start). A door of T-061 over a `RulesFile` is a door of the router. Test:
