@@ -1292,7 +1292,7 @@ it to the origin and records a new exchange that names the first.
   (`crates/podnet-serve/src/origin/mod.rs`) has no caller outside its own module (a grep of `src`, `crates`
   and `tests`), so a decorator on it would see no traffic.
 - No capture and no request log exist in the tunnel path (a grep for `inspect`).
-- The socket: `claim_socket_path` (`crates/podnet-core/src/net.rs:22`), the check of the peer uid with
+- The socket: `claim_socket_path` (`crates/podnet-core/src/net.rs:21`), the check of the peer uid with
   `SO_PEERCRED` (`crates/podnet-vnet/src/switch.rs:264-270`), and `instances::lookup_dir`
   (`crates/podnet-core/src/instances.rs:81`).
 - `src/proxy.rs` and `src/tunnel.rs` go to `pod-cloudflare` (T-052). Podnet does not develop a new feature

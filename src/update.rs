@@ -201,9 +201,7 @@ pub fn newest_in_atom(feed: &str, current: &str) -> Option<String> {
 
 /// The order of two tags as versions (`v0.3.0-beta.10` after
 /// `v0.3.0-beta.9`; a release after its prereleases). The GitHub API and
-/// the feed do not give the newest first: the API lists by tag name, so
-/// `v0.3.0-beta.10` came after `v0.3.0-beta.7`, and an update took
-/// `v0.3.0-beta.9` as the newest.
+/// the feed do not give the newest first: the API lists by tag name.
 pub fn version_order(a: &str, b: &str) -> std::cmp::Ordering {
     fn key(tag: &str) -> (Vec<u64>, bool, Vec<(u64, String)>) {
         let tag = tag.trim_start_matches('v');

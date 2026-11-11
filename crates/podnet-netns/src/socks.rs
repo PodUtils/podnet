@@ -24,7 +24,7 @@ const CMD_CONNECT: u8 = 0x01;
 const ATYP_IPV4: u8 = 0x01;
 const ATYP_DOMAIN: u8 = 0x03;
 const ATYP_IPV6: u8 = 0x04;
-#[allow(dead_code)]
+#[cfg(test)]
 const REP_SUCCEEDED: u8 = 0x00;
 const REP_GENERAL_FAILURE: u8 = 0x01;
 const REP_HOST_UNREACHABLE: u8 = 0x04;

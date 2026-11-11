@@ -43,7 +43,7 @@ fn proxy() -> Value {
         return match crate::egress::parse(&value) {
             Ok(p) => {
                 let mut doc = describe(&p, key);
-                // The key of beta.11 and before.
+                // `variable` repeats `source`.
                 doc["variable"] = json!(key);
                 doc
             }

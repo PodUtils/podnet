@@ -1,6 +1,5 @@
 //! Origin connections: TCP, TLS, unix sockets, and TLS over unix.
 
-use std::path::PathBuf;
 use std::sync::Once;
 
 use anyhow::{bail, Context, Result};
@@ -171,10 +170,6 @@ pub fn parse_http_url(url: &str) -> Result<(String, u16, bool)> {
     }
     Ok((host, port, tls))
 }
-
-/// Keep `PathBuf` referenced so the import is used on every platform.
-#[allow(dead_code)]
-fn _pathbuf(_: PathBuf) {}
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -59,7 +59,7 @@ pub(crate) struct UpdateArgs {
     /// Only say which release is available; change nothing.
     #[arg(long)]
     check: bool,
-    /// The tag to install, for example v0.3.0-beta.11. Default: the newest
+    /// The tag to install, for example v0.4.0-beta.1. Default: the newest
     /// release (a prerelease only when this binary is a prerelease).
     #[arg(long, value_name = "TAG", value_parser = parse_release_tag)]
     version: Option<String>,

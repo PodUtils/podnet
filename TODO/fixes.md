@@ -2430,9 +2430,9 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:249`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`crates/podnet-core/src/net.rs:22-47`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (`src/warp/proxy.rs:85`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:249`, `src/cli/cmd/relay.rs:192`). The function is in the root crate (`crates/podnet-core/src/net.rs:21-46`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
-- `crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `crates/podnet-core/src/net.rs:179`).
+- `crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `crates/podnet-core/src/net.rs:174`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:70-76`).
 
 ## Approach
@@ -2468,7 +2468,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`crates/podnet-core/src/net.rs:104-129`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:181-199`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`crates/podnet-core/src/net.rs:95-99`).
+- `connect_origin` (`crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:181-199`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`crates/podnet-core/src/net.rs:94-98`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`crates/podnet-vnet/src/proxy.rs:185-189`).
 
@@ -2921,7 +2921,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
   `src/cli/cmd/connect.rs:208-211`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:192`.
   `SocketFile` is in `src/cli/cmd/connect.rs:219-239` (`pub(crate)`).
-- Message: `crates/podnet-core/src/net.rs:28-34`.
+- Message: `crates/podnet-core/src/net.rs:27-33`.
 - `src/main.rs:141` allows `--replace` without `--detach` only for `Command::Connect`.
 
 ## Approach
@@ -4119,7 +4119,7 @@ H, not H" with the same hash twice.
 - `scripts/install.sh:401-413` (`check_sum`): the `awk` prints each matching hash, and the compare is
   against the joined text.
 - The rule that exists: `src/update.rs:167-174` (`valid_tag`: 1 to 64 characters, first `v` or a digit, no
-  `..`), used by `src/update.rs:185`, `src/update.rs:273` and `src/update.rs:350`.
+  `..`), used by `src/update.rs:185`, `src/update.rs:271` and `src/update.rs:348`.
 - `src/update/cosign.rs:160-174` (`sum_of`) returns the first matching line and does not check the length
   of the hash. SHA256SUMS is signed, so this is a hardening gap, not a hole.
 - `tests/install_script.rs:102-112` (`Lab::curl`): the argument loop skips each word that starts with `-`,

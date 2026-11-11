@@ -8,7 +8,7 @@ use anyhow::Result;
 
 use podnet::config::Config;
 use podnet::exit::Fault;
-use podnet::share::{ShareControl, ShareMode};
+use podnet::share::ShareControl;
 use podnet::Tunnel;
 
 use crate::cli::opts::Show;
@@ -430,12 +430,6 @@ async fn wait_controls(controls: Vec<Arc<ShareControl>>) {
         set.spawn(async move { control.wait_stop().await });
     }
     let _ = set.join_next().await;
-}
-
-// Keep ShareMode referenced for future CLI flags.
-#[allow(dead_code)]
-fn _mode(mode: ShareMode) -> ShareMode {
-    mode
 }
 
 #[cfg(test)]
