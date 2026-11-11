@@ -748,7 +748,7 @@ closes at the merge.
 **Milestone:** M7
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -786,6 +786,28 @@ The test hides `/dev/net/tun` in a private mount namespace.
 ## Start condition
 
 The owner can rule on this (see Decision). A pod-backend feature starts after T-040 ends.
+
+## Done
+
+2026-11-11, commit d346d16. `crates/podnet-netns/src/netns/veth.rs`: when the namespace cannot open
+`/dev/net/tun`, the child makes a veth pair (`eth0`, `wire0`) with one `RTM_NEWLINK` request, gives
+`eth0` the address and the route of the TUN with ioctls, turns off its offloads (checksum, TSO, GSO),
+and sends an `AF_PACKET` socket on `wire0` to the parent. The device of the stack
+(`crates/podnet-netns/src/netns/tun.rs`, `Wire::{Tun, Veth}`; the parent sees a socket with `fstat`)
+translates frames and IP packets, answers ARP for the gateway, and drops the frames of its own MAC
+and frames larger than the MTU; it does not check the checksums of received packets on this wire.
+smoltcp keeps `medium-ip`: the wire translates, so `medium-ethernet` is not necessary. `pod doctor`
+has the row `veth wire (no TUN)`; the unshare probes take the veth wire when the TUN fails, and
+`auto` takes netns when one of them works. `-v` prints `the wire of the namespace is a veth pair`.
+The test hook `PODNET_NETNS_TEST_VETH` (`src/manual/facts.rs`) forces the veth wire. The Prove
+command: 1 passed (`veth_wire_carries_a_tcp_flow`: a name through the fake DNS, a TCP connect and
+256 KiB echoed through a SOCKS5 proxy on a unix socket). With the hook disabled, the test failed
+(`the pod did not take the veth wire`). Unit tests: `the_wire_answers_arp_for_the_gateway`,
+`the_wire_strips_the_header_and_the_padding_of_an_ip_frame`, `the_newlink_request_names_both_ends`.
+In the pod, `SIOCETHTOOL` reads 0 for the checksum, TSO and GSO of `eth0`. `TMPDIR=/home/user/tmp-t174
+sh scripts/agent/check.sh`: each step 0. Not measured: a host with user namespaces and no
+`/dev/net/tun` (the test uses the hook, not a hidden node in a mount namespace); IPv6 frames go to
+the stack, but the wire answers no neighbour solicitation.
 
 # T-181: seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376)
 
