@@ -55,6 +55,8 @@ tracing = "0.1"
 
 [dev-dependencies]
 tempfile = "3"
+# The paused clock of the tests of the door (T-061).
+tokio = { version = "1", features = ["test-util"] }
 # need_loopback! of the tests, from the test kit of PodUtils/podcrates at
 # the git tag of the root.
 pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }

@@ -47,6 +47,7 @@ pub mod device;
 pub mod dialer;
 pub mod dns;
 pub mod doctor;
+pub mod door;
 pub mod framing;
 pub mod policy;
 pub mod proxy;
