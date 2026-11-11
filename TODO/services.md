@@ -1093,8 +1093,33 @@ cannot tell the end of a spec of a URL (`socks5h://HOST:PORT`) from the host. Do
 (`src/cli/cmd/forward.rs`). Tests: `cargo test -p podnet --lib forward_` (the parse; `forward_over_a_network`).
 Measured in this sandbox: a forward on a unix socket through the HTTP proxy of the sandbox to
 `api.github.com:443` answered HTTP 200 to curl. Left: `warp forward` as an alias waits for `pod-warp`
-(`src/warp/forward.rs` is frozen); the UDP forwards, the pump of item 4 and the DNS door need
-`Dial::datagrams` of each network; `podnet expose` (item 3).
+(`src/warp/forward.rs` is frozen). Left after 2026-11-11: only `warp forward` as an alias (it waits for
+`pod-warp`).
+
+2026-11-11, commits d5f647c and a6f9a8a. Item 2: `podnet forward -L udp:LISTEN=HOST:PORT` and
+`podnet forward --dns ADDR:PORT [--dns-upstream HOST:PORT]` (`src/forwards/udp.rs`). Item 3: `podnet expose
+TARGET [--via tunnel|relay|switch] [--as VIRT] [-- ARGS]` (`src/cli/cmd/expose.rs`) builds the arguments of
+`tunnel`, `relay node` or `net proxy --forward`, parses them and runs that command. Item 4: the UDP forward
+has no byte stream, so its queue is a bounded channel for each flow (64 datagrams); a full flow drops the
+datagram (UDP has no flow control). The pump of the byte stream (`carry_in_stream` in
+`crates/podnet-netns/src/netns/udpflow.rs`) already writes each frame with `write_all`; its test
+`a_partial_stream_write_keeps_the_record_stream_aligned` passes (a stream of 5 bytes for each write, 200
+datagrams in order). A name target of a UDP forward resolves with the resolver of the host, because
+`Datagrams` takes an address. A SOCKS or HTTP proxy network carries no UDP: the forward logs the refusal and
+ends the flow.
+
+
+## Done
+
+2026-11-11, commits d5f647c and a6f9a8a (partial: `warp forward` as an alias waits for `pod-warp`). Tests:
+`cargo test -p podnet --lib forwards::` (5 passed: `forward_rule_parses_each_form`, `forward_over_a_network`,
+`forward_udp_echo`, `an_idle_udp_flow_ends`, `dns_door_over_a_network`), `cargo test -p podnet --bin podnet
+expose` (3 passed: `expose_via_relay_is_a_relay_node`, `expose_via_tunnel_picks_the_origin_flag`,
+`expose_via_switch_needs_a_virtual_address`), `cargo test -p podnet-netns a_partial_stream_write_keeps_the_record_stream_aligned`
+(passed on the existing code). Each new test failed first on a stub (a 10 s timeout, or an error). By hand:
+`podnet forward --network direct -L udp:45353=127.0.0.1:P --dns 127.0.0.1:45354` answered an echo on both
+doors. Not proven: UDP through a real WARP, relay or tailnet network (the tests use `direct`); `expose` runs
+the other commands as they are (it starts no tunnel in a test). `sh scripts/agent/check.sh`: exit 0.
 
 # T-100: Router: a config file, and `podnet route` with `--detach` and autostart
 
