@@ -1093,7 +1093,7 @@ Measured in this sandbox: a forward on a unix socket through the HTTP proxy of t
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1121,6 +1121,20 @@ cargo test --test detach -- route_detaches_and_lists_its_members
 ## Start condition
 
 T-097 and T-098 are done.
+
+## Done
+
+2026-11-11, 5c9c9e6. `src/router.rs` reads the config file with `podnet_core::yaml`. The keys are
+`networks` (NAME: SPEC of the registry), `groups` (NAME: MEMBER*WEIGHT, ...), `health` (`target`,
+`interval`) and `doors` (`listen`, `via`, `rules`). An unknown key fails. An error names the key
+(`doors[0].via`, `groups.NAME`, `health.target`). `podnet route --config FILE` brings up each network,
+each group (a `Balance` with the probe of `health`) and each door (SOCKS5 and HTTP CONNECT, with the
+rules file of T-098). `--check` reads the file only. `--detach --name NAME` gives a ready document with
+the doors and the status of each group. `podnet autostart add NAME -- route --config FILE` takes the
+command. Tests: `route_config_errors_name_the_key`, `route_config_reads_networks_groups_doors_and_health`,
+`route_router_up_builds_groups_and_doors`, and `route_detaches_and_lists_its_members` (`ps`, `stop`, a
+connection through the door, exit 64 for a bad file). Measured: a door on a unix socket over a group
+answered `HTTP/1.1 200 Connection Established`, and curl through the door got HTTP 200.
 
 # T-101: Router: the live step with WARP, the relay and direct, and a failover
 

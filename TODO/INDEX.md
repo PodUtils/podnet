@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**244 entries: 60 open, 7 partial, 19 blocked, 158 done.**
+**244 entries: 59 open, 7 partial, 19 blocked, 159 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 27 | 6 | 12 | 102 | 147 |
+| P2 | 26 | 6 | 12 | 103 | 147 |
 | P3 | 30 | 0 | 5 | 33 | 68 |
-| **All** | 60 | 7 | 19 | 158 | 244 |
+| **All** | 59 | 7 | 19 | 159 | 244 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -145,7 +145,7 @@ M8 Overlays, M9 Later.
 | [T-097](services.md) | P2 | M | M6 | feature | partial | Router: a TCP health check for each member, and `podnet route status` |
 | [T-098](services.md) | P2 | M | M6 | feature | partial | Router: doors with a default network, and rules to a network, a group or a refusal |
 | [T-099](services.md) | P2 | M | M6 | feature | partial | Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose` |
-| [T-100](services.md) | P2 | M | M6 | feature | open | Router: a config file, and `podnet route` with `--detach` and autostart |
+| [T-100](services.md) | P2 | M | M6 | feature | done | Router: a config file, and `podnet route` with `--detach` and autostart |
 | [T-101](services.md) | P2 | M | M6 | measurement | open | Router: the live step with WARP, the relay and direct, and a failover |
 | [T-102](services.md) | P2 | M | M6 | feature | open | Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole` |
 | [T-103](services.md) | P2 | L | M6 | feature | open | The file-transfer protocol and the transit protocol of magic-wormhole |
