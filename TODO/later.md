@@ -363,6 +363,11 @@ T-059 is done.
 2026-11-05, The work goes to `pod-egress` in PodUtils/podcrates. podnet only takes the crate (T-137). Do not do it in podnet. Do not copy code of podssh into podnet (`docs/decisions.md`, Shared crates). The code comes through PodUtils/podcrates. The egress roads (`via`, wstunnel) are in the design of
 `pod-egress` (wave 4). `src/egress.rs` moves to `pod-proxy`. Read both crates before the work.
 
+2026-11-11, Checked: the crate `pod-egress` is not in `PodUtils/podcrates` (`crates/` has no such directory), and
+`sh scripts/agent/podcrates.sh` lists no hand-off for it. The Approach needs podssh code, and the Correction above
+forbids a copy into podnet. No part of this entry is possible in podnet now. Nothing was changed in the code. The
+entry stays `open`. It starts when `pod-egress` has a release (wave 4) and podnet takes it (T-137).
+
 # T-127: Egress through VLESS, Shadowsocks and Wisp
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.4 and 3 (C16).
