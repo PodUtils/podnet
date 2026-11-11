@@ -262,10 +262,11 @@ async fn print_status(control: &str, json: bool) -> Result<()> {
                 .as_f64()
                 .map_or("-".to_string(), |ms| format!("{ms:.1} ms"));
             println!(
-                "  {}  {}  rtt {rtt}  floor {floor}  flows {}  weight {}",
+                "  {}  {}  rtt {rtt}  floor {floor}  flows {}  bytes {}  weight {}",
                 m["name"].as_str().unwrap_or("?"),
                 m["health"].as_str().unwrap_or("?"),
                 m["flows"],
+                m["bytes"],
                 m["weight"]
             );
         }

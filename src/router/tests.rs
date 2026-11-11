@@ -200,6 +200,7 @@ async fn router_status_json_keys_over_the_control_socket() {
         assert_eq!(
             keys,
             [
+                "bytes",
                 "flows",
                 "health",
                 "name",

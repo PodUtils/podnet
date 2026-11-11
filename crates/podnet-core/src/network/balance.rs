@@ -10,7 +10,8 @@ use std::sync::{Arc, Mutex};
 use tokio::time::Instant;
 
 use super::health::{ProbeResult, Step, Thresholds, Tracker};
-use super::policy::{choose, next_head, Head, Load, Policy, Snapshot};
+use super::meter::{Meter, Metered, OpenGuard};
+use super::policy::{choose, next_head, Head, Policy, Snapshot};
 use super::race::admit;
 use super::{BoxFuture, Class, Connected, Datagrams, Dial, Failure, Stage, Target, Way};
 
@@ -67,18 +68,7 @@ pub struct Member {
     health: AtomicU8,
     tracker: Mutex<Tracker>,
     flows: AtomicU64,
-    /// The dials that have not ended (`leastload`).
-    opens: AtomicU64,
-    load: Mutex<Load>,
-}
-
-/// An open dial of a member: the count falls when the guard drops.
-pub struct OpenGuard<'a>(&'a AtomicU64);
-
-impl Drop for OpenGuard<'_> {
-    fn drop(&mut self) {
-        self.0.fetch_sub(1, Ordering::Relaxed);
-    }
+    meter: Arc<Meter>,
 }
 
 impl Member {
@@ -90,29 +80,31 @@ impl Member {
             health: AtomicU8::new(Health::Up.value()),
             tracker: Mutex::new(Tracker::default()),
             flows: AtomicU64::new(0),
-            opens: AtomicU64::new(0),
-            load: Mutex::new(Load::new()),
+            meter: Arc::new(Meter::default()),
         }
     }
 
     /// Add `bytes` of traffic at `now` to the load of the member
     /// (`leastload`).
     pub fn add_bytes(&self, bytes: u64, now: Instant) {
-        self.load
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .add(bytes, now);
+        self.meter.add(bytes, now);
     }
 
     /// Count one open dial of the member until the guard drops.
-    pub fn open(&self) -> OpenGuard<'_> {
-        self.opens.fetch_add(1, Ordering::Relaxed);
-        OpenGuard(&self.opens)
+    pub fn open(&self) -> OpenGuard {
+        self.meter.opens.fetch_add(1, Ordering::Relaxed);
+        OpenGuard(self.meter.clone())
     }
 
     /// The dials of the member that have not ended.
     pub fn opens(&self) -> u64 {
-        self.opens.load(Ordering::Relaxed)
+        self.meter.opens.load(Ordering::Relaxed)
+    }
+
+    /// The bytes that the flows of the member carried, in both directions,
+    /// since the start.
+    pub fn bytes(&self) -> u64 {
+        self.meter.total.load(Ordering::Relaxed)
     }
 
     /// The least of the window of passing probe times.
@@ -128,8 +120,8 @@ impl Member {
             weight: self.weight,
             health: self.health(),
             rtt_floor: self.rtt_floor(),
-            opens: self.opens.load(Ordering::Relaxed),
-            load: self.load.lock().unwrap_or_else(|e| e.into_inner()).at(now),
+            opens: self.opens(),
+            load: self.meter.load_at(now),
         }
     }
 
@@ -278,7 +270,8 @@ impl Balance {
                     "health": m.health().name(),
                     "rtt_ms": rtt.map(ms),
                     "rtt_floor_ms": floor.map(ms),
-                    "opens": m.opens.load(Ordering::Relaxed),
+                    "bytes": m.bytes(),
+                    "opens": m.opens(),
                     "flows": m.flows(),
                 })
             })
@@ -327,7 +320,7 @@ impl Balance {
 
     /// A pick that also counts an open dial of the member until the guard
     /// drops (`leastload`).
-    pub fn pick_open(&self, now: Instant) -> (Selection<'_>, Option<OpenGuard<'_>>) {
+    pub fn pick_open(&self, now: Instant) -> (Selection<'_>, Option<OpenGuard>) {
         match self.pick_at(now) {
             Selection::One(m) => (Selection::One(m), Some(m.open())),
             Selection::None => (Selection::None, None),
@@ -380,9 +373,15 @@ impl Dial for Balance {
         deadline: Instant,
     ) -> BoxFuture<'a, Result<Connected, Failure>> {
         Box::pin(async move {
-            let (selection, _open) = self.pick_open(Instant::now());
+            let (selection, open) = self.pick_open(Instant::now());
             match selection {
-                Selection::One(member) => member.way.dial.dial(target, deadline).await,
+                Selection::One(member) => {
+                    let mut conn = member.way.dial.dial(target, deadline).await?;
+                    // The meter counts each byte of the flow for the member;
+                    // the open dial ends at the first byte.
+                    conn.io = Box::new(Metered::new(conn.io, member.meter.clone(), open));
+                    Ok(conn)
+                }
                 Selection::None => Err(self.refusal(&format!("the flow to {target}"))),
             }
         })

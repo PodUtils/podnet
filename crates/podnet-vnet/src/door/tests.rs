@@ -166,3 +166,30 @@ async fn front_door_refuses_udp_associate_with_command_unsupported() {
     client.read_to_end(&mut out).await.unwrap();
     assert_eq!(out[1], 0x07, "{out:?}");
 }
+
+/// T-178: a door over a group counts the bytes of each flow for the member
+/// that carried it, in both directions, and the status shows them.
+#[tokio::test]
+async fn front_door_gives_the_bytes_of_a_flow_to_its_member() {
+    use podnet_core::network::{Balance, Member, Way};
+    let named = Arc::new(Named {
+        seen: Mutex::new(Vec::new()),
+    });
+    let group = Arc::new(
+        Balance::new(
+            "g",
+            vec![Member::new("only", Way::destination(named.clone()), 1)],
+        )
+        .unwrap(),
+    );
+    let door = Arc::new(Door::new(group.clone()));
+    let out = socks5(&door, "svc.example", 443).await;
+    assert!(out.ends_with(b"svc.example:443"), "{out:?}");
+    let member = &group.members()[0];
+    assert_eq!(member.bytes(), "svc.example:443".len() as u64);
+    assert_eq!(member.opens(), 0, "the first byte ended the open dial");
+    assert_eq!(
+        group.status()["members"][0]["bytes"],
+        "svc.example:443".len()
+    );
+}

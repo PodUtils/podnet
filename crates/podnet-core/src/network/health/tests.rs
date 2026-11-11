@@ -195,6 +195,7 @@ fn router_status_json_keys() {
     assert_eq!(
         keys,
         [
+            "bytes",
             "flows",
             "health",
             "name",
