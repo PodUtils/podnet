@@ -22,6 +22,7 @@
 //!   - listen: unix:/run/r.sock
 //!     via: egress      # a network or a group
 //!     rules: /etc/r.rules   # optional: the rules of T-098
+//!     allow_shadowed_rules: false  # true loads a file with a shadowed reject
 //!     dns: 127.0.0.1:5353   # optional: a DNS door (UDP and TCP) over the same way
 //!     dns_upstream: 10.0.0.53:53  # the resolver at the far end (needed with dns)
 //! ```
@@ -125,6 +126,10 @@ pub struct DoorConfig {
     /// A rules file (T-098): its rules go first; `via` is the default.
     #[serde(default)]
     pub rules: Option<PathBuf>,
+    /// Load a rules file in which an earlier rule shadows a later `reject`
+    /// (T-242; as `pod --allow-shadowed-rules`). The lint still warns.
+    #[serde(default)]
+    pub allow_shadowed_rules: bool,
     /// `ADDR:PORT` of a DNS door (UDP and TCP) over the dial of the door.
     #[serde(default)]
     pub dns: Option<String>,
@@ -361,8 +366,13 @@ impl Router {
             let way = ways[&door.via].clone();
             let rules = match &door.rules {
                 Some(path) => Some(Arc::new(
-                    RulesFile::open(path, ways.clone(), Some(way.clone()))
-                        .with_context(|| format!("doors[{i}].rules"))?,
+                    RulesFile::open_with(
+                        path,
+                        ways.clone(),
+                        Some(way.clone()),
+                        door.allow_shadowed_rules,
+                    )
+                    .with_context(|| format!("doors[{i}].rules"))?,
                 )),
                 None => None,
             };

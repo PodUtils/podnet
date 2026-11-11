@@ -270,3 +270,24 @@ fn route_config_policy_reaches_the_group_and_the_status() {
         .unwrap();
     assert_eq!(t.rtt_window, 3);
 }
+
+/// T-242: a rules file of a door with a shadowed `reject` does not load,
+/// unless the door has `allow_shadowed_rules: true`.
+#[test]
+fn route_door_shadowed_reject_needs_the_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let rules = dir.path().join("r.rules");
+    std::fs::write(
+        &rules,
+        "domain:.example.com=home\ndomain:a.example.com=reject\n",
+    )
+    .unwrap();
+    let text = format!(
+        "networks:\n  home: direct\ndoors:\n  - listen: unix:/tmp/x.sock\n    via: home\n    rules: {}\n",
+        rules.display()
+    );
+    let err = Router::plan(&parse(&text).unwrap()).err().unwrap();
+    assert!(format!("{err:#}").contains("doors[0].rules"), "{err:#}");
+    let allowed = text + "    allow_shadowed_rules: true\n";
+    Router::plan(&parse(&allowed).unwrap()).unwrap();
+}
