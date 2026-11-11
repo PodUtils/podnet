@@ -121,6 +121,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #423 | live: two runs in a row failed (the new steps of the file server and git) | closed | T-091, T-094 |
 | #424 | COORD-015: podnet took pod-hold of v0.15.0; the answers to Q-a and Q-b of COORD-030 | closed (podcrates recorded it) | none |
 | #425 | COORD-016: T-229 measured, T-230 has the hold object, T-231 item 1 done (to podrunner) | open (a COORD issue between sessions) | none |
-| #426 | COORD-017: podnet took v0.17.0; podnet released v0.4.0-beta.3 (to podcrates) | open (a COORD issue between sessions) | none |
+| #426 | COORD-017: podnet took v0.17.0 and pod_hold::connect and pod_hold::packet | closed (podcrates recorded it: taken e4d4049) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
