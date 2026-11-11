@@ -746,6 +746,10 @@ Done so far:
   takes `TUNSETIFF` of `pod-hold` (the number of the target: powerpc64le had a wrong number). Each
   `pod-*` dependency names `tag = "v0.15.0"`. Each line of `adoption/podnet/pod-hold.run` passed, except
   the static build with zig (no zig on the host; CI builds the static musl binaries).
+- v0.17.0 (PodUtils/podcrates#57 and #58): each `pod-*` dependency names `tag = "v0.17.0"`, `pod-todo` too.
+  v0.16.0 carries `pod_hold::connect` and `pod_hold::packet`; the patch that makes `connect.rs` and
+  `netns/packet.rs` glue comes with a later release. No API change for podnet. `sh scripts/agent/check.sh`:
+  each step 0.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

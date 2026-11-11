@@ -59,4 +59,4 @@ tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
 # need_loopback! of the tests, from the test kit of PodUtils/podcrates at
 # the git tag of the root.
-pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }
+pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.17.0", version = "0.17.0" }

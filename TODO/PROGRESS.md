@@ -8,7 +8,7 @@
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
 - podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`
-  and `pod-hold` (`PodUtils/podcrates` v0.15.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-relay`,
+  and `pod-hold` (`PodUtils/podcrates` v0.17.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-relay`,
   then `pod-session` and `pod-wormhole` when podcrates writes their hand-off for podnet. A session reads the state
   of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`);
