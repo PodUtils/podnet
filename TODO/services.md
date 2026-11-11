@@ -1888,7 +1888,7 @@ issue (to podcrates) with the ask. The router file has no command flag yet: `Rul
 
 ## Done
 
-2026-11-11, commit bebfb53. `crates/podnet-netns/src/rules/shadow.rs` holds the lint (`covers`, `shadowed`, `check`).
+2026-11-11, commit e7ec95c. `crates/podnet-netns/src/rules/shadow.rs` holds the lint (`covers`, `shadowed`, `check`).
 `podnet pod -r` warns for a shadowed rule and exits 64 for a shadowed `reject`; `--allow-shadowed-rules` makes it a
 warning. The router file (`routes::parse_with`, `RulesFile::open_with`) does the same, with the line numbers of the file.
 Tests: `shadowed_rule_is_reported`, `shadowed_reject_is_an_error`, `reversed_order_gives_no_report`,
