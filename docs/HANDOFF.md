@@ -18,7 +18,8 @@ file when each step below is done.
 Done: T-100 (`podnet route --config`), T-177 (`route --check --to`), T-174 (the
 veth wire), T-216 and T-217 (`doctor --json` schema 1, `--quick`, `lanes`),
 T-218 (the connector profile, `docs/protocol.md` section 10), T-222 (`--help
---json`, `llms.txt`, `llms-full.txt`), T-239, T-240, T-241, T-243.
+--json`, `llms.txt`, `llms-full.txt`), T-239, T-240, T-241, T-243, T-118 (the
+research on NetBird, Firezone and ZeroTier; it opened T-246 and T-247).
 
 Partial: T-097 (thresholds and `route --status`), T-098 (the DNS door of a
 door), T-099 (UDP forwards, the DNS door, `podnet expose`), T-178 (group
@@ -38,17 +39,18 @@ tests skip on the CI jobs that cannot run them.
 2. **T-236:** the code is in e6eda36. The entry waits for the live step "Git
    over SSH through the reverse relay" to pass. Read the next live run.
 3. **Agents in flight** (worktrees under `.claude/worktrees/`): T-119 (the
-   kernel mode of the router). T-126 waits for `pod-egress` (cb80aca). Merge
-   each: rebase on `main`, take `--ours` for
+   kernel mode of the router) and T-246 (`netbird:`). T-126 waits for
+   `pod-egress` (cb80aca). Merge each: rebase on `main`, take `--ours` for
    `TODO/INDEX.md` and `TODO/PROGRESS.md` and run `cargo todo set`, cite the
    rebased commit, run `gen-llms.py`, run `check.sh`, push.
 4. **T-121** (the mwan export) needs the interface and the table of each WAN:
    do it after T-119.
 5. **podcrates:** at each new tag, read `sh scripts/agent/podcrates.sh` and take the
    crates whose hand-off is at the tag (T-137).
-6. **The next beta:** the batch above is green when CI is green. Name the
-   speed limit of `warp --cc reno|cubic` on smoltcp 0.14 (PodUtils/podcrates#66,
-   COORD-041: keep `CongestionControl::None`) in the notes.
+6. **The next beta (T-245):** the notes are drafted in
+   `docs/releases/v0.4.0-beta.4.md`. When `ci` and `live` pass on `main`, set
+   the version, add the work of the agents to the notes, and follow the
+   Approach of T-245.
 
 ## Open COORD issues
 
