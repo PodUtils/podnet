@@ -63,6 +63,9 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
             config.groups.len(),
             config.doors.len()
         );
+        if let Some(kernel) = &config.kernel {
+            println!("podnet: route  kernel: {} WANs", kernel.wans.len());
+        }
         return Ok(());
     }
     let router = Arc::new(podnet::router::Router::up(&config).await?);
@@ -117,13 +120,36 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
         println!("podnet: route  control unix:{}", path.display());
         servers.spawn(router.clone().serve_control(listener));
     }
+    let kernel = apply_kernel(&config)?;
     podnet::detach::ready(router.status());
     let probing = router.clone();
-    tokio::select! {
+    let ended = tokio::select! {
         _ = sleep_or_signal(args.run_for) => Ok(()),
         _ = probing.probe_forever() => Ok(()),
         Some(ended) = servers.join_next() => ended.context("a door stopped")?,
+    };
+    if let Some(plan) = kernel {
+        if let Err(e) = podnet::router::kernel::remove(&plan) {
+            eprintln!("podnet: route  kernel: {e:#}");
+        }
     }
+    ended
+}
+
+/// Write the kernel mode of the file (T-119), if it has one.
+fn apply_kernel(config: &podnet::router::Config) -> Result<Option<podnet::router::kernel::Plan>> {
+    use podnet::router::kernel;
+    let Some(section) = &config.kernel else {
+        return Ok(None);
+    };
+    let plan = kernel::Plan::new(section).fault(Fault::Config)?;
+    kernel::apply(&plan, None).fault(Fault::Unavailable)?;
+    println!(
+        "podnet: route  kernel  {} WANs, aggregate table {}",
+        plan.wans.len(),
+        plan.aggregate
+    );
+    Ok(Some(plan))
 }
 
 /// `route --check --to HOST:PORT` (T-177): the choice of each door, with the

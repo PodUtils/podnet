@@ -17,6 +17,10 @@
 //!   cooldown: 30       # seconds in cooldown before up
 //!   timeout: 5         # seconds of one probe
 //!   window: 8          # passing probe times for the floor (0 to 64; minrtt)
+//! kernel:              # optional: tables, rules and a multipath route (T-119)
+//!   wans:              # see `kernel` for the keys; needs CAP_NET_ADMIN
+//!     - {name: a, dev: tun0}
+//!     - {name: b, dev: tun1, weight: 2}
 //! control: unix:/run/r.ctl  # optional: `podnet route --status` reads it
 //! doors:               # SOCKS5 and HTTP CONNECT doors (T-061)
 //!   - listen: unix:/run/r.sock
@@ -39,6 +43,8 @@ use podnet_vnet::routes::RulesFile;
 use serde::Deserialize;
 use tokio::time::Instant;
 
+pub mod kernel;
+
 use crate::network::{
     parse_group, probe, Balance, Choice, Ctx, Dial, Member, Network as _, Policy, Selection,
     Target, Thresholds, Way,
@@ -60,6 +66,11 @@ pub struct Config {
     /// `unix:/PATH`: the control socket (mode 0600) of `route --status`.
     #[serde(default)]
     pub control: Option<String>,
+    /// The kernel mode (T-119): tables, rules and a multipath route.
+    #[serde(default)]
+    pub kernel: Option<kernel::KernelConfig>,
+    /// The doors; none are allowed when `kernel` is set.
+    #[serde(default)]
     pub doors: Vec<DoorConfig>,
 }
 
@@ -172,8 +183,12 @@ pub fn load(path: &Path) -> Result<Config> {
 pub fn parse(text: &str) -> Result<Config> {
     let value = podnet_core::yaml::parse(text)?;
     let config: Config = serde_json::from_value(value).map_err(|e| anyhow::anyhow!("{e}"))?;
-    if config.doors.is_empty() {
-        bail!("doors: give one door or more");
+    match &config.kernel {
+        Some(kernel) => {
+            kernel::Plan::new(kernel)?;
+        }
+        None if config.doors.is_empty() => bail!("doors: give one door or more"),
+        None => {}
     }
     for (name, _) in config.networks.iter().chain(config.groups.iter()) {
         if name.is_empty()
