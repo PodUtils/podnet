@@ -43,6 +43,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "Read only, to show its value in the tailscaled row of net doctor. It is a variable of tailscaled: set it to true when tailscaled starts on a host that reaches only port 443 (the control connection tries port 80 first).",
     },
     EnvVar {
+        names: &["NB_SOCKS5_LISTENER_PORT"],
+        used_by: "net doctor",
+        meaning: "Read only, to find the SOCKS5 listener of NetBird netstack mode in the NetBird row of net doctor (default 1080). It is a variable of the NetBird daemon. The network spec netbird:[PORT] gives its own port.",
+    },
+    EnvVar {
         names: &["HTTP_PROXY", "http_proxy"],
         used_by: "pod",
         meaning: "The default upstream of podnet pod when HTTPS_PROXY and ALL_PROXY are not set.",

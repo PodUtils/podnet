@@ -1121,6 +1121,25 @@ for example a client with the fixed origin `127.0.0.1:3000`. `net shim
 [`docs/virtual-network.md`](https://github.com/PodUtils/podnet/blob/main/docs/virtual-network.md),
 section 5.5.
 
+## NetBird in netstack mode
+
+NetBird joins a host with no TUN device in netstack mode. The daemon then
+gives a SOCKS5 listener on `127.0.0.1`.
+
+```sh
+NB_USE_NETSTACK_MODE=true NB_SOCKS5_LISTENER_PORT=1080 NB_SETUP_KEY=... netbird up -F
+podnet pod -x netbird:1080 -- ssh 100.64.0.7        # the peer by its NetBird IP address
+podnet net doctor                                    # the row "NetBird (SOCKS5 listener)"
+```
+
+The network spec is `netbird:[PORT]` (default 1080). It dials the SOCKS5
+listener at `127.0.0.1:PORT`. podnet does not start the daemon. The spec
+gives TCP only. It takes the IP address of a peer. A host name fails with one
+line, because netstack mode has no DNS. The listener has no authentication:
+keep it on `127.0.0.1`. The doctor row sends a SOCKS5 greeting to the port
+(`NB_SOCKS5_LISTENER_PORT`, else 1080). A listener that does not answer is
+`unknown`, not a fault.
+
 ## A user with no passwd entry
 
 On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.

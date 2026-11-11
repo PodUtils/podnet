@@ -126,6 +126,12 @@ fn pod_hops(
                 network.label()
             ));
         }
+        if let Some(port) = network.netbird_port() {
+            // The listener of NetBird netstack mode is a SOCKS5 hop.
+            hops.push("-x".to_string());
+            hops.push(format!("127.0.0.1:{port}"));
+            continue;
+        }
         if let Err(e) = podnet_netns::upstream::Proxy::parse(spec) {
             return Err(format!(
                 "--egress {}: podnet pod cannot take it: {e:#}",

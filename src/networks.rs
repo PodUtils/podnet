@@ -4,7 +4,7 @@
 //! proxy URL (`socks5h://HOST:PORT`, `http://HOST:PORT`,
 //! `SCHEME+unix:/PATH`, `SCHEME+exec:COMMAND`), a hop of the pod
 //! (`unix:/PATH`, `HOST:PORT`, `socks://`, `https://`), `tailscale:/PATH`,
-//! or the relay (`relay`, `relay:URL`). [`networks`] is the table of the
+//! `netbird:[PORT]`, or the relay (`relay`, `relay:URL`). [`networks`] is the table of the
 //! networks of this build: a static table in the binary, with no
 //! dependency (`docs/research/podnet/architecture.md`, section 4.3).
 //!
@@ -24,6 +24,9 @@ use crate::network::{
 };
 use crate::ws_relay::Relay;
 
+mod netbird;
+pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
+
 /// One row of the registry: a scheme, its forms and what it gives.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Row {
@@ -37,7 +40,7 @@ pub struct Row {
     pub caps: Caps,
 }
 
-const ROWS: [Row; 4] = [
+const ROWS: [Row; 5] = [
     Row {
         scheme: "direct",
         forms: &["direct"],
@@ -71,6 +74,12 @@ const ROWS: [Row; 4] = [
         about: "TCP into a tailnet through the LocalAPI of tailscaled",
         caps: Caps::EGRESS_TCP,
     },
+    Row {
+        scheme: "netbird",
+        forms: &["netbird", "netbird:[PORT]"],
+        about: "TCP to a peer address through the SOCKS5 listener of NetBird netstack mode",
+        caps: Caps::EGRESS_TCP,
+    },
 ];
 
 /// The networks of this build, in the order of their parse.
@@ -91,6 +100,8 @@ enum Kind {
     },
     /// The relay of this URL; `None`: of `PODNET_RELAY`, else the default.
     Relay(Option<String>),
+    /// The SOCKS5 listener of NetBird netstack mode on 127.0.0.1:PORT.
+    Netbird(u16),
 }
 
 /// A network that a spec names.
@@ -132,6 +143,18 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
         };
         Relay::new(&url, None).map_err(|e| usage(format!("{spec}: {e:#}")))?;
         return Ok(Kind::Relay(Some(url)));
+    }
+    if spec == "netbird" || spec.starts_with("netbird:") {
+        let port = spec["netbird".len()..].trim_start_matches(':');
+        let port = if port.is_empty() {
+            netbird::DEFAULT_PORT
+        } else {
+            port.parse::<u16>()
+                .ok()
+                .filter(|p| *p != 0)
+                .ok_or_else(|| usage(format!("{spec}: the port must be 1 to 65535")))?
+        };
+        return Ok(Kind::Netbird(port));
     }
     if spec == "warp" || spec.starts_with("warp:") {
         return Err(Failure::new(
@@ -176,6 +199,7 @@ impl SpecNetwork {
     pub fn label(&self) -> String {
         match &self.kind {
             Kind::Proxy(proxy) => proxy.label(),
+            Kind::Netbird(port) => format!("netbird:{port}"),
             _ => redacted(&self.spec),
         }
     }
@@ -186,6 +210,14 @@ impl SpecNetwork {
     pub fn relay_url(&self) -> Option<Option<&str>> {
         match &self.kind {
             Kind::Relay(url) => Some(url.as_deref()),
+            _ => None,
+        }
+    }
+
+    /// The port of the NetBird listener, for `netbird:[PORT]`.
+    pub fn netbird_port(&self) -> Option<u16> {
+        match self.kind {
+            Kind::Netbird(port) => Some(port),
             _ => None,
         }
     }
@@ -212,6 +244,10 @@ impl SpecNetwork {
                 UpstreamChain::parse(&[self.spec.as_str()])
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
             ),
+            Kind::Netbird(port) => Arc::new(
+                netbird::NetbirdDialer::new(*port)
+                    .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
+            ),
             Kind::Relay(url) => {
                 let relay = Relay::from_env(url.as_deref())
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?;
@@ -228,6 +264,7 @@ impl Network for SpecNetwork {
             Kind::Proxy(_) | Kind::Hop { tailscale: false } => "proxy",
             Kind::Hop { tailscale: true } => "tailscale",
             Kind::Relay(_) => "relay",
+            Kind::Netbird(_) => "netbird",
         }
     }
 
@@ -271,6 +308,11 @@ impl Network for SpecNetwork {
                     tls: false,
                 }]
             }
+            Kind::Netbird(port) => vec![Check {
+                name: "netbird".into(),
+                target: Target::new("127.0.0.1", *port),
+                tls: false,
+            }],
             Kind::Relay(url) => match Relay::from_env(url.as_deref()) {
                 Ok(relay) => vec![Check {
                     name: "relay".into(),

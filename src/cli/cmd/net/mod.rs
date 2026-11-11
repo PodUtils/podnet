@@ -283,6 +283,16 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
                     Err(why) => podnet::vnet::doctor::ProbeResult::Unknown(why),
                 },
             });
+            // T-246: the SOCKS5 listener of NetBird netstack mode.
+            probes.push(podnet::vnet::doctor::Probe {
+                name: "NetBird (SOCKS5 listener)",
+                result: match podnet::networks::netbird_greeting(podnet::networks::netbird_port())
+                    .await
+                {
+                    Ok(line) => podnet::vnet::doctor::ProbeResult::Ok(line),
+                    Err(why) => podnet::vnet::doctor::ProbeResult::Unknown(why),
+                },
+            });
             let verdict = podnet::vnet::doctor::verdict(&probes);
             if json {
                 use podnet::vnet::doctor::ProbeResult;

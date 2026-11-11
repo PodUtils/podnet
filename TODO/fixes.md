@@ -2219,7 +2219,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 - `src/warp/mod.rs:885-892` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
   `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:415-417`) refuses and does not write over the file.
-- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:126` lists `PODNET_FOREIGN_HOME`.
+- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:131` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 
@@ -2617,7 +2617,7 @@ python3 scripts/check-size.py
 
 ## Premise
 
-- Printed at `src/cli/cmd/net/mod.rs:288-289`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
+- Printed at `src/cli/cmd/net/mod.rs:298-299`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
 - `README.md:1076-1078` uses `net switch --listen tcp://` as its example.
 
 ## Approach
@@ -3162,7 +3162,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1194-1200`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1213-1219`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach

@@ -87,6 +87,34 @@ fn egress_alias_relay_is_transport_relay() {
 }
 
 #[test]
+fn egress_alias_pod_takes_netbird_as_a_socks5_hop_on_the_loopback() {
+    let rewritten = rewrite(&words(&[
+        "podnet",
+        "--egress",
+        "netbird",
+        "--egress",
+        "netbird:1081",
+        "pod",
+        "--",
+        "true",
+    ]))
+    .unwrap();
+    assert_eq!(
+        rewritten,
+        words(&[
+            "podnet",
+            "pod",
+            "-x",
+            "127.0.0.1:1080",
+            "-x",
+            "127.0.0.1:1081",
+            "--",
+            "true"
+        ])
+    );
+}
+
+#[test]
 fn egress_alias_pod_takes_each_via_as_an_x_hop_in_order() {
     let rewritten = rewrite(&words(&[
         "podnet",
