@@ -89,6 +89,7 @@ form of the rulings that apply to each session.
 | 2026-11-11 | Group policies (the owner) | Finish T-178 with the byte meter of the doors; no field measure is needed. |
 | 2026-11-11 | Relays and mailboxes (the owner) | Plan an own mailbox server (`relay serve --mailbox`, `send` and `receive --mailbox`), the iroh road after `pod-iroh`, and each service that someone else already hosts and that fits the purpose (a study in progress). No self-hosted iroh relay. |
 | 2026-11-11 | Native git server (the owner) | No ruling yet: the owner asked for the latest facts first (a study in progress); then the question comes again. |
+| 2026-11-11 | The freeze of pod-relay, pod-warp and pod-cloudflare (a call of the podnet session) | From 7c5f87e, the files of these three crates (the rows of `docs/design.md` of podcrates) take fixes only until podnet takes each crate. Each fix goes to podcrates as a COORD issue. PodUtils/podnet#449. |
 
 ## Superseded
 

@@ -58,6 +58,9 @@ tests skip on the CI jobs that cannot run them.
 | #413 (COORD-006) | podcrates: the asks for `pod-relay`, `pod-dns`, `pod-proxy`, `pod-services` and `pod-warp`. |
 | #425 (COORD-016, to podrunner) | podrunner reads it. |
 | #444 (COORD-026) | podcrates: the umask window of `pod-broker`. |
+| #449 (COORD-031) | podcrates: the freeze at 7c5f87e of the files of `pod-relay`, `pod-warp`, `pod-cloudflare`; T-057 and T-242 in its T-028; T-244 in its T-029. |
+| #450 (COORD-032) | podcrates: an owner for the file-transfer of magic-wormhole; no hand-off for `pod-session`, `pod-e2e`, `pod-identity`. |
+| #451 (COORD-033) | podnet: T-250, then T-249; then a COORD issue with the commits. |
 | #448 (COORD-030) | podcrates: the `taken` line of the watches of `pod-services` (0b945a3). |
 | #447 (COORD-029) | podcrates: the `taken` line of `pod-wg` (089e1c9). |
 

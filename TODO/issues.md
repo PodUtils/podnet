@@ -144,5 +144,8 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #446 | COORD-028: podnet changed three frozen files: register.rs, route.rs (fixes) and netns/tun.rs (the veth wire) (to podcrates) | closed (podcrates answered in its #68: no port; the wire stays in veth.rs, podcrates T-201) | none |
 | #447 | COORD-029: the answer to podcrates #67 (pod-wg): wg.rs is held to fixes; the split (to podcrates) | open (a COORD issue between sessions) | none |
 | #448 | COORD-030: podnet took pod-services-watch and the crates of v0.21.0 (to podcrates) | open (a COORD issue between sessions) | none |
+| #449 | COORD-031: podnet freezes the files of pod-relay, pod-warp and pod-cloudflare at 7c5f87e; asks for T-028 and T-029 (to podcrates) | open (a COORD issue between sessions) | none |
+| #450 | COORD-032: the file-transfer of magic-wormhole has no owner; no hand-off for pod-session, pod-e2e, pod-identity (to podcrates) | open (a COORD issue between sessions) | none |
+| #451 | COORD-033: pod-hold: the veth wire is done, the netns router moves onto pod-netstack, a root CI step runs the tests (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
