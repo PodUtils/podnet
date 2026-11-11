@@ -1,5 +1,6 @@
 //! `Balance`: a group of ways with weights and a kill switch (T-096). Each
-//! flow takes one member by a weighted pick among the healthy members. When
+//! flow takes one member by the policy of the group (T-178; the default is
+//! a weighted pick) among the members that take flows. When
 //! no member is healthy, the flow is refused: the group never falls back to
 //! direct. The health of each member comes from the checks of T-097.
 
@@ -9,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use tokio::time::Instant;
 
 use super::health::{ProbeResult, Step, Thresholds, Tracker};
+use super::policy::{choose, next_head, Head, Load, Policy, Snapshot};
 use super::race::admit;
 use super::{BoxFuture, Class, Connected, Datagrams, Dial, Failure, Stage, Target, Way};
 
@@ -65,6 +67,18 @@ pub struct Member {
     health: AtomicU8,
     tracker: Mutex<Tracker>,
     flows: AtomicU64,
+    /// The dials that have not ended (`leastload`).
+    opens: AtomicU64,
+    load: Mutex<Load>,
+}
+
+/// An open dial of a member: the count falls when the guard drops.
+pub struct OpenGuard<'a>(&'a AtomicU64);
+
+impl Drop for OpenGuard<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::Relaxed);
+    }
 }
 
 impl Member {
@@ -76,6 +90,46 @@ impl Member {
             health: AtomicU8::new(Health::Up.value()),
             tracker: Mutex::new(Tracker::default()),
             flows: AtomicU64::new(0),
+            opens: AtomicU64::new(0),
+            load: Mutex::new(Load::new()),
+        }
+    }
+
+    /// Add `bytes` of traffic at `now` to the load of the member
+    /// (`leastload`).
+    pub fn add_bytes(&self, bytes: u64, now: Instant) {
+        self.load
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .add(bytes, now);
+    }
+
+    /// Count one open dial of the member until the guard drops.
+    pub fn open(&self) -> OpenGuard<'_> {
+        self.opens.fetch_add(1, Ordering::Relaxed);
+        OpenGuard(&self.opens)
+    }
+
+    /// The dials of the member that have not ended.
+    pub fn opens(&self) -> u64 {
+        self.opens.load(Ordering::Relaxed)
+    }
+
+    /// The least of the window of passing probe times.
+    pub fn rtt_floor(&self) -> Option<std::time::Duration> {
+        self.tracker
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .rtt_floor()
+    }
+
+    fn snapshot(&self, now: Instant) -> Snapshot {
+        Snapshot {
+            weight: self.weight,
+            health: self.health(),
+            rtt_floor: self.rtt_floor(),
+            opens: self.opens.load(Ordering::Relaxed),
+            load: self.load.lock().unwrap_or_else(|e| e.into_inner()).at(now),
         }
     }
 
@@ -113,6 +167,9 @@ pub struct Balance {
     name: String,
     members: Vec<Member>,
     rng: Mutex<u64>,
+    policy: Policy,
+    turn: AtomicU64,
+    head: Mutex<Head>,
     refused: AtomicU64,
 }
 
@@ -134,6 +191,9 @@ impl Balance {
             name: name.to_string(),
             members,
             rng: Mutex::new(u64::from_le_bytes(seed) | 1),
+            policy: Policy::default(),
+            turn: AtomicU64::new(0),
+            head: Mutex::new(Head::default()),
             refused: AtomicU64::new(0),
         })
     }
@@ -142,6 +202,24 @@ impl Balance {
     pub fn with_seed(self, seed: u64) -> Balance {
         *self.rng.lock().unwrap_or_else(|e| e.into_inner()) = seed | 1;
         self
+    }
+
+    /// The same group with the policy `policy` (T-178).
+    pub fn with_policy(mut self, policy: Policy) -> Balance {
+        self.policy = policy;
+        self
+    }
+
+    pub fn policy(&self) -> Policy {
+        self.policy
+    }
+
+    /// End a probe round of the group: `minrtt` may move its head.
+    pub fn end_round(&self) {
+        let now = Instant::now();
+        let snaps: Vec<Snapshot> = self.members.iter().map(|m| m.snapshot(now)).collect();
+        let mut head = self.head.lock().unwrap_or_else(|e| e.into_inner());
+        *head = next_head(*head, &snaps);
     }
 
     pub fn name(&self) -> &str {
@@ -188,18 +266,31 @@ impl Balance {
             .members
             .iter()
             .map(|m| {
-                let rtt = m.tracker.lock().unwrap_or_else(|e| e.into_inner()).rtt();
+                let (rtt, floor) = {
+                    let t = m.tracker.lock().unwrap_or_else(|e| e.into_inner());
+                    (t.rtt(), t.rtt_floor())
+                };
+                let ms = |d: std::time::Duration| d.as_secs_f64() * 1000.0;
                 serde_json::json!({
                     "name": m.name,
                     "way": m.way.label(),
                     "weight": m.weight,
                     "health": m.health().name(),
-                    "rtt_ms": rtt.map(|d| d.as_secs_f64() * 1000.0),
+                    "rtt_ms": rtt.map(ms),
+                    "rtt_floor_ms": floor.map(ms),
+                    "opens": m.opens.load(Ordering::Relaxed),
                     "flows": m.flows(),
                 })
             })
             .collect();
-        serde_json::json!({ "group": self.name, "members": members, "refused": self.refused() })
+        let head = self.head.lock().unwrap_or_else(|e| e.into_inner()).index;
+        serde_json::json!({
+            "group": self.name,
+            "policy": self.policy.name(),
+            "head": head.and_then(|i| self.members.get(i)).map(|m| m.name.as_str()),
+            "members": members,
+            "refused": self.refused(),
+        })
     }
 
     /// The count of the flows that the kill switch refused.
@@ -207,27 +298,40 @@ impl Balance {
         self.refused.load(Ordering::Relaxed)
     }
 
-    /// A weighted pick among the members that take flows.
+    /// The pick of the policy among the members that take flows.
     pub fn pick(&self) -> Selection<'_> {
-        let total: u64 = self
-            .members
-            .iter()
-            .filter(|m| m.health().takes_flows())
-            .map(|m| u64::from(m.weight))
-            .sum();
-        if total == 0 {
-            self.refused.fetch_add(1, Ordering::Relaxed);
-            return Selection::None;
-        }
-        let mut at = self.next() % total;
-        for member in self.members.iter().filter(|m| m.health().takes_flows()) {
-            if at < u64::from(member.weight) {
+        self.pick_at(Instant::now())
+    }
+
+    /// [`Balance::pick`] with the time `now` (the tests give it).
+    pub fn pick_at(&self, now: Instant) -> Selection<'_> {
+        let snaps: Vec<Snapshot> = self.members.iter().map(|m| m.snapshot(now)).collect();
+        let head = *self.head.lock().unwrap_or_else(|e| e.into_inner());
+        let turn = self.turn.fetch_add(1, Ordering::Relaxed);
+        let chosen = if snaps.iter().any(|s| s.health.takes_flows()) {
+            choose(self.policy, &snaps, self.next(), turn, &head)
+        } else {
+            None
+        };
+        match chosen.and_then(|i| self.members.get(i)) {
+            Some(member) => {
                 member.flows.fetch_add(1, Ordering::Relaxed);
-                return Selection::One(member);
+                Selection::One(member)
             }
-            at -= u64::from(member.weight);
+            None => {
+                self.refused.fetch_add(1, Ordering::Relaxed);
+                Selection::None
+            }
         }
-        Selection::None
+    }
+
+    /// A pick that also counts an open dial of the member until the guard
+    /// drops (`leastload`).
+    pub fn pick_open(&self, now: Instant) -> (Selection<'_>, Option<OpenGuard<'_>>) {
+        match self.pick_at(now) {
+            Selection::One(m) => (Selection::One(m), Some(m.open())),
+            Selection::None => (Selection::None, None),
+        }
     }
 
     /// The next number of the pick (splitmix64).
@@ -263,7 +367,11 @@ impl Dial for Balance {
             .iter()
             .map(|m| format!("{}*{}", m.name, m.weight))
             .collect();
-        format!("group {}({})", self.name, members.join(", "))
+        let policy = match self.policy {
+            Policy::Weighted => String::new(),
+            p => format!(" {}", p.name()),
+        };
+        format!("group {}{policy}({})", self.name, members.join(", "))
     }
 
     fn dial<'a>(
@@ -272,7 +380,8 @@ impl Dial for Balance {
         deadline: Instant,
     ) -> BoxFuture<'a, Result<Connected, Failure>> {
         Box::pin(async move {
-            match self.pick() {
+            let (selection, _open) = self.pick_open(Instant::now());
+            match selection {
                 Selection::One(member) => member.way.dial.dial(target, deadline).await,
                 Selection::None => Err(self.refusal(&format!("the flow to {target}"))),
             }

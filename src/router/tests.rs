@@ -28,6 +28,9 @@ fn route_config_errors_name_the_key() {
         ("networks:\n  home: direct\ndoors:\n  - listen: unix:/x\n    via: home\n    dns: x\n    dns_upstream: 10.0.0.1:53\n", "doors[0].dns"),
         ("networks:\n  home: direct\ndoors:\n  - listen: unix:/x\n    via: home\n    dns_upstream: 10.0.0.1:53\n", "doors[0].dns_upstream"),
         ("networks:\n  home: direct\ncontrol: 127.0.0.1:9\ndoors:\n  - listen: unix:/x\n    via: home\n", "control"),
+        ("networks:\n  home: direct\ngroups:\n  g: home\npolicies:\n  g: fastest\ndoors:\n  - listen: unix:/x\n    via: g\n", "policies.g"),
+        ("networks:\n  home: direct\ngroups:\n  g: home\npolicies:\n  h: rr\ndoors:\n  - listen: unix:/x\n    via: g\n", "policies.h"),
+        ("networks:\n  home: direct\nhealth:\n  target: h:1\n  window: 65\ndoors:\n  - listen: unix:/x\n    via: home\n", "window"),
         ("networks:\n\thome: direct\n", "line 2"),
     ];
     for (text, key) in cases {
@@ -184,6 +187,8 @@ async fn router_status_json_keys_over_the_control_socket() {
     let group = &status["groups"][0];
     assert_eq!(group["group"], "egress");
     assert_eq!(group["refused"], 0);
+    assert_eq!(group["policy"], "weighted");
+    assert_eq!(group["head"], serde_json::Value::Null);
     for member in group["members"].as_array().unwrap() {
         let mut keys: Vec<&str> = member
             .as_object()
@@ -192,7 +197,19 @@ async fn router_status_json_keys_over_the_control_socket() {
             .map(|k| k.as_str())
             .collect();
         keys.sort_unstable();
-        assert_eq!(keys, ["flows", "health", "name", "rtt_ms", "way", "weight"]);
+        assert_eq!(
+            keys,
+            [
+                "flows",
+                "health",
+                "name",
+                "opens",
+                "rtt_floor_ms",
+                "rtt_ms",
+                "way",
+                "weight"
+            ]
+        );
     }
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
     let mut other = tokio::net::UnixStream::connect(&path).await.unwrap();
@@ -222,4 +239,34 @@ fn route_door_dns_reaches_the_router() {
     assert!(Router::plan(&parse(GOOD).unwrap()).unwrap().doors[0]
         .dns
         .is_none());
+}
+
+/// T-178: the key `policies` names the policy of a group; a file with no
+/// key (the old form) keeps the weighted pick. The status shows it.
+#[test]
+fn route_config_policy_reaches_the_group_and_the_status() {
+    let old = Router::plan(&parse(GOOD).unwrap()).unwrap();
+    assert_eq!(old.groups[0].1.policy(), Policy::Weighted);
+    let text = GOOD.replace("health:", "policies:\n  egress: rr\nhealth:");
+    let config = parse(&text).unwrap();
+    assert_eq!(config.groups["egress"], "home*2, other*1");
+    let plan = Router::plan(&config).unwrap();
+    assert_eq!(plan.groups[0].1.policy(), Policy::Rr);
+    let status = plan.status();
+    assert_eq!(status["groups"][0]["policy"], "rr");
+    let names: Vec<String> = (0..4)
+        .map(|_| match plan.groups[0].1.pick() {
+            Selection::One(m) => m.name.clone(),
+            Selection::None => panic!("up"),
+        })
+        .collect();
+    assert_eq!(names, ["home", "other", "home", "other"]);
+    let window = GOOD.replace("interval: 5", "interval: 5\n  window: 3");
+    let t = parse(&window)
+        .unwrap()
+        .health
+        .unwrap()
+        .thresholds()
+        .unwrap();
+    assert_eq!(t.rtt_window, 3);
 }

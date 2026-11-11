@@ -7,6 +7,8 @@
 //!   proxy: socks5h://127.0.0.1:1080
 //! groups:              # NAME: MEMBER*WEIGHT, ... (T-096)
 //!   egress: home*2, proxy*1
+//! policies:           # optional: NAME: POLICY of a group (T-178)
+//!   egress: minrtt     # weighted (default), rr, minrtt, leastload, protect
 //! health:              # the probe of the members of each group (T-097)
 //!   target: 1.1.1.1:443
 //!   interval: 10
@@ -14,6 +16,7 @@
 //!   up_after: 3        # R passes take it up
 //!   cooldown: 30       # seconds in cooldown before up
 //!   timeout: 5         # seconds of one probe
+//!   window: 8          # passing probe times for the floor (0 to 64; minrtt)
 //! control: unix:/run/r.ctl  # optional: `podnet route --status` reads it
 //! doors:               # SOCKS5 and HTTP CONNECT doors (T-061)
 //!   - listen: unix:/run/r.sock
@@ -36,8 +39,8 @@ use serde::Deserialize;
 use tokio::time::Instant;
 
 use crate::network::{
-    parse_group, probe, Balance, Choice, Ctx, Dial, Member, Network as _, Selection, Target,
-    Thresholds, Way,
+    parse_group, probe, Balance, Choice, Ctx, Dial, Member, Network as _, Policy, Selection,
+    Target, Thresholds, Way,
 };
 
 /// The config file.
@@ -48,6 +51,9 @@ pub struct Config {
     pub networks: BTreeMap<String, String>,
     #[serde(default)]
     pub groups: BTreeMap<String, String>,
+    /// The policy of a group (T-178); a group with no entry is `weighted`.
+    #[serde(default)]
+    pub policies: BTreeMap<String, String>,
     #[serde(default)]
     pub health: Option<Health>,
     /// `unix:/PATH`: the control socket (mode 0600) of `route --status`.
@@ -77,6 +83,9 @@ pub struct Health {
     /// The seconds of one probe (default 5).
     #[serde(default)]
     pub timeout: Option<u64>,
+    /// How many passing probe times the floor of `minrtt` reads (default 8).
+    #[serde(default)]
+    pub window: Option<usize>,
 }
 
 impl Health {
@@ -97,6 +106,7 @@ impl Health {
             cooldown: Duration::from_secs(self.cooldown.unwrap_or(d.cooldown.as_secs())),
             interval: secs("interval", self.interval, d.interval)?,
             timeout: secs("timeout", self.timeout, d.timeout)?,
+            rtt_window: self.window.unwrap_or(d.rtt_window),
         };
         t.check()
             .map_err(|e| anyhow::anyhow!("health: {}", e.text()))?;
@@ -175,6 +185,16 @@ pub fn parse(text: &str) -> Result<Config> {
         .find(|g| config.networks.contains_key(*g))
     {
         bail!("groups.{name}: a network has the same name");
+    }
+    for (name, policy) in &config.policies {
+        if !config.groups.contains_key(name) {
+            bail!("policies.{name}: not a group of the file");
+        }
+        if Policy::parse(policy).is_none() {
+            bail!(
+                "policies.{name}: {policy:?} is not a policy (weighted, rr, minrtt, leastload, protect)"
+            );
+        }
     }
     for (i, door) in config.doors.iter().enumerate() {
         if !config.networks.contains_key(&door.via) && !config.groups.contains_key(&door.via) {
@@ -323,9 +343,15 @@ impl Router {
                 })?;
                 built.push(Member::new(&member, way.clone(), weight));
             }
+            let policy = config
+                .policies
+                .get(name)
+                .and_then(|p| Policy::parse(p))
+                .unwrap_or_default();
             let group = Arc::new(
                 Balance::new(name, built)
-                    .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?,
+                    .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?
+                    .with_policy(policy),
             );
             ways.insert(name.clone(), Way::destination(group.clone()));
             groups.push((name.clone(), group));
@@ -474,6 +500,7 @@ impl Router {
                 for (i, result) in results.into_iter().enumerate() {
                     group.observe(i, result, control, now, &thresholds);
                 }
+                group.end_round();
             }
             tokio::time::sleep(interval).await;
         }

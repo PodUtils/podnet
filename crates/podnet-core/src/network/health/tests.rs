@@ -197,3 +197,54 @@ fn router_status_json_keys() {
     assert_eq!(member["flows"], 1);
     assert_eq!(member["rtt_ms"], 12.0);
 }
+
+/// T-097 Correction (#375): the window of passing probe times gives
+/// `rtt_floor`, and changes no step of the health.
+#[test]
+fn router_health_rtt_window_changes_no_step() {
+    let ms = Duration::from_millis;
+    let seq = [
+        ProbeResult::Ok(ms(30)),
+        ProbeResult::Ok(ms(12)),
+        MISS,
+        MISS,
+        ProbeResult::Ok(ms(50)),
+        MISS,
+        ProbeResult::ConnectFailed { clean: false },
+        MISS,
+        MISS,
+        MISS,
+        ProbeResult::Ok(ms(20)),
+        ProbeResult::Ok(ms(25)),
+        ProbeResult::Ok(ms(90)),
+        ProbeResult::Ok(ms(40)),
+    ];
+    let on = Thresholds {
+        rtt_window: 4,
+        ..t()
+    };
+    let off = Thresholds {
+        rtt_window: 0,
+        ..t()
+    };
+    let (mut a, mut b, now) = (Tracker::default(), Tracker::default(), Instant::now());
+    for (i, r) in seq.into_iter().enumerate() {
+        let at = now + Duration::from_secs(10 * i as u64);
+        assert_eq!(
+            a.observe(r, true, at, &on),
+            b.observe(r, true, at, &off),
+            "step {i}"
+        );
+        assert_eq!(a.rtt(), b.rtt());
+    }
+    // The floor is the least of the last 4 passes (50 aged out, 20 25 90 40).
+    assert_eq!(a.rtt_floor(), Some(ms(20)));
+    // With the window off the floor is the last pass.
+    assert_eq!(b.rtt_floor(), Some(ms(40)));
+    assert_eq!(Tracker::default().rtt_floor(), None);
+    let too_big = Thresholds {
+        rtt_window: 65,
+        ..t()
+    };
+    assert!(too_big.check().is_err());
+}

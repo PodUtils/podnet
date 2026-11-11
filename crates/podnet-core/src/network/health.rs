@@ -16,6 +16,7 @@
 //! A failure of the control probe is an outage of each member (the host,
 //! not the member): no member goes down for it.
 
+use std::collections::VecDeque;
 use std::time::Duration;
 
 use tokio::time::Instant;
@@ -37,7 +38,12 @@ pub struct Thresholds {
     pub interval: Duration,
     /// The limit of one probe.
     pub timeout: Duration,
+    /// How many passing probe times `Tracker` keeps for `rtt_floor` (0: none).
+    pub rtt_window: usize,
 }
+
+/// The most passing probe times that a window keeps.
+pub const MAX_RTT_WINDOW: usize = 64;
 
 impl Default for Thresholds {
     fn default() -> Thresholds {
@@ -47,6 +53,7 @@ impl Default for Thresholds {
             cooldown: Duration::from_secs(30),
             interval: Duration::from_secs(10),
             timeout: Duration::from_secs(5),
+            rtt_window: 8,
         }
     }
 }
@@ -55,6 +62,13 @@ impl Thresholds {
     /// Refuse thresholds that break K > R > 1 and R > K/2.
     pub fn check(&self) -> Result<(), Failure> {
         let (k, r) = (self.down_after, self.up_after);
+        if self.rtt_window > MAX_RTT_WINDOW {
+            return Err(Failure::new(
+                Stage::Connect,
+                Class::Config,
+                format!("the window of round-trip times is 0 to {MAX_RTT_WINDOW}"),
+            ));
+        }
         if k > r && r > 1 && 2 * r > k {
             return Ok(());
         }
@@ -112,13 +126,15 @@ pub async fn probe(way: &Way, target: &Target, timeout: Duration) -> ProbeResult
 }
 
 /// The state of one member, between the probes.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Tracker {
     health: Health,
     misses: u32,
     hits: u32,
     since: Option<Instant>,
     rtt: Option<Duration>,
+    /// The last passing probe times, the oldest first (`Thresholds::rtt_window`).
+    window: VecDeque<Duration>,
 }
 
 /// The result of one step: the new health, and whether to renew the
@@ -137,6 +153,7 @@ impl Default for Tracker {
             hits: 0,
             since: None,
             rtt: None,
+            window: VecDeque::new(),
         }
     }
 }
@@ -151,6 +168,14 @@ impl Tracker {
         self.rtt
     }
 
+    /// The least of the window of passing probe times; the last passing
+    /// time when the window is off. A probe that shares a loaded member
+    /// reads long when the member is busy, so the least is the input of
+    /// `minrtt`. The window changes no health step.
+    pub fn rtt_floor(&self) -> Option<Duration> {
+        self.window.iter().min().copied().or(self.rtt)
+    }
+
     /// Take the probe `result` at `now`. `control` is the result of the
     /// control probe of the group in this interval.
     pub fn observe(
@@ -162,6 +187,14 @@ impl Tracker {
     ) -> Step {
         if let ProbeResult::Ok(rtt) = result {
             self.rtt = Some(rtt);
+            if t.rtt_window == 0 {
+                self.window.clear();
+            } else {
+                while self.window.len() >= t.rtt_window {
+                    self.window.pop_front();
+                }
+                self.window.push_back(rtt);
+            }
             self.hits += 1;
             self.misses = 0;
         } else {

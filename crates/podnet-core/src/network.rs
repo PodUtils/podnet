@@ -36,6 +36,7 @@ pub mod balance;
 pub mod chain;
 pub mod failover;
 pub mod health;
+pub mod policy;
 pub mod race;
 pub mod rules;
 
@@ -43,6 +44,7 @@ pub use balance::{parse_group, Balance, Health, Member, Selection};
 pub use chain::Chain;
 pub use failover::Failover;
 pub use health::{probe, ProbeResult, Step, Thresholds, Tracker};
+pub use policy::Policy;
 pub use race::Race;
 pub use rules::{matcher, Choice, Matcher, Rule, Rules};
 

@@ -196,16 +196,21 @@ async fn print_status(control: &str, json: bool) -> Result<()> {
     }
     for group in status["groups"].as_array().into_iter().flatten() {
         println!(
-            "group {}  refused {}",
+            "group {}  policy {}  head {}  refused {}",
             group["group"].as_str().unwrap_or("?"),
+            group["policy"].as_str().unwrap_or("weighted"),
+            group["head"].as_str().unwrap_or("-"),
             group["refused"]
         );
         for m in group["members"].as_array().into_iter().flatten() {
             let rtt = m["rtt_ms"]
                 .as_f64()
                 .map_or("-".to_string(), |ms| format!("{ms:.1} ms"));
+            let floor = m["rtt_floor_ms"]
+                .as_f64()
+                .map_or("-".to_string(), |ms| format!("{ms:.1} ms"));
             println!(
-                "  {}  {}  rtt {rtt}  flows {}  weight {}",
+                "  {}  {}  rtt {rtt}  floor {floor}  flows {}  weight {}",
                 m["name"].as_str().unwrap_or("?"),
                 m["health"].as_str().unwrap_or("?"),
                 m["flows"],
