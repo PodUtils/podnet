@@ -530,3 +530,88 @@ unix socket, refuses a live socket and removes its socket; the TCP port; the pri
 table and the parse of the roads). Not proven here: the tunnel and relay roads need the edge and the relay
 (`live.yml`; this sandbox cannot reach them).
 
+
+# T-237: Front door: an opt-in `--early-reply` answers the client before the upstream connect and pipelines the SOCKS5 upstream handshake (GitHub #428)
+
+**Source:** GitHub #428 (https://github.com/PodUtils/podnet/issues/428); donor review, satmux.md block 1
+(Th0rgal/satmux at 2922ebb, MIT; the block is a clean-room description)
+**Category:** feature
+**Milestone:** M4
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+Add an opt-in `--early-reply` mode to the door of `podnet pod --serve`: answer the client after the
+local rule check, send the SOCKS5 greeting and request to the upstream in one write, and hold the
+first flight of the client (bounded) until the upstream says yes. Today the door answers its client only
+after the whole upstream chain is connected, and its SOCKS5 upstream client waits for two replies in
+turn. On a high-latency upstream, three round trips (TCP connect, method reply, CONNECT reply) come
+before the first byte of the client. The symptom to fix is the time to the first byte on each new
+connection, not the bandwidth.
+
+## Premise
+
+- The door answers after the dial. `crates/podnet-netns/src/frontdoor.rs:121-138` dials with
+  `connect_upstream_async`, then replies with `socks5_reply` at `crates/podnet-netns/src/frontdoor.rs:138`.
+  The HTTP CONNECT arm does the same at `crates/podnet-netns/src/frontdoor.rs:165-175`.
+- The upstream client waits for two replies in turn: `crates/podnet-netns/src/upstream.rs:303-318`
+  (`socks5_handshake`: the greeting, then `read_exact` of the method reply) and
+  `crates/podnet-netns/src/upstream.rs:380-413` (`socks5_connect`: the request, then `read_exact` of the
+  reply head). A hop with `proxy.user` offers the methods `[0x00, 0x02]`, a hop without it `[0x00]`
+  (`crates/podnet-netns/src/upstream.rs:309-313`).
+- `crates/podnet-vnet/src/door.rs:129-133` replies after the dial too.
+- The door of podnet reads a pipelined client: `crates/podnet-netns/src/socks.rs:61` (`socks5_read_request`)
+  reads the greeting, the methods and the request with sequential `read_exact`.
+- `src/warp/proxy.rs` has its own dial (the replies at `src/warp/proxy.rs:657-733`). That door is frozen
+  for `pod-warp` (T-061, Correction). Leave it out.
+- T-061 (partial) plans one door over a dialer. It says nothing about the order of the reply. This entry
+  stays apart, so that T-061 stays a refactor. The option belongs in the one door of T-061.
+- GitHub #384 (T-185) is about the deadline of the handshake: a different thing.
+- Not measured: any number on a real satellite or cellular link; that third-party SOCKS5 servers accept a
+  pipelined greeting; the timings of the donor (they are the author's).
+
+## Approach
+
+1. Add the flag `--early-reply`, default off, on the door.
+2. Tier A, retry-safe: write the greeting and the CONNECT request in one write, then read the two replies.
+   No byte of the client has left the host, so a failed attempt can go to the next route. Use it only for
+   a hop with no credentials (`proxy.user` is `None`), because a user and password hop needs the method
+   reply before the next bytes.
+3. Tier B, optimistic data: also reply to the client at once, and forward its first flight right behind
+   the request. Hold at most 64 KiB for each client (TCP backpressure stops the read when the buffer is
+   full). A half-close of the client before the dial ends goes to the upstream after the held bytes.
+4. The rule check stays before the reply. A rejected target gets its real answer (`0x02` or `403`), never
+   an early one.
+5. An upstream that refuses (a reply code other than `0x00`): the client sees a closed connection. Add a
+   `refused` event with the target and the upstream code to the flow log
+   (`crates/podnet-netns/src/flowlog.rs`), so that the lost diagnosis is recoverable.
+6. The deadline `within_timeout("front door connect", ...)` still applies, now after the reply.
+7. Put the option in the one door of T-061, so that it exists once.
+
+## Decision
+
+A default-off flag keeps the precise error codes that automated callers read. The option does not apply to
+`podssh -D`: an SSH channel cannot carry data before its open is confirmed. It does not cover TLS early
+data or UDP.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib -- early_reply_cuts_the_round_trips early_reply_holds_at_most_64_kib
+cargo test -p podnet-netns --lib -- early_reply_keeps_the_refusal_of_a_rule early_reply_is_off_by_default
+```
+
+The first test uses a fake SOCKS5 upstream that delays each direction by D. With the flag off, the first
+echoed byte arrives after about 3 round trips. With the flag on, it arrives after about 1. Assert the
+ratio with a margin, not a fixed time. The other cases: the upstream answers with code 5 (flag off: the
+client gets `0x05`; flag on: the client sees EOF and the log names the target and the code 5); a client
+that half-closes before the connect; a client that sends 1 MiB before the connect ends; an upstream with
+a user and a password (the serial path runs, the flag changes nothing).
+
+## Start condition
+
+T-061 has moved `pod --serve` onto `Door`. Tier A (one write of the greeting and the request, only for a
+hop with no credentials) can land earlier in `crates/podnet-netns/src/upstream.rs`, because it is
+retry-safe.

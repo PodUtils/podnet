@@ -973,6 +973,13 @@ Left, each with the crate or entry that it waits for:
   the bytes of each member need the meter of the doors.
 - Item 11: the thresholds in the config file (T-100).
 
+2026-11-11, the comment on GitHub #375 from the donor review (airhand.md block 4; MIT;
+https://github.com/PodUtils/podnet/issues/375#issuecomment-6789133721): `Tracker` keeps a short window of passing probe times (for example the last 8 to
+40, a setting) and gives `rtt_floor()`, their least, beside `rtt()`. `observe` keeps the pass or fail result
+and does not read the window, so the window changes no health transition. `podnet route status` prints the
+floor and the last sample. The input is for `minrtt` (T-178). Test: `observe` gives equal results with the
+window on and off for one sequence of passes and fails.
+
 # T-098: Router: doors with a default network, and rules to a network, a group or a refusal
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 2.1 to 2.3; GitHub #372 and #374.
@@ -1362,6 +1369,41 @@ T-103 is done.
 
 2026-11-05, The command stays in podnet. It uses `pod-wormhole` and `pod-transit` (T-102, T-103).
 
+2026-11-11, GitHub #436 (https://github.com/PodUtils/podnet/issues/436; donor review, tunnet.md block 6;
+the donor is MPL-2.0 and serves as a counter-example: implement from the description). This entry has no rule
+for the names of the received entries. Write the rules before the code, so that a later retrofit does not
+change the behaviour. Add them to the Approach:
+
+1. Run `pod_extract::safety::components` on each name. A refusal ends the whole transfer before any byte is
+   written, with `refused entry "NAME": REASON`. Do not rewrite a bad name.
+2. Also refuse, in podnet code: a backslash in a component, a component over 255 bytes, a path over 4096
+   bytes, and two entries that are equal after ASCII case folding.
+3. Refuse a symlink, a hard link, a device and a fifo. Accept regular files and directories only.
+4. Land a file with `open_parent` of the output directory, then `openat` with
+   `O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW` and the mode `0666 & ~umask`, never with an executable or set-id bit.
+   `EEXIST` is an error that names the file. The receiver never overwrites.
+5. The top name of a directory transfer follows the same rules. If it exists, refuse unless `--into` names
+   an existing directory.
+6. Caps: `--max-files N` and `--max-bytes N`, checked from the zip directory before the write and again
+   during the write, because a header can lie. The maintainer chooses the defaults.
+7. Read the zip directory, validate each entry, then write. A hostile zip changes nothing on the disk. If a
+   write fails midway, remove the files that this run created, never a file that it did not create.
+8. `receive` without `--yes` shows the names and the total size, then asks on the terminal. With a stdin that
+   is not a terminal and no `--yes`, refuse.
+
+Add to the Approach: the dependency on `pod-extract` (it is not a dependency of podnet today; or the reader of
+the zip of T-103 brings it), and a new exit code for refused input in `crates/podnet-core/src/exit.rs`
+(EX_DATAERR is 65; the file has `Usage`, `Unavailable`, `Config`, `TempFail` and `Timeout`, and no class
+for a refused archive). Add to the Prove a table test over zips built in the test, each against an empty
+output directory, with the listing of the directory and of its parent compared before and after:
+`../x`, `a/../../x`, `/etc/x`, `a\..\x`, a NUL in the name, a component of 300 bytes, `A` and `a` together
+(each refused, nothing written); an entry `evil` that is a symlink to `/tmp` followed by `evil/f`; a zip with
+an existing `f` (refused with `EEXIST`, the old bytes stay); a header that says 10 bytes with 10 MiB of data
+under `--max-bytes 1048576`; two receivers that write one name at once (one wins; the planted defect `exists()`
+then `create` must fail the test); and a positive control (`a/b.txt` and `c.txt` land with the bytes of the
+sender and the mode `0666 & ~umask`). Not read: `safety.rs` of `pod-extract` (the issue cites its lines at
+podcrates 63348de; Unverified).
+
 # T-106: An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.2 and 3 (C15);
@@ -1731,3 +1773,93 @@ cargo test -p podnet --test relay_reverse
 ```
 
 The live step "Git over SSH through the reverse relay" passes.
+
+# T-242: Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433)
+
+**Source:** GitHub #433 (https://github.com/PodUtils/podnet/issues/433); donor review, tailsplit.md block 6
+(idy/tailsplit at 0bd3a74, GPL-3.0-or-later)
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+Both rule engines of podnet (the `--rule` and `--rules` list of `podnet warp proxy`, and the rule list of
+`podnet pod`) are first match wins. A broad `domain:` or `cidr:` rule before a narrow one makes the narrow
+rule dead, with no message. When the dead rule is `reject`, the refusal that the operator wrote never
+happens, and the flow goes through the action of the earlier rule. Example:
+
+```text
+domain:.example.com=direct
+domain:admin.example.com=reject
+```
+
+`admin.example.com` matches the first line, so it goes direct. Check the table at load time and report each
+shadowed rule with both positions. Make it an error for `reject`. The check that proves the fix: the same
+file gives a start-up warning that names the second rule as shadowed by the first rule, and exit code 64 (the code of a bad
+rule today) when the shadowed action is `reject` and the flag that allows it is absent.
+
+## Premise
+
+- Implement from the description, not from the donor source (the donor is GPL-3.0-or-later). The donor
+  removes the order dependence by a sort. The issue does not propose that: first match stays.
+- `src/warp/rules.rs:1-12` documents that the first rule that matches wins. `Table::build`
+  (`src/warp/rules.rs:100`) joins the flags and the file and compares nothing. `for_name`
+  (`src/warp/rules.rs:122-129`) takes `.find`.
+- The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:240-260`) is the same loop;
+  `domain_matches` (`crates/podnet-netns/src/rules.rs:197-204`): `NAME` matches the name only, `.NAME`
+  matches the name and each name under it.
+- `warp proxy --check` is handled in `src/cli/cmd/warp/front.rs:25-41` (the flag `check: bool` is in the
+  arguments of the command): it builds the table, prints each rule and exits 0, or 64 for a bad rule.
+- By reading the loop, the example behaves as described. Not run: the timing of a file with 10 000 lines.
+- T-177 (open, `podnet route check`) shows the match for one query and does not lint the table. T-098
+  (partial) holds the router rules. T-156 and T-157 (done) are the pod `reject` action and the default
+  action. No entry and no issue is about a shadowed rule.
+- The WARP half (`src/warp/rules.rs`) is code that goes to `pod-warp` (T-050): a new feature there is not
+  developed in podnet. It waits for the take, then a COORD issue (to podcrates) carries the ask. The pod
+  half and the router rules stay in podnet.
+
+## Approach
+
+1. Add a pure function `shadowed(rules)` to `crates/podnet-netns/src/rules.rs`: for each pair `i < j` of
+   rules of the same kind, report `(j, i)` when `covers(rule[i], rule[j])` and the actions differ.
+   `covers` for domains: `.X` covers `X`, each name under `X`, and each `.Y` with `Y` equal to `X` or under
+   `X`; `X` covers only `X`. For cidr: the prefix of `i` is not longer and the network bits are the same.
+   A domain and a cidr rule never shadow each other. Expand `cidr:@FILE` to its prefixes first.
+2. Print one line for each hit. It names the shadowed rule and the earlier rule that matches first. Use the
+   number of the line of the file, and the position of the flag for the rules of the command line.
+3. A shadowed rule with the same action is not reported (a harmless duplicate).
+4. A shadowed `reject` is an error: exit 64, with the text that says to move the narrow rule above the
+   broad one, unless `--allow-shadowed-rules` is given.
+5. Run the lint in the load of the pod rules and of the router rules (T-098). Leave the WARP half for the
+   take of `pod-warp`.
+6. A table test in the shape of the donor: a list of (name, expected rule index) for each layout, run against
+   the real lookup, so that the lint and the engine agree by construction.
+7. Size: a pair loop costs time quadratic in the number of rules. Compare rules of the same kind only.
+   Measure a generated file of 10 000 lines (time, machine, number of runs) before choosing the pair loop or
+   a sort by prefix length or by label count.
+8. Later and optional: `--rules-order specific-first`. First match stays the default.
+
+## Decision
+
+The exit code 64 and the flag `--allow-shadowed-rules` come from the issue. The check handles `domain:` and
+`cidr:` only. It ignores the built-in refusals (loopback, link-local, `localhost`) and does not change the
+order of evaluation.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib -- shadowed_rule_is_reported shadowed_reject_is_an_error
+cargo test -p podnet-netns --lib -- reversed_order_gives_no_report same_action_gives_no_report exact_rule_does_not_cover_a_subdomain
+cargo test -p podnet-netns --lib -- rule_lint_agrees_with_the_lookup
+```
+
+The two-line file above gives the warning and exit 64. The reverse order gives no output.
+`cidr:10.0.0.0/8=direct` before `cidr:10.1.0.0/16=reject` is reported and is an error.
+`domain:example.com=direct` before `domain:www.example.com=reject` gives no output.
+
+## Start condition
+
+The pod half has none. The WARP half waits for the take of `pod-warp` (T-050).

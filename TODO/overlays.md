@@ -244,3 +244,86 @@ cargo todo check
 ```
 
 The new entries and the research note pass the checker.
+
+# T-243: `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434)
+
+**Source:** GitHub #434 (https://github.com/PodUtils/podnet/issues/434); donor review, tailsplit.md block 7
+(idy/tailsplit at 0bd3a74, GPL-3.0-or-later)
+**Category:** feature
+**Milestone:** M8
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`podnet net tailscale` opens a SOCKS5 and HTTP CONNECT door that dials through the LocalAPI of the
+`tailscaled` that answers on the socket. It reads `BackendState` and warns once. It never asks which
+tailnet the daemon is logged in to. Tailscale addresses are allocated inside a tailnet, so the same address
+can name another machine in another tailnet (Inferred in the issue). Add `--tailnet NAME`: the door starts
+only when the daemon is `Running` in that tailnet, and it refuses new dials when the tailnet changes. Add
+the facts to a doctor row. Document `TS_FORCE_NOISE_443` for the hosts that reach only the port 443 (the
+control connection tries the port 80 first, and a middlebox can accept it and stall; Inferred from the
+upstream comment, not reproduced). The check that proves the fix: with a fake LocalAPI that answers
+`{"BackendState":"Running","CurrentTailnet":{"Name":"lab"}}`, `podnet net tailscale --tailnet office`
+exits 78 before it binds the listener, and the message names both tailnets.
+
+## Premise
+
+- Implement from the description, not from the donor source (the donor is GPL-3.0-or-later). The upstream
+  facts about `ipnstate.Status` and `TS_FORCE_NOISE_443` come from the Tailscale source, not from the donor.
+- `crates/podnet-netns/src/tailscale.rs:122-144` (`Dialer::backend_state`) and
+  `crates/podnet-netns/src/tailscale.rs:151-170` (`backend_state_of`) read `/localapi/v0/status?peers=false`
+  and keep only the string `BackendState`. `crates/podnet-netns/src/tailscale.rs:172-191` (`state_warning`,
+  `check_state`) is called at the start and after a failed dial (`crates/podnet-netns/src/tailscale.rs:317`
+  and `crates/podnet-netns/src/tailscale.rs:413`); it warns once and never refuses.
+- `src/cli/cmd/net/shim.rs:56-88` (`net_tailscale`) reads no tailnet. `README.md:1103` says only that
+  `tailscaled` must run with `--tun=userspace-networking`. The test with a fake LocalAPI:
+  `crates/podnet-netns/src/tailscale.rs:624-655`.
+- `Fault::Config` (exit 78) and `Fault::Unavailable` (exit 69) are in `crates/podnet-core/src/exit.rs`.
+- T-081 (done) did the warning and left its step 3 ("the state in a doctor of the door") undone
+  (`TODO/fixes.md:1108`). This entry closes that step. A done entry is not reopened. T-114 (open, the
+  headscale harness) and T-115 (open, a tailnet as a network) are context. T-123 (`pod-ts`) is another path.
+- Not run: any real `tailscaled`. `CurrentTailnet` in the status is from the upstream source of the `main`
+  branch, not pinned. Old daemons carry only the top-level `MagicDNSSuffix`, so read both.
+
+## Approach
+
+1. Replace `backend_state()` with `status()` that returns `{ backend_state, tailnet_name?,
+   magic_dns_suffix? }`, with the bounds that exist (3 s, 4 MiB). A body that is too large or is not JSON
+   gives "unreadable status", never `Ready`.
+2. `guard(expected, status)`: not `Running` gives `Wait`; no expected name gives `Ready`; no name and no
+   suffix yet gives `Wait`; an expected name equal (case-insensitive) to the name or to the suffix gives
+   `Ready`; else `Mismatch`.
+3. `--tailnet NAME` (and `PODNET_TAILNET`): at the start, poll `guard` for up to 20 s (a choice, not a
+   measurement). `Ready` opens the door. `Mismatch` exits 78: `the daemon is in tailnet "lab", not "office";
+   nothing was bound`. A wait that ends exits 69 and names the last `BackendState`.
+4. After the start, run `guard` before each dial that follows a failed dial, and each 30 s. On `Mismatch`
+   the door answers new CONNECT requests with the SOCKS5 reply "connection not allowed" and with HTTP 403,
+   and logs one line. Open connections stay.
+5. Add a doctor row for the door: the socket, `BackendState`, the name and the suffix of the tailnet, and the
+   value of `TS_FORCE_NOISE_443` as the podnet process sees it (the environment of the daemon cannot be
+   read). The row says `unknown` when the daemon does not answer.
+6. Docs: under `README.md:1103`, add that a host whose outbound traffic is limited to the port 443 starts
+   `tailscaled` with `TS_FORCE_NOISE_443=true`. The help text says that the DNS suffix is the safer value
+   of the flag (Inferred).
+7. The check reads the status only. It never changes the login, the exit node or the prefs. The hop
+   `pod -x tailscale:SOCKET` is not covered.
+
+## Decision
+
+Area and milestone: the triage proposed `TODO/fixes.md` (M5, a follow-on of T-081) or this file (M8, next
+to T-114). The lead session chose M8.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib -- tailscale_tailnet_mismatch_refuses_before_the_bind tailscale_tailnet_match_opens_the_door
+cargo test -p podnet-netns --lib -- tailscale_needs_login_ends_with_69 tailscale_tailnet_change_refuses_new_dials tailscale_unreadable_status_is_not_ready
+cargo test -p podnet-netns --lib -- tailscale_front_door_warns_when_logged_out
+```
+
+With no `--tailnet`, the behaviour is unchanged (the existing warning test passes). A fake LocalAPI in
+`office` (by name, or by the suffix `office.ts.net`) opens the door. `NeedsLogin` for longer than the wait
+exits 69. A fake that changes to `lab` after the start: the next dial gets the refusal and one log line, and
+a connection opened before stays up.

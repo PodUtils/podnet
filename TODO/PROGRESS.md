@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 236 entries: 54 open, 7 partial, 19 blocked, 156 done.
+`TODO/INDEX.md` holds 244 entries: 61 open, 7 partial, 20 blocked, 156 done.
 
 ## State
 
@@ -41,25 +41,28 @@ not wait for a larger one.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - tunnel, share, serve and the CLI: T-169.
    - WARP: T-173, T-210.
+   - the donor review (GitHub #429 to #434): T-238, T-239. T-240 and T-241 are fixes of the WARP code, which
+     waits for `pod-warp` and takes fixes.
 4. **M2, the splits:** T-035, T-036, T-039 (moved files: podcrates); T-043 and T-044 (blocked:
    the rows left go with the takes, T-137); T-045.
 5. **M3, the crates:** T-053, then the prerelease T-054. T-049, T-050
    and T-052 are the takes of `pod-relay`, `pod-warp` and `pod-cloudflare` of `PodUtils/podcrates`
    (T-137): do not do them in podnet.
-6. **M4, the adapters:** T-057, T-061.
+6. **M4, the adapters:** T-057, T-061, T-237 (after T-061 has moved `pod --serve` onto the one door).
 7. **M6, the services:** the shared parts T-083, T-086 (a take of
    `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
    server and git: done; the router T-095, T-097,
    T-098, T-099, T-100, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The triage adds T-177 (`podnet route check`) and
     T-180 (the router control); the router additions are in T-097 to T-099 (GitHub #372 to #374).
+    The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
 8. **M7, the pods:** T-174 (the veth wire; from the triage).
-9. **M8, the overlays:** T-114, T-115, T-117, T-118.
+9. **M8, the overlays:** T-114, T-115, T-117, T-118, T-243.
 10. **M9, later:** T-119 to T-130, T-132 and T-134, each when its start condition holds.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161, T-162, T-163,
-    T-200 (`pod-relay`), T-166 (`pod-services`).
+    T-200 (`pod-relay`), T-166 (`pod-services`), T-244 (`pod-cloudflare`).
 12. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait): T-216, T-217 (the schema of `doctor --json`), T-222, T-218
     (the connector profile), T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
@@ -78,6 +81,7 @@ These entries stay open. The condition in each entry tells when it can start.
 | T-153 | T-152 gives a pass on the target hosts (the netfilter plane; T-111 stays) |
 | T-165 | The owner rules that the SSH forward-relay leg gets a CLI |
 | T-176 | A guest-wire router (smoltcp) is planned |
+| T-237 | T-061 has moved `pod --serve` onto `Door` (tier A can land earlier) |
 | T-178 | T-096 and T-097 are done, and a measured need exists |
 | T-179 | The owner changes the T-096 contract (research only; T-096 keeps one flow for one uplink) |
 

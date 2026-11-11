@@ -3969,3 +3969,322 @@ sh scripts/agent/check.sh
 prerelease with the 8 binaries, `podnet.1`, `SHA256SUMS`, `SHA256SUMS.sigstore.json`,
 `provenance.sigstore.json` and `THIRD-PARTY-LICENSES.md`. `release-proofs.yml` 42952184194: success.
 
+
+# T-238: `listen::bind_private`: bind in a private 0700 directory, chmod, then rename into place, so the socket never has a wider mode under its name (GitHub #429)
+
+**Source:** GitHub #429 (https://github.com/PodUtils/podnet/issues/429); donor review, satmux.md block 6
+(Th0rgal/satmux at 2922ebb, MIT)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`podnet_netns::listen::bind_private` binds a unix socket and then sets the mode 0600. Between those two
+calls the socket has the mode that the umask of the process gives it. On a shared host with the umask
+002 or 000, a local user who connects in that interval reaches an unauthenticated SOCKS5 door that opens
+connections as the owner. `podnet net proxy` listens on the default `unix:/tmp/podnet-vnet.socks`. With
+the umask 022, other users cannot connect in the interval, so the window matters only for the umasks
+above. The check to satisfy is: no other user can connect, at any instant.
+
+## Premise
+
+- `crates/podnet-netns/src/listen.rs:123-131` (`bind_private`) calls `UnixListener::bind(path)`, then
+  `set_permissions(path, 0o600)`.
+- The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:250`,
+  `src/warp/proxy.rs:86`, `crates/podnet-vnet/src/proxy.rs:314`, `crates/podnet-vnet/src/switch.rs:434`,
+  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:159-162`),
+  `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
+- `crates/podnet-netns/src/seccomp/accept.rs:46` is not exposed: it calls `private_dir` first
+  (`crates/podnet-netns/src/seccomp/accept.rs:43`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:44`).
+- The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:73`, `src/cli/cmd/net/mod.rs:90` and
+  `src/cli/cmd/net/mod.rs:168` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:232`).
+- `libc` is a dependency (`Cargo.toml:112`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+  `renameat2` yet.
+- T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
+  GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.
+- The same shape is in `bind_unix` of `pod-broker` (PodUtils/podcrates). That is a separate ask to the
+  session of podcrates (a COORD issue).
+- Not re-run: the umask measurements of the issue (the author's). The issue reports the modes 0755, 0775
+  and 0777 right after the bind for the umasks 022, 002 and 000.
+
+## Approach
+
+1. Keep the claim step first (`claim_socket_path`, `claim_unix_path`).
+2. In `bind_private`: make the directory `PARENT/.podnet-bind-XXXXXX` (random name, create-exclusive, mode
+   0700), bind `s` inside it, `chmod` it to 0600, then move it to the final path with
+   `renameat2(RENAME_NOREPLACE)`, then remove the directory. An `EEXIST` gives `AddrInUse`.
+3. Where the file system has no `RENAME_NOREPLACE`, fall back to `link` and `unlink` (`link` fails on an
+   existing name).
+4. A crash between the bind and the rename leaves an empty 0700 directory. A start-up sweep may remove
+   the directories with the prefix `.podnet-bind-` that the same user owns.
+5. Do not use `umask`: it is process-wide and races with each thread that creates a file. A simpler fix,
+   to require a 0700 parent in the callers, is possible. The rename is the more general one.
+6. Verify `renameat2` in the `libc` crate on the musl targets of the static builds.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib -- bind_private_is_never_wider_than_0600 bind_private_gives_0600_under_each_umask
+cargo test -p podnet-netns --lib -- two_bind_private_calls_on_one_path_give_one_winner a_claim_refuses_a_live_socket_and_a_file_and_removes_a_stale_socket
+```
+
+A test seam runs a closure after the bind and before the chmod. Inside it, assert that the parent
+directory of the socket has the mode 0700 and that the final path does not exist yet. A planted defect
+(bind at the final path) must fail this test. Run with the umask 000, 002 and 022 in a child process: the
+final path has the mode 0600 when `bind_private` returns. Two concurrent calls on one path: one succeeds,
+the other gives `AddrInUse`, and neither removes the socket of the other. A crash after the bind and
+before the rename leaves no socket under the final name.
+
+# T-239: `install.sh` checks the release tag and reads SHA256SUMS strictly, `podnet update` does the same, and the install tests assert the downloader flags (GitHub #430)
+
+**Source:** GitHub #430 (https://github.com/PodUtils/podnet/issues/430); donor review, tailsplit.md block 3
+(idy/tailsplit at 0bd3a74, GPL-3.0-or-later)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`scripts/install.sh` builds download URLs from `PODNET_VERSION` and from the tags that it reads out of
+`releases.atom`, without the tag rule that `podnet update` already applies. Its reader of SHA256SUMS
+takes any number of matching lines, and `podnet update` takes the first. The install tests use a fake
+`curl` that ignores its flags, so removing `--proto '=https'` from the script fails no test. Example:
+`PODNET_VERSION='v1.2.3?x=y' sh install.sh` requests
+`https://github.com/PodUtils/podnet/releases/download/v1.2.3?x=y/SHA256SUMS`, and a tag with `/../`
+reaches another path. `podnet update` refuses the same text with "not a release tag". A release with a
+duplicated SHA256SUMS line fails closed today, but the message is misleading: it prints "the SHA256 of X is
+H, not H" with the same hash twice.
+
+## Premise
+
+- Implement from the description, not from the donor source (the donor is GPL-3.0-or-later).
+- `scripts/install.sh:327-351` (`resolve_tag`): the branches `v*) echo "$1"` and `*) echo "v$1"` pass the
+  text through. The line `scripts/install.sh:84` builds `base` from it.
+- `scripts/install.sh:401-413` (`check_sum`): the `awk` prints each matching hash, and the compare is
+  against the joined text.
+- The rule that exists: `src/update.rs:167-174` (`valid_tag`: 1 to 64 characters, first `v` or a digit, no
+  `..`), used by `src/update.rs:185`, `src/update.rs:273` and `src/update.rs:350`.
+- `src/update/cosign.rs:160-174` (`sum_of`) returns the first matching line and does not check the length
+  of the hash. SHA256SUMS is signed, so this is a hardening gap, not a hole.
+- `tests/install_script.rs:102-112` (`Lab::curl`): the argument loop skips each word that starts with `-`,
+  so no flag can change a result. `Lab::run` clears the environment and sets no `TMPDIR`; one test sets it
+  (`tests/install_script.rs:408`). The script passes `--proto` at `scripts/install.sh:272` and
+  `scripts/install.sh:292`.
+- Closed issues that touch the same files and add no such rule: GitHub #227 (`valid_tag` for `update`
+  only), #290 (seven defects of the script), #216, #246, #168, #169, #2, #17, #19. No entry of the record
+  covers it.
+- Not re-run: the exit codes and the messages for the hostile versions of the issue.
+
+## Approach
+
+1. Add `valid_tag` to `scripts/install.sh` with the same rule as `src/update.rs`. Call it in `resolve_tag`
+   for the three branches (the `latest` result, `v*`, a bare version), and fail with "not a release tag"
+   before any download. Check the shape `OWNER/NAME` of `PODNET_REPO` in the same place.
+2. One strict reader of SHA256SUMS in both places: exactly one line names the asset, the line has two
+   fields, and the hash has 64 hex digits. Otherwise the error says "SHA256SUMS must have exactly one valid
+   line for NAME (found N)". In Rust, count the matches before the return, and fail on 0 or on more than
+   1, and fail on a hash that does not decode to 32 bytes.
+3. Tests: `Lab::curl` records its full argument list, and a test asserts `--proto =https` and
+   `--proto-redir =https` for each call. `Lab::run` sets `TMPDIR` to a directory in the lab, and a shared
+   `assert_clean` checks that it is empty after each run (success, failure and TERM). A table test for
+   hostile versions (`v1/../x`, `v1?x=y`, `v1 2`, `$(touch injected)`, a newline): each exits non-zero,
+   makes zero `curl` calls and creates no file `injected`. A table test for SHA256SUMS: no line, a short
+   hash, a non-hex hash, an extra field, two lines for the asset (the correct one first, the wrong one
+   first). A planted-defect check: a copy of `install.sh` without the `--proto` words must fail the suite.
+
+## Decision
+
+Do not add `curl -q` (the donor passes it first, so that `~/.curlrc` cannot change the options) without a
+decision of the owner. A host that keeps its proxy only in `~/.curlrc` would lose it. The archive checks of
+the donor do not apply: the releases of podnet ship one static binary for each target, not an archive.
+
+## Prove
+
+```sh
+cargo test -p podnet --test install_script
+cargo test -p podnet --lib -- update::
+```
+
+`PODNET_VERSION='v1.2.3?x=y' sh scripts/install.sh` exits non-zero with "not a release tag", and the log
+of the fake `curl` is empty. Both orders of a duplicated line give "exactly one valid line (found 2)", and
+no binary is installed. The suite fails when `--proto '=https'` is removed from `download()`. The suite
+leaves no file in the `TMPDIR` of the lab. `podnet update --version v1.2.3` with a SHA256SUMS that lists
+the asset twice fails with the same wording.
+
+# T-240: `warp tun --default-route`: keep the resolver backup on disk, restore it after a kill, set the mode of `resolv.conf`, and test the route table with `ip route get` (GitHub #431)
+
+**Source:** GitHub #431 (https://github.com/PodUtils/podnet/issues/431); donor review, tailsplit.md block 4
+(idy/tailsplit at 0bd3a74, GPL-3.0-or-later)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`podnet warp tun --default-route` replaces `/etc/resolv.conf` and keeps the original text only in memory.
+If the process is killed (SIGKILL, the OOM killer, a power cut), the original is lost, and the next run
+reads the replaced file as its "original". A clean stop then "restores" the file that podnet wrote, and
+the original resolver list is gone. On a network where only the internal resolver answers, each lookup
+fails in the meantime. A second symptom: `replace_file` writes with `std::fs::write`, so the mode follows
+the umask. Under the umask 077 the new `/etc/resolv.conf` has the mode 0600, and the programs that are not
+root lose name resolution. Persist the original before the first change. Restore it at the next start and
+at `warp down` when the marker line shows that the file is still ours. Give the replaced file an explicit
+mode. Add a privileged CI test that compares `ip route get` before and after.
+
+## Premise
+
+- Implement from the description, not from the donor source (the donor is GPL-3.0-or-later).
+- This is a defect of the WARP code (`src/warp/`). That code waits for `pod-warp` (T-050), and it takes
+  fixes. `src/warp/route.rs` has 799 of 800 lines (`scripts/check-size.py`): a change must not add lines to
+  it without a split.
+- `src/warp/route.rs:364-370`: `enum Dns { Resolved, File { backup: String, link: Option<PathBuf> } }`.
+  `src/warp/route.rs:574-596` (`set_dns`) reads the backup from whatever file is there
+  (`src/warp/route.rs:592-593`), with no check of the marker. Only `Drop for Routes`
+  (`src/warp/route.rs:508-538`) restores. `src/warp/route.rs:618-629` (`replace_file`) uses
+  `std::fs::write`; no code sets the mode. `src/warp/route.rs:566-572` (`resolv_text`) already writes the
+  marker line `# podnet warp tun --default-route: DNS through WARP`.
+- The call of `Routes::setup` is in `src/cli/cmd/warp/tun.rs:101`. The name of the instance is
+  `TUN_INSTANCE` (`src/warp/up.rs:26`), and `instances::is_alive` answers from the held lock
+  (`crates/podnet-core/src/instances.rs:327`). The detached child holds the lock under that name, so the
+  liveness test must be a lock on a file of its own.
+- No test touches a kernel route table: the unit tests give a closure in place of the route calls
+  (`install_all`).
+- Closed issues: GitHub #298 (item 2: `set_dns` writes by rename and keeps the backup in `Routes`), #77
+  (a saved copy; it landed as the in-memory `Dns::File`), #138 (the ledger of the system proxy; no code on
+  `main`). T-012 (blocked: the WARP stand-ins) is context only. The privileged test does not need the
+  stand-ins.
+- Not run: the `unshare` measurements of the issue (iproute2 6.15.0, kernel 6.12.113: the selected route
+  moves to the TUN while `ip route show default` does not change). That the kernel removes the `/1` routes
+  with the TUN is Inferred in the issue, not reproduced. A kill of a real `warp tun` needs `CAP_NET_ADMIN`
+  and a WARP session.
+
+## Approach
+
+1. `set_dns` takes a lock on `STATE/resolv.lock` (flock, held until `Routes` drops). If it fails, refuse
+   with "another warp tun runs". Then it calls `reconcile_held()`: the lock is ours, so any record is from a
+   dead process.
+2. Write a record (durable, mode 0600) BEFORE the first change: `{ version: 1, path, kind: file|symlink|
+   absent, text | link_target }`. Then replace the file with the marker text, with the mode 0644 or the mode
+   of the replaced file (not the umask).
+3. `reconcile()` at the start of `warp tun` and at `warp down`: try the lock. If a live tun holds it,
+   return. Else, with a record: if the current file starts with the marker line, restore from the record
+   (symlink or text; in place when the rename fails) and remove the record. If not, remove the record, log
+   "resolv.conf was changed by someone else; left as found".
+4. A record with an unknown `version` is left in place and reported, never guessed. A missing
+   `/etc/resolv.conf` at the start is recorded as `kind: absent` and removed at the restore. A bind-mounted
+   `/etc/resolv.conf` keeps the in-place path (the rename over it fails).
+5. Confirm with the privileged test that the `resolvectl` per-link settings disappear with the device.
+6. Split `src/warp/route.rs` first (a new module for the resolver code), so that the file stays within
+   800 lines.
+7. Privileged test (a disposable runner only; it refuses otherwise): `unshare --user --map-root-user --net
+   --mount`, a dummy device with a default route, a second dummy device for the TUN, a bind mount over
+   `/etc/resolv.conf`. Take `ip -4 route get 203.0.113.5` as `before`. Run `Routes::setup` and `up`. Take the
+   snapshot again and assert that it differs (the positive control: it proves that the snapshot sees the
+   `/1` routes). Drop the value and assert equality with `before`. Then the kill case: a child process runs
+   `setup` and `up`, gets SIGKILL, the test asserts that `/etc/resolv.conf` is the marker file, calls
+   `reconcile()`, and asserts that the original text is back.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib -- warp::route::
+cargo test -p podnet --lib -- resolv_backup_survives_a_kill resolv_marker_guards_the_restore replace_file_sets_the_mode
+unshare --user --map-root-user --net --mount cargo test -p podnet --test warp_routes -- --ignored routes_lifecycle
+```
+
+After `kill -9` of `warp tun --default-route`, the next `warp tun` or `warp down` restores the original text
+(or the original symlink) and removes the record. A second start after a kill never records the marker file
+as the original. If the file no longer starts with the marker line, `reconcile` leaves it unchanged. The
+function `replace_file` gives the mode 0644 under the umask 077 and under the umask 0. A record with
+`version: 2` is not applied and is named in the error.
+
+# T-241: `warp`: register under a lock, save the device before the enrolment step, and fail over the registration POST only when no response came (GitHub #432)
+
+**Source:** GitHub #432 (https://github.com/PodUtils/podnet/issues/432); donor review, tailsplit.md block 5
+(idy/tailsplit at 0bd3a74, GPL-3.0-or-later)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+Registering a WARP device is two remote calls (`POST /reg` creates it, `PATCH /reg/{id}` enrols its MASQUE
+key), followed by a local save. The code checks only that the file is writable before it starts, and seven
+call sites run the check, the registration and the save with no lock around them. Two processes can
+register two devices, and a kill between the calls loses a device that the service has already counted.
+The rule of the project is "Do not register WARP devices when it is not necessary" (the service limits new
+devices for each address). Take a lock around the whole sequence. Save the device and its key as soon as
+the first call answers, so that a later run resumes the enrolment. The check that proves the fix: two
+parallel `register_or_load` calls against a fake API make exactly one `POST /reg`, and a kill after the
+create call makes the next run send `PATCH` for the same device id and no second `POST`.
+
+## Premise
+
+- Implement from the description, not from the donor source (the donor is GPL-3.0-or-later).
+- This is a defect of the WARP code (`src/warp/`). That code waits for `pod-warp` (T-050), and it takes
+  fixes. The record needs a `state` field in `warp.json`: a format change. Breaking changes are allowed
+  (beta).
+- `src/warp/mod.rs:435-454` (`register_or_load`): `check_file_writable` at `src/warp/mod.rs:450`, the
+  registration at `:451`, the save at `:452`, with no lock between. A stored device that is not enrolled
+  for MASQUE counts as "register again", not as "resume" (`src/warp/mod.rs:438-446`).
+- `src/warp/mod.rs:200-239` (`register_with`): `create_device`, then `enrol_masque`; the token stays in
+  memory.
+- The call sites with no lock: `src/cli/cmd/warp/client.rs:153`, `src/tunnel.rs:828` (only with
+  `--warp-identity PATH`; without it `tunnel` registers a new device on each run and saves nothing),
+  `src/cli/cmd/warp/front.rs:188`, and the WireGuard `load_or_register` (`src/warp/export.rs:75`; the
+  callers `src/cli/cmd/warp/client.rs:38` and `src/cli/cmd/warp/client.rs:57`).
+- `src/warp/register.rs:65-91` (`send_api_to`): a status of 500 or more, or a transport error, goes to the
+  next API host for each request, the registration POST included (`src/warp/register.rs:77`).
+- `instances::lock` and `try_lock` exist in `crates/podnet-core/src/instances.rs`; `delete_device` exists
+  in `src/warp/register.rs`. `docs/decisions.md:34` has the rule of the registration.
+- T-173 (done, GitHub #368) changed the refusal for a file of another uid in the same function and keeps
+  "a refused file never leads to a registration". It does not add a lock. GitHub #368 is open on GitHub
+  while T-173 is done. A close of #368 may be due. Closed issues #50, #187, #141 and #150 do not cover a
+  lock or a resumable enrolment.
+- Not run: the race and the kill case (Inferred in the issue; the registration needs the live API: use a
+  local fake). Unverified: that the WARP API applies a create before it answers 5xx.
+
+## Approach
+
+1. `register_or_load(path)` takes `path + ".lock"` (flock, a deadline of 60 s, mode 0600, never removed)
+   and holds it to the end of the function. A lock held longer than the deadline gives "another podnet is
+   registering" with exit 75.
+2. With a stored file: an enrolled device returns. A device with the state `created` goes to
+   `finish_enrolment` (a `PATCH` with the stored token, no new `POST`). On 404 or 401 (the device is gone),
+   remove the partial record and register anew (one `POST`).
+3. For a new device: `POST /reg`, then save the partial record (`state: "created"`, the device id, the token,
+   the key; durable, mode 0600, the same `check_private` as the complete file), then `PATCH`, then save the
+   complete record.
+4. A reader that does not know the `state` value refuses the file, and names the value.
+5. If the `PATCH` fails and the process stays alive, call `delete_device` for the new device when the
+   failure is not a network error (best effort; do not hide its own failure).
+6. For the registration POST only: fail over to the second API host when no response arrived (a connect
+   failure). After any HTTP response, 5xx included, return the error.
+7. Use the same lock and the same two-step save in the WireGuard export path.
+8. A kill between the answer of the POST and the first save still loses that device. The window shrinks to
+   one durable write.
+9. `src/warp/mod.rs` and `src/warp/register.rs` are WARP code: keep the change small, and send nothing new
+   to the future `pod-warp` except as the fix.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib -- warp::register
+cargo test -p podnet --test warp_register -- two_register_or_load_calls_make_one_post a_kill_after_the_post_resumes_with_a_patch
+cargo test -p podnet --test warp_register -- a_patch_404_registers_anew a_503_on_the_post_is_not_sent_to_the_second_host
+```
+
+Two tasks call `register_or_load` on one path with a fake API: the fake counts one `POST /reg`, and both
+get the same device id. A child process killed with `kill -9` after the POST and before the PATCH: the next
+call sends `PATCH` for the same id, sends no second `POST`, and the final file has `tunnel_type`
+`masque`. A partial file with an unknown `state` is refused with its name in the message. A connect failure
+on the first host still falls over.

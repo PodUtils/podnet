@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**236 entries: 54 open, 7 partial, 19 blocked, 156 done.**
+**244 entries: 61 open, 7 partial, 20 blocked, 156 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 24 | 6 | 13 | 100 | 143 |
-| P3 | 27 | 0 | 4 | 33 | 64 |
-| **All** | 54 | 7 | 19 | 156 | 236 |
+| P2 | 28 | 6 | 13 | 100 | 147 |
+| P3 | 30 | 0 | 5 | 33 | 68 |
+| **All** | 61 | 7 | 20 | 156 | 244 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -282,3 +282,11 @@ M8 Overlays, M9 Later.
 | [T-234](pods.md) | P2 | S | M5 | defect | done | netns: `parse_tcp_syn` reads a SYN in a header under 20 bytes and in a later fragment |
 | [T-235](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.3`: the dry run, the publish and the release proofs |
 | [T-236](services.md) | P2 | S | M5 | defect | open | `serve --ingress relay --detach` and `git serve --ingress relay --detach` report ready before the node is connected |
+| [T-237](adapters.md) | P3 | M | M4 | feature | open | Front door: an opt-in `--early-reply` answers the client before the upstream connect and pipelines the SOCKS5 upstream handshake (GitHub #428) |
+| [T-238](fixes.md) | P2 | S | M5 | defect | open | `listen::bind_private`: bind in a private 0700 directory, chmod, then rename into place, so the socket never has a wider mode under its name (GitHub #429) |
+| [T-239](fixes.md) | P2 | M | M5 | defect | open | `install.sh` checks the release tag and reads SHA256SUMS strictly, `podnet update` does the same, and the install tests assert the downloader flags (GitHub #430) |
+| [T-240](fixes.md) | P2 | M | M5 | defect | open | `warp tun --default-route`: keep the resolver backup on disk, restore it after a kill, set the mode of `resolv.conf`, and test the route table with `ip route get` (GitHub #431) |
+| [T-241](fixes.md) | P2 | M | M5 | defect | open | `warp`: register under a lock, save the device before the enrolment step, and fail over the registration POST only when no response came (GitHub #432) |
+| [T-242](services.md) | P3 | M | M6 | feature | open | Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433) |
+| [T-243](overlays.md) | P3 | M | M8 | feature | open | `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434) |
+| [T-244](later.md) | P3 | L | M9 | feature | blocked | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |

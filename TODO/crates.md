@@ -866,6 +866,20 @@ The session of `PodUtils/podcrates` (the crate `pod-relay`): the health memory o
 
 T-049 is done.
 
+## Correction
+
+2026-11-11, the comment on GitHub #359 from the donor review (airhand.md block 3; MIT;
+https://github.com/PodUtils/podnet/issues/359#issuecomment-6789136771). It adds a rank among the hosts that are not dead, to the demotion by
+failure counter of this entry: the host order uses the least of the last K connect times, a switch of the head
+needs a margin of `max(5 ms, 10%)` that holds for a dwell (a count of consecutive connects, not seconds), and a
+head that is lost is held off the head for a time. Only the connect that wins, or that ends before the winner,
+gives a time (a cancelled attempt gives none), so an alternate that never leads is never sampled and the rule
+cannot promote it. A lower bound for a cancelled attempt is the time of the winner minus the stagger offset of
+the loser. Whether to sample a host that is not the head, or to store the bound, is open. A host that the
+operator named first moves at most one place. The values `K`, the dwell and the hold have no number yet: they
+need a measurement on two hosts of one deployment. Add the text of the comment to the COORD ask (to
+podcrates) of the Approach, item 1, when that ask is written. The donor values are starting values only.
+
 # T-163: relay: the session budget comes from the pool document (GitHub #360)
 
 **Source:** GitHub #360 (https://github.com/PodUtils/podnet/issues/360)

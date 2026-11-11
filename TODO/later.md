@@ -997,6 +997,28 @@ cargo test --workspace -- group_policy_picks_by_name
 
 T-096 and T-097 are done. The measured need is not shown: the issue gives field designs only.
 
+## Correction
+
+2026-11-11, two comments on GitHub #375 from the donor review (satmux.md block 2 and airhand.md block 4). They
+give input to the Approach. No code changes.
+
+- The metric of `leastload` (satmux; MIT) is bytes with a short decay plus the opens that have not seen a first
+  byte (comment: https://github.com/PodUtils/podnet/issues/375#issuecomment-6789131795). `load = load * 0.35^dt + n` on each transfer. The pick sorts on the tuple
+  (busy bucket under 4096 / under 65536 / more, opens without a first byte, `load / 4096`, unsent bytes, a
+  rotating tie-break). The thresholds and the constant are the donor's choice for a slow link: make them named
+  constants. Release the open counter on each end of a flow with a guard object. The seeded tests: 35 idle
+  flows against 2 busy bulk flows (a flow-count policy fails), three opens in one tick never land on one
+  member, a bucket falls back with an injected clock, a flow dropped before its first byte returns its count,
+  the tie-break rotates. The snapshot of a member needs counters for decayed bytes and for opens without a
+  first byte: `Tracker` in `crates/podnet-core/src/network/health.rs` holds neither.
+- The input of `minrtt` (airhand; MIT) is the least of a window of passing probe times, not the last one
+  (comment: https://github.com/PodUtils/podnet/issues/375#issuecomment-6789133721). `Tracker` keeps the last passing probe in `rtt`
+  (`crates/podnet-core/src/network/health.rs:163-164`), so a probe that shares a loaded member reads long
+  exactly when the member is busy. The input of this policy is `rtt_floor()` (see the Correction of T-097).
+  A move of the head needs a margin of `max(5 ms, 10%)` for a dwell of consecutive probe rounds (the donor's
+  values; re-derive them for TCP-connect probes). Existing flows never move.
+- The two comments do not conflict. The measured need (Start condition) is still not shown by the donor.
+
 # T-179: Research: a direction split for asymmetric uplinks (GitHub #375)
 
 **Source:** GitHub #375 (https://github.com/PodUtils/podnet/issues/375)
@@ -1035,3 +1057,102 @@ grep -n "direction split" docs/research/podnet/*.md
 ## Start condition
 
 The owner changes the T-096 contract.
+
+# T-244: `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435)
+
+**Source:** GitHub #435 (https://github.com/PodUtils/podnet/issues/435); donor review, tunnet.md block 4
+(tunnetio/Tunnet at fceb3f2; the inspector is in the MPL-2.0 crate `tunnet-core`)
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+A user who publishes a local webhook receiver with `podnet tunnel` cannot see what arrived. Add
+`--inspect`: in `forward_http`, which already holds the request, reads the response head and copies the
+bodies, give each copy helper a capture sink that copies at most a cap of body bytes and never delays a
+write. Keep the last N exchanges in memory and offer `podnet tunnel inspect` (list, show, replay) over a
+unix socket with the mode 0600. A streaming response must reach the visitor as it does today. Acceptance:
+after a failing delivery, `podnet tunnel inspect show ID` prints the request, and `inspect replay ID` sends
+it to the origin and records a new exchange that names the first.
+
+## Premise
+
+- Implement from the description, not from the donor source (MPL-2.0). Describe the behaviour only.
+- The code is in `src/proxy.rs`: `forward_http` (`src/proxy.rs:284`), `proxy_bidi` (`src/proxy.rs:354`),
+  `forward_tcp` (`src/proxy.rs:389`), `build_request_head` (`src/proxy.rs:842`), `read_response_head`
+  (`src/proxy.rs:1013`), `copy_futures_to_tokio_n` (`src/proxy.rs:1065`), `copy_tokio_to_futures_n`
+  (`src/proxy.rs:1108`), `copy_tokio_to_futures_eof` (`src/proxy.rs:1135`), `copy_chunked_to_futures`
+  (`src/proxy.rs:1160`). Each helper takes `metrics: &Metrics`, so a sink beside it sees each body byte.
+- One stream carries one request, and the framing code already decodes the response: no request parser is
+  needed. `forward_tcp` answers an HTTP request to a raw TCP origin with 501: do not capture there.
+- The dial is `origin::dial::dial` (`src/proxy.rs:308`, `src/proxy.rs:410`, `src/ws.rs:112`). `Origin::connect`
+  (`crates/podnet-serve/src/origin/mod.rs`) has no caller outside its own module (a grep of `src`, `crates`
+  and `tests`), so a decorator on it would see no traffic.
+- No capture and no request log exist in the tunnel path (a grep for `inspect`).
+- The socket: `claim_socket_path` (`crates/podnet-core/src/net.rs:22`), the check of the peer uid with
+  `SO_PEERCRED` (`crates/podnet-vnet/src/switch.rs:264-270`), and `instances::lookup_dir`
+  (`crates/podnet-core/src/instances.rs:81`).
+- `src/proxy.rs` and `src/tunnel.rs` go to `pod-cloudflare` (T-052). Podnet does not develop a new feature
+  in that code (`CLAUDE.md`, Order). Pod-cloudflare is not in `PodUtils/podcrates` yet. No issue and no
+  entry covers `--inspect`.
+- Flaws of the donor to avoid (Source in the issue): it reads the whole message before it forwards, so a
+  stream reaches the client only at the end; the chunk size is parsed with `from_str_radix` and `size + 2`
+  is used; its inspector listens on `127.0.0.1:4040` with no credential and offers a replay; it stores all
+  headers, `Authorization` and `Cookie` included.
+- Not run: the cost of the capture on a real tunnel. Measure the added latency and CPU for 1000 requests
+  per second against a loopback origin before any default other than off.
+
+## Approach
+
+1. Flag `podnet tunnel ... --inspect` (off by default), with `--inspect-keep N` (default 100) and
+   `--inspect-body BYTES` (default 1048576). Reject 0 for both.
+2. A capture sink with `head(...)` and `body(chunk)` for each direction. The helpers call it after the write
+   to the peer, so a slow or full sink holds no byte back. A sink that fails is dropped for that exchange,
+   and the copy goes on. A chunked response gives the decoded payload that `copy_chunked_to_futures` writes,
+   never the size lines.
+3. A ring of N records in memory (id, start time, method, target, heads, bodies up to the cap with the
+   truncation flags, status, milliseconds, `replayed_from`, `incomplete`). The ring is lost at exit and is
+   never written to a file.
+4. Redaction by default: replace the value of `authorization`, `proxy-authorization`, `cookie`,
+   `set-cookie` and each header whose name contains `token`, `secret` or `key` with `[redacted]` in the
+   stored copy; the forward keeps the real value. `--inspect-raw` keeps the values and prints one warning
+   line at the start. A request refused by the credential of the tunnel (`src/proxy.rs:134-156`) is not
+   captured.
+5. Access: `inspect.sock` in a private directory of the run directory, mode 0600, with the check of the peer
+   uid. Commands: `podnet tunnel inspect ls [--json]`, `show ID`, `replay ID`, `clear`. `replay` sends the
+   stored request to the same service with `Connection: close`, records the result with `replayed_from`, and
+   does not count as a visitor request in the metrics.
+6. Replay safety: only for `Service::Http`, `Unix` and `UnixTls`. Refuse a record marked `incomplete`, a
+   record with a truncated request body, and a WebSocket record. `proxy_bidi` records the head and the 101
+   status, then no body.
+7. At the start of the work, send a COORD issue (to podcrates) so that the take of `pod-cloudflare` carries
+   the change.
+
+## Prove
+
+```sh
+cargo test -p podnet --test tunnel_inspect -- a_streaming_response_keeps_its_timing_with_inspect the_ring_keeps_the_cap_and_the_flags
+cargo test -p podnet --test tunnel_inspect -- a_bad_chunk_size_ends_the_exchange_as_incomplete authorization_is_redacted_and_forwarded
+cargo test -p podnet --test tunnel_inspect -- replay_records_a_new_exchange_that_names_the_first replay_of_a_truncated_request_is_refused
+```
+
+A response that streams 10 chunks with 200 ms between them reaches the client with the same timing with and
+without `--inspect`; a sink that collects the whole body before the helper writes it (the order of the
+donor) must fail this test. A 50 MiB upload and a 50 MiB download keep the resident set within 8 MiB above
+the baseline, and the stored body is the cap with the flag set. An origin that answers with the chunk size
+line `ffffffffffffffff` and closes: the exchange ends with an error as today, with no panic, and the ring
+holds the partial record marked `incomplete`. Another uid cannot connect to `inspect.sock`, and its mode is
+0600.
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-cloudflare`, T-052): `src/proxy.rs` moves there, and
+podnet does not develop new features in that code. The entry is unblocked when podnet takes `pod-cloudflare`
+and the crate holds `forward_http`.
+
+## Start condition
+
+Podnet holds `pod-cloudflare`, and the crate holds `forward_http`.
