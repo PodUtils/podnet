@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**254 entries: 40 open, 11 partial, 23 blocked, 180 done.**
+**254 entries: 39 open, 11 partial, 23 blocked, 181 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 22 | 6 | 14 | 110 | 152 |
-| P3 | 18 | 4 | 7 | 44 | 73 |
-| **All** | 40 | 11 | 23 | 180 | 254 |
+| P3 | 17 | 4 | 7 | 45 | 73 |
+| **All** | 39 | 11 | 23 | 181 | 254 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -177,7 +177,7 @@ M8 Overlays, M9 Later.
 | [T-129](later.md) | P3 | M | M9 | feature | open | An ACME client for a public listener |
 | [T-130](later.md) | P3 | M | M9 | research | done | Research: the iroh road, and a relay and mailbox of podnet's own |
 | [T-131](later.md) | P3 | L | M9 | chore | open | A crate that podnet and podssh share for the layer, the channel and the identity |
-| [T-132](later.md) | P3 | S | M9 | chore | open | `try_update` in place of the macro `update_atomic!` |
+| [T-132](later.md) | P3 | S | M9 | chore | done | `try_update` in place of the macro `update_atomic!` |
 | [T-133](later.md) | P3 | S | M9 | chore | done | Zig from the community mirrors in the release workflow |
 | [T-134](later.md) | P3 | M | M9 | chore | open | A weekly watch of the relay contract |
 | [T-135](fixes.md) | P3 | S | M5 | defect | done | `podnet pod` prints its own program name in each message and in `--version` |

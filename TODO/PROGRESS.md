@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 254 entries: 40 open, 11 partial, 23 blocked, 180 done.
+`TODO/INDEX.md` holds 254 entries: 39 open, 11 partial, 23 blocked, 181 done.
 
 ## State
 
@@ -61,7 +61,7 @@ not wait for a larger one.
 8. **M7, the pods:** T-249 (blocked, #454: the netns router on
    `pod-netstack`; the hold of a SYN in `pod-hold` waits for it, PodUtils/podcrates#68).
 9. **M8, the overlays:** T-114, T-115, T-117, T-247 (blocked: a NetBird account).
-10. **M9, later:** T-120 to T-129, T-132 and T-134, each when its start condition holds; T-248 (the
+10. **M9, later:** T-120 to T-129 and T-134, each when its start condition holds; T-248 (the
     guest-wire router, the owner's ruling of 2026-11-11) after T-249. T-001: edit GitHub #89 into a guide
     that a new client tests from.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
@@ -82,7 +82,6 @@ These entries stay open. The condition in each entry tells when it can start.
 | Entry | Start condition |
 | --- | --- |
 | T-131 | T-137 takes `pod-session`, `pod-e2e` and `pod-identity` (the owner chose the source: a git tag) |
-| T-132 | The ruling "Order" ends (`try_update` is stable at the `rust-version` 1.99) |
 | T-153 | T-152 gives a pass on the target hosts (the netfilter plane; T-111 stays) |
 | T-165 | partial: the row of `doctor` for the SSH relay is left (Approach 4) |
 | T-176 | A guest-wire router (smoltcp) is planned |

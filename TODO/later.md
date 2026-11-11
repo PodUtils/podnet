@@ -740,7 +740,7 @@ with the commit that takes `pod-session`, `pod-e2e` and `pod-identity`. podnet h
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -775,6 +775,19 @@ The `rust-version` of `Cargo.toml` is at or above the release in which `try_upda
 2026-11-05, `try_update` is stable at Rust 1.99.1, the `rust-version` of `Cargo.toml` (a test program with
 `AtomicUsize::try_update` compiles). The start condition holds. The work waits only for the ruling
 "Order".
+
+## Done
+
+2026-11-11, commit 34730ad. The macro `update_atomic!` is removed from `src/lib.rs`,
+`crates/podnet-core/src/lib.rs` and `crates/podnet-serve/src/lib.rs`. The three uses call
+`AtomicX::try_update(Ordering::SeqCst, Ordering::SeqCst, f)`: `PinGate::unlock` in
+`crates/podnet-serve/src/gate.rs`, and `reserve_bytes` and the file-slot reserve in
+`crates/podnet-serve/src/share/upload.rs`. The result is the same: `Ok(old)` when `f` gives `Some`,
+`Err(current)` when `f` gives `None`; the orderings are the same as the macro. No frozen file used
+the macro. `src/warp/live.rs` (frozen) has a test loop of `compare_exchange_weak` with a comment
+about #214; it is not changed. `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers
+and test are 0. No new test: the behaviour is unchanged, and the tests of the gate and the upload
+limits cover the three uses. Not proven: a run under load of the limit tests.
 
 # T-133: Zig from the community mirrors in the release workflow
 
