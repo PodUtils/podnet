@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**254 entries: 39 open, 10 partial, 23 blocked, 182 done.**
+**255 entries: 39 open, 10 partial, 23 blocked, 183 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 22 | 6 | 14 | 110 | 152 |
+| P2 | 22 | 6 | 14 | 111 | 153 |
 | P3 | 17 | 3 | 7 | 46 | 73 |
-| **All** | 39 | 10 | 23 | 182 | 254 |
+| **All** | 39 | 10 | 23 | 183 | 255 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -300,3 +300,4 @@ M8 Overlays, M9 Later.
 | [T-252](services.md) | P3 | M | M6 | feature | open | Transfer: a piping-server relay as a transit carrier of last resort |
 | [T-253](services.md) | P3 | S | M6 | measurement | done | Live: probe the hosted mailboxes and relays from a proxy-only runner |
 | [T-254](fixes.md) | P2 | M | M5 | chore | done | Housekeeping: one footnote for cfrs, no narrative history |
+| [T-255](pods.md) | P2 | S | M7 | defect | done | seccomp: an IPv4-mapped loopback address is loopback |

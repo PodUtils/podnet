@@ -1254,3 +1254,41 @@ ci run 43062916833 (db34bae) on a GitHub runner: `veth_wire_carries_a_tcp_flow` 
 10 passed as root, with no skip line. The job `workflows` of that run failed on shellcheck SC2024 (the redirect
 of the log after `sudo`); the next commit marks it as meant.
 
+
+# T-255: seccomp: an IPv4-mapped loopback address is loopback
+
+**Source:** PodUtils/podrunner#64 (COORD-009 of podrunner, its T-077).
+**Category:** defect
+**Milestone:** M7
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+Under `podnet pod --backend seccomp`, a TCP connect to `127.0.0.1:PORT` or `[::1]:PORT` goes direct (the rule
+`loopback`). A connect to the IPv4-mapped address `[::ffff:127.0.0.1]:PORT` goes to the `-x` chain (the rule
+`default`). A dual-stack socket (AF_INET6 with `IPV6_V6ONLY` off) gives that address for each IPv4 target; .NET does
+so by default, so the official runner reached a loopback service through the proxy.
+
+## Premise
+
+- `crates/podnet-netns/src/connect.rs` tested `IpAddr::is_loopback()`, which is false for `::ffff:127.0.0.1`.
+- The rules of `cidr:` already take the canonical form (`crates/podnet-netns/src/rules.rs`, `to_canonical`).
+
+## Approach
+
+1. Test `ip.to_canonical().is_loopback()` (`is_loopback_target`) for the rule `loopback` and its flow line.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib a_mapped_loopback_address_is_loopback
+```
+
+## Done
+
+2026-11-11, 092cdc2. `is_loopback_target` takes the canonical form of the address, so `::ffff:127.0.0.0/104` is
+loopback, as `127.0.0.0/8` and `::1`. Test: `a_mapped_loopback_address_is_loopback` (it fails with the old test of
+`is_loopback()` on `::ffff:127.0.0.1`). Not measured end to end here: this sandbox has no IPv6 (`AF_INET6` gives
+EAFNOSUPPORT); the test `held` of `PodUtils/podrunner:crates/podrunner-broker-fake` proves the path on its runner.
