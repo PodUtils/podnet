@@ -24,12 +24,12 @@ anyhow = "1"
 libc = "0.2"
 # The SOCKS5 datagram path (UDP ASSOCIATE, the command 0x83, the frames and
 # the datagram header) of PodUtils/podcrates, at the git tag of the root.
-pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.21.0", version = "0.21.0" }
+pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.22.0", version = "0.22.0" }
 # The generic core of the hold of PodUtils/podcrates: the seccomp filter,
 # the receive of a notification, the memory of the child, the reply, the
 # table of the sockets with the flow budget, the dial state of a connect,
 # the netns entry, the TUN and the SYN packets.
-pod-hold = { git = "https://github.com/PodUtils/podcrates", tag = "v0.21.0", version = "0.21.0" }
+pod-hold = { git = "https://github.com/PodUtils/podcrates", tag = "v0.22.0", version = "0.22.0" }
 serde_json = "1"
 # The version of pod-netstack of PodUtils/podcrates, so that the binary has
 # one smoltcp.

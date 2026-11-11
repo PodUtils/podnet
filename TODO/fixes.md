@@ -3440,7 +3440,7 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 ## Premise
 
 - `src/warp/register.rs:185-194` (`Endpoint`; frozen file: no edit). `src/warp/export.rs:245-263`, `:30` (`WG_PORT`).
-- `src/warp/wg.rs:482-489` (v4 only; the message `:485-487`).
+- `src/warp/wg.rs:61-68` (v4 only; the message `:64-66`).
 - MASQUE reads `v4` and `v6`: `src/warp/register.rs:558-597`.
 - `grep -rn "\.ports" src/warp` finds no reader.
 - Test to extend: `src/warp/export.rs:402-437`.
@@ -4026,7 +4026,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   (`crates/podnet-netns/src/seccomp/accept.rs:43`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:44`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:73`, `src/cli/cmd/net/mod.rs:90` and
   `src/cli/cmd/net/mod.rs:168` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:232`).
-- `libc` is a dependency (`Cargo.toml:112`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `libc` is a dependency (`Cargo.toml:116`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.

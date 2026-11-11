@@ -140,14 +140,16 @@ issue in PodUtils/podcrates. podnet only takes the crate (T-137).
 2026-11-10, read in the tree: the reader of the format is not WireGuard code. It lands in
 `crates/podnet-vnet/src/wg_quick.rs` and changes no file of `src/warp/` (the files that go to
 `pod-warp` and `pod-wg` take fixes only). Step 2 needs no change of `src/warp/wg.rs`: its `Keys`
-takes the reserved bytes from the caller (`src/warp/wg.rs:214`), and the reader gives zeros when
+takes the reserved bytes from the caller (`Keys::reserved`, now of `pod-wg`:
+`PodUtils/podcrates:crates/pod-wg/src/handshake.rs`), and the reader gives zeros when
 the file has no `Reserved`. The handshake test builds a `Peer` of `src/warp/wg.rs` from the file
 in a test module of the root crate (`src/wg_quick_tests.rs`). When `pod-wg` exists, the reader
 can move there with the take (T-137).
 
 - The new dependency of `podnet-vnet` is `base64 = "0.23"`, for the keys. The root crate has the
   same version, so the tree gets no new crate.
-- `src/warp/wg.rs` uses a zero preshared key (`src/warp/wg.rs:324`). The reader keeps
+- The WireGuard code uses a zero preshared key (`Initiation::finish`, now of `pod-wg`:
+  `PodUtils/podcrates:crates/pod-wg/src/handshake.rs`). The reader keeps
   `PresharedKey`; T-117 must refuse a file with a `PresharedKey` until the WireGuard code takes
   one.
 
