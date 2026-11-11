@@ -987,7 +987,7 @@ router serve `GET /route/status` (the document of `Router::status`) on a socket 
 --status unix:/PATH [--json]` prints each door, each group and each member (health, round-trip time,
 flows, weight); it exits 69 when no router answers. Tests: `route_config_thresholds_reach_the_router`,
 `router_status_json_keys_over_the_control_socket`, and new cases of `route_config_errors_name_the_key`.
-2026-11-11, bf80498 (T-178): the window of passing probe times and `rtt_floor()` are done, as is the floor in the
+2026-11-11, 184fa71 (T-178): the window of passing probe times and `rtt_floor()` are done, as is the floor in the
 status document. Test: `router_health_rtt_window_changes_no_step`.
 Left: the bytes of each member (the meter of the doors), the rows of the metrics, and items 3, 7, 9 and 10 (the WARP adapter, frozen for
 `pod-warp`, T-050).

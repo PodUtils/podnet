@@ -1019,7 +1019,7 @@ give input to the Approach. No code changes.
   values; re-derive them for TCP-connect probes). Existing flows never move.
 - The two comments do not conflict. The measured need (Start condition) is still not shown by the donor.
 
-2026-11-11, bf80498, done by the owner's call (the work goes on with no measured need). The router file takes
+2026-11-11, 184fa71, done by the call of the lead session (the measured need of the Start condition is still not shown; the code is ready for a measure). The router file takes
 `policies: NAME: POLICY` (`weighted` default, `rr`, `minrtt`, `leastload`, `protect`); a file with no key keeps
 the old form and the weighted pick. There is no flag `--group-policy`: the router has no group flag (T-100).
 The policies are pure functions in `crates/podnet-core/src/network/policy.rs`; `Balance::pick_at` takes the
