@@ -412,7 +412,7 @@ T-059 is done.
 
 ## Done
 
-2026-11-11, commit b6f877a. `netbird` and `netbird:[PORT]` (default 1080) are a row of the registry
+2026-11-11, commit aebf853. `netbird` and `netbird:[PORT]` (default 1080) are a row of the registry
 (`src/networks.rs`, `src/networks/netbird.rs`): a dialer to the SOCKS5 listener at `127.0.0.1:PORT`, TCP only.
 An address target dials the listener. A name target fails with one line (`NetBird netstack mode has no DNS and
 takes the IP address of a peer only`) and sends nothing to the listener. `podnet net doctor` has the row
