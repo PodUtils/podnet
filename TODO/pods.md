@@ -1208,7 +1208,7 @@ for `veth_wire_carries_a_tcp_flow` to pass in the CI of podnet).
 **Milestone:** M7
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1246,4 +1246,11 @@ the test binaries as the runner user (`cargo test --no-run`), runs `veth_wire` o
 `router::kernel` of the library of podnet with `sudo -E`, and fails on a failed test or a skip line. Measured
 here (as root): `veth_wire_carries_a_tcp_flow` 1 passed, `router::kernel` 10 passed, no skip line. Left: the
 first passing run of `ci`, and the COORD issue for podcrates T-201 (PodUtils/podnet#451).
+
+## Done
+
+2026-11-11, e3144c9 and the shellcheck fix after it. The step "Netns tests as root" of the job `test` passed in
+ci run 43062916833 (db34bae) on a GitHub runner: `veth_wire_carries_a_tcp_flow` 1 passed and `router::kernel`
+10 passed as root, with no skip line. The job `workflows` of that run failed on shellcheck SC2024 (the redirect
+of the log after `sudo`); the next commit marks it as meant.
 
