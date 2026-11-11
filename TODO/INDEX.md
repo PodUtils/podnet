@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**236 entries: 56 open, 5 partial, 19 blocked, 156 done.**
+**236 entries: 55 open, 6 partial, 19 blocked, 156 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 26 | 4 | 13 | 100 | 143 |
+| P2 | 25 | 5 | 13 | 100 | 143 |
 | P3 | 27 | 0 | 4 | 33 | 64 |
-| **All** | 56 | 5 | 19 | 156 | 236 |
+| **All** | 55 | 6 | 19 | 156 | 236 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -143,7 +143,7 @@ M8 Overlays, M9 Later.
 | [T-095](services.md) | P2 | M | M6 | feature | open | Router: several WARP identities in one process, each with its own counters |
 | [T-096](services.md) | P2 | M | M6 | feature | done | Router: groups of networks with weights and a kill switch |
 | [T-097](services.md) | P2 | M | M6 | feature | partial | Router: a TCP health check for each member, and `podnet route status` |
-| [T-098](services.md) | P2 | M | M6 | feature | open | Router: doors with a default network, and rules to a network, a group or a refusal |
+| [T-098](services.md) | P2 | M | M6 | feature | partial | Router: doors with a default network, and rules to a network, a group or a refusal |
 | [T-099](services.md) | P2 | M | M6 | feature | open | Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose` |
 | [T-100](services.md) | P2 | M | M6 | feature | open | Router: a config file, and `podnet route` with `--detach` and autostart |
 | [T-101](services.md) | P2 | M | M6 | measurement | open | Router: the live step with WARP, the relay and direct, and a failover |

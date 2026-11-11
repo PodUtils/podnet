@@ -980,7 +980,7 @@ Left, each with the crate or entry that it waits for:
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1012,6 +1012,17 @@ The test uses unix sockets only, so it runs in the job `restricted-host`.
 ## Start condition
 
 T-061 and T-096 are done.
+
+## Correction
+
+2026-11-11: T-061 is partial (the door over a dialer is done; the WARP door waits for `pod-warp`), and this
+entry needs only the generic door. Done so far (2595ba2): `crates/podnet-vnet/src/routes.rs`, `parse` (the rules
+`domain:` and `cidr:` of `pod -r` to a named way, a group or `reject`) and `RulesFile` (a `Dial`: the file is
+read again when its time of change moves; a broken file keeps the last rules with a warning; an unknown
+way is an error at the start). A door of T-061 over a `RulesFile` is a door of the router. Test:
+`cargo test -p podnet-vnet --lib router_rules_pick_the_network` (unix sockets only). Left: the flag
+`--door LISTEN=NET` belongs to the command `podnet route` (T-099, T-100); item 3, the resolver of each
+member, lands with the DNS door of T-099.
 
 # T-099: Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose`
 
