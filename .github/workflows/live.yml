@@ -70,10 +70,9 @@ jobs:
       - name: Build
         timeout-minutes: 20
         run: cargo build --locked --release --bin podnet
-      # The edge facts of docs/protocol.md section 6 (issue 14).
-      - name: Edge facts
-        timeout-minutes: 4
-        run: sh tools/edge-facts.sh
+      # The edge facts of docs/protocol.md section 6 (issue 14) are measured
+      # by PodUtils/podcrates: scripts/services/edge-facts.sh, each day and
+      # by hand in its workflow services.yml.
       # podnet doctor (issue 11): on the runner each leg can work.
       - name: podnet doctor
         timeout-minutes: 3

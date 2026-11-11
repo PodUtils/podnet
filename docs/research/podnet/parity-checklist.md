@@ -1023,7 +1023,7 @@ or be replaced by a step that checks the same thing.
 - [ ] L48 A planted failure (`inputs.plant == 'fail'`)
 - [ ] L58 No step drops the masks (`live-run.sh` output not sent to /dev/null)
 - [ ] L65 Toolchain; L70 Build (`cargo build --locked --release --bin cfrs`)
-- [ ] L74 Edge facts (`tools/edge-facts.sh`)
+- [x] L74 Edge facts (`tools/edge-facts.sh`): replaced by `scripts/services/edge-facts.sh` of PodUtils/podcrates, which its `services.yml` runs each day
 - [ ] L78 `doctor`, `doctor --json`: legs quic, http2, quic+warp ok; roads direct, warp, relay ok; clock ok; api DNS addresses
 - [ ] L94 `demo --exit-on-verify --protocol quic --transport direct`
 - [ ] L97 `demo --exit-on-verify --protocol http2 --transport direct`
