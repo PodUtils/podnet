@@ -133,7 +133,7 @@ ENETUNREACH is the error for no route at all. The Prove checks EHOSTUNREACH.
 
 ## Done
 
-2026-11-11, commit a7a133c (parts 1 to 3). `src/router/kernel/guard.rs` is new; the keys
+2026-11-11, commit 84320e4 (parts 1 to 3). `src/router/kernel/guard.rs` is new; the keys
 `masquerade`, `mss_clamp`, `kill_switch` and `rp_filter` of `kernel` are `true` when absent, and an
 old file stays valid.
 - nf_tables netlink (no `nft` program): one batch (`NEWTABLE`, `DELTABLE`, `NEWTABLE`, chains, rules)
