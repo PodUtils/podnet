@@ -1201,7 +1201,7 @@ values and are not measured for TCP-connect probes; no field measure of any poli
 
 ## Done
 
-2026-11-11, be594df. The byte meter of the group members is there (`crates/podnet-core/src/network/meter.rs`).
+2026-11-11, 3b83bcd. The byte meter of the group members is there (`crates/podnet-core/src/network/meter.rs`).
 `Balance::dial` wraps the stream of each flow in `Metered`. The wrapper counts the bytes in both
 directions as the copy runs (two atomic adds for each chunk: the pending load and the total), and gives
 them to the member that carried the flow. Each door, and each rules file, dials through the group, so
