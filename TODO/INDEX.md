@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**254 entries: 43 open, 9 partial, 23 blocked, 179 done.**
+**254 entries: 42 open, 10 partial, 23 blocked, 179 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 22 | 6 | 14 | 110 | 152 |
-| P3 | 21 | 2 | 7 | 43 | 73 |
-| **All** | 43 | 9 | 23 | 179 | 254 |
+| P3 | 20 | 3 | 7 | 43 | 73 |
+| **All** | 42 | 10 | 23 | 179 | 254 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -224,7 +224,7 @@ M8 Overlays, M9 Later.
 | [T-176](later.md) | P3 | S | M9 | research | open | Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372) |
 | [T-177](services.md) | P3 | S | M6 | feature | done | Router: `podnet route check`, a dry run of the rules (GitHub #375) |
 | [T-178](later.md) | P3 | M | M9 | feature | done | Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375) |
-| [T-179](later.md) | P3 | S | M9 | research | open | Research: a direction split for asymmetric uplinks (GitHub #375) |
+| [T-179](later.md) | P3 | S | M9 | research | partial | Research: a direction split for asymmetric uplinks (GitHub #375) |
 | [T-180](services.md) | P3 | M | M6 | feature | open | Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376) |
 | [T-181](pods.md) | P3 | M | M7 | feature | done | seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376) |
 | [T-182](fixes.md) | P2 | M | M5 | defect | done | `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378) |

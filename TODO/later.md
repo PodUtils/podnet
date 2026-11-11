@@ -1224,7 +1224,7 @@ Not proven: the margin and the dwell of `minrtt` for TCP-connect probes; a field
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1251,12 +1251,52 @@ of T-096.
 ## Prove
 
 ```sh
-grep -n "direction split" docs/research/podnet/*.md
+cargo test -p podnet-core group_split
+cargo test -p podnet route_config_split
 ```
 
 ## Start condition
 
 None: the owner ruled. The option needs the router of T-100 and the groups of T-096 (done).
+
+## Correction
+
+2026-11-11, the owner ruled (`docs/decisions.md`, Direction split): the split is an option of a group, off by
+default. The Approach "do no code" is replaced: the part that podnet can do now is built (commit bbfbc31); the
+rest is left (below).
+
+Design.
+
+- Contract. With no `splits` entry, one flow uses one member (T-096). The option changes nothing then. An old
+  router file stays valid.
+- TCP. One byte stream has both directions. A split needs two connections (the request leg on one member, the
+  response leg on another) that a far end joins into one stream. podnet has no such far end: the relay
+  (`src/relay*.rs`) and the proxies end one connection. The option does not split TCP. The value `tcp` is
+  refused with an error (`split::TCP_REFUSAL`). A TCP flow keeps one member, as the pick gives it.
+- UDP. Datagrams have no stream. A socket of a split group sends by the member `up` and reads the member `down`
+  first, then `up`, so that an answer on either path is delivered (`SplitDatagrams`). It works only when the
+  far host is one host behind both members (two tunnels to one endpoint) and answers on the path of `down`.
+  Plain UDP answers go to the source address of the datagram, that is, to the path of `up`. podnet cannot make
+  a far host answer on `down`. The operator sets the key to say that the far host does.
+- Key. `splits:` of the router file: `NAME: up=MEMBER down=MEMBER`, or `off` (default). `up` and `down` are two
+  different members of the group `NAME`. The operator names them; podnet does not measure the uplink of a member.
+- Fallback. A member that does not take flows (health `down`) cannot split. The socket then takes the member of
+  the pick of the policy, as with no split. A `down` member with no datagrams leaves the socket on `up`. The
+  kill switch stays: with no member up, the socket is refused. Each fallback is counted.
+- Status. The new key `split` of each group of the status document: `mode` (`off` or `udp`), `up`, `down`,
+  `sockets`, `fallbacks`. `podnet route --status` prints it on the line of the group.
+- Errors. A bad value, a member that is not in the group, one member as `up` and `down`, a name that is not a
+  group: each is an error that names `splits.NAME` when the file is read.
+
+Left, with the reason.
+
+- A split of TCP: it needs a far end that joins two connections (a flow id, a direction bit, an exit table,
+  the cleanup). The relay of `PodUtils/podcrates` (`pod-relay`) is frozen (`CLAUDE.md`, Shared crates), and no
+  other far end exists. Write the design in `docs/research/podnet/` when a far end exists.
+- A far host that answers UDP on the path of `down`: it needs a cooperating far end or an endpoint that holds
+  both sessions of one peer. podnet has none. Tunnels to one endpoint (WARP, a relay) do not steer answers.
+- The byte meter (T-178) does not count datagrams, so `leastload` does not see UDP bytes of a group.
+- A measure of the uplink and the downlink of a member (to pick `up` and `down` without the operator).
 
 # T-244: `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435)
 

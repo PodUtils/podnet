@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 254 entries: 43 open, 9 partial, 23 blocked, 179 done.
+`TODO/INDEX.md` holds 254 entries: 42 open, 10 partial, 23 blocked, 179 done.
 
 ## State
 
@@ -87,7 +87,7 @@ These entries stay open. The condition in each entry tells when it can start.
 | T-165 | The owner rules that the SSH forward-relay leg gets a CLI |
 | T-176 | A guest-wire router (smoltcp) is planned |
 | T-237 | T-061 has moved `pod --serve` onto `Door` (tier A can land earlier) |
-| T-179 | The owner changes the T-096 contract (research only; T-096 keeps one flow for one uplink) |
+| T-179 | partial: the UDP split is built (an option, off by default); the TCP split waits for a far end that joins two connections |
 
 ## Calls made without a ruling
 
