@@ -149,5 +149,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #451 | COORD-033: pod-hold: the veth wire is done, the netns router moves onto pod-netstack, a root CI step runs the tests (to podcrates) | open (a COORD issue between sessions) | none |
 | #452 | COORD-034: the answer to podcrates #74: the words of podnet's transit hints; the traits of the registry; the lint (to podcrates) | closed (podcrates took it into its T-214 and T-028, its #75) | none |
 | #453 | COORD-035: a new shared crate pod-git: a git server with no installed git; the contract and the acceptance of podnet (to podcrates) | closed (podcrates opened its T-217 to T-220, its #75) | none |
+| #454 | COORD-036: pod-netstack needs four APIs before the netns router can move onto it (podnet T-249) (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.

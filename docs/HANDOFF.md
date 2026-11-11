@@ -44,8 +44,9 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
    narrative history of the documents. It leaves `docs/releases/`, `docs/reports/`, the record and the
    frozen files. A second pass may cover `docs/research/`. Each cfrs mention in a frozen file goes to
    podcrates as a COORD issue.
-3. **T-249 (an agent):** the netns router onto `pod-netstack`. Then a COORD issue with the commit for
-   podcrates T-170 step 2 (PodUtils/podnet#451).
+3. **T-249:** blocked on four APIs of `pod-netstack` (any IP, a listener on any destination, the
+   checksums of the link device, UDP on any address; #454). Restart it on the tag that has them; then a
+   COORD issue with the commit for PodUtils/podnet#451.
 4. **T-250:** the first `ci` run with the step "Netns tests as root" green. Then a COORD issue with the
    run for podcrates T-201, and T-250 done.
 5. **Then, one at a time beside one other:** T-178 (the byte meter of the doors; finish), T-179 (the
@@ -64,6 +65,7 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
 | #449 (COORD-031) | podcrates: the freeze at 7c5f87e of the files of `pod-relay`, `pod-warp`, `pod-cloudflare`; T-057 and T-242 in its T-028; T-244 in its T-029. |
 | #450 (COORD-032) | podcrates: an owner for the file-transfer of magic-wormhole; no hand-off for `pod-session`, `pod-e2e`, `pod-identity`. |
 | #451 (COORD-033) | podnet: T-250, then T-249; then a COORD issue with the commits. podcrates accepted #449 to #451 in its #74. |
+| #454 (COORD-036) | podcrates: four APIs of `pod-netstack` for podnet T-249. |
 | #448 (COORD-030) | podcrates: the `taken` line of the watches of `pod-services` (0b945a3). |
 
 ## Tools of the session

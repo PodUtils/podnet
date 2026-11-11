@@ -1136,7 +1136,7 @@ T-170 step 2 (the hold of a SYN of `netns/backend.rs`).
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1162,6 +1162,12 @@ podcrates T-170 step 2 (the hold of a SYN in `pod-hold`) waits for this move, an
 cargo test -p podnet-netns
 cargo test -p podnet-netns --test veth
 ```
+
+## Blocker
+
+`pod-netstack` of PodUtils/podcrates lacks four APIs at v0.22.0: any IP, a TCP listener on any destination,
+the checksums of the link device, UDP on any address (the Correction; PodUtils/podnet#454). The entry is
+unblocked at the tag that has them.
 
 ## Start condition
 
