@@ -1136,7 +1136,7 @@ T-170 step 2 (the hold of a SYN of `netns/backend.rs`).
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1162,6 +1162,13 @@ podcrates T-170 step 2 (the hold of a SYN in `pod-hold`) waits for this move, an
 cargo test -p podnet-netns
 cargo test -p podnet-netns --test veth
 ```
+
+## Blocker
+
+`pod-netstack` v0.25.0 has three gaps (PodUtils/podnet#457): a `TcpListener` has no close, a drop of a
+`TcpStream` loses its queued bytes, and the accept pool answers a SYN with a RST when each listen socket is
+busy. The move works around them, but the first workaround caps the destination ports of a pod at 256 for its
+life (a capability that the old loop had). The entry is unblocked at the tag that closes the gaps.
 
 ## Start condition
 
@@ -1197,6 +1204,11 @@ The lead sends these APIs to podcrates in a COORD issue. The state stays `open`.
 2026-11-11: podcrates v0.25.0 has the four calls (PodUtils/podcrates#76): `StackConfig::any_ip`,
 `NetStack::listen_any`, `StackConfig::checksum` and `LinkDevice::with_checksum`, `NetStack::bind_udp_any` with
 `UdpSocket::send_to_from` and `recv_from_to`. podnet is at v0.25.0 (e64fb99). The entry is open again.
+
+2026-11-12, the lead: the move is built and tested on the local branch `worktree-agent-ac60b45b681f3ed6a`
+(9d93516, bcf98f2; all tests pass, and a 20 MB download on each wire). It is not merged: the cap of 256 ports
+loses a capability (`CLAUDE.md`, Decisions). Merge it, without the workarounds, on the tag that closes the gaps
+of PodUtils/podnet#457.
 
 
 # T-250: CI: a root step that runs the netns tests that skip on a runner

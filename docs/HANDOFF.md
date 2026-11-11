@@ -37,8 +37,9 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
 `TODO/INDEX.md` and `TODO/PROGRESS.md` and run `cargo todo set`, cite the rebased commit, run
 `gen-llms.py`, run `check.sh`, push. Push in batches.
 
-1. **T-249:** the netns router onto `pod-netstack`; podcrates v0.25.0 has its four calls. Then a COORD
-   issue with the commit (#451), and close #454.
+1. **T-249:** built on the local branch `worktree-agent-ac60b45b681f3ed6a` (9d93516, bcf98f2), not merged:
+   its workaround caps a pod at 256 destination ports. It waits for three gaps of `pod-netstack` (#457). On
+   the tag that closes them: rebase the branch, drop the workarounds, merge, and write the commit in #451.
 2. **Replies:** sent as #456. `crates/podnet-netns/src/netns/veth.rs` takes fixes only until the take of
    `pod-hold` with the wire (podcrates T-201).
 3. **T-248** (the guest-wire router) after T-249.
@@ -54,6 +55,7 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
 | #425 (COORD-016, to podrunner) | podrunner reads it. |
 | #444 (COORD-026) | podcrates: the umask window of `pod-broker`. |
 | #451 (COORD-033) | podnet: T-250, then T-249; then a COORD issue with the commits. podcrates accepted #449 to #451 in its #74. |
+| #457 (COORD-039) | podcrates: three gaps of `pod-netstack` (close of a listener, close of a stream, the accept pool) for T-249. |
 | #456 (COORD-038) | podcrates and podrunner: the take of v0.25.0, and T-255. Close it when both read it. |
 | #448 (COORD-030) | podcrates: the `taken` line of the watches of `pod-services` (0b945a3). |
 
