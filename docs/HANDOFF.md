@@ -6,57 +6,69 @@ file when each step below is done.
 
 ## Where the code is
 
-* All work is on `main` of `PodUtils/podnet`. A local worktree
-  `/home/user/wt-t058` (branch `wt-t058`, not pushed) follows `main`; it
-  holds no work of its own. The toolchain is Rust 1.99.1 (`rustup default
-  1.99.1`; the image has 1.97 as its default).
-* podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns`,
-  `pod-services`, `pod-ws`, `pod-quic` and `pod-hold` of
-  `PodUtils/podcrates` by the git tag `v0.20.0` (T-137, T-232).
-* The newest release is `v0.4.0-beta.3` at 649c8e3 (T-235; release run
-  42949492119, release-proofs 42952184194). The work after 649c8e3 (T-061
-  partial, T-097 partial) is in no release.
+* All work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1
+  (`rustup default 1.99.1`; the image has 1.97 as its default).
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.20.0`
+  (T-137). podcrates v0.21.0 is released (PodUtils/podcrates#65); its
+  hand-offs for podnet are not read yet.
+* The newest release is `v0.4.0-beta.3` at 649c8e3. The work after it is in no
+  release.
 
-## Work of this session
+## Work of this session after v0.4.0-beta.3
 
-T-058 (the combinators), T-059 (the registry of networks), T-060
-(`--egress SPEC`; `serve` and `git serve` take `--ingress` in place of
-`--via`), T-062 (the roads), T-084 (one access layer), T-096 (the group
-with a kill switch), T-097 (partial: the generic health), T-229 (the
-measure with the runner), T-230 (the object `hold`), T-231 item 1, T-232
-(the take of `pod-hold`), T-231 (`--loopback-rules`), T-233, T-234 and T-236
-(defects), T-235 (`v0.4.0-beta.3`), the takes of podcrates v0.20.0.
+Done: T-100 (`podnet route --config`), T-177 (`route --check --to`), T-174 (the
+veth wire), T-216 and T-217 (`doctor --json` schema 1, `--quick`, `lanes`),
+T-218 (the connector profile, `docs/protocol.md` section 10), T-222 (`--help
+--json`, `llms.txt`, `llms-full.txt`), T-239, T-240, T-241, T-243.
+
+Partial: T-097 (thresholds and `route --status`), T-098 (the DNS door of a
+door), T-099 (UDP forwards, the DNS door, `podnet expose`), T-178 (group
+policies), T-221 (`podnet bench`), T-242 (the lint of shadowed rules).
+
+Test fixes: the shim datagram test takes a port of its run and reaps its
+server; the claim test makes its stale socket with `mknod`; each probe child of
+`pod doctor` closes its inherited descriptors; the veth test and the register
+tests skip on the CI jobs that cannot run them.
 
 ## Next steps
 
-1. **Live steps that failed once each** (no code of them changed): "SSH
-   through the reverse relay" at 520b307 (a reset session, then a hang of
-   5 minutes), and "warp up with its TCP listener refused" at 05bcf44 (no
-   JSON line on stdout; the step does not print `up97.err`). Read the next
-   live runs; open an entry when one fails again. T-236 fixed the third
-   (git over the relay at c0180cc).
-2. **T-137:** podnet is on podcrates v0.20.0 and took `pod_hold::connect`
-   and `pod_hold::packet` (e4d4049, COORD-017 #426). Step 2 of podcrates
-   T-170 (the hold of a SYN of `netns/backend.rs`) waits for T-174 and the
-   smoltcp of `pod-netstack`; write a COORD issue then.
-3. The work order of `TODO/PROGRESS.md`: M6, the router (T-098 to T-101,
-   T-177, T-180) on the combinators, the group and the health of
-   `podnet-core`. T-061 needs `src/warp/proxy.rs`, which waits for
-   `pod-warp`.
+1. **CI:** the runs after fc97ef9 were queued at 11:45 UTC. Read the first
+   completed run at or after 0a2b2a8. Then close #431 (T-240), #432 (T-241),
+   #369 (T-174) and #375 for T-177 only (T-178 and T-179 stay), with the
+   commits and the run.
+2. **T-236:** the code is in e6eda36. The entry waits for the live step "Git
+   over SSH through the reverse relay" to pass. Read the next live run.
+3. **Agents in flight** (worktrees under `.claude/worktrees/`): T-126 (an
+   `https://` proxy and wstunnel as networks) and T-119 (the kernel mode of
+   the router). Merge each: rebase on `main`, take `--ours` for
+   `TODO/INDEX.md` and `TODO/PROGRESS.md` and run `cargo todo set`, cite the
+   rebased commit, run `gen-llms.py`, run `check.sh`, push.
+4. **T-121** (the mwan export) needs the interface and the table of each WAN:
+   do it after T-119.
+5. **podcrates v0.21.0:** read `sh scripts/agent/podcrates.sh` and take the
+   crates whose hand-off is at the tag (T-137).
+6. **The next beta:** the batch above is green when CI is green. Name the
+   speed limit of `warp --cc reno|cubic` on smoltcp 0.14 (PodUtils/podcrates#66,
+   COORD-041: keep `CongestionControl::None`) in the notes.
 
 ## Open COORD issues
 
 | Issue | Waits for |
 | --- | --- |
-| #413 (COORD-006) | podcrates: the asks for `pod-relay`, `pod-dns`, `pod-proxy`, `pod-services` and `pod-warp`. Close it when each ask is in a release that podnet took. |
-| #425 (COORD-016, to podrunner) | podrunner reads it. Close it when podrunner answers or closes its COORD-001. |
+| #413 (COORD-006) | podcrates: the asks for `pod-relay`, `pod-dns`, `pod-proxy`, `pod-services` and `pod-warp`. |
+| #425 (COORD-016, to podrunner) | podrunner reads it. |
+| #444 (COORD-026) | podcrates: the umask window of `pod-broker`. |
+| #447 (COORD-029) | podcrates: the take of `pod-wg`; `src/warp/wg.rs` takes fixes only until then. |
 
 ## Tools of the session
 
 * `.work/` holds local tools (not in git): the org watcher
-  (`.work/podcrates-agent/`, see `CLAUDE.md`).
-* A worktree build needs its own `CARGO_TARGET_DIR` and
-  `CARGO_PROFILE_DEV_DEBUG=0`. The disk filled once this session: remove
-  `target/debug/incremental` and the target of a worktree first.
+  (`.work/podcrates-agent/`, see `CLAUDE.md`) and the brief of the worktree
+  agents (`.work/fix-brief.md`).
+* Run two worktree agents at a time at most. Each uses its own
+  `CARGO_TARGET_DIR` and a `TMPDIR` of mode 0755 outside `/tmp/claude-0` (the
+  shim tests switch the uid). Remove the target of an agent after its merge:
+  the disk filled twice this session.
+* Push in batches: each push queues a run of `ci` and cancels a run of `live`.
 * The mirror `forge.web.pkgforge.dev` answers 403 at times; the GitHub MCP
   tools (`actions_list`, `get_job_logs`) read the same data.
