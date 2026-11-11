@@ -608,7 +608,7 @@ constraint. The measures of the Approach stay: they decide whether podnet takes 
 
 ## Done
 
-2026-11-11, commit 662ba0c. Research note: `docs/research/podnet/iroh-relay.md`. Each fact is marked read,
+2026-11-11, commit 6a62104. Research note: `docs/research/podnet/iroh-relay.md`. Each fact is marked read,
 measured or inferred, with URL and date. No account was used. No binary was built, so the size of the
 binary is not measured.
 
