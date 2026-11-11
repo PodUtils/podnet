@@ -19,6 +19,7 @@ pub(crate) fn probe_unshare(flags: libc::c_int) -> Probe {
     // what the backend does: bring up `lo` and make a TUN device.
     let pid = unsafe { libc::fork() };
     if pid == 0 {
+        close_inherited();
         let r = unsafe { libc::unshare(flags) };
         let code = if r != 0 {
             std::io::Error::last_os_error().raw_os_error().unwrap_or(1)
@@ -80,10 +81,27 @@ const PROBE_VETH: i32 = 202;
 
 /// Can the namespace make the veth wire (T-174)? The netns backend takes it
 /// when the namespace cannot open `/dev/net/tun`.
+/// In a probe child: close each descriptor above stderr. A child of a
+/// process with threads (a test, a daemon) holds the sockets of the other
+/// threads open while it lives; a socket that the parent closes must not
+/// stay open in the child. The child calls only async-signal-safe functions.
+fn close_inherited() {
+    // SAFETY: close_range(2) with no flags closes descriptors only.
+    unsafe {
+        libc::syscall(
+            libc::SYS_close_range,
+            3 as libc::c_uint,
+            libc::c_uint::MAX,
+            0 as libc::c_uint,
+        );
+    }
+}
+
 pub(crate) fn probe_veth() -> Probe {
     const NAME: &str = "veth wire (no TUN)";
     let pid = unsafe { libc::fork() };
     if pid == 0 {
+        close_inherited();
         let entered = unsafe { libc::unshare(libc::CLONE_NEWNET) } == 0
             || unsafe { libc::unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET) } == 0;
         let code = if !entered {
@@ -139,6 +157,7 @@ pub(crate) fn probe_tun() -> Probe {
 pub(crate) fn probe_ptrace() -> Probe {
     let pid = unsafe { libc::fork() };
     if pid == 0 {
+        close_inherited();
         let r = unsafe { libc::ptrace(libc::PTRACE_TRACEME, 0, 0, 0) };
         if r != 0 {
             unsafe { libc::_exit(1) };
@@ -226,6 +245,7 @@ pub(crate) fn probe_seccomp_notif() -> Probe {
         };
     }
     if pid == 0 {
+        close_inherited();
         let errno = || std::io::Error::last_os_error().raw_os_error().unwrap_or(1);
         if unsafe { libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) } != 0 {
             unsafe { libc::_exit(PROBE_NO_NNP_BASE + errno().clamp(1, 50)) };
