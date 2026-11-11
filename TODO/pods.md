@@ -1061,7 +1061,7 @@ None`). The measure of T-229 (`docs/reports/pod-runner.md`): `config.sh` of the 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1088,3 +1088,9 @@ next tag."
 ```sh
 cargo test -p podnet-netns --lib no_syn
 ```
+
+## Done
+
+2026-11-11, commit 2efa720. `parse_tcp_syn` refuses an IHL under 5 and a fragment offset other than 0, the
+rule of `pod_hold::packet`. The tests `a_header_shorter_than_20_bytes_is_no_syn` and
+`a_fragment_past_the_first_is_no_syn` failed before the fix and pass; the 84 tests of `podnet-netns` pass.
