@@ -286,3 +286,42 @@ async fn the_rules_combinator_takes_pod_rules() {
         .expect_err("refused");
     assert_eq!(err.text(), "the rule cidr:10.0.0.0/8 refuses 10.0.0.1:22");
 }
+
+/// T-096: a group of two SOCKS5 upstreams on loopback (unix sockets): the
+/// flows go to both, and with each member down no upstream gets a flow.
+#[tokio::test]
+async fn router_group_splits_two_socks5_upstreams_and_fails_closed() {
+    use podnet_core::network::{Balance, Health, Member, Way};
+    let dir = tempfile::tempdir().unwrap();
+    let (pa, pb) = (dir.path().join("a.sock"), dir.path().join("b.sock"));
+    let (seen_a, seen_b) = (fake_socks5(&pa), fake_socks5(&pb));
+    let way = |path: &Path| {
+        let spec = format!("unix:{}", path.display());
+        Way::destination(Arc::new(UpstreamChain::parse(&[spec.as_str()]).unwrap()))
+    };
+    let group = Balance::new(
+        "egress",
+        vec![Member::new("a", way(&pa), 1), Member::new("b", way(&pb), 1)],
+    )
+    .unwrap()
+    .with_seed(11);
+    for i in 0..20 {
+        let mut conn = group
+            .dial(&Target::new(&format!("h{i}.example"), 443), soon())
+            .await
+            .unwrap();
+        ping(&mut conn).await;
+    }
+    let (a, b) = (seen_a.lock().unwrap().len(), seen_b.lock().unwrap().len());
+    assert_eq!(a + b, 20);
+    assert!(a > 0 && b > 0, "a {a}, b {b}");
+    group.set_health(0, Health::Down);
+    group.set_health(1, Health::Down);
+    let err = group
+        .dial(&Target::new("late.example", 443), soon())
+        .await
+        .expect_err("the kill switch");
+    assert_eq!(err.class, Class::Policy);
+    let (a2, b2) = (seen_a.lock().unwrap().len(), seen_b.lock().unwrap().len());
+    assert_eq!((a2, b2), (a, b), "no upstream got the refused flow");
+}

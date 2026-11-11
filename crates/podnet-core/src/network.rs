@@ -25,17 +25,20 @@
 //!   an adapter, and what it gives when it is up;
 //! * the combinators (T-058): [`Chain`] (an outer network carries an inner
 //!   one), [`Rules`] (a way for each target), [`Race`] (staggered
-//!   attempts) and [`Failover`] (the next way after an error).
+//!   attempts) and [`Failover`] (the next way after an error);
+//! * [`Balance`] (T-096): a group of ways with weights and a kill switch.
 
 use std::fmt;
 use std::ops::BitOr;
 use std::sync::Arc;
 
+pub mod balance;
 pub mod chain;
 pub mod failover;
 pub mod race;
 pub mod rules;
 
+pub use balance::{parse_group, Balance, Health, Member, Selection};
 pub use chain::Chain;
 pub use failover::Failover;
 pub use race::Race;
