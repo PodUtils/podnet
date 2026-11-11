@@ -172,13 +172,16 @@ pub(crate) fn handle_connect(
     };
     // T-156: a rule that refuses the target answers at once.
     // T-231: with --loopback-rules, the rules decide a loopback target too.
-    let ruled = !ip.is_loopback() || loopback_rules();
+    // T-255: an IPv4-mapped address (::ffff:127.0.0.1, from a dual-stack
+    // socket) is loopback as its IPv4 address is.
+    let loopback = is_loopback_target(ip);
+    let ruled = !loopback || loopback_rules();
     let picked = match ruled {
         false => select_chain(route.rules, route.proxies, &target),
         true => crate::learn::select(route.rules, route.proxies, &target, "tcp"),
     };
     let chain = picked.chain().map(<[Proxy]>::to_vec);
-    let flow = match (ip.is_loopback(), chain.is_some() || !ruled) {
+    let flow = match (loopback, chain.is_some() || !ruled) {
         (true, true) => crate::flowlog::dial("tcp", &target, "loopback", Some(&[])),
         _ => crate::flowlog::decided("tcp", &target, &picked),
     };
@@ -358,4 +361,33 @@ async fn connect_loopback(
     let stream =
         crate::upstream::connect_direct(&std::net::SocketAddr::new(ip, port).to_string()).await?;
     Ok(Box::new(stream))
+}
+
+/// True when a connect to `ip` is a connect to this host: `127.0.0.0/8`,
+/// `::1`, or an IPv4-mapped form of a loopback address (`::ffff:127.0.0.1`).
+pub(crate) fn is_loopback_target(ip: IpAddr) -> bool {
+    ip.to_canonical().is_loopback()
+}
+
+#[cfg(test)]
+mod loopback_tests {
+    use super::is_loopback_target;
+
+    /// T-255 (PodUtils/podrunner#64): a dual-stack socket gives the
+    /// IPv4-mapped form of 127.0.0.1; it is loopback.
+    #[test]
+    fn a_mapped_loopback_address_is_loopback() {
+        for (ip, want) in [
+            ("127.0.0.1", true),
+            ("127.1.2.3", true),
+            ("::1", true),
+            ("::ffff:127.0.0.1", true),
+            ("::ffff:127.9.9.9", true),
+            ("::ffff:10.0.0.1", false),
+            ("10.0.0.1", false),
+            ("2001:db8::1", false),
+        ] {
+            assert_eq!(is_loopback_target(ip.parse().unwrap()), want, "{ip}");
+        }
+    }
 }
