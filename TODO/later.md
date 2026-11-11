@@ -129,7 +129,7 @@ T-119 is done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -154,6 +154,22 @@ cargo test --workspace -- route_export_mwan_json
 ## Start condition
 
 T-100 is done.
+
+## Correction
+
+2026-11-11: the export is a flag of `podnet route`, not a subcommand: `podnet route --config FILE --export
+mwan-json`, as `--check` and `--status` (`route` has no subcommands, T-100). The WANs are those of the key
+`kernel` of the router file (T-119), not the WANs of `warp tun`: a WAN of the kernel mode names its
+interface, its table and its gateway.
+
+## Done
+
+2026-11-11, 12fbc95. `Plan::mwan_json` gives `wans` (`name`, `iface`, `table`, `weight`, `gateway` when the file
+has one, and `check_target` from `health.target`) and `clients` (empty: the router file has no source rules).
+`route --export mwan-json` prints it, and exits 64 when the file has no `kernel` section. Test:
+`route_export_mwan_json`. Measured: the binary printed the two WANs of a file, and exit 64 for a file with
+no `kernel`.
+
 
 # T-122: Research: a native git server with no installed `git`
 

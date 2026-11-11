@@ -1399,6 +1399,12 @@ COMMANDS
             Read the file and bring up nothing: exit 0 when it is valid, 64
             with the key that is wrong
 
+        --export <FORMAT>
+            Print the kernel section of the file in another form, and run
+            nothing. mwan-json: the JSON file of the mwan director (wans and
+            clients). Exit 64 when the file has no kernel section. Values:
+            mwan-json.
+
         --to <HOST:PORT>
             With --check: a dry run for the target HOST:PORT. Print the rule,
             the network or the group, and the member of each door, with no
