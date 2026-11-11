@@ -287,7 +287,7 @@ see it. Use a unix socket for it (`-L unix:///path`).
 * After the child exits, the supervisor waits up to 3 seconds for the relays
   to finish.
 
-Needs: seccomp with `SECCOMP_RET_USER_NOTIF` (Linux 5.0 or newer).
+Needs: seccomp with `SECCOMP_RET_USER_NOTIF` and `SECCOMP_ADDFD_FLAG_SEND` (Linux 5.14 or newer). The core of this backend (the filter, the receive, the memory of the program, the reply and the table of the sockets) is the crate `pod-hold` of PodUtils/podcrates.
 
 ### UDP in the stream (SOCKS5 command `0x83`)
 

@@ -26,20 +26,8 @@ pub(crate) use send::*;
 /// Find `name` as `execvp` does: a name with a `/` is used as it is; another
 /// name is looked up in the directories of `PATH`.
 pub(crate) fn resolve_program(name: &str) -> Result<std::path::PathBuf> {
-    use std::os::unix::fs::PermissionsExt;
-    if name.contains('/') {
-        return Ok(std::path::PathBuf::from(name));
-    }
-    let path = std::env::var_os("PATH").unwrap_or_else(|| "/usr/local/bin:/usr/bin:/bin".into());
-    for dir in std::env::split_paths(&path) {
-        let candidate = dir.join(name);
-        if let Ok(meta) = std::fs::metadata(&candidate) {
-            if meta.is_file() && meta.permissions().mode() & 0o111 != 0 {
-                return Ok(candidate);
-            }
-        }
-    }
-    bail!("the program {name:?} is not in PATH")
+    let path = std::env::var_os("PATH");
+    Ok(pod_hold::spawn::resolve(name, path.as_deref())?)
 }
 
 pub(crate) enum Sock {
@@ -83,73 +71,20 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
     if let Some(dir) = args.dns_state.as_deref().and_then(std::path::Path::parent) {
         crate::listen::private_dir(dir)?;
     }
-    // A seccomp filter is per-thread unless TSYNC is used. Install it on a
-    // helper thread and fork there: the child inherits the filter, and the
-    // listener fd stays in this process's fd table, so no SCM_RIGHTS handshake
-    // is needed (the child's own sendmsg is itself intercepted).
+    // pod-hold starts the program under the filter: a helper thread
+    // installs it and forks, so the threads of the supervisor have no
+    // filter, and the child allocates nothing after the fork.
     let program = args.program.clone();
-    // execv does not search PATH, and the child must not allocate after the
-    // fork: find the program here.
+    // execv does not search PATH: find the program here.
     let resolved = resolve_program(&program[0])?;
     let mut env = crate::child_env(args.keep_proxy_env);
     crate::with_single_request(&mut env);
-    let (tx, rx) = std::sync::mpsc::channel();
-    std::thread::Builder::new()
-        .name("podnet-netns-filter".into())
-        .spawn(move || {
-            // Built before fork so the child allocates nothing.
-            let path = match CString::new(resolved.into_os_string().into_encoded_bytes()) {
-                Ok(p) => p,
-                Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("program path: {e}")));
-                    return;
-                }
-            };
-            let argv: Vec<CString> = match program
-                .iter()
-                .map(|a| CString::new(a.as_bytes()))
-                .collect::<Result<Vec<_>, _>>()
-            {
-                Ok(v) => v,
-                Err(e) => {
-                    let _ = tx.send(Err(anyhow::anyhow!("argv: {e}")));
-                    return;
-                }
-            };
-            let ptrs: Vec<*const libc::c_char> = argv
-                .iter()
-                .map(|c| c.as_ptr())
-                .chain(std::iter::once(std::ptr::null()))
-                .collect();
-            let envp: Vec<*const libc::c_char> = env
-                .iter()
-                .map(|c| c.as_ptr())
-                .chain(std::iter::once(std::ptr::null()))
-                .collect();
-
-            let lfd = match install_notif_filter() {
-                Ok(fd) => fd,
-                Err(e) => {
-                    let _ = tx.send(Err(e));
-                    return;
-                }
-            };
-            let pid = unsafe { libc::fork() };
-            if pid < 0 {
-                let _ = tx.send(Err(anyhow::anyhow!(
-                    "fork: {}",
-                    std::io::Error::last_os_error()
-                )));
-                return;
-            }
-            if pid == 0 {
-                // Child: the filter is inherited. execv with no allocation.
-                unsafe { libc::execve(path.as_ptr(), ptrs.as_ptr(), envp.as_ptr()) };
-                unsafe { libc::_exit(127) };
-            }
-            let _ = tx.send(Ok((lfd, pid)));
-        })?;
-    let (lfd, pid) = rx.recv().context("filter thread died")??;
+    let program = pod_hold::spawn::Program::with_env(&resolved, &program, env)?;
+    let started = pod_hold::spawn::start(program, &pod_hold::filter::Calls::sockets())?;
+    let (lfd, pid) = (
+        std::os::fd::IntoRawFd::into_raw_fd(started.listener),
+        started.pid,
+    );
     // T-181: the program has its own limit now; the supervisor takes the
     // hard limit, and the budget of tracked sockets follows it.
     crate::fdtable::raise_nofile();
@@ -185,10 +120,16 @@ pub(crate) async fn supervise_seccomp(
     verbose: bool,
     (inbound_dir, dns_state): (std::path::PathBuf, Option<std::path::PathBuf>),
 ) -> Result<i32> {
-    // NOTIF_RECV is non-blocking so the shutdown flag is observed; the fd is
-    // also pollable, so the loop sleeps on readiness rather than spinning.
-    unsafe { libc::fcntl(lfd, libc::F_SETFL, libc::O_NONBLOCK) };
-    let async_fd = crate::readable_copy(lfd)?;
+    // The listener of pod-hold takes each notification when poll(2) reports
+    // it: the loop sleeps on readiness, and the shutdown flag is observed.
+    // SAFETY: dup of the open notification descriptor.
+    let copy = unsafe { libc::dup(lfd) };
+    if copy < 0 {
+        bail!("dup: {}", std::io::Error::last_os_error());
+    }
+    // SAFETY: a new descriptor that nothing else owns.
+    let copy = unsafe { OwnedFd::from_raw_fd(copy) };
+    let listener = pod_hold::listen::Listener::new(copy, crate::seccomp::mem_access())?;
 
     let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let first = Arc::new(std::sync::Mutex::new(None));
@@ -200,7 +141,7 @@ pub(crate) async fn supervise_seccomp(
         verbose,
     ));
 
-    let mut map = crate::fdtable::Table::new(pid);
+    let mut map = crate::fdtable::Table::new(pid, crate::fdtable::ceiling());
     let mut dns = FakeDns::new();
     let mut dials = crate::connect::Dials::new();
     let (writes_tx, mut writes) = tokio::sync::mpsc::channel(crate::udp::WRITES);
@@ -222,11 +163,13 @@ pub(crate) async fn supervise_seccomp(
     }
 
     while !shutdown.load(std::sync::atomic::Ordering::Relaxed) {
-        // NOTIF_RECV blocks even on an O_NONBLOCK descriptor, so call it only
-        // when poll(2) reports a pending notification.
         // T-067: a dial that ended gets its answer here.
-        let guard = tokio::select! {
-            guard = async_fd.readable() => guard,
+        let n = tokio::select! {
+            n = listener.recv() => match n {
+                Some(n) => n,
+                // No task uses the filter any more.
+                None => break,
+            },
             Some(done) = dials.next() => {
                 crate::connect::finish(lfd, done, &mut map, &mut dials, verbose);
                 continue;
@@ -238,51 +181,21 @@ pub(crate) async fn supervise_seccomp(
             }
             _ = tokio::time::sleep(Duration::from_millis(50)) => continue,
         };
-        let mut guard = guard?;
-        let mut pfd = libc::pollfd {
-            fd: lfd,
-            events: libc::POLLIN,
-            revents: 0,
-        };
-        unsafe { libc::poll(&mut pfd, 1, 0) };
-        if pfd.revents & libc::POLLIN == 0 {
-            guard.clear_ready();
-            if pfd.revents & (libc::POLLHUP | libc::POLLERR) != 0 {
-                // No task uses the filter any more.
-                break;
-            }
-            continue;
-        }
-        let mut req: SeccompNotif = unsafe { std::mem::zeroed() };
-        let r = unsafe { libc::ioctl(lfd, SECCOMP_IOCTL_NOTIF_RECV as _, &mut req) };
-        if r < 0 {
-            match std::io::Error::last_os_error().raw_os_error() {
-                // ENOENT: the child left the system call before it was read.
-                Some(libc::EAGAIN) | Some(libc::EINTR) | Some(libc::ENOENT) => continue,
-                _ => break,
-            }
-        }
-        let id = req.id;
-        let nr = req.data.nr;
-        let a = req.data.args;
+        let id = n.id;
+        let nr = n.nr;
+        let a = n.args;
         // T-064: the entry of a socket follows the socket, not the number.
         let key = match nr == libc::SYS_socket as i32 {
             true => 0,
-            false => map.key_of(req.pid, a[0] as i32),
+            false => map.key_of(n.pid, a[0] as i32),
         };
+        // pod-hold opened the memory of the task that made this call, and
+        // checked with NOTIF_ID_VALID after the open that the task waits.
+        crate::seccomp::note_task(n.pid, n.memory.writable());
+        let (mem, mem_writable) = (n.memory.raw(), n.memory.writable());
+        let req_pid = n.pid;
 
-        // Open the memory of the task that made this call, for each call. A
-        // descriptor opened before the child's execve keeps the old address
-        // space and reads 0 bytes. A forked grandchild has a different pid.
-        let (mem, mem_writable) = open_mem(req.pid);
-        // The pid can be reused after the task exits. NOTIF_ID_VALID makes
-        // sure the task that made this call is still alive after the open.
-        if mem >= 0 && !notif_id_valid(lfd, id) {
-            unsafe { libc::close(mem) };
-            continue;
-        }
-
-        let call = (nr, a, req.pid, (mem, mem_writable));
+        let call = (nr, a, req_pid, (mem, mem_writable));
         let tcp = crate::tcp::handle(lfd, id, call, (&mut map, key), &mut dials);
         let icmp = crate::icmp::handle(lfd, id, nr, a, (mem, mem_writable), (&mut map, key));
         let outcome = if let Some(outcome) = tcp {
@@ -292,7 +205,7 @@ pub(crate) async fn supervise_seccomp(
         } else if nr == libc::SYS_socket as i32 {
             crate::socket::handle_socket(lfd, id, a, &mut map, &writes_tx, verbose)
         } else if nr == libc::SYS_connect as i32 {
-            let entry = (&mut *map, key, req.pid);
+            let entry = (&mut *map, key, req_pid);
             crate::connect::handle_connect(lfd, id, a, mem, entry, &mut dns, &mut dials, &route)
         } else if nr == libc::SYS_sendto as i32 {
             handle_sendto(lfd, id, a, mem, (&mut map, key), &mut dns, &egress).await
@@ -315,7 +228,7 @@ pub(crate) async fn supervise_seccomp(
             crate::sockopt::handle_getsockopt(lfd, id, a, mem, mem_writable, (&mut map, key))
         } else if nr == libc::SYS_close as i32 {
             // Drop the entry when the last copy of the socket closes.
-            crate::fdtable::handle_close(lfd, id, a[0] as i32, key, req.pid, &mut map)
+            crate::fdtable::handle_close(lfd, id, a[0] as i32, key, req_pid, &mut map)
         } else if nr == libc::SYS_io_uring_setup as i32 {
             // io_uring submits network operations without the intercepted
             // syscalls, which would bypass this filter entirely. Refuse it.
@@ -323,7 +236,7 @@ pub(crate) async fn supervise_seccomp(
         } else if nr == libc::SYS_bind as i32 {
             crate::sockopt::handle_bind(lfd, id, a, mem, (&mut map, key))
         } else if nr == libc::SYS_listen as i32 {
-            handle_listen(lfd, id, a, (&mut map, key), &inbound_dir, req.pid).await
+            handle_listen(lfd, id, a, (&mut map, key), &inbound_dir, req_pid).await
         } else if nr == SYS_ACCEPT as i32 || nr == libc::SYS_accept4 as i32 {
             handle_accept(
                 lfd,
@@ -331,11 +244,11 @@ pub(crate) async fn supervise_seccomp(
                 a,
                 (&mut map, key),
                 nr == libc::SYS_accept4 as i32,
-                (req.pid, verbose),
+                (req_pid, verbose),
             )
             .await
         } else if crate::inbox::is_recv(nr) {
-            crate::inbox::handle_recv(lfd, id, a, (mem, mem_writable), &map, key, nr, req.pid)
+            crate::inbox::handle_recv(lfd, id, a, (mem, mem_writable), &map, key, nr, req_pid)
         } else if nr == libc::SYS_getsockname as i32 || nr == libc::SYS_getpeername as i32 {
             let peer = nr == libc::SYS_getpeername as i32;
             crate::sockopt::handle_sockname(lfd, id, a, mem, mem_writable, (&mut map, key), peer)
@@ -356,9 +269,6 @@ pub(crate) async fn supervise_seccomp(
                 libc::EIO
             };
             let _ = notif_respond(lfd, id, -1, errno);
-        }
-        if mem >= 0 {
-            unsafe { libc::close(mem) };
         }
     }
 
@@ -399,7 +309,7 @@ async fn watch_children(
         if r == pid {
             reaped = true;
             *first.lock().unwrap_or_else(|e| e.into_inner()) = Some(status);
-            if !outlives || filter_unused(lfd) {
+            if !outlives || pod_hold::listen::filter_unused(lfd) {
                 shutdown.store(true, Ordering::Relaxed);
                 return;
             }
@@ -422,18 +332,6 @@ async fn watch_children(
         }
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
-}
-
-/// True when no task uses the filter of the notification descriptor `lfd`
-/// (POLLHUP).
-fn filter_unused(lfd: RawFd) -> bool {
-    let mut pfd = libc::pollfd {
-        fd: lfd,
-        events: libc::POLLIN,
-        revents: 0,
-    };
-    unsafe { libc::poll(&mut pfd, 1, 0) };
-    pfd.revents & libc::POLLHUP != 0
 }
 
 /// The number of byte relays that are in progress.

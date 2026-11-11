@@ -22,7 +22,9 @@ use tracing::{debug, info};
 use super::ip::TUNNEL_MTU;
 use super::session::MasqueSession;
 
-const TUNSETIFF: libc::c_ulong = 0x4004_54CA;
+// The ioctl number of the target, from pod-hold: powerpc puts the direction
+// at bit 29, so the x86_64 number 0x4004_54CA is wrong there.
+const TUNSETIFF: libc::c_ulong = pod_hold::abi::TUNSETIFF as libc::c_ulong;
 const IFF_TUN: libc::c_short = 0x0001;
 const IFF_NO_PI: libc::c_short = 0x1000;
 /// The interval of the HTTP/2 PING on an idle session.

@@ -68,30 +68,33 @@ podnet-serve = { path = "crates/podnet-serve", version = "0.4.0-beta.2" }
 podnet-vnet = { path = "crates/podnet-vnet", version = "0.4.0-beta.2" }
 # TLS of PodUtils/podcrates: the roots, the client configurations and the
 # split of the ClientHello, with podnet's settings (src/trust.rs), on ring.
-pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.14.0", version = "0.14.0" }
+pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }
 # The HTTP date of a time (the log of detach, the tests of the clock); the
 # dial, the resolver and the failures of pod-proxy.
-pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.14.0", version = "0.14.0" }
+pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }
 # The way out of each TCP connection (src/egress.rs: the proxies, Digest, the
 # race of addresses, the proxy of a tool's file), the HTTP client
 # (src/fetch.rs) and the credentials of a served proxy, of PodUtils/podcrates,
 # with podnet's settings.
-pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.14.0", version = "0.14.0" }
+pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }
 # The resolver of each direct dial (src/resolve.rs): an IP address, the pins
 # of --resolve, the system and DNS over HTTPS, with podnet's settings.
-pod-dns = { git = "https://github.com/PodUtils/podcrates", tag = "v0.14.0", version = "0.14.0" }
+pod-dns = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }
 # The services of other parties: the relay, the edge of Cloudflare's tunnels
 # and its roots, the quick tunnels, WARP, 1.1.1.1 and Pinggy, as data with
 # their sources.
-pod-services = { git = "https://github.com/PodUtils/podcrates", tag = "v0.14.0", version = "0.14.0" }
+pod-services = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }
 # The WebSocket of `connect`, of the forward endpoint and their bridge
 # (src/ws.rs), of PodUtils/podcrates, with podnet's dial, TLS context and
 # user agent, and the limits of tokio-tungstenite.
-pod-ws = { git = "https://github.com/PodUtils/podcrates", tag = "v0.14.0", version = "0.14.0" }
+pod-ws = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }
 # QUIC (the edge, QUIC over WARP, MASQUE over HTTP/3) on noq, of
 # PodUtils/podcrates: the endpoints and their keys in pure Rust, and the
 # socket over the UDP of the userspace stack under WARP (src/warp/quic.rs).
-pod-quic = { git = "https://github.com/PodUtils/podcrates", tag = "v0.14.0", version = "0.14.0" }
+pod-quic = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }
+# The ioctl number of TUNSETIFF for the target (src/warp/tun.rs), of the
+# hold of PodUtils/podcrates (podnet-netns has its core).
+pod-hold = { git = "https://github.com/PodUtils/podcrates", tag = "v0.15.0", version = "0.15.0" }
 anyhow = "1"
 axum = { version = "0.8", features = ["multipart"] }
 base64 = "0.23"

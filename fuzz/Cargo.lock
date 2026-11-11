@@ -1758,6 +1758,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "linux-raw-sys"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
+
+[[package]]
 name = "litemap"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2266,8 +2272,8 @@ dependencies = [
 
 [[package]]
 name = "pod-core"
-version = "0.14.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.14.0#c8e2faedae7b909b8570fd70e8b4b7123dd182ab"
+version = "0.15.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.15.0#27a4ccd9ec65e5fd1149228ad346c54a9f8f86d9"
 dependencies = [
  "libc",
  "rand",
@@ -2277,8 +2283,8 @@ dependencies = [
 
 [[package]]
 name = "pod-dns"
-version = "0.14.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.14.0#c8e2faedae7b909b8570fd70e8b4b7123dd182ab"
+version = "0.15.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.15.0#27a4ccd9ec65e5fd1149228ad346c54a9f8f86d9"
 dependencies = [
  "base64",
  "bytes",
@@ -2297,9 +2303,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "pod-hold"
+version = "0.15.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.15.0#27a4ccd9ec65e5fd1149228ad346c54a9f8f86d9"
+dependencies = [
+ "libc",
+ "pod-core",
+ "pod-hostprobe",
+ "tokio",
+]
+
+[[package]]
+name = "pod-hostprobe"
+version = "0.15.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.15.0#27a4ccd9ec65e5fd1149228ad346c54a9f8f86d9"
+dependencies = [
+ "linux-raw-sys",
+ "pod-core",
+ "syscalls",
+]
+
+[[package]]
 name = "pod-proxy"
-version = "0.14.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.14.0#c8e2faedae7b909b8570fd70e8b4b7123dd182ab"
+version = "0.15.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.15.0#27a4ccd9ec65e5fd1149228ad346c54a9f8f86d9"
 dependencies = [
  "base64",
  "libc",
@@ -2314,8 +2341,8 @@ dependencies = [
 
 [[package]]
 name = "pod-quic"
-version = "0.14.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.14.0#c8e2faedae7b909b8570fd70e8b4b7123dd182ab"
+version = "0.15.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.15.0#27a4ccd9ec65e5fd1149228ad346c54a9f8f86d9"
 dependencies = [
  "atomic-waker",
  "hmac",
@@ -2329,8 +2356,8 @@ dependencies = [
 
 [[package]]
 name = "pod-services"
-version = "0.14.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.14.0#c8e2faedae7b909b8570fd70e8b4b7123dd182ab"
+version = "0.15.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.15.0#27a4ccd9ec65e5fd1149228ad346c54a9f8f86d9"
 dependencies = [
  "pod-core",
  "toml",
@@ -2338,8 +2365,8 @@ dependencies = [
 
 [[package]]
 name = "pod-tls"
-version = "0.14.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.14.0#c8e2faedae7b909b8570fd70e8b4b7123dd182ab"
+version = "0.15.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.15.0#27a4ccd9ec65e5fd1149228ad346c54a9f8f86d9"
 dependencies = [
  "base64",
  "p256",
@@ -2356,8 +2383,8 @@ dependencies = [
 
 [[package]]
 name = "pod-ws"
-version = "0.14.0"
-source = "git+https://github.com/PodUtils/podcrates?tag=v0.14.0#c8e2faedae7b909b8570fd70e8b4b7123dd182ab"
+version = "0.15.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.15.0#27a4ccd9ec65e5fd1149228ad346c54a9f8f86d9"
 dependencies = [
  "base64",
  "bytes",
@@ -2396,6 +2423,7 @@ dependencies = [
  "noq",
  "pod-core",
  "pod-dns",
+ "pod-hold",
  "pod-proxy",
  "pod-quic",
  "pod-services",
@@ -2467,6 +2495,7 @@ version = "0.4.0-beta.2"
 dependencies = [
  "anyhow",
  "libc",
+ "pod-hold",
  "pod-proxy",
  "serde_json",
  "smoltcp",
@@ -3369,6 +3398,12 @@ dependencies = [
  "quote",
  "syn 3.0.9",
 ]
+
+[[package]]
+name = "syscalls"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81c645a4de0d803ced6ef0388a2646aa1ef8467173b5d59a2c33c88de4ab76e7"
 
 [[package]]
 name = "system-configuration"

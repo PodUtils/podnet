@@ -734,6 +734,14 @@ Done so far:
   `client_config` stay as glue. `src/warp/quic.rs` takes the version of the patch: `pod-quic` has the
   shared waker of T-228. Each `pod-*` dependency names `tag = "v0.14.0"`. Each line of
   `adoption/podnet/pod-quic.run` passed; the static binary was built with clang for musl.
+- `pod-hold` v0.15.0 (the patch `adoption/podnet/pod-hold.patch` of podcrates, PodUtils/podcrates#54, T-232):
+  the generic core of the hold of `crates/podnet-netns` (`seccomp/{filter,notif,mem}.rs`, `fdtable.rs`,
+  `netns/fdpass.rs`, the setup of `netns/tun.rs`) is glue over `pod-hold` with podnet's names;
+  `seccomp/mod.rs` starts the program with `pod_hold::spawn` and takes each notification with
+  `pod_hold::listen`; `netns/mod.rs` enters the namespace with `pod_hold::netns`. `src/warp/tun.rs`
+  takes `TUNSETIFF` of `pod-hold` (the number of the target: powerpc64le had a wrong number). Each
+  `pod-*` dependency names `tag = "v0.15.0"`. Each line of `adoption/podnet/pod-hold.run` passed, except
+  the static build with zig (no zig on the host; CI builds the static musl binaries).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

@@ -30,23 +30,10 @@ const ID: u64 = 0x1d;
 
 /// One answer: the id, and the return value and the errno (`None`: the
 /// kernel runs the call).
-type Reply = (u64, Option<(i64, i32)>);
+type Reply = pod_hold::reply::Reply;
 
-/// The answers of a handler, in memory.
-#[derive(Default)]
-struct Answers(std::cell::RefCell<Vec<Reply>>);
-
-impl Answer for &Answers {
-    fn respond(self, id: u64, val: i64, error: i32) -> Result<()> {
-        self.0.borrow_mut().push((id, Some((val, error))));
-        Ok(())
-    }
-
-    fn proceed(self, id: u64) -> Result<()> {
-        self.0.borrow_mut().push((id, None));
-        Ok(())
-    }
-}
+/// The answers of a handler, in memory (pod-hold).
+type Answers = pod_hold::reply::Recorded;
 
 /// One input, decoded.
 struct Input {
@@ -207,7 +194,7 @@ where
     let Ok(result) = result else {
         panic!("the handler gave no answer in {LIMIT:?}");
     };
-    let answers = answers.0.into_inner();
+    let answers = answers.replies();
     assert!(
         answers.iter().all(|(id, _)| *id == ID),
         "an answer to another id: {answers:?}"

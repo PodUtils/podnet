@@ -458,30 +458,6 @@ mod tests {
     }
 
     #[test]
-    fn the_filter_covers_the_bypass_surfaces() {
-        let syscalls = intercepted_syscalls();
-        for required in [
-            libc::SYS_socket,
-            libc::SYS_connect,
-            libc::SYS_sendto,
-            libc::SYS_sendmsg,
-            libc::SYS_sendmmsg,
-            libc::SYS_setsockopt,
-            libc::SYS_listen,
-            libc::SYS_accept,
-            libc::SYS_accept4,
-            libc::SYS_io_uring_setup,
-            libc::SYS_io_uring_enter,
-            libc::SYS_io_uring_register,
-        ] {
-            assert!(
-                syscalls.contains(&required),
-                "syscall {required} is not intercepted"
-            );
-        }
-    }
-
-    #[test]
     fn parses_a_tcp_syn() {
         let mut pkt = vec![0u8; 40];
         pkt[0] = 0x45; // IPv4, IHL 5

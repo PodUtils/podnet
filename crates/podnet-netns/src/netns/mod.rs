@@ -46,22 +46,12 @@ pub(crate) const FAKE_IP6_PREFIX: [u8; 16] = [
 pub(crate) const EXIT_NO_BACKEND: i32 = 3;
 // ── namespace + TUN setup (child side) ──────────────────────────────────────
 
-pub(crate) fn write_proc(path: &str, data: &str) -> Result<()> {
-    let mut f = std::fs::OpenOptions::new()
-        .write(true)
-        .open(path)
-        .with_context(|| format!("open {path}"))?;
-    f.write_all(data.as_bytes())
-        .with_context(|| format!("write {path}"))
-}
-
+/// Map the uid and the gid of this process in the user namespace of `pid`
+/// (pod-hold: `setgroups` deny, then the maps).
 pub(crate) fn write_id_maps(pid: u32) -> Result<()> {
     let uid = unsafe { libc::getuid() };
     let gid = unsafe { libc::getgid() };
-    write_proc(&format!("/proc/{pid}/setgroups"), "deny")?;
-    write_proc(&format!("/proc/{pid}/uid_map"), &format!("{uid} {uid} 1\n"))?;
-    write_proc(&format!("/proc/{pid}/gid_map"), &format!("{gid} {gid} 1\n"))?;
-    Ok(())
+    Ok(pod_hold::netns::write_id_maps(pid, uid, gid)?)
 }
 
 // ── process orchestration ───────────────────────────────────────────────────
@@ -100,14 +90,8 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
 
     // Parent: the child reports whether it made a user namespace; if so, write
     // its id maps before it continues, then take the TUN fd.
-    let mut kind = [0u8; 1];
-    if read_exact_fd(parent, &mut kind)? == 0 {
-        bail!("child died before reporting its namespace");
-    }
-    if kind[0] == b'u' {
-        write_id_maps(pid as u32).context("write uid/gid maps")?;
-        write_all_fd(parent, b"a")?;
-    }
+    let (uid, gid) = unsafe { (libc::getuid(), libc::getgid()) };
+    pod_hold::netns::answer(parent, pid as u32, uid, gid).context("write uid/gid maps")?;
     let tun_fd = recv_fd(parent).context("receive TUN fd")?;
     // The reaper writes its report on this socket later; read it with no wait.
     unsafe { libc::fcntl(parent, libc::F_SETFL, libc::O_NONBLOCK) };
@@ -233,27 +217,10 @@ fn reaper(sock: RawFd, program: libc::pid_t) -> ! {
 
 pub(crate) fn child_setup(sock: RawFd, args: &Args) -> Result<()> {
     // A network namespace alone needs CAP_SYS_ADMIN; the user-namespace pair
-    // works unprivileged and the parent writes the maps.
-    let userns = if unsafe { libc::unshare(libc::CLONE_NEWNET) } == 0 {
-        false
-    } else {
-        let e = std::io::Error::last_os_error();
-        if unsafe { libc::unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET) } != 0 {
-            bail!(
-                "unshare(CLONE_NEWNET) failed ({e}) and unshare(CLONE_NEWUSER|CLONE_NEWNET) failed ({})",
-                std::io::Error::last_os_error()
-            );
-        }
-        true
-    };
-    // Tell the parent, and wait for the id maps before using the namespace.
-    write_all_fd(sock, if userns { b"u" } else { b"n" })?;
-    if userns {
-        let mut ack = [0u8; 1];
-        if read_exact_fd(sock, &mut ack)? == 0 {
-            bail!("parent died before writing the id maps");
-        }
-    }
+    // works unprivileged and the parent writes the maps (pod-hold). Tell the
+    // parent, and wait for the id maps before using the namespace.
+    let userns = pod_hold::netns::enter()?;
+    pod_hold::netns::announce(sock, userns)?;
     bringup_loopback()?;
     let tun = create_tun("eth0")?;
     send_fd(sock, tun.as_raw_fd())?;
@@ -350,44 +317,16 @@ fn private_resolv_conf() -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn write_all_fd(fd: RawFd, mut buf: &[u8]) -> Result<()> {
-    while !buf.is_empty() {
-        let n = unsafe { libc::write(fd, buf.as_ptr() as *const _, buf.len()) };
-        if n <= 0 {
-            bail!("write: {}", std::io::Error::last_os_error());
-        }
-        buf = &buf[n as usize..];
-    }
-    Ok(())
+pub(crate) fn write_all_fd(fd: RawFd, buf: &[u8]) -> Result<()> {
+    Ok(pod_hold::netns::write_all_fd(fd, buf)?)
 }
 
 pub(crate) fn read_exact_fd(fd: RawFd, buf: &mut [u8]) -> Result<usize> {
-    let mut off = 0;
-    while off < buf.len() {
-        let n = unsafe { libc::read(fd, buf[off..].as_mut_ptr() as *mut _, buf.len() - off) };
-        if n < 0 {
-            bail!("read: {}", std::io::Error::last_os_error());
-        }
-        if n == 0 {
-            return Ok(off);
-        }
-        off += n as usize;
-    }
-    Ok(off)
+    Ok(pod_hold::netns::read_exact_fd(fd, buf)?)
 }
 
 pub(crate) fn socketpair() -> Result<(RawFd, RawFd)> {
-    let mut fds = [0 as RawFd; 2];
-    if unsafe {
-        libc::socketpair(
-            libc::AF_UNIX,
-            libc::SOCK_STREAM | libc::SOCK_CLOEXEC,
-            0,
-            fds.as_mut_ptr(),
-        )
-    } != 0
-    {
-        bail!("socketpair: {}", std::io::Error::last_os_error());
-    }
-    Ok((fds[0], fds[1]))
+    use std::os::fd::IntoRawFd;
+    let (a, b) = pod_hold::netns::socketpair()?;
+    Ok((a.into_raw_fd(), b.into_raw_fd()))
 }
