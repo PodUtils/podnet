@@ -2,6 +2,8 @@
 //! before the enrolment step, and resumes. A fake API on loopback stands in
 //! for the service.
 
+mod test_host;
+
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -113,6 +115,7 @@ fn plant(path: &Path, id: &str, state: &str) {
 
 #[tokio::test]
 async fn two_register_or_load_calls_make_one_post() {
+    test_host::need_loopback!();
     let _one = ONE_AT_A_TIME.lock().await;
     let fake = Arc::new(Fake::default());
     std::env::set_var("PODNET_WARP_API", serve(fake.clone()).await);
@@ -147,6 +150,7 @@ async fn child_for_the_kill_test() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_kill_after_the_post_resumes_with_a_patch() {
+    test_host::need_loopback!();
     let _one = ONE_AT_A_TIME.lock().await;
     let fake = Arc::new(Fake::default());
     fake.hang.store(true, Ordering::SeqCst);
@@ -184,6 +188,7 @@ async fn a_kill_after_the_post_resumes_with_a_patch() {
 
 #[tokio::test]
 async fn a_patch_404_registers_anew() {
+    test_host::need_loopback!();
     let _one = ONE_AT_A_TIME.lock().await;
     let fake = Arc::new(Fake::default());
     fake.patch.lock().unwrap().push(404);
@@ -201,6 +206,7 @@ async fn a_patch_404_registers_anew() {
 
 #[tokio::test]
 async fn a_failed_patch_deletes_the_new_device() {
+    test_host::need_loopback!();
     let _one = ONE_AT_A_TIME.lock().await;
     let fake = Arc::new(Fake::default());
     fake.patch.lock().unwrap().push(400);
@@ -214,6 +220,7 @@ async fn a_failed_patch_deletes_the_new_device() {
 
 #[tokio::test]
 async fn a_partial_file_with_an_unknown_state_is_refused() {
+    test_host::need_loopback!();
     let _one = ONE_AT_A_TIME.lock().await;
     let fake = Arc::new(Fake::default());
     std::env::set_var("PODNET_WARP_API", serve(fake.clone()).await);

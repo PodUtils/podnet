@@ -403,8 +403,16 @@ mod tests {
         assert_eq!(err.kind(), ErrorKind::InvalidInput);
         assert!(file.exists());
 
+        // A socket file that no socket serves. mknod(S_IFSOCK) makes it with
+        // no descriptor: a bound and closed listener can stay open in a
+        // child that a parallel test forks.
         let stale = dir.path().join("stale.sock");
-        drop(std::os::unix::net::UnixListener::bind(&stale).unwrap());
+        let c = std::ffi::CString::new(stale.as_os_str().as_encoded_bytes()).unwrap();
+        // SAFETY: a valid path; mknod makes one inode.
+        assert_eq!(
+            unsafe { libc::mknod(c.as_ptr(), libc::S_IFSOCK | 0o600, 0) },
+            0
+        );
         assert!(stale.exists());
         claim_unix_path(&stale).unwrap();
         assert!(!stale.exists());
