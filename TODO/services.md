@@ -2008,3 +2008,117 @@ the shim tests `shim_datagram_of_another_user_is_dropped` and `the_shim_takes_th
 `allow_shadowed_rules: true`, as `pod --allow-shadowed-rules`: the file then loads with a shadowed `reject`,
 with the warning. Test: `route_door_shadowed_reject_needs_the_key`. Left: the WARP half (after `pod-warp`).
 
+
+# T-251: Transfer: the hosted magic-wormhole mailboxes on 443 as the default, with a choice that the code carries
+
+**Source:** `docs/research/podnet/hosted-relays.md` (2026-11-11); the owner, 2026-11-11 (`docs/decisions.md`,
+Relays and mailboxes).
+**Category:** feature
+**Milestone:** M6
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`podnet send` and `receive` (T-105) need a mailbox that a proxy-only host reaches. The public mailbox of
+magic-wormhole answers WSS on TCP 443 (`wss://relay.magic-wormhole.io/v1`, the default of its Python client
+since 2026-05-13), and Winden runs a second one. podnet names neither.
+
+## Premise
+
+- Probed on 2026-11-11 from a proxy that allows only TCP 443: both mailboxes answer. Read: the operator of the
+  first is one person ("free until volume or abuse makes it infeasible").
+- podnet names no host of another party in its code: the hosts are facts of `pod-services` (PodUtils/podcrates).
+
+## Approach
+
+1. Read the mailboxes from `pod-services`: the magic-wormhole mailbox first, Winden second, podnet's own mailbox
+   server (`relay serve --mailbox`) when the owner runs one.
+2. The sender picks the mailbox; the code word carries a short id of it, so that the receiver uses the same one.
+3. Read magic-wormhole issue #754 (different mailboxes for one nameplate) before the default ships.
+
+## Prove
+
+```sh
+cargo test --workspace -- transfer_mailbox_choice_rides_in_the_code transfer_mailbox_falls_back
+```
+
+## Start condition
+
+T-102 is done (the mailbox client of `pod-wormhole`).
+
+# T-252: Transfer: a piping-server relay as a transit carrier of last resort
+
+**Source:** `docs/research/podnet/hosted-relays.md` (2026-11-11).
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The public transit relay of magic-wormhole is on TCP 4001 only. Two proxy-only hosts have no direct path and
+no transit relay that they both reach. A piping-server relay carries an HTTPS byte stream on 443 between two
+peers (GET and PUT on one path), and it crossed the proxy of this sandbox end to end.
+
+## Premise
+
+- Probed on 2026-11-11: `ppng.io` and `piping.onrender.com` (piping-server 1.12.9) answer on 443. No terms are
+  published for them. The server is MIT, so the owner can host one.
+- The transit layer encrypts each record with the transit key: the relay reads no plain text.
+
+## Approach
+
+1. Add a transit carrier "piping": the path is derived from the transit key; the sender PUTs, the receiver
+   GETs, each in chunks that a buffering proxy passes.
+2. Use it only when no direct path and no transit relay works, and let the user turn it off.
+3. Test against a local piping-server.
+
+## Prove
+
+```sh
+cargo test --workspace -- transit_over_piping_server
+```
+
+## Start condition
+
+T-103 is done (the transit of `pod-transit`).
+
+# T-253: Live: probe the hosted mailboxes and relays from a proxy-only runner
+
+**Source:** `docs/research/podnet/hosted-relays.md` (2026-11-11).
+**Category:** measurement
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The facts of the hosted services rest on one probe from one sandbox. A service can go away (one of them is
+a personal server). Nothing watches them.
+
+## Premise
+
+- `live.yml` runs on a GitHub runner; a step can drop all egress but TCP 443 through a local CONNECT proxy.
+
+## Approach
+
+1. Add a live step: through a CONNECT proxy that allows only TCP 443, open the magic-wormhole and Winden
+   mailboxes (a WSS hello), a piping-server stream, and an n0 iroh relay (HTTPS 200).
+2. Print one line for each service; a failed service warns and does not fail the run (the services are not
+   podnet's).
+
+## Prove
+
+```sh
+python3 scripts/check-workflows.py
+```
+
+The step prints a line for each service in a run of `live`.
+
+## Start condition
+
+None.

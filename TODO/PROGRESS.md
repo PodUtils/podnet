@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 250 entries: 41 open, 11 partial, 22 blocked, 176 done.
+`TODO/INDEX.md` holds 253 entries: 44 open, 11 partial, 22 blocked, 176 done.
 
 ## State
 
@@ -56,6 +56,8 @@ not wait for a larger one.
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
     The owner's rulings of 2026-11-11 add: T-178 (finish: the byte meter of the doors), T-179 (the
     direction split, an option, off by default), T-165 (the CLI of the SSH forward-relay leg).
+    The study of hosted relays (`docs/research/podnet/hosted-relays.md`) adds T-251 (the hosted mailboxes on 443,
+    after T-102), T-252 (a piping-server transit, after T-103) and T-253 (a live probe of the hosted services).
 8. **M7, the pods:** T-250 (a root CI step for the netns tests), then T-249 (the netns router on
    `pod-netstack`; the hold of a SYN in `pod-hold` waits for it, PodUtils/podcrates#68).
 9. **M8, the overlays:** T-114, T-115, T-117, T-247 (blocked: a NetBird account).

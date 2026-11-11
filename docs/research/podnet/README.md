@@ -39,6 +39,7 @@ evidence behind it.
 | `iroh-relay.md` | The iroh road, and a relay and mailbox of podnet's own (T-130, 2026-11-11) |
 | `native-git.md` | A native git server with no installed `git`: gix, the protocol, the size, what podnet writes (T-122, 2026-11-11) |
 | `podssh-copy.md` | What podnet copies from podssh, and in which order |
+| `hosted-relays.md` | The relays and mailboxes that others host for free: the magic-wormhole mailbox on 443, piping-server, the n0 iroh relays, Pinggy (2026-11-11) |
 
 The field report itself is in `docs/reports/field-report-2026-11-05.md`.
 The attachments (the mwan program, the lab kit, the vn kit) are not in the
