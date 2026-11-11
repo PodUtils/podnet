@@ -77,6 +77,7 @@ pub mod git;
 pub mod ingress;
 pub mod origin;
 pub mod relay;
+pub mod road;
 pub mod service;
 pub mod share;
 pub mod tar;
