@@ -89,7 +89,7 @@ form of the rulings that apply to each session.
 | 2026-11-11 | Group policies (the owner) | Finish T-178 with the byte meter of the doors; no field measure is needed. |
 | 2026-11-11 | Relays and mailboxes (the owner) | Plan an own mailbox server (`relay serve --mailbox`, `send` and `receive --mailbox`), the iroh road after `pod-iroh`, and each service that someone else already hosts and that fits the purpose. No self-hosted iroh relay. The study `docs/research/podnet/hosted-relays.md` gives T-251 (the magic-wormhole and Winden mailboxes on 443), T-252 (piping-server as a transit of last resort) and T-253 (a live probe); the hosts are facts of `pod-services`. |
 | 2026-11-11 | Native git server (the owner) | No ruling yet: the owner asked for the latest facts first (a study in progress); then the question comes again. |
-| 2026-11-11 | The freeze of pod-relay, pod-warp and pod-cloudflare (a call of the podnet session) | From 7c5f87e, the files of these three crates (the rows of `docs/design.md` of podcrates) take fixes only until podnet takes each crate. Each fix goes to podcrates as a COORD issue. PodUtils/podnet#449. |
+| 2026-11-11 | The freeze of pod-relay, pod-warp and pod-cloudflare (a call of the podnet session) | From 7c5f87e, the files of these three crates (the rows of `PodUtils/podcrates:docs/design.md`) take fixes only until podnet takes each crate. Each fix goes to podcrates as a COORD issue. PodUtils/podnet#449. |
 
 ## Superseded
 
