@@ -1980,3 +1980,8 @@ label and by prefix, not a pair loop). Not proven: the WARP half; a prefix file 
 exit code 64 of the real binary (the test calls `parse_args`). `check.sh`: fmt, clippy, record, size, doc, layers 0; test:
 the shim tests `shim_datagram_of_another_user_is_dropped` and `the_shim_takes_the_same_user_only` fail with
 "Permission denied" (user switch in this sandbox; not run on old code), each other test passes.
+
+2026-11-11, dc5d221: the router half has its switch. A door of the router file (T-100) takes
+`allow_shadowed_rules: true`, as `pod --allow-shadowed-rules`: the file then loads with a shadowed `reject`,
+with the warning. Test: `route_door_shadowed_reject_needs_the_key`. Left: the WARP half (after `pod-warp`).
+
