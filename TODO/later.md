@@ -949,7 +949,7 @@ T-152 gives a pass on the target hosts, and the lead decides from the result (se
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1041,6 +1041,40 @@ Tests (the three reconnect tests of `relay::tests` and the test of the binary fa
 Not proven: a live relay (the 60 min expiry and the `is_closed` behaviour of russh on a real relay), the
 keepalive that finds a dead session (the fake relay ends sessions with a close, not with silence), and a
 connection through `--connect-proxy`.
+
+2026-11-11, commit 034007c. Approach 4 is done: `podnet doctor` has a row `ssh_relay`.
+- `relay::probe::probe` (`crates/podnet-serve/src/relay/probe.rs`) runs four stages with one time limit: the TCP
+  connect (through `--connect-proxy` when the config has one), the SSH identification line, the SSH handshake and
+  the publickey auth with the user. It opens no session channel and asks for no forward, so the relay publishes no URL.
+  It gives the time of the connect and the total.
+- The row (`src/doctor/ssh_relay_check.rs`) has the verdicts `ok` (each stage passed), `fail` (a stage was refused,
+  or the server is not SSH, or the user was rejected) and `unknown` (a stage had no answer in three times `--timeout`,
+  or no relay is given, with the reason `no SSH relay is given`). The doctor has no `warn` verdict, so the row has none.
+  The detail names the failed stage.
+- The relay comes from `--ssh-relay HOST:PORT` with `--ssh-user USER` (a bad address is exit 64), else from the first
+  live `ssh-relay` instance of `podnet ps` (its `--server`, `--user` and `--connect-proxy`). T-166 will give the relay
+  as data.
+- `doctor --json` has the new key `ssh_relay` (`docs/protocol.md`, section 9): `verdict`, `status`, `detail`, `relay`,
+  `user`, `source`, `connect_ms`, `banner`, `auth`, `total_ms`. No key was removed. The text output has one line.
+- The row is not part of `ok`, `legs`, `roads` or `lanes`: a tunnel does not need this relay.
+
+Tests (each failed first: `probe` disabled for the five probe tests; the key `ssh_relay` removed from the JSON for the
+three doctor tests; then all passed):
+- `cargo test -p podnet-serve relay::tests::probe_tests` (5 passed, fake russh relay on loopback):
+  `the_probe_passes_each_stage_of_a_good_relay`, `the_probe_names_the_connect_stage_when_nobody_listens`,
+  `the_probe_names_the_banner_stage_for_a_server_that_is_not_ssh`,
+  `the_probe_names_the_auth_stage_when_the_relay_rejects_the_user`,
+  `the_probe_times_out_on_a_relay_that_sends_nothing`.
+- `cargo test --test doctor` (8 passed): `doctor_ssh_relay_row_probes_the_relay_of_the_flags` (ok against a fake relay,
+  fail at `connect` for a dead port), `doctor_ssh_relay_row_is_unknown_without_a_relay`, `doctor_json_keys_are_fixed`
+  (the new key set).
+- `cargo test -p podnet --lib doctor` (unit): `the_ssh_relay_row_is_unknown_without_a_relay`,
+  `the_ssh_relay_verdict_follows_the_probe`, `the_ssh_relay_target_comes_from_the_record_of_an_instance`.
+- `sh scripts/agent/check.sh`: fmt, clippy, size, doc, layers and test are 0 (record: see the commit of the record).
+
+Not proven: a live relay; a probe through `--connect-proxy`; the instance source in a run of the binary (only the parse
+of the record is tested); a relay that sends text before its identification line.
+
 
 # T-166: The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363)
 
