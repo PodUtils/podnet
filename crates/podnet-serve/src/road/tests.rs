@@ -100,6 +100,7 @@ async fn ingress_local_road_serves_a_table_on_a_unix_socket() {
 
 #[tokio::test]
 async fn ingress_local_road_on_tcp_names_the_bound_port() {
+    pod_testkit::need_loopback!();
     let road = Local {
         listen: "tcp://127.0.0.1:0".into(),
         replace: false,
