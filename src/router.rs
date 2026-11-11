@@ -9,6 +9,8 @@
 //!   egress: home*2, proxy*1
 //! policies:           # optional: NAME: POLICY of a group (T-178)
 //!   egress: minrtt     # weighted (default), rr, minrtt, leastload, protect
+//! splits:             # optional: NAME: up=MEMBER down=MEMBER of a group (T-179)
+//!   egress: up=home down=proxy  # UDP only; off (default) keeps one member
 //! health:              # the probe of the members of each group (T-097)
 //!   target: 1.1.1.1:443
 //!   interval: 10
@@ -61,6 +63,10 @@ pub struct Config {
     /// The policy of a group (T-178); a group with no entry is `weighted`.
     #[serde(default)]
     pub policies: BTreeMap<String, String>,
+    /// The split of the directions of the datagrams of a group (T-179):
+    /// `up=MEMBER down=MEMBER`, or `off`. A group with no entry has no split.
+    #[serde(default)]
+    pub splits: BTreeMap<String, String>,
     #[serde(default)]
     pub health: Option<Health>,
     /// `unix:/PATH`: the control socket (mode 0600) of `route --status`.
@@ -124,6 +130,16 @@ impl Health {
             .map_err(|e| anyhow::anyhow!("health: {}", e.text()))?;
         Ok(t)
     }
+}
+
+/// The split of group `name` with the members `list` (the value of
+/// `groups.NAME`): the names of `up` and `down`, or `None` for `off`.
+fn split_of(name: &str, value: &str, list: &str) -> Result<Option<(String, String)>> {
+    let (_, members) = parse_group(&format!("{name}={list}"))
+        .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?;
+    let names: Vec<String> = members.into_iter().map(|(m, _)| m).collect();
+    podnet_core::network::split::parse(value, &names)
+        .map_err(|e| anyhow::anyhow!("splits.{name}: {e}"))
 }
 
 /// One door.
@@ -215,6 +231,12 @@ pub fn parse(text: &str) -> Result<Config> {
                 "policies.{name}: {policy:?} is not a policy (weighted, rr, minrtt, leastload, protect)"
             );
         }
+    }
+    for (name, value) in &config.splits {
+        let Some(list) = config.groups.get(name) else {
+            bail!("splits.{name}: not a group of the file");
+        };
+        split_of(name, value, list)?;
     }
     for (i, door) in config.doors.iter().enumerate() {
         if !config.networks.contains_key(&door.via) && !config.groups.contains_key(&door.via) {
@@ -368,11 +390,21 @@ impl Router {
                 .get(name)
                 .and_then(|p| Policy::parse(p))
                 .unwrap_or_default();
-            let group = Arc::new(
-                Balance::new(name, built)
-                    .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?
-                    .with_policy(policy),
-            );
+            let mut group = Balance::new(name, built)
+                .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?
+                .with_policy(policy);
+            if let Some((up, down)) = config
+                .splits
+                .get(name)
+                .map(|v| split_of(name, v, list))
+                .transpose()?
+                .flatten()
+            {
+                group = group
+                    .with_split(&up, &down)
+                    .map_err(|e| anyhow::anyhow!("splits.{name}: {}", e.text()))?;
+            }
+            let group = Arc::new(group);
             ways.insert(name.clone(), Way::destination(group.clone()));
             groups.push((name.clone(), group));
         }

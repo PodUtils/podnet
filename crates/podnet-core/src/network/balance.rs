@@ -13,6 +13,7 @@ use super::health::{ProbeResult, Step, Thresholds, Tracker};
 use super::meter::{Meter, Metered, OpenGuard};
 use super::policy::{choose, next_head, Head, Policy, Snapshot};
 use super::race::admit;
+use super::split::{Split, SplitDatagrams};
 use super::{BoxFuture, Class, Connected, Datagrams, Dial, Failure, Stage, Target, Way};
 
 /// The health of a member. `Cooldown` and `Probation` (T-097) still take
@@ -163,6 +164,10 @@ pub struct Balance {
     turn: AtomicU64,
     head: Mutex<Head>,
     refused: AtomicU64,
+    /// The split of the directions of the datagrams (T-179); off by default.
+    split: Option<Split>,
+    split_sockets: AtomicU64,
+    split_fallbacks: AtomicU64,
 }
 
 impl Balance {
@@ -187,6 +192,9 @@ impl Balance {
             turn: AtomicU64::new(0),
             head: Mutex::new(Head::default()),
             refused: AtomicU64::new(0),
+            split: None,
+            split_sockets: AtomicU64::new(0),
+            split_fallbacks: AtomicU64::new(0),
         })
     }
 
@@ -204,6 +212,32 @@ impl Balance {
 
     pub fn policy(&self) -> Policy {
         self.policy
+    }
+
+    /// The same group with the split of the datagrams (T-179): the socket
+    /// sends on the member `up` and receives on the member `down`. TCP
+    /// flows keep one member. Both must be members of the group, and not
+    /// the same one.
+    pub fn with_split(mut self, up: &str, down: &str) -> Result<Balance, Failure> {
+        let at = |n: &str| self.members.iter().position(|m| m.name == n);
+        let (Some(u), Some(d)) = (at(up), at(down)) else {
+            return Err(usage(format!(
+                "the split of the group {}: {up} and {down} must be members",
+                self.name
+            )));
+        };
+        if u == d {
+            return Err(usage(format!(
+                "the split of the group {}: up and down are the member {up}; a split needs two",
+                self.name
+            )));
+        }
+        self.split = Some(Split { up: u, down: d });
+        Ok(self)
+    }
+
+    pub fn split(&self) -> Option<Split> {
+        self.split
     }
 
     /// End a probe round of the group: `minrtt` may move its head.
@@ -280,9 +314,24 @@ impl Balance {
         serde_json::json!({
             "group": self.name,
             "policy": self.policy.name(),
+            "split": self.split_status(),
             "head": head.and_then(|i| self.members.get(i)).map(|m| m.name.as_str()),
             "members": members,
             "refused": self.refused(),
+        })
+    }
+
+    /// The `split` key of the status: the mode (`off` or `udp`), the
+    /// members, the split sockets and the sockets that fell back to one
+    /// member.
+    fn split_status(&self) -> serde_json::Value {
+        let name = |i: usize| self.members.get(i).map(|m| m.name.as_str());
+        serde_json::json!({
+            "mode": if self.split.is_some() { "udp" } else { "off" },
+            "up": self.split.and_then(|s| name(s.up)),
+            "down": self.split.and_then(|s| name(s.down)),
+            "sockets": self.split_sockets.load(Ordering::Relaxed),
+            "fallbacks": self.split_fallbacks.load(Ordering::Relaxed),
         })
     }
 
@@ -335,6 +384,30 @@ impl Balance {
         z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
         z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
         z ^ (z >> 31)
+    }
+
+    /// The split socket, or `None` when the group falls back to one member
+    /// (a member of the split does not take flows). The fallback keeps the
+    /// pick of the group, so it never leaves the members that take flows.
+    async fn split_datagrams(&self) -> Result<Option<Arc<dyn Datagrams>>, Failure> {
+        let Some(split) = self.split else {
+            return Ok(None);
+        };
+        let (up, down) = (&self.members[split.up], &self.members[split.down]);
+        if !(up.health().takes_flows() && down.health().takes_flows()) {
+            self.split_fallbacks.fetch_add(1, Ordering::Relaxed);
+            return Ok(None);
+        }
+        let sender = up.way.dial.datagrams().await?;
+        up.flows.fetch_add(1, Ordering::Relaxed);
+        let Ok(receiver) = down.way.dial.datagrams().await else {
+            // The member `down` has no datagrams: the socket keeps `up`.
+            self.split_fallbacks.fetch_add(1, Ordering::Relaxed);
+            return Ok(Some(sender));
+        };
+        down.flows.fetch_add(1, Ordering::Relaxed);
+        self.split_sockets.fetch_add(1, Ordering::Relaxed);
+        Ok(Some(Arc::new(SplitDatagrams::new(sender, receiver))))
     }
 
     fn refusal(&self, what: &str) -> Failure {
@@ -396,6 +469,9 @@ impl Dial for Balance {
     /// keeps that member.
     fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn Datagrams>, Failure>> {
         Box::pin(async move {
+            if let Some(socket) = self.split_datagrams().await? {
+                return Ok(socket);
+            }
             match self.pick() {
                 Selection::One(member) => member.way.dial.datagrams().await,
                 Selection::None => Err(self.refusal("a datagram socket")),

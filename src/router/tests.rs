@@ -292,3 +292,35 @@ fn route_door_shadowed_reject_needs_the_key() {
     let allowed = text + "    allow_shadowed_rules: true\n";
     Router::plan(&parse(&allowed).unwrap()).unwrap();
 }
+
+/// T-179: the key `splits` is off by default; an old file keeps no split.
+/// The key names the members, the status shows it, and a bad value names
+/// the key (a split of TCP is refused).
+#[test]
+fn route_config_split_is_off_by_default_and_shows_in_the_status() {
+    let old = Router::plan(&parse(GOOD).unwrap()).unwrap();
+    assert_eq!(old.groups[0].1.split(), None);
+    assert_eq!(old.status()["groups"][0]["split"]["mode"], "off");
+    let text = GOOD.replace("health:", "splits:\n  egress: up=home down=other\nhealth:");
+    let plan = Router::plan(&parse(&text).unwrap()).unwrap();
+    let split = &plan.status()["groups"][0]["split"];
+    assert_eq!(split["mode"], "udp");
+    assert_eq!(split["up"], "home");
+    assert_eq!(split["down"], "other");
+    let off = GOOD.replace("health:", "splits:\n  egress: off\nhealth:");
+    let plan = Router::plan(&parse(&off).unwrap()).unwrap();
+    assert_eq!(plan.status()["groups"][0]["split"]["mode"], "off");
+    for (value, word) in [
+        ("tcp", "TCP"),
+        ("up=home down=home", "needs two"),
+        ("up=home down=gone", "not a member"),
+        ("up=home", "up=MEMBER"),
+    ] {
+        let bad = GOOD.replace("health:", &format!("splits:\n  egress: {value}\nhealth:"));
+        let err = format!("{:#}", parse(&bad).unwrap_err());
+        assert!(err.contains("splits.egress") && err.contains(word), "{err}");
+    }
+    let other = GOOD.replace("health:", "splits:\n  nope: off\nhealth:");
+    let err = format!("{:#}", parse(&other).unwrap_err());
+    assert!(err.contains("splits.nope"), "{err}");
+}

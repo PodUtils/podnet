@@ -248,9 +248,10 @@ async fn print_status(control: &str, json: bool) -> Result<()> {
     }
     for group in status["groups"].as_array().into_iter().flatten() {
         println!(
-            "group {}  policy {}  head {}  refused {}",
+            "group {}  policy {}  split {}  head {}  refused {}",
             group["group"].as_str().unwrap_or("?"),
             group["policy"].as_str().unwrap_or("weighted"),
+            split_text(&group["split"]),
             group["head"].as_str().unwrap_or("-"),
             group["refused"]
         );
@@ -272,4 +273,19 @@ async fn print_status(control: &str, json: bool) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// The state of the split of a group: `off`, or `udp(up A, down B)` with
+/// the count of its sockets and of its fallbacks (T-179).
+fn split_text(split: &serde_json::Value) -> String {
+    match split["mode"].as_str() {
+        Some("udp") => format!(
+            "udp(up {}, down {}; sockets {}, fallbacks {})",
+            split["up"].as_str().unwrap_or("?"),
+            split["down"].as_str().unwrap_or("?"),
+            split["sockets"],
+            split["fallbacks"]
+        ),
+        _ => "off".to_string(),
+    }
 }

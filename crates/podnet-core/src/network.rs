@@ -40,6 +40,7 @@ pub mod meter;
 pub mod policy;
 pub mod race;
 pub mod rules;
+pub mod split;
 
 pub use balance::{parse_group, Balance, Health, Member, Selection};
 pub use chain::Chain;
@@ -49,6 +50,7 @@ pub use meter::OpenGuard;
 pub use policy::Policy;
 pub use race::Race;
 pub use rules::{matcher, Choice, Matcher, Rule, Rules};
+pub use split::{Split, SplitDatagrams};
 
 pub use pod_core::datagrams::{recv_from, send_to};
 pub use pod_core::{
