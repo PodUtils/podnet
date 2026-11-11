@@ -4440,3 +4440,46 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+# T-254: Housekeeping: one footnote for cfrs, no narrative history
+
+**Source:** the owner, 2026-11-11: "we still mention cfrs in many places rather than just one brief footnote and
+done with it and never mention it again"; `CLAUDE.md` (Writing: keep only technical content).
+**Category:** chore
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`git grep -i cfrs` finds the former name in 47 files: the documents, the manual, code comments and old
+compatibility paths. The documents also hold history and stories ("before", "used to", dates of changes) that
+are not technical content.
+
+## Premise
+
+- The release notes (`docs/releases/`), the reports (`docs/reports/`) and the record (`TODO/`,
+  `docs/decisions.md`) are records of the past: they keep their text.
+- The frozen files (`sh scripts/agent/podcrates.sh`; the freeze of PodUtils/podnet#449) take fixes only.
+
+## Approach
+
+1. Keep one brief footnote about the former name in README.md. Remove each other mention outside the records
+   and the frozen files, and remove the compatibility aliases of the old names (beta: breaking is allowed).
+2. Remove history, stories and opinions from the documents and the comments; keep the facts and the rules.
+3. List each mention left in a frozen file for a COORD issue (to podcrates).
+
+## Prove
+
+```sh
+git grep -n -i cfrs -- . ':!docs/releases' ':!docs/reports' ':!TODO' ':!docs/decisions.md'
+sh scripts/agent/check.sh
+```
+
+The grep finds the footnote of README.md, the source repositories of `CLAUDE.md` (License) and the frozen files
+only.
+
+## Start condition
+
+None.

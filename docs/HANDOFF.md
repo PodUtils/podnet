@@ -31,25 +31,28 @@ server; the claim test makes its stale socket with `mknod`; each probe child of
 `pod doctor` closes its inherited descriptors; the veth test and the register
 tests skip on the CI jobs that cannot run them.
 
-## Next steps
+## Next steps (the night queue of 2026-11-11, unattended)
 
-1. **The cut of v0.4.0-beta.4 (T-245):** the version and the notes are on
-   `main` (70946b3, fbe9cd2). When `ci` and `live` pass on the head, follow
-   steps 4 to 6 of "Release" in `docs/maintenance.md`: the dry run of
-   `release.yml`, then `publish=v0.4.0-beta.4`, then `release-proofs.yml`.
-   This release is the first with `llms.txt` and `llms-full.txt` (T-222).
-   Then write the Done section of T-245.
-2. **podcrates:** podnet is at v0.22.0 with `pod-wg` (089e1c9, #447). Close
-   #447 when podcrates writes the `taken` line; close #448 likewise.
-3. **Agents:** none in flight. T-122 is done (027537b). Merge a new agent
-   as the others: rebase on `main`, take `--ours` for `TODO/INDEX.md` and
-   `TODO/PROGRESS.md` and run `cargo todo set`, cite the rebased commit, run
-   `gen-llms.py`, run `check.sh`, push.
-4. **Issues to close with the release:** #375 for T-177 (T-178 and T-179
-   stay); #433 when T-242 has its WARP half.
-5. **The work order:** most open entries wait for a crate of podcrates
-   (`pod-warp`, `pod-relay`, `pod-egress`, `pod-iroh`) or for the owner.
-   Read `TODO/PROGRESS.md` for the rest.
+Run two worktree agents at a time at most. Merge each as before: rebase on `main`, take `--ours` for
+`TODO/INDEX.md` and `TODO/PROGRESS.md` and run `cargo todo set`, cite the rebased commit, run
+`gen-llms.py`, run `check.sh`, push. Push in batches: each push replaces the queued run of `live`.
+
+1. **The cut of v0.4.0-beta.4 (T-245):** when `ci` and `live` pass on the head, follow steps 4 to 6 of
+   "Release" in `docs/maintenance.md`; then the Done section of T-245. Map #447, #452 and #453 as closed
+   in `TODO/issues.md` and `TODO/github.txt` in the same batch.
+2. **T-254 (housekeeping):** an agent removes each mention of cfrs but one footnote in README.md, and the
+   narrative history of the documents. It leaves `docs/releases/`, `docs/reports/`, the record and the
+   frozen files. A second pass may cover `docs/research/`. Each cfrs mention in a frozen file goes to
+   podcrates as a COORD issue.
+3. **T-249 (an agent):** the netns router onto `pod-netstack`. Then a COORD issue with the commit for
+   podcrates T-170 step 2 (PodUtils/podnet#451).
+4. **T-250:** the first `ci` run with the step "Netns tests as root" green. Then a COORD issue with the
+   run for podcrates T-201, and T-250 done.
+5. **Then, one at a time beside one other:** T-178 (the byte meter of the doors; finish), T-179 (the
+   direction split, an option, off by default), T-165 (the CLI of the SSH forward-relay leg), T-253 (a live
+   probe of the hosted services), T-248 (the guest-wire router, after T-249).
+6. **podcrates:** at each new tag, `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is
+   at the tag (T-137). #448 waits for the `taken` line of the watches of `pod-services`.
 
 ## Open COORD issues
 
@@ -61,10 +64,7 @@ tests skip on the CI jobs that cannot run them.
 | #449 (COORD-031) | podcrates: the freeze at 7c5f87e of the files of `pod-relay`, `pod-warp`, `pod-cloudflare`; T-057 and T-242 in its T-028; T-244 in its T-029. |
 | #450 (COORD-032) | podcrates: an owner for the file-transfer of magic-wormhole; no hand-off for `pod-session`, `pod-e2e`, `pod-identity`. |
 | #451 (COORD-033) | podnet: T-250, then T-249; then a COORD issue with the commits. podcrates accepted #449 to #451 in its #74. |
-| #452 (COORD-034) | podcrates: the words of podnet's transit hints for its T-214 (the answer to its #74). |
-| #453 (COORD-035) | podcrates: a new crate `pod-git` (a native git server), with podnet's contract and acceptance. |
 | #448 (COORD-030) | podcrates: the `taken` line of the watches of `pod-services` (0b945a3). |
-| #447 (COORD-029) | podcrates: the `taken` line of `pod-wg` (089e1c9). |
 
 ## Tools of the session
 

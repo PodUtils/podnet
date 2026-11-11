@@ -149,10 +149,10 @@
 444 issue open
 445 issue closed
 446 issue closed
-447 issue open
+447 issue closed
 448 issue open
 449 issue open
 450 issue open
 451 issue open
-452 issue open
-453 issue open
+452 issue closed
+453 issue closed
