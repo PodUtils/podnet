@@ -131,8 +131,10 @@ fn check_target(config: &podnet::router::Config, to: &str, only: Option<usize>) 
     }
     match refused.as_slice() {
         [] => Ok(()),
-        [one] => anyhow::bail!("the door {one} refuses {target}"),
-        many => anyhow::bail!("the doors {} refuse {target}", many.join(", ")),
+        [one] => Err(anyhow::anyhow!("the door {one} refuses {target}")),
+        many => Err(anyhow::anyhow!(
+            "the doors {} refuse {target}",
+            many.join(", ")
+        )),
     }
-    Ok(())
 }

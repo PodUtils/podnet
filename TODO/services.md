@@ -1615,7 +1615,7 @@ no probe of a running router.
 
 ## Done
 
-2026-11-11, 47d7607. `Router::plan` builds the router of the file with ways that only name each network (no
+2026-11-11, f56826c. `Router::plan` builds the router of the file with ways that only name each network (no
 network up, no dial). `Router::up` and `Router::plan` share one build. `Router::decide(door, target)` gives
 the rule, the network or the group, and the pick of the group with its health, from the rules snapshot of
 the door (`RulesFile::rules`). The router dials with the same rules. `route --check --to` prints one row for
