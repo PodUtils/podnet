@@ -22,6 +22,8 @@ for bin in $bins; do
         *) continue ;;
     esac
     out="$log/$(basename "$bin").out"
+    # The log file belongs to this user, so the redirect is not under sudo.
+    # shellcheck disable=SC2024
     if ! sudo -E env "PATH=$PATH" "$bin" "$filter" --nocapture --test-threads 1 > "$out" 2>&1; then
         echo "root-netns-tests: $filter failed:" >&2
         tail -40 "$out" >&2
