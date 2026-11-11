@@ -270,6 +270,19 @@ jobs:
           sh scripts/live-run.sh viaexec target/release/podnet --proxy 'http+exec:nc 127.0.0.1 18080' demo --exit-on-verify
           grep -q '^api.trycloudflare.com:443$' "$RUNNER_TEMP/connect.log"
           grep -c ':7844$' "$RUNNER_TEMP/connect.log" | sed 's/^/edge connections through the command: /'
+      # T-253: the hosted mailboxes and relays of other parties, as test
+      # targets of a study (docs/research/podnet/hosted-relays.md), through a
+      # local CONNECT proxy that allows only TCP 443. A failed service gives
+      # a warning, not a failed step: the services are not podnet's.
+      - name: Hosted mailboxes and relays through a proxy for TCP 443 only
+        timeout-minutes: 5
+        run: |
+          set -eu
+          python3 -I scripts/connect-proxy.py 18081 "$RUNNER_TEMP/hosted.log" 127.0.0.1 443 &
+          sleep 1
+          python3 -I scripts/ci/probe-hosted.py http://127.0.0.1:18081
+          sort "$RUNNER_TEMP/hosted.log" | uniq -c
+          ! grep -q '^denied ' "$RUNNER_TEMP/hosted.log"
       # The rate of a GET and a POST on the HTTP path, through podnet connect,
       # and through a WebSocket client in Python (issue 51).
       - name: Throughput of the HTTP path and of a --forward WebSocket
