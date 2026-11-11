@@ -413,7 +413,7 @@ are `--ingress`; podnet gives a hint for `--via`. Tests: `cargo test -p podnet -
 **Milestone:** M4
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -450,6 +450,18 @@ The tests of the four doors that exist pass. A new test runs the door over a fak
 ## Start condition
 
 T-058 is done.
+
+## Correction
+
+2026-11-11: `src/warp/proxy.rs` is frozen for `pod-warp` (T-050), so the WARP door keeps its code until the
+take. Done so far (5c275ed): `crates/podnet-vnet/src/door.rs`, `Door` over any `Dial`: SOCKS5 and HTTP CONNECT
+(and an `http://` request in absolute form, through `dial_http`) on one listener, one deadline for the
+request of a client (`REQUEST_LIMIT`, 30 s), a cap of the live clients with a count of the clients that
+it turned away (GitHub #384), and users for SOCKS5 (RFC 1929) and HTTP (`Proxy-Authorization: Basic`).
+Tests: `cargo test -p podnet-vnet --lib front_door` (5). Left: UDP ASSOCIATE through `Dial::datagrams`
+(the door answers "command not supported" now), the move of `pod --serve`, `net proxy` and `net tailscale`
+onto the door with their extras (`--dns`, the rules and their reload, `--map`, `--import`, `--control`),
+and the WARP door at the take of `pod-warp`.
 
 # T-062: The service and ingress traits, with wrappers of the Cloudflare tunnel, the local listener, the relay node and the virtual network
 
