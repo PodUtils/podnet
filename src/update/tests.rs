@@ -235,6 +235,33 @@ fn a_line_of_sha256sums() {
 }
 
 #[test]
+fn sha256sums_must_have_exactly_one_valid_line() {
+    let good = "a".repeat(64);
+    let bad = "b".repeat(64);
+    let name = "podnet-x";
+    let cases: Vec<(String, bool)> = vec![
+        (String::new(), false),
+        (format!("{good}  other\n"), false),
+        (format!("{}  {name}\n", "a".repeat(63)), false),
+        (format!("{}  {name}\n", "g".repeat(64)), false),
+        (format!("{good}  {name} extra\n"), false),
+        (format!("{good}  {name}\n{bad}  {name}\n"), false),
+        (format!("{bad}  {name}\n{good}  {name}\n"), false),
+        (format!("{good}  {name}\n{good}  {name}\n"), false),
+        (format!("{good}  {name}\n"), true),
+        (format!("{good} *{name}\n"), true),
+    ];
+    for (sums, ok) in cases {
+        let r = sum_of(sums.as_bytes(), name);
+        assert_eq!(r.is_ok(), ok, "{sums:?}: {r:?}");
+        if !ok && sums.contains(name) {
+            let e = format!("{:#}", r.unwrap_err());
+            assert!(e.contains("exactly one valid line"), "{e}");
+        }
+    }
+}
+
+#[test]
 fn the_choice_of_a_release() {
     let r = |tag: &str, pre: bool| Release {
         tag_name: tag.into(),

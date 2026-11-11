@@ -53,7 +53,7 @@ impl Lab {
         let root =
             std::env::temp_dir().join(format!("podnet-install-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        for d in ["bin", "release", "dest"] {
+        for d in ["bin", "release", "dest", "tmp"] {
             std::fs::create_dir_all(root.join(d)).unwrap();
         }
         for tool in TOOLS {
@@ -103,8 +103,9 @@ impl Lab {
         self.script(
             "curl",
             &format!(
-                "out=''; url=''\nwhile [ $# -gt 0 ]; do case \"$1\" in -o) out=$2; shift 2 ;; -*) shift ;; *) url=$1; shift ;; esac; done\nf={rel}/$(basename \"$url\")\n[ -f \"$f\" ] || exit 22\ncp \"$f\" \"$out\"",
-                rel = self.root.join("release").display()
+                "echo \"$*\" >> {args}\nout=''; url=''\nwhile [ $# -gt 0 ]; do case \"$1\" in -o) out=$2; shift 2 ;; -*) shift ;; *) url=$1; shift ;; esac; done\nf={rel}/$(basename \"$url\")\n[ -f \"$f\" ] || exit 22\ncp \"$f\" \"$out\"",
+                rel = self.root.join("release").display(),
+                args = self.root.join("curl.args").display()
             ),
         );
     }
@@ -128,11 +129,31 @@ impl Lab {
         self.script(
             "curl",
             &format!(
-                "out=''; url=''\nwhile [ $# -gt 0 ]; do case \"$1\" in -o) out=$2; shift 2 ;; -H) shift 2 ;; -*) shift ;; *) url=$1; shift ;; esac; done\necho \"$url\" >> {log}\nf={rel}/$(basename \"$url\")\n{body}",
+                "echo \"$*\" >> {args}\nout=''; url=''\nwhile [ $# -gt 0 ]; do case \"$1\" in -o) out=$2; shift 2 ;; -H) shift 2 ;; -*) shift ;; *) url=$1; shift ;; esac; done\necho \"$url\" >> {log}\nf={rel}/$(basename \"$url\")\n{body}",
                 rel = self.root.join("release").display(),
                 log = self.root.join("curl.log").display(),
+                args = self.root.join("curl.args").display(),
             ),
         );
+    }
+
+    /// The full argument list of each call of the fake curl.
+    fn curl_args(&self) -> Vec<String> {
+        std::fs::read_to_string(self.root.join("curl.args"))
+            .unwrap_or_default()
+            .lines()
+            .map(str::to_owned)
+            .collect()
+    }
+
+    /// The TMPDIR of the script: it must be empty after each run.
+    fn tmp(&self) -> PathBuf {
+        self.root.join("tmp")
+    }
+
+    fn assert_clean(&self) {
+        let left: Vec<_> = std::fs::read_dir(self.tmp()).unwrap().collect();
+        assert!(left.is_empty(), "the script left {left:?} in TMPDIR");
     }
 
     fn curl_log(&self) -> String {
@@ -148,11 +169,14 @@ impl Lab {
             .env("HOME", &self.root)
             .env("PODNET_VERSION", "v9.9.9")
             .env("PODNET_INSTALL_DIR", self.dest())
+            .env("TMPDIR", self.tmp())
             .env("NO_COLOR", "1");
         for (k, v) in extra {
             cmd.env(k, v);
         }
-        cmd.output().unwrap()
+        let out = cmd.output().unwrap();
+        self.assert_clean();
+        out
     }
 }
 
@@ -669,3 +693,6 @@ fn an_empty_download_is_named() {
     );
     assert!(!t.contains("exit 1 of"), "{t}");
 }
+
+#[path = "install_script/strict.rs"]
+mod strict;

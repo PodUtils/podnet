@@ -156,19 +156,31 @@ pub fn verify_bundle_for(bundle: &[u8], sums: &[u8], want: &str) -> Result<()> {
     Ok(())
 }
 
-/// The SHA-256 of `name` in `sums` (the lines of `sha256sum`).
+/// The SHA-256 of `name` in `sums` (the lines of `sha256sum`). Exactly one
+/// line must name the asset. The line has two fields, and the hash has 64
+/// hex digits.
 pub fn sum_of(sums: &[u8], name: &str) -> Result<Vec<u8>> {
     let text = std::str::from_utf8(sums).context("SHA256SUMS is not text")?;
+    let mut found = 0usize;
+    let mut valid: Option<Vec<u8>> = None;
     for line in text.lines() {
-        if let Some((hex, file)) = line.split_once("  ") {
-            if file.trim_start_matches('*') == name {
-                return (0..hex.len())
-                    .step_by(2)
-                    .map(|i| u8::from_str_radix(hex.get(i..i + 2).unwrap_or("zz"), 16))
-                    .collect::<std::result::Result<Vec<u8>, _>>()
-                    .context("a bad hash in SHA256SUMS");
-            }
+        let Some((hex, file)) = line.split_once("  ").or_else(|| line.split_once(" *")) else {
+            continue;
+        };
+        if file != name {
+            continue;
+        }
+        found += 1;
+        if hex.len() == 64 && hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+            valid = (0..64)
+                .step_by(2)
+                .map(|i| u8::from_str_radix(&hex[i..i + 2], 16))
+                .collect::<std::result::Result<Vec<u8>, _>>()
+                .ok();
         }
     }
-    bail!("SHA256SUMS has no line for {name}")
+    match (found, valid) {
+        (1, Some(v)) => Ok(v),
+        _ => bail!("SHA256SUMS must have exactly one valid line for {name} (found {found})"),
+    }
 }

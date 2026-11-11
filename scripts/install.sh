@@ -49,6 +49,12 @@ main() {
 
     if command -v hash > /dev/null 2>&1; then hash -r > /dev/null 2>&1 || true; fi
 
+    case "$repo" in
+        */*/* | */ | /* | '' | *[!0-9A-Za-z._/-]*) fail "PODNET_REPO must be OWNER/NAME (got: $repo)" ;;
+        */*) ;;
+        *) fail "PODNET_REPO must be OWNER/NAME (got: $repo)" ;;
+    esac
+
     case $(uname -s 2> /dev/null || echo unknown) in
         Linux) ;;
         *) fail "podnet has Linux binaries only (this system: $(uname -s 2> /dev/null || echo unknown))" ;;
@@ -344,10 +350,23 @@ resolve_tag() {
                 tail -n 3 "$tmp/api.err" "$tmp/atom.err" >&2 2> /dev/null || true
                 fail "cannot read the releases of $repo (the API and releases.atom); set PODNET_VERSION=vX.Y.Z"
             fi
+            valid_tag "$t" || fail "$t is not a release tag"
             echo "$t" ;;
-        v*) echo "$1" ;;
-        *) echo "v$1" ;;
+        v*) valid_tag "$1" || fail "$1 is not a release tag"; echo "$1" ;;
+        *) valid_tag "v$1" || fail "v$1 is not a release tag"; echo "v$1" ;;
     esac
+}
+
+# True when $1 can be a release tag. The rule of podnet update: 1 to 64
+# characters of 0-9 A-Z a-z . + -, the first one v or a digit, and no "..".
+valid_tag() {
+    case "$1" in
+        '' | *[!0-9A-Za-z.+-]*) return 1 ;;
+        *..*) return 1 ;;
+        v* | [0-9]*) ;;
+        *) return 1 ;;
+    esac
+    [ "${#1}" -le 64 ]
 }
 
 # The tags of the release list on stdin (one JSON member on each line),
@@ -399,8 +418,13 @@ sha256_of() {
 
 # Check FILE in DIR against the SUMS file.
 check_sum() {
-    want=$(awk -v f="$3" '$2 == f || $2 == "*" f { print $1 }' "$1")
-    [ -n "$want" ] || fail "$3 is not in SHA256SUMS"
+    # Exactly one line names the file. It has two fields, and the hash has
+    # 64 hex digits.
+    found=$(awk -v f="$3" 'NF == 2 && ($2 == f || $2 == "*" f) { n++ } END { print n + 0 }' "$1")
+    want=$(awk -v f="$3" 'NF == 2 && ($2 == f || $2 == "*" f) && $1 ~ /^[0-9A-Fa-f]+$/ && length($1) == 64 { print $1 }' "$1")
+    if [ "$found" != 1 ] || [ -z "$want" ]; then
+        fail "SHA256SUMS must have exactly one valid line for $3 (found $found)"
+    fi
     if ! got=$(sha256_of "$2/$3"); then
         if [ "${PODNET_NO_VERIFY:-}" = 1 ]; then
             warn "no SHA256 tool: $3 is not checked (PODNET_NO_VERIFY=1)"
