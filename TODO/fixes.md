@@ -4159,7 +4159,7 @@ run.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -4239,6 +4239,25 @@ After `kill -9` of `warp tun --default-route`, the next `warp tun` or `warp down
 as the original. If the file no longer starts with the marker line, `reconcile` leaves it unchanged. The
 function `replace_file` gives the mode 0644 under the umask 077 and under the umask 0. A record with
 `version: 2` is not applied and is named in the error.
+
+## Done
+
+2026-11-11, commit d0b7d29 (`T-240: warp tun --default-route keeps the resolver record on disk, restores
+it after a kill, sets the mode`). The resolver code moved to the new file `src/warp/route/resolv.rs`
+(`src/warp/route.rs`: 799 to 727 lines). `set_file` takes the flock `STATE/resolv.lock`
+(refusal: "another warp tun runs"), restores a record of a dead process, writes the record
+`STATE/resolv.record.json` (version 1, mode 0600, synced; kind file, symlink or absent) before the
+first change, and replaces the file with the mode of the original (0644 for a new file) under any
+umask. `reconcile` runs at `Routes::setup` and at `warp down` (after the stop); it restores only when
+the file starts with the marker line, else it drops the record and logs. A record with another
+version stays and is named in the error. Tests (`cargo test -p podnet --lib -- warp::route::resolv::`):
+`resolv_backup_survives_a_kill`, `resolv_backup_restores_a_symlink_and_an_absent_file`,
+`resolv_marker_guards_the_restore`, `resolv_record_of_another_version_is_not_applied`,
+`replace_file_sets_the_mode`, `a_live_tun_blocks_a_second_one`: pass. Control with the record write,
+the mode call, the marker check and the version check disabled: four of them fail. The privileged test
+`tests/warp_routes.rs` (`routes_lifecycle`, `--ignored`) compares `ip -4 route get` before and after;
+it skips here (no `ip`, no mount namespace) and did not run. Not proven: that test, the kill of a real
+`warp tun` process, the `resolvectl` per-link settings.
 
 # T-241: `warp`: register under a lock, save the device before the enrolment step, and fail over the registration POST only when no response came (GitHub #432)
 
