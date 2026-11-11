@@ -57,7 +57,7 @@ where the code is when this entry starts.
 
 ## Done
 
-2026-11-11, commit d373600. The router file has the optional key `kernel` (`src/router/kernel.rs`).
+2026-11-11, commit 2a8f121. The router file has the optional key `kernel` (`src/router/kernel.rs`).
 Each WAN has a table with a default route and a rule `fwmark M lookup T`. An aggregate table has a
 multipath default route with weights. The rule `lookup main suppress_prefixlength 0` has the first
 priority. An old file stays valid; a file with `kernel` needs no door. `podnet route --config`
