@@ -12,7 +12,7 @@ Sources (read only):
   docs/warp-export-kernel-wg-data-path-degrades.md (55). `state/` was not opened.
 * `att/522011b9-cfrs-field-report/`: cfrs-field-report.md (155),
   cfrs-field-evidence-seccomp-rst.log (38).
-* Code: /workspace/cfrs at `3bed023` (main, 4 commits after v0.3.0-beta.12
+* Code: the tree at `3bed023` (main, 4 commits after v0.3.0-beta.12
   `3b6e173`; none of the 4 touch the files below).
 
 Sizes: XS <= 2 h, S <= 1 day, M = 2-4 days, L = 1-2 weeks.
@@ -28,7 +28,7 @@ packet. It programs the kernel of one namespace with `ip` and `nft`
 subprocesses and checks the links in a loop.
 
 * WAN types: any interface that already exists. Two kinds in the code:
-  an on-link TUN (no `gateway`: cfrs `warp tun`, wireguard) and a veth or
+  an on-link TUN (no `gateway`: podnet `warp tun`, wireguard) and a veth or
   ethernet link with a `gateway` (next hop via). mwan creates no interface,
   no tunnel.
 * Per WAN: `ip route replace default [via GW] dev IFACE table T`
@@ -69,7 +69,7 @@ subprocesses and checks the links in a loop.
 | `wans[]` | `{name, iface, table, weight=1, gateway?, check_target?}` | | one per WAN |
 | `clients[]` | `{source: CIDR, wan: ""\|NAME}` | | source rules |
 
-example.json: `warp-a`/`cfrsA`/10010, `wg-masque`/`hwan1`/10020 via
+example.json: `warp-a`/`podnetA`/10010, `wg-masque`/`hwan1`/10020 via
 10.66.0.2, `vpngate`/`hwan2`/10030 via 10.66.0.6; clients 10.77.1.0/24 to
 the aggregate, 10.77.2.0/24 pinned to warp-a, 10.77.3.0/24 to wg-masque.
 
@@ -102,10 +102,10 @@ server is userspace.
 
 Proved (FR text, not measured here):
 
-* Several cfrs `warp tun` instances with distinct identities run on one host
+* Several podnet `warp tun` instances with distinct identities run on one host
   at the same time; per-flow ECMP over 3 tunnels (2 WARP + 1 VPNGate)
   gave 175-290 Mbps (FR:48-49).
-* ICMP health checks lie for a cfrs MASQUE session that carries ICMP and
+* ICMP health checks lie for a podnet MASQUE session that carries ICMP and
   UDP but no TCP; a TCP connect check sees it (README:92-94).
 * ECMP over tunnels needs egress masquerade, rp_filter 0 on each WAN, and a
   `via` for veth WANs.
@@ -117,9 +117,9 @@ Not proved or disproved:
   flows. One TCP download does not get more than one lane.
 * The kill switch: by kernel rule semantics it leaks (D1).
 * Native "router with no container": it needs root, iproute2, nft. It
-  cannot run where cfrs runs (no CAP_NET_ADMIN).
+  cannot run where podnet runs (no CAP_NET_ADMIN).
 
-### 1.6 The podnet "router" feature, mapped to cfrs pieces
+### 1.6 The podnet "router" feature, mapped to existing pieces
 
 Two modes. The first one is the one the target environment needs.
 
@@ -140,8 +140,8 @@ on the uplink.
 | TCP health check | `WarpStack::tcp_connect` (src/warp/ip.rs:635); `warp probe` targets (src/main.rs:5137-5140) | one probe task per uplink; down after K misses, up after R successes |
 | link restart | `Live` watcher with `renew_due` make-before-break (live.rs:131-170), `close_session` (ip.rs:622) | a TCP-probe failure on a WARP uplink calls renew (also fixes lab bug B1) |
 | kill switch | rules `reject` | no healthy uplink = refuse the flow (fail closed), configurable |
-| `/status`, `/metrics` | `src/metrics.rs`, `health_log` (proxy.rs:159), `cfrs ps --json` ready doc | per-uplink state, RTT, flows |
-| clients behind the router | `warp up` listeners (TCP + unix socket), `warp exec`/`cfrs pod` (`-x socks5://unix:...`), `warp forward`, `net switch` peers (src/vnet/switch.rs) | the router serves the same listeners as `warp up`, so `warp exec`, pods and vnet guests use it unchanged |
+| `/status`, `/metrics` | `src/metrics.rs`, `health_log` (proxy.rs:159), `podnet ps --json` ready doc | per-uplink state, RTT, flows |
+| clients behind the router | `warp up` listeners (TCP + unix socket), `warp exec`/`podnet pod` (`-x socks5://unix:...`), `warp forward`, `net switch` peers (src/vnet/switch.rs) | the router serves the same listeners as `warp up`, so `warp exec`, pods and vnet guests use it unchanged |
 
 **Mode B, kernel, with CAP_NET_ADMIN (mwan done right).** `warp tun`
 interfaces as WANs, plus: per-WAN tables and rules, a multipath default,
@@ -167,25 +167,25 @@ end (MPTCP-like); out of scope.
 
 ### 2.1 What setup-wans.sh builds (root, `ip`, `nft`, `wg`, `openvpn`, `python3`)
 
-1. Two `cfrs warp tun --detach` instances with fixed identities
-   (`CFRS_STATE_DIR=/workspace/state/warp-a`, `warp-u`): `cfrsA` (host) and
-   `cfrsU` (lines 15-21).
-2. Netns `wanu`; `cfrsU` moved into it (the cfrs process stays in the host
+1. Two `podnet warp tun --detach` instances with fixed identities
+   (`PODNET_STATE_DIR=/workspace/state/warp-a`, `warp-u`): `podnetA` (host) and
+   `podnetU` (lines 15-21).
+2. Netns `wanu`; `podnetU` moved into it (the podnet process stays in the host
    namespace and keeps the TUN fd), `172.16.0.2/32`, mtu 1280, default
-   route `dev cfrsU` (25-30).
+   route `dev podnetU` (25-30).
 3. Kernel WireGuard `wgu` in `wanu` with the key of a `warp export` device
    (warp-c), peer = the public WARP key, endpoint `162.159.192.1:2408`
-   (reached through cfrsU), `172.16.0.9/32`, mtu 1240 (32-38).
+   (reached through podnetU), `172.16.0.9/32`, mtu 1240 (32-38).
 4. veth pairs `hwan1`/`vwan1` 10.66.0.0/30 and `hwan2`/`vwan2` 10.66.0.4/30
    (41-54).
 5. In `wanu`: ip_forward, rp_filter 0, rules `from 10.66.0.0/30 lookup
    10001` (default dev wgu) and `from 10.66.0.4/30 lookup 10002` (default
    dev tun0), nft masquerade on wgu and tun0 (57-80).
-6. Host: rp_filter 0 on all/default/hwan1/hwan2/cfrsA,
+6. Host: rp_filter 0 on all/default/hwan1/hwan2/podnetA,
    `fib_multipath_hash_policy=1` (83-86).
-7. OpenVPN (VPNGate) in `wanu` over wgu/cfrsU, `tun0` mtu 1200 (89-105).
+7. OpenVPN (VPNGate) in `wanu` over wgu/podnetU, `tun0` mtu 1200 (89-105).
 
-Result: WAN A = `cfrsA` (MASQUE h2), WAN C = `hwan1` (kernel WG over
+Result: WAN A = `podnetA` (MASQUE h2), WAN C = `hwan1` (kernel WG over
 MASQUE), WAN D = `hwan2` (OpenVPN over WG over MASQUE). mwan example.json
 matches it.
 
@@ -202,7 +202,7 @@ exists; the VPNGate config comes over plain `http://` (README:27). Note:
 | R1 | One named instance with several WARP devices = one aggregated WAN; NAT and MSS clamp set up automatically (FR:53-55) | `podnet router` mode A (no CAP); mode B with CAP adds masquerade + MSS clamp |
 | R2 | TCP health checks before a link leaves the aggregate (FR:56-58) | per-uplink TCP probe through the session; the same probe renews a dead WARP session |
 | R3 | Start/stop the TUNs from a config; persist across shells without re-registration (FR:59-61) | declarative config (src/config.rs, src/yaml.rs) + detach supervisor (src/detach.rs) + autostart (src/autostart.rs); identities already persist per state dir |
-| R4 | `cfrs export --format mwan-json` (FR:62-64) | XS once the router config exists; low value if podnet routes itself |
+| R4 | `podnet warp export --format mwan-json` (FR:62-64) | XS once the router config exists; low value if podnet routes itself |
 | R5 | Weighted balancing that favors healthy lanes against 429 rate limits (FR:84-86) | weights + optional "least recent failure" bias |
 | R6 | Device identities reused, no re-registration (FR:39-41) | exists (warp.json per state dir) |
 
@@ -222,7 +222,7 @@ exists; the VPNGate config comes over plain `http://` (README:27). Note:
   same "handshake yes, data no" state is not seen there either.
 * The cause is on the edge side (the report shows the same host and binary
   work with another device at the same time, and a new session fixes it).
-  cfrs can detect and renew; it cannot fix the edge.
+  podnet can detect and renew; it cannot fix the edge.
 
 Fix:
 1. Userspace modes (`warp proxy`/`up`/`forward`/`run`/`nc`): a probe task
@@ -238,16 +238,16 @@ Fix:
    RST. 3 misses = `tun::run` returns an error, and the keep loop opens a new
    session. This tests the session only, not host routing or rp_filter.
 3. Allow `--session-max-age` on `warp tun` (a timer around `tun::run`).
-4. `cfrs status`/ready doc/`warp status`: `data_path: ok|tcp-dead`, last
+4. `podnet status`/ready doc/`warp status`: `data_path: ok|tcp-dead`, last
    probe RTT.
 
 Test: a unit test with a fake session that answers ICMP and UDP and drops
 TCP SYN: the probe calls renew after 3 misses; a test that a SYN-ACK to the
 probe port is not written to the TUN.
 
-#### B2. Each new cfrs TUN has rp_filter 2 (warp-tun-rp-filter-strict.md) - OPEN (not caused by cfrs)
+#### B2. Each new podnet TUN has rp_filter 2 (warp-tun-rp-filter-strict.md) - OPEN (not caused by podnet)
 
-* cfrs never writes rp_filter: no match for `rp_filter` or `/proc/sys/net`
+* podnet never writes rp_filter: no match for `rp_filter` or `/proc/sys/net`
   in src/ or crates/. `Tun::create` (src/warp/tun.rs:135-232) does only
   TUNSETIFF, SIOCSIFADDR, SIOCSIFNETMASK, SIOCSIFMTU, SIOCSIFFLAGS.
 * Likely source: systemd-udevd runs `systemd-sysctl --prefix=/net/ipv4/conf/IF`
@@ -262,10 +262,10 @@ probe port is not written to the TUN.
 * The effective value is `max(conf.all, conf.IF)`.
 
 Fix: after `Tun::create`, write `0` to `/proc/sys/net/ipv4/conf/IF/rp_filter`
-(cfrs has CAP_NET_ADMIN in that namespace); check it again 2 s later (udev
-can run after cfrs) and at each new session; warn when the effective value
+(podnet has CAP_NET_ADMIN in that namespace); check it again 2 s later (udev
+can run after podnet) and at each new session; warn when the effective value
 is not 0 (`conf.all` = 1 overrides); `--keep-rp-filter` to opt out; show it
-in the ready doc and in `cfrs doctor`. Test: on a host that permits TUN, the
+in the ready doc and in `podnet doctor`. Test: on a host that permits TUN, the
 value is 0 after create; a unit test of the "effective value" function.
 
 #### B3. Exported device in kernel WireGuard: handshakes fresh, data one-way (warp-export-kernel-wg-data-path-degrades.md) - OPEN (docs + detection)
@@ -273,13 +273,13 @@ value is 0 after create; a unit test of the "effective value" function.
 * `warp export` writes the reserved bytes only as a comment:
   `# Reserved = a,b,c (for the clients that send it)` (src/warp/export.rs:190-193;
   JSON `reserved` at :217). Kernel WireGuard sends zeros there.
-* cfrs's own WireGuard leg sends the device's `client_id` bytes in bytes 1-3
+* podnet's own WireGuard leg sends the device's `client_id` bytes in bytes 1-3
   of each message (src/warp/wg.rs:6-7, :285, :344-351, :495).
-* No cfrs code checks the data path of an exported device.
+* No podnet code checks the data path of an exported device.
 
 Fix: (1) docs and export header: what the reserved bytes are, that kernel
-WireGuard and wg-quick send zeros, that `cfrs warp tun --leg wireguard` sends
-them; (2) `cfrs warp export --check`: run the cfrs WireGuard leg with the
+WireGuard and wg-quick send zeros, that `podnet warp tun --leg wireguard` sends
+them; (2) `podnet warp export --check`: run the podnet WireGuard leg with the
 exported device, once with the reserved bytes and once with zeros, and do a
 TCP probe through each: prints "device ok", "needs reserved bytes" or "device
 data path dead, use --new"; (3) the same TCP probe in `WgKeepalive`
@@ -288,19 +288,19 @@ reserved differs only in bytes 1-3; live test in `live.yml`.
 
 ---
 
-## 3. Field report (cfrs 0.3.0-beta.12): work items
+## 3. Field report (podnet 0.3.0-beta.12): work items
 
 | Id | Item | Kind | Claim checked against main |
 | --- | --- | --- | --- |
 | F1 | Persistent pod sessions (`warp exec --detach`, joinable) | feature + bug | The pod ends when its first child exits: seccomp `supervise_seccomp` sets `shutdown` on `waitpid(pid)` (crates/pod-netns/src/seccomp.rs:684-695), drains relays 3 s (`RELAY_DRAIN`), exits; netns returns on `waitpid(pid)` (netns.rs:1033-1040). A program that daemonizes (`rad node start` spawns `radicle-node`) loses its network when `rad` exits. File unix sockets are not per pod (seccomp has no namespace; the netns backend only bind-mounts resolv.conf, netns.rs:1115-1130), so the control socket is missing because the node lost its supervisor, not because of isolation. `warp exec` has no `--detach` (Exec args: src/main.rs:4431-4438). |
 | F2 | seccomp: TCP_NODELAY EOPNOTSUPP, peer resets | bug (confirmed in code) | On a successful TCP connect the supervisor removes the fd from its table: `map.remove(&fd)` (seccomp.rs:1056). After that: `setsockopt` is passed to the kernel AF_UNIX socket (only tracked fds are "pretended", seccomp.rs:773-780) = EOPNOTSUPP (os error 95) for TCP_NODELAY and TCP_KEEPIDLE; `getsockname`/`getpeername` are passed through (seccomp.rs:1746-1748) = the AF_UNIX address. The evidence log line 12 shows exactly `local_addr ... ss_family: 1, len: 2`, `peer_addr ... ss_family: 1`. Also: `getpeername` of a tracked stream gives the local `bound` address, not the peer (seccomp.rs:1757-1758); the fd table is keyed by fd number only and shared by all processes of the pod (seccomp.rs:698; `close` of fd N in any process drops it, :786). The only test covers a UDP socket (crates/pod-netns/tests/seccomp.rs:1458-1487); README claims the logical address for all (crates/pod-netns/README.md:127). TCP_NODELAY alone is a WARN in radicle; the AF_UNIX peer/local address (Rust `peer_addr()` gives `InvalidInput` for AF_UNIX) is the stronger candidate for the resets. Not proven without a radicle run. |
 | F2b | One line at exec time for the seccomp limits; INFO log of emulation | feature | Only `pod doctor`/one warning when memory writes are refused (doctor.rs:257, seccomp.rs:888-897). `warp exec` passes `--prefer-udp` always (src/warp/up.rs:636), so `auto` takes seccomp first even where netns works (crates/pod-netns/src/lib.rs:178-180); that is why the reporter got seccomp. `warp exec` has no `--backend`. |
-| F3 | `warp exec` does not find a `warp up` with another CFRS_STATE_DIR | bug | `exec_in_pod`, `shell`, `nc::via_running` and agent use `socket_path()` = `run_dir()/warp.sock` (src/warp/up.rs:30-32, :670, :715; src/warp/nc.rs:28, :213; src/agent.rs:361). `run_dir()` = CFRS_RUN_DIR, else `$XDG_RUNTIME_DIR/cfrs/run`, else `STATE/run` (src/instances.rs:38-57). `CFRS_WARP_SOCKET` is written to warp.env (up.rs:249) and to the pod program (up.rs:702) but nothing reads it. The reporter's fix was CFRS_STATE_DIR, not CFRS_WARP_SOCKET. warp.env is in the same state-dependent dir, so "read the env file" alone is circular. |
+| F3 | `warp exec` does not find a `warp up` with another PODNET_STATE_DIR | bug | `exec_in_pod`, `shell`, `nc::via_running` and agent use `socket_path()` = `run_dir()/warp.sock` (src/warp/up.rs:30-32, :670, :715; src/warp/nc.rs:28, :213; src/agent.rs:361). `run_dir()` = PODNET_RUN_DIR, else `$XDG_RUNTIME_DIR/podnet/run`, else `STATE/run` (src/instances.rs:38-57). `PODNET_WARP_SOCKET` is written to warp.env (up.rs:249) and to the pod program (up.rs:702) but nothing reads it. The reporter's fix was PODNET_STATE_DIR, not PODNET_WARP_SOCKET. warp.env is in the same state-dependent dir, so "read the env file" alone is circular. |
 | F4a | `warp forward --resolve` | bug (flag silently ignored) + feature | `--resolve` is global (src/main.rs:80-83) and parses on `warp forward`, but forward dials with `proxy::dial` -> `resolve_all` through the tunnel (src/warp/proxy.rs:991-997, :1205-1222, :1227); pins are read only in the host chain `resolve_chain` (src/resolve.rs:236). Workaround: `-L 18776=IP:8776`. |
-| F4b | Forwards in `cfrs ps` / `warp forward --list` | partly done | The ready doc has `forward: [{listen, to}]` (src/main.rs:5446-5455), so `cfrs ps --json` shows it. Text `cfrs ps` shows only the first `listen` (main.rs:1896-1901); the extra line prints `forward` only when it is a string (main.rs:1913-1919), so targets are not shown. |
-| F5 | Default state dir on a shared disk | note | CFRS_STATE_DIR works (src/state.rs:6-10). No change; document. |
+| F4b | Forwards in `podnet ps` / `warp forward --list` | partly done | The ready doc has `forward: [{listen, to}]` (src/main.rs:5446-5455), so `podnet ps --json` shows it. Text `podnet ps` shows only the first `listen` (main.rs:1896-1901); the extra line prints `forward` only when it is a string (main.rs:1913-1919), so targets are not shown. |
+| F5 | Default state dir on a shared disk | note | PODNET_STATE_DIR works (src/state.rs:6-10). No change; document. |
 | F6 | `--env-file` / hint | feature | Part of F3. |
-| F9a | `nohup: failed to run command 'cfrs'` | not a cfrs bug | cfrs runs itself by `current_exe()` (up.rs:48, :683; detach.rs:417); the message came from the caller's `nohup cfrs`. |
+| F9a | `nohup: failed to run command 'podnet'` | not a podnet bug | podnet runs itself by `current_exe()` (up.rs:48, :683; detach.rs:417); the message came from the caller's `nohup podnet`. |
 
 Work items:
 
@@ -318,14 +318,14 @@ Work items:
   test where the child closes its fd N and the parent's fd N stays tracked.
 * **W-F3 socket discovery** (bug, S). Where: src/warp/up.rs `socket_path`,
   `exec_in_pod`, `shell`; src/warp/nc.rs; src/agent.rs:361. What: read
-  `CFRS_WARP_SOCKET` first; `--socket PATH` on exec/shell/nc; `warp up`
-  writes a pointer file at a fixed per-user place (`$XDG_RUNTIME_DIR/cfrs/`
-  else `$TMPDIR/cfrs-UID/`, 0600, owner check) with the socket and state dir;
+  `PODNET_WARP_SOCKET` first; `--socket PATH` on exec/shell/nc; `warp up`
+  writes a pointer file at a fixed per-user place (`$XDG_RUNTIME_DIR/podnet/`
+  else `$TMPDIR/podnet-UID/`, 0600, owner check) with the socket and state dir;
   the error lists each path tried and the running one it found. Add
-  `CFRS_WARP_SOCKET` to src/manual/facts.rs. Acceptance:
-  `CFRS_STATE_DIR=$A cfrs warp up`, then `env -u CFRS_STATE_DIR cfrs warp
+  `PODNET_WARP_SOCKET` to src/manual/facts.rs. Acceptance:
+  `PODNET_STATE_DIR=$A podnet warp up`, then `env -u PODNET_STATE_DIR podnet warp
   exec -- true` exits 0, or fails with a message that names
-  `CFRS_STATE_DIR=$A`; unit test of the lookup order.
+  `PODNET_STATE_DIR=$A`; unit test of the lookup order.
 * **W-F2b backend choice and notice** (S). Where: src/warp/up.rs:633-647,
   src/main.rs Exec/Shell args, crates/pod-netns/src/lib.rs:175-192. What:
   `--backend` on `warp exec`/`warp shell`; with `--prefer-udp`, take netns
@@ -343,14 +343,14 @@ Work items:
   `/proc/PID/ns/{user,net}` of the session. Acceptance: `warp exec -- sh -c
   'daemon_that_connects_later & exit 0'`: the daemon's later TCP connect
   through the pod succeeds; `--join` reaches a 127.0.0.1 listener of the
-  detached session; `cfrs ps` lists the session.
+  detached session; `podnet ps` lists the session.
 * **W-F4b forwards in ps** (XS). Where: src/main.rs:1892-1920. What: for an
-  array `forward`, print each `LISTEN -> TO`; `warp forward --list` = `cfrs
+  array `forward`, print each `LISTEN -> TO`; `warp forward --list` = `podnet
   ps` filtered to forwards. Acceptance: unit test of the text rows from a
   record with two forwards.
 * **W-F4a pins in tunnel DNS** (S). Where: src/resolve.rs (a public
   `pinned(name)`), src/warp/proxy.rs:1205, :1227. What: `resolve_all`/
-  `resolve` return the pin before any query; `--resolve` and `CFRS_RESOLVE`
+  `resolve` return the pin before any query; `--resolve` and `PODNET_RESOLVE`
   then work for forward, proxy, nc, exec. Acceptance: unit test: a pinned
   name gives the pin and sends no DNS packet into the stack.
 
@@ -362,10 +362,10 @@ Work items:
 | --- | --- | --- | --- |
 | 1 | W-F2 seccomp: track TCP fds after connect, correct getpeername, per-socket key | bug | M |
 | 2 | B1 data-path TCP probe + renew (userspace modes, `warp tun` SYN probe, `--session-max-age` on tun, status field) | bug | M |
-| 3 | W-F3 `warp exec`/`shell`/`nc` socket discovery (`CFRS_WARP_SOCKET`, pointer file, `--socket`, error text) | bug | S |
+| 3 | W-F3 `warp exec`/`shell`/`nc` socket discovery (`PODNET_WARP_SOCKET`, pointer file, `--socket`, error text) | bug | S |
 | 4 | W-F2b `--backend` on exec/shell; auto avoids seccomp when memory writes fail; one-line notice | bug/feature | S |
 | 5 | B2 rp_filter 0 on the TUN, re-check, warn, doctor row | bug | S |
-| 6 | W-F4b forwards in `cfrs ps` text; `warp forward --list` | feature | XS |
+| 6 | W-F4b forwards in `podnet ps` text; `warp forward --list` | feature | XS |
 | 7 | W-F4a `--resolve` pins in tunnel DNS | bug | S |
 | 8 | W-F1 pod outlives first child; `warp exec --detach/--join` | feature | L (seccomp keep-alive alone M) |
 | 9 | B3 export docs (reserved bytes) + `warp export --check` + WG-leg data probe | docs/feature | S (docs) + M |
@@ -378,7 +378,7 @@ Work items:
 
 1. Router: mode A (userspace, the target environment) only first, and mode B
    (kernel, root labs) later or never?
-2. B1: may cfrs renew a session by itself on a failed TCP probe (new egress
+2. B1: may podnet renew a session by itself on a failed TCP probe (new egress
    address, open TCP flows drain 90 s)? Default probe target `1.1.1.1:443`?
 3. `warp exec` default: keep seccomp first (all UDP) or netns first (correct
    socket calls, DNS-only UDP) once W-F2 is done?

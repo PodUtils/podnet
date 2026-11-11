@@ -2,9 +2,9 @@
 
 > Reading of the tree at 3bed023 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
 
-Study of `/workspace/cfrs` at `3bed023` (2026-11-04, `v0.3.0-beta.12` + 3
+Study of the tree at `3bed023` (2026-11-04, `v0.3.0-beta.12` + 3
 commits). Read only. Data and scripts of this study:
-`study/data/` (`man.json` = `cfrs man --json` of `target/debug/cfrs`
+`study/data/` (`man.json` = `podnet man --json` of `target/debug/podnet`
 built after the last CLI change; `graph.json` = module graph;
 `testmap.json` = tests per command; `filelist.md`) and `study/tools/`
 (`graph.py`, `edges.py`, `outline.py`, `outline2.py`, `testmap.py`,
@@ -36,7 +36,7 @@ built after the last CLI change; `graph.json` = module graph;
   files inside the current crate, (C) cut the 18 edges inside the crate,
   (D) rename, (E) extract 7 library crates bottom-up plus the root
   `podnet` package (CLI + facade), (F) add the network and service traits.
-  Each step is a series of green commits (section 4.6).
+  Each step is a series of green commits (section 4.5).
 * Parity: 63 commands, 8 global options, 316 own flags and arguments, the
   `pod-netns` CLI (11 options), 58 entries of environment variables (about
   90 names), 17 file entries, 8 exit codes, 30 JSON documents, 29 manual
@@ -105,7 +105,7 @@ Rules for each split:
   only `use` lines and visibility (`pub(super)` or `pub(crate)` for an
   item that a sibling module now needs).
 * Keep each public path with `pub use` in the parent `mod.rs`
-  (`crate::egress::Proxy`, `cfrs::vnet::NetStack`, ...). The library is
+  (`crate::egress::Proxy`, `podnet::vnet::NetStack`, ...). The library is
   public (README "Library", docs.rs metadata, `tests/api_surface.rs`).
 * Use the `mod.rs` form (the repository uses it: `src/warp/mod.rs`).
 * A test module moves to `foo/tests.rs` as `#[cfg(test)] mod tests;`. As a
@@ -195,7 +195,7 @@ warp (2 commits), net, tests.
 
 ### 2.4 Test files
 
-* `tests/cli.rs` (2305, 55 tests) to `tests/cli/main.rs` (helpers `cfrs`,
+* `tests/cli.rs` (2305, 55 tests) to `tests/cli/main.rs` (helpers `podnet`,
   `stderr`, `trace`, `serve_local`, `http_get`, `stop`; `mod test_host;`) +
   `exit_codes.rs` (usage, 78, 64, flag values, invalid values, error shape),
   `log.rs` (log controls, json, colours, secrets, failure report),
@@ -218,7 +218,7 @@ warp (2 commits), net, tests.
 ### 3.1 Method
 
 `study/tools/graph.py` reads each file of `src/`, cuts the `mod tests`
-part, and counts each `crate::X` (and `cfrs::X` in `src/main.rs`). The
+part, and counts each `crate::X` (and `podnet::X` in `src/main.rs`). The
 result is `study/data/graph.json`. `edges.py` lists the items of one edge.
 
 ### 3.2 Natural layers (sizes in lines, with tests)
@@ -239,12 +239,12 @@ result is `study/data/graph.json`. `edges.py` lists the items of one edge.
 Library-only subsystem: `feature`, `origin`, `transport`, `relay` (the SSH
 port-forward relay) and `util::http`/`util::tls` (about 5 600 lines) have
 no caller in the binary. Only their unit tests (108) and the README
-(lines 475-477: `cfrs::origin::StaticDir`, `cfrs::feature::StaticServer`)
+(lines 475-477: `podnet::origin::StaticDir`, `podnet::feature::StaticServer`)
 reach them. They are a capability of the library: keep them (the parity
 rule), in the services crate.
 
 `pod-netns` has no dependency on the root crate. The root crate uses it in
-`src/main.rs` (16 references: `cfrs pod`, `warp run`), `src/vnet/` (8:
+`src/main.rs` (16 references: `podnet pod`, `warp run`), `src/vnet/` (8:
 re-exports `socks`, `tailscale`, `upstream`), `src/warp/` (44: `warp run`
 backends, rules, nc, forward) and `src/manual/model.rs` (the pod usage).
 There are two proxy-URL parsers: `egress::Proxy::parse` (http, socks5,
@@ -330,15 +330,15 @@ Keep the root package at the repository root: `tests/docs.rs` (11 tests,
 | Release build | thin LTO, `codegen-units = 1`: no change expected in time or size | same (thin LTO inlines across crates) |
 | Optional adapters | `#[cfg(feature)]` in one crate | a cargo feature of `podnet` per adapter crate; heavy later adapters (Tailscale with C, as `podssh-ts` with aws-lc and cmake) stay out of the default build (podssh `default-members`) |
 | Fuzz crate | no change | `podnet::fuzzing` facade calls `#[doc(hidden)] pub mod fuzzing` of each crate (some targets use `pub(crate)` items: `proxy::build_request_head`); `fuzz/Cargo.lock` regenerated |
-| `cargo package` | 2 packages | 8 packages; each `include_str!`/`include_bytes!` inside its crate: `shim/*.c`, `shim/tsgetent`, `shim/tsid`, `shim/fakepwd.c` (vnet), `cf-edge-roots.pem`, `cloudflared-pin.txt`, `schemas/` (cloudflare), `src/sigstore-fulcio.pem` (update, root); the test includes `../../tools/header-oracle.txt` (cloudflare http2 test) and `../Cargo.lock` (trust test) point outside a crate: move these two tests to the root package; a `LICENSE` copy in each crate (`tests/docs.rs::pod_netns_ships_the_license` generalised); ci.yml checks `shim/cfrsnet.c` in the package list of `cfrs` (move to `podnet-vnet`) |
+| `cargo package` | 2 packages | 8 packages; each `include_str!`/`include_bytes!` inside its crate: `shim/*.c`, `shim/tsgetent`, `shim/tsid`, `shim/fakepwd.c` (vnet), `cf-edge-roots.pem`, `cloudflared-pin.txt`, `schemas/` (cloudflare), `src/sigstore-fulcio.pem` (update, root); the test includes `../../tools/header-oracle.txt` (cloudflare http2 test) and `../Cargo.lock` (trust test) point outside a crate: move these two tests to the root package; a `LICENSE` copy in each crate (`tests/docs.rs::pod_netns_ships_the_license` generalised); ci.yml checks `crates/podnet-vnet/shim/podnet-vnet.c` in the package list of `podnet` (move to `podnet-vnet`) |
 | Docs tests | no change | no change if the root stays `podnet`; the paths in the documents change with each move (the test enforces it) |
 | Environment scan | no change | `manual::facts` tests walk `src`, `crates/pod-netns/src`, `shim`: change to `src`, `crates/*/src`, the shim directory |
 | Macros | in `src/lib.rs` | `println!`/`print!`/`eprintln!`/`update_atomic!` needed in each crate: one `podnet_core::io_macros!()` that defines them at the crate root, or a copy (25 lines) |
-| Build info | `build.rs` sets `CFRS_BUILD_COMMIT`, `CFRS_BUILD_TARGET`, `CFRS_BUILD_DATE` | `fetch.rs` and `report.rs` (core), `config.rs`, `quicktunnel.rs`, `tunnel.rs` (cloudflare) read `CARGO_PKG_VERSION`/`CFRS_BUILD_COMMIT`: give the core a `build.rs` too, or a `version()` that the binary sets at start |
+| Build info | `build.rs` sets `PODNET_BUILD_COMMIT`, `PODNET_BUILD_TARGET`, `PODNET_BUILD_DATE` | `fetch.rs` and `report.rs` (core), `config.rs`, `quicktunnel.rs`, `tunnel.rs` (cloudflare) read `CARGO_PKG_VERSION`/`PODNET_BUILD_COMMIT`: give the core a `build.rs` too, or a `version()` that the binary sets at start |
 | Versions | one bump | `version.workspace = true` in each crate; path dependencies with the workspace version (the #222 rule of `pod-netns` applies to each) |
 | Publish | ruling of 2026-11-04: publish nothing now | the same ruling; a later publish needs 8 names |
 
-Recommendation: do steps A to C (sections 4.6) in any case. They give the
+Recommendation: do steps A to C (section 4.5) in any case. They give the
 maintainability goal, and they make the crate split a mechanical step.
 Then extract the crates (step E). Reasons: the adapter model of the goal
 maps to crates, the compiler keeps the layers, the build of one adapter
@@ -474,28 +474,15 @@ Add the traits after the crate split (step F), first as wrappers of the
 existing APIs, with no change of behaviour; then let the commands use
 them.
 
-### 4.4 Names that a rename touches (inputs for the rename study)
-
-`CFRS_*` variables (47 names in the manual), `CFRSNET_*`/`CFRSSOCKS_*` and
-`libcfrsnet.so`/`libcfrssocks.so`, the state directory
-`$XDG_STATE_HOME/cfrs`, `cfrs-<uid>` in the temporary directory, the
-systemd unit prefix `cfrs-`, the marker `>>> cfrs warp up >>>`, the
-WebSocket forward default path `/__cfrs/ws` (`ws::DEFAULT_PATH`; seen on
-the wire by older `connect` clients), the key `"cfrs"` in each JSON
-document (E3), the release asset names `cfrs-<target>` that `cfrs update`
-downloads, `CFRS_REPO`, `CFRS_BUILD_COMMIT`, `POD_NETNS_QUIET`,
-`POD_NETNS_TEST_MEM`, the program name `cfrs pod`.
-
-### 4.5 Library paths after the split
+### 4.4 Library paths after the split
 
 The facade keeps each module path: `pub use podnet_core::{exit, state,
 egress, ...};`, `pub use podnet_warp as warp;`, `pub use podnet_vnet as
 vnet;`, and the root re-exports of `src/lib.rs`. A `pub use other::module;`
 also keeps `crate::module::Item` valid inside the root crate, so the code
-that stays in the root needs few edits at each extraction. The rename
-changes `cfrs::` to `podnet::` (breaking; release note `## Breaking`).
+that stays in the root needs few edits at each extraction.
 
-### 4.6 Order of steps (each commit green)
+### 4.5 Order of steps (each commit green)
 
 Each commit runs `sh scripts/agent/check.sh` (fmt, clippy
 `-D warnings`, tests), keeps the test count, and updates the paths in the
@@ -523,8 +510,8 @@ B. File splits inside the crate (rename-neutral; one file per commit)
 C. Cut the 18 edges of 3.3 (one commit for each row or pair of rows);
    the allowlist of `check-layers.py` becomes empty.
 
-D. Rename `cfrs` to `podnet` (package, binary, library, documents,
-   workflows; the compatibility rulings of 4.4). Separate commits, no
+D. Name the package, binary and library `podnet` (documents,
+   workflows). Separate commits, no
    moves in them: `git log --follow` and the reviews stay readable.
 
 E. Crate extraction, bottom-up (one crate per commit): `podnet-testkit`;
@@ -607,13 +594,10 @@ before step B4, or record the risk.
 
 ## 6. Questions for the owner
 
-1. Binaries: only `podnet`, or also a `cfrs` name (symlink or argv[0])
-   for one release? Keep the `pod-netns` binary and release asset, or
+1. Binaries: keep the `pod-netns` binary and release asset, or
    rename it `podnet-netns`?
-2. Compatibility of the names of 4.4: `PODNET_*` with `CFRS_*` read as
-   aliases (how long?); the state directory (read the old one, or move it
-   at the first run); the JSON key `"cfrs"` (rename, or both for one
-   release); `/__cfrs/ws` (wire-visible); the shim names.
+2. Names: the state directory (read the old one, or move it
+   at the first run) and the wire-visible path `/__podnet/ws`.
 3. The library-only subsystem (`feature`, `origin`, `transport`, `relay`,
    about 5 600 lines, no caller in the binary): keep it in `podnet-serve`
    (this study assumes yes, by the parity rule)?
@@ -621,8 +605,8 @@ before step B4, or record the risk.
    files)? Enforce it with `scripts/check-size.py`?
 5. The 8 crates and their names, and the root package as the `podnet`
    CLI + facade: accept?
-6. Order: in-crate splits (A-C) under the name `cfrs`, then the rename,
-   then the crate extraction (recommended), or the rename first?
+6. Order: in-crate splits (A-C), then the crate extraction (recommended),
+   or the crate extraction first?
 7. Step F changes the command line (a `--via SPEC` form): keep each old
    flag as an alias, with no removal (assumed by the parity rule)?
 

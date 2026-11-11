@@ -112,7 +112,7 @@ The entries of the WARP adapter: `src/warp/`.
 ## Problem
 
 The L4 door answers 403 to each of three forms of the CONNECT
-(`CFRS_WARP_L4_FORM`). Issue text: "...".
+(`PODNET_WARP_L4_FORM`). Issue text: "...".
 
 ## Premise
 
@@ -255,7 +255,7 @@ Rules (`TODO/RULES.md` "Defects and issues", `AGENTS.md` section 2):
 ### 1.10 Recommendation for podnet
 
 **Copy the crate, do not write a new one.** Reasons: 0BSD, same owner, no
-dependencies, same edition (2021) and MSRV (1.89) as cfrs, 1,416 lines of
+dependencies, same edition (2021) and MSRV (1.89) as podnet, 1,416 lines of
 tests with plants. Writing a smaller one costs more than deleting modules.
 
 Copy as `crates/podnet-todo` (alias `cargo todo`). Changes:
@@ -268,7 +268,7 @@ Copy as `crates/podnet-todo` (alias `cargo todo`). Changes:
   `CLAUDE.md`, `crates/*/README.md`; exclude `docs/reports/` (archived
   issue text).
 * `prove.rs`: `Packages::of` reads `crates/*`, `fuzz/`, `vendor/`; add the
-  root `Cargo.toml` (cfrs/podnet has a root package; podssh has none).
+  root `Cargo.toml` (podnet has a root package; podssh has none).
 * Strings: `podssh-todo` -> `podnet-todo`; repo name in `github.rs` docs.
 
 Minimum viable version (land first, about 2,050 lines of src):
@@ -288,8 +288,8 @@ Optional, only if drift appears: `claims` ("yet") and `numbers` (plain
 line numbers). They exist because podssh's docs went stale; they add rules
 that each session must learn.
 
-Keep the cfrs writing rules: podssh's `PROGRESS.md` "State" section is 218
-lines of dated narrative, against the cfrs rule "no history". For podnet:
+Keep the podnet writing rules: podssh's `PROGRESS.md` "State" section is 218
+lines of dated narrative, against the podnet rule "no history". For podnet:
 State at most about 20 lines, work order, parked, questions. History is git.
 
 Import plan for podnet:
@@ -335,7 +335,7 @@ Import plan for podnet:
 
 podssh rule 3 (`AGENTS.md` section 5): no `LD_PRELOAD`, no shims in other
 processes, no sidecar unless the user names it. So podssh is in-process
-only. cfrs is the opposite design (sidecar + shim + front door); podnet
+only. podnet is the opposite design (sidecar + shim + front door) and
 keeps both.
 
 Not verified here (from memory; verify before an entry): NetBird's client
@@ -343,18 +343,18 @@ has a netstack mode (gVisor) with a SOCKS5 listener and no TUN; the
 Firezone Linux headless client needs a TUN device; ZeroTier has `libzt`
 (C++, lwIP userspace stack).
 
-### 2.2 What cfrs already has
+### 2.2 What podnet already has
 
 | Piece | Where | Mechanism |
 | --- | --- | --- |
-| Tailscale front door | `crates/pod-netns/src/tailscale.rs` (556), `cfrs net tailscale --socket PATH` (`src/main.rs` `net_tailscale`) | Sidecar: unmodified `tailscaled --tun=userspace-networking`. cfrs speaks the LocalAPI `/localapi/v0/dial` (`ts-dial` upgrade) on the unix socket, and serves SOCKS5 / HTTP CONNECT on `AF_UNIX`. `shim/cfrssocks.c` (LD_PRELOAD) redirects `connect(2)` of unmodified programs to it. Dial limit 10 s (`DIAL_TIMEOUT`, issue 181) |
-| Tailscale hop in pod | `crates/pod-netns/src/upstream.rs` (`tailscale:/path`), `cfrs pod -x tailscale:/run/tailscale/tailscaled.sock -- CMD` | Same dialer as an upstream hop; seccomp backend only; must be the only hop |
-| Tailscale SSH on a sealed host | `src/vnet/tailscale_ssh.rs` (331), `cfrs net ts-shims --out DIR` | Writes `getent`/`id` shim scripts for `tailscaled --ssh` (Go, static, no libc) and a `fakepwd.so` preload for dynamic clients |
+| Tailscale front door | `crates/pod-netns/src/tailscale.rs` (556), `podnet net tailscale --socket PATH` (`src/main.rs` `net_tailscale`) | Sidecar: unmodified `tailscaled --tun=userspace-networking`. podnet speaks the LocalAPI `/localapi/v0/dial` (`ts-dial` upgrade) on the unix socket, and serves SOCKS5 / HTTP CONNECT on `AF_UNIX`. `crates/podnet-vnet/shim/podnet-socks.c` (LD_PRELOAD) redirects `connect(2)` of unmodified programs to it. Dial limit 10 s (`DIAL_TIMEOUT`, issue 181) |
+| Tailscale hop in pod | `crates/pod-netns/src/upstream.rs` (`tailscale:/path`), `podnet pod -x tailscale:/run/tailscale/tailscaled.sock -- CMD` | Same dialer as an upstream hop; seccomp backend only; must be the only hop |
+| Tailscale SSH on a sealed host | `src/vnet/tailscale_ssh.rs` (331), `podnet net ts-shims --out DIR` | Writes `getent`/`id` shim scripts for `tailscaled --ssh` (Go, static, no libc) and a `fakepwd.so` preload for dynamic clients |
 | WireGuard, own code | `src/warp/wg.rs` (1,078) | Noise IKpsk2 + transport, BLAKE2s, `ring` AEAD; WARP-specific `reserved` bytes; `--transport wireguard`, `--carry wg`, `warp export` |
 | WARP | `src/warp/` (14,490 lines) | MASQUE CONNECT-IP over HTTP/2 (TCP 443) and HTTP/3, smoltcp stack, no external binary |
 | Userspace network | `src/vnet/` (smoltcp stack, LD_PRELOAD shim to `AF_UNIX`, SOCKS/HTTP front doors, switch, policy, DNS); `crates/pod-netns` (netns, seccomp, raw backends) | The adapters' consumers |
 
-Not present in cfrs: in-process Tailscale, a generic WireGuard peer from a
+Not present in podnet: in-process Tailscale, a generic WireGuard peer from a
 `wg-quick` file, headscale tests, NetBird/Firezone/ZeroTier, the DERP and
 iroh carriers.
 
@@ -373,7 +373,7 @@ existing front doors as consumers:
 * `Resolve`: MagicDNS-like names (tailnet peer names, the vnet resolver).
 * `Carrier`: an adapter can ride inside another (WireGuard inside WARP
   MASQUE; DERP over the relay WebSocket; the tunnel edge inside WARP, as
-  cfrs does today).
+  podnet does today).
 * Consumers: `net socks`/HTTP front door on `AF_UNIX`, the LD_PRELOAD
   shim, `pod` (netns/seccomp/raw) upstream hops, `-W`-style stdio pipe.
 * One URL scheme for each adapter, usable by every consumer, for example
@@ -406,7 +406,7 @@ Order (each step keeps every existing command working):
 6. Firezone, ZeroTier: research entries only, as podssh does (both need UDP
    or an account; Firezone's client needs TUN).
 7. Later, separately: the DERP carrier and podssh mesh interop, if podnet
-   wants to join podssh nodes (cfrs already speaks the podssh relay).
+   wants to join podssh nodes (podnet already speaks the podssh relay).
 
 ---
 
@@ -417,19 +417,19 @@ Order (each step keeps every existing command working):
 | Router file | `AGENTS.md` (378 lines): 1 what it is, 2 session loop (start, loop, drafting agents, decisions, releases, end), 3 task -> documents table, 4 safety, 5 code rules, 6 change procedure, 7 path map | Keep `CLAUDE.md` short; add the task -> documents table and the path map (crate -> purpose) to it or to `docs/maintenance.md`. The map is the most useful part after the rename |
 | Measured state | `docs/STATUS.md`: each result with date and command; release column | Optional; podnet can keep results in `## Done` only |
 | Roadmap | `docs/ROADMAP.md`: milestones with exit criteria, ids only, no checkboxes (checked) | Adopt: milestones of the rename/split/adapters plan |
-| Decisions | Dated rows, Q-numbers, sections Product / Work on the repository / Superseded; a question is asked in PROGRESS with a recommendation, entry `blocked` until ruled; Q86: overnight, a session makes the call, writes it in `## Decision` and "for the operator to confirm" | cfrs `docs/decisions.md` already has In force / Superseded; add Q-numbers and the Q86 rule (decide, record, continue) |
+| Decisions | Dated rows, Q-numbers, sections Product / Work on the repository / Superseded; a question is asked in PROGRESS with a recommendation, entry `blocked` until ruled; Q86: overnight, a session makes the call, writes it in `## Decision` and "for the operator to confirm" | podnet `docs/decisions.md` already has In force / Superseded; add Q-numbers and the Q86 rule (decide, record, continue) |
 | Research | `docs/research/` (study reports: `osewa.md`, `relay-measurement.md`, ...) | Put these study reports there |
 | Crate layout | One crate per network (`podssh-ts`, `-iroh`, `-warp`, `-tor`, `-relay`, `-ws`, `-ssh`, `-todo`); heavy ones behind features; `default-members` excludes the C-needing crate; library crates build with `CC=/nonexistent`; `unused_crate_dependencies` denied | Same: `podnet` (CLI), `podnet-netns` (core), one crate per adapter (`podnet-cloudflare`, `podnet-warp`, `podnet-vnet`, later `podnet-ts`), `podnet-todo` |
 | File size | 500 lines per source file, checked by `scripts/check-repo.py` check 1 ("split the file, never trim its comments") | Adopt with an allowlist of today's 56 files over 500 lines that only shrinks |
 | Check trust | Each check has a floor and a plant: `--plant-empty` (each check fails on an empty tree), `scripts/plants/` + `plants.yml`, `--plant-drop` | Adopt for new checks (todo, size, github numbers) |
-| Vendor policy | `vendor/README.md`: per copy upstream URL, commit, "Upstream read" line, license, why vendored, how to re-vendor; patches as numbered files + `LOCAL-PATCHES.md`; tree has its own `[workspace]` and is excluded; outside the 500-line rule; `scripts/check-vendored.py` weekly (new upstream release) and `check-vendored-advisories.py` (advisory-db) | Adopt when the first copy lands (tailscale-rs). cfrs has no `vendor/` today |
-| Drafting agents | Worktrees under `.claude/worktrees/`, "DRAFT T-NNN" commits, no builds in drafts, main session merges one at a time and verifies; "Drafts" table in PROGRESS | Matches the cfrs worktree ruling (2026-11-04); add the Drafts table only if drafts outlive a session |
-| Releases | `docs/releases/vX.md` required by the release workflow; dispatch on the commit, then the tag; `release-short.sh BINARY --net`; `release-proofs.yml`, `update-live.yml`; tags never move | cfrs already has the same files (`release-proofs.yml`, `release-short.sh`, `cliff.toml`, `about.toml`, `deny.toml`). Adopt `update-live.yml` (live `update` from the previous release) if missing |
+| Vendor policy | `vendor/README.md`: per copy upstream URL, commit, "Upstream read" line, license, why vendored, how to re-vendor; patches as numbered files + `LOCAL-PATCHES.md`; tree has its own `[workspace]` and is excluded; outside the 500-line rule; `scripts/check-vendored.py` weekly (new upstream release) and `check-vendored-advisories.py` (advisory-db) | Adopt when the first copy lands (tailscale-rs). podnet has no `vendor/` today |
+| Drafting agents | Worktrees under `.claude/worktrees/`, "DRAFT T-NNN" commits, no builds in drafts, main session merges one at a time and verifies; "Drafts" table in PROGRESS | Matches the podnet worktree ruling (2026-11-04); add the Drafts table only if drafts outlive a session |
+| Releases | `docs/releases/vX.md` required by the release workflow; dispatch on the commit, then the tag; `release-short.sh BINARY --net`; `release-proofs.yml`, `update-live.yml`; tags never move | podnet already has the same files (`release-proofs.yml`, `release-short.sh`, `cliff.toml`, `about.toml`, `deny.toml`). Adopt `update-live.yml` (live `update` from the previous release) if missing |
 | Credentials | Keys only by file path (`--ts-auth-key-file`), `.env/` never read or printed; `scripts/check-repo.py` check 3 scans for key shapes | Adopt for overlay keys (tailnet auth keys, WireGuard private keys) |
 
 Not to adopt: podssh's narrative `PROGRESS.md` "State" (218 lines), the
 long per-entry prose (entries of 100+ lines), and rule 3 "no LD_PRELOAD"
-(the cfrs shim is a feature).
+(the podnet shim is a feature).
 
 ## Open questions for the owner
 
@@ -438,7 +438,7 @@ long per-entry prose (entries of 100+ lines), and rule 3 "no LD_PRELOAD"
    feature, or keep the tailscaled sidecar only?
 2. Milestone names for podnet's record (`M1`..`Mn`) and whether to start ids
    at `T-001`.
-3. Closed cfrs issues in `issues.md`: the check needs one row per issue
+3. Closed podnet issues in `issues.md`: the check needs one row per issue
    number. Generate about 300 rows for the closed history, or map only from
    the import on (a start number in `check-github-numbers.py`)?
 4. UDP-needing overlays (WireGuard direct, Firezone, ZeroTier): research

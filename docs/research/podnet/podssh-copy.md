@@ -5,9 +5,9 @@ Sources (read only):
 * podssh: `/workspace/azathothas/podssh` at `427f890` ("The record: the
   twelfth round of drafts"), a shallow clone of 1 commit, read on
   2026-11-05. No fetch was necessary.
-* cfrs: `/workspace/cfrs` at `3bed023`.
+* podnet: the tree at `3bed023`.
 * The study reports `podssh.md`, `architecture.md`, `capabilities.md`,
-  `mwan-field.md`, `rename.md`, `vn.md` in this directory.
+  `mwan-field.md`, `vn.md` in this directory.
 
 Owner rule (confirmed): "no regression" means no loss of a feature or a
 capability of the code. Compatibility for existing users is not required.
@@ -26,10 +26,10 @@ Trials (scratch copies only; nothing in either repository changed):
   (10 lines). Dependencies: tokio, sha2 0.11, hmac 0.13, hkdf 0.13,
   x25519-dalek 3, rand 0.10, zeroize, libc. `cargo clippy -- -D warnings`:
   clean. 18 of the 21 `tests/session_*.rs` files copied with
-  `s/podssh_relay::/layer_trial::/`: 135 tests pass, 0 fail. Against the cfrs
+  `s/podssh_relay::/layer_trial::/`: 135 tests pass, 0 fail. Against the podnet
   lock, the only new crate is `x25519-dalek 3.0.0` (BSD-3-Clause; its
-  `curve25519-dalek 5.0.0` is in the cfrs lock).
-* `scratchpad/podssh-fmt/`: rustfmt with the cfrs default width (100) over
+  `curve25519-dalek 5.0.0` is in the podnet lock).
+* `scratchpad/podssh-fmt/`: rustfmt with the podnet default width (100) over
   `session`, `e2e`, `code`, `transit`, `identity`, `udp` and
   `podssh-todo/src`: 18,339 lines become 21,516 (+17 %). podssh uses
   `max_width = 120` (`rustfmt.toml`). 7 files pass 500 lines; none passes
@@ -44,9 +44,9 @@ Trials (scratch copies only; nothing in either repository changed):
   `scripts/`, 20,429 in `docs/`, 76,837 in `TODO/`.
 * Most of podssh is an SSH client and its UX (`podssh-cli`, `podssh-ssh`,
   `podssh-terminal`, `podssh-core`): podnet needs none of it.
-* Where podssh and cfrs overlap (WARP MASQUE, the quick tunnel, the egress
-  proxy, DoH, the TLS crypto, update, detach, doctor, manual), the cfrs code
-  is the superset or the project rule. Keep cfrs in each overlap.
+* Where podssh and podnet overlap (WARP MASQUE, the quick tunnel, the egress
+  proxy, DoH, the TLS crypto, update, detach, doctor, manual), the podnet code
+  is the superset or the project rule. Keep podnet in each overlap.
 * podnet can copy now, with small adaptation, about 27,000 lines (about 7 %
   of podssh's crate code, src and tests):
   1. `crates/podssh-todo` (the TODO tool), as `crates/podnet-todo`.
@@ -57,7 +57,7 @@ Trials (scratch copies only; nothing in either repository changed):
      client, SPAKE2 and SecretBox phases, the code words (`code/`, without
      the pairing exchange) and the transit carrier (`transit/`).
   4. The WARP stand-in edge and API stand-in (test harness) from
-     `podssh-warp`, so that cfrs WARP commands get loopback tests.
+     `podssh-warp`, so that podnet WARP commands get loopback tests.
   5. Tooling: `scripts/check-github-numbers.py` + `record-issues.yml`,
      check 1 (file size) of `scripts/check-repo.py`, `scripts/fetch-zig.sh`
      + `scripts/zig-mirrors.txt`, the headscale harness pattern, the relay
@@ -114,21 +114,21 @@ for i686, arm (v6), loongarch64 or powerpc64le.
 
 ### 1.2 Top-level tooling
 
-| Path | Size | Contents | Already in cfrs? |
+| Path | Size | Contents | Already in podnet? |
 | --- | --- | --- | --- |
-| `scripts/` | 142 entries, 794 files with `plants/` (646), 32,537 lines | `gate.sh` (473: the CI gate, `CC=/nonexistent` builds, MSRV steps, plants), `check-repo.py` (455: 11 repository checks, floors, `--plant-empty`), `check-scripts.py`, `check-github-numbers.py` (101), `check-upstream.py` (cloudflared pin), `check-vendored.py` (146), `check-vendored-advisories.py` (257), `check-release-tools.py` (74), `check-relay-spec.py` (498) + `relay_watch.py` (155) + `relay-spec-agree.py`, `fetch-zig.sh` (47) + `zig-mirrors.txt`, `release-check*.sh` (T-251, about 1,280 lines), `release-short.sh` (115), `ts-headscale.sh` (434) + `ts-headscale-lib.sh` (233), `wormhole-peer.py` (62), about 60 `interop-*.sh` (OpenSSH, Dropbear, terminals), `fake-*.py` stand-ins, `test_in_box.sh` + `box/` | cfrs has `check-workflows.py` (action pins, permissions), `release-short.sh`, `test_in_box.sh` + `box/`, `binfmt.sh`, `pull-image.sh`, `secrets-report.py`, `tools/check-upstream.py`, `scripts/agent/*` |
-| `.github/workflows/` | 42 files, 4,961 lines | `build.yml` (gate, 445), `release.yml` (622), `release-proofs.yml`, `update-live.yml`, `deny.yml`, `secrets.yml`, `fuzz.yml`, `upstream.yml`, `plants.yml`, `record-issues.yml` (44), `relay-watch.yml` (132), `ts-headscale.yml` (49), `pair-code.yml` (49), `transit-live.yml`, `warp-live.yml`, about 25 more live and interop jobs | cfrs has `ci.yml`, `release.yml`, `release-proofs.yml`, `live.yml`, `deny.yml`, `secrets.yml`, `fuzz.yml`, `upstream.yml` |
-| `fuzz/` | 23 targets, 4,530 lines | cargo-fuzz, own workspace: capnp, SOCKS5, proxy URL, NO_PROXY, WS frame and upgrade, warp capsule, quick tunnel, relay list and pool, DNS wire, known_hosts, IRC | cfrs has 16 targets of its own code |
-| `images/` | 9 Dockerfiles, 42 lines | pinned by digest: `armv7`, `binfmt`, `box`, `box-proxy`, `build`, `derper` (Go image, builds `derper`), `headscale` 0.29.7, `tailscale` v1.104.4, `trufflehog` | cfrs has `armv7`, `binfmt`, `build`, `cfrs`, `trufflehog` |
-| `vendor/` | 185,153 lines of Rust | `tailscale-rs` (fork at `f4781c4`, 40 manifests, 70,135 lines, edition 2024, MSRV 1.92, BSD-3-Clause + PATENTS, 29 patches + `LOCAL-PATCHES.md`); `russh` 0.65.0 (34,861, 4 patches); `ssh-key` 0.7.0-rc.11 (14,522, 1 patch); `iroh-relay` (13,740, 1 patch); `README.md` (policy: upstream, commit, "Upstream read", licence, re-vendor steps) | No `vendor/` in cfrs |
-| `docs/` | 33 files, 20,429 lines | `cli.md` 5,795, `relay.md` 1,560, `design.md` 1,555, `carriers.md` 1,470 (research of NetBird, Firezone, ZeroTier, ...), `STATUS.md` 1,259 (509 KB), `development.md` 1,065, `reverse.md`, `mesh.md`, `tailscale.md`, `decisions.md`, `ROADMAP.md`, `releases/`, `research/` | cfrs has its own documents |
+| `scripts/` | 142 entries, 794 files with `plants/` (646), 32,537 lines | `gate.sh` (473: the CI gate, `CC=/nonexistent` builds, MSRV steps, plants), `check-repo.py` (455: 11 repository checks, floors, `--plant-empty`), `check-scripts.py`, `check-github-numbers.py` (101), `check-upstream.py` (cloudflared pin), `check-vendored.py` (146), `check-vendored-advisories.py` (257), `check-release-tools.py` (74), `check-relay-spec.py` (498) + `relay_watch.py` (155) + `relay-spec-agree.py`, `fetch-zig.sh` (47) + `zig-mirrors.txt`, `release-check*.sh` (T-251, about 1,280 lines), `release-short.sh` (115), `ts-headscale.sh` (434) + `ts-headscale-lib.sh` (233), `wormhole-peer.py` (62), about 60 `interop-*.sh` (OpenSSH, Dropbear, terminals), `fake-*.py` stand-ins, `test_in_box.sh` + `box/` | podnet has `check-workflows.py` (action pins, permissions), `release-short.sh`, `test_in_box.sh` + `box/`, `binfmt.sh`, `pull-image.sh`, `secrets-report.py`, `tools/check-upstream.py`, `scripts/agent/*` |
+| `.github/workflows/` | 42 files, 4,961 lines | `build.yml` (gate, 445), `release.yml` (622), `release-proofs.yml`, `update-live.yml`, `deny.yml`, `secrets.yml`, `fuzz.yml`, `upstream.yml`, `plants.yml`, `record-issues.yml` (44), `relay-watch.yml` (132), `ts-headscale.yml` (49), `pair-code.yml` (49), `transit-live.yml`, `warp-live.yml`, about 25 more live and interop jobs | podnet has `ci.yml`, `release.yml`, `release-proofs.yml`, `live.yml`, `deny.yml`, `secrets.yml`, `fuzz.yml`, `upstream.yml` |
+| `fuzz/` | 23 targets, 4,530 lines | cargo-fuzz, own workspace: capnp, SOCKS5, proxy URL, NO_PROXY, WS frame and upgrade, warp capsule, quick tunnel, relay list and pool, DNS wire, known_hosts, IRC | podnet has 16 targets of its own code |
+| `images/` | 9 Dockerfiles, 42 lines | pinned by digest: `armv7`, `binfmt`, `box`, `box-proxy`, `build`, `derper` (Go image, builds `derper`), `headscale` 0.29.7, `tailscale` v1.104.4, `trufflehog` | podnet has `armv7`, `binfmt`, `build`, `podnet`, `trufflehog` |
+| `vendor/` | 185,153 lines of Rust | `tailscale-rs` (fork at `f4781c4`, 40 manifests, 70,135 lines, edition 2024, MSRV 1.92, BSD-3-Clause + PATENTS, 29 patches + `LOCAL-PATCHES.md`); `russh` 0.65.0 (34,861, 4 patches); `ssh-key` 0.7.0-rc.11 (14,522, 1 patch); `iroh-relay` (13,740, 1 patch); `README.md` (policy: upstream, commit, "Upstream read", licence, re-vendor steps) | No `vendor/` in podnet |
+| `docs/` | 33 files, 20,429 lines | `cli.md` 5,795, `relay.md` 1,560, `design.md` 1,555, `carriers.md` 1,470 (research of NetBird, Firezone, ZeroTier, ...), `STATUS.md` 1,259 (509 KB), `development.md` 1,065, `reverse.md`, `mesh.md`, `tailscale.md`, `decisions.md`, `ROADMAP.md`, `releases/`, `research/` | podnet has its own documents |
 | `TODO/` | 28 files, 76,837 lines | The record: `INDEX.md`, `PROGRESS.md`, `RULES.md` (173), `issues.md`, `github.txt`, 23 area files; 637 entries | No |
-| `AGENTS.md` | 378 lines | Session loop, task-to-documents table, safety, code rules (500-line rule, no `LD_PRELOAD`), change procedure, path map | cfrs has `CLAUDE.md` |
-| `cliff.toml`, `about.toml` + `about.hbs`, `deny.toml` | small | git-cliff, cargo-about, cargo-deny (10 targets incl. macOS and Windows; ignores RUSTSEC-2023-0071 (`rsa`) and RUSTSEC-2024-0436 (`paste`); MPL-2.0 exceptions) | cfrs has all three (8 musl targets, `ignore = []`) |
-| `.cargo/config.toml` | | `[alias] todo = "run -q -p podssh-todo --"`; `incompatible-rust-versions = "fallback"` | cfrs has the resolver line and `SMOLTCP_IFACE_MAX_ADDR_COUNT = "8"` |
+| `AGENTS.md` | 378 lines | Session loop, task-to-documents table, safety, code rules (500-line rule, no `LD_PRELOAD`), change procedure, path map | podnet has `CLAUDE.md` |
+| `cliff.toml`, `about.toml` + `about.hbs`, `deny.toml` | small | git-cliff, cargo-about, cargo-deny (10 targets incl. macOS and Windows; ignores RUSTSEC-2023-0071 (`rsa`) and RUSTSEC-2024-0436 (`paste`); MPL-2.0 exceptions) | podnet has all three (8 musl targets, `ignore = []`) |
+| `.cargo/config.toml` | | `[alias] todo = "run -q -p podssh-todo --"`; `incompatible-rust-versions = "fallback"` | podnet has the resolver line and `SMOLTCP_IFACE_MAX_ADDR_COUNT = "8"` |
 
 Licence: `LICENSE` is the BSD Zero Clause License, "Copyright (C) 2026
-Azathothas". cfrs is 0BSD, same owner. Code from podssh needs no notice.
+Azathothas". podnet is 0BSD, same owner. Code from podssh needs no notice.
 The vendored third-party trees keep their licences (tailscale-rs:
 BSD-3-Clause with PATENTS; a notice line in `THIRD_PARTY_NOTICES.md` and
 cargo-about).
@@ -145,20 +145,20 @@ cargo-about).
 | File transfer: end-to-end encryption | `e2e/` (Noise XX, snow) | Copy the core with the layer (2.3) |
 | File transfer: resume across the 64 MiB relay cap | `session/` (T-151 to T-155, T-262, T-270) | Copy and adapt (2.3) |
 | Relay resume T-155 (capabilities enabler 6.5) | `session/beside.rs`, `resume.rs`, `pump.rs` (`Watch`), `record.rs` (`RETIRE` 0x0b), `Settings::move_bytes` 48 MiB, `move_age` 11 h | Copy with the layer (2.3) |
-| WebSocket relay client | `relay.rs`, `pool.rs`, `open.rs`, `failover.rs`, `token.rs`, `cache.rs`, `gate.rs`, `rank*.rs`, `cleartext.rs`, `h2_road.rs`, `http_road/`, `quic_road/`, `reverse/`, `pair/` | Keep cfrs `ws_relay.rs`/`relay_pool.rs`/`relay_reverse.rs`; take ideas only (2.4) |
+| WebSocket relay client | `relay.rs`, `pool.rs`, `open.rs`, `failover.rs`, `token.rs`, `cache.rs`, `gate.rs`, `rank*.rs`, `cleartext.rs`, `h2_road.rs`, `http_road/`, `quic_road/`, `reverse/`, `pair/` | Keep podnet `ws_relay.rs`/`relay_pool.rs`/`relay_reverse.rs`; take ideas only (2.4) |
 | Other carriers ("bring your own network") | `podssh-ws`: `via`, `vless`, `wstunnel`, `wisp`, `shadowsocks`, `forwarder`, `cloudflare`, `meek`, `webtunnel` | Copy and adapt later, as `Dialer` adapters after step F (2.4) |
 | In-process Tailscale (podssh.md 2) | `crates/podssh-ts`, `vendor/tailscale-rs`, `vendor/patches/` | Later, behind a feature, owner decision (2.5) |
-| Headscale CI harness | `scripts/ts-headscale.sh`, `ts-headscale-lib.sh`, `ts-headscale.yml`, `images/{headscale,tailscale}` | Copy and adapt to test the cfrs sidecar front door (2.5) |
+| Headscale CI harness | `scripts/ts-headscale.sh`, `ts-headscale-lib.sh`, `ts-headscale.yml`, `images/{headscale,tailscale}` | Copy and adapt to test the podnet sidecar front door (2.5) |
 | iroh, DERP, mesh | `podssh-iroh`, `podssh-relay/src/derp/`, `podssh-cli/src/net/` | Later or skip (2.6) |
-| WARP, MASQUE | `podssh-warp` | Keep cfrs; copy the stand-in edge for tests (2.6, 2.11) |
-| SSH server for git hosting (capabilities 5.4) | No production server. `podssh-cli/tests/ssh_harness/` (2,054 lines): a russh 0.65 server in tests (exec, pty, direct-tcpip, streamlocal, sftp subsystem, x11) | Reimplement on cfrs russh 0.64; read the harness as an API example (2.7) |
+| WARP, MASQUE | `podssh-warp` | Keep podnet; copy the stand-in edge for tests (2.6, 2.11) |
+| SSH server for git hosting (capabilities 5.4) | No production server. `podssh-cli/tests/ssh_harness/` (2,054 lines): a russh 0.65 server in tests (exec, pty, direct-tcpip, streamlocal, sftp subsystem, x11) | Reimplement on podnet russh 0.64; read the harness as an API example (2.7) |
 | File server (capabilities 3) | None | Reimplement (capabilities.md plan) |
 | Router, multi-WAN (mwan-field) | None (podssh mesh has exits and routes, no weights or health) | Reimplement |
 | seccomp/netns fixes, vn ideas | None (podssh rule: no `LD_PRELOAD`, no shims) | Reimplement |
 | tar writer (capabilities 6.6) | None | Reimplement |
 | File-size check | `scripts/check-repo.py` check 1 (500 lines, `crates/` and `scripts/`, floors) | Copy and adapt (allowlist) (2.8) |
 | Layer check | None (crates make the layers) | Reimplement from `study/tools/graph.py` |
-| Release tooling | `fetch-zig.sh` + mirrors, `check-release-tools.py`, `release-check*.sh`, `update-live.yml` | Copy `fetch-zig.sh` + mirrors; cfrs has the rest (2.9) |
+| Release tooling | `fetch-zig.sh` + mirrors, `check-release-tools.py`, `release-check*.sh`, `update-live.yml` | Copy `fetch-zig.sh` + mirrors; podnet has the rest (2.9) |
 | Upstream watch | `check-upstream.py`, `check-vendored.py`, `check-vendored-advisories.py`, relay facts watch | Copy and adapt the relay watch; vendored watches when a `vendor/` comes (2.10) |
 | ACME (TLS for a public listener) | `podssh-cli/src/acme/` 1,372 (TLS-ALPN-01, aws-lc-rs keys) | Later (file server or git on a public port) |
 | Self-hosted relay and mailbox | `podssh-relay/src/serve/` 11,793 (+ `mailbox/` 629) + `podssh-cli/src/relay_serve/` 1,730 | Owner decision; later |
@@ -190,14 +190,14 @@ section adds the copy facts.
     leave out `docs/releases/` and `docs/reports/` (history, with old
     paths).
   * `prove.rs:23` `Packages::of`: read the root package (`Cargo.toml` at the
-    root has a `[package]` in cfrs; podssh has none) and `fuzz/`.
+    root has a `[package]` in podnet; podssh has none) and `fuzz/`.
   * Delete `lib.rs` lines of the `interop` command, `src/interop/`,
     `tests/interop.rs`. Replace `tests/repository.rs` with a test of the
     podnet record (`CARGO_MANIFEST_DIR/../..`).
   * `cargo fmt` (width 100): `check.rs` becomes 586 lines (over 500, under
     800).
   * The word "yet": the `claims` check reads `README.md`, `AGENTS.md`,
-    `SECURITY.md`, `docs/`, `TODO/`. cfrs has 3 uses (`README.md:188`,
+    `SECURITY.md`, `docs/`, `TODO/`. podnet has 3 uses (`README.md:188`,
     `README.md:1219`, `SECURITY.md:140`). Each must name an entry or a date,
     or change.
 * Alias in `.cargo/config.toml`: `[alias] todo = "run -q -p podnet-todo --"`.
@@ -250,8 +250,8 @@ hints, its transit handshake and records), which podssh does not have.
 | --- | --- | --- | --- |
 | `session/` | 7,468 (31 files) | tokio, sha2, hmac, hkdf, x25519-dalek 3, rand, zeroize; `podssh_ws::text::one_line`, `podssh_ws::wake`, `crate::open::backoff` | Copy all but `handover/` (503) and `keep/handover.rs` (145), which hand a node's sessions to a new binary (T-668): about 6,820 lines. Proven standalone (trial) |
 | `e2e/` | 3,376 + tests in `src` | snow 0.10, identity, session; `podssh_ws::names`, `podssh_ws::text` | Copy the core: `mod.rs` 157, `frame.rs` 165, `channel.rs` 192, `channel/carry.rs` 211, `handshake.rs` 455, `ends.rs` 340, `ask.rs` 173 (about 1,700). Leave out `net.rs` (mesh document), `legs.rs` (relay-role tokens), `person.rs`, `hold/` (handover) |
-| `identity/` | 694 (4 files) | ed25519-dalek 2, hkdf, sha2, base64; `crate::cache` (private files) | Copy and adapt: ed25519-dalek 3 (in the cfrs lock); cfrs private-file helpers (`warp::private_file`, `pod_netns::listen::private_dir`) |
-| `udp/` | 352 | tokio; `podssh_ws::resolve` | Copy and adapt (UDP targets for `relay node`); same idea as cfrs `upstream.rs` 0x83 frames |
+| `identity/` | 694 (4 files) | ed25519-dalek 2, hkdf, sha2, base64; `crate::cache` (private files) | Copy and adapt: ed25519-dalek 3 (in the podnet lock); podnet private-file helpers (`warp::private_file`, `pod_netns::listen::private_dir`) |
+| `udp/` | 352 | tokio; `podssh_ws::resolve` | Copy and adapt (UDP targets for `relay node`); same idea as podnet `upstream.rs` 0x83 frames |
 
 What the layer gives (podssh `docs/design.md` section 5, measured in
 `docs/STATUS.md`): 64-bit offsets each way, a session id and a 256-bit
@@ -285,7 +285,7 @@ Where it applies in podnet:
 
 ### 2.4 The WebSocket relay client and the carriers
 
-cfrs: `src/ws_relay.rs` (995: hosts, mint, token cache, `RelayBudget`,
+podnet: `src/ws_relay.rs` (995: hosts, mint, token cache, `RelayBudget`,
 race of hosts), `src/relay_pool.rs` (380), `src/relay_reverse.rs` (1,139:
 pair, node, connect, plain bytes, one target, no resume). podssh's relay
 client is larger and more complete (rank of hosts T-606/T-607, a gate per
@@ -293,21 +293,21 @@ origin T-637, cleartext road T-326, HTTP/2 extended CONNECT T-321, HTTP road
 T-319, QUIC road T-667, signed mints T-448), but it is built on `podssh-ws`
 (its own WebSocket client, dial, proxies, DoH and pure-Rust TLS provider).
 A port of it means a port of `podssh-ws` too (24,776 lines), which
-duplicates cfrs `egress`, `resolve`, `trust` and the ring provider. Keep the
-cfrs client. Take ideas as TODO entries: the rank, the per-origin gate, the
+duplicates podnet `egress`, `resolve`, `trust` and the ring provider. Keep the
+podnet client. Take ideas as TODO entries: the rank, the per-origin gate, the
 cleartext road (needs relay support).
 
-Carriers of `podssh-ws` that cfrs lacks (egress "bring your own network";
+Carriers of `podssh-ws` that podnet lacks (egress "bring your own network";
 each is a `Dialer` after step F):
 
-| podssh | Lines (ws + cli) | Gap in cfrs | Adaptation |
+| podssh | Lines (ws + cli) | Gap in podnet | Adaptation |
 | --- | --- | --- | --- |
 | `via/` (HTTPS forward proxy over TLS, HTTP/1.1 and HTTP/2 CONNECT) | 811 + 509 | `src/egress.rs:232` refuses `https://` proxies | Replace `podssh_ws::dial` with `egress::dial`, TLS with tokio-rustls + ring; credentials from a file. M |
-| `vless/` (WebSocket and XHTTP) | 1,527 + 364 | none | uuid (in cfrs), h2 (in cfrs). M |
-| `wstunnel/` | 696 + 529 | none | JWT HS256 with hmac/sha2 (in cfrs). S |
+| `vless/` (WebSocket and XHTTP) | 1,527 + 364 | none | uuid (in podnet), h2 (in podnet). M |
+| `wstunnel/` | 696 + 529 | none | JWT HS256 with hmac/sha2 (in podnet). S |
 | `wisp/` | 1,331 | none | S-M |
-| `shadowsocks/` (AEAD) | 1,183 + 784 | none | Use ring AES-GCM and ChaCha20-Poly1305 in place of aes-gcm/chacha20poly1305; md5 0.8 and sha1 0.11 are in cfrs. M |
-| `cloudflare.rs` (`cloudflared access tcp` client) | 185 | `connect -L` speaks only the cfrs forward (`/__cfrs/ws`) | S |
+| `shadowsocks/` (AEAD) | 1,183 + 784 | none | Use ring AES-GCM and ChaCha20-Poly1305 in place of aes-gcm/chacha20poly1305; md5 0.8 and sha1 0.11 are in podnet. M |
+| `cloudflare.rs` (`cloudflared access tcp` client) | 185 | `connect -L` speaks only the podnet forward (`/__podnet/ws`) | S |
 | `forwarder/` | 816 + 997 | none | Later |
 | `meek`, `webtunnel` (Tor pluggable transports) | 474 + 272 | none | Only with a Tor adapter |
 
@@ -336,9 +336,9 @@ each is a `Dialer` after step F):
   It starts headscale with its embedded DERP and a CA of the run, a
   tailscaled target with Tailscale SSH and a userspace tailscaled peer, in
   Podman or Docker, with pre-auth keys in files only. Copy and adapt now
-  (podssh.md step 3) to test the cfrs sidecar paths with no Tailscale
-  account: `cfrs net tailscale --socket` (SOCKS5/HTTP front door over the
-  LocalAPI), `cfrs pod -x tailscale:SOCK -- CMD`, `cfrs net ts-shims`.
+  (podssh.md step 3) to test the podnet sidecar paths with no Tailscale
+  account: `podnet net tailscale --socket` (SOCKS5/HTTP front door over the
+  LocalAPI), `podnet pod -x tailscale:SOCK -- CMD`, `podnet net ts-shims`.
   Remove the `podssh ts`, `-W` and live-relay runs. About 400 lines. The
   plant `TS_HS_PLANT=unknown-key` stays.
 
@@ -365,7 +365,7 @@ podssh `docs/design.md` section 4). `crates/podssh-cli/tests/ssh_harness/`
 anyone, `exec_request` of test commands, pty, `direct-tcpip`,
 `direct-streamlocal`, the `sftp` subsystem (OpenSSH `sftp-server`), x11.
 
-* For `podnet git serve --ssh`: reimplement on cfrs `russh 0.64` (its
+* For `podnet git serve --ssh`: reimplement on podnet `russh 0.64` (its
   `server` module is compiled in, capabilities.md 1.5). Use the harness as
   an API example (Handler shape, exec and channel pumping, exit status).
 * For tests: copy and adapt parts of the harness (`mod.rs`, `serve.rs`,
@@ -379,60 +379,60 @@ anyone, `exec_request` of test commands, pty, `direct-tcpip`,
 * `scripts/check-repo.py` check 1 (`check_file_size`, lines 133-147):
   500 lines for each `crates/**/*.rs` and each `scripts/*.sh|*.py`, a floor
   of files read (a scan of nothing fails), `--plant-empty`. Copy and adapt
-  as `scripts/check-size.py` (architecture.md step A2): the cfrs roots
+  as `scripts/check-size.py` (architecture.md step A2): the podnet roots
   (`src`, `crates`, `tests`, `scripts`, `tools`), the limit (800 or 500,
   owner question), and an allowlist file of today's large files with their
   line counts that may only go down. About 100 lines.
 * Also worth taking from `check-repo.py`: check 3 (key shapes: add WARP and
   WireGuard private keys, Tailscale `tskey-`), check 4 (LF in shell
   scripts), check 5 (images pinned by digest), check 9 (no panicking print
-  macro in library code; cfrs has write-safe macros, so check only). cfrs
+  macro in library code; podnet has write-safe macros, so check only). podnet
   `check-workflows.py` already has check 8 (actions pinned by commit).
 * Layer check: podssh has none. Reimplement `scripts/check-layers.py` from
   `study/tools/graph.py` (architecture.md 3.4).
 
 ### 2.9 Release tooling
 
-cfrs already has the podssh release pattern: `release.yml` with attestation
+podnet already has the podssh release pattern: `release.yml` with attestation
 and cosign, `release-proofs.yml`, `release-short.sh`, `rebuild.sh`, the
 8-target zigbuild matrix. Take:
 
 * `scripts/fetch-zig.sh` (47) + `scripts/zig-mirrors.txt`: zig from the
   community mirrors in random order, then ziglang.org, checked by SHA-256.
-  cfrs `release.yml` downloads from ziglang.org alone. Copy as is; adapt
+  podnet `release.yml` downloads from ziglang.org alone. Copy as is; adapt
   the path names. S.
 * The mirror part of `scripts/check-release-tools.py` (74): a weekly check
   of the mirror list. S.
 * Skip `release-check*.sh` (T-251): `release-proofs.yml` covers the
-  after-tag checks in cfrs. Skip podssh `update-live.yml`: `live.yml` has
+  after-tag checks in podnet. Skip podssh `update-live.yml`: `live.yml` has
   the update step.
 
 ### 2.10 Upstream watch scripts
 
 | podssh | Watches | For podnet |
 | --- | --- | --- |
-| `check-upstream.py` | cloudflared pin of the quick tunnel | cfrs `tools/check-upstream.py` does the same with more checks. Keep cfrs |
+| `check-upstream.py` | cloudflared pin of the quick tunnel | podnet `tools/check-upstream.py` does the same with more checks. Keep podnet |
 | `check-vendored.py`, `check-vendored-advisories.py` | New releases and advisories of the vendored copies | Copy when podnet gets a `vendor/` (tailscale-rs) |
-| `check-relay-spec.py` (498) + `relay_watch.py` (155) + `relay_sections.py` (71) + `relay-watch.yml` (132) + `podssh-probe` (504 + 326) with `facts/relay-facts.toml` (108) | The relay contract at `https://tcp.ssh.relay.ajam.dev/llms-full.txt` against pinned facts; domain expiry | cfrs uses the same relay (relay commands, http2+relay leg) and has no watch. Copy and adapt: open a TODO entry in place of a GitHub issue (or print only); keep the facts file in `podnet-relay`. M |
+| `check-relay-spec.py` (498) + `relay_watch.py` (155) + `relay_sections.py` (71) + `relay-watch.yml` (132) + `podssh-probe` (504 + 326) with `facts/relay-facts.toml` (108) | The relay contract at `https://tcp.ssh.relay.ajam.dev/llms-full.txt` against pinned facts; domain expiry | podnet uses the same relay (relay commands, http2+relay leg) and has no watch. Copy and adapt: open a TODO entry in place of a GitHub issue (or print only); keep the facts file in `podnet-relay`. M |
 | `check-github-numbers.py` + `record-issues.yml` | `TODO/github.txt` against GitHub | Copy with the TODO tool (2.1) |
 | New: `tools/check-podssh.py` + a pin file | The podssh files that podnet copied | Write from `tools/check-upstream.py` (section 4) |
 
-### 2.11 Overlaps with cfrs, and which to keep
+### 2.11 Overlaps with podnet, and which to keep
 
-| Area | cfrs | podssh | Keep | Take from podssh |
+| Area | podnet | podssh | Keep | Take from podssh |
 | --- | --- | --- | --- | --- |
-| WARP | `src/warp/` 14,490 lines, 21 files: register, MASQUE HTTP/2 and HTTP/3, WireGuard leg, TCP and UDP on smoltcp 0.12, `warp proxy/forward/nc/run/tun/up/export`, rules, endpoint order and scan, `check_data_path` at open | `podssh-warp` 5,469: HTTP/2 only, TCP only, smoltcp 0.14, endpoint order (T-561), API routes (T-562), probe at open (T-560), record read again on a new key (T-399) | cfrs (superset; T-399, T-560, T-561, T-562 have cfrs equivalents) | `stand_in.rs` (427) + `inside.rs` (64): a fake edge on the loopback (TLS 1.3 with a pinned key, client certificate, connect-ip, smoltcp inside, routes to loopback services, counters, a "silenced" mode that takes the CONNECT and relays nothing, a key change); `src/tests/api.rs` (214, an API stand-in for `/reg`) and `tests/proxies.rs` (167, TLS server with a test CA). cfrs has only echo front doors in unit tests (for example `src/warp/session.rs:823`) and an env override `CFRS_WARP_API`. With both stand-ins, `warp register`, `warp proxy`, `warp forward`, `warp nc` get loopback tests (architecture.md 5: these are live-only today), and the "silenced" mode tests the B1 probe of mwan-field.md. Adapt to smoltcp 0.12 and cfrs types; test-only. M |
-| Cloudflare tunnel | `src/cloudflare/` + `tunnel` + `edge_h2` + `quicktunnel` + `config` + `proxy`: 11,735; quick and named tunnels, QUIC (quinn) and HTTP/2, ingress rules, legs quic+warp and http2+relay | `podssh-relay/src/quick/` 6,180: quick tunnels only, for a node's WebSocket visitors; QUIC through noq | cfrs | Nothing (podssh learned from cfrs issues #5, #32, #42, #54, #57) |
-| Relay client | `ws_relay`, `relay_pool`, `relay_reverse`: 2,514 | about 15,000 with `reverse/`, `pair/`, roads | cfrs client | `session/`, `e2e/` core, `identity/`, `udp/` (2.3); ideas: rank, gate, cleartext road |
+| WARP | `src/warp/` 14,490 lines, 21 files: register, MASQUE HTTP/2 and HTTP/3, WireGuard leg, TCP and UDP on smoltcp 0.12, `warp proxy/forward/nc/run/tun/up/export`, rules, endpoint order and scan, `check_data_path` at open | `podssh-warp` 5,469: HTTP/2 only, TCP only, smoltcp 0.14, endpoint order (T-561), API routes (T-562), probe at open (T-560), record read again on a new key (T-399) | podnet (superset; T-399, T-560, T-561, T-562 have podnet equivalents) | `stand_in.rs` (427) + `inside.rs` (64): a fake edge on the loopback (TLS 1.3 with a pinned key, client certificate, connect-ip, smoltcp inside, routes to loopback services, counters, a "silenced" mode that takes the CONNECT and relays nothing, a key change); `src/tests/api.rs` (214, an API stand-in for `/reg`) and `tests/proxies.rs` (167, TLS server with a test CA). podnet has only echo front doors in unit tests (for example `src/warp/session.rs:823`) and an env override `PODNET_WARP_API`. With both stand-ins, `warp register`, `warp proxy`, `warp forward`, `warp nc` get loopback tests (architecture.md 5: these are live-only today), and the "silenced" mode tests the B1 probe of mwan-field.md. Adapt to smoltcp 0.12 and podnet types; test-only. M |
+| Cloudflare tunnel | `src/cloudflare/` + `tunnel` + `edge_h2` + `quicktunnel` + `config` + `proxy`: 11,735; quick and named tunnels, QUIC (quinn) and HTTP/2, ingress rules, legs quic+warp and http2+relay | `podssh-relay/src/quick/` 6,180: quick tunnels only, for a node's WebSocket visitors; QUIC through noq | podnet | Nothing (podssh learned from podnet issues #5, #32, #42, #54, #57) |
+| Relay client | `ws_relay`, `relay_pool`, `relay_reverse`: 2,514 | about 15,000 with `reverse/`, `pair/`, roads | podnet client | `session/`, `e2e/` core, `identity/`, `udp/` (2.3); ideas: rank, gate, cleartext road |
 | Relay server | none | `serve/` 11,793 | n/a | Owner decision (self-hosted relay) |
-| Egress proxy | `egress.rs` 1,707: HTTP CONNECT (Basic, Digest), SOCKS5/5h, `unix:`, `+exec:`, `NO_PROXY`, RFC 8305 | `podssh-ws` `dial.rs`, `proxy.rs`, `socks5.rs`, MPTCP | cfrs | `via` for `https://` proxies (2.4) |
-| DNS | `resolve.rs` 591: pins, system, DoH by IP and by name through the proxy | `resolve/` 2,215, ECH | cfrs | Nothing now |
-| TLS | ring (rustls, quinn, rcgen) | own pure-Rust provider (no C) | cfrs (ring builds on all 8 targets with zig) | Nothing |
-| Tailscale | sidecar: `pod-netns/src/tailscale.rs` LocalAPI dialer, `net tailscale`, `pod -x tailscale:`, `net ts-shims` | in-process fork (feature off, not shipped) | cfrs now; in-process later | Headscale harness now |
-| WireGuard | own initiator `src/warp/wg.rs` (1,078) | none of its own | cfrs | Nothing |
-| update | `update.rs` (own cosign bundle check, a CLAUDE.md ruling) | `update/` 1,744 | cfrs | Nothing |
-| detach, ps, autostart | `detach.rs`, `instances.rs`, `autostart.rs` | `detach/` 3,151 | cfrs | Nothing |
-| doctor, manual | `doctor.rs`, `manual/` | `doctor/` 8,302, `man/` 7,385 | cfrs | Nothing |
+| Egress proxy | `egress.rs` 1,707: HTTP CONNECT (Basic, Digest), SOCKS5/5h, `unix:`, `+exec:`, `NO_PROXY`, RFC 8305 | `podssh-ws` `dial.rs`, `proxy.rs`, `socks5.rs`, MPTCP | podnet | `via` for `https://` proxies (2.4) |
+| DNS | `resolve.rs` 591: pins, system, DoH by IP and by name through the proxy | `resolve/` 2,215, ECH | podnet | Nothing now |
+| TLS | ring (rustls, quinn, rcgen) | own pure-Rust provider (no C) | podnet (ring builds on all 8 targets with zig) | Nothing |
+| Tailscale | sidecar: `pod-netns/src/tailscale.rs` LocalAPI dialer, `net tailscale`, `pod -x tailscale:`, `net ts-shims` | in-process fork (feature off, not shipped) | podnet now; in-process later | Headscale harness now |
+| WireGuard | own initiator `src/warp/wg.rs` (1,078) | none of its own | podnet | Nothing |
+| update | `update.rs` (own cosign bundle check, a CLAUDE.md ruling) | `update/` 1,744 | podnet | Nothing |
+| detach, ps, autostart | `detach.rs`, `instances.rs`, `autostart.rs` | `detach/` 3,151 | podnet | Nothing |
+| doctor, manual | `doctor.rs`, `manual/` | `doctor/` 8,302, `man/` 7,385 | podnet | Nothing |
 
 ---
 
@@ -445,10 +445,10 @@ lines before reformat (add about 17 % after `cargo fmt` at width 100).
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | C1 | `podssh-todo` minus `interop/` | Copy as is, then adapt constants | `crates/podnet-todo` | 2.1 | none | not shipped | 3,048 + 1,212 | S (+ M for the record import) |
 | C2 | `TODO/RULES.md`, `check-github-numbers.py`, `record-issues.yml`, plant t360 | Copy and adapt (STE, no narrative) | `TODO/`, `scripts/`, `.github/` | rewrite text; paths | none | n/a | about 320 | S |
-| C3 | WARP stand-in edge + API stand-in | Copy and adapt (test-only) | `src/warp/` `#[cfg(test)]` or a `stand-in` feature now; `podnet-warp` after step E | smoltcp 0.14 to 0.12 (or cfrs `WarpStack`), podssh-ws HTTP to h2/hyper-free code, cfrs `Identity`, `CFRS_WARP_API` and an endpoint override | none (rcgen, h2, rustls in cfrs) | test-only | about 900 | M |
+| C3 | WARP stand-in edge + API stand-in | Copy and adapt (test-only) | `src/warp/` `#[cfg(test)]` or a `stand-in` feature now; `podnet-warp` after step E | smoltcp 0.14 to 0.12 (or podnet `WarpStack`), podssh-ws HTTP to h2/hyper-free code, podnet `Identity`, `PODNET_WARP_API` and an endpoint override | none (rcgen, h2, rustls in podnet) | test-only | about 900 | M |
 | C4 | `session/` without handover | Copy and adapt | `podnet-relay` (`src/relay/session/` before step E) | `podssh_ws::text` to a core helper; `wake.rs` copy (Linux only); `open::backoff` to core; `PODSSH_REPLAY_BUFFER` to `PODNET_*` + manual facts; T-refs in comments to "podssh T-NNN" or removed; dated history in comments removed (CLAUDE.md "no history") | `x25519-dalek 3.0.0` (BSD-3-Clause), the only new crate | pure Rust: yes | 6,820 + about 4,900 | M |
 | C5 | Resume on `relay node`/`relay connect` (T-155) | Reimplement the wiring with C4 | `podnet-relay` (`relay_reverse`) | far end per session at the node; client + resume with a new `/v1/connect/NAME` link; `-v` line per move; expiry warning from `Pair::expires` | none | yes | about 400 new + live test (200 MiB each way through the relay, crosses the 64 MiB cap) | M |
-| C6 | `e2e/` core + `identity/` | Copy and adapt | `podnet-relay` | ed25519-dalek 2 to 3; `crate::cache` to cfrs private-file helpers; `podssh_ws::names` to cfrs name checks; leave out `net`, `legs`, `person`, `hold` | `snow 0.10` brings the old RustCrypto line: curve25519-dalek 4.1.3, sha2 0.10, digest 0.10, chacha20poly1305 0.10, aead 0.5 and kin (about 10 duplicate-version warnings; `multiple-versions = "warn"`; no open advisory known, run `cargo deny` at copy time). Option: own Noise XX on x25519-dalek 3 + ring AEAD + sha2/hmac (about 350 lines), checked against snow as a dev-dependency and the cacophony vectors | yes | 2,400 + about 1,000 | M |
+| C6 | `e2e/` core + `identity/` | Copy and adapt | `podnet-relay` | ed25519-dalek 2 to 3; `crate::cache` to podnet private-file helpers; `podssh_ws::names` to podnet name checks; leave out `net`, `legs`, `person`, `hold` | `snow 0.10` brings the old RustCrypto line: curve25519-dalek 4.1.3, sha2 0.10, digest 0.10, chacha20poly1305 0.10, aead 0.5 and kin (about 10 duplicate-version warnings; `multiple-versions = "warn"`; no open advisory known, run `cargo deny` at copy time). Option: own Noise XX on x25519-dalek 3 + ring AEAD + sha2/hmac (about 350 lines), checked against snow as a dev-dependency and the cacophony vectors | yes | 2,400 + about 1,000 | M |
 | C7 | `udp/` | Copy and adapt | `podnet-relay` | `podssh_ws::resolve` to `resolve.rs`; UDP target for `relay node` | none | yes | 352 + 12 tests | S |
 | C8 | `code/` mailbox, wormhole, phrase, words | Copy and adapt | `podnet-relay` (`rendezvous/`) | WebSocket on tokio-tungstenite + `egress::dial`; AppID, env names | `spake2 0.4` (curve25519-dalek 4, hkdf 0.12, rand_core 0.6) + `crypto_secretbox 0.1` (salsa20 0.10, poly1305 0.8): the same old line as snow; MIT/Apache. Options: `spake2 0.5.0-pre.0` (curve 5, prerelease) or own SPAKE2 on curve25519-dalek 5 (about 250 lines) | yes | 1,185 + about 600 | S-M |
 | C9 | `transit/` | Copy and adapt | `podnet-relay` (`carrier/transit/`) | keys from the PAKE key; WebSocket glue | none beyond C4 | yes | 1,013 + 340 | M |
@@ -456,15 +456,15 @@ lines before reformat (add about 17 % after `cargo fmt` at width 100).
 | C11 | Headscale harness | Copy and adapt | `scripts/`, `images/`, `.github/workflows/` | sidecar runs only (2.5) | none (CI images) | n/a | about 400 | M |
 | C12 | Size check from `check-repo.py` check 1 (+ checks 3, 4, 5) | Copy and adapt | `scripts/check-size.py`, `scripts/check-repo.py` | roots, limit, allowlist that only shrinks, floors, `--plant-empty` | none | n/a | about 250 | S |
 | C13 | `fetch-zig.sh` + `zig-mirrors.txt` + mirror check | Copy as is (names) | `scripts/`, `release.yml` | env names | none | n/a | about 150 | S |
-| C14 | Relay contract watch | Copy and adapt | `podnet-relay` (facts file, test) + `scripts/` + workflow | facts of the paths cfrs uses (`/v1/pair`, `/v1/node`, `/v1/connect`, mint, limits); TODO entry in place of an issue | toml (new; pure Rust, MIT/Apache) or a hand reader | n/a | about 900 | M |
+| C14 | Relay contract watch | Copy and adapt | `podnet-relay` (facts file, test) + `scripts/` + workflow | facts of the paths podnet uses (`/v1/pair`, `/v1/node`, `/v1/connect`, mint, limits); TODO entry in place of an issue | toml (new; pure Rust, MIT/Apache) or a hand reader | n/a | about 900 | M |
 | C15 | `wormhole-peer.py` + interop job | Copy the pattern | `scripts/`, workflow | podnet AppID | none (CI venv) | n/a | about 120 | S |
-| C16 | `podssh-ws` roads: `via`, `wstunnel`, `vless`, `wisp`, `shadowsocks`, `cloudflare.rs` | Copy and adapt later (after step F, each a `Dialer`) | `podnet-core` (via) or an adapter crate | `egress::dial`, ring TLS and AEAD | none (ring, h2, uuid, md5, sha1, hmac in cfrs) | yes | about 5,700 + CLI | M each |
+| C16 | `podssh-ws` roads: `via`, `wstunnel`, `vless`, `wisp`, `shadowsocks`, `cloudflare.rs` | Copy and adapt later (after step F, each a `Dialer`) | `podnet-core` (via) or an adapter crate | `egress::dial`, ring TLS and AEAD | none (ring, h2, uuid, md5, sha1, hmac in podnet) | yes | about 5,700 + CLI | M each |
 | C17 | DERP carrier | Copy and adapt later | `podnet-relay` (`carrier/derp/`) | WebSocket glue | `crypto_box 0.9` (old line) | yes | 3,543 + tests | M-L |
 | C18 | ACME client | Copy and adapt later | `podnet-serve` | aws-lc-rs keys to ring/rcgen | none | yes | 1,372 | M |
 | C19 | `podssh-ts` + `vendor/tailscale-rs` + patches | Copy later behind a feature, owner decision | `crates/podnet-ts` + `vendor/` | 2.5 | aws-lc-sys (C), ~420 packages, RUSTSEC-2024-0436 ignore, MPL-2.0 exception | unproven on 4 of 8 | 1,794 + 70,135 vendored | L |
 | C20 | `podssh-iroh` | Later, owner decision | adapter crate | iroh feature for ring, if any | aws-lc (C), ~520 packages | unproven | 5,367 | L |
-| C21 | Relay role (`serve/` + `relay_serve/` + `mailbox/`) | Owner decision | `podnet-relay` (`serve`) | port onto cfrs HTTP stack (podssh-ws `http`, `server`, `tls_server` today) | h2 (in cfrs) | yes | about 14,000 | L+ |
-| C22 | russh test server harness | Copy parts for tests | `podnet-testkit` | russh 0.65 to 0.64 API | none (russh in cfrs) | test-only | about 800 | S |
+| C21 | Relay role (`serve/` + `relay_serve/` + `mailbox/`) | Owner decision | `podnet-relay` (`serve`) | port onto podnet HTTP stack (podssh-ws `http`, `server`, `tls_server` today) | h2 (in podnet) | yes | about 14,000 | L+ |
+| C22 | russh test server harness | Copy parts for tests | `podnet-testkit` | russh 0.65 to 0.64 API | none (russh in podnet) | test-only | about 800 | S |
 | - | Everything else (`podssh-cli` UX, `podssh-ssh`, `podssh-terminal`, `podssh-core`, `podssh-probe` as a crate, `podssh-tor`, `quick/`, `podssh-warp` road, `podssh-ws` TLS provider, DoH, proxies, detach, update, man, doctor, interop harnesses, `blocking/`, Windows and macOS code, `TODO/` content, `docs/STATUS.md`) | Skip | | podnet has its own, or does not need it | | | | |
 
 Totals: C1-C15 and C22 (now, before or with the crate split): about 18,700
@@ -482,19 +482,19 @@ C16-C21 (later): about 30,000 lines plus the 70,135-line fork.
    magic strings (decide per string: a changed magic breaks interop with
    podssh; section 2.3).
 3. Comments: podssh comments name `T-NNN`, `Qnn` and dates. In podnet,
-   write "podssh T-NNN" (as cfrs writes "podssh #118") or remove; remove
+   write "podssh T-NNN" (as podnet writes "podssh #118") or remove; remove
    dated narrative ("MEASURED 2026-10-02 ..."), keep the technical fact.
    Check the STE rules of `CLAUDE.md`.
-4. Format with `cargo fmt` at the cfrs width; split a file that passes the
+4. Format with `cargo fmt` at the podnet width; split a file that passes the
    size limit.
 5. Linux only: remove `cfg(windows)` and `cfg(target_os = "macos")` code
    and the `windows-sys`, `security-framework` dependencies.
-6. Messages: podssh passes a `Say` callback for user lines; cfrs uses
+6. Messages: podssh passes a `Say` callback for user lines; podnet uses
    tracing and the write-safe print macros. Keep `Say` at the crate edge
    or map it to tracing.
-7. Private files: use the cfrs helpers (mode 0600, owner check), not
+7. Private files: use the podnet helpers (mode 0600, owner check), not
    podssh `cache::Others`.
-8. Exit codes: map podssh faults to the 8 cfrs exit codes.
+8. Exit codes: map podssh faults to the 8 podnet exit codes.
 9. Tests: copy the tests with the code; keep their names; add the
    `need_loopback!` guard where a test binds TCP (the `restricted-host`
    job).
@@ -503,16 +503,16 @@ C16-C21 (later): about 30,000 lines plus the 70,135-line fork.
 
 ### 3.2 Edition and MSRV
 
-podssh workspace: edition 2021, MSRV 1.89 (same as cfrs). `podssh-warp` and
+podssh workspace: edition 2021, MSRV 1.89 (same as podnet). `podssh-warp` and
 `podssh-iroh` declare 1.91, `podssh-ts` and `podssh-tor` 1.92 (only C19
 and C20 bring a higher MSRV; keep them behind features with their own MSRV
 check, as podssh `gate.sh` `step_msrv_ts` does). C3 does not need 1.91 when
-it moves to smoltcp 0.12. The cfrs `smoltcp = "=0.12.0"` pin and
+it moves to smoltcp 0.12. The podnet `smoltcp = "=0.12.0"` pin and
 `SMOLTCP_IFACE_MAX_ADDR_COUNT = "8"` stay.
 
 ### 3.3 Static musl, 8 targets
 
-C1-C18 and C22 are pure Rust or use only crates that cfrs already builds
+C1-C18 and C22 are pure Rust or use only crates that podnet already builds
 for the 8 targets (ring, rustls, h2). The added crates (x25519-dalek 3,
 snow, spake2, crypto_secretbox, crypto_box, curve25519-dalek 4.1.3) are
 pure Rust with portable backends (u32 on i686 and arm, u64 elsewhere).
@@ -526,13 +526,13 @@ targets): not proven on i686, arm, loongarch64, powerpc64le.
 
 | Option | How | For | Against |
 | --- | --- | --- | --- |
-| A. Git dependency on podssh crates | `podssh-relay = { git = "https://github.com/Azathothas/podssh", rev = "..." }` | No copy; fixes come with a rev bump; podbox already plans this (podssh `docs/design.md` section 3) | `deny.toml` has `unknown-git = "deny"` and `allow-git = []`; `podssh-relay` needs `podssh-ws` unconditionally, which needs `rsa 0.9` (RUSTSEC-2023-0071; cfrs `ignore = []`), podssh's own crypto provider (aes-gcm, p256, p384, x25519 3, ed25519 2) beside ring; a second WebSocket, dial, DoH and TLS stack; Windows and macOS dependencies (inert on Linux); podssh names on the wire and in variables (`PODSSH_TRANSIT`, AppID `github.com/Azathothas/podssh/pair`); a rev bump drags podssh's daily changes; cargo fetches the whole podssh repository and its history (the shallow tree is 30 MB: `crates/` 21 MB, `vendor/` 12 MB, `TODO/` 4.5 MB) |
-| B. Common crate on crates.io | Extract the layer (session + e2e + identity) into a small crate with no podssh-ws types; both repos depend on it | One source; registry source passes deny; a version per wire change | Rulings: cfrs "publish nothing now" (2026-11-04), podssh `publish = false`; work in podssh (a separate project and its agents); semver and release work in a third place; the layer still changes (T-668 handover, T-663 spare link in the last weeks) |
-| C. Copy and own, with a pin and a watch | Copy the files into podnet crates; a pin file lists each source path, the podssh commit and the SHA-256; a weekly script compares each source path at podssh `main` with the pinned SHA-256 and names the files that changed | Full control: renames, ring, cfrs deps, Linux only, no deny change, no git source; the pattern exists in cfrs (`tools/check-upstream.py`, `src/cloudflare/cloudflared-pin.txt` with `copy` and `source` lines, `upstream.yml`); 0BSD and one owner, so no licence work | Drift: a podssh fix must be ported by hand; two copies to maintain; wire compatibility is a test, not a guarantee |
+| A. Git dependency on podssh crates | `podssh-relay = { git = "https://github.com/Azathothas/podssh", rev = "..." }` | No copy; fixes come with a rev bump; podbox already plans this (podssh `docs/design.md` section 3) | `deny.toml` has `unknown-git = "deny"` and `allow-git = []`; `podssh-relay` needs `podssh-ws` unconditionally, which needs `rsa 0.9` (RUSTSEC-2023-0071; podnet `ignore = []`), podssh's own crypto provider (aes-gcm, p256, p384, x25519 3, ed25519 2) beside ring; a second WebSocket, dial, DoH and TLS stack; Windows and macOS dependencies (inert on Linux); podssh names on the wire and in variables (`PODSSH_TRANSIT`, AppID `github.com/Azathothas/podssh/pair`); a rev bump drags podssh's daily changes; cargo fetches the whole podssh repository and its history (the shallow tree is 30 MB: `crates/` 21 MB, `vendor/` 12 MB, `TODO/` 4.5 MB) |
+| B. Common crate on crates.io | Extract the layer (session + e2e + identity) into a small crate with no podssh-ws types; both repos depend on it | One source; registry source passes deny; a version per wire change | Rulings: podnet "publish nothing now" (2026-11-04), podssh `publish = false`; work in podssh (a separate project and its agents); semver and release work in a third place; the layer still changes (T-668 handover, T-663 spare link in the last weeks) |
+| C. Copy and own, with a pin and a watch | Copy the files into podnet crates; a pin file lists each source path, the podssh commit and the SHA-256; a weekly script compares each source path at podssh `main` with the pinned SHA-256 and names the files that changed | Full control: renames, ring, podnet deps, Linux only, no deny change, no git source; the pattern exists in podnet (`tools/check-upstream.py`, `src/cloudflare/cloudflared-pin.txt` with `copy` and `source` lines, `upstream.yml`); 0BSD and one owner, so no licence work | Drift: a podssh fix must be ported by hand; two copies to maintain; wire compatibility is a test, not a guarantee |
 
 Recommendation: C, copy and own, now. Reasons: the podssh crates that podnet
-needs are tied to `podssh-ws`, which duplicates cfrs and brings an advisory
-that cfrs does not allow; podnet ships 8 targets and podssh 4; podnet renames
+needs are tied to `podssh-ws`, which duplicates podnet and brings an advisory
+that podnet does not allow; podnet ships 8 targets and podssh 4; podnet uses
 the wire and variable names; the layer still moves in podssh. Revisit B when
 both projects publish and the layer's wire is stable: then extract
 `session` + `e2e` + `identity` (about 9,000 lines, no podssh-ws types after
@@ -557,7 +557,7 @@ The watch (new, about 150 lines, from `tools/check-upstream.py`):
   `https://forge.web.pkgforge.dev/github/repos/Azathothas/podssh/...` (the
   CLAUDE.md rule for read-only queries), prints each source whose SHA-256
   changed with the podssh commits that touched it, exit 1; exit 2 when it
-  cannot read; `--plant-sum PATH` must fail (the cfrs plant rule).
+  cannot read; `--plant-sum PATH` must fail (the podnet plant rule).
 * A changed file becomes a TODO entry "Port podssh change to PATH", not an
   automatic copy.
 * Optional, when interop is a goal: a CI job that runs a podssh release
@@ -587,7 +587,7 @@ makes reviews and `git log --follow` harder.
 | H | After F (traits) | Each as an adapter behind a feature, each after an owner answer: `via` (https proxy) first, then wstunnel, VLESS, Shadowsocks, Wisp (C16); DERP carrier (C17); ACME (C18) with the file server or git on a public port; Tailscale in process (C19); iroh (C20); relay role (C21) | Per adapter: loopback test against the upstream server in CI (podssh's interop workflows show the servers: `vless-interop.yml`, `wstunnel-interop.yml`, `via-interop.yml`) |
 
 What the next session does first (in `Azathothas/podnet`, the code still
-named cfrs):
+named podnet):
 
 1. Read `docs/HANDOFF.md` (if it exists), `docs/maintenance.md`,
    `docs/decisions.md`, and the owner's answers to the questions below.
@@ -627,4 +627,4 @@ named cfrs):
    Azathothas/podssh is 0BSD and needs no credit")?
 9. From podssh.md: in-process Tailscale behind a feature (Q1); the
    milestone names and the first id of the record (Q2); the rows for the
-   closed cfrs issues (Q3).
+   closed podnet issues (Q3).

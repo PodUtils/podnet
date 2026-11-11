@@ -10,7 +10,7 @@ lines of Rust, csup/csup.c 1 408, test/*.c 156, prove.sh 525, scripts/*.sh
 No private key or token is in the kit (grep for key, token and 32-byte hex or
 base64 patterns: no match outside `Cargo.lock` checksums).
 
-Compared with `/workspace/cfrs` at `3bed023`, `study/mwan-field.md` and
+Compared with the tree at `3bed023`, `study/mwan-field.md` and
 `study/architecture.md`.
 
 Sizes: XS <= 2 h, S <= 1 day, M = 2-4 days, L = 1-2 weeks.
@@ -19,10 +19,10 @@ Sizes: XS <= 2 h, S <= 1 day, M = 2-4 days, L = 1-2 weeks.
 
 ## 0. Verdict in five lines
 
-* vn is a prototype of two things that cfrs already has in a more complete
-  form: a pod with its own kernel stack behind a userspace router (cfrs
+* vn is a prototype of two things that podnet already has in a more complete
+  form: a pod with its own kernel stack behind a userspace router (podnet
   `pod-netns` netns backend, no root) and a seccomp user-notify supervisor
-  (cfrs `pod-netns` seccomp backend, 7 architectures, async).
+  (podnet `pod-netns` seccomp backend, 7 architectures, async).
 * Port no file as is. Take five ideas (section 3): a gateway-to-host-loopback
   map, generic UDP in the netns backend, three seccomp details for W-F2, a
   kind for ICMP datagram sockets, and (optional) a veth + `AF_PACKET` wire
@@ -179,12 +179,12 @@ namespaces.
 | --- | --- | --- | --- |
 | A guest "keeps UDP, kernel WireGuard and every other IP protocol" | README:4-6 | Protocols other than 1/6/17 are dropped (router.rs:327); ICMP only to the gateway; remote UDP is carried as records inside a TCP `CONNECT` to the same name:port, which no UDP service reads | Holds only for UDP that ends on the host (gateway = 127.0.0.1) |
 | Kernel WireGuard handshake, ICMP and 100 000 bytes "over the virtual network" | README:178-179 | Peer endpoint 10.7.0.1 = host 127.0.0.1 (prove.sh:465) | Proves a loopback path, not WireGuard over a TCP-only egress |
-| Static binaries are served as dynamic ones | README:20-22 | Seccomp interception, x86-64 only | Holds in principle; cfrs already does it on 7 architectures |
+| Static binaries are served as dynamic ones | README:20-22 | Seccomp interception, x86-64 only | Holds in principle; podnet already does it on 7 architectures |
 | A guest listener receives inbound flows (user wire) | README:190, NOTES:19 | csup sends `Q` plus a path that `handle_listen` never reads (guest.rs:514-541, csup.c:883-901); csup never sends `P`; `connect_listener` refuses an empty path (guest.rs:191) | Cannot hold with this source |
 | Pool of "192 UDP + 8 ICMP + 96 bare connections" | NOTES:44-46 | `pool_take_bare`/`pool_take_udp`/`pool_take_icmp` never set `used` (csup.c:254-278; only the listener pool sets it, csup.c:902). A second TCP `connect` writes its header into the first, live, connection; after one dead slot is retired (`fd = -1`), each later `connect` gets `ECONNREFUSED`. All UDP sockets share the first `U` connection | One TCP connection per guest works; more break |
 | The seccomp call is made "through inline assembly" | NOTES:28-30 | `syscall(SYS_seccomp, ...)`; no `asm` in csup.c | Not in the source |
 | "no library is preloaded" | main.rs:200-203 | README:91-104 and scripts set `VN_SHIM=.../vnshim.so`; no preload source or file exists | Document drift |
-| DoH "on the carrier's own path" past a broker that refuses addresses | resolve.rs:1-6 | `RESOLVER_HOST = "1.1.1.1"`, so the request is `CONNECT 1.1.1.1:443` (main.rs:38, resolve.rs:55). The cfrs measured sandbox proxy resets exactly this (`docs/target-environment.md:23`) | Fails on the broker it describes |
+| DoH "on the carrier's own path" past a broker that refuses addresses | resolve.rs:1-6 | `RESOLVER_HOST = "1.1.1.1"`, so the request is `CONNECT 1.1.1.1:443` (main.rs:38, resolve.rs:55). The podnet measured sandbox proxy resets exactly this (`docs/target-environment.md:23`) | Fails on the broker it describes |
 | Prebuilt binaries | README:65 | `file`: dynamically linked glibc PIE, not static. `strings bin-prebuilt/vn-csup` has `CSUP_DEBUG`, `csup: supervisor starting`, `csup: connect fd=%d`, which csup.c does not have | The binaries are not built from this source |
 
 What `prove.sh` measures. Capable host (root): `/proc/modules` has
@@ -221,14 +221,14 @@ process, which is why the pool defect does not show.
   `x25519-dalek 2.0.0-rc.3`, `curve25519-dalek 4.0.0-rc.3`, `nix 0.25.1`,
   `parking_lot`, `tracing`, `ip_network_table`.
 * Licence: vn is 0BSD (LICENSE): compatible with podnet 0BSD; no notice is
-  required. The crate licences are all in the cfrs `deny.toml` allow list
+  required. The crate licences are all in the podnet `deny.toml` allow list
   (`boringtun` BSD-3-Clause adds a notice line to `THIRD_PARTY_NOTICES.md`).
 * Blockers for podnet (to confirm with `cargo deny` and a cross build):
   `curve25519-dalek < 4.1.3` has RUSTSEC-2024-0344 and `ring < 0.17.12` has
-  RUSTSEC-2025-0009, and cfrs has `ignore = []`; `ring 0.16` has no support
+  RUSTSEC-2025-0009, and podnet has `ignore = []`; `ring 0.16` has no support
   for riscv64, powerpc64le and loongarch64, three of the eight release
-  targets in `deny.toml`. cfrs already has its own WireGuard on `ring 0.17`
-  (`src/warp/wg.rs`, own BLAKE2s). cfrs pins `smoltcp =0.12.0` for the MSRV
+  targets in `deny.toml`. podnet already has its own WireGuard on `ring 0.17`
+  (`src/warp/wg.rs`, own BLAKE2s). podnet pins `smoltcp =0.12.0` for the MSRV
   (Cargo.toml:89); vn needs 0.14.
 
 ### 1.11 Other defects (do not copy)
@@ -236,7 +236,7 @@ process, which is why the pool defect does not show.
 * The guest socket and its directory are made with default modes
   (main.rs:186-188, guest.rs:96-102): each local user can use the egress,
   and op `P` makes the server connect to any Unix path that the vn user can
-  reach (a confused deputy). cfrs has `listen::private_dir` (issue 306).
+  reach (a confused deputy). podnet has `listen::private_dir` (issue 306).
 * csup makes predictable `$TMPDIR/vn-sup-PID-PORT.sock` names and unlinks
   them first (csup.c:1321-1352).
 * The DoH request puts the guest's DNS name in the request line with no
@@ -258,31 +258,31 @@ process, which is why the pool defect does not show.
 
 ---
 
-## 2. Module-by-module comparison with cfrs
+## 2. Module-by-module comparison with podnet
 
-| vn | cfrs piece | Who covers it better | Note |
+| vn | podnet piece | Who covers it better | Note |
 | --- | --- | --- | --- |
-| Kernel mode: named root netns + TAP (`main.rs`, `tap.rs`) | `crates/pod-netns/src/netns.rs` (1 199): user + net namespace, TUN `eth0`, smoltcp, no root, no `ip` binary; `raw.rs` (436): TUN fd of raw IP to WARP | cfrs | cfrs needs no root. vn's only extra: a long-lived namespace that later programs join (`ip netns exec`), which is W-F1 `--join` in `mwan-field.md` |
-| `wire.rs` veth + `AF_PACKET` | none (no `veth`, `AF_PACKET`, `IFF_TAP` or `medium-ethernet` in cfrs) | vn (idea only) | A wire with no `/dev/net/tun`. vn needs root and `ip`/`ethtool`; podnet could do it inside the pod's own user namespace (P5) |
-| `router.rs` TCP: listen socket per SYN, dial at `SynReceived`, abort on failure | `netns.rs` `HeldSyn` (issue 190): the SYN waits until the upstream dial ends; a failed dial gets a RST; a tokio task per dial | cfrs | vn completes the handshake to the guest, then aborts: the guest sees a reset after `connect()` returned 0 |
-| `router.rs` UDP flows (`admit_udp`, `pump_datagrams`) | netns backend: UDP 53 only (`answer_dns`, netns.rs:666) | vn (idea only) | cfrs netns pods have no generic UDP. smoltcp 0.12 already has `UdpMetadata::local_address` (the comment at netns.rs:662-665 is out of date). P2 |
+| Kernel mode: named root netns + TAP (`main.rs`, `tap.rs`) | `crates/pod-netns/src/netns.rs` (1 199): user + net namespace, TUN `eth0`, smoltcp, no root, no `ip` binary; `raw.rs` (436): TUN fd of raw IP to WARP | podnet | podnet needs no root. vn's only extra: a long-lived namespace that later programs join (`ip netns exec`), which is W-F1 `--join` in `mwan-field.md` |
+| `wire.rs` veth + `AF_PACKET` | none (no `veth`, `AF_PACKET`, `IFF_TAP` or `medium-ethernet` in podnet) | vn (idea only) | A wire with no `/dev/net/tun`. vn needs root and `ip`/`ethtool`; podnet could do it inside the pod's own user namespace (P5) |
+| `router.rs` TCP: listen socket per SYN, dial at `SynReceived`, abort on failure | `netns.rs` `HeldSyn` (issue 190): the SYN waits until the upstream dial ends; a failed dial gets a RST; a tokio task per dial | podnet | vn completes the handshake to the guest, then aborts: the guest sees a reset after `connect()` returned 0 |
+| `router.rs` UDP flows (`admit_udp`, `pump_datagrams`) | netns backend: UDP 53 only (`answer_dns`, netns.rs:666) | vn (idea only) | podnet netns pods have no generic UDP. smoltcp 0.12 already has `UdpMetadata::local_address` (the comment at netns.rs:662-665 is out of date). P2 |
 | `router.rs` ICMP echo to the gateway | netns: smoltcp answers echoes to its own address; raw backend carries real ICMP | equal | - |
 | `Composite` + `LocalDatagram` (gateway = host loopback) | netns backend sends a gateway destination to the upstream as `10.66.255.254:port`; seccomp sends loopback direct (issue 80) | vn (idea only) | A netns pod cannot reach a host service. P1 |
-| `names.rs` + `answer_dns` | `fakedns.rs` (198.18.0.0/15 = 131 072 addresses, fake IPv6 in seccomp, `--map` pins), `dns.rs` (pointer-safe parser) | cfrs | - |
-| `resolve.rs` (DoH JSON at the IP 1.1.1.1) | `src/resolve.rs` (591): pins, system resolver, DoH by IP at two operators with NXDOMAIN fallback, DoH by name through the proxy (issue 259) | cfrs | vn's resolver fails on the measured proxy |
-| `carrier.rs` `Connector`/`Direct` | `src/egress.rs` (1 707): HTTP `CONNECT`, SOCKS5/5h, `unix:`, `+exec`, `NO_PROXY`, RFC 8305 dial; `proxy_auth.rs`; `pod-netns/src/upstream.rs` (1 040): chains, rules, tailnet, SOCKS5 UDP ASSOCIATE and UDP in the stream (`CMD_UDP_IN_STREAM` 0x83) | cfrs | vn's datagram carrier writes records to a TCP peer that is not a UDP relay; cfrs's 0x83 frames go to a server that sends real UDP (`warp proxy`/`up`, pods) |
-| `frame.rs` | `src/vnet/framing.rs` (IP packets), `upstream.rs` `write_udp_frame`/`read_udp_frame` (same u16 big-endian format) | cfrs | One vn test is new: an empty datagram survives (section 3.6) |
-| `dialer.rs` (one worker thread) | tokio task per dial (`netns.rs` `dialing`, seccomp `within_timeout`) | cfrs | - |
+| `names.rs` + `answer_dns` | `fakedns.rs` (198.18.0.0/15 = 131 072 addresses, fake IPv6 in seccomp, `--map` pins), `dns.rs` (pointer-safe parser) | podnet | - |
+| `resolve.rs` (DoH JSON at the IP 1.1.1.1) | `src/resolve.rs` (591): pins, system resolver, DoH by IP at two operators with NXDOMAIN fallback, DoH by name through the proxy (issue 259) | podnet | vn's resolver fails on the measured proxy |
+| `carrier.rs` `Connector`/`Direct` | `src/egress.rs` (1 707): HTTP `CONNECT`, SOCKS5/5h, `unix:`, `+exec`, `NO_PROXY`, RFC 8305 dial; `proxy_auth.rs`; `pod-netns/src/upstream.rs` (1 040): chains, rules, tailnet, SOCKS5 UDP ASSOCIATE and UDP in the stream (`CMD_UDP_IN_STREAM` 0x83) | podnet | vn's datagram carrier writes records to a TCP peer that is not a UDP relay; podnet's 0x83 frames go to a server that sends real UDP (`warp proxy`/`up`, pods) |
+| `frame.rs` | `src/vnet/framing.rs` (IP packets), `upstream.rs` `write_udp_frame`/`read_udp_frame` (same u16 big-endian format) | podnet | One vn test is new: an empty datagram survives (section 3.6) |
+| `dialer.rs` (one worker thread) | tokio task per dial (`netns.rs` `dialing`, seccomp `within_timeout`) | podnet | - |
 | `egress.rs` traits `Carrier`/`Stream` | proposed `Dialer`/`Datagrams`/`Target` (`architecture.md` 4.3) | equal shape | `StreamKey.destination_name` = `Target::Name`; confirms the design; nothing to port |
-| `guest.rs` guest socket service | `warp up` socket (SOCKS5 + UDP in the stream) + `warp exec` pods; `pod-netns --serve` front door (`frontdoor.rs`) | cfrs | cfrs has private directories, async I/O, rules |
-| `csup.c` | `crates/pod-netns/src/seccomp.rs` (1 900): filter on a helper thread + fork (the supervisor is not filtered), 7 `AUDIT_ARCH` values, `io_uring_*` refused, `recvfrom`/`recvmsg` source addresses written back (`inbox.rs`, issue 305), memory writes by `/proc/PID/mem` or `process_vm_writev`, `SO_ERROR` (issue 302), `MAX_TRACKED_FDS`, inbound listeners (issue 69) | cfrs | Three csup details are better (section 3.3): it keeps a TCP entry after `connect`; it tracks `dup`/`dup2`/`dup3` with a reference count; it hands the service connection to the guest with `ADDFD SETFD`, so no relay copies bytes |
+| `guest.rs` guest socket service | `warp up` socket (SOCKS5 + UDP in the stream) + `warp exec` pods; `pod-netns --serve` front door (`frontdoor.rs`) | podnet | podnet has private directories, async I/O, rules |
+| `csup.c` | `crates/pod-netns/src/seccomp.rs` (1 900): filter on a helper thread + fork (the supervisor is not filtered), 7 `AUDIT_ARCH` values, `io_uring_*` refused, `recvfrom`/`recvmsg` source addresses written back (`inbox.rs`, issue 305), memory writes by `/proc/PID/mem` or `process_vm_writev`, `SO_ERROR` (issue 302), `MAX_TRACKED_FDS`, inbound listeners (issue 69) | podnet | Three csup details are better (section 3.3): it keeps a TCP entry after `connect`; it tracks `dup`/`dup2`/`dup3` with a reference count; it hands the service connection to the guest with `ADDFD SETFD`, so no relay copies bytes |
 | csup ICMP sockets (`K_ICMP`) | `handle_socket` ignores the protocol argument (seccomp.rs:948-953): `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)` becomes a UDP datagram socket | vn (idea only) | A ping socket in a seccomp pod is relayed as UDP. P4 |
-| `wg.rs` + boringtun + `vn-wg-*` | `src/warp/wg.rs` (1 078): own Noise IKpsk2 initiator, BLAKE2s, `ring` AEAD, WARP reserved bytes, keepalive; a responder exists only in its tests (wg.rs:884) | cfrs (initiator); neither has a usable responder | A userspace WireGuard responder is the "generic WireGuard peer" of `architecture.md` step F. Write it on cfrs `wg.rs`, not on boringtun |
-| `wg.rs` `InnerDevice` | `src/vnet/device.rs` `LinkDevice` (in-process queue pair), `src/warp/ip.rs` `WarpStack` | cfrs | - |
-| `vn carrier` report | `cfrs doctor`, `pod-netns doctor --json`, `cfrs net doctor`, `preflight` | cfrs | - |
-| src/vnet switch, shim, policy, record, tailscale front door | none in vn | cfrs | vn has no multi-host link, no `LD_PRELOAD`, no policy, no capture, no tailnet |
-| src/warp tun, export, MASQUE | none in vn | cfrs | vn has no way to send real UDP out of a TCP-only host; cfrs does it with WARP MASQUE over HTTP/2 through the proxy |
-| src/race.rs | none in vn | cfrs | - |
+| `wg.rs` + boringtun + `vn-wg-*` | `src/warp/wg.rs` (1 078): own Noise IKpsk2 initiator, BLAKE2s, `ring` AEAD, WARP reserved bytes, keepalive; a responder exists only in its tests (wg.rs:884) | podnet (initiator); neither has a usable responder | A userspace WireGuard responder is the "generic WireGuard peer" of `architecture.md` step F. Write it on podnet `wg.rs`, not on boringtun |
+| `wg.rs` `InnerDevice` | `src/vnet/device.rs` `LinkDevice` (in-process queue pair), `src/warp/ip.rs` `WarpStack` | podnet | - |
+| `vn carrier` report | `podnet doctor`, `pod-netns doctor --json`, `podnet net doctor`, `preflight` | podnet | - |
+| src/vnet switch, shim, policy, record, tailscale front door | none in vn | podnet | vn has no multi-host link, no `LD_PRELOAD`, no policy, no capture, no tailnet |
+| src/warp tun, export, MASQUE | none in vn | podnet | vn has no way to send real UDP out of a TCP-only host; podnet does it with WARP MASQUE over HTTP/2 through the proxy |
+| src/race.rs | none in vn | podnet | - |
 
 ### 2.1 vn and the multi-WAN router of `mwan-field.md`
 
@@ -291,7 +291,7 @@ chains, direct), weights, sticky UDP, TCP health probes with K/R counts,
 failover, fail-closed, per-uplink status. vn has one carrier, picked once
 at start; `Composite` is a fixed local/upstream split; the dialer is serial;
 no probe, no weight, no state. vn is a front end of mode A (it takes flows
-off a guest kernel wire), and cfrs already has better front ends (SOCKS/HTTP
+off a guest kernel wire), and podnet already has better front ends (SOCKS/HTTP
 front doors, both pod backends, `warp up`). The only router-relevant ideas
 are P1 (a router that serves netns pods must give them the host) and P2
 (UDP for netns pods, so a router can balance their UDP flows too).
@@ -318,7 +318,7 @@ static musl binary.
 
 * A userspace WireGuard responder ("podnet wg serve": a WireGuard endpoint
   with no `CAP_NET_ADMIN`, its inner flows sent to podnet dialers) is what
-  `vn-wg-peer` hints at. Write it on cfrs `src/warp/wg.rs`: add the responder
+  `vn-wg-peer` hints at. Write it on podnet `src/warp/wg.rs`: add the responder
   half (the test function `respond` at wg.rs:884 is the seed), cookie
   replies, several peers, timers; reuse `vnet::device::LinkDevice` and
   smoltcp. Crate: `podnet-warp` now, an own adapter crate after step F.
@@ -328,15 +328,15 @@ static musl binary.
 
 | vn part | Reason |
 | --- | --- |
-| `csup/csup.c` | C, x86-64 only, the supervisor filters itself (pool, never closes a descriptor), pool and listener defects (1.8), no `recvfrom` source, no `io_uring` block; cfrs `seccomp.rs` is the superset. A second C binary also breaks "one static binary" |
-| `guest.rs` | Thread per connection, 1 ms sleep loops, open socket permissions, op `P` confused deputy; cfrs `warp up` + pods cover it |
-| Kernel mode (`main.rs` `up`/`run`/`configure_guest`, `tap.rs`) | Needs root and `ip`/`ethtool`/`sysctl`; cfrs netns backend does it with no root |
-| `resolve.rs` | DoH at an IP literal (refused by the measured proxy), no encoding, serial, one TLS connection per lookup; cfrs `resolve.rs` is better |
-| `names.rs` | 254 addresses; cfrs `fakedns.rs` has 131 072 and IPv6 |
-| `dialer.rs` | Serial worker; cfrs uses a task per dial and `HeldSyn` |
-| `carrier.rs` `Connector`/`Direct`, `frame.rs` | cfrs `egress.rs`, `upstream.rs`, `vnet/framing.rs` are supersets; vn's UDP-over-TCP-to-destination has no far end |
-| `wg.rs`, `vn-wg-guest.rs`, `vn-wg-peer.rs`, `boringtun` | Test harness; `boringtun 0.6` brings `ring 0.16` (three release targets fail, to confirm) and `curve25519-dalek 4.0.0-rc.3` (advisory); cfrs has its own WireGuard |
-| `prove.sh`, `vn.sh`, `vn-run.sh`, `scripts/` | Root, `python3`, `gcc`, `wg`; proves loopback paths only; cfrs tests and `live.yml` cover the same questions |
+| `csup/csup.c` | C, x86-64 only, the supervisor filters itself (pool, never closes a descriptor), pool and listener defects (1.8), no `recvfrom` source, no `io_uring` block; podnet `seccomp.rs` is the superset. A second C binary also breaks "one static binary" |
+| `guest.rs` | Thread per connection, 1 ms sleep loops, open socket permissions, op `P` confused deputy; podnet `warp up` + pods cover it |
+| Kernel mode (`main.rs` `up`/`run`/`configure_guest`, `tap.rs`) | Needs root and `ip`/`ethtool`/`sysctl`; podnet netns backend does it with no root |
+| `resolve.rs` | DoH at an IP literal (refused by the measured proxy), no encoding, serial, one TLS connection per lookup; podnet `resolve.rs` is better |
+| `names.rs` | 254 addresses; podnet `fakedns.rs` has 131 072 and IPv6 |
+| `dialer.rs` | Serial worker; podnet uses a task per dial and `HeldSyn` |
+| `carrier.rs` `Connector`/`Direct`, `frame.rs` | podnet `egress.rs`, `upstream.rs`, `vnet/framing.rs` are supersets; vn's UDP-over-TCP-to-destination has no far end |
+| `wg.rs`, `vn-wg-guest.rs`, `vn-wg-peer.rs`, `boringtun` | Test harness; `boringtun 0.6` brings `ring 0.16` (three release targets fail, to confirm) and `curve25519-dalek 4.0.0-rc.3` (advisory); podnet has its own WireGuard |
+| `prove.sh`, `vn.sh`, `vn-run.sh`, `scripts/` | Root, `python3`, `gcc`, `wg`; proves loopback paths only; podnet tests and `live.yml` cover the same questions |
 | `bin-prebuilt/` | Dynamic glibc, not built from this source; never run |
 
 ### 3.4 Order
@@ -367,17 +367,17 @@ Total for P1-P5 without the W-F2 base: about 1 200 lines of code and
 
 * From `frame.rs`: `an_empty_datagram_survives` as a test of
   `upstream::write_udp_frame`/`read_udp_frame` (a zero-length UDP datagram
-  is valid). The other frame and name tests exist in cfrs
+  is valid). The other frame and name tests exist in podnet
   (`vnet/framing.rs`, `vnet/dns.rs`, `pod-netns/src/dns.rs`).
 * From `test/static-guest.c`: the ICMP part, for P4.
 * New tests per item: in the table of 3.1.
-* Not needed: `static-listener.c` (cfrs has `seccomp_backend_accepts_inbound`,
+* Not needed: `static-listener.c` (podnet has `seccomp_backend_accepts_inbound`,
   `seccomp_inbound_wakes_epoll_and_accept_does_not_block_the_child`),
-  static/dynamic binary tests (cfrs has both backends), `prove.sh`.
+  static/dynamic binary tests (podnet has both backends), `prove.sh`.
 
 ---
 
-## 4. Facts checked in cfrs for this comparison
+## 4. Facts checked in podnet for this comparison
 
 * `crates/pod-netns/src/seccomp.rs:60-81`: trapped calls (socket, recvfrom,
   recvmsg, connect, sendto, sendmsg, sendmmsg, bind, getsockname,

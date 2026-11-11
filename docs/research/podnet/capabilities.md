@@ -2,14 +2,14 @@
 
 > Reading of the tree at 3bed023 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
 
-Scope: what `cfrs` (tree at `3bed023`, v0.3.0-beta.12 + 4 commits) already has
+Scope: what `podnet` (tree at `3bed023`, v0.3.0-beta.12 + 4 commits) already has
 for each role, the minimal viable feature set of each role, the gaps, a CLI
 shape, the modules, the tests and a size estimate. Constraint: one static musl
 binary, no root, no CAP_NET_ADMIN where possible. Read only; nothing was built.
 
 Reference numbers:
 
-* Static release binary v0.3.0-beta.12: `cfrs-x86_64-unknown-linux-musl`
+* Static release binary v0.3.0-beta.12: `podnet-x86_64-unknown-linux-musl`
   18 465 888 bytes, aarch64 15 692 296 bytes; `pod-netns` 1.5 MB.
 * `src/main.rs` is 7 103 lines. Each new verb below goes into its own module,
   not into `main.rs`.
@@ -36,7 +36,7 @@ file transfer (largest; depends on the resumable relay layer).
 | `tunnel --url/--port/--unix/--tcp/--forward/--config` | `src/tunnel.rs` (1599), `src/proxy.rs` (2034), `src/ingress.rs` (580), `src/cloudflare/` | Quick or named Cloudflare tunnel; ingress rules by host and `path:` regex; legs quic, http2, quic+warp, http2+relay (`--transport auto/direct/warp/relay`) | Edge takes at most 100 MB in one request body (free plan; `src/share.rs:57`). `--tcp` needs a cloudflared-style client at the visitor |
 | `--auth-user` + `--auth-password-file` | check at `src/proxy.rs:137`, creds `src/proxy_auth.rs` (615) | HTTP Basic, one user, in front of each HTTP origin and `--forward` | Tunnel only: `serve --local` refuses it (`src/main.rs:3212`) |
 | `tunnel --forward` + `connect -L` | `src/ws.rs` (596), `src/main.rs:779` (`ConnectArgs`) | TCP/unix stream over a WebSocket through the tunnel (wstunnel style), Basic auth in the upgrade | `connect` has `-L` listeners only (`required = true`); no stdin/stdout mode for an SSH `ProxyCommand` |
-| `relay pair / node / connect / stop` | `src/relay_reverse.rs` (1139), `src/ws_relay.rs` (995), `src/relay_pool.rs` (380) | Reverse road of `tcp.ssh.relay.ajam.dev`: a node holds `/v1/node/NAME`, an operator opens `/v1/connect/NAME`; stdio (`ProxyCommand`) or `--listen` | One `--to` target (`Target::{Tcp,Unix}`, `src/relay_reverse.rs:230`); pair lasts 72 h; relay session cap 64 MiB both ways, 12 h, 180 s idle (podssh `docs/relay.md:498-526`); cfrs has no resumable layer (podssh has one, T-155) |
+| `relay pair / node / connect / stop` | `src/relay_reverse.rs` (1139), `src/ws_relay.rs` (995), `src/relay_pool.rs` (380) | Reverse road of `tcp.ssh.relay.ajam.dev`: a node holds `/v1/node/NAME`, an operator opens `/v1/connect/NAME`; stdio (`ProxyCommand`) or `--listen` | One `--to` target (`Target::{Tcp,Unix}`, `src/relay_reverse.rs:230`); pair lasts 72 h; relay session cap 64 MiB both ways, 12 h, 180 s idle (podssh `docs/relay.md:498-526`); podnet has no resumable layer (podssh has one, T-155) |
 | `net proxy --forward VIRT=REAL`, `net switch` | `src/vnet/proxy.rs` (514), `src/vnet/switch.rs` (1072) | Virtual 10.66.0.0/24 network between hosts through a switch (unix, or TCP with token); a virtual address forwards to a real `host:port` or `unix:` | Switch link is not encrypted (doc says: carry it in `tunnel --forward`) |
 | `agent up --expose PORT` | `src/agent.rs` (692), `src/main.rs:276` | Detached quick tunnel for each port, after the doctor | Quick tunnels only |
 | `relay.rs` (SSH `-R` to pinggy) | `src/relay.rs` (668) | russh client, remote forward from `free.pinggy.io:443` to a unix origin | Library only; no CLI uses it (only `feature::ShareLink::from_relay`, `src/feature/mod.rs:1263`) |
@@ -64,7 +64,7 @@ but four accept loops with their own dial side:
 | `warp proxy` | `src/warp/proxy.rs` | WARP | UDP ASSOCIATE (`:825`), `--dns`, rules `tunnel/direct/reject` (`src/warp/rules.rs`, 430), `--rules-file` reload, proxy auth, `--l4` |
 | `pod --serve LISTEN -x ...` | `crates/pod-netns/src/frontdoor.rs` (272), help `cli.rs:96` | Any `-x` chain, `-r` rules | UDP ASSOCIATE; field report: "clean way to get a host-wide SOCKS" |
 | `net proxy` | `src/vnet/proxy.rs` | Virtual network | `--map`, `--import`, `--control` |
-| `net tailscale` | `crates/pod-netns/src/tailscale.rs` | Tailnet | Default `unix:/tmp/cfrssocks.sock` |
+| `net tailscale` | `crates/pod-netns/src/tailscale.rs` | Tailnet | Default `unix:/tmp/podnet-socks.sock` |
 
 L3 capture of a program with no root: `pod` backends netns, netns-raw, seccomp
 (`crates/pod-netns/src/{netns.rs 1199, raw.rs 436, seccomp.rs 1900}`).
@@ -80,7 +80,7 @@ compile C with the host `cc` at run time and do not reach static programs.
 | `share --mode upload` | `src/share.rs:302` `upload_router`, `:605` `upload_receive` | Multipart form, files mode 0600, unique names, limits: 512 MiB per file, 32 files, 4 GiB per session, `--max-request` 100 MB (413 before the body). Random token in the path |
 | `share --mode download` | `src/share.rs:835`, `:899` | One regular file only (no directory, no stdin; the "clipboard" in the module doc is stale), single Range resume with If-Range/ETag (`parse_range` `:1020`), `--stop-after` |
 | `share --mode proxy` | `src/service.rs` `Built::ShareProxy` | Gated forward to a local HTTP port or unix socket; PIN always on |
-| PIN gate | `src/gate.rs` (478) | 6 digits, cookie `cfrs_pin`, `POST /__cfrs/unlock`; after `MAX_FAILURES` = 10 wrong codes no code opens it |
+| PIN gate | `src/gate.rs` (478) | 6 digits, cookie `podnet_pin`, `POST /__podnet/unlock`; after `MAX_FAILURES` = 10 wrong codes no code opens it |
 | Built-in service dispatch | `src/proxy.rs:238` (`Built::Static`), `:429` `dispatch_axum` | Any axum `Router` behind the tunnel; the request body streams (pump, `:477`), so a new router (git, files) plugs in as one `Built` variant |
 | Library duplicates | `src/origin/static_files.rs` (608, `StaticDir`, ETag 304, no Range), `src/feature/mod.rs` (2139: `StaticServer` `:1049`, `StaticResponse` `:940`, `AccessController` `:414`) | Not used by any CLI command (only `util/http.rs` refers to them). Public library API (ruling of 2026-11-04, #276): keep them |
 
@@ -294,10 +294,10 @@ can later call `files::`.
 | --- | --- | --- |
 | `share --mode download --file F --password --stop-after` | One-shot send to a browser or curl through a quick tunnel | Long URL; the PIN flow needs a cookie (awkward for curl); Cloudflare terminates TLS and sees the plaintext; one file; the sender needs an edge leg |
 | `share --mode upload` | One-shot receive | 100 MB per request through the edge |
-| `relay pair` + `relay node --to unix:S` + `relay connect NAME` | A byte pipe between two hosts behind NAT, both with outbound 443 only | Long name + connect token; no file protocol; relay sees the bytes unless the app encrypts; 64 MiB / 12 h / 180 s idle per session; no resume in cfrs |
+| `relay pair` + `relay node --to unix:S` + `relay connect NAME` | A byte pipe between two hosts behind NAT, both with outbound 443 only | Long name + connect token; no file protocol; relay sees the bytes unless the app encrypts; 64 MiB / 12 h / 180 s idle per session; no resume in podnet |
 
 croc / magic-wormhole give: short code, PAKE, end-to-end encryption, relay
-fallback, directories, resume (croc), no account. cfrs gives the carriers but
+fallback, directories, resume (croc), no account. podnet gives the carriers but
 none of the code, PAKE, end-to-end or resume parts.
 
 ### 4.2 Minimal viable feature set
@@ -320,7 +320,7 @@ never in argv (prompt or stdin).
 * PAKE: SPAKE2 keyed by the code; then sealed phases carry the offer (names,
   sizes, hashes) and the road descriptors.
 * Roads, raced:
-  1. cfrs relay reverse road: the sender pairs, the connect token goes inside
+  1. podnet relay reverse road: the sender pairs, the connect token goes inside
      a sealed phase, data in AEAD records with offsets; a new session before
      60 MiB continues at the offset.
   2. Quick tunnel: the sender serves sealed chunks at a random path; the
@@ -331,7 +331,7 @@ never in argv (prompt or stdin).
      (443; podssh `crates/podssh-relay/src/transit/mod.rs:37`).
 * Reuse: podssh `crates/podssh-relay/src/code/` (1 824 lines: mailbox,
   SPAKE2 exchange, phrase, words, wormhole) and `src/transit/` (1 013 lines).
-  podssh is 0BSD and of the same owner. Port them to cfrs's
+  podssh is 0BSD and of the same owner. Port them to podnet's
   `tokio-tungstenite` + `rustls`/ring.
 
 ### 4.4 Dependencies
@@ -432,7 +432,7 @@ pty, `direct-tcpip` and `tcpip-forward` (a later router can use the last two:
 
 * Quick tunnel: at most 100 MB in one request body: a push of a larger pack
   over HTTP fails. Clones (response bodies) are not limited.
-* Relay: 64 MiB per session and no resume in cfrs: an SSH clone or push over
+* Relay: 64 MiB per session and no resume in podnet: an SSH clone or push over
   the relay larger than ~64 MiB fails until enabler 6.5 exists.
 * Runtime: the `git` program (and `git-http-backend` in `git --exec-path`).
   The binary stays static; `podnet doctor` reports a missing git.

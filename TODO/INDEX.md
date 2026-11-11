@@ -299,4 +299,4 @@ M8 Overlays, M9 Later.
 | [T-251](services.md) | P2 | S | M6 | feature | open | Transfer: the hosted magic-wormhole mailboxes on 443 as the default, with a choice that the code carries |
 | [T-252](services.md) | P3 | M | M6 | feature | open | Transfer: a piping-server relay as a transit carrier of last resort |
 | [T-253](services.md) | P3 | S | M6 | measurement | open | Live: probe the hosted mailboxes and relays from a proxy-only runner |
-| [T-254](fixes.md) | P2 | M | M5 | chore | partial | Housekeeping: one footnote for cfrs, no narrative history |
+| [T-254](fixes.md) | P2 | M | M5 | chore | done | Housekeeping: one footnote for cfrs, no narrative history |

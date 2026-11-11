@@ -4449,7 +4449,7 @@ done with it and never mention it again"; `CLAUDE.md` (Writing: keep only techni
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -4496,3 +4496,20 @@ needs it). No frozen file named cfrs. The narrative of README.md, `docs/target-e
 and `src/status.rs` is cut; dead code is gone (`net.rs`, `run.rs`, `socks.rs`). Left: `docs/research/` (a
 second pass).
 
+
+## Done
+
+2026-11-11, commits 14719c7 and the commit after it: the second pass. `docs/research/podnet/` writes `podnet`,
+`PODNET_*`, `libpodnet-vnet.so`, `libpodnet-socks.so`, `crates/podnet-vnet/shim/`, `/__podnet/ws` and `podnet_pin`
+where it named the old binary, variables, shims and paths. Each command of the studies was run with `--help` on
+the build of this tree: all exist except proposals of the studies (`router`, `send`, `export`, `relay serve`,
+`route status`); `export` is now `warp export`. `rename.md` is cut from 447 lines to the names of podnet by
+kind, the self-update chain and the rules for a change of a name, with the current values; the entries of the
+record cite the file, so it stays (`cargo todo check` checks each cited path). `architecture.md` has no section
+of renamed names, no compatibility questions and no text of the rename step. The `README.md` of the studies says
+that paths and line numbers are those of commit 3bed023. `git grep -c -i cfrs -- docs/research`: 9 files with
+463 lines before, 1 file with 3 lines after. The 3 lines name the attachment directories and files of the field
+study (`att/562a2c99-cfrs-standalone/cfrs/`, `att/522011b9-cfrs-field-report/`, `cfrs-field-report.md`,
+`cfrs-field-evidence-seccomp-rst.log`) in `mwan-field.md`: they are names of source files, as the source
+repositories are. Not done: the line references of the studies (for example main.rs:5446) are those of 3bed023 and
+are not updated one by one.
