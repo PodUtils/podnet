@@ -89,7 +89,7 @@ is not part of this entry.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -121,6 +121,39 @@ through the main table.
 ## Start condition
 
 T-119 is done.
+
+## Correction
+
+2026-11-11: part 4 (probe each WAN through its session) is left. The session probe belongs to
+`warp tun` (T-068, T-069; `src/warp/`, frozen until `pod-warp` is taken). The kernel mode has no
+probe loop and no hook into the session of a TUN, so a WAN whose session is dead but whose link is up
+stays in the multipath route. Continue it when the take of `pod-warp` (T-050) gives a probe API.
+The kernel gives EHOSTUNREACH ("No route to host"), not ENETUNREACH, for an `unreachable` route;
+ENETUNREACH is the error for no route at all. The Prove checks EHOSTUNREACH.
+
+## Done
+
+2026-11-11, commit a7a133c (parts 1 to 3). `src/router/kernel/guard.rs` is new; the keys
+`masquerade`, `mss_clamp`, `kill_switch` and `rp_filter` of `kernel` are `true` when absent, and an
+old file stays valid.
+- nf_tables netlink (no `nft` program): one batch (`NEWTABLE`, `DELTABLE`, `NEWTABLE`, chains, rules)
+  replaces the table `ip podnet_router` as one transaction. Chain `nat` (postrouting, 100): `oifname
+  WAN masquerade`. Chain `mss` (forward, -150): `oifname WAN tcp flags & (syn|rst) == syn tcp option
+  maxseg size set rt mtu`.
+- Kill switch: `unreachable default metric 4096` in the aggregate table. `read_default` skips it.
+- `rp_filter` 0 on each WAN device; the first value is written back by `remove` and for a WAN that
+  leaves the plan. A message names a value of `all` above 0.
+Tests: `route_kernel_kill_switch_does_not_leak` (with the switch disabled in the code it fails at
+"the kill switch is in place"; with it, each WAN down gives EHOSTUNREACH, the deleted switch gives
+the leak through the main table, and `remove` deletes the route),
+`route_kernel_nft_masquerade_and_mss_clamp_in_a_namespace` (reads the rules back with a netlink
+dump; compares `rp_filter` and the write-back), `kernel_guard_keys_default_on_and_keep_old_files_valid`,
+`kernel_guard_requests_encode_the_unreachable_route_and_the_batch`. The tests of T-119 still pass.
+check.sh: exit 0.
+
+Not proven: no packet crossed a WAN, so the masquerade and the MSS value on the wire are not
+measured (the kernel accepts the rules and the dump shows them). The host sets `ip_forward` itself.
+Part 4 is left (Correction).
 
 # T-121: Router: export the groups as a JSON file of the mwan form
 
