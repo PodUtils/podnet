@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**244 entries: 47 open, 9 partial, 19 blocked, 169 done.**
+**244 entries: 46 open, 10 partial, 19 blocked, 169 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 22 | 6 | 12 | 107 | 147 |
+| P2 | 21 | 7 | 12 | 107 | 147 |
 | P3 | 25 | 2 | 5 | 36 | 68 |
-| **All** | 47 | 9 | 19 | 169 | 244 |
+| **All** | 46 | 10 | 19 | 169 | 244 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -266,7 +266,7 @@ M8 Overlays, M9 Later.
 | [T-218](rename.md) | P0 | M | M1 | release | done | A connector profile that holds within a minor version (PodUtils/podcrates#35, A-N-05) |
 | [T-219](services.md) | P1 | M | M6 | feature | blocked | `podnet service install`: a hardened system unit (PodUtils/podcrates#35, A-N-11) |
 | [T-220](services.md) | P1 | S | M6 | feature | blocked | `relay node` as a system service, with no operator act (PodUtils/podcrates#35, A-N-12) |
-| [T-221](services.md) | P2 | M | M6 | feature | open | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
+| [T-221](services.md) | P2 | M | M6 | feature | partial | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
 | [T-222](fixes.md) | P2 | S | M5 | feature | done | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |
 | [T-223](fixes.md) | P3 | M | M5 | defect | done | seccomp: the TCP gaps that the differential check finds |
 | [T-224](crates.md) | P1 | S | M3 | chore | done | podnet-netns calls `pod_proxy::udp` for the SOCKS5 datagram path |

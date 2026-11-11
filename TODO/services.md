@@ -1788,7 +1788,7 @@ T-219 (`pod-unit`), T-161 and T-087 (`pod-relay`, PodUtils/podcrates). The entry
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1816,6 +1816,19 @@ cargo todo check
 ## Start condition
 
 For the live step only: a Cloudflare test account exists (`docs/decisions.md`, 2026-11-09, Test accounts). The local part can start now.
+
+## Correction
+
+2026-11-11, steps 1 to 3 are done in commit e33350f (`src/cli/cmd/bench.rs`). `podnet bench URL` sends GET
+requests on `--connections N` (default 4) for `--duration S` (default 10) through the way out of the process:
+`--egress SPEC`, `--proxy` or `--no-proxy` (the registry of networks, no host in the code). `--timeout S` limits
+one request. A status below 400 is a good request. Any other status, or a failed request, is an error. The
+document has the keys `schema`, `podnet`, `url`, `connections`, `duration_s`, `requests`, `ok`, `errors`,
+`first_error`, `rate` (good requests for each second), `bytes` and `latency_ms` (`min`, `p50`, `p95`, `p99`,
+`max`, nearest rank, `null` with no good request). Exit 0 when one request was good, else 1.
+`bench_json_has_the_fixed_keys` and `bench_counts_http_errors` (`tests/commands.rs`) test it against
+`podnet serve --local`. Not done: step 4, the live step in `live.yml` with `cloudflared` on one runner. It waits
+for the Cloudflare test account. The keys are not in `docs/protocol.md` (the entry does not ask for it).
 
 # T-236: `serve --ingress relay --detach` and `git serve --ingress relay --detach` report ready before the node is connected
 
