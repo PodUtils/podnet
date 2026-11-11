@@ -3917,3 +3917,46 @@ and `so_error_gives_the_error_of_a_failed_connect` (now `EINPROGRESS`, then `ECO
 `sh scripts/agent/check.sh` exits 0. `unshare -n -- cargo test --offline --test pod_seccomp_diff
 --test pod_seccomp --test pod_seccomp_dgram` and `sh scripts/restricted-host.sh` with the same
 tests exit 0. CI: at the merge.
+
+# T-235: Publish `v0.4.0-beta.3`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md` (Releases, 2026-11-09): cut the next prerelease when a batch of fixes is green;
+`docs/maintenance.md`, section "Release".
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The work after `v0.4.0-beta.2` (T-055, T-056, T-058 to T-060, T-088 to T-094, T-109, T-110, T-112, T-113,
+T-228 to T-231, T-233, T-234, the takes of `pod-quic` and `pod-hold`) is on `main` only. A tester of a
+release binary does not get it.
+
+## Premise
+
+- `v0.4.0-beta.2` is the newest release (T-227).
+- The checks of `sh scripts/agent/check.sh` pass on `main` at f9da9e6.
+
+## Approach
+
+1. Set the version `0.4.0-beta.3` in `Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`.
+2. Write `docs/releases/v0.4.0-beta.3.md`, with `## Breaking`.
+3. Push, and wait until `ci` and `live` pass on that commit.
+4. Dispatch `release.yml` on `main` with `publish` empty (the dry run), then with
+   `publish=v0.4.0-beta.3`.
+5. Check the files of the release and `release-proofs.yml`.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next
+prerelease unattended when a batch is green.
+
+## Prove
+
+```sh
+cargo test -p podnet --test docs
+sh scripts/agent/check.sh
+```

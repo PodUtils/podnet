@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**234 entries: 60 open, 4 partial, 19 blocked, 151 done.**
+**235 entries: 61 open, 4 partial, 19 blocked, 151 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 30 | 2 | 13 | 96 | 141 |
+| P2 | 31 | 2 | 13 | 96 | 142 |
 | P3 | 27 | 1 | 4 | 32 | 64 |
-| **All** | 60 | 4 | 19 | 151 | 234 |
+| **All** | 61 | 4 | 19 | 151 | 235 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -280,3 +280,4 @@ M8 Overlays, M9 Later.
 | [T-232](crates.md) | P3 | S | M3 | chore | done | The hand-off of the generic hold of the pod backends to `pod-hold` |
 | [T-233](pods.md) | P2 | S | M5 | defect | done | seccomp: a dual-stack connect to the IPv4-mapped form of a fake address goes to the proxy as an address |
 | [T-234](pods.md) | P2 | S | M5 | defect | done | netns: `parse_tcp_syn` reads a SYN in a header under 20 bytes and in a later fragment |
+| [T-235](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.3`: the dry run, the publish and the release proofs |
