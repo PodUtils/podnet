@@ -330,7 +330,7 @@ a connection opened before stays up.
 
 ## Done
 
-2026-11-11, commit ccd55ae. `podnet net tailscale --tailnet NAME` (or `PODNET_TAILNET`) waits up to 20 s
+2026-11-11, commit d65b676. `podnet net tailscale --tailnet NAME` (or `PODNET_TAILNET`) waits up to 20 s
 for `tailscaled` to be `Running` in NAME (the tailnet name or the DNS suffix, case-insensitive), before it
 binds. Another tailnet exits 78 with `the daemon is in tailnet "lab", not "office"; nothing was bound`. A
 daemon that is not ready exits 69 and names the last `BackendState`. After the start, the door reads the
