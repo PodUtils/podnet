@@ -275,6 +275,10 @@ projects. No binary was built, so the size of the binary is not measured. No cod
   and the ref update (L); G5 native hooks and `git-upload-archive` (M); G6 pack quality, a repack with deltas
   (M).
 
+
+The call of the lead (2026-11-11): no entry is opened now. The `git` program stays the backend: hosts of
+`docs/target-environment.md` with no `git` are not measured as a need yet, and a native server is about 3,700
+lines of new code. G1 (the spike of the size) opens first when a need is measured or the owner asks.
 # T-123: Tailscale in the process: take the fork of tailscale-rs through `pod-ts`
 
 **Source:** `docs/research/podnet/podssh.md`, sections 2.1 and 2.3 (step 4);

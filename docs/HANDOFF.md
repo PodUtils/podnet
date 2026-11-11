@@ -41,7 +41,7 @@ tests skip on the CI jobs that cannot run them.
    Then write the Done section of T-245.
 2. **podcrates:** podnet is at v0.22.0 with `pod-wg` (089e1c9, #447). Close
    #447 when podcrates writes the `taken` line; close #448 likewise.
-3. **Agents in flight:** T-122 (the study of a native git server). Merge it
+3. **Agents:** none in flight. T-122 is done (027537b). Merge a new agent
    as the others: rebase on `main`, take `--ours` for `TODO/INDEX.md` and
    `TODO/PROGRESS.md` and run `cargo todo set`, cite the rebased commit, run
    `gen-llms.py`, run `check.sh`, push.
