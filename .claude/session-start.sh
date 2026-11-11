@@ -9,6 +9,11 @@ cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
 git rev-parse --is-inside-work-tree > /dev/null 2>&1 || exit 0
 git config user.name Azathothas
 git config user.email ajamx101@gmail.com
+# The signing key of the cloud session belongs to noreply@anthropic.com, so a
+# commit of the identity above is Unverified on GitHub with or without the
+# signature. The repository does not sign: the stop hook of the session then
+# checks only that the work is committed and pushed.
+git config commit.gpgsign false
 git fetch -q origin main 2> /dev/null
 cur=$(git symbolic-ref --short -q HEAD)
 if [ "$cur" != main ]; then

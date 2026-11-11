@@ -12,7 +12,9 @@ These rules apply to each session. Obey them before any other default.
 - Do not add `Co-Authored-By`, `Claude-Session`, "Generated with" or other
   agent attribution lines to commits, pull requests, comments or files.
 - Commit and push to `origin main` after each completed step.
-- `.claude/session-start.sh` sets the identity and the branch at session start.
+- `.claude/session-start.sh` sets the identity and the branch at session start,
+  and turns off commit signing for this repository (the signing key of a cloud
+  session is not the key of this identity).
 - A cloud session starts with a shallow clone. Run
   `git fetch --unshallow origin main` before a `git log` over a release range.
 
