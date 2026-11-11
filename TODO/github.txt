@@ -132,11 +132,11 @@
 427 issue closed
 428 issue open
 429 issue closed
-430 issue open
+430 issue closed
 431 issue open
 432 issue open
 433 issue open
-434 issue open
+434 issue closed
 435 issue open
 436 issue open
 437 issue open

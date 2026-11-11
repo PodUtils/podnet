@@ -125,11 +125,11 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #427 | COORD-018: the cut of pod-netstack (to podcrates) | closed (podnet took pod-netstack at d23ce4e) | none |
 | #428 | pod --serve door: early reply and pipelined SOCKS5 upstream handshake (donor review) | open | T-237 |
 | #429 | listen::bind_private: the socket has the umask mode between bind and chmod (donor review) | closed (fixed in 3c6173f) | T-238 |
-| #430 | install.sh and update: tag check, strict SHA256SUMS, install tests that can fail (donor review) | open | T-239 |
+| #430 | install.sh and update: tag check, strict SHA256SUMS, install tests that can fail (donor review) | closed | T-239 |
 | #431 | warp tun --default-route: resolver backup on disk, restore after a kill, route table test (donor review) | open | T-240 |
 | #432 | warp: registration under a lock, save before the enrolment step (donor review) | open | T-241 |
 | #433 | rules: a shadowed rule warns, a shadowed reject fails (donor review) | open | T-242 |
-| #434 | net tailscale: --tailnet guard and the TS_FORCE_NOISE_443 hint (donor review) | open | T-243 |
+| #434 | net tailscale: --tailnet guard and the TS_FORCE_NOISE_443 hint (donor review) | closed | T-243 |
 | #435 | tunnel --inspect: capture, ring, redaction, replay (donor review) | open (T-244 is blocked on pod-cloudflare) | T-244 |
 | #436 | podnet receive: containment of the received entries (donor review) | open (a correction of T-105) | T-105 |
 | #437 | COORD-019: proposals for podcrates from the donor review (to podcrates) | open (a COORD issue between sessions) | none |
