@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 254 entries: 42 open, 10 partial, 23 blocked, 179 done.
+`TODO/INDEX.md` holds 254 entries: 41 open, 10 partial, 23 blocked, 180 done.
 
 ## State
 
@@ -57,7 +57,7 @@ not wait for a larger one.
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default), T-165 (the CLI of the SSH forward-relay leg).
     The study of hosted relays (`docs/research/podnet/hosted-relays.md`) adds T-251 (the hosted mailboxes on 443,
-    after T-102), T-252 (a piping-server transit, after T-103) and T-253 (a live probe of the hosted services).
+    after T-102) and T-252 (a piping-server transit, after T-103).
 8. **M7, the pods:** T-249 (blocked, #454: the netns router on
    `pod-netstack`; the hold of a SYN in `pod-hold` waits for it, PodUtils/podcrates#68).
 9. **M8, the overlays:** T-114, T-115, T-117, T-247 (blocked: a NetBird account).

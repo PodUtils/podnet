@@ -2093,7 +2093,7 @@ T-103 is done (the transit of `pod-transit`).
 **Milestone:** M6
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2122,3 +2122,18 @@ The step prints a line for each service in a run of `live`.
 ## Start condition
 
 None.
+
+## Done
+
+2026-11-11, commit e1c0c90. The script `scripts/ci/probe-hosted.py` (python3 standard library only) opens each
+mailbox (WebSocket upgrade, then the `welcome` message), a piping-server stream (PUT and GET of 32 random
+bytes on a random path; the bytes are compared) and one n0 iroh relay (HTTPS 200 on `/`). It prints one line
+for each service: name, ok or fail, ms, reason. A failed service prints `::warning::`; the exit code stays 0.
+`live.yml` has the step "Hosted mailboxes and relays through a proxy for TCP 443 only". It starts
+`scripts/connect-proxy.py` with a new fourth argument (the allowed ports, here 443). The proxy answers 403 to
+any other port and logs it with the prefix `denied `; the step fails if one such line exists.
+`python3 scripts/check-workflows.py`: 0 faults. Hand run in the sandbox (proxy of the sandbox):
+wormhole-mailbox ok 430 ms; winden-mailbox ok 857 ms; piping-ppng ok 1330 ms; piping-onrender ok 986 ms
+(13018 ms in an earlier run); iroh-relay (`use1-1`) ok 326 ms. `euw1-1.relay.n0.iroh.link` gave 502 here, so
+the script uses `use1-1`. The local proxy with port 443 only gave 200 for port 443 and 403 for port 8443.
+Not proven: the run of the step on a GitHub runner; the first run of `live` after the merge proves it.
