@@ -18,7 +18,7 @@ pub mod access;
 mod listing;
 mod upload;
 
-pub use access::{hash_password, Access, Role, Users};
+pub use access::{guard, hash_password, Access, Role, Users};
 
 /// The configuration of a file server on one directory.
 #[derive(Clone, Debug)]
@@ -128,13 +128,7 @@ pub fn router(config: &FilesConfig) -> Result<Router> {
         // axum for the multipart form.
         router = router.layer(axum::extract::DefaultBodyLimit::disable());
     }
-    if config.access.is_open() && !config.access.anon_read {
-        return Ok(router);
-    }
-    Ok(router.layer(axum::middleware::from_fn_with_state(
-        Arc::new(config.access.clone()),
-        access::layer,
-    )))
+    Ok(access::guard(router, config.access.clone()))
 }
 
 /// The state of [`static_guard`].

@@ -11,7 +11,9 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use futures::future::BoxFuture;
 
-pub use podnet_serve::road::{private_socket, Local, Published, Road, Rule, Services};
+pub use podnet_serve::road::{
+    guard, private_socket, Access, Local, Published, Road, Role, Rule, Services, Users,
+};
 
 use crate::config::Config;
 use crate::ingress::{Ingress, Service};

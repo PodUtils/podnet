@@ -16,6 +16,7 @@ use axum::response::IntoResponse;
 use futures::future::BoxFuture;
 use tower::ServiceExt as _;
 
+pub use crate::files::{guard, Access, Role, Users};
 use crate::ingress::PathPattern;
 
 /// A service that a road published.

@@ -397,6 +397,21 @@ fn unauthorized() -> Response {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Granted(pub(crate) Role);
 
+/// `router` behind `access` (T-084): Basic users with the roles read and
+/// write, the PIN gate of `share` and its unlock path, and an anonymous
+/// read. With no user, no PIN and no anonymous read, `router` as it is. The
+/// same layer works on each road (`crate::road`): a local listener, the
+/// tunnel, the node of a relay pair and the virtual network.
+pub fn guard(router: axum::Router, access: Access) -> axum::Router {
+    if access.is_open() && !access.anon_read {
+        return router;
+    }
+    router.layer(axum::middleware::from_fn_with_state(
+        Arc::new(access),
+        layer,
+    ))
+}
+
 /// The layer of the access: the unlock of the PIN gate, then the role of
 /// the request. A request that passes gets [`Granted`] as an extension.
 pub(crate) async fn layer(
