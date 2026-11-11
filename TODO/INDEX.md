@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**247 entries: 42 open, 11 partial, 20 blocked, 174 done.**
+**247 entries: 41 open, 11 partial, 20 blocked, 175 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 22 | 7 | 12 | 107 | 148 |
+| P2 | 21 | 7 | 12 | 108 | 148 |
 | P3 | 20 | 3 | 6 | 41 | 70 |
-| **All** | 42 | 11 | 20 | 174 | 247 |
+| **All** | 41 | 11 | 20 | 175 | 247 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -281,7 +281,7 @@ M8 Overlays, M9 Later.
 | [T-233](pods.md) | P2 | S | M5 | defect | done | seccomp: a dual-stack connect to the IPv4-mapped form of a fake address goes to the proxy as an address |
 | [T-234](pods.md) | P2 | S | M5 | defect | done | netns: `parse_tcp_syn` reads a SYN in a header under 20 bytes and in a later fragment |
 | [T-235](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.3`: the dry run, the publish and the release proofs |
-| [T-236](services.md) | P2 | S | M5 | defect | open | `serve --ingress relay --detach` and `git serve --ingress relay --detach` report ready before the node is connected |
+| [T-236](services.md) | P2 | S | M5 | defect | done | `serve --ingress relay --detach` and `git serve --ingress relay --detach` report ready before the node is connected |
 | [T-237](adapters.md) | P3 | M | M4 | feature | open | Front door: an opt-in `--early-reply` answers the client before the upstream connect and pipelines the SOCKS5 upstream handshake (GitHub #428) |
 | [T-238](fixes.md) | P2 | S | M5 | defect | done | `listen::bind_private`: bind in a private 0700 directory, chmod, then rename into place, so the socket never has a wider mode under its name (GitHub #429) |
 | [T-239](fixes.md) | P2 | M | M5 | defect | done | `install.sh` checks the release tag and reads SHA256SUMS strictly, `podnet update` does the same, and the install tests assert the downloader flags (GitHub #430) |

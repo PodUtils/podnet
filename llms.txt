@@ -1,6 +1,6 @@
 # podnet
 
-> Cloudflare tunnels and the WARP client for hosts with strong network limits. Version 0.4.0-beta.3.
+> Cloudflare tunnels and the WARP client for hosts with strong network limits. Version 0.4.0-beta.4.
 
 podnet is one binary for Cloudflare quick tunnels (trycloudflare), named tunnels and the Cloudflare WARP client. It is made for hosts with strong network limits: no root, no TUN device, no network namespace, no UDP, no AF_INET bind, or only TCP 443 out.
 A tunnel reaches the edge with one of four legs: QUIC on UDP 7844, HTTP/2 on TCP 7844 (directly or through HTTPS_PROXY), QUIC inside a WARP MASQUE tunnel on TCP 443, or HTTP/2 through the WebSocket relay on TCP 443 (--transport relay). With --protocol auto and --transport auto, podnet tries the first three in that order.

@@ -1845,7 +1845,7 @@ for the Cloudflare test account. The keys are not in `docs/protocol.md` (the ent
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1876,6 +1876,15 @@ cargo test -p podnet --test relay_reverse
 ```
 
 The live step "Git over SSH through the reverse relay" passes.
+
+## Done
+
+2026-11-11, commit e6eda36 (`detach::ready_when_reachable`; `serve` and `git serve` on the relay road hold their
+ready document until the node is connected). Tests: `a_held_ready_document_goes_with_the_next_ready`,
+`cargo test -p podnet --test relay_reverse`. The live step "Git over SSH through the reverse relay" passed in
+the live runs 43012672866 (25f615f), 43016924769 (52cd473) and 43021850166 (10a586c), with "SSH through the
+reverse relay" and "File server through the reverse relay".
+
 
 # T-242: Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433)
 
