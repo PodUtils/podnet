@@ -176,7 +176,11 @@ impl Gate {
         if !self.enabled() {
             return None;
         }
-        let slot = update_atomic!(&self.failures, |n| (n < MAX_FAILURES).then_some(n + 1));
+        let slot = self
+            .failures
+            .try_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
+                (n < MAX_FAILURES).then_some(n + 1)
+            });
         let Ok(before) = slot else {
             tracing::warn!(
                 "the PIN gate is locked after {MAX_FAILURES} wrong codes; start a new session"

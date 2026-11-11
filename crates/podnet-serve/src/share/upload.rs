@@ -112,10 +112,11 @@ impl Staging<'_> {
     fn reserve_bytes(&mut self, n: u64) -> bool {
         let max = self.state.max_total;
         let used_bytes = &self.state.used_bytes;
-        let ok = update_atomic!(used_bytes, |used: u64| used
-            .checked_add(n)
-            .filter(|t| *t <= max))
-        .is_ok();
+        let ok = used_bytes
+            .try_update(Ordering::SeqCst, Ordering::SeqCst, |used: u64| {
+                used.checked_add(n).filter(|t| *t <= max)
+            })
+            .is_ok();
         if ok {
             self.bytes += n;
         }
@@ -312,7 +313,9 @@ pub(super) async fn upload_receive(
         // Reserve a slot of the file limit first: two uploads at the same
         // time cannot both take the last one.
         let used_files = &state.used_files;
-        let reserved = update_atomic!(used_files, |n| (n < state.max_files).then_some(n + 1));
+        let reserved = used_files.try_update(Ordering::SeqCst, Ordering::SeqCst, |n| {
+            (n < state.max_files).then_some(n + 1)
+        });
         if reserved.is_err() {
             return refuse(
                 StatusCode::PAYLOAD_TOO_LARGE,
