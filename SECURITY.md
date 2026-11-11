@@ -30,9 +30,6 @@ suffix, for example `v0.3.0-beta.1`) is replaced by the next release.
 
 The release files have checksums, provenance and a signature. See "Release
 binaries" in `README.md`.
-The releases up to v0.3.0-beta.12 have the old name `cfrs`, and the
-identity of the repository `Azathothas/cfrs` signs them. `README.md` gives
-their file names and their identity.
 
 ## What Cloudflare can see
 

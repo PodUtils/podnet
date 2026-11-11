@@ -1595,7 +1595,7 @@ Tailscale and described only for Tailscale SSH.
 - `net ts-shims` already takes `--out --user --uid --gid --shell --json` and prints `LD_PRELOAD`
   (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:142-181`,
   `crates/podnet-vnet/src/tailscale_ssh.rs:160-202`). It also writes `getent`, `id` and a compiled shim: more than a client needs.
-- `docs/target-environment.md:104` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
+- `docs/target-environment.md:100` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
   No doctor row names the silent `ssh-keygen`.
 - `tools/ts-sshd.sh:118-128` uses the preload for `ssh-keygen`.
 - Not measured: `ssh-keygen` on a host without passwd in this session.

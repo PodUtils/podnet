@@ -46,7 +46,7 @@ These rules apply to each session. Obey them before any other default.
 
 - podnet: one static binary that brings its own network to restricted
   hosts (containers with no `CAP_NET_ADMIN`, proxy-only egress). The
-  Cloudflare tunnel (`src/cloudflare/`, the former project cfrs) is one
+  Cloudflare tunnel (`src/cloudflare/`) is one
   adapter of podnet; WARP, the relay, pods and virtual networks are others.
   Services: file server, file transfer, git hosting, router.
 - Workspace: `podnet` (root: CLI and library), `crates/podnet-netns` (the

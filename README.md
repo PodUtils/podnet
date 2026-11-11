@@ -43,9 +43,7 @@ The repository is a Cargo workspace:
 Each [release](https://github.com/PodUtils/podnet/releases) has static
 Linux binaries of `podnet` for `x86_64`, `aarch64`, `armv7`,
 `riscv64gc`, `i686`, `arm` (ARMv6, hard float), `loongarch64` and
-`powerpc64le` (from v0.3.0-beta.2 on; v0.3.0-beta.1 has `x86_64`,
-`aarch64`, `armv7` and `riscv64gc`, and no manual page). podnet is for Linux
-only. This README describes `main`; the notes in `docs/releases/` say what
+`powerpc64le`. podnet is for Linux only. This README describes `main`; the notes in `docs/releases/` say what
 a tag has. Each release also has these files:
 
 | File | Contents |
@@ -92,13 +90,6 @@ the two bundles to one directory. Then do these steps:
      --bundle provenance.sigstore.json --custom-trusted-root trusted_root.jsonl
    ```
 
-The releases up to v0.3.0-beta.12 have the old name `cfrs`. Their
-binaries are `cfrs-<target>` and `pod-netns-<target>`, their manual page is
-`cfrs.1`, and their image is `ghcr.io/azathothas/cfrs:<tag>`. The identity
-of their signature is
-`https://github.com/Azathothas/cfrs/.github/workflows/release.yml@refs/tags/<tag>`.
-For these releases, use these names and this identity in the steps above.
-
 A binary that has one changed byte fails each check. The workflow
 `.github/workflows/release-proofs.yml` does these checks on a fresh runner
 after each release. It also does each check on a changed copy, which must
@@ -139,7 +130,7 @@ exits 0 when `curl` fails or is missing.
 * The directory: `PODNET_INSTALL_DIR`, else `/usr/local/bin` for root, else
   `$XDG_BIN_HOME`, else `~/.local/bin`. A line says how to add it to `PATH`.
   The script checks the directory before the downloads.
-* `PODNET_VERSION=<TAG>` (for example `v0.3.0-beta.11`) installs that release, with no request to
+* `PODNET_VERSION=<TAG>` (for example `v0.4.0-beta.1`) installs that release, with no request to
   the GitHub API. For the newest release, the script reads the API; when
   the API refuses (403 on a shared address), it reads `releases.atom`.
   A draft release is not used.
@@ -173,7 +164,7 @@ import subprocess
 import urllib.request
 
 KEEP = os.environ.get("PODNET_KEEP", os.path.expanduser("~/podnet-keep"))
-VERSION = "latest"  # A tag (for example v0.3.0-beta.11) uses no GitHub API.
+VERSION = "latest"  # A tag (for example v0.4.0-beta.1) uses no GitHub API.
 URL = "https://raw.githubusercontent.com/PodUtils/podnet/main/scripts/install.sh"
 
 os.makedirs(os.path.join(KEEP, "bin"), exist_ok=True)
@@ -1621,3 +1612,7 @@ sh scripts/rebuild.sh <TAG>
 0BSD. See [`LICENSE`](https://github.com/PodUtils/podnet/blob/main/LICENSE). See
 [`THIRD_PARTY_NOTICES.md`](https://github.com/PodUtils/podnet/blob/main/THIRD_PARTY_NOTICES.md) for the licenses of the
 included third-party files.
+
+---
+
+Former name: podnet was `cfrs` before v0.4.0-beta.1. The binary, the variables and the signing identity have new names.

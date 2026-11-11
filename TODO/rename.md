@@ -538,7 +538,7 @@ release.
 ## Premise
 
 - `.github/workflows/live.yml` has the step "update to v0.3.0-beta.1", with `--rollback`.
-- `tests/data/v0.3.0-beta.1.SHA256SUMS` and its bundle are the fixture of `src/update.rs`
+- The file `v0.3.0-beta.1.SHA256SUMS` and its bundle (in `tests/data`) are the fixture of `src/update.rs`
   (`the_bundle_of_a_release`).
 
 ## Approach

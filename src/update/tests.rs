@@ -127,62 +127,27 @@ fn rollback_needs_a_kept_binary_that_runs() {
     assert_eq!(version_of(&path), "podnet 0.3.0-beta.5 (new)");
 }
 
-/// The repository of the releases up to v0.3.0-beta.12 (the fixture).
-const OLD: &str = "Azathothas/cfrs";
-const SUMS: &[u8] = include_bytes!("../../tests/data/v0.3.0-beta.1.SHA256SUMS");
-const BUNDLE: &[u8] = include_bytes!("../../tests/data/v0.3.0-beta.1.SHA256SUMS.sigstore.json");
+/// A repository that did not sign the fixture.
+const OTHER: &str = "PodUtils/other";
 
-const PODNET_SUMS: &[u8] = include_bytes!("../../tests/data/v0.4.0-beta.1.SHA256SUMS");
-const PODNET_BUNDLE: &[u8] =
-    include_bytes!("../../tests/data/v0.4.0-beta.1.SHA256SUMS.sigstore.json");
+const SUMS: &[u8] = include_bytes!("../../tests/data/v0.4.0-beta.1.SHA256SUMS");
+const BUNDLE: &[u8] = include_bytes!("../../tests/data/v0.4.0-beta.1.SHA256SUMS.sigstore.json");
 
 /// The real files of v0.4.0-beta.1 of PodUtils/podnet: the bundle passes
 /// on the default path for its tag, and fails for another tag, for a
-/// changed SHA256SUMS and for the cfrs identity.
+/// changed SHA256SUMS, for a changed signature and for another repository.
 #[test]
-fn the_bundle_of_a_podnet_release() {
-    verify_bundle(PODNET_BUNDLE, PODNET_SUMS, "v0.4.0-beta.1").unwrap();
+fn the_bundle_of_a_release() {
+    verify_bundle(BUNDLE, SUMS, "v0.4.0-beta.1").unwrap();
 
-    let err = verify_bundle(PODNET_BUNDLE, PODNET_SUMS, "v0.4.0-beta.2")
+    let err = verify_bundle(BUNDLE, SUMS, "v0.4.0-beta.2")
         .unwrap_err()
         .to_string();
     assert!(err.contains("not https://github.com/PodUtils/podnet/.github/workflows/release.yml@refs/tags/v0.4.0-beta.2"), "{err}");
 
-    let mut changed = PODNET_SUMS.to_vec();
-    changed[0] = if changed[0] == b'0' { b'1' } else { b'0' };
-    let err = verify_bundle(PODNET_BUNDLE, &changed, "v0.4.0-beta.1")
-        .unwrap_err()
-        .to_string();
-    assert!(err.contains("digest"), "{err}");
-
-    let err = verify_bundle_for(
-        PODNET_BUNDLE,
-        PODNET_SUMS,
-        &identity_in(OLD, "v0.4.0-beta.1"),
-    )
-    .unwrap_err()
-    .to_string();
-    assert!(
-        err.contains("not https://github.com/Azathothas/cfrs/"),
-        "{err}"
-    );
-}
-
-/// The real files of v0.3.0-beta.1: the bundle passes for its tag, and
-/// fails for another tag, for a changed SHA256SUMS and for a changed
-/// signature.
-#[test]
-fn the_bundle_of_a_release() {
-    verify_bundle_for(BUNDLE, SUMS, &identity_in(OLD, "v0.3.0-beta.1")).unwrap();
-
-    let err = verify_bundle_for(BUNDLE, SUMS, &identity_in(OLD, "v0.3.0-beta.2"))
-        .unwrap_err()
-        .to_string();
-    assert!(err.contains("not https://github.com/Azathothas/cfrs/.github/workflows/release.yml@refs/tags/v0.3.0-beta.2"), "{err}");
-
     let mut changed = SUMS.to_vec();
     changed[0] = if changed[0] == b'0' { b'1' } else { b'0' };
-    let err = verify_bundle_for(BUNDLE, &changed, &identity_in(OLD, "v0.3.0-beta.1"))
+    let err = verify_bundle(BUNDLE, &changed, "v0.4.0-beta.1")
         .unwrap_err()
         .to_string();
     assert!(err.contains("digest"), "{err}");
@@ -196,17 +161,16 @@ fn the_bundle_of_a_release() {
     let last = raw.len() - 1;
     raw[last] ^= 1;
     let bad = text.replace(sig, &base64::engine::general_purpose::STANDARD.encode(raw));
-    let err = verify_bundle_for(bad.as_bytes(), SUMS, &identity_in(OLD, "v0.3.0-beta.1"))
+    let err = verify_bundle(bad.as_bytes(), SUMS, "v0.4.0-beta.1")
         .unwrap_err()
         .to_string();
     assert!(err.contains("signature"), "{err}");
 
-    // The identity of this repository refuses a release of the old one.
-    let err = verify_bundle(BUNDLE, SUMS, "v0.3.0-beta.1")
+    let err = verify_bundle_for(BUNDLE, SUMS, &identity_in(OTHER, "v0.4.0-beta.1"))
         .unwrap_err()
         .to_string();
     assert!(
-        err.contains("not https://github.com/PodUtils/podnet/.github"),
+        err.contains("not https://github.com/PodUtils/other/"),
         "{err}"
     );
 }
@@ -229,9 +193,9 @@ fn a_glibc_build_takes_the_musl_asset() {
 
 #[test]
 fn a_line_of_sha256sums() {
-    let sum = sum_of(SUMS, "cfrs-x86_64-unknown-linux-musl").unwrap();
+    let sum = sum_of(SUMS, "podnet-x86_64-unknown-linux-musl").unwrap();
     assert_eq!(sum.len(), 32);
-    assert!(sum_of(SUMS, "cfrs-sparc-unknown-linux-musl").is_err());
+    assert!(sum_of(SUMS, "podnet-sparc-unknown-linux-musl").is_err());
 }
 
 #[test]

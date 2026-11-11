@@ -235,10 +235,8 @@ Betas are allowed; there is no crates.io release (`docs/decisions.md`,
    output or behaviour that a command written for the previous release
    must change for; `None.` when there is none. `release.yml` and
    `tests/docs.rs` refuse a note with no such heading (issue 126).
-   The heads of the notes up to v0.3.0-beta.12 name `cfrs` and
-   `pod-netns`. A new head names the binaries `podnet-<target>` only, the
-   image `ghcr.io/podutils/podnet` and the identity of
-   `PodUtils/podnet`.
+   A head names the binaries `podnet-<target>` only, the image
+   `ghcr.io/podutils/podnet` and the identity of `PodUtils/podnet`.
 3. Commit, push, and wait until `ci` and `live` pass on that commit.
 4. Dispatch `release.yml` on `main` with `publish` empty: the dry run.
 5. When the dry run passes, dispatch `release.yml` with `publish` set to
@@ -252,9 +250,8 @@ At the first stable release (no `-beta.N`), also:
   `podnet-netns`, `podnet-serve` and `podnet-vnet` dependencies to the stable version (#222): a prerelease version requirement does not
   match a stable crate.
 * Rewrite the line of the README that says `:latest` has no image (#258).
-* Decide the crates.io publish of `podnet` (the name `cfrs` is taken by
-  another project; the owner reserved `podnet` as a 0.0.0 placeholder,
-  #224; `docs/decisions.md`), and set `documentation` in
+* Decide the crates.io publish of `podnet` (the owner reserved `podnet` as
+  a 0.0.0 placeholder, #224; `docs/decisions.md`), and set `documentation` in
   both manifests. `publish.yml` publishes by trusted publishing when
   `[workspace.metadata.podnet] crates-io = true`. A dependency on
   `PodUtils/podcrates` by git tag needs `version` beside `git` and `tag`
@@ -316,10 +313,8 @@ work order, `TODO/INDEX.md` has each entry. Facts that a session needs:
 
 * **A handoff file** (HANDOFF.md in `docs/`, when a session leaves one):
   read it first. It has the state of unfinished work.
-* **Releases**: the newest release is `v0.3.0-beta.12` (cfrs; release run
-  41858039866, release-proofs 41859986797). No podnet release now
-  (`docs/decisions.md`, Order); the plan for `v0.4.0-beta.1` is T-022 and
-  T-023.
+* **Releases**: the list is at <https://github.com/PodUtils/podnet/releases>;
+  `docs/releases/` has the notes. The steps are in "Release" above.
 * **Issue numbers of the QA archive**: GitHub deleted #259 to #278 (and
   the closed #165 to #207) with the account `aerrand-agent`; their text
   is in `docs/reports/aerrand-agent.md`. They are filed again as GitHub

@@ -43,8 +43,7 @@ trap cleanup EXIT INT TERM
 src="$dir/rebuild-of-$tag"
 git clone --quiet --depth 1 --branch "$tag" "https://github.com/$repo" "$src"
 commit=$(git -C "$src" rev-parse HEAD)
-# The name of the binary is the name of the package of the tag: cfrs up to
-# v0.3.0-beta.12, podnet after the rename.
+# The name of the binary is the name of the package of the tag.
 b=$(sed -n '/^\[package\]/,/^\[/s/^name[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$src/Cargo.toml" | head -n 1)
 [ -n "$b" ] || {
     echo "rebuild.sh: Cargo.toml of $tag names no package" >&2

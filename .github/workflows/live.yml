@@ -353,7 +353,7 @@ jobs:
           grep -E 'NotValidForName|not valid for' pin.err
       # podnet update against the real release v0.4.0-beta.1 of podnet: the
       # download, the Fulcio chain, the check of the identity and the
-      # install run. A release of cfrs stays refused.
+      # install run. A release of another repository stays refused.
       - name: podnet update to v0.4.0-beta.1
         timeout-minutes: 6
         run: |
@@ -363,7 +363,7 @@ jobs:
           cp target/release/podnet "$d/podnet"
           "$d/podnet" update --check
           if timeout 300 "$d/podnet" update --version v0.3.0-beta.1 2> "$d/update.err"; then
-            echo "podnet installed a release of cfrs"; exit 1
+            echo "podnet installed a release of another repository"; exit 1
           fi
           cat "$d/update.err"
           grep -q 'not https://github.com/PodUtils/podnet/' "$d/update.err"
@@ -958,23 +958,11 @@ jobs:
           # 20 MB at 0.46 MB/s. A stalled run prints its last warnings. The
           # step needs 1 MB/s from the better of the two runs of the
           # default.
-          # The binary of beta.6 runs the same download (A/B on this runner,
-          # at this time): its default window is 1, as in this binary. Its
-          # asset is cfrs-<target>, and its tracing target is cfrs.
-          old="$RUNNER_TEMP/podnet-beta6"
-          sh scripts/retry.sh curl -fsSL -o "$old" https://github.com/PodUtils/podnet/releases/download/v0.3.0-beta.6/cfrs-x86_64-unknown-linux-musl && chmod +x "$old" || old=""
           port=40200
-          for spec in new:default old:default new:4 new:none old:default new:default; do
-            bin=${spec%%:*}
-            burst=${spec#*:}
+          for burst in default 4 none default; do
             port=$((port + 1))
             exe=target/release/podnet
             log=podnet=debug
-            if [ "$bin" = old ]; then
-              [ -n "$old" ] || continue
-              exe=$old
-              log=cfrs=debug
-            fi
             if [ "$burst" = default ]; then unset PODNET_WARP_TCP_BURST; else export PODNET_WARP_TCP_BURST=$burst; fi
             RUST_LOG=$log "$exe" warp proxy --listen "tcp://127.0.0.1:$port" --run-for 90 > "burst-$port.log" 2>&1 &
             bp=$!
@@ -987,14 +975,14 @@ jobs:
               'https://speed.cloudflare.com/__down?bytes=20000000' || true)
             leg=direct
             if grep -q 'MASQUE goes through the WebSocket relay' "burst-$port.log"; then leg=relay; fi
-            echo "warp proxy download, binary ${bin}, TCP window ${burst}, leg ${leg}: ${rate:-none} (bytes/s, bytes)"
+            echo "warp proxy download, TCP window ${burst}, leg ${leg}: ${rate:-none} (bytes/s, bytes)"
             case "$rate" in
               *" 20000000") ;;
               *) grep -E 'WARN|ERROR|closed|dead|stall|capacity' "burst-$port.log" | sed -E 's/[0-9a-f]{8}-[0-9a-f-]{27}/<id>/g' | tail -8 ;;
             esac
             kill "$bp" 2> /dev/null || true
             wait "$bp" 2> /dev/null || true
-            if [ "$spec" = new:default ]; then
+            if [ "$burst" = default ]; then
               r=${rate%% *}
               default=$(awk -v a="${default:-0}" -v b="${r:-0}" 'BEGIN { print (b > a) ? b : a }')
             fi

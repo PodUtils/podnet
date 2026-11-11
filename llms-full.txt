@@ -8489,9 +8489,7 @@ The repository is a Cargo workspace:
 Each [release](https://github.com/PodUtils/podnet/releases) has static
 Linux binaries of `podnet` for `x86_64`, `aarch64`, `armv7`,
 `riscv64gc`, `i686`, `arm` (ARMv6, hard float), `loongarch64` and
-`powerpc64le` (from v0.3.0-beta.2 on; v0.3.0-beta.1 has `x86_64`,
-`aarch64`, `armv7` and `riscv64gc`, and no manual page). podnet is for Linux
-only. This README describes `main`; the notes in `docs/releases/` say what
+`powerpc64le`. podnet is for Linux only. This README describes `main`; the notes in `docs/releases/` say what
 a tag has. Each release also has these files:
 
 | File | Contents |
@@ -8538,13 +8536,6 @@ the two bundles to one directory. Then do these steps:
      --bundle provenance.sigstore.json --custom-trusted-root trusted_root.jsonl
    ```
 
-The releases up to v0.3.0-beta.12 have the old name `cfrs`. Their
-binaries are `cfrs-<target>` and `pod-netns-<target>`, their manual page is
-`cfrs.1`, and their image is `ghcr.io/azathothas/cfrs:<tag>`. The identity
-of their signature is
-`https://github.com/Azathothas/cfrs/.github/workflows/release.yml@refs/tags/<tag>`.
-For these releases, use these names and this identity in the steps above.
-
 A binary that has one changed byte fails each check. The workflow
 `.github/workflows/release-proofs.yml` does these checks on a fresh runner
 after each release. It also does each check on a changed copy, which must
@@ -8585,7 +8576,7 @@ exits 0 when `curl` fails or is missing.
 * The directory: `PODNET_INSTALL_DIR`, else `/usr/local/bin` for root, else
   `$XDG_BIN_HOME`, else `~/.local/bin`. A line says how to add it to `PATH`.
   The script checks the directory before the downloads.
-* `PODNET_VERSION=<TAG>` (for example `v0.3.0-beta.11`) installs that release, with no request to
+* `PODNET_VERSION=<TAG>` (for example `v0.4.0-beta.1`) installs that release, with no request to
   the GitHub API. For the newest release, the script reads the API; when
   the API refuses (403 on a shared address), it reads `releases.atom`.
   A draft release is not used.
@@ -8619,7 +8610,7 @@ import subprocess
 import urllib.request
 
 KEEP = os.environ.get("PODNET_KEEP", os.path.expanduser("~/podnet-keep"))
-VERSION = "latest"  # A tag (for example v0.3.0-beta.11) uses no GitHub API.
+VERSION = "latest"  # A tag (for example v0.4.0-beta.1) uses no GitHub API.
 URL = "https://raw.githubusercontent.com/PodUtils/podnet/main/scripts/install.sh"
 
 os.makedirs(os.path.join(KEEP, "bin"), exist_ok=True)
@@ -10068,6 +10059,10 @@ sh scripts/rebuild.sh <TAG>
 [`THIRD_PARTY_NOTICES.md`](https://github.com/PodUtils/podnet/blob/main/THIRD_PARTY_NOTICES.md) for the licenses of the
 included third-party files.
 
+---
+
+Former name: podnet was `cfrs` before v0.4.0-beta.1. The binary, the variables and the signing identity have new names.
+
 <!-- document: docs/protocol.md -->
 
 # Edge protocol and WARP protocol
@@ -11006,23 +11001,19 @@ The tools: `.github/workflows/live.yml` (run 41260604779), `release.yml`
 | Unprivileged user namespaces | AppArmor limits them: a namespace can be made, but `lo` cannot come up | measured |
 | `podnet warp run --backend seccomp` | Works (`warp=on`) | measured |
 
-### An IPv6-only host (the IPv6-only kit, 2026-11-02; a runner, from beta.7)
+### An IPv6-only host (the IPv6-only kit, 2026-11-02; a runner)
 
-The kit of 2026-11-02 ran podnet 0.3.0-beta.6 in a netns and in a VM with
-IPv6 only (NAT66 out through WARP). `scripts/v6only/` makes the same host
-on a runner: the namespace `v6up` has IPv4 and `podnet warp tun
---default-route`; `v6only` behind it has IPv6 only (no IPv4 route; the
-address 127.0.0.1 stays). The step "An IPv6-only host" of `live.yml` runs
+The kit ran in a netns and in a VM with IPv6 only (NAT66 out through
+WARP). `scripts/v6only/` makes the same host on a runner: the namespace
+`v6up` has IPv4 and `podnet warp tun --default-route`; `v6only` behind it
+has IPv6 only (no IPv4 route; the address 127.0.0.1 stays). The step "An IPv6-only host" of `live.yml` runs
 `scripts/v6only/acceptance.sh`.
 
 | Fact | Result | Mark |
 | --- | --- | --- |
 | A connect to an IPv4 address | `ENETUNREACH` | measured (kit) |
-| `podnet warp run` (beta.6) | IPv4 and UDP for the program through WARP; a tunnel at 1.9 to 2.2 MB/s | measured (kit) |
-| A tunnel with TCP 443 and DNS only (beta.6) | Ready in 13 s; after `kill -9`, the supervisor starts it again in less than 30 s, with a new URL | measured (kit) |
-| `warp up --tun` (beta.6) | Fails: it does not give `--masque-endpoint` to `warp tun` (fixed in beta.8) | measured (kit) |
-| No system resolver (beta.6) | No tunnel: the DoH servers were IPv4 only (fixed in beta.8: IPv6 servers first on a host with no IPv4 route) | measured (kit) |
-| `podnet doctor` (beta.6) | "0 of 3 legs" while the tunnel works: it probed the IPv4 front door only (fixed in beta.8) | measured (kit) |
+| `podnet warp run` | IPv4 and UDP for the program through WARP; a tunnel at 1.9 to 2.2 MB/s | measured (kit) |
+| A tunnel with TCP 443 and DNS only | Ready in 13 s; after `kill -9`, the supervisor starts it again in less than 30 s, with a new URL | measured (kit) |
 
 ### The test box (a GitHub runner, from 2026-11-01)
 
