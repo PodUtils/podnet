@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 244 entries: 57 open, 8 partial, 19 blocked, 160 done.
+`TODO/INDEX.md` holds 244 entries: 56 open, 8 partial, 19 blocked, 161 done.
 
 ## State
 
@@ -52,7 +52,7 @@ not wait for a larger one.
    `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
    server and git: done; the router T-095, T-097,
    T-098, T-099, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
-    The triage adds T-177 (`podnet route check`) and
+    The triage adds
     T-180 (the router control); the router additions are in T-097 to T-099 (GitHub #372 to #374).
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
 8. **M7, the pods:** T-174 (the veth wire; from the triage).
