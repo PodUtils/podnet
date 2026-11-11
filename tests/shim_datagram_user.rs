@@ -15,10 +15,11 @@ const SERVER: &str = r#"
 #include <string.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-int main(void){
+#include <stdlib.h>
+int main(int argc, char **argv){
   int s=socket(AF_INET,SOCK_DGRAM,0);
   struct sockaddr_in a; memset(&a,0,sizeof a);
-  a.sin_family=AF_INET; a.sin_port=htons(19998);
+  a.sin_family=AF_INET; a.sin_port=htons(atoi(argv[1]));
   inet_pton(AF_INET,"10.66.0.2",&a.sin_addr);
   if(bind(s,(struct sockaddr*)&a,sizeof a)<0){perror("bind");return 1;}
   printf("ready\n"); fflush(stdout);
@@ -36,10 +37,11 @@ const SENDER: &str = r#"
 #include <string.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <stdlib.h>
 int main(int argc, char **argv){
   int s=socket(AF_INET,SOCK_DGRAM,0);
   struct sockaddr_in peer; memset(&peer,0,sizeof peer);
-  peer.sin_family=AF_INET; peer.sin_port=htons(19998);
+  peer.sin_family=AF_INET; peer.sin_port=htons(atoi(argv[2]));
   inet_pton(AF_INET,"10.66.0.2",&peer.sin_addr);
   if(sendto(s,argv[1],strlen(argv[1]),0,(struct sockaddr*)&peer,sizeof peer)<0){perror("sendto");return 1;}
   return 0;
@@ -93,8 +95,11 @@ fn shim_datagram_of_another_user_is_dropped() {
         let _ = std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755));
     }
     let _ = std::fs::set_permissions(&shim.path, std::fs::Permissions::from_mode(0o755));
+    // A port of this run: parallel runs of the test do not share it.
+    let port = (20000 + std::process::id() % 20000).to_string();
     let mut child = Reap(
         Command::new(&server)
+            .arg(&port)
             .env("LD_PRELOAD", &shim.path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -102,7 +107,7 @@ fn shim_datagram_of_another_user_is_dropped() {
             .unwrap(),
     );
     let mut lines = BufReader::new(child.0.stdout.take().unwrap()).lines();
-    let ready = lines.next().unwrap().unwrap_or_default();
+    let ready = lines.next().and_then(Result::ok).unwrap_or_default();
     if ready != "ready" {
         let mut err = String::new();
         let _ = std::io::Read::read_to_string(&mut child.0.stderr.take().unwrap(), &mut err);
@@ -110,7 +115,7 @@ fn shim_datagram_of_another_user_is_dropped() {
     }
     let send = |text: &str, uid: Option<u32>| {
         let mut cmd = Command::new(&sender);
-        cmd.arg(text).env("LD_PRELOAD", &shim.path);
+        cmd.arg(text).arg(&port).env("LD_PRELOAD", &shim.path);
         if let Some(uid) = uid {
             cmd.uid(uid).gid(uid);
         }
