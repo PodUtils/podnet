@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**244 entries: 52 open, 8 partial, 19 blocked, 165 done.**
+**244 entries: 51 open, 8 partial, 19 blocked, 166 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 23 | 6 | 12 | 106 | 147 |
+| P2 | 22 | 6 | 12 | 107 | 147 |
 | P3 | 26 | 1 | 5 | 36 | 68 |
-| **All** | 52 | 8 | 19 | 165 | 244 |
+| **All** | 51 | 8 | 19 | 166 | 244 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -267,7 +267,7 @@ M8 Overlays, M9 Later.
 | [T-219](services.md) | P1 | M | M6 | feature | blocked | `podnet service install`: a hardened system unit (PodUtils/podcrates#35, A-N-11) |
 | [T-220](services.md) | P1 | S | M6 | feature | blocked | `relay node` as a system service, with no operator act (PodUtils/podcrates#35, A-N-12) |
 | [T-221](services.md) | P2 | M | M6 | feature | open | `podnet bench URL --json` (PodUtils/podcrates#35, A-N-15) |
-| [T-222](fixes.md) | P2 | S | M5 | feature | open | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |
+| [T-222](fixes.md) | P2 | S | M5 | feature | done | `llms.txt`, `llms-full.txt` and `--help --json` (PodUtils/podcrates#35, A-X-19) |
 | [T-223](fixes.md) | P3 | M | M5 | defect | done | seccomp: the TCP gaps that the differential check finds |
 | [T-224](crates.md) | P1 | S | M3 | chore | done | podnet-netns calls `pod_proxy::udp` for the SOCKS5 datagram path |
 | [T-225](fixes.md) | P1 | S | M5 | defect | done | The send poller of the WARP QUIC socket keeps its wake-up |

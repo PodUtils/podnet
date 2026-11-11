@@ -3808,7 +3808,7 @@ cargo todo check
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -3831,6 +3831,23 @@ Ask A-X-19 (P2): "Machine-readable docs for agents: `llms.txt` and `llms-full.tx
 cargo test -p podnet --test cli -- help_json_matches_man_json
 cargo todo check
 ```
+
+## Done
+
+2026-11-11, commit 622450d (`T-222: --help --json, llms.txt and llms-full.txt`). `--help --json` (or
+`-h --json`) at each level prints the JSON of `podnet man --json` for the command that the words of
+the line name (`manual::help_json_request`, called in `src/main.rs` before the parse). The root
+gives the whole manual. `pod` keeps its own help. `scripts/gen-llms.py BINARY` writes `llms.txt` (the
+summary, one line for each command, the documents) and `llms-full.txt` (`podnet man --no-pager` and
+the text of README.md and three documents) in the repository root. The script cuts the commit from
+the version, so the files do not change with each build. `--out DIR` writes to another directory.
+`release.yml` builds both files from the musl binary, adds them to `SHA256SUMS`, and attaches them;
+`release-proofs.yml` checks their lines. Tests (`tests/cli/llms.rs`): `help_json_matches_man_json`
+failed before the change (the output of `--help --json` was the text of the help) and passes now;
+`llms_files_are_current` runs `gen-llms.py --check` and fails when a file is old.
+`sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers and test all 0.
+Not proven: the release steps (`release.yml`, `release-proofs.yml`) did not run; the files hold the
+version of `Cargo.toml`, so a version change needs a new run of the script.
 
 # T-223: seccomp: the TCP gaps that the differential check finds
 

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 244 entries: 52 open, 8 partial, 19 blocked, 165 done.
+`TODO/INDEX.md` holds 244 entries: 51 open, 8 partial, 19 blocked, 166 done.
 
 ## State
 
@@ -62,7 +62,7 @@ not wait for a larger one.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161, T-162, T-163,
     T-200 (`pod-relay`), T-166 (`pod-services`), T-244 (`pod-cloudflare`).
 12. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
-    podssh first; cfb and githome wait): T-216, T-217 (the schema of `doctor --json`), T-222, T-218
+    podssh first; cfb and githome wait): T-216, T-217 (the schema of `doctor --json`), T-218
     (the connector profile), T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
 
 Releases (2026-11-09: betas, no crates.io): cut the next prerelease (`v0.4.0-beta.N`) unattended when
