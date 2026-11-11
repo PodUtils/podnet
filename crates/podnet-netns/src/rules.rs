@@ -9,6 +9,8 @@ use anyhow::{bail, Context, Result};
 
 use crate::upstream::Proxy;
 
+pub mod shadow;
+
 #[derive(Clone, Debug)]
 pub enum RuleMatch {
     Domain(String),

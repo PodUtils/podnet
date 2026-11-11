@@ -427,3 +427,28 @@ async fn router_rules_pick_the_network() {
         "{err:#}"
     );
 }
+
+/// T-242: a rule of the router file that an earlier rule shadows. A
+/// shadowed `reject` is an error; a shadowed way is a warning only.
+#[test]
+fn router_shadowed_reject_is_an_error() {
+    use std::collections::HashMap;
+
+    use podnet_core::network::Way;
+
+    let way = Way::destination(Arc::new(
+        UpstreamChain::parse(&["socks5://127.0.0.1:1"]).unwrap(),
+    ));
+    let mut ways = HashMap::new();
+    ways.insert("warp".to_string(), way);
+    let bad = "domain:.example.com=warp\n# the rule below never matches\ndomain:admin.example.com=reject\n";
+    let err = crate::routes::parse(bad, &ways, None).err().unwrap();
+    let text = format!("{err:#}");
+    assert!(text.contains("line 3") && text.contains("line 1"), "{text}");
+    assert!(crate::routes::parse_with(bad, &ways, None, true).is_ok());
+    // The reverse order, and a shadowed rule that is not a reject.
+    let good = "domain:admin.example.com=reject\ndomain:.example.com=warp\n";
+    assert!(crate::routes::parse(good, &ways, None).is_ok());
+    let warn = "domain:.example.com=reject\ndomain:a.example.com=warp\n";
+    assert!(crate::routes::parse(warn, &ways, None).is_ok());
+}

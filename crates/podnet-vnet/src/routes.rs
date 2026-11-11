@@ -22,7 +22,19 @@ use crate::dialer::PodRule;
 /// Parse the rules of `text` over the named `ways`, with the way of a
 /// target that no rule matches (`None`: refuse it).
 pub fn parse(text: &str, ways: &HashMap<String, Way>, default: Option<Way>) -> Result<Rules> {
+    parse_with(text, ways, default, false)
+}
+
+/// As [`parse`]. A rule that an earlier rule shadows gives a warning. A
+/// shadowed `reject` is an error, unless `allow_shadowed` is set (T-242).
+pub fn parse_with(
+    text: &str,
+    ways: &HashMap<String, Way>,
+    default: Option<Way>,
+    allow_shadowed: bool,
+) -> Result<Rules> {
     let mut rules = Vec::new();
+    let mut lint = Vec::new();
     for (n, line) in text.lines().enumerate() {
         let line = line.split('#').next().unwrap_or("").trim();
         if line.is_empty() {
@@ -32,6 +44,7 @@ pub fn parse(text: &str, ways: &HashMap<String, Way>, default: Option<Way>) -> R
             .rsplit_once('=')
             .with_context(|| format!("line {}: give MATCH=WAY", n + 1))?;
         let matcher = PodRule::parse(matcher.trim()).with_context(|| format!("line {}", n + 1))?;
+        let way_text = way;
         let way = match way.trim() {
             "reject" | "block" => None,
             name => match ways.get(name) {
@@ -42,10 +55,30 @@ pub fn parse(text: &str, ways: &HashMap<String, Way>, default: Option<Way>) -> R
                 ),
             },
         };
+        lint.push((
+            n + 1,
+            matcher.matcher().clone(),
+            podnet_netns::rules::shadow::action_key(way_text),
+            line.to_string(),
+        ));
         rules.push(Rule {
             matcher: Arc::new(matcher),
             way,
         });
+    }
+    let items: Vec<_> = lint
+        .iter()
+        .map(
+            |(n, matcher, action, spec)| podnet_netns::rules::shadow::LintItem {
+                matcher,
+                action: action.clone(),
+                place: format!("line {n}"),
+                spec: spec.clone(),
+            },
+        )
+        .collect();
+    for warning in podnet_netns::rules::shadow::check(&items, allow_shadowed)? {
+        tracing::warn!("{warning}");
     }
     Ok(Rules::new(rules, default)?)
 }
@@ -56,6 +89,7 @@ pub struct RulesFile {
     path: PathBuf,
     ways: HashMap<String, Way>,
     default: Option<Way>,
+    allow_shadowed: bool,
     current: Mutex<(Option<SystemTime>, Arc<Rules>)>,
 }
 
@@ -66,13 +100,25 @@ impl RulesFile {
         ways: HashMap<String, Way>,
         default: Option<Way>,
     ) -> Result<RulesFile> {
+        RulesFile::open_with(path, ways, default, false)
+    }
+
+    /// As [`RulesFile::open`]. With `allow_shadowed`, a shadowed `reject`
+    /// rule is a warning, not an error (T-242).
+    pub fn open_with(
+        path: &Path,
+        ways: HashMap<String, Way>,
+        default: Option<Way>,
+        allow_shadowed: bool,
+    ) -> Result<RulesFile> {
         let (stamp, text) = read(path)?;
-        let rules =
-            parse(&text, &ways, default.clone()).with_context(|| path.display().to_string())?;
+        let rules = parse_with(&text, &ways, default.clone(), allow_shadowed)
+            .with_context(|| path.display().to_string())?;
         Ok(RulesFile {
             path: path.to_path_buf(),
             ways,
             default,
+            allow_shadowed,
             current: Mutex::new((stamp, Arc::new(rules))),
         })
     }
@@ -85,7 +131,10 @@ impl RulesFile {
             .ok();
         if stamp.is_some() && stamp != current.0 {
             match read(&self.path).and_then(|(stamp, text)| {
-                Ok((stamp, parse(&text, &self.ways, self.default.clone())?))
+                Ok((
+                    stamp,
+                    parse_with(&text, &self.ways, self.default.clone(), self.allow_shadowed)?,
+                ))
             }) {
                 Ok((stamp, rules)) => {
                     tracing::info!(path = %self.path.display(), "the rules of the router changed");

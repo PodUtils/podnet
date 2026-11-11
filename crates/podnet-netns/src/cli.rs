@@ -123,6 +123,10 @@ Options:
                              --serve answers SOCKS5 0x02 or HTTP 403
                            With the seccomp backend, 127.0.0.0/8 goes direct
                            (or to a listener of the program itself)
+      --allow-shadowed-rules
+                           A rule that an earlier rule shadows (it can never
+                           match) gives a warning. A shadowed reject rule is
+                           an error (exit 64); this option makes it a warning
       --default-action <A> allow (default) or reject: what the pod does with a
                            target that no rule matches. reject refuses it as
                            a reject rule does
@@ -214,6 +218,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut keep_proxy_env = false;
     let mut serve: Option<crate::listen::ProxyListen> = None;
     let mut default_reject = false;
+    let mut allow_shadowed = false;
     let mut flow_log = None;
     let mut loopback_rules = false;
     let mut learned = None;
@@ -255,6 +260,10 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             }
             "--name-backend" => {
                 name_backend = true;
+                i += 1;
+            }
+            "--allow-shadowed-rules" => {
+                allow_shadowed = true;
                 i += 1;
             }
             "--default-action" => {
@@ -389,6 +398,22 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
                 }
             }
         }
+    }
+    // T-242: an earlier rule that shadows a later one.
+    let lint: Vec<crate::rules::shadow::LintItem> = rules
+        .iter()
+        .enumerate()
+        .map(|(n, r)| crate::rules::shadow::LintItem {
+            matcher: &r.matcher,
+            action: crate::rules::shadow::action_key(
+                r.spec.split_once('=').map_or("", |(_, action)| action),
+            ),
+            place: format!("-r {}", n + 1),
+            spec: r.spec.clone(),
+        })
+        .collect();
+    for warning in crate::rules::shadow::check(&lint, allow_shadowed)? {
+        eprintln!("{}: warning: {warning}", program_name());
     }
     // T-157: a target that no rule matches is refused: a last rule that
     // matches each target.

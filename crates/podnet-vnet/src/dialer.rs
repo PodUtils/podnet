@@ -305,6 +305,13 @@ impl PodRule {
     }
 }
 
+impl PodRule {
+    /// The matcher, for the lint of shadowed rules.
+    pub fn matcher(&self) -> &RuleMatch {
+        &self.rule
+    }
+}
+
 impl Matcher for PodRule {
     fn label(&self) -> String {
         self.spec.clone()
