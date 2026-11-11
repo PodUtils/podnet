@@ -353,8 +353,8 @@ goes inside the MASQUE session. The host opens only TCP 443.
 
 Each row has a mark: **measured** (a command ran, with its date and run),
 **read** (from the source of cloudflared 2026.10.7 or from a document) or
-**inferred**. The tool is `scripts/services/edge-facts.sh` of
-PodUtils/podcrates (from the tag v0.14.0); the workflow `services.yml` of
+**inferred**. The tool is `PodUtils/podcrates:scripts/services/edge-facts.sh`
+(from the tag v0.14.0); the workflow `services.yml` of
 podcrates runs it each day and by hand (input `measure`). The rows below are
 from run 41268348982 (2026-11-01, a GitHub runner, ubuntu-24.04), address
 198.41.192.107. Its exit code is 1 when one of the two facts that podnet needs
