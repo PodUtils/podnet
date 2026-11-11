@@ -15,7 +15,13 @@
 //!       dev: tun1
 //!   table: 200             # optional: the aggregate table (default 200)
 //!   priority: 1000         # optional: the first rule priority (default 1000)
+//!   masquerade: true       # optional: `oifname WAN masquerade` (default true)
+//!   mss_clamp: true        # optional: clamp the TCP MSS to the route MTU (default true)
+//!   kill_switch: true      # optional: `unreachable default` in the aggregate table (default true)
+//!   rp_filter: true        # optional: `rp_filter` 0 on each WAN (default true)
 //! ```
+//!
+//! The four last keys are in [`guard`] (T-120).
 //!
 //! The plan has these rules, in this order of priority:
 //! 1. `lookup main suppress_prefixlength 0`: the routes of the local subnets
@@ -35,8 +41,11 @@ use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 
+pub mod guard;
+pub use guard::Guard;
+
 /// The kernel section of the config file.
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct KernelConfig {
     pub wans: Vec<WanConfig>,
@@ -46,6 +55,18 @@ pub struct KernelConfig {
     /// The priority of the first rule (default 1000).
     #[serde(default)]
     pub priority: Option<u32>,
+    /// A masquerade on each WAN (default true; T-120).
+    #[serde(default)]
+    pub masquerade: Option<bool>,
+    /// An MSS clamp on each WAN (default true; T-120).
+    #[serde(default)]
+    pub mss_clamp: Option<bool>,
+    /// An unreachable default route in the aggregate table (default true).
+    #[serde(default)]
+    pub kill_switch: Option<bool>,
+    /// `rp_filter` 0 on each WAN (default true).
+    #[serde(default)]
+    pub rp_filter: Option<bool>,
 }
 
 /// One WAN of the file.
@@ -100,6 +121,7 @@ pub struct Plan {
     pub wans: Vec<Wan>,
     pub aggregate: u32,
     pub priority: u32,
+    pub guard: Guard,
 }
 
 /// The table `main`.
@@ -171,10 +193,18 @@ impl Plan {
                 bail!("kernel.wans[{i}]: the name, device, table or mark is the same as in kernel.wans[{j}]");
             }
         }
+        let on = Guard::default();
+        let guard = Guard {
+            masquerade: config.masquerade.unwrap_or(on.masquerade),
+            mss_clamp: config.mss_clamp.unwrap_or(on.mss_clamp),
+            kill_switch: config.kill_switch.unwrap_or(on.kill_switch),
+            rp_filter: config.rp_filter.unwrap_or(on.rp_filter),
+        };
         Ok(Plan {
             wans,
             aggregate,
             priority,
+            guard,
         })
     }
 
@@ -401,12 +431,16 @@ struct Socket(OwnedFd);
 
 impl Socket {
     fn open() -> Result<Socket> {
+        Socket::open_protocol(libc::NETLINK_ROUTE)
+    }
+
+    fn open_protocol(protocol: i32) -> Result<Socket> {
         // SAFETY: socket with constant arguments.
         let fd = unsafe {
             libc::socket(
                 libc::AF_NETLINK,
                 libc::SOCK_RAW | libc::SOCK_CLOEXEC,
-                libc::NETLINK_ROUTE,
+                protocol,
             )
         };
         if fd < 0 {
@@ -555,6 +589,7 @@ pub fn apply(new: &Plan, old: Option<&Plan>) -> Result<()> {
         let what = format!("route default table {table}");
         check(&what, sock.ack(&new_route_request(table, &resolved)), &[])?;
     }
+    guard::apply_kill_switch(&sock, new)?;
     let wanted = new.rules();
     for rule in &wanted {
         // EEXIST: the rule is in the kernel already.
@@ -563,14 +598,18 @@ pub fn apply(new: &Plan, old: Option<&Plan>) -> Result<()> {
     }
     if let Some(old) = old {
         remove_except(&sock, old, &wanted, &new.tables())?;
+        guard::remove_stale(&sock, old, Some(new))?;
     }
-    Ok(())
+    guard::apply_host(new, old)
 }
 
 /// Delete the rules and the routes of `plan`.
 pub fn remove(plan: &Plan) -> Result<()> {
     let sock = Socket::open()?;
-    remove_except(&sock, plan, &[], &BTreeSet::new())
+    let rules = remove_except(&sock, plan, &[], &BTreeSet::new());
+    let kill = guard::remove_stale(&sock, plan, None);
+    let host = guard::remove_host(plan);
+    rules.and(kill).and(host)
 }
 
 fn remove_except(
@@ -635,7 +674,8 @@ pub fn read_default(table: u32) -> Result<Option<Vec<NextHop>>> {
     let sock = Socket::open()?;
     let gateway = |d: &[u8]| <[u8; 4]>::try_from(d).ok().map(Ipv4Addr::from);
     for body in sock.dump(RTM_GETROUTE, vec![AF_INET, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])? {
-        if body.len() < 12 || body[0] != AF_INET || body[1] != 0 {
+        // Only unicast routes: the kill switch is an unreachable route.
+        if body.len() < 12 || body[0] != AF_INET || body[1] != 0 || body[7] != RTN_UNICAST {
             continue;
         }
         let (mut t, mut oif, mut gw, mut hops) = (u32::from(body[4]), 0, None, Vec::new());

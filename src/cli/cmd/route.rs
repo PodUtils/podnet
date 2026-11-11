@@ -166,6 +166,15 @@ fn apply_kernel(config: &podnet::router::Config) -> Result<Option<podnet::router
         plan.wans.len(),
         plan.aggregate
     );
+    let g = plan.guard;
+    let on = |b: bool| if b { "on" } else { "off" };
+    println!(
+        "podnet: route  kernel  masquerade {}, mss clamp {}, kill switch {}, rp_filter 0 {}",
+        on(g.masquerade),
+        on(g.mss_clamp),
+        on(g.kill_switch),
+        on(g.rp_filter)
+    );
     Ok(Some(plan))
 }
 

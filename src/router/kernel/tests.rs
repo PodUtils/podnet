@@ -1,6 +1,6 @@
 use super::*;
 
-fn wan(name: &str, dev: &str) -> WanConfig {
+pub(super) fn wan(name: &str, dev: &str) -> WanConfig {
     WanConfig {
         name: name.into(),
         dev: dev.into(),
@@ -11,11 +11,10 @@ fn wan(name: &str, dev: &str) -> WanConfig {
     }
 }
 
-fn section(wans: Vec<WanConfig>) -> KernelConfig {
+pub(super) fn section(wans: Vec<WanConfig>) -> KernelConfig {
     KernelConfig {
         wans,
-        table: None,
-        priority: None,
+        ..KernelConfig::default()
     }
 }
 
@@ -147,12 +146,12 @@ fn kernel_requests_encode_rules_and_a_multipath_route() {
 
 // ── the namespace ───────────────────────────────────────────────────────────
 
-const INNER: &str = "PODNET_T119_INNER";
+pub(super) const INNER: &str = "PODNET_T119_INNER";
 const RTM_NEWLINK: u16 = 16;
 const RTM_NEWADDR: u16 = 20;
 
 /// The request of a link of a kind that every kernel has (a bridge).
-fn link_request(name: &str) -> Vec<u8> {
+pub(super) fn link_request(name: &str) -> Vec<u8> {
     let mut b = vec![0u8; 16];
     attr(&mut b, 3, format!("{name}\0").as_bytes());
     let start = b.len();
@@ -165,7 +164,7 @@ fn link_request(name: &str) -> Vec<u8> {
 }
 
 /// A bridge link that is up, with the address `addr`/24.
-fn bridge(sock: &Socket, name: &str, addr: [u8; 4]) -> u32 {
+pub(super) fn bridge(sock: &Socket, name: &str, addr: [u8; 4]) -> u32 {
     let code = sock.ack(&link_request(name));
     assert_eq!(code.unwrap(), 0, "bridge link {name}");
     let index = ifindex(name).unwrap();
@@ -232,7 +231,7 @@ fn in_namespace() {
 }
 
 /// True when the namespace can make a bridge link (CAP_NET_ADMIN).
-fn can_make_links() -> bool {
+pub(super) fn can_make_links() -> bool {
     let Ok(sock) = Socket::open() else {
         return false;
     };
@@ -251,15 +250,22 @@ fn route_kernel_tables_and_rules_in_a_namespace() {
         in_namespace();
         return;
     }
+    rerun_in_namespace(
+        module_path!(),
+        "route_kernel_tables_and_rules_in_a_namespace",
+    );
+}
+
+/// Run the test `name` of the module `module` again in `unshare -rn` with
+/// [`INNER`] set. The test passes with a message when the host does not
+/// allow the namespace.
+pub(super) fn rerun_in_namespace(module: &str, name: &str) {
     let me = std::env::current_exe().unwrap();
-    let path = module_path!().split_once("::").unwrap().1;
+    let path = module.split_once("::").unwrap().1;
     let run = std::process::Command::new("unshare")
         .arg("-rn")
         .arg(&me)
-        .args([
-            "--exact",
-            &format!("{path}::route_kernel_tables_and_rules_in_a_namespace"),
-        ])
+        .args(["--exact", &format!("{path}::{name}")])
         .args(["--nocapture", "--test-threads=1"])
         .env(INNER, "1")
         .output();
