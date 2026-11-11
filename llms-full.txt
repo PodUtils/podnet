@@ -6858,6 +6858,11 @@ COMMANDS
         --json
             Print one JSON document
 
+        --quick
+            A short run: one sample for each path, and 15 s for the whole run.
+            A part that does not end in time gets the verdict `unknown`. The
+            JSON document keeps the same keys
+
         --agent
             Test what dev work can do here: git over HTTPS and SSH, the
             package registries, UDP DNS, IPv6 and localhost, directly, through
@@ -10228,6 +10233,77 @@ These documents apply. This section gives facts, not legal advice.
   "block certain kinds of usage" (read, podssh design notes). podnet is a
   separate program: it contains no code of the WARP application, and it
   uses the public registration API of section 5.1.
+
+## 9. `podnet doctor --json`, schema 1
+
+`podnet doctor --json` prints one JSON object. The key `schema` is 1. Within
+schema 1, a key is added, and never removed or renamed. A consumer ignores a
+key that it does not know. The test `doctor_json_keys_are_fixed`
+(`tests/doctor.rs`) pins the key sets.
+
+`--quick` makes one sample for each path and ends the run in 15 s. A part that
+does not end in time gets the verdict `unknown` and the reason `no answer in
+the time limit of --quick`. The keys stay the same.
+
+The verdict words are `ok`, `fail` and `unknown`. The key `status` has the
+same word as `verdict` in each object that has both. In `udp`, `verdict` is
+one of `answered`, `refused` and `unknown`.
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `schema` | number | Always 1. |
+| `podnet` | string | The version of podnet. |
+| `ok` | bool | True when one leg is `ok`. |
+| `quick` | bool | True for a run of `--quick`. |
+| `next` | string | The step to take now. |
+| `names` | string or null | What the proxy does with names and addresses on 7844. |
+| `roads` | array | One object for each road (`direct`, `warp`, `relay`). |
+| `lanes` | object | The seven egress lanes (below). |
+| `legs` | array | One object for each leg (`quic`, `http2`, `quic+warp`, `http2+relay`). |
+| `paths` | array | One object for each TCP path (the hops). |
+| `clock` | object | The clock against the `Date` of an API. |
+| `git` | object | The installed git. |
+| `proxy` | object | The proxy of the run. |
+| `udp` | object | The UDP 7844 probe. |
+
+Each object of `roads` has `road`, `verdict`, `status` and `reason` (strings).
+Each object of `legs` has `leg`, `verdict`, `status` and `reason` (strings).
+
+Each object of `paths`:
+
+| Key | Type |
+| --- | --- |
+| `id` | string |
+| `target` | string (`host:port`) |
+| `via` | string or null (the proxy) |
+| `verdict`, `status`, `detail` | string |
+| `samples` | object: `sent` and `answered` (numbers), `loss` (number, 0 to 1), `best_ms`, `median_ms`, `p95_ms` and `jitter_ms` (number or null) |
+| `tls` | object or null: `verdict`, `status`, `issuer` (string or null), `detail` |
+| `dns` | object or null: `addresses` (strings) and `ms`, or `error` |
+
+* `clock`: `verdict`, `status` and `detail` (strings), `skew_s` (number or
+  null).
+* `git`: `verdict`, `status` and `detail` (strings), `version` (string or
+  null).
+* `proxy`: `url` (string or null), `credentials` (bool or null), `direct`
+  (strings), `text` (string).
+* `udp`: `target`, `verdict`, `status` and `detail` (strings).
+
+### Lanes
+
+`lanes` has exactly the seven keys below. Each value is an object with
+`verdict` (`ok`, `fail` or `unknown`), `ms` (number or null: the best TCP
+sample of the lane) and `reason` (string).
+
+| Lane | Source | `ms` |
+| --- | --- | --- |
+| `tunnel_quic` | the leg `quic` | null |
+| `tunnel_http2` | the leg `http2` | the path `edge-address` |
+| `tunnel_quic_warp` | the leg `quic+warp` | the MASQUE path |
+| `masque_tcp443` | the path `masque`, or `masque-v6` when only it works | the same path |
+| `masque_udp443` | no probe: always `unknown` | null |
+| `ws_upgrade` | no probe: always `unknown` | null |
+| `proxy` | the paths that go through a proxy: `ok` when one works, `fail` when each fails, else `unknown` (`no proxy is set` without a proxy) | the best of the working paths |
 
 ## Failure causes
 
