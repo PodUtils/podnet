@@ -1234,15 +1234,95 @@ COMMANDS
             $ podnet connect wss://NAME.trycloudflare.com/__podnet/ws -L
             tcp://127.0.0.1:8080
 
-    podnet forward [OPTIONS] --local <LISTEN=HOST:PORT>
-        Forward local ports through a network: -L LISTEN=HOST:PORT, with
-        --network SPEC (direct, a proxy, the relay, a tailnet)
+    podnet expose [OPTIONS] <TARGET> [-- <ARGS>...]
+        Publish a local service by one word: --via tunnel (a Cloudflare
+        tunnel), relay (a node of the reverse relay) or switch (a virtual
+        address). It runs `tunnel`, `relay node` or `net proxy --forward`
+
+        <TARGET>
+            The local service: an http:// or https:// URL, a port, host:port,
+            tcp://host:port, or unix:/path. Required.
+
+        <ARGS>...
+            More arguments for the command that runs (after --): for example
+            --detach, a pair name or a --switch
+
+        --via <VIA>
+            The way to publish it. Default: tunnel. Values: tunnel, relay,
+            switch.
+
+        --as <VIRT>
+            With --via switch: the virtual address of the service, VIRT as in
+            `podnet net proxy --forward VIRT=REAL` (for example
+            10.66.0.2:8080)
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH and unix:/PATH)
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+    podnet forward [OPTIONS]
+        Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or
+        UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC
+        (direct, a proxy, the relay, a tailnet)
 
         -L, --local <LISTEN=HOST:PORT>
             A forward: LISTEN=HOST:PORT (repeatable). LISTEN is PORT (on
             127.0.0.1), ADDR:PORT, tcp://ADDR:PORT or unix:/PATH. Each
-            connection to LISTEN goes through the network to HOST:PORT.
-            Required.
+            connection to LISTEN goes through the network to HOST:PORT. With
+            udp:PORT or udp:ADDR:PORT the forward carries UDP: each client has
+            its own flow, and a flow ends after 60 s with no datagram. A
+            datagram for a full flow is dropped
+
+        --dns <ADDR:PORT>
+            A DNS door: answer DNS queries on ADDR:PORT (UDP and TCP) through
+            the network, from the resolver at --dns-upstream
+
+        --dns-upstream <HOST:PORT>
+            The resolver of --dns, an address at the far end of the network.
+            Default: 1.1.1.1:53.
 
         --network <SPEC>
             The network of the forwards, as a spec: direct, a proxy URL, relay

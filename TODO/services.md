@@ -1096,7 +1096,7 @@ Measured in this sandbox: a forward on a unix socket through the HTTP proxy of t
 (`src/warp/forward.rs` is frozen). Left after 2026-11-11: only `warp forward` as an alias (it waits for
 `pod-warp`).
 
-2026-11-11, commits d5f647c and a6f9a8a. Item 2: `podnet forward -L udp:LISTEN=HOST:PORT` and
+2026-11-11, commits cc28071 and 81a3ecd. Item 2: `podnet forward -L udp:LISTEN=HOST:PORT` and
 `podnet forward --dns ADDR:PORT [--dns-upstream HOST:PORT]` (`src/forwards/udp.rs`). Item 3: `podnet expose
 TARGET [--via tunnel|relay|switch] [--as VIRT] [-- ARGS]` (`src/cli/cmd/expose.rs`) builds the arguments of
 `tunnel`, `relay node` or `net proxy --forward`, parses them and runs that command. Item 4: the UDP forward
@@ -1111,7 +1111,7 @@ ends the flow.
 
 ## Done
 
-2026-11-11, commits d5f647c and a6f9a8a (partial: `warp forward` as an alias waits for `pod-warp`). Tests:
+2026-11-11, commits cc28071 and 81a3ecd (partial: `warp forward` as an alias waits for `pod-warp`). Tests:
 `cargo test -p podnet --lib forwards::` (5 passed: `forward_rule_parses_each_form`, `forward_over_a_network`,
 `forward_udp_echo`, `an_idle_udp_flow_ends`, `dns_door_over_a_network`), `cargo test -p podnet --bin podnet
 expose` (3 passed: `expose_via_relay_is_a_relay_node`, `expose_via_tunnel_picks_the_origin_flag`,
