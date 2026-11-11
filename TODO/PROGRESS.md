@@ -57,7 +57,7 @@ not wait for a larger one.
     The owner's rulings of 2026-11-11 add: T-178 (finish: the byte meter of the doors), T-179 (the
     direction split, an option, off by default), T-165 (the CLI of the SSH forward-relay leg).
 8. **M7, the pods:** T-250 (a root CI step for the netns tests), then T-249 (the netns router on
-   `pod-netstack`; podcrates T-170 step 2 waits for it).
+   `pod-netstack`; the hold of a SYN in `pod-hold` waits for it, PodUtils/podcrates#68).
 9. **M8, the overlays:** T-114, T-115, T-117, T-247 (blocked: a NetBird account).
 10. **M9, later:** T-120 to T-129, T-132 and T-134, each when its start condition holds; T-248 (the
     guest-wire router, the owner's ruling of 2026-11-11) after T-249. T-001: edit GitHub #89 into a guide
