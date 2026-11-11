@@ -852,7 +852,7 @@ at the merge. GitHub #376 closes at the merge.
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -884,9 +884,31 @@ sh scripts/pod-runner-measure.sh   # the measure of step 1; it writes docs/repor
 
 ## Correction
 
+2026-11-11, the measure differs from the Approach in two parts. `run.sh` does not reach a long poll: a
+runner with no configuration stops at once, and a fake broker on loopback proves nothing for the hold
+(the seccomp backend sends loopback direct, T-231). `config.sh --unattended` with a token that is not
+valid makes the dials of the .NET client of the runner to the service instead. The witnesses are
+three: the flow log, a proxy on a Unix socket that logs each CONNECT (`scripts/pod-runner-proxy.py`),
+and strace.
+
 2026-11-11: the owner ruled DR-1 and DR-2 yes (PodUtils/podcrates#55, COORD-030; podcrates call C49). The
 entry has no wait now. A lead session of PodUtils/podrunner runs: it writes to podnet by a COORD issue of
 PodUtils/podrunner `(to podnet)`.
+
+## Done
+
+2026-11-11, commit bb9dd91. `scripts/pod-runner-measure.sh` runs six payloads, each in its own seccomp pod
+with `--default-action reject` and an allow list of rules to the witness proxy: `config.sh --help`,
+`config.sh --unattended` (a refused registration), `run.sh` with no configuration (the runner `v2.338.2`),
+a Node `fetch`, `actions/checkout` `v4.2.2` and `actions/setup-node` `v4.4.0` run by `node`.
+`scripts/pod-runner-report.py` writes `docs/reports/pod-runner.md`. Result: each payload passes; each
+CONNECT of the witness proxy has a flow of the flow log with the verdict `allow` (13 flows), no flow is
+refused, and no flow goes to a fake address. The ways out that the flow log does not show are local:
+DNS to the resolver of the host (the pod answers it), netlink (the addresses of the host), the unix
+socket of `nscd`, the diagnostic socket of .NET (a listener), and UDP connects with no packet (the
+address choice of `getaddrinfo`). The measure found T-233 (fixed): .NET dialed the IPv4-mapped form of a
+fake address.
+
 
 # T-230: `pod doctor --json` states the hold level and what the seccomp backend does not hold
 
@@ -972,7 +994,7 @@ PodUtils/podrunner `(to podnet)`.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1001,3 +1023,11 @@ Under `podnet pod --backend seccomp -x http://unix:PATH`, `config.sh` of the run
 cargo test -p podnet-netns --lib a_v4_mapped_fake_address_maps_back
 sh scripts/pod-runner-measure.sh   # no flow of the runner has a target in 198.18.0.0/15
 ```
+
+## Done
+
+2026-11-11, commit 17da8c3. `unfake_v6` maps `::ffff:A.B.C.D` back when `A.B.C.D` is in the pool. Test:
+`cargo test -p podnet-netns --lib a_v4_mapped_fake_address_maps_back` (it failed before the fix: `left:
+None`). The measure of T-229 (`docs/reports/pod-runner.md`): `config.sh` of the runner makes 3 flows to
+`api.github.com:443`, each by its name, and no flow to `198.18.0.0/15`.
+

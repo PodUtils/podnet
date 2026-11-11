@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 233 entries: 65 open, 3 partial, 19 blocked, 146 done.
+`TODO/INDEX.md` holds 233 entries: 63 open, 3 partial, 19 blocked, 148 done.
 
 ## State
 
@@ -55,7 +55,7 @@ not wait for a larger one.
    T-098, T-099, T-100, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The triage adds T-177 (`podnet route check`) and
     T-180 (the router control); the router additions are in T-096 to T-099 (GitHub #372 to #374).
-8. **M7, the pods:** T-229 (the measure with the runner), T-230, T-231 (the asks of podvm and podrunner; DR-1 and DR-2 are yes, 2026-11-11), then T-174 (the veth wire; from the triage).
+8. **M7, the pods:** T-230, T-231 (the asks of podvm and podrunner; DR-1 and DR-2 are yes, 2026-11-11), then T-174 (the veth wire; from the triage).
 9. **M8, the overlays:** T-114, T-115, T-117, T-118.
 10. **M9, later:** T-119 to T-130, T-132 and T-134, each when its start condition holds.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
