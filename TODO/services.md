@@ -1576,7 +1576,7 @@ Not measured: `ssh-keygen` on a host with no passwd entry. CI: at the merge.
 **Milestone:** M6
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1604,6 +1604,26 @@ cargo test --workspace -- route_check_agrees_with_the_router
 ## Start condition
 
 T-097 and T-098 are done.
+
+## Correction
+
+2026-11-11: the dry run is a flag of `podnet route`, not a subcommand: `podnet route --config FILE --check
+--to HOST:PORT [--door INDEX]`. `route` has no subcommands (T-100). The protocol (`--proto tcp|udp`) is not
+read: the rules of T-098 match a host and a port only. The resolver is not printed: a name rule matches the
+name, and the network resolves it. The health of a dry run is the state at the start (`up`): a dry run has
+no probe of a running router.
+
+## Done
+
+2026-11-11, COMMIT. `Router::plan` builds the router of the file with ways that only name each network (no
+network up, no dial). `Router::up` and `Router::plan` share one build. `Router::decide(door, target)` gives
+the rule, the network or the group, and the pick of the group with its health, from the rules snapshot of
+the door (`RulesFile::rules`). The router dials with the same rules. `route --check --to` prints one row for
+each door (door, listen, rule, way, member, health). It exits 0 when each door passes, 1 when a door
+refuses the target or its group has no member up, and 64 for a bad `--to` or `--door`. Tests:
+`route_check_agrees_with_the_router` (fake SOCKS5 networks record the dial; the test fails when `decide`
+ignores the rules) and `route_check_picks_a_member_of_a_group`. Measured: the binary printed `reject` and
+exited 1 for a domain of a `reject` rule, and exited 64 for `--door 5` of a file with 2 doors.
 
 # T-180: Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376)
 

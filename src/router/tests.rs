@@ -45,3 +45,96 @@ async fn route_router_up_builds_groups_and_doors() {
     let err = format!("{:#}", Router::up(&bad).await.err().unwrap());
     assert!(err.starts_with("networks.home"), "{err}");
 }
+
+/// A SOCKS5 proxy that only records each connection: the test sees which
+/// network the router dialed.
+async fn recorder() -> (String, tokio::sync::mpsc::UnboundedReceiver<()>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    tokio::spawn(async move {
+        while let Ok((stream, _)) = listener.accept().await {
+            let _ = tx.send(());
+            drop(stream);
+        }
+    });
+    (format!("socks5h://{addr}"), rx)
+}
+
+/// T-177, the Prove: for each target, the dry run (`Router::plan`) names
+/// the way that the router (`Router::up`) dials, and a refusal of the
+/// rules is a refusal of both.
+#[tokio::test]
+async fn route_check_agrees_with_the_router() {
+    crate::test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let rules = dir.path().join("r.rules");
+    std::fs::write(
+        &rules,
+        "domain:.a.example=a\ndomain:.blocked.example=reject\ncidr:10.0.0.0/8=a\n",
+    )
+    .unwrap();
+    let (a, mut seen_a) = recorder().await;
+    let (b, mut seen_b) = recorder().await;
+    let text = format!(
+        "networks:\n  a: {a}\n  b: {b}\ndoors:\n  - listen: unix:/tmp/x.sock\n    via: b\n    rules: {}\n",
+        rules.display()
+    );
+    let config = parse(&text).unwrap();
+    let plan = Router::plan(&config).unwrap();
+    let router = Router::up(&config).await.unwrap();
+    let cases = [
+        ("www.a.example:443", Some("a"), Some("domain:.a.example")),
+        ("10.1.2.3:80", Some("a"), Some("cidr:10.0.0.0/8")),
+        ("other.example:443", Some("b"), None),
+        (
+            "x.blocked.example:443",
+            None,
+            Some("domain:.blocked.example"),
+        ),
+    ];
+    for (to, way, rule) in cases {
+        let target: Target = to.parse().unwrap();
+        let decision = plan.decide(0, &target);
+        assert_eq!(decision.way.as_deref(), way, "{to}");
+        assert_eq!(decision.rule.as_deref(), rule, "{to}");
+        assert_eq!(router.decide(0, &target), decision, "{to}");
+        let rules = router.doors[0].rules.clone().unwrap();
+        let dialed = rules
+            .dial(&target, Instant::now() + Duration::from_secs(5))
+            .await;
+        let got = match (seen_a.try_recv(), seen_b.try_recv()) {
+            (Ok(()), Err(_)) => Some("a"),
+            (Err(_), Ok(())) => Some("b"),
+            (Err(_), Err(_)) => None,
+            _ => panic!("{to}: both networks were dialed"),
+        };
+        assert_eq!(got, way, "{to}: {:?}", dialed.err());
+        if way.is_none() {
+            let err = dialed.err().unwrap().text().to_string();
+            assert!(err.contains("refuses"), "{to}: {err}");
+        }
+    }
+}
+
+/// The dry run of a door over a group: the pick names a member and its
+/// health; a group with no member up refuses.
+#[test]
+fn route_check_picks_a_member_of_a_group() {
+    let config = parse(GOOD).unwrap();
+    let plan = Router::plan(&config).unwrap();
+    let target: Target = "example.com:443".parse().unwrap();
+    let decision = plan.decide(0, &target);
+    assert_eq!(decision.way.as_deref(), Some("egress"));
+    let (member, health) = decision.member.clone().unwrap();
+    assert!(member == "home" || member == "other", "{member}");
+    assert_eq!(health, "up");
+    assert!(decision.passes(&plan.groups));
+    let (_, group) = &plan.groups[0];
+    for i in 0..group.members().len() {
+        group.set_health(i, crate::network::Health::Down);
+    }
+    let decision = plan.decide(0, &target);
+    assert_eq!(decision.member, None);
+    assert!(!decision.passes(&plan.groups));
+}

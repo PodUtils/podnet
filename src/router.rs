@@ -29,7 +29,8 @@ use serde::Deserialize;
 use tokio::time::Instant;
 
 use crate::network::{
-    parse_group, probe, Balance, Ctx, Dial, Member, Network as _, Target, Thresholds, Way,
+    parse_group, probe, Balance, Choice, Ctx, Dial, Member, Network as _, Selection, Target,
+    Thresholds, Way,
 };
 
 /// The config file.
@@ -116,12 +117,74 @@ pub fn parse(text: &str) -> Result<Config> {
     Ok(config)
 }
 
+/// One door of a router.
+pub struct RouterDoor {
+    pub listen: ProxyListen,
+    pub door: Arc<Door>,
+    /// The label of the dial of the door.
+    pub label: String,
+    /// The network or the group of `via`.
+    pub via: String,
+    /// The rules file of the door, if any.
+    pub rules: Option<Arc<RulesFile>>,
+}
+
 /// A router that is up: its ways, its groups and its doors.
 pub struct Router {
     pub ways: HashMap<String, Way>,
     pub groups: Vec<(String, Arc<Balance>)>,
-    pub doors: Vec<(ProxyListen, Arc<Door>, String)>,
+    pub doors: Vec<RouterDoor>,
     pub health: Option<(Target, Duration)>,
+}
+
+/// The choice of a door for one target (T-177): the rule, the way and the
+/// member of a group. The router dials with the same choice.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Decision {
+    /// The label of the rule that matched; `None` for the default (`via`).
+    pub rule: Option<String>,
+    /// The network or the group; `None` when the rules refuse the target.
+    pub way: Option<String>,
+    /// The member that the pick of the group gives, and its health; `None`
+    /// for a network, or when no member of the group takes flows.
+    pub member: Option<(String, String)>,
+}
+
+impl Decision {
+    /// True when a flow to the target can go: a network, or a member that
+    /// takes flows.
+    pub fn passes(&self, groups: &[(String, Arc<Balance>)]) -> bool {
+        match &self.way {
+            None => false,
+            Some(way) => !groups.iter().any(|(g, _)| g == way) || self.member.is_some(),
+        }
+    }
+}
+
+/// A way that names a network and does not dial: the ways of a dry run.
+struct Named(String);
+
+impl Dial for Named {
+    fn label(&self) -> String {
+        self.0.clone()
+    }
+
+    fn dial<'a>(
+        &'a self,
+        target: &'a Target,
+        _deadline: Instant,
+    ) -> podnet_core::network::BoxFuture<
+        'a,
+        Result<podnet_core::network::Connected, podnet_core::network::Failure>,
+    > {
+        Box::pin(async move {
+            Err(podnet_core::network::Failure::new(
+                podnet_core::network::Stage::Connect,
+                podnet_core::network::Class::Usage,
+                format!("{}: a dry run does not dial {target}", self.0),
+            ))
+        })
+    }
 }
 
 impl Router {
@@ -140,6 +203,26 @@ impl Router {
                 .with_context(|| format!("networks.{name}: the network gives no way out"))?;
             ways.insert(name.clone(), way);
         }
+        Router::build(config, ways)
+    }
+
+    /// The router of `config` with no network up and no dial: each network
+    /// is a way that only names it (`route --check --to`, T-177). The specs
+    /// are parsed.
+    pub fn plan(config: &Config) -> Result<Router> {
+        let mut ways = HashMap::new();
+        for (name, spec) in &config.networks {
+            crate::networks::parse(spec)
+                .map_err(|e| anyhow::anyhow!("networks.{name}: {}", e.text()))?;
+            ways.insert(
+                name.clone(),
+                Way::destination(Arc::new(Named(name.clone()))),
+            );
+        }
+        Router::build(config, ways)
+    }
+
+    fn build(config: &Config, mut ways: HashMap<String, Way>) -> Result<Router> {
         let mut groups = Vec::new();
         for (name, list) in &config.groups {
             let (_, members) = parse_group(&format!("{name}={list}"))
@@ -161,16 +244,26 @@ impl Router {
         let mut doors = Vec::new();
         for (i, door) in config.doors.iter().enumerate() {
             let way = ways[&door.via].clone();
-            let dial: Arc<dyn Dial> = match &door.rules {
-                Some(path) => Arc::new(
-                    RulesFile::open(path, ways.clone(), Some(way))
+            let rules = match &door.rules {
+                Some(path) => Some(Arc::new(
+                    RulesFile::open(path, ways.clone(), Some(way.clone()))
                         .with_context(|| format!("doors[{i}].rules"))?,
-                ),
+                )),
+                None => None,
+            };
+            let dial: Arc<dyn Dial> = match &rules {
+                Some(rules) => rules.clone(),
                 None => way.dial,
             };
             let listen = ProxyListen::parse(&door.listen)
                 .map_err(|e| anyhow::anyhow!("doors[{i}].listen: {e}"))?;
-            doors.push((listen, Arc::new(Door::new(dial.clone())), dial.label()));
+            doors.push(RouterDoor {
+                listen,
+                door: Arc::new(Door::new(dial.clone())),
+                label: dial.label(),
+                via: door.via.clone(),
+                rules,
+            });
         }
         let health = match &config.health {
             Some(h) => Some((
@@ -189,10 +282,40 @@ impl Router {
         })
     }
 
+    /// The choice of door `index` for `target`, with the rules of now and the
+    /// pick of the group (T-177). A pick counts as a flow of the member.
+    pub fn decide(&self, index: usize, target: &Target) -> Decision {
+        let door = &self.doors[index];
+        let (rule, way) = match &door.rules {
+            Some(rules) => match rules.rules().choose(target) {
+                Choice::Way { way, rule } => (rule, Some(self.name_of(way))),
+                Choice::Refuse { rule } => (rule, None),
+            },
+            None => (None, Some(door.via.clone())),
+        };
+        let member = way.as_ref().and_then(|way| {
+            let (_, group) = self.groups.iter().find(|(g, _)| g == way)?;
+            match group.pick() {
+                Selection::One(m) => Some((m.name.clone(), m.health().name().to_string())),
+                Selection::None => None,
+            }
+        });
+        Decision { rule, way, member }
+    }
+
+    /// The name of `way` in the file: the way with the same dial.
+    fn name_of(&self, way: &Way) -> String {
+        let at = Arc::as_ptr(&way.dial) as *const ();
+        self.ways
+            .iter()
+            .find(|(_, w)| Arc::as_ptr(&w.dial) as *const () == at)
+            .map_or_else(|| way.label(), |(name, _)| name.clone())
+    }
+
     /// The ready document: each door and the status of each group.
     pub fn status(&self) -> serde_json::Value {
         serde_json::json!({
-            "doors": self.doors.iter().map(|(listen, _, label)| serde_json::json!({"listen": listen.to_string(), "via": label})).collect::<Vec<_>>(),
+            "doors": self.doors.iter().map(|d| serde_json::json!({"listen": d.listen.to_string(), "via": d.label})).collect::<Vec<_>>(),
             "groups": self.groups.iter().map(|(_, g)| g.status()).collect::<Vec<_>>(),
         })
     }
