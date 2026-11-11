@@ -1819,7 +1819,7 @@ For the live step only: a Cloudflare test account exists (`docs/decisions.md`, 2
 
 ## Correction
 
-2026-11-11, steps 1 to 3 are done in commit e33350f (`src/cli/cmd/bench.rs`). `podnet bench URL` sends GET
+2026-11-11, steps 1 to 3 are done in commit 861ebc4 (`src/cli/cmd/bench.rs`). `podnet bench URL` sends GET
 requests on `--connections N` (default 4) for `--duration S` (default 10) through the way out of the process:
 `--egress SPEC`, `--proxy` or `--no-proxy` (the registry of networks, no host in the code). `--timeout S` limits
 one request. A status below 400 is a good request. Any other status, or a failed request, is an error. The
