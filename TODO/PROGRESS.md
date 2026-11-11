@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 247 entries: 39 open, 10 partial, 22 blocked, 176 done.
+`TODO/INDEX.md` holds 250 entries: 42 open, 10 partial, 22 blocked, 176 done.
 
 ## State
 
@@ -54,9 +54,14 @@ not wait for a larger one.
     The triage adds
     T-180 (the router control); the router additions are in T-097 to T-099 (GitHub #372 to #374).
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
-8. **M7, the pods:** no open entry (the veth wire is done).
+    The owner's rulings of 2026-11-11 add: T-178 (finish: the byte meter of the doors), T-179 (the
+    direction split, an option, off by default), T-165 (the CLI of the SSH forward-relay leg).
+8. **M7, the pods:** T-250 (a root CI step for the netns tests), then T-249 (the netns router on
+   `pod-netstack`; podcrates T-170 step 2 waits for it).
 9. **M8, the overlays:** T-114, T-115, T-117, T-247 (blocked: a NetBird account).
-10. **M9, later:** T-120 to T-129, T-132 and T-134, each when its start condition holds.
+10. **M9, later:** T-120 to T-129, T-132 and T-134, each when its start condition holds; T-248 (the
+    guest-wire router, the owner's ruling of 2026-11-11) after T-249. T-001: edit GitHub #89 into a guide
+    that a new client tests from.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161, T-162, T-163,

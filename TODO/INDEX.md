@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**247 entries: 39 open, 10 partial, 22 blocked, 176 done.**
+**250 entries: 42 open, 10 partial, 22 blocked, 176 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 21 | 6 | 13 | 108 | 148 |
-| P3 | 18 | 3 | 7 | 42 | 70 |
-| **All** | 39 | 10 | 22 | 176 | 247 |
+| P2 | 23 | 6 | 13 | 108 | 150 |
+| P3 | 19 | 3 | 7 | 42 | 71 |
+| **All** | 42 | 10 | 22 | 176 | 250 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -293,3 +293,6 @@ M8 Overlays, M9 Later.
 | [T-245](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |
 | [T-246](overlays.md) | P3 | S | M8 | feature | done | NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode |
 | [T-247](overlays.md) | P3 | M | M8 | measurement | blocked | NetBird: measure netstack mode on a proxy-only host |
+| [T-248](later.md) | P3 | L | M9 | feature | open | Router: a guest-wire router that ends guest TCP on smoltcp |
+| [T-249](pods.md) | P2 | M | M7 | chore | open | netns: the router of the namespace runs on the interface of `pod-netstack` |
+| [T-250](pods.md) | P2 | S | M7 | chore | open | CI: a root step that runs the netns tests that skip on a runner |

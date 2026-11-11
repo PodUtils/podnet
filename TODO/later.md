@@ -1332,3 +1332,41 @@ and the crate holds `forward_http`.
 ## Start condition
 
 Podnet holds `pod-cloudflare`, and the crate holds `forward_http`.
+
+# T-248: Router: a guest-wire router that ends guest TCP on smoltcp
+
+**Source:** the owner, 2026-11-11 (`docs/decisions.md`, Guest-wire router); T-176; GitHub #371 and #372.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** open
+
+## Problem
+
+The router of T-100 has doors only: each flow is a dial of its own. A guest (a VM, a container, a host behind
+one wire) cannot use the router as its gateway: no part ends the TCP and the UDP of a wire and sends each flow
+to a network or a group of the router.
+
+## Premise
+
+- T-176 holds the constraints of such a terminator (the `TimeWait` delay, a dial at `HeldSyn`, the bounded UDP
+  queue, the byte offset of a partial write, the buffer of 65535 bytes and the counter of oversized datagrams).
+- `pod-netstack` (taken at v0.20.0) is the stack; T-249 moves the netns router onto it.
+
+## Approach
+
+1. Add a wire to the router file: a TUN, a veth or a unix socket of frames, with the address of the guest net.
+2. End each guest TCP flow on the stack with the constraints of T-176, and dial it through the rules and the
+   groups of the router (`Router::decide`, T-177).
+3. Carry the guest UDP over `Dial::datagrams`, with the bounded queue of T-176.
+
+## Prove
+
+```sh
+cargo test --workspace -- guest_wire_routes_tcp_by_the_rules guest_wire_udp_has_a_bounded_queue
+```
+
+## Start condition
+
+T-249 is done.

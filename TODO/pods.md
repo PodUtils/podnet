@@ -1127,3 +1127,81 @@ cargo test -p podnet-netns --lib no_syn
 2026-11-11, commit 2efa720. `parse_tcp_syn` refuses an IHL under 5 and a fragment offset other than 0, the
 rule of `pod_hold::packet`. The tests `a_header_shorter_than_20_bytes_is_no_syn` and
 `a_fragment_past_the_first_is_no_syn` failed before the fix and pass; the 84 tests of `podnet-netns` pass.
+
+# T-249: netns: the router of the namespace runs on the interface of `pod-netstack`
+
+**Source:** the audit of the podcrates dependencies of 2026-11-11; PodUtils/podnet#427, point 4; podcrates
+T-170 step 2 (the hold of a SYN of `netns/backend.rs`).
+**Category:** chore
+**Milestone:** M7
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The netns backend ends the flows of the namespace on its own smoltcp interface (`crates/podnet-netns/src/netns/`).
+podnet took `pod-netstack` at v0.20.0 for `podnet-vnet` (d23ce4e), but the netns router does not use it.
+podcrates T-170 step 2 (the hold of a SYN in `pod-hold`) waits for this move, and no podnet entry held it.
+
+## Premise
+
+- Read: `crates/podnet-netns/src/netns/tun.rs` (the device: `Wire::{Tun, Veth}`, T-174) and the router of the
+  backend; `pod_netstack` (the stack, its sockets and its reactor, cut from `podnet-vnet`).
+- podcrates T-170 step 2 and T-201 start after this move (PodUtils/podcrates#68).
+
+## Approach
+
+1. Put the device of `tun.rs` (both wires) under the stack of `pod-netstack`, in place of the own interface.
+2. Keep the hold of a SYN (`HeldSyn`) and the flow table of T-111 as they are, on the new stack.
+3. Write a COORD issue (to podcrates) with the commit, for T-170 step 2.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns
+cargo test -p podnet-netns --test veth
+```
+
+## Start condition
+
+None: `pod-netstack` is taken (v0.20.0).
+
+# T-250: CI: a root step that runs the netns tests that skip on a runner
+
+**Source:** the audit of the podcrates dependencies of 2026-11-11; PodUtils/podcrates#68 (podcrates T-201 waits
+for `veth_wire_carries_a_tcp_flow` to pass in the CI of podnet).
+**Category:** chore
+**Milestone:** M7
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+On a GitHub runner a user cannot make a user namespace (AppArmor), so `veth_wire_carries_a_tcp_flow` and the
+kernel tests of the router skip (fc97ef9, the kernel fix of T-119). No CI job proves them, and podcrates T-201
+waits for such a proof.
+
+## Premise
+
+- A runner has `sudo`. Root needs no user namespace: `unshare -n` and a TUN or a veth pair work.
+- `.github/workflows/ci.yml` has a step that runs as the runner user only (`Netfilter in a namespace`).
+
+## Approach
+
+1. Add a step to the job `test` that runs `sudo -E` the test binaries of `podnet-netns --test veth` and of the
+   kernel tests of the router (`router::kernel`), with the environment that makes them run, not skip.
+2. Fail the step when a test prints a skip line.
+
+## Prove
+
+```sh
+python3 scripts/check-workflows.py
+```
+
+The step passes in a run of `ci`, with no skip line.
+
+## Start condition
+
+None.
