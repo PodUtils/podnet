@@ -918,7 +918,7 @@ fake address.
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -948,6 +948,16 @@ cargo test -p podnet-netns doctor_hold_row_names_the_level
 entry has no wait now. A lead session of PodUtils/podrunner runs: it writes to podnet by a COORD issue of
 PodUtils/podrunner `(to podnet)`.
 
+## Done
+
+2026-11-11, commit ae5d1e3. `crates/podnet-netns/src/doctor.rs`: `pod doctor` prints the rows `hold netns` and
+`hold seccomp`; `--json` has the object `hold` with `netns` and `seccomp`, each with `level` (`enforced`,
+`advisory` or `none`) and `not_held` (a list of names). The level is `none` when the backend cannot run, and
+for seccomp also when the new row `read program memory` fails. The test
+`doctor_hold_row_names_the_level` pins the keys and the levels. `crates/podnet-netns/README.md` describes
+the levels. One object for each backend, not one `level`: the backend of a run is chosen at its start
+(`--backend`, `auto`), and podrunner reads the object of the backend that it gives.
+
 # T-231: `podnet pod` refuses a run with no hold, and can apply the rules to loopback
 
 **Source:** PodUtils/podvm#228 (COORD-022 of podvm, 2026-11-10), ask 1, item 3 (wanted, not blocking); the podrunner design review
@@ -956,7 +966,7 @@ PodUtils/podrunner `(to podnet)`.
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -986,6 +996,17 @@ cargo test --test pod_seccomp -- seccomp_rules_apply_to_loopback_when_asked
 2026-11-11: the owner ruled DR-1 and DR-2 yes (PodUtils/podcrates#55, COORD-030; podcrates call C49). The
 entry has no wait now. A lead session of PodUtils/podrunner runs: it writes to podnet by a COORD issue of
 PodUtils/podrunner `(to podnet)`.
+
+2026-11-11: item 2 (the rules on loopback) changes the dial of a held `connect` in
+`crates/podnet-netns/src/connect.rs`. That file is frozen: podcrates imports its dial state into `pod-hold`
+(podcrates T-169, PodUtils/podcrates#55). Item 2 waits for the take of that release; then the choice of
+the loopback route is podnet's part of the trait of the consumer. Item 1 is done.
+
+Done so far: item 1 (ae5d1e3). The memory read is the condition, not the write: the backend reads the
+address of each `connect`, and a failed read refuses the `connect` (`ECONNREFUSED`, `seccomp/mod.rs`), so
+the program ran with no flow. Now `run_seccomp` stops at its start with exit status 3 and one line
+(`seccomp_can_hold`); the row `read program memory` of `pod doctor` shows the probe. Test:
+`seccomp_refuses_a_run_with_no_read_of_the_memory`.
 
 # T-233: seccomp: a dual-stack connect to the IPv4-mapped form of a fake address goes to the proxy as an address
 
