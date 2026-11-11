@@ -341,7 +341,7 @@ fuzz/Cargo.toml --bins`.
 **Milestone:** M4
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -379,6 +379,32 @@ For each old flag, a unit test asserts that it builds the same chain as its spec
 ## Start condition
 
 T-059 is done.
+
+## Correction
+
+2026-11-11, the owner: "whichever is better, we are beta and must make right decisions even if breaking,
+that allow us to extend features later" (the question of the name; `serve` and `git serve` had `--via
+tunnel|relay|none` for the road to the visitors). The call of the session: the way out is `--egress SPEC`,
+and the road to the visitors is `--ingress tunnel|relay|none`. Two names, one for each direction, and each
+can take more specs of the registry later. The Prove filter is `egress_alias_` in place of `via_alias_`.
+
+The alias is a rewrite of the arguments before the parse (`src/cli/way.rs`): each old flag keeps its
+code, its help and its checks. `--egress` takes one spec outside `podnet pod`: the egress of the process
+is one `pod-proxy` dialer (`src/egress.rs`), so a chain, a hop of the pod or the tailnet stays with
+`podnet pod`. `pod -x` and `pod -r` take the specs of the pod hops of the registry; `+exec` and the relay
+are not pod hops (a usage line says so). No parity snapshot was run: the change adds flags and renames
+one (`--via` of `serve` and `git serve`), and the tests of both commands pass with the new name.
+
+## Done
+
+2026-11-11, commit 6784d84. `--egress SPEC` (global, repeatable for `podnet pod`): `direct` is
+`--no-proxy`, a proxy URL is `--proxy`, `relay` and `relay:URL` are `--transport relay` and `--relay`; with
+`podnet pod`, each `--egress` is one `-x` hop in its order, and the pod parser takes `--egress` as `-x`. The
+pod parser takes `socks5h+unix:/PATH` and `http+unix:/PATH`. Breaking: `serve --via` and `git serve --via`
+are `--ingress`; podnet gives a hint for `--via`. Tests: `cargo test -p podnet --bin podnet egress_alias`
+(6: each alias parses as its old flag through clap; the refusals; the hint),
+`cargo test -p podnet-netns --lib egress_alias`, the tests of `serve`, `git serve` and the relay with
+`--ingress`, `the_man_page_names_each_flag`. The notes of `v0.4.0-beta.3` list the rename in `## Breaking`.
 
 # T-061: One front door over a dialer for `warp proxy`, `pod --serve`, `net proxy` and `net tailscale`
 
