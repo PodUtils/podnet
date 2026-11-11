@@ -40,10 +40,14 @@ measure with the runner), T-230 (the object `hold`), T-231 item 1, T-232
    JSON line on stdout; the step does not print `up97.err`). Read the next
    live runs; open an entry when one fails again. T-236 fixed the third
    (git over the relay at c0180cc).
-3. **T-137:** podcrates imports `connect.rs` (podcrates T-169) and
-   `netns/packet.rs` (T-170 step 1) into `pod-hold` on its `main`. Take
-   them at the next tag. Until then both files take fixes only. T-231 item 2
-   (the rules on loopback) waits for that take.
+3. **T-137:** podcrates v0.16.0 (PodUtils/podcrates#57, COORD-032) carries
+   `pod_hold::connect` and `pod_hold::packet`; the move of the tag is
+   optional, and the patch that makes `connect.rs` and `packet.rs` glue
+   comes with a later release. Move the tag after the beta.3 release (all
+   `pod-*` dependencies, `cargo todo remap Cargo.lock`, the fuzz lock), then
+   write a COORD issue (to podcrates). T-234 fixed the defect of
+   `parse_tcp_syn` that COORD-032 names. T-231 item 2 (the rules on
+   loopback) waits for the adoption patch.
 4. The work order of `TODO/PROGRESS.md`: M6, the router (T-098 to T-101,
    T-177, T-180) on the combinators, the group and the health of
    `podnet-core`. T-061 needs `src/warp/proxy.rs`, which waits for
