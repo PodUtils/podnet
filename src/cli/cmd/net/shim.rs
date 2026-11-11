@@ -74,9 +74,27 @@ pub(crate) async fn net_tailscale(args: TailscaleArgs) -> Result<()> {
             )
         })
         .fault(Fault::Unavailable)?;
-    let proxy = tailscale::serve(Dialer::new(&args.socket), listen, args.port)
-        .await
-        .map_err(podnet::net::bind_fault)?;
+    let tailnet = args.tailnet.clone().or_else(|| {
+        std::env::var("PODNET_TAILNET")
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+    });
+    let guard = tailnet.map(tailscale::GuardConfig::new);
+    let proxy =
+        match tailscale::serve_guarded(Dialer::new(&args.socket), listen, args.port, guard).await {
+            Ok(proxy) => proxy,
+            // T-243: another tailnet is a configuration error, a daemon that is
+            // not ready is an unavailable service. Nothing was bound.
+            Err(err) => match err.downcast_ref::<tailscale::GuardError>() {
+                Some(tailscale::GuardError::Mismatch { .. }) => {
+                    return Err(err).fault(Fault::Config);
+                }
+                Some(tailscale::GuardError::NotReady(_)) => {
+                    return Err(err).fault(Fault::Unavailable);
+                }
+                None => return Err(podnet::net::bind_fault(err)),
+            },
+        };
     // Issue 300: the bound address (a TCP port 0 gives the port).
     println!("podnet: proxy    {}", proxy.listen);
     println!("podnet: localapi {}", args.socket);

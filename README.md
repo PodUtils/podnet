@@ -1102,6 +1102,17 @@ podnet pod -x tailscale:/run/tailscale/tailscaled.sock -- ssh host
 
 `tailscaled` must run with `--tun=userspace-networking`.
 
+`--tailnet NAME` (or `PODNET_TAILNET`) starts the door only when `tailscaled`
+is `Running` in that tailnet. NAME is the tailnet name or its DNS suffix.
+Another tailnet exits 78 and binds nothing. A daemon that is not logged in
+after 20 s exits 69. While the door runs, it refuses new dials when the daemon
+changes to another tailnet (SOCKS5 "connection not allowed", HTTP 403). Open
+connections stay. `podnet net doctor` shows the state of the daemon.
+
+A host whose outbound traffic is limited to port 443 starts `tailscaled`
+with `TS_FORCE_NOISE_443=true`. Without it, the control connection tries port
+80 first, and a middlebox can accept that connection and stall.
+
 `net socksify --cidr ROUTE` routes only the listed destinations to the door
 (repeatable: `tailnet`, `ADDR`, `ADDR/BITS`, `IPV4:PORT` or `[IPV6]:PORT`),
 for example a client with the fixed origin `127.0.0.1:3000`. `net shim

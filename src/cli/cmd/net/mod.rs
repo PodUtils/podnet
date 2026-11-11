@@ -75,6 +75,14 @@ pub(crate) struct TailscaleArgs {
     /// Port to use when a client omits one.
     #[arg(long, default_value_t = 80)]
     port: u16,
+    /// The tailnet that the daemon must run in (its name or its DNS
+    /// suffix). The door starts only when tailscaled is Running in it
+    /// (exit 78 for another tailnet, 69 after 20 s with no login). Then
+    /// new dials are refused while the daemon is in another tailnet. Also
+    /// the variable PODNET_TAILNET. A host that reaches only port 443
+    /// starts tailscaled with TS_FORCE_NOISE_443=true.
+    #[arg(long, value_name = "NAME")]
+    tailnet: Option<String>,
     /// Stay up for this many seconds instead of until Ctrl-C.
     #[arg(long)]
     run_for: Option<u64>,
@@ -262,6 +270,19 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
                     .await
                     .context("the UDP probe")?,
             );
+            // T-243: the state of the tailscaled door.
+            probes.push(podnet::vnet::doctor::Probe {
+                name: "tailscaled (LocalAPI)",
+                result: match podnet::vnet::tailscale::Dialer::new(
+                    podnet_netns::tailscale::DEFAULT_SOCKET,
+                )
+                .describe()
+                .await
+                {
+                    Ok(line) => podnet::vnet::doctor::ProbeResult::Ok(line),
+                    Err(why) => podnet::vnet::doctor::ProbeResult::Unknown(why),
+                },
+            });
             let verdict = podnet::vnet::doctor::verdict(&probes);
             if json {
                 use podnet::vnet::doctor::ProbeResult;

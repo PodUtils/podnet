@@ -33,6 +33,16 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. --resolve adds to it. Without a pin, podnet asks the system resolver, then DNS over HTTPS at 1.1.1.1, 1.0.0.1, 8.8.8.8 and 8.8.4.4. A bad value is a configuration error (exit 78) for each command.",
     },
     EnvVar {
+        names: &["PODNET_TAILNET"],
+        used_by: "net tailscale",
+        meaning: "The tailnet that tailscaled must run in, in place of --tailnet: the name or the DNS suffix. The door starts only when the daemon is Running in it, and refuses new dials when the daemon changes to another tailnet.",
+    },
+    EnvVar {
+        names: &["TS_FORCE_NOISE_443"],
+        used_by: "net doctor",
+        meaning: "Read only, to show its value in the tailscaled row of net doctor. It is a variable of tailscaled: set it to true when tailscaled starts on a host that reaches only port 443 (the control connection tries port 80 first).",
+    },
+    EnvVar {
         names: &["HTTP_PROXY", "http_proxy"],
         used_by: "pod",
         meaning: "The default upstream of podnet pod when HTTPS_PROXY and ALL_PROXY are not set.",

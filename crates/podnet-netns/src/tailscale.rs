@@ -32,6 +32,7 @@ use std::io;
 use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context as TaskContext, Poll};
 use std::time::Duration;
 
@@ -119,53 +120,18 @@ impl Dialer {
     }
 }
 
-impl Dialer {
-    /// The `BackendState` of `tailscaled` (`Running`, `NeedsLogin`,
-    /// `Stopped`, ...), from `/localapi/v0/status` (T-081).
-    pub async fn backend_state(&self) -> io::Result<String> {
-        use tokio::io::AsyncReadExt as _;
-        let read = async {
-            let mut stream = UnixStream::connect(&self.socket).await?;
-            // HTTP/1.0: the answer has no chunks, and the daemon closes.
-            stream
-                .write_all(b"GET /localapi/v0/status?peers=false HTTP/1.0\r\nHost: local-tailscaled.sock\r\n\r\n")
-                .await?;
-            let mut answer = Vec::new();
-            (&mut stream)
-                .take(STATUS_LIMIT)
-                .read_to_end(&mut answer)
-                .await?;
-            Ok::<_, io::Error>(answer)
-        };
-        let answer = tokio::time::timeout(STATUS_TIMEOUT, read)
-            .await
-            .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "no status in 3 s"))??;
-        backend_state_of(&answer)
-    }
-}
-
-/// The time limit and the size limit of a read of the status.
-const STATUS_TIMEOUT: Duration = Duration::from_secs(3);
-const STATUS_LIMIT: u64 = 4 << 20;
+#[cfg(test)]
+mod guard_tests;
+mod status;
+use status::Gate;
+pub use status::{
+    guard, wait_ready, GuardConfig, GuardError, Status, Verdict, GUARD_RECHECK, GUARD_WAIT,
+};
 
 /// `BackendState` of an HTTP answer of `/localapi/v0/status`.
+#[cfg(test)]
 fn backend_state_of(answer: &[u8]) -> io::Result<String> {
-    let bad = |what: &str| io::Error::new(io::ErrorKind::InvalidData, what.to_string());
-    let split = answer
-        .windows(4)
-        .position(|w| w == b"\r\n\r\n")
-        .ok_or_else(|| bad("the status has no end of head"))?;
-    let head = String::from_utf8_lossy(&answer[..split]);
-    let (status, _) = parse_http_head(&format!("{head}\r\n\r\n"))?;
-    if status != 200 {
-        return Err(bad(&format!("the status answered {status}")));
-    }
-    let body: serde_json::Value =
-        serde_json::from_slice(&answer[split + 4..]).map_err(|e| bad(&e.to_string()))?;
-    body["BackendState"]
-        .as_str()
-        .map(str::to_string)
-        .ok_or_else(|| bad("the status has no BackendState"))
+    Ok(status::status_of(answer)?.backend_state)
 }
 
 /// One warning for the life of the process when `tailscaled` does not run
@@ -296,12 +262,16 @@ fn parse_http_head(head: &str) -> io::Result<(u16, HashMap<String, String>)> {
 pub struct TailscaleProxy {
     pub listen: ProxyListen,
     accepts: JoinHandle<()>,
+    tasks: Vec<JoinHandle<()>>,
 }
 
 impl TailscaleProxy {
     /// Stop accepting.
     pub fn abort(self) {
         self.accepts.abort();
+        for task in &self.tasks {
+            task.abort();
+        }
     }
 }
 
@@ -312,7 +282,36 @@ pub async fn serve(
     listen: ProxyListen,
     default_port: u16,
 ) -> Result<TailscaleProxy> {
+    serve_guarded(dialer, listen, default_port, None).await
+}
+
+/// [`serve`] with the tailnet guard (T-243). With a guard, the daemon must
+/// be `Running` in the tailnet before the bind (a [`GuardError`] in the
+/// error). Then the door refuses new dials while the daemon is in another
+/// tailnet. Open connections stay.
+pub async fn serve_guarded(
+    dialer: Dialer,
+    listen: ProxyListen,
+    default_port: u16,
+    guard: Option<GuardConfig>,
+) -> Result<TailscaleProxy> {
     let mut listen = listen;
+    let mut tasks = Vec::new();
+    let gate = match guard {
+        Some(config) => {
+            wait_ready(&dialer, &config.expected, config.wait).await?;
+            let gate = Gate::new(config.expected);
+            let (watch, dialer) = (gate.clone(), dialer.clone());
+            tasks.push(tokio::spawn(async move {
+                loop {
+                    tokio::time::sleep(config.recheck).await;
+                    watch.refresh(&dialer).await;
+                }
+            }));
+            Some(gate)
+        }
+        None => None,
+    };
     // T-081: a tailscaled that is not logged in fails each dial.
     tokio::spawn(check_state(dialer.clone()));
     let accepts = match listen.clone() {
@@ -326,7 +325,12 @@ pub async fn serve(
             let dialer = dialer.clone();
             tokio::spawn(async move {
                 while let Ok((stream, _)) = listener.accept().await {
-                    tokio::spawn(handle_client(stream, dialer.clone(), default_port));
+                    tokio::spawn(handle_client(
+                        stream,
+                        dialer.clone(),
+                        default_port,
+                        gate.clone(),
+                    ));
                 }
             })
         }
@@ -337,18 +341,27 @@ pub async fn serve(
                 let dialer = dialer.clone();
                 tokio::spawn(async move {
                     while let Ok((stream, _)) = listener.accept().await {
-                        tokio::spawn(handle_client(stream, dialer.clone(), default_port));
+                        tokio::spawn(handle_client(
+                            stream,
+                            dialer.clone(),
+                            default_port,
+                            gate.clone(),
+                        ));
                     }
                 })
             }
             #[cfg(not(unix))]
             {
-                let _ = (dialer, path, default_port);
+                let _ = (dialer, path, default_port, gate);
                 anyhow::bail!("unix sockets are not supported on this platform");
             }
         }
     };
-    Ok(TailscaleProxy { listen, accepts })
+    Ok(TailscaleProxy {
+        listen,
+        accepts,
+        tasks,
+    })
 }
 
 #[cfg(unix)]
@@ -356,11 +369,11 @@ fn bind_unix(path: &Path) -> Result<tokio::net::UnixListener> {
     crate::listen::bind_claimed(path).with_context(|| format!("binding unix:{}", path.display()))
 }
 
-async fn handle_client<S>(stream: S, dialer: Dialer, default_port: u16)
+async fn handle_client<S>(stream: S, dialer: Dialer, default_port: u16, gate: Option<Arc<Gate>>)
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    handle_client_within(stream, dialer, default_port, DIAL_TIMEOUT).await;
+    handle_client_within(stream, dialer, default_port, DIAL_TIMEOUT, gate).await;
 }
 
 async fn handle_client_within<S>(
@@ -368,6 +381,7 @@ async fn handle_client_within<S>(
     dialer: Dialer,
     default_port: u16,
     dial_timeout: Duration,
+    gate: Option<Arc<Gate>>,
 ) where
     S: AsyncRead + AsyncWrite + Unpin,
 {
@@ -376,6 +390,15 @@ async fn handle_client_within<S>(
         Opening::Request { is_socks, request } => (is_socks, request),
         _ => return,
     };
+    // T-243: the daemon is in another tailnet.
+    if gate.as_ref().is_some_and(|gate| gate.is_blocked()) {
+        if is_socks {
+            let _ = socks::socks5_reply(&mut reader, 0x02, None).await; // not allowed
+        } else {
+            let _ = socks::http_connect_reply(&mut reader, 403, "Forbidden").await;
+        }
+        return;
+    }
 
     let port = if request.port == 0 {
         default_port
@@ -411,6 +434,10 @@ async fn handle_client_within<S>(
         }
         Err(err) => {
             tokio::spawn(check_state(dialer.clone()));
+            if let Some(gate) = gate {
+                let dialer = dialer.clone();
+                tokio::spawn(async move { gate.refresh(&dialer).await });
+            }
             let message = err.to_string();
             crate::warn(&format!("tailscale: {host}:{port} failed: {message}"));
             if is_socks {
@@ -555,6 +582,7 @@ mod tests {
             Dialer::new(&path),
             80,
             Duration::from_millis(200),
+            None,
         ));
         ours.write_all(b"CONNECT 100.82.22.3:80 HTTP/1.1\r\nHost: x\r\n\r\n")
             .await
