@@ -1167,6 +1167,33 @@ cargo test -p podnet-netns --test veth
 
 None: `pod-netstack` is taken (v0.20.0).
 
+## Correction
+
+2026-11-11: the move stops at `pod-netstack` v0.22.0. The stack lacks three APIs that the router of the
+namespace needs. Nothing of the code changed.
+
+1. `StackConfig.any_ip: bool` (or a method of `NetStack`), which calls `Interface::set_any_ip(true)`. The
+   router answers for each destination address of the program (the program connects to real addresses and
+   to fake DNS addresses). `Core::new` of pod-netstack (`stack/reactor.rs`) never sets it, and
+   `Core::listen` gives each listen socket `IpListenEndpoint { addr: Some(ip), .. }`, so a SYN to an
+   address that the stack does not own gets no answer.
+2. A listener for one port on any destination address: `NetStack::listen_any(port) -> TcpListener`, whose
+   `TcpStream::local_addr()` is the destination of the SYN (the target of the flow). `spawn_listener_socket`
+   always sets `addr: Some(..)`. The router needs the listen socket with `addr: None`, one for each SYN
+   without a free socket of its port (`observe_syns`).
+3. The checksum setting of the veth wire (T-174): `LinkDevice::with_checksum(ChecksumCapabilities)`, or
+   `Checksum::Tx` for the ipv4, tcp, udp and icmpv4 checks of a link. `LinkDevice::capabilities` keeps the
+   smoltcp default (`Checksum::Both`). The program end of a veth pair can send a packet with a partial
+   checksum, and the stack must compute its own checksums without it checking the received ones.
+
+The UDP flows of `udpflow.rs` also need a UDP socket that sends from a source address that is not the
+address of the stack (the reply of a flow comes from the target of the program). `UdpSocket` of the stack
+binds an owned address only. With APIs 1 and 2 for UDP (`bind_udp_any(port)`, `send_to` with a source), the
+move can go on. The device alone (`LinkDevice` with a pump of the TUN or of the veth fd) can move first,
+but then the backend keeps its own `Interface` and the router does not run on the interface of the stack.
+
+The lead sends these APIs to podcrates in a COORD issue. The state stays `open`.
+
 # T-250: CI: a root step that runs the netns tests that skip on a runner
 
 **Source:** the audit of the podcrates dependencies of 2026-11-11; PodUtils/podcrates#68 (podcrates T-201 waits
