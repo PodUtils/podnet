@@ -11,9 +11,7 @@
   and `pod-hold` (`PodUtils/podcrates` v0.17.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-relay`,
   then `pod-session` and `pod-wormhole` when podcrates writes their hand-off for podnet. A session reads the state
   of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
-- Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`);
-  `crates/podnet-netns/src/connect.rs` and `crates/podnet-netns/src/netns/packet.rs` (podcrates T-169 and T-170,
-  PodUtils/podcrates#55).
+- Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`).
 - The session paused on 2026-11-10: `docs/HANDOFF.md` gives the state and the next steps.
 - The newest release is `v0.4.0-beta.3` (T-235).
 - Keep this section short. Write the current state only; git keeps the history.
@@ -55,7 +53,7 @@ not wait for a larger one.
    T-098, T-099, T-100, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The triage adds T-177 (`podnet route check`) and
     T-180 (the router control); the router additions are in T-097 to T-099 (GitHub #372 to #374).
-8. **M7, the pods:** T-231 item 2 (waits for the take of `connect.rs`, podcrates T-169; the asks of podvm and podrunner; DR-1 and DR-2 are yes, 2026-11-11), then T-174 (the veth wire; from the triage).
+8. **M7, the pods:** T-231 item 2 (the rules on loopback, now in podnet's part of `connect.rs`; the asks of podvm and podrunner; DR-1 and DR-2 are yes, 2026-11-11), then T-174 (the veth wire; from the triage).
 9. **M8, the overlays:** T-114, T-115, T-117, T-118.
 10. **M9, later:** T-119 to T-130, T-132 and T-134, each when its start condition holds.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and

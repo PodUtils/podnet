@@ -24,13 +24,21 @@
 //! for the end of the dial and gets its result. A second nonblocking
 //! `connect` during the dial gets `EALREADY`. At the end of the dial, the
 //! connection stays also when no call waits.
+//!
+//! The state of the dials (the calls that wait, and their answers at the
+//! end of a dial) is `pod_hold::connect` of PodUtils/podcrates. This module
+//! keeps the dial, the rules, the entry of the socket, the hand-off and the
+//! relay.
 
 use crate::handoff::{dial_plain, Caller, Link};
 use crate::prelude::*;
 use crate::seccomp::{
-    child_fd_flags, notif_continue, notif_id_valid, notif_respond, open_mem_of, parse_sockaddr,
-    read_mem, spawn_relay, write_mem_to, Sock,
+    child_fd_flags, mem_access, notif_continue, notif_id_valid, notif_respond, parse_sockaddr,
+    read_mem, spawn_relay, Sock,
 };
+use pod_hold::connect::{write_error_to_task, Joined, Started};
+
+pub(crate) use pod_hold::connect::ErrorCall;
 
 /// The end of the dial of one socket.
 pub(crate) struct Dialed {
@@ -44,31 +52,9 @@ pub(crate) struct Dialed {
     flow: Option<u64>,
 }
 
-/// A `getsockopt(SO_ERROR)` that waits for a nonblocking dial (T-223).
-pub(crate) struct ErrorCall {
-    pub(crate) id: u64,
-    pub(crate) pid: u32,
-    pub(crate) fd: i32,
-    /// The addresses of `optval` and `optlen` in the task, and the length
-    /// that the task gave in `optlen`.
-    pub(crate) optval: u64,
-    pub(crate) optlen: u64,
-    pub(crate) len: usize,
-}
-
-/// The calls that wait for the dial of one socket.
-#[derive(Default)]
-struct Waiting {
-    connects: Vec<u64>,
-    errors: Vec<ErrorCall>,
-    /// The first `connect` was nonblocking: it got `EINPROGRESS`.
-    nonblocking: bool,
-}
-
-/// The dials in progress.
+/// The dials in progress: their state, and the channel of their ends.
 pub(crate) struct Dials {
-    /// For each socket with a dial in progress: the calls that wait for it.
-    waiting: HashMap<Key, Waiting>,
+    state: pod_hold::connect::Dials<Key>,
     tx: tokio::sync::mpsc::UnboundedSender<Dialed>,
     rx: tokio::sync::mpsc::UnboundedReceiver<Dialed>,
 }
@@ -77,7 +63,7 @@ impl Dials {
     pub(crate) fn new() -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         Dials {
-            waiting: HashMap::new(),
+            state: pod_hold::connect::Dials::new(),
             tx,
             rx,
         }
@@ -90,21 +76,19 @@ impl Dials {
 
     /// True while a dial of the socket `key` is in progress.
     pub(crate) fn in_progress(&self, key: Key) -> bool {
-        self.waiting.contains_key(&key)
+        self.state.in_progress(key)
     }
 
     /// True while a dial of the socket `key` that a nonblocking `connect`
     /// started is in progress.
     pub(crate) fn nonblocking(&self, key: Key) -> bool {
-        self.waiting.get(&key).is_some_and(|w| w.nonblocking)
+        self.state.nonblocking(key)
     }
 
     /// Add a `getsockopt(SO_ERROR)` to the calls that wait for the dial of
     /// `key`.
     pub(crate) fn wait_error(&mut self, key: Key, call: ErrorCall) {
-        if let Some(waiting) = self.waiting.get_mut(&key) {
-            waiting.errors.push(call);
-        }
+        self.state.wait_error(key, call);
     }
 }
 
@@ -141,14 +125,13 @@ pub(crate) fn handle_connect(
         Some(Sock::Connected(_)) => return notif_respond(lfd, id, -1, libc::EISCONN),
         Some(_) => {}
     }
-    if let Some(waiting) = dials.waiting.get_mut(&key) {
+    if dials.in_progress(key) {
         // A dial of this socket is in progress: a blocking call waits for
         // it, and a nonblocking call gets EALREADY, as in the kernel.
-        if is_nonblocking(pid, fd) {
-            return notif_respond(lfd, id, -1, libc::EALREADY);
-        }
-        waiting.connects.push(id);
-        return Ok(());
+        return match dials.state.join(key, id, is_nonblocking(pid, fd)) {
+            Some(Joined::Already) => notif_respond(lfd, id, -1, libc::EALREADY),
+            _ => Ok(()),
+        };
     }
     let addr = read_mem(mem, a[1], (a[2] as usize).min(128))?;
     // T-146: `AF_UNSPEC` dissolves the association of a datagram socket, as
@@ -187,13 +170,7 @@ pub(crate) fn handle_connect(
         crate::rules::note_refusal("connect", &target, picked.rule_name(), route.verbose);
         return notif_respond(lfd, id, -1, libc::ECONNREFUSED);
     }
-    let nonblocking = is_nonblocking(pid, fd);
-    let waiting = Waiting {
-        connects: if nonblocking { Vec::new() } else { vec![id] },
-        errors: Vec::new(),
-        nonblocking,
-    };
-    dials.waiting.insert(key, waiting);
+    let started = dials.state.start(key, id, is_nonblocking(pid, fd));
     let tx = dials.tx.clone();
     let mut done = Dialed {
         key,
@@ -245,9 +222,9 @@ pub(crate) fn handle_connect(
             let _ = tx.send(done);
         });
     }
-    match nonblocking {
-        true => notif_respond(lfd, id, -1, libc::EINPROGRESS),
-        false => Ok(()),
+    match started {
+        Started::InProgress => notif_respond(lfd, id, -1, libc::EINPROGRESS),
+        Started::Waits => Ok(()),
     }
 }
 
@@ -268,10 +245,7 @@ pub(crate) fn finish(
         result,
         flow,
     } = done;
-    let mut waiting = dials.waiting.remove(&key).unwrap_or_default();
-    waiting.connects.retain(|&id| notif_id_valid(lfd, id));
-    waiting.errors.retain(|call| notif_id_valid(lfd, call.id));
-    if !waiting.nonblocking && waiting.connects.is_empty() {
+    let Some(waiting) = dials.state.finish(key, |id| notif_id_valid(lfd, id)) else {
         // No call waits for the blocking dial: drop the connection.
         if verbose {
             eprintln!(
@@ -280,36 +254,16 @@ pub(crate) fn finish(
             );
         }
         return;
-    }
+    };
     // Answer each waiting call. A `connect` takes the error, else the first
     // `SO_ERROR` takes it, as in the kernel. True when a call took it.
     let answer = |errno: i32| {
-        for &id in &waiting.connects {
-            let _ = notif_respond(lfd, id, if errno == 0 { 0 } else { -1 }, errno);
-        }
-        let mut pending = if waiting.connects.is_empty() {
-            errno
-        } else {
-            0
-        };
-        for call in &waiting.errors {
-            answer_error(lfd, call, std::mem::take(&mut pending));
-        }
-        !waiting.connects.is_empty() || !waiting.errors.is_empty()
+        let write = |call: &ErrorCall, value| write_error_to_task(lfd, mem_access(), call, value);
+        waiting.answer(lfd, errno, write)
     };
     // The one call that can take the upstream socket (T-065): the blocking
     // `connect`, or the one `SO_ERROR` of a nonblocking dial.
-    let (taker, ids) = match (&waiting.connects[..], &waiting.errors[..]) {
-        ([], [call]) => {
-            let who = Caller {
-                id: call.id,
-                pid: call.pid,
-                fd: call.fd,
-            };
-            (who, vec![call.id])
-        }
-        _ => (caller, waiting.connects.clone()),
-    };
+    let (taker, ids) = waiting.taker(caller);
     match result {
         Ok(link) => match map.remove(&key) {
             Some(Sock::Stream {
@@ -372,26 +326,6 @@ pub(crate) fn finish(
             }
         }
     }
-}
-
-/// Answer a `getsockopt(SO_ERROR)` that waited for a dial: the option is
-/// `errno`.
-fn answer_error(lfd: RawFd, call: &ErrorCall, errno: i32) {
-    let (mem, _) = open_mem_of(call.pid);
-    let value = errno.to_ne_bytes();
-    let out = call.len.min(value.len());
-    // The task is the same after the open of its memory.
-    let written = notif_id_valid(lfd, call.id)
-        && write_mem_to(mem, call.pid, call.optval, &value[..out]).is_ok()
-        && write_mem_to(mem, call.pid, call.optlen, &(out as u32).to_ne_bytes()).is_ok();
-    if mem >= 0 {
-        // SAFETY: `mem` is a descriptor that this function opened.
-        unsafe { libc::close(mem) };
-    }
-    let _ = match written {
-        true => notif_respond(lfd, call.id, 0, 0),
-        false => notif_respond(lfd, call.id, -1, libc::EFAULT),
-    };
 }
 
 /// A loopback connect of the program: its own inbound listener on `port`

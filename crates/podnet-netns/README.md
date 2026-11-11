@@ -117,7 +117,8 @@ socket) when there is one, else to TCP on the host.
   accepts the connection and copies the bytes. When the dial fails (a dead
   proxy, a 407 of the proxy), the program gets a RST, and its `connect()`
   fails with `ECONNREFUSED`. The program cannot read the HTTP status of the
-  proxy; `-v` prints it.
+  proxy; `-v` prints it. The parse of a SYN and the RST are `pod_hold::packet`
+  of PodUtils/podcrates.
 * The parent answers each UDP query to port 53, to any resolver address, from
   the fake-IP pool. The answer comes from the address that the program sent
   the query to.
@@ -308,7 +309,7 @@ see it. Use a unix socket for it (`-L unix:///path`).
 * After the child exits, the supervisor waits up to 3 seconds for the relays
   to finish.
 
-Needs: seccomp with `SECCOMP_RET_USER_NOTIF` and `SECCOMP_ADDFD_FLAG_SEND` (Linux 5.14 or newer). The core of this backend (the filter, the receive, the memory of the program, the reply and the table of the sockets) is the crate `pod-hold` of PodUtils/podcrates.
+Needs: seccomp with `SECCOMP_RET_USER_NOTIF` and `SECCOMP_ADDFD_FLAG_SEND` (Linux 5.14 or newer). The core of this backend (the filter, the receive, the memory of the program, the reply, the table of the sockets and the dial state of a held `connect`) is the crate `pod-hold` of PodUtils/podcrates.
 
 ### UDP in the stream (SOCKS5 command `0x83`)
 

@@ -750,6 +750,12 @@ Done so far:
   v0.16.0 carries `pod_hold::connect` and `pod_hold::packet`; the patch that makes `connect.rs` and
   `netns/packet.rs` glue comes with a later release. No API change for podnet. `sh scripts/agent/check.sh`:
   each step 0.
+- `pod_hold::connect` and `pod_hold::packet` (the patch `adoption/podnet/pod-hold-connect.patch` of podcrates
+  8af9fb6, PodUtils/podcrates#59): `crates/podnet-netns/src/connect.rs` is glue over the dial state of
+  `pod_hold::connect` (`Dials`, `Finished`, `write_error_to_task`); `netns/packet.rs` takes `parse_tcp_syn`,
+  `rst_reply_for_syn` and `ipv4_checksum` of `pod_hold::packet` and keeps `dns_reply_packet`. Four tests moved
+  to `pod-hold` with their names. Each line of the `.run` passed, except the static build with zig (no zig
+  on the host) and the check of the toolchains of podcrates (no change of a toolchain).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

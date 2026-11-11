@@ -760,7 +760,7 @@ namespace, with an `AF_PACKET` socket on one end, can carry the frames to the sa
 
 - `crates/podnet-netns/src/netns/tun.rs:41-43` opens the node; `send_fd`/`recv_fd` (`crates/podnet-netns/src/netns/fdpass.rs:51,85`) and the
   handoff (`crates/podnet-netns/src/netns/mod.rs:96,168`) are reusable. `doctor.rs:70,281` gates `auto` on the TUN probe.
-- smoltcp has `medium-ip` only (`Cargo.toml:139`, `crates/podnet-netns/Cargo.toml:33`): add `medium-ethernet`.
+- smoltcp has `medium-ip` only (`Cargo.toml:139`, `crates/podnet-netns/Cargo.toml:34`): add `medium-ethernet`.
 - `docs/research/podnet/vn.md:313` is plan item P5; `vn.md:411` asks if any target host has no TUN. No
   measured host lacks it (`docs/target-environment.md:33`).
 - The veth needs one small `RTM_NEWLINK` writer. Checksums: skip RX verification on this device.
@@ -1001,6 +1001,7 @@ PodUtils/podrunner `(to podnet)`.
 `crates/podnet-netns/src/connect.rs`. That file is frozen: podcrates imports its dial state into `pod-hold`
 (podcrates T-169, PodUtils/podcrates#55). Item 2 waits for the take of that release; then the choice of
 the loopback route is podnet's part of the trait of the consumer. Item 1 is done.
+The take came on 2026-11-11 (`pod_hold::connect`, PodUtils/podcrates#59): item 2 can start.
 
 Done so far: item 1 (ae5d1e3; c0180cc: the child of the probe waits on a pipe, as a child that exits at once gave `ESRCH` under load). The memory read is the condition, not the write: the backend reads the
 address of each `connect`, and a failed read refuses the `connect` (`ECONNREFUSED`, `seccomp/mod.rs`), so

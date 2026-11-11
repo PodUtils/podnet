@@ -942,7 +942,7 @@ an oversized datagram needs its own counter.
 
 ## Premise
 
-- Present in podnet: `HeldSyn` (`crates/podnet-netns/src/netns/backend.rs:13,146`, `crates/podnet-netns/src/netns/packet.rs:62`); `reap_closed`
+- Present in podnet: `HeldSyn` (`crates/podnet-netns/src/netns/backend.rs:13,146`; its RST is `rst_reply_for_syn` of `pod_hold::packet`, PodUtils/podcrates); `reap_closed`
   (`crates/podnet-netns/src/netns/backend.rs:326`) reaps at `Closed`; the vnet stack treats `TimeWait` as closed (`crates/podnet-vnet/src/stack/service.rs:270-287`)
   and defers `close` until the queues are empty (`crates/podnet-vnet/src/stack/service.rs:254-267`). `NetStack` defaults hold the payload at
   64 KiB (`:114-115`). Async writers use `write_all` (`upstream.rs:626`, `framing.rs:43`).

@@ -45,12 +45,7 @@ impl Link {
 }
 
 /// The first call of a dial: its notification, its task and its descriptor.
-#[derive(Clone, Copy)]
-pub(crate) struct Caller {
-    pub(crate) id: u64,
-    pub(crate) pid: u32,
-    pub(crate) fd: i32,
-}
+pub(crate) use pod_hold::connect::Caller;
 
 /// The hop of a chain whose upstream is plain: the only hop, SOCKS5 or
 /// HTTP, on a Unix socket.
