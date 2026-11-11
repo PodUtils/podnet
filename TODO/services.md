@@ -904,7 +904,7 @@ and no flow to either after the kill switch).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -953,6 +953,25 @@ cargo test --workspace -- router_health_member_with_flapping_probe_stays_in_cool
 ## Start condition
 
 T-096 and T-068 are done.
+
+## Correction
+
+2026-11-11, the call of 2026-11-10 (`docs/decisions.md`, Start conditions): the generic part needs only
+`podnet-core`, so it starts before the rest of T-068 waits for `pod-warp`. Done so far (4669f9c):
+`crates/podnet-core/src/network/health.rs` has the probe through the way of its own member (item 8; it
+never enters the pick), `Thresholds` with the check K > R > 1 and R > K/2 (item 5), `ProbeResult` (item
+9, the types), and `Tracker` with `Up`, `Cooldown`, `Probation` and `Down` (item 6: a flapping probe stays
+in `Cooldown`, `Down` follows K clean misses with a passed control, item 7 for the group). `Balance`
+takes each probe (`observe`), counts the flows of each member and gives `status()` (the document of item
+4). The tests give the time (item 11). Tests: `cargo test -p podnet-core --lib router_` (12).
+
+Left, each with the crate or entry that it waits for:
+
+- Items 3, 7 (the gate of `tcp_dead` in `src/warp/live.rs`), 9 (the egress check of a WARP member) and 10
+  (the renew, make-before-break): the WARP adapter, frozen for `pod-warp` (T-050).
+- Item 4: the command `podnet route status` and the metrics rows need the router process (T-099, T-100);
+  the bytes of each member need the meter of the doors.
+- Item 11: the thresholds in the config file (T-100).
 
 # T-098: Router: doors with a default network, and rules to a network, a group or a refusal
 
