@@ -421,11 +421,8 @@ cargo package --locked --list --workspace
 
 ## Blocker
 
-The owner: the placeholders of the four other crate names of podnet
-(`podnet-core`, `podnet-netns`, `podnet-vnet`, `podnet-serve`; the WARP and Cloudflare adapters become `pod-warp` and
-`pod-cloudflare` of `PodUtils/podcrates`), and the first publish of a real
-version (the rulings "crates.io" and "Shared crates" of 2026-11-05 in
-`docs/decisions.md`).
+The owner's ruling: no real version goes to crates.io now (the rulings "crates.io" of 2026-11-05 and "Releases" of
+2026-11-09 in `docs/decisions.md`). The placeholders of the crate names are done (see the Correction).
 
 ## Correction
 
@@ -435,3 +432,6 @@ answers 200. The owner published the placeholder `podnet` 0.0.0 (repository
 `podnet-serve` answered 404 then: they wait in the queue of the owner. The names
 `podnet-relay`, `podnet-warp` and `podnet-cloudflare` are not used: `pod-relay`, `pod-warp` and
 `pod-cloudflare` are crates of PodUtils/podcrates.
+
+Measured on 2026-11-11: `https://crates.io/api/v1/crates/NAME` gives the placeholder 0.0.0 for `podnet`,
+`podnet-core`, `podnet-netns`, `podnet-vnet` and `podnet-serve`. The owner action of the names is done.

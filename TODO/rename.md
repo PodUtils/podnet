@@ -584,7 +584,7 @@ release and checks `podnet.prev`; it cannot run here. The lead dispatches `live.
 **Milestone:** M1
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -615,14 +615,6 @@ docker logout ghcr.io
 docker pull ghcr.io/podutils/podnet:beta
 ```
 
-## Blocker
-
-The owner sets the package `podnet` of PodUtils public in the GitHub package settings
-(Package settings, Danger Zone, Change visibility). On 2026-11-10 the anonymous token request
-for `repository:podutils/podnet:pull` answers 401 and the tag list with a token answers 403
-`DENIED`, after the release v0.4.0-beta.1. The token of a workflow cannot change the visibility.
-Then run the Prove commands again.
-
 ## Start condition
 
 T-023 is done.
@@ -632,6 +624,19 @@ T-023 is done.
 2026-11-05, no owner action is necessary (the ruling "ghcr package"). The Problem keeps the risk of a
 private package; the Approach tells what to do when the pull fails. No podnet release now (the
 ruling "Order"): the entry waits for T-023.
+
+The blocker of 2026-11-10 (now gone): The owner sets the package `podnet` of PodUtils public in the GitHub package settings
+(Package settings, Danger Zone, Change visibility). On 2026-11-10 the anonymous token request
+for `repository:podutils/podnet:pull` answers 401 and the tag list with a token answers 403
+`DENIED`, after the release v0.4.0-beta.1. The token of a workflow cannot change the visibility.
+Then run the Prove commands again.
+
+## Done
+
+2026-11-11: measured from this session with no login. `https://ghcr.io/token?scope=repository:podutils/podnet:pull`
+gives an anonymous token, and the manifests of `ghcr.io/podutils/podnet:beta` and `:v0.4.0-beta.3` answer HTTP 200
+(`:latest` answers 404: it comes with the first stable release). The package is public; no owner action is left.
+
 
 # T-136: live: two runs in a row failed before the transfer of the repository (GitHub #311)
 
