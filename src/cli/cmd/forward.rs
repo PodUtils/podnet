@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use clap::Args;
 use podnet::exit::{Fault, ResultExt};
-use podnet::network::{Ctx, Dial, Network as _};
+use podnet::network::{Ctx, Dial, Network as _, Target};
 use podnet_netns::listen::ProxyListen;
 
 use crate::cli::signals::sleep_or_signal;
@@ -14,14 +14,19 @@ use crate::cli::signals::sleep_or_signal;
 pub(crate) struct ForwardArgs {
     /// A forward: LISTEN=HOST:PORT (repeatable). LISTEN is PORT (on
     /// 127.0.0.1), ADDR:PORT, tcp://ADDR:PORT or unix:/PATH. Each
-    /// connection to LISTEN goes through the network to HOST:PORT.
-    #[arg(
-        short = 'L',
-        long = "local",
-        value_name = "LISTEN=HOST:PORT",
-        required = true
-    )]
+    /// connection to LISTEN goes through the network to HOST:PORT. With
+    /// udp:PORT or udp:ADDR:PORT the forward carries UDP: each client has
+    /// its own flow, and a flow ends after 60 s with no datagram. A
+    /// datagram for a full flow is dropped.
+    #[arg(short = 'L', long = "local", value_name = "LISTEN=HOST:PORT")]
     local: Vec<String>,
+    /// A DNS door: answer DNS queries on ADDR:PORT (UDP and TCP) through
+    /// the network, from the resolver at --dns-upstream.
+    #[arg(long, value_name = "ADDR:PORT")]
+    dns: Option<std::net::SocketAddr>,
+    /// The resolver of --dns, an address at the far end of the network.
+    #[arg(long, value_name = "HOST:PORT", default_value = "1.1.1.1:53")]
+    dns_upstream: String,
     /// The network of the forwards, as a spec: direct, a proxy URL,
     /// relay or relay:URL, tailscale:/PATH, unix:/PATH. Default: the way
     /// out of the process (--proxy, the variables, else direct).
@@ -34,6 +39,21 @@ pub(crate) struct ForwardArgs {
 
 /// Run the forwards until a signal or --run-for.
 pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
+    if args.local.is_empty() && args.dns.is_none() {
+        return Err(anyhow::anyhow!(
+            "give -L LISTEN=HOST:PORT or --dns ADDR:PORT"
+        ))
+        .fault(Fault::Usage);
+    }
+    let upstream: Option<Target> = args
+        .dns
+        .map(|_| {
+            args.dns_upstream
+                .parse::<Target>()
+                .map_err(|_| anyhow::anyhow!("--dns-upstream: give HOST:PORT"))
+        })
+        .transpose()
+        .fault(Fault::Usage)?;
     let rules = args
         .local
         .iter()
@@ -51,8 +71,35 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
         None => podnet::dialers::process(),
     };
     let mut servers = tokio::task::JoinSet::new();
+    if let (Some(addr), Some(upstream)) = (args.dns, upstream) {
+        println!(
+            "podnet: dns door  {addr}  ->  {upstream}  via {}",
+            dial.label()
+        );
+        servers.spawn(podnet::forwards::serve_dns(addr, dial.clone(), upstream));
+    }
     for rule in rules {
         let target = rule.target.clone();
+        if rule.udp {
+            let ProxyListen::Tcp(addr) = &rule.listen else {
+                unreachable!("Rule::parse admits TCP addresses for UDP")
+            };
+            let socket = tokio::net::UdpSocket::bind(addr)
+                .await
+                .with_context(|| format!("-L udp:{addr}"))
+                .map_err(podnet::net::bind_fault)?;
+            println!(
+                "podnet: forward  udp:{}  ->  {target}  via {}",
+                socket.local_addr()?,
+                dial.label()
+            );
+            servers.spawn(podnet::forwards::serve_udp(
+                Arc::new(socket),
+                dial.clone(),
+                target,
+            ));
+            continue;
+        }
         match &rule.listen {
             ProxyListen::Tcp(addr) => {
                 let listener = tokio::net::TcpListener::bind(addr)

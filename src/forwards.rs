@@ -1,6 +1,6 @@
 //! Port forwards over any network (T-099): each connection to a local
 //! listener goes through a [`Dial`] to one target. `podnet forward -L
-//! LISTEN=HOST:PORT --network SPEC` uses it; the network is a spec of the
+//! LISTEN=HOST:PORT --network SPEC` uses it (`udp:LISTEN` for UDP); the network is a spec of the
 //! registry (`crate::networks`), and with no spec the way out of the
 //! process.
 
@@ -22,15 +22,23 @@ pub const DIAL_LIMIT: Duration = Duration::from_secs(30);
 pub struct Rule {
     pub listen: ProxyListen,
     pub target: Target,
+    /// True for `udp:LISTEN`: a UDP listener, and datagrams to the target.
+    pub udp: bool,
 }
 
 impl Rule {
     /// `LISTEN=HOST:PORT`: LISTEN is `PORT` (on 127.0.0.1), `ADDR:PORT`,
     /// `tcp://ADDR:PORT` or `unix:/PATH`; an IPv6 host is in brackets.
+    /// `udp:` before LISTEN (`udp:PORT`, `udp:ADDR:PORT`) makes a UDP
+    /// forward.
     pub fn parse(spec: &str) -> Result<Rule> {
         let (listen, target) = spec
             .rsplit_once('=')
             .with_context(|| format!("-L {spec:?}: give LISTEN=HOST:PORT"))?;
+        let (udp, listen) = match listen.strip_prefix("udp:") {
+            Some(rest) => (true, rest),
+            None => (false, listen),
+        };
         let listen = match listen.parse::<u16>() {
             Ok(0) => bail!("-L {spec:?}: the listen port must be 1 to 65535"),
             Ok(port) => ProxyListen::Tcp(std::net::SocketAddr::from(([127, 0, 0, 1], port))),
@@ -44,7 +52,14 @@ impl Rule {
         if target.port() == 0 {
             bail!("-L {spec:?}: the port must be 1 to 65535");
         }
-        Ok(Rule { listen, target })
+        if udp && !matches!(listen, ProxyListen::Tcp(_)) {
+            bail!("-L {spec:?}: a UDP forward listens on PORT or ADDR:PORT");
+        }
+        Ok(Rule {
+            listen,
+            target,
+            udp,
+        })
     }
 }
 
@@ -88,6 +103,9 @@ where
         }
     });
 }
+
+mod udp;
+pub use udp::{serve_dns, serve_udp};
 
 #[cfg(test)]
 mod tests;

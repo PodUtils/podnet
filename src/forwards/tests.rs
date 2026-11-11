@@ -42,7 +42,17 @@ fn forward_rule_parses_each_form() {
     let rule = Rule::parse("unix:/run/f.sock=[2001:db8::1]:22").unwrap();
     assert!(matches!(rule.listen, ProxyListen::Unix(_)));
     assert_eq!(rule.target.port(), 22);
-    for bad in ["8080", "0=h:1", "8080=h", "8080=h:0", "8080=:22"] {
+    let rule = Rule::parse("udp:5353=1.1.1.1:53").unwrap();
+    assert!(rule.udp);
+    assert!(!Rule::parse("5353=1.1.1.1:53").unwrap().udp);
+    for bad in [
+        "udp:unix:/x=h:1",
+        "8080",
+        "0=h:1",
+        "8080=h",
+        "8080=h:0",
+        "8080=:22",
+    ] {
         assert!(Rule::parse(bad).is_err(), "{bad}");
     }
 }
