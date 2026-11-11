@@ -230,3 +230,56 @@ fn doctor_json_dns_keys_are_fixed() {
     assert_eq!(keys(&json["paths"][0]["dns"]), ["addresses", "ms"]);
     assert_eq!(keys(&json["paths"][1]["dns"]), ["error"]);
 }
+
+/// T-217: the lanes follow the legs and the paths.
+#[test]
+fn the_lanes_follow_the_legs_and_paths() {
+    let mut edge = path("edge-address", "192.0.2.1", 7844, true);
+    edge.best = Some(Duration::from_millis(12));
+    let mut api = path("api", "api.example", 443, true);
+    api.via = Some("http://proxy.example:3128".into());
+    api.best = Some(Duration::from_millis(40));
+    let leg = |name, verdict| Leg {
+        name,
+        verdict,
+        reason: "r".into(),
+    };
+    let mut report = Report {
+        proxy: Value::Null,
+        paths: vec![edge, path("masque", masque_address(), 443, false)],
+        udp: ("1.2.3.4:7844".parse().unwrap(), Egress::Unknown("x".into())),
+        names: None,
+        legs: vec![
+            leg("quic", Verdict::Refused),
+            leg("http2", Verdict::Ok),
+            leg("quic+warp", Verdict::Unknown),
+        ],
+        clock: Clock {
+            verdict: Verdict::Unknown,
+            skew: None,
+            detail: String::new(),
+        },
+        git: git_check::git("git"),
+        quick: false,
+    };
+    let lane =
+        |report: &Report, name: &str| lanes(report).into_iter().find(|l| l.name == name).unwrap();
+    let names: Vec<&str> = lanes(&report).iter().map(|l| l.name).collect();
+    assert_eq!(names, LANES);
+    let http2 = lane(&report, "tunnel_http2");
+    assert_eq!(
+        (http2.verdict, http2.time),
+        (Verdict::Ok, Some(Duration::from_millis(12)))
+    );
+    assert_eq!(lane(&report, "tunnel_quic").verdict, Verdict::Refused);
+    assert_eq!(lane(&report, "masque_tcp443").verdict, Verdict::Unknown);
+    assert_eq!(lane(&report, "proxy").reason, "no proxy is set");
+    report.paths.push(api);
+    let proxy = lane(&report, "proxy");
+    assert_eq!(
+        (proxy.verdict, proxy.time),
+        (Verdict::Ok, Some(Duration::from_millis(40)))
+    );
+    assert_eq!(report.to_json()["lanes"]["proxy"]["ms"], 40.0);
+    assert_eq!(report.to_json()["lanes"]["tunnel_quic"]["verdict"], "fail");
+}

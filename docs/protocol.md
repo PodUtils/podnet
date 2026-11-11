@@ -443,6 +443,7 @@ one of `answered`, `refused` and `unknown`.
 | `next` | string | The step to take now. |
 | `names` | string or null | What the proxy does with names and addresses on 7844. |
 | `roads` | array | One object for each road (`direct`, `warp`, `relay`). |
+| `lanes` | object | The seven egress lanes (below). |
 | `legs` | array | One object for each leg (`quic`, `http2`, `quic+warp`, `http2+relay`). |
 | `paths` | array | One object for each TCP path (the hops). |
 | `clock` | object | The clock against the `Date` of an API. |
@@ -472,6 +473,22 @@ Each object of `paths`:
 * `proxy`: `url` (string or null), `credentials` (bool or null), `direct`
   (strings), `text` (string).
 * `udp`: `target`, `verdict`, `status` and `detail` (strings).
+
+### Lanes
+
+`lanes` has exactly the seven keys below. Each value is an object with
+`verdict` (`ok`, `fail` or `unknown`), `ms` (number or null: the best TCP
+sample of the lane) and `reason` (string).
+
+| Lane | Source | `ms` |
+| --- | --- | --- |
+| `tunnel_quic` | the leg `quic` | null |
+| `tunnel_http2` | the leg `http2` | the path `edge-address` |
+| `tunnel_quic_warp` | the leg `quic+warp` | the MASQUE path |
+| `masque_tcp443` | the path `masque`, or `masque-v6` when only it works | the same path |
+| `masque_udp443` | no probe: always `unknown` | null |
+| `ws_upgrade` | no probe: always `unknown` | null |
+| `proxy` | the paths that go through a proxy: `ok` when one works, `fail` when each fails, else `unknown` (`no proxy is set` without a proxy) | the best of the working paths |
 
 ## Failure causes
 

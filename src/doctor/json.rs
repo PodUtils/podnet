@@ -12,6 +12,7 @@ impl Report {
         crate::status::stamped(json!({
             "ok": self.ok(),
             "quick": self.quick,
+            "lanes": self.lanes_json(),
             "roads": self.roads().iter().map(|(road, verdict, reason)| json!({
                 "road": road,
                 "verdict": verdict.name(),
@@ -76,4 +77,147 @@ impl Report {
             })).collect::<Vec<_>>(),
         }))
     }
+
+    /// The `lanes` object: the seven egress lanes of [`lanes`].
+    fn lanes_json(&self) -> Value {
+        let mut map = serde_json::Map::new();
+        for lane in lanes(self) {
+            map.insert(
+                lane.name.to_string(),
+                json!({
+                    "verdict": lane.verdict.name(),
+                    "ms": ms(lane.time),
+                    "reason": lane.reason,
+                }),
+            );
+        }
+        Value::Object(map)
+    }
+}
+
+/// The names of the lanes, in the order of the document.
+pub const LANES: [&str; 7] = [
+    "tunnel_quic",
+    "tunnel_http2",
+    "tunnel_quic_warp",
+    "masque_tcp443",
+    "masque_udp443",
+    "ws_upgrade",
+    "proxy",
+];
+
+/// One egress lane (T-217).
+#[derive(Clone, Debug)]
+pub struct Lane {
+    pub name: &'static str,
+    pub verdict: Verdict,
+    /// The best sample of the TCP path of the lane, when it has one.
+    pub time: Option<Duration>,
+    pub reason: String,
+}
+
+/// Each lane, from the legs and the paths, in the order of [`LANES`]. The
+/// sources:
+///
+/// * `tunnel_quic`: the leg `quic`.
+/// * `tunnel_http2`: the leg `http2`; the time of the path `edge-address`.
+/// * `tunnel_quic_warp`: the leg `quic+warp`; the time of the MASQUE path.
+/// * `masque_tcp443`: the path `masque` (`masque-v6` when only it works).
+/// * `masque_udp443`, `ws_upgrade`: no probe, so `unknown`.
+/// * `proxy`: the paths that go through a proxy.
+pub fn lanes(report: &Report) -> Vec<Lane> {
+    let leg = |name: &str| report.legs.iter().find(|l| l.name == name);
+    let path = |id: &str| report.paths.iter().find(|p| p.target.id == id);
+    let from_leg = |lane: &'static str, name: &str, time: Option<Duration>| match leg(name) {
+        Some(l) => Lane {
+            name: lane,
+            verdict: l.verdict,
+            time,
+            reason: l.reason.clone(),
+        },
+        None => Lane {
+            name: lane,
+            verdict: Verdict::Unknown,
+            time: None,
+            reason: format!("the leg {name} was not tested"),
+        },
+    };
+    // The MASQUE path that the leg quic+warp uses.
+    let masque = [path("masque"), path("masque-v6")]
+        .into_iter()
+        .flatten()
+        .find(|p| p.usable().0 == Verdict::Ok)
+        .or_else(|| path("masque"));
+    let masque_tcp = match masque {
+        Some(p) => {
+            let (verdict, why) = p.usable();
+            Lane {
+                name: "masque_tcp443",
+                verdict,
+                time: p.best,
+                reason: format!("{}: {why}", p.target.authority()),
+            }
+        }
+        None => Lane {
+            name: "masque_tcp443",
+            verdict: Verdict::Unknown,
+            time: None,
+            reason: "the MASQUE path was not tested".into(),
+        },
+    };
+    let edge_time = path("edge-address").and_then(|p| p.best);
+    vec![
+        from_leg("tunnel_quic", "quic", None),
+        from_leg("tunnel_http2", "http2", edge_time),
+        from_leg("tunnel_quic_warp", "quic+warp", masque.and_then(|p| p.best)),
+        masque_tcp,
+        Lane {
+            name: "masque_udp443",
+            verdict: Verdict::Unknown,
+            time: None,
+            reason: "no probe sends a datagram to MASQUE on UDP 443".into(),
+        },
+        Lane {
+            name: "ws_upgrade",
+            verdict: Verdict::Unknown,
+            time: None,
+            reason: "no probe makes a WebSocket upgrade to the edge host".into(),
+        },
+        proxy_lane(&report.paths),
+    ]
+}
+
+/// The lane `proxy`: `ok` when a path through the proxy has TCP and TLS,
+/// `fail` when each path through the proxy fails, else `unknown`.
+fn proxy_lane(paths: &[Path]) -> Lane {
+    let via: Vec<&Path> = paths.iter().filter(|p| p.via.is_some()).collect();
+    let lane = |verdict, time, reason: String| Lane {
+        name: "proxy",
+        verdict,
+        time,
+        reason,
+    };
+    let Some(first) = via.first() else {
+        return lane(Verdict::Unknown, None, "no proxy is set".into());
+    };
+    let proxy = first.via.clone().unwrap_or_default();
+    let works: Vec<&&Path> = via.iter().filter(|p| p.usable().0 == Verdict::Ok).collect();
+    if !works.is_empty() {
+        let time = works.iter().filter_map(|p| p.best).min();
+        return lane(
+            Verdict::Ok,
+            time,
+            format!(
+                "{} of {} paths work through {proxy}",
+                works.len(),
+                via.len()
+            ),
+        );
+    }
+    let verdict = if via.iter().all(|p| p.usable().0 == Verdict::Refused) {
+        Verdict::Refused
+    } else {
+        Verdict::Unknown
+    };
+    lane(verdict, None, format!("{proxy}: {}", first.usable().1))
 }

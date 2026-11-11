@@ -272,8 +272,8 @@ fn doctor_json_keys_are_fixed() {
     assert_eq!(
         keys(&doc),
         [
-            "clock", "git", "legs", "names", "next", "ok", "paths", "podnet", "proxy", "quick",
-            "roads", "schema", "udp"
+            "clock", "git", "lanes", "legs", "names", "next", "ok", "paths", "podnet", "proxy",
+            "quick", "roads", "schema", "udp"
         ]
     );
     assert_eq!(
@@ -315,6 +315,9 @@ fn doctor_json_keys_are_fixed() {
             ]
         );
     }
+    for lane in doc["lanes"].as_object().unwrap().values() {
+        assert_eq!(keys(lane), ["ms", "reason", "verdict"]);
+    }
     // A path with a TLS result has these keys.
     let tls = &path(&doc, "api")["tls"];
     assert_eq!(
@@ -346,4 +349,52 @@ fn doctor_quick_ends_in_the_limit() {
         assert_ne!(leg["verdict"], "ok", "{all}");
     }
     assert!(doc["udp"]["detail"].is_string());
+}
+
+/// T-217: `lanes` holds the seven egress lanes, each `ok`, `fail` or
+/// `unknown`, with the time.
+#[test]
+fn doctor_json_has_the_seven_lanes() {
+    test_host::need_loopback!();
+    let port = proxy(|authority| {
+        if authority.ends_with(":7844") {
+            Action::Refuse
+        } else {
+            Action::Terminate
+        }
+    });
+    let (_, doc, all) = doctor_with(port, &["--quick", "--timeout", "1"]);
+    let lanes = doc["lanes"].as_object().unwrap();
+    let mut names: Vec<&str> = lanes.keys().map(String::as_str).collect();
+    names.sort_unstable();
+    assert_eq!(
+        names,
+        [
+            "masque_tcp443",
+            "masque_udp443",
+            "proxy",
+            "tunnel_http2",
+            "tunnel_quic",
+            "tunnel_quic_warp",
+            "ws_upgrade"
+        ],
+        "{all}"
+    );
+    for (name, lane) in lanes {
+        let verdict = lane["verdict"].as_str().unwrap();
+        assert!(
+            ["ok", "fail", "unknown"].contains(&verdict),
+            "{name}: {all}"
+        );
+        assert!(lane["ms"].is_null() || lane["ms"].is_number(), "{name}");
+        assert!(lane["reason"].is_string(), "{name}");
+    }
+    // The proxy refuses 7844 and carries no UDP.
+    assert_eq!(lanes["tunnel_http2"]["verdict"], "fail", "{all}");
+    assert_eq!(lanes["tunnel_quic"]["verdict"], "fail", "{all}");
+    // A proxy is set, and the paths through it answer TCP: the time is set.
+    assert_ne!(lanes["proxy"]["reason"], "no proxy is set", "{all}");
+    // No probe yet for these two lanes.
+    assert_eq!(lanes["masque_udp443"]["verdict"], "unknown");
+    assert_eq!(lanes["ws_upgrade"]["verdict"], "unknown");
 }

@@ -453,6 +453,7 @@ mod json;
 use clock_check::clock;
 pub use clock_check::parse_imf_fixdate;
 pub use git_check::Git;
+pub use json::{lanes, Lane, LANES};
 mod tls_check;
 use tls_check::tls;
 
