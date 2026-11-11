@@ -992,7 +992,7 @@ is left. The Done section below holds what is built.
 
 ## Done
 
-2026-11-11, commit a27579d. The command `podnet ssh-relay` runs the leg and keeps its session.
+2026-11-11, commit 6126bf6. The command `podnet ssh-relay` runs the leg and keeps its session.
 - `--server HOST:PORT`, `--user USER` and a URL rule (`--url-match TEXT`, `--url-skip TEXT`, each repeatable,
   at least one of the two) are required flags. A missing flag is a usage error (exit 64) that names the flag
   (clap). A bad `HOST:PORT` is exit 64 too. `--socket PATH` (the origin), `--connect-proxy HOST:PORT` and
@@ -1084,7 +1084,7 @@ T-165.
 
 ## Correction
 
-2026-11-11: T-165 is done (commit a27579d): `podnet ssh-relay` takes the relay (`--server`), the user (`--user`)
+2026-11-11: T-165 is partial (commit 6126bf6; the row of `doctor` is left): `podnet ssh-relay` takes the relay (`--server`), the user (`--user`)
 and the URL rule (`--url-match`, `--url-skip`) as required flags, and `RelayConfig` has the field `url_rule`
 (`relay::UrlRule`, with `skip` and `hold` lists). This closes Approach 5 and the line of the Premise that says
 that no flag sets the fields. What stays for the data of `pod-services`:
