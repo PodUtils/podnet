@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**235 entries: 60 open, 4 partial, 19 blocked, 152 done.**
+**236 entries: 61 open, 4 partial, 19 blocked, 152 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 30 | 2 | 13 | 97 | 142 |
+| P2 | 31 | 2 | 13 | 97 | 143 |
 | P3 | 27 | 1 | 4 | 32 | 64 |
-| **All** | 60 | 4 | 19 | 152 | 235 |
+| **All** | 61 | 4 | 19 | 152 | 236 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -281,3 +281,4 @@ M8 Overlays, M9 Later.
 | [T-233](pods.md) | P2 | S | M5 | defect | done | seccomp: a dual-stack connect to the IPv4-mapped form of a fake address goes to the proxy as an address |
 | [T-234](pods.md) | P2 | S | M5 | defect | done | netns: `parse_tcp_syn` reads a SYN in a header under 20 bytes and in a later fragment |
 | [T-235](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.3`: the dry run, the publish and the release proofs |
+| [T-236](services.md) | P2 | S | M5 | defect | open | `serve --ingress relay --detach` and `git serve --ingress relay --detach` report ready before the node is connected |

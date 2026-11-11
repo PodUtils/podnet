@@ -1613,3 +1613,42 @@ cargo todo check
 ## Start condition
 
 For the live step only: a Cloudflare test account exists (`docs/decisions.md`, 2026-11-09, Test accounts). The local part can start now.
+
+# T-236: `serve --ingress relay --detach` and `git serve --ingress relay --detach` report ready before the node is connected
+
+**Source:** the live run 42937309964 at c0180cc, step "Git over SSH through the reverse relay".
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`git serve --ingress relay --detach` returned, and the `git push` 0.2 s later got: "the relay refused the
+session to p-<hidden>: HTTP 503: reverse: node offline". The command reports its ready document before
+`run_node` connects the node of the pair to the relay. `serve --ingress relay --detach` has the same order
+(its live step hides it with `curl --retry`).
+
+## Premise
+
+- Read: `src/cli/cmd/git_serve.rs` and `src/cli/cmd/serve_relay.rs` call `detach::ready` before
+  `run_node`; `node_once` (`src/relay_reverse.rs`) calls `detach::ready` when the relay has the socket of
+  the node, and `ready` sends only its first call.
+- `relay node --detach` reports ready at the connection: its live step has no race.
+- `src/relay_reverse.rs` has 891 lines (the size allowlist): it can only shrink.
+
+## Approach
+
+1. `detach::ready_when_reachable(doc)`: hold the ready document of the command; the next call of `ready`
+   (the connection of the node) sends it.
+2. `serve` and `git serve` hold their document on the relay road.
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib a_held_ready_document_goes_with_the_next_ready
+cargo test -p podnet --test relay_reverse
+```
+
+The live step "Git over SSH through the reverse relay" passes.

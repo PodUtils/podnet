@@ -61,7 +61,9 @@ pub(super) async fn serve_relay(
             pair.name
         );
     }
-    podnet::detach::ready(serde_json::json!({ "pair": pair.name, "pin": pin }));
+    // T-236: --detach returns when the node is connected (run_node calls
+    // ready), not before: a visitor before that gets "node offline".
+    podnet::detach::ready_when_reachable(serde_json::json!({ "pair": pair.name, "pin": pin }));
     let (server, _file) = local.split();
     tokio::select! {
         result = reverse::run_node(follow, pair, &target) => result,

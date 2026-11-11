@@ -320,12 +320,33 @@ fn same_file(file: &std::fs::File, fd: i32) -> bool {
     st.st_dev as u64 == meta.dev() && st.st_ino as u64 == meta.ino()
 }
 
+/// The ready document that a command holds until it can be reached (T-236).
+static HELD: Mutex<Option<serde_json::Value>> = Mutex::new(None);
+
+/// Hold `doc` as the ready document of this command. The next call of
+/// [`ready`] sends `doc` in place of its own document: the node of a relay
+/// pair calls it when the relay has its socket, and a visitor can then
+/// reach the service (T-236).
+pub fn ready_when_reachable(doc: serde_json::Value) {
+    arm_stop();
+    *HELD.lock().unwrap_or_else(|e| e.into_inner()) = Some(doc);
+}
+
+/// The document of a call of [`ready`]: the held document, else `doc`.
+fn ready_doc(doc: serde_json::Value) -> serde_json::Value {
+    HELD.lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take()
+        .unwrap_or(doc)
+}
+
 /// The command is ready, with `doc` (a JSON object: `url`, or `listen`, and
 /// more). In a detached child, the first call leaves the terminal of the
 /// caller and sends the ready line; each other call, and a call in a
 /// process that is not a detached child, does nothing.
-pub fn ready(mut doc: serde_json::Value) {
+pub fn ready(doc: serde_json::Value) {
     arm_stop();
+    let mut doc = ready_doc(doc);
     if REGISTERED.load(Ordering::SeqCst) && !is_child() {
         // Issue 209: a registered process records its ready document; its
         // terminal and its stdout stay.

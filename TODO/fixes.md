@@ -3119,10 +3119,10 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 ## Premise
 
-- `crates/podnet-core/src/detach.rs:166-192` (`child_begin` reads the variable). `:513-520` sets 4 detach variables and not this one.
+- `crates/podnet-core/src/detach.rs:166-192` (`child_begin` reads the variable). `:534-541` sets 4 detach variables and not this one.
   `crates/podnet-core/src/detach/supervise.rs:120` is the only writer (the supervisor).
 - `crates/podnet-core/src/autostart.rs:178-182` copies each `PODNET_` variable except `PODNET_ERROR_PROGRAM`.
-- `crates/podnet-core/src/detach.rs:691-698` (`targets()` gives `Vec::new()` for this record).
+- `crates/podnet-core/src/detach.rs:712-719` (`targets()` gives `Vec::new()` for this record).
 - The default start (restart on) runs `--detach-supervise`: the supervisor sets the variable for its own child, so that
   path is right. The defect needs `--no-restart`. I did not run it.
 - `crates/podnet-core/src/detach.rs` is in the size allowlist (1210 lines): add no net line.
@@ -3246,7 +3246,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
   proxy path pushes `--replace`).
 - `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:529-544` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
-- `crates/podnet-core/src/detach.rs:488-495` (the refusal text).
+- `crates/podnet-core/src/detach.rs:509-516` (the refusal text).
 
 ## Approach
 

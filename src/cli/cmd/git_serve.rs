@@ -432,7 +432,9 @@ async fn serve_relay(
             pair.name
         );
     }
-    podnet::detach::ready(urls.doc(None));
+    // T-236: --detach returns when the node is connected (run_node calls
+    // ready), not before: a clone before that gets "node offline".
+    podnet::detach::ready_when_reachable(urls.doc(None));
     tokio::select! {
         result = reverse::run_node(follow, pair, &target) => result,
         result = run_until(args.common.run_for, servers) => result,

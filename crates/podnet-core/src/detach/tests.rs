@@ -98,3 +98,15 @@ fn default_names() {
     );
     instances::check_name(&default_name("net switch", "ffffffffffffffff")).unwrap();
 }
+
+/// T-236: a held ready document goes out at the next call of ready, once.
+#[test]
+fn a_held_ready_document_goes_with_the_next_ready() {
+    super::ready_when_reachable(serde_json::json!({"pair": "p-1", "pin": "1234"}));
+    assert_eq!(
+        super::ready_doc(serde_json::json!({"pair": "p-1", "target": "unix:/x"})),
+        serde_json::json!({"pair": "p-1", "pin": "1234"})
+    );
+    let own = serde_json::json!({"url": "http://127.0.0.1:1/"});
+    assert_eq!(super::ready_doc(own.clone()), own);
+}
