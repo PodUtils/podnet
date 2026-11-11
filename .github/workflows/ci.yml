@@ -54,6 +54,11 @@ jobs:
       # does not fail the job).
       - name: Netfilter in a namespace (pod doctor)
         run: ./target/debug/podnet pod doctor | grep -i netfilter || true
+      # T-250: the netns tests that skip for a user here (no user namespace)
+      # run as root: the veth wire and the kernel mode of the router. A skip
+      # line fails the step.
+      - name: Netns tests as root
+        run: sh scripts/ci/root-netns-tests.sh
       # #213: rustdoc with no warning (a broken link renders as plain text
       # on docs.rs).
       - name: Docs
