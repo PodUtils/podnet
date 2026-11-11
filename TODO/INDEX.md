@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**235 entries: 61 open, 4 partial, 19 blocked, 151 done.**
+**235 entries: 60 open, 4 partial, 19 blocked, 152 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 1 | 0 | 0 | 0 | 1 |
 | P1 | 2 | 1 | 2 | 23 | 28 |
-| P2 | 31 | 2 | 13 | 96 | 142 |
+| P2 | 30 | 2 | 13 | 97 | 142 |
 | P3 | 27 | 1 | 4 | 32 | 64 |
-| **All** | 61 | 4 | 19 | 151 | 235 |
+| **All** | 60 | 4 | 19 | 152 | 235 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -107,7 +107,7 @@ M8 Overlays, M9 Later.
 | [T-059](adapters.md) | P2 | M | M4 | feature | done | The registry of networks, the parser of network specs, and the rows of `doctor` |
 | [T-060](adapters.md) | P2 | M | M4 | feature | done | `--via SPEC` on each command, with each old network flag as an alias |
 | [T-061](adapters.md) | P2 | M | M4 | feature | open | One front door over a dialer for `warp proxy`, `pod --serve`, `net proxy` and `net tailscale` |
-| [T-062](adapters.md) | P2 | M | M4 | feature | open | The service and ingress traits, with wrappers of the Cloudflare tunnel, the local listener, the relay node and the virtual network |
+| [T-062](adapters.md) | P2 | M | M4 | feature | done | The service and ingress traits, with wrappers of the Cloudflare tunnel, the local listener, the relay node and the virtual network |
 | [T-063](fixes.md) | P1 | M | M5 | defect | done | seccomp: a TCP socket stays tracked after its connect, and its options and addresses come from its entry |
 | [T-064](fixes.md) | P1 | M | M5 | defect | done | seccomp: one entry for each socket of each process, and copies of a descriptor are tracked |
 | [T-065](fixes.md) | P3 | S | M5 | feature | done | seccomp: hand a plain upstream descriptor to the program after its handshake |

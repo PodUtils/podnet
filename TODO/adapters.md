@@ -458,7 +458,7 @@ T-058 is done.
 **Milestone:** M4
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -493,3 +493,28 @@ A test serves a table of services through the local ingress on a unix socket.
 ## Start condition
 
 T-055 is done.
+
+## Correction
+
+2026-11-11: the names differ from the Approach. `podnet-serve` has `Ingress` (the rules of the tunnel) and
+`Service` (the enum of an origin) already, so the trait is `Road` (`name`, `publish`), the result is
+`Published` (`url`, `ready`, `run`; a drop ends the road), and a service is an `axum::Router`.
+`Services` holds the ordered rules of host and path over routers. A stream service (TCP) comes with the
+doors of the router (T-096 to T-099). The roads of the tunnel, the relay and the virtual network are in the
+root crate (`src/roads.rs`): `podnet-serve` uses no other crate of the workspace but `podnet-core`. Each
+of them serves the router on a private unix socket of the run directory and points its carrier at it
+(`Service::Unix`, `Target::Unix`, a copy from a vnet listener). `serve` and `git serve` keep their code;
+their move onto the roads, and `--ingress SPEC` with the forms of `roads()`, come with T-084.
+
+## Done
+
+2026-11-11, commit cad2b33. `crates/podnet-serve/src/road.rs`: `Road`, `Published`, `Services`, `Rule`,
+`Local` (TCP, or `unix:PATH` with mode 0600, `claim_socket_path` and `bind_fault`) and `private_socket`.
+`src/roads.rs`: `Tunnel` (over `Tunnel::builder`), `Relay` (`run_node` of a pair), `Vnet` (a listener of a
+`NetStack`), `roads()` (the table) and `parse()` (`local:ADDR`, `tunnel`, `relay`, `relay:PAIR`). Tests:
+`cargo test -p podnet-serve --lib ingress_` (4: the table of services; the local road serves a table on a
+unix socket, refuses a live socket and removes its socket; the TCP port; the private socket),
+`cargo test -p podnet --lib ingress_` (4: the vnet road serves a table to a second stack on a switch; the
+table and the parse of the roads). Not proven here: the tunnel and relay roads need the edge and the relay
+(`live.yml`; this sandbox cannot reach them).
+
