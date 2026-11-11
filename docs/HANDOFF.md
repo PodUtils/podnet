@@ -14,32 +14,39 @@ file when each step below is done.
   `pod-services`, `pod-ws`, `pod-quic` and `pod-hold` of
   `PodUtils/podcrates` by the git tag `v0.15.0` (T-137, T-232).
 * The newest release is `v0.4.0-beta.2`. `v0.4.0-beta.3` (T-235) has its
-  version and its notes on `main` at 05bcf44; the release waits for `ci` and
-  `live` on that commit.
+  version and its notes on `main` since 05bcf44. `release.yml` builds the
+  head of `main`: cut it at a head whose `ci` and `live` passed, and push
+  nothing while the release runs.
 
 ## Work of this session
 
 T-058 (the combinators), T-059 (the registry of networks), T-060
 (`--egress SPEC`; `serve` and `git serve` take `--ingress` in place of
-`--via`), T-229 (the measure with the runner), T-230 (the object `hold`),
-T-231 item 1, T-232 (the take of `pod-hold`), T-233 and T-234 (defects).
+`--via`), T-062 (the roads), T-084 (one access layer), T-096 (the group
+with a kill switch), T-097 (partial: the generic health), T-229 (the
+measure with the runner), T-230 (the object `hold`), T-231 item 1, T-232
+(the take of `pod-hold`), T-233, T-234 and T-236 (defects).
 
 ## Next steps
 
-1. **T-235:** when `ci` and `live` pass at 05bcf44 (or a later commit with
-   no code change), dispatch `release.yml` with `publish` empty (the dry
-   run), then with `publish=v0.4.0-beta.3`; check `release-proofs.yml`; set
-   T-235 `done`.
-2. **The live step "SSH through the reverse relay"** failed once at 520b307
-   (the first session was reset, then the step hung 5 minutes). The relay
-   code did not change. Read the next live runs; open an entry if it fails
-   again.
+1. **T-235:** when `ci` and `live` pass at the head of `main`, dispatch
+   `release.yml` with `publish` empty (the dry run), then with
+   `publish=v0.4.0-beta.3`; check `release-proofs.yml`; set T-235 `done`.
+   The notes of the release name the work up to T-236; add the later work
+   (T-062, T-084, T-096, T-097) to them before the cut when it is on `main`.
+2. **Live steps that failed once each** (no code of them changed): "SSH
+   through the reverse relay" at 520b307 (a reset session, then a hang of
+   5 minutes), and "warp up with its TCP listener refused" at 05bcf44 (no
+   JSON line on stdout; the step does not print `up97.err`). Read the next
+   live runs; open an entry when one fails again. T-236 fixed the third
+   (git over the relay at c0180cc).
 3. **T-137:** podcrates imports `connect.rs` (podcrates T-169) and
    `netns/packet.rs` (T-170 step 1) into `pod-hold` on its `main`. Take
    them at the next tag. Until then both files take fixes only. T-231 item 2
    (the rules on loopback) waits for that take.
-4. The work order of `TODO/PROGRESS.md`: T-062 (the service and ingress
-   traits) is next in M4; T-061 needs `src/warp/proxy.rs`, which waits for
+4. The work order of `TODO/PROGRESS.md`: M6, the router (T-098 to T-101,
+   T-177, T-180) on the combinators, the group and the health of
+   `podnet-core`. T-061 needs `src/warp/proxy.rs`, which waits for
    `pod-warp`.
 
 ## Open COORD issues
