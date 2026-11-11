@@ -36,6 +36,7 @@ evidence behind it.
 | `vn.md` | The vn virtual network prototype: what to port |
 | `podssh.md` | The TODO model of podssh, its overlays, its conventions |
 | `overlays.md` | NetBird, Firezone and ZeroTier as networks (T-118, 2026-11-11) |
+| `iroh-relay.md` | The iroh road, and a relay and mailbox of podnet's own (T-130, 2026-11-11) |
 | `podssh-copy.md` | What podnet copies from podssh, and in which order |
 
 The field report itself is in `docs/reports/field-report-2026-11-05.md`.
