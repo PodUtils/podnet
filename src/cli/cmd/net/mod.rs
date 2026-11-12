@@ -35,6 +35,9 @@ pub(crate) enum NetCommand {
         /// Print one JSON document.
         #[arg(long)]
         json: bool,
+        /// The LocalAPI socket of tailscaled to probe.
+        #[arg(long, default_value = podnet_netns::tailscale::DEFAULT_SOCKET)]
+        socket: String,
     },
     /// Build (or locate) the LD_PRELOAD shim and print how to use it.
     Shim(ShimArgs),
@@ -261,7 +264,7 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
             }
             Ok(())
         }
-        NetCommand::Doctor { json } => {
+        NetCommand::Doctor { json, socket } => {
             podnet::udp::check_edge_env()?;
             let mut probes = podnet::vnet::doctor::run();
             let target = podnet::udp::probe_target();
@@ -273,13 +276,15 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
             // T-243: the state of the tailscaled door.
             probes.push(podnet::vnet::doctor::Probe {
                 name: "tailscaled (LocalAPI)",
-                result: match podnet::vnet::tailscale::Dialer::new(
-                    podnet_netns::tailscale::DEFAULT_SOCKET,
-                )
-                .describe()
-                .await
+                result: match podnet::vnet::tailscale::Dialer::new(&socket)
+                    .describe()
+                    .await
                 {
-                    Ok(line) => podnet::vnet::doctor::ProbeResult::Ok(line),
+                    // T-115: a daemon that is not Running is a fault.
+                    Ok(_) => match podnet::networks::tailscale_state(&socket).await {
+                        Ok(line) => podnet::vnet::doctor::ProbeResult::Ok(line),
+                        Err(why) => podnet::vnet::doctor::ProbeResult::Fail(why),
+                    },
                     Err(why) => podnet::vnet::doctor::ProbeResult::Unknown(why),
                 },
             });

@@ -67,7 +67,15 @@ is `Running` in that tailnet. NAME is the tailnet name or its DNS suffix.
 Another tailnet exits 78 and binds nothing. A daemon that is not logged in
 after 20 s exits 69. While the door runs, it refuses new dials when the daemon
 changes to another tailnet (SOCKS5 "connection not allowed", HTTP 403). Open
-connections stay. `podnet net doctor` shows the state of the daemon.
+connections stay. `podnet net doctor [--socket PATH]` shows the state of the daemon: `ok` when it is
+`Running`, `fail` when it is `NeedsLogin`, `Stopped` or another state, and `unknown` when the socket does not
+answer.
+
+The spec `tailscale:/PATH` is a network of the registry ([egress.md](egress.md)). It is a hop of `podnet pod -x`
+and `--egress`, the `--network` of `podnet forward`, a network of a router file and a member of a group
+([router.md](router.md)). It is the only hop of a chain. `podnet route --check` prints its login state. A
+router that starts with a daemon that is not `Running` prints one warning, and the link of the network has the
+`state` in its status. The name of the target goes to `tailscaled` (MagicDNS), so a name or an address of the tailnet works.
 
 A host whose outbound traffic is limited to port 443 starts `tailscaled`
 with `TS_FORCE_NOISE_443=true`. Without it, the control connection tries port

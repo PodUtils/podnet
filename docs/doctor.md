@@ -101,7 +101,7 @@ reads the document (flags, exit codes, readiness, failure causes).
   `seccomp` backend, and how much each backend holds. It exits 3 when no backend can run ([pods.md](pods.md)).
 * `podnet net doctor [--json]` probes what the host permits for the virtual network: `bind` and `listen`
   for each socket family, `/dev/net/tun`, `/dev/vsock`, a C compiler for the shims, seccomp and
-  capabilities, the passwd entry of this uid, UDP to the edge, `tailscaled` and the SOCKS5 listener of
+  capabilities, the passwd entry of this uid, UDP to the edge, `tailscaled` (`--socket PATH`; a daemon that is not `Running` is a `fail`) and the SOCKS5 listener of
   NetBird. It prints the commands that each listener allows ([networks.md](networks.md)).
 * `podnet status` prints one line of JSON about this host and opens no connection: the version,
   the platform, the proxy and its source, the TLS roots in `tls_roots`, the state of the WARP identity,

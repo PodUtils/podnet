@@ -38,6 +38,8 @@ and it replaces the older flags:
 * With `podnet pod`, each `--egress` is one hop `-x SPEC` of the chain, in its order. The forms
   `tailscale:/PATH`, `netbird:[PORT]` and `unix:/PATH` are hops of a pod. The relay is not a hop of a
   pod.
+* `tailscale:/PATH` is a hop of a pod and the only hop of its chain. A command that is not `pod` refuses
+  `--egress tailscale:/PATH` with one line: use `podnet pod`, `podnet forward --network` or a router file.
 * A spec that the command cannot use is a usage error with one line that names the spec.
 * `podnet forward --network SPEC` selects the network of the forwards ([forward.md](forward.md)). Its default
   is the way out of the process.

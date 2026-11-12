@@ -26,6 +26,8 @@ use crate::ws_relay::Relay;
 
 mod netbird;
 pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
+mod tailscale;
+pub use tailscale::{rows as tailscale_rows, state as tailscale_state};
 
 /// One row of the registry: a scheme, its forms and what it gives.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -222,6 +224,16 @@ impl SpecNetwork {
         }
     }
 
+    /// The socket of `tailscaled`, for `tailscale:/PATH`.
+    pub fn tailscale_socket(&self) -> Option<String> {
+        match self.kind {
+            Kind::Hop { tailscale: true } => podnet_netns::upstream::Proxy::parse(&self.spec)
+                .ok()
+                .and_then(|p| p.unix_path),
+            _ => None,
+        }
+    }
+
     /// True when the spec is a proxy of the process (`--proxy`), not a hop
     /// that only `podnet pod -x` takes.
     pub fn is_process_proxy(&self) -> bool {
@@ -289,10 +301,23 @@ impl Network for SpecNetwork {
                 .into());
             }
             let way = Way::destination(self.dial()?);
-            Ok(Link::new(Some(way)).with_status(serde_json::json!({
+            let mut status = serde_json::json!({
                 "scheme": self.scheme(),
                 "spec": self.label(),
-            })))
+            });
+            if let Some(socket) = self.tailscale_socket() {
+                // T-115: the login state. A tailnet that is not Running is
+                // a warning, not a fault: the daemon can log in later.
+                let state = tailscale::word(&socket).await;
+                if state != "Running" {
+                    eprintln!(
+                        "podnet: {}: tailscaled is {state}, not Running: each dial fails until it is logged in (tailscale up; tailscale status)",
+                        self.label()
+                    );
+                }
+                status["state"] = state.into();
+            }
+            Ok(Link::new(Some(way)).with_status(status))
         })
     }
 
@@ -326,5 +351,7 @@ impl Network for SpecNetwork {
     }
 }
 
+#[cfg(test)]
+mod tailscale_tests;
 #[cfg(test)]
 mod tests;

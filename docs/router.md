@@ -53,7 +53,10 @@ doors:
   error names the key or the line.
 * A name is letters, digits, `-` and `_`. A group and a network cannot have the same name.
 * `networks` maps a name to a network spec (see [egress.md](egress.md)): `direct`, a proxy URL, `relay`,
-  `tailscale:/PATH`, `netbird:[PORT]` or `unix:/PATH`.
+  `tailscale:/PATH`, `netbird:[PORT]` or `unix:/PATH`. A `tailscale:/PATH` network is a member of a group
+  and the `via` of a door, as each other network. When `tailscaled` is not `Running` at the start, the
+  router prints one warning and goes on: each dial through that network fails until the daemon is logged
+  in.
 * `groups` maps a name to a list of members. A member is a network name with an optional weight
   (`home*2`). The default weight is 1.
 * The file needs one door or more, unless it has a `kernel` section. A file with `kernel` needs no door.
@@ -107,7 +110,10 @@ TCP flows only.
 
 ## Dry run: `--check --to`
 
-`--check` reads the file and brings up nothing. It exits 0 when the file is valid, and 64 with the key
+`--check` reads the file and brings up no network. For each `tailscale:/PATH` network, it prints a line
+`podnet: route  tailnet NAME: socket=PATH BackendState=... tailnet=...` after one read of the LocalAPI of
+`tailscaled`. A daemon that is not `Running`, or that does not answer, gives the reason in that line; the
+exit code does not change. It exits 0 when the file is valid, and 64 with the key
 that is wrong.
 
 `--check --to HOST:PORT` adds a dry run for one target. It prints, for each door (`--door INDEX` selects

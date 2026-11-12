@@ -25,7 +25,8 @@ pub(crate) struct RouteArgs {
     #[arg(long, requires = "status")]
     pub(crate) json: bool,
     /// Read the file and bring up nothing: exit 0 when it is valid, 64 with
-    /// the key that is wrong.
+    /// the key that is wrong. For each tailscale:/PATH network, print the
+    /// login state of tailscaled (one read of its socket).
     #[arg(long)]
     pub(crate) check: bool,
     /// Print the kernel section of the file in another form, and run
@@ -82,6 +83,10 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
         );
         if let Some(kernel) = &config.kernel {
             println!("podnet: route  kernel: {} WANs", kernel.wans.len());
+        }
+        // T-115: the login state of each tailnet network.
+        for row in podnet::networks::tailscale_rows(&config.networks).await {
+            println!("podnet: route  tailnet {row}");
         }
         return Ok(());
     }

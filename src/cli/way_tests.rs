@@ -114,6 +114,21 @@ fn egress_alias_pod_takes_netbird_as_a_socks5_hop_on_the_loopback() {
     );
 }
 
+/// T-115: the tailnet is a hop of the pod, and a process command names the
+/// hop in its refusal.
+#[test]
+fn network_spec_tailscale_is_a_hop_of_the_pod_and_refused_by_a_process_command() {
+    let spec = "tailscale:/run/tailscale/tailscaled.sock";
+    let rewritten = rewrite(&words(&["podnet", "--egress", spec, "pod", "--", "true"])).unwrap();
+    assert_eq!(
+        rewritten,
+        words(&["podnet", "pod", "-x", spec, "--", "true"])
+    );
+    let refused = rewrite(&words(&["podnet", "--egress", spec, "status"])).unwrap_err();
+    assert!(refused.contains("a hop of podnet pod"), "{refused}");
+    assert!(refused.contains(spec), "{refused}");
+}
+
 #[test]
 fn egress_alias_pod_takes_each_via_as_an_x_hop_in_order() {
     let rewritten = rewrite(&words(&[
