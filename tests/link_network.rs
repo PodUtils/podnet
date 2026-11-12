@@ -56,6 +56,10 @@ fn a_peer_spec_names_the_fingerprint_and_the_service() {
     // The SSH form of a fingerprint is a fingerprint too.
     let ssh = key.report().ssh_fingerprint;
     assert!(networks::parse(&format!("peer:{ssh}/a.b_c-1")).is_ok());
+    // A base64 fingerprint can hold `/`: the last `/` starts the service.
+    let slashed = format!("SHA256:{}/{}A", "A".repeat(20), "A".repeat(21));
+    let network = networks::parse(&format!("peer:{slashed}/web")).unwrap();
+    assert_eq!(network.peer(), Some((slashed.as_str(), "web")));
 }
 
 #[test]

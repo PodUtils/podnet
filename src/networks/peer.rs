@@ -15,7 +15,9 @@ use crate::network::{BoxFuture, Class, Connected, Dial, Failure, Stage, Target};
 /// The kind of `peer:REST`. A bad fingerprint or service is a usage
 /// failure.
 pub(super) fn parse(spec: &str, rest: &str) -> Result<Kind, Failure> {
-    let (fingerprint, service) = rest.split_once('/').ok_or_else(|| {
+    // A service name has no `/`, but an SSH fingerprint (base64) can: the
+    // last `/` ends the fingerprint.
+    let (fingerprint, service) = rest.rsplit_once('/').ok_or_else(|| {
         usage(format!(
             "{spec}: give peer:FINGERPRINT/SERVICE (the fingerprint that podnet link status shows)"
         ))
