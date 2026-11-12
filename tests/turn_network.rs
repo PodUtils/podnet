@@ -17,8 +17,12 @@ use pod_turn::stun::{ALLOCATE, CHANNEL_BIND};
 /// The account variables are removed first, so that the host's own do not
 /// reach the command.
 fn forward(args: &[&str]) -> Command {
+    podnet(&["forward"], args)
+}
+
+fn podnet(sub: &[&str], args: &[&str]) -> Command {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_podnet"));
-    cmd.arg("forward").args(args);
+    cmd.args(sub).args(args);
     for name in [
         "PODNET_TURN_USER",
         "PODNET_TURN_PASSWORD",
@@ -177,4 +181,52 @@ async fn a_turn_wrong_password_ends_the_command_at_the_allocate_stage() {
         !err.contains("not-the-password-xyz") && !err.contains(mock::PASSWORD),
         "{err}"
     );
+}
+
+/// The row of `network` in `net doctor --json --network`, with this password.
+fn doctor_row(network: &str, file: &str) -> serde_json::Value {
+    let out = podnet(&["net", "doctor"], &["--json", "--network", network])
+        .env("PODNET_TURN_USER", mock::USER)
+        .env("PODNET_TURN_PASSWORD_FILE", file)
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    assert!(
+        !text.contains(mock::PASSWORD) && !text.contains("not-the-password-xyz"),
+        "{text}"
+    );
+    let doc: serde_json::Value = serde_json::from_str(&text).expect("one JSON document");
+    let name = format!("network {network}");
+    doc["probes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["probe"] == name.as_str())
+        .cloned()
+        .unwrap_or_else(|| panic!("no row of the network: {text}"))
+}
+
+/// `net doctor --network turn://...` (T-321): the row is `ok` when the
+/// allocation comes up, and `fail` with the stage when it does not. No
+/// password reaches the document.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn net_doctor_has_a_row_for_a_turn_network_that_names_the_stage() {
+    test_host::need_loopback!();
+    let turn = mock::start().await;
+    let dir = tempfile::tempdir().unwrap();
+    let good = password_file(&dir, mock::PASSWORD);
+    let network = format!("turn://{}", turn.addr);
+    let n = network.clone();
+    let row = tokio::task::spawn_blocking(move || doctor_row(&n, &good))
+        .await
+        .unwrap();
+    assert_eq!(row["status"], "ok", "{row}");
+    let dir2 = tempfile::tempdir().unwrap();
+    let bad = password_file(&dir2, "not-the-password-xyz");
+    let row = tokio::task::spawn_blocking(move || doctor_row(&network, &bad))
+        .await
+        .unwrap();
+    assert_eq!(row["status"], "fail", "{row}");
+    let detail = row["detail"].as_str().unwrap();
+    assert!(detail.contains("allocate"), "{row}");
 }

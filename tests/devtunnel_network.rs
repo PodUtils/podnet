@@ -18,8 +18,12 @@ const TOKEN: &str = "made-up-user-token-of-the-tests";
 /// The token variables are removed first, so that the host's own do not
 /// reach the command.
 fn forward(args: &[&str]) -> Command {
+    podnet(&["forward"], args)
+}
+
+fn podnet(sub: &[&str], args: &[&str]) -> Command {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_podnet"));
-    cmd.arg("forward").args(args);
+    cmd.args(sub).args(args);
     for name in [
         "PODNET_DEVTUNNEL_TOKEN",
         "PODNET_DEVTUNNEL_TOKEN_FILE",
@@ -168,4 +172,47 @@ async fn a_wrong_token_ends_the_command_at_the_management_step() {
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(err.contains("Dev Tunnels management API"), "{err}");
     assert!(!err.contains("a-different-made-up-token"), "{err}");
+}
+
+/// The row of `devtunnel://standin-box` in `net doctor --json --network`.
+fn doctor_row(base: &str, token: &str) -> serde_json::Value {
+    let out = podnet(
+        &["net", "doctor"],
+        &["--json", "--network", "devtunnel://standin-box"],
+    )
+    .env("PODNET_DEVTUNNEL_TOKEN", token)
+    .env("PODNET_DEVTUNNEL_MANAGEMENT", base)
+    .output()
+    .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    assert!(!text.contains(token), "{text}");
+    let doc: serde_json::Value = serde_json::from_str(&text).expect("one JSON document");
+    doc["probes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["probe"] == "network devtunnel://standin-box")
+        .cloned()
+        .unwrap_or_else(|| panic!("no row of the network: {text}"))
+}
+
+/// `net doctor --network SPEC` (T-320): the row of the network is `ok` when
+/// it comes up, and `fail` with the stage when it does not. No token reaches
+/// the document.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn net_doctor_has_a_row_for_a_devtunnel_network_that_names_the_stage() {
+    test_host::need_loopback!();
+    let standin = Standin::start(Plan::echo("github", TOKEN)).await.unwrap();
+    let base = standin.base().to_string();
+    let b = base.clone();
+    let good = tokio::task::spawn_blocking(move || doctor_row(&b, TOKEN))
+        .await
+        .unwrap();
+    assert_eq!(good["status"], "ok", "{good}");
+    let bad = tokio::task::spawn_blocking(move || doctor_row(&base, "a-different-made-up-token"))
+        .await
+        .unwrap();
+    assert_eq!(bad["status"], "fail", "{bad}");
+    let detail = bad["detail"].as_str().unwrap();
+    assert!(detail.contains("Dev Tunnels management API"), "{bad}");
 }

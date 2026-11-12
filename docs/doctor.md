@@ -120,6 +120,9 @@ reads the document (flags, exit codes, readiness, failure causes).
   for each socket family, `/dev/net/tun`, `/dev/vsock`, a C compiler for the shims, seccomp and
   capabilities, the passwd entry of this uid, UDP to the edge, `tailscaled` (`--socket PATH`; a daemon that is not `Running` is a `fail`) and the SOCKS5 listener of
   NetBird. It prints the commands that each listener allows ([networks.md](networks.md)).
+  `--network SPEC` (repeatable) brings up a network of the registry, as `forward --network` takes it, and adds
+  its row `network SPEC`: `ok` with the status of the link, or `fail` with the stage that failed. The row holds
+  no credential.
 * `podnet status` prints one line of JSON about this host and opens no connection: the version,
   the platform, the proxy and its source, the TLS roots in `tls_roots`, the state of the WARP identity,
   the limit of open files in `nofile`, the detached instances and `PODNET_ERROR_PROGRAM`. It has

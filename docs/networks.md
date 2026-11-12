@@ -23,6 +23,7 @@ It needs no namespace, no TUN device and no capability.
 
 ```sh
 podnet net doctor                         # what this host permits
+podnet net doctor --network SPEC          # also the row of one network (repeatable)
 podnet net shim --out /tmp/podnet-vnet        # build the LD_PRELOAD shim
 LD_PRELOAD=/tmp/podnet-vnet/libpodnet-vnet.so ./server      # bind 10.66.0.2:8080 works
 podnet net proxy --forward 10.66.0.2:8080=unix:/run/app.sock
@@ -176,8 +177,10 @@ ChannelData. podnet has no TURN code of its own.
   have. `--egress turn://...` and `podnet pod -x` refuse the network by name.
 * `turn://` and `turns://` are networks of `podnet forward --network` and of a `networks:` entry of a router
   file ([router.md](router.md)).
-* Not in the network: NAT traversal between two peers, TURN over plain TCP or DTLS, a row of `podnet doctor`
-  (the probe at `up` gives the stage), and the credentials of a named service.
+* `podnet net doctor --network turn://HOST:PORT` adds the row of the network: `ok` when the allocation comes up,
+  `fail` with the stage (for example `allocate` and the code 401) when it does not. The row holds no password.
+* Not in the network: NAT traversal between two peers, TURN over plain TCP or DTLS, and the credentials of a named
+  service.
 
 ## Dev Tunnels: `devtunnel://TUNNEL`
 
@@ -218,9 +221,9 @@ authentication, and opens the channels.
   `podnet pod -x` refuse it by name: it is not a proxy.
 * Tests use the stand-in of `pod-devtunnel` on the loopback (`tests/devtunnel_network.rs`,
   `src/networks/devtunnel_tests.rs`). They need no account.
-* Not in the network: the creation and the deletion of tunnels, the device-code login, a token store, and a row of
-  `podnet doctor` (the check of `podnet net doctor` probes the management host with TLS; the step of a fault is in
-  the error of `up`).
+* `podnet net doctor --network devtunnel://TUNNEL` adds the row of the network: `ok` when the network comes up,
+  `fail` with the stage (for example the Dev Tunnels management API) when it does not. The row holds no token.
+* Not in the network: the creation and the deletion of tunnels, the device-code login, and a token store.
 
 ## A user with no passwd entry
 

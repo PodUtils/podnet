@@ -38,6 +38,11 @@ pub(crate) enum NetCommand {
         /// The LocalAPI socket of tailscaled to probe.
         #[arg(long, default_value = podnet_netns::tailscale::DEFAULT_SOCKET)]
         socket: String,
+        /// Bring up this network (a spec of the registry, as `forward
+        /// --network` takes it) and add its row. A failure names the stage.
+        /// Repeatable.
+        #[arg(long = "network", value_name = "SPEC")]
+        networks: Vec<String>,
     },
     /// Build (or locate) the LD_PRELOAD shim and print how to use it.
     Shim(ShimArgs),
@@ -264,7 +269,11 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
             }
             Ok(())
         }
-        NetCommand::Doctor { json, socket } => {
+        NetCommand::Doctor {
+            json,
+            socket,
+            networks,
+        } => {
             podnet::udp::check_edge_env()?;
             let mut probes = podnet::vnet::doctor::run();
             let target = podnet::udp::probe_target();
@@ -298,6 +307,10 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
                     Err(why) => podnet::vnet::doctor::ProbeResult::Unknown(why),
                 },
             });
+            // T-320, T-321: one row for each network of --network.
+            for spec in &networks {
+                probes.push(network_probe(spec).await);
+            }
             let verdict = podnet::vnet::doctor::verdict(&probes);
             if json {
                 use podnet::vnet::doctor::ProbeResult;
@@ -400,4 +413,34 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
         NetCommand::PasswdShim(args) => net_passwd_shim(args),
         NetCommand::TsShims(args) => net_ts_shims(args),
     }
+}
+
+/// The row of one network of `net doctor --network SPEC`: the network comes up
+/// within 30 s, then closes. The row gives the status of the link (it holds no
+/// credential), or the error of `up`, which names the stage that failed.
+async fn network_probe(spec: &str) -> podnet::vnet::doctor::Probe {
+    use podnet::network::{Ctx, Network as _};
+    use podnet::vnet::doctor::{Probe, ProbeResult};
+    // The name of a row is static; the process ends after the report.
+    let name: &'static str = Box::leak(format!("network {spec}").into_boxed_str());
+    let result = match podnet::networks::parse(spec) {
+        Err(e) => ProbeResult::Fail(format!("the spec: {e}")),
+        Ok(network) => {
+            match tokio::time::timeout(
+                std::time::Duration::from_secs(30),
+                network.up(&Ctx::default()),
+            )
+            .await
+            {
+                Err(_) => ProbeResult::Fail("the network did not come up in 30 s".into()),
+                Ok(Err(e)) => ProbeResult::Fail(format!("{e:#}")),
+                Ok(Ok(link)) => {
+                    let status = link.status.to_string();
+                    link.close().await;
+                    ProbeResult::Ok(format!("up; status {status}"))
+                }
+            }
+        }
+    };
+    Probe { name, result }
 }
