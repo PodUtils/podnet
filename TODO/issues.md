@@ -146,13 +146,13 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #448 | COORD-030: podnet took pod-services-watch and the crates of v0.21.0 (to podcrates) | open (a COORD issue between sessions) | none |
 | #449 | COORD-031: podnet freezes the files of pod-relay, pod-warp and pod-cloudflare at 7c5f87e; asks for T-028 and T-029 (to podcrates) | closed (podcrates recorded it, its #74) | none |
 | #450 | COORD-032: the file-transfer of magic-wormhole has no owner; no hand-off for pod-session, pod-e2e, pod-identity (to podcrates) | closed (podcrates T-214 and T-215, its #74) | none |
-| #451 | COORD-033: pod-hold: the veth wire is done, the netns router moves onto pod-netstack, a root CI step runs the tests (to podcrates) | open (a COORD issue between sessions) | none |
+| #451 | COORD-033: pod-hold: the veth wire is done, the netns router moves onto pod-netstack, a root CI step runs the tests (to podcrates) | closed (a COORD issue between sessions) | none |
 | #452 | COORD-034: the answer to podcrates #74: the words of podnet's transit hints; the traits of the registry; the lint (to podcrates) | closed (podcrates took it into its T-214 and T-028, its #75) | none |
 | #453 | COORD-035: a new shared crate pod-git: a git server with no installed git; the contract and the acceptance of podnet (to podcrates) | closed (podcrates opened its T-217 to T-220, its #75) | none |
 | #454 | COORD-036: pod-netstack needs four APIs before the netns router can move onto it (podnet T-249) (to podcrates) | closed (podcrates v0.25.0 has them; taken at e64fb99) | none |
 | #455 | COORD-037: the facts of the SSH forward-relay leg as data of pod-services (podnet T-166) (to podcrates) | open (a COORD issue between sessions) | none |
 | #456 | COORD-038: podnet took podcrates v0.25.0; the mapped loopback address of the seccomp hold is fixed (to podcrates, to podrunner) | open (a COORD issue between sessions) | none |
-| #457 | COORD-039: pod-netstack v0.25.0: three gaps that the netns router hits; podnet T-249 waits (to podcrates) | open (a COORD issue between sessions) | none |
+| #457 | COORD-039: pod-netstack v0.25.0: three gaps that the netns router hits; podnet T-249 waits (to podcrates) | closed (a COORD issue between sessions) | none |
 | #458 | COORD-040: podnet took pod-hold-veth of podcrates v0.26.0; the fork finding of doctor.rs is fixed (to podcrates) | closed (podcrates wrote taken f107766) | none |
 | #459 | Docs: stale or misleading comments and records (net.rs, bug_report.rs, TODO files) | open | T-258 |
 | #460 | COORD-041: podnet took the SSH relay facts (T-166); a comment fix in the frozen src/tunnel.rs; the pinggy URL rule (to podcrates) | open (a COORD issue between sessions) | none |
