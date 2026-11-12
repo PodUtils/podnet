@@ -49,6 +49,7 @@ use tokio::time::Instant;
 pub mod control;
 pub mod kernel;
 pub mod metrics;
+pub mod resolving;
 
 pub use control::{read_metrics, read_status};
 
@@ -72,6 +73,13 @@ pub struct Config {
     /// `up=MEMBER down=MEMBER`, or `off`. A group with no entry has no split.
     #[serde(default)]
     pub splits: BTreeMap<String, String>,
+    /// The resolver of a network (T-098): `NETWORK: HOST:PORT`, a DNS server
+    /// (DNS over TCP) at the far end of the network. A name that a flow
+    /// brings to a member of this network resolves there, never with the
+    /// resolver of this host. A network with no entry resolves as its dial
+    /// does (a proxy that takes names does it at the far end).
+    #[serde(default)]
+    pub resolvers: BTreeMap<String, String>,
     #[serde(default)]
     pub health: Option<Health>,
     /// `unix:/PATH`: the control socket (mode 0600) of `route --status`.
@@ -276,6 +284,9 @@ pub fn parse(text: &str) -> Result<Config> {
         };
         split_of(name, value, list)?;
     }
+    for name in config.resolvers.keys() {
+        resolver_of(&config, name)?;
+    }
     for (i, door) in config.doors.iter().enumerate() {
         if !config.networks.contains_key(&door.via) && !config.groups.contains_key(&door.via) {
             bail!(
@@ -301,6 +312,24 @@ pub fn parse(text: &str) -> Result<Config> {
         }
     }
     Ok(config)
+}
+
+/// The DNS server of the network `name` (`resolvers.NAME`), or `None`.
+fn resolver_of(config: &Config, name: &str) -> Result<Option<Target>> {
+    let Some(value) = config.resolvers.get(name) else {
+        return Ok(None);
+    };
+    if !config.networks.contains_key(name) {
+        bail!("resolvers.{name}: not a network of the file");
+    }
+    let upstream: Target = value
+        .trim()
+        .parse()
+        .map_err(|_| anyhow::anyhow!("resolvers.{name}: give HOST:PORT"))?;
+    if upstream.port() == 0 {
+        bail!("resolvers.{name}: the port must be 1 to 65535");
+    }
+    Ok(Some(upstream))
 }
 
 /// One door of a router.
@@ -428,6 +457,10 @@ impl Router {
         for (name, way) in ways.iter_mut() {
             let swap = Arc::new(crate::network::Swap::new(way.dial.clone()));
             way.dial = swap.clone();
+            // A name resolves through the network of its member (T-098).
+            if let Some(upstream) = resolver_of(config, name)? {
+                way.dial = Arc::new(resolving::Resolving::new(swap.clone(), upstream));
+            }
             swaps.insert(name.clone(), swap);
         }
         let mut groups = Vec::new();
@@ -612,6 +645,8 @@ impl Router {
 
 #[cfg(test)]
 mod health_tests;
+#[cfg(test)]
+mod resolver_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
