@@ -4692,3 +4692,41 @@ The proxy example with a user and a password in the old README is now `PODNET_PR
 Not proven: the new text was read against the help and the code, not run against each live service. GitHub #89
 (the test guide) could not be read from the sandbox (HTTP 403).
 
+
+
+# T-260: doctor: probes for the lanes `masque_udp443` and `ws_upgrade` (GitHub #461, A-C-10)
+
+**Source:** GitHub #461 (https://github.com/PodUtils/podnet/issues/461), the tracker of the asks of cfb; ask A-C-10.
+**Category:** feature
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+T-217 gives the seven lanes of `doctor --json`, but two lanes have no probe and always give `unknown`
+(`src/doctor/json.rs`, `lanes`): `masque_udp443` ("no probe sends a datagram to MASQUE on UDP 443") and
+`ws_upgrade` ("no probe makes a WebSocket upgrade to the edge host"). Ask A-C-10 wants `ok`, `fail` or
+`unknown` with the time for each lane.
+
+## Premise
+
+- Read: `src/doctor/json.rs` (`LANES`, `lanes`), the Done section of T-217.
+- `src/doctor.rs` is frozen (`pod-services` block of `sh scripts/agent/podcrates.sh`); `src/doctor/json.rs` is not.
+- The hosts and ports of the MASQUE endpoint and of the edge are facts that podnet already has; add no new host.
+
+## Approach
+
+1. `masque_udp443`: a QUIC Initial to the MASQUE endpoint on UDP 443 with a short timeout; `ok` on any QUIC
+   answer, `fail` on a refusal or a timeout with UDP open elsewhere, else `unknown` with the reason.
+2. `ws_upgrade`: an HTTP/1.1 `Upgrade: websocket` request to the edge host over TLS (through the proxy when one
+   is set); `ok` on `101`, `fail` on another status or a TLS failure.
+3. Tests against local stand-ins (a UDP socket that answers, a TLS server that answers `101`), each failing first.
+4. Update `docs/protocol.md` section 9 and `docs/doctor.md`.
+
+## Prove
+
+```sh
+cargo test -p podnet doctor -- lanes
+```
