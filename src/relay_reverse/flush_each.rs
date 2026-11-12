@@ -74,7 +74,11 @@ mod tests {
     }
 
     impl AsyncWrite for Held {
-        fn poll_write(self: Pin<&mut Self>, _: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+        fn poll_write(
+            self: Pin<&mut Self>,
+            _: &mut Context<'_>,
+            buf: &[u8],
+        ) -> Poll<io::Result<usize>> {
             self.held.lock().unwrap().extend_from_slice(buf);
             Poll::Ready(Ok(buf.len()))
         }
