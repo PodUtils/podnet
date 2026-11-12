@@ -992,7 +992,7 @@ status document. Test: `router_health_rtt_window_changes_no_step`.
 Left: the bytes of each member (the meter of the doors), the rows of the metrics, and items 3, 7, 9 and 10 (the WARP adapter, frozen for
 `pod-warp`, T-050).
 
-2026-11-12, 3ac59ee and fe18049: the bytes and the rows are done, and item 9 is done for a member that is not
+2026-11-12, f4dd392 and 400cd64: the bytes and the rows are done, and item 9 is done for a member that is not
 WARP. (1) The bytes of a member counted TCP flows only. `Balance::datagrams` now gives the socket in a
 `MeteredDatagrams` (`crates/podnet-core/src/network/meter.rs`): both directions count for the member, and with a split
 `up` counts what it sends and `down` what it receives. (2) The rows: `GET /route/metrics` on the control socket and
@@ -1011,7 +1011,7 @@ item 3). Left, each with what it waits for:
 
 ## Done
 
-2026-11-12, partial, commits 3ac59ee (UDP bytes, `probe_egress`, `health.egress`, `WrongEgress`) and fe18049 (the
+2026-11-12, partial, commits f4dd392 (UDP bytes, `probe_egress`, `health.egress`, `WrongEgress`) and 400cd64 (the
 metrics rows). Tests: `group_meter_counts_udp_bytes_in_both_directions`, `group_meter_counts_split_udp_bytes_for_each_member`,
 `router_probe_egress_passes_when_the_echo_names_the_expected_address`, `router_probe_egress_fails_on_another_address_or_no_address`,
 `router_health_wrong_egress_leaves_the_pick_at_once`, `route_config_health_egress_errors_name_the_key`,
@@ -1084,7 +1084,7 @@ local upstream (id 1234, flags 8180). Left: UDP ASSOCIATE in the door (`crates/p
 answers "command not supported"; T-061), and the `WrongEgress` member of item 3 (the egress check of T-097
 item 9, which waits for `pod-warp`).
 
-2026-11-12, f7e532c and 74c276f: every item is done. UDP ASSOCIATE: `crates/podnet-vnet/src/door/udp.rs` relays the
+2026-11-12, d80e561 and bc4b06a: every item is done. UDP ASSOCIATE: `crates/podnet-vnet/src/door/udp.rs` relays the
 SOCKS5 datagrams of one client over `Dial::datagrams` of the door (the group's pick, the byte meter counts them). The
 first datagram fixes the client; other sources and fragments are dropped; an answer goes back only from an address that
 the client sent to; the control stream ends the association (300 s idle). A way with no datagrams answers 0x07, a group
@@ -1092,12 +1092,12 @@ that the kill switch closed answers 0x02. A door on a TCP address answers with t
 3: `resolvers: NETWORK: HOST:PORT` (`src/router/resolving.rs`) makes a member resolve the names of its flows through its own
 network: A and AAAA over DNS on TCP over the dial of the member, IPv4 first, up to 8 addresses, no fallback to the host
 resolver; a way that resolves names at the far end gets the name as it is. The `WrongEgress` member leaves the pick
-(T-097, 3ac59ee), and the group never falls back to direct. The WARP trace check that makes a WARP member give
+(T-097, f4dd392), and the group never falls back to direct. The WARP trace check that makes a WARP member give
 `WrongEgress` stays in T-097 (`pod-warp`).
 
 ## Done
 
-2026-11-12, commits f7e532c and 74c276f. Tests: `front_door_udp_associate_carries_datagrams`,
+2026-11-12, commits d80e561 and bc4b06a. Tests: `front_door_udp_associate_carries_datagrams`,
 `front_door_udp_associate_relays_answers_from_known_peers_only`, `front_door_udp_associate_replies_for_a_way_with_no_datagrams`
 (`podnet-vnet`), `route_door_udp_associate_reaches_the_router`, `route_config_resolvers_errors_name_the_key`,
 `route_resolver_pinned_member_resolves_through_its_network`, `route_resolver_name_resolves_through_the_member`,
