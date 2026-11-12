@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use podnet_core::network::{
+use pod_core::{
     BoxFuture, Class, Connected, Datagrams, Dial, Failure, Stage, SystemDatagrams, Target,
 };
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};

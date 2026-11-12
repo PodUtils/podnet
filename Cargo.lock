@@ -2499,13 +2499,17 @@ name = "podnet-netns"
 version = "0.4.0-beta.5"
 dependencies = [
  "anyhow",
+ "base64",
  "libc",
+ "pod-core",
  "pod-hold",
  "pod-proxy",
+ "pod-testkit",
  "serde_json",
  "smoltcp",
  "tempfile",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

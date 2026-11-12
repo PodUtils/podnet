@@ -9,10 +9,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::socks::{self, HttpRequest, ProxyHost, ProxyRequest};
 use anyhow::{Context, Result};
 use base64::Engine as _;
-use podnet_core::network::{Dial, Target};
-use podnet_netns::socks::{self, HttpRequest, ProxyHost, ProxyRequest};
+use pod_core::{Dial, Target};
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 use tokio::sync::Semaphore;
 use tokio::time::Instant;

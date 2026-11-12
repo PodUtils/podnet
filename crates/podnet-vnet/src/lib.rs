@@ -49,7 +49,6 @@ pub mod device;
 pub mod dialer;
 pub mod dns;
 pub mod doctor;
-pub mod door;
 pub mod framing;
 pub mod policy;
 pub mod proxy;
@@ -61,7 +60,10 @@ pub mod switch;
 pub mod tailscale_ssh;
 pub mod wg_quick;
 
-pub use podnet_netns::{socks, tailscale, upstream};
+#[cfg(test)]
+mod door_tests;
+
+pub use podnet_netns::{door, socks, tailscale, upstream};
 
 pub use addr::{Family, VirtAddr, VirtualSubnet};
 pub use control::{ControlMessage, ControlOp};

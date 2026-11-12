@@ -31,6 +31,7 @@
 //! Use [`main_with_args`] to run the full command line from another program.
 
 pub mod dns;
+pub mod door;
 pub mod fuzzing;
 pub mod join;
 pub mod listen;

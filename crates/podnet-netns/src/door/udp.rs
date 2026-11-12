@@ -11,9 +11,10 @@ use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::time::Duration;
 
+use crate::socks::{self, ProxyHost};
 use anyhow::{Context as _, Result};
-use podnet_core::network::{recv_from, send_to, Class};
-use podnet_netns::socks::{self, ProxyHost};
+use pod_core::datagrams::{recv_from, send_to};
+use pod_core::Class;
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite};
 use tokio::net::UdpSocket;
 use tokio::time::Instant;
