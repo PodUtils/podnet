@@ -279,10 +279,10 @@ fn the_rule_of_each_relay_skips_every_known_dashboard() {
         }
     }
     let serveo = facts::lookup("serveo").unwrap().rule;
-    let banner = "https://dashboard.pinggy.io https://abc.serveo.net\n";
+    let banner = "https://dashboard.pinggy.io https://abc.serveousercontent.com\n";
     assert_eq!(
         serveo.pick(banner).as_deref(),
-        Some("https://abc.serveo.net")
+        Some("https://abc.serveousercontent.com")
     );
 }
 
