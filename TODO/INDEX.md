@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**313 entries: 74 open, 14 partial, 29 blocked, 196 done.**
+**313 entries: 73 open, 14 partial, 29 blocked, 197 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 21 | 6 | 13 | 119 | 159 |
+| P2 | 20 | 6 | 13 | 120 | 159 |
 | P3 | 53 | 7 | 14 | 51 | 125 |
-| **All** | 74 | 14 | 29 | 196 | 313 |
+| **All** | 73 | 14 | 29 | 197 | 313 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -358,4 +358,4 @@ M8 Overlays, M9 Later.
 | [T-310](link.md) | P3 | M | M9 | feature | open | link: the component inventory command (GitHub #476) |
 | [T-311](link.md) | P3 | M | M9 | feature | open | link: Cargo features for the link carriers and services (GitHub #476) |
 | [T-312](fixes.md) | P2 | S | M5 | defect | done | tests/signals.rs: the test sends a stop signal before the ready of the command (flaky under load) |
-| [T-313](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.6`: the dry run, the publish and the release proofs |
+| [T-313](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.6`: the dry run, the publish and the release proofs |

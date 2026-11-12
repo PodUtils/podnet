@@ -4788,7 +4788,7 @@ Failure rate: before, 0 of about 500 runs under load (40 busy loops, 200 paralle
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -4820,3 +4820,11 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-12, 64f1ed0 (the head of the release: ci 43183892180, live 43183892212, deny 43183892189). The dry run
+43186824289 and the publish dispatch 43190711812 passed; the dispatch made the tag `v0.4.0-beta.6` at 64f1ed0, and the
+release run 43190862473 passed. The release is a prerelease with the 8 binaries, `podnet.1`, `llms.txt`,
+`llms-full.txt`, `SHA256SUMS`, `SHA256SUMS.sigstore.json`, `provenance.sigstore.json` and `THIRD-PARTY-LICENSES.md`.
+`release-proofs.yml` 43193362865: success.
