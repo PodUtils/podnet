@@ -42,7 +42,7 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
    the commit in #451 (COORD issue to podcrates, for T-170 step 2).
 2. **Replies:** sent as #456. `crates/podnet-netns/src/netns/veth.rs` takes fixes only until the take of
    `pod-hold` with the wire (podcrates T-201).
-3. **T-248** (the guest-wire router) after T-249.
+3. **T-248** (the guest-wire router): partial, on a local worktree branch, not merged. See its Done section.
 4. **podcrates:** at each new tag, `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at
    the tag (T-137). #448 waits for the `taken` line of the watches of `pod-services`; #455 is its T-224.
 5. **The next beta:** when a batch after 8f53288 is green.
