@@ -173,5 +173,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #475 | link: portable build subset (E9) | open | T-305 |
 | #476 | link: CLI query keys, control plane, aliases, dump, components and build features (E10) | open | T-306, T-307, T-308, T-309, T-310, T-311 |
 | #477 | COORD-046: podnet took v0.28.0 at b08e06f (to podcrates) | open (a COORD issue between sessions) | none |
+| #478 | COORD-047: podnet took v0.29.0 and pod-hold syn-hold at 98d8a71 (to podcrates) | open (a COORD issue between sessions) | none |
+| #479 | COORD-048: asks for the link workstream of podnet (GitHub #466 to #476) (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.

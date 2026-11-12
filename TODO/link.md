@@ -69,7 +69,7 @@ T-086 is done (the take of `pod-identity`).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -110,6 +110,10 @@ cargo test -p podnet-link
 cargo test --test link_session
 sh scripts/agent/check.sh
 ```
+
+## Blocker
+
+The owner, 2026-11-12 (`docs/decisions.md`, Platforms and the link crate): ask podcrates first whether the multiplexer, the carriers and the ARQ go into a shared crate `pod-link` (ask A2, GitHub #479). The entry unblocks with the answer: a take of `pod-link`, or a local crate podnet-link in podnet if podcrates declines.
 
 ## Start condition
 
@@ -1967,7 +1971,7 @@ The rules of the issue that apply to this row:
 
 ## Approach
 
-1. Wait for the ruling of the owner (question Q1 in `TODO/PROGRESS.md`).
+1. The owner ruled Linux only (2026-11-12, `docs/decisions.md`, Platforms and the link crate); nothing is built for another platform.
 2. If the owner allows it: add the feature `portable` (T-311) and the inventory (T-310). Gate the excluded modules with `cfg`. Add the exit-69 message. Add the CI job with a runner matrix.
 3. If the owner refuses: the owner removes this entry (`TODO/RULES.md`, Nothing closes as out of scope).
 
@@ -1980,11 +1984,11 @@ sh scripts/agent/check.sh
 
 ## Blocker
 
-The owner must answer Q1 (`TODO/PROGRESS.md`): the issue asks for builds on Windows, macOS and FreeBSD, and the ruling of the owner is Linux only. It unblocks when the owner rules.
+The owner, 2026-11-12 (`docs/decisions.md`, Platforms and the link crate): the ruling "Platforms: Linux only" stands. The entry unblocks only when the owner rules for another platform.
 
 ## Start condition
 
-T-311, T-310, T-262 and T-275 are done, and the owner has answered Q1.
+T-311, T-310, T-262 and T-275 are done, and the owner rules for another platform.
 
 # T-306: link: the query keys of a carrier URL (GitHub #476)
 
