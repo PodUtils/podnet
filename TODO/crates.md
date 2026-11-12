@@ -797,6 +797,8 @@ Done so far:
   --no-fail-fast`: 0 failed; the netns tests as root: 0 failed.
 - `pod-relay` v0.30.0 (PodUtils/podcrates#89; hand-off `adoption/podnet/pod-relay.patch`, trial at 98d8a71): each `pod-*`
   dependency names `tag = "v0.30.0"`. The relay client is glue over `pod-relay` (T-049).
+- v0.31.0 (PodUtils/podcrates#90): each `pod-*` dependency names `tag = "v0.31.0"`; no hand-off for podnet.
+  `pod_identity::DisplayFingerprint` (ask A1) is in the crate. `cargo test --workspace --no-fail-fast`: 0 failed.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
@@ -862,6 +864,9 @@ A relay serves a renew call, and the node of `pod-relay` renews a pair (T-049 is
 ## Correction
 
 2026-11-12, the take of `pod-relay` v0.30.0 (83e0c93). The crate has `pod_relay::pair::renew::renew`: `POST /v1/renew/NAME` with the stop token (not the node token), and the answer `{expires}`. A 404 or 405 is `Renewed::NotServed`. It is the call of the relay role of podssh, beside the contract. The contract and `tcp.ssh.relay.ajam.dev` do not serve it. The path and the token differ from the Decision (`POST /v1/pair/NAME/renew`, node token). The node of the crate renews nothing: `NodeConfig::repair` is asked only after the pair has expired (a 401 or 403 after the expiry), when a renew with the stop token would be refused for a pair that ended. PodUtils/podcrates#89 does not list this entry. Not measured: any relay that serves the call.
+
+2026-11-12: podcrates answered #482 (PodUtils/podcrates#90): the relay contract has no renew path. `pair::renew::renew` (`POST /v1/renew/NAME`, the stop token) is the call of the relay role of podssh; a relay of the contract answers it with 404 or 405. podcrates T-121 plans a setting of `reverse::run` that renews with that call where the relay serves it. The node-token call of the Decision waits for the owner of the public relay to add it to the contract.
+
 
 # T-162: relay: a host that stalls is tried last on the next connect (GitHub #359)
 
@@ -1076,6 +1081,9 @@ The relay contract and the session of `PodUtils/podcrates` (the crate `pod-relay
 ## Correction
 
 2026-11-12, the take of `pod-relay` v0.30.0 (83e0c93). The forward road of the crate (`open`, `Request::relays`) tries all the hosts of a list with the stagger, and `Relay::connect` of podnet uses it. The reverse road has no host loop. `Relay::single` for the node stays, and `relay pair --json` still prints the first host only. Not measured: a node socket on host B for a pair of host A.
+
+2026-11-12: podcrates answered #482 (PodUtils/podcrates#90): blocked: the relay contract makes a pair on the control host only and moves none (podcrates T-124).
+
 
 # T-224: podnet-netns calls `pod_proxy::udp` for the SOCKS5 datagram path
 

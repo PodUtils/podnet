@@ -184,5 +184,5 @@
 479 issue closed
 480 issue open
 481 issue open
-482 issue open
+482 issue closed
 483 issue open
