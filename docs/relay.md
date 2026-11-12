@@ -111,11 +111,19 @@ podnet ssh-relay --server relay.example.net:443 --user podnet \
   proxies). With `--server` and no `--service`, the relay is not a known one: give `--user` and a URL rule
   (else exit 64). Without `--server`, podnet tries the plain SSH endpoints of the relay in order, and goes
   to the next endpoint on a transport error only.
-* `--user USER` replaces the SSH user of the facts. The relay takes an ephemeral key.
+* `--user USER` replaces the SSH user of the facts. podnet tries the methods in this order: a key made for
+  the run (kept in memory only), no key (this also reads the list of methods of the relay), and an empty
+  answer to keyboard-interactive (up to four rounds), when the relay offers it. It stops at the first
+  success. It sends no password. When the relay takes none, the error names the methods that the relay
+  offers. podnet checks RSA host keys (the relay Pinggy presents one) and keeps no known-hosts file.
 * The banner of the relay can hold more than one URL, and a URL can cross two data frames. podnet reads the
   whole banner, then picks the URL. `--url-match TEXT` selects the tunnel URL: it holds this text (the
   tunnel domain of the relay). `--url-skip TEXT` removes a URL: it holds this text. Both are repeatable,
   and each replaces its list of the facts. The default skip list holds the dashboards of all known relays.
+* `--remote-port PORT` (1 to 65535) is the port that the relay opens for the forward. Without it, podnet
+  asks for port 0 and the relay chooses. A relay can refuse port 0 (the Sandhole demo needs 80). The
+  service data has no such fact (T-319), so give the flag for such a relay. `--json` and the ready document
+  show the port of the forward.
 * `--socket PATH` is the unix socket of the origin. The relay opens one channel for each visitor, and
   podnet connects it to this socket. The origin must listen on the socket before the first visitor comes.
   The default is `origin.sock` in the private run directory of this user.
@@ -125,6 +133,7 @@ podnet ssh-relay --server relay.example.net:443 --user podnet \
   "relay"}`.
 * `--detach`, `--name` and the other options of [background.md](background.md) work. The ready document
   has the URL. `podnet ps` shows the new URL after each reconnect.
-* `podnet doctor --ssh-relay HOST:PORT --ssh-user USER` tests the relay with no session: the TCP connect,
-  the SSH banner and the authentication of the user. With no flag, it reads the relay of a running
+* `podnet doctor --ssh-relay HOST:PORT --ssh-user USER [--connect-proxy HOST:PORT]` tests the relay with no
+  session: the TCP connect (through the proxy of the process, or the given HTTP CONNECT proxy), the SSH banner
+  and the login of the user. With no flag, it reads the relay of a running
   `ssh-relay` instance ([doctor.md](doctor.md)).

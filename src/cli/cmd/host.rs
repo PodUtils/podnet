@@ -53,6 +53,17 @@ pub(crate) struct DoctorArgs {
         conflicts_with = "agent"
     )]
     ssh_user: Option<String>,
+    /// The HTTP CONNECT proxy of --ssh-relay: HOST:PORT. It replaces the
+    /// proxy of the process (--proxy, PODNET_PROXY, the proxy variables).
+    /// Default: that proxy, if it is an HTTP proxy with no credentials; else
+    /// the row says why it does not dial.
+    #[arg(
+        long,
+        value_name = "HOST:PORT",
+        requires = "ssh_relay",
+        conflicts_with = "agent"
+    )]
+    connect_proxy: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -282,12 +293,17 @@ pub(crate) async fn doctor(args: DoctorArgs) -> Result<()> {
                 .map_err(anyhow::Error::from)
                 .map_err(|e| e.context("--ssh-relay"))
                 .fault(podnet::exit::Fault::Usage)?;
-            Some(podnet::doctor::SshRelayTarget {
+            if let Some(proxy) = &args.connect_proxy {
+                podnet::relay::check_address(proxy)
+                    .map_err(anyhow::Error::from)
+                    .map_err(|e| e.context("--connect-proxy"))
+                    .fault(podnet::exit::Fault::Usage)?;
+            }
+            Some(podnet::doctor::SshRelayTarget::of_flags(
                 address,
                 user,
-                proxy: None,
-                source: "flag".into(),
-            })
+                args.connect_proxy,
+            ))
         }
         _ => None,
     };

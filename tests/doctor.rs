@@ -128,21 +128,35 @@ fn doctor_with_env(
     extra: &[&str],
     run: &std::path::Path,
 ) -> (Option<i32>, serde_json::Value, String) {
+    doctor_via(
+        &format!("http://tester:{PASSWORD}@127.0.0.1:{port}"),
+        extra,
+        run,
+        &[],
+    )
+}
+
+/// As [`doctor_with_env`], through the process proxy `via` (`--proxy`), with
+/// the variables `env` set.
+fn doctor_via(
+    via: &str,
+    extra: &[&str],
+    run: &std::path::Path,
+    env: &[(&str, &str)],
+) -> (Option<i32>, serde_json::Value, String) {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_podnet"));
     cmd.env("PODNET_RUN_DIR", run);
-    cmd.args([
-        "--proxy",
-        &format!("http://tester:{PASSWORD}@127.0.0.1:{port}"),
-        "doctor",
-        "--json",
-    ])
-    .args(extra)
-    // A TEST-NET address: no answer, and no proxy rule exempts it.
-    .env("PODNET_EDGE", "192.0.2.1:7844")
-    .env_remove("PODNET_ERROR_PROGRAM")
-    .env_remove("SSL_CERT_FILE");
+    cmd.envs(env.iter().copied());
+    cmd.args(["--proxy", via, "doctor", "--json"])
+        .args(extra)
+        // A TEST-NET address: no answer, and no proxy rule exempts it.
+        .env("PODNET_EDGE", "192.0.2.1:7844")
+        .env_remove("PODNET_ERROR_PROGRAM")
+        .env_remove("SSL_CERT_FILE");
     for key in ["NO_PROXY", "no_proxy"] {
-        cmd.env_remove(key);
+        if !env.iter().any(|(name, _)| *name == key) {
+            cmd.env_remove(key);
+        }
     }
     let out = cmd.output().unwrap();
     let all = format!(
@@ -316,9 +330,11 @@ fn doctor_json_keys_are_fixed() {
         keys(&doc["ssh_relay"]),
         [
             "auth",
+            "auth_method",
             "banner",
             "connect_ms",
             "detail",
+            "proxy",
             "relay",
             "source",
             "status",
@@ -443,124 +459,4 @@ fn doctor_json_has_the_seven_lanes() {
     );
     // The upgrade goes through the proxy, which refuses 7844.
     assert_eq!(lanes["ws_upgrade"]["verdict"], "fail", "{all}");
-}
-
-/// A relay on loopback that takes any key. Gives its address.
-fn fake_ssh_relay() -> String {
-    use russh::keys::ssh_key::rand_core::UnwrapErr;
-    use russh::keys::ssh_key::Algorithm;
-    use russh::server::{Auth, VerifiedPublicKey};
-    use ssh_key::getrandom::SysRng;
-
-    struct Conn;
-    impl russh::server::Handler for Conn {
-        type Error = anyhow::Error;
-        async fn auth_publickey(
-            &mut self,
-            _: &str,
-            _: VerifiedPublicKey<'_>,
-        ) -> anyhow::Result<Auth> {
-            Ok(Auth::Accept)
-        }
-    }
-    let (tx, rx) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        runtime.block_on(async move {
-            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-            tx.send(listener.local_addr().unwrap().to_string()).unwrap();
-            let key = russh::keys::PrivateKey::random(&mut UnwrapErr(SysRng), Algorithm::Ed25519)
-                .unwrap();
-            let config = Arc::new(russh::server::Config {
-                keys: vec![key],
-                ..Default::default()
-            });
-            while let Ok((stream, _)) = listener.accept().await {
-                let config = config.clone();
-                tokio::spawn(async move {
-                    if let Ok(running) = russh::server::run_stream(config, stream, Conn).await {
-                        let _ = running.await;
-                    }
-                });
-            }
-        });
-    });
-    rx.recv().unwrap()
-}
-
-// T-165: the row of the SSH relay is unknown when no relay is given.
-#[test]
-fn doctor_ssh_relay_row_is_unknown_without_a_relay() {
-    test_host::need_loopback!();
-    let port = proxy(|_| Action::Refuse);
-    let run = tempfile::tempdir().unwrap();
-    let (_, doc, all) = doctor_with_env(port, &["--quick", "--timeout", "1"], run.path());
-    assert_eq!(doc["ssh_relay"]["verdict"], "unknown", "{all}");
-    assert_eq!(doc["ssh_relay"]["detail"], "no SSH relay is given", "{all}");
-}
-
-// T-165: the row probes the relay of the flags.
-#[test]
-fn doctor_ssh_relay_row_probes_the_relay_of_the_flags() {
-    test_host::need_loopback!();
-    let port = proxy(|_| Action::Refuse);
-    let run = tempfile::tempdir().unwrap();
-    let address = fake_ssh_relay();
-    let (_, doc, all) = doctor_with_env(
-        port,
-        &[
-            "--quick",
-            "--timeout",
-            "2",
-            "--ssh-relay",
-            &address,
-            "--ssh-user",
-            "tester",
-        ],
-        run.path(),
-    );
-    let row = &doc["ssh_relay"];
-    assert_eq!(row["verdict"], "ok", "{all}");
-    assert_eq!(row["status"], "ok", "{all}");
-    assert_eq!(row["relay"], address.as_str(), "{all}");
-    assert_eq!(row["user"], "tester", "{all}");
-    assert_eq!(row["source"], "flag", "{all}");
-    assert_eq!(row["auth"], true, "{all}");
-    assert!(
-        row["banner"].as_str().unwrap().starts_with("SSH-2.0-"),
-        "{all}"
-    );
-    assert!(
-        row["connect_ms"].is_number() && row["total_ms"].is_number(),
-        "{all}"
-    );
-
-    // A port with no listener: fail, at the stage connect.
-    let free = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let dead = free.local_addr().unwrap().to_string();
-    drop(free);
-    let (_, doc, all) = doctor_with_env(
-        port,
-        &[
-            "--quick",
-            "--timeout",
-            "2",
-            "--ssh-relay",
-            &dead,
-            "--ssh-user",
-            "tester",
-        ],
-        run.path(),
-    );
-    assert_eq!(doc["ssh_relay"]["verdict"], "fail", "{all}");
-    assert!(
-        doc["ssh_relay"]["detail"]
-            .as_str()
-            .unwrap()
-            .contains("connect failed"),
-        "{all}"
-    );
 }

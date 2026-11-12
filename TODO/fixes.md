@@ -2353,7 +2353,7 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 ## Premise
 
 - `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:39-49`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
-- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:248-253`).
+- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:259-264`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
 ## Approach
@@ -2791,7 +2791,7 @@ A test: a pair with an empty stop token stops no instance, exits 69 and keeps th
 
 ## Problem
 
-`session` ends when the local read returns 0 (`src/relay_reverse.rs` line 632 at `1a1e729`, select at lines 654-657 at `1a1e729`) and sends `close` at once (line 659 at `1a1e729`). The operator side keeps the session open after its input ends (`EOF_IDLE`, lines 535 and 623 at `1a1e729`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, line 655 at `1a1e729`). The forward leg has the right shape (`crates/podnet-serve/src/relay.rs:268-302`).
+`session` ends when the local read returns 0 (`src/relay_reverse.rs` line 632 at `1a1e729`, select at lines 654-657 at `1a1e729`) and sends `close` at once (line 659 at `1a1e729`). The operator side keeps the session open after its input ends (`EOF_IDLE`, lines 535 and 623 at `1a1e729`). A target that shuts down its write side and still reads loses the rest of the input of the operator. The operator exits 0 (a close with code 1000 is success, line 655 at `1a1e729`). The forward leg has the right shape (`crates/podnet-serve/src/relay.rs:273-307`).
 
 ## Premise
 
@@ -3162,7 +3162,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:61-67`.
+- `src/cli/cmd/host.rs:245-255` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:61-67`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -4997,3 +4997,245 @@ HTTP/2, a refused registration, and the refusal of the edge certificate without 
 run: podnet has no change. Not proven: the QUIC leg, the verify of the public URL, the WARP and relay
 legs, and a change of the real edge. Open: the QUIC leg; the move of the steps of `live.yml` into `ci`
 (the lead); one real quick tunnel for each leg stays in `live`.
+
+
+# T-322: doctor: resolve the ssh-relay probe through the configured proxy (GitHub #504)
+
+**Source:** GitHub #504 (https://github.com/PodUtils/podnet/issues/504)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet doctor --ssh-relay HOST:PORT --ssh-user USER` builds the target of the flag path with `proxy: None`
+(`src/cli/cmd/host.rs`). The probe honors a proxy when the target has one, and the path of a running instance fills the
+field from `--connect-proxy`. The flag path never does. On a host whose only egress is an HTTP CONNECT proxy, the
+probe dials directly and fails before the relay answers. `podnet ssh-relay --connect-proxy HOST:PORT` works on the
+same host. The row prints no proxy, so the output does not show why the probe failed.
+
+The issue asks:
+- Split `HOST:PORT` and call `crate::egress::proxy_for(&host, port)`. `None` is a direct dial.
+- `RelayConfig.proxy` is an HTTP CONNECT authority (`HOST:PORT`). Convert an HTTP proxy only. For a SOCKS5 proxy, a
+  unix carrier or an exec carrier, the row says that the probe needs an HTTP CONNECT proxy and does not dial.
+- `RelayConfig` has no proxy credentials and the relay uses `connect_tunnel`, which sends no `Proxy-Authorization`.
+  A resolved HTTP proxy with credentials gives a refusal that says the probe needs an unauthenticated HTTP CONNECT
+  proxy. A proxy that answers 407 appears as a refusal, not a timeout.
+- A flag `--connect-proxy HOST:PORT` (requires `--ssh-relay`, validated as `ssh-relay --connect-proxy`) overrides the
+  proxy. Precedence: the flag, then the global `--proxy` and `PODNET_PROXY` (`egress::set_proxy`), then the
+  environment resolver. `NO_PROXY` applies. No loopback exception: follow `egress::rules()`.
+- The text row prints the `HOST:PORT` authority or `proxy: none`. `--json` has the key `proxy` (`Proxy::label()`, no
+  credentials; `null` for none) in the row `ssh_relay`.
+- The target of a running instance stays as it is.
+
+## Premise
+
+- `src/cli/cmd/host.rs` (`doctor`) sets `proxy: None` for the flag path. `src/doctor/ssh_relay_check.rs` has
+  `SshRelayTarget` (field `proxy`), `ssh_relay`, `judge`, `to_json` and `target_of_record`.
+- `crate::egress::proxy_for(host, port) -> Option<Proxy>` exists (`src/egress.rs`). `egress::rules()` has
+  `loopback_direct: false`: a loopback relay goes through the proxy too. `pod_proxy::Proxy` has `kind()`,
+  `carrier()`, `has_credentials()`, `address()` and `label()`.
+- `podnet_core::connect::connect_tunnel` returns a `ConnectionRefused` error with the status line for a status that is
+  not 200, so a 407 is a refusal at the stage `connect`.
+- `tests/doctor.rs` passes `--proxy http://USER:PASS@127.0.0.1:PORT` to all its tests and probes a loopback relay
+  (`doctor_ssh_relay_row_probes_the_relay_of_the_flags`). With this change that proxy has credentials, so the test
+  needs `NO_PROXY` for the loopback relay.
+- `src/egress.rs` is frozen for `pod-egress`: this entry only calls `proxy_for`.
+- Not measured: a live relay behind a proxy.
+
+## Approach
+
+1. In `ssh_relay_check.rs`: a function that chooses the proxy (flag, else the resolved `Proxy`) and returns the
+   authority or the refusal text. `SshRelayTarget` gets a field `refusal`. The row of a refusal is `fail`, has no
+   probe, and does not dial.
+2. `host.rs`: the flag `--connect-proxy` (requires `ssh_relay`), validated with `relay::check_address`; the flag path
+   calls the function with `egress::proxy_for`.
+3. The text row and `--json` (`proxy`) carry the proxy. Update `docs/doctor.md`, `docs/relay.md` and the help.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib doctor::tests::the_ssh_relay
+cargo test -p podnet --test doctor_ssh_relay
+cargo test -p podnet --test doctor doctor_json_keys_are_fixed
+```
+
+Tests: `the_ssh_relay_proxy_is_the_flag_then_the_resolved_proxy`,
+`the_ssh_relay_proxy_refuses_socks5_credentials_unix_and_exec`, `the_ssh_relay_row_shows_the_proxy`,
+`the_ssh_relay_row_of_a_refused_proxy_does_not_dial`, `doctor_ssh_relay_row_dials_through_the_proxy`,
+`doctor_ssh_relay_row_uses_the_proxy_of_the_environment`,
+`doctor_ssh_relay_row_shows_a_proxy_that_answers_407_as_a_refusal`,
+`doctor_ssh_relay_row_refuses_a_proxy_with_credentials`, `doctor_ssh_relay_row_refuses_a_socks5_proxy`,
+`doctor_connect_proxy_needs_ssh_relay`.
+
+## Done
+
+2026-11-12, commit eba9df5. `SshRelayTarget::of_flags` (`src/doctor/ssh_relay_check.rs`) takes the flag
+`--connect-proxy`, else the proxy of `egress::proxy_for(host, port)`, else none. `choose_proxy` gives an HTTP
+proxy on TCP with no credentials as `HOST:PORT`; a SOCKS5, unix or exec proxy, and a proxy with credentials, are a
+refusal that names the proxy with no credentials (row `fail`, no dial). A 407 is `fail` at the stage `connect`.
+The text row has `proxy HOST:PORT` or `proxy none`; the JSON row has `proxy` (`http://HOST:PORT` or `null`).
+The flag `--connect-proxy` requires `--ssh-relay` and is checked as `HOST:PORT` (exit 64). The existing test
+`doctor_ssh_relay_row_probes_the_relay_of_the_flags` now sets `NO_PROXY=127.0.0.1`: the process proxy of the tests
+has credentials, and `egress::rules()` sends loopback through the proxy.
+- Fail first: with the resolver disabled (the old `proxy: None`), `doctor_ssh_relay_row_uses_the_proxy_of_the_environment`,
+  `doctor_ssh_relay_row_refuses_a_proxy_with_credentials` and `doctor_ssh_relay_row_refuses_a_socks5_proxy` fail.
+  The unit tests and the test of `--connect-proxy` did not compile before the change (no function, no flag).
+- Pass: `cargo test -p podnet --lib doctor::tests` 17 passed; `cargo test -p podnet --test doctor_ssh_relay` 8 passed (the tests of the
+  SSH relay row moved from `tests/doctor.rs`, the size limit); `--test doctor` 6 passed.
+- Not proven: a live relay behind a proxy that answers 407, and an exec proxy (the parser takes it from a trusted
+  origin only; unix and SOCKS5 are tested).
+
+
+# T-318: ssh-relay: try the authentication methods the relay offers, and verify an RSA host key (GitHub #505)
+
+**Source:** GitHub #505 (https://github.com/PodUtils/podnet/issues/505)
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** done
+
+## Problem
+
+`podnet ssh-relay` and the probe of `doctor` offer one method: `authenticate_publickey` with an ephemeral Ed25519 key.
+Three relays of `pod-services` fail with it:
+
+| Relay | What the server offers | What podnet reports |
+| --- | --- | --- |
+| Serveo | publickey, keyboard-interactive | `relay rejected publickey auth: Failure { remaining_methods: MethodSet([PublicKey, KeyboardInteractive]), partial_success: false }` |
+| localhost.run | none, password, publickey, hostbased, keyboard-interactive | `relay rejected publickey auth: Failure { remaining_methods: MethodSet([None, Password, PublicKey, HostBased, KeyboardInteractive]), partial_success: false }` |
+| Pinggy | publickey, password, any key accepted | `handshake failed: Wrong server signature` |
+
+The first two need a client that tries the methods the server offers. Pinggy presents an RSA host key. podnet depends
+on `russh` with `default-features = false` and `features = ["ring"]`; the feature `rsa` is missing, and the
+likely cause is that the RSA signature check is not compiled in. The client key stays Ed25519.
+
+The issue asks:
+- In `relay.rs` and `relay/probe.rs`, try in the order of `PodUtils/podcrates`,
+  the file forward.rs of the crate pod-services-watch (`authenticate`): publickey with the ephemeral key; `none`, to read the
+  list of methods; keyboard-interactive with an empty answer to each of up to four information requests, when the
+  list names it. Stop at the first success. When all fail, one error names the methods that the server offered and the
+  last failure. Do not retry a method that the server did not offer.
+- Add `rsa` to the features of `russh` in `crates/podnet-serve/Cargo.toml` and in the root `Cargo.toml`.
+- Fix the comment in `relay.rs` that says the relay "rejects none".
+- No key store, no known-hosts file, no password attempt.
+- Acceptance: a local server that offers keyboard-interactive only; a local server with an RSA host key (4096 bits);
+  without the feature `rsa` the error `Wrong server signature` shows, with it the error is gone; `--service serveo`,
+  `--service localhost-run` and `--service pinggy` reach the banner; `doctor --ssh-relay` is `ok` for the same three
+  local servers; a server with no usable method gives an error that names every offered method.
+- Blocked (for the `--service serveo` acceptance only): the verification of the Serveo URL rule in `pod-services`.
+
+## Premise
+
+- `crates/podnet-serve/src/relay.rs` (`open`) and `crates/podnet-serve/src/relay/probe.rs` (`stages`) call
+  `authenticate_publickey` once. `russh = { version = "0.65", default-features = false, features = ["ring"] }` is in
+  `Cargo.toml` (root) and `crates/podnet-serve/Cargo.toml`.
+- The sequence is in the podcrates tree (v0.32.0, the file forward.rs of the crate pod-services-watch, `authenticate`). It
+  needs no fact of `pod-services`: it invents no secret and it reads the method list from the server.
+  `pod-services` v0.32.0 holds no fact about authentication, so the order stays in code.
+- `tests/doctor.rs` has `fake_ssh_relay` (a russh server that takes any key).
+- Not measured: a live relay (Serveo, localhost.run, Pinggy), and the cause `rsa` (the entry measures it with a test).
+
+## Approach
+
+1. A new file a new module auth of the relay with `authenticate(handle, user, key)`; `open` and the probe
+   call it. Its error names the offered methods and the last failure.
+2. Add the feature `rsa` to both manifests.
+3. Tests with a local russh server: keyboard-interactive only; an RSA 4096 host key; no usable method. Show the
+   failure of each test before the change, and of the RSA test without the feature.
+4. Update the comment of `relay.rs`, `docs/relay.md` and `docs/doctor.md`.
+
+## Prove
+
+```sh
+cargo test -p podnet-serve --lib relay::auth_tests
+cargo test -p podnet --test doctor_ssh_relay
+```
+
+Tests: `a_relay_that_offers_keyboard_interactive_only_takes_the_empty_answer`,
+`a_relay_that_accepts_none_takes_no_key`, `a_relay_with_an_rsa_host_key_completes_the_handshake`,
+`a_relay_with_no_usable_method_names_the_offered_methods`,
+`the_probe_names_the_offered_methods_of_a_relay_that_takes_none`, `the_probe_logs_in_with_keyboard_interactive`,
+`the_probe_completes_the_handshake_with_an_rsa_host_key`.
+
+## Done
+
+2026-11-12, commit 27f0808. `relay::auth::authenticate` (`crates/podnet-serve/src/relay/auth.rs`) tries the key
+of the run, then `none` (it reads the list), then keyboard-interactive with an empty answer (4 rounds) when the list
+names it; `open` and the probe call it. A refusal names the offered methods and the last failure. The feature `rsa`
+of `russh` is on in both manifests. The probe row has the key `auth_method`. `doctor` shows the method.
+- Fail first (before the change): the keyboard-interactive, `none`, no-method and probe tests failed with
+  `relay rejected publickey auth: Failure { remaining_methods: MethodSet([KeyboardInteractive]) ... }`.
+- RSA: the test server and the client share one build, so without the feature `rsa` the server cannot sign and the
+  client sees `handshake failed: early eof`, not `Wrong server signature`. The test fails without the feature and
+  passes with it (key: a 4096-bit throwaway key, `crates/podnet-serve/src/relay/rsa4096.test-key`).
+- Pass: `cargo test -p podnet-serve --lib relay::` 35 passed; `cargo test -p podnet --test doctor_ssh_relay` 8 passed.
+- Not proven: a live relay (Serveo, localhost.run, Pinggy), and that `Wrong server signature` of Pinggy is the
+  missing feature `rsa` (the cause is likely, not measured). The acceptance `--service serveo` waits for the
+  verification of the Serveo URL rule in `pod-services`.
+
+
+# T-319: ssh-relay: a remote port from a flag, and from the service data (GitHub #506)
+
+**Source:** GitHub #506 (https://github.com/PodUtils/podnet/issues/506)
+**Category:** feature
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+`podnet ssh-relay` always asks for the remote port 0: `handle.tcpip_forward("0.0.0.0", 0)`. The Sandhole demo
+refuses port 0 and takes port 80. The service data has no `remote-port` fact, and `RelayConfig` has no field for one.
+
+The issue asks:
+- `RelayConfig::remote_port: Option<u16>`.
+- `relay/facts.rs` reads the optional fact `remote-port` through the alias `podnet_core::services::forward::Relay`
+  and puts it in `Facts`.
+- `relay.rs` calls `tcpip_forward("0.0.0.0", u32::from(config.remote_port.unwrap_or(0)))`.
+- A flag `--remote-port PORT` (1 to 65535; 0 is a usage error) overrides the fact. Port 0 only when neither is set.
+  `--server` with no `--service` has no fact. The `--json` key `remote_port` keeps the port that the server returns.
+- Blocked (the fact): the `pod-services` fact and accessor `remote-port` of Sandhole.
+
+## Premise
+
+- `crates/podnet-serve/src/relay.rs` (`open`) asks for port 0. `Facts` in `crates/podnet-serve/src/relay/facts.rs`
+  has no port. `src/cli/cmd/ssh_relay.rs` builds the `RelayConfig`.
+- `pod_services::forward::Relay` of podcrates v0.32.0 has `endpoints`, `user`, `url_rule`, `session_limit` and
+  `keepalive`: no `remote_port`. The file the data file of Sandhole in pod-services has no such fact. A relay fact
+  is data of `pod-services`, not code of podnet (T-166): the fact is an ask to podcrates.
+- Not measured: the Sandhole demo (a live relay).
+
+## Approach
+
+1. The field `RelayConfig::remote_port`, the call with the port, the flag `--remote-port` (range 1 to 65535), the
+   docs. A local russh server that refuses port 0 and takes port 80 tests it.
+2. The fact: ask podcrates (COORD, to podcrates) for `remote-port` in `sandhole.toml` and the accessor
+   `forward::Relay::remote_port`. Then `facts.rs` reads it and the flag overrides it. The entry is `partial` until
+   then.
+
+## Prove
+
+```sh
+cargo test -p podnet-serve --lib relay::auth_tests::a_relay_that_refuses_port_0
+cargo test -p podnet --bin podnet ssh_relay_remote_port
+```
+
+Tests: `a_relay_that_refuses_port_0_takes_the_remote_port_of_the_config`,
+`ssh_relay_remote_port_is_one_to_65535`, `ssh_relay_remote_port_reaches_the_config`.
+
+## Correction
+
+2026-11-12, commit d32d8d6: Approach 1 is done. `RelayConfig::remote_port` and the flag `--remote-port PORT`
+(clap range 1 to 65535: `0` and `70000` are usage errors that name `1..=65535`) exist. `open` asks for that port,
+else 0, and `TunnelHandle::remote_port` is the requested port (the reply of the relay holds a port only for a
+request of port 0). Fail first: `a_relay_that_refuses_port_0_takes_the_remote_port_of_the_config` failed with the
+field present and unused (`remote_port` 0, not 80). Passed: `relay::` 35 tests; the two CLI tests.
+Left (Approach 2): the fact. `pod-services` v0.32.0 has no `remote-port` fact and `forward::Relay` has no accessor,
+and podnet adds no relay fact in code (T-166). The ask for podcrates: the fact `remote-port` in the data file of
+Sandhole (80) and `forward::Relay::remote_port() -> Option<u16>`. Then `facts.rs` puts it in `Facts` and
+`ssh_relay.rs` uses it when no flag is given. Not proven: a live Sandhole demo.

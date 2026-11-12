@@ -1577,8 +1577,10 @@ COMMANDS
             relay is not a known one: give --user and a URL rule
 
         --user <USER>
-            The SSH user of the relay. The relay takes an ephemeral key.
-            Default: the user of the facts of the relay, else "podnet"
+            The SSH user of the relay. podnet logs in with a key made for the
+            run, then with no key, then with an empty keyboard-interactive
+            answer, as far as the relay offers them. Default: the user of the
+            facts of the relay, else "podnet"
 
         --url-match <TEXT>
             Which URL of the banner of the relay is the tunnel URL: it holds
@@ -1596,6 +1598,11 @@ COMMANDS
             each visitor, and podnet connects it to this socket. The origin
             listens on the socket before the first visitor comes. Default:
             origin.sock in the private run directory of this user
+
+        --remote-port <PORT>
+            The port that the relay opens for the forward (1 to 65535).
+            Default: port 0, and the relay chooses. A relay can refuse port 0:
+            the Sandhole demo needs 80
 
         --connect-proxy <HOST:PORT>
             Reach the relay through this HTTP CONNECT proxy: HOST:PORT.
@@ -7369,6 +7376,12 @@ COMMANDS
         --ssh-user <USER>
             The SSH user of --ssh-relay
 
+        --connect-proxy <HOST:PORT>
+            The HTTP CONNECT proxy of --ssh-relay: HOST:PORT. It replaces the
+            proxy of the process (--proxy, PODNET_PROXY, the proxy variables).
+            Default: that proxy, if it is an HTTP proxy with no credentials;
+            else the row says why it does not dial
+
         --ca-file <PATH>
             A file of TLS roots (PEM). podnet uses only these roots for each
             connection that it opens as a client. Without it, podnet reads
@@ -10733,11 +10746,19 @@ podnet ssh-relay --server relay.example.net:443 --user podnet \
   proxies). With `--server` and no `--service`, the relay is not a known one: give `--user` and a URL rule
   (else exit 64). Without `--server`, podnet tries the plain SSH endpoints of the relay in order, and goes
   to the next endpoint on a transport error only.
-* `--user USER` replaces the SSH user of the facts. The relay takes an ephemeral key.
+* `--user USER` replaces the SSH user of the facts. podnet tries the methods in this order: a key made for
+  the run (kept in memory only), no key (this also reads the list of methods of the relay), and an empty
+  answer to keyboard-interactive (up to four rounds), when the relay offers it. It stops at the first
+  success. It sends no password. When the relay takes none, the error names the methods that the relay
+  offers. podnet checks RSA host keys (the relay Pinggy presents one) and keeps no known-hosts file.
 * The banner of the relay can hold more than one URL, and a URL can cross two data frames. podnet reads the
   whole banner, then picks the URL. `--url-match TEXT` selects the tunnel URL: it holds this text (the
   tunnel domain of the relay). `--url-skip TEXT` removes a URL: it holds this text. Both are repeatable,
   and each replaces its list of the facts. The default skip list holds the dashboards of all known relays.
+* `--remote-port PORT` (1 to 65535) is the port that the relay opens for the forward. Without it, podnet
+  asks for port 0 and the relay chooses. A relay can refuse port 0 (the Sandhole demo needs 80). The
+  service data has no such fact (T-319), so give the flag for such a relay. `--json` and the ready document
+  show the port of the forward.
 * `--socket PATH` is the unix socket of the origin. The relay opens one channel for each visitor, and
   podnet connects it to this socket. The origin must listen on the socket before the first visitor comes.
   The default is `origin.sock` in the private run directory of this user.
@@ -10747,8 +10768,9 @@ podnet ssh-relay --server relay.example.net:443 --user podnet \
   "relay"}`.
 * `--detach`, `--name` and the other options of [background.md](background.md) work. The ready document
   has the URL. `podnet ps` shows the new URL after each reconnect.
-* `podnet doctor --ssh-relay HOST:PORT --ssh-user USER` tests the relay with no session: the TCP connect,
-  the SSH banner and the authentication of the user. With no flag, it reads the relay of a running
+* `podnet doctor --ssh-relay HOST:PORT --ssh-user USER [--connect-proxy HOST:PORT]` tests the relay with no
+  session: the TCP connect (through the proxy of the process, or the given HTTP CONNECT proxy), the SSH banner
+  and the login of the user. With no flag, it reads the relay of a running
   `ssh-relay` instance ([doctor.md](doctor.md)).
 
 <!-- document: docs/egress.md -->
@@ -11145,8 +11167,15 @@ IPv6 and TCP on 127.0.0.1, and prints the commands: for example
   handshake) make the run shorter.
 * `--relay URL` (`PODNET_RELAY`) selects the relay to test. A loopback `http://` relay is allowed.
 * `--ssh-relay HOST:PORT` and `--ssh-user USER` add the row `ssh_relay`: the TCP connect, the SSH banner and
-  the authentication of the user, with no session and no forward. With no flag, the row reads the relay of
+  the login of the user (the methods of [relay.md](relay.md); the key `auth_method` names the one that the relay took), with no session and no forward. With no flag, the row reads the relay of
   a running `podnet ssh-relay` instance; with no relay, the verdict is `unknown` ([relay.md](relay.md)).
+* `--connect-proxy HOST:PORT` (requires `--ssh-relay`) sends the probe through this HTTP CONNECT proxy. Without
+  it, the probe uses the proxy that the other commands use for the relay: `--proxy`, `PODNET_PROXY`, then the
+  proxy variables, and `NO_PROXY` applies (a relay on loopback goes through the proxy too). The probe sends no
+  proxy credentials. If that proxy is SOCKS5, a unix socket, a command, or has credentials, the row is `fail`
+  with the reason and the probe does not dial. A proxy that answers 407 is `fail` at the stage `connect`. The
+  text row names the proxy (`proxy HOST:PORT`, or `proxy none`). The JSON row has `proxy` (`http://HOST:PORT`,
+  with no credentials, or `null`).
 * `--json`: one document.
 
 ## The JSON document

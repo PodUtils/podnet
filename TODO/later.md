@@ -970,16 +970,16 @@ Revisit when a measure shows the netns backend too slow on a target host.
 
 ## Problem
 
-`relay::run` (`crates/podnet-serve/src/relay.rs:437`) dials the relay, requests one remote forward, reads the URL from the
+`relay::run` (`crates/podnet-serve/src/relay.rs:442`) dials the relay, requests one remote forward, reads the URL from the
 banner and returns `(TunnelHandle, Handle<Client>)`. Nothing watches the session after that. When the
 relay ends the connection or the forward, the URL is dead and the caller is not told. The default
-relay's free tier ends the tunnel after 60 minutes (the banner text of the test at `crates/podnet-serve/src/relay.rs:574`).
+relay's free tier ends the tunnel after 60 minutes (the banner text of the test at `crates/podnet-serve/src/relay.rs:581`).
 A reconnect gives a new port and a new URL. The reverse road (`relay node`, `src/relay_reverse.rs`)
 reconnects with a 1 s to 30 s backoff; this leg does not.
 
 ## Premise
 
-- `inactivity_timeout` is 3600 s (`crates/podnet-serve/src/relay.rs:449`); the forward is requested once (`:479-482`).
+- `inactivity_timeout` is 3600 s (`crates/podnet-serve/src/relay.rs:454`); the forward is requested once (`:484-487`).
 - `grep -rn "relay::run\|RelayConfig" src tests examples` finds no caller outside `crates/podnet-serve/src/relay.rs`.
   `ShareLink::from_relay` (`crates/podnet-serve/src/feature/share_link.rs:118`) has no caller outside a test. No CLI uses the leg.
 - Not measured: the 60 minute expiry on a live relay; the `Handle::is_closed` behaviour of russh 0.64.1.
@@ -1104,8 +1104,8 @@ of the record is tested); a relay that sends text before its identification line
 
 ## Problem
 
-`RelayConfig::default()` has one relay (`crates/podnet-serve/src/relay.rs:42`), the user `podnet` (`:66`), and one URL rule
-(`pick_tunnel_url`, `:404-417`): the first token that starts with `http(s)://` and does not hold the
+`RelayConfig::default()` has one relay (`crates/podnet-serve/src/relay.rs:43`), the user `podnet` (`:70`), and one URL rule
+(`pick_tunnel_url`, `:409-422`): the first token that starts with `http(s)://` and does not hold the
 dashboard host of that one relay. Another relay that prints a bare host, a URL split over two data
 frames, or its own dashboard URL fails or gives the wrong URL.
 
@@ -1113,9 +1113,9 @@ frames, or its own dashboard URL fails or gives the wrong URL.
 
 - The fields of `RelayConfig` are `pub`; no flag sets them (no caller, see T-165). `--relay` is the
   flag of the WebSocket relay.
-- `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`crates/podnet-serve/src/relay.rs:509`), so a URL that
+- `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`crates/podnet-serve/src/relay.rs:514`), so a URL that
   crosses two chunks is lost. The pinned tests are in `crates/podnet-serve/src/relay/tests.rs`.
-- The texts to skip are a fact of `pod-services` (`url-skip` of `pinggy`, `crates/podnet-serve/src/relay.rs:90-96`).
+- The texts to skip are a fact of `pod-services` (`url-skip` of `pinggy`, `crates/podnet-serve/src/relay.rs:95-101`).
 - Not measured: the other relays of the survey (local artefacts of the issue).
 
 ## Approach
@@ -1679,3 +1679,150 @@ because one socket of the stack serves every flow of a port.
   and names (the guest resolves names itself; `domain:` rules do not match) are not routed. The idle end of a UDP
   flow (60 s) has no test. A Linux guest kernel is not tested.
 
+
+
+# T-320: net: a Dev Tunnels network for TCP streams (GitHub #503)
+
+**Source:** GitHub #503 (https://github.com/PodUtils/podnet/issues/503)
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+podnet dials TCP through `direct`, a proxy, the WebSocket relay, Tailscale, NetBird and userspace WireGuard. It cannot
+open a TCP channel through a Microsoft Dev Tunnels relay. A host that has outbound TCP 443 only, and whose only
+reachable relay is a Dev Tunnels endpoint, has no path to a port on that tunnel host.
+
+The issue asks:
+- A network spec `devtunnel://TUNNEL` in `src/networks.rs`, the code in a new a new module devtunnel, the
+  dependency `pod-devtunnel` in the root `Cargo.toml`. The port of the target is the port on the tunnel host; the host
+  of the target is the local address of the tunnel host (normally `127.0.0.1`). The arm `devtunnel` goes in `Kind` and
+  `kind()` before the `://` fallthrough.
+- Use the `pod-devtunnel` client. podnet implements neither the management API, nor the relay WebSocket, nor the SSH
+  session. Through the crate the network reads the connect information, opens the relay WebSocket, runs the SSH `none`
+  session, opens a `direct-tcpip` channel and hands the stream to `forward`.
+- The management token comes from the settings and secret mechanism. The connect token comes from the connect
+  information for each attempt. Neither appears in `argv`, a log line or `--json`.
+- A relay reconnect is the behavior of the crate; the network surfaces the named error. A reconnect ends every open
+  stream. A new stream after it succeeds.
+- The network registers a `Row` and returns a `Link`. No second ranking engine. `ROWS` grows from six to seven; the
+  scheme list in `src/networks/tests.rs` follows.
+- The management host and the SSH facts come from `pod-services`; the relay URI comes from the connect information. No
+  hardcoded host.
+- The form goes in the `--network` help (`src/cli/mod.rs`) and the manual (`tests/cli/manual.rs`). TCP only; no host
+  side.
+- Acceptance: a stand-in relay test (WebSocket subprotocol, SSH `none`, `direct-tcpip`, echo); `podnet forward -L
+  127.0.0.1:8080=127.0.0.1:PORT --network devtunnel://TUNNEL` reaches the origin through the stand-in; a reconnect ends
+  an in-flight stream with a named error and a new stream succeeds; `podnet doctor` has a Dev Tunnels row whose
+  failure names the stage; `--json` has no token; `pod-devtunnel` is the only Dev Tunnels code in the tree.
+- Use case: a build runner permits TCP 443 only; `podnet forward -L 127.0.0.1:5432=127.0.0.1:5432 --network
+  devtunnel://lab` carries the stream to port 5432 of the tunnel host with the token of the developer.
+
+## Premise
+
+- `src/networks.rs` has the registry (`ROWS: [Row; 6]`), `src/networks/tests.rs` the scheme list,
+  `crates/podnet-core/src/network/` the balance, policy and health code, `src/cli/cmd/forward.rs` the consumer and
+  `src/doctor.rs` the row shape.
+- `PodUtils/podcrates` v0.32.0 (the checkout of Cargo.lock) has no crate `pod-devtunnel`, and `pod-services` has no
+  Dev Tunnels data file (a search of the tree for "devtunnel" finds nothing). The issue names the crate issue
+  "pod-devtunnel: add a Dev Tunnels management and relay client" in podcrates as its blocker.
+- CLAUDE.md: a client of the service of another party is a crate of podcrates, and podnet takes it. This entry writes
+  no Dev Tunnels code in podnet.
+- Not measured: the Dev Tunnels service.
+
+## Approach
+
+1. Wait for `pod-devtunnel` (with its `pod-services` data) and its hand-off in podcrates (T-137).
+2. Then: a new module devtunnel, the arm in `Kind`, the row, the doctor row, the help, the docs
+   (`docs/networks.md`) and the tests of the acceptance.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib networks::tests
+cargo test -p podnet --test devtunnel_network
+```
+
+## Blocker
+
+`PodUtils/podcrates` must release `pod-devtunnel` with its `pod-services` data and its hand-off. The ask is a COORD
+issue (to podcrates) that the lead session files. It unblocks when the release exists and podnet takes it (T-137).
+
+## Start condition
+
+The take of `pod-devtunnel` is done (T-137).
+
+
+# T-321: net: a TURN network for UDP flows (GitHub #507)
+
+**Source:** GitHub #507 (https://github.com/PodUtils/podnet/issues/507)
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** blocked
+
+## Problem
+
+podnet carries UDP through `direct`, `wg:FILE` and the WARP commands. It cannot allocate a relayed transport address
+on a TURN server and use it as the path of a UDP flow. A host whose only reachable relay is a TURN server on TCP 443
+has no UDP path. `podnet forward -L udp:PORT=HOST:PORT` takes a `--network` spec; the registry has no TURN kind.
+
+The issue asks:
+- A network spec `turn://HOST:PORT` in `src/networks.rs`, the code in a new a new module turn, the dependency
+  `pod-turn` in the root `Cargo.toml`. Transport, realm, user and credential source are settings, not query
+  parameters. The arm `turn` goes in `Kind` and `kind()` before the `://` fallthrough.
+- Use `pod-turn` for allocate, refresh, permission and channel bind. podnet implements no TURN.
+- Credentials come from the settings and secret mechanism; none appears in `argv`, a log line or `--json`.
+- A UDP flow uses the channel for each datagram.
+- A failed stage gives a named error: allocate, refresh, permission, bind or send. The `doctor` row and `status` show
+  the stage.
+- The network registers a `Row` and returns a `Link`. No second ranking engine. `ROWS` grows from six to seven; the
+  scheme list in `src/networks/tests.rs` follows.
+- The form goes in the `--network` help (`src/cli/mod.rs`) and the manual (`tests/cli/manual.rs`).
+- The host and port of a named service come from `pod-services`. UDP only; no TCP.
+- Not in this issue: peer-to-peer NAT traversal (GitHub #469, E3), the deferred TURN allocation and RFC 6062 (#485,
+  gate `link_p2p` in two network namespaces) and the RFC 6062 TCP relay of podssh (its entry 621). The STUN integrity
+  primitives landed through `PodUtils/podssh#214`.
+- Acceptance: a mock TURN server test (allocate, refresh, permission, bind, send, receive, and a 438 stale-nonce
+  answer); `podnet forward -L udp:5353=resolver:53 --network turn://HOST:PORT` sends a query and gets the answer
+  through the allocation; a refresh failure closes the flow with a named error and does not retry forever; `podnet
+  doctor` has a TURN row whose failure names the stage; `--json` has no credential; `pod-turn` is the only TURN code
+  in the tree.
+- Use case: a build host reaches TCP 443 only and needs UDP DNS for a package manager. A TURN server on 443 is the
+  only relay.
+
+## Premise
+
+- Files as in T-320: `src/networks.rs`, `src/networks/tests.rs`, `crates/podnet-core/src/network/`,
+  `src/cli/cmd/forward.rs`, `src/doctor.rs`.
+- `PodUtils/podcrates` v0.32.0 has no crate `pod-turn`. Its `pod-proxy` holds `stun_auth` (the STUN message
+  integrity and the TURN methods and attributes, RFC 8656): this is the primitive, not a client. The issue names the
+  crate issue "pod-turn: add a TURN client on the existing STUN codec" as its blocker.
+- CLAUDE.md: the client is a crate of podcrates. This entry writes no TURN code in podnet.
+- Not measured: a TURN server.
+
+## Approach
+
+1. Wait for `pod-turn` and its hand-off in podcrates (T-137).
+2. Then: a new module turn, the arm in `Kind`, the row, the doctor row, the help, the docs
+   (`docs/networks.md`) and the tests of the acceptance.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib networks::tests
+cargo test -p podnet --test turn_network
+```
+
+## Blocker
+
+`PodUtils/podcrates` must release `pod-turn` with its hand-off. The ask is a COORD issue (to podcrates) that the lead
+session files. It unblocks when the release exists and podnet takes it (T-137).
+
+## Start condition
+
+The take of `pod-turn` is done (T-137).

@@ -75,8 +75,15 @@ IPv6 and TCP on 127.0.0.1, and prints the commands: for example
   handshake) make the run shorter.
 * `--relay URL` (`PODNET_RELAY`) selects the relay to test. A loopback `http://` relay is allowed.
 * `--ssh-relay HOST:PORT` and `--ssh-user USER` add the row `ssh_relay`: the TCP connect, the SSH banner and
-  the authentication of the user, with no session and no forward. With no flag, the row reads the relay of
+  the login of the user (the methods of [relay.md](relay.md); the key `auth_method` names the one that the relay took), with no session and no forward. With no flag, the row reads the relay of
   a running `podnet ssh-relay` instance; with no relay, the verdict is `unknown` ([relay.md](relay.md)).
+* `--connect-proxy HOST:PORT` (requires `--ssh-relay`) sends the probe through this HTTP CONNECT proxy. Without
+  it, the probe uses the proxy that the other commands use for the relay: `--proxy`, `PODNET_PROXY`, then the
+  proxy variables, and `NO_PROXY` applies (a relay on loopback goes through the proxy too). The probe sends no
+  proxy credentials. If that proxy is SOCKS5, a unix socket, a command, or has credentials, the row is `fail`
+  with the reason and the probe does not dial. A proxy that answers 407 is `fail` at the stage `connect`. The
+  text row names the proxy (`proxy HOST:PORT`, or `proxy none`). The JSON row has `proxy` (`http://HOST:PORT`,
+  with no credentials, or `null`).
 * `--json`: one document.
 
 ## The JSON document

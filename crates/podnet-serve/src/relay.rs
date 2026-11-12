@@ -37,6 +37,7 @@ use tokio::net::UnixStream;
 
 use podnet_core::connect;
 
+pub mod auth;
 pub mod facts;
 pub mod probe;
 pub mod supervise;
@@ -61,6 +62,9 @@ pub struct RelayConfig {
     pub proxy: Option<String>,
     /// SSH user. The free relay tier takes an anonymous login.
     pub username: String,
+    /// The port that the relay is asked to open for the forward. `None`:
+    /// port 0, and the relay chooses. A relay can refuse port 0 (Sandhole).
+    pub remote_port: Option<u16>,
     /// Path to the unix socket that serves the origin.
     pub unix_socket: std::path::PathBuf,
     /// Timeout for the CONNECT proxy handshake.
@@ -82,6 +86,7 @@ impl Default for RelayConfig {
             fallbacks: Vec::new(),
             proxy: None,
             username: "podnet".to_string(),
+            remote_port: None,
             unix_socket: default_origin_socket(),
             connect_timeout: Duration::from_secs(15),
             url_rule: facts::default_rule(),
@@ -508,9 +513,8 @@ pub(crate) fn feed(banner: &mut Banner, msg: Option<ChannelMsg>) -> Step {
 pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
     let stream = connect_transport(config).await?;
 
-    // The relay authenticates by publickey. Generate an ephemeral Ed25519 key
-    // per run from the OS entropy source; it is never persisted because the
-    // free tier accepts any key without registering it.
+    // Generate an ephemeral Ed25519 key per run from the OS entropy source;
+    // it is never persisted. A free tier takes any key without registering it.
     let private_key = Arc::new(
         PrivateKey::random(&mut UnwrapErr(SysRng), Algorithm::Ed25519)
             .map_err(|e| RelayError::Key(e.to_string()))?,
@@ -531,27 +535,30 @@ pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
         .await
         .map_err(|e| RelayError::Ssh(format!("handshake failed: {e}")))?;
 
-    // The relay advertises PublicKey and Password and rejects "none". Offer an
-    // ephemeral key; the free tier accepts any public key without registration.
-    let auth = handle
-        .authenticate_publickey(
-            config.username.clone(),
-            PrivateKeyWithHashAlg::new(Arc::clone(&private_key), None),
-        )
+    // Try the methods in order (see `auth`): the ephemeral key, no key, and
+    // an empty keyboard-interactive answer. The free tier takes one of them.
+    match auth::authenticate(&mut handle, &config.username, Arc::clone(&private_key))
         .await
-        .map_err(|e| RelayError::Ssh(format!("auth failed: {e}")))?;
-    if !auth.success() {
-        return Err(RelayError::Ssh(format!(
-            "relay rejected publickey auth: {auth:?}"
-        )));
+        .map_err(|e| RelayError::Ssh(format!("auth failed: {e}")))?
+    {
+        auth::Login::In(_) => {}
+        auth::Login::Refused(why) => {
+            return Err(RelayError::Ssh(format!(
+                "the relay rejected the user {:?}: {why}",
+                config.username
+            )));
+        }
     }
 
-    // Ask for an ephemeral remote port; the relay decides the number and, with
-    // it, the public URL.
-    let remote_port = handle
-        .tcpip_forward("0.0.0.0", 0)
+    // Ask for the remote port of the config. Port 0 asks for an ephemeral
+    // port: the relay decides the number and, with it, the public URL.
+    let asked = u32::from(config.remote_port.unwrap_or(0));
+    let assigned = handle
+        .tcpip_forward("0.0.0.0", asked)
         .await
         .map_err(|e| RelayError::Ssh(format!("remote forward refused: {e}")))?;
+    // The reply names a port only for a request of port 0.
+    let remote_port = if asked == 0 { assigned } else { asked };
 
     // The relay publishes the public URL on a session channel's data, not on
     // the forwarded-tcpip channels a visitor opens. Open a session channel and
@@ -588,5 +595,7 @@ pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
     })
 }
 
+#[cfg(test)]
+mod auth_tests;
 #[cfg(test)]
 mod tests;

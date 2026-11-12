@@ -14,8 +14,67 @@ pub struct SshRelayTarget {
     pub user: String,
     /// An HTTP CONNECT proxy, `HOST:PORT`.
     pub proxy: Option<String>,
+    /// Why the probe does not dial: the proxy of the host is one that the
+    /// probe cannot use (T-322).
+    pub refusal: Option<String>,
     /// Where the target comes from: `flag`, or `instance NAME`.
     pub source: String,
+}
+
+impl SshRelayTarget {
+    /// The target of the flags `--ssh-relay`, `--ssh-user` and
+    /// `--connect-proxy` (T-322). The proxy is the flag, else the proxy that
+    /// the rules of the process give for the relay (`--proxy`, `PODNET_PROXY`,
+    /// the variables of the environment, `NO_PROXY`), else none.
+    pub fn of_flags(address: String, user: String, connect_proxy: Option<String>) -> Self {
+        let resolved = address
+            .rsplit_once(':')
+            .and_then(|(host, port)| Some((host, port.parse::<u16>().ok()?)))
+            .and_then(|(host, port)| crate::egress::proxy_for(host, port));
+        let (proxy, refusal) = match choose_proxy(connect_proxy.as_deref(), resolved.as_ref()) {
+            Ok(proxy) => (proxy, None),
+            Err(why) => (None, Some(why)),
+        };
+        Self {
+            address,
+            user,
+            proxy,
+            refusal,
+            source: "flag".into(),
+        }
+    }
+}
+
+/// The proxy of the probe, as `HOST:PORT` of an HTTP CONNECT proxy: the
+/// flag, else the `resolved` proxy, else none (a direct dial). The probe sends
+/// CONNECT with no `Proxy-Authorization`, so it refuses a proxy that is not
+/// HTTP on TCP, and a proxy with credentials. The text of a refusal names the
+/// proxy with no credentials.
+pub(super) fn choose_proxy(
+    flag: Option<&str>,
+    resolved: Option<&pod_proxy::Proxy>,
+) -> Result<Option<String>, String> {
+    if let Some(flag) = flag {
+        return Ok(Some(flag.to_string()));
+    }
+    let Some(proxy) = resolved else {
+        return Ok(None);
+    };
+    let http = proxy.kind() == pod_proxy::ProxyKind::Http
+        && matches!(proxy.carrier(), pod_proxy::Carrier::Tcp);
+    if !http {
+        return Err(format!(
+            "the SSH relay probe needs an HTTP CONNECT proxy; the proxy {} is not one",
+            proxy.label()
+        ));
+    }
+    if proxy.has_credentials() {
+        return Err(format!(
+            "the SSH relay probe needs an unauthenticated HTTP CONNECT proxy; the proxy {} has credentials",
+            proxy.label()
+        ));
+    }
+    Ok(Some(proxy.to_string()))
 }
 
 /// The row of the SSH relay.
@@ -61,7 +120,9 @@ impl SshRelay {
             "source": self.target.as_ref().map(|t| t.source.clone()),
             "connect_ms": probe.and_then(|p| p.connect).map(ms),
             "banner": probe.and_then(|p| p.banner.clone()),
+            "proxy": self.target.as_ref().and_then(|t| t.proxy.as_ref()).map(|p| format!("http://{p}")),
             "auth": probe.and_then(|p| p.auth),
+            "auth_method": probe.and_then(|p| p.method),
             "total_ms": probe.map(|p| ms(p.total)),
             "detail": self.detail,
         })
@@ -74,6 +135,14 @@ impl SshRelay {
 
 /// Test `target`. All stages end in `limit`.
 pub(super) async fn ssh_relay(target: SshRelayTarget, limit: Duration) -> SshRelay {
+    if let Some(why) = &target.refusal {
+        return SshRelay {
+            verdict: Verdict::Refused,
+            detail: format!("{} ({}): {why}", target.address, target.source),
+            target: Some(target),
+            probe: None,
+        };
+    }
     let config = RelayConfig {
         address: target.address.clone(),
         proxy: target.proxy.clone(),
@@ -94,15 +163,21 @@ pub(super) async fn ssh_relay(target: SshRelayTarget, limit: Duration) -> SshRel
 /// The verdict of a probe: `ok` when each stage passed, `unknown` when a
 /// stage had no answer in time, else `fail`.
 pub(super) fn judge(target: &SshRelayTarget, probe: &Probe) -> (Verdict, String) {
-    let who = format!("{} ({})", target.address, target.source);
+    let who = format!(
+        "{} ({}, proxy {})",
+        target.address,
+        target.source,
+        target.proxy.as_deref().unwrap_or("none")
+    );
     match &probe.failure {
         None => (
             Verdict::Ok,
             format!(
-                "{who}: connect {} ms, banner {}, auth ok for {}, total {} ms; podnet ssh-relay can run",
+                "{who}: connect {} ms, banner {}, auth ok for {} ({}), total {} ms; podnet ssh-relay can run",
                 ms(probe.connect.unwrap_or_default()),
                 probe.banner.as_deref().unwrap_or("-"),
                 target.user,
+                probe.method.unwrap_or("-"),
                 ms(probe.total),
             ),
         ),
@@ -141,6 +216,7 @@ pub(super) fn target_of_record(record: &crate::instances::Record) -> Option<SshR
         address: flag("--server")?,
         user: flag("--user")?,
         proxy: flag("--connect-proxy"),
+        refusal: None,
         source: format!("instance {}", record.name),
     })
 }

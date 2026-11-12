@@ -34,7 +34,9 @@ pub(crate) struct SshRelayArgs {
     /// --service, the relay is not a known one: give --user and a URL rule.
     #[arg(long, value_name = "HOST:PORT")]
     server: Option<String>,
-    /// The SSH user of the relay. The relay takes an ephemeral key.
+    /// The SSH user of the relay. podnet logs in with a key made for the
+    /// run, then with no key, then with an empty keyboard-interactive
+    /// answer, as far as the relay offers them.
     /// Default: the user of the facts of the relay, else "podnet".
     #[arg(long, value_name = "USER")]
     user: Option<String>,
@@ -55,6 +57,11 @@ pub(crate) struct SshRelayArgs {
     /// in the private run directory of this user.
     #[arg(long, value_name = "PATH")]
     socket: Option<PathBuf>,
+    /// The port that the relay opens for the forward (1 to 65535). Default:
+    /// port 0, and the relay chooses. A relay can refuse port 0: the Sandhole
+    /// demo needs 80.
+    #[arg(long, value_name = "PORT", value_parser = clap::value_parser!(u16).range(1..))]
+    remote_port: Option<u16>,
     /// Reach the relay through this HTTP CONNECT proxy: HOST:PORT. Default:
     /// a direct connection.
     #[arg(long, value_name = "HOST:PORT")]
@@ -142,6 +149,7 @@ impl SshRelayArgs {
             address,
             fallbacks: addresses.collect(),
             proxy: self.connect_proxy.clone(),
+            remote_port: self.remote_port,
             username: self
                 .user
                 .clone()
@@ -337,6 +345,31 @@ mod tests {
         let err = config(&words).unwrap_err();
         assert_eq!(podnet::exit::code_of(&err), podnet::exit::USAGE);
         assert!(format!("{err:#}").contains("--server"), "{err:#}");
+    }
+
+    #[test]
+    fn ssh_relay_remote_port_reaches_the_config() {
+        assert_eq!(config(&["ssh-relay"]).unwrap().remote_port, None);
+        let with = config(&["ssh-relay", "--remote-port", "80"]).unwrap();
+        assert_eq!(with.remote_port, Some(80));
+        let high = config(&["ssh-relay", "--remote-port=65535"]).unwrap();
+        assert_eq!(high.remote_port, Some(65535));
+    }
+
+    #[test]
+    fn ssh_relay_remote_port_is_one_to_65535() {
+        for port in ["0", "70000", "-1", "http"] {
+            let err = parse(&["ssh-relay", &format!("--remote-port={port}")]).unwrap_err();
+            assert_eq!(
+                err.kind(),
+                clap::error::ErrorKind::ValueValidation,
+                "{port}"
+            );
+        }
+        let text = parse(&["ssh-relay", "--remote-port", "0"])
+            .unwrap_err()
+            .to_string();
+        assert!(text.contains("1..=65535"), "{text}");
     }
 
     #[test]

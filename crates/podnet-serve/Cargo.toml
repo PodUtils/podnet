@@ -41,7 +41,8 @@ qrcode = { version = "0.14", default-features = false }
 # (Go RE2). The regex crate has the same syntax and linear time.
 regex = "1"
 ring = "0.17"
-russh = { version = "0.65", default-features = false, features = ["ring"] }
+# The feature rsa verifies the RSA host key of a relay (Pinggy; T-318).
+russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }
 rustls = { version = "0.23", default-features = false, features = [
     "ring",
     "std",

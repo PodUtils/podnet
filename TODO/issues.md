@@ -180,6 +180,11 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #482 | COORD-051: two gaps of pod-relay after the take (pair renewal, pair on a second host) and the edge budget (to podcrates) | closed (a COORD issue between sessions) | none |
 | #483 | live: two runs in a row failed | closed | T-315 |
 | #502 | COORD-052: podnet took v0.31.0 at e046560; relay connect hangs on a direct runner after the take of pod-relay (to podcrates) | closed (a COORD issue between sessions) | none |
+| #503 | net: add a Dev Tunnels network for TCP streams | open (blocked: `pod-devtunnel` of podcrates) | T-320 |
+| #504 | doctor: resolve the ssh-relay probe through the configured proxy | open | T-322 |
+| #505 | ssh-relay: try the authentication methods the relay offers | open | T-318 |
+| #506 | ssh-relay: take the remote port from the service data | open | T-319 |
+| #507 | net: add a TURN network for UDP flows | open (blocked: `pod-turn` of podcrates) | T-321 |
 | #508 | COORD-053: podnet took v0.32.0 at fa6b5ba; pod-link is next (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.

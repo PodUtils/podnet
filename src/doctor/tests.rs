@@ -295,6 +295,7 @@ fn ssh_target() -> SshRelayTarget {
         address: "relay.example:443".into(),
         user: "tester".into(),
         proxy: None,
+        refusal: None,
         source: "flag".into(),
     }
 }
@@ -321,6 +322,7 @@ fn the_ssh_relay_verdict_follows_the_probe() {
         connect: Some(Duration::from_millis(3)),
         banner: Some("SSH-2.0-test".into()),
         auth: Some(true),
+        method: Some("publickey"),
         total: Duration::from_millis(20),
         failure: None,
     };
@@ -408,4 +410,102 @@ fn the_lanes_hold_the_probes() {
     assert_eq!(json["lanes"]["masque_udp443"]["ms"], 7.0);
     assert_eq!(json["lanes"]["ws_upgrade"]["verdict"], "fail");
     assert_eq!(json["lanes"]["ws_upgrade"]["reason"], "status 403");
+}
+
+fn parsed(spec: &str) -> pod_proxy::Proxy {
+    crate::egress::parse(spec).unwrap_or_else(|e| panic!("{spec}: {e}"))
+}
+
+// T-322: the probe dials through the flag, else through the proxy that the
+// resolver gives for the relay, else directly.
+#[test]
+fn the_ssh_relay_proxy_is_the_flag_then_the_resolved_proxy() {
+    use ssh_relay_check::choose_proxy;
+    let resolved = parsed("http://resolved.example:3128");
+    // The flag wins over the resolver, and the resolver over nothing.
+    assert_eq!(
+        choose_proxy(Some("flag.example:8080"), Some(&resolved)),
+        Ok(Some("flag.example:8080".into()))
+    );
+    assert_eq!(
+        choose_proxy(None, Some(&resolved)),
+        Ok(Some("resolved.example:3128".into()))
+    );
+    // No proxy is a direct dial.
+    assert_eq!(choose_proxy(None, None), Ok(None));
+}
+
+// T-322: the probe sends CONNECT with no credentials, so it takes an HTTP
+// proxy on TCP with no credentials only. It names the proxy that it refuses
+// and never shows the credentials.
+#[test]
+fn the_ssh_relay_proxy_refuses_socks5_credentials_unix_and_exec() {
+    use ssh_relay_check::choose_proxy;
+    let refused = |spec: &str| {
+        let proxy = parsed(spec);
+        choose_proxy(None, Some(&proxy)).unwrap_err()
+    };
+    let socks = refused("socks5h://socks.example:1080");
+    assert!(
+        socks.contains("HTTP CONNECT proxy") && socks.contains("socks5h://socks.example:1080"),
+        "{socks}"
+    );
+    let creds = refused("http://user:s3cret@auth.example:3128");
+    assert!(
+        creds.contains("unauthenticated HTTP CONNECT proxy")
+            && creds.contains("http://auth.example:3128"),
+        "{creds}"
+    );
+    assert!(
+        !creds.contains("s3cret") && !creds.contains("user"),
+        "{creds}"
+    );
+    let unix = refused("http+unix:/run/proxy.sock");
+    assert!(
+        unix.contains("HTTP CONNECT proxy") && unix.contains("unix"),
+        "{unix}"
+    );
+    // The flag is a plain authority: it needs no check of the resolver.
+    assert_eq!(
+        choose_proxy(Some("p.example:1"), Some(&parsed("socks5://x:1"))),
+        Ok(Some("p.example:1".into()))
+    );
+}
+
+// T-322: the row names the proxy, or says that there is none, and the JSON
+// document has the key `proxy`.
+#[test]
+fn the_ssh_relay_row_shows_the_proxy() {
+    let mut target = ssh_target();
+    let probe = crate::relay::probe::Probe::default();
+    let (_, none) = ssh_relay_check::judge(&target, &probe);
+    assert!(none.contains("proxy none"), "{none}");
+    target.proxy = Some("p.example:3128".into());
+    let (_, with) = ssh_relay_check::judge(&target, &probe);
+    assert!(with.contains("proxy p.example:3128"), "{with}");
+    let row = SshRelay {
+        verdict: Verdict::Ok,
+        target: Some(target),
+        probe: None,
+        detail: String::new(),
+    };
+    assert_eq!(row.to_json()["proxy"], "http://p.example:3128");
+    assert_eq!(SshRelay::none().to_json()["proxy"], Value::Null);
+}
+
+// T-322: a refused proxy gives the verdict `fail` with its reason, and the
+// probe does not dial (the relay address is a name that does not exist).
+#[tokio::test]
+async fn the_ssh_relay_row_of_a_refused_proxy_does_not_dial() {
+    let mut target = ssh_target();
+    target.refusal = Some("the SSH relay probe needs an HTTP CONNECT proxy".into());
+    let row = ssh_relay_check::ssh_relay(target, Duration::from_secs(5)).await;
+    assert_eq!(row.verdict, Verdict::Refused);
+    assert!(row.probe.is_none());
+    assert!(
+        row.detail.contains("needs an HTTP CONNECT proxy"),
+        "{}",
+        row.detail
+    );
+    assert_eq!(row.to_json()["proxy"], Value::Null);
 }

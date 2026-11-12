@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**317 entries: 75 open, 16 partial, 23 blocked, 203 done.**
+**322 entries: 75 open, 17 partial, 25 blocked, 205 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
-| P2 | 20 | 8 | 10 | 123 | 161 |
-| P3 | 55 | 7 | 11 | 52 | 125 |
-| **All** | 75 | 16 | 23 | 203 | 317 |
+| P2 | 20 | 9 | 10 | 125 | 164 |
+| P3 | 55 | 7 | 13 | 52 | 127 |
+| **All** | 75 | 17 | 25 | 205 | 322 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -363,3 +363,8 @@ M8 Overlays, M9 Later.
 | [T-315](fixes.md) | P1 | M | M5 | defect | done | live: `relay connect` hangs on the runner after the take of pod-relay (GitHub #483) |
 | [T-316](fixes.md) | P2 | L | M5 | feature | partial | A local stand-in of the quick-tunnel service and the edge, so that CI runs the quick tunnel with no call to Cloudflare |
 | [T-317](pods.md) | P1 | S | M7 | defect | done | seccomp: a mapped loopback address is dialed direct, not through the chain (PodUtils/podrunner#69) |
+| [T-318](fixes.md) | P2 | M | M5 | defect | done | ssh-relay: try the authentication methods the relay offers, and verify an RSA host key (GitHub #505) |
+| [T-319](fixes.md) | P2 | S | M5 | feature | partial | ssh-relay: a remote port from a flag, and from the service data (GitHub #506) |
+| [T-320](later.md) | P3 | L | M9 | feature | blocked | net: a Dev Tunnels network for TCP streams (GitHub #503) |
+| [T-321](later.md) | P3 | L | M9 | feature | blocked | net: a TURN network for UDP flows (GitHub #507) |
+| [T-322](fixes.md) | P2 | S | M5 | defect | done | doctor: resolve the ssh-relay probe through the configured proxy (GitHub #504) |

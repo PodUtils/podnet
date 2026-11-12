@@ -1,5 +1,5 @@
 //! A probe of the SSH relay (T-165): the TCP connect, the SSH banner, the
-//! handshake and the auth with the user. The probe opens no session channel
+//! handshake and the login of the user (T-318: the methods of `auth`). The probe opens no session channel
 //! and asks for no forward, so the relay publishes no URL.
 
 use std::time::{Duration, Instant};
@@ -46,6 +46,8 @@ pub struct Probe {
     pub banner: Option<String>,
     /// True when the relay accepted the user.
     pub auth: Option<bool>,
+    /// The method that the relay took.
+    pub method: Option<&'static str>,
     /// The time of the whole probe.
     pub total: Duration,
     /// The stage that failed, or `None` when all stages passed.
@@ -148,12 +150,8 @@ async fn stages(
             .map_err(|e| e.to_string())
     })
     .await?;
-    let auth = within(deadline, Stage::Auth, limit, async {
-        handle
-            .authenticate_publickey(
-                config.username.clone(),
-                PrivateKeyWithHashAlg::new(key, None),
-            )
+    let login = within(deadline, Stage::Auth, limit, async {
+        auth::authenticate(&mut handle, &config.username, key)
             .await
             .map_err(|e| e.to_string())
     })
@@ -161,15 +159,20 @@ async fn stages(
     let _ = handle
         .disconnect(russh::Disconnect::ByApplication, "podnet doctor", "")
         .await;
-    out.auth = Some(auth.success());
-    if auth.success() {
-        Ok(())
-    } else {
-        Err(Failure {
-            stage: Stage::Auth,
-            timed_out: false,
-            reason: format!("the relay rejected the user {:?}", config.username),
-        })
+    match login {
+        auth::Login::In(method) => {
+            out.auth = Some(true);
+            out.method = Some(method);
+            Ok(())
+        }
+        auth::Login::Refused(why) => {
+            out.auth = Some(false);
+            Err(Failure {
+                stage: Stage::Auth,
+                timed_out: false,
+                reason: format!("the relay rejected the user {:?}: {why}", config.username),
+            })
+        }
     }
 }
 
