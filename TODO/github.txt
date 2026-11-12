@@ -55,7 +55,7 @@
 350 issue closed
 351 issue closed
 352 issue open
-353 issue open
+353 issue closed
 354 issue closed
 355 issue closed
 356 issue closed
@@ -64,7 +64,7 @@
 359 issue open
 360 issue open
 361 issue closed
-362 issue open
+362 issue closed
 363 issue open
 364 issue closed
 365 issue closed
@@ -143,10 +143,10 @@
 438 issue closed
 439 issue open
 440 issue open
-441 issue open
-442 issue open
-443 issue open
-444 issue open
+441 issue closed
+442 issue closed
+443 issue closed
+444 issue closed
 445 issue closed
 446 issue closed
 447 issue closed

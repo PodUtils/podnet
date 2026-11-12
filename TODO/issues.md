@@ -52,7 +52,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #350 | seccomp UDP: AF_UNSPEC, source filter, sockopts, ICMP | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-146, T-147, T-148, T-149 |
 | #351 | seccomp TCP copied in user space | closed | T-150, T-151 |
 | #352 | netns: in-namespace netfilter in place of smoltcp | open | T-152, T-153 |
-| #353 | no fuzz targets for seccomp handlers | open | T-154, T-155 |
+| #353 | no fuzz targets for seccomp handlers | closed | T-154, T-155 |
 | #354 | pod rules: no reject action (also no `block`) | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-156 |
 | #355 | pod: default-deny, flow log, learn | closed | T-157, T-158 |
 | #356 | research documents cite old paths | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-159 |
@@ -61,7 +61,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #359 | relay alternates chosen once (cost is the 2 s stagger) | open | T-162 |
 | #360 | relay session budget is a constant | open | T-163 |
 | #361 | `--no-verify` undocumented, name misleads | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-164 |
-| #362 | ssh relay leg: no supervision (no caller) | open | T-165 |
+| #362 | ssh relay leg: no supervision (no caller) | closed | T-165 |
 | #363 | ssh relay leg: one relay, one user | open | T-166 |
 | #364 | net socksify: no per-destination routing | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-167 |
 | #365 | fakepwd only via ts-shims (partly: it works, gap is name/docs) | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-168 |
@@ -136,10 +136,10 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #438 | COORD-020: proposals for podssh from the donor review (to podssh) | closed (podssh recorded them in its record, PodUtils/podssh#188) | none |
 | #439 | COORD-021: proposals for podrunner from the donor review, part 1 of 2 (to podrunner) | open (a COORD issue between sessions) | none |
 | #440 | COORD-022: proposals for podrunner from the donor review, part 2 of 2 (to podrunner) | open (a COORD issue between sessions) | none |
-| #441 | COORD-023: proposals for the stub repositories from the donor review, part 1 of 3 (to all) | open (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
-| #442 | COORD-024: proposals for the stub repositories from the donor review, part 2 of 3 (to all) | open (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
-| #443 | COORD-025: proposals for the stub repositories from the donor review, part 3 of 3 (to all) | open (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
-| #444 | COORD-026: pod-broker bind_unix has the umask window of bind_private (to podcrates) | open (a COORD issue between sessions) | none |
+| #441 | COORD-023: proposals for the stub repositories from the donor review, part 1 of 3 (to all) | closed (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
+| #442 | COORD-024: proposals for the stub repositories from the donor review, part 2 of 3 (to all) | closed (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
+| #443 | COORD-025: proposals for the stub repositories from the donor review, part 3 of 3 (to all) | closed (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
+| #444 | COORD-026: pod-broker bind_unix has the umask window of bind_private (to podcrates) | closed (a COORD issue between sessions) | none |
 | #445 | COORD-027: podnet took pod-netstack of v0.20.0 (to podcrates) | closed (podcrates recorded it: taken d23ce4e) | none |
 | #446 | COORD-028: podnet changed three frozen files: register.rs, route.rs (fixes) and netns/tun.rs (the veth wire) (to podcrates) | closed (podcrates answered in its #68: no port; the wire stays in veth.rs, podcrates T-201) | none |
 | #447 | COORD-029: the answer to podcrates #67 (pod-wg): wg.rs is held to fixes; the split (to podcrates) | closed (podcrates wrote taken 089e1c9) | none |
