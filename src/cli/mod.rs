@@ -115,7 +115,7 @@ pub(crate) enum Command {
     Expose(cmd::expose::ExposeArgs),
     /// Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or
     /// UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC
-    /// (direct, a proxy, the relay, a tailnet, wg:FILE).
+    /// (direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP).
     Forward(cmd::forward::ForwardArgs),
     /// A router of networks, groups, doors and guest wires (a guest uses the
     /// router as its gateway) from a config file (--config FILE), with

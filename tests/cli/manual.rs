@@ -50,6 +50,33 @@ fn the_man_page_names_each_flag() {
     }
 }
 
+/// T-321: the help of `forward` has the TURN forms, and the manual has the
+/// variables of the account (a spec holds none).
+#[test]
+fn the_manual_names_the_turn_network_and_its_variables() {
+    let help = podnet(&["forward", "--help"]);
+    let help = String::from_utf8(help.stdout).unwrap();
+    assert!(help.contains("turn://HOST[:PORT]") && help.contains("turns://HOST[:PORT]"));
+    assert!(help.contains("PODNET_TURN_PASSWORD_FILE"));
+    let out = podnet(&["man", "environment", "--json"]);
+    assert_eq!(out.status.code(), Some(0));
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).expect("valid JSON");
+    let row = json
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["names"].to_string().contains("PODNET_TURN_USER"))
+        .expect("a row for PODNET_TURN_USER");
+    let names = row["names"].to_string();
+    for name in [
+        "PODNET_TURN_PASSWORD_FILE",
+        "PODNET_TURN_PASSWORD",
+        "PODNET_TURN_REALM",
+    ] {
+        assert!(names.contains(name), "{names}");
+    }
+}
+
 #[test]
 fn ports_json_is_one_object() {
     let out = podnet(&["ports", "--json"]);

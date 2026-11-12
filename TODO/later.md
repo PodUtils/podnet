@@ -1764,7 +1764,7 @@ The take of `pod-devtunnel` is done (T-137).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1815,7 +1815,7 @@ The issue asks:
 ## Prove
 
 ```sh
-cargo test -p podnet --lib networks::tests
+cargo test -p podnet --lib networks::
 cargo test -p podnet --test turn_network
 ```
 
@@ -1828,4 +1828,39 @@ The take of `pod-turn` is done (T-137).
 2026-11-12: podcrates writes `pod-turn` (PodUtils/podcrates#101): the STUN codec moves from `pod-proxy`, SHA-256 credentials, a TURN client of RFC 8656 over UDP and over TLS on TCP. A TCP relay (RFC 6062) is a later entry of podcrates.
 
 2026-11-12: podcrates v0.33.0 has `pod-turn` (PodUtils/podcrates#103): `Settings::udp` or `Settings::tls` over podnet's dialer, resolver and TLS context; `Client::{allocate, refresh, create_permission, bind_channel, send, send_to, recv, close}`; `recv` refreshes on its own timer. RFC 6062 is a later entry of podcrates. The Blocker is gone.
+
+2026-11-12, commits ffc5595 and e5df06c: the UDP half is done. The dependency `pod-turn` (tag v0.33.0) is in the root `Cargo.toml`. The
+specs are `turn://HOST[:PORT]` (UDP, default port 3478) and `turns://HOST[:PORT]` (TLS on TCP, default port 5349). The
+code is `src/networks/turn.rs` (spec, account, dialer, `up`) and `src/networks/turn_socket.rs` (the datagrams of one
+allocation); podnet has no TURN code. The account is not in the spec (the entry says: settings, not query parameters): the
+variables `PODNET_TURN_USER`, `PODNET_TURN_PASSWORD_FILE` (one line) or `PODNET_TURN_PASSWORD`, and `PODNET_TURN_REALM`. A
+spec with a user, a password, a path or a query is a usage error that does not echo the secret. `ROWS` grew to eight (the
+entry said seven: `peer` was added before). Each `datagrams()` makes one allocation; the first datagram to a peer binds a
+channel; `recv` of the client refreshes on its timer. A failed stage ends the socket with an error that starts with the
+network and the stage (`allocate`, `refresh`, `permission`, `bind`, `send`, `receive`), with no retry; `up` makes and
+ends one allocation as a probe, so the stage of a wrong server or account shows at the start. The status of the link has
+no user and no password. A TCP target is refused by name (RFC 6062). `--egress turn://...` and `pod -x` give one line.
+`forward` exits 64 for a usage fault of a network. The stand-in server is `src/networks/turn_mock.rs` (the codec of
+`pod-turn`, a UDP socket, no account). Left: (1) the TCP relay of RFC 6062 (a later entry of podcrates; the TCP half of
+the entry stays partial); (2) a row of `podnet doctor` for TURN: `doctor` takes no network spec, and `doctor.rs` is at the
+size limit; the stage shows at `up` and in the status; (3) one account for each process (a TURN network of the router with
+its own account needs a form for it); (4) the host and the port of a named TURN service from `pod-services` (the crate
+has no such fact). Not proven: a live TURN server.
+
+## Done
+
+2026-11-12, commits ffc5595 (`T-321: net: turn:// and turns://, a TURN network for UDP flows`) and e5df06c, partial (see Correction). Tests (`cargo test -p podnet --lib networks::`,
+`--test turn_network`): `turn_up_allocates_once_ends_it_and_shows_no_credential`,
+`turn_datagrams_carry_a_datagram_to_a_peer_and_back` (allocate, bind, send, receive, one channel for two datagrams, the end
+of the allocation), `turn_a_stale_nonce_does_not_lose_the_datagram` (a 438 answered), `turn_a_refresh_failure_closes_the_socket_with_a_named_stage`
+(437 and 508, one failing Refresh only), `turn_a_bind_failure_closes_the_socket_with_a_named_stage`,
+`turn_a_wrong_password_names_the_allocate_stage`, `turn_a_silent_server_names_the_allocate_stage`,
+`turn_a_tcp_dial_is_refused_by_name`, `turn_each_socket_has_its_own_allocation`, `turn_over_the_datagrams_of_the_way_below`,
+`turn_the_router_takes_the_network_in_networks`, the spec and account tests, and the command: `a_udp_forward_goes_through_a_turn_allocation`
+(`podnet forward -L udp:PORT=PEER --network turn://STANDIN`: the query gets its answer; the output holds no password),
+`a_turn_network_with_no_account_is_a_usage_error_that_names_the_variables`, `a_turn_spec_with_a_password_in_it_is_refused_and_not_echoed`,
+`a_turn_wrong_password_ends_the_command_at_the_allocate_stage`, the manual test and the `--egress` refusal test. Fail first
+(plants): with the channel not kept, the bind count was 2 (not 1) in two tests; with a refresh failure ignored, the refresh
+test failed; with the `--egress` refusal off and the usage mapping off, the `way` test and the exit-code test failed (exit 1, not 64).
+Not proven: a live TURN server.
 

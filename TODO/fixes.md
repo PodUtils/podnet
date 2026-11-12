@@ -4032,7 +4032,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   (`crates/podnet-netns/src/seccomp/accept.rs:43`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:44`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:73`, `src/cli/cmd/net/mod.rs:90` and
   `src/cli/cmd/net/mod.rs:168` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:232`).
-- `libc` is a dependency (`Cargo.toml:129`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `libc` is a dependency (`Cargo.toml:132`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.
@@ -5193,7 +5193,7 @@ of `russh` is on in both manifests. The probe row has the key `auth_method`. `do
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -5249,6 +5249,19 @@ Sandhole (80) and `forward::Relay::remote_port() -> Option<u16>`. Then `facts.rs
 `ssh_relay.rs` uses it when no flag is given. Not proven: a live Sandhole demo.
 
 2026-11-12: podcrates did the fact (PodUtils/podcrates#101): `sandhole.toml` has `remote-port` = 80, and `pod_services::forward::Relay::remote_port() -> Option<u16>` reads it. It comes with the next tag; the take reads it into the facts of the relay and lets `--remote-port` override it.
+
+## Done
+
+2026-11-12, commit 2ad72c1 (`T-319: ssh-relay: the remote-port fact of the relay`). Approach 2 is done with podcrates
+v0.33.0 (main takes it). `relay/facts.rs`: `Facts::remote_port` is `forward::Relay::remote_port()`. `ssh_relay.rs`:
+the port of the config is `--remote-port`, else the fact, else port 0 (`--server` with no `--service` has no fact).
+`docs/relay.md` and the help of `--remote-port` say it. Tests: `relay::tests::the_remote_port_is_a_fact_of_the_relay_that_needs_one`
+(sandhole 80; pinggy and serveo none), `relay::auth_tests::a_relay_that_refuses_port_0_takes_the_remote_port_fact` (the fake
+SSH relay that refuses port 0 takes the port of the fact: 80), and
+`cli::cmd::ssh_relay::tests::ssh_relay_takes_the_remote_port_fact_and_the_flag_overrides_it` (`--service sandhole`: 80; the flag
+8080 replaces it; pinggy, the default and `--server` give none). Fail first: with `Facts::remote_port` always `None`, the three
+tests failed (`left: None, right: Some(80)`, and `remote forward refused`); with the fact they pass. Not proven: a live
+Sandhole demo (a live relay).
 
 
 # T-323: live: the WebSocket step leaves its echo server, and waits 30 s for the DNS of a new name (GitHub #511)

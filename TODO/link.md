@@ -343,7 +343,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- `podnet forward` maps `-L LISTEN=HOST:PORT` and takes `--network SPEC` (`src/cli/cmd/forward.rs:26`). The registry has no peer kind (`src/networks.rs:46`).
+- `podnet forward` maps `-L LISTEN=HOST:PORT` and takes `--network SPEC` (`src/cli/cmd/forward.rs:26`). The registry has no peer kind (`src/networks.rs:50`).
 - `Addressing::Peer` exists (`crates/podnet-core/src/network.rs:65`): the host of the target names a peer and the port is 0.
 - T-099 covers `podnet forward` for the networks of the registry. It does not cover a peer target.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
@@ -456,7 +456,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- The dial side exists: `src/dialers/direct.rs` and the egress registry (`src/networks.rs:46`). The accept side, the peer handshake and the wrapper are absent.
+- The dial side exists: `src/dialers/direct.rs` and the egress registry (`src/networks.rs:50`). The accept side, the peer handshake and the wrapper are absent.
 - `pod-tls` makes only the verifier of the web PKI. A caller brings its own configuration with `Trust::caller`. Its module `mutual` pins the SHA-256 of a P-256 SubjectPublicKeyInfo, not an Ed25519 identity (`PodUtils/podcrates:crates/pod-tls/src/mutual.rs`).
 - On the test host, TCP loopback and IPv6 loopback are denied with `EACCES` 13 (measured by the issue on 2026-11-12). UDP loopback and `AF_UNIX` are allowed. The helpers of `tests/test_host/mod.rs` skip a test on such a host.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.

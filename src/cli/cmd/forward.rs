@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use clap::Args;
 use podnet::exit::{Fault, ResultExt};
-use podnet::network::{Addressing, Ctx, Dial, Network as _, Target};
+use podnet::network::{Addressing, Class, Ctx, Dial, Failure, Network as _, Target};
 use podnet_netns::listen::ProxyListen;
 
 use crate::cli::signals::sleep_or_signal;
@@ -34,8 +34,11 @@ pub(crate) struct ForwardArgs {
     dns_upstream: String,
     /// The network of the forwards, as a spec: direct, a proxy URL,
     /// relay or relay:URL, tailscale:/PATH, netbird:[PORT], wg:FILE,
-    /// unix:/PATH. A SOCKS5 or HTTP proxy carries no UDP. Default: the way
-    /// out of the process (--proxy, the variables, else direct).
+    /// unix:/PATH, turn://HOST[:PORT] or turns://HOST[:PORT] (UDP flows
+    /// through an allocation on a TURN server; the user and the password
+    /// come from PODNET_TURN_USER and PODNET_TURN_PASSWORD_FILE; a TCP
+    /// forward is refused). A SOCKS5 or HTTP proxy carries no UDP. Default:
+    /// the way out of the process (--proxy, the variables, else direct).
     #[arg(long, value_name = "SPEC")]
     network: Option<String>,
     /// Stop after this many seconds.
@@ -71,7 +74,13 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
             let network = podnet::networks::parse(spec)
                 .map_err(anyhow::Error::from)
                 .fault(Fault::Usage)?;
-            let link = network.up(&Ctx::default()).await?;
+            // A usage fault of the network (a missing TURN account) is exit 64.
+            let link = network.up(&Ctx::default()).await.map_err(|e| {
+                match e.downcast_ref::<Failure>() {
+                    Some(f) if f.class == Class::Usage => podnet::exit::fault(Fault::Usage, e),
+                    _ => e,
+                }
+            })?;
             let way = link.way.context("the network gives no way out")?;
             // A peer way meets a peer: it takes no HOST:PORT.
             Addressing::Destination

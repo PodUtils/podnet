@@ -136,6 +136,49 @@ UDP from the `Address` of the file.
 * The WARP datagram path (MASQUE CONNECT-IP) is not a carrier of the registry (T-117), because `warp` is not a
   network of the registry ([egress.md](egress.md)).
 
+## TURN: `turn://HOST[:PORT]` and `turns://HOST[:PORT]`
+
+```sh
+export PODNET_TURN_USER=alice PODNET_TURN_PASSWORD_FILE=/etc/podnet/turn-password
+podnet forward -L udp:5353=10.0.0.53:53 --network turn://turn.example:3478
+podnet forward -L udp:5353=10.0.0.53:53 --network turns://turn.example:443   # TURN over TLS on TCP 443
+```
+
+A host that reaches only a TURN server has no other UDP path. The network gives it one: each UDP socket of the
+network makes one allocation on the server (RFC 8656) with `pod-turn`, and sends each datagram to its peer in
+ChannelData. podnet has no TURN code of its own.
+
+* `turn://HOST[:PORT]` is TURN over UDP (default port 3478). `turns://HOST[:PORT]` is TURN over TLS on TCP
+  (default port 5349). The TLS connection uses the way out of the process (`--proxy`, the variables) and the
+  roots of podnet (`--ca-file`). A way below the network (a layer of a chain) carries the UDP socket of
+  `turn://`, or the TCP connection of `turns://`.
+* The user, the password and the realm are settings, not parts of the spec, because a spec goes into `argv`, into
+  logs and into JSON. `PODNET_TURN_USER` is the user. The password is the first line of the file in
+  `PODNET_TURN_PASSWORD_FILE`, else the value of `PODNET_TURN_PASSWORD` (give one of them). `PODNET_TURN_REALM`
+  is optional: with it, a server of another realm is refused. A spec with a user, a password, a path or a query
+  is a usage error (exit 64) that does not repeat the secret. A missing user or password is a usage error too.
+  The account is read when the network comes up. One account serves each process.
+* `up` makes one allocation and ends it at once. It proves the server, the account and the transport. The
+  status of the link has the scheme, the spec, the transport (`udp` or `tls`), the lifetime that the server gave
+  and the address that the server saw. It has no user and no password.
+* Each datagram socket has its own allocation, and so each UDP flow of `podnet forward` has one. A server can
+  limit the allocations of a user (486): the flow that cannot allocate ends with the stage `allocate`. The first
+  datagram to a peer binds a channel (ChannelBind, which also gives the permission), and the next ones use it.
+  A datagram that the peer sends back comes as ChannelData. The allocation ends when the socket is dropped.
+* The client refreshes the allocation, the permissions and the channels on its own timer. A 438 (stale nonce)
+  is answered with the fresh nonce.
+* A stage that fails ends the socket with an error that starts with the network and the stage: `allocate`,
+  `refresh`, `permission`, `bind`, `send` or `receive`. For example
+  `turn://turn.example:3478: refresh: TURN: the server answered the Refresh request with 437`. The socket does
+  not try again. The flow ends, and the next datagram of its client starts a new flow with a new allocation.
+  A datagram for a full queue is dropped (UDP has no flow control).
+* TCP is not carried. A TCP target gives one line that names RFC 6062 (the TCP relay), which `pod-turn` does not
+  have. `--egress turn://...` and `podnet pod -x` refuse the network by name.
+* `turn://` and `turns://` are networks of `podnet forward --network` and of a `networks:` entry of a router
+  file ([router.md](router.md)).
+* Not in the network: NAT traversal between two peers, TURN over plain TCP or DTLS, a row of `podnet doctor`
+  (the probe at `up` gives the stage), and the credentials of a named service.
+
 ## A user with no passwd entry
 
 On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.

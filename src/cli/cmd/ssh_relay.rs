@@ -58,8 +58,9 @@ pub(crate) struct SshRelayArgs {
     #[arg(long, value_name = "PATH")]
     socket: Option<PathBuf>,
     /// The port that the relay opens for the forward (1 to 65535). Default:
-    /// port 0, and the relay chooses. A relay can refuse port 0: the Sandhole
-    /// demo needs 80.
+    /// the `remote-port` fact of the relay (80 for sandhole), else port 0,
+    /// and the relay chooses. A relay can refuse port 0: the Sandhole demo
+    /// needs 80. The flag replaces the fact.
     #[arg(long, value_name = "PORT", value_parser = clap::value_parser!(u16).range(1..))]
     remote_port: Option<u16>,
     /// Reach the relay through this HTTP CONNECT proxy: HOST:PORT. Default:
@@ -126,11 +127,16 @@ impl SshRelayArgs {
                 return usage("--server with no --service needs --url-match or --url-skip");
             }
         }
-        let (mut addresses, mut user, mut rule, mut keepalive) =
-            (Vec::new(), None, UrlRule::default(), None);
+        let (mut addresses, mut user, mut rule, mut keepalive, mut remote_port) =
+            (Vec::new(), None, UrlRule::default(), None, None);
         if let Some(found) = found {
-            (addresses, user, rule, keepalive) =
-                (found.addresses, found.user, found.rule, found.keepalive);
+            (addresses, user, rule, keepalive, remote_port) = (
+                found.addresses,
+                found.user,
+                found.rule,
+                found.keepalive,
+                found.remote_port,
+            );
         }
         if let Some(server) = &self.server {
             addresses = vec![server.clone()];
@@ -149,7 +155,8 @@ impl SshRelayArgs {
             address,
             fallbacks: addresses.collect(),
             proxy: self.connect_proxy.clone(),
-            remote_port: self.remote_port,
+            // The flag replaces the fact; with neither, port 0.
+            remote_port: self.remote_port.or(remote_port),
             username: self
                 .user
                 .clone()
@@ -354,6 +361,30 @@ mod tests {
         assert_eq!(with.remote_port, Some(80));
         let high = config(&["ssh-relay", "--remote-port=65535"]).unwrap();
         assert_eq!(high.remote_port, Some(65535));
+    }
+
+    #[test]
+    fn ssh_relay_takes_the_remote_port_fact_and_the_flag_overrides_it() {
+        // Sandhole refuses port 0: its fact is port 80.
+        let fact = config(&["ssh-relay", "--service", "sandhole"]).unwrap();
+        assert_eq!(fact.remote_port, Some(80));
+        let flag = config(&[
+            "ssh-relay",
+            "--service",
+            "sandhole",
+            "--remote-port",
+            "8080",
+        ])
+        .unwrap();
+        assert_eq!(flag.remote_port, Some(8080));
+        // A relay with no fact keeps port 0.
+        for words in [
+            &["ssh-relay", "--service", "pinggy"][..],
+            &["ssh-relay"],
+            &FULL,
+        ] {
+            assert_eq!(config(words).unwrap().remote_port, None, "{words:?}");
+        }
     }
 
     #[test]

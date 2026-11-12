@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 324 entries: 66 open, 19 partial, 21 blocked, 218 done.
+`TODO/INDEX.md` holds 324 entries: 65 open, 19 partial, 21 blocked, 219 done.
 
 ## State
 
@@ -40,7 +40,6 @@ not wait for a larger one.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - tunnel, share, serve and the CLI: T-169.
    - CI: T-316 (a local stand-in of the quick tunnel and the edge).
-   - ssh-relay (GitHub #506): T-319 (partial: the `remote-port` fact waits for `pod-services`).
    - WARP: T-173, T-210.
    - the donor review (GitHub #429 to #434): done, except #433 and #435: T-242 is partial (its WARP half waits for the take of `pod-warp`), and T-244 is blocked on `pod-cloudflare`.
 4. **M2, the splits:** T-035, T-036, T-039 (moved files: podcrates); T-044 (blocked:
@@ -69,7 +68,7 @@ not wait for a larger one.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
 10b. **Networks over the new crates (podcrates v0.33.0):** T-320 (`devtunnel://`, `pod-devtunnel`), T-321 (`turn://`,
-    `pod-turn`), and T-319 (the `remote-port` fact of `pod-services`).
+    `pod-turn`).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-298, T-294, T-295.

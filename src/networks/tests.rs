@@ -115,6 +115,7 @@ fn network_spec_the_table_has_one_row_for_each_scheme() {
             "tailscale",
             "netbird",
             "wg",
+            "turn",
             "peer"
         ]
     );

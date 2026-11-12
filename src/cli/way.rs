@@ -118,6 +118,14 @@ fn removed_before(words: &[String], at: usize) -> usize {
     n
 }
 
+/// The line for `--egress turn://HOST` and `turns://HOST`: the network carries
+/// UDP, and `--egress` is a way for TCP.
+fn turn_refusal(label: &str) -> String {
+    format!(
+        "--egress {label}: a TURN network carries UDP only, and --egress is a way for TCP; use podnet forward -L udp:PORT=HOST:PORT --network {label}, or a networks: entry of podnet route"
+    )
+}
+
 /// `podnet --egress A --egress B pod ...`: `-x A -x B` after the word pod.
 fn pod_hops(
     mut kept: Vec<String>,
@@ -135,6 +143,9 @@ fn pod_hops(
         }
         if network.wg_file().is_some() {
             return Err(wg_refusal(&network.label()));
+        }
+        if network.turn().is_some() {
+            return Err(turn_refusal(&network.label()));
         }
         if let Some(port) = network.netbird_port() {
             // The listener of NetBird netstack mode is a SOCKS5 hop.
@@ -180,6 +191,9 @@ fn process_way(
     let (spec, network) = (&specs[0], &networks[0]);
     if network.wg_file().is_some() {
         return Err(wg_refusal(&network.label()));
+    }
+    if network.turn().is_some() {
+        return Err(turn_refusal(&network.label()));
     }
     let flags: Vec<String> = match (network.scheme(), network.relay_url()) {
         ("direct", _) => vec!["--no-proxy".into()],

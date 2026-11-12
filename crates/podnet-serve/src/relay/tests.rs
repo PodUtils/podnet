@@ -287,6 +287,14 @@ fn the_rule_of_each_relay_skips_every_known_dashboard() {
 }
 
 #[test]
+fn the_remote_port_is_a_fact_of_the_relay_that_needs_one() {
+    assert_eq!(facts::lookup("sandhole").unwrap().remote_port, Some(80));
+    for name in ["pinggy", "serveo"] {
+        assert_eq!(facts::lookup(name).unwrap().remote_port, None, "{name}");
+    }
+}
+
+#[test]
 fn a_relay_with_more_than_one_endpoint_gives_the_address_list_in_order() {
     let f = facts::lookup("serveo").unwrap();
     assert!(f.addresses.len() > 1, "{:?}", f.addresses);

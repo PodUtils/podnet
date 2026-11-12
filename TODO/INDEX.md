@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**324 entries: 66 open, 19 partial, 21 blocked, 218 done.**
+**324 entries: 65 open, 19 partial, 21 blocked, 219 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
-| P2 | 19 | 9 | 10 | 127 | 165 |
-| P3 | 47 | 9 | 9 | 63 | 128 |
-| **All** | 66 | 19 | 21 | 218 | 324 |
+| P2 | 19 | 8 | 10 | 128 | 165 |
+| P3 | 46 | 10 | 9 | 63 | 128 |
+| **All** | 65 | 19 | 21 | 219 | 324 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -364,9 +364,9 @@ M8 Overlays, M9 Later.
 | [T-316](fixes.md) | P2 | L | M5 | feature | partial | A local stand-in of the quick-tunnel service and the edge, so that CI runs the quick tunnel with no call to Cloudflare |
 | [T-317](pods.md) | P1 | S | M7 | defect | done | seccomp: a mapped loopback address is dialed direct, not through the chain (PodUtils/podrunner#69) |
 | [T-318](fixes.md) | P2 | M | M5 | defect | done | ssh-relay: try the authentication methods the relay offers, and verify an RSA host key (GitHub #505) |
-| [T-319](fixes.md) | P2 | S | M5 | feature | partial | ssh-relay: a remote port from a flag, and from the service data (GitHub #506) |
+| [T-319](fixes.md) | P2 | S | M5 | feature | done | ssh-relay: a remote port from a flag, and from the service data (GitHub #506) |
 | [T-320](later.md) | P3 | L | M9 | feature | open | net: a Dev Tunnels network for TCP streams (GitHub #503) |
-| [T-321](later.md) | P3 | L | M9 | feature | open | net: a TURN network for UDP flows (GitHub #507) |
+| [T-321](later.md) | P3 | L | M9 | feature | partial | net: a TURN network for UDP flows (GitHub #507) |
 | [T-322](fixes.md) | P2 | S | M5 | defect | done | doctor: resolve the ssh-relay probe through the configured proxy (GitHub #504) |
 | [T-323](fixes.md) | P2 | S | M5 | defect | done | live: the WebSocket step leaves its echo server, and waits 30 s for the DNS of a new name (GitHub #511) |
 | [T-324](fixes.md) | P3 | S | M5 | defect | done | doctor: the test of a refused direct dial holds its port |

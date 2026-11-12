@@ -2617,8 +2617,13 @@ version = "0.33.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.33.0#8edf8af508c58f6826bd655ff687ebedbc95f71c"
 dependencies = [
  "hmac",
+ "pod-core",
+ "pod-tls",
  "sha1",
  "sha2 0.11.1",
+ "tokio",
+ "tracing",
+ "zeroize",
 ]
 
 [[package]]
@@ -2685,6 +2690,7 @@ dependencies = [
  "pod-services",
  "pod-session",
  "pod-tls",
+ "pod-turn",
  "pod-wg",
  "pod-ws",
  "podnet-core",

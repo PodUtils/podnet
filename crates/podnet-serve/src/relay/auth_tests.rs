@@ -268,3 +268,19 @@ async fn a_relay_that_refuses_port_0_takes_the_remote_port_of_the_config() {
     .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(live.tunnel.remote_port, 80);
 }
+
+/// The fact `remote-port` of the relay is the port of the config, and the
+/// relay that refuses port 0 takes it.
+#[tokio::test]
+async fn a_relay_that_refuses_port_0_takes_the_remote_port_fact() {
+    pod_testkit::need_loopback!();
+    let address = serve(Login::NeedsPort, ed25519()).await;
+    let fact = facts::lookup("sandhole").unwrap().remote_port;
+    let live = open(&RelayConfig {
+        remote_port: fact,
+        ..config(address)
+    })
+    .await
+    .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(live.tunnel.remote_port, 80);
+}

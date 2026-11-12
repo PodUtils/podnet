@@ -4,7 +4,9 @@
 //! proxy URL (`socks5h://HOST:PORT`, `http://HOST:PORT`,
 //! `SCHEME+unix:/PATH`, `SCHEME+exec:COMMAND`), a hop of the pod
 //! (`unix:/PATH`, `HOST:PORT`, `socks://`, `https://`), `tailscale:/PATH`,
-//! `netbird:[PORT]`, `wg:FILE` (WireGuard), or the relay (`relay`, `relay:URL`). [`networks`] is the table of the
+//! `netbird:[PORT]`, `wg:FILE` (WireGuard), `turn://HOST[:PORT]` and
+//! `turns://HOST[:PORT]` (UDP through a TURN server), or the relay (`relay`,
+//! `relay:URL`). [`networks`] is the table of the
 //! networks of this build: a static table in the binary, with no
 //! dependency (`docs/research/podnet/architecture.md`, section 4.3).
 //!
@@ -28,6 +30,8 @@ mod netbird;
 mod peer;
 pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
 mod tailscale;
+mod turn;
+mod turn_socket;
 mod wg;
 pub use tailscale::{rows as tailscale_rows, state as tailscale_state};
 
@@ -44,7 +48,7 @@ pub struct Row {
     pub caps: Caps,
 }
 
-const ROWS: [Row; 7] = [
+const ROWS: [Row; 8] = [
     Row {
         scheme: "direct",
         forms: &["direct"],
@@ -91,6 +95,12 @@ const ROWS: [Row; 7] = [
         caps: Caps::EGRESS_TCP.with(Caps::EGRESS_UDP),
     },
     Row {
+        scheme: "turn",
+        forms: &["turn://HOST[:PORT]", "turns://HOST[:PORT]"],
+        about: "UDP through an allocation on a TURN server (RFC 8656), over UDP (turn) or over TLS on TCP (turns); TCP flows are not carried",
+        caps: Caps::EGRESS_UDP,
+    },
+    Row {
         scheme: "peer",
         forms: &["peer:FINGERPRINT/SERVICE"],
         about: "one stream to a service of a peer, over a link that a running podnet link instance holds (a peer way: it meets a peer, it dials no destination)",
@@ -120,6 +130,8 @@ enum Kind {
     Netbird(u16),
     /// The WireGuard peer of this wg-quick file (T-117).
     Wg(std::path::PathBuf),
+    /// The TURN server of this spec (T-321).
+    Turn(turn::Spec),
     /// A service of the peer with this fingerprint (T-266).
     Peer {
         fingerprint: String,
@@ -179,6 +191,9 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
         };
         return Ok(Kind::Netbird(port));
     }
+    if turn::is_turn(spec) {
+        return turn::parse(spec).map(Kind::Turn);
+    }
     if let Some(rest) = spec.strip_prefix("peer:") {
         // `peer:PORT` is the SOCKS hop of a host named peer, as it was.
         if rest.parse::<u16>().is_err() {
@@ -237,6 +252,7 @@ impl SpecNetwork {
             Kind::Proxy(proxy) => proxy.label(),
             Kind::Netbird(port) => format!("netbird:{port}"),
             Kind::Wg(path) => format!("wg:{}", path.display()),
+            Kind::Turn(spec) => spec.label(),
             _ => redacted(&self.spec),
         }
     }
@@ -255,6 +271,15 @@ impl SpecNetwork {
     pub fn netbird_port(&self) -> Option<u16> {
         match self.kind {
             Kind::Netbird(port) => Some(port),
+            _ => None,
+        }
+    }
+
+    /// The TURN server and the transport, for `turn://` and `turns://`:
+    /// `(HOST:PORT, tls)`.
+    pub fn turn(&self) -> Option<(String, bool)> {
+        match &self.kind {
+            Kind::Turn(spec) => Some((spec.server.to_string(), spec.tls)),
             _ => None,
         }
     }
@@ -310,7 +335,7 @@ impl SpecNetwork {
                 UpstreamChain::parse(&[self.spec.as_str()])
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
             ),
-            Kind::Wg(_) => unreachable!("wg:FILE comes up in `up`"),
+            Kind::Wg(_) | Kind::Turn(_) => unreachable!("wg:FILE and turn:// come up in `up`"),
             Kind::Peer {
                 fingerprint,
                 service,
@@ -337,6 +362,7 @@ impl Network for SpecNetwork {
             Kind::Relay(_) => "relay",
             Kind::Netbird(_) => "netbird",
             Kind::Wg(_) => "wg",
+            Kind::Turn(_) => "turn",
             Kind::Peer { .. } => "peer",
         }
     }
@@ -346,13 +372,20 @@ impl Network for SpecNetwork {
     }
 
     /// The way of the spec. These networks dial from this host: a way
-    /// below them (`ctx.below`) is refused, not ignored. `wg:FILE` sends
-    /// its UDP over the datagrams of that way.
+    /// below them (`ctx.below`) is refused, not ignored. `wg:FILE` and
+    /// `turn://` send their UDP over the datagrams of that way (`turns://`
+    /// opens its TCP connection over it).
     fn up<'a>(&'a self, ctx: &'a Ctx) -> BoxFuture<'a, anyhow::Result<Link>> {
         Box::pin(async move {
             if let Kind::Wg(path) = &self.kind {
                 let (_, link) = wg::up(path, self.label(), ctx.below.as_ref()).await?;
                 return Ok(link);
+            }
+            if let Kind::Turn(spec) = &self.kind {
+                // The account comes from the environment, now and not at the
+                // parse: a parse reads no variable.
+                let account = turn::account(&|name| std::env::var(name).ok())?;
+                return Ok(turn::up(spec, account, ctx.below.as_ref(), Default::default()).await?);
             }
             if let Some(below) = &ctx.below {
                 return Err(Failure::new(
@@ -406,6 +439,11 @@ impl Network for SpecNetwork {
                     tls: false,
                 }]
             }
+            Kind::Turn(spec) if spec.tls => vec![Check {
+                name: "turn".into(),
+                target: spec.server.clone(),
+                tls: true,
+            }],
             Kind::Netbird(port) => vec![Check {
                 name: "netbird".into(),
                 target: Target::new("127.0.0.1", *port),
@@ -428,5 +466,9 @@ impl Network for SpecNetwork {
 mod tailscale_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod turn_mock;
+#[cfg(test)]
+mod turn_tests;
 #[cfg(test)]
 mod wg_tests;

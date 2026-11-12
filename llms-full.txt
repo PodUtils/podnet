@@ -1332,7 +1332,7 @@ COMMANDS
     podnet forward [OPTIONS]
         Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or
         UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC
-        (direct, a proxy, the relay, a tailnet, wg:FILE)
+        (direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP)
 
         -L, --local <LISTEN=HOST:PORT>
             A forward: LISTEN=HOST:PORT (repeatable). LISTEN is PORT (on
@@ -1358,8 +1358,12 @@ COMMANDS
         --network <SPEC>
             The network of the forwards, as a spec: direct, a proxy URL, relay
             or relay:URL, tailscale:/PATH, netbird:[PORT], wg:FILE,
-            unix:/PATH. A SOCKS5 or HTTP proxy carries no UDP. Default: the
-            way out of the process (--proxy, the variables, else direct)
+            unix:/PATH, turn://HOST[:PORT] or turns://HOST[:PORT] (UDP flows
+            through an allocation on a TURN server; the user and the password
+            come from PODNET_TURN_USER and PODNET_TURN_PASSWORD_FILE; a TCP
+            forward is refused). A SOCKS5 or HTTP proxy carries no UDP.
+            Default: the way out of the process (--proxy, the variables, else
+            direct)
 
         --run-for <SECONDS>
             Stop after this many seconds
@@ -1613,8 +1617,9 @@ COMMANDS
 
         --remote-port <PORT>
             The port that the relay opens for the forward (1 to 65535).
-            Default: port 0, and the relay chooses. A relay can refuse port 0:
-            the Sandhole demo needs 80
+            Default: the `remote-port` fact of the relay (80 for sandhole),
+            else port 0, and the relay chooses. A relay can refuse port 0: the
+            Sandhole demo needs 80. The flag replaces the fact
 
         --connect-proxy <HOST:PORT>
             Reach the relay through this HTTP CONNECT proxy: HOST:PORT.
@@ -9063,6 +9068,17 @@ ENVIRONMENT
         the file (mode 0600), with SOCKS5 (RFC 1929) or HTTP Basic. A client
         with no or wrong credentials gets 0xff, 0x01 or 407. (warp proxy, warp
         up)
+    PODNET_TURN_USER, PODNET_TURN_PASSWORD_FILE, PODNET_TURN_PASSWORD,
+    PODNET_TURN_REALM
+        The user, the password and the realm of the TURN server (RFC 8656).
+        The password is the first line of the file in
+        PODNET_TURN_PASSWORD_FILE, else the value of PODNET_TURN_PASSWORD
+        (give one of them). The realm is optional: with it, a server of
+        another realm is refused. A spec holds no credential, and no
+        credential is in a log line, an error or --json. A missing user or
+        password is a usage error (exit 64). One account for each process.
+        (the network turn://HOST[:PORT] and turns://HOST[:PORT] (forward
+        --network, a networks: entry of route))
     PODNET_WARP_DEVICE_NAME, PODNET_WARP_DEVICE_MODEL,
     PODNET_WARP_DEVICE_LOCALE
         The value of --device-name, --device-model and --device-locale: what a
@@ -9535,7 +9551,7 @@ podnet man                                      # the manual
 | Forwards | `forward -L`, `forward --dns` | TCP and UDP forwards and a DNS door through a network. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Relays | `relay pair`, `node`, `connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
 | Link | `link listen`, `connect`, `dial`, `status`, `close`, `carriers`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. A control socket shows the links. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
-| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
+| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `turn:` (UDP), `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
 | Checks | `doctor`, `doctor --agent`, `status`, `ports`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
 | Update | `update` | Replace the binary after a check of the signature. | [install](https://github.com/PodUtils/podnet/blob/main/docs/install.md) |
@@ -10908,6 +10924,49 @@ UDP from the `Address` of the file.
 * The WARP datagram path (MASQUE CONNECT-IP) is not a carrier of the registry (T-117), because `warp` is not a
   network of the registry ([egress.md](egress.md)).
 
+## TURN: `turn://HOST[:PORT]` and `turns://HOST[:PORT]`
+
+```sh
+export PODNET_TURN_USER=alice PODNET_TURN_PASSWORD_FILE=/etc/podnet/turn-password
+podnet forward -L udp:5353=10.0.0.53:53 --network turn://turn.example:3478
+podnet forward -L udp:5353=10.0.0.53:53 --network turns://turn.example:443   # TURN over TLS on TCP 443
+```
+
+A host that reaches only a TURN server has no other UDP path. The network gives it one: each UDP socket of the
+network makes one allocation on the server (RFC 8656) with `pod-turn`, and sends each datagram to its peer in
+ChannelData. podnet has no TURN code of its own.
+
+* `turn://HOST[:PORT]` is TURN over UDP (default port 3478). `turns://HOST[:PORT]` is TURN over TLS on TCP
+  (default port 5349). The TLS connection uses the way out of the process (`--proxy`, the variables) and the
+  roots of podnet (`--ca-file`). A way below the network (a layer of a chain) carries the UDP socket of
+  `turn://`, or the TCP connection of `turns://`.
+* The user, the password and the realm are settings, not parts of the spec, because a spec goes into `argv`, into
+  logs and into JSON. `PODNET_TURN_USER` is the user. The password is the first line of the file in
+  `PODNET_TURN_PASSWORD_FILE`, else the value of `PODNET_TURN_PASSWORD` (give one of them). `PODNET_TURN_REALM`
+  is optional: with it, a server of another realm is refused. A spec with a user, a password, a path or a query
+  is a usage error (exit 64) that does not repeat the secret. A missing user or password is a usage error too.
+  The account is read when the network comes up. One account serves each process.
+* `up` makes one allocation and ends it at once. It proves the server, the account and the transport. The
+  status of the link has the scheme, the spec, the transport (`udp` or `tls`), the lifetime that the server gave
+  and the address that the server saw. It has no user and no password.
+* Each datagram socket has its own allocation, and so each UDP flow of `podnet forward` has one. A server can
+  limit the allocations of a user (486): the flow that cannot allocate ends with the stage `allocate`. The first
+  datagram to a peer binds a channel (ChannelBind, which also gives the permission), and the next ones use it.
+  A datagram that the peer sends back comes as ChannelData. The allocation ends when the socket is dropped.
+* The client refreshes the allocation, the permissions and the channels on its own timer. A 438 (stale nonce)
+  is answered with the fresh nonce.
+* A stage that fails ends the socket with an error that starts with the network and the stage: `allocate`,
+  `refresh`, `permission`, `bind`, `send` or `receive`. For example
+  `turn://turn.example:3478: refresh: TURN: the server answered the Refresh request with 437`. The socket does
+  not try again. The flow ends, and the next datagram of its client starts a new flow with a new allocation.
+  A datagram for a full queue is dropped (UDP has no flow control).
+* TCP is not carried. A TCP target gives one line that names RFC 6062 (the TCP relay), which `pod-turn` does not
+  have. `--egress turn://...` and `podnet pod -x` refuse the network by name.
+* `turn://` and `turns://` are networks of `podnet forward --network` and of a `networks:` entry of a router
+  file ([router.md](router.md)).
+* Not in the network: NAT traversal between two peers, TURN over plain TCP or DTLS, a row of `podnet doctor`
+  (the probe at `up` gives the stage), and the credentials of a named service.
+
 ## A user with no passwd entry
 
 On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.
@@ -10993,7 +11052,7 @@ doors:
   error names the key or the line.
 * A name is letters, digits, `-` and `_`. A group and a network cannot have the same name.
 * `networks` maps a name to a network spec (see [egress.md](egress.md)): `direct`, a proxy URL, `relay`,
-  `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE` or `unix:/PATH`. A `tailscale:/PATH` network is a member of a group
+  `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` (UDP only) or `unix:/PATH`. A `tailscale:/PATH` network is a member of a group
   and the `via` of a door, as each other network. When `tailscaled` is not `Running` at the start, the
   router prints one warning and goes on: each dial through that network fails until the daemon is logged
   in.
@@ -11273,12 +11332,15 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
 * `-L LISTEN=peer:FINGERPRINT/SERVICE` opens one stream of a link to a peer for each accepted connection, and asks the peer
   for its service (see "A service of a peer" below). It carries TCP only.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
-  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `unix:/PATH`. The default is the way out of the process: `--proxy`, the
+  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
+  only), `unix:/PATH`. The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
 * UDP: `-L udp:PORT=HOST:PORT` (or `udp:ADDR:PORT`) carries UDP over the datagrams of the network. Each
   client has its own flow. A flow ends after 60 s with no datagram. A datagram for a full flow is dropped.
   A SOCKS5 or HTTP proxy network carries no UDP: the forward logs the refusal and ends the flow. `direct`
-  and `wg:FILE` carry UDP. A name in the target of a UDP forward resolves with the resolver of this host.
+  and `wg:FILE` carry UDP. `turn://HOST[:PORT]` and `turns://HOST[:PORT]` carry UDP through an allocation on a
+  TURN server, for a host that reaches only that server ([networks.md](networks.md)): the account is in
+  `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE`, and a TCP forward over them is refused. A name in the target of a UDP forward resolves with the resolver of this host.
   For UDP through a door that clients choose (SOCKS5 UDP ASSOCIATE) and for names that resolve inside a
   network, use the router ([router.md](router.md), "Doors" and `resolvers`).
 * `--run-for SECONDS` stops after that time.
@@ -11469,10 +11531,11 @@ podnet ssh-relay --server relay.example.net:443 --user podnet \
   whole banner, then picks the URL. `--url-match TEXT` selects the tunnel URL: it holds this text (the
   tunnel domain of the relay). `--url-skip TEXT` removes a URL: it holds this text. Both are repeatable,
   and each replaces its list of the facts. The default skip list holds the dashboards of all known relays.
-* `--remote-port PORT` (1 to 65535) is the port that the relay opens for the forward. Without it, podnet
-  asks for port 0 and the relay chooses. A relay can refuse port 0 (the Sandhole demo needs 80). The
-  service data has no such fact (T-319), so give the flag for such a relay. `--json` and the ready document
-  show the port of the forward.
+* `--remote-port PORT` (1 to 65535) is the port that the relay opens for the forward. A relay can refuse
+  port 0 (the Sandhole demo needs 80). The service data of such a relay has the fact `remote-port`
+  (`forward::Relay::remote_port`), and `--service sandhole` asks for port 80 from it. The flag replaces the
+  fact. A relay with no fact gets port 0, and the relay chooses. `--server` with no `--service` has no
+  fact. `--json` and the ready document show the port of the forward.
 * `--socket PATH` is the unix socket of the origin. The relay opens one channel for each visitor, and
   podnet connects it to this socket. The origin must listen on the socket before the first visitor comes.
   The default is `origin.sock` in the private run directory of this user.
@@ -11505,6 +11568,7 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `tailscale` | `tailscale:/PATH/tailscaled.sock` | A tailnet, through the LocalAPI of `tailscaled` ([networks.md](networks.md)). | TCP |
 | `netbird` | `netbird`, `netbird:[PORT]` | The SOCKS5 listener of NetBird in netstack mode on `127.0.0.1:PORT` (default 1080). The target must be an IP address ([networks.md](networks.md)). | TCP |
 | `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. The target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
+| `turn` | `turn://HOST[:PORT]`, `turns://HOST[:PORT]` | An allocation on a TURN server (RFC 8656), over UDP (`turn`, port 3478) or over TLS on TCP (`turns`, port 5349). The user and the password come from `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE`, never from the spec ([networks.md](networks.md)). | UDP |
 | `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
 * A spec with no scheme (`HOST:PORT`) is a SOCKS5 proxy, as in `podnet pod -x`.
@@ -11512,6 +11576,9 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 * `SCHEME+exec:COMMAND` starts `COMMAND` with `sh -c` for each connection and uses its stdin and stdout
   as the proxy connection (see [proxies.md](proxies.md)).
 * An error about a spec shows the spec without its user and password.
+* `turn://` and `turns://` carry UDP only. A TCP target is refused by name (the TCP relay of RFC 6062 is not
+  in podnet). Use them with `podnet forward -L udp:... --network SPEC` or in a `networks:` entry of a router
+  file. `--egress` is a way for TCP: `--egress turn://...` gives one line that says so.
 * `warp` is not a network of the registry. Use `podnet warp proxy` ([warp.md](warp.md)) or
   `tunnel --transport warp`.
 

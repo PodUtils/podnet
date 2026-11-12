@@ -25,6 +25,9 @@ pub struct Facts {
     pub rule: UrlRule,
     /// The interval of the keepalive that the relay states.
     pub keepalive: Option<Duration>,
+    /// The port of the remote forward that the relay takes. `None`: the
+    /// relay takes port 0, and chooses (the choice of the caller).
+    pub remote_port: Option<u16>,
 }
 
 /// The ids of the known forward relays.
@@ -71,6 +74,7 @@ pub fn lookup(name: &str) -> Result<Facts, String> {
         user: relay.user().map(str::to_string),
         rule,
         keepalive: relay.keepalive(),
+        remote_port: relay.remote_port(),
     })
 }
 

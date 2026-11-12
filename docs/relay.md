@@ -120,10 +120,11 @@ podnet ssh-relay --server relay.example.net:443 --user podnet \
   whole banner, then picks the URL. `--url-match TEXT` selects the tunnel URL: it holds this text (the
   tunnel domain of the relay). `--url-skip TEXT` removes a URL: it holds this text. Both are repeatable,
   and each replaces its list of the facts. The default skip list holds the dashboards of all known relays.
-* `--remote-port PORT` (1 to 65535) is the port that the relay opens for the forward. Without it, podnet
-  asks for port 0 and the relay chooses. A relay can refuse port 0 (the Sandhole demo needs 80). The
-  service data has no such fact (T-319), so give the flag for such a relay. `--json` and the ready document
-  show the port of the forward.
+* `--remote-port PORT` (1 to 65535) is the port that the relay opens for the forward. A relay can refuse
+  port 0 (the Sandhole demo needs 80). The service data of such a relay has the fact `remote-port`
+  (`forward::Relay::remote_port`), and `--service sandhole` asks for port 80 from it. The flag replaces the
+  fact. A relay with no fact gets port 0, and the relay chooses. `--server` with no `--service` has no
+  fact. `--json` and the ready document show the port of the forward.
 * `--socket PATH` is the unix socket of the origin. The relay opens one channel for each visitor, and
   podnet connects it to this socket. The origin must listen on the socket before the first visitor comes.
   The default is `origin.sock` in the private run directory of this user.
