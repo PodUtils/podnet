@@ -317,6 +317,32 @@ async fn front_door_ends_a_flow_at_its_flow_limit() {
     assert_eq!(start.elapsed(), Duration::from_secs(300));
 }
 
+/// The error of a client reaches the hook of the door (the `-v` line of
+/// `pod --serve`).
+#[tokio::test]
+async fn front_door_gives_the_error_of_a_client_to_its_hook() {
+    let seen = Arc::new(Mutex::new(Vec::<String>::new()));
+    let hook = seen.clone();
+    let (door, _) = door();
+    let door = Arc::new(Arc::into_inner(door).unwrap().on_error(Arc::new(
+        move |e: &anyhow::Error| {
+            hook.lock().unwrap().push(format!("{e:#}"));
+        },
+    )));
+    // A client that closes before its request is complete.
+    let (mut client, server) = tokio::io::duplex(64);
+    door.clone().spawn(server);
+    client.write_all(&[5]).await.unwrap();
+    drop(client);
+    for _ in 0..50 {
+        if !seen.lock().unwrap().is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(seen.lock().unwrap().len(), 1, "{:?}", seen.lock().unwrap());
+}
+
 /// An extension takes a SOCKS5 command that the door does not know, and
 /// UDP ASSOCIATE before the datagrams of the dialer.
 #[tokio::test]

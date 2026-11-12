@@ -68,7 +68,11 @@ pub struct Door {
     flow_limit: Option<Duration>,
     connect_only: bool,
     extension: Option<Arc<dyn Extension>>,
+    on_error: Option<ErrorHook>,
 }
+
+/// A function that gets the error of a client of a door.
+pub type ErrorHook = Arc<dyn Fn(&anyhow::Error) + Send + Sync>;
 
 impl Door {
     pub fn new(dial: Arc<dyn Dial>) -> Door {
@@ -83,7 +87,15 @@ impl Door {
             flow_limit: None,
             connect_only: false,
             extension: None,
+            on_error: None,
         }
+    }
+
+    /// Call `hook` with the error of each client that ends in an error (a
+    /// bad request, a client that is too slow, a failed copy of a reply).
+    pub fn on_error(mut self, hook: ErrorHook) -> Door {
+        self.on_error = Some(hook);
+        self
     }
 
     /// The port of a request that has port 0 (the option `--port`).
@@ -173,6 +185,9 @@ impl Door {
         tokio::spawn(async move {
             if let Err(e) = self.handle(stream).await {
                 tracing::debug!("a client of the door: {e:#}");
+                if let Some(hook) = &self.on_error {
+                    hook(&e);
+                }
             }
             drop(permit);
         });

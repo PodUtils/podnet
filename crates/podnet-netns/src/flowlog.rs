@@ -215,6 +215,79 @@ impl<S: AsyncWrite + Unpin> AsyncWrite for Counted<S> {
     }
 }
 
+/// The upstream of a flow of the front door, with the counts of its bytes:
+/// when the record is on (`flow` is `Some`), the close line of the flow is
+/// written when the stream is dropped. `bytes_out` is what was written to
+/// the upstream, `bytes_in` what was read from it.
+pub(crate) fn counted(
+    upstream: crate::upstream::Upstream,
+    flow: Option<u64>,
+    target: &str,
+) -> pod_core::BoxedIo {
+    match flow {
+        None => Box::new(upstream),
+        Some(_) => Box::new(Flow {
+            inner: upstream,
+            counts: Counts::default(),
+            flow,
+            target: target.to_string(),
+        }),
+    }
+}
+
+/// A stream that counts its bytes and writes the close line of its flow when
+/// it is dropped.
+struct Flow<S> {
+    inner: S,
+    counts: Counts,
+    flow: Option<u64>,
+    target: String,
+}
+
+impl<S> Drop for Flow<S> {
+    fn drop(&mut self) {
+        self.counts.close(self.flow, "tcp", &self.target);
+    }
+}
+
+impl<S: AsyncRead + Unpin> AsyncRead for Flow<S> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut TaskContext<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        let before = buf.filled().len();
+        let poll = Pin::new(&mut self.inner).poll_read(cx, buf);
+        self.counts.add_in(buf.filled().len() - before);
+        poll
+    }
+}
+
+impl<S: AsyncWrite + Unpin> AsyncWrite for Flow<S> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut TaskContext<'_>,
+        buf: &[u8],
+    ) -> Poll<std::io::Result<usize>> {
+        let poll = Pin::new(&mut self.inner).poll_write(cx, buf);
+        if let Poll::Ready(Ok(n)) = &poll {
+            self.counts.add_out(*n);
+        }
+        poll
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut TaskContext<'_>) -> Poll<std::io::Result<()>> {
+        Pin::new(&mut self.inner).poll_flush(cx)
+    }
+
+    fn poll_shutdown(
+        mut self: Pin<&mut Self>,
+        cx: &mut TaskContext<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        Pin::new(&mut self.inner).poll_shutdown(cx)
+    }
+}
+
 /// The buffer of each direction of a relay (T-151): 64 KiB moves about
 /// 1.5 times the bytes of the 8 KiB default of tokio on a loopback test.
 pub(crate) const RELAY_BUFFER: usize = 64 * 1024;

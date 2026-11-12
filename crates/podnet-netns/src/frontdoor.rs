@@ -1,6 +1,12 @@
 #[allow(unused_imports)]
 use crate::prelude::*;
 
+use pod_core::{BoxFuture, Class, Connected, Dial, Failure, Stage, Target};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::time::Instant;
+
+use crate::door::{Door, Duplex, Extension};
+
 // ── front door: podnet-netns as a proxy for others ─────────────────────────────
 
 pub(crate) enum FrontListener {
@@ -8,18 +14,10 @@ pub(crate) enum FrontListener {
     Tcp(tokio::net::TcpListener),
 }
 
-impl FrontListener {
-    pub(crate) async fn accept(&self) -> std::io::Result<Upstream> {
-        match self {
-            FrontListener::Unix(l) => Ok(Box::new(l.accept().await?.0)),
-            FrontListener::Tcp(l) => Ok(Box::new(l.accept().await?.0)),
-        }
-    }
-}
-
 /// Serve SOCKS5 and HTTP `CONNECT`, forwarding each request through the
 /// configured upstream chain. This makes an instance a hop for another, and a
-/// drop-in replacement for a shim's front door.
+/// drop-in replacement for a shim's front door. The door is the one of
+/// [`crate::door`] (T-061) over [`PodDial`].
 pub(crate) async fn serve_front_door(
     listen: crate::listen::ProxyListen,
     chain: Vec<Proxy>,
@@ -34,18 +32,31 @@ pub(crate) async fn serve_front_door(
         crate::cli::program_name(),
         chain.len()
     );
-    loop {
-        let conn = listener.accept().await?;
-        let chain = chain.clone();
-        let rules = rules.clone();
-        tokio::spawn(async move {
-            if let Err(e) = serve_one(conn, &chain, &rules, verbose).await {
-                if verbose {
-                    eprintln!("{}: front door: {e:#}", crate::cli::program_name());
-                }
-            }
-        });
+    let door = Arc::new(front_door(chain, rules, verbose));
+    match listener {
+        FrontListener::Unix(listener) => door.serve_unix(listener).await,
+        FrontListener::Tcp(listener) => door.serve_tcp(listener).await,
     }
+}
+
+/// The door of `pod --serve`: the rules choose the chain of each flow, the
+/// first upstream carries UDP, and a plain `http://` request gets 405.
+pub(crate) fn front_door(chain: Vec<Proxy>, rules: Vec<Rule>, verbose: bool) -> Door {
+    let udp = Arc::new(PodUdp {
+        chain: chain.clone(),
+        verbose,
+    });
+    let dial = Arc::new(PodDial {
+        chain,
+        rules,
+        verbose,
+    });
+    let door = Door::new(dial).with_extension(udp).connect_only();
+    door.on_error(Arc::new(move |e: &anyhow::Error| {
+        if verbose {
+            eprintln!("{}: front door: {e:#}", crate::cli::program_name());
+        }
+    }))
 }
 
 /// Bind the listener of the front door. Return it with the bound address:
@@ -67,139 +78,108 @@ pub(crate) async fn bind_front_door(
     })
 }
 
-pub(crate) async fn serve_one(
-    conn: Upstream,
-    chain: &[Proxy],
-    rules: &[Rule],
+/// The way out of the pod door: the rules choose a chain (or a refusal),
+/// the chain carries the flow, and the flow log (T-157) gets the decision
+/// and the byte counts.
+struct PodDial {
+    chain: Vec<Proxy>,
+    rules: Vec<Rule>,
     verbose: bool,
-) -> Result<()> {
-    use crate::socks;
-    use tokio::io::AsyncBufReadExt;
-    let mut reader = tokio::io::BufReader::new(conn);
-    let first = match tokio::time::timeout(crate::opening::REQUEST_LIMIT, reader.fill_buf()).await {
-        Ok(read) => read?.first().copied(),
-        Err(_) => {
-            crate::opening::refuse_slow(&mut reader, false).await;
-            return Ok(());
-        }
-    };
-    match first {
-        Some(5) => {
-            let (cmd, request) = match tokio::time::timeout(
-                crate::opening::REQUEST_LIMIT,
-                read_socks5_command(&mut reader),
-            )
-            .await
-            {
-                Ok(read) => read?,
-                Err(_) => {
-                    crate::opening::refuse_slow(&mut reader, true).await;
-                    return Ok(());
-                }
-            };
-            if cmd == 0x03 {
-                return serve_udp_associate(reader, chain, verbose).await;
-            }
-            if cmd == pod_proxy::udp::CMD_UDP_IN_STREAM {
-                return serve_udp_in_stream(reader, chain).await;
-            }
-            let target = format!("{}:{}", request.host, request.port);
-            let picked = select_chain(rules, chain, &target);
-            let flow = crate::flowlog::decided("tcp", &target, &picked);
+}
+
+impl Dial for PodDial {
+    fn label(&self) -> String {
+        format!("pod:{} upstream", self.chain.len())
+    }
+
+    /// The upstream resolves a name: the door sends it.
+    fn names_inside(&self) -> bool {
+        true
+    }
+
+    fn dial<'a>(
+        &'a self,
+        target: &'a Target,
+        _deadline: Instant,
+    ) -> BoxFuture<'a, Result<Connected, Failure>> {
+        Box::pin(async move {
+            let text = target.to_string();
+            let picked = select_chain(&self.rules, &self.chain, &text);
+            let flow = crate::flowlog::decided("tcp", &text, &picked);
             let Some(selected) = picked.chain() else {
-                crate::rules::note_refusal("front door", &target, picked.rule_name(), verbose);
-                let _ = socks::socks5_reply(&mut reader, 0x02, None).await;
-                return Ok(());
+                crate::rules::note_refusal("front door", &text, picked.rule_name(), self.verbose);
+                return Err(Failure::new(
+                    Stage::Proxy,
+                    Class::Policy,
+                    format!("refused by the rule {}", picked.rule_name()),
+                ));
             };
-            if verbose {
+            if self.verbose {
                 eprintln!(
-                    "{}: front door {target} via {}",
+                    "{}: front door {text} via {}",
                     crate::cli::program_name(),
                     selected[0].endpoint()
                 );
             }
-            let mut upstream = match within_timeout(
+            let upstream = within_timeout(
                 "front door connect",
-                connect_upstream_async(selected, &target),
+                connect_upstream_async(selected, &text),
             )
-            .await
-            {
-                Ok(u) => u,
+            .await;
+            match upstream {
+                Ok(upstream) => Ok(Connected::new(crate::flowlog::counted(
+                    upstream, flow, &text,
+                ))),
                 Err(e) => {
-                    let _ = socks::socks5_reply(
-                        &mut reader,
-                        socks::socks5_code_for_error(&e.to_string()),
-                        None,
-                    )
-                    .await;
-                    return Err(e);
+                    // The reply code follows the words of the outer text.
+                    if self.verbose {
+                        eprintln!("{}: front door: {e:#}", crate::cli::program_name());
+                    }
+                    Err(Failure::new(
+                        Stage::Proxy,
+                        Class::Unavailable,
+                        e.to_string(),
+                    ))
                 }
-            };
-            socks::socks5_reply(&mut reader, 0x00, None).await?;
-            crate::flowlog::relay(&mut reader, &mut upstream, flow, &target).await;
-            Ok(())
-        }
-        Some(_) => {
-            let request = match tokio::time::timeout(
-                crate::opening::REQUEST_LIMIT,
-                socks::http_read_connect(&mut reader),
-            )
-            .await
-            {
-                Ok(read) => read?,
-                Err(_) => {
-                    crate::opening::refuse_slow(&mut reader, false).await;
-                    return Ok(());
-                }
-            };
-            let target = format!("{}:{}", request.host, request.port);
-            let picked = select_chain(rules, chain, &target);
-            let flow = crate::flowlog::decided("tcp", &target, &picked);
-            let Some(selected) = picked.chain() else {
-                crate::rules::note_refusal("front door", &target, picked.rule_name(), verbose);
-                let _ = socks::http_connect_reply(&mut reader, 403, "Forbidden").await;
-                return Ok(());
-            };
-            let mut upstream = match within_timeout(
-                "front door connect",
-                connect_upstream_async(selected, &target),
-            )
-            .await
-            {
-                Ok(u) => u,
-                Err(e) => {
-                    let _ = socks::http_connect_reply(&mut reader, 502, "Bad Gateway").await;
-                    return Err(e);
-                }
-            };
-            socks::http_connect_ok(&mut reader).await?;
-            crate::flowlog::relay(&mut reader, &mut upstream, flow, &target).await;
-            Ok(())
-        }
-        None => Ok(()),
+            }
+        })
     }
 }
 
-/// Read a SOCKS5 greeting and request, accepting any command so
-/// `UDP ASSOCIATE` is not rejected before it can be served.
-pub(crate) async fn read_socks5_command<S>(
-    stream: &mut S,
-) -> Result<(u8, crate::socks::ProxyRequest)>
-where
-    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
-{
-    crate::socks::socks5_read_command(stream).await
+/// The SOCKS5 commands that the pod carries through its first upstream, and
+/// the dialer cannot: UDP ASSOCIATE and UDP in the stream.
+struct PodUdp {
+    chain: Vec<Proxy>,
+    verbose: bool,
+}
+
+impl Extension for PodUdp {
+    fn command<'a>(
+        &'a self,
+        command: u8,
+        control: &'a mut dyn Duplex,
+    ) -> BoxFuture<'a, Result<bool>> {
+        Box::pin(async move {
+            match command {
+                0x03 => serve_udp_associate(control, &self.chain, self.verbose).await?,
+                pod_proxy::udp::CMD_UDP_IN_STREAM => {
+                    serve_udp_in_stream(control, &self.chain).await?
+                }
+                _ => return Ok(false),
+            }
+            Ok(true)
+        })
+    }
 }
 
 /// Answer a UDP association in the stream (issue 84) with the same
 /// association of the first upstream: the frames are the same on both
 /// connections, so the bytes are copied. An upstream that does not know the
 /// command gives 0x07 to the client, which then can use `UDP ASSOCIATE`.
-pub(crate) async fn serve_udp_in_stream(
-    mut control: tokio::io::BufReader<Upstream>,
-    chain: &[Proxy],
-) -> Result<()> {
-    use tokio::io::AsyncWriteExt;
+async fn serve_udp_in_stream<S>(control: &mut S, chain: &[Proxy]) -> Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin + ?Sized,
+{
     let refuse = [0x05, 0x07, 0x00, 0x01, 0, 0, 0, 0, 0, 0];
     let proxy = match chain.first() {
         Some(proxy) if proxy.kind == ProxyKind::Socks5 => proxy,
@@ -223,18 +203,16 @@ pub(crate) async fn serve_udp_in_stream(
         .write_all(&[0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
         .await?;
     control.flush().await?;
-    let _ = tokio::io::copy_bidirectional(&mut control, &mut up).await;
+    let _ = tokio::io::copy_bidirectional(control, &mut up).await;
     Ok(())
 }
 
 /// Answer `UDP ASSOCIATE` by relaying through the first upstream proxy's own
 /// association, so a UDP relay can chain through this instance.
-pub(crate) async fn serve_udp_associate(
-    mut control: tokio::io::BufReader<Upstream>,
-    chain: &[Proxy],
-    verbose: bool,
-) -> Result<()> {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+async fn serve_udp_associate<S>(control: &mut S, chain: &[Proxy], verbose: bool) -> Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin + ?Sized,
+{
     let proxy = chain.first().context("no upstream for UDP ASSOCIATE")?;
     if proxy.kind != ProxyKind::Socks5 {
         let _ = control
@@ -312,3 +290,7 @@ pub(crate) async fn serve_udp_associate(
     to_client.abort();
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "frontdoor_tests.rs"]
+mod tests;
