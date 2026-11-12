@@ -38,6 +38,7 @@ evidence behind it.
 | `overlays.md` | NetBird, Firezone and ZeroTier as networks (T-118, 2026-11-11) |
 | `iroh-relay.md` | The iroh road, and a relay and mailbox of podnet's own (T-130, 2026-11-11) |
 | `native-git.md` | A native git server with no installed `git`: gix, the protocol, the size, what podnet writes (T-122, 2026-11-11) |
+| `guest-wire-router.md` | The constraints of a guest-wire router on `pod-netstack`: tuple reuse, the dial and the handshake, the UDP queue (T-176, 2026-11-12) |
 | `podssh-copy.md` | What podnet copies from podssh, and in which order |
 | `hosted-relays.md` | The relays and mailboxes that others host for free: the magic-wormhole mailbox on 443, piping-server, the n0 iroh relays, Pinggy (2026-11-11) |
 
