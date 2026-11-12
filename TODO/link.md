@@ -2310,7 +2310,7 @@ Not proven: the route table (T-286); a dump of 256 KiB or more through the socke
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2344,6 +2344,12 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-264 is done.
+
+## Done
+
+2026-11-12, commit 6edc8b6. `podnet components [--json]` lists one row for each carrier of the registry (`src/carriers.rs`, read only) and each service (`ss`, `trojan`): `name`, `kind`, `framing`, `duplex`, `needs_privilege`, `available`, `reason`, `cost`, `feature`, `built`, `about`, `address`. The code is in `src/components.rs` (`podnet::components`, with `check_limits`: 64 rows, 4 KiB for each row) and `src/cli/cmd/components.rs`. A row of a feature that is off says `available: false`, `built: false`, the reason, and `null` for `framing` and `duplex`. The JSON has `features`, `excluded` (each feature that is off, with its reason, for the portable build) and `portable`. The manual has a section INVENTORY (`podnet man inventory`, `src/manual/inventory.rs`): text, man page and JSON. `docs/link.md`, `docs/cli.md`, the README map, `llms.txt` and `llms-full.txt` are updated.
+Tests: `cargo test --test cli components`: 3 passed (`components_json_has_one_row_for_each_carrier_and_service`, `a_row_of_a_feature_that_is_off_says_why`, `the_text_lists_each_row`). `cargo test --test cli manual`: `the_manual_has_a_section_for_each_compiled_component` passed; with the entry of `memory` removed from the manual it failed with `no section in the manual for "memory"`. Unit tests in `src/components.rs`: `a_row_has_the_stable_fields_and_the_limits`, `a_feature_that_is_off_is_unavailable_with_its_reason`, `the_manual_has_an_entry_for_each_row`. `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc and layers are 0. The test step has 4 failing targets (`cli` `a_dialer_of_another_uid_needs_allow_other_uid`, `link_unix`, two shim tests) only because the agent TMPDIR is under a directory of root with mode 0700, so uid 65534 cannot enter it; with `TMPDIR=/tmp/t310tmp` (mode 755) the four targets pass (89, 8, 1 and 11 tests).
+Not proven: a build with `--features full` (the rows of the compiled features were not run; the test code reads `built` from the output, so it covers them); the row of a service whose code exists (T-294, T-295 add it); the `portable` subset (T-305, blocked).
 
 # T-311: link: Cargo features for the link carriers and services (GitHub #476)
 

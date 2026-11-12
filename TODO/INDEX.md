@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**326 entries: 64 open, 19 partial, 22 blocked, 221 done.**
+**326 entries: 63 open, 19 partial, 22 blocked, 222 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 20 | 8 | 11 | 128 | 167 |
-| P3 | 44 | 10 | 9 | 65 | 128 |
-| **All** | 64 | 19 | 22 | 221 | 326 |
+| P3 | 43 | 10 | 9 | 66 | 128 |
+| **All** | 63 | 19 | 22 | 222 | 326 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -355,7 +355,7 @@ M8 Overlays, M9 Later.
 | [T-307](link.md) | P3 | M | M9 | feature | partial | link: the write verbs of the control plane (GitHub #476) |
 | [T-308](link.md) | P3 | S | M9 | feature | open | link: names for live links (GitHub #476) |
 | [T-309](link.md) | P3 | M | M9 | feature | partial | link: the redacted state dump and bug-report --include-link (GitHub #476) |
-| [T-310](link.md) | P3 | M | M9 | feature | open | link: the component inventory command (GitHub #476) |
+| [T-310](link.md) | P3 | M | M9 | feature | done | link: the component inventory command (GitHub #476) |
 | [T-311](link.md) | P3 | M | M9 | feature | done | link: Cargo features for the link carriers and services (GitHub #476) |
 | [T-312](fixes.md) | P2 | S | M5 | defect | done | tests/signals.rs: the test sends a stop signal before the ready of the command (flaky under load) |
 | [T-313](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.6`: the dry run, the publish and the release proofs |
