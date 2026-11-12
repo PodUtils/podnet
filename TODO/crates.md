@@ -799,6 +799,9 @@ Done so far:
   dependency names `tag = "v0.30.0"`. The relay client is glue over `pod-relay` (T-049).
 - v0.31.0 (PodUtils/podcrates#90): each `pod-*` dependency names `tag = "v0.31.0"`; no hand-off for podnet.
   `pod_identity::DisplayFingerprint` (ask A1) is in the crate. `cargo test --workspace --no-fail-fast`: 0 failed.
+- v0.32.0 (PodUtils/podcrates#93): each `pod-*` dependency names `tag = "v0.32.0"`; no hand-off. The operator of
+  `pod-relay` flushes each frame (podnet keeps its writer of T-315). The crate `pod-link` exists
+  (podcrates T-300, T-311): T-262 can take it. `cargo test --workspace --no-fail-fast`: 0 failed.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

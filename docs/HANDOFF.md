@@ -8,7 +8,7 @@ file when each step below is done.
 
 * All work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1
   (`rustup default 1.99.1`; the image has 1.97 as its default).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.31.0` (`pod-netstack` closes the gaps of #457 and #464)
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.32.0` (`pod-netstack` closes the gaps of #457 and #464)
   (T-137), with the watches of `pod-services` (0b945a3, #448) and `pod-wg`
   (089e1c9, #447).
 * The newest release is `v0.4.0-beta.5` at 8f53288 (T-256; release run 43122020833,

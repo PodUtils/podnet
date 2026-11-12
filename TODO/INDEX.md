@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**316 entries: 74 open, 16 partial, 24 blocked, 202 done.**
+**316 entries: 75 open, 16 partial, 23 blocked, 202 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 26 | 29 |
 | P2 | 20 | 8 | 10 | 123 | 161 |
-| P3 | 54 | 7 | 12 | 52 | 125 |
-| **All** | 74 | 16 | 24 | 202 | 316 |
+| P3 | 55 | 7 | 11 | 52 | 125 |
+| **All** | 75 | 16 | 23 | 202 | 316 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -307,7 +307,7 @@ M8 Overlays, M9 Later.
 | [T-259](fixes.md) | P2 | M | M5 | docs | done | The user documentation by topic: a short README and one document for each area |
 | [T-260](fixes.md) | P2 | M | M5 | feature | done | doctor: probes for the lanes `masque_udp443` and `ws_upgrade` (GitHub #461, A-C-10) |
 | [T-261](link.md) | P3 | M | M9 | feature | blocked | link: an Ed25519 key for each install, its fingerprint and an allow list (GitHub #466) |
-| [T-262](link.md) | P3 | L | M9 | feature | blocked | link: the session of streams with credit flow control and keepalive (GitHub #466) |
+| [T-262](link.md) | P3 | L | M9 | feature | open | link: the session of streams with credit flow control and keepalive (GitHub #466) |
 | [T-263](link.md) | P3 | M | M9 | feature | blocked | link: the 10-minute resume of a session through pod-session (GitHub #466) |
 | [T-264](link.md) | P3 | M | M9 | feature | open | link: a registry of carriers with an available() reason (GitHub #466) |
 | [T-265](link.md) | P3 | M | M9 | feature | open | link: the commands listen, dial, status, close and carriers (GitHub #466) |

@@ -69,7 +69,7 @@ T-086 is done (the take of `pod-identity`).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -111,10 +111,6 @@ cargo test --test link_session
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The take of `pod-link` of `PodUtils/podcrates` (podcrates T-300; PodUtils/podcrates#88): the multiplexer, the credits and the keepalive are in that crate, over `pod-session`. podcrates writes it when podnet starts the workstream: write a COORD issue (to podcrates) that names the first carrier.
-
 ## Start condition
 
 None. Send ask A2 first. The resume part waits for T-263.
@@ -124,6 +120,11 @@ None. Send ask A2 first. The resume part waits for T-263.
 2026-11-12: podcrates answered ask A2 (PodUtils/podcrates#88): `pod-link` is a crate of podcrates. No local crate podnet-link. The entries of this file that need the multiplexer, a carrier or the ARQ are takes of `pod-link`.
 
 2026-11-12: podnet started the workstream (GitHub #480, COORD-049): `pod-link` with the unix carrier (T-274) and the memory carrier (T-275) first.
+
+2026-11-12: podcrates v0.32.0 (PodUtils/podcrates#93) has `pod-link`: `Link::new(carrier, Role, Settings)`, `open`,
+`accept`, `close`; `Stream` (`AsyncRead`, `AsyncWrite`, `reset`); the `Carrier` trait with `available()`; the unix and
+memory carriers (calls C120 to C124). podnet takes it; the Blocker is gone. A link over a session of `pod-session`
+crosses the loss of its carrier (`dead_after` takes the `resume_deadline`).
 
 
 # T-263: link: the 10-minute resume of a session through pod-session (GitHub #466)
