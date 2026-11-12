@@ -2126,7 +2126,7 @@ T-311, T-310, T-262 and T-275 are done, and the owner rules for another platform
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2160,6 +2160,20 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-264 is done.
+
+## Correction
+
+- The ruling of 2026-11-12 (`docs/decisions.md`, "The link crate: pod-link of podcrates") puts the multiplexer and the carriers in `pod-link`. podnet has no link crate. The parser is the CLI surface of podnet, so it is `src/link_query.rs` in podnet, not a new crate.
+- `name` is parsed and checked (1 to 32 characters of `a-z 0-9 -`). It is not wired to the record: T-308 wires it. Until then a command that gets `name` exits 64 and names T-308.
+- The key `carrier` has an effect: it takes the place of `--carrier`. Each other key is parsed and checked, and a command that gets one exits 64 and names the entry that adds it (`podnet::link_query::KEYS`). `retry` names T-263 and `window` names T-262: no entry of their own exists, so the entry named is the nearest one. The owner can add the entries.
+- `mtu` is checked against the carrier (`carriers::check_query`): a stream carrier has no unit, and a value over the unit exits 64. `window` is checked against the range of `pod_link::Settings`, in the parser.
+
+## Done
+
+2026-11-12, commit 6524965. `src/link_query.rs` (`podnet::link_query`) splits `ADDRESS?key=value&...` at the first `?` and checks the query: the 11 allowed keys, each key once, an unknown key lists the allowed keys (and does not show the unknown name), `password`, `key`, `token` and `identity` refused with or without a value, 16 keys and 1024 bytes at most, printable ASCII values with one level of percent-encoding, and a range or a word list for each key. No message shows a value. `carriers::check_query` checks `mtu` against the facts of the carrier. `link listen`, `link dial` and `link connect` call `apply_query` first, before any socket opens. `docs/link.md` has the table of keys, the help text of the three commands has the form, and `llms-full.txt` is regenerated.
+Tests: `cargo test --test cli query`: 9 passed (`a_repeated_key_exits_64`, `an_unknown_key_exits_64_and_lists_the_keys`, `a_secret_key_is_refused_with_or_without_a_value`, `a_bad_value_exits_64_and_is_not_echoed`, `the_limits_exit_64`, `a_key_with_no_effect_names_its_entry`, `mtu_of_a_stream_carrier_exits_64`, `the_carrier_key_takes_the_place_of_the_flag`, `a_valid_carrier_key_reaches_the_carrier`), and 10 unit tests in `link_query` and 2 in `carriers`. With the three commands not calling `apply_query`, 8 of the 9 tests failed. Each refusal test runs the three commands, checks exit 64, that the secret value `zzsecretzz` is not in stdout or stderr, and that the path was not tried.
+Not proven or not done: `tls`, `retry`, `lb`, `compress`, `pad`, `maxhops`, `poll`, `window` and `name` have no effect (see Correction). A `window` check by a carrier is not done: the range is the one of the link settings. A unix path that holds `?` cannot be used.
+
 
 # T-307: link: the write verbs of the control plane (GitHub #476)
 
