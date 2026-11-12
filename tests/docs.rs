@@ -68,6 +68,26 @@ fn a_stable_release_note_is_checked() {
     assert_eq!(bad, ["v0.3.0.md: no ## Breaking"]);
 }
 
+/// The topic documents that hold the detail of the former README (T-258).
+const TOPIC_DOCUMENTS: &[&str] = &[
+    "docs/install.md",
+    "docs/tunnels.md",
+    "docs/serve.md",
+    "docs/warp.md",
+    "docs/pods.md",
+    "docs/networks.md",
+    "docs/router.md",
+    "docs/forward.md",
+    "docs/relay.md",
+    "docs/egress.md",
+    "docs/proxies.md",
+    "docs/background.md",
+    "docs/doctor.md",
+    "docs/cli.md",
+    "docs/library.md",
+    "docs/build.md",
+];
+
 /// Each repository path in backticks in the documents exists (podssh: a
 /// document named scripts in the wrong directory).
 #[test]
@@ -83,6 +103,10 @@ fn each_path_in_the_documents_exists() {
         "docs/decisions.md",
         "docs/development.md",
     ];
+    let documents = documents
+        .iter()
+        .copied()
+        .chain(TOPIC_DOCUMENTS.iter().copied());
     let prefixes = [
         "scripts/", "docs/", "src/", "tests/", "crates/", ".github/", "fuzz/",
     ];
@@ -129,14 +153,18 @@ fn the_security_gaps_have_no_stale_yet() {
 }
 
 /// Issue 176: a flag of `podnet warp` is not a global flag of podnet. The
-/// README called the flags of WarpArgs "global".
+/// README called the flags of WarpArgs "global". The text now is in
+/// `docs/warp.md` (T-258).
 #[test]
 fn the_readme_does_not_call_warp_flags_global() {
-    let readme =
-        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md")).unwrap();
-    for line in readme.lines() {
-        if line.contains("(global") && line.contains("PODNET_WARP_") {
-            panic!("a flag of podnet warp is called global: {line}");
+    for name in ["README.md", "docs/warp.md"] {
+        let text =
+            std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(name))
+                .unwrap();
+        for line in text.lines() {
+            if line.contains("(global") && line.contains("PODNET_WARP_") {
+                panic!("{name}: a flag of podnet warp is called global: {line}");
+            }
         }
     }
     // A global flag before the command of podnet is refused for a warp flag.
@@ -147,14 +175,14 @@ fn the_readme_does_not_call_warp_flags_global() {
     assert_eq!(out.status.code(), Some(64));
 }
 
-/// The python block of the README section "Ephemeral hosts".
+/// The python block of the section "Ephemeral hosts" of `docs/install.md`.
 fn readme_notebook_cell() -> String {
-    let readme =
-        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md")).unwrap();
-    let section = readme
-        .split("### Ephemeral hosts")
+    let text =
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/install.md")).unwrap();
+    let section = text
+        .split("## Ephemeral hosts")
         .nth(1)
-        .expect("the README has the section");
+        .expect("docs/install.md has the section");
     let block = section
         .split("```python\n")
         .nth(1)
@@ -164,7 +192,7 @@ fn readme_notebook_cell() -> String {
 }
 
 /// Issue 192: the notebook is valid nbformat 4 with no outputs, and its
-/// code cell is the cell of the README.
+/// code cell is the cell of `docs/install.md`.
 #[test]
 fn the_notebook_is_the_cell_of_the_readme() {
     let text = std::fs::read_to_string(concat!(
@@ -265,6 +293,46 @@ fn the_readme_has_no_relative_link() {
     }
 }
 
+/// T-258: the README is short, and it links each topic document.
+#[test]
+fn the_readme_is_short_and_links_each_topic_document() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let text = std::fs::read_to_string(root.join("README.md")).unwrap();
+    assert!(text.lines().count() <= 250, "the README has over 250 lines");
+    for doc in TOPIC_DOCUMENTS {
+        let url = format!("https://github.com/PodUtils/podnet/blob/main/{doc}");
+        assert!(text.contains(&url), "the README does not link {doc}");
+    }
+}
+
+/// T-258: each relative link of a topic document is a file that exists.
+#[test]
+fn each_relative_link_of_the_topic_documents_resolves() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut missing = Vec::new();
+    let mut seen = 0;
+    for doc in TOPIC_DOCUMENTS {
+        let text = std::fs::read_to_string(root.join(doc)).unwrap();
+        let dir = root.join(doc).parent().unwrap().to_path_buf();
+        for part in text.split("](").skip(1) {
+            let target = part.split(')').next().unwrap_or("");
+            if target.starts_with("http")
+                || target.starts_with('#')
+                || target.starts_with("mailto:")
+            {
+                continue;
+            }
+            let file = target.split('#').next().unwrap_or("");
+            seen += 1;
+            if !dir.join(file).exists() {
+                missing.push(format!("{doc}: {target}"));
+            }
+        }
+    }
+    assert!(seen > 20, "the test found only {seen} links");
+    assert!(missing.is_empty(), "links to missing files: {missing:#?}");
+}
+
 /// #256: the section "UDP in the stream" of the podnet-netns README comes
 /// after the list of the seccomp backend, not inside it.
 #[test]
@@ -279,11 +347,11 @@ fn the_seccomp_list_of_podnet_netns_is_one_list() {
 }
 
 /// #257: each command whose help has --detach is named in the sentence
-/// of the README about --detach.
+/// of `docs/background.md` about --detach.
 #[test]
 fn the_readme_names_each_command_with_detach() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let text = std::fs::read_to_string(root.join("README.md")).unwrap();
+    let text = std::fs::read_to_string(root.join("docs/background.md")).unwrap();
     let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
     let at = flat
         .find("`--detach` works with")
@@ -349,14 +417,16 @@ fn the_tag_scan_reads_each_beta_tag() {
     );
 }
 
-/// #258: each release tag that the README, the notebook or a help text
+/// #258: each release tag that the README, a topic document, the notebook or a help text
 /// names has a release note: a tag in an example is not invented. T-022: the
 /// scan reads each `vX.Y.Z-beta.N`.
 #[test]
 fn each_tag_in_the_documents_has_a_release_note() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut missing = Vec::new();
-    for name in ["README.md", "notebooks/install.ipynb", "src/main.rs"] {
+    let mut names = vec!["README.md", "notebooks/install.ipynb", "src/main.rs"];
+    names.extend(TOPIC_DOCUMENTS);
+    for name in names {
         let text = std::fs::read_to_string(root.join(name)).unwrap();
         for tag in beta_tags(&text) {
             if !root.join(format!("docs/releases/{tag}.md")).exists() {

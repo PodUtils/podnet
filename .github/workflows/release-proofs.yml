@@ -1,6 +1,6 @@
 name: release proofs
 
-# The proofs of a published release, checked on a fresh runner as README.md
+# The proofs of a published release, checked on a fresh runner as docs/install.md
 # tells a user to check them:
 #
 # * SHA256SUMS has one line for each binary (and for podnet.1 when the release
@@ -134,7 +134,7 @@ jobs:
           }
           check cosign "$workflow@refs/tags/$TAG" SHA256SUMS
           check "$RUNNER_TEMP/cosign2/cosign" "$workflow@refs/tags/$TAG" SHA256SUMS
-          # The release workflow at any release tag, as README.md shows it.
+          # The release workflow at any release tag, as docs/install.md shows it.
           cosign verify-blob --bundle SHA256SUMS.sigstore.json \
             --certificate-identity-regexp "^https://github.com/$GITHUB_REPOSITORY/\.github/workflows/release\.yml@refs/tags/v" \
             --certificate-oidc-issuer "$issuer" SHA256SUMS

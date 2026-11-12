@@ -72,7 +72,14 @@ These rules apply to each session. Obey them before any other default.
   --target x86_64-unknown-linux-musl`.
 - The debug `target/` can grow past 20 GB. Remove `target/debug` when the
   disk is full.
-- Documents: `README.md`, `docs/protocol.md`, `docs/virtual-network.md`,
+- Documents: `README.md` (short: the overview, the install, a map of the
+  capabilities), the topic documents `docs/install.md`, `docs/tunnels.md`,
+  `docs/serve.md`, `docs/warp.md`, `docs/pods.md`, `docs/networks.md`,
+  `docs/router.md`, `docs/forward.md`, `docs/relay.md`, `docs/egress.md`,
+  `docs/proxies.md`, `docs/background.md`, `docs/doctor.md`, `docs/cli.md`,
+  `docs/library.md`, `docs/build.md` (a new capability goes into its topic
+  document, and into the map of the README), `docs/protocol.md`,
+  `docs/virtual-network.md`,
   `docs/target-environment.md`, `docs/maintenance.md`, `docs/decisions.md`,
   `docs/development.md`, `crates/podnet-netns/README.md`, `docs/releases/`,
   `docs/reports/` (reports and the text of issues that GitHub deleted),

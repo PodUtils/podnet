@@ -29,7 +29,7 @@ suffix, for example `v0.3.0-beta.1`) is replaced by the next release.
 * Dependabot opens the updates of crates, actions and images each week.
 
 The release files have checksums, provenance and a signature. See "Release
-binaries" in `README.md`.
+binaries" in `docs/install.md`.
 
 ## What Cloudflare can see
 

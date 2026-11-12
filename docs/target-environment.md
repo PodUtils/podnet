@@ -9,6 +9,22 @@ Each fact has a date and a mark:
 * **measured**: a command ran on the host, and the result is given.
 * **inferred**: the fact comes from the code or from documents, not from a run.
 
+## Limits and the parts of podnet for them
+
+| Limit on the host | Part of `podnet` | Tested |
+| --- | --- | --- |
+| No UDP to the edge | HTTP/2 edge leg on TCP 7844 | CI, live against the Cloudflare edge |
+| Only TCP 443 out | QUIC edge leg inside WARP (MASQUE) | CI, live |
+| No DNS resolver | DNS over HTTPS by IP address (1.1.1.1, 8.8.8.8), then a static edge list | CI and a sandbox with an HTTP proxy |
+| Egress through a proxy only | HTTP `CONNECT`, SOCKS5 and `NO_PROXY` for each connection | `tests/egress.rs` |
+| No root, no TUN, no network namespace | `podnet pod` (seccomp backend), `podnet warp run` | CI and a sandbox |
+| No `AF_INET` bind | `podnet net` (shim and userspace stack), unix-socket origins | CI and a sandbox |
+
+The live workflow (`.github/workflows/live.yml`, on each push and each day) runs `podnet demo` with each
+edge leg on a GitHub runner and fetches the public URL. One limit stays: a proxy that terminates TLS cannot
+carry the edge connection or the MASQUE connection, because both need the Cloudflare certificate chain
+(and MASQUE needs a client certificate).
+
 ## Measured hosts
 
 ### A sandbox with an egress proxy (2026-11-01)

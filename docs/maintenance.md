@@ -249,7 +249,7 @@ At the first stable release (no `-beta.N`), also:
 * Set the version of the workspace and of the `podnet-core`,
   `podnet-netns`, `podnet-serve` and `podnet-vnet` dependencies to the stable version (#222): a prerelease version requirement does not
   match a stable crate.
-* Rewrite the line of the README that says `:latest` has no image (#258).
+* Rewrite the line of `docs/install.md` that says `:latest` has no image (#258).
 * Decide the crates.io publish of `podnet` (the owner reserved `podnet` as
   a 0.0.0 placeholder, #224; `docs/decisions.md`), and set `documentation` in
   both manifests. `publish.yml` publishes by trusted publishing when

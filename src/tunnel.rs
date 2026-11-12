@@ -1301,7 +1301,7 @@ mod tests {
         assert!(limit(LegKind::H2Direct) >= h2, "http2");
         assert!(limit(LegKind::H2Relay) >= h2, "http2+relay");
         assert_eq!(attempt_limit(LegKind::QuicWarp), None);
-        // README.md and docs/protocol.md section 3.3 give these values.
+        // docs/tunnels.md and docs/protocol.md section 3.3 give these values.
         assert_eq!(limit(LegKind::QuicDirect).as_secs(), 130);
         assert_eq!(limit(LegKind::H2Direct).as_secs(), 280);
     }

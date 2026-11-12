@@ -1595,7 +1595,7 @@ scripts/agent/check.sh` exits 0. CI: at the merge.
    name already holds a pool address keeps the pool address. State it in the README.
 2. `address_for` returns `Option<Ipv4Addr>`. At `next >= FAKE_IP_COUNT` it returns `None`, with no
    insert. Add `RCODE_SERVFAIL = 2`. `answer` returns SERVFAIL on `None`.
-3. Update `README.md:189-195`: the pool bound, case-insensitivity, SERVFAIL at the end.
+3. Update `docs/proxies.md:55-60`: the pool bound, case-insensitivity, SERVFAIL at the end.
 
 ## Prove
 
@@ -1944,7 +1944,7 @@ allowlist, or (2) a statement that they are snapshots.
 
 - Read: `TODO/RULES.md:56` says that these directories "are readings at a time". `TODO/todo.toml:15`
   lists them as `readings`. `architecture.md:3` names its commit (`3bed023`, 2026-11-04).
-  `tests/docs.rs:74-85` reads eight documents, not these.
+  `tests/docs.rs:94-105` reads eight documents, not these.
 - Read: the live plan is the record. T-040 (`TODO/split.md:810`) still says that `seccomp.rs` has 1,900
   lines, and "do this entry before T-063 starts, or after T-067 is done". Now `seccomp.rs` has 1516
   lines and T-063 to T-067 are done. This is a stale figure in the record, not in a reading.
@@ -2613,16 +2613,16 @@ python3 scripts/check-size.py
 
 ## Problem
 
-`NEEDS` (`crates/podnet-vnet/src/doctor.rs:122-129`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`crates/podnet-vnet/src/switch.rs:413-415`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:110` repeats the short list.
+`NEEDS` (`crates/podnet-vnet/src/doctor.rs:122-129`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`crates/podnet-vnet/src/switch.rs:413-415`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:126` repeats the short list.
 
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:298-299`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `README.md:1067-1069` uses `net switch --listen tcp://` as its example.
+- `docs/networks.md:35-37` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
-1. Rewrite `NEEDS` with each command and the default form. Fix `docs/target-environment.md:110`.
+1. Rewrite `NEEDS` with each command and the default form. Fix `docs/target-environment.md:126`.
 2. A test reads the `--listen` flags of the command tree and fails when a command is not in `NEEDS` (a generated table is a later step).
 
 ## Prove
@@ -3162,7 +3162,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `README.md:1204-1210`.
+- `src/cli/cmd/host.rs:234-244` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:61-67`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3204,9 +3204,9 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 - `crates/podnet-serve/src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-89` (`resolve`), test `:603-607` asserts `"a b"`.
 - `crates/podnet-serve/src/files/mod.rs:257-272`, `:170`. `crates/podnet-serve/src/ingress.rs:200-203`, test `:635-648` (`"a + stays a +"`).
-- `README.md:493-494`.
-- One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder (`:243-245`, test
-  `:738`). The CLI decoder returns `None` (`crates/podnet-serve/src/files/mod.rs:262-265`), so the request is refused. A short escape at the
+- `docs/serve.md:54-55`.
+- One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder
+  (`crates/podnet-serve/src/origin/static_files.rs:242-260`, test `:616-618`). The CLI decoder returns `None` (`crates/podnet-serve/src/files/mod.rs:262-265`), so the request is refused. A short escape at the
   end (`i + 2 < len`) also differs.
 
 ## Approach
@@ -3403,12 +3403,12 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Problem
 
-`README.md:845-846` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`docs/warp.md:95-100` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
 `-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
 
 ## Premise
 
-- `README.md:842-846`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `docs/warp.md:91-100`. `src/warp/proxy.rs:507-527` (the dial closure: `rules::current()`, `decide_static`, three actions).
 - `src/cli/cmd/warp/args.rs:340-344` (help). `src/warp/rules.rs:304-309`, tests `:316-331`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
@@ -4632,3 +4632,63 @@ sh scripts/agent/check.sh
 code): `each_secret_variable_stays_out_of_the_record`, `the_error_program_withholds_the_list_of_the_instances`,
 `tail_reads_a_log_with_an_invalid_byte`. `sh scripts/agent/check.sh`: all 0. Not proven: the rendered rustdoc;
 the corrections of the bodies of #442 and #443 (the lead amends the issues).
+
+
+# T-259: The user documentation by topic: a short README and one document for each area
+
+**Source:** the owner, 2026-11-12
+**Category:** docs
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** done
+
+## Problem
+
+The owner: "the readme for instance is too long, and doesn't even talk about half the capabilities we
+have and also doesn't describe podnet accurately since now it is a swiss army knife, move dedicated to
+docs/ by topic".
+
+`README.md` has 1618 lines. It does not cover the router, the kernel mode, the forwards, `bench`,
+`ssh-relay`, NetBird, the network registry, `--egress`, `--help --json`, the llms files or the JSON of
+`doctor`. It describes podnet as the work of three tools.
+
+## Premise
+
+- `README.md` was read in full. The help of the binary at this commit is the source for the new text.
+- `tests/docs.rs` pins README sections: the cell of `notebooks/install.ipynb`, the `--detach` sentence, the
+  flags of `warp`, the release tags, and the paths in backticks.
+- The README of a crate page cannot have relative links (`tests/docs.rs`): a link is a full URL.
+
+## Approach
+
+1. Make `README.md` short: what podnet is, install, quick start, a map of the capabilities with a link to
+   each document, the list of the documents, the license and the note on the former name.
+2. Move the detail of the README to topic documents in `docs/` and add the missing capabilities, each
+   checked against the help of the binary.
+3. Fix the links, the tests that pin README text (move each pin to the new document), the manual, the
+   notebook, `CLAUDE.md` and `scripts/gen-llms.py`; regenerate `llms.txt` and `llms-full.txt`.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+python3 -I scripts/gen-llms.py --check $CARGO_TARGET_DIR/debug/podnet
+```
+
+## Done
+
+2026-11-12, 6f7da93 (the README and the tests; c594eb2 has the documents, 4682aa0 the entry). `README.md` has 145
+lines: what podnet is, install, quick start, a map of the capabilities and the list of the documents. The detail
+is in 16 topic documents in `docs/`: install, tunnels, serve, warp, pods, networks, proxies, relay, background,
+doctor, cli, library, build (moved) and router, forward, egress (new). The capabilities that the README did not
+cover (router, kernel mode, `--check --to`, `--status`, mwan-json, forward and the DNS door, `expose`,
+`ssh-relay`, NetBird, the network registry and `--egress`, `bench`, `bug-report`, `--help --json`, the llms files,
+the doctor JSON keys, the rules and the audit of `pod`) are written from the help of the binary and from the code.
+`tests/docs.rs` reads the install cell, the `--detach` sentence and the warp flags in the new documents, and has
+two new tests: the README is at most 250 lines and links each topic document, and each relative link of the topic
+documents resolves. `scripts/gen-llms.py` lists the new documents; `llms.txt` and `llms-full.txt` are regenerated.
+The proxy example with a user and a password in the old README is now `PODNET_PROXY="$PROXY_URL"` in `docs/proxies.md`.
+Not proven: the new text was read against the help and the code, not run against each live service. GitHub #89
+(the test guide) could not be read from the sandbox (HTTP 403).
+

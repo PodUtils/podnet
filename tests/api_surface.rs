@@ -1,11 +1,11 @@
-//! The library surface the README promises, compiled.
+//! The library surface that `docs/library.md` promises, compiled.
 //!
 //! The doc examples on `lib.rs`, `warp` and `warp::edge` are the three shapes a
 //! caller actually writes, and `cargo test --doc` cannot run on every host (on
 //! one development host rustdoc re-execs a `rustc` that sits on a `noexec`
 //! mount). This file compiles the same shapes against the real crate, so the
 //! claim "it is usable as a library" is checked by `cargo test` rather than by
-//! reading the README.
+//! reading `docs/library.md`.
 //!
 //! Nothing here runs a tunnel: these are type and borrow checks. The live proofs
 //! are `examples/warp_prove.rs` and `examples/warp_tunnel.rs`.

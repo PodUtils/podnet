@@ -762,7 +762,7 @@ namespace, with an `AF_PACKET` socket on one end, can carry the frames to the sa
   handoff (`crates/podnet-netns/src/netns/mod.rs:96,168`) are reusable. `doctor.rs:70,281` gates `auto` on the TUN probe.
 - smoltcp has `medium-ip` only (`Cargo.toml:144`, `crates/podnet-netns/Cargo.toml:36`): add `medium-ethernet`.
 - `docs/research/podnet/vn.md:313` is plan item P5; `vn.md:411` asks if any target host has no TUN. No
-  measured host lacks it (`docs/target-environment.md:33`).
+  measured host lacks it (`docs/target-environment.md:49`).
 - The veth needs one small `RTM_NEWLINK` writer. Checksums: skip RX verification on this device.
 - Overlap: #352 (netfilter instead of smoltcp).
 
