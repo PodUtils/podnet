@@ -187,9 +187,10 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #507 | net: add a TURN network for UDP flows | open (blocked: `pod-turn` of podcrates) | T-321 |
 | #508 | COORD-053: podnet took v0.32.0 at fa6b5ba; pod-link is next (to podcrates) | open (a COORD issue between sessions) | none |
 | #509 | COORD-054: the mapped loopback address is now dialed direct (T-317); it comes in v0.4.0-beta.7 (to podrunner) | open (a COORD issue between sessions) | none |
-| #510 | COORD-055: asks from GitHub #503 to #507: pod-devtunnel, pod-turn, a remote-port fact, the Serveo URL rule (to podcrates) | open (a COORD issue between sessions) | none |
+| #510 | COORD-055: asks from GitHub #503 to #507: pod-devtunnel, pod-turn, a remote-port fact, the Serveo URL rule (to podcrates) | closed (a COORD issue between sessions) | none |
 | #511 | live: two runs in a row failed | closed | T-323 |
-| #512 | COORD-056: podnet takes pod-identity and pod-session (T-261, T-263); three small asks (to podcrates) | open (a COORD issue between sessions) | none |
+| #512 | COORD-056: podnet takes pod-identity and pod-session (T-261, T-263); three small asks (to podcrates) | closed (a COORD issue between sessions) | none |
 | #513 | COORD-057: podnet starts the network carriers of the link: TCP with TLS first (T-268; your T-304, A7) (to podcrates) | open (a COORD issue between sessions) | none |
+| #514 | COORD-058: podnet took v0.33.0 at 797104f (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
