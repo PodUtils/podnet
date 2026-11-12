@@ -3,9 +3,9 @@
 //! The router is a stack with `any_ip` and `listen_any` / `bind_udp_any`. The
 //! guest is a second stack. Each test measures one constraint of
 //! `docs/research/podnet/guest-wire-router.md` and pins the behavior of the
-//! version of `pod-netstack` in `Cargo.lock`. A test that names a gap of
-//! `pod-netstack` fails when the crate closes the gap: then change the test
-//! and the note.
+//! version of `pod-netstack` in `Cargo.lock` (v0.27.0). A test that names a
+//! gap of `pod-netstack` fails when the crate closes the gap: then change the
+//! test and the note.
 
 mod wire;
 
@@ -69,7 +69,8 @@ async fn guest_wire_closed_tuple_is_free_at_once() {
 /// for the tuple while the router still holds the flow. The old socket
 /// answers the SYN with an ACK, the guest answers it with a RST, and the SYN
 /// that the guest sends again (1 s after the first) opens the new flow. The
-/// router app of the old flow reads an end of file, not an error.
+/// RST of the guest reaches the old socket: the router app of the old flow
+/// reads `ConnectionReset` (v0.27.0; v0.26.0 gave an end of file).
 #[tokio::test]
 async fn guest_wire_stale_tuple_is_released_by_a_new_syn() {
     let router = NetStack::over_link(router_config());
@@ -105,10 +106,12 @@ async fn guest_wire_stale_tuple_is_released_by_a_new_syn() {
         .await
         .unwrap();
     assert_eq!(fresh.local_addr(), dst);
+    let mut byte = [0u8; 1];
+    let end = within(5, "read of the old flow", stale.read(&mut byte)).await;
     assert_eq!(
-        read_all(&mut stale).await,
-        0,
-        "the old flow ends as an end of file"
+        end.unwrap_err().kind(),
+        std::io::ErrorKind::ConnectionReset,
+        "the old flow ends with a reset"
     );
 }
 
@@ -165,12 +168,11 @@ async fn guest_wire_held_syn_dials_before_the_handshake() {
     );
 }
 
-/// Constraint 2: a dial that fails after the handshake cannot reset the
-/// guest. `TcpStream::abort` sends no RST (the reactor removes the socket
-/// in the same pass), so the guest keeps an open flow that nothing serves.
-/// Gap of `pod-netstack`; the ask is in the note.
+/// Constraint 2: a dial that fails after the handshake resets the guest.
+/// `TcpStream::abort` sends its RST (v0.27.0): the guest reads
+/// `ConnectionReset`, and one RST crosses the wire down.
 #[tokio::test]
-async fn guest_wire_abort_after_the_handshake_sends_no_reset() {
+async fn guest_wire_abort_after_the_handshake_resets_the_guest() {
     let (router, guest, wire) = pair(router_config(), guest_config());
     let mut listener = router.listen_any(443).await.unwrap();
     let mut c = guest.connect(at(DST, 443)).await.unwrap();
@@ -178,20 +180,19 @@ async fn guest_wire_abort_after_the_handshake_sends_no_reset() {
     let s = within(3, "accept", listener.accept()).await.unwrap();
     s.abort();
     let mut byte = [0u8; 1];
-    let read = tokio::time::timeout(Duration::from_secs(1), c.read(&mut byte)).await;
-    assert!(read.is_err(), "the guest saw the end of the flow: {read:?}");
-    assert_eq!(wire.resets.down.load(Ordering::Relaxed), 0);
-    assert!(
-        c.write_all(b"zz").await.is_ok(),
-        "the guest writes to a flow that is gone"
+    let read = within(3, "read of the reset", c.read(&mut byte)).await;
+    assert_eq!(
+        read.unwrap_err().kind(),
+        std::io::ErrorKind::ConnectionReset
     );
+    assert_eq!(wire.resets.down.load(Ordering::Relaxed), 1);
 }
 
-/// Constraint 2: the accept queue holds four times the pool (32 flows at
-/// the default). A flow past it has its handshake and is dropped with no
-/// RST: the guest has an open flow, the router counts `dropped`.
+/// Constraint 2: `accept_pool` is gone (v0.27.0). 60 flows with no `accept`
+/// call all have their handshake, all reach the accept queue, and none is
+/// dropped. No RST crosses the wire.
 #[tokio::test]
-async fn guest_wire_accept_queue_drops_a_flow_after_the_handshake() {
+async fn guest_wire_a_burst_of_flows_all_reach_accept() {
     let (router, guest, wire) = pair(router_config(), guest_config());
     let mut listener = router.listen_any(443).await.unwrap();
     let mut flows = Vec::new();
@@ -216,9 +217,46 @@ async fn guest_wire_accept_queue_drops_a_flow_after_the_handshake() {
     {
         accepted += 1;
     }
-    let stats = router.stats();
-    assert_eq!(accepted, 32);
-    assert_eq!(stats.dropped, 28);
+    assert_eq!(accepted, 60);
+    assert_eq!(router.stats().dropped, 0);
+    assert_eq!(wire.resets.down.load(Ordering::Relaxed), 0);
+}
+
+/// Constraint 2: `max_connections` counts the open and the half-open
+/// connections (v0.27.0). A SYN past it is dropped with no RST and counted
+/// in `NetStats::dropped`; the guest keeps the flow in `SynSent`.
+#[tokio::test]
+async fn guest_wire_max_connections_drops_a_syn_with_no_reset() {
+    const LIMIT: usize = 16;
+    let router_limited = StackConfig {
+        max_connections: LIMIT,
+        ..router_config()
+    };
+    let (router, guest, wire) = pair(router_limited, guest_config());
+    let mut listener = router.listen_any(443).await.unwrap();
+    let mut flows = Vec::new();
+    for _ in 0..40 {
+        flows.push(guest.connect(at(DST, 443)).await.unwrap());
+    }
+    let mut established = 0;
+    for flow in flows.iter_mut() {
+        if tokio::time::timeout(Duration::from_millis(500), flow.established())
+            .await
+            .is_ok_and(|r| r.is_ok())
+        {
+            established += 1;
+        }
+    }
+    assert_eq!(established, LIMIT);
+    let mut accepted = 0;
+    while tokio::time::timeout(Duration::from_millis(100), listener.accept())
+        .await
+        .is_ok()
+    {
+        accepted += 1;
+    }
+    assert_eq!(accepted, LIMIT);
+    assert!(router.stats().dropped >= 24, "{}", router.stats().dropped);
     assert_eq!(wire.resets.down.load(Ordering::Relaxed), 0);
 }
 
@@ -347,11 +385,11 @@ async fn guest_wire_partial_write_keeps_the_byte_order() {
     let _ = writer.await;
 }
 
-/// A drop of the router stream right after `write_all` loses the queued
-/// bytes (gap 2 of PodUtils/podnet#457). A `shutdown` and a held handle
-/// deliver each byte: the rule for a router.
+/// A drop of the router stream right after `write_all` sends each queued
+/// byte, then the FIN (v0.27.0; gap 2 of PodUtils/podnet#457 is closed). A
+/// `shutdown` with a held handle delivers each byte too.
 #[tokio::test]
-async fn guest_wire_a_drop_loses_the_tail_and_a_held_shutdown_does_not() {
+async fn guest_wire_a_drop_delivers_the_tail_like_a_held_shutdown() {
     let small = |c: StackConfig| StackConfig {
         tcp_buffer: 4096,
         ..c
@@ -365,8 +403,7 @@ async fn guest_wire_a_drop_loses_the_tail_and_a_held_shutdown_does_not() {
     let mut s = within(3, "accept", listener.accept()).await.unwrap();
     s.write_all(&vec![5u8; TAIL]).await.unwrap();
     drop(s);
-    let lost = read_all(&mut c).await;
-    assert!(lost < TAIL, "the gap is closed: update the note ({lost})");
+    assert_eq!(read_all(&mut c).await, TAIL);
     // A shutdown, and the handle held to the end of the guest.
     let mut c = guest.connect(at(DST, 443)).await.unwrap();
     within(3, "handshake", c.established()).await.unwrap();

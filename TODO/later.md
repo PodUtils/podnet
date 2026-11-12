@@ -1268,7 +1268,7 @@ cargo test -p podnet-netns -- a_partial_stream_write_keeps_the_record_stream_ali
 
 ## Start condition
 
-None: the owner ruled. The netstack of `pod-netstack` (taken at v0.20.0, now v0.26.0) carries the guest wire.
+None: the owner ruled. The netstack of `pod-netstack` (taken at v0.20.0, now v0.27.0) carries the guest wire.
 
 ## Correction
 
@@ -1621,6 +1621,12 @@ T-249 is done.
 - The router cannot refuse a flow after the handshake: `TcpStream::abort` sends no RST, and the accept queue (32
   flows) drops a flow with no RST. These are asks for `pod-netstack` (the note, section 3, asks 1 and 2), beside
   the three gaps of PodUtils/podnet#457. Until they close, T-248 holds the hold of the SYN and uses `shutdown`.
+- 2026-11-12, v0.27.0 (T-137): `pod-netstack` v0.27.0 closed asks 1 and 2 and the three gaps of
+  PodUtils/podnet#457. `abort` sends its RST, so the router refuses a flow after the handshake with `abort`. The
+  accept queue is gone (`accept_pool` is gone): no flow is lost after the handshake, and a SYN past
+  `max_connections` is dropped with no RST. A drop of a stream sends each queued byte. A stale tuple ends the old
+  flow with `ConnectionReset`. Asks 3 to 5 (the UDP counters, the error for an oversized datagram, `peek_slice`)
+  stay open in PodUtils/podnet#464. The hold of the SYN stays: the stack still ends the handshake before `accept`.
 - Approach 3: the UDP path loses a datagram over `mtu - 28` and a burst past 113 datagrams with no error and no
   counter (asks 3 to 5). The router needs its own bounded queue and its own counters. T-248 decides the smoltcp
   features for IPv4 fragmentation (measured: they carry a datagram of 65507 bytes).

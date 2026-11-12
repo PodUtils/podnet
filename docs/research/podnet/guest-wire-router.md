@@ -1,7 +1,7 @@
 # Guest-wire router on pod-netstack: the constraints
 
-> Measured on 2026-11-12 with `pod-netstack` v0.26.0 (smoltcp 0.14.0) as `Cargo.lock` holds it. Record entry:
-> T-176. Router entry: T-248. Tests: `crates/podnet-vnet/tests/guest_wire.rs` (11 tests, with the helpers in
+> Measured on 2026-11-12 with `pod-netstack` v0.27.0 (smoltcp 0.14.0) as `Cargo.lock` holds it. Record entry:
+> T-176. Router entry: T-248. Tests: `crates/podnet-vnet/tests/guest_wire.rs` (12 tests, with the helpers in
 > `crates/podnet-vnet/tests/wire/mod.rs`). Run: `cargo test -p podnet-vnet --test guest_wire`.
 
 ## 1. Set-up
@@ -10,7 +10,7 @@
 - The guest is a second stack with the subnet `0.0.0.0/0` and the address `10.66.0.4`.
 - A pump joins the two link queues. The pump of the guest can hold each SYN (the `HeldSyn` of the netns
   backend, on the wire). It counts the RST segments in each direction.
-- The default settings: MTU 1280, buffers of 64 KiB, `accept_pool` 8, `udp_packets` 64, `udp_payload` 64 KiB.
+- The default settings: MTU 1280, buffers of 64 KiB, `max_connections` 4096, `linger` 60 s, `udp_packets` 64, `udp_payload` 64 KiB.
 
 ## 2. Constraints
 
@@ -21,7 +21,7 @@ Each row gives the rule for a router, the evidence, and the test.
 | Case | Measure | Rule |
 | --- | --- | --- |
 | Both sides closed, the guest uses the tuple again at once | The handshake ends in under 500 ms, 3 rounds. The stack reaps `TimeWait` and `Closing` as closed (`close_and_check`, `service.rs`), so the 10 s `TimeWait` delay of the prototype does not exist here. | None. Do not add a `TimeWait` timer. |
-| The guest forgot the flow (a reboot) and uses the same address and port | The old socket answers the SYN with an ACK. The guest answers with a RST. The guest sends the SYN again 1.0 s after the first, and the handshake of the new flow ends. Total: 1.0 s to 3 s. The router app of the old flow reads an end of file, not an error. | A new SYN for a stale tuple needs one SYN retransmit of the guest. The router must not drop the SYN of a tuple that it holds. Treat a read of 0 bytes as the end of a flow that the guest may have reset. |
+| The guest forgot the flow (a reboot) and uses the same address and port | The old socket answers the SYN with an ACK. The guest answers with a RST. The guest sends the SYN again 1.0 s after the first, and the handshake of the new flow ends. Total: 1.0 s to 3 s. The RST of the guest reaches the old socket: the router app of the old flow reads `ConnectionReset` (v0.27.0; v0.26.0 gave an end of file). | A new SYN for a stale tuple needs one SYN retransmit of the guest. The router must not drop the SYN of a tuple that it holds. Treat `ConnectionReset` and a read of 0 bytes as the end of a flow that the guest may have reset. |
 
 Tests: `guest_wire_closed_tuple_is_free_at_once`, `guest_wire_stale_tuple_is_released_by_a_new_syn`.
 
@@ -31,13 +31,14 @@ Tests: `guest_wire_closed_tuple_is_free_at_once`, `guest_wire_stale_tuple_is_rel
 | --- | --- | --- |
 | The stack ends the handshake before the app sees the flow | The guest has `established` with no `accept` call. | The stack alone cannot dial first. `Admit` is asked at bind, connect and UDP send, never at an inbound SYN. |
 | A hold of the SYN on the wire works | The guest has no handshake while the pump holds its SYN. The guest sends the SYN again at 1 s (2 held copies at 1.2 s). After the release, the handshake ends in under 500 ms, and the router makes one flow. | Dial at the wire: parse the SYN (`pod_hold::packet`), hold it, key the hold by the tuple (a copy is a retransmit), dial, then release the SYN into `link_in`. The dial time limit must be under the connect time of the guest (Linux: 6 retransmits, about 127 s). A failed dial answers the SYN with a RST (`rst_reply_for_syn` of `pod_hold::packet`): the guest sees `ConnectionRefused`. This reply is not proven here. |
-| A flow past the accept queue is dropped | 60 SYNs, no `accept`: 60 handshakes end, 32 flows reach the queue (4 times `accept_pool`), 28 are counted in `NetStats::dropped`, 0 RST leave. | Call `accept` in a task that never waits for a dial. Keep the dial in a spawned task. |
-| `TcpStream::abort` sends no RST | The router accepts and aborts. The guest reads nothing for 1 s, and still writes with no error. 0 RST cross the wire. The reactor removes the socket in the same pass as the abort, before the RST leaves. | A dial that fails after the handshake cannot reset the guest. Use `shutdown` (a FIN) until the stack sends the RST. This is a gap of `pod-netstack`. |
-| A drop of the stream loses the queue | After `write_all` of 1 MB and `drop`, the guest reads less than 1 MB (4096 bytes in a first run with 3 MB and a 4 KiB buffer). `shutdown` and a held handle deliver every byte. | Never drop a stream with data in flight: `shutdown`, then read to the end or wait for the end of the guest. This is gap 2 of PodUtils/podnet#457. |
+| No flow is lost after the handshake | 60 SYNs, no `accept`: 60 handshakes end, 60 flows reach the accept queue, 0 are counted in `NetStats::dropped`, 0 RST leave. `StackConfig::accept_pool` and the queue of 32 flows are gone (v0.27.0). | Call `accept` in a task that never waits for a dial. Keep the dial in a spawned task. |
+| `max_connections` limits the flows | With `max_connections` 16 and 40 SYNs: 16 handshakes end, 16 flows reach `accept`, the other SYNs are dropped and counted in `NetStats::dropped`, 0 RST leave. The guest keeps the flow in `SynSent` and sends the SYN again. The limit counts the open and the half-open connections (v0.27.0). | Set `max_connections` for the load of the router. A SYN past the limit waits for a free slot; it gets no refusal. |
+| `TcpStream::abort` sends its RST | The router accepts and aborts. The guest reads `ConnectionReset`. One RST crosses the wire down (v0.27.0; v0.26.0 sent none). | A dial that fails after the handshake resets the guest with `abort`. A `shutdown` sends a FIN instead. |
+| A drop of the stream sends the queue | After `write_all` of 1 MB and `drop`, the guest reads 1 MB, then the end of the stream. `shutdown` with a held handle delivers every byte too. After `StackConfig::linger` (60 s) with no progress, the stack sends a RST (v0.27.0; closes gap 2 of PodUtils/podnet#457). | A drop is safe with data in flight. |
 
 Tests: `guest_wire_handshake_ends_before_the_app_accepts`, `guest_wire_held_syn_dials_before_the_handshake`,
-`guest_wire_accept_queue_drops_a_flow_after_the_handshake`, `guest_wire_abort_after_the_handshake_sends_no_reset`,
-`guest_wire_a_drop_loses_the_tail_and_a_held_shutdown_does_not`.
+`guest_wire_a_burst_of_flows_all_reach_accept`, `guest_wire_max_connections_drops_a_syn_with_no_reset`,
+`guest_wire_abort_after_the_handshake_resets_the_guest`, `guest_wire_a_drop_delivers_the_tail_like_a_held_shutdown`.
 
 ### C3. The UDP socket and the wire
 
@@ -56,13 +57,20 @@ Tests: `guest_wire_stack_udp_queue_is_bounded_and_silent`, `guest_wire_udp_over_
 
 ## 3. Asks for pod-netstack
 
-PodUtils/podnet#457 asks for three things: a close of a `TcpListener`, no loss of queued bytes at the drop of a
-`TcpStream`, and no RST from the accept pool when each listen socket is busy. The router needs these too (C2,
-row "A drop of the stream loses the queue"). It also needs the following. Each ask is new.
+`pod-netstack` v0.27.0 closed the three gaps of PodUtils/podnet#457 (the close of a `TcpListener`, no loss of
+queued bytes at the drop of a `TcpStream`, no RST from the accept pool for a burst of SYNs). It also closed
+asks 1 and 2 of PodUtils/podnet#464. Asks 3 to 5 stay open.
 
-1. `TcpStream::abort` sends a RST. The reactor keeps the socket until the poll that sends it.
-2. A flow that the accept queue cannot take gets a RST (the same mechanism as ask 1), and the size of the queue
-   is a setting (`StackConfig::accept_queue`, now 4 times `accept_pool`).
+Closed in v0.27.0:
+
+1. `TcpStream::abort` sends a RST. Test: `guest_wire_abort_after_the_handshake_resets_the_guest`.
+2. A flow does not get lost after the handshake: `accept_pool` and the accept queue are gone, and a SYN past
+   `max_connections` is dropped before the handshake, so the guest sends it again. The ask for a RST and for the
+   setting `accept_queue` has no object now. Tests: `guest_wire_a_burst_of_flows_all_reach_accept`,
+   `guest_wire_max_connections_drops_a_syn_with_no_reset`.
+
+Open (PodUtils/podnet#464):
+
 3. UDP counters in `NetStats`: a datagram lost at the full channel to the app, a datagram lost at a full
    smoltcp send buffer, and a datagram that the send path cannot carry (over the MTU).
 4. `UdpSocket::send_to` returns an error (`InvalidInput`) for a datagram over `mtu - 28` when the stack has no
