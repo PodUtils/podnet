@@ -123,6 +123,9 @@ None. Send ask A2 first. The resume part waits for T-263.
 
 2026-11-12: podcrates answered ask A2 (PodUtils/podcrates#88): `pod-link` is a crate of podcrates. No local crate podnet-link. The entries of this file that need the multiplexer, a carrier or the ARQ are takes of `pod-link`.
 
+2026-11-12: podnet started the workstream (GitHub #480, COORD-049): `pod-link` with the unix carrier (T-274) and the memory carrier (T-275) first.
+
+
 # T-263: link: the 10-minute resume of a session through pod-session (GitHub #466)
 
 **Source:** GitHub #466 (https://github.com/PodUtils/podnet/issues/466), row E0-2.
