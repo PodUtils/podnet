@@ -27,8 +27,17 @@ These rules apply to each session. Obey them before any other default.
 
 - Use shell tools (`git`, `curl`, `cargo`) before MCP tools.
 - For search, research and read-only queries (this includes the GitHub REST
-  API), use the services that <https://web.pkgforge.dev/llms.txt> lists. For
-  example, `curl -qfsS https://forge.web.pkgforge.dev/github/repos/OWNER/REPO/issues`.
+  API), always use the services that <https://web.pkgforge.dev/llms.txt> lists,
+  with `curl`. Use WebSearch, WebFetch, `gh` or a clone only when no service of
+  that list answers. Read the service's `llms.txt` before its first use.
+  - Search: `search.web.pkgforge.dev`. A page as Markdown:
+    `curl -qfsS https://read.web.pkgforge.dev/URL`.
+  - GitHub (code search, repositories, files, issues, releases):
+    `curl -qfsS https://forge.web.pkgforge.dev/github/REST-PATH`, for example
+    `/github/search/code?q=...` or `/github/repos/OWNER/REPO/contents/PATH`.
+  - Papers: `research.web.pkgforge.dev`. Old pages: `archive.web.pkgforge.dev`.
+    Domains and addresses: `domain.web.pkgforge.dev`, `ip.web.pkgforge.dev`.
+- Each prompt to a subagent repeats the rule above.
 
 ## Writing
 
