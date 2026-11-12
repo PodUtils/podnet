@@ -951,6 +951,14 @@ cargo test --test pod_netns_kernel -- netns_kernel_relays_tcp netns_kernel_two_u
 
 T-152 gives a pass on the target hosts, and the lead decides from the result (see Decision).
 
+## Correction
+
+2026-11-12, the lead: the row of T-152 on the CI runner (ubuntu-24.04, ci 43183892180, job `test`): "netfilter in a
+namespace (not a backend) fail  the uid and gid maps: Permission denied (os error 13)". The runner refuses the user
+namespace, as it does for the netns backend. A netfilter plane thus works only where the netns backend works, and
+gives speed only (no smoltcp on the hot path), not a new host. The entry stays parked, beside the flow table of T-111.
+Revisit when a measure shows the netns backend too slow on a target host.
+
 # T-165: The SSH forward-relay leg: supervise the session after `run()` returns (GitHub #362)
 
 **Source:** GitHub #362 (https://github.com/PodUtils/podnet/issues/362)
