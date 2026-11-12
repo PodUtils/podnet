@@ -49,6 +49,14 @@ in `LAYER` of the script. `--list` prints each reference between crates.
 * **Loopback only.** A unit or integration test uses loopback servers
   (`127.0.0.1:0`, a Unix socket in a temporary directory). It does not
   use the internet. The `live.yml` workflow does the live checks.
+* **The quick tunnel has a stand-in.** `tests/standin/` holds a stand-in of
+  the quick-tunnel service and of the HTTP/2 leg of the Cloudflare edge
+  (`mod standin;`). Use it for a test of podnet that needs a tunnel: it
+  makes no call to Cloudflare. It uses `--service-url`, `PODNET_EDGE` and a
+  test CA in `SSL_CERT_FILE`. Cloudflare does not use it. It cannot prove
+  that the real edge accepts a change: `live.yml` keeps one real quick
+  tunnel for each leg. The design is in
+  `docs/research/podnet/cf-edge-standins.md`.
 * **Skip on a host with no loopback.** A host can refuse
   `bind(AF_INET)`, have no loopback interface, or not resolve
   `localhost` (issue 217). A test that needs TCP or UDP on `127.0.0.1`

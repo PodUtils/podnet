@@ -41,6 +41,7 @@ evidence behind it.
 | `guest-wire-router.md` | The constraints of a guest-wire router on `pod-netstack`: tuple reuse, the dial and the handshake, the UDP queue (T-176, 2026-11-12) |
 | `podssh-copy.md` | What podnet copies from podssh, and in which order |
 | `hosted-relays.md` | The relays and mailboxes that others host for free: the magic-wormhole mailbox on 443, piping-server, the n0 iroh relays, Pinggy (2026-11-11) |
+| `cf-edge-standins.md` | Stand-ins for the Cloudflare Tunnel edge and the quick-tunnel service: what exists, what podnet built for CI (T-316, 2026-11-12) |
 
 The field report itself is in `docs/reports/field-report-2026-11-05.md`.
 The attachments (the mwan program, the lab kit, the vn kit) are not in the
