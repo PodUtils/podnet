@@ -76,7 +76,7 @@ Not proven: the check in a real handshake before any service (the handshake is T
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -140,6 +140,8 @@ crosses the loss of its carrier (`dead_after` takes the `resume_deadline`).
 2026-11-12, commit 69c9c7f. `Cargo.toml` takes `pod-link` (tag v0.32.0). `src/link.rs` (`podnet::link`) is the glue: `dial`, `listen`, `Door::accept` and `from_io` open a link over a `Carrier` (the carrier says first with `available()` whether the host can use it), and `fault` and `carrier_fault` give each failure the exit class of podnet (64 for a bad value, 69 for an unavailable path, 75, 78 and 124 for the matching classes). `scripts/check-layers.py` puts the module in the layer `podnet`. No frame, window or keepalive code is in podnet.
 `cargo test --test link_session`: 6 passed: `three_hundred_echoes_cross_one_link` (300 streams of 40 KB or more over one link), `a_stalled_reader_does_not_stop_the_other_echoes` (a write of 8 MiB to a stream that is not read waits; 299 echoes finish), `the_dialer_has_odd_ids_and_the_listener_even_ids`, `a_silent_peer_ends_the_link_as_dead`, `a_live_peer_keeps_the_link_and_answers_the_ping`, `a_setting_out_of_its_limit_is_a_usage_error` (exit 64). Before the glue the test file did not compile (`unresolved import podnet::link`).
 Not proven: the 1 MiB resume digest (T-263); the docs; a link over a real carrier at the limit of 4096 streams (the limits are proven in the tests of `pod-link`).
+2026-11-12, commit 32d92e8 (the parts that waited for T-265). The topic document `docs/link.md` and its row in the map of `README.md` (and in the list of documents of `CLAUDE.md`) are written. The link has its user: `podnet link listen` and `dial` run a link over a carrier, and one stream carries the bytes of `--to`. `cargo test --test cli link::`: 19 passed (see T-265), and `cargo test --test docs`: `the_readme_is_short_and_links_each_topic_document` failed ("the README does not link docs/link.md") before the row and passes with it.
+Not proven: the C ABI (T-304 has it); a link at the limit of 4096 streams over a real carrier.
 
 
 # T-263: link: the 10-minute resume of a session through pod-session (GitHub #466)
@@ -209,7 +211,7 @@ Not proven: a resume over a real carrier (the tests use duplex streams); the sin
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -254,6 +256,8 @@ T-262 has the crate.
 2026-11-12, commit 528235c. `carriers::ROWS` has the rows `unix` and `memory` in this order (name, about, address form, cost, privilege, feature, maker). `carriers::open(name, &Options)` exits 64 for an unknown name (the text lists the names) or a bad option, and 69 with the reason of `available()` for a carrier that the host refuses. `carriers::report` gives one `Report` for each carrier (the facts of `pod-link`, the addressing `Peer`, the diagnosis, and `line()`).
 `cargo test --test link_registry`: 7 passed, among them `an_unknown_name_exits_64_and_lists_the_names`, `a_disabled_carrier_exits_69_with_its_reason` (a stub carrier that the host refuses), `the_report_gives_the_reason_of_a_disabled_carrier`. Before the module the test file did not compile (`unresolved import podnet::carriers`).
 Not proven: a real host that refuses `AF_UNIX` (the 69 path is proven with a stub carrier); the doctor rows.
+2026-11-12, commit 32d92e8 (the parts that waited for T-265). `podnet link carriers [--json]` prints `carriers::report` (one line for each carrier, with `available` or `unavailable:` and the reason). `podnet doctor` has a section `carriers` in its text and the key `carriers` in its JSON (one object for each carrier: `carrier`, `verdict`, `status`, `detail`; `docs/doctor.md`, `docs/protocol.md`). `cargo test --lib doctor::`: 30 passed, among them `the_doctor_has_a_row_for_each_carrier_with_its_reason` and `the_report_lists_the_carriers_of_the_registry` (before the module `carrier_check`, the test module did not compile: `cannot find module carrier_check`). `cargo test --test cli link::carriers_lists_each_carrier_with_its_diagnosis` and `a_ring_out_of_its_limit_is_a_usage_error_and_a_reason`: pass. `tests/doctor.rs` `doctor_json_keys_are_fixed` has the key `carriers` (it needs a loopback host).
+Not proven: a real host that refuses `AF_UNIX` (the doctor row of a refusal is proven with a report built by hand).
 
 
 # T-265: link: the commands listen, dial, status, close and carriers (GitHub #466)
@@ -263,7 +267,7 @@ Not proven: a real host that refuses `AF_UNIX` (the 69 path is proven with a stu
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -301,6 +305,22 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-261, T-262 and T-264 are done, and one carrier exists (T-274 or T-275).
+
+## Correction
+
+2026-11-12: the start condition is met in this form (a call of the lead). T-261 is done (`src/identity.rs`), T-275 is done (the memory carrier), and T-262, T-264 and T-274 were partial only because their CLI and doctor parts wait for this entry. The entry builds those parts. The peer handshake of the TCP carrier (T-268) does not exist, and the carriers `unix` and `memory` have no peer key. So this entry adds the hello (`src/hello.rs`): the first stream of a link carries a challenge in which each end signs a transcript with its Ed25519 key, so that the allow list of T-261 is checked before any service. The TLS handshake of T-268 stays its own work. The control socket and the live counters of `status` are T-267: until then `status` reads the background record.
+
+## Done
+
+2026-11-12, commit 32d92e8. `podnet link` has `listen`, `dial`, `status`, `close` and `carriers` (`src/cli/cmd/link/`).
+* `listen ADDRESS --allow FILE [--to TARGET] [--json] [--detach ...]` checks the carrier (64, 69), the target (64) and the allow list (66, 71, 78) before it binds, makes the key of the install on first use, binds, and prints the address, its mode (`0600` for the unix carrier) and the fingerprint. A second listener at a live address exits 69. For each link it runs the hello, names a peer that it refuses on stderr, and sends each stream of an admitted peer to `--to` (`host:port` or `unix:/path`). The ready document has `carrier`, `address`, `listen`, `mode`, `fingerprint`, `allow` and `to`. `--detach` and `--name` use the background record, so `ps`, `logs`, `wait` and `stop` work.
+* `dial ADDRESS (--peer FINGERPRINT | --allow FILE) [--check [--json]]` runs the hello and checks the key of the listener (exit 77 for a listener that the list does not hold; exit 64 with neither flag). It copies stdin and stdout over one stream, or with `--check` prints the fingerprint of the peer.
+* `status [NAME] [--create] [--json]` shows the fingerprint and the link instances; `close NAME` stops a link instance (a name that is no link instance exits 64, none that runs exits 69); `carriers [--json]` prints one line for each carrier of the registry with `available()` and its reason.
+* `src/hello.rs`: the hello of a link (dialer and listener each sign a transcript; the listener checks its allow list before any service, and the dialer checks the key of the listener against its list). `AllowList::check` gives exit 77 at both ends.
+* The seed is in no output: `status --json`, the ready document, the `Debug` form and the errors.
+`cargo test --test cli link::`: 19 passed, among them `a_unix_listener_prints_its_0600_path`, `a_duplicate_listener_exits_69`, `a_dialer_in_the_allow_list_reaches_the_service_of_the_listener` (bytes through a far unix origin), `a_dialer_that_the_list_does_not_hold_exits_77`, `a_listener_that_the_dialer_does_not_trust_exits_77`, `a_detached_listener_is_in_ps_logs_status_and_close`, `carriers_lists_each_carrier_with_its_diagnosis`, `status_shows_the_fingerprint_and_never_the_seed`. `cargo test --test link_hello`: 6 passed. Before the change, 18 of the 18 tests of the first version failed (`error: unrecognized subcommand 'link'`, exit 64), and `link_hello` did not compile (`unresolved import podnet::hello`). The first run found two defects that the tests then kept out: a SIGTERM that comes right after the ready line killed the listener (the stop is armed before the line is printed now), and a refused dialer saw "the carrier ended" (exit 69) in place of 77 (the listener closes the link, so the verdict byte is sent first). `sh scripts/restricted-host.sh --test link_hello --test link_unix --test link_memory --test relay_listen --test cli`: 11 tests skipped (bind(AF_INET) refused), every test passed, among them the 19 above.
+Not proven: the hello over a real TCP carrier (T-268 has its own handshake); the live counters of a link and the control socket (T-267); a peer on another host; `--detach` with the supervisor restart after a crash of the listener.
+
 
 # T-266: link: `peer:FINGERPRINT/SERVICE` as a network target and `forward -L LISTEN=peer:...` (GitHub #466 and #471)
 
@@ -646,7 +666,7 @@ T-268 is done (the verifier) and T-311 is done (the feature).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -689,6 +709,8 @@ T-262 and T-264 are done.
 2026-11-12, commit 2477e5a. The unix carrier of `pod-link` is the first row of `carriers::ROWS`. `link::unix_pair` is the socket-pair half. The path rules are those of `pod-link` and are proven here through the registry: a path of 1 to 107 bytes (108 exits 64), the mode 0600, a regular file exits 64 and stays, a live socket exits 69, a stale socket is replaced, a missing listener exits 69, a peer of another uid is refused (exit 69) unless `allow_other_uid` is set.
 `cargo test --test link_unix`: 8 passed, among them `a_peer_of_another_uid_is_refused_unless_allowed` (root only: a thread takes the uid 65534). `sh scripts/restricted-host.sh --test link_unix ... --test relay_listen`: the 8 tests pass with bind(AF_INET) refused. The tests start no TCP listener, so they cannot skip.
 Not proven: the CI jobs `restricted-host` and `no-loopback` (not run here; the tests bind no inet socket). `scripts/restricted-host.sh` exits 1 when no test skips, so a run with only these tests fails its last check: add a test that skips (as `relay_listen`).
+2026-11-12, commit 32d92e8 (the flag that waited for T-265). `--allow-other-uid` is a flag of `link listen`, `link dial` and `link carriers` (the field `allow_other_uid` of `carriers::Options`). Each end checks the uid of the other end, so the flag is needed at both ends. `cargo test --test cli link::a_dialer_of_another_uid_needs_allow_other_uid` (root only; it skips with a line `skipping, ...` otherwise): a dialer of uid 65534 gets exit 69 from a listener without the flag, exit 69 from a dialer without the flag, and exit 0 when both have it. `cargo test --bin podnet the_flags_reach_the_options_of_the_carriers`: pass. `sh scripts/restricted-host.sh` with `link_unix`, `link_memory`, `link_hello`, `relay_listen` and `cli`: every test passed with bind(AF_INET) refused (11 skipped, so the check of the script holds).
+Not proven: the CI jobs `restricted-host` and `no-loopback` (not run here; the script ran locally).
 
 
 # T-275: link: the in-process memory carrier (GitHub #467)

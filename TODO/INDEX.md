@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**324 entries: 70 open, 20 partial, 23 blocked, 211 done.**
+**324 entries: 69 open, 17 partial, 23 blocked, 215 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 9 | 10 | 127 | 165 |
-| P3 | 51 | 10 | 11 | 56 | 128 |
-| **All** | 70 | 20 | 23 | 211 | 324 |
+| P3 | 50 | 7 | 11 | 60 | 128 |
+| **All** | 69 | 17 | 23 | 215 | 324 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -307,10 +307,10 @@ M8 Overlays, M9 Later.
 | [T-259](fixes.md) | P2 | M | M5 | docs | done | The user documentation by topic: a short README and one document for each area |
 | [T-260](fixes.md) | P2 | M | M5 | feature | done | doctor: probes for the lanes `masque_udp443` and `ws_upgrade` (GitHub #461, A-C-10) |
 | [T-261](link.md) | P3 | M | M9 | feature | done | link: an Ed25519 key for each install, its fingerprint and an allow list (GitHub #466) |
-| [T-262](link.md) | P3 | L | M9 | feature | partial | link: the session of streams with credit flow control and keepalive (GitHub #466) |
+| [T-262](link.md) | P3 | L | M9 | feature | done | link: the session of streams with credit flow control and keepalive (GitHub #466) |
 | [T-263](link.md) | P3 | M | M9 | feature | done | link: the 10-minute resume of a session through pod-session (GitHub #466) |
-| [T-264](link.md) | P3 | M | M9 | feature | partial | link: a registry of carriers with an available() reason (GitHub #466) |
-| [T-265](link.md) | P3 | M | M9 | feature | open | link: the commands listen, dial, status, close and carriers (GitHub #466) |
+| [T-264](link.md) | P3 | M | M9 | feature | done | link: a registry of carriers with an available() reason (GitHub #466) |
+| [T-265](link.md) | P3 | M | M9 | feature | done | link: the commands listen, dial, status, close and carriers (GitHub #466) |
 | [T-266](link.md) | P3 | M | M9 | feature | open | link: `peer:FINGERPRINT/SERVICE` as a network target and `forward -L LISTEN=peer:...` (GitHub #466 and #471) |
 | [T-267](link.md) | P3 | M | M9 | feature | open | link: the control socket, its discipline and the status verb (GitHub #466) |
 | [T-268](link.md) | P3 | L | M9 | feature | open | link: the TCP carrier with TLS 1.3, the accept side and the peer handshake (GitHub #467) |
@@ -319,7 +319,7 @@ M8 Overlays, M9 Later.
 | [T-271](link.md) | P3 | M | M9 | feature | open | link: the HTTP/1.1 long-poll carrier (GitHub #467) |
 | [T-272](link.md) | P3 | M | M9 | feature | open | link: the SSE and chunked-stream carrier (GitHub #467) |
 | [T-273](link.md) | P3 | M | M9 | feature | open | link: the QUIC carrier (GitHub #467) |
-| [T-274](link.md) | P3 | S | M9 | feature | partial | link: the unix-socket carrier and its socketpair half (GitHub #467) |
+| [T-274](link.md) | P3 | S | M9 | feature | done | link: the unix-socket carrier and its socketpair half (GitHub #467) |
 | [T-275](link.md) | P3 | S | M9 | feature | done | link: the in-process memory carrier (GitHub #467) |
 | [T-276](link.md) | P3 | L | M9 | feature | open | link: the UDP carrier with KCP (GitHub #468) |
 | [T-277](link.md) | P3 | L | M9 | feature | open | link: a selective-repeat ARQ for any lossy carrier (GitHub #468) |
