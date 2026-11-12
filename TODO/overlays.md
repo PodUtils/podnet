@@ -68,7 +68,7 @@ Ask the podcrates session before the work. The Premise lists the harness of pods
 **Milestone:** M8
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -105,6 +105,27 @@ candidate; T-137). No work was done. State in the tree: `src/networks.rs` alread
 `Kind::Hop { tailscale: true }` and reports it as `tailscale` (T-059). The Approach steps 1 and 2 (the row of
 `doctor` with the login state of T-081, `--via`, `--net` of the router, groups) can start without T-114. Step 3
 waits for T-114.
+
+2026-11-12, steps 1 and 2 are done (see Done). Step 3 (the test in the harness of T-114) is left.
+
+## Done
+
+2026-11-12, commit 8bf408f (steps 1 and 2; step 3 waits for T-114). `src/networks/tailscale.rs` reads the login
+state of `tailscaled` (`tailscale_state`, `tailscale_rows`); `SpecNetwork::tailscale_socket` gives the socket
+of a `tailscale:/PATH` spec.
+
+- Row of `doctor`: `podnet net doctor [--socket PATH]` gives `fail` for a daemon that is not `Running`
+  (before: `ok`). `podnet route --check` prints one `tailnet` line for each tailnet network.
+- `Network::up` puts the `state` in the status of the link and prints one warning when the daemon is not
+  `Running`. It does not fail.
+- Spec in `-x`, `--egress` (pod), `forward --network`, `networks` of a router file and a group: the parser and
+  the dial already worked (T-059). Tests now prove it with a fake `tailscaled` (LocalAPI on a unix socket).
+- `cargo test --workspace -- network_spec_tailscale`: 6 passed. Before the code, 4 of 5 library tests failed
+  (state, socket, link state, rows); `network_spec_tailscale_is_a_network_of_the_router_and_of_a_group` and the
+  `way_tests` case passed, as they test code that existed.
+- Docs: `docs/egress.md`, `docs/router.md`, `docs/networks.md`, `docs/doctor.md`; `llms-full.txt`.
+- Not proven: a live tailnet (a real `tailscaled` and a login). The `--egress tailscale:` form for a command
+  that is not `pod` stays refused. Step 3 (the harness, `gh workflow run ts-headscale.yml`) waits for T-114.
 
 # T-116: WireGuard: read a wg-quick file into a peer, with optional reserved bytes
 
