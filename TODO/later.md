@@ -953,16 +953,16 @@ T-152 gives a pass on the target hosts, and the lead decides from the result (se
 
 ## Problem
 
-`relay::run` (`crates/podnet-serve/src/relay.rs:432`) dials the relay, requests one remote forward, reads the URL from the
+`relay::run` (`crates/podnet-serve/src/relay.rs:437`) dials the relay, requests one remote forward, reads the URL from the
 banner and returns `(TunnelHandle, Handle<Client>)`. Nothing watches the session after that. When the
 relay ends the connection or the forward, the URL is dead and the caller is not told. The default
-relay's free tier ends the tunnel after 60 minutes (the banner text of the test at `crates/podnet-serve/src/relay.rs:569`).
+relay's free tier ends the tunnel after 60 minutes (the banner text of the test at `crates/podnet-serve/src/relay.rs:574`).
 A reconnect gives a new port and a new URL. The reverse road (`relay node`, `src/relay_reverse.rs`)
 reconnects with a 1 s to 30 s backoff; this leg does not.
 
 ## Premise
 
-- `inactivity_timeout` is 3600 s (`crates/podnet-serve/src/relay.rs:444`); the forward is requested once (`:474-477`).
+- `inactivity_timeout` is 3600 s (`crates/podnet-serve/src/relay.rs:449`); the forward is requested once (`:479-482`).
 - `grep -rn "relay::run\|RelayConfig" src tests examples` finds no caller outside `crates/podnet-serve/src/relay.rs`.
   `ShareLink::from_relay` (`crates/podnet-serve/src/feature/share_link.rs:118`) has no caller outside a test. No CLI uses the leg.
 - Not measured: the 60 minute expiry on a live relay; the `Handle::is_closed` behaviour of russh 0.64.1.
@@ -1088,7 +1088,7 @@ of the record is tested); a relay that sends text before its identification line
 ## Problem
 
 `RelayConfig::default()` has one relay (`crates/podnet-serve/src/relay.rs:42`), the user `podnet` (`:66`), and one URL rule
-(`pick_tunnel_url`, `:399-412`): the first token that starts with `http(s)://` and does not hold the
+(`pick_tunnel_url`, `:404-417`): the first token that starts with `http(s)://` and does not hold the
 dashboard host of that one relay. Another relay that prints a bare host, a URL split over two data
 frames, or its own dashboard URL fails or gives the wrong URL.
 
@@ -1096,9 +1096,9 @@ frames, or its own dashboard URL fails or gives the wrong URL.
 
 - The fields of `RelayConfig` are `pub`; no flag sets them (no caller, see T-165). `--relay` is the
   flag of the WebSocket relay.
-- `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`crates/podnet-serve/src/relay.rs:504`), so a URL that
+- `pick_tunnel_url` runs on each `ChannelMsg::Data` chunk (`crates/podnet-serve/src/relay.rs:509`), so a URL that
   crosses two chunks is lost. The pinned tests are in `crates/podnet-serve/src/relay/tests.rs`.
-- The dashboard host is already a fact of `pod-services` (`crates/podnet-serve/src/relay.rs:407`).
+- The texts to skip are a fact of `pod-services` (`url-skip` of `pinggy`, `crates/podnet-serve/src/relay.rs:90-96`).
 - Not measured: the other relays of the survey (local artefacts of the issue).
 
 ## Approach

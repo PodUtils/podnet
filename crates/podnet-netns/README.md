@@ -118,7 +118,10 @@ socket) when there is one, else to TCP on the host.
   stack. The offloads of `eth0` (checksum, TSO, GSO) are off. `-v` prints
   `the wire of the namespace is a veth pair`. `pod doctor` has the row
   `veth wire (no TUN)`. `PODNET_NETNS_TEST_VETH=1` makes the veth wire also
-  where the TUN opens (a test hook).
+  where the TUN opens (a test hook). The setup of the pair, the packet
+  socket, the ARP answer and the frames are `pod_hold::netns` of
+  PodUtils/podcrates (`open_wire`, `create_veth`, `take_frame`,
+  `frame_for`, `Wire`).
 * The child brings up `lo` and makes a TUN device with `ioctl` calls (not with
   `ip`), then gives the TUN descriptor to the parent with `SCM_RIGHTS`.
 * The parent runs a `smoltcp` stack on the TUN. For each SYN of the program,

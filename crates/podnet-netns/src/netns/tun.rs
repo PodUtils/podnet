@@ -16,27 +16,27 @@ pub(crate) fn bringup_loopback() -> Result<()> {
 
 /// Create and configure the TUN device inside the namespace. Returns its fd.
 pub(crate) fn create_tun(name: &str) -> Result<OwnedFd> {
-    let tun = pod_hold::netns::Tun {
+    Ok(pod_hold::netns::create_tun(&hold_tun(name))?)
+}
+
+/// The TUN `name` of podnet (also the program end of the veth wire), for
+/// pod-hold.
+pub(crate) fn hold_tun(name: &str) -> pod_hold::netns::Tun {
+    pod_hold::netns::Tun {
         name: name.into(),
         addr: TUN_ADDR,
         gateway: TUN_GW,
         prefix: TUN_PREFIX,
         mtu: TUN_MTU,
-    };
-    Ok(pod_hold::netns::create_tun(&tun)?)
+    }
 }
 
 // ── TUN as a smoltcp device ─────────────────────────────────────────────────
 
-/// The wire of the namespace (T-174).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Wire {
-    /// The TUN: each read and write is one IP packet.
-    Tun,
-    /// The veth pair: each read and write is one Ethernet frame of a packet
-    /// socket ([`super::veth`]).
-    Veth,
-}
+// The wire of the namespace (T-174), of pod-hold: the TUN (each read and
+// write is one IP packet) or the veth pair (each read and write is one
+// Ethernet frame of a packet socket, `super::veth`).
+pub(crate) use pod_hold::netns::Wire;
 
 /// The device of the stack: the TUN or the veth wire. `rx` and `tx` hold IP
 /// packets for both wires.
@@ -86,7 +86,7 @@ impl Tun {
     /// ARP reply goes out at once. A frame larger than the MTU (a segment
     /// of an offload) is read whole and dropped.
     fn read_frames(&mut self) {
-        let mut buf = vec![0u8; 65536 + super::veth::ETH_HEADER];
+        let mut buf = vec![0u8; Wire::Veth.read_buffer(self.mtu)];
         loop {
             let n = unsafe { libc::read(self.fd, buf.as_mut_ptr() as *mut _, buf.len()) };
             if n <= 0 {
@@ -158,7 +158,7 @@ impl Device for Tun {
         caps.medium = Medium::Ip;
         caps.max_transmission_unit = self.mtu;
         caps.checksum = ChecksumCapabilities::default();
-        if self.wire == Wire::Veth {
+        if !self.wire.checks_checksums() {
             // The program end can send a partial checksum (an offload that
             // stays on): compute the checksums, do not check them.
             use smoltcp::phy::Checksum;

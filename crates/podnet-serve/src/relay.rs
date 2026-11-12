@@ -77,7 +77,7 @@ pub struct RelayConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UrlRule {
     /// A candidate that holds one of these texts is not the tunnel URL
-    /// (the dashboard of the relay).
+    /// (the dashboard of the relay: the fact `url-skip` of `pinggy`).
     pub skip: Vec<String>,
     /// A candidate must hold each of these texts (the tunnel domain of the
     /// relay).
@@ -88,7 +88,12 @@ impl Default for UrlRule {
     /// The rule of the default relay: not its dashboard.
     fn default() -> Self {
         Self {
-            skip: vec![podnet_core::services::text("pinggy", "dashboard-host").to_string()],
+            skip: podnet_core::services::get("pinggy")
+                .texts("url-skip")
+                .unwrap_or_default()
+                .iter()
+                .map(|text| text.to_string())
+                .collect(),
             hold: Vec::new(),
         }
     }

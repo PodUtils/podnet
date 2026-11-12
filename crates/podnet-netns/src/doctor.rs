@@ -79,8 +79,6 @@ const PROBE_NO_TUN: i32 = 201;
 /// No TUN, but a veth pair works (T-174).
 const PROBE_VETH: i32 = 202;
 
-/// Can the namespace make the veth wire (T-174)? The netns backend takes it
-/// when the namespace cannot open `/dev/net/tun`.
 /// In a probe child: close each descriptor above stderr. A child of a
 /// process with threads (a test, a daemon) holds the sockets of the other
 /// threads open while it lives; a socket that the parent closes must not
@@ -97,6 +95,8 @@ fn close_inherited() {
     }
 }
 
+/// Can the namespace make the veth wire (T-174)? The netns backend takes it
+/// when the namespace cannot open `/dev/net/tun`.
 pub(crate) fn probe_veth() -> Probe {
     const NAME: &str = "veth wire (no TUN)";
     let pid = unsafe { libc::fork() };

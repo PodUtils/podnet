@@ -30,7 +30,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # The userspace TCP and UDP stack of PodUtils/podcrates: the stack, its
 # sockets, the link device and its tap, at the git tag of the root.
-pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.25.0", version = "0.25.0" }
+pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.26.0", version = "0.26.0" }
 # The version of pod-netstack and the features of the root crate (Cargo.toml
 # of podnet): the proof of `net doctor` (stack/proof.rs) drives the link
 # device of pod-netstack with it.
@@ -63,4 +63,4 @@ tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
 # need_loopback! of the tests, from the test kit of PodUtils/podcrates at
 # the git tag of the root.
-pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.25.0", version = "0.25.0" }
+pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.26.0", version = "0.26.0" }
