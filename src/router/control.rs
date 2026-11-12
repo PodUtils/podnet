@@ -5,6 +5,7 @@
 //!
 //! ```text
 //! GET   /route/status                        the status document
+//! GET   /route/metrics                       the rows of the metrics (text)
 //! POST  /route/select      {"group":G,"member":M|null}   pin a member
 //! POST  /route/rotate      {"member":M}      a new identity, make before break
 //! POST  /route/reconnect   {"member":M}      a new link, same identity
@@ -21,7 +22,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use serde_json::Value;
 use tokio::time::Instant;
 
@@ -207,6 +208,12 @@ impl ControlState {
     }
 }
 
+/// The body of a good answer.
+enum Reply {
+    Json(Value),
+    Text(String),
+}
+
 /// An error answer: the HTTP code and the text.
 #[derive(Debug)]
 pub struct Answer {
@@ -298,16 +305,27 @@ impl Router {
                 403,
                 "this user may not use the control socket".into(),
             )),
-            Ok((method, route, body)) => self.handle(&method, &route, &body).await,
+            Ok((method, route, _)) if route == "/route/metrics" => {
+                if method == "GET" {
+                    Ok(Reply::Text(self.metrics()))
+                } else {
+                    Err(Answer::new(405, "/route/metrics: use GET".into()))
+                }
+            }
+            Ok((method, route, body)) => self.handle(&method, &route, &body).await.map(Reply::Json),
             Err(e) => Err(e),
         };
-        let (code, body) = match result {
-            Ok(body) => (200, body),
-            Err(a) => (a.code, serde_json::json!({"error": a.text})),
+        let (code, kind, body) = match result {
+            Ok(Reply::Json(body)) => (200, "application/json", body.to_string()),
+            Ok(Reply::Text(text)) => (200, "text/plain; version=0.0.4", text),
+            Err(a) => (
+                a.code,
+                "application/json",
+                serde_json::json!({"error": a.text}).to_string(),
+            ),
         };
-        let body = body.to_string();
         let reply = format!(
-            "HTTP/1.0 {code} {}\r\ncontent-type: application/json\r\ncontent-length: {}\r\n\r\n{body}",
+            "HTTP/1.0 {code} {}\r\ncontent-type: {kind}\r\ncontent-length: {}\r\n\r\n{body}",
             reason(code),
             body.len()
         );
@@ -323,7 +341,7 @@ impl Router {
             "/route/interval" => "PATCH",
             _ => return Err(Answer::new(
                 404,
-                "the control socket answers /route/status, select, rotate, reconnect and interval"
+                "the control socket answers /route/status, metrics, select, rotate, reconnect and interval"
                     .into(),
             )),
         };
@@ -437,6 +455,16 @@ pub async fn read_status(path: &Path) -> Result<Value> {
     request(path, "GET", "/route/status", None).await
 }
 
+/// The metrics rows of the router of the control socket `path`
+/// (`podnet route --status --metrics`).
+pub async fn read_metrics(path: &Path) -> Result<String> {
+    let (code, line, body) = exchange(path, "GET", "/route/metrics", None).await?;
+    if code != Some(200) {
+        return Err(refusal(code, &line, &body));
+    }
+    String::from_utf8(body).context("the metrics of the control socket")
+}
+
 /// One request to the control socket `path`; the answer is the JSON of a 200.
 /// An error answer is an [`Answer`] in the error.
 pub async fn request(
@@ -445,6 +473,31 @@ pub async fn request(
     route: &str,
     body: Option<&Value>,
 ) -> Result<Value> {
+    let (code, line, answer) = exchange(path, method, route, body).await?;
+    if code != Some(200) {
+        return Err(refusal(code, &line, &answer));
+    }
+    serde_json::from_slice(&answer).context("the answer of the control socket")
+}
+
+/// The error of an answer that is not a 200: an [`Answer`] with the text of
+/// its JSON `error`, else the status line.
+fn refusal(code: Option<u16>, line: &str, body: &[u8]) -> anyhow::Error {
+    let value: Value = serde_json::from_slice(body).unwrap_or(Value::Null);
+    let text = value["error"].as_str().unwrap_or(line).to_string();
+    match code {
+        Some(code) => Answer::new(code, text).into(),
+        None => anyhow::anyhow!("the control socket answered: {line}"),
+    }
+}
+
+/// One exchange: the code, the status line and the body of the answer.
+async fn exchange(
+    path: &Path,
+    method: &str,
+    route: &str,
+    body: Option<&Value>,
+) -> Result<(Option<u16>, String, Vec<u8>)> {
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
     let exchange = async {
         let mut stream = tokio::net::UnixStream::connect(path)
@@ -478,21 +531,12 @@ pub async fn request(
         .position(|w| w == b"\r\n\r\n")
         .context("the control socket gave no HTTP answer")?;
     let status_line = String::from_utf8_lossy(&answer[..split]);
-    let line = status_line.lines().next().unwrap_or("");
-    let value: Value =
-        serde_json::from_slice(&answer[split + 4..]).context("the answer of the control socket")?;
+    let line = status_line.lines().next().unwrap_or("").to_string();
     let code = line
         .split_whitespace()
         .nth(1)
         .and_then(|c| c.parse::<u16>().ok());
-    if code != Some(200) {
-        let text = value["error"].as_str().unwrap_or(line).to_string();
-        match code {
-            Some(code) => return Err(Answer::new(code, text).into()),
-            None => bail!("the control socket answered: {line}"),
-        }
-    }
-    Ok(value)
+    Ok((code, line, answer[split + 4..].to_vec()))
 }
 
 #[cfg(test)]

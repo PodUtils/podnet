@@ -48,8 +48,9 @@ use tokio::time::Instant;
 
 pub mod control;
 pub mod kernel;
+pub mod metrics;
 
-pub use control::read_status;
+pub use control::{read_metrics, read_status};
 
 use crate::network::{
     parse_group, probe, probe_egress, Balance, Choice, Ctx, Dial, Member, Network as _, Policy,

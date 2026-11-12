@@ -24,6 +24,11 @@ pub(crate) struct RouteArgs {
     /// With --status or a control flag: print the JSON document
     #[arg(long)]
     pub(crate) json: bool,
+    /// With --status: print the metrics rows of the router (one for each
+    /// member: health, round-trip time, flows, bytes; the text format of
+    /// Prometheus) in place of the state
+    #[arg(long, requires = "status", conflicts_with = "json")]
+    pub(crate) metrics: bool,
     /// Change a running router through its control socket (the key `control`
     /// of its file; mode 0600, the same user or root). Give one of --select,
     /// --rotate, --reconnect and --interval. Exit 69 when no router answers,
@@ -76,7 +81,7 @@ pub(crate) struct RouteArgs {
 /// Run the router until a signal or --run-for.
 pub(crate) async fn route(args: RouteArgs) -> Result<()> {
     if let Some(control) = &args.status {
-        return print_status(control, args.json).await;
+        return print_status(control, args.json, args.metrics).await;
     }
     if let Some(control) = &args.control {
         return control_write(control, &args).await;
@@ -312,10 +317,17 @@ async fn control_write(control: &str, args: &RouteArgs) -> Result<()> {
 
 /// `route --status unix:/PATH [--json]` (T-097): the state of a running
 /// router.
-async fn print_status(control: &str, json: bool) -> Result<()> {
+async fn print_status(control: &str, json: bool, metrics: bool) -> Result<()> {
     let Ok(ProxyListen::Unix(path)) = ProxyListen::parse(control) else {
         return Err(anyhow::anyhow!("--status {control:?}: give unix:/PATH")).fault(Fault::Usage);
     };
+    if metrics {
+        let rows = podnet::router::read_metrics(&path)
+            .await
+            .fault(Fault::Unavailable)?;
+        print!("{rows}");
+        return Ok(());
+    }
     let status = podnet::router::read_status(&path)
         .await
         .fault(Fault::Unavailable)?;

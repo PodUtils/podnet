@@ -129,3 +129,58 @@ fn route_control_flags_drive_a_running_router() {
     assert!(stop.status.success());
     assert_eq!(run(&["--interval", "7"]).status.code(), Some(69));
 }
+
+/// T-097: `route --status unix:/PATH --metrics` prints the rows of a running
+/// router, one for each member, in the text format of Prometheus.
+#[test]
+fn route_status_metrics_prints_the_rows() {
+    let env = Env::new();
+    let dir = env.sock.parent().unwrap().to_path_buf();
+    let (door, ctl) = (dir.join("door.sock"), dir.join("ctl.sock"));
+    let config = dir.join("route.yml");
+    std::fs::write(
+        &config,
+        format!(
+            "networks:\n  home: direct\n  spare: direct\ngroups:\n  egress: home*2, spare*1\ncontrol: unix:{}\ndoors:\n  - listen: unix:{}\n    via: egress\n",
+            ctl.display(),
+            door.display()
+        ),
+    )
+    .unwrap();
+    let start = env.run(&[
+        "route",
+        "--config",
+        config.to_str().unwrap(),
+        "--detach",
+        "--name",
+        "r3",
+    ]);
+    assert!(
+        start.status.success(),
+        "{}",
+        String::from_utf8_lossy(&start.stderr)
+    );
+    let control = format!("unix:{}", ctl.display());
+    let rows = env.run(&["route", "--status", control.as_str(), "--metrics"]);
+    assert!(
+        rows.status.success(),
+        "{}",
+        String::from_utf8_lossy(&rows.stderr)
+    );
+    let text = String::from_utf8_lossy(&rows.stdout);
+    assert!(
+        text.contains("podnet_route_member_up{group=\"egress\",member=\"home\"} 1"),
+        "{text}"
+    );
+    assert!(
+        text.contains("podnet_route_member_weight{group=\"egress\",member=\"spare\"} 1"),
+        "{text}"
+    );
+    // --metrics and --json are two forms of one document: give one.
+    let both = env.run(&["route", "--status", control.as_str(), "--metrics", "--json"]);
+    assert_eq!(both.status.code(), Some(64));
+    let stop = env.run(&["stop", "r3", "--timeout", "5"]);
+    assert!(stop.status.success());
+    let gone = env.run(&["route", "--status", control.as_str(), "--metrics"]);
+    assert_eq!(gone.status.code(), Some(69));
+}
