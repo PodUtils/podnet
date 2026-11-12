@@ -1346,7 +1346,7 @@ cargo run -q -- pod doctor
 
 ## Done
 
-2026-11-12, see the commit of this entry. The probes `unshare(CLONE_NEWNET)`, `unshare(NEWUSER|NEWNET)` and
+2026-11-12, e44575a. The probes `unshare(CLONE_NEWNET)`, `unshare(NEWUSER|NEWNET)` and
 `veth wire (no TUN)` run in a new process. Test: `the_namespace_probes_run_in_a_new_process` (probes from four threads
 while four other threads allocate; each probe gives a verdict; the namespace of the caller stays the same). Not
 proven: the old deadlock itself, as no test can force it.
