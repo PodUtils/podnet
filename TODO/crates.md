@@ -806,6 +806,9 @@ Done so far:
   gives a typed cause in `End::GaveUp` (A12): `src/session.rs` maps `UnknownSession` and `WindowEnded` to
   `ResumeExpired`. `pod-turn` and `pod-devtunnel` exist (T-321, T-320). `cargo test --workspace`: 0 failed (one flaky
   stand-in test fixed, T-316).
+- v0.34.0 (PodUtils/podcrates#104): each `pod-*` dependency names `tag = "v0.34.0"`; no hand-off. `pod-link` has
+  the TCP carrier with TLS 1.3 and a pinned Ed25519 key (feature `tcp`, for T-268). A read after the stop of a
+  `pod-netstack` stack returns `ConnectionReset`. `cargo test --workspace --no-fail-fast`: 0 failed.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
