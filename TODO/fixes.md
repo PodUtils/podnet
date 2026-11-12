@@ -2755,7 +2755,7 @@ cargo test --test relay_reverse
 
 ## Problem
 
-`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:233-257`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:143-145`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:24-33`).
+`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:233-257`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:146-148`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:24-33`).
 
 ## Premise
 
@@ -4879,7 +4879,7 @@ sh scripts/agent/check.sh
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -4909,6 +4909,17 @@ relay": the quick-tunnel service answered HTTP 429 with Retry-After 3600 s (a ra
 ```sh
 # live.yml, step "SSH through the reverse relay": relay-ssh-ok, parallel-1, parallel-2 and the banner.
 ```
+
+## Correction
+
+2026-11-12: the cause (PodUtils/podcrates#92): `pod_relay::reverse::operator` up to v0.31.0 writes
+each frame of the node to the local side and flushes it only at the end of the session. `tokio::io::stdout()` keeps
+bytes until a newline or a flush, so the binary KEXINIT of sshd stays in the buffer; `ssh` and sshd wait for each
+other until sshd's `LoginGraceTime` (120 s). In podnet's sandbox the test answers ended in a newline. podcrates fixed
+the crate on its `main` (f891d89; the next tag). podnet's glue wraps the output of `relay connect` in a writer that
+flushes after each write (`src/relay_reverse/flush_each.rs`, test
+`relay_connect_output_reaches_the_reader_with_no_newline`: with the flush off it fails). The entry is done when the
+step of `live.yml` passes.
 
 
 # T-316: A local stand-in of the quick-tunnel service and the edge, so that CI runs the quick tunnel with no call to Cloudflare

@@ -31,6 +31,9 @@ use pod_relay::reverse::{self as road, Exit, OperatorConfig, OperatorLimits, Out
 use pod_ws::ConnectError;
 use tokio::io::{AsyncRead, AsyncWrite};
 
+mod flush_each;
+pub use flush_each::FlushEach;
+
 use crate::exit::{fault, Fault};
 use crate::ws_relay::Relay;
 
@@ -419,6 +422,8 @@ where
         wire: relay.wire(),
     };
     let unavailable = |why: String| Err(fault(Fault::Unavailable, anyhow::anyhow!(why)));
+    // Each frame of the node reaches the reader at once (T-315).
+    let output = FlushEach::new(output);
     match road::operator::run(&config, tokio::io::join(input, output)).await {
         Ok(outcome) if outcome.is_success() => Ok(()),
         Ok(Outcome::NeverReady { code, reason }) => match (reason.is_empty(), code) {
