@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**260 entries: 32 open, 13 partial, 22 blocked, 193 done.**
+**260 entries: 32 open, 13 partial, 21 blocked, 194 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 20 | 6 | 14 | 117 | 157 |
+| P2 | 20 | 6 | 13 | 118 | 157 |
 | P3 | 12 | 6 | 6 | 50 | 74 |
-| **All** | 32 | 13 | 22 | 193 | 260 |
+| **All** | 32 | 13 | 21 | 194 | 260 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -294,7 +294,7 @@ M8 Overlays, M9 Later.
 | [T-246](overlays.md) | P3 | S | M8 | feature | done | NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode |
 | [T-247](overlays.md) | P3 | M | M8 | measurement | blocked | NetBird: measure netstack mode on a proxy-only host |
 | [T-248](later.md) | P3 | L | M9 | feature | open | Router: a guest-wire router that ends guest TCP on smoltcp |
-| [T-249](pods.md) | P2 | M | M7 | chore | blocked | netns: the router of the namespace runs on the interface of `pod-netstack` |
+| [T-249](pods.md) | P2 | M | M7 | chore | done | netns: the router of the namespace runs on the interface of `pod-netstack` |
 | [T-250](pods.md) | P2 | S | M7 | chore | done | CI: a root step that runs the netns tests that skip on a runner |
 | [T-251](services.md) | P2 | S | M6 | feature | open | Transfer: the hosted magic-wormhole mailboxes on 443 as the default, with a choice that the code carries |
 | [T-252](services.md) | P3 | M | M6 | feature | open | Transfer: a piping-server relay as a transit carrier of last resort |

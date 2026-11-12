@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 260 entries: 32 open, 13 partial, 22 blocked, 193 done.
+`TODO/INDEX.md` holds 260 entries: 32 open, 13 partial, 21 blocked, 194 done.
 
 ## State
 
@@ -58,11 +58,11 @@ not wait for a larger one.
     direction split, an option, off by default).
     The study of hosted relays (`docs/research/podnet/hosted-relays.md`) adds T-251 (the hosted mailboxes on 443,
     after T-102) and T-252 (a piping-server transit, after T-103).
-8. **M7, the pods:** T-249 (the netns router on
-   `pod-netstack`; the hold of a SYN in `pod-hold` waits for it, PodUtils/podcrates#68).
+8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.
 9. **M8, the overlays:** T-114, T-115, T-117, T-247 (blocked: a NetBird account).
 10. **M9, later:** T-120 to T-129, each when its start condition holds; T-248 (the
-    guest-wire router, the owner's ruling of 2026-11-11) after T-249. T-001: edit GitHub #89 into a guide
+    guest-wire router, the owner's ruling of 2026-11-11) waits only for the asks 3 to 5 of PodUtils/podnet#464 and
+    its own work. T-001: edit GitHub #89 into a guide
     that a new client tests from.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.

@@ -1136,7 +1136,7 @@ T-170 step 2 (the hold of a SYN of `netns/backend.rs`).
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -1162,13 +1162,6 @@ podcrates T-170 step 2 (the hold of a SYN in `pod-hold`) waits for this move, an
 cargo test -p podnet-netns
 cargo test -p podnet-netns --test veth
 ```
-
-## Blocker
-
-`pod-netstack` v0.25.0 has three gaps (PodUtils/podnet#457): a `TcpListener` has no close, a drop of a
-`TcpStream` loses its queued bytes, and the accept pool answers a SYN with a RST when each listen socket is
-busy. The move works around them, but the first workaround caps the destination ports of a pod at 256 for its
-life (a capability that the old loop had). The entry is unblocked at the tag that closes the gaps.
 
 ## Start condition
 
@@ -1209,6 +1202,31 @@ The lead sends these APIs to podcrates in a COORD issue. The state stays `open`.
 (9d93516, bcf98f2; all tests pass, and a 20 MB download on each wire). It is not merged: the cap of 256 ports
 loses a capability (`CLAUDE.md`, Decisions). Merge it, without the workarounds, on the tag that closes the gaps
 of PodUtils/podnet#457.
+
+2026-11-12, podcrates v0.27.0 closed the gaps of PodUtils/podnet#457. The move drops each workaround: the cap of
+256 destination ports, the pool of waiting SYNs (`ACCEPT_POOL`, `StackConfig::accept_pool`), and the wait for
+`StackEvent::Closed` after a flow. A flow drops its stream at its end. A listener closes when its last handshake
+and its last flow end (`close_idle_ports`).
+
+## Done
+
+2026-11-12, commit 8f68f54 (`T-249: the router of the netns backend runs on the stack of pod-netstack`), on the
+local branch `worktree-agent-a35ab25d8cf7315bb`. The pump of the wire (`netns/tun.rs`) reads each packet before
+the stack. It answers DNS, takes the UDP flows, and holds each new SYN (`HeldSyn`, T-111). It gives the rest to
+`NetStack::over_link` of `pod-netstack` v0.27.0 with `any_ip`, `listen_any` and `Checksum::Tx` on the veth wire.
+A flow is a task. Removed workarounds: the cap of 256 ports (a listener closes at the end of its last flow), the
+SYN pool, and the wait for the close event of the stack.
+Tests: `netns_backend_has_no_cap_on_destination_ports` (300 connections to 300 ports at one time, then six ports
+again after a close; it fails on the capped code with the alarm of the client),
+`netns_backend_takes_a_burst_of_connects_to_one_port` (48 connects, `CONNECTED:48 HELLO:48`),
+`netns_backend_moves_a_large_download`, the netns tests of `tests/pod_seccomp`, and `podnet-netns --test veth`.
+They skip when the namespace is not available (`netns_available`; `veth` on `unshare` refused).
+Measured here: a download of 48 MiB through the router takes 1.6 s (`tests/pod_seccomp/tcp.rs`; 48 MiB with a
+check of each byte took 1.9 s in a first run), 48 connects to one port: 48 connected, 48 greetings.
+`sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers, test each 0. CI: at the merge.
+Not proven: the flow of a program that resets the connection while the upstream sends (no test), the pod under
+the root-netns step of CI (the new tests use the same skip as the other netns tests), and a listener that closes
+while a stream of its queue waits for `accept` after the 10 s handshake time of `HANDSHAKE_TTL`.
 
 
 # T-250: CI: a root step that runs the netns tests that skip on a runner

@@ -38,17 +38,14 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
 `TODO/INDEX.md` and `TODO/PROGRESS.md` and run `cargo todo set`, cite the rebased commit, run
 `gen-llms.py`, run `check.sh`, push. Push in batches.
 
-1. **T-249:** built on the local branch `worktree-agent-ac60b45b681f3ed6a` (9d93516, bcf98f2), not merged:
-   its workaround caps a pod at 256 destination ports. It waits for three gaps of `pod-netstack` (#457). On
-   the tag that closes them: rebase the branch (the take of v0.26.0 changed `netns/tun.rs` and `veth.rs` under
-   it), drop the workarounds, merge, and write the commit in #451.
+1. **T-249:** done on the local branch `worktree-agent-a35ab25d8cf7315bb`, not merged. After the merge, write
+   the commit in #451 (COORD issue to podcrates, for T-170 step 2).
 2. **Replies:** sent as #456. `crates/podnet-netns/src/netns/veth.rs` takes fixes only until the take of
    `pod-hold` with the wire (podcrates T-201).
 3. **T-248** (the guest-wire router) after T-249.
 4. **podcrates:** at each new tag, `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at
    the tag (T-137). #448 waits for the `taken` line of the watches of `pod-services`; #455 is its T-224.
-5. **The next beta:** when a batch after 8f53288 is green. The local branch of T-249 holds an entry T-256 of its
-   own: give it the next free id at its merge.
+5. **The next beta:** when a batch after 8f53288 is green.
 
 ## Open COORD issues
 

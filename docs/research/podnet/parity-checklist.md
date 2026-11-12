@@ -760,17 +760,17 @@ Pinned by: `tests/cli.rs` (`log_controls`, `log_format_json_gives_json_lines_onl
 
 Hand-written parser: `crates/pod-netns/src/cli.rs` `parse_args`.
 
-- [ ] `pod-netns [OPTIONS] -- PROGRAM [ARGS]...` runs the program; exit code of the program
+- [x] `pod-netns [OPTIONS] -- PROGRAM [ARGS]...` runs the program; exit code of the program
 - [ ] `pod-netns doctor [--json]`: what the host permits; exit 3 when no backend can run (no `schema` key, own words `ok`/`no`/`available`)
 - [x] `pod-netns --serve LISTEN -x PROXY`: SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or `tcp://host:port`
 - [x] `-x, --proxy SPEC` repeatable, chains: `socks5://[user:pass@]host:port`, `http://...`, `socks5://unix:/path`, `http://unix:/path`, `tailscale:/path/to/tailscaled.sock`; default `ALL_PROXY`, `all_proxy`, `HTTPS_PROXY`, `https_proxy`, `HTTP_PROXY`, `http_proxy` (first that parses)
 - [x] `-r, --rule SPEC`: `domain:NAME=PROXY`, `domain:.suffix=PROXY`, `cidr:NET=PROXY`, `cidr:NET=direct`; first match wins; seccomp: 127.0.0.0/8 direct
 - [ ] `--map NAME=ADDR` repeatable
 - [ ] `--keep-proxy-env`
-- [ ] `--backend auto|netns|seccomp`
+- [x] `--backend auto|netns|seccomp`
 - [ ] `--prefer-udp`
 - [ ] `--inbound-dir DIR` (default `$XDG_RUNTIME_DIR/pod-netns-inbound`, else `$TMPDIR/pod-netns-inbound-UID`; owner and mode checks)
-- [ ] `-v, --verbose`, `-V, --version` (`pod-netns VERSION (COMMIT)`), `-h, --help`
+- [x] `-v, --verbose`, `-V, --version` (`pod-netns VERSION (COMMIT)`), `-h, --help`
 - [ ] usage errors exit 64 (also no proxy at all); 3 when no backend can run
 - [ ] program name in messages: `podnet pod` when called from podnet (`set_program_name`)
 - [ ] library: `pod_netns::raw` (the `netns-raw` backend of `podnet warp run --backend netns-raw`), `socks`, `tailscale`, `upstream`, `dns`, `listen`, `QUIET_VARIABLE`, `main_with_args`, `usage`, `usage_for`
