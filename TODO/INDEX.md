@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**259 entries: 38 open, 10 partial, 23 blocked, 188 done.**
+**259 entries: 38 open, 10 partial, 22 blocked, 189 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 21 | 6 | 14 | 115 | 156 |
-| P3 | 17 | 3 | 7 | 47 | 74 |
-| **All** | 38 | 10 | 23 | 188 | 259 |
+| P3 | 17 | 3 | 6 | 48 | 74 |
+| **All** | 38 | 10 | 22 | 189 | 259 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -211,7 +211,7 @@ M8 Overlays, M9 Later.
 | [T-163](crates.md) | P2 | M | M3 | feature | blocked | relay: the session budget comes from the pool document (GitHub #360) |
 | [T-164](fixes.md) | P3 | S | M5 | docs | done | Document `--no-verify` in the README, and say what it does not do (GitHub #361) |
 | [T-165](later.md) | P3 | M | M9 | feature | done | The SSH forward-relay leg: supervise the session after `run()` returns (GitHub #362) |
-| [T-166](later.md) | P3 | M | M9 | feature | blocked | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
+| [T-166](later.md) | P3 | M | M9 | feature | done | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
 | [T-167](services.md) | P2 | M | M6 | feature | done | `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364) |
 | [T-168](services.md) | P2 | S | M6 | feature | done | A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365) |
 | [T-169](fixes.md) | P2 | S | M5 | defect | partial | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |

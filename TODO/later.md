@@ -1083,7 +1083,7 @@ of the record is tested); a relay that sends text before its identification line
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -1121,10 +1121,6 @@ The owner, 2026-11-11 (`docs/decisions.md`, The SSH forward-relay leg): the leg 
 cargo test -p podnet relay::tests -- picks_the_tunnel_url url_across_two_frames
 ```
 
-## Blocker
-
-The session of `PodUtils/podcrates` (the crate `pod-services`): the relay facts (relay host, user, URL rule) are data of that crate. Send a COORD issue (to podcrates). The entry is unblocked when `pod-services` has the facts.
-
 ## Start condition
 
 T-165.
@@ -1144,6 +1140,38 @@ that no flag sets the fields. What stays for the data of `pod-services`:
 - Approach 2 is part met: `--url-skip` is repeatable, so a command line can exclude more than one dashboard
   host. The known hosts are still not data.
 
+2026-11-12: The blocker is met. `PodUtils/podcrates` v0.26.0 (the tag that podnet takes) holds
+`pod_services::forward::Relay::of`, `forward::UrlRule` and `forward::Banner` (podcrates T-224, the answer
+to COORD #455). The Approach is done in the commit below.
+
+## Done
+
+2026-11-12, commit 652b2e9. The facts come from `pod_services::forward` through
+`crates/podnet-serve/src/relay/facts.rs` (`lookup`, `names`, `dashboards`, `default_facts`) and
+`podnet_core::services::forward_relays`. podnet holds no relay host.
+- Approach 3: `podnet ssh-relay --service NAME` (default `pinggy`) takes the plain SSH endpoints, the user
+  (else `podnet`), the URL rule and the keepalive (else 30 s) of the relay. `--server`, `--user`,
+  `--url-match` and `--url-skip` override them (each URL flag replaces its own list). `--server` with no
+  `--service` is a relay that no data describes: `--user` and a URL flag are then required (exit 64). An
+  unknown name is exit 64 and lists the known relays. `RelayConfig::default()` uses the facts of `pinggy`.
+- Approach 1: `relay::feed` gives each `ChannelMsg` to a `forward::Banner`, which holds the word that a frame
+  cut, and `finish` at the end of the channel. The own `UrlRule` (`skip`, `hold`) is gone; the type is
+  `forward::UrlRule` (`skips`, `matches`).
+- Approach 2: the rule of a relay skips the `url-skip` texts of every known relay (`facts::dashboards`).
+- Approach 4: `RelayConfig.fallbacks`; `connect_transport` tries `address`, then each fallback, in order, on a
+  transport error (a bad address stops at once). `ssh-relay` fills them with the other plain SSH endpoints
+  of the relay (`serveo`: 443, then 22). The doctor probe uses the same function. The next endpoint is tried
+  at the transport only: a handshake or login error does not move to the next endpoint.
+- Tests (`crates/podnet-serve/src/relay/tests.rs`, `src/cli/cmd/ssh_relay.rs`): `picks_the_tunnel_url_and_not_the_dashboard`,
+  `url_across_two_frames` (failed first with a per-frame reader), `a_banner_with_no_end_of_line_is_whole_when_the_channel_closes`,
+  `a_banner_with_only_a_dashboard_ends_with_no_url`, `the_rule_of_each_relay_skips_every_known_dashboard`,
+  `the_transport_tries_the_address_list_in_order` (failed first: one address only),
+  `the_facts_of_the_default_relay_come_from_pod_services`, `ssh_relay_with_no_flag_uses_the_facts_of_the_default_relay`,
+  `a_flag_overrides_the_facts_of_the_relay`, `ssh_relay_takes_the_facts_of_a_named_relay_and_the_address_list`,
+  `ssh_relay_refuses_an_unknown_relay_and_lists_the_known_ones`.
+- Not proven: a live relay. The URL rule of `pinggy` in the data is `https://` and `.run.pinggy-free.link`;
+  the banner of 2026-10-09 also held `*.free.pinggy.net`, which the rule no longer takes. A fake relay
+  that sends a URL in two SSH frames is not added (the unit test covers the reader).
 # T-172: A pin of the new public name while the process runs (GitHub #367)
 
 **Source:** GitHub #367 (https://github.com/PodUtils/podnet/issues/367)
