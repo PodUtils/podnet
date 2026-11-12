@@ -4678,7 +4678,7 @@ python3 -I scripts/gen-llms.py --check $CARGO_TARGET_DIR/debug/podnet
 
 ## Done
 
-2026-11-12, 6f7da93 (the README and the tests; c594eb2 has the documents, 4682aa0 the entry). `README.md` has 145
+2026-11-12, 28da113. `README.md` has 145
 lines: what podnet is, install, quick start, a map of the capabilities and the list of the documents. The detail
 is in 16 topic documents in `docs/`: install, tunnels, serve, warp, pods, networks, proxies, relay, background,
 doctor, cli, library, build (moved) and router, forward, egress (new). The capabilities that the README did not
