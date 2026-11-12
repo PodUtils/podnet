@@ -768,6 +768,11 @@ Done so far:
   `accept_pool`. The close of a listener and of a stream, the RST of `abort`, `ConnectionReset` for a RST of the
   peer and no RST for a burst of SYNs close the gaps of PodUtils/podnet#457. The tests of T-176 pin the new
   behaviour (`crates/podnet-vnet/tests/guest_wire.rs`). T-249 drops its workarounds for these gaps.
+- `pod-netstack` v0.28.0 (PodUtils/podcrates#86): each `pod-*` dependency names `tag = "v0.28.0"`. The UDP
+  asks 3 to 5 of PodUtils/podnet#464 are closed: a backlog for each socket, the counters `udp_rx_dropped`,
+  `udp_tx_dropped` and `udp_oversize`, `max_datagram` (a larger send is `InvalidInput`), and the feature
+  `ipv4-fragmentation` (off). The test `guest_wire_udp_over_the_mtu_is_refused_without_fragmentation` pins the
+  refusal. `cargo test --workspace --no-fail-fast`: 0 failed.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

@@ -294,13 +294,12 @@ async fn guest_wire_stack_udp_queue_is_bounded_and_silent() {
     );
 }
 
-/// Constraint 3: a datagram over `mtu - 28` bytes is lost, up and down, with
-/// `Ok` for the sender and no counter. The smoltcp of podnet has no IPv4
-/// fragmentation, so the size of 65535 bytes of the note does not arise
-/// before the features `proto-ipv4-fragmentation` and
-/// `reassembly-buffer-size-65536` (measured, see the note).
+/// Constraint 3 (pod-netstack v0.28.0): with no fragmentation, a datagram over
+/// `mtu - 28` bytes is refused at the sender with `InvalidInput`, up and down,
+/// and `udp_oversize` counts it. A datagram at the limit arrives. The feature
+/// `ipv4-fragmentation` of `pod-netstack` carries 65507 bytes (not on here).
 #[tokio::test]
-async fn guest_wire_udp_over_the_mtu_is_lost_without_fragmentation() {
+async fn guest_wire_udp_over_the_mtu_is_refused_without_fragmentation() {
     for (mtu, limit) in [(1280usize, 1252usize), (1500, 1472)] {
         let with_mtu = |c: StackConfig| StackConfig { mtu, ..c };
         let (router, guest, _wire) = pair(with_mtu(router_config()), with_mtu(guest_config()));
@@ -311,19 +310,25 @@ async fn guest_wire_udp_over_the_mtu_is_lost_without_fragmentation() {
             let sent = guest_socket
                 .send_to(&vec![7u8; size], at("1.1.1.1", 5353))
                 .await;
-            assert!(
-                sent.is_ok(),
-                "mtu {mtu} size {size}: the sender sees no error"
-            );
+            if arrives {
+                sent.unwrap_or_else(|e| panic!("mtu {mtu} size {size}: {e}"));
+            } else {
+                let e = sent.expect_err("an oversize datagram is refused");
+                assert_eq!(
+                    e.kind(),
+                    std::io::ErrorKind::InvalidInput,
+                    "mtu {mtu} size {size}"
+                );
+            }
             let got =
                 tokio::time::timeout(Duration::from_millis(600), flows.recv_from_to(&mut buf))
                     .await;
             assert_eq!(got.is_ok(), arrives, "mtu {mtu} up size {size}");
         }
         assert_eq!(
-            guest.stats().datagrams,
-            3,
-            "the stack counts a datagram that it could not send"
+            guest.stats().udp_oversize,
+            2,
+            "mtu {mtu}: each refusal is counted"
         );
         guest_socket
             .send_to(b"hello", at("1.1.1.1", 5353))
@@ -334,15 +339,20 @@ async fn guest_wire_udp_over_the_mtu_is_lost_without_fragmentation() {
             .unwrap();
         for (size, arrives) in [(limit, true), (limit + 1, false), (70000, false)] {
             let sent = flows.send_to_from(&vec![1u8; size], from, to.ip()).await;
-            assert!(
+            assert_eq!(
                 sent.is_ok(),
-                "mtu {mtu} size {size}: the sender sees no error"
+                arrives,
+                "mtu {mtu} down size {size}: {sent:?}"
             );
             let got =
                 tokio::time::timeout(Duration::from_millis(600), guest_socket.recv_from(&mut buf))
                     .await;
             assert_eq!(got.is_ok(), arrives, "mtu {mtu} down size {size}");
         }
+        assert!(
+            router.stats().udp_oversize >= 2,
+            "mtu {mtu}: the router counts its refusals"
+        );
     }
 }
 
