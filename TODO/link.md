@@ -69,7 +69,7 @@ T-086 is done (the take of `pod-identity`).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -125,6 +125,14 @@ None. Send ask A2 first. The resume part waits for T-263.
 `accept`, `close`; `Stream` (`AsyncRead`, `AsyncWrite`, `reset`); the `Carrier` trait with `available()`; the unix and
 memory carriers (calls C120 to C124). podnet takes it; the Blocker is gone. A link over a session of `pod-session`
 crosses the loss of its carrier (`dead_after` takes the `resume_deadline`).
+
+2026-11-12: the Approach is a take, not a local crate. Steps 1 to 3 and the session API (step 5) are `pod-link`. Left: the topic document of the link and the row in the map of `README.md` (step 6). They come with T-265, the first user-facing command. Left: the C ABI (T-304).
+
+## Done
+
+2026-11-12, commit 69c9c7f. `Cargo.toml` takes `pod-link` (tag v0.32.0). `src/link.rs` (`podnet::link`) is the glue: `dial`, `listen`, `Door::accept` and `from_io` open a link over a `Carrier` (the carrier says first with `available()` whether the host can use it), and `fault` and `carrier_fault` give each failure the exit class of podnet (64 for a bad value, 69 for an unavailable path, 75, 78 and 124 for the matching classes). `scripts/check-layers.py` puts the module in the layer `podnet`. No frame, window or keepalive code is in podnet.
+`cargo test --test link_session`: 6 passed: `three_hundred_echoes_cross_one_link` (300 streams of 40 KB or more over one link), `a_stalled_reader_does_not_stop_the_other_echoes` (a write of 8 MiB to a stream that is not read waits; 299 echoes finish), `the_dialer_has_odd_ids_and_the_listener_even_ids`, `a_silent_peer_ends_the_link_as_dead`, `a_live_peer_keeps_the_link_and_answers_the_ping`, `a_setting_out_of_its_limit_is_a_usage_error` (exit 64). Before the glue the test file did not compile (`unresolved import podnet::link`).
+Not proven: the 1 MiB resume digest (T-263); the docs; a link over a real carrier at the limit of 4096 streams (the limits are proven in the tests of `pod-link`).
 
 
 # T-263: link: the 10-minute resume of a session through pod-session (GitHub #466)
@@ -185,7 +193,7 @@ T-262 is done, and T-086 is done (the take of `pod-session`).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -222,6 +230,15 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-262 has the crate.
+
+2026-11-12: the registry is `src/carriers.rs` (`podnet::carriers`). The trait and `available()` are in `pod-link` (podcrates call C117); the order, the flags and the lines are podnet's. Left: the rows of `podnet doctor` (step 4) and the command `podnet link carriers`, which print `carriers::report`. They come with T-265. The field `feature` of a row is `None` until T-311.
+
+## Done
+
+2026-11-12, commit 528235c. `carriers::ROWS` has the rows `unix` and `memory` in this order (name, about, address form, cost, privilege, feature, maker). `carriers::open(name, &Options)` exits 64 for an unknown name (the text lists the names) or a bad option, and 69 with the reason of `available()` for a carrier that the host refuses. `carriers::report` gives one `Report` for each carrier (the facts of `pod-link`, the addressing `Peer`, the diagnosis, and `line()`).
+`cargo test --test link_registry`: 7 passed, among them `an_unknown_name_exits_64_and_lists_the_names`, `a_disabled_carrier_exits_69_with_its_reason` (a stub carrier that the host refuses), `the_report_gives_the_reason_of_a_disabled_carrier`. Before the module the test file did not compile (`unresolved import podnet::carriers`).
+Not proven: a real host that refuses `AF_UNIX` (the 69 path is proven with a stub carrier); the doctor rows.
+
 
 # T-265: link: the commands listen, dial, status, close and carriers (GitHub #466)
 
@@ -613,7 +630,7 @@ T-268 is done (the verifier) and T-311 is done (the feature).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -649,6 +666,15 @@ sh scripts/agent/check.sh
 
 T-262 and T-264 are done.
 
+2026-11-12: the library part is done. Left: the flag `--allow-other-uid` of the command (it is the field `allow_other_uid` of `carriers::Options` now); it comes with T-265.
+
+## Done
+
+2026-11-12, commit 2477e5a. The unix carrier of `pod-link` is the first row of `carriers::ROWS`. `link::unix_pair` is the socket-pair half. The path rules are those of `pod-link` and are proven here through the registry: a path of 1 to 107 bytes (108 exits 64), the mode 0600, a regular file exits 64 and stays, a live socket exits 69, a stale socket is replaced, a missing listener exits 69, a peer of another uid is refused (exit 69) unless `allow_other_uid` is set.
+`cargo test --test link_unix`: 8 passed, among them `a_peer_of_another_uid_is_refused_unless_allowed` (root only: a thread takes the uid 65534). `sh scripts/restricted-host.sh --test link_unix ... --test relay_listen`: the 8 tests pass with bind(AF_INET) refused. The tests start no TCP listener, so they cannot skip.
+Not proven: the CI jobs `restricted-host` and `no-loopback` (not run here; the tests bind no inet socket). `scripts/restricted-host.sh` exits 1 when no test skips, so a run with only these tests fails its last check: add a test that skips (as `relay_listen`).
+
+
 # T-275: link: the in-process memory carrier (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-8.
@@ -656,7 +682,7 @@ T-262 and T-264 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -688,6 +714,13 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-262 and T-264 are done.
+
+## Done
+
+2026-11-12, commit 2477e5a. The memory carrier of `pod-link` is the second row of `carriers::ROWS`; `Options::ring` sets the ring (64 KiB to 64 MiB, other values exit 64). `link::memory_pair` runs two links in one process.
+`cargo test --test link_memory`: 6 passed: `a_full_ring_blocks_the_writer_and_truncates_nothing`, `the_end_of_one_side_is_the_end_of_stream_of_the_other`, `the_size_of_the_ring_is_64_kib_to_64_mib`, `a_name_with_no_listener_exits_69_and_a_held_name_exits_69`, `a_link_crosses_the_memory_carrier_by_name`, `a_link_over_a_memory_pair_ends_when_a_side_drops`. `sh scripts/restricted-host.sh` with these tests: pass.
+Not proven: the CI jobs `restricted-host` and `no-loopback` (not run here; the tests bind no inet socket).
+
 
 # T-276: link: the UDP carrier with KCP (GitHub #468)
 
