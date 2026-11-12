@@ -498,6 +498,12 @@ jobs:
           target/release/podnet relay node "$name" --to 127.0.0.1:22 --detach --name relaynode | tail -1 | jq -c '{target}'
           echo "$name $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)" > "$RUNNER_TEMP/relay_known"
           export PODNET_RELAY_CONNECT_TOKEN="$token"
+          # One connect with its log first: ssh hides the stderr of a
+          # ProxyCommand. The log shows the road and the host of the open.
+          printf 'SSH-2.0-podnet-live\r\n' | timeout 60 target/release/podnet -v relay connect "$name" \
+            > probe.out 2> probe.err || echo "relay connect: exit $?"
+          sed "s/$name/<pair>/g" probe.err | tail -40
+          head -c 64 probe.out | tr -dc '[:print:]\n'; echo
           ssh -i "$RUNNER_TEMP/relay_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$RUNNER_TEMP/relay_known" -o HostKeyAlias="$name" \
             -o HostKeyAlgorithms=ssh-ed25519 \
