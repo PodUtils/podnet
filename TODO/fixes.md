@@ -4701,7 +4701,7 @@ Not proven: the new text was read against the help and the code, not run against
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -4730,3 +4730,14 @@ T-217 gives the seven lanes of `doctor --json`, but two lanes have no probe and 
 ```sh
 cargo test -p podnet doctor -- lanes
 ```
+
+## Done
+
+2026-11-12, commit 10389da. `doctor --json` gives a probe for each of the lanes `masque_udp443` and `ws_upgrade`. The code is in `src/doctor/lane_probes.rs`. `src/doctor.rs` (frozen) has only the field `Report.probes` and two calls in `run`.
+
+- `masque_udp443`: one QUIC packet (`udp::probe`) to the MASQUE endpoint on UDP 443. `ok` on any answer (`ms` is the time). `fail` on a refusal, and on silence when the probe of UDP 7844 answers. `unknown` on silence when UDP 7844 does not answer. With a proxy for the endpoint no packet is sent: `unknown`, reason "no proxy carries UDP".
+- `ws_upgrade`: an HTTP/1.1 `Upgrade: websocket` request over TLS to the target `edge-name` (the edge host on 7844, SNI `h2.cftunnel.com`, the roots of the edge), through the proxy when one is set. `ok` on `101`. `fail` on another status, a TLS fault, a refusal or a close with no status line. `unknown` when no answer comes in twice `--timeout`.
+- No new host. Both probes run beside the paths. With `--quick`, a probe that is late gets `unknown` ("no answer in the time limit of --quick"). The keys of a lane stay `{verdict, ms, reason}`.
+- Docs: `docs/protocol.md` section 9, `docs/doctor.md`, `llms-full.txt`.
+
+Tests (each failed first against a stub that returned `unknown`): `doctor::lane_probes::tests::lanes_ws_upgrade_is_ok_on_101`, `lanes_ws_upgrade_fails_on_another_status`, `lanes_ws_upgrade_fails_on_a_tls_fault`, `lanes_ws_upgrade_fails_on_a_closed_port`, `lanes_masque_udp_is_ok_on_any_answer`, `lanes_masque_udp_fails_on_a_refusal`, `lanes_masque_udp_silence_is_a_fail_only_when_udp_is_open_elsewhere`, `lanes_masque_udp_with_a_proxy_is_unknown_and_sends_nothing`, `doctor::tests::the_lanes_hold_the_probes`. `doctor_json_has_the_seven_lanes` (`tests/doctor.rs`) checks both lanes through a test proxy. Not proven: the live edge (a real `ok` or `fail` of both lanes; no network here). The stand-ins answer with a version negotiation packet, not a full QUIC handshake. The edit of the frozen `src/doctor.rs` is a hand-off for podcrates (`pod-services`).

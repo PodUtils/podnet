@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**260 entries: 36 open, 13 partial, 22 blocked, 189 done.**
+**260 entries: 35 open, 13 partial, 22 blocked, 190 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 21 | 7 | 14 | 115 | 157 |
+| P2 | 20 | 7 | 14 | 116 | 157 |
 | P3 | 15 | 5 | 6 | 48 | 74 |
-| **All** | 36 | 13 | 22 | 189 | 260 |
+| **All** | 35 | 13 | 22 | 190 | 260 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -305,4 +305,4 @@ M8 Overlays, M9 Later.
 | [T-257](pods.md) | P2 | S | M7 | defect | done | doctor: the probes of the namespace allocate in a fork child |
 | [T-258](fixes.md) | P3 | S | M5 | docs | done | Docs: stale or misleading comments and records (GitHub #459) |
 | [T-259](fixes.md) | P2 | M | M5 | docs | done | The user documentation by topic: a short README and one document for each area |
-| [T-260](fixes.md) | P2 | M | M5 | feature | open | doctor: probes for the lanes `masque_udp443` and `ws_upgrade` (GitHub #461, A-C-10) |
+| [T-260](fixes.md) | P2 | M | M5 | feature | done | doctor: probes for the lanes `masque_udp443` and `ws_upgrade` (GitHub #461, A-C-10) |
