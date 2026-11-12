@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**260 entries: 35 open, 13 partial, 22 blocked, 190 done.**
+**260 entries: 34 open, 13 partial, 22 blocked, 191 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 20 | 7 | 14 | 116 | 157 |
-| P3 | 15 | 5 | 6 | 48 | 74 |
-| **All** | 35 | 13 | 22 | 190 | 260 |
+| P3 | 14 | 5 | 6 | 49 | 74 |
+| **All** | 34 | 13 | 22 | 191 | 260 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -179,7 +179,7 @@ M8 Overlays, M9 Later.
 | [T-131](later.md) | P3 | L | M9 | chore | open | A crate that podnet and podssh share for the layer, the channel and the identity |
 | [T-132](later.md) | P3 | S | M9 | chore | done | `try_update` in place of the macro `update_atomic!` |
 | [T-133](later.md) | P3 | S | M9 | chore | done | Zig from the community mirrors in the release workflow |
-| [T-134](later.md) | P3 | M | M9 | chore | open | A weekly watch of the relay contract |
+| [T-134](later.md) | P3 | M | M9 | chore | done | A weekly watch of the relay contract |
 | [T-135](fixes.md) | P3 | S | M5 | defect | done | `podnet pod` prints its own program name in each message and in `--version` |
 | [T-136](rename.md) | P1 | S | M1 | defect | done | live: two runs in a row failed before the transfer of the repository (GitHub #311) |
 | [T-137](crates.md) | P1 | M | M3 | chore | partial | podnet uses the shared crates of `PodUtils/podcrates` |

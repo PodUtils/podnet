@@ -846,7 +846,7 @@ with cargo-zigbuild), the image and the publish steps of a dry run.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -896,6 +896,13 @@ void. The owner (`docs/decisions.md`, Relay contract watch): the weekly watch of
 (step 3, against `https://tcp.ssh.relay.ajam.dev/llms-full.txt`) belongs to `pod-relay` in
 `PodUtils/podcrates`, not to podnet. podnet's part: check that podcrates has the watch, else open
 an issue there; then set this entry to done.
+
+## Done
+
+2026-11-12, GitHub #463 (COORD-043, to podcrates). podnet's part of the Correction: the checkout of podcrates of
+2026-11-12 has no watch of the relay contract (`.github/workflows/`: no workflow reads
+`https://tcp.ssh.relay.ajam.dev/llms-full.txt`; `upstream.yml` watches the sources and the zig mirrors only).
+#463 asks podcrates to add the watch to `pod-relay`. Steps 1 and 2 stay void (Correction of 2026-11-05).
 
 # T-153: netns: a backend with an in-namespace netfilter data plane (GitHub #352)
 

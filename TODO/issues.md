@@ -158,5 +158,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #460 | COORD-041: podnet took the SSH relay facts (T-166); a comment fix in the frozen src/tunnel.rs; the pinggy URL rule (to podcrates) | open (a COORD issue between sessions) | none |
 | #461 | cfb asks: tracker for the 6 asks of cfb owned by podnet (from podcrates#35) | open | T-216, T-217, T-218, T-219, T-220, T-221, T-260 |
 | #462 | COORD-042: a change in the frozen src/doctor.rs for the lanes of A-C-10 (T-260) (to podcrates) | open (a COORD issue between sessions) | none |
+| #463 | COORD-043: a weekly watch of the relay contract in pod-relay (podnet T-134) (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
