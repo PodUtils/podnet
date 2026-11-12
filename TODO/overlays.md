@@ -206,7 +206,7 @@ stays for T-117.
 **Milestone:** M8
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -240,6 +240,39 @@ T-116 and T-059 are done.
 
 2026-11-05, The stack is `pod-netstack` and the WireGuard code is `pod-wg` (wave 2). Step 1 puts the peer on
 the smoltcp 0.14 stack of `pod-netstack`, not on a smoltcp 0.12 stack of podnet.
+
+2026-11-12, Partial. Steps 1 and 3 are done. Step 2 is done for the direct UDP and for the carrier by the
+datagrams of any way below the network (`Ctx::below`); the WARP chain is not done. What is left:
+
+- The WARP carrier. `warp` is not a network of the registry, and the datagram path of MASQUE CONNECT-IP is
+  in `src/warp/`, which podcrates will hold as `pod-warp` (not taken; fixes only). The task ends when
+  `pod-warp` is taken and gives a `Dial` with `datagrams`.
+- `podnet pod -x wg:FILE` and `--egress wg:FILE` for a pod. The pod runs before the async runtime exists, so
+  it cannot start the tunnel. Both give one line that names `forward --network` and `podnet route`.
+- A target name through the tunnel (DNS from the `DNS` line of the file). The network takes IP addresses.
+- `PresharedKey` (refused with one line until `pod-wg` takes one).
+
+## Done
+
+2026-11-12, commit 8713683 (partial). `wg:FILE` is a row of the registry (`src/networks.rs`,
+`src/networks/wg.rs`): the handshake with `pod-wg`, a stack of `pod-netstack` over the tunnel (TCP and UDP
+from the `Address` of the file), the UDP of the tunnel on the datagrams of `Ctx::below`, else on a UDP socket
+of this host. The handshake is the UDP probe: no answer in 15 s gives one line about a closed UDP path.
+`podnet forward --network` and the `networks:` of a router file take the spec.
+
+- `cargo test --workspace -- wg_network_reaches_a_service_behind_the_peer`: 1 passed. It failed before the
+  change (`parse` refused `wg:FILE`). The peer is a userspace WireGuard responder on the loopback (the
+  handshake of `pod_wg::standin::respond`, transport messages sealed in the test) with a second stack and
+  an HTTP service behind it.
+- New tests (4): `wg_network_reaches_a_service_behind_the_peer`,
+  `wg_network_sends_its_udp_over_the_datagrams_of_the_way_below`,
+  `wg_network_spec_a_bad_file_is_one_usage_line` (`src/networks/wg_tests.rs`),
+  `network_spec_wg_is_refused_by_the_pod_and_by_a_process_command_with_one_line` (`src/cli/way_tests.rs`).
+- `sh scripts/agent/check.sh`: exit 0.
+- Not proven: a WireGuard peer of another code base (the responder shares the crypto of `pod-wg`); the
+  rekey and the keepalive over the network; a UDP socket of the tunnel (`Dial::datagrams` of the dialer);
+  IPv6 inside the tunnel; a host name as the `Endpoint` (the system resolver); the WARP carrier; a real
+  UDP-blocked host.
 
 # T-118: Research: NetBird, Firezone and ZeroTier as networks
 
