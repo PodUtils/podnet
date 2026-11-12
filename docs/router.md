@@ -1,12 +1,12 @@
 # Router: `podnet route`
 
 `podnet route --config FILE` runs a router from a YAML file. The router has networks, groups of
-networks, health probes, policies and doors. A door is a SOCKS5 and HTTP CONNECT listener. Each flow
+networks, health probes, policies and doors. A door is a SOCKS5 and HTTP CONNECT listener. A guest wire lets a guest use the router as its gateway. Each flow
 that comes to a door goes out through the network or the group that the door names. The kernel mode
 writes policy routing for WANs, with no `ip` program.
 
 The router needs no root, no TUN device and no namespace, except the kernel mode, which needs
-`CAP_NET_ADMIN`.
+`CAP_NET_ADMIN`. A guest wire (below) needs a unix socket, or a TUN device that exists.
 
 ```sh
 podnet route --config router.yml                        # run in the foreground
@@ -70,7 +70,7 @@ doors:
   in.
 * `groups` maps a name to a list of members. A member is a network name with an optional weight
   (`home*2`). The default weight is 1.
-* The file needs one door or more, unless it has a `kernel` section. A file with `kernel` needs no door.
+* The file needs one door or more, unless it has a `guests` entry or a `kernel` section. A file with `kernel` needs no door.
 * A flow takes one member and never moves to another.
 
 ## Doors
@@ -103,6 +103,46 @@ doors:
   cannot resolve is an error: there is no fallback to the host. A network whose far end resolves names
   (a `socks5h://` proxy, `relay`) gets the name as it is, and needs no entry. A flow that has an address
   needs no query.
+
+## Guest wires
+
+A guest (a VM, a container, a host behind one wire) uses the router as its gateway. The wire carries IPv4
+packets. A userspace stack ends the TCP and the UDP of the guest, and the router sends each flow to a network
+or a group, as it does for a door.
+
+```yaml
+guests:
+  - wire: unix:/run/g.sock    # unix:/PATH or tun:NAME
+    net: 10.66.0.0/24         # the guest net
+    via: egress               # a network or a group of the file
+    rules: /etc/r.rules       # optional: rules that go before `via`
+    allow_shadowed_rules: false
+    mtu: 1500                 # optional, 576 to 9000
+```
+
+| Key | Meaning |
+| --- | --- |
+| `wire` | `unix:/PATH`: the router listens on a `SOCK_SEQPACKET` socket (mode 0600). Each message is one IPv4 packet. One guest is connected at a time; a new connection replaces the old one. `tun:NAME`: the router opens the TUN device `NAME`, which must exist or be allowed (`CAP_NET_ADMIN`). The operator sets its address and routes. |
+| `net` | `A.B.C.D/N`, N from 8 to 30. The router is the first host of the net (the gateway of the guest). |
+| `via`, `rules`, `allow_shadowed_rules` | As for a door. |
+| `mtu` | The MTU of the wire. Default 1500. Set it to the MTU of the guest. |
+
+* The router drops a packet whose source is outside `net`, whose destination is in `net`, a multicast,
+  broadcast, loopback or link-local address, or whose protocol is not TCP or UDP. IPv6 is dropped.
+* TCP: the router holds the first SYN of a flow and dials the target (30 s limit) before the handshake. A dial
+  that fails, or a rule that rejects, answers the SYN with a RST: `connect` of the guest fails at once. A copy of
+  the SYN waits. At 2048 flows a new SYN is dropped, and the guest sends it again.
+* UDP: each flow (guest address and target) has one socket from `Dial::datagrams` of the way that the rules
+  choose, and takes one member of a group. A flow has a queue of 32 datagrams; a datagram for a full queue is
+  dropped and counted. A flow ends after 60 s with no datagram. At most 512 flows and 256 ports. IPv4
+  fragmentation carries a datagram over the MTU, up to 65507 bytes.
+* The guest resolves names itself (a flow to its resolver is a UDP or TCP flow), so a `domain:` rule does not
+  match a flow of a guest. Use `cidr:` rules.
+* `--status` shows each guest with its counters. The metrics have `podnet_route_guest_*` rows with the label
+  `guest` (the wire): `tcp_dialed`, `tcp_refused`, `tcp_syn_dropped`, `tcp_open`, `udp_flows`, `udp_up`,
+  `udp_down`, `udp_queue_dropped`, `udp_oversize`, `udp_refused` and `dropped`. The stack counts no datagram
+  that it loses before the router reads it (PodUtils/podnet#464).
+* `--check` prints a line for each guest.
 
 ## Groups, health and policies
 

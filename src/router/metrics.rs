@@ -104,6 +104,20 @@ pub fn render(status: &Value) -> String {
             group["refused"]
         );
     }
+    let guests = status["guests"].as_array().cloned().unwrap_or_default();
+    if !guests.is_empty() {
+        for (key, name, kind, help) in super::guest::COUNTERS {
+            let _ = writeln!(out, "# HELP {name} {help}\n# TYPE {name} {kind}");
+            for guest in &guests {
+                let _ = writeln!(
+                    out,
+                    "{name}{{guest=\"{}\"}} {}",
+                    label(&guest["wire"]),
+                    guest["counters"][key]
+                );
+            }
+        }
+    }
     out
 }
 

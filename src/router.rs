@@ -51,6 +51,7 @@ use serde::Deserialize;
 use tokio::time::Instant;
 
 pub mod control;
+pub mod guest;
 pub mod kernel;
 pub mod metrics;
 pub mod resolving;
@@ -99,6 +100,9 @@ pub struct Config {
     /// The doors; none are allowed when `kernel` is set.
     #[serde(default)]
     pub doors: Vec<DoorConfig>,
+    /// The guest wires (T-248): a guest uses the router as its gateway.
+    #[serde(default)]
+    pub guests: Vec<guest::GuestConfig>,
 }
 
 /// The health probe of the members of the groups.
@@ -253,7 +257,9 @@ pub fn parse(text: &str) -> Result<Config> {
         Some(kernel) => {
             kernel::Plan::new(kernel)?;
         }
-        None if config.doors.is_empty() => bail!("doors: give one door or more"),
+        None if config.doors.is_empty() && config.guests.is_empty() => {
+            bail!("doors: give one door or more (or a guests entry, or a kernel section)")
+        }
         None => {}
     }
     for (name, _) in config.networks.iter().chain(config.groups.iter()) {
@@ -300,6 +306,32 @@ pub fn parse(text: &str) -> Result<Config> {
         }
         ProxyListen::parse(&door.listen).map_err(|e| anyhow::anyhow!("doors[{i}].listen: {e}"))?;
         door.dns(i)?;
+    }
+    let mut wires = std::collections::HashSet::new();
+    for (i, guest) in config.guests.iter().enumerate() {
+        if !config.networks.contains_key(&guest.via) && !config.groups.contains_key(&guest.via) {
+            bail!(
+                "guests[{i}].via: {:?} is not a network or a group of the file",
+                guest.via
+            );
+        }
+        guest
+            .wire
+            .parse::<guest::WireSpec>()
+            .map_err(|e| anyhow::anyhow!("guests[{i}].wire: {e}"))?;
+        guest
+            .net
+            .parse::<guest::GuestNet>()
+            .map_err(|e| anyhow::anyhow!("guests[{i}].net: {e}"))?;
+        if !wires.insert(guest.wire.as_str()) {
+            bail!(
+                "guests[{i}].wire: {:?} is the wire of an earlier guest",
+                guest.wire
+            );
+        }
+        if !(576..=9000).contains(&guest.mtu.unwrap_or(guest::DEFAULT_MTU)) {
+            bail!("guests[{i}].mtu: give 576 to 9000");
+        }
     }
     if let Some(health) = &config.health {
         health
@@ -357,6 +389,8 @@ pub struct Router {
     pub ways: HashMap<String, Way>,
     pub groups: Vec<(String, Arc<Balance>)>,
     pub doors: Vec<RouterDoor>,
+    /// The guest wires (T-248).
+    pub guests: Vec<Arc<guest::RouterGuest>>,
     pub health: Option<(Target, Thresholds)>,
     /// The egress checks of the networks (`health.egress`, T-097).
     pub egress: HashMap<String, (Target, IpAddr)>,
@@ -537,6 +571,12 @@ impl Router {
                 dial,
             });
         }
+        let guests = config
+            .guests
+            .iter()
+            .enumerate()
+            .map(|(i, g)| guest::RouterGuest::build(i, g, &ways).map(Arc::new))
+            .collect::<Result<Vec<_>>>()?;
         let health = match &config.health {
             Some(h) => Some((
                 h.target
@@ -560,6 +600,7 @@ impl Router {
             ways,
             groups,
             doors,
+            guests,
             health,
             egress,
             control,
@@ -570,12 +611,23 @@ impl Router {
     /// pick of the group (T-177). A pick counts as a flow of the member.
     pub fn decide(&self, index: usize, target: &Target) -> Decision {
         let door = &self.doors[index];
-        let (rule, way) = match &door.rules {
+        self.decide_with(&door.via, door.rules.as_deref(), target)
+    }
+
+    /// The choice of guest wire `index` for `target` (T-248): the same
+    /// function as a door.
+    pub fn decide_guest(&self, index: usize, target: &Target) -> Decision {
+        let guest = &self.guests[index];
+        self.decide_with(&guest.via, guest.rules.as_deref(), target)
+    }
+
+    fn decide_with(&self, via: &str, rules: Option<&RulesFile>, target: &Target) -> Decision {
+        let (rule, way) = match rules {
             Some(rules) => match rules.rules().choose(target) {
                 Choice::Way { way, rule } => (rule, Some(self.name_of(way))),
                 Choice::Refuse { rule } => (rule, None),
             },
-            None => (None, Some(door.via.clone())),
+            None => (None, Some(via.to_string())),
         };
         let member = way.as_ref().and_then(|way| {
             let (_, group) = self.groups.iter().find(|(g, _)| g == way)?;
@@ -601,6 +653,7 @@ impl Router {
         serde_json::json!({
             "doors": self.doors.iter().map(|d| serde_json::json!({"listen": d.listen.to_string(), "via": d.label})).collect::<Vec<_>>(),
             "groups": self.groups.iter().map(|(_, g)| g.status()).collect::<Vec<_>>(),
+            "guests": self.guests.iter().map(|g| g.status()).collect::<Vec<_>>(),
             "interval": self.control.interval().map(|d| d.as_secs()),
         })
     }

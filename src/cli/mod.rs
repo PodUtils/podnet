@@ -116,8 +116,9 @@ pub(crate) enum Command {
     /// UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC
     /// (direct, a proxy, the relay, a tailnet, wg:FILE).
     Forward(cmd::forward::ForwardArgs),
-    /// A router of networks, groups and doors from a config file (--config
-    /// FILE), with health probes and --detach.
+    /// A router of networks, groups, doors and guest wires (a guest uses the
+    /// router as its gateway) from a config file (--config FILE), with
+    /// health probes and --detach.
     Route(cmd::route::RouteArgs),
     /// Publish a unix socket through an SSH relay (a remote forward on port
     /// 443), and keep the session: when the relay ends it, podnet connects

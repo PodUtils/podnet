@@ -44,6 +44,12 @@ smoltcp = { version = "0.14", default-features = false, features = [
     "socket-tcp-reno",
     "socket-tcp-cubic",
     "assembler-max-segment-count-32",
+    # IPv4 fragmentation (T-248): a datagram over the MTU, up to 65507 bytes
+    # of payload, crosses a guest wire in both directions. Each interface of
+    # the binary reassembles and fragments (a buffer of 64 KiB for each).
+    "proto-ipv4-fragmentation",
+    "reassembly-buffer-size-65536",
+    "fragmentation-buffer-size-65536",
 ] }
 tokio = { version = "1", features = [
     "macros",

@@ -12,8 +12,8 @@ use crate::cli::signals::sleep_or_signal;
 
 #[derive(Args, Debug)]
 pub(crate) struct RouteArgs {
-    /// The config file of the router: networks, groups, health and doors
-    /// (YAML; podnet man route names the keys).
+    /// The config file of the router: networks, groups, health, doors and
+    /// guest wires (YAML; podnet man route names the keys).
     #[arg(long, value_name = "FILE", required_unless_present_any = ["status", "control"])]
     pub(crate) config: Option<std::path::PathBuf>,
     /// Print the state of a running router: each group and member (health,
@@ -116,6 +116,12 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
             config.groups.len(),
             config.doors.len()
         );
+        for (i, guest) in config.guests.iter().enumerate() {
+            println!(
+                "podnet: route  guest {i}: wire {} net {} via {}",
+                guest.wire, guest.net, guest.via
+            );
+        }
         if let Some(kernel) = &config.kernel {
             println!("podnet: route  kernel: {} WANs", kernel.wans.len());
         }
@@ -155,6 +161,19 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
                 servers.spawn(door.clone().serve_unix(listener));
             }
         }
+    }
+    for guest in &router.guests {
+        let opened = guest
+            .open(args.detach.replace)
+            .map_err(podnet::net::bind_fault)?;
+        println!(
+            "podnet: route  guest {}  net {}/{}  via {}",
+            guest.wire,
+            guest.net.network,
+            guest.net.prefix,
+            guest.label()
+        );
+        servers.spawn(guest.clone().serve(opened));
     }
     for d in &router.doors {
         if let Some((addr, upstream)) = &d.dns {
