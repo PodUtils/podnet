@@ -4978,7 +4978,7 @@ podcrates is needed. The QUIC leg is not built (step 1, "QUIC after HTTP/2"). Th
 
 ## Done
 
-2026-11-12, commit 5f6ef52 (`T-316: a stand-in of the quick-tunnel service and of the HTTP/2 edge for
+2026-11-12, commit 8f7b1d4 (`T-316: a stand-in of the quick-tunnel service and of the HTTP/2 edge for
 tests`). Status `partial`. `tests/standin/` holds the fake provision API (`POST /tunnel`, a script of
 answers with a 429 and `Retry-After`), the HTTP/2 edge (TLS on TCP with no ALPN, the control stream,
 `registerConnection` with the check of the account tag and the secret, `unregisterConnection`, visitor
