@@ -432,9 +432,17 @@ fn doctor_json_has_the_seven_lanes() {
     assert_eq!(lanes["tunnel_quic"]["verdict"], "fail", "{all}");
     // A proxy is set, and the paths through it answer TCP: the time is set.
     assert_ne!(lanes["proxy"]["reason"], "no proxy is set", "{all}");
-    // No probe yet for these two lanes.
-    assert_eq!(lanes["masque_udp443"]["verdict"], "unknown");
-    assert_eq!(lanes["ws_upgrade"]["verdict"], "unknown");
+    // T-260: a proxy carries no UDP, so the lane is unknown with that reason.
+    assert_eq!(lanes["masque_udp443"]["verdict"], "unknown", "{all}");
+    assert!(
+        lanes["masque_udp443"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("no proxy carries UDP"),
+        "{all}"
+    );
+    // The upgrade goes through the proxy, which refuses 7844.
+    assert_eq!(lanes["ws_upgrade"]["verdict"], "fail", "{all}");
 }
 
 /// A relay on loopback that takes any key. Gives its address.

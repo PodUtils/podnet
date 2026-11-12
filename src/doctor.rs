@@ -216,6 +216,8 @@ pub struct Report {
     pub ssh_relay: SshRelay,
     /// True for a run of `--quick`.
     pub quick: bool,
+    /// The probes of the lanes `masque_udp443` and `ws_upgrade` (T-260).
+    pub probes: Probes,
 }
 
 /// The clock of this host against the `Date` header of an answer.
@@ -396,6 +398,7 @@ pub async fn run(options: Options) -> Report {
             None => std::future::pending().await,
         }
     };
+    let lane_probes = lane_probes::start(&targets, options.timeout);
     let paths = futures::future::join_all(targets.into_iter().map(|t| {
         let unfinished = unfinished(&t, options.deadline);
         let options = &options;
@@ -411,6 +414,7 @@ pub async fn run(options: Options) -> Report {
         r = udp => r.unwrap_or_else(|e| Egress::Unknown(format!("the probe did not run: {e}"))),
         () = late() => Egress::Unknown(LATE.into()),
     };
+    let probes = lane_probes.finish(end, &udp).await;
     let names = names(&paths);
     let legs = legs(&paths, &udp);
     let clock = tokio::select! {
@@ -442,6 +446,7 @@ pub async fn run(options: Options) -> Report {
         git: git_check::git("git"),
         ssh_relay,
         quick: options.deadline.is_some(),
+        probes,
     }
 }
 
@@ -469,10 +474,12 @@ fn unfinished(target: &Target, limit: Option<Duration>) -> Path {
 mod clock_check;
 mod git_check;
 mod json;
+mod lane_probes;
 use clock_check::clock;
 pub use clock_check::parse_imf_fixdate;
 pub use git_check::Git;
 pub use json::{lanes, Lane, LANES};
+pub use lane_probes::{LaneProbe, Probes};
 mod ssh_relay_check;
 pub use ssh_relay_check::{SshRelay, SshRelayTarget};
 mod tls_check;

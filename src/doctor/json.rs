@@ -124,7 +124,7 @@ pub struct Lane {
 /// * `tunnel_http2`: the leg `http2`; the time of the path `edge-address`.
 /// * `tunnel_quic_warp`: the leg `quic+warp`; the time of the MASQUE path.
 /// * `masque_tcp443`: the path `masque` (`masque-v6` when only it works).
-/// * `masque_udp443`, `ws_upgrade`: no probe, so `unknown`.
+/// * `masque_udp443`, `ws_upgrade`: the probes of `lane_probes` (T-260).
 /// * `proxy`: the paths that go through a proxy.
 pub fn lanes(report: &Report) -> Vec<Lane> {
     let leg = |name: &str| report.legs.iter().find(|l| l.name == name);
@@ -172,20 +172,20 @@ pub fn lanes(report: &Report) -> Vec<Lane> {
         from_leg("tunnel_http2", "http2", edge_time),
         from_leg("tunnel_quic_warp", "quic+warp", masque.and_then(|p| p.best)),
         masque_tcp,
-        Lane {
-            name: "masque_udp443",
-            verdict: Verdict::Unknown,
-            time: None,
-            reason: "no probe sends a datagram to MASQUE on UDP 443".into(),
-        },
-        Lane {
-            name: "ws_upgrade",
-            verdict: Verdict::Unknown,
-            time: None,
-            reason: "no probe makes a WebSocket upgrade to the edge host".into(),
-        },
+        from_probe("masque_udp443", &report.probes.masque_udp),
+        from_probe("ws_upgrade", &report.probes.ws_upgrade),
         proxy_lane(&report.paths),
     ]
+}
+
+/// A lane from the result of its probe.
+fn from_probe(name: &'static str, probe: &LaneProbe) -> Lane {
+    Lane {
+        name,
+        verdict: probe.verdict,
+        time: probe.time,
+        reason: probe.reason.clone(),
+    }
 }
 
 /// The lane `proxy`: `ok` when a path through the proxy has TCP and TLS,

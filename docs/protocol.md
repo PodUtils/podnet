@@ -491,7 +491,7 @@ Each object of `paths`:
 
 `lanes` has exactly the seven keys below. Each value is an object with
 `verdict` (`ok`, `fail` or `unknown`), `ms` (number or null: the best TCP
-sample of the lane) and `reason` (string).
+sample of the lane, or the answer time of a probe) and `reason` (string).
 
 | Lane | Source | `ms` |
 | --- | --- | --- |
@@ -499,8 +499,8 @@ sample of the lane) and `reason` (string).
 | `tunnel_http2` | the leg `http2` | the path `edge-address` |
 | `tunnel_quic_warp` | the leg `quic+warp` | the MASQUE path |
 | `masque_tcp443` | the path `masque`, or `masque-v6` when only it works | the same path |
-| `masque_udp443` | no probe: always `unknown` | null |
-| `ws_upgrade` | no probe: always `unknown` | null |
+| `masque_udp443` | one QUIC packet to the MASQUE endpoint on UDP 443: `ok` on any answer (`ms` is the time); `fail` on a refusal, and on silence when UDP 7844 answers; `unknown` on silence when it does not, and with a proxy (no proxy carries UDP) | the answer time, else null |
+| `ws_upgrade` | an HTTP/1.1 `Upgrade: websocket` request over TLS to the edge host on 7844, through the proxy when one is set: `ok` on `101`; `fail` on another status, a TLS fault or a refusal; `unknown` on no answer in twice `--timeout` | the time to the status line when `ok`, else null |
 | `proxy` | the paths that go through a proxy: `ok` when one works, `fail` when each fails, else `unknown` (`no proxy is set` without a proxy) | the best of the working paths |
 
 ## 10. The connector profile

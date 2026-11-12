@@ -25,6 +25,15 @@ check gives `ok`, `fail` or `unknown`.
   that terminates TLS, are named;
 * names and addresses: if the proxy allows one and refuses the other;
 * UDP 7844: one QUIC packet (answered, refused or unknown);
+* the lane `masque_udp443`: one QUIC packet to the MASQUE front door on UDP 443.
+  `ok` on any answer. `fail` on a refusal, and on silence when UDP 7844
+  answers. `unknown` on silence when UDP 7844 does not answer, and when a
+  proxy is set (no proxy carries UDP);
+* the lane `ws_upgrade`: an HTTP/1.1 `Upgrade: websocket` request over TLS to
+  the edge host on 7844, through the proxy when one is set. `ok` on `101`.
+  `fail` on another status, a TLS fault or a refusal. `unknown` when no
+  answer comes in twice `--timeout`. The probe adds no host: it uses the
+  targets that the doctor already has;
 * the clock: this host against the `Date` of the first API that answers
   TLS. More than 300 s off is `fail` (certificates and tokens fail).
 
@@ -60,7 +69,7 @@ IPv6 and TCP on 127.0.0.1, and prints the commands: for example
 
 ## Options of `podnet doctor`
 
-* `--quick`: one sample for each path and 15 s for the whole run. A part that does not end in time gets
+* `--quick`: one sample for each path and 15 s for the whole run. A part (the two lane probes too) that does not end in time gets
   the verdict `unknown`. The JSON document keeps the same keys.
 * `--samples N` (1 to 9; default 9) and `--timeout SECS` (default 3, for one connection and one TLS
   handshake) make the run shorter.

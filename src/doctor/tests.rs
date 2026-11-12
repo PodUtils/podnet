@@ -124,6 +124,7 @@ fn the_roads_follow_the_legs() {
         git: git_check::git("git"),
         ssh_relay: SshRelay::none(),
         quick: false,
+        probes: Probes::untested(),
     };
     let roads = report.roads();
     assert_eq!(roads[0].0, "direct");
@@ -227,6 +228,7 @@ fn doctor_json_dns_keys_are_fixed() {
         git: git_check::git("git"),
         ssh_relay: SshRelay::none(),
         quick: false,
+        probes: Probes::untested(),
     };
     let json = report.to_json();
     assert_eq!(keys(&json["paths"][0]["dns"]), ["addresses", "ms"]);
@@ -264,6 +266,7 @@ fn the_lanes_follow_the_legs_and_paths() {
         git: git_check::git("git"),
         ssh_relay: SshRelay::none(),
         quick: false,
+        probes: Probes::untested(),
     };
     let lane =
         |report: &Report, name: &str| lanes(report).into_iter().find(|l| l.name == name).unwrap();
@@ -369,4 +372,40 @@ fn the_ssh_relay_target_comes_from_the_record_of_an_instance() {
     record.command = "ssh-relay".into();
     record.args.clear();
     assert_eq!(ssh_relay_check::target_of_record(&record), None);
+}
+
+/// T-260: the lanes `masque_udp443` and `ws_upgrade` hold their probes.
+#[test]
+fn the_lanes_hold_the_probes() {
+    let mut report = Report {
+        proxy: Value::Null,
+        paths: Vec::new(),
+        udp: ("1.2.3.4:7844".parse().unwrap(), Egress::Unknown("x".into())),
+        names: None,
+        legs: Vec::new(),
+        clock: Clock {
+            verdict: Verdict::Unknown,
+            skew: None,
+            detail: String::new(),
+        },
+        git: git_check::git("git"),
+        ssh_relay: SshRelay::none(),
+        quick: false,
+        probes: Probes::untested(),
+    };
+    report.probes.masque_udp = LaneProbe {
+        verdict: Verdict::Ok,
+        time: Some(Duration::from_millis(7)),
+        reason: "a datagram came back".into(),
+    };
+    report.probes.ws_upgrade = LaneProbe {
+        verdict: Verdict::Refused,
+        time: None,
+        reason: "status 403".into(),
+    };
+    let json = report.to_json();
+    assert_eq!(json["lanes"]["masque_udp443"]["verdict"], "ok");
+    assert_eq!(json["lanes"]["masque_udp443"]["ms"], 7.0);
+    assert_eq!(json["lanes"]["ws_upgrade"]["verdict"], "fail");
+    assert_eq!(json["lanes"]["ws_upgrade"]["reason"], "status 403");
 }

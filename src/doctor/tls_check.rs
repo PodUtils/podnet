@@ -132,6 +132,19 @@ pub(super) fn verifier(tls: Tls) -> Result<Option<Arc<dyn ServerCertVerifier>>, 
     Ok(Some(v as Arc<dyn ServerCertVerifier>))
 }
 
+/// A TLS connector that asks `verifier` (the probe of the lane `ws_upgrade`).
+pub(super) fn connector(
+    verifier: Arc<dyn ServerCertVerifier>,
+    alpn: Vec<Vec<u8>>,
+) -> tokio_rustls::TlsConnector {
+    let mut config = rustls::ClientConfig::builder()
+        .dangerous()
+        .with_custom_certificate_verifier(verifier)
+        .with_no_client_auth();
+    config.alpn_protocols = alpn;
+    tokio_rustls::TlsConnector::from(Arc::new(config))
+}
+
 /// One TLS handshake on the path to `target`.
 pub(super) async fn tls(target: &Target, timeout: Duration) -> TlsResult {
     let unknown = |detail: String| TlsResult {
