@@ -238,6 +238,28 @@ the unix and memory carriers, whose channel the kernel keeps on this host. A car
 it: the `tcp` carrier pins the key of the peer in its TLS handshake (T-268), and the other network carriers take the end-to-end
 handshake of `pod-e2e` (T-298).
 
+## The route table
+
+`podnet::mesh_table` is the path-vector route table of the mesh (T-286). It is a library part. No command uses it yet: the
+signed announcements (T-285), the forwarding (T-287) and the status view (T-289) will use it.
+
+* The table does no I/O. The caller gives the time in milliseconds to each call, and checks the signature of an announcement
+  before `RouteTable::learn`.
+* The table is keyed by the origin (a `PublicKey`). An origin keeps one route for each next hop, 8 at most.
+* The cost of a route is the cost of the link to the sender plus the cost in the announcement. The path lists the origin first
+  and the sender last. A direct neighbour sends the path `[origin]`.
+* Selection (`best`, `ranked`): a fresh route before a held route, then the lowest cost, then the fewest hops, then the newest
+  `seq`.
+* A path that holds this node or a node two times is refused (`Loop`). A path of more than 16 nodes is refused. An expired
+  announcement is refused. A `seq` that is not above the `seq` of the same next hop, or is below the newest `seq` of the origin,
+  is refused (`StaleSeq`).
+* A direct route ends at its expiry. A multi-hop route is held for one expiry interval (30 s) after its expiry, and it ends
+  then. `session_closed` ends the direct route of that peer at once. The multi-hop routes through that peer are not used from
+  then on, and they end after one expiry interval.
+* The table holds 4096 origins. At 90% (3686) each new origin evicts the worst origin first: expired or held, then the highest
+  cost, then the most hops, then the oldest `seq`. A direct route is not evicted: a table that holds direct routes only refuses
+  the new origin (`Full`). `evictions()` counts the evictions.
+
 ## Exit codes
 
 | Code | Case |
@@ -254,6 +276,6 @@ handshake of `pod-e2e` (T-298).
 
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
-`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
+`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_table` is the route table of the mesh. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
 listens (`listen`) and dials (`dial`, which gives the key that the listener proved).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates.

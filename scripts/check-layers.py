@@ -66,6 +66,7 @@ LAYER = {
     "update": "podnet", "fuzzing": "podnet", "lib": "podnet", "networks": "podnet", "roads": "podnet", "forwards": "podnet", "router": "podnet",
     "test_host": "podnet", "link": "podnet", "link_ctl": "podnet", "link_service": "podnet", "link_tcp": "podnet", "link_alias": "podnet", "link_query": "podnet", "carriers": "podnet", "components": "podnet", "build_features": "podnet", "identity": "podnet", "hello": "podnet", "session": "podnet", "services": "core", "main": "podnet",
     "cli": "podnet",
+    "mesh_table": "podnet",
     # The modules of crates/podnet-core that are new there.
     "build": "core", "network": "core",
     # The tests of the core that read a higher layer (src/core_tests.rs).
