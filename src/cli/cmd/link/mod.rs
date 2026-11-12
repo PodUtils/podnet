@@ -11,7 +11,12 @@ use std::sync::Arc;
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
-use podnet::carriers::Options;
+use pod_identity::PublicKey;
+use pod_link::Carrier;
+use podnet::carriers::{self, Options};
+use podnet::hello;
+use podnet::identity::{AllowList, Identity};
+use podnet::link::{Door, Link, Settings};
 use podnet::link_ctl::{Control, Hub};
 
 use crate::cli::opts::DetachArgs;
@@ -26,7 +31,9 @@ pub(crate) struct LinkArgs {
 /// The flags that choose and set a carrier.
 #[derive(Args, Debug, Clone)]
 pub(crate) struct CarrierArgs {
-    /// The carrier (`podnet link carriers` lists them).
+    /// The carrier (`podnet link carriers` lists them). `tcp` (build feature
+    /// `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end: listen at
+    /// `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused exits 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
     /// The unix carrier accepts a peer of another uid. Each end checks the
@@ -47,6 +54,83 @@ impl CarrierArgs {
             allow_other_uid: self.allow_other_uid,
             ring: self.ring.unwrap_or(base.ring),
         }
+    }
+}
+
+/// The carrier `args` names, or `None` for `tcp`: that carrier needs the key
+/// of this install and the allow list, so [`dial_peer`] and [`listen_door`]
+/// build it. A name that is unknown exits 64; a carrier that this build
+/// leaves out (`tcp` too) exits 69.
+pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Option<Box<dyn Carrier>>> {
+    if args.carrier == "tcp" {
+        podnet::build_features::require("tcp")?;
+        return Ok(None);
+    }
+    Ok(Some(carriers::open(&args.carrier, &args.options())?))
+}
+
+/// Connect to `address` and prove the peer. A carrier with no key of its own
+/// (unix, memory) runs the hello above it. `tcp` proves the key in the TLS
+/// handshake, and `address` is `KEY@HOST:PORT`.
+pub(super) async fn dial_peer(
+    carrier: Option<Box<dyn Carrier>>,
+    address: &str,
+    me: &Identity,
+    allow: AllowList,
+) -> Result<(Link, PublicKey)> {
+    match carrier {
+        Some(carrier) => {
+            let link = podnet::link::dial(&*carrier, address, Settings::default()).await?;
+            let peer = hello::dial(&link, me, allow).await?;
+            Ok((link, peer))
+        }
+        None => tcp::dial(me, allow, address).await,
+    }
+}
+
+/// Listen at `address`. `tcp` takes the clients of `allow` in its handshake.
+pub(super) async fn listen_door(
+    carrier: Option<Box<dyn Carrier>>,
+    address: &str,
+    me: &Identity,
+    allow: &AllowList,
+) -> Result<Door> {
+    match carrier {
+        Some(carrier) => podnet::link::listen(&*carrier, address).await,
+        None => tcp::listen(me, allow, address).await,
+    }
+}
+
+#[cfg(feature = "tcp")]
+mod tcp {
+    use super::*;
+
+    pub(super) async fn dial(
+        me: &Identity,
+        allow: AllowList,
+        address: &str,
+    ) -> Result<(Link, PublicKey)> {
+        let carrier = podnet::link_tcp::carrier(me, &allow);
+        podnet::link_tcp::dial(&carrier, &allow, address, Settings::default()).await
+    }
+
+    pub(super) async fn listen(me: &Identity, allow: &AllowList, address: &str) -> Result<Door> {
+        let carrier = podnet::link_tcp::carrier(me, allow);
+        podnet::link_tcp::listen(&carrier, address).await
+    }
+}
+
+/// This build has no `tcp` carrier: `open_carrier` already exited 69.
+#[cfg(not(feature = "tcp"))]
+mod tcp {
+    use super::*;
+
+    pub(super) async fn dial(_: &Identity, _: AllowList, _: &str) -> Result<(Link, PublicKey)> {
+        podnet::build_features::require("tcp").map(|()| unreachable!())
+    }
+
+    pub(super) async fn listen(_: &Identity, _: &AllowList, _: &str) -> Result<Door> {
+        podnet::build_features::require("tcp").map(|()| unreachable!())
     }
 }
 

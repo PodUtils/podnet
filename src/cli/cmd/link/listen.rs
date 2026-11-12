@@ -11,12 +11,13 @@ use pod_core::BoxedIo;
 use podnet::relay_reverse::Target;
 use tokio::sync::Semaphore;
 
+use pod_identity::PublicKey;
 use podnet::exit::{self, Fault};
 use podnet::identity::{self, AllowList, Identity};
 use podnet::link::{Link, Settings};
 use podnet::link_ctl::{Hub, Slot};
 use podnet::link_service as service;
-use podnet::{carriers, hello, link};
+use podnet::{hello, link};
 
 use super::CarrierArgs;
 use crate::cli::opts::DetachArgs;
@@ -34,7 +35,7 @@ const CONNECT_LIMIT: Duration = Duration::from_secs(10);
 #[derive(Args, Debug)]
 pub(crate) struct ListenArgs {
     /// The address, in the form of the carrier: a path for `unix`, a name
-    /// for `memory`.
+    /// for `memory`, `IP:PORT` for `tcp`.
     #[arg(value_name = "ADDRESS")]
     pub(crate) address: String,
     #[command(flatten)]
@@ -113,12 +114,11 @@ fn services_of(args: &ListenArgs) -> Result<BTreeMap<String, Target>> {
 }
 
 pub(crate) async fn listen(args: ListenArgs) -> Result<()> {
-    let options = args.carrier.options();
-    let carrier = carriers::open(&args.carrier.carrier, &options)?;
+    let carrier = super::open_carrier(&args.carrier)?;
     let services: Services = Arc::new(services_of(&args)?);
     let allow = AllowList::read(&args.allow)?;
     let me = Arc::new(identity::create(&identity::default_dir()?)?);
-    let mut door = link::listen(&*carrier, &args.address).await?;
+    let mut door = super::listen_door(carrier, &args.address, &me, &allow).await?;
     let address = door.address();
     let mode = mode_of(&args.carrier.carrier, &address);
     let hub = Hub::new(&me.fingerprint());
@@ -161,10 +161,10 @@ pub(crate) async fn listen(args: ListenArgs) -> Result<()> {
         };
         let accepted = tokio::select! {
             _ = shutdown_signal() => return Ok(()),
-            accepted = door.accept(Settings::default()) => accepted,
+            accepted = door.accept_peer(Settings::default()) => accepted,
         };
         match accepted {
-            Ok(link) => {
+            Ok((link, proved)) => {
                 let held = Held {
                     me: me.clone(),
                     allow: allow.clone(),
@@ -174,7 +174,7 @@ pub(crate) async fn listen(args: ListenArgs) -> Result<()> {
                     address: address.clone(),
                 };
                 tokio::spawn(async move {
-                    serve(link, held).await;
+                    serve(link, proved, held).await;
                     drop(slot);
                 });
             }
@@ -193,10 +193,15 @@ struct Held {
     address: String,
 }
 
-/// One link: the hello, then the streams.
-async fn serve(link: Link, held: Held) {
+/// One link: the hello, then the streams. A carrier that proved the key of
+/// the peer in its own handshake (`tcp`) needs no hello.
+async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
     let link = Arc::new(link);
-    let peer = match hello::accept(&link, &held.me, held.allow.clone()).await {
+    let admitted = match proved {
+        Some(key) => held.allow.check(&key).map(|()| key),
+        None => hello::accept(&link, &held.me, held.allow.clone()).await,
+    };
+    let peer = match admitted {
         Ok(peer) => peer,
         Err(err) => {
             eprintln!("podnet: peer refused: {err:#}");

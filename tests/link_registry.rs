@@ -61,7 +61,10 @@ const DISABLED: [Row; 1] = [Row {
 
 #[test]
 fn the_names_have_a_fixed_order() {
-    assert_eq!(carriers::names(), ["unix", "memory", "quic", "s3", "icmp"]);
+    assert_eq!(
+        carriers::names(),
+        ["unix", "memory", "tcp", "quic", "s3", "icmp"]
+    );
 }
 
 #[test]

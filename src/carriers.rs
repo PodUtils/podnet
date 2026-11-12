@@ -101,6 +101,20 @@ fn pending(name: &'static str, entry: &str) -> Result<Box<dyn Carrier>, CarrierE
     ))
 }
 
+/// The carrier for the registry. It knows the facts and the host check of
+/// `tcp`. It has no key of this install, so a dial or a listen through it
+/// is a usage error: `link listen` and `link dial` build the real one
+/// (`podnet::link_tcp::carrier`).
+#[cfg(feature = "tcp")]
+fn make_tcp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_tcp::Probe::new()))
+}
+
+#[cfg(not(feature = "tcp"))]
+fn make_tcp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("tcp", "T-268")
+}
+
 fn make_quic(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("quic", "T-273")
 }
@@ -115,7 +129,7 @@ fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 /// The carriers of this build, in the order of the lists and of the
 /// first choice.
-pub const ROWS: [Row; 5] = [
+pub const ROWS: [Row; 6] = [
     Row {
         name: unix::NAME,
         about: "a stream over AF_UNIX, mode 0600, the uid of the peer checked",
@@ -133,6 +147,15 @@ pub const ROWS: [Row; 5] = [
         needs_privilege: false,
         feature: None,
         make: make_memory,
+    },
+    Row {
+        name: "tcp",
+        about: "TCP with TLS 1.3, the Ed25519 key of each end pinned in the handshake",
+        address: "KEY@HOST:PORT to dial, IP:PORT to listen",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("tcp"),
+        make: make_tcp,
     },
     Row {
         name: "quic",

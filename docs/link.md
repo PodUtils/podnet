@@ -117,15 +117,39 @@ of each link instance in the run directory, and takes the first that holds a lin
 | --- | --- | --- |
 | `unix` | a path (1 to 107 bytes) | A stream over `AF_UNIX`. The socket has the mode 0600. The uid of the peer is checked. It needs no network. |
 | `memory` | a name | Two ends in one process, with a ring for each direction. A full ring blocks the writer. It is for tests and for programs that embed the link. |
+| `tcp` | `KEY@HOST:PORT` to dial, `IP:PORT` to listen | TCP with TLS 1.3 and a pinned Ed25519 key (T-268). Build feature `tcp`. See "The TCP carrier". |
 | `quic` | `HOST:PORT` | QUIC streams (T-273). Build feature `quic`. |
 | `s3` | `BUCKET/PREFIX` | A simplex pair of objects in a bucket (T-279). Build feature `s3`. |
 | `icmp` | `HOST` | ICMP echo, a datagram carrier (T-282). Build feature `icmp`; it needs a privilege. |
 
-The carriers `quic`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
+The carriers `tcp`, `quic`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
 them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
 build, and names its entry (T-273, T-279 or T-282).
+
+## The TCP carrier
+
+Build with `--features tcp`. `pod-link` of PodUtils/podcrates does the work (`pod_link::tcp`); `podnet::link_tcp` is the glue.
+
+* TLS 1.3 only. The certificate holds an Ed25519 key only. The ALPN is `podlink/1`. There is no resumption.
+* Each end pins the key of the other end in the TLS handshake. The key is not proved by the hello: the hello (`podnet::hello`) does not run
+  on this carrier. The streams of the link run inside the TLS session that the pinned keys made.
+* A listener binds `IP:PORT` and takes a client only when its key is in the allow list (`--allow`, default deny). The list feeds
+  `with_clients` of the carrier, and a change of the set applies at the next handshake. At most 64 handshakes run at once, each
+  for at most 10 s, so a peer that sends nothing holds no other peer.
+* A dialer gives `KEY@HOST:PORT`. `KEY` is the key of the listener: the display fingerprint that `link listen` prints, a `SHA256:`
+  fingerprint, or the key in hex or base32. The dial goes through the way out of the process (`--proxy`). It ends in 20 s. The key
+  that the listener proves must also be in the allow list of the dialer (`--peer` or `--allow`).
+* A key that is not pinned exits 77, at the dialer and at the listener. The listener names the key that it refused on stderr and keeps
+  its door open. A host that denies the socket (`EACCES`) exits 69: it is not a refused key.
+* There is no plaintext mode. The carrier always runs TLS, also on a loopback bind. So the rule "a public bind with `--plaintext` exits
+  68" has no case, and `link listen` has no `--plaintext` flag.
+
+```sh
+podnet link listen 0.0.0.0:7000 --carrier tcp --allow allowed.txt --to 127.0.0.1:22
+podnet link dial SERVER-FINGERPRINT@host.example:7000 --carrier tcp --allow servers.txt
+```
 
 Each carrier reports `framing`, `duplex`, `ordered`, `mtu`, the cost and `available()`. A carrier that this host cannot use
 gives its reason, and a command that needs it exits 69 with the reason. `podnet doctor` has a row `carriers` with the same
@@ -160,7 +184,8 @@ instance).
 
 The hello proves the keys of the two ends. It makes no key for the link and does not protect the streams after it. It is for
 the unix and memory carriers, whose channel the kernel keeps on this host. A carrier that crosses a network does not rely on
-it: it takes the end-to-end handshake of `pod-e2e` (T-298) or a TLS handshake that pins the key of the peer (T-268).
+it: the `tcp` carrier pins the key of the peer in its TLS handshake (T-268), and the other network carriers take the end-to-end
+handshake of `pod-e2e` (T-298).
 
 ## Exit codes
 
@@ -170,13 +195,14 @@ it: it takes the end-to-end handshake of `pod-e2e` (T-298) or a TLS handshake th
 | 66 | The allow list file is missing. |
 | 69 | The address is held by a live listener, no listener answers, the host refuses the carrier, or a peer has another uid. |
 | 71 | The key file or the allow list file has a mode that others can use. |
-| 77 | A peer is not in the allow list, or it did not prove its key. |
+| 77 | A peer is not in the allow list, or it did not prove its key. On `tcp`: a key that the handshake refused. |
 | 78 | The allow list has a line that is no peer, or more than 4096 entries. |
 | 124 | The hello did not end in 10 s. |
 
 ## Library
 
-`podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `unix_pair`, `memory_pair`). `podnet::session` runs
+`podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
-`podnet::identity` is the key and the allow list. `podnet::hello` is the hello.
+`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
+listens (`listen`) and dials (`dial`, which gives the key that the listener proved).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates.

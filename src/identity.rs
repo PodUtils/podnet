@@ -284,6 +284,18 @@ impl AllowList {
         }
     }
 
+    /// The entries as key names, for a carrier that pins keys in its
+    /// handshake (`pod_tls::peer::Keys`).
+    pub fn names(&self) -> Vec<KeyName> {
+        self.entries
+            .iter()
+            .map(|e| match e {
+                Entry::Display(d) => KeyName::Display(*d),
+                Entry::Key(k) => k.clone(),
+            })
+            .collect()
+    }
+
     /// Whether `key` is in the list.
     pub fn admits(&self, key: &PublicKey) -> bool {
         self.entries.iter().any(|e| e.admits(key))

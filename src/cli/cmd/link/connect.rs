@@ -8,9 +8,7 @@ use clap::Args;
 
 use podnet::exit::{self, Fault};
 use podnet::identity;
-use podnet::link::Settings;
 use podnet::link_ctl::Hub;
-use podnet::{carriers, hello, link};
 
 use super::dial::trusted;
 use super::CarrierArgs;
@@ -19,7 +17,8 @@ use crate::cli::signals::shutdown_signal;
 
 #[derive(Args, Debug)]
 pub(crate) struct ConnectArgs {
-    /// The address of the listener, in the form of the carrier.
+    /// The address of the listener, in the form of the carrier (for `tcp`:
+    /// `KEY@HOST:PORT`, with the key of the listener).
     #[arg(value_name = "ADDRESS")]
     pub(crate) address: String,
     #[command(flatten)]
@@ -46,11 +45,10 @@ pub(crate) struct ConnectArgs {
 }
 
 pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
-    let carrier = carriers::open(&args.carrier.carrier, &args.carrier.options())?;
+    let carrier = super::open_carrier(&args.carrier)?;
     let allow = trusted(&args.allow, &args.peer)?;
     let me = identity::create(&identity::default_dir()?)?;
-    let link = link::dial(&*carrier, &args.address, Settings::default()).await?;
-    let peer = hello::dial(&link, &me, allow).await?;
+    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow).await?;
     let shown = peer.display_fingerprint();
     let link = Arc::new(link);
     let hub = Hub::new(&me.fingerprint());

@@ -12,6 +12,7 @@
 //! [`from_io`].
 
 use pod_core::Class;
+use pod_identity::PublicKey;
 pub use pod_link::{
     BoxIo, Carrier, CarrierError, CarrierErrorKind, Error, Facts, Link, Listener, ResetCode, Role,
     Settings, Stream,
@@ -43,9 +44,39 @@ pub fn fault(error: Error) -> anyhow::Error {
     }
 }
 
+/// True when a handshake refused a key: the pin of this end refused the
+/// key of the peer (`pod_tls::peer::Refusal`), or the peer sent the alert
+/// of a refused certificate. A refusal of the host (a bind that `EACCES`
+/// denies) is not one.
+fn key_refused(error: &CarrierError) -> bool {
+    if error.kind != CarrierErrorKind::Refused {
+        return false;
+    }
+    if pod_tls::peer::refusal(error).is_some() {
+        return true;
+    }
+    let mut at: Option<&(dyn std::error::Error + 'static)> = Some(error);
+    while let Some(e) = at {
+        let inner = e
+            .downcast_ref::<std::io::Error>()
+            .and_then(std::io::Error::get_ref);
+        if let Some(rustls::Error::AlertReceived(_)) =
+            inner.and_then(|i| i.downcast_ref::<rustls::Error>())
+        {
+            return true;
+        }
+        at = e.source();
+    }
+    false
+}
+
 /// A failure of a carrier with the exit class of podnet: 64 for an
-/// address that cannot be used, 69 for the others.
+/// address that cannot be used, 77 for a key that a handshake refused,
+/// 69 for the others.
 pub fn carrier_fault(error: CarrierError) -> anyhow::Error {
+    if key_refused(&error) {
+        return exit::fault(Fault::NoPermission, anyhow::Error::new(error));
+    }
     let class = error.class();
     let error = anyhow::Error::new(error);
     match fault_of(class) {
@@ -89,6 +120,11 @@ pub struct Door {
 }
 
 impl Door {
+    /// A door over a listener that a carrier made.
+    pub fn from_listener(listener: Box<dyn Listener>) -> Door {
+        Door { listener }
+    }
+
     /// The address where peers dial, in the form of the carrier.
     pub fn address(&self) -> String {
         self.listener.address()
@@ -96,8 +132,21 @@ impl Door {
 
     /// Wait for the next peer and run a link with it as the listener.
     pub async fn accept(&mut self, settings: Settings) -> anyhow::Result<Link> {
-        let io = self.listener.accept().await.map_err(carrier_fault)?;
-        from_io(io, Role::Listener, settings)
+        Ok(self.accept_peer(settings).await?.0)
+    }
+
+    /// Like [`Door::accept`], with the key that the carrier proved for the
+    /// peer. The `tcp` carrier proves one in its TLS handshake; the unix
+    /// and memory carriers prove none (`None`), and the hello does it.
+    pub async fn accept_peer(
+        &mut self,
+        settings: Settings,
+    ) -> anyhow::Result<(Link, Option<PublicKey>)> {
+        let accepted = self.listener.accept_peer().await.map_err(carrier_fault)?;
+        Ok((
+            from_io(accepted.io, Role::Listener, settings)?,
+            accepted.peer,
+        ))
     }
 }
 

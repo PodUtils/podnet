@@ -17,16 +17,19 @@ use anyhow::anyhow;
 use crate::exit::{self, Fault};
 
 /// The optional features, in the order of the issue.
-pub const OPTIONAL: [&str; 7] = ["quic", "s3", "icmp", "ss", "trojan", "c-abi", "portable"];
+pub const OPTIONAL: [&str; 8] = [
+    "tcp", "quic", "s3", "icmp", "ss", "trojan", "c-abi", "portable",
+];
 
 /// The features that `full` turns on: each optional feature but
 /// `portable` (a subset takes code away; `full` adds it).
-pub const FULL: [&str; 6] = ["quic", "s3", "icmp", "ss", "trojan", "c-abi"];
+pub const FULL: [&str; 7] = ["tcp", "quic", "s3", "icmp", "ss", "trojan", "c-abi"];
 
 /// True when this binary holds the optional feature `name`. An unknown
 /// name is false.
 pub fn built(name: &str) -> bool {
     match name {
+        "tcp" => cfg!(feature = "tcp"),
         "quic" => cfg!(feature = "quic"),
         "s3" => cfg!(feature = "s3"),
         "icmp" => cfg!(feature = "icmp"),

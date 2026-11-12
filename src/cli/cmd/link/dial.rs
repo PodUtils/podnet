@@ -8,14 +8,14 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use podnet::exit::{self, Fault};
 use podnet::identity::{self, AllowList};
-use podnet::link::Settings;
-use podnet::{carriers, hello, link};
+use podnet::link;
 
 use super::CarrierArgs;
 
 #[derive(Args, Debug)]
 pub(crate) struct DialArgs {
-    /// The address of the listener, in the form of the carrier.
+    /// The address of the listener, in the form of the carrier (for `tcp`:
+    /// `KEY@HOST:PORT`, with the key of the listener).
     #[arg(value_name = "ADDRESS")]
     pub(crate) address: String,
     #[command(flatten)]
@@ -58,11 +58,10 @@ pub(super) fn trusted(allow: &Option<PathBuf>, peer: &[String]) -> Result<AllowL
 }
 
 pub(crate) async fn dial(args: DialArgs) -> Result<()> {
-    let carrier = carriers::open(&args.carrier.carrier, &args.carrier.options())?;
+    let carrier = super::open_carrier(&args.carrier)?;
     let allow = trusted(&args.allow, &args.peer)?;
     let me = identity::create(&identity::default_dir()?)?;
-    let link = link::dial(&*carrier, &args.address, Settings::default()).await?;
-    let peer = hello::dial(&link, &me, allow).await?;
+    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow).await?;
     let (mine, theirs) = (me.fingerprint(), peer.display_fingerprint());
     if args.check {
         if args.json {

@@ -2498,7 +2498,10 @@ dependencies = [
  "libc",
  "pod-core",
  "pod-identity",
+ "pod-tls",
+ "rustls",
  "tokio",
+ "tokio-rustls",
  "tracing",
 ]
 

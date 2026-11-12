@@ -7070,10 +7070,13 @@ COMMANDS
 
         <ADDRESS>
             The address, in the form of the carrier: a path for `unix`, a name
-            for `memory`. Required.
+            for `memory`, `IP:PORT` for `tcp`. Required.
 
         --carrier <NAME>
-            The carrier (`podnet link carriers` lists them). Default: unix.
+            The carrier (`podnet link carriers` lists them). `tcp` (build
+            feature `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end:
+            listen at `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused
+            exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -7201,10 +7204,14 @@ COMMANDS
         one stream. A listener that is not allowed exits 77
 
         <ADDRESS>
-            The address of the listener, in the form of the carrier. Required.
+            The address of the listener, in the form of the carrier (for
+            `tcp`: `KEY@HOST:PORT`, with the key of the listener). Required.
 
         --carrier <NAME>
-            The carrier (`podnet link carriers` lists them). Default: unix.
+            The carrier (`podnet link carriers` lists them). `tcp` (build
+            feature `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end:
+            listen at `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused
+            exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -7300,10 +7307,14 @@ COMMANDS
         signal
 
         <ADDRESS>
-            The address of the listener, in the form of the carrier. Required.
+            The address of the listener, in the form of the carrier (for
+            `tcp`: `KEY@HOST:PORT`, with the key of the listener). Required.
 
         --carrier <NAME>
-            The carrier (`podnet link carriers` lists them). Default: unix.
+            The carrier (`podnet link carriers` lists them). `tcp` (build
+            feature `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end:
+            listen at `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused
+            exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -7556,7 +7567,10 @@ COMMANDS
         reason
 
         --carrier <NAME>
-            The carrier (`podnet link carriers` lists them). Default: unix.
+            The carrier (`podnet link carriers` lists them). `tcp` (build
+            feature `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end:
+            listen at `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused
+            exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -12319,6 +12333,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 
 | Feature | Holds | Entry |
 | --- | --- | --- |
+| `tcp` | The TCP carrier with TLS 1.3 and a pinned Ed25519 key. | T-268 |
 | `quic` | The QUIC carrier. | T-273 |
 | `s3` | The object-storage carrier. | T-279 |
 | `icmp` | The ICMP echo carrier. | T-282 |
@@ -12326,7 +12341,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `trojan` | The Trojan service. | T-295 |
 | `c-abi` | The C ABI. | T-304 |
 | `portable` | The portable subset. It takes code away. | T-305 |
-| `full` | `quic`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
+| `full` | `tcp`, `quic`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
 
 ```sh
 cargo build --release --features quic,icmp   # two optional carriers

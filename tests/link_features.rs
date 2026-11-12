@@ -13,7 +13,12 @@ use podnet::exit::{self, code_of};
 use serde_json::Value;
 
 /// The carriers that sit behind a feature, with the feature of each.
-const GATED: [(&str, &str); 3] = [("quic", "quic"), ("s3", "s3"), ("icmp", "icmp")];
+const GATED: [(&str, &str); 4] = [
+    ("tcp", "tcp"),
+    ("quic", "quic"),
+    ("s3", "s3"),
+    ("icmp", "icmp"),
+];
 
 fn podnet(args: &[&str]) -> std::process::Output {
     let dir = tempfile::tempdir().unwrap();
@@ -30,7 +35,7 @@ fn podnet(args: &[&str]) -> std::process::Output {
 fn the_optional_features_are_the_ones_of_the_issue() {
     assert_eq!(
         features::OPTIONAL,
-        ["quic", "s3", "icmp", "ss", "trojan", "c-abi", "portable"]
+        ["tcp", "quic", "s3", "icmp", "ss", "trojan", "c-abi", "portable"]
     );
 }
 
@@ -70,7 +75,9 @@ fn full_holds_each_optional_feature_but_portable() {
 fn the_default_build_holds_no_optional_feature() {
     if cfg!(feature = "full") {
         assert_eq!(features::enabled(), features::FULL);
-    } else {
+    } else if !cfg!(feature = "tcp") {
+        // Another feature may be on in a build with `--features`; the
+        // plain default build has none.
         assert!(features::enabled().is_empty(), "{:?}", features::enabled());
     }
 }
