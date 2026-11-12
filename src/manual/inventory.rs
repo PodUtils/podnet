@@ -27,6 +27,11 @@ pub const COMPONENTS: &[ComponentEntry] = &[
         meaning: "Two ends in one process with a ring for each direction (--ring sets the bytes). A full ring blocks the writer. For tests and for programs that embed the link. Duplex, ordered, no cost, no privilege. Address: NAME. Always built.",
     },
     ComponentEntry {
+        name: "tcp",
+        kind: "carrier",
+        meaning: "A TCP stream with TLS 1.3, ALPN podlink/1. Each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. Duplex, ordered, cost class network, no privilege. Address: KEY@HOST:PORT to dial, IP:PORT to listen. Build feature tcp.",
+    },
+    ComponentEntry {
         name: "quic",
         kind: "carrier",
         meaning: "QUIC streams to a peer, TLS 1.3 with the key of the peer pinned. Cost class network, no privilege. Address: HOST:PORT. Build feature quic.",
