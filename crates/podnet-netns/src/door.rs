@@ -12,7 +12,7 @@ use std::time::Duration;
 use crate::socks::{self, HttpRequest, ProxyHost, ProxyRequest};
 use anyhow::{Context, Result};
 use base64::Engine as _;
-use pod_core::{Dial, Target};
+use pod_core::{BoxFuture, Class, Dial, Failure, Target};
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 use tokio::sync::Semaphore;
 use tokio::time::Instant;
@@ -26,6 +26,33 @@ pub const CLIENT_LIMIT: usize = 1024;
 /// The deadline of the dial of one flow.
 pub const DIAL_LIMIT: Duration = Duration::from_secs(30);
 
+/// The buffer of each direction of a flow (T-151).
+const RELAY_BUFFER: usize = 64 * 1024;
+
+/// The body of the 405 answer of a door that takes `CONNECT` only.
+const CONNECT_ONLY: &str =
+    "this proxy speaks HTTP CONNECT only: use it as https_proxy, or as socks5h://\n";
+
+/// The control stream of a client, as a trait object.
+pub trait Duplex: AsyncRead + AsyncWrite + Unpin + Send {}
+
+impl<T: AsyncRead + AsyncWrite + Unpin + Send> Duplex for T {}
+
+/// What a command of a door adds to the way: a SOCKS5 command that the
+/// dialer cannot carry (UDP ASSOCIATE through the association of an upstream
+/// proxy, UDP in the stream).
+pub trait Extension: Send + Sync {
+    /// Serve `command` on `control` and return true, or return false: the
+    /// door then serves UDP ASSOCIATE over the datagrams of its dialer, and
+    /// answers "command not supported" to any other command. `control` has
+    /// the request read already.
+    fn command<'a>(
+        &'a self,
+        command: u8,
+        control: &'a mut dyn Duplex,
+    ) -> BoxFuture<'a, Result<bool>>;
+}
+
 /// A check of a user and a password of a client.
 pub type Users = Arc<dyn Fn(&str, &str) -> bool + Send + Sync>;
 
@@ -37,6 +64,10 @@ pub struct Door {
     clients: Arc<Semaphore>,
     turned_away: AtomicU64,
     udp_bind: std::net::IpAddr,
+    default_port: u16,
+    flow_limit: Option<Duration>,
+    connect_only: bool,
+    extension: Option<Arc<dyn Extension>>,
 }
 
 impl Door {
@@ -48,7 +79,37 @@ impl Door {
             clients: Arc::new(Semaphore::new(CLIENT_LIMIT)),
             turned_away: AtomicU64::new(0),
             udp_bind: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            default_port: 0,
+            flow_limit: None,
+            connect_only: false,
+            extension: None,
         }
+    }
+
+    /// The port of a request that has port 0 (the option `--port`).
+    pub fn with_default_port(mut self, port: u16) -> Door {
+        self.default_port = port;
+        self
+    }
+
+    /// End each flow after `limit`, also when it is busy. Without it, a flow
+    /// lives until a side closes.
+    pub fn with_flow_limit(mut self, limit: Duration) -> Door {
+        self.flow_limit = Some(limit);
+        self
+    }
+
+    /// Take `CONNECT` and SOCKS5 only: a plain `http://` request gets 405.
+    pub fn connect_only(mut self) -> Door {
+        self.connect_only = true;
+        self
+    }
+
+    /// Give the commands of SOCKS5 that the dialer cannot carry to
+    /// `extension`.
+    pub fn with_extension(mut self, extension: Arc<dyn Extension>) -> Door {
+        self.extension = Some(extension);
+        self
     }
 
     /// The address of the UDP socket of a UDP ASSOCIATE (T-098). The default
@@ -118,63 +179,80 @@ impl Door {
     }
 
     /// One client: its request in the deadline, the dial, then the copy.
+    /// A client that is too slow gets SOCKS5 4 or HTTP 504.
     pub async fn handle<S>(&self, mut stream: S) -> Result<()>
     where
         S: AsyncRead + AsyncWrite + Unpin + Send,
     {
         let mut first = [0u8; 1];
+        let mut seen = false;
         let request = tokio::time::timeout(self.request_limit, async {
             stream
                 .read_exact(&mut first)
                 .await
                 .context("the first byte")?;
+            seen = true;
             let mut prefixed = Prefixed::new(first[0], &mut stream);
             self.read_request(&mut prefixed).await
         })
-        .await
-        .map_err(|_| anyhow::anyhow!("the client sent no request in {:?}", self.request_limit))??;
+        .await;
+        let request = match request {
+            Ok(request) => request?,
+            Err(_) => {
+                let is_socks = seen && socks::looks_like_socks5(first[0]);
+                // The answer is one write, tried once: a client that reads
+                // nothing must not hold this task after its deadline.
+                let _ = tokio::time::timeout(
+                    Duration::ZERO,
+                    crate::opening::refuse_slow(&mut stream, is_socks),
+                )
+                .await;
+                anyhow::bail!("the client sent no request in {:?}", self.request_limit);
+            }
+        };
         match request {
             Request::Socks(req) => {
-                let target = target_of(&req);
+                let target = self.target_of(&req);
                 match self.dial.dial(&target, Instant::now() + DIAL_LIMIT).await {
                     Ok(mut conn) => {
                         socks::socks5_reply(&mut stream, 0, conn.local).await?;
-                        let _ = tokio::io::copy_bidirectional(&mut stream, &mut conn.io).await;
+                        self.splice(&mut stream, &mut conn.io).await;
                     }
                     Err(e) => {
-                        socks::socks5_reply(
-                            &mut stream,
-                            socks::socks5_code_for_error(&e.to_string()),
-                            None,
-                        )
-                        .await?;
+                        socks::socks5_reply(&mut stream, socks_code(&e), None).await?;
                     }
                 }
             }
-            Request::SocksUdp => udp::associate(self, &mut stream).await?,
-            Request::Socks5Unsupported => {
-                // BIND: the command is not supported.
-                socks::socks5_reply(&mut stream, 0x07, None).await?;
+            Request::Command(command) => {
+                let served = match &self.extension {
+                    Some(extension) => extension.command(command, &mut stream).await?,
+                    None => false,
+                };
+                if !served {
+                    if command == 3 {
+                        udp::associate(self, &mut stream).await?;
+                    } else {
+                        // BIND, or a command that nobody serves.
+                        socks::socks5_reply(&mut stream, 0x07, None).await?;
+                    }
+                }
             }
             Request::Http(HttpRequest::Connect(req)) => {
-                let target = target_of(&req);
+                let target = self.target_of(&req);
                 match self.dial.dial(&target, Instant::now() + DIAL_LIMIT).await {
                     Ok(mut conn) => {
                         socks::http_connect_ok(&mut stream).await?;
-                        let _ = tokio::io::copy_bidirectional(&mut stream, &mut conn.io).await;
+                        self.splice(&mut stream, &mut conn.io).await;
                     }
-                    Err(e) => {
-                        socks::http_connect_reply(
-                            &mut stream,
-                            502,
-                            &e.text().replace(['\r', '\n'], " "),
-                        )
-                        .await?
-                    }
+                    Err(e) => http_failure(&mut stream, &e).await?,
                 }
             }
+            Request::Http(HttpRequest::Forward { .. }) if self.connect_only => {
+                socks::http_reply_with_body(&mut stream, 405, "Method Not Allowed", CONNECT_ONLY)
+                    .await?;
+            }
             Request::Http(HttpRequest::Forward { request, head }) => {
-                let target = target_of(&request);
+                let target = self.target_of(&request);
                 match self
                     .dial
                     .dial_http(&target, Instant::now() + DIAL_LIMIT)
@@ -182,21 +260,49 @@ impl Door {
                 {
                     Ok(mut conn) => {
                         conn.io.write_all(&head).await?;
-                        let _ = tokio::io::copy_bidirectional(&mut stream, &mut conn.io).await;
+                        self.splice(&mut stream, &mut conn.io).await;
                     }
-                    Err(e) => {
-                        socks::http_connect_reply(
-                            &mut stream,
-                            502,
-                            &e.text().replace(['\r', '\n'], " "),
-                        )
-                        .await?
-                    }
+                    Err(e) => http_failure(&mut stream, &e).await?,
                 }
             }
             Request::Refused => {}
         }
         Ok(())
+    }
+
+    /// Copy both ways until a side ends, or until the flow limit.
+    async fn splice<A, B>(&self, client: &mut A, upstream: &mut B)
+    where
+        A: AsyncRead + AsyncWrite + Unpin + ?Sized,
+        B: AsyncRead + AsyncWrite + Unpin + ?Sized,
+    {
+        let copy =
+            tokio::io::copy_bidirectional_with_sizes(client, upstream, RELAY_BUFFER, RELAY_BUFFER);
+        match self.flow_limit {
+            Some(limit) => {
+                let _ = tokio::time::timeout(limit, copy).await;
+            }
+            None => {
+                let _ = copy.await;
+            }
+        }
+    }
+
+    /// The target of a request of a client: a name stays a name (the dialer
+    /// resolves it where its way says). Port 0 takes the default port.
+    fn target_of(&self, req: &ProxyRequest) -> Target {
+        let port = if req.port == 0 {
+            self.default_port
+        } else {
+            req.port
+        };
+        match &req.host {
+            ProxyHost::Ip(ip) => Target::Addr(std::net::SocketAddr::new(*ip, port)),
+            ProxyHost::Domain(name) => Target::Name {
+                host: name.clone(),
+                port,
+            },
+        }
     }
 
     async fn read_request<S>(&self, stream: &mut Prefixed<'_, S>) -> Result<Request>
@@ -209,8 +315,7 @@ impl Door {
             let (command, req) = socks::socks5_read_command_auth(stream, check).await?;
             return Ok(match command {
                 1 => Request::Socks(req),
-                3 => Request::SocksUdp,
-                _ => Request::Socks5Unsupported,
+                other => Request::Command(other),
             });
         }
         let (request, auth) = socks::http_read_request_auth(stream).await?;
@@ -227,24 +332,38 @@ impl Door {
 
 enum Request {
     Socks(ProxyRequest),
-    /// UDP ASSOCIATE; the address of the request is the expected source of
-    /// the client, which the relay does not need (it pins the first source).
-    SocksUdp,
-    Socks5Unsupported,
+    /// Another SOCKS5 command: UDP ASSOCIATE (3), BIND (2) or one that an
+    /// extension knows. The address of a UDP ASSOCIATE is the expected
+    /// source of the client, which the relay does not need (it pins the
+    /// first source).
+    Command(u8),
     Http(HttpRequest),
     Refused,
 }
 
-/// The target of a request of a client: a name stays a name (the dialer
-/// resolves it where its way says).
-fn target_of(req: &ProxyRequest) -> Target {
-    match &req.host {
-        ProxyHost::Ip(ip) => Target::Addr(std::net::SocketAddr::new(*ip, req.port)),
-        ProxyHost::Domain(name) => Target::Name {
-            host: name.clone(),
-            port: req.port,
-        },
+/// The SOCKS5 reply code of a failed dial: "not allowed" for a policy
+/// refusal, "host unreachable" for a timeout, else by the words of the text.
+fn socks_code(e: &Failure) -> u8 {
+    match e.class {
+        Class::Policy => 0x02,
+        Class::Timeout => 0x04,
+        _ => socks::socks5_code_for_error(&e.to_string()),
     }
+}
+
+/// The HTTP answer of a failed dial: 403 for a policy refusal, 504 for a
+/// timeout, else 502, with the text of the failure in the body.
+async fn http_failure<S>(stream: &mut S, e: &Failure) -> Result<()>
+where
+    S: AsyncWrite + Unpin,
+{
+    let (status, reason) = match e.class {
+        Class::Policy => (403, "Forbidden"),
+        Class::Timeout => (504, "Gateway Timeout"),
+        _ => (502, "Bad Gateway"),
+    };
+    let body = format!("{}\n", e.text().replace(['\r', '\n'], " "));
+    socks::http_reply_with_body(stream, status, reason, &body).await
 }
 
 /// True when `value` is `Basic BASE64(user:password)` of a user that
