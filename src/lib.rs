@@ -81,6 +81,7 @@ pub mod fetch;
 #[doc(hidden)]
 pub mod forwards;
 pub mod fuzzing;
+pub mod link;
 pub mod manual;
 pub mod networks;
 pub mod preflight;

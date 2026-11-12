@@ -106,8 +106,13 @@ pod-wg = { git = "https://github.com/PodUtils/podcrates", tag = "v0.32.0", versi
 # took them before (a stand-in relay of the tests); a host off the loopback
 # stays refused before any connection.
 pod-relay = { git = "https://github.com/PodUtils/podcrates", tag = "v0.32.0", version = "0.32.0", features = ["pair", "plain-ws"] }
+# The link of the link workstream, of PodUtils/podcrates (call C120 to C124):
+# many streams over one carrier byte stream with credit windows and a
+# keepalive, and the carriers (unix, memory) behind one trait. The glue is
+# src/link.rs, the registry of the carriers src/carriers.rs.
+pod-link = { git = "https://github.com/PodUtils/podcrates", tag = "v0.32.0", version = "0.32.0" }
 anyhow = "1"
-axum = { version = "0.8", features = ["multipart"] }
+axum ={ version = "0.8", features = ["multipart"] }
 base64 = "0.23"
 bytes = "1"
 clap = { version = "4.5", features = ["derive", "env"] }

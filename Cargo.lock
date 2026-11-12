@@ -2473,6 +2473,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pod-link"
+version = "0.32.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.32.0#032e86f983130eb357ea0ab7595fb42ee4a5fa13"
+dependencies = [
+ "libc",
+ "pod-core",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "pod-netstack"
 version = "0.32.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.32.0#032e86f983130eb357ea0ab7595fb42ee4a5fa13"
@@ -2656,6 +2667,7 @@ dependencies = [
  "pod-core",
  "pod-dns",
  "pod-hold",
+ "pod-link",
  "pod-netstack",
  "pod-proxy",
  "pod-quic",
