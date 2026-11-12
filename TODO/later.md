@@ -1688,7 +1688,7 @@ because one socket of the stack serves every flow of a port.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1755,6 +1755,29 @@ The take of `pod-devtunnel` is done (T-137).
 2026-11-12: podcrates writes `pod-devtunnel` (PodUtils/podcrates#101): the client side first (the management read, the relay WebSocket over podnet's TLS, proxy and dialer, SSH with `none`, `direct-tcpip` streams, a bounded reconnect); the hand-off names the API for `devtunnel://TUNNEL`.
 
 2026-11-12: podcrates v0.33.0 has `pod-devtunnel` (PodUtils/podcrates#103); the Blocker is gone.
+
+2026-11-12: partial. `devtunnel://TUNNEL` is in `src/networks/devtunnel.rs`, over `pod-devtunnel` v0.34.0. Left: (1) the
+`podnet doctor` row of Dev Tunnels whose failure names the step: only the check of `podnet net doctor` (the management host
+with TLS) exists, and the step is in the error of `up`; the fixed row list of `src/doctor/targets.rs` needs a rule for a row
+that depends on a spec. (2) Not proven: a live Dev Tunnels account.
+
+## Done
+
+2026-11-12, commit 5f1981a (`T-320: devtunnel://TUNNEL, a Dev Tunnels network for TCP streams over pod-devtunnel`), partial
+(see Correction). The spec parser, the registry row (`ROWS` is nine rows), `Kind::Devtunnel`, the status with no token, the
+check of the management host, the `--egress` refusal, the `forward` help, the manual (four variables), `docs/networks.md`,
+`docs/egress.md`, `docs/forward.md` and the README map. The token comes from `PODNET_DEVTUNNEL_TOKEN_FILE` or
+`PODNET_DEVTUNNEL_TOKEN`, never from argv. The stand-in of `pod-devtunnel` (dev-dependency, feature `standin`) is the relay.
+Tests (`cargo test -p podnet --lib networks::devtunnel`, `--test devtunnel_network`, `--test cli manual`):
+`devtunnel_stream_echoes_and_status_holds_no_token` (management read, WebSocket subprotocol, SSH `none`, `direct-tcpip`,
+echo), `devtunnel_reconnect_ends_a_stream_with_a_named_error_and_a_new_stream_works` (`ConnectionAborted`, then a new
+stream on session 2 with a fresh token), `devtunnel_failures_name_their_step` (refused token, unknown tunnel, refused
+channel), `devtunnel_target_host_is_the_local_address_of_the_tunnel_host`, the spec and account tests, and the command:
+`a_tcp_forward_reaches_the_tunnel_host_through_the_stand_in` (`podnet forward -L 127.0.0.1:PORT=127.0.0.1:22 --network
+devtunnel://standin-box`: two echoes, two channels, no token in the output), `a_devtunnel_network_with_no_token_is_a_usage_error_that_names_the_variables`,
+`a_devtunnel_spec_with_a_token_in_it_is_refused_and_not_echoed`, `a_wrong_token_ends_the_command_at_the_management_step`,
+`the_manual_names_the_devtunnel_network_and_its_variables`. Fail first (plant): with the loopback rule of the target host off,
+`devtunnel_target_host_is_the_local_address_of_the_tunnel_host` failed. Not proven: a live Dev Tunnels account.
 
 
 # T-321: net: a TURN network for UDP flows (GitHub #507)
