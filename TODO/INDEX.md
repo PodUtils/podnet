@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**326 entries: 65 open, 19 partial, 22 blocked, 220 done.**
+**326 entries: 64 open, 19 partial, 22 blocked, 221 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 20 | 8 | 11 | 128 | 167 |
-| P3 | 45 | 10 | 9 | 64 | 128 |
-| **All** | 65 | 19 | 22 | 220 | 326 |
+| P3 | 44 | 10 | 9 | 65 | 128 |
+| **All** | 64 | 19 | 22 | 221 | 326 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -313,7 +313,7 @@ M8 Overlays, M9 Later.
 | [T-265](link.md) | P3 | M | M9 | feature | done | link: the commands listen, dial, status, close and carriers (GitHub #466) |
 | [T-266](link.md) | P3 | M | M9 | feature | done | link: `peer:FINGERPRINT/SERVICE` as a network target and `forward -L LISTEN=peer:...` (GitHub #466 and #471) |
 | [T-267](link.md) | P3 | M | M9 | feature | done | link: the control socket, its discipline and the status verb (GitHub #466) |
-| [T-268](link.md) | P3 | L | M9 | feature | open | link: the TCP carrier with TLS 1.3, the accept side and the peer handshake (GitHub #467) |
+| [T-268](link.md) | P3 | L | M9 | feature | done | link: the TCP carrier with TLS 1.3, the accept side and the peer handshake (GitHub #467) |
 | [T-269](link.md) | P3 | M | M9 | feature | open | link: the WebSocket carrier, its server half and its wrapper (GitHub #467) |
 | [T-270](link.md) | P3 | M | M9 | feature | open | link: the HTTP/2 carrier with one bidirectional POST (GitHub #467) |
 | [T-271](link.md) | P3 | M | M9 | feature | open | link: the HTTP/1.1 long-poll carrier (GitHub #467) |

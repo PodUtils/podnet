@@ -441,7 +441,7 @@ Not proven: a client of another uid (the gate is proven with a closure that refu
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -482,6 +482,16 @@ T-261, T-262 and T-264 are done. Ask A7 is answered.
 ## Correction
 
 2026-11-12, the lead: the TCP carrier does not reuse the hello of T-265 (`src/hello.rs`) as its proof: the hello does not bind the streams after it. The pinned Ed25519 key goes into the TLS handshake of the carrier.
+
+2026-11-12, the build of the entry: ask A7 is answered by `pod-link` of podcrates v0.34.0 (feature `tcp`): it pins an Ed25519 key in TLS 1.3 (`pod_tls::peer`). Podnet writes no verifier. The ALPN is `podlink/1` (the crate's ALPN replaces `podnet/1` of the Problem). The hello of `src/hello.rs` does not run on this carrier. There is no plaintext mode (the crate always runs TLS), so the rule "a public bind with `--plaintext` exits 68" has no case, and the commands have no `--plaintext` flag. Not done: the `Hello` of suite and limits that Approach step 2 names (the TLS handshake has no such field; T-265 settings stay as they are); the session over the carrier (T-263 resume) is not wired for `tcp` in the commands; the carrier takes no `--proxy` flag of its own (it uses the way out of the process).
+
+## Done
+
+2026-11-12, commits e146f31 and the commit after it (the registry tests). Feature `tcp` of podnet is `pod-link/tcp` (`Cargo.toml`; `tcp` is in `OPTIONAL` and `FULL` of `src/build_features.rs`, and in `full`). `src/link_tcp.rs` (`podnet::link_tcp`) has `carrier(me, allow)` (the key of the install, the client keys of the listener from the allow list, the way out of the process), `listen`, `dial` (pins `KEY` of `KEY@HOST:PORT`, then checks the proved key against the allow list) and `Probe` (the registry row: facts and the host check, no key). `AllowList::names` feeds `with_clients`. `link::Door::accept_peer` gives the key that the carrier proved; `link::carrier_fault` maps a refused key (the pin of `pod_tls::peer`, or the alert of a refused certificate) to exit 77, and a denied socket (`EACCES`) stays 69. `link listen`, `link dial` and `link connect` take `--carrier tcp`: the TLS handshake proves the keys and the hello does not run. The registry has the row `tcp`. `docs/link.md` (The TCP carrier, the exit table, the library), `docs/build.md` and the help text have it.
+
+Tests (`tests/link_tcp.rs`, build `--features tcp`; this host allowed TCP loopback, so none skipped): `the_allow_list_feeds_the_client_keys_in_each_form`, `the_carrier_is_a_stream_and_says_why_a_host_cannot_use_it`, `the_registry_row_has_no_key_and_refuses_a_dial`, `a_dial_address_with_no_key_exits_64`, `a_refused_key_maps_to_77_and_a_denied_socket_does_not`, `the_dial_of_the_cli_with_no_key_in_the_address_exits_64` (no socket); `a_link_crosses_tcp_and_each_end_learns_the_key_of_the_other`, `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77`, `a_listener_that_the_dialer_list_does_not_hold_exits_77`, `a_change_of_the_client_keys_applies_to_the_next_handshake`, `a_peer_that_speaks_no_tls_is_not_a_link`, `link_dial_check_meets_link_listen_over_tcp_and_a_stranger_exits_77` (TCP loopback, with the named skip). With the 77 mapping disabled, 5 of these 13 fail. `tests/link_features.rs`, `tests/link_registry.rs` and `tests/cli/link.rs` list the row.
+
+Not proven: a host that denies TCP loopback (the skip line is the host's own text; the denied case is tested with a built `EACCES` error); a link over a proxy chain; the resume of a session over `tcp`; the TLS limits (handshake count and time) that `pod-link` tests itself.
 
 
 # T-269: link: the WebSocket carrier, its server half and its wrapper (GitHub #467)

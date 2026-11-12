@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 326 entries: 65 open, 19 partial, 22 blocked, 220 done.
+`TODO/INDEX.md` holds 326 entries: 64 open, 19 partial, 22 blocked, 221 done.
 
 ## State
 
@@ -71,7 +71,7 @@ not wait for a larger one.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-298, T-294, T-295.
-12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-268 to T-310 in `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. Start with the stream carriers (T-268 to T-273), the ARQ and the datagram carriers (T-276 to T-280), the record layer (T-298 to T-301), the mesh (T-285 to T-290), the services (T-291 to T-297), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-298 (`pod-e2e`, T-086), T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
+12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-269 to T-310 in `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. Start with the stream carriers (T-269 to T-273), the ARQ and the datagram carriers (T-276 to T-280), the record layer (T-298 to T-301), the mesh (T-285 to T-290), the services (T-291 to T-297), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-298 (`pod-e2e`, T-086), T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
