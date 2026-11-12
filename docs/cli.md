@@ -27,7 +27,7 @@ network.
 ```sh
 podnet man                      # the whole manual, in a pager on a terminal
 podnet man warp run             # one command
-podnet man exit-status          # one topic: environment, files, exit-status, examples, pod
+podnet man exit-status          # one topic: environment, files, inventory, exit-status, examples, pod
 podnet man --roff > podnet.1      # a man(7) page (also a release asset)
 podnet man --json               # the tables, for a program
 podnet warp run --help --json   # the same JSON for one command (at each level)

@@ -11,9 +11,10 @@
 //! * `--roff` writes a man(7) page, for `man -l -` or a man directory.
 //! * `--json` writes the manual as one JSON object, for a program.
 //! * `podnet man SECTION` writes one section: a command (`tunnel`, `warp run`)
-//!   or a topic (`environment`, `files`, `exit-status`, `examples`, `pod`).
+//!   or a topic (`environment`, `files`, `inventory`, `exit-status`, `examples`, `pod`).
 
 pub mod facts;
+pub mod inventory;
 pub mod model;
 pub mod pager;
 pub mod roff;
@@ -134,13 +135,15 @@ pub fn body(manual: &Manual, req: &Request) -> Result<String, String> {
     match topic.as_str() {
         "environment" if req.json => Ok(json(serde_json::json!(manual.environment))),
         "files" if req.json => Ok(json(serde_json::json!(manual.files))),
+        "inventory" if req.json => Ok(json(serde_json::json!(manual.inventory))),
         "exit-status" if req.json => Ok(json(serde_json::json!(manual.exit_status))),
         "examples" if req.json => Ok(json(serde_json::json!(manual.examples))),
         "pod" if req.json => Ok(json(serde_json::json!({ "usage": manual.pod_usage }))),
-        "environment" | "files" | "exit-status" | "examples" | "pod" => {
+        "environment" | "files" | "inventory" | "exit-status" | "examples" | "pod" => {
             let body = match topic.as_str() {
                 "environment" => text::environment(manual),
                 "files" => text::files(manual),
+                "inventory" => text::inventory(manual),
                 "exit-status" => text::exit_status(manual),
                 "examples" => text::examples(manual),
                 _ => text::fill(&manual.pod_usage, 4),

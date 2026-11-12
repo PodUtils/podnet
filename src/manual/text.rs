@@ -177,6 +177,16 @@ pub fn files(manual: &Manual) -> String {
     out
 }
 
+/// The section `INVENTORY`.
+pub fn inventory(manual: &Manual) -> String {
+    let mut out = String::new();
+    for c in manual.inventory {
+        out.push_str(&fill(&format!("{} ({})", c.name, c.kind), 4));
+        out.push_str(&fill(c.meaning, 8));
+    }
+    out
+}
+
 /// The section `EXIT STATUS`.
 pub fn exit_status(manual: &Manual) -> String {
     let mut out = String::new();
@@ -234,6 +244,8 @@ pub fn render(manual: &Manual) -> String {
     out.push_str(&environment(manual));
     heading(&mut out, "FILES");
     out.push_str(&files(manual));
+    heading(&mut out, "INVENTORY");
+    out.push_str(&inventory(manual));
     heading(&mut out, "EXIT STATUS");
     out.push_str(&exit_status(manual));
     heading(&mut out, "EXAMPLES");

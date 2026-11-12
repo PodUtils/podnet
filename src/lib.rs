@@ -71,6 +71,7 @@ pub mod bug_report;
 pub mod build_features;
 pub mod carriers;
 pub mod cloudflare;
+pub mod components;
 pub mod config;
 #[cfg(test)]
 mod core_tests;

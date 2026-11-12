@@ -28,6 +28,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet ssh-relay`: Publish a unix socket through an SSH relay (a remote forward on port 443), and keep the session: when the relay ends it, podnet connects again with a backoff and prints the new URL. The relay (--service), its endpoints, its user and its URL rule are data of pod-services; --server, --user, --url-match and --url-skip override them
 - `podnet bench`: Send GET requests to a URL through the way out (--egress, --proxy) and measure the latency (p50, p95, p99), the rate and the errors
 - `podnet ports`: List local TCP ports that are listening
+- `podnet components`: List the carriers and services of this build: kind, framing, duplex, privilege, whether this host can use each, the reason if not, the cost class and the build feature
 - `podnet bug-report`: Print a text for a bug report: the version, podnet status, the detached instances and the end of their logs, and the names of the variables that are set. Device IDs, tunnel IDs, tokens and credentials are hidden. No network unless --doctor
 - `podnet completions`: Print a completion script for a shell: bash, zsh, fish, elvish or powershell
 - `podnet update`: Replace this binary with the binary of a release, after checking its signature (cosign, release.yml at the tag) and its SHA-256

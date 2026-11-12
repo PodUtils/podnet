@@ -5,6 +5,7 @@
 use serde::Serialize;
 
 use super::facts::{EnvVar, Example, FileEntry, ENVIRONMENT, EXAMPLES, FILES};
+use super::inventory::{ComponentEntry, COMPONENTS};
 use crate::exit::{ExitCode, TABLE};
 
 /// One flag or positional argument.
@@ -54,6 +55,7 @@ pub struct Manual {
     pub pod_usage: String,
     pub environment: &'static [EnvVar],
     pub files: &'static [FileEntry],
+    pub inventory: &'static [ComponentEntry],
     pub exit_status: Vec<ExitRow>,
     pub examples: &'static [Example],
 }
@@ -217,13 +219,21 @@ pub fn build(mut cmd: clap::Command) -> Manual {
         pod_usage: podnet_netns::usage_for("podnet pod"),
         environment: ENVIRONMENT,
         files: FILES,
+        inventory: COMPONENTS,
         exit_status: TABLE.iter().map(ExitRow::from).collect(),
         examples: EXAMPLES,
     }
 }
 
 /// The topics that are not commands.
-pub const TOPICS: &[&str] = &["environment", "files", "exit-status", "examples", "pod"];
+pub const TOPICS: &[&str] = &[
+    "environment",
+    "files",
+    "inventory",
+    "exit-status",
+    "examples",
+    "pod",
+];
 
 impl Manual {
     /// The command whose path is `name`: `warp run` or `warp/run`.

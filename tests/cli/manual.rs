@@ -108,6 +108,38 @@ fn the_manual_names_the_devtunnel_network_and_its_variables() {
     }
 }
 
+/// T-310: each row of `podnet components` that this build holds has a
+/// section in the manual (`podnet man inventory`, the section INVENTORY).
+#[test]
+fn the_manual_has_a_section_for_each_compiled_component() {
+    let rows = podnet(&["components", "--json"]);
+    let rows: serde_json::Value = serde_json::from_slice(&rows.stdout).expect("valid JSON");
+    let manual = podnet(&["man", "inventory", "--json"]);
+    assert_eq!(manual.status.code(), Some(0));
+    let manual: serde_json::Value = serde_json::from_slice(&manual.stdout).expect("valid JSON");
+    let manual = manual.as_array().unwrap();
+    let text = String::from_utf8(podnet(&["man", "--no-pager"]).stdout).unwrap();
+    assert!(text.contains("INVENTORY"), "the manual has no INVENTORY");
+    let mut compiled = 0;
+    for row in rows["components"].as_array().unwrap() {
+        if row["built"] != true {
+            continue;
+        }
+        compiled += 1;
+        let section = manual
+            .iter()
+            .find(|c| c["name"] == row["name"] && c["kind"] == row["kind"])
+            .unwrap_or_else(|| panic!("no section in the manual for {}", row["name"]));
+        assert!(!section["meaning"].as_str().unwrap().trim().is_empty());
+        assert!(text.contains(&format!(
+            "{} ({})",
+            row["name"].as_str().unwrap(),
+            row["kind"].as_str().unwrap()
+        )));
+    }
+    assert!(compiled >= 2, "only {compiled} compiled rows");
+}
+
 #[test]
 fn ports_json_is_one_object() {
     let out = podnet(&["ports", "--json"]);

@@ -14,6 +14,7 @@ podnet link listen /run/user/1000/app.sock --allow peers.txt --detach --name app
 podnet link status                                # the fingerprint, and the link instances that run
 podnet link close app                             # stop the instance; the listener removes its socket
 podnet link carriers                              # each carrier, and whether this host can use it
+podnet components                                 # each carrier and service of this build, with its feature
 podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl   # hold a link, run a control socket
 podnet link status --control /run/user/1000/link.ctl --json                                         # ask that socket
 podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of the peer (forward.md)
@@ -127,6 +128,14 @@ them. `podnet link carriers` lists each one with `unavailable: not built: the fe
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
 build, and names its entry (T-273, T-279 or T-282).
+
+`podnet components [--json]` lists each carrier and each service of this build (T-310). A row has the fields `name`, `kind`
+(`carrier` or `service`), `framing`, `duplex`, `needs_privilege`, `available`, `reason`, `cost`, `feature`, `built`, `about` and
+`address`. The names are stable, the list has at most 64 rows, and a row has at most 4 KiB in JSON. A row of a feature that this
+build leaves out has `available: false`, `built: false` and the reason; its `framing` and `duplex` are `null`. The services are
+`ss` and `trojan` (features `ss` and `trojan`). The JSON also has `features` (each optional feature and whether it is built),
+`excluded` (each feature that is off, with its reason) and `portable`. `podnet man inventory` is the section of the manual for
+each row, and `tests/cli/manual.rs` requires a section for each row that the build holds.
 
 ## The TCP carrier
 

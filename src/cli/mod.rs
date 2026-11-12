@@ -19,6 +19,7 @@ use podnet::exit::Fault;
 use cmd::agent::{agent, AgentCommand};
 use cmd::autostart::{autostart, AutostartArgs};
 use cmd::bench::{bench, BenchArgs};
+use cmd::components::{components, ComponentsArgs};
 use cmd::connect::{connect, ConnectArgs};
 use cmd::git::{git, GitArgs};
 use cmd::host::{DoctorArgs, ManArgs, PortsArgs, QrArgs, UpdateArgs};
@@ -132,6 +133,10 @@ pub(crate) enum Command {
     Bench(BenchArgs),
     /// List local TCP ports that are listening.
     Ports(PortsArgs),
+    /// List the carriers and services of this build: kind, framing, duplex,
+    /// privilege, whether this host can use each, the reason if not, the
+    /// cost class and the build feature.
+    Components(ComponentsArgs),
     /// Print a text for a bug report: the version, podnet status, the
     /// detached instances and the end of their logs, and the names of the
     /// variables that are set. Device IDs, tunnel IDs, tokens and
@@ -277,6 +282,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Route(args) => cmd::route::route(args).await,
         Command::Bench(args) => bench(args).await,
         Command::Ports(args) => cmd::host::ports(args).await,
+        Command::Components(args) => components(args),
         Command::Qr(args) => cmd::host::qr(args),
         Command::Demo(args) => demo(args).await,
         Command::Net(args) => net(args).await,

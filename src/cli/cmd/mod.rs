@@ -3,6 +3,7 @@
 pub(crate) mod agent;
 pub(crate) mod autostart;
 pub(crate) mod bench;
+pub(crate) mod components;
 pub(crate) mod connect;
 mod connect_stdio;
 pub(crate) mod expose;

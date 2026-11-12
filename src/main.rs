@@ -226,6 +226,7 @@ fn main() {
         Some(
             "status"
                 | "ports"
+                | "components"
                 | "qr"
                 | "man"
                 | "completions"

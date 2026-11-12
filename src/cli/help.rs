@@ -39,6 +39,7 @@ pub(crate) const HELP_GROUPS: &[(&str, &[&str])] = &[
             "doctor",
             "status",
             "ports",
+            "components",
             "bench",
             "bug-report",
             "update",

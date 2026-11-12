@@ -69,7 +69,7 @@ pub(crate) struct DoctorArgs {
 #[derive(Args, Debug)]
 pub(crate) struct ManArgs {
     /// Sections: commands (tunnel, warp run) and topics (environment, files,
-    /// exit-status, examples, pod). `podnet man tunnel serve` gives both.
+    /// inventory, exit-status, examples, pod). `podnet man tunnel serve` gives both.
     #[arg(value_name = "SECTION", num_args = 0..)]
     section: Vec<String>,
     /// Write to stdout, also on a terminal.

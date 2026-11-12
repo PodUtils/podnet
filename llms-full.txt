@@ -1855,6 +1855,66 @@ COMMANDS
             The form of the log on stderr: text, or json (one object for each
             line). Default: text. Values: text, json.
 
+    podnet components [OPTIONS]
+        List the carriers and services of this build: kind, framing, duplex,
+        privilege, whether this host can use each, the reason if not, the cost
+        class and the build feature
+
+        --json
+            Print one JSON document: {"components": [...], "features": [...],
+            "excluded": [...], "portable": BOOL}. Each row has the fields
+            name, kind, framing, duplex, needs_privilege, available, reason,
+            cost, feature, built, about and address
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
     podnet bug-report [OPTIONS]
         Print a text for a bug report: the version, podnet status, the
         detached instances and the end of their logs, and the names of the
@@ -7872,8 +7932,8 @@ COMMANDS
 
         <SECTION>...
             Sections: commands (tunnel, warp run) and topics (environment,
-            files, exit-status, examples, pod). `podnet man tunnel serve`
-            gives both
+            files, inventory, exit-status, examples, pod). `podnet man tunnel
+            serve` gives both
 
         --no-pager
             Write to stdout, also on a terminal
@@ -9298,6 +9358,33 @@ FILES
     $TMPDIR/podnet-vnet, $TMPDIR/podnet-socks, $TMPDIR/podnet-ts-shims
         The default build directories of the shims.
 
+INVENTORY
+    unix (carrier)
+        A stream over AF_UNIX at a path, mode 0600. Each end checks the uid of
+        the other end (SO_PEERCRED); --allow-other-uid admits another uid.
+        Duplex, ordered, no cost, no privilege. Address: PATH. Always built.
+    memory (carrier)
+        Two ends in one process with a ring for each direction (--ring sets
+        the bytes). A full ring blocks the writer. For tests and for programs
+        that embed the link. Duplex, ordered, no cost, no privilege. Address:
+        NAME. Always built.
+    quic (carrier)
+        QUIC streams to a peer, TLS 1.3 with the key of the peer pinned. Cost
+        class network, no privilege. Address: HOST:PORT. Build feature quic.
+    s3 (carrier)
+        A simplex pair of objects in a bucket of an object store. Cost class
+        network, no privilege. Address: BUCKET/PREFIX. Build feature s3.
+    icmp (carrier)
+        ICMP echo requests and replies, a datagram carrier. Cost class
+        network. It needs a privilege of the process. Address: HOST. Build
+        feature icmp.
+    ss (service)
+        The Shadowsocks service over a stream of the link. Cost class network,
+        no privilege. Build feature ss.
+    trojan (service)
+        The Trojan service over a stream of the link. Cost class network, no
+        privilege. Build feature trojan.
+
 EXIT STATUS
     0 (success)
         The command completed. A server command (tunnel, serve, share, proxy)
@@ -9584,7 +9671,7 @@ podnet man                                      # the manual
 | Router | `route --config`, `--check --to`, `--status`, `--export` | Networks, groups, policies, health, doors, DNS door, kernel mode. | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
 | Forwards | `forward -L`, `forward --dns` | TCP and UDP forwards and a DNS door through a network. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Relays | `relay pair`, `node`, `connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
-| Link | `link listen`, `connect`, `dial`, `status`, `close`, `carriers`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. A control socket shows the links. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
+| Link | `link listen`, `connect`, `dial`, `status`, `close`, `carriers`, `components`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. A control socket shows the links. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
 | Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
 | Checks | `doctor`, `doctor --agent`, `status`, `ports`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
@@ -12166,7 +12253,7 @@ network.
 ```sh
 podnet man                      # the whole manual, in a pager on a terminal
 podnet man warp run             # one command
-podnet man exit-status          # one topic: environment, files, exit-status, examples, pod
+podnet man exit-status          # one topic: environment, files, inventory, exit-status, examples, pod
 podnet man --roff > podnet.1      # a man(7) page (also a release asset)
 podnet man --json               # the tables, for a program
 podnet warp run --help --json   # the same JSON for one command (at each level)

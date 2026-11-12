@@ -109,6 +109,11 @@ pub fn render(manual: &Manual) -> String {
         out.push_str(&format!(".TP\n.I {}\n", escape(f.path)));
         para(&mut out, f.meaning);
     }
+    out.push_str(".SH INVENTORY\n");
+    for c in manual.inventory {
+        out.push_str(&format!(".TP\n.B {} ({})\n", escape(c.name), c.kind));
+        para(&mut out, c.meaning);
+    }
     out.push_str(".SH \"EXIT STATUS\"\n");
     for row in &manual.exit_status {
         out.push_str(&format!(".TP\n.B {} ({})\n", row.code, row.name));
