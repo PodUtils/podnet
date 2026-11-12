@@ -178,5 +178,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #480 | COORD-049: podnet starts the link workstream: pod-link with the unix and memory carriers first (to podcrates) | open (a COORD issue between sessions) | none |
 | #481 | COORD-050: podnet took v0.30.0 and pod-relay at 83e0c93 (to podcrates) | open (a COORD issue between sessions) | none |
 | #482 | COORD-051: two gaps of pod-relay after the take (pair renewal, pair on a second host) and the edge budget (to podcrates) | open (a COORD issue between sessions) | none |
+| #483 | live: two runs in a row failed | open | T-315 |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.

@@ -4870,3 +4870,42 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+
+# T-315: live: `relay connect` hangs on the runner after the take of pod-relay (GitHub #483)
+
+**Source:** GitHub #483 (https://github.com/PodUtils/podnet/issues/483), the issue of `live.yml` for two failed runs.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** M
+**Status:** open
+
+## Problem
+
+After the take of `pod-relay` (podcrates v0.30.0, 83e0c93), the step "SSH through the reverse relay" of `live.yml`
+fails: the node connects to the relay, then `ssh` with `ProxyCommand=podnet relay connect NAME` waits about 2 minutes
+and gets "Connection closed by UNKNOWN port 65535" (live 43203358263, attempts 1 and 2, at 59c0313). The step passed
+at 64f1ed0 (v0.4.0-beta.6). The run 43209202451 at a2c1750 failed earlier, at "Quick tunnel through the WebSocket
+relay": the quick-tunnel service answered HTTP 429 with Retry-After 3600 s (a rate limit of the service).
+
+## Premise
+
+- In this sandbox (egress through an HTTP proxy), `relay pair`, `relay node --to 127.0.0.1:PORT` and `relay
+  connect NAME` against the live relay pass: the answer of the target comes back. The runner has a direct egress.
+- podnet gives `pod-relay` no `h2` and no `quic` setting (`src/ws_relay.rs`, `settings`): the crate takes `auto`.
+  `quic_road` races QUIC only to a relay host that the user named; the default relay is not one.
+- a2c1750 makes the step print the log of one `relay connect -v` before `ssh`.
+
+## Approach
+
+1. Run `live` after the rate limit of the quick-tunnel service ends; read the log of the probe of a2c1750.
+2. Find the road or the step of the open that waits on a direct egress. Fix it in podnet (the settings of the
+   crate, the copy of the stream) or write the evidence to podcrates in a COORD issue.
+3. Release `v0.4.0-beta.7` (T-314) only when the step passes.
+
+## Prove
+
+```sh
+# live.yml, step "SSH through the reverse relay": relay-ssh-ok, parallel-1, parallel-2 and the banner.
+```

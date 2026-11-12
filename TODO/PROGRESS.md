@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 314 entries: 74 open, 15 partial, 24 blocked, 201 done.
+`TODO/INDEX.md` holds 315 entries: 75 open, 15 partial, 24 blocked, 201 done.
 
 ## State
 
@@ -39,6 +39,8 @@ not wait for a larger one.
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - tunnel, share, serve and the CLI: T-169.
+   - relay: T-315 (`relay connect` hangs on the runner after the take of `pod-relay`, GitHub #483); it gates
+     `v0.4.0-beta.7` (T-314).
    - WARP: T-173, T-210.
    - the donor review (GitHub #429 to #434): done, except #433 and #435: T-242 is partial (its WARP half waits for the take of `pod-warp`), and T-244 is blocked on `pod-cloudflare`.
 4. **M2, the splits:** T-035, T-036, T-039 (moved files: podcrates); T-044 (blocked:
