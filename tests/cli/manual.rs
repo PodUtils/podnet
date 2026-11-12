@@ -92,7 +92,11 @@ fn the_manual_names_the_devtunnel_network_and_its_variables() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|v| v["names"].to_string().contains("PODNET_DEVTUNNEL_TOKEN_FILE"))
+        .find(|v| {
+            v["names"]
+                .to_string()
+                .contains("PODNET_DEVTUNNEL_TOKEN_FILE")
+        })
         .expect("a row for PODNET_DEVTUNNEL_TOKEN_FILE");
     let names = row["names"].to_string();
     for name in [
