@@ -85,6 +85,8 @@ pub mod fuzzing;
 pub mod hello;
 pub mod identity;
 pub mod link;
+pub mod link_ctl;
+pub mod link_service;
 pub mod manual;
 pub mod networks;
 pub mod preflight;

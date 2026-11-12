@@ -1,13 +1,18 @@
 //! `podnet link`: a link between two installs over a carrier (T-265).
 
+mod connect;
 mod dial;
 mod info;
 mod listen;
+
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::{Args, Subcommand};
 
 use podnet::carriers::Options;
+use podnet::link_ctl::{Control, Hub};
 
 use crate::cli::opts::DetachArgs;
 
@@ -58,9 +63,18 @@ pub(crate) enum LinkCommand {
     /// listener against --peer or --allow. Then copy stdin and stdout over
     /// one stream. A listener that is not allowed exits 77.
     Dial(dial::DialArgs),
+    /// Connect to a listener, prove this key, check the key of the listener
+    /// against --peer or --allow, and hold the link. Other programs open
+    /// streams of the link through its control socket: `peer:FINGERPRINT/
+    /// SERVICE` as a network (podnet forward -L LISTEN=peer:FINGERPRINT/
+    /// SERVICE). The command ends when the link ends (exit 69) or at a stop
+    /// signal.
+    Connect(connect::ConnectArgs),
     /// Show the fingerprint of this install and the link instances that run
     /// (podnet ps lists the other instances). With a NAME, show that
-    /// instance only.
+    /// instance only. For an instance with a control socket, status asks the
+    /// socket for the links it holds (peer, streams, counters) and shows them
+    /// under `live`; if the socket does not answer, status shows the record.
     Status {
         /// The name of a link instance (podnet ps). Default: each one.
         name: Option<String>,
@@ -71,6 +85,14 @@ pub(crate) enum LinkCommand {
         /// Print one JSON document.
         #[arg(long)]
         json: bool,
+        /// Ask this control socket only (the `control` of the ready
+        /// document of an instance). A wrong token exits 77, and a socket
+        /// that does not answer exits 69.
+        #[arg(long, value_name = "PATH")]
+        control: Option<PathBuf>,
+        /// The token file of --control. Default: PATH.token.
+        #[arg(long, value_name = "FILE", requires = "control")]
+        token_file: Option<PathBuf>,
     },
     /// Stop a link instance that runs in the background (SIGTERM, then
     /// SIGKILL after --timeout). The listener removes its unix socket.
@@ -93,10 +115,29 @@ pub(crate) enum LinkCommand {
     },
 }
 
-/// The options of --detach of `link listen`.
+/// Start the control socket of an instance at `explicit`, else at
+/// `link-PID.ctl` in the run directory. A host with no run directory runs
+/// with no socket (the ready document says `control: null`); an explicit
+/// path that cannot be used exits 69 or 71.
+pub(crate) fn start_control(hub: &Arc<Hub>, explicit: Option<&Path>) -> Result<Option<Control>> {
+    let path = match explicit {
+        Some(path) => path.to_path_buf(),
+        None => match podnet::instances::run_dir() {
+            Ok(dir) => dir.join(format!("link-{}.ctl", std::process::id())),
+            Err(err) => {
+                tracing::warn!(error = %format!("{err:#}"), "no control socket: there is no run directory");
+                return Ok(None);
+            }
+        },
+    };
+    Control::start(&path, hub.clone()).map(Some)
+}
+
+/// The options of --detach of `link listen` and `link connect`.
 pub(crate) fn detach_of(args: &LinkArgs) -> Option<&DetachArgs> {
     match &args.command {
         LinkCommand::Listen(listen) => Some(&listen.detach),
+        LinkCommand::Connect(connect) => Some(&connect.detach),
         _ => None,
     }
 }
@@ -106,7 +147,23 @@ pub(crate) async fn link(args: LinkArgs) -> Result<()> {
     match args.command {
         LinkCommand::Listen(args) => listen::listen(args).await,
         LinkCommand::Dial(args) => dial::dial(args).await,
-        LinkCommand::Status { name, json, create } => info::status(name.as_deref(), json, create),
+        LinkCommand::Connect(args) => connect::connect(args).await,
+        LinkCommand::Status {
+            name,
+            json,
+            create,
+            control,
+            token_file,
+        } => {
+            let ask = info::Ask {
+                name: name.as_deref(),
+                json,
+                create,
+                control: control.as_deref(),
+                token_file: token_file.as_deref(),
+            };
+            info::status(ask).await
+        }
         LinkCommand::Close { name, timeout } => info::close(&name, timeout),
         LinkCommand::Carriers { carrier, json } => info::carriers(&carrier.options(), json),
     }

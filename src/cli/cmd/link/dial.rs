@@ -29,6 +29,11 @@ pub(crate) struct DialArgs {
     /// deny, and a listener that it does not hold exits 77.
     #[arg(long, value_name = "FILE")]
     pub(crate) allow: Option<PathBuf>,
+    /// The service to ask the listener for (`link listen --service`). A name
+    /// of 1 to 32 characters from A-Z a-z 0-9 . _ -. A listener with no such
+    /// service, or whose origin does not answer, exits 69.
+    #[arg(long, value_name = "NAME", default_value = podnet::link_service::RAW)]
+    pub(crate) service: String,
     /// Connect and check the peer, print its fingerprint, and exit 0. It
     /// opens no stream.
     #[arg(long)]
@@ -39,22 +44,22 @@ pub(crate) struct DialArgs {
 }
 
 /// The allow list of --peer or --allow. Exit 64 when there is none.
-fn trusted(args: &DialArgs) -> Result<AllowList> {
-    match &args.allow {
+pub(super) fn trusted(allow: &Option<PathBuf>, peer: &[String]) -> Result<AllowList> {
+    match allow {
         Some(path) => AllowList::read(path),
-        None if args.peer.is_empty() => Err(exit::fault(
+        None if peer.is_empty() => Err(exit::fault(
             Fault::Usage,
             anyhow!(
                 "give --peer FINGERPRINT or --allow FILE: the dialer trusts no listener by default"
             ),
         )),
-        None => AllowList::parse(&args.peer.join("\n")).map_err(|e| e.context("--peer")),
+        None => AllowList::parse(&peer.join("\n")).map_err(|e| e.context("--peer")),
     }
 }
 
 pub(crate) async fn dial(args: DialArgs) -> Result<()> {
     let carrier = carriers::open(&args.carrier.carrier, &args.carrier.options())?;
-    let allow = trusted(&args)?;
+    let allow = trusted(&args.allow, &args.peer)?;
     let me = identity::create(&identity::default_dir()?)?;
     let link = link::dial(&*carrier, &args.address, Settings::default()).await?;
     let peer = hello::dial(&link, &me, allow).await?;
@@ -77,7 +82,8 @@ pub(crate) async fn dial(args: DialArgs) -> Result<()> {
         return Ok(());
     }
     eprintln!("podnet: peer {theirs}, this install {mine}");
-    let stream = link.open().map_err(link::fault)?;
+    let mut stream = link.open().map_err(link::fault)?;
+    podnet::link_service::request(&mut stream, &args.service).await?;
     let (mut down, mut up) = tokio::io::split(stream);
     let send = tokio::spawn(async move {
         let mut stdin = tokio::io::stdin();

@@ -1,5 +1,8 @@
 //! `podnet link status`, `close` and `carriers`.
 
+use std::path::Path;
+use std::time::Duration;
+
 use anyhow::{anyhow, Result};
 use serde_json::{json, Value};
 
@@ -7,6 +10,7 @@ use podnet::carriers::{self, Options, Report};
 use podnet::exit::{self, Fault};
 use podnet::identity;
 use podnet::instances::{self, Entry};
+use podnet::link_ctl;
 
 use crate::cli::cmd::instances::instances_stop;
 
@@ -31,9 +35,9 @@ fn identity_doc(create: bool) -> Result<Value> {
     }
 }
 
-fn instance_doc(entry: &Entry) -> Value {
+fn instance_doc(entry: &Entry, live: Option<&Result<Value>>) -> Value {
     let r = &entry.record;
-    json!({
+    let mut doc = json!({
         "name": r.name,
         "state": r.state,
         "pid": r.pid,
@@ -42,11 +46,103 @@ fn instance_doc(entry: &Entry) -> Value {
         "restarts": r.restarts,
         "log": r.log,
         "ready": r.ready,
-    })
+    });
+    match live {
+        Some(Ok(live)) => doc["live"] = live.clone(),
+        Some(Err(err)) => {
+            doc["live"] = Value::Null;
+            doc["live_error"] = format!("{err:#}").into();
+        }
+        None => doc["live"] = Value::Null,
+    }
+    doc
+}
+
+/// The time that a status waits for a control socket.
+const LIVE_LIMIT: Duration = Duration::from_secs(3);
+
+/// Ask the control socket `socket` for its status. The token is in
+/// `token_file`, else in `SOCKET.token`.
+async fn live(socket: &Path, token_file: Option<&Path>) -> Result<Value> {
+    let token = match token_file {
+        Some(file) => link_ctl::read_token(file)?,
+        None => link_ctl::read_token(&link_ctl::token_path(socket))?,
+    };
+    let exchange = async {
+        link_ctl::Client::connect(socket)
+            .await?
+            .call(&token, "status", json!({}))
+            .await
+    };
+    match tokio::time::timeout(LIVE_LIMIT, exchange).await {
+        Ok(doc) => doc,
+        Err(_) => Err(exit::fault(
+            Fault::Timeout,
+            anyhow!("the control socket {} did not answer", socket.display()),
+        )),
+    }
+}
+
+/// The links of a live document, one text line each.
+fn live_lines(live: &Value) -> Vec<String> {
+    live["links"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|l| {
+            format!(
+                "          peer {}  {}  {}  streams {}  opened {}  accepted {}",
+                l["peer"].as_str().unwrap_or("-"),
+                l["role"].as_str().unwrap_or("-"),
+                l["state"].as_str().unwrap_or("-"),
+                l["streams"],
+                l["opened"],
+                l["accepted"]
+            )
+        })
+        .collect()
+}
+
+/// What `podnet link status` was asked.
+pub(crate) struct Ask<'a> {
+    pub(crate) name: Option<&'a str>,
+    pub(crate) json: bool,
+    pub(crate) create: bool,
+    pub(crate) control: Option<&'a Path>,
+    pub(crate) token_file: Option<&'a Path>,
 }
 
 /// `podnet link status`.
-pub(crate) fn status(name: Option<&str>, json: bool, create: bool) -> Result<()> {
+pub(crate) async fn status(ask: Ask<'_>) -> Result<()> {
+    let Ask {
+        name,
+        json,
+        create,
+        control,
+        token_file,
+    } = ask;
+    let identity = identity_doc(create)?;
+    if let Some(socket) = control {
+        // One socket, asked by name: its errors are the errors of the
+        // command (a wrong token exits 77).
+        let live = live(socket, token_file).await?;
+        if json {
+            println!(
+                "{}",
+                podnet::status::stamped(json!({"identity": identity, "live": live}))
+            );
+        } else {
+            println!(
+                "control   {}  {}",
+                socket.display(),
+                live["fingerprint"].as_str().unwrap_or("")
+            );
+            for line in live_lines(&live) {
+                println!("{line}");
+            }
+        }
+        return Ok(());
+    }
     let dir = instances::lookup_dir();
     instances::prune(&dir);
     let mut links: Vec<Entry> = instances::list(&dir).into_iter().filter(is_link).collect();
@@ -59,14 +155,27 @@ pub(crate) fn status(name: Option<&str>, json: bool, create: bool) -> Result<()>
             ));
         }
     }
-    let identity = identity_doc(create)?;
+    let mut lives = Vec::new();
+    for entry in &links {
+        let control = entry
+            .record
+            .ready
+            .as_ref()
+            .and_then(|d| d["control"].as_str());
+        lives.push(match control {
+            Some(path) => Some(live(Path::new(path), None).await),
+            None => None,
+        });
+    }
     if json {
+        let rows: Vec<Value> = links
+            .iter()
+            .zip(&lives)
+            .map(|(e, l)| instance_doc(e, l.as_ref()))
+            .collect();
         println!(
             "{}",
-            podnet::status::stamped(json!({
-                "identity": identity,
-                "links": links.iter().map(instance_doc).collect::<Vec<_>>(),
-            }))
+            podnet::status::stamped(json!({"identity": identity, "links": rows}))
         );
         return Ok(());
     }
@@ -81,17 +190,22 @@ pub(crate) fn status(name: Option<&str>, json: bool, create: bool) -> Result<()>
     if links.is_empty() {
         println!("links     none run in the background");
     }
-    for entry in &links {
+    for (entry, live) in links.iter().zip(&lives) {
         let r = &entry.record;
         let listen = r
             .ready
             .as_ref()
-            .and_then(|d| d["listen"].as_str())
+            .and_then(|d| d["listen"].as_str().or_else(|| d["address"].as_str()))
             .unwrap_or("-");
         println!(
             "link      {}  {}  pid {}  {}  {listen}",
             r.name, r.state, r.pid, r.command
         );
+        if let Some(Ok(live)) = live {
+            for line in live_lines(live) {
+                println!("{line}");
+            }
+        }
     }
     Ok(())
 }
