@@ -25,6 +25,7 @@ use crate::network::{
 use crate::ws_relay::Relay;
 
 mod netbird;
+mod peer;
 pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
 mod tailscale;
 mod wg;
@@ -43,7 +44,7 @@ pub struct Row {
     pub caps: Caps,
 }
 
-const ROWS: [Row; 6] = [
+const ROWS: [Row; 7] = [
     Row {
         scheme: "direct",
         forms: &["direct"],
@@ -89,6 +90,12 @@ const ROWS: [Row; 6] = [
         about: "TCP and UDP through a WireGuard peer of a wg-quick file, on a userspace stack",
         caps: Caps::EGRESS_TCP.with(Caps::EGRESS_UDP),
     },
+    Row {
+        scheme: "peer",
+        forms: &["peer:FINGERPRINT/SERVICE"],
+        about: "one stream to a service of a peer, over a link that a running podnet link instance holds (a peer way: it meets a peer, it dials no destination)",
+        caps: Caps::EGRESS_TCP,
+    },
 ];
 
 /// The networks of this build, in the order of their parse.
@@ -113,6 +120,11 @@ enum Kind {
     Netbird(u16),
     /// The WireGuard peer of this wg-quick file (T-117).
     Wg(std::path::PathBuf),
+    /// A service of the peer with this fingerprint (T-266).
+    Peer {
+        fingerprint: String,
+        service: String,
+    },
 }
 
 /// A network that a spec names.
@@ -166,6 +178,12 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
                 .ok_or_else(|| usage(format!("{spec}: the port must be 1 to 65535")))?
         };
         return Ok(Kind::Netbird(port));
+    }
+    if let Some(rest) = spec.strip_prefix("peer:") {
+        // `peer:PORT` is the SOCKS hop of a host named peer, as it was.
+        if rest.parse::<u16>().is_err() {
+            return peer::parse(spec, rest);
+        }
     }
     if let Some(path) = wg::file_of(spec) {
         if path.as_os_str().is_empty() {
@@ -249,6 +267,17 @@ impl SpecNetwork {
         }
     }
 
+    /// The fingerprint and the service of `peer:FINGERPRINT/SERVICE`.
+    pub fn peer(&self) -> Option<(&str, &str)> {
+        match &self.kind {
+            Kind::Peer {
+                fingerprint,
+                service,
+            } => Some((fingerprint, service)),
+            _ => None,
+        }
+    }
+
     /// The socket of `tailscaled`, for `tailscale:/PATH`.
     pub fn tailscale_socket(&self) -> Option<String> {
         match self.kind {
@@ -282,6 +311,10 @@ impl SpecNetwork {
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
             ),
             Kind::Wg(_) => unreachable!("wg:FILE comes up in `up`"),
+            Kind::Peer {
+                fingerprint,
+                service,
+            } => Arc::new(peer::PeerDial::new(fingerprint, service)),
             Kind::Netbird(port) => Arc::new(
                 netbird::NetbirdDialer::new(*port)
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
@@ -304,6 +337,7 @@ impl Network for SpecNetwork {
             Kind::Relay(_) => "relay",
             Kind::Netbird(_) => "netbird",
             Kind::Wg(_) => "wg",
+            Kind::Peer { .. } => "peer",
         }
     }
 
@@ -331,6 +365,13 @@ impl Network for SpecNetwork {
                     ),
                 )
                 .into());
+            }
+            if let Kind::Peer { fingerprint, .. } = &self.kind {
+                // Check the link before the first stream: a peer that is
+                // not the named fingerprint exits 77, none that runs 69.
+                crate::link_ctl::probe_peer(fingerprint).await?;
+                let status = serde_json::json!({"scheme": "peer", "spec": self.label()});
+                return Ok(Link::new(Some(Way::peer(self.dial()?))).with_status(status));
             }
             let way = Way::destination(self.dial()?);
             let mut status = serde_json::json!({

@@ -225,7 +225,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- The registry of networks exists: `src/networks.rs:46` says "const ROWS: [Row; 6]". It has no carrier kind.
+- The registry of networks exists: `src/networks.rs` holds six rows in `ROWS` (line 46 at `505dfa0`). It has no carrier kind.
 - The type `Addressing` (`Destination` or `Peer`) exists in `crates/podnet-core/src/network.rs:65`. A carrier uses `Peer`.
 - The type `Check` (`crates/podnet-core/src/network.rs:256`) is the row of `podnet doctor` for a network.
 - The issue marks this row "partial" for these parts. No carrier trait exists.
@@ -343,7 +343,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- `podnet forward` maps `-L LISTEN=HOST:PORT` and takes `--network SPEC` (`src/cli/cmd/forward.rs:21`). The registry has no peer kind (`src/networks.rs:46`).
+- `podnet forward` maps `-L LISTEN=HOST:PORT` and takes `--network SPEC` (`src/cli/cmd/forward.rs:26`). The registry has no peer kind (`src/networks.rs:46`).
 - `Addressing::Peer` exists (`crates/podnet-core/src/network.rs:65`): the host of the target names a peer and the port is 0.
 - T-099 covers `podnet forward` for the networks of the registry. It does not cover a peer target.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.

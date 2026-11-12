@@ -78,3 +78,36 @@ async fn forward_over_a_network() {
     }
     assert_eq!(named.0.lock().unwrap().len(), 2);
 }
+
+// T-266: `-L LISTEN=peer:FINGERPRINT/SERVICE`.
+
+fn fingerprint() -> String {
+    let dir = tempfile::tempdir().unwrap();
+    crate::identity::create(dir.path()).unwrap().fingerprint()
+}
+
+#[test]
+fn a_rule_to_a_peer_keeps_the_spec_and_the_port_0_target() {
+    let fp = fingerprint();
+    let rule = Rule::parse(&format!("8080=peer:{fp}/http")).unwrap();
+    assert_eq!(
+        rule.via.as_deref(),
+        Some(format!("peer:{fp}/http").as_str())
+    );
+    assert_eq!(rule.target.port(), 0);
+    assert!(!rule.udp);
+    let plain = Rule::parse("8080=example.com:80").unwrap();
+    assert_eq!(plain.via, None);
+}
+
+#[test]
+fn a_rule_to_a_peer_refuses_udp_and_a_bad_spec() {
+    let fp = fingerprint();
+    for spec in [
+        format!("udp:5353=peer:{fp}/dns"),
+        format!("8080=peer:{fp}"),
+        "8080=peer:nope/http".to_string(),
+    ] {
+        assert!(Rule::parse(&spec).is_err(), "{spec}");
+    }
+}

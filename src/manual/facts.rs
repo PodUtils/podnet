@@ -123,6 +123,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "The directory of the detached instances (mode 0700): NAME.json, NAME.lock and NAME.log for each, and NAME.secrets (mode 0600) for an instance with a token or a proxy password. Default: $XDG_RUNTIME_DIR/podnet/run, else run in the state directory.",
     },
     EnvVar {
+        names: &["PODNET_LINK_CONTROL"],
+        used_by: "forward, any command with a peer:FINGERPRINT/SERVICE network",
+        meaning: "The control socket of the link instance that holds the link to the peer (the control of the ready document of podnet link connect or listen). Its token is in PATH.token. Without it, podnet asks the control socket of each link instance in the run directory.",
+    },
+    EnvVar {
         names: &["PODNET_DETACH_NAME", "PODNET_DETACH_HASH", "PODNET_DETACH_COMMAND", "PODNET_DETACH_SUPERVISED", "PODNET_DETACH_READY_TIMEOUT"],
         used_by: "--detach",
         meaning: "podnet sets them for the child of --detach: the name of the instance, the hash of its arguments, the command, whether a supervisor runs it, and the --ready-timeout of the first start (a provision of a quick tunnel does not wait past it). Do not set them.",
@@ -376,6 +381,10 @@ pub const FILES: &[FileEntry] = &[
         meaning: "The Ed25519 key of this install for podnet link (mode 0600; a wider mode exits 71). podnet link listen, dial and status --create make it on first use. podnet link status prints its fingerprint. The seed is never printed, logged or put in JSON.",
     },
     FileEntry {
+        path: "<run directory>/link-PID.ctl, link-PID.ctl.token (podnet link listen --control, link connect --control)",
+        meaning: "The control socket of a link instance (mode 0600) and its token (32 random bytes in hex, mode 0600, new for each run). One JSON object for each line: status, peer, open. A request is 4 KiB at most, an answer 64 KiB, 16 clients; the user of the peer must be the user of the instance or root; a wrong token exits 77. The instance removes both files at its stop. There is no TCP listener and no HTTP endpoint.",
+    },
+    FileEntry {
         path: "ALLOW (podnet link listen --allow, podnet link dial --allow)",
         meaning: "An allow list of the link: one peer on each line (the fingerprint of podnet link status, a SHA256: fingerprint, or a key in hex), 4096 lines at most. A line that starts with # is a comment. The list is default deny. The file must belong to this user and must not be writable by others (exit 71); a missing file exits 66.",
     },
@@ -574,6 +583,14 @@ pub const EXAMPLES: &[Example] = &[
     Example {
         command: "podnet link dial /run/user/1000/app.sock --peer FINGERPRINT --check",
         meaning: "Connect to a link listener, check its key, and print its fingerprint.",
+    },
+    Example {
+        command: "podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl --detach --name peer1",
+        meaning: "Hold a link to a listener and run a control socket for it.",
+    },
+    Example {
+        command: "PODNET_LINK_CONTROL=/run/user/1000/link.ctl podnet forward -L 8080=peer:FINGERPRINT/http",
+        meaning: "Open one stream of the link to the peer for each connection to 127.0.0.1:8080, for the service http of the peer.",
     },
     Example {
         command: "podnet status",

@@ -24,13 +24,20 @@ pub struct Rule {
     pub target: Target,
     /// True for `udp:LISTEN`: a UDP listener, and datagrams to the target.
     pub udp: bool,
+    /// The spec `peer:FINGERPRINT/SERVICE` when the rule is `-L
+    /// LISTEN=peer:FINGERPRINT/SERVICE` (T-266). The rule then has its own
+    /// network: one stream of a link for each accepted connection. The
+    /// target is the peer, with port 0.
+    pub via: Option<String>,
 }
 
 impl Rule {
     /// `LISTEN=HOST:PORT`: LISTEN is `PORT` (on 127.0.0.1), `ADDR:PORT`,
     /// `tcp://ADDR:PORT` or `unix:/PATH`; an IPv6 host is in brackets.
     /// `udp:` before LISTEN (`udp:PORT`, `udp:ADDR:PORT`) makes a UDP
-    /// forward.
+    /// forward. The target `peer:FINGERPRINT/SERVICE` makes a TCP forward
+    /// to a service of a peer, over a link that a running `podnet link`
+    /// instance holds.
     pub fn parse(spec: &str) -> Result<Rule> {
         let (listen, target) = spec
             .rsplit_once('=')
@@ -46,6 +53,22 @@ impl Rule {
                 ProxyListen::parse(listen).map_err(|e| anyhow::anyhow!("-L {spec:?}: {e}"))?
             }
         };
+        if target.starts_with("peer:") {
+            if udp {
+                bail!("-L {spec:?}: a peer carries streams, not datagrams");
+            }
+            let network =
+                crate::networks::parse(target).map_err(|e| anyhow::anyhow!("-L {spec:?}: {e}"))?;
+            let (fingerprint, _) = network
+                .peer()
+                .with_context(|| format!("-L {spec:?}: give peer:FINGERPRINT/SERVICE after ="))?;
+            return Ok(Rule {
+                listen,
+                target: crate::network::peer(fingerprint),
+                udp,
+                via: Some(target.to_string()),
+            });
+        }
         let target: Target = target
             .parse()
             .map_err(|_| anyhow::anyhow!("-L {spec:?}: give HOST:PORT after ="))?;
@@ -59,6 +82,7 @@ impl Rule {
             listen,
             target,
             udp,
+            via: None,
         })
     }
 }

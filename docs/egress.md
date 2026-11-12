@@ -14,6 +14,7 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `tailscale` | `tailscale:/PATH/tailscaled.sock` | A tailnet, through the LocalAPI of `tailscaled` ([networks.md](networks.md)). | TCP |
 | `netbird` | `netbird`, `netbird:[PORT]` | The SOCKS5 listener of NetBird in netstack mode on `127.0.0.1:PORT` (default 1080). The target must be an IP address ([networks.md](networks.md)). | TCP |
 | `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. The target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
+| `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
 * A spec with no scheme (`HOST:PORT`) is a SOCKS5 proxy, as in `podnet pod -x`.
 * `socks5://` resolves the name on this host. `socks5h://` gives the name to the proxy.
@@ -39,6 +40,9 @@ and it replaces the older flags:
 * With `podnet pod`, each `--egress` is one hop `-x SPEC` of the chain, in its order. The forms
   `tailscale:/PATH`, `netbird:[PORT]` and `unix:/PATH` are hops of a pod. The relay is not a hop of a
   pod.
+* `peer:FINGERPRINT/SERVICE` is a peer way. A consumer that dials a destination (`--egress`, `podnet forward --network`, `pod -x`)
+  refuses it with exit 64. Use `podnet forward -L LISTEN=peer:FINGERPRINT/SERVICE` ([forward.md](forward.md)). A `PORT` after
+  `peer:` (`peer:1080`) is still the SOCKS5 hop of a host named `peer`.
 * `wg:FILE` is not a hop of a pod, and no process command takes it in `--egress`: each gives one line.
   Use `podnet forward --network wg:FILE` or a `networks:` entry of a router file.
 * `tailscale:/PATH` is a hop of a pod and the only hop of its chain. A command that is not `pod` refuses

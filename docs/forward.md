@@ -20,6 +20,8 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
 
 * `-L, --local LISTEN=HOST:PORT` is repeatable. `LISTEN` is `PORT` (on 127.0.0.1), `ADDR:PORT`,
   `tcp://ADDR:PORT` or `unix:/PATH`.
+* `-L LISTEN=peer:FINGERPRINT/SERVICE` opens one stream of a link to a peer for each accepted connection, and asks the peer
+  for its service (see "A service of a peer" below). It carries TCP only.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
   `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `unix:/PATH`. The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
@@ -30,6 +32,27 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
   For UDP through a door that clients choose (SOCKS5 UDP ASSOCIATE) and for names that resolve inside a
   network, use the router ([router.md](router.md), "Doors" and `resolvers`).
 * `--run-for SECONDS` stops after that time.
+
+### A service of a peer
+
+```sh
+podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl --detach --name peer1
+export PODNET_LINK_CONTROL=/run/user/1000/link.ctl            # not needed when the instance is in the run directory
+podnet forward -L 8080=peer:FINGERPRINT/http                  # 127.0.0.1:8080 -> the service http of the peer
+podnet forward -L unix:/run/db.sock=peer:FINGERPRINT/db       # a unix listener
+```
+
+* A link instance (`podnet link connect`, or `link listen` for the links it accepts) holds the link and runs a control socket
+  ([link.md](link.md)). The forward is another process: it asks that socket to open a stream. `PODNET_LINK_CONTROL` names one
+  socket. Without it, the forward asks the control socket of each link instance in the run directory.
+* The check runs before the forward listens. A link to a peer that is not the named `FINGERPRINT` exits 77, and no stream opens.
+  No link instance that runs, or one with no link up, exits 69.
+* Each accepted connection opens one new stream, and the first line of the stream names the service. The listener of the far side
+  maps the name to a target (`link listen --service NAME=TARGET`, or `--to TARGET` for `raw`). A service that the peer does not
+  have, or whose origin does not answer, closes that connection. The forward and the link stay up.
+* `--network peer:...` is refused with exit 64: a peer way takes the form `-L LISTEN=peer:FINGERPRINT/SERVICE`.
+* The services that a peer offers beyond `--service` (SOCKS5, HTTP proxy, and the other services of the link workstream) are
+  separate work.
 
 ### DNS door
 

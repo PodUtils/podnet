@@ -345,7 +345,11 @@ fn the_listener_runs_a_control_socket_that_status_reads() {
     echo(&origin);
     let to = format!("unix:{}", origin.display());
     let ready = detached(&server, &sock, &allow, "lk", &["--to", &to]);
-    let control = PathBuf::from(ready["control"].as_str().expect(&ready.to_string()));
+    let control = PathBuf::from(
+        ready["control"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{ready}")),
+    );
     assert_eq!(mode(&control), 0o600);
     assert!(!ready.to_string().contains(
         &std::fs::read_to_string(format!("{}.token", control.display()))

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use clap::Args;
 use podnet::exit::{Fault, ResultExt};
-use podnet::network::{Ctx, Dial, Network as _, Target};
+use podnet::network::{Addressing, Ctx, Dial, Network as _, Target};
 use podnet_netns::listen::ProxyListen;
 
 use crate::cli::signals::sleep_or_signal;
@@ -15,6 +15,11 @@ pub(crate) struct ForwardArgs {
     /// A forward: LISTEN=HOST:PORT (repeatable). LISTEN is PORT (on
     /// 127.0.0.1), ADDR:PORT, tcp://ADDR:PORT or unix:/PATH. Each
     /// connection to LISTEN goes through the network to HOST:PORT. With
+    /// LISTEN=peer:FINGERPRINT/SERVICE each connection opens one stream of
+    /// a link to that peer, for its service (the link is held by a running
+    /// `podnet link connect` or `link listen`; PODNET_LINK_CONTROL names its
+    /// control socket; a peer that is not the fingerprint exits 77, and no
+    /// link that runs exits 69). With
     /// udp:PORT or udp:ADDR:PORT the forward carries UDP: each client has
     /// its own flow, and a flow ends after 60 s with no datagram. A
     /// datagram for a full flow is dropped.
@@ -67,7 +72,13 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
                 .map_err(anyhow::Error::from)
                 .fault(Fault::Usage)?;
             let link = network.up(&Ctx::default()).await?;
-            link.way.context("the network gives no way out")?.dial
+            let way = link.way.context("the network gives no way out")?;
+            // A peer way meets a peer: it takes no HOST:PORT.
+            Addressing::Destination
+                .admit(std::slice::from_ref(&way))
+                .map_err(|e| anyhow::anyhow!("{e}; give -L LISTEN=peer:FINGERPRINT/SERVICE"))
+                .fault(Fault::Usage)?;
+            way.dial
         }
         None => podnet::dialers::process(),
     };
@@ -81,6 +92,14 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
     }
     for rule in rules {
         let target = rule.target.clone();
+        // A rule `peer:FINGERPRINT/SERVICE` has its own network. The check
+        // of the link runs here, before the listener: a peer that is not
+        // the fingerprint exits 77.
+        let dial = match &rule.via {
+            Some(spec) => peer_dial(spec).await?,
+            None => dial.clone(),
+        };
+        let shown = rule.via.clone().unwrap_or_else(|| target.to_string());
         if rule.udp {
             let ProxyListen::Tcp(addr) = &rule.listen else {
                 unreachable!("Rule::parse admits TCP addresses for UDP")
@@ -90,7 +109,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
                 .with_context(|| format!("-L udp:{addr}"))
                 .map_err(podnet::net::bind_fault)?;
             println!(
-                "podnet: forward  udp:{}  ->  {target}  via {}",
+                "podnet: forward  udp:{}  ->  {shown}  via {}",
                 socket.local_addr()?,
                 dial.label()
             );
@@ -108,7 +127,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
                     .with_context(|| format!("-L {addr}"))
                     .map_err(podnet::net::bind_fault)?;
                 println!(
-                    "podnet: forward  {}  ->  {target}  via {}",
+                    "podnet: forward  {}  ->  {shown}  via {}",
                     listener.local_addr()?,
                     dial.label()
                 );
@@ -124,7 +143,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
                     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
                 }
                 println!(
-                    "podnet: forward  unix:{}  ->  {target}  via {}",
+                    "podnet: forward  unix:{}  ->  {shown}  via {}",
                     path.display(),
                     dial.label()
                 );
@@ -136,4 +155,14 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
         _ = sleep_or_signal(args.run_for) => Ok(()),
         Some(ended) = servers.join_next() => ended.context("a forward stopped")?,
     }
+}
+
+/// The dialer of the network `peer:FINGERPRINT/SERVICE`. The network checks
+/// the link first (77: a peer that is not the fingerprint; 69: none runs).
+async fn peer_dial(spec: &str) -> Result<Arc<dyn Dial>> {
+    let network = podnet::networks::parse(spec)
+        .map_err(anyhow::Error::from)
+        .fault(Fault::Usage)?;
+    let link = network.up(&Ctx::default()).await?;
+    Ok(link.way.context("the network gives no way out")?.dial)
 }

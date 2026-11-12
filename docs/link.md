@@ -14,28 +14,72 @@ podnet link listen /run/user/1000/app.sock --allow peers.txt --detach --name app
 podnet link status                                # the fingerprint, and the link instances that run
 podnet link close app                             # stop the instance; the listener removes its socket
 podnet link carriers                              # each carrier, and whether this host can use it
+podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl   # hold a link, run a control socket
+podnet link status --control /run/user/1000/link.ctl --json                                         # ask that socket
+podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of the peer (forward.md)
 ```
 
 * `link listen ADDRESS --allow FILE` binds the address through the carrier. It prints the address (for the unix carrier: the
-  path and its mode, 0600), the fingerprint of this install and the size of the allow list. `--to TARGET` (`host:port` or
-  `unix:/path`) sets where each stream of an admitted peer goes. Without it, the listener closes each stream at once. A second
+  path and its mode, 0600), the fingerprint of this install and the size of the allow list. `--service NAME=TARGET` (repeat it,
+  16 at most) sets where the streams of the service NAME go; `--to TARGET` is `--service raw=TARGET`. A TARGET is `host:port` or
+  `unix:/path`. A stream for a service that the listener does not have is refused (the opener exits 69). A second
   listener at a live address exits 69. A regular file at the address exits 64 and stays. A stale socket file is replaced.
 * `link dial ADDRESS` connects, proves the key of this install, and checks the key of the listener. Give `--peer FINGERPRINT`
   (repeat it for more than one) or `--allow FILE`: the dialer trusts no listener by default (else exit 64). Then it copies stdin
-  to one stream, and the stream to stdout. The lines about the peer go to stderr. `--check` stops after the check and prints the
+  to one stream of the service `--service NAME` (default `raw`), and the stream to stdout. The lines about the peer go to stderr. `--check` stops after the check and prints the
   fingerprint of the peer; with `--json` it prints one document.
+* `link connect ADDRESS (--peer FINGERPRINT | --allow FILE)` connects, runs the hello, and holds the link until the link ends
+  (exit 69) or a stop signal. It runs the control socket. The ready document has `carrier`, `address`, `fingerprint`, `peer` and
+  `control`. It accepts `--detach`, `--name` and the other flags of the background record. This end offers no service: it closes
+  each stream that the peer opens.
 * `link status [NAME]` prints the fingerprint of this install and the link instances (`link listen --detach` or `--name`).
   `--create` makes the key when there is none; without it, `status` writes nothing. `--json` prints one document with `identity`
-  and `links`.
+  and `links`. For an instance that runs a control socket, each row has `live` (the document of the verb `status`: the links, with
+  the peer, the role, the streams and the counters), or `live: null` and `live_error` when the socket does not answer: the row is
+  then the background record. `--control PATH [--token-file FILE]` asks one socket (the `control` of a ready document); a wrong
+  token exits 77, and a socket that does not answer exits 69.
 * `link close NAME` stops a link instance (SIGTERM, then SIGKILL after `--timeout`, default 10 s). A name that is no link
   instance exits 64: use `podnet stop`.
 * `link carriers [--json]` prints one line for each carrier: its framing, duplex, order, MTU, cost, address form and
   addressing mode, then `available` or `unavailable:` with the reason. The JSON has the same facts, `available` (bool) and
   `reason` (string or null).
 
-`--detach`, `--name`, `--ready-timeout`, `--replace` and `--no-restart` of `link listen` are the flags of the background record
+`--detach`, `--name`, `--ready-timeout`, `--replace` and `--no-restart` of `link listen` and `link connect` are the flags of the background record
 ([background.md](background.md)). `podnet ps`, `logs`, `wait` and `stop` work on a link instance. The ready document has
-`carrier`, `address`, `listen` (the same address), `mode`, `fingerprint`, `allow` and `to`.
+`carrier`, `address`, `listen` (the same address), `mode`, `fingerprint`, `allow`, `to`, `services` (name to target) and `control`.
+
+## The service of a stream
+
+The hello admits a peer for the whole link and binds no stream. The opener of a stream names the service in its first line,
+`PNSVC1 NAME` (a name of 1 to 32 characters from `A-Z a-z 0-9 . _ -`), and the other end answers with one byte before any data:
+0 open, 1 no such service, 2 the origin of the service did not answer. A byte other than 0 exits 69 at the opener. The default
+service is `raw`.
+
+## The control socket
+
+`link listen` and `link connect` run a control socket for the links they hold. It is a unix socket with the mode 0600, at
+`--control PATH` (default `link-PID.ctl` in the run directory; a host with no run directory runs with none, and the ready
+document says `control: null`). The token is in `PATH.token` (mode 0600): 32 random bytes in hex, new for each run. The instance
+removes both files at its stop. The token is never in the ready document, `status`, `ps` or the log.
+
+* One JSON object for each line, not HTTP. A request is `{"token":T,"verb":V,...}` of 4 KiB at most. The answer is
+  `{"ok":true,...}` or `{"ok":false,"code":EXIT,"error":TEXT}` of 64 KiB at most. A client has one command at a time. 16
+  clients are served at one time; the 17th gets `code` 69. There is no TCP listener and no HTTP endpoint.
+* The user of the peer (`SO_PEERCRED`) must be the user of the instance, or root (the rule of the router). Another user gets 77.
+  A wrong or missing token gets 77, and the connection closes.
+* Verbs:
+  * `status`: `fingerprint`, `pid` and `links`, a row for each held link: `id`, `carrier`, `address`, `role`
+    (`listener` or `dialer`), `peer` (the fingerprint), `state` (`up` or `ended`), `streams`, `rtt_ms`, `opened` and `accepted`
+    (the streams opened here and by the peer), `since`. It has no seed and no token.
+  * `peer` (`"peer":FINGERPRINT`): `ok` when a link that is up goes to that peer; 77 when the links go to other peers; 69 when
+    the instance holds no link that is up.
+  * `open` (`"peer":FINGERPRINT,"service":NAME`): opens one stream, asks for the service, and on `ok` the connection carries the
+    bytes of the stream. The network `peer:FINGERPRINT/SERVICE` uses it.
+  * The verbs that change a link (`rotate`, `close-stream`, `close-link`, `select`, `reconnect`) and the state dump are separate
+    work. An unknown verb gets 64.
+
+`PODNET_LINK_CONTROL` names the one socket that `peer:FINGERPRINT/SERVICE` asks. Without it, the network asks the control socket
+of each link instance in the run directory, and takes the first that holds a link to the peer.
 
 ## Flags of the carriers
 

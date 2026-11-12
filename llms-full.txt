@@ -1338,6 +1338,11 @@ COMMANDS
             A forward: LISTEN=HOST:PORT (repeatable). LISTEN is PORT (on
             127.0.0.1), ADDR:PORT, tcp://ADDR:PORT or unix:/PATH. Each
             connection to LISTEN goes through the network to HOST:PORT. With
+            LISTEN=peer:FINGERPRINT/SERVICE each connection opens one stream
+            of a link to that peer, for its service (the link is held by a
+            running `podnet link connect` or `link listen`;
+            PODNET_LINK_CONTROL names its control socket; a peer that is not
+            the fingerprint exits 77, and no link that runs exits 69). With
             udp:PORT or udp:ADDR:PORT the forward carries UDP: each client has
             its own flow, and a flow ends after 60 s with no datagram. A
             datagram for a full flow is dropped
@@ -7027,7 +7032,8 @@ COMMANDS
             The form of the log on stderr: text, or json (one object for each
             line). Default: text. Values: text, json.
 
-        Commands of podnet link: listen, dial, status, close, carriers.
+        Commands of podnet link: listen, dial, connect, status, close,
+        carriers.
 
     podnet link listen [OPTIONS] --allow <FILE> <ADDRESS>
         Listen at an address of a carrier. A peer must prove its key, and the
@@ -7061,8 +7067,20 @@ COMMANDS
             others (else exit 71); a missing file exits 66. Required.
 
         --to <TARGET>
-            Where each stream of an admitted peer goes: `host:port` or
-            `unix:/path`. Without it, podnet closes each stream at once
+            Where the streams of the service `raw` go: `host:port` or
+            `unix:/path`. It is the same as `--service raw=TARGET`. Without a
+            service, the listener refuses each stream (the opener exits 69)
+
+        --service <NAME=TARGET>
+            A service of this listener: NAME=TARGET, with a NAME of 1 to 32
+            characters from A-Z a-z 0-9 . _ - and a TARGET as in --to. A peer
+            reaches it with `link dial --service NAME` or
+            `peer:FINGERPRINT/NAME`. Repeat it: 16 services at most
+
+        --control <PATH>
+            The control socket (mode 0600, with the token file PATH.token).
+            The default is `link-PID.ctl` in the run directory of podnet. The
+            ready document names it. `podnet link status` reads it
 
         --json
             Print the ready document as one line of JSON in place of the text
@@ -7181,6 +7199,12 @@ COMMANDS
             that this install trusts. Give --peer or --allow: the list is
             default deny, and a listener that it does not hold exits 77
 
+        --service <NAME>
+            The service to ask the listener for (`link listen --service`). A
+            name of 1 to 32 characters from A-Z a-z 0-9 . _ -. A listener with
+            no such service, or whose origin does not answer, exits 69.
+            Default: raw.
+
         --check
             Connect and check the peer, print its fingerprint, and exit 0. It
             opens no stream
@@ -7242,10 +7266,136 @@ COMMANDS
             $ podnet link dial /run/user/1000/app.sock --peer FINGERPRINT
             --check
 
+    podnet link connect [OPTIONS] <ADDRESS>
+        Connect to a listener, prove this key, check the key of the listener
+        against --peer or --allow, and hold the link. Other programs open
+        streams of the link through its control socket: `peer:FINGERPRINT/
+        SERVICE` as a network (podnet forward -L LISTEN=peer:FINGERPRINT/
+        SERVICE). The command ends when the link ends (exit 69) or at a stop
+        signal
+
+        <ADDRESS>
+            The address of the listener, in the form of the carrier. Required.
+
+        --carrier <NAME>
+            The carrier (`podnet link carriers` lists them). Default: unix.
+
+        --allow-other-uid
+            The unix carrier accepts a peer of another uid. Each end checks
+            the uid of the other end (SO_PEERCRED), so give the flag at both
+            ends. Without it, a peer of another uid is refused (exit 69)
+
+        --ring <BYTES>
+            The bytes of each ring of the memory carrier: 65536 to 67108864
+            (64 KiB to 64 MiB). Default 1048576
+
+        --peer <FINGERPRINT>
+            The fingerprint that the listener must prove (the line that its
+            `podnet link listen` prints). Repeat it for more than one
+
+        --allow <FILE>
+            An allow list file, as `link listen --allow`, of the listeners
+            that this install trusts. Give --peer or --allow (else exit 64); a
+            listener that the list does not hold exits 77
+
+        --control <PATH>
+            The control socket (mode 0600, with the token file PATH.token).
+            The default is `link-PID.ctl` in the run directory of podnet. The
+            ready document names it
+
+        --json
+            Print the ready document as one line of JSON in place of the text
+
+        --detach
+            Run in the background: podnet prints one JSON document when the
+            command is ready (its URL or its listen address) and exits 0. The
+            instance keeps running when the shell or the terminal closes.
+            podnet ps, logs, wait and stop manage it
+
+        --name <NAME>
+            The name of the detached instance. Default: the command and a hash
+            of its arguments. A second start with the same name and the same
+            arguments gives the same instance. With no --detach: register this
+            process under the name (it is not forked and not restarted);
+            podnet ps, logs, wait and stop see it
+
+        --ready-timeout <SECS>
+            With --detach: seconds to wait for the instance to be ready (else
+            exit 124). Default: 60.
+
+        --replace
+            Stop a running instance of the same name that has other arguments,
+            and start this one (needs --detach). connect: also take a unix
+            socket of -L that another process serves (by default, a socket
+            that answers is refused, exit 69; a stale socket file is replaced)
+
+        --no-restart
+            Do not start the instance again when it ends. Without it, a
+            supervisor starts it again with a backoff (1 s to 30 s), but not
+            after exit 64 or 78, and not after a planned end (--stop-after,
+            --idle-secs, --run-for). A quick tunnel gets a new URL; podnet ps
+            shows it. With --name and no --detach, there is no supervisor
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+        Examples:
+        Hold a link to a listener and run a control socket for it.
+            $ podnet link connect /run/user/1000/app.sock --peer FINGERPRINT
+            --control /run/user/1000/link.ctl --detach --name peer1
+
     podnet link status [OPTIONS] [NAME]
         Show the fingerprint of this install and the link instances that run
         (podnet ps lists the other instances). With a NAME, show that instance
-        only
+        only. For an instance with a control socket, status asks the socket
+        for the links it holds (peer, streams, counters) and shows them under
+        `live`; if the socket does not answer, status shows the record
 
         <NAME>
             The name of a link instance (podnet ps). Default: each one
@@ -7256,6 +7406,14 @@ COMMANDS
 
         --json
             Print one JSON document
+
+        --control <PATH>
+            Ask this control socket only (the `control` of the ready document
+            of an instance). A wrong token exits 77, and a socket that does
+            not answer exits 69
+
+        --token-file <FILE>
+            The token file of --control. Default: PATH.token
 
         --ca-file <PATH>
             A file of TLS roots (PEM). podnet uses only these roots for each
@@ -8763,6 +8921,12 @@ ENVIRONMENT
         instance with a token or a proxy password. Default:
         $XDG_RUNTIME_DIR/podnet/run, else run in the state directory.
         (--detach, ps, stop, logs, wait)
+    PODNET_LINK_CONTROL
+        The control socket of the link instance that holds the link to the
+        peer (the control of the ready document of podnet link connect or
+        listen). Its token is in PATH.token. Without it, podnet asks the
+        control socket of each link instance in the run directory. (forward,
+        any command with a peer:FINGERPRINT/SERVICE network)
     PODNET_DETACH_NAME, PODNET_DETACH_HASH, PODNET_DETACH_COMMAND,
     PODNET_DETACH_SUPERVISED, PODNET_DETACH_READY_TIMEOUT
         podnet sets them for the child of --detach: the name of the instance,
@@ -9023,6 +9187,14 @@ FILES
         mode exits 71). podnet link listen, dial and status --create make it
         on first use. podnet link status prints its fingerprint. The seed is
         never printed, logged or put in JSON.
+    <run directory>/link-PID.ctl, link-PID.ctl.token (podnet link listen
+    --control, link connect --control)
+        The control socket of a link instance (mode 0600) and its token (32
+        random bytes in hex, mode 0600, new for each run). One JSON object for
+        each line: status, peer, open. A request is 4 KiB at most, an answer
+        64 KiB, 16 clients; the user of the peer must be the user of the
+        instance or root; a wrong token exits 77. The instance removes both
+        files at its stop. There is no TCP listener and no HTTP endpoint.
     ALLOW (podnet link listen --allow, podnet link dial --allow)
         An allow list of the link: one peer on each line (the fingerprint of
         podnet link status, a SHA256: fingerprint, or a key in hex), 4096
@@ -9239,6 +9411,15 @@ EXAMPLES
     Connect to a link listener, check its key, and print its fingerprint.
         $ podnet link dial /run/user/1000/app.sock --peer FINGERPRINT --check
 
+    Hold a link to a listener and run a control socket for it.
+        $ podnet link connect /run/user/1000/app.sock --peer FINGERPRINT
+        --control /run/user/1000/link.ctl --detach --name peer1
+
+    Open one stream of the link to the peer for each connection to
+    127.0.0.1:8080, for the service http of the peer.
+        $ PODNET_LINK_CONTROL=/run/user/1000/link.ctl podnet forward -L
+        8080=peer:FINGERPRINT/http
+
     One JSON line about this host, for a program.
         $ podnet status
 
@@ -9338,7 +9519,7 @@ podnet man                                      # the manual
 | Router | `route --config`, `--check --to`, `--status`, `--export` | Networks, groups, policies, health, doors, DNS door, kernel mode. | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
 | Forwards | `forward -L`, `forward --dns` | TCP and UDP forwards and a DNS door through a network. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Relays | `relay pair`, `node`, `connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
-| Link | `link listen`, `dial`, `status`, `close`, `carriers` | A link between two installs over a carrier (unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
+| Link | `link listen`, `connect`, `dial`, `status`, `close`, `carriers`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. A control socket shows the links. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
 | Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
 | Checks | `doctor`, `doctor --agent`, `status`, `ports`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
@@ -11074,6 +11255,8 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
 
 * `-L, --local LISTEN=HOST:PORT` is repeatable. `LISTEN` is `PORT` (on 127.0.0.1), `ADDR:PORT`,
   `tcp://ADDR:PORT` or `unix:/PATH`.
+* `-L LISTEN=peer:FINGERPRINT/SERVICE` opens one stream of a link to a peer for each accepted connection, and asks the peer
+  for its service (see "A service of a peer" below). It carries TCP only.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
   `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `unix:/PATH`. The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
@@ -11084,6 +11267,27 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
   For UDP through a door that clients choose (SOCKS5 UDP ASSOCIATE) and for names that resolve inside a
   network, use the router ([router.md](router.md), "Doors" and `resolvers`).
 * `--run-for SECONDS` stops after that time.
+
+### A service of a peer
+
+```sh
+podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl --detach --name peer1
+export PODNET_LINK_CONTROL=/run/user/1000/link.ctl            # not needed when the instance is in the run directory
+podnet forward -L 8080=peer:FINGERPRINT/http                  # 127.0.0.1:8080 -> the service http of the peer
+podnet forward -L unix:/run/db.sock=peer:FINGERPRINT/db       # a unix listener
+```
+
+* A link instance (`podnet link connect`, or `link listen` for the links it accepts) holds the link and runs a control socket
+  ([link.md](link.md)). The forward is another process: it asks that socket to open a stream. `PODNET_LINK_CONTROL` names one
+  socket. Without it, the forward asks the control socket of each link instance in the run directory.
+* The check runs before the forward listens. A link to a peer that is not the named `FINGERPRINT` exits 77, and no stream opens.
+  No link instance that runs, or one with no link up, exits 69.
+* Each accepted connection opens one new stream, and the first line of the stream names the service. The listener of the far side
+  maps the name to a target (`link listen --service NAME=TARGET`, or `--to TARGET` for `raw`). A service that the peer does not
+  have, or whose origin does not answer, closes that connection. The forward and the link stay up.
+* `--network peer:...` is refused with exit 64: a peer way takes the form `-L LISTEN=peer:FINGERPRINT/SERVICE`.
+* The services that a peer offers beyond `--service` (SOCKS5, HTTP proxy, and the other services of the link workstream) are
+  separate work.
 
 ### DNS door
 
@@ -11286,6 +11490,7 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `tailscale` | `tailscale:/PATH/tailscaled.sock` | A tailnet, through the LocalAPI of `tailscaled` ([networks.md](networks.md)). | TCP |
 | `netbird` | `netbird`, `netbird:[PORT]` | The SOCKS5 listener of NetBird in netstack mode on `127.0.0.1:PORT` (default 1080). The target must be an IP address ([networks.md](networks.md)). | TCP |
 | `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. The target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
+| `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
 * A spec with no scheme (`HOST:PORT`) is a SOCKS5 proxy, as in `podnet pod -x`.
 * `socks5://` resolves the name on this host. `socks5h://` gives the name to the proxy.
@@ -11311,6 +11516,9 @@ and it replaces the older flags:
 * With `podnet pod`, each `--egress` is one hop `-x SPEC` of the chain, in its order. The forms
   `tailscale:/PATH`, `netbird:[PORT]` and `unix:/PATH` are hops of a pod. The relay is not a hop of a
   pod.
+* `peer:FINGERPRINT/SERVICE` is a peer way. A consumer that dials a destination (`--egress`, `podnet forward --network`, `pod -x`)
+  refuses it with exit 64. Use `podnet forward -L LISTEN=peer:FINGERPRINT/SERVICE` ([forward.md](forward.md)). A `PORT` after
+  `peer:` (`peer:1080`) is still the SOCKS5 hop of a host named `peer`.
 * `wg:FILE` is not a hop of a pod, and no process command takes it in `--egress`: each gives one line.
   Use `podnet forward --network wg:FILE` or a `networks:` entry of a router file.
 * `tailscale:/PATH` is a hop of a pod and the only hop of its chain. A command that is not `pod` refuses
