@@ -1283,7 +1283,7 @@ constraints and five asks for `pod-netstack`.
 
 ## Done
 
-2026-11-12, commit e030e2f. Eleven tests in `crates/podnet-vnet/tests/guest_wire.rs` pass (3 runs, 5.8 s each):
+2026-11-12, commit 0b6b0a1. Eleven tests in `crates/podnet-vnet/tests/guest_wire.rs` pass (3 runs, 5.8 s each):
 `guest_wire_closed_tuple_is_free_at_once`, `guest_wire_stale_tuple_is_released_by_a_new_syn`,
 `guest_wire_handshake_ends_before_the_app_accepts`, `guest_wire_held_syn_dials_before_the_handshake`,
 `guest_wire_abort_after_the_handshake_sends_no_reset`, `guest_wire_accept_queue_drops_a_flow_after_the_handshake`,
