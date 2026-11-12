@@ -1682,7 +1682,7 @@ the datagrams of the peer.
 
 - Read: `Inbox::deliver` (`inbox.rs:79`) sends into the pair with no check of the source. Both relay
   reader tasks call it (`seccomp.rs:1226`, `:1246`). `Inbox::new` has no `dest`.
-- Read: the ruling of 2026-11-04 (`docs/decisions.md:36`): a read of a connected socket stays direct,
+- Read: the ruling of 2026-11-04 (`docs/decisions.md:37`): a read of a connected socket stays direct,
   so the filter must act at delivery.
 - Open: the form of the filter key. The relay source is a `WireSource` (name or address), the `dest` is
   a fake or real address. Compare after `name_for_ip` mapping.
@@ -4330,7 +4330,7 @@ create call makes the next run send `PATCH` for the same device id and no second
 - `src/warp/register.rs:67-95` (`send_api_to`): a status of 500 or more, or a transport error, goes to the
   next API host for each request, the registration POST included (`src/warp/register.rs:77`).
 - `instances::lock` and `try_lock` exist in `crates/podnet-core/src/instances.rs`; `delete_device` exists
-  in `src/warp/register.rs`. `docs/decisions.md:34` has the rule of the registration.
+  in `src/warp/register.rs`. `docs/decisions.md:35` has the rule of the registration.
 - T-173 (done, GitHub #368) changed the refusal for a file of another uid in the same function and keeps
   "a refused file never leads to a registration". It does not add a lock. GitHub #368 is open on GitHub
   while T-173 is done. A close of #368 may be due. Closed issues #50, #187, #141 and #150 do not cover a
@@ -5381,3 +5381,47 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+# T-326: Remove the ignore of RUSTSEC-2023-0071 when russh takes `rsa` 0.10.0
+
+**Source:** the `deny` run 43295725441 on fb47f09 (2026-11-12): `advisories FAILED` on `rsa` 0.10.0-rc.18.
+**Category:** chore
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+RUSTSEC-2023-0071 (the Marvin attack: a timing leak of the private key in RSA decryption and
+signing) now names `rsa` 0.10.0-rc.18, the fix is `rsa` 0.10.0. Each russh release up to 0.65.1 pins
+`rsa = "=0.10.0-rc.18"`, so `cargo update -p rsa` changes nothing. The `deny` check fails, and the
+release of `v0.4.0-beta.8` waits for it.
+
+## Premise
+
+- podnet makes Ed25519 keys (`src/transport/ssh.rs`, `crates/podnet-serve/src/relay.rs`,
+  `crates/podnet-serve/src/git/ssh.rs`).
+- An RSA private key is used only when the user gives one: the host key of the git server
+  (`PrivateKey::read_openssh_file`) or a key of the SSH relay.
+
+## Approach
+
+1. Now: `deny.toml` ignores RUSTSEC-2023-0071 with its reason and date; `docs/decisions.md` has the call.
+2. When a russh release takes `rsa` 0.10.0: update russh, remove the ignore, and run
+   `cargo deny --locked check advisories`.
+
+## Decision
+
+The lead's call (2026-11-12, `docs/decisions.md`, Advisories): ignore the advisory until russh moves.
+No fixed version is reachable, and podnet does not make RSA keys.
+
+## Prove
+
+```sh
+cargo deny --locked check advisories bans sources
+```
+
+## Blocker
+
+Each russh release up to 0.65.1 pins `rsa = "=0.10.0-rc.18"`. A russh release that takes `rsa` 0.10.0 ends the block.

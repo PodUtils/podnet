@@ -28,6 +28,7 @@ form of the rulings that apply to each session.
 | 2026-11-04 | crates.io | Publish nothing now, and choose no package name (`cfrs` is taken; `podnet` is free). Fix the packaging defects so that a publish can work. Decide again at the stable release. |
 | 2026-11-04 | WARP API | A live check registers a device through the second API host (`api.devices.cloudflare.com`) and deletes it, in each live run. |
 | 2026-11-04 | MASQUE through the relay | A planned replacement: at the byte or time budget of the relay, a new MASQUE session takes the new flows; the open flows end with the old session after a drain limit. |
+| 2026-11-12 | Advisories | `cargo deny` ignores RUSTSEC-2023-0071 (`rsa` 0.10.0-rc.18, pinned by each russh release). podnet makes Ed25519 keys; an RSA key is used only when the user gives one. The ignore goes when russh takes `rsa` 0.10.0 (T-326). The lead's call; the owner can rule otherwise. |
 | 2026-11-04 | #140 | `warp proxy --l4` stays open. The work needs a captured request of an official client. |
 | 2026-11-04 | #151 | ECH stays deferred: no HPKE in ring, and no hop of podnet publishes an ECH config. |
 | 2026-11-04 | #149 | Zero Trust enrolment is on hold until a captured exchange of the official client comes. |

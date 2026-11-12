@@ -22,7 +22,12 @@ targets = [
 version = 2
 yanked = "deny"
 # Each ignored advisory has its reason and the date it was read.
-ignore = []
+ignore = [
+  # 2026-11-12 (T-326): the Marvin timing attack on RSA decryption and signing. Each russh release
+  # up to 0.65.1 pins `rsa = "=0.10.0-rc.18"`, and the fix is `rsa` 0.10.0. podnet makes Ed25519
+  # keys; an RSA key is used only when the user gives one. Remove this line when russh takes 0.10.0.
+  { id = "RUSTSEC-2023-0071", reason = "russh pins rsa 0.10.0-rc.18; no fixed version is reachable (T-326)" },
+]
 
 [licenses]
 version = 2

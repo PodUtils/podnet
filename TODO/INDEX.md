@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**325 entries: 66 open, 19 partial, 21 blocked, 219 done.**
+**326 entries: 66 open, 19 partial, 22 blocked, 219 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
-| P2 | 20 | 8 | 10 | 128 | 166 |
+| P2 | 20 | 8 | 11 | 128 | 167 |
 | P3 | 46 | 10 | 9 | 63 | 128 |
-| **All** | 66 | 19 | 21 | 219 | 325 |
+| **All** | 66 | 19 | 22 | 219 | 326 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -371,3 +371,4 @@ M8 Overlays, M9 Later.
 | [T-323](fixes.md) | P2 | S | M5 | defect | done | live: the WebSocket step leaves its echo server, and waits 30 s for the DNS of a new name (GitHub #511) |
 | [T-324](fixes.md) | P3 | S | M5 | defect | done | doctor: the test of a refused direct dial holds its port |
 | [T-325](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.8`: the dry run, the publish and the release proofs |
+| [T-326](fixes.md) | P2 | S | M5 | chore | blocked | Remove the ignore of RUSTSEC-2023-0071 when russh takes `rsa` 0.10.0 |
