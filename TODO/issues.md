@@ -62,7 +62,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #360 | relay session budget is a constant | open | T-163 |
 | #361 | `--no-verify` undocumented, name misleads | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-164 |
 | #362 | ssh relay leg: no supervision (no caller) | closed | T-165 |
-| #363 | ssh relay leg: one relay, one user | open | T-166 |
+| #363 | ssh relay leg: one relay, one user | closed | T-166 |
 | #364 | net socksify: no per-destination routing | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-167 |
 | #365 | fakepwd only via ts-shims (partly: it works, gap is name/docs) | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-168 |
 | #366 | tunnel: no `--masque-endpoint`; v4 door first | open | T-169 |
@@ -150,11 +150,11 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #452 | COORD-034: the answer to podcrates #74: the words of podnet's transit hints; the traits of the registry; the lint (to podcrates) | closed (podcrates took it into its T-214 and T-028, its #75) | none |
 | #453 | COORD-035: a new shared crate pod-git: a git server with no installed git; the contract and the acceptance of podnet (to podcrates) | closed (podcrates opened its T-217 to T-220, its #75) | none |
 | #454 | COORD-036: pod-netstack needs four APIs before the netns router can move onto it (podnet T-249) (to podcrates) | closed (podcrates v0.25.0 has them; taken at e64fb99) | none |
-| #455 | COORD-037: the facts of the SSH forward-relay leg as data of pod-services (podnet T-166) (to podcrates) | open (a COORD issue between sessions) | none |
+| #455 | COORD-037: the facts of the SSH forward-relay leg as data of pod-services (podnet T-166) (to podcrates) | closed (a COORD issue between sessions) | none |
 | #456 | COORD-038: podnet took podcrates v0.25.0; the mapped loopback address of the seccomp hold is fixed (to podcrates, to podrunner) | open (a COORD issue between sessions) | none |
 | #457 | COORD-039: pod-netstack v0.25.0: three gaps that the netns router hits; podnet T-249 waits (to podcrates) | closed (a COORD issue between sessions) | none |
 | #458 | COORD-040: podnet took pod-hold-veth of podcrates v0.26.0; the fork finding of doctor.rs is fixed (to podcrates) | closed (podcrates wrote taken f107766) | none |
-| #459 | Docs: stale or misleading comments and records (net.rs, bug_report.rs, TODO files) | open | T-258 |
+| #459 | Docs: stale or misleading comments and records (net.rs, bug_report.rs, TODO files) | closed | T-258 |
 | #460 | COORD-041: podnet took the SSH relay facts (T-166); a comment fix in the frozen src/tunnel.rs; the pinggy URL rule (to podcrates) | open (a COORD issue between sessions) | none |
 | #461 | cfb asks: tracker for the 6 asks of cfb owned by podnet (from podcrates#35) | open | T-216, T-217, T-218, T-219, T-220, T-221, T-260 |
 | #462 | COORD-042: a change in the frozen src/doctor.rs for the lanes of A-C-10 (T-260) (to podcrates) | closed (a COORD issue between sessions) | none |

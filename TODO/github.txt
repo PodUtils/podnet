@@ -65,7 +65,7 @@
 360 issue open
 361 issue closed
 362 issue closed
-363 issue open
+363 issue closed
 364 issue closed
 365 issue closed
 366 issue open
@@ -157,11 +157,11 @@
 452 issue closed
 453 issue closed
 454 issue closed
-455 issue open
+455 issue closed
 456 issue open
 457 issue closed
 458 issue closed
-459 issue open
+459 issue closed
 460 issue open
 461 issue open
 462 issue closed
