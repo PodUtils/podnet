@@ -128,43 +128,10 @@ jobs:
           grep 'SIGTERM: stopping' sig.err
       # --detach (issues 70-72): the start returns with the ready document,
       # the URL answers, the instance outlives the shell, and stop ends it.
-      - name: Quick tunnel with --detach, ps, logs and stop
-        timeout-minutes: 4
-        run: |
-          set -eu
-          export PODNET_RUN_DIR="$RUNNER_TEMP/run"
-          sh scripts/live-run.sh detach timeout 120 target/release/podnet tunnel --hello-world --detach --name live
-          url=$(tail -1 detach.out | jq -r .url)
-          pid=$(tail -1 detach.out | jq -r .pid)
-          test "$(tail -1 detach.out | jq -r .verified)" = true
-          # The runner can fail one connect just after the verify of podnet
-          # (curl exit 7 in 2 ms): try again.
-          curl -fsS --retry 5 --retry-all-errors --retry-delay 2 "$url" | grep -q 'Hello, world'
-          target/release/podnet ps --json | jq -e '.instances[] | select(.name == "live") | .state == "ready"'
-          kill -0 "$pid"
-          target/release/podnet logs live -n 5 > /dev/null
-          target/release/podnet stop live
-          ! kill -0 "$pid" 2> /dev/null
-          target/release/podnet ps --json | jq -e '.instances | length == 0'
-      # Issue 205: --auth-user in front of a quick tunnel. No credential and
-      # a wrong one get 401 from podnet; the right one gets the origin.
-      - name: Quick tunnel with --auth-user
-        timeout-minutes: 4
-        run: |
-          set -eu
-          export PODNET_RUN_DIR="$RUNNER_TEMP/run"
-          umask 077
-          pass="$RUNNER_TEMP/auth-pass"
-          head -c 18 /dev/urandom | base64 > "$pass"
-          echo "::add-mask::$(cat "$pass")"
-          sh scripts/live-run.sh auth timeout 120 target/release/podnet tunnel --hello-world --auth-user live --auth-password-file "$pass" --detach --name auth
-          url=$(tail -1 auth.out | jq -r .url)
-          code() { curl -sS --retry 5 --retry-all-errors --retry-delay 2 -o /dev/null -w '%{http_code}' "$@"; }
-          test "$(code "$url")" = 401
-          test "$(code -u live:wrong "$url")" = 401
-          test "$(code -u "live:$(cat "$pass")" "$url")" = 200
-          curl -fsS -u "live:$(cat "$pass")" "$url" | grep -q 'Hello, world'
-          target/release/podnet stop auth
+      # The quick tunnel with --detach, ps, logs and stop, and with
+      # --auth-user, run in ci against the local stand-in of the service and
+      # the edge (tests/quick_tunnel_standin.rs, T-316), with no call to
+      # Cloudflare.
       # T-091: the file server through a quick tunnel, with --list, --upload
       # and --users: the listing, a range, a PUT of 1 MiB and a 401.
       - name: File server through a quick tunnel
