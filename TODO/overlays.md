@@ -110,7 +110,7 @@ waits for T-114.
 
 ## Done
 
-2026-11-12, commit 8bf408f (steps 1 and 2; step 3 waits for T-114). `src/networks/tailscale.rs` reads the login
+2026-11-12, commit ebd5e5c (steps 1 and 2; step 3 waits for T-114). `src/networks/tailscale.rs` reads the login
 state of `tailscaled` (`tailscale_state`, `tailscale_rows`); `SpecNetwork::tailscale_socket` gives the socket
 of a `tailscale:/PATH` spec.
 
