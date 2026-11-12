@@ -436,6 +436,7 @@ T-117 is done.
 2026-11-05, the responder half of the WireGuard code (`src/warp/wg.rs`) is in `pod-wg` (wave 2). The work goes to
 `pod-wg` in PodUtils/podcrates; podnet takes it and adds `podnet wg serve` (T-137).
 
+2026-11-12, GitHub #469 (row E3-3). The listen half of the WireGuard carrier (T-283) needs the responder of `pod-wg` that this entry takes.
 # T-126: Egress through an `https://` proxy and through wstunnel
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.4 and 3 (C16).
@@ -523,6 +524,7 @@ T-059 is done.
 
 2026-11-05, The work goes to `pod-egress` in PodUtils/podcrates. podnet only takes the crate (T-137). Do not do it in podnet. Do not copy code of podssh into podnet (`docs/decisions.md`, Shared crates). The code comes through PodUtils/podcrates. The Approach says "copy": it means "take from the shared crate".
 
+2026-11-12, GitHub #471 (rows E5-5 and E5-6). A Shadowsocks service (SIP004) and a Trojan service at a peer need the accept side of the codecs of `pod-egress`: T-294 and T-295, blocked on the take of `pod-egress`. Ask A4 for podcrates: the chunk codec of SIP004 and the Trojan request codec as parts that work on the accept side, with the published SIP004 vectors in the tests.
 # T-128: The DERP carrier through `pod-derp`
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.6 and 3 (C17).
@@ -1471,6 +1473,7 @@ Left, with the reason.
   member in both directions, also with a split, so `leastload` sees them.
 - A measure of the uplink and the downlink of a member (to pick `up` and `down` without the operator).
 
+2026-11-12, GitHub #473 (row E7-1). The left item "a split of TCP" needs a far end that joins two connections. The link session of T-262 is such a far end: T-302 splits one session across an up carrier and a down carrier. The router split of this entry stays unchanged, and its tests must pass unchanged.
 # T-244: `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435)
 
 **Source:** GitHub #435 (https://github.com/PodUtils/podnet/issues/435); donor review, tunnet.md block 4

@@ -252,6 +252,8 @@ datagrams of any way below the network (`Ctx::below`); the WARP chain is not don
 - A target name through the tunnel (DNS from the `DNS` line of the file). The network takes IP addresses.
 - `PresharedKey` (refused with one line until `pod-wg` takes one).
 
+2026-11-12, GitHub #469 (row E3-3). The `wg:` network of this entry is the base of the WireGuard carrier of the link (T-283).
+
 ## Done
 
 2026-11-12, commit 9f3b0a8 (partial). `wg:FILE` is a row of the registry (`src/networks.rs`,

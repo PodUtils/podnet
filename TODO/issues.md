@@ -161,6 +161,17 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #463 | COORD-043: a weekly watch of the relay contract in pod-relay (podnet T-134) (to podcrates) | closed (a COORD issue between sessions) | none |
 | #464 | COORD-044: five more gaps of pod-netstack for the guest-wire router (podnet T-176, T-248) (to podcrates) | closed (a COORD issue between sessions) | none |
 | #465 | COORD-045: podnet took v0.27.0 at 28c0e3d (to podcrates) | open (a COORD issue between sessions) | none |
+| #466 | link: peer identity, session, carrier registry, and the link command (E0) | open | T-261, T-262, T-263, T-264, T-265, T-266, T-267 |
+| #467 | link: stream carriers and availability (E1) | open | T-268, T-269, T-270, T-271, T-272, T-273, T-274, T-275 |
+| #468 | link: datagram reliability, ARQ, and simplex carriers (E2) | open | T-276, T-277, T-278, T-279, T-280 |
+| #469 | link: DNS stream, ICMP, WireGuard and NAT traversal carriers (E3) | open | T-281, T-282, T-283, T-284 |
+| #470 | link: mesh announcements, path-vector routing, forwarding and ACLs (E4) | open | T-285, T-286, T-287, T-288, T-289, T-290 |
+| #471 | link: services at a peer (SOCKS5, HTTP, raw, forward, Shadowsocks, Trojan, exec, serve-at) (E5) | open | T-266, T-291, T-292, T-293, T-294, T-295, T-296, T-297 |
+| #472 | link: record layer (AEAD, compression, padding, replay and resume) (E6) | open | T-298, T-299, T-300, T-301 |
+| #473 | link: direction split and chain composition (E7) | open | T-302, T-303 |
+| #474 | link: C ABI (E8) | open | T-304 |
+| #475 | link: portable build subset (E9) | open | T-305 |
+| #476 | link: CLI query keys, control plane, aliases, dump, components and build features (E10) | open | T-306, T-307, T-308, T-309, T-310, T-311 |
 | #477 | COORD-046: podnet took v0.28.0 at b08e06f (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.

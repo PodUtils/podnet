@@ -76,7 +76,7 @@ service, the relay, `--detach` and autostart, the pods, the router (with a full 
 checked against the help of the binary of 0.4.0-beta.4. The old tracking list stays at its end (each item
 done). The entry stays blocked: #89 stays open as the guide of the owner.
 
-
+2026-11-12, GitHub #475 asks that a row which cannot run on a platform is named in the guide of #89, and GitHub #467 names the CI jobs `restricted-host` and `no-loopback` for the carriers that run there (T-274, T-275). Add the link rows to the guide when the link commands exist (T-265).
 # T-002: `warp proxy --l4`: the L4 door answers 403 to each form of the CONNECT (GitHub #140)
 
 **Source:** GitHub #140.

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**260 entries: 30 open, 14 partial, 21 blocked, 195 done.**
+**311 entries: 74 open, 14 partial, 28 blocked, 195 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 20 | 6 | 13 | 118 | 157 |
-| P3 | 10 | 7 | 6 | 51 | 74 |
-| **All** | 30 | 14 | 21 | 195 | 260 |
+| P3 | 54 | 7 | 13 | 51 | 125 |
+| **All** | 74 | 14 | 28 | 195 | 311 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -306,3 +306,54 @@ M8 Overlays, M9 Later.
 | [T-258](fixes.md) | P3 | S | M5 | docs | done | Docs: stale or misleading comments and records (GitHub #459) |
 | [T-259](fixes.md) | P2 | M | M5 | docs | done | The user documentation by topic: a short README and one document for each area |
 | [T-260](fixes.md) | P2 | M | M5 | feature | done | doctor: probes for the lanes `masque_udp443` and `ws_upgrade` (GitHub #461, A-C-10) |
+| [T-261](link.md) | P3 | M | M9 | feature | blocked | link: an Ed25519 key for each install, its fingerprint and an allow list (GitHub #466) |
+| [T-262](link.md) | P3 | L | M9 | feature | open | link: the session of streams with credit flow control and keepalive (GitHub #466) |
+| [T-263](link.md) | P3 | M | M9 | feature | blocked | link: the 10-minute resume of a session through pod-session (GitHub #466) |
+| [T-264](link.md) | P3 | M | M9 | feature | open | link: a registry of carriers with an available() reason (GitHub #466) |
+| [T-265](link.md) | P3 | M | M9 | feature | open | link: the commands listen, dial, status, close and carriers (GitHub #466) |
+| [T-266](link.md) | P3 | M | M9 | feature | open | link: `peer:FINGERPRINT/SERVICE` as a network target and `forward -L LISTEN=peer:...` (GitHub #466 and #471) |
+| [T-267](link.md) | P3 | M | M9 | feature | open | link: the control socket, its discipline and the status verb (GitHub #466) |
+| [T-268](link.md) | P3 | L | M9 | feature | open | link: the TCP carrier with TLS 1.3, the accept side and the peer handshake (GitHub #467) |
+| [T-269](link.md) | P3 | M | M9 | feature | open | link: the WebSocket carrier, its server half and its wrapper (GitHub #467) |
+| [T-270](link.md) | P3 | M | M9 | feature | open | link: the HTTP/2 carrier with one bidirectional POST (GitHub #467) |
+| [T-271](link.md) | P3 | M | M9 | feature | open | link: the HTTP/1.1 long-poll carrier (GitHub #467) |
+| [T-272](link.md) | P3 | M | M9 | feature | open | link: the SSE and chunked-stream carrier (GitHub #467) |
+| [T-273](link.md) | P3 | M | M9 | feature | open | link: the QUIC carrier (GitHub #467) |
+| [T-274](link.md) | P3 | S | M9 | feature | open | link: the unix-socket carrier and its socketpair half (GitHub #467) |
+| [T-275](link.md) | P3 | S | M9 | feature | open | link: the in-process memory carrier (GitHub #467) |
+| [T-276](link.md) | P3 | L | M9 | feature | open | link: the UDP carrier with KCP (GitHub #468) |
+| [T-277](link.md) | P3 | L | M9 | feature | open | link: a selective-repeat ARQ for any lossy carrier (GitHub #468) |
+| [T-278](link.md) | P3 | L | M9 | feature | open | link: the DNS simplex carrier (GitHub #468) |
+| [T-279](link.md) | P3 | L | M9 | feature | open | link: the object-storage simplex carrier (GitHub #468) |
+| [T-280](link.md) | P3 | M | M9 | feature | open | link: the HTTP poll simplex carrier (GitHub #468) |
+| [T-281](link.md) | P3 | L | M9 | feature | open | link: the DNS stream carrier with a pipelined query window (GitHub #469) |
+| [T-282](link.md) | P3 | L | M9 | feature | open | link: the ICMP echo carrier (GitHub #469) |
+| [T-283](link.md) | P3 | M | M9 | feature | open | link: a WireGuard peer as a carrier (GitHub #469) |
+| [T-284](link.md) | P3 | L | M9 | feature | blocked | link: NAT traversal with a relay fallback (GitHub #469) |
+| [T-285](link.md) | P3 | L | M9 | feature | open | link: signed route announcements (GitHub #470) |
+| [T-286](link.md) | P3 | M | M9 | feature | open | link: the path-vector route table (GitHub #470) |
+| [T-287](link.md) | P3 | L | M9 | feature | open | link: multi-hop forwarding of a session stream (GitHub #470) |
+| [T-288](link.md) | P3 | M | M9 | feature | open | link: load balancing across link groups (GitHub #470) |
+| [T-289](link.md) | P3 | M | M9 | feature | open | link: the local topology and the status view of a mesh (GitHub #470) |
+| [T-290](link.md) | P3 | M | M9 | feature | open | link: per-hop access control for services and forwarding (GitHub #470) |
+| [T-291](link.md) | P3 | M | M9 | feature | open | link: a SOCKS5 service at a peer (GitHub #471) |
+| [T-292](link.md) | P3 | M | M9 | feature | open | link: an HTTP forward proxy service at a peer (GitHub #471) |
+| [T-293](link.md) | P3 | S | M9 | feature | open | link: a raw passthrough service at a peer (GitHub #471) |
+| [T-294](link.md) | P3 | M | M9 | feature | blocked | link: a Shadowsocks AEAD service at a peer (GitHub #471) |
+| [T-295](link.md) | P3 | M | M9 | feature | blocked | link: a Trojan service at a peer (GitHub #471) |
+| [T-296](link.md) | P3 | M | M9 | feature | open | link: an exec adapter that runs a program for each stream (GitHub #471) |
+| [T-297](link.md) | P3 | M | M9 | feature | open | link: serve a file tree at a peer (GitHub #471) |
+| [T-298](link.md) | P3 | L | M9 | feature | blocked | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
+| [T-299](link.md) | P3 | S | M9 | feature | open | link: snappy compression of records (GitHub #472) |
+| [T-300](link.md) | P3 | S | M9 | feature | open | link: padding of records to buckets (GitHub #472) |
+| [T-301](link.md) | P3 | M | M9 | feature | open | link: the replay window and the RESUME record (GitHub #472) |
+| [T-302](link.md) | P3 | L | M9 | feature | open | link: split one session across an up carrier and a down carrier (GitHub #473) |
+| [T-303](link.md) | P3 | M | M9 | feature | open | link: chain composition with a peer element and --check (GitHub #473) |
+| [T-304](link.md) | P3 | L | M9 | feature | open | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
+| [T-305](link.md) | P3 | L | M9 | feature | blocked | link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475) |
+| [T-306](link.md) | P3 | M | M9 | feature | open | link: the query keys of a carrier URL (GitHub #476) |
+| [T-307](link.md) | P3 | M | M9 | feature | open | link: the write verbs of the control plane (GitHub #476) |
+| [T-308](link.md) | P3 | S | M9 | feature | open | link: names for live links (GitHub #476) |
+| [T-309](link.md) | P3 | M | M9 | feature | open | link: the redacted state dump and bug-report --include-link (GitHub #476) |
+| [T-310](link.md) | P3 | M | M9 | feature | open | link: the component inventory command (GitHub #476) |
+| [T-311](link.md) | P3 | M | M9 | feature | open | link: Cargo features for the link carriers and services (GitHub #476) |

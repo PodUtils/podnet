@@ -251,6 +251,7 @@ The crate of this entry has a release in `PodUtils/podcrates`, with its hand-off
 2026-11-05, The work of the Approach is in PodUtils/podcrates. The title and the steps are changed. There is
 no crate `podnet-relay`. The start condition names T-049 (the take of `pod-relay`).
 
+2026-11-12, GitHub #466 (rows E0-1 and E0-2) and #472 (row E6-1), the `link` workstream. The link needs this take for the key identity (`pod-identity`), the resume (`pod-session`) and the end-to-end channel (`pod-e2e`). The link side of each take is its own entry, blocked on this one: T-261, T-263 and T-298. `pod-session` holds a resume layer for one byte stream. It holds no multiplexer of streams with credits: that is T-262. `pod-identity` shows the OpenSSH fingerprint, and the issue asks for base32 in five groups with a checksum. Asks for podcrates: A1 (the display form of the fingerprint), A2 (the resume window and the use of the token as settings; whether a shared multiplexer crate is wanted), A3 (the handshake hash and the transport keys of `pod-e2e` as an interface). `docs/decisions.md`, 2026-11-12, The link workstream.
 # T-087: `relay node` and `relay connect` resume a session past the limits of the relay
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.3, 3 (C5) and 5 (G2); PodUtils/podcrates#35 (cfb), ask A-N-12.
@@ -305,6 +306,7 @@ T-086 is done.
 reverse road moves with `pod-relay` (T-049): the node and the client code of `src/relay_reverse.rs` is in that crate
 after the take.
 
+2026-11-12, GitHub #466 (row E0-2). The link session (T-262, T-263) uses the same `pod-session` layer for its resume. The relay road of this entry does not change.
 # T-088: File server: a directory listing in HTML and JSON
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 3.1 to 3.5.
@@ -1181,6 +1183,7 @@ own options (`--list`, the detached instances), so an alias in the CLI only woul
 lists `netbird:` and `wg:FILE` as networks and says which networks carry UDP. The SOCKS5 UDP ASSOCIATE of the router
 door (T-098) and the resolver of a member (T-098) are the router's answers for UDP and names through a chosen network.
 
+2026-11-12, GitHub #466 (row E0-5) and #471 (row E5-4). The forward of a local port to a peer service (`forward -L 8080=peer:FP/http`) is T-266. This entry does not cover a peer target.
 
 ## Done
 
@@ -1802,6 +1805,8 @@ the take of `pod-warp` (T-050).
   device with the state of T-095 is not proven. When `pod-warp` gives the WARP network, it implements
   `Network::rotate` over `Ctx.state_dir`; then add a test that two rotates register no new device on the edge
   stand-in of T-012.
+
+2026-11-12, GitHub #476 (row E10-2) and #466 (row E0-6). The control socket of a link is a separate socket with one JSON object for each line (T-267, T-307). It follows the discipline of the router socket of this entry (mode 0600, a token, `SO_PEERCRED`). It does not share the HTTP paths.
 
 ## Done
 
