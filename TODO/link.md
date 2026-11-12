@@ -1247,7 +1247,7 @@ T-261, T-262 and T-265 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1279,6 +1279,13 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-285 is done.
+
+## Done
+
+2026-11-12, commit e51d147. `src/mesh_table.rs` (`podnet::mesh_table`) is the route table: a pure data structure with no I/O. The caller gives the time in milliseconds. The key type is `PublicKey` of `pod-identity`. `RouteTable::learn` takes a verified `Announcement` (origin, seq, cost, path, expiry) from a next hop with the cost of the link. `best` and `ranked` select: fresh before held, then lowest cost, then fewest hops, then newest `seq`. `learn` refuses a loop (the path holds this node or a node two times), more than 16 nodes, an expired announcement, a stale `seq`, a bad path and an own origin. A direct route ends at its expiry. A multi-hop route is held one expiry interval (30 s) after its expiry. `session_closed` ends the direct route at once and downs the multi-hop routes through the peer for one interval. The table holds 4096 origins and 8 routes for each origin. At 90% (3686) each new origin evicts the worst origin (ended routes are purged first, direct routes are never evicted), and `evictions()` counts them. `scripts/check-layers.py` puts the module in the layer `podnet`. `docs/link.md` has the section "The route table" (a library part, no command yet).
+`cargo test --test mesh_table`: 22 passed, among them `selection_lowest_cost_first`, `selection_fewest_hops_on_equal_cost`, `selection_newest_seq_on_equal_cost_and_hops`, `loop_through_this_node_is_refused`, `repeated_node_in_path_is_refused`, `direct_route_ends_at_expiry`, `multi_hop_route_is_held_one_interval_after_expiry`, `session_close_ends_direct_route_at_once`, `session_close_downs_multi_hop_routes_for_one_interval`, `eviction_starts_at_90_percent_and_counts`, `direct_routes_are_not_evicted`. With the loop check and the eviction disabled, 5 tests failed (the two loop tests and the three eviction tests). `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers and test all 0.
+Not proven: the table with real signed announcements (T-285 has not started; the caller checks the signature, the skew and the seen `seq`); a use in forwarding (T-287), the status view (T-289) and any command. The newest `seq` of an origin is forgotten when its last route ends, so a replay of an old `seq` after that needs the seen-`seq` check of T-285.
+
 
 # T-287: link: multi-hop forwarding of a session stream (GitHub #470)
 

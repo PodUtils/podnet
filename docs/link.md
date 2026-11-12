@@ -240,7 +240,7 @@ handshake of `pod-e2e` (T-298).
 
 ## The route table
 
-`podnet::mesh_table` is the path-vector route table of the mesh (T-286). It is a library part. No command uses it yet: the
+`podnet::mesh_table` is the path-vector route table of the mesh (T-286). It is a library part. No command calls it: the
 signed announcements (T-285), the forwarding (T-287) and the status view (T-289) will use it.
 
 * The table does no I/O. The caller gives the time in milliseconds to each call, and checks the signature of an announcement

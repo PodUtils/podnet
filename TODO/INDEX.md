@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**326 entries: 60 open, 19 partial, 22 blocked, 225 done.**
+**326 entries: 59 open, 19 partial, 22 blocked, 226 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 8 | 11 | 129 | 167 |
-| P3 | 41 | 10 | 9 | 68 | 128 |
-| **All** | 60 | 19 | 22 | 225 | 326 |
+| P3 | 40 | 10 | 9 | 69 | 128 |
+| **All** | 59 | 19 | 22 | 226 | 326 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -331,7 +331,7 @@ M8 Overlays, M9 Later.
 | [T-283](link.md) | P3 | M | M9 | feature | open | link: a WireGuard peer as a carrier (GitHub #469) |
 | [T-284](link.md) | P3 | L | M9 | feature | open | link: NAT traversal with a relay fallback (GitHub #469) |
 | [T-285](link.md) | P3 | L | M9 | feature | open | link: signed route announcements (GitHub #470) |
-| [T-286](link.md) | P3 | M | M9 | feature | open | link: the path-vector route table (GitHub #470) |
+| [T-286](link.md) | P3 | M | M9 | feature | done | link: the path-vector route table (GitHub #470) |
 | [T-287](link.md) | P3 | L | M9 | feature | open | link: multi-hop forwarding of a session stream (GitHub #470) |
 | [T-288](link.md) | P3 | M | M9 | feature | open | link: load balancing across link groups (GitHub #470) |
 | [T-289](link.md) | P3 | M | M9 | feature | open | link: the local topology and the status view of a mesh (GitHub #470) |
