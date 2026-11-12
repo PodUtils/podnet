@@ -476,8 +476,8 @@ and `on_error` (the `-v` line of the pod). The reply follows the class of the fa
 ## Done
 
 2026-11-12, five commits on the branch `worktree-agent-ae070f705e8d9f4a0` (the ids can change at the
-merge): 7b6fb6c (the door moves to `podnet-netns`), 6c18e1a (the options of the door), 9cedace (`net
-proxy`), 2c73785 (`net tailscale`), f88e0c2 (`pod --serve`). Result: `net proxy`, `net tailscale` and
+merge): 83c9042 (the door moves to `podnet-netns`), 3ff567a (the options of the door), 5e45e88 (`net
+proxy`), 3cf0da0 (`net tailscale`), 294d2df (`pod --serve`). Result: `net proxy`, `net tailscale` and
 `pod --serve` serve their clients with `Door`. Each keeps its extras:
 `net proxy` keeps `--map`, `--map-file`, `--forward`, `--switch`, `--import`, `--control` and `--port` (the
 command and the stack read them as before); the 5 s wait for the handshake of a virtual address, the 502
@@ -654,8 +654,8 @@ retry-safe.
 
 ## Correction
 
-2026-11-12: the start condition holds. T-061 has moved `pod --serve` onto `Door` (branch commits 7b6fb6c to
-f88e0c2). The code of the Premise has moved. The door is `crates/podnet-netns/src/door.rs` (it was
+2026-11-12: the start condition holds. T-061 has moved `pod --serve` onto `Door` (branch commits 83c9042 to
+294d2df). The code of the Premise has moved. The door is `crates/podnet-netns/src/door.rs` (it was
 in `podnet-vnet`). The dial of `pod --serve` is `PodDial` in
 `crates/podnet-netns/src/frontdoor.rs`. It replies after the dial in `Door::handle`
 (`socks5_reply`, `http_connect_ok`), and `serve_one` is gone. The place for the flag is `Door` (an option
