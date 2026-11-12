@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**260 entries: 37 open, 12 partial, 22 blocked, 189 done.**
+**260 entries: 36 open, 13 partial, 22 blocked, 189 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 22 | 6 | 14 | 115 | 157 |
+| P2 | 21 | 7 | 14 | 115 | 157 |
 | P3 | 15 | 5 | 6 | 48 | 74 |
-| **All** | 37 | 12 | 22 | 189 | 260 |
+| **All** | 36 | 13 | 22 | 189 | 260 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -90,7 +90,7 @@ M8 Overlays, M9 Later.
 | [T-042](split.md) | P2 | M | M2 | chore | done | Cut the upward references 1 to 7: `net`, `util`, `fetch`, `hop`, `report`, `detach` and `relay_reverse` |
 | [T-043](split.md) | P2 | M | M2 | chore | blocked | Cut the upward references 8, 9 and 18: a WebSocket bridge and `Metered` in the core |
 | [T-044](split.md) | P2 | L | M2 | chore | blocked | Cut the upward references 10 to 17: the WARP QUIC configuration, `ShareLink`, `RULE_KEYS`, `connect_tunnel` and the edge side of `ws` |
-| [T-045](split.md) | P2 | S | M2 | chore | open | Each file is under 800 lines, and the allowlists of the size check and the layer check are empty |
+| [T-045](split.md) | P2 | S | M2 | chore | partial | Each file is under 800 lines, and the allowlists of the size check and the layer check are empty |
 | [T-046](crates.md) | P2 | M | M3 | chore | done | Prepare the workspace for more crates: the print macros, the build facts, the scans, the package list and the test helpers |
 | [T-047](crates.md) | P2 | L | M3 | chore | done | Extract the crate `podnet-core` |
 | [T-048](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-vnet`, with the C sources of the shims |

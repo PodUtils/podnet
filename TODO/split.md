@@ -1122,7 +1122,7 @@ references that stay in podnet (for example `ShareLink` and `RULE_KEYS`).
 **Milestone:** M2
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1164,3 +1164,26 @@ T-026 to T-044 are done.
 2026-11-05, The two cycles of the Premise (the core and the Cloudflare crate) leave podnet with the takes of
 `pod-proxy`, `pod-dns`, `pod-cloudflare` (T-137). The allowlists empty by moves and by splits.
 
+2026-11-12, The 15 files of `scripts/size-allow.txt` all belong to a crate of podcrates, so none is split in
+podnet (`CLAUDE.md`, Order; `docs/decisions.md`, 2026-11-11, the freeze of pod-relay, pod-warp and
+pod-cloudflare). `src/config.rs` and `src/proxy.rs` have the layer `cloudflare` in
+`scripts/check-layers.py`: they go to `pod-cloudflare` (T-052) and take fixes only. The size check lists
+the files by take:
+
+- T-049 (`pod-relay`): `src/relay_reverse.rs` (891), `src/ws_relay.rs` (994).
+- T-050 (`pod-warp`): `src/warp/ip.rs` (1680), `src/warp/mod.rs` (1002), `src/warp/proxy.rs` (1870),
+  `src/warp/register.rs` (855), `src/warp/session.rs` (1211), `src/warp/up.rs` (817).
+- T-052 (`pod-cloudflare`): `src/cloudflare/capnp.rs` (944), `src/cloudflare/http2.rs` (1123),
+  `src/config.rs` (1206), `src/edge_h2.rs` (1608), `src/proxy.rs` (2034), `src/quicktunnel.rs` (850),
+  `src/tunnel.rs` (1404).
+
+The five rows of `scripts/layers-allow.txt` stay: `warp -> cloudflare` and `warp -> quicktunnel` leave
+with T-050 and T-052; `ws -> cloudflare`, `ws -> proxy` and `ws_relay -> edge_h2` leave with T-049, T-052
+and the take of `pod-ws` (T-137). Each is a reference inside a frozen file.
+
+## Done
+
+2026-11-12, no code commit. Both checks pass (`check-size`: 447 files, 15 allowlisted, 0 faults;
+`check-layers`: 0 faults). The largest file is `src/proxy.rs` (2034 lines). No file is split and no
+allowlist row is removed: each row waits for a take (the Correction). The entry stays `partial` until
+T-049, T-050 and T-052 have moved the files.
