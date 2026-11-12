@@ -199,6 +199,8 @@ T-262 is done (the link over a carrier).
 `cargo test --test link_session -- resume`: 4 passed: `resume_inside_the_window_carries_one_mebibyte_with_an_equal_digest` (a carrier cut at 300 KB, 5 s before the end of the window the far end keeps the session, the resume carries 1 MiB each way with an equal SHA-256), `resume_after_the_window_is_refused_with_resume_expired` (the far end clock runs 601 s, the far end forgets the session, the resume gives `ResumeExpired` with window 600 s, exit 69), `resume_expires_at_the_client_when_no_carrier_comes` (window 2 s), `the_window_is_ten_minutes_and_the_link_outlives_it`. Before the module the test file did not compile (`unresolved import podnet::session`). With `expired()` returning `None` and `dead_after` unchanged, 3 of the 4 tests failed.
 Not proven: a resume over a real carrier (the tests use duplex streams); the single-use token (the record layer, T-301); a CLI command (T-265). Ask A12 for podcrates: a typed cause in `End::GaveUp` (podnet reads its text now); ask A13: the single-use of the secret as a `Settings` value. One observation: when the dialer application does not read a stream, the transfer stopped after about 64 KiB in a test (the test reads, and passes); this is not analysed (T-262 proves a stalled reader for the link alone).
 
+2026-11-12: podcrates answered A13 (PodUtils/podcrates#101): no setting. Each resume proves the secret with an HMAC over both fresh nonces of the new link, so a proof works once, on its link, and a replayed proof is refused (`BAD_PROOF`). `Settings::resumes = false` ends a session with its link. A12 (a typed cause in `End::GaveUp`) is in work; podnet then drops its match on the text.
+
 
 # T-264: link: a registry of carriers with an available() reason (GitHub #466)
 

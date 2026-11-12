@@ -1755,6 +1755,10 @@ issue (to podcrates) that the lead session files. It unblocks when the release e
 
 The take of `pod-devtunnel` is done (T-137).
 
+## Correction
+
+2026-11-12: podcrates writes `pod-devtunnel` (PodUtils/podcrates#101): the client side first (the management read, the relay WebSocket over podnet's TLS, proxy and dialer, SSH with `none`, `direct-tcpip` streams, a bounded reconnect); the hand-off names the API for `devtunnel://TUNNEL`.
+
 
 # T-321: net: a TURN network for UDP flows (GitHub #507)
 
@@ -1826,3 +1830,7 @@ session files. It unblocks when the release exists and podnet takes it (T-137).
 ## Start condition
 
 The take of `pod-turn` is done (T-137).
+
+## Correction
+
+2026-11-12: podcrates writes `pod-turn` (PodUtils/podcrates#101): the STUN codec moves from `pod-proxy`, SHA-256 credentials, a TURN client of RFC 8656 over UDP and over TLS on TCP. A TCP relay (RFC 6062) is a later entry of podcrates.

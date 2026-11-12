@@ -5248,6 +5248,8 @@ and podnet adds no relay fact in code (T-166). The ask for podcrates: the fact `
 Sandhole (80) and `forward::Relay::remote_port() -> Option<u16>`. Then `facts.rs` puts it in `Facts` and
 `ssh_relay.rs` uses it when no flag is given. Not proven: a live Sandhole demo.
 
+2026-11-12: podcrates did the fact (PodUtils/podcrates#101): `sandhole.toml` has `remote-port` = 80, and `pod_services::forward::Relay::remote_port() -> Option<u16>` reads it. It comes with the next tag; the take reads it into the facts of the relay and lets `--remote-port` override it.
+
 
 # T-323: live: the WebSocket step leaves its echo server, and waits 30 s for the DNS of a new name (GitHub #511)
 
