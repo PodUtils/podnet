@@ -295,6 +295,7 @@ fn a_relay_with_more_than_one_endpoint_gives_the_address_list_in_order() {
 
 #[tokio::test]
 async fn the_transport_tries_the_address_list_in_order() {
+    pod_testkit::need_loopback!();
     let dead = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let dead_address = dead.local_addr().unwrap().to_string();
     drop(dead);
