@@ -4842,7 +4842,7 @@ release run 43190862473 passed. The release is a prerelease with the 8 binaries,
 
 ## Problem
 
-The work after `v0.4.0-beta.6` (T-043, T-049, T-083, T-162, T-163, T-315, T-316, and the takes of podcrates v0.30.0 and v0.31.0) is on `main`
+The work after `v0.4.0-beta.6` (T-043, T-049, T-083, T-162, T-163, T-315, T-316, T-317, and the takes of podcrates v0.30.0 to v0.32.0) is on `main`
 only.
 
 ## Premise

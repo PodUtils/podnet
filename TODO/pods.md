@@ -1368,3 +1368,49 @@ cargo run -q -- pod doctor
 `veth wire (no TUN)` run in a new process. Test: `the_namespace_probes_run_in_a_new_process` (probes from four threads
 while four other threads allocate; each probe gives a verdict; the namespace of the caller stays the same). Not
 proven: the old deadlock itself, as no test can force it.
+
+
+# T-317: seccomp: a mapped loopback address is dialed direct, not through the chain (PodUtils/podrunner#69)
+
+**Source:** PodUtils/podrunner#69 (COORD-011 of podrunner): with `v0.4.0-beta.6` a held podvm unit under `podnet pod
+--backend seccomp` gets "Connection refused (127.0.0.1:PORT)" for a connect of a dual-stack socket of .NET to
+`::ffff:127.0.0.1`; with IPv4 sockets only the same job passes.
+**Category:** defect
+**Milestone:** M7
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+T-255 made the rule check take `::ffff:127.0.0.1` as loopback (`is_loopback_target`), but the dial branch of
+`crates/podnet-netns/src/connect.rs` still tested `ip.is_loopback()`, which is false for an IPv4-mapped address. A
+mapped loopback connect passed the rules as loopback, then took the branch of the proxy chain with an empty chain,
+so it did not reach the host listener (and with `-v` the line of the chain read `chain[0]` of an empty chain).
+
+## Premise
+
+- Read: `crates/podnet-netns/src/connect.rs` (the loopback decision and the dial branch).
+- The sandbox of this session has no IPv6 (`EAFNOSUPPORT`): the end-to-end test skips here and runs on the CI
+  runner (IPv6 on).
+
+## Approach
+
+1. `loopback_dial(ip)`: the IPv4 form of a loopback target, else `None`. The dial branch uses it, and dials the
+   canonical address.
+2. A unit test of `loopback_dial`, and an end-to-end test: a dual-stack Python client connects to
+   `::ffff:127.0.0.1:PORT` in a seccomp pod whose proxy does not exist.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib a_mapped_loopback_address_is_dialed_direct
+cargo test --test pod_seccomp seccomp_backend_sends_a_mapped_loopback_direct
+```
+
+## Done
+
+2026-11-12. `loopback_dial` in `crates/podnet-netns/src/connect.rs`; the dial branch uses it. Test
+`a_mapped_loopback_address_is_dialed_direct`: with the old rule (`ip.is_loopback()`) it fails, with the new rule
+it passes. The end-to-end test `seccomp_backend_sends_a_mapped_loopback_direct` skips in this sandbox (no IPv6) and
+runs in `ci`. Not proven here: the podvm unit of podrunner (its test `held`).

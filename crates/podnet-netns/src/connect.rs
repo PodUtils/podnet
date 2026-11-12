@@ -199,7 +199,7 @@ pub(crate) fn handle_connect(
         result: Err(anyhow::anyhow!("no dial")),
         flow,
     };
-    if ip.is_loopback() {
+    if let Some(ip) = loopback_dial(ip) {
         // Loopback does not go to the proxy (issue 80): a listener of the
         // program itself (its inbound socket), else TCP on this host.
         if route.verbose {
@@ -363,6 +363,13 @@ async fn connect_loopback(
     Ok(Box::new(stream))
 }
 
+/// The address of a direct loopback dial for a connect to `ip`, else
+/// `None`: the IPv4 form of an IPv4-mapped address (T-317), as the rules
+/// take it (T-255).
+pub(crate) fn loopback_dial(ip: IpAddr) -> Option<IpAddr> {
+    is_loopback_target(ip).then(|| ip.to_canonical())
+}
+
 /// True when a connect to `ip` is a connect to this host: `127.0.0.0/8`,
 /// `::1`, or an IPv4-mapped form of a loopback address (`::ffff:127.0.0.1`).
 pub(crate) fn is_loopback_target(ip: IpAddr) -> bool {
@@ -371,7 +378,7 @@ pub(crate) fn is_loopback_target(ip: IpAddr) -> bool {
 
 #[cfg(test)]
 mod loopback_tests {
-    use super::is_loopback_target;
+    use super::{is_loopback_target, loopback_dial};
 
     /// T-255 (PodUtils/podrunner#64): a dual-stack socket gives the
     /// IPv4-mapped form of 127.0.0.1; it is loopback.
@@ -389,5 +396,19 @@ mod loopback_tests {
         ] {
             assert_eq!(is_loopback_target(ip.parse().unwrap()), want, "{ip}");
         }
+    }
+
+    /// T-317 (PodUtils/podrunner#69): the dial of a mapped loopback address
+    /// goes direct to its IPv4 form, not to the proxy chain.
+    #[test]
+    fn a_mapped_loopback_address_is_dialed_direct() {
+        let v4 = |s: &str| Some(s.parse().unwrap());
+        assert_eq!(
+            loopback_dial("::ffff:127.0.0.1".parse().unwrap()),
+            v4("127.0.0.1")
+        );
+        assert_eq!(loopback_dial("127.0.0.1".parse().unwrap()), v4("127.0.0.1"));
+        assert_eq!(loopback_dial("::1".parse().unwrap()), v4("::1"));
+        assert_eq!(loopback_dial("::ffff:10.0.0.1".parse().unwrap()), None);
     }
 }

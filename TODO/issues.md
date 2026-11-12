@@ -180,5 +180,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #482 | COORD-051: two gaps of pod-relay after the take (pair renewal, pair on a second host) and the edge budget (to podcrates) | closed (a COORD issue between sessions) | none |
 | #483 | live: two runs in a row failed | closed | T-315 |
 | #502 | COORD-052: podnet took v0.31.0 at e046560; relay connect hangs on a direct runner after the take of pod-relay (to podcrates) | closed (a COORD issue between sessions) | none |
+| #508 | COORD-053: podnet took v0.32.0 at fa6b5ba; pod-link is next (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.

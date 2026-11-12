@@ -160,6 +160,66 @@ fn the_program_does_not_get_the_host_proxy() {
     );
 }
 
+/// T-317 (PodUtils/podrunner#69): a dual-stack socket connects to the
+/// IPv4-mapped form `::ffff:127.0.0.1`, as .NET does. In a seccomp pod it
+/// goes to the host listener, as 127.0.0.1 does, not to the proxy (here the
+/// proxy socket does not exist, so a connect through it fails).
+#[test]
+fn seccomp_backend_sends_a_mapped_loopback_direct() {
+    test_host::need_loopback!();
+    if !seccomp_available()
+        || std::process::Command::new("python3")
+            .arg("-V")
+            .output()
+            .is_err()
+    {
+        eprintln!("skipping: no python3 or no SECCOMP_RET_USER_NOTIF");
+        return;
+    }
+    if std::net::TcpListener::bind("[::1]:0").is_err() {
+        eprintln!("skipping: no IPv6 sockets on this host");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        if let Ok((mut conn, _)) = listener.accept() {
+            let _ = conn.write_all(b"LOCAL-SERVICE\n");
+        }
+    });
+    let client = dir.path().join("client.py");
+    std::fs::write(
+        &client,
+        "import socket, sys\n\
+         s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)\n\
+         s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)\n\
+         s.settimeout(10)\n\
+         s.connect(('::ffff:127.0.0.1', int(sys.argv[1])))\n\
+         print(s.recv(100).decode().strip())\n",
+    )
+    .unwrap();
+    let output = pod_command()
+        .args(["--backend", "seccomp", "-x"])
+        .arg(format!(
+            "unix:{}",
+            dir.path().join("no-proxy.sock").display()
+        ))
+        .arg("--")
+        .arg("python3")
+        .arg(&client)
+        .arg(port.to_string())
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        output.status.success() && stdout.contains("LOCAL-SERVICE"),
+        "stdout={stdout:?} stderr={:?}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 /// Issue 80: a connect to 127.0.0.1 in a seccomp pod goes to the host
 /// listener, not to the proxy (here the proxy socket does not exist, so a
 /// connect through it fails).

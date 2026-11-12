@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**316 entries: 75 open, 16 partial, 23 blocked, 202 done.**
+**317 entries: 75 open, 16 partial, 23 blocked, 203 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 1 | 2 | 26 | 29 |
+| P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 20 | 8 | 10 | 123 | 161 |
 | P3 | 55 | 7 | 11 | 52 | 125 |
-| **All** | 75 | 16 | 23 | 202 | 316 |
+| **All** | 75 | 16 | 23 | 203 | 317 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -362,3 +362,4 @@ M8 Overlays, M9 Later.
 | [T-314](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.7`: the dry run, the publish and the release proofs |
 | [T-315](fixes.md) | P1 | M | M5 | defect | done | live: `relay connect` hangs on the runner after the take of pod-relay (GitHub #483) |
 | [T-316](fixes.md) | P2 | L | M5 | feature | partial | A local stand-in of the quick-tunnel service and the edge, so that CI runs the quick tunnel with no call to Cloudflare |
+| [T-317](pods.md) | P1 | S | M7 | defect | done | seccomp: a mapped loopback address is dialed direct, not through the chain (PodUtils/podrunner#69) |
