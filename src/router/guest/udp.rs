@@ -1,9 +1,11 @@
 //! The UDP path of a guest wire (T-248). The stack of `pod-netstack` takes
 //! the datagrams of the guest with one socket for each destination port
-//! (`bind_udp_any`). The stack has no counter for a lost datagram, no error
-//! for a datagram that it cannot send, and no stop signal when its channel
-//! to the app is full (PodUtils/podnet#464, asks 3 to 5), so the router keeps
-//! its own bounds and counters:
+//! (`bind_udp_any`). Since v0.28.0 the stack has a backlog for each socket
+//! (`udp_packets`, `udp_payload`), counts a datagram that it loses
+//! (`NetStats::udp_rx_dropped`, `udp_tx_dropped`, `udp_oversize`; the guest
+//! counters `stack_udp_*`), and refuses a send over `max_datagram` with
+//! `InvalidInput`. A socket serves every flow of its port, so the router keeps
+//! its own queue for each flow: a slow flow must not hold the others.
 //!
 //! * A task for each port reads the socket at once. It never waits for a
 //!   flow.
@@ -12,11 +14,9 @@
 //!   flow takes one member of a group and never moves.
 //! * A flow has a queue of [`QUEUE`] datagrams. A datagram for a full queue is
 //!   dropped and counted (`udp_queue_dropped`).
-//! * A datagram over [`MAX_PAYLOAD`], to the guest or from it, is dropped and
-//!   counted (`udp_oversize`). A reply queue of a port that is full drops
-//!   and counts too (`udp_queue_dropped`).
-//! * IPv4 fragmentation of the stack (the features of `smoltcp` in
-//!   `Cargo.toml`) carries a datagram over the MTU, up to [`MAX_PAYLOAD`].
+//! * A datagram to the guest over `UdpSocket::max_datagram` is dropped and
+//!   counted (`udp_oversize`). With the feature `ipv4-fragmentation` of
+//!   `pod-netstack` (`Cargo.toml`) the limit is 65507 bytes.
 //! * A flow ends after [`IDLE`] with no datagram. A flow whose way fails or
 //!   refuses keeps its place for [`FAIL_HOLD`] and drops (and counts) its
 //!   datagrams.
@@ -46,9 +46,6 @@ pub const MAX_PORTS: usize = 256;
 pub const IDLE: Duration = Duration::from_secs(60);
 /// The time that a flow with a failed way drops its datagrams.
 pub const FAIL_HOLD: Duration = Duration::from_secs(5);
-/// The longest payload of a datagram: 65535 bytes less the headers of IPv4
-/// and UDP. It needs the IPv4 fragmentation of the stack.
-pub const MAX_PAYLOAD: usize = 65507;
 
 type Key = (SocketAddr, SocketAddr);
 type Flows = Arc<Mutex<HashMap<Key, mpsc::Sender<Vec<u8>>>>>;
@@ -192,6 +189,10 @@ async fn port_task(
             Some(reply) = inbox.recv() => {
                 last.store(ctx.now_ms(), Ordering::Relaxed);
                 let stats = &ctx.guest.stats;
+                if reply.data.len() > socket.max_datagram(reply.guest.ip()) {
+                    stats.add(&stats.udp_oversize);
+                    continue;
+                }
                 match socket.send_to_from(&reply.data, reply.guest, reply.source).await {
                     Ok(_) => stats.add(&stats.udp_down),
                     Err(e) => tracing::debug!("a datagram to the guest: {e}"),
@@ -205,11 +206,6 @@ async fn port_task(
 /// new. This function never waits.
 fn deliver(ctx: &Ctx, from: SocketAddr, to: SocketAddr, data: Vec<u8>) {
     let stats = &ctx.guest.stats;
-    if data.len() > MAX_PAYLOAD {
-        // The stack does not check the size of a datagram (ask 4).
-        stats.add(&stats.udp_oversize);
-        return;
-    }
     let key = (from, to);
     let mut flows = ctx.flows.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(queue) = flows.get(&key) {
@@ -313,10 +309,6 @@ async fn answers(
     while let Ok((n, from)) = recv_from(&*socket, &mut buf).await {
         if from != dst {
             stats.add(&stats.dropped);
-            continue;
-        }
-        if n > MAX_PAYLOAD {
-            stats.add(&stats.udp_oversize);
             continue;
         }
         last.store(ctx.now_ms(), Ordering::Relaxed);

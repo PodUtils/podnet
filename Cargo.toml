@@ -141,7 +141,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # The userspace TCP and UDP stack of PodUtils/podcrates: the WireGuard
 # network (src/networks/wg.rs) runs a stack over its tunnel.
-pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.29.0", version = "0.29.0" }
+# The feature ipv4-fragmentation (T-248): a UDP datagram to IPv4 holds up to
+# 65507 bytes in both directions over each MTU (a guest wire). Each interface
+# of smoltcp in the binary holds a buffer of 64 KiB for the fragments that it
+# sends, and smoltcp puts together one datagram at a time.
+pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.29.0", version = "0.29.0", features = ["ipv4-fragmentation"] }
 # The version of pod-netstack of PodUtils/podcrates: WARP (src/warp/ip.rs)
 # drives its link device (vnet::device) with it.
 smoltcp = { version = "0.14", default-features = false, features = [
@@ -157,12 +161,6 @@ smoltcp = { version = "0.14", default-features = false, features = [
     # 32 out-of-order ranges in a TCP receive buffer (the default is 4):
     # a large window with loss keeps the data after a hole (issue 100).
     "assembler-max-segment-count-32",
-    # IPv4 fragmentation (T-248): a datagram over the MTU, up to 65507 bytes
-    # of payload, crosses a guest wire in both directions. Each interface of
-    # the binary reassembles and fragments (a buffer of 64 KiB for each).
-    "proto-ipv4-fragmentation",
-    "reassembly-buffer-size-65536",
-    "fragmentation-buffer-size-65536",
 ] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = [
     "handshake",

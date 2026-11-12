@@ -10360,13 +10360,14 @@ guests:
 * UDP: each flow (guest address and target) has one socket from `Dial::datagrams` of the way that the rules
   choose, and takes one member of a group. A flow has a queue of 32 datagrams; a datagram for a full queue is
   dropped and counted. A flow ends after 60 s with no datagram. At most 512 flows and 256 ports. IPv4
-  fragmentation carries a datagram over the MTU, up to 65507 bytes.
+  fragmentation (the feature `ipv4-fragmentation` of `pod-netstack`) carries a datagram over the MTU, up to
+  65507 bytes.
 * The guest resolves names itself (a flow to its resolver is a UDP or TCP flow), so a `domain:` rule does not
   match a flow of a guest. Use `cidr:` rules.
 * `--status` shows each guest with its counters. The metrics have `podnet_route_guest_*` rows with the label
   `guest` (the wire): `tcp_dialed`, `tcp_refused`, `tcp_syn_dropped`, `tcp_open`, `udp_flows`, `udp_up`,
-  `udp_down`, `udp_queue_dropped`, `udp_oversize`, `udp_refused` and `dropped`. The stack counts no datagram
-  that it loses before the router reads it (PodUtils/podnet#464).
+  `udp_down`, `udp_queue_dropped`, `udp_oversize`, `udp_refused` and `dropped`. The counters of the stack are
+  `stack_udp_rx_dropped` (the backlog of a port was full), `stack_udp_tx_dropped` and `stack_udp_oversize`.
 * `--check` prints a line for each guest.
 
 ## Groups, health and policies

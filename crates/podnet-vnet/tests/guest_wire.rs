@@ -294,41 +294,41 @@ async fn guest_wire_stack_udp_queue_is_bounded_and_silent() {
     );
 }
 
-/// Constraint 3 (pod-netstack v0.28.0): with no fragmentation, a datagram over
-/// `mtu - 28` bytes is refused at the sender with `InvalidInput`, up and down,
-/// and `udp_oversize` counts it. A datagram at the limit arrives. The feature
-/// `ipv4-fragmentation` of `pod-netstack` carries 65507 bytes (not on here).
+/// Constraint 3 (pod-netstack v0.28.0, T-248): the feature `ipv4-fragmentation`
+/// of `pod-netstack` is on (`Cargo.toml` of this crate and of the root). A
+/// datagram over `mtu - 28` bytes crosses the wire in both directions, up to
+/// 65507 bytes. A send over `max_datagram` is refused with `InvalidInput` and
+/// `udp_oversize` counts it. Without the feature, a datagram over `mtu - 28`
+/// is refused (`max_datagram` is `mtu - 28`).
 #[tokio::test]
-async fn guest_wire_udp_over_the_mtu_is_refused_without_fragmentation() {
+async fn guest_wire_udp_over_the_mtu_is_carried_with_fragmentation() {
     for (mtu, limit) in [(1280usize, 1252usize), (1500, 1472)] {
         let with_mtu = |c: StackConfig| StackConfig { mtu, ..c };
         let (router, guest, _wire) = pair(with_mtu(router_config()), with_mtu(guest_config()));
         let mut flows = router.bind_udp_any(5353).await.unwrap();
         let mut guest_socket = guest.bind_udp(at("10.66.0.4", 40000)).await.unwrap();
+        assert_eq!(guest_socket.max_datagram(at("1.1.1.1", 1).ip()), 65507);
         let mut buf = vec![0u8; 70000];
-        for (size, arrives) in [(limit, true), (limit + 1, false), (65507, false)] {
-            let sent = guest_socket
-                .send_to(&vec![7u8; size], at("1.1.1.1", 5353))
-                .await;
-            if arrives {
-                sent.unwrap_or_else(|e| panic!("mtu {mtu} size {size}: {e}"));
-            } else {
-                let e = sent.expect_err("an oversize datagram is refused");
-                assert_eq!(
-                    e.kind(),
-                    std::io::ErrorKind::InvalidInput,
-                    "mtu {mtu} size {size}"
-                );
-            }
-            let got =
-                tokio::time::timeout(Duration::from_millis(600), flows.recv_from_to(&mut buf))
-                    .await;
-            assert_eq!(got.is_ok(), arrives, "mtu {mtu} up size {size}");
+        for size in [limit, limit + 1, 4000, 65507] {
+            let payload: Vec<u8> = (0..size).map(|i| (i % 251) as u8).collect();
+            guest_socket
+                .send_to(&payload, at("1.1.1.1", 5353))
+                .await
+                .unwrap_or_else(|e| panic!("mtu {mtu} size {size}: {e}"));
+            let (n, _, _) = within(5, "datagram", flows.recv_from_to(&mut buf))
+                .await
+                .unwrap();
+            assert!(buf[..n] == payload[..], "mtu {mtu} up size {size}");
         }
+        let e = guest_socket
+            .send_to(&vec![7u8; 65508], at("1.1.1.1", 5353))
+            .await
+            .expect_err("an oversize datagram is refused");
+        assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput, "mtu {mtu}");
         assert_eq!(
             guest.stats().udp_oversize,
-            2,
-            "mtu {mtu}: each refusal is counted"
+            1,
+            "mtu {mtu}: the refusal is counted"
         );
         guest_socket
             .send_to(b"hello", at("1.1.1.1", 5353))
@@ -337,22 +337,19 @@ async fn guest_wire_udp_over_the_mtu_is_refused_without_fragmentation() {
         let (_, from, to) = within(3, "datagram", flows.recv_from_to(&mut buf))
             .await
             .unwrap();
-        for (size, arrives) in [(limit, true), (limit + 1, false), (70000, false)] {
-            let sent = flows.send_to_from(&vec![1u8; size], from, to.ip()).await;
-            assert_eq!(
-                sent.is_ok(),
-                arrives,
-                "mtu {mtu} down size {size}: {sent:?}"
-            );
-            let got =
-                tokio::time::timeout(Duration::from_millis(600), guest_socket.recv_from(&mut buf))
-                    .await;
-            assert_eq!(got.is_ok(), arrives, "mtu {mtu} down size {size}");
+        for size in [limit, limit + 1, 65507] {
+            flows
+                .send_to_from(&vec![1u8; size], from, to.ip())
+                .await
+                .unwrap_or_else(|e| panic!("mtu {mtu} down size {size}: {e}"));
+            let (n, _) = within(5, "datagram", guest_socket.recv_from(&mut buf))
+                .await
+                .unwrap();
+            assert_eq!(n, size, "mtu {mtu} down size {size}");
         }
-        assert!(
-            router.stats().udp_oversize >= 2,
-            "mtu {mtu}: the router counts its refusals"
-        );
+        let sent = flows.send_to_from(&vec![1u8; 70000], from, to.ip()).await;
+        assert!(sent.is_err(), "mtu {mtu}: 70000 bytes are refused");
+        assert!(router.stats().udp_oversize >= 1);
     }
 }
 

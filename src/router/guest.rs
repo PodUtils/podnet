@@ -147,11 +147,17 @@ pub struct GuestStats {
     /// a destination that the router does not route, a protocol other than
     /// TCP and UDP, or IPv6.
     pub dropped: AtomicU64,
+    /// The counters of the stack (`NetStats`), copied at each pass of the
+    /// housekeeping: the datagrams it lost at the full backlog of a port,
+    /// the datagrams to the guest it lost, and the datagrams over its size.
+    pub stack_udp_rx_dropped: AtomicU64,
+    pub stack_udp_tx_dropped: AtomicU64,
+    pub stack_udp_oversize: AtomicU64,
 }
 
 /// The counters that the status document and the metrics give: the key of
 /// the status, the name of the metric, the type and the help.
-pub const COUNTERS: [(&str, &str, &str, &str); 11] = [
+pub const COUNTERS: [(&str, &str, &str, &str); 14] = [
     (
         "tcp_dialed",
         "podnet_route_guest_tcp_dialed_total",
@@ -218,6 +224,24 @@ pub const COUNTERS: [(&str, &str, &str, &str); 11] = [
         "counter",
         "Packets of the guest dropped by the screen of the wire.",
     ),
+    (
+        "stack_udp_rx_dropped",
+        "podnet_route_guest_stack_udp_rx_dropped_total",
+        "counter",
+        "Datagrams of the guest that the stack lost at the full backlog of a port.",
+    ),
+    (
+        "stack_udp_tx_dropped",
+        "podnet_route_guest_stack_udp_tx_dropped_total",
+        "counter",
+        "Datagrams to the guest that the stack lost.",
+    ),
+    (
+        "stack_udp_oversize",
+        "podnet_route_guest_stack_udp_oversize_total",
+        "counter",
+        "Datagrams over what the stack carries (a refused send, or fragments it cannot join).",
+    ),
 ];
 
 impl GuestStats {
@@ -233,6 +257,9 @@ impl GuestStats {
             "udp_queue_dropped" => &self.udp_queue_dropped,
             "udp_oversize" => &self.udp_oversize,
             "udp_refused" => &self.udp_refused,
+            "stack_udp_rx_dropped" => &self.stack_udp_rx_dropped,
+            "stack_udp_tx_dropped" => &self.stack_udp_tx_dropped,
+            "stack_udp_oversize" => &self.stack_udp_oversize,
             _ => &self.dropped,
         }
     }

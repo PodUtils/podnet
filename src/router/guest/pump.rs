@@ -179,6 +179,17 @@ impl Pump {
     }
 
     fn housekeeping(&mut self) {
+        let stack = self.stack.stats();
+        let stats = &self.guest.stats;
+        stats
+            .stack_udp_rx_dropped
+            .store(stack.udp_rx_dropped, Ordering::Relaxed);
+        stats
+            .stack_udp_tx_dropped
+            .store(stack.udp_tx_dropped, Ordering::Relaxed);
+        stats
+            .stack_udp_oversize
+            .store(stack.udp_oversize, Ordering::Relaxed);
         self.tcp_housekeeping();
         self.udp_housekeeping();
     }

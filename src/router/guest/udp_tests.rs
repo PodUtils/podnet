@@ -4,7 +4,7 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use super::kit::*;
-use super::udp::{MAX_PAYLOAD, QUEUE};
+use super::udp::QUEUE;
 
 const DST: &str = "93.184.216.34";
 
@@ -100,13 +100,14 @@ async fn guest_wire_udp_has_a_bounded_queue() {
     );
     assert!(dropped > 0, "no datagram counted");
     assert!(got.windows(2).all(|w| w[0] < w[1]), "the order changed");
-    // Each datagram is in the way, in the counter, or lost in the stack
-    // before the router read it (PodUtils/podnet#464, ask 3): with a reader
-    // that never waits, the stack loses few.
-    let lost_in_the_stack = u64::from(SENT) - got.len() as u64 - dropped;
-    assert!(
-        lost_in_the_stack < 128,
-        "the stack lost {lost_in_the_stack}"
+    // Each datagram is in the way, in a counter of the router, or in a counter
+    // of the stack (`stack_udp_rx_dropped`, PodUtils/podnet#464, ask 3).
+    let in_stack = stats.stack_udp_rx_dropped.load(Ordering::Relaxed);
+    assert_eq!(
+        u64::from(SENT),
+        got.len() as u64 + dropped + in_stack,
+        "way {} + router {dropped} + stack {in_stack}",
+        got.len()
     );
 }
 
@@ -133,7 +134,7 @@ async fn guest_wire_udp_carries_a_datagram_over_the_mtu() {
         );
     }
     assert_eq!(rig.stats().udp_oversize.load(Ordering::Relaxed), 0);
-    rig.a.udp.arrive(dst, vec![7u8; MAX_PAYLOAD + 13]);
+    rig.a.udp.arrive(dst, vec![7u8; 65507 + 13]);
     count("oversize", &rig.stats().udp_oversize, 1).await;
     let none = tokio::time::timeout(Duration::from_millis(500), socket.recv_from(&mut buf)).await;
     assert!(none.is_err(), "an oversized datagram reached the guest");

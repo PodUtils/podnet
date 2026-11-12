@@ -1633,12 +1633,15 @@ T-249 is done.
 - The Prove name `guest_wire_udp_has_a_bounded_queue` is for the router. The test of the stack in T-176 is
   `guest_wire_stack_udp_queue_is_bounded_and_silent`.
 
-2026-11-12, T-248 work. Decision on the fragmentation features: on. The features `proto-ipv4-fragmentation`,
-`reassembly-buffer-size-65536` and `fragmentation-buffer-size-65536` are on the `smoltcp` dependency of the root
-crate and of `podnet-vnet`. A datagram of 65507 bytes crosses a guest wire in both directions at MTU 1500 and
-1280. Cost: 128 KiB for each interface of the binary, WARP too. Workspace builds unify the features, and a build
-of `podnet-vnet` alone has them too. The test `guest_wire_udp_over_the_mtu_is_lost_without_fragmentation` (T-176)
-pinned the old loss; it is now `guest_wire_udp_over_the_mtu_is_carried_with_fragmentation`.
+2026-11-12, T-248 work, after v0.28.0. Decision on fragmentation: on, with the feature `ipv4-fragmentation` of
+`pod-netstack` (not the raw features of smoltcp), in the root crate and in `podnet-vnet`. A datagram of 65507
+bytes crosses a guest wire in both directions at MTU 1500 and 1280 (the feature alone is enough for the
+reassembly). Cost: a buffer of 64 KiB for each interface of the binary, WARP too. Workspace builds unify the
+feature, and a build of `podnet-vnet` alone has it too. The test that main held for the refusal
+(`guest_wire_udp_over_the_mtu_is_refused_without_fragmentation`) is now
+`guest_wire_udp_over_the_mtu_is_carried_with_fragmentation`. The asks 3 to 5 are closed in v0.28.0: the router
+uses `max_datagram` and the counters of the stack (`stack_udp_*` in its status). It keeps a queue for each flow,
+because one socket of the stack serves every flow of a port.
 
 ## Done
 
@@ -1653,15 +1656,14 @@ pinned the old loss; it is now `guest_wire_udp_over_the_mtu_is_carried_with_frag
   router reads each stack socket at once. Each flow has a queue of 32 datagrams and counters (`udp_queue_dropped`,
   `udp_oversize`, `udp_refused`), in the status document and the metrics (`podnet_route_guest_*`).
 * Tests (`src/router/guest/tests.rs`, `udp_tests.rs`): `guest_wire_routes_tcp_by_the_rules`,
-  `guest_wire_udp_has_a_bounded_queue`, `guest_wire_dials_before_the_handshake`,
+  `guest_wire_udp_has_a_bounded_queue` (the sum of the datagrams in the way, in the counter of the router and in the counter of the stack is exact), `guest_wire_dials_before_the_handshake`,
   `guest_wire_a_failed_dial_refuses_the_connect`, `guest_wire_a_flow_carries_bytes_and_ends_both_ways`,
   `guest_wire_udp_routes_by_the_rules`, `guest_wire_udp_carries_a_datagram_over_the_mtu`,
   `guest_wire_unix_socket_serves_a_guest_and_the_next`, `guest_wire_screen_drops_what_the_router_does_not_route`,
   `guest_wire_config_names_the_key_that_is_wrong`, `guest_wire_tun_opens_or_the_host_refuses_it` (skips with no TUN).
   Failure shown without the change: no hold (5 TCP tests fail), unbounded queue (`bounded_queue` fails), no
   fragmentation features (`carries_a_datagram_over_the_mtu` fails at 1473).
-* Not done or not proven: asks 3 to 5 of PodUtils/podnet#464 stay open (a datagram that the stack loses before the
-  router reads it is not counted; the test bounds it under 128 of 500). The data path of a real TUN is not
+* Not done or not proven: the data path of a real TUN is not
   proven (the socket pair uses the same `PacketFd`). A veth wire on an existing interface is not done. IPv6, ICMP
   and names (the guest resolves names itself; `domain:` rules do not match) are not routed. The idle end of a UDP
   flow (60 s) has no test. A Linux guest kernel is not tested.
