@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**260 entries: 32 open, 13 partial, 21 blocked, 194 done.**
+**260 entries: 31 open, 13 partial, 21 blocked, 195 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 20 | 6 | 13 | 118 | 157 |
-| P3 | 12 | 6 | 6 | 50 | 74 |
-| **All** | 32 | 13 | 21 | 194 | 260 |
+| P3 | 11 | 6 | 6 | 51 | 74 |
+| **All** | 31 | 13 | 21 | 195 | 260 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -282,7 +282,7 @@ M8 Overlays, M9 Later.
 | [T-234](pods.md) | P2 | S | M5 | defect | done | netns: `parse_tcp_syn` reads a SYN in a header under 20 bytes and in a later fragment |
 | [T-235](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.3`: the dry run, the publish and the release proofs |
 | [T-236](services.md) | P2 | S | M5 | defect | done | `serve --ingress relay --detach` and `git serve --ingress relay --detach` report ready before the node is connected |
-| [T-237](adapters.md) | P3 | M | M4 | feature | open | Front door: an opt-in `--early-reply` answers the client before the upstream connect and pipelines the SOCKS5 upstream handshake (GitHub #428) |
+| [T-237](adapters.md) | P3 | M | M4 | feature | done | Front door: an opt-in `--early-reply` answers the client before the upstream connect and pipelines the SOCKS5 upstream handshake (GitHub #428) |
 | [T-238](fixes.md) | P2 | S | M5 | defect | done | `listen::bind_private`: bind in a private 0700 directory, chmod, then rename into place, so the socket never has a wider mode under its name (GitHub #429) |
 | [T-239](fixes.md) | P2 | M | M5 | defect | done | `install.sh` checks the release tag and reads SHA256SUMS strictly, `podnet update` does the same, and the install tests assert the downloader flags (GitHub #430) |
 | [T-240](fixes.md) | P2 | M | M5 | defect | done | `warp tun --default-route`: keep the resolver backup on disk, restore it after a kill, set the mode of `resolv.conf`, and test the route table with `ip route get` (GitHub #431) |

@@ -575,7 +575,7 @@ table and the parse of the roads). Not proven here: the tunnel and relay roads n
 **Milestone:** M4
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -662,3 +662,40 @@ in `podnet-vnet`). The dial of `pod --serve` is `PodDial` in
 beside `with_default_port`) with a change of the reply order in `handle`, and the upstream client in
 `crates/podnet-netns/src/upstream.rs` (`socks5_handshake`, `socks5_connect`). This correction does
 not do the entry.
+
+## Done
+
+2026-11-12, commit 751a7b1. `podnet pod --serve --early-reply` (default off) answers a SOCKS5 or HTTP CONNECT
+before the dial. `Door::with_early_reply` (`crates/podnet-netns/src/door.rs`) takes the local rule check
+`Admit`; `PodDial::admits` in `crates/podnet-netns/src/frontdoor.rs` gives it from the rules. A target that
+the rules refuse takes the old path: the real answer (`0x02`, `403`). Other targets get the success reply,
+then the door dials and holds at most `EARLY_HOLD` (64 KiB) of the client. A half-close of the client goes to
+the upstream after the held bytes. A failed dial closes the connection. The upstream handshake has the
+orders `Handshake::{Serial, Pipelined, Optimistic}` (`crates/podnet-netns/src/upstream/early.rs`): tier A
+writes the greeting and the request in one write (a hop without a user; the hops in front of the last hop);
+tier B returns the last hop before its two replies (`Unconfirmed`), so that the bytes of the client follow the
+request. A hop with a user, and an HTTP hop, stay serial. The wait for the replies has the 30 s limit.
+`flowlog::refused` writes the line `refused` (target, upstream code), with or without the option. The
+other doors (`net proxy`, `net tailscale`, `route`) and `src/warp/` do not get the flag. `docs/proxies.md`,
+"Early reply", states what the client sees after a failed early reply. The help, the README of
+`podnet-netns` and the llms files are updated.
+Tests (each fails with the change disabled, shown once: 4 of 6 door tests and 2 of 4 pod door tests failed;
+`early_reply_is_off_by_default` and `early_reply_keeps_the_refusal_of_a_rule` guard the old behaviour and pass
+both ways):
+`door::early_tests::` `early_reply_is_off_by_default`, `early_reply_answers_before_the_dial_and_forwards_the_held_bytes`,
+`early_reply_keeps_the_refusal_of_a_rule`, `early_reply_closes_the_connection_when_the_dial_fails`,
+`early_reply_sends_a_half_close_after_the_held_bytes`, `early_reply_holds_at_most_64_kib` (1 MiB sent, the
+writer stops near 64 KiB plus the stream buffer, all 1 MiB arrives in order);
+`frontdoor::early_tests::` `early_reply_cuts_the_round_trips` (a delay of 100 ms each way: 607 ms off, about
+200 ms on), `early_reply_shows_a_refusal_as_a_closed_connection` (code 5), `early_reply_keeps_the_pod_rule_refusal`,
+`early_reply_runs_the_serial_path_for_a_user_hop`; `upstream::early::tests::` 6 tests (one write of the
+greeting and the request, the user hop stays serial, the data behind the request, the refusal code, the
+time limit, the typed refusal); `flowlog::tests::the_refused_line_names_the_target_and_the_code`;
+`tests/pod_early_reply.rs` 3 tests (the `podnet` binary with `--flow-log`: the client gets `0x00` and EOF, the
+log names `refused.example:443` and code 5; without the option the client gets an error code; the flag needs
+`--serve`). `sh scripts/agent/check.sh`: each check 0. `cargo test --workspace --no-fail-fast`: exit 0,
+1493 passed, 0 failed, 2 ignored, in 55 test binaries.
+Not proven: any number on a real satellite or cellular link (the delay is a loopback forwarder); that a
+third-party SOCKS5 server accepts a pipelined greeting and request; the optimistic data behind the request on
+a server that closes on unexpected bytes. The entry said that, without the option, an upstream code 5 gives
+`0x05`; the door gives `0x01` (the failure reply by the words of the text), and the test asserts "not 0".
