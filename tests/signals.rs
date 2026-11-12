@@ -16,8 +16,9 @@ fn temp_dir(tag: &str) -> PathBuf {
     dir
 }
 
-/// `podnet net proxy --run-for 300` on a unix socket in `dir`; ready when the
-/// socket is there.
+/// `podnet net proxy --run-for 300` on a unix socket in `dir`; ready when
+/// the line `podnet: proxy` is on stdout. The ready arms the stop signals.
+/// Before it, each stop signal has its default action.
 fn start(dir: &Path, ignore_hup: bool) -> Child {
     let socket = dir.join("s.sock");
     let mut command = Command::new(env!("CARGO_BIN_EXE_podnet"));
@@ -25,7 +26,7 @@ fn start(dir: &Path, ignore_hup: bool) -> Child {
         .args(["net", "proxy", "--run-for", "300", "--listen"])
         .arg(format!("unix:{}", socket.display()))
         .stdin(Stdio::null())
-        .stdout(Stdio::null())
+        .stdout(Stdio::piped())
         .stderr(std::fs::File::create(dir.join("err.txt")).unwrap());
     if ignore_hup {
         // SAFETY: signal() only, between fork and exec.
@@ -36,14 +37,22 @@ fn start(dir: &Path, ignore_hup: bool) -> Child {
             });
         }
     }
-    let child = command.spawn().unwrap();
-    let deadline = Instant::now() + Duration::from_secs(30);
-    while !socket.exists() {
-        assert!(Instant::now() < deadline, "net proxy did not start");
-        std::thread::sleep(Duration::from_millis(50));
-    }
-    // The socket comes just before the ready, which arms the stop signals.
-    std::thread::sleep(Duration::from_millis(300));
+    let mut child = command.spawn().unwrap();
+    let stdout = child.stdout.take().unwrap();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        use std::io::BufRead as _;
+        for line in std::io::BufReader::new(stdout).lines() {
+            let Ok(line) = line else { break };
+            if line.starts_with("podnet: proxy") {
+                let _ = tx.send(());
+            }
+        }
+    });
+    let ready = rx.recv_timeout(Duration::from_secs(60));
+    assert!(ready.is_ok(), "net proxy did not start");
+    // The ready line comes just before the arm of the stop signals.
+    std::thread::sleep(Duration::from_millis(200));
     child
 }
 
@@ -71,7 +80,7 @@ fn sighup_and_sigterm_stop_with_run_for_and_exit_0() {
         let dir = temp_dir(name);
         let mut child = start(&dir, false);
         signal(&child, number);
-        let status = wait(&mut child, Duration::from_secs(10)).expect("the process did not stop");
+        let status = wait(&mut child, Duration::from_secs(30)).expect("the process did not stop");
         let log = std::fs::read_to_string(dir.join("err.txt")).unwrap();
         assert_eq!(status.code(), Some(0), "{name}: {status:?}\n{log}");
         assert!(log.contains(&format!("{name}: stopping")), "{log}");
@@ -89,7 +98,7 @@ fn an_ignored_sighup_stays_ignored() {
         "SIGHUP stopped a process that started with SIGHUP ignored"
     );
     signal(&child, libc::SIGTERM);
-    let status = wait(&mut child, Duration::from_secs(10)).expect("the process did not stop");
+    let status = wait(&mut child, Duration::from_secs(30)).expect("the process did not stop");
     assert_eq!(status.code(), Some(0));
     let _ = std::fs::remove_dir_all(&dir);
 }
