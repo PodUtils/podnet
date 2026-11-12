@@ -1146,7 +1146,7 @@ to COORD #455). The Approach is done in the commit below.
 
 ## Done
 
-2026-11-12, commit 652b2e9. The facts come from `pod_services::forward` through
+2026-11-12, commit 6aa41b3. The facts come from `pod_services::forward` through
 `crates/podnet-serve/src/relay/facts.rs` (`lookup`, `names`, `dashboards`, `default_facts`) and
 `podnet_core::services::forward_relays`. podnet holds no relay host.
 - Approach 3: `podnet ssh-relay --service NAME` (default `pinggy`) takes the plain SSH endpoints, the user

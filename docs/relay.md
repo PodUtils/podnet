@@ -69,16 +69,24 @@ socket and keeps the session: when the relay ends the session, podnet connects a
 prints the new URL.
 
 ```sh
+podnet ssh-relay --socket /run/user/1000/origin.sock --detach
+podnet ssh-relay --service serveo --socket /run/user/1000/origin.sock --detach
 podnet ssh-relay --server relay.example.net:443 --user podnet \
   --url-skip dashboard.example.net --socket /run/user/1000/origin.sock --detach
 ```
 
-* `--server HOST:PORT` is the SSH server of the relay. Use a port that the egress allows (443 for most
-  proxies). `--user USER` is the SSH user. The relay takes an ephemeral key.
-* The banner of the relay can hold more than one URL. `--url-match TEXT` selects the tunnel URL: it holds
-  this text (the tunnel domain of the relay). `--url-skip TEXT` removes a URL: it holds this text (the
-  dashboard of the relay). Both are repeatable. Give one or both. `--url-match` needs each text in the
-  URL, and `--url-skip` needs none.
+* `--service NAME` selects a known relay. Its endpoints, its SSH user and its URL rule are data of
+  `pod-services` (`pod_services::forward`). The default is `pinggy`. An unknown name exits 64 and lists the
+  known relays. podnet holds no relay host.
+* `--server HOST:PORT` replaces the endpoints of the relay. Use a port that the egress allows (443 for most
+  proxies). With `--server` and no `--service`, the relay is not a known one: give `--user` and a URL rule
+  (else exit 64). Without `--server`, podnet tries the plain SSH endpoints of the relay in order, and goes
+  to the next endpoint on a transport error only.
+* `--user USER` replaces the SSH user of the facts. The relay takes an ephemeral key.
+* The banner of the relay can hold more than one URL, and a URL can cross two data frames. podnet reads the
+  whole banner, then picks the URL. `--url-match TEXT` selects the tunnel URL: it holds this text (the
+  tunnel domain of the relay). `--url-skip TEXT` removes a URL: it holds this text. Both are repeatable,
+  and each replaces its list of the facts. The default skip list holds the dashboards of all known relays.
 * `--socket PATH` is the unix socket of the origin. The relay opens one channel for each visitor, and
   podnet connects it to this socket. The origin must listen on the socket before the first visitor comes.
   The default is `origin.sock` in the private run directory of this user.
