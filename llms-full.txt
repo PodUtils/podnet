@@ -1413,6 +1413,13 @@ COMMANDS
             The form of the log on stderr: text, or json (one object for each
             line). Default: text. Values: text, json.
 
+        Examples:
+        Open one stream of the link to the peer for each connection to
+        127.0.0.1:8080, for the service http of the peer. A running link
+        connect or link listen instance holds the link (PODNET_LINK_CONTROL
+        names its control socket).
+            $ podnet forward -L 8080=peer:FINGERPRINT/http
+
     podnet route [OPTIONS]
         A router of networks, groups, doors and guest wires (a guest uses the
         router as its gateway) from a config file (--config FILE), with health
@@ -9416,9 +9423,10 @@ EXAMPLES
         --control /run/user/1000/link.ctl --detach --name peer1
 
     Open one stream of the link to the peer for each connection to
-    127.0.0.1:8080, for the service http of the peer.
-        $ PODNET_LINK_CONTROL=/run/user/1000/link.ctl podnet forward -L
-        8080=peer:FINGERPRINT/http
+    127.0.0.1:8080, for the service http of the peer. A running link connect
+    or link listen instance holds the link (PODNET_LINK_CONTROL names its
+    control socket).
+        $ podnet forward -L 8080=peer:FINGERPRINT/http
 
     One JSON line about this host, for a program.
         $ podnet status

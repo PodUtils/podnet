@@ -589,8 +589,8 @@ pub const EXAMPLES: &[Example] = &[
         meaning: "Hold a link to a listener and run a control socket for it.",
     },
     Example {
-        command: "PODNET_LINK_CONTROL=/run/user/1000/link.ctl podnet forward -L 8080=peer:FINGERPRINT/http",
-        meaning: "Open one stream of the link to the peer for each connection to 127.0.0.1:8080, for the service http of the peer.",
+        command: "podnet forward -L 8080=peer:FINGERPRINT/http",
+        meaning: "Open one stream of the link to the peer for each connection to 127.0.0.1:8080, for the service http of the peer. A running link connect or link listen instance holds the link (PODNET_LINK_CONTROL names its control socket).",
     },
     Example {
         command: "podnet status",

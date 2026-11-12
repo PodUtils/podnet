@@ -329,7 +329,7 @@ Not proven: the hello over a real TCP carrier (T-268 has its own handshake); the
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -367,6 +367,17 @@ sh scripts/agent/check.sh
 
 T-261, T-262 and T-265 are done.
 
+## Correction
+
+2026-11-12: the entry says that the dialer "opens one session stream for the service", but no process held a link for another process to use, and the hello binds no service. The entry builds both. (1) The first line of a stream names the service (`PNSVC1 NAME`), and the other end answers with one byte before any data (`src/link_service.rs`; `link listen --service NAME=TARGET`, `--to` is the service `raw`; `link dial --service NAME`). (2) `podnet link connect` holds a link as the dialer and runs the control socket of T-267. The control socket has the verbs `peer` (check the link) and `open` (the connection becomes the bytes of one stream); they are the way for `forward`, which is another process, to reach the link. These two verbs are not the write verbs of T-307. (3) `peer:FINGERPRINT/SERVICE` is a peer way (`Addressing::Peer`). A consumer of destinations refuses it (`forward --network peer:...` exits 64), so `forward` takes the form `-L LISTEN=peer:FINGERPRINT/SERVICE`. The form `--name` of the issue needs names for live links (T-308). (4) The instance is found by `PODNET_LINK_CONTROL` (one socket), else by the `control` of the ready document of each link instance in the run directory.
+
+## Done
+
+2026-11-12, commits fa84e60 and 4ec4c5d. The registry has the scheme `peer` (`src/networks.rs`, `src/networks/peer.rs`; form `peer:FINGERPRINT/SERVICE`; the fingerprint is any form that an allow list takes; a bad spec exits 64; `peer:PORT` stays the SOCKS5 hop of a host named peer). `up()` asks a running instance to check the link first: a link to a peer that is not the fingerprint exits 77 and no stream opens; no instance, or no link that is up, exits 69. A dial opens one stream through the control socket and asks the far end for the service; a service that the far end lacks or whose origin does not answer is a failure of that dial (69 class) and the link stays up. `podnet forward -L LISTEN=peer:FINGERPRINT/SERVICE` (TCP or `unix:` listener) opens one stream for each accepted connection; the check runs before the listener binds. `podnet link connect`, `link listen --service`, `link dial --service`.
+`cargo test --test link_network`: 4 passed (`a_peer_network_reaches_a_far_unix_origin_and_refuses_a_stranger_with_77` over the memory carrier, `a_peer_spec_names_the_fingerprint_and_the_service`, `a_bad_peer_spec_is_a_usage_failure`, `the_registry_has_a_row_for_the_scheme_peer`). `cargo test --test link_forward_peer`: 8 passed over the unix carrier, among them `a_forward_through_a_peer_reaches_a_far_unix_origin`, `one_stream_opens_for_each_accepted_connection` (5 connections at one time, the counter `opened` is 5, then 6), `a_peer_that_is_not_the_named_fingerprint_exits_77_before_it_listens`, `no_instance_that_runs_exits_69`, `a_service_that_the_peer_lacks_closes_the_connection_and_the_forward_stays`, `a_tcp_forward_reaches_a_service_of_a_peer` (it needs a loopback and prints a named skip without one). `cargo test --lib forwards::`: 7 passed, among them `a_rule_to_a_peer_keeps_the_spec_and_the_port_0_target`. Fail first: before the registry row, 3 of the 4 tests of `link_network` failed (no row `peer`; the spec parsed as a SOCKS5 hop; no way); before the change of `forward`, 6 of the 8 tests of `link_forward_peer` failed (`-L ...=peer:...` gave "give HOST:PORT after =").
+Not proven: a peer over a carrier that crosses a network (T-268); the form `--name` (T-308); a second instance that holds a link to the same peer (the first that answers wins); the services of E5 beyond `--service` (T-291 to T-297); a stream that the listener opens to the connector (the connector closes it).
+
+
 # T-267: link: the control socket, its discipline and the status verb (GitHub #466)
 
 **Source:** GitHub #466 (https://github.com/PodUtils/podnet/issues/466), row E0-6.
@@ -374,7 +385,7 @@ T-261, T-262 and T-265 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -410,6 +421,17 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-262 is done.
+
+## Correction
+
+2026-11-12: the control socket lives in the root crate (`src/link_ctl.rs`, `src/link_ctl/client.rs`), not in a link crate: T-262 built the link in `podnet::link` over `pod-link`. The socket also has the verbs `peer` and `open`, which T-266 needs so that `forward` (another process) can reach a link; the write verbs (T-307) and `dump` (T-309) plug in at `Hub::verb`. The token is in `PATH.token` (mode 0600), not in the ready document or in `ps`. A host with no run directory runs with no socket unless `--control PATH` is given.
+
+## Done
+
+2026-11-12, commits fa84e60 and 4ec4c5d. `podnet link listen` and `link connect` run the control socket (`--control PATH`, default `link-PID.ctl` in the run directory): mode 0600 through `bind_private`, a token of 32 random bytes in hex for each run in `PATH.token` (mode 0600), the uid check of the router (`peer_allowed`: the user of the instance, or root), one JSON object for each line, a request of 4 KiB at most, an answer of 64 KiB at most, 16 clients (the 17th gets code 69), no TCP listener, no HTTP. The verb `status` gives the fingerprint, the pid and a row for each held link (carrier, address, role, peer fingerprint, state, streams, rtt, opened, accepted, since); it holds no seed and no token. A bad or missing token gets code 77 and the client exits 77. `podnet link status` reads the socket of each instance that has one and shows it under `live`; when the socket does not answer it shows the background record (`live: null`, `live_error`); `--control PATH [--token-file FILE]` asks one socket.
+`cargo test --test link_ctl`: 11 passed, among them `the_socket_and_the_token_file_have_mode_0600`, `a_bad_or_missing_token_gets_77_and_a_good_one_gets_status`, `the_client_maps_a_bad_token_to_exit_77`, `a_user_that_the_gate_refuses_gets_77_with_the_right_token`, `a_request_over_4_kib_is_refused_and_a_bad_line_gets_64`, `the_seventeenth_client_is_refused_and_a_closed_one_frees_its_place`, `status_shows_a_held_link_its_peer_and_its_counters_and_no_seed`, `the_listener_runs_a_control_socket_that_status_reads` (a detached listener with a live link; a wrong token file exits 77) and `status_falls_back_to_the_record_when_the_socket_is_gone`. Fail first: before the module the test file did not compile (`unresolved import podnet::link_ctl`); before the change of the commands, the two tests of the commands failed (the ready document had no `control`, and `status` had no `live`). `cargo test --test cli link::`: 19 passed as before.
+Not proven: a client of another uid (the gate is proven with a closure that refuses every uid, and `peer_allowed` is the function of the router); a response that exceeds 64 KiB (the code returns the error answer; no test builds that many links); the verbs of T-307 and T-309.
+
 
 # T-268: link: the TCP carrier with TLS 1.3, the accept side and the peer handshake (GitHub #467)
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**324 entries: 69 open, 17 partial, 23 blocked, 215 done.**
+**324 entries: 67 open, 17 partial, 23 blocked, 217 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 9 | 10 | 127 | 165 |
-| P3 | 50 | 7 | 11 | 60 | 128 |
-| **All** | 69 | 17 | 23 | 215 | 324 |
+| P3 | 48 | 7 | 11 | 62 | 128 |
+| **All** | 67 | 17 | 23 | 217 | 324 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -311,8 +311,8 @@ M8 Overlays, M9 Later.
 | [T-263](link.md) | P3 | M | M9 | feature | done | link: the 10-minute resume of a session through pod-session (GitHub #466) |
 | [T-264](link.md) | P3 | M | M9 | feature | done | link: a registry of carriers with an available() reason (GitHub #466) |
 | [T-265](link.md) | P3 | M | M9 | feature | done | link: the commands listen, dial, status, close and carriers (GitHub #466) |
-| [T-266](link.md) | P3 | M | M9 | feature | open | link: `peer:FINGERPRINT/SERVICE` as a network target and `forward -L LISTEN=peer:...` (GitHub #466 and #471) |
-| [T-267](link.md) | P3 | M | M9 | feature | open | link: the control socket, its discipline and the status verb (GitHub #466) |
+| [T-266](link.md) | P3 | M | M9 | feature | done | link: `peer:FINGERPRINT/SERVICE` as a network target and `forward -L LISTEN=peer:...` (GitHub #466 and #471) |
+| [T-267](link.md) | P3 | M | M9 | feature | done | link: the control socket, its discipline and the status verb (GitHub #466) |
 | [T-268](link.md) | P3 | L | M9 | feature | open | link: the TCP carrier with TLS 1.3, the accept side and the peer handshake (GitHub #467) |
 | [T-269](link.md) | P3 | M | M9 | feature | open | link: the WebSocket carrier, its server half and its wrapper (GitHub #467) |
 | [T-270](link.md) | P3 | M | M9 | feature | open | link: the HTTP/2 carrier with one bidirectional POST (GitHub #467) |
