@@ -173,11 +173,11 @@ fn seccomp_backend_sends_a_mapped_loopback_direct() {
             .output()
             .is_err()
     {
-        eprintln!("skipping: no python3 or no SECCOMP_RET_USER_NOTIF");
+        test_host::skip_line("no python3 or no SECCOMP_RET_USER_NOTIF");
         return;
     }
     if std::net::TcpListener::bind("[::1]:0").is_err() {
-        eprintln!("skipping: no IPv6 sockets on this host");
+        test_host::skip_line("no IPv6 sockets on this host (T-317)");
         return;
     }
     let dir = tempfile::tempdir().unwrap();
