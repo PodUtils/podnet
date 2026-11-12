@@ -158,7 +158,7 @@
 453 issue closed
 454 issue closed
 455 issue closed
-456 issue open
+456 issue closed
 457 issue closed
 458 issue closed
 459 issue closed
