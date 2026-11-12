@@ -84,10 +84,13 @@ podnet serve --check --dir ./site --spa
 podnet tunnel --check --json --config config.yml | jq -e .ok
 ```
 
-The exit codes follow sysexits.h: 64 for a bad command line, 69 when a
-service or a network path is not available (no edge leg worked), 78 for a
-bad configuration (for example `PODNET_EDGE`). `podnet man exit-status` gives all
-of them.
+The exit codes follow sysexits.h: 64 for a bad command line, 66 when a file
+that must exist is missing (the key or the allow list of the link), 69 when a
+service or a network path is not available (no edge leg worked), 71 when a
+file of the host cannot be used (a key file with a mode that is not 0600), 77
+when a peer is not in the allow list of the link, 78 for a bad configuration
+(for example `PODNET_EDGE`). 68 is for an address of a peer that does not
+resolve. `podnet man exit-status` gives all of them.
 
 `PODNET_ERROR_PROGRAM=/path/to/program` gives a JSON report of each failure
 (version, system, command, exit code, the last 64 log lines) to that program

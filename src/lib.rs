@@ -82,6 +82,7 @@ pub mod fetch;
 #[doc(hidden)]
 pub mod forwards;
 pub mod fuzzing;
+pub mod identity;
 pub mod link;
 pub mod manual;
 pub mod networks;
@@ -95,6 +96,7 @@ pub mod roads;
 pub mod router;
 #[cfg(test)]
 mod serve_tests;
+pub mod session;
 pub mod status;
 #[cfg(test)]
 #[path = "../tests/test_host/mod.rs"]

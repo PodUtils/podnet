@@ -122,8 +122,12 @@ fn connector_profile_is_pinned() {
             (1, "failure"),
             (3, "no-backend"),
             (64, "usage"),
+            (66, "no-input"),
+            (68, "no-host"),
             (69, "unavailable"),
+            (71, "os-error"),
             (75, "tempfail"),
+            (77, "no-permission"),
             (78, "config"),
             (124, "timeout"),
         ]

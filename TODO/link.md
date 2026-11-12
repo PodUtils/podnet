@@ -14,7 +14,7 @@ copy the code of the crate (`CLAUDE.md`, Project).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -54,13 +54,20 @@ cargo test --test link_identity
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-PodUtils/podcrates must release `pod-identity` with its hand-off `adoption/podnet/pod-identity.patch` (T-086, T-137). A COORD issue (to podcrates) asks for the display form of the fingerprint (ask A1). It unblocks when the release and the answer exist.
-
 ## Start condition
 
-T-086 is done (the take of `pod-identity`).
+None. `pod-identity` is in podcrates v0.32.0, the tag podnet takes.
+
+## Correction
+
+2026-11-12: the Blocker was wrong. A hand-off patch exists only when podcrates moves podnet code into a crate. `sh scripts/agent/podcrates.sh` shows no block `repo PodUtils/podnet` for `pod-identity`, `pod-session` or `pod-e2e`, so podnet holds no code to replace, and no hand-off comes. The Blocker and the Start condition (T-086) are gone. `pod-identity` v0.32.0 holds the key files (`file::load_in`, `existing_in`), the allow list (`allow::Allowlist`), and the display form (`DisplayFingerprint::{of, parse, matches}`, `PublicKey::display_fingerprint`); ask A1 is answered. The entry is `open`. The allow list of `pod-identity` has no limit of entries and no display-form line: podnet wraps it (a limit of 4096 and a line in the display form) and asks podcrates to take both (ask A11, below).
+
+## Done
+
+2026-11-12, commit b33718d. `Cargo.toml` takes `pod-identity` (tag v0.32.0, version 0.32.0). `src/identity.rs` (`podnet::identity`) is the glue: `create` and `open` keep one key for each install in the state directory (`link-identity.key`, mode 0600, made on first use); a key file with a wider mode exits 71 and is not replaced; `open` with no key exits 66. `Identity::fingerprint` is the display form of `pod-identity` (base32, five groups of eight characters, a checksum). `AllowList` is default deny, holds 4096 entries at most (the 4097th entry exits 78), reads the display form, the `SHA256:` form and the key in hex or base32, and `check` exits 77 for a peer that it does not hold. `AllowList::read` exits 66 for a missing file and 71 for a file that others can change. `Identity` has a `Debug` output with no seed, and `Report` (for `--json`) has no seed. `podnet_core::exit` has the new codes 66 (`no-input`), 68 (`no-host`), 71 (`os-error`) and 77 (`no-permission`) in `TABLE` and in `Fault` (`NoInput`, `NoHost`, `OsError`, `NoPermission`); `docs/cli.md`, `docs/protocol.md` and `docs/library.md` have them. 68 has no user yet (T-264, T-266, T-268 and T-274 use it).
+`cargo test --test link_identity`: 13 passed, among them `a_key_with_the_mode_0644_exits_71`, `a_missing_key_exits_66`, `a_wrong_peer_exits_77`, `the_allow_list_holds_4096_entries_at_most`, `the_seed_is_never_shown`, `the_table_of_exit_codes_lists_66_68_71_and_77`. Before the module the test file did not compile (`unresolved import podnet::identity`). With the mode check, the entry limit and the class 77 disabled, 4 tests failed (the mode, the limit, the default deny and the wrong peer).
+Not proven: the check in a real handshake before any service (the handshake is T-268; `AllowList::check` is the call it makes); a command that prints the fingerprint (T-265); the write of the allow list by a command. Ask A11 for podcrates: `pod-identity::allow::Allowlist` takes a limit of entries and the display form on a line, so that podnet drops its wrapper.
+
 
 # T-262: link: the session of streams with credit flow control and keepalive (GitHub #466)
 
@@ -142,7 +149,7 @@ Not proven: the 1 MiB resume digest (T-263); the docs; a link over a real carrie
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -178,13 +185,20 @@ cargo test --test link_session -- resume
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-PodUtils/podcrates must release `pod-session` with its hand-off (T-086, T-137). Ask A2 (COORD to podcrates) fixes the settings. It unblocks when the release exists.
-
 ## Start condition
 
-T-262 is done, and T-086 is done (the take of `pod-session`).
+T-262 is done (the link over a carrier).
+
+## Correction
+
+2026-11-12: the Blocker was wrong. A hand-off patch exists only when podcrates moves podnet code into a crate. `sh scripts/agent/podcrates.sh` shows no block `repo PodUtils/podnet` for `pod-session`, so no hand-off comes. `pod-session` v0.32.0 is in the tag that podnet takes. `Settings::resume_deadline` is the window (600 s, `resume::RESUME_DEADLINE`). Ask A2, part 1, is answered: map `REFUSE` `UNKNOWN_SESSION` to `ResumeExpired`. A link over the application side of a session crosses the loss of its carrier when `dead_after` of the link takes the `resume_deadline`. The Blocker and the Start condition (T-086) are gone. The entry is `open`.
+
+## Done
+
+2026-11-12, commit 75b49ba. `Cargo.toml` takes `pod-session` (tag v0.32.0, version 0.32.0). `src/session.rs` (`podnet::session`) is the glue. `Session::dial` starts a session on a first carrier and runs the link of T-262 over its application side; `connect` gives a new carrier after each loss. `Far::accept` takes each carrier: a new session gives a `Link`, a resume joins its session. `RESUME_WINDOW` is `pod-session`'s `resume_deadline`, 600 s, at both sides (`session::settings`). `link_settings` sets `dead_after` of the link to the window, so that the link does not end as dead before the window ends. After the window, `Session::finish` returns `ResumeExpired` (exit 69) for a `GaveUp` of `pod-session` ("no such session" at the far end, or "no new link within N s" at the dialer) and for a `REFUSE` `UNKNOWN_SESSION`. `scripts/check-layers.py` puts `identity` and `session` in the layer `podnet`. The clock of the far end is the `now` of `Far::expire_at`, as in `pod-session`.
+`cargo test --test link_session -- resume`: 4 passed: `resume_inside_the_window_carries_one_mebibyte_with_an_equal_digest` (a carrier cut at 300 KB, 5 s before the end of the window the far end keeps the session, the resume carries 1 MiB each way with an equal SHA-256), `resume_after_the_window_is_refused_with_resume_expired` (the far end clock runs 601 s, the far end forgets the session, the resume gives `ResumeExpired` with window 600 s, exit 69), `resume_expires_at_the_client_when_no_carrier_comes` (window 2 s), `the_window_is_ten_minutes_and_the_link_outlives_it`. Before the module the test file did not compile (`unresolved import podnet::session`). With `expired()` returning `None` and `dead_after` unchanged, 3 of the 4 tests failed.
+Not proven: a resume over a real carrier (the tests use duplex streams); the single-use token (the record layer, T-301); a CLI command (T-265). Ask A12 for podcrates: a typed cause in `End::GaveUp` (podnet reads its text now); ask A13: the single-use of the secret as a `Settings` value. One observation: when the dialer application does not read a stream, the transfer stopped after about 64 KiB in a test (the test reads, and passes); this is not analysed (T-262 proves a stalled reader for the link alone).
+
 
 # T-264: link: a registry of carriers with an available() reason (GitHub #466)
 

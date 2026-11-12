@@ -8605,14 +8605,27 @@ EXIT STATUS
     64 (usage)
         A bad command line: an unknown command or flag, a missing or bad
         value. Nothing was done.
+    66 (no-input)
+        A file that must exist is missing: the key of the link where a command
+        needs an existing key, or the allow list of the link.
+    68 (no-host)
+        The address of a peer does not resolve.
     69 (unavailable)
         A service or a network path is not available: no edge leg worked, the
         quick-tunnel service, the WARP API or the MASQUE endpoint did not
         answer.
+    71 (os-error)
+        A file of the host cannot be used: a key file or an allow list with a
+        mode that lets other users change it (the key: any access), a symbolic
+        link in place of the file, or a file of another user. The file is not
+        replaced.
     75 (tempfail)
         The quick-tunnel service refused a provision for now (HTTP 429): the
         error report (PODNET_ERROR_PROGRAM) has retry_after_s. Also: --detach
         lost the pipe to the command that started it. Try again later.
+    77 (no-permission)
+        A peer is not in the allow list of the link (default deny). Nothing of
+        a service was offered to it.
     78 (config)
         A configuration that cannot be used: a variable of the environment
         such as PODNET_EDGE, a configuration file given with --config, a
@@ -11347,10 +11360,13 @@ podnet serve --check --dir ./site --spa
 podnet tunnel --check --json --config config.yml | jq -e .ok
 ```
 
-The exit codes follow sysexits.h: 64 for a bad command line, 69 when a
-service or a network path is not available (no edge leg worked), 78 for a
-bad configuration (for example `PODNET_EDGE`). `podnet man exit-status` gives all
-of them.
+The exit codes follow sysexits.h: 64 for a bad command line, 66 when a file
+that must exist is missing (the key or the allow list of the link), 69 when a
+service or a network path is not available (no edge leg worked), 71 when a
+file of the host cannot be used (a key file with a mode that is not 0600), 77
+when a peer is not in the allow list of the link, 78 for a bad configuration
+(for example `PODNET_EDGE`). 68 is for an address of a peer that does not
+resolve. `podnet man exit-status` gives all of them.
 
 `PODNET_ERROR_PROGRAM=/path/to/program` gives a JSON report of each failure
 (version, system, command, exit code, the last 64 log lines) to that program
@@ -11398,6 +11414,16 @@ handle.shutdown().await;
 * `podnet::warp::WarpClient` registers a device and opens a `WarpStack`, which
   has `tcp_connect` and `udp_bind` through the tunnel.
 * `podnet::vnet::NetStack` is the userspace IP stack.
+* `podnet::identity` keeps the Ed25519 key of an install in the state directory
+  (`link-identity.key`, mode 0600) and shows its fingerprint in base32 in five
+  groups of eight characters with a checksum. `AllowList` is the list of peers:
+  default deny, 4096 entries at most, one fingerprint on each line. A key file
+  with a wide mode exits 71, a missing key or list exits 66, and a peer that
+  the list refuses exits 77 (`AllowList::check`). The seed is never printed,
+  logged or put in JSON (`Identity::report`).
+* `podnet::session` carries a link over the resumable layer `pod-session`. A
+  link survives the loss of its carrier for 10 minutes (`RESUME_WINDOW`). A
+  resume after the window fails with `ResumeExpired`, which exits 69.
 * `podnet_netns::main_with_args` runs the command line of `podnet pod`. The modules
   `podnet_netns::upstream`, `socks`, `dns` and `tailscale` are also public.
 
@@ -11997,8 +12023,12 @@ The list is `podnet man exit-status`. An error with no class exits 1.
 | 1 | `failure` |
 | 3 | `no-backend` |
 | 64 | `usage` |
+| 66 | `no-input` |
+| 68 | `no-host` |
 | 69 | `unavailable` |
+| 71 | `os-error` |
 | 75 | `tempfail` |
+| 77 | `no-permission` |
 | 78 | `config` |
 | 124 | `timeout` |
 

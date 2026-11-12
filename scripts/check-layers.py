@@ -64,7 +64,7 @@ LAYER = {
     "doctor": "podnet", "preflight": "podnet", "agent": "podnet", "agent_files": "podnet",
     "status": "podnet", "bug_report": "podnet", "manual": "podnet",
     "update": "podnet", "fuzzing": "podnet", "lib": "podnet", "networks": "podnet", "roads": "podnet", "forwards": "podnet", "router": "podnet",
-    "test_host": "podnet", "link": "podnet", "carriers": "podnet", "services": "core", "main": "podnet",
+    "test_host": "podnet", "link": "podnet", "carriers": "podnet", "identity": "podnet", "session": "podnet", "services": "core", "main": "podnet",
     "cli": "podnet",
     # The modules of crates/podnet-core that are new there.
     "build": "core", "network": "core",

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**323 entries: 70 open, 20 partial, 25 blocked, 208 done.**
+**323 entries: 70 open, 20 partial, 23 blocked, 210 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 9 | 10 | 127 | 165 |
-| P3 | 51 | 10 | 13 | 53 | 127 |
-| **All** | 70 | 20 | 25 | 208 | 323 |
+| P3 | 51 | 10 | 11 | 55 | 127 |
+| **All** | 70 | 20 | 23 | 210 | 323 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -306,9 +306,9 @@ M8 Overlays, M9 Later.
 | [T-258](fixes.md) | P3 | S | M5 | docs | done | Docs: stale or misleading comments and records (GitHub #459) |
 | [T-259](fixes.md) | P2 | M | M5 | docs | done | The user documentation by topic: a short README and one document for each area |
 | [T-260](fixes.md) | P2 | M | M5 | feature | done | doctor: probes for the lanes `masque_udp443` and `ws_upgrade` (GitHub #461, A-C-10) |
-| [T-261](link.md) | P3 | M | M9 | feature | blocked | link: an Ed25519 key for each install, its fingerprint and an allow list (GitHub #466) |
+| [T-261](link.md) | P3 | M | M9 | feature | done | link: an Ed25519 key for each install, its fingerprint and an allow list (GitHub #466) |
 | [T-262](link.md) | P3 | L | M9 | feature | partial | link: the session of streams with credit flow control and keepalive (GitHub #466) |
-| [T-263](link.md) | P3 | M | M9 | feature | blocked | link: the 10-minute resume of a session through pod-session (GitHub #466) |
+| [T-263](link.md) | P3 | M | M9 | feature | done | link: the 10-minute resume of a session through pod-session (GitHub #466) |
 | [T-264](link.md) | P3 | M | M9 | feature | partial | link: a registry of carriers with an available() reason (GitHub #466) |
 | [T-265](link.md) | P3 | M | M9 | feature | open | link: the commands listen, dial, status, close and carriers (GitHub #466) |
 | [T-266](link.md) | P3 | M | M9 | feature | open | link: `peer:FINGERPRINT/SERVICE` as a network target and `forward -L LISTEN=peer:...` (GitHub #466 and #471) |

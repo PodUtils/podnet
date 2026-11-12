@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 323 entries: 70 open, 20 partial, 25 blocked, 208 done.
+`TODO/INDEX.md` holds 323 entries: 70 open, 20 partial, 23 blocked, 210 done.
 
 ## State
 
@@ -71,8 +71,8 @@ not wait for a larger one.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-320
     (`pod-devtunnel`), T-321 (`pod-turn`); T-163 is
-    partial (its edge leg waits for `pod-cloudflare`); and the link entries T-261, T-263, T-298, T-294, T-295.
-12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-261 to T-311 in `TODO/link.md`, in the order of the entries (E0 first). Start with T-262 (the session) and the carrier that runs on a restricted host, T-274. Then T-264, T-265, T-266 and T-267 (E0), the stream carriers (T-268 to T-274), the ARQ and the datagram carriers (T-276 to T-280), the record layer (T-298 to T-301), the mesh (T-285 to T-290), the services (T-291 to T-297), the rest of E3 and E7 to E10. The features entry T-311 goes before each optional carrier. Blocked: T-261 and T-263 (the takes of `pod-identity` and `pod-session`, T-086), T-298 (`pod-e2e`, T-086), T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
+    partial (its edge leg waits for `pod-cloudflare`); and the link entries T-298, T-294, T-295.
+12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-262 to T-311 in `TODO/link.md`, in the order of the entries (E0 first). Start with T-262 (the session) and the carrier that runs on a restricted host, T-274. Then T-264, T-265, T-266 and T-267 (E0), the stream carriers (T-268 to T-274), the ARQ and the datagram carriers (T-276 to T-280), the record layer (T-298 to T-301), the mesh (T-285 to T-290), the services (T-291 to T-297), the rest of E3 and E7 to E10. The features entry T-311 goes before each optional carrier. Blocked: T-298 (`pod-e2e`, T-086), T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).

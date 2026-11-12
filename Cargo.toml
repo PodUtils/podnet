@@ -111,6 +111,12 @@ pod-relay = { git = "https://github.com/PodUtils/podcrates", tag = "v0.32.0", ve
 # keepalive, and the carriers (unix, memory) behind one trait. The glue is
 # src/link.rs, the registry of the carriers src/carriers.rs.
 pod-link = { git = "https://github.com/PodUtils/podcrates", tag = "v0.32.0", version = "0.32.0" }
+# The key of an install (call C118): the Ed25519 seed in a key file, the
+# fingerprints, the allow list. The glue is src/identity.rs.
+pod-identity = { git = "https://github.com/PodUtils/podcrates", tag = "v0.32.0", version = "0.32.0" }
+# The resumable layer (T-263): offsets that never reset, a 256-bit secret
+# and the 10-minute window. The glue is src/session.rs.
+pod-session = { git = "https://github.com/PodUtils/podcrates", tag = "v0.32.0", version = "0.32.0" }
 anyhow = "1"
 axum ={ version = "0.8", features = ["multipart"] }
 base64 = "0.23"

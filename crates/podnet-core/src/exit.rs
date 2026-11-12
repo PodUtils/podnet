@@ -7,8 +7,14 @@
 //! podnet from the failure of another program:
 //!
 //! * 64 (`EX_USAGE`): a bad command line, before podnet does anything.
+//! * 66 (`EX_NOINPUT`): a file that must exist is missing: the key of the
+//!   link, or its allow list.
+//! * 68 (`EX_NOHOST`): the address of a peer does not resolve.
 //! * 69 (`EX_UNAVAILABLE`): a service or a network path is not available:
 //!   the edge, the quick-tunnel service, the WARP API or its MASQUE endpoint.
+//! * 71 (`EX_OSERR`): a file of the host cannot be used: a key file with a
+//!   wide mode, a link instead of a file, or a file of another user.
+//! * 77 (`EX_NOPERM`): a peer that the allow list does not admit.
 //! * 78 (`EX_CONFIG`): a configuration that cannot be used: a variable of the
 //!   environment (for example `PODNET_EDGE`) or a configuration file.
 //!
@@ -29,6 +35,14 @@ pub enum Fault {
     TempFail,
     /// A wait ended at its time limit (124, as timeout(1)).
     Timeout,
+    /// A file that must exist is missing (66).
+    NoInput,
+    /// The address of a peer does not resolve (68).
+    NoHost,
+    /// A file of the host cannot be used (71).
+    OsError,
+    /// A peer that the allow list does not admit (77).
+    NoPermission,
 }
 
 impl Fault {
@@ -40,6 +54,10 @@ impl Fault {
             Fault::Config => CONFIG,
             Fault::TempFail => TEMPFAIL,
             Fault::Timeout => TIMEOUT,
+            Fault::NoInput => NO_INPUT,
+            Fault::NoHost => NO_HOST,
+            Fault::OsError => OS_ERROR,
+            Fault::NoPermission => NO_PERM,
         }
     }
 }
@@ -48,7 +66,15 @@ pub const SUCCESS: i32 = 0;
 pub const FAILURE: i32 = 1;
 pub const NO_BACKEND: i32 = 3;
 pub const USAGE: i32 = 64;
+/// A file that must exist is missing (EX_NOINPUT).
+pub const NO_INPUT: i32 = 66;
+/// The address of a peer does not resolve (EX_NOHOST).
+pub const NO_HOST: i32 = 68;
 pub const UNAVAILABLE: i32 = 69;
+/// A file of the host cannot be used (EX_OSERR).
+pub const OS_ERROR: i32 = 71;
+/// A peer that the allow list does not admit (EX_NOPERM).
+pub const NO_PERM: i32 = 77;
 pub const CONFIG: i32 = 78;
 /// A refusal for now (EX_TEMPFAIL): a quick-tunnel provision with HTTP
 /// 429 (issue 210), or `--detach` lost the pipe to its parent.
@@ -87,14 +113,34 @@ pub const TABLE: &[ExitCode] = &[
         meaning: "A bad command line: an unknown command or flag, a missing or bad value. Nothing was done.",
     },
     ExitCode {
+        code: NO_INPUT,
+        name: "no-input",
+        meaning: "A file that must exist is missing: the key of the link where a command needs an existing key, or the allow list of the link.",
+    },
+    ExitCode {
+        code: NO_HOST,
+        name: "no-host",
+        meaning: "The address of a peer does not resolve.",
+    },
+    ExitCode {
         code: UNAVAILABLE,
         name: "unavailable",
         meaning: "A service or a network path is not available: no edge leg worked, the quick-tunnel service, the WARP API or the MASQUE endpoint did not answer.",
     },
     ExitCode {
+        code: OS_ERROR,
+        name: "os-error",
+        meaning: "A file of the host cannot be used: a key file or an allow list with a mode that lets other users change it (the key: any access), a symbolic link in place of the file, or a file of another user. The file is not replaced.",
+    },
+    ExitCode {
         code: TEMPFAIL,
         name: "tempfail",
         meaning: "The quick-tunnel service refused a provision for now (HTTP 429): the error report (PODNET_ERROR_PROGRAM) has retry_after_s. Also: --detach lost the pipe to the command that started it. Try again later.",
+    },
+    ExitCode {
+        code: NO_PERM,
+        name: "no-permission",
+        meaning: "A peer is not in the allow list of the link (default deny). Nothing of a service was offered to it.",
     },
     ExitCode {
         code: CONFIG,
@@ -193,7 +239,15 @@ mod tests {
 
     #[test]
     fn each_class_has_a_row_of_the_table() {
-        for class in [Fault::Usage, Fault::Unavailable, Fault::Config] {
+        for class in [
+            Fault::Usage,
+            Fault::Unavailable,
+            Fault::Config,
+            Fault::NoInput,
+            Fault::NoHost,
+            Fault::OsError,
+            Fault::NoPermission,
+        ] {
             assert!(TABLE.iter().any(|row| row.code == class.code()));
         }
         let mut codes: Vec<i32> = TABLE.iter().map(|r| r.code).collect();
