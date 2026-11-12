@@ -113,11 +113,15 @@ sh scripts/agent/check.sh
 
 ## Blocker
 
-The owner, 2026-11-12 (`docs/decisions.md`, Platforms and the link crate): ask podcrates first whether the multiplexer, the carriers and the ARQ go into a shared crate `pod-link` (ask A2, GitHub #479). The entry unblocks with the answer: a take of `pod-link`, or a local crate podnet-link in podnet if podcrates declines.
+The take of `pod-link` of `PodUtils/podcrates` (podcrates T-300; PodUtils/podcrates#88): the multiplexer, the credits and the keepalive are in that crate, over `pod-session`. podcrates writes it when podnet starts the workstream: write a COORD issue (to podcrates) that names the first carrier.
 
 ## Start condition
 
 None. Send ask A2 first. The resume part waits for T-263.
+
+## Correction
+
+2026-11-12: podcrates answered ask A2 (PodUtils/podcrates#88): `pod-link` is a crate of podcrates. No local crate podnet-link. The entries of this file that need the multiplexer, a carrier or the ARQ are takes of `pod-link`.
 
 # T-263: link: the 10-minute resume of a session through pod-session (GitHub #466)
 
