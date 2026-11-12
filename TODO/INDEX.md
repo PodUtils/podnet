@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**311 entries: 73 open, 14 partial, 29 blocked, 195 done.**
+**312 entries: 73 open, 14 partial, 29 blocked, 196 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 20 | 6 | 13 | 118 | 157 |
+| P2 | 20 | 6 | 13 | 119 | 158 |
 | P3 | 53 | 7 | 14 | 51 | 125 |
-| **All** | 73 | 14 | 29 | 195 | 311 |
+| **All** | 73 | 14 | 29 | 196 | 312 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -357,3 +357,4 @@ M8 Overlays, M9 Later.
 | [T-309](link.md) | P3 | M | M9 | feature | open | link: the redacted state dump and bug-report --include-link (GitHub #476) |
 | [T-310](link.md) | P3 | M | M9 | feature | open | link: the component inventory command (GitHub #476) |
 | [T-311](link.md) | P3 | M | M9 | feature | open | link: Cargo features for the link carriers and services (GitHub #476) |
+| [T-312](fixes.md) | P2 | S | M5 | defect | done | tests/signals.rs: the test sends a stop signal before the ready of the command (flaky under load) |

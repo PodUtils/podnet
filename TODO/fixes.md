@@ -4741,3 +4741,40 @@ cargo test -p podnet doctor -- lanes
 - Docs: `docs/protocol.md` section 9, `docs/doctor.md`, `llms-full.txt`.
 
 Tests (each failed first against a stub that returned `unknown`): `doctor::lane_probes::tests::lanes_ws_upgrade_is_ok_on_101`, `lanes_ws_upgrade_fails_on_another_status`, `lanes_ws_upgrade_fails_on_a_tls_fault`, `lanes_ws_upgrade_fails_on_a_closed_port`, `lanes_masque_udp_is_ok_on_any_answer`, `lanes_masque_udp_fails_on_a_refusal`, `lanes_masque_udp_silence_is_a_fail_only_when_udp_is_open_elsewhere`, `lanes_masque_udp_with_a_proxy_is_unknown_and_sends_nothing`, `doctor::tests::the_lanes_hold_the_probes`. `doctor_json_has_the_seven_lanes` (`tests/doctor.rs`) checks both lanes through a test proxy. Not proven: the live edge (a real `ok` or `fail` of both lanes; no network here). The stand-ins answer with a version negotiation packet, not a full QUIC handshake. The edit of the frozen `src/doctor.rs` is a hand-off for podcrates (`pod-services`).
+
+# T-312: tests/signals.rs: the test sends a stop signal before the ready of the command (flaky under load)
+
+**Source:** the lead, 2026-11-12.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The test `tests/signals.rs::sighup_and_sigterm_stop_with_run_for_and_exit_0` failed under load in two full runs of `cargo test --workspace --no-fail-fast` on 2026-11-12 (the process did not stop; the `wait` limit). It passes when it runs alone.
+
+## Premise
+
+- Read: `tests/signals.rs`, `src/cli/signals.rs`, `crates/podnet-core/src/detach.rs` (`arm_stop`, `ready`), `src/cli/cmd/net/proxy.rs`.
+- A command arms its stop signals at `detach::ready` or at its first wait. Before, each stop signal has the default action (issue 91). `net proxy` makes its socket before the ready.
+- Measured: a SIGTERM sent when the socket file exists ends the process by the signal (rc 143) in 4 of 8 runs.
+
+## Approach
+
+1. Make the test wait for the ready line `podnet: proxy` on stdout, not for the socket and a fixed sleep.
+2. Use a limit of 30 s for the stop.
+3. Do not change what the test checks (exit 0, the log line).
+
+## Prove
+
+```sh
+cargo test -q --test signals
+```
+
+## Done
+
+2026-11-12, commit e2dd43f. Cause: the test. `start` waited for the socket file and then slept 300 ms. The socket comes before `detach::ready`, which arms the stop signals. On a loaded host the ready came after the 300 ms, and the stop signal had the default action (exit by the signal, not 0). The code is as designed (issue 91: the default action before the ready). Fix: `start` reads stdout and waits for the line `podnet: proxy`, then waits 200 ms; the stop limit is 30 s; the checks are the same.
+
+Failure rate: before, 0 of about 500 runs under load (40 busy loops, 200 parallel runs; 24 busy loops with 150 runs; one-CPU pinning) failed, so the failure of the full run was not reproduced on demand. The window was shown with a signal at the socket: 4 of 8 runs ended by SIGTERM (rc 143). After: 0 of 200 runs under the same load. `cargo test -q --test signals`: 3 passed. Not proven: the failure message "did not stop" (a hang) was not reproduced; the measured fault is an exit by the signal.
