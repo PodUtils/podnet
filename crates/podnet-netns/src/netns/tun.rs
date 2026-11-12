@@ -1,5 +1,7 @@
 //! The TUN device of the netns backend: its setup inside the namespace,
-//! and the device that the `smoltcp` stack reads and writes.
+//! and the pump of its descriptor. The pump holds the IP packets that the
+//! kernel sends (`rx`) and the packets that wait for the kernel (`tx`). The
+//! backend moves them to and from the stack of `pod-netstack`.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -31,14 +33,14 @@ pub(crate) fn hold_tun(name: &str) -> pod_hold::netns::Tun {
     }
 }
 
-// ── TUN as a smoltcp device ─────────────────────────────────────────────────
+// ── the pump of the wire ────────────────────────────────────────────────────
 
 // The wire of the namespace (T-174), of pod-hold: the TUN (each read and
 // write is one IP packet) or the veth pair (each read and write is one
 // Ethernet frame of a packet socket, `super::veth`).
 pub(crate) use pod_hold::netns::Wire;
 
-/// The device of the stack: the TUN or the veth wire. `rx` and `tx` hold IP
+/// The pump of the wire: the TUN or the veth wire. `rx` and `tx` hold IP
 /// packets for both wires.
 pub(crate) struct Tun {
     pub(crate) fd: RawFd,
@@ -140,51 +142,5 @@ impl Tun {
                 off += n as usize;
             }
         }
-    }
-}
-
-impl Device for Tun {
-    type RxToken<'a> = TunRx;
-    type TxToken<'a> = TunTx<'a>;
-    fn receive(&mut self, _t: SmolInstant) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
-        let pkt = self.rx.pop_front()?;
-        Some((TunRx(pkt), TunTx { out: &mut self.tx }))
-    }
-    fn transmit(&mut self, _t: SmolInstant) -> Option<Self::TxToken<'_>> {
-        Some(TunTx { out: &mut self.tx })
-    }
-    fn capabilities(&self) -> DeviceCapabilities {
-        let mut caps = DeviceCapabilities::default();
-        caps.medium = Medium::Ip;
-        caps.max_transmission_unit = self.mtu;
-        caps.checksum = ChecksumCapabilities::default();
-        if !self.wire.checks_checksums() {
-            // The program end can send a partial checksum (an offload that
-            // stays on): compute the checksums, do not check them.
-            use smoltcp::phy::Checksum;
-            caps.checksum.ipv4 = Checksum::Tx;
-            caps.checksum.tcp = Checksum::Tx;
-            caps.checksum.udp = Checksum::Tx;
-            caps.checksum.icmpv4 = Checksum::Tx;
-        }
-        caps
-    }
-}
-
-pub(crate) struct TunRx(Vec<u8>);
-impl RxToken for TunRx {
-    fn consume<R, F: FnOnce(&[u8]) -> R>(self, f: F) -> R {
-        f(&self.0)
-    }
-}
-pub(crate) struct TunTx<'a> {
-    pub(crate) out: &'a mut VecDeque<Vec<u8>>,
-}
-impl TxToken for TunTx<'_> {
-    fn consume<R, F: FnOnce(&mut [u8]) -> R>(self, len: usize, f: F) -> R {
-        let mut buf = vec![0u8; len];
-        let r = f(&mut buf);
-        self.out.push_back(buf);
-        r
     }
 }

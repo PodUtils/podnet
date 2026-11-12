@@ -15,12 +15,6 @@ pub(crate) use tun::*;
 pub(crate) use udpflow::{UdpFlows, UdpRoute};
 pub(crate) use veth::{create_veth, open_wire};
 
-/// A std `Ipv4Addr` as smoltcp's wire type.
-pub(crate) fn smol_v4(addr: Ipv4Addr) -> Ipv4Address {
-    // smoltcp 0.12: the wire type is `core::net::Ipv4Addr`.
-    addr
-}
-
 // ── tunables ────────────────────────────────────────────────────────────────
 
 /// Address on the TUN inside the namespace (the guest side of the /31).
@@ -122,7 +116,8 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
         loop {
             backend.read_tun();
             backend.tick().await?;
-            // Wake on TUN input or a short timer, whichever comes first. The
+            // Wake on TUN input, a packet or a stream from the stack, or a
+            // short timer, whichever comes first. The
             // readiness must be cleared after the TUN is drained: if it stays
             // set, this loop never parks, and the I/O driver never marks an
             // upstream socket readable.
@@ -135,6 +130,7 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
                         guard.clear_ready();
                     }
                 }
+                _ = backend.activity() => {}
                 _ = tokio::time::sleep(POLL_INTERVAL) => {}
             }
             if first.is_none() && read_report(parent, &mut report) {

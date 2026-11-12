@@ -80,16 +80,6 @@ mod prelude {
     pub(crate) use std::time::Duration;
 
     pub(crate) use anyhow::{bail, Context, Result};
-    pub(crate) use smoltcp::iface::{Config as IfaceConfig, Interface, SocketHandle, SocketSet};
-    pub(crate) use smoltcp::phy::{
-        ChecksumCapabilities, Device, DeviceCapabilities, Medium, RxToken, TxToken,
-    };
-    pub(crate) use smoltcp::socket::tcp;
-    pub(crate) use smoltcp::socket::udp;
-    pub(crate) use smoltcp::time::Instant as SmolInstant;
-    pub(crate) use smoltcp::wire::{
-        HardwareAddress, IpAddress, IpCidr, IpListenEndpoint, Ipv4Address,
-    };
 
     pub(crate) use crate::upstream::{
         connect_upstream, connect_upstream_async, dial_proxy, select_chain, socks5_udp_associate,

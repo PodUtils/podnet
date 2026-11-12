@@ -124,9 +124,14 @@ socket) when there is one, else to TCP on the host.
   `frame_for`, `Wire`).
 * The child brings up `lo` and makes a TUN device with `ioctl` calls (not with
   `ip`), then gives the TUN descriptor to the parent with `SCM_RIGHTS`.
-* The parent runs a `smoltcp` stack on the TUN. For each SYN of the program,
-  it dials the upstream first, in a task. When the dial succeeds, the stack
-  accepts the connection and copies the bytes. When the dial fails (a dead
+* The parent runs the stack of `pod-netstack` on the wire (the TUN or the
+  veth pair). A pump reads each packet of the program before the stack. The
+  stack answers for each destination address (`any_ip`), and a listener on
+  any address of the destination port accepts each connection: the
+  `local_addr` of the stream is the target. For each SYN of the program,
+  the pump dials the upstream first, in a task. When the dial succeeds, it
+  gives the SYN to the stack, which accepts the connection, and a task
+  copies the bytes. When the dial fails (a dead
   proxy, a 407 of the proxy), the program gets a RST, and its `connect()`
   fails with `ECONNREFUSED`. The program cannot read the HTTP status of the
   proxy; `-v` prints it. The parse of a SYN and the RST are `pod_hold::packet`

@@ -1,9 +1,23 @@
-//! The stack of the netns backend: the `smoltcp` interface on the TUN,
-//! the held SYNs, the upstream dials and the flows.
+//! The router of the netns backend: the stack of `pod-netstack` on the wire
+//! (the TUN or the veth pair), the held SYNs, the upstream dials and the
+//! flows.
+//!
+//! The pump of the wire ([`Tun`]) reads each packet of the program first.
+//! It answers the DNS queries and takes the UDP flows, holds each new SYN
+//! while its upstream is dialed (issue 190), and gives the rest to the link
+//! of the stack. The stack answers for each destination address (`any_ip`),
+//! and a listener on any address of the destination port accepts each
+//! connection. The `local_addr` of the accepted stream is the target of the
+//! flow.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use pod_netstack::smoltcp::phy::{Checksum, ChecksumCapabilities};
+use pod_netstack::{NetStack, PacketQueue, StackConfig, Subnet, TcpListener, TcpStream};
+use std::collections::HashSet;
+use std::sync::Mutex;
+use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
+use tokio::sync::{mpsc, Notify};
 
 /// The addresses of a TCP connection of the program: (source, source port,
 /// destination, destination port).
@@ -24,50 +38,62 @@ pub(crate) type DialTask = tokio::task::JoinHandle<Result<Upstream>>;
 /// The time that the upstream of a released SYN waits for its socket.
 const PREDIALED_TTL: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// One outbound flow: a smoltcp TCP socket and the upstream proxy connection.
-pub(crate) struct Flow {
-    pub(crate) upstream: Upstream,
-    pub(crate) to_upstream: Vec<u8>,
-    pub(crate) to_app: Vec<u8>,
-    pub(crate) up_eof: bool,
-    /// The target, the number in the record and the byte counts (T-157).
-    pub(crate) record: (String, Option<u64>, crate::flowlog::Counts),
+/// The time that a released SYN waits for its stream. A handshake that never
+/// ends frees its entry after this time.
+const HANDSHAKE_TTL: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// The record of an open flow (T-157): its target, its number in the record
+/// of `--flow-log` and its byte counts.
+struct FlowRecord {
+    target: String,
+    flow: Option<u64>,
+    counts: crate::flowlog::Counts,
 }
 
-impl Flow {
-    fn new(upstream: Upstream, target: String, flow: Option<u64>) -> Self {
-        Flow {
-            upstream,
-            to_upstream: Vec::new(),
-            to_app: Vec::new(),
-            up_eof: false,
-            record: (target, flow, Default::default()),
-        }
+impl FlowRecord {
+    fn close(&self) {
+        self.counts.close(self.flow, "tcp", &self.target);
     }
+}
+
+/// The connections of the program that the stack accepted, by their
+/// addresses. An entry has no record while its upstream is dialed.
+type OpenFlows = Arc<Mutex<HashMap<SynKey, Option<FlowRecord>>>>;
+
+/// A stream that the stack accepted.
+type Accepted = TcpStream;
+
+/// Where the upstream of an accepted connection comes from: dialed before
+/// the handshake (the usual case), or by a dial that runs now.
+enum Source {
+    Ready(Upstream),
+    Dial(DialTask),
 }
 
 pub(crate) struct Backend {
     pub(crate) device: Tun,
-    pub(crate) interface: Interface,
-    pub(crate) sockets: SocketSet<'static>,
+    stack: NetStack,
+    /// The packets of the program for the stack, and from it.
+    link_in: PacketQueue,
+    link_out: PacketQueue,
+    /// The destination ports with a listener, and the task of each that
+    /// takes its accepted streams.
+    ports: HashMap<u16, tokio::task::JoinHandle<()>>,
+    accepted_tx: mpsc::UnboundedSender<Accepted>,
+    accepted_rx: mpsc::UnboundedReceiver<Accepted>,
+    /// Wakes the loop when the stack accepts a stream.
+    accepted: Arc<Notify>,
+    /// The SYNs that the stack has, until their stream is accepted.
+    handshakes: HashMap<SynKey, std::time::Instant>,
+    /// The flows of the program, until they end.
+    open: OpenFlows,
     pub(crate) dns: FakeDns,
-    /// destination port → listener handle created for it
-    /// Every TCP socket of the stack, with its destination port. A socket
-    /// starts in the listen state and becomes one connection.
-    pub(crate) listeners: HashMap<SocketHandle, u16>,
-    /// Upstream dials in progress, for connections that are established in
-    /// the stack but have no flow yet.
-    pub(crate) dialing: HashMap<SocketHandle, (String, DialTask, Option<u64>)>,
-    pub(crate) flows: HashMap<SocketHandle, Flow>,
     /// Issue 190: each new SYN waits here while its upstream is dialed. The
     /// stack sees the SYN only when the dial succeeds; a failed dial gets a
     /// RST, so `connect()` of the program fails.
     pub(crate) held: HashMap<SynKey, HeldSyn>,
-    /// The upstreams of released SYNs, until their socket is established.
+    /// The upstreams of released SYNs, until their stream is accepted.
     pub(crate) predialed: HashMap<SynKey, (String, Upstream, std::time::Instant, Option<u64>)>,
-    /// Sockets aborted after the last poll. They stay until the next poll
-    /// has sent their RST.
-    pub(crate) aborting: Vec<SocketHandle>,
     /// The UDP flows of the program other than DNS (T-111).
     pub(crate) udp: UdpFlows,
     /// `--host-gateway` (T-112): a flow to the gateway goes to the loopback
@@ -80,6 +106,8 @@ pub(crate) struct Backend {
 }
 
 impl Backend {
+    /// The backend on `fd`. Call it inside a runtime of tokio: the stack
+    /// spawns its reactor.
     pub(crate) fn new(
         fd: RawFd,
         proxies: Vec<Proxy>,
@@ -87,45 +115,68 @@ impl Backend {
         maps: Vec<(String, IpAddr)>,
         verbose: bool,
     ) -> Result<Self> {
-        let mut device = Tun::new(fd, TUN_MTU);
-        let mut config = IfaceConfig::new(HardwareAddress::Ip);
-        config.random_seed = seed();
-        let mut interface = Interface::new(config, &mut device, SmolInstant::now());
-        interface.update_ip_addrs(|addrs| {
-            addrs
-                .push(IpCidr::new(IpAddress::Ipv4(smol_v4(TUN_GW)), TUN_PREFIX))
-                .unwrap();
-        });
-        interface
-            .routes_mut()
-            .add_default_ipv4_route(smol_v4(TUN_GW))
-            .unwrap();
-        // Accept packets addressed to any destination: the guest connects to
-        // real addresses, and we impersonate all of them.
-        interface.set_any_ip(true);
-
-        let sockets = SocketSet::new(Vec::new());
+        let device = Tun::new(fd, TUN_MTU);
+        let mut checksum = ChecksumCapabilities::default();
+        if !device.wire.checks_checksums() {
+            // The program end can send a partial checksum (an offload that
+            // stays on): compute the checksums, do not check them.
+            checksum.ipv4 = Checksum::Tx;
+            checksum.tcp = Checksum::Tx;
+            checksum.udp = Checksum::Tx;
+            checksum.icmpv4 = Checksum::Tx;
+        }
+        // The stack owns the gateway of the TUN and answers for each
+        // destination address: the guest connects to real addresses, and
+        // the stack impersonates all of them.
+        let config = StackConfig {
+            subnet: Subnet {
+                v4: TUN_GW,
+                v4_prefix: TUN_PREFIX,
+                ..Subnet::default()
+            },
+            local_v4: TUN_GW,
+            mtu: TUN_MTU,
+            tcp_buffer: TCP_BUF,
+            random_seed: seed(),
+            any_ip: true,
+            checksum,
+            ..StackConfig::default()
+        };
+        let stack = NetStack::over_link(config);
+        let (accepted_tx, accepted_rx) = mpsc::unbounded_channel();
         let mut dns = FakeDns::new();
         for (name, ip) in &maps {
             dns.pin(name, *ip);
         }
         Ok(Self {
             device,
-            interface,
-            sockets,
+            link_in: stack.link_in(),
+            link_out: stack.link_out(),
+            stack,
+            ports: HashMap::new(),
+            accepted_tx,
+            accepted_rx,
+            accepted: Arc::new(Notify::new()),
+            handshakes: HashMap::new(),
+            open: Arc::new(Mutex::new(HashMap::new())),
             dns,
-            listeners: HashMap::new(),
-            dialing: HashMap::new(),
-            flows: HashMap::new(),
             held: HashMap::new(),
             predialed: HashMap::new(),
-            aborting: Vec::new(),
             udp: UdpFlows::new(),
             host_gateway: false,
             proxies,
             rules,
             verbose,
         })
+    }
+
+    /// Wait until the stack has a packet for the wire or a stream for the
+    /// backend.
+    pub(crate) async fn activity(&self) {
+        tokio::select! {
+            _ = self.link_out.wait() => {}
+            _ = self.accepted.notified() => {}
+        }
     }
 
     /// The target of a connection to `dst:port`: the name of a fake address,
@@ -198,18 +249,14 @@ impl Backend {
         })
     }
 
-    /// A socket of the stack has the addresses of `key`.
+    /// A connection of the program has the addresses of `key`.
     fn has_connection(&self, key: &SynKey) -> bool {
-        let (src, sport, dst, dport) = *key;
-        self.listeners.keys().any(|handle| {
-            let socket = self.sockets.get::<tcp::Socket>(*handle);
-            socket
-                .remote_endpoint()
-                .is_some_and(|r| r.addr == IpAddress::Ipv4(src) && r.port == sport)
-                && socket
-                    .local_endpoint()
-                    .is_some_and(|l| l.addr == IpAddress::Ipv4(dst) && l.port == dport)
-        })
+        self.open.lock().is_ok_and(|open| open.contains_key(key))
+    }
+
+    /// The flows of the program now.
+    fn open_count(&self) -> usize {
+        self.open.lock().map_or(0, |open| open.len())
     }
 
     /// Issue 190: hold each new SYN until its upstream is dialed. Then give
@@ -226,7 +273,7 @@ impl Backend {
                 kept.push_back(pkt);
             } else if self.held.contains_key(&key) {
                 // A SYN again while the dial runs: the first one is held.
-            } else if self.held.len() + self.listeners.len() >= MAX_TRACKED_FDS {
+            } else if self.held.len() + self.open_count() >= MAX_TRACKED_FDS {
                 // The table is full: the stack drops the SYN.
                 kept.push_back(pkt);
             } else {
@@ -280,64 +327,91 @@ impl Backend {
         }
         self.predialed
             .retain(|_, (_, _, at, _)| at.elapsed() < PREDIALED_TTL);
+        self.handshakes.retain(|_, at| at.elapsed() < HANDSHAKE_TTL);
     }
 
-    /// Each SYN needs a socket in the listen state for its port before
-    /// smoltcp processes the packet. A listen socket becomes the connection,
-    /// so add one listen socket for each SYN that has no free one.
-    pub(crate) fn observe_syns(&mut self) {
-        let mut wanted: HashMap<u16, usize> = HashMap::new();
-        for pkt in &self.device.rx {
-            if let Some((_src, _sport, _dst, dport)) = parse_tcp_syn(pkt) {
-                *wanted.entry(dport).or_default() += 1;
-            }
-        }
-        for (port, count) in wanted {
-            let free = self
-                .listeners
-                .iter()
-                .filter(|(handle, p)| {
-                    **p == port
-                        && self.sockets.get::<tcp::Socket>(**handle).state() == tcp::State::Listen
-                })
-                .count();
-            for _ in free..count {
-                // Bound the table: a program that sweeps ports must not grow
-                // it without limit.
-                if self.listeners.len() >= MAX_TRACKED_FDS {
-                    return;
-                }
-                let mut socket = tcp_socket();
-                if socket.listen(IpListenEndpoint { addr: None, port }).is_ok() {
-                    let handle = self.sockets.add(socket);
-                    self.listeners.insert(handle, port);
-                    if self.verbose {
-                        eprintln!(
-                            "{}: listening for outbound port {port}",
-                            crate::cli::program_name()
-                        );
+    /// Give each packet of the program to the stack. A new SYN needs a
+    /// listener on its port. The stack adds a listen socket for each SYN, so
+    /// a burst to one port gets no RST.
+    pub(crate) async fn feed(&mut self) {
+        while let Some(pkt) = self.device.rx.pop_front() {
+            if let Some(key) = parse_tcp_syn(&pkt) {
+                let known = self.handshakes.contains_key(&key) || self.has_connection(&key);
+                if !known {
+                    if !self.listen_on(key.3).await {
+                        // The stack drops the SYN.
+                        continue;
                     }
+                    self.handshakes.insert(key, std::time::Instant::now());
                 }
             }
+            // A full queue drops the packet: TCP sends it again.
+            self.link_in.push(pkt);
         }
     }
 
-    /// Remove the sockets of finished connections from the stack.
-    pub(crate) fn reap_closed(&mut self) {
-        let closed: Vec<SocketHandle> = self
-            .listeners
-            .keys()
-            .copied()
-            .filter(|handle| {
-                !self.flows.contains_key(handle)
-                    && !self.dialing.contains_key(handle)
-                    && !self.aborting.contains(handle)
-                    && self.sockets.get::<tcp::Socket>(*handle).state() == tcp::State::Closed
-            })
-            .collect();
-        for handle in closed {
-            self.listeners.remove(&handle);
-            self.sockets.remove(handle);
+    /// Open a listener on any address of `port`, when there is none. False
+    /// when the stack refuses.
+    async fn listen_on(&mut self, port: u16) -> bool {
+        if self.ports.contains_key(&port) {
+            return true;
+        }
+        let mut listener: TcpListener = match self.stack.listen_any(port).await {
+            Ok(listener) => listener,
+            Err(e) => {
+                if self.verbose {
+                    eprintln!(
+                        "{}: no listener for outbound port {port}: {e}",
+                        crate::cli::program_name()
+                    );
+                }
+                return false;
+            }
+        };
+        let tx = self.accepted_tx.clone();
+        let wake = self.accepted.clone();
+        let task = tokio::spawn(async move {
+            while let Ok(stream) = listener.accept().await {
+                if tx.send(stream).is_err() {
+                    break;
+                }
+                wake.notify_one();
+            }
+        });
+        self.ports.insert(port, task);
+        if self.verbose {
+            eprintln!(
+                "{}: listening for outbound port {port}",
+                crate::cli::program_name()
+            );
+        }
+        true
+    }
+
+    /// Close the listener of each port that has no SYN in a handshake and no
+    /// flow. The close frees the port in the stack, so the table does not
+    /// grow with the ports that the program used.
+    fn close_idle_ports(&mut self) {
+        if self.ports.is_empty() {
+            return;
+        }
+        let mut busy: HashSet<u16> = self.handshakes.keys().map(|key| key.3).collect();
+        if let Ok(open) = self.open.lock() {
+            busy.extend(open.keys().map(|key| key.3));
+        }
+        self.ports.retain(|port, task| {
+            let keep = busy.contains(port);
+            if !keep {
+                task.abort();
+            }
+            keep
+        });
+    }
+
+    /// Take the packets that the stack sends to the program.
+    pub(crate) fn collect(&mut self) {
+        while let Some(pkt) = self.link_out.pop() {
+            self.device.tx.push_back(pkt);
         }
     }
 
@@ -349,6 +423,7 @@ impl Backend {
     }
 
     pub(crate) async fn tick(&mut self) -> Result<()> {
+        self.accept_flows();
         self.answer_dns();
         let route = UdpRoute {
             proxies: &self.proxies,
@@ -360,39 +435,15 @@ impl Backend {
         self.udp
             .relay(&mut self.device.rx, &mut self.device.tx, &route);
         self.hold_syns().await;
-        self.observe_syns();
-        self.interface
-            .poll(SmolInstant::now(), &mut self.device, &mut self.sockets);
-        // Issue 190: this poll sent the RST of each aborted socket. Before,
-        // the socket was removed first, and a client that waits (TLS) hung.
-        self.aborting.clear();
-        self.accept_flows().await;
-        self.shuttle().await;
-        self.egress();
-        self.reap_closed();
+        self.feed().await;
+        self.close_idle_ports();
+        self.collect();
         self.device.flush();
         Ok(())
     }
 
-    /// Send the segments that the sockets have now.
-    ///
-    /// One `poll_egress` sends at most one segment for each socket. Without
-    /// this loop, a download moved one segment on each tick of the loop.
-    pub(crate) fn egress(&mut self) {
-        for _ in 0..EGRESS_ROUNDS {
-            let now = SmolInstant::now();
-            match self.interface.poll_at(now, &self.sockets) {
-                Some(at) if at <= now => {
-                    self.interface
-                        .poll_egress(now, &mut self.device, &mut self.sockets);
-                }
-                _ => break,
-            }
-        }
-    }
-
     /// Answer each IPv4 UDP query to port 53 from the fake-IP pool, before
-    /// smoltcp sees it.
+    /// the stack sees it.
     ///
     /// The reply must come from the address that the client sent to (the
     /// resolver in its resolv.conf), or a connected UDP socket drops it. A
@@ -409,147 +460,184 @@ impl Backend {
         self.device.rx = kept;
     }
 
-    /// Start an upstream dial for each new connection, and make a flow when
-    /// a dial completes. A dial runs in its own task, so a slow proxy does not
-    /// stop the other flows.
-    pub(crate) async fn accept_flows(&mut self) {
-        let handles: Vec<SocketHandle> = self.listeners.keys().copied().collect();
-        for handle in handles {
-            if self.flows.contains_key(&handle) || self.dialing.contains_key(&handle) {
+    /// Start a flow for each stream that the stack accepted. The upstream
+    /// was dialed before the handshake (the usual case), else a dial starts
+    /// now. A flow is a task, so a slow proxy does not stop the other flows.
+    pub(crate) fn accept_flows(&mut self) {
+        while let Ok(stream) = self.accepted_rx.try_recv() {
+            let (IpAddr::V4(src_ip), IpAddr::V4(dst_ip)) =
+                (stream.peer_addr().ip(), stream.local_addr().ip())
+            else {
+                stream.abort();
                 continue;
-            }
-            // The destination is the local endpoint of the socket.
-            let (key, target) = {
-                let socket = self.sockets.get::<tcp::Socket>(handle);
-                if !matches!(socket.state(), tcp::State::Established) {
-                    continue;
-                }
-                let (Some(local), Some(remote)) =
-                    (socket.local_endpoint(), socket.remote_endpoint())
-                else {
-                    continue;
-                };
-                let (IpAddress::Ipv4(dst_ip), IpAddress::Ipv4(src_ip)) = (local.addr, remote.addr)
-                else {
-                    continue;
-                };
-                (
-                    (src_ip, remote.port, dst_ip, local.port),
-                    self.target_of(dst_ip, local.port),
-                )
             };
-            // The usual case: the upstream was dialed before the handshake.
-            if let Some((target, upstream, _, flow)) = self.predialed.remove(&key) {
-                self.flows.insert(handle, Flow::new(upstream, target, flow));
-                continue;
+            let key = (
+                src_ip,
+                stream.peer_addr().port(),
+                dst_ip,
+                stream.local_addr().port(),
+            );
+            self.handshakes.remove(&key);
+            let (target, source, flow) = match self.predialed.remove(&key) {
+                Some((target, upstream, _, flow)) => (target, Source::Ready(upstream), flow),
+                None => {
+                    let target = self.target_of(dst_ip, key.3);
+                    let (task, flow) = self.spawn_dial(&target);
+                    (target, Source::Dial(task), flow)
+                }
+            };
+            if let Ok(mut open) = self.open.lock() {
+                open.insert(key, None);
             }
-            let (task, flow) = self.spawn_dial(&target);
-            self.dialing.insert(handle, (target, task, flow));
-        }
-
-        let ready: Vec<SocketHandle> = self
-            .dialing
-            .iter()
-            .filter(|(_, (_, task, _))| task.is_finished())
-            .map(|(handle, _)| *handle)
-            .collect();
-        for handle in ready {
-            let (target, task, flow) = self.dialing.remove(&handle).expect("listed above");
-            match task.await {
-                Ok(Ok(upstream)) => {
-                    self.flows.insert(handle, Flow::new(upstream, target, flow));
-                }
-                Ok(Err(e)) => {
-                    if self.verbose {
-                        eprintln!(
-                            "{}: upstream for {target} failed: {e:#}",
-                            crate::cli::program_name()
-                        );
-                    }
-                    self.sockets.get_mut::<tcp::Socket>(handle).abort();
-                    self.aborting.push(handle);
-                }
-                Err(e) => {
-                    if self.verbose {
-                        eprintln!(
-                            "{}: dial task for {target} failed: {e}",
-                            crate::cli::program_name()
-                        );
-                    }
-                    self.sockets.get_mut::<tcp::Socket>(handle).abort();
-                    self.aborting.push(handle);
-                }
-            }
+            let record = FlowRecord {
+                target,
+                flow,
+                counts: Default::default(),
+            };
+            let open = self.open.clone();
+            let flow = Flow {
+                stream,
+                source,
+                record,
+                open,
+                key,
+                verbose: self.verbose,
+            };
+            tokio::spawn(flow.run());
         }
     }
+}
 
-    pub(crate) async fn shuttle(&mut self) {
-        let handles: Vec<SocketHandle> = self.flows.keys().copied().collect();
-        for handle in handles {
-            let mut flow = self.flows.remove(&handle).unwrap();
-            let socket = self.sockets.get_mut::<tcp::Socket>(handle);
-            let mut close = false;
+/// One accepted connection of the program and its upstream.
+struct Flow {
+    stream: TcpStream,
+    source: Source,
+    record: FlowRecord,
+    open: OpenFlows,
+    key: SynKey,
+    verbose: bool,
+}
 
-            // app → upstream. Hold at most HELD bytes: the receive window
-            // of the socket stops the program while the upstream is slow.
-            while socket.can_recv() && flow.to_upstream.len() < HELD {
-                match socket.recv(|buf| {
-                    let n = buf.len().min(HELD - flow.to_upstream.len());
-                    flow.to_upstream.extend_from_slice(&buf[..n]);
-                    (n, ())
-                }) {
-                    Ok(()) => {}
-                    Err(_) => break,
+impl Flow {
+    /// Copy between the stream of the program and the upstream, until the
+    /// upstream ends or one side fails. When the program closes its side,
+    /// the upstream gets the end too, and the flow goes on until the
+    /// upstream ends.
+    async fn run(self) {
+        let Flow {
+            stream,
+            source,
+            record,
+            open,
+            key,
+            verbose,
+        } = self;
+        let upstream = match source {
+            Source::Ready(upstream) => Some(upstream),
+            Source::Dial(task) => match task.await {
+                Ok(Ok(upstream)) => Some(upstream),
+                Ok(Err(e)) => {
+                    if verbose {
+                        eprintln!(
+                            "{}: upstream for {} failed: {e:#}",
+                            crate::cli::program_name(),
+                            record.target
+                        );
+                    }
+                    None
                 }
-            }
-            while !flow.to_upstream.is_empty() {
-                match poll_once(flow.upstream.write(&flow.to_upstream)).unwrap_or_else(would_block)
-                {
-                    Ok(0) => break,
-                    Ok(n) => {
-                        flow.record.2.add_out(n);
-                        flow.to_upstream.drain(..n);
+                Err(e) => {
+                    if verbose {
+                        eprintln!(
+                            "{}: dial task for {} failed: {e}",
+                            crate::cli::program_name(),
+                            record.target
+                        );
                     }
-                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
-                    Err(_) => {
-                        close = true;
-                        break;
+                    None
+                }
+            },
+        };
+        let Some(upstream) = upstream else {
+            stream.abort();
+            if let Ok(mut open) = open.lock() {
+                open.remove(&key);
+            }
+            return;
+        };
+        let counts = record.counts.clone();
+        if let Ok(mut open) = open.lock() {
+            open.insert(key, Some(record));
+        }
+        let (mut app_read, mut app_write) = tokio::io::split(stream);
+        relay(&mut app_read, &mut app_write, upstream, counts).await;
+        // The flow is over: write its close line.
+        let ended = open
+            .lock()
+            .ok()
+            .and_then(|mut open| open.get_mut(&key).and_then(Option::take));
+        if let Some(record) = ended {
+            record.close();
+        }
+        // The drop of the stream closes the connection with no wait: the
+        // stack sends each queued byte, then the FIN.
+        drop(app_read);
+        drop(app_write);
+        let mut flows = open.lock().unwrap_or_else(|e| e.into_inner());
+        flows.remove(&key);
+    }
+}
+
+/// Copy the bytes of the flow in both directions, until the upstream ends or
+/// one side fails. When the program closes its side, the upstream gets the
+/// end too, and the flow goes on until the upstream ends.
+async fn relay(
+    app_read: &mut ReadHalf<TcpStream>,
+    app_write: &mut WriteHalf<TcpStream>,
+    upstream: Upstream,
+    counts: crate::flowlog::Counts,
+) {
+    let (mut up_read, mut up_write) = tokio::io::split(upstream);
+    let out = counts.clone();
+    let to_upstream = async {
+        let mut buf = vec![0u8; 16 * 1024];
+        loop {
+            let n = app_read.read(&mut buf).await?;
+            if n == 0 {
+                // The program closed its side.
+                return up_write.shutdown().await;
+            }
+            up_write.write_all(&buf[..n]).await?;
+            out.add_out(n);
+        }
+    };
+    let to_app = async {
+        let mut buf = vec![0u8; 16 * 1024];
+        let result: std::io::Result<()> = loop {
+            match up_read.read(&mut buf).await {
+                Ok(0) => break Ok(()),
+                Ok(n) => {
+                    counts.add_in(n);
+                    if let Err(e) = app_write.write_all(&buf[..n]).await {
+                        break Err(e);
                     }
                 }
+                Err(e) => break Err(e),
             }
-
-            // upstream → app. Hold at most HELD bytes: the upstream is read
-            // only when the socket takes the held bytes. Before, the read had
-            // no limit, the buffer grew with the download, and each drain
-            // moved all of it.
-            send_held(socket, &mut flow.to_app);
-            let mut buf = [0u8; 16 * 1024];
-            while flow.to_app.len() < HELD {
-                match poll_once(flow.upstream.read(&mut buf)).unwrap_or_else(would_block) {
-                    Ok(0) => {
-                        flow.up_eof = true;
-                        break;
-                    }
-                    Ok(n) => {
-                        flow.record.2.add_in(n);
-                        flow.to_app.extend_from_slice(&buf[..n]);
-                    }
-                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
-                    Err(_) => {
-                        close = true;
-                        break;
-                    }
-                }
+        };
+        // The end of the upstream, or a failure: close the side of the
+        // program after the bytes that it has.
+        let _ = app_write.shutdown().await;
+        result
+    };
+    let mut to_upstream = std::pin::pin!(to_upstream);
+    let mut to_app = std::pin::pin!(to_app);
+    tokio::select! {
+        _ = &mut to_app => {}
+        result = &mut to_upstream => {
+            if result.is_ok() {
+                let _ = to_app.await;
             }
-            send_held(socket, &mut flow.to_app);
-
-            if (flow.up_eof && flow.to_app.is_empty()) || close || !socket.may_send() {
-                socket.close();
-                let (target, number, counts) = &flow.record;
-                counts.close(*number, "tcp", target);
-                continue;
-            }
-            self.flows.insert(handle, flow);
         }
     }
 }
@@ -557,60 +645,17 @@ impl Backend {
 impl Drop for Backend {
     /// The flows that are open at the end of the pod get their close line.
     fn drop(&mut self) {
-        for flow in self.flows.values() {
-            let (target, number, counts) = &flow.record;
-            counts.close(*number, "tcp", target);
+        for task in self.ports.values() {
+            task.abort();
         }
-    }
-}
-
-pub(crate) fn tcp_socket() -> tcp::Socket<'static> {
-    let rx = tcp::SocketBuffer::new(vec![0u8; TCP_BUF]);
-    let tx = tcp::SocketBuffer::new(vec![0u8; TCP_BUF]);
-    let mut socket = tcp::Socket::new(rx, tx);
-    socket.set_nagle_enabled(false);
-    // As before smoltcp 0.12: no congestion controller. A build of the
-    // workspace turns on the controllers of podnet, and smoltcp then takes
-    // cubic by default.
-    socket.set_congestion_control(tcp::CongestionControl::None);
-    socket
-}
-
-/// The most `poll_egress` calls in one tick: more than a full send buffer
-/// of `TCP_BUF` in segments of the MTU.
-const EGRESS_ROUNDS: usize = 64;
-
-/// The most bytes that a TCP flow holds in each direction.
-const HELD: usize = super::TCP_BUF;
-
-/// Give the held bytes to the TCP socket of the program, as many as it takes.
-fn send_held(socket: &mut tcp::Socket, held: &mut Vec<u8>) {
-    while !held.is_empty() && socket.can_send() {
-        match socket.send_slice(held) {
-            Ok(0) | Err(_) => break,
-            Ok(n) => {
-                held.drain(..n);
+        if let Ok(mut open) = self.open.lock() {
+            for (_, record) in open.drain() {
+                if let Some(record) = record {
+                    record.close();
+                }
             }
         }
     }
-}
-
-/// Poll `future` one time. Return its output, or `None` when it is pending.
-///
-/// The stack loop wakes at a short interval, so a no-op waker is sufficient:
-/// the I/O driver still records readiness for the next poll.
-pub(crate) fn poll_once<F: std::future::Future>(future: F) -> Option<F::Output> {
-    let mut future = std::pin::pin!(future);
-    let mut context = std::task::Context::from_waker(std::task::Waker::noop());
-    match future.as_mut().poll(&mut context) {
-        std::task::Poll::Ready(output) => Some(output),
-        std::task::Poll::Pending => None,
-    }
-}
-
-/// The result of an I/O call that did not complete.
-pub(crate) fn would_block() -> std::io::Result<usize> {
-    Err(std::io::ErrorKind::WouldBlock.into())
 }
 
 pub(crate) fn seed() -> u64 {

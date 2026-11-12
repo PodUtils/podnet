@@ -758,7 +758,7 @@ namespace, with an `AF_PACKET` socket on one end, can carry the frames to the sa
 
 ## Premise
 
-- `crates/podnet-netns/src/netns/tun.rs:55-61` opens the node; `send_fd`/`recv_fd` (`crates/podnet-netns/src/netns/fdpass.rs:51,85`) and the
+- `crates/podnet-netns/src/netns/tun.rs:57-63` opens the node; `send_fd`/`recv_fd` (`crates/podnet-netns/src/netns/fdpass.rs:51,85`) and the
   handoff (`crates/podnet-netns/src/netns/mod.rs:96,168`) are reusable. `doctor.rs:70,281` gates `auto` on the TUN probe.
 - smoltcp has `medium-ip` only (`Cargo.toml:147`, `crates/podnet-netns/Cargo.toml:36`): add `medium-ethernet`.
 - `docs/research/podnet/vn.md:313` is plan item P5; `vn.md:411` asks if any target host has no TUN. No
