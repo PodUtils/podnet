@@ -246,7 +246,7 @@ fn quick_tunnel_standin_checks_the_auth_user() {
         let pair = format!("{user}:{password}");
         // HTTP Basic uses the padded form of base64.
         let mut text = podnet::cloudflare::http2::base64_encode(pair.as_bytes());
-        while text.len() % 4 != 0 {
+        while !text.len().is_multiple_of(4) {
             text.push('=');
         }
         format!("Basic {text}")

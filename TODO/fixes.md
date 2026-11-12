@@ -4930,7 +4930,7 @@ instance headscale is used for stand in for tailscale"); the study in `.work/cf-
 **Milestone:** M5
 **Priority:** P2
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -4966,3 +4966,28 @@ each push.
 ```sh
 cargo test --workspace -- quick_tunnel_standin
 ```
+
+## Correction
+
+2026-11-12. Step 2 of the Approach (a hook for the trust roots of the edge) is not needed. `SSL_CERT_FILE`
+(and `--ca-file`) gives the only platform roots of podnet, and the edge adds its own roots to them
+(`crates/podnet-core/src/trust.rs`, `edge_tls_config` in `src/cloudflare/mod.rs`). A test CA in
+`SSL_CERT_FILE` makes the stand-in edge valid. `src/cloudflare/` is not changed, and no COORD issue to
+podcrates is needed. The QUIC leg is not built (step 1, "QUIC after HTTP/2"). The move of the steps of
+`live.yml` (step 3) is not done in this pass.
+
+## Done
+
+2026-11-12, commit 5f6ef52 (`T-316: a stand-in of the quick-tunnel service and of the HTTP/2 edge for
+tests`). Status `partial`. `tests/standin/` holds the fake provision API (`POST /tunnel`, a script of
+answers with a 429 and `Retry-After`), the HTTP/2 edge (TLS on TCP with no ALPN, the control stream,
+`registerConnection` with the check of the account tag and the secret, `unregisterConnection`, visitor
+streams), the front (`Host` to tunnel, 530 for an unknown host), a CONNECT proxy and a test CA. The tests
+are in `tests/quick_tunnel_standin.rs`: `cargo test --workspace -- quick_tunnel_standin` passes (13
+tests, 2.6 s). The study is `docs/research/podnet/cf-edge-standins.md`. Covered: the visitor request over
+HTTP/2, 429 with `Retry-After` and exit 75, no retry of a 403, `--json` lines, SIGTERM after the ready
+line, `--detach` with `ps`, `logs` and `stop`, `--auth-user`, the CONNECT proxy, the fallback from QUIC to
+HTTP/2, a refused registration, and the refusal of the edge certificate without the test CA. No fail-first
+run: podnet has no change. Not proven: the QUIC leg, the verify of the public URL, the WARP and relay
+legs, and a change of the real edge. Open: the QUIC leg; the move of the steps of `live.yml` into `ci`
+(the lead); one real quick tunnel for each leg stays in `live`.
