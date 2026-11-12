@@ -665,7 +665,7 @@ not do the entry.
 
 ## Done
 
-2026-11-12, commit 751a7b1. `podnet pod --serve --early-reply` (default off) answers a SOCKS5 or HTTP CONNECT
+2026-11-12, commit 40b573c. `podnet pod --serve --early-reply` (default off) answers a SOCKS5 or HTTP CONNECT
 before the dial. `Door::with_early_reply` (`crates/podnet-netns/src/door.rs`) takes the local rule check
 `Admit`; `PodDial::admits` in `crates/podnet-netns/src/frontdoor.rs` gives it from the rules. A target that
 the rules refuse takes the old path: the real answer (`0x02`, `403`). Other targets get the success reply,
