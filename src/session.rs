@@ -30,7 +30,7 @@ use pod_session::keep::Keeper;
 use pod_session::record::RefuseCode;
 use pod_session::resume;
 pub use pod_session::resume::{Next, Note};
-use pod_session::{far, Ask, End, LinkError, OsEntropy, Role as SessionRole};
+use pod_session::{far, Ask, End, GiveUp, LinkError, OsEntropy, Role as SessionRole};
 pub use pod_session::{Ended, Settings};
 use tokio::io::{AsyncRead, AsyncWrite, DuplexStream};
 use tokio::task::JoinHandle;
@@ -86,16 +86,16 @@ impl std::fmt::Display for ResumeExpired {
 
 impl std::error::Error for ResumeExpired {}
 
-/// The expiry that `end` means, when it means one. `pod-session` says it as
-/// the text of `End::GaveUp` (the far end has no such session, or no new
-/// carrier came in the window), or as a `REFUSE` with the code
-/// `UNKNOWN_SESSION` (podcrates ask A12: a typed cause).
+/// The expiry that `end` means, when it means one: the far end does not
+/// know the session, or no new link came in the window (the typed cause of
+/// `End::GaveUp`, podcrates A12), or a `REFUSE` with the code
+/// `UNKNOWN_SESSION`.
 pub fn expired(end: &End, window: Duration) -> Option<ResumeExpired> {
     let reason = match end {
-        End::GaveUp(reason)
-            if reason.contains("no such session") || reason.contains("no new link within") =>
+        End::GaveUp(gave_up)
+            if matches!(gave_up.cause, GiveUp::UnknownSession | GiveUp::WindowEnded) =>
         {
-            reason.clone()
+            gave_up.reason.clone()
         }
         End::Broken(LinkError::Refused { code, reason })
             if *code == RefuseCode::UNKNOWN_SESSION =>

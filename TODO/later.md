@@ -1688,7 +1688,7 @@ because one socket of the stack serves every flow of a port.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1746,11 +1746,6 @@ cargo test -p podnet --lib networks::tests
 cargo test -p podnet --test devtunnel_network
 ```
 
-## Blocker
-
-`PodUtils/podcrates` must release `pod-devtunnel` with its `pod-services` data and its hand-off. The ask is a COORD
-issue (to podcrates) that the lead session files. It unblocks when the release exists and podnet takes it (T-137).
-
 ## Start condition
 
 The take of `pod-devtunnel` is done (T-137).
@@ -1758,6 +1753,8 @@ The take of `pod-devtunnel` is done (T-137).
 ## Correction
 
 2026-11-12: podcrates writes `pod-devtunnel` (PodUtils/podcrates#101): the client side first (the management read, the relay WebSocket over podnet's TLS, proxy and dialer, SSH with `none`, `direct-tcpip` streams, a bounded reconnect); the hand-off names the API for `devtunnel://TUNNEL`.
+
+2026-11-12: podcrates v0.33.0 has `pod-devtunnel` (PodUtils/podcrates#103); the Blocker is gone.
 
 
 # T-321: net: a TURN network for UDP flows (GitHub #507)
@@ -1767,7 +1764,7 @@ The take of `pod-devtunnel` is done (T-137).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1822,11 +1819,6 @@ cargo test -p podnet --lib networks::tests
 cargo test -p podnet --test turn_network
 ```
 
-## Blocker
-
-`PodUtils/podcrates` must release `pod-turn` with its hand-off. The ask is a COORD issue (to podcrates) that the lead
-session files. It unblocks when the release exists and podnet takes it (T-137).
-
 ## Start condition
 
 The take of `pod-turn` is done (T-137).
@@ -1834,3 +1826,6 @@ The take of `pod-turn` is done (T-137).
 ## Correction
 
 2026-11-12: podcrates writes `pod-turn` (PodUtils/podcrates#101): the STUN codec moves from `pod-proxy`, SHA-256 credentials, a TURN client of RFC 8656 over UDP and over TLS on TCP. A TCP relay (RFC 6062) is a later entry of podcrates.
+
+2026-11-12: podcrates v0.33.0 has `pod-turn` (PodUtils/podcrates#103): `Settings::udp` or `Settings::tls` over podnet's dialer, resolver and TLS context; `Client::{allocate, refresh, create_permission, bind_channel, send, send_to, recv, close}`; `recv` refreshes on its own timer. RFC 6062 is a later entry of podcrates. The Blocker is gone.
+

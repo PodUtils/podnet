@@ -345,6 +345,11 @@ fn quick_tunnel_standin_falls_back_to_http2_when_quic_has_no_listener() {
     let mut tunnel = Process::spawn(command);
     let ready = tunnel.ready();
     assert_eq!(ready["leg"], "http2", "{}", tunnel.stderr());
+    // The log line of the race can come a little after the ready line.
+    let until = std::time::Instant::now() + Duration::from_secs(10);
+    while !tunnel.stderr().contains("the leg won the race") && std::time::Instant::now() < until {
+        std::thread::sleep(Duration::from_millis(50));
+    }
     let err = tunnel.stderr();
     assert!(err.contains("the leg won the race"), "{err}");
     assert!(err.contains("leg=http2"), "{err}");

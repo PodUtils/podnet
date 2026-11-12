@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**324 entries: 67 open, 17 partial, 23 blocked, 217 done.**
+**324 entries: 69 open, 17 partial, 21 blocked, 217 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 9 | 10 | 127 | 165 |
-| P3 | 48 | 7 | 11 | 62 | 128 |
-| **All** | 67 | 17 | 23 | 217 | 324 |
+| P3 | 50 | 7 | 9 | 62 | 128 |
+| **All** | 69 | 17 | 21 | 217 | 324 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -365,8 +365,8 @@ M8 Overlays, M9 Later.
 | [T-317](pods.md) | P1 | S | M7 | defect | done | seccomp: a mapped loopback address is dialed direct, not through the chain (PodUtils/podrunner#69) |
 | [T-318](fixes.md) | P2 | M | M5 | defect | done | ssh-relay: try the authentication methods the relay offers, and verify an RSA host key (GitHub #505) |
 | [T-319](fixes.md) | P2 | S | M5 | feature | partial | ssh-relay: a remote port from a flag, and from the service data (GitHub #506) |
-| [T-320](later.md) | P3 | L | M9 | feature | blocked | net: a Dev Tunnels network for TCP streams (GitHub #503) |
-| [T-321](later.md) | P3 | L | M9 | feature | blocked | net: a TURN network for UDP flows (GitHub #507) |
+| [T-320](later.md) | P3 | L | M9 | feature | open | net: a Dev Tunnels network for TCP streams (GitHub #503) |
+| [T-321](later.md) | P3 | L | M9 | feature | open | net: a TURN network for UDP flows (GitHub #507) |
 | [T-322](fixes.md) | P2 | S | M5 | defect | done | doctor: resolve the ssh-relay probe through the configured proxy (GitHub #504) |
 | [T-323](fixes.md) | P2 | S | M5 | defect | done | live: the WebSocket step leaves its echo server, and waits 30 s for the DNS of a new name (GitHub #511) |
 | [T-324](fixes.md) | P3 | S | M5 | defect | done | doctor: the test of a refused direct dial holds its port |

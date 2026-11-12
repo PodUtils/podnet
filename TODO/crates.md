@@ -802,6 +802,10 @@ Done so far:
 - v0.32.0 (PodUtils/podcrates#93): each `pod-*` dependency names `tag = "v0.32.0"`; no hand-off. The operator of
   `pod-relay` flushes each frame (podnet keeps its writer of T-315). The crate `pod-link` exists
   (podcrates T-300, T-311): T-262 can take it. `cargo test --workspace --no-fail-fast`: 0 failed.
+- v0.33.0 (PodUtils/podcrates#103): each `pod-*` dependency names `tag = "v0.33.0"`; no hand-off. `pod-session`
+  gives a typed cause in `End::GaveUp` (A12): `src/session.rs` maps `UnknownSession` and `WindowEnded` to
+  `ResumeExpired`. `pod-turn` and `pod-devtunnel` exist (T-321, T-320). `cargo test --workspace`: 0 failed (one flaky
+  stand-in test fixed, T-316).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
