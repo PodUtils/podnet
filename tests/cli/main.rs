@@ -60,6 +60,7 @@ mod log;
 mod manual;
 mod net;
 mod profile;
+mod query;
 mod serve;
 mod startup;
 mod warp;

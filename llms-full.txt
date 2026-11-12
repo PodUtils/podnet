@@ -7130,7 +7130,12 @@ COMMANDS
 
         <ADDRESS>
             The address, in the form of the carrier: a path for `unix`, a name
-            for `memory`, `IP:PORT` for `tcp`. Required.
+            for `memory`, `IP:PORT` for `tcp`. A query can follow the address:
+            `ADDRESS?key=value&key=value` (keys: carrier, tls, retry, lb,
+            compress, pad, mtu, maxhops, poll, window, name). Only `carrier`
+            has an effect yet; a key with no effect, a repeated key, an
+            unknown key or a secret key (password, key, token, identity) exits
+            64, and no message shows a value. Required.
 
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build
@@ -7265,7 +7270,12 @@ COMMANDS
 
         <ADDRESS>
             The address of the listener, in the form of the carrier (for
-            `tcp`: `KEY@HOST:PORT`, with the key of the listener). Required.
+            `tcp`: `KEY@HOST:PORT`, with the key of the listener). A query can
+            follow the address: `ADDRESS?key=value&key=value` (keys: carrier,
+            tls, retry, lb, compress, pad, mtu, maxhops, poll, window, name).
+            Only `carrier` has an effect yet; a key with no effect, a repeated
+            key, an unknown key or a secret key (password, key, token,
+            identity) exits 64, and no message shows a value. Required.
 
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build
@@ -7370,7 +7380,12 @@ COMMANDS
 
         <ADDRESS>
             The address of the listener, in the form of the carrier (for
-            `tcp`: `KEY@HOST:PORT`, with the key of the listener). Required.
+            `tcp`: `KEY@HOST:PORT`, with the key of the listener). A query can
+            follow the address: `ADDRESS?key=value&key=value` (keys: carrier,
+            tls, retry, lb, compress, pad, mtu, maxhops, poll, window, name).
+            Only `carrier` has an effect yet; a key with no effect, a repeated
+            key, an unknown key or a secret key (password, key, token,
+            identity) exits 64, and no message shows a value. Required.
 
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build

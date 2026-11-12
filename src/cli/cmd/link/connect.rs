@@ -19,6 +19,11 @@ use crate::cli::signals::shutdown_signal;
 pub(crate) struct ConnectArgs {
     /// The address of the listener, in the form of the carrier (for `tcp`:
     /// `KEY@HOST:PORT`, with the key of the listener).
+    /// A query can follow the address: `ADDRESS?key=value&key=value` (keys:
+    /// carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window,
+    /// name). Only `carrier` has an effect yet; a key with no effect, a repeated
+    /// key, an unknown key or a secret key (password, key, token, identity)
+    /// exits 64, and no message shows a value.
     #[arg(value_name = "ADDRESS")]
     pub(crate) address: String,
     #[command(flatten)]
@@ -44,7 +49,8 @@ pub(crate) struct ConnectArgs {
     pub(crate) detach: DetachArgs,
 }
 
-pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
+pub(crate) async fn connect(mut args: ConnectArgs) -> Result<()> {
+    args.address = super::apply_query(&args.address, &mut args.carrier)?;
     let carrier = super::open_carrier(&args.carrier)?;
     let allow = trusted(&args.allow, &args.peer)?;
     let me = identity::create(&identity::default_dir()?)?;

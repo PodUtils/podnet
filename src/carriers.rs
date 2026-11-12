@@ -23,6 +23,7 @@ use pod_link::{Carrier, CarrierError, CarrierErrorKind, Facts};
 use crate::build_features;
 use crate::exit::{self, Fault};
 use crate::link::carrier_fault;
+use crate::link_query::Query;
 use crate::network::Addressing;
 
 /// What the flags of a command give to the carriers.
@@ -222,6 +223,40 @@ pub fn open_in(rows: &[Row], name: &str, options: &Options) -> anyhow::Result<Bo
     Ok(carrier)
 }
 
+/// Check the keys of `query` that depend on the carrier `name`: `mtu`
+/// needs a datagram carrier and gives at most its unit (T-306). Exit 64
+/// for an unknown carrier or a bad key. A carrier that this build leaves
+/// out is checked when it opens (exit 69), not here.
+pub fn check_query(name: &str, query: &Query) -> anyhow::Result<()> {
+    check_query_in(&ROWS, name, query)
+}
+
+/// [`check_query`] over the rows `rows`.
+pub fn check_query_in(rows: &[Row], name: &str, query: &Query) -> anyhow::Result<()> {
+    let row = find(rows, name)?;
+    if query.mtu.is_none() || row.off().is_some() {
+        return Ok(());
+    }
+    match (row.make)(&Options::default()) {
+        Ok(carrier) => check_mtu(name, carrier.facts(), query),
+        Err(_) => Ok(()),
+    }
+}
+
+/// The `mtu` of `query` against the facts of the carrier `name`.
+fn check_mtu(name: &str, facts: Facts, query: &Query) -> anyhow::Result<()> {
+    let usage = |text: String| exit::fault(Fault::Usage, anyhow!(text));
+    match (query.mtu, facts.mtu) {
+        (Some(_), None) => Err(usage(format!(
+            "the query key mtu: the carrier {name} is a stream carrier and has no unit"
+        ))),
+        (Some(mtu), Some(unit)) if mtu > unit => Err(usage(format!(
+            "the query key mtu: the unit of the carrier {name} is {unit} bytes at most"
+        ))),
+        _ => Ok(()),
+    }
+}
+
 /// What `link carriers` and `doctor` say about one carrier.
 #[derive(Clone, Debug)]
 pub struct Report {
@@ -312,4 +347,34 @@ pub fn report_in(rows: &[Row], options: &Options) -> Vec<Report> {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::link_query::parse;
+
+    #[test]
+    fn mtu_needs_a_datagram_carrier_and_fits_its_unit() {
+        let q = parse("mtu=1200").unwrap();
+        let datagram = Facts {
+            mtu: Some(1400),
+            ..Facts::STREAM
+        };
+        assert!(check_mtu("udp", datagram, &q).is_ok());
+        let big = parse("mtu=1500").unwrap();
+        let m = format!("{:#}", check_mtu("udp", datagram, &big).unwrap_err());
+        assert!(m.contains("1400") && !m.contains("1500"), "{m}");
+        let m = format!("{:#}", check_mtu("unix", Facts::STREAM, &q).unwrap_err());
+        assert!(m.contains("stream carrier") && !m.contains("1200"), "{m}");
+        assert!(check_mtu("unix", Facts::STREAM, &Query::default()).is_ok());
+    }
+
+    #[test]
+    fn check_query_knows_the_names() {
+        let q = parse("mtu=1200").unwrap();
+        assert!(check_query("unix", &q).is_err());
+        assert!(check_query("nope", &Query::default()).is_err());
+        assert!(check_query("unix", &Query::default()).is_ok());
+    }
 }

@@ -126,6 +126,34 @@ of each link instance in the run directory, and takes the first that holds a lin
 * `--ring BYTES` (memory carrier) sets the ring of each direction: 65536 to 67108864 (64 KiB to 64 MiB). Default 1048576. A
   value out of the limits exits 64.
 
+## Query keys of an address
+
+The address of `link listen`, `link dial` and `link connect` can end in a query: `ADDRESS?key=value&key=value`. The
+code is `src/link_query.rs`. The command checks the query first, before it opens a socket.
+
+| Key | Value | Effect |
+| --- | --- | --- |
+| `carrier` | a carrier name | Takes the place of `--carrier`. |
+| `tls` | `on`, `off` | T-269 adds it. |
+| `retry` | 0 to 16 | T-263 adds it. |
+| `lb` | `weighted`, `rr`, `minrtt`, `leastload` | T-288 adds it. |
+| `compress` | `none`, `snappy` | T-299 adds it. |
+| `pad` | `on`, `off` | T-300 adds it. |
+| `mtu` | 64 to 65535, at most the unit of the carrier | T-276 adds it. A stream carrier has no unit: exit 64. |
+| `maxhops` | 1 to 8 | T-287 adds it. |
+| `poll` | 1 to 60 (seconds) | T-271 adds it. |
+| `window` | 16384 to 8388608 (bytes) | T-262 adds it. |
+| `name` | 1 to 32 characters of `a-z 0-9 -` | T-308 adds it. |
+
+* A key with no effect now is parsed and checked. Then the command exits 64 and names the entry that adds it.
+* Each key is given once. A repeated key exits 64.
+* An unknown key exits 64 and lists the allowed keys. The message does not show the unknown key.
+* `password`, `key`, `token` and `identity` are refused with or without a value (exit 64).
+* No message shows a value.
+* A URL has 1024 bytes at most and 16 keys at most. A value is printable ASCII with one level of percent-encoding.
+  A decoded value with `%` exits 64.
+* A path of the unix carrier that holds `?` cannot be used: the first `?` starts the query.
+
 ## Carriers
 
 | Name | Address | What it is |

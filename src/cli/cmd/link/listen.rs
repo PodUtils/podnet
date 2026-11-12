@@ -36,6 +36,11 @@ const CONNECT_LIMIT: Duration = Duration::from_secs(10);
 pub(crate) struct ListenArgs {
     /// The address, in the form of the carrier: a path for `unix`, a name
     /// for `memory`, `IP:PORT` for `tcp`.
+    /// A query can follow the address: `ADDRESS?key=value&key=value` (keys:
+    /// carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window,
+    /// name). Only `carrier` has an effect yet; a key with no effect, a repeated
+    /// key, an unknown key or a secret key (password, key, token, identity)
+    /// exits 64, and no message shows a value.
     #[arg(value_name = "ADDRESS")]
     pub(crate) address: String,
     #[command(flatten)]
@@ -113,7 +118,8 @@ fn services_of(args: &ListenArgs) -> Result<BTreeMap<String, Target>> {
     Ok(out)
 }
 
-pub(crate) async fn listen(args: ListenArgs) -> Result<()> {
+pub(crate) async fn listen(mut args: ListenArgs) -> Result<()> {
+    args.address = super::apply_query(&args.address, &mut args.carrier)?;
     let carrier = super::open_carrier(&args.carrier)?;
     let services: Services = Arc::new(services_of(&args)?);
     let allow = AllowList::read(&args.allow)?;

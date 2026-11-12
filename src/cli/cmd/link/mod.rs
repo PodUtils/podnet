@@ -69,6 +69,19 @@ pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Option<Box<dyn Carrier>
     Ok(Some(carriers::open(&args.carrier, &args.options())?))
 }
 
+/// Split the query off `address` and check it before any socket opens
+/// (T-306). The key `carrier` takes the place of --carrier. A key that has
+/// no effect yet exits 64. The result is the address with no query.
+pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<String> {
+    let (base, query) = podnet::link_query::split(address)?;
+    if let Some(name) = &query.carrier {
+        carrier.carrier.clone_from(name);
+    }
+    carriers::check_query(&carrier.carrier, &query)?;
+    query.require_wired()?;
+    Ok(base.to_string())
+}
+
 /// Connect to `address` and prove the peer. A carrier with no key of its own
 /// (unix, memory) runs the hello above it. `tcp` proves the key in the TLS
 /// handshake, and `address` is `KEY@HOST:PORT`.
