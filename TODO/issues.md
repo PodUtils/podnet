@@ -183,7 +183,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #503 | net: add a Dev Tunnels network for TCP streams | open (blocked: `pod-devtunnel` of podcrates) | T-320 |
 | #504 | doctor: resolve the ssh-relay probe through the configured proxy | closed | T-322 |
 | #505 | ssh-relay: try the authentication methods the relay offers | closed | T-318 |
-| #506 | ssh-relay: take the remote port from the service data | open | T-319 |
+| #506 | ssh-relay: take the remote port from the service data | closed (T-319, commit 3e4c999) | T-319 |
 | #507 | net: add a TURN network for UDP flows | open (T-321 partial: the UDP half is done; the TCP relay, the doctor row and an account for each network stay) | T-321 |
 | #508 | COORD-053: podnet took v0.32.0 at fa6b5ba; pod-link is next (to podcrates) | open (a COORD issue between sessions) | none |
 | #509 | COORD-054: the mapped loopback address is now dialed direct (T-317); it comes in v0.4.0-beta.7 (to podrunner) | open (a COORD issue between sessions) | none |

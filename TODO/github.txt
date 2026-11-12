@@ -190,7 +190,7 @@
 503 issue open
 504 issue closed
 505 issue closed
-506 issue open
+506 issue closed
 507 issue open
 508 issue open
 509 issue open
