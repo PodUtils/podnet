@@ -11,6 +11,7 @@ pub(crate) mod git;
 mod git_serve;
 pub(crate) mod host;
 pub(crate) mod instances;
+pub(crate) mod link;
 pub(crate) mod local;
 pub(crate) mod net;
 pub(crate) mod relay;

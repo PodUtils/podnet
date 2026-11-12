@@ -296,6 +296,7 @@ fn doctor_json_keys_are_fixed() {
     assert_eq!(
         keys(&doc),
         [
+            "carriers",
             "clock",
             "git",
             "lanes",

@@ -91,6 +91,7 @@ file of the host cannot be used (a key file with a mode that is not 0600), 77
 when a peer is not in the allow list of the link, 78 for a bad configuration
 (for example `PODNET_EDGE`). 68 is for an address of a peer that does not
 resolve. `podnet man exit-status` gives all of them.
+The exit codes of `podnet link` are in [link.md](link.md).
 
 `PODNET_ERROR_PROGRAM=/path/to/program` gives a JSON report of each failure
 (version, system, command, exit code, the last 64 log lines) to that program

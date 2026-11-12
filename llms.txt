@@ -70,6 +70,12 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet relay node`: Hold the node socket of a pair, and connect each session of an operator to a local service. A lost socket is opened again
 - `podnet relay connect`: Open a session to a node and copy stdin and stdout (an SSH ProxyCommand), or each connection of --listen
 - `podnet relay stop`: Stop a node and its sessions at the relay (POST /v1/stop), and remove the local pair file
+- `podnet link`: A link between two installs over a carrier (a unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) says which peers may open streams. Listen, dial, status, close, carriers
+- `podnet link listen`: Listen at an address of a carrier. A peer must prove its key, and the allow list (--allow) must hold it, before it can open a stream. Print the address (for the unix carrier: the path and its mode 0600) and the fingerprint of this install. Each stream of an admitted peer goes to --to. A second listener at a live address exits 69; a peer that the list does not hold exits 77 at its side
+- `podnet link dial`: Connect to a listener, prove this key, and check the key of the listener against --peer or --allow. Then copy stdin and stdout over one stream. A listener that is not allowed exits 77
+- `podnet link status`: Show the fingerprint of this install and the link instances that run (podnet ps lists the other instances). With a NAME, show that instance only
+- `podnet link close`: Stop a link instance that runs in the background (SIGTERM, then SIGKILL after --timeout). The listener removes its unix socket
+- `podnet link carriers`: List the carriers of this build, with the flags of each and whether this host can use it. A carrier that this host cannot use gives its reason
 - `podnet pod`: Run a program with all its traffic sent through a proxy (podnet-netns)
 - `podnet man`: Show the manual, generated from this binary
 - `podnet status`: Print one line of JSON about this host. It opens no connection

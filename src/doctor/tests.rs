@@ -122,6 +122,7 @@ fn the_roads_follow_the_legs() {
             detail: String::new(),
         },
         git: git_check::git("git"),
+        carriers: carrier_check::carriers(),
         ssh_relay: SshRelay::none(),
         quick: false,
         probes: Probes::untested(),
@@ -226,6 +227,7 @@ fn doctor_json_dns_keys_are_fixed() {
             detail: String::new(),
         },
         git: git_check::git("git"),
+        carriers: carrier_check::carriers(),
         ssh_relay: SshRelay::none(),
         quick: false,
         probes: Probes::untested(),
@@ -264,6 +266,7 @@ fn the_lanes_follow_the_legs_and_paths() {
             detail: String::new(),
         },
         git: git_check::git("git"),
+        carriers: carrier_check::carriers(),
         ssh_relay: SshRelay::none(),
         quick: false,
         probes: Probes::untested(),
@@ -391,6 +394,7 @@ fn the_lanes_hold_the_probes() {
             detail: String::new(),
         },
         git: git_check::git("git"),
+        carriers: carrier_check::carriers(),
         ssh_relay: SshRelay::none(),
         quick: false,
         probes: Probes::untested(),
@@ -508,4 +512,50 @@ async fn the_ssh_relay_row_of_a_refused_proxy_does_not_dial() {
         row.detail
     );
     assert_eq!(row.to_json()["proxy"], Value::Null);
+}
+
+/// A report of the registry for the carrier `name`.
+fn carrier_report(name: &'static str, available: Result<(), String>) -> crate::carriers::Report {
+    crate::carriers::Report {
+        name,
+        about: "a test carrier",
+        address: "NAME",
+        cost: "free",
+        needs_privilege: false,
+        feature: None,
+        facts: pod_link::Facts::STREAM,
+        addressing: crate::network::Addressing::Peer,
+        available,
+    }
+}
+
+// T-264, T-265: the doctor has a row for each carrier, with the reason of
+// a carrier that the host refuses.
+#[test]
+fn the_doctor_has_a_row_for_each_carrier_with_its_reason() {
+    let rows = carrier_check::Carriers::from_reports(&[
+        carrier_report("fine", Ok(())),
+        carrier_report("denied", Err("the seccomp filter denies the family".into())),
+    ]);
+    let doc = rows.to_json();
+    assert_eq!(doc[0]["carrier"], "fine");
+    assert_eq!(doc[0]["verdict"], "ok");
+    assert_eq!(doc[1]["carrier"], "denied");
+    assert_eq!(doc[1]["verdict"], "fail");
+    assert_eq!(doc[1]["status"], "fail");
+    assert_eq!(doc[1]["detail"], "the seccomp filter denies the family");
+    let text = rows.text();
+    assert!(text.starts_with("\ncarriers\n"), "{text}");
+    assert!(
+        text.contains("denied     fail     the seccomp filter"),
+        "{text}"
+    );
+}
+
+// T-264, T-265: the registry of this build is in the report.
+#[test]
+fn the_report_lists_the_carriers_of_the_registry() {
+    let carriers = carrier_check::carriers();
+    let names: Vec<&str> = carriers.0.iter().map(|c| c.name).collect();
+    assert_eq!(names, crate::carriers::names());
 }

@@ -79,6 +79,7 @@ const TOPIC_DOCUMENTS: &[&str] = &[
     "docs/router.md",
     "docs/forward.md",
     "docs/relay.md",
+    "docs/link.md",
     "docs/egress.md",
     "docs/proxies.md",
     "docs/background.md",
@@ -367,6 +368,7 @@ fn the_readme_names_each_command_with_detach() {
         "warp forward",
         "warp tun",
         "relay node",
+        "link listen",
         "net proxy",
         "net switch",
     ] {

@@ -372,6 +372,14 @@ pub const FILES: &[FileEntry] = &[
         meaning: "The pointer file of podnet warp up (mode 0600, directory mode 0700): its socket and its state directory. warp exec, warp shell, warp nc and agent read it last, so that they find a podnet warp up with another state directory. podnet reads it only when this user owns it and no other user can read it. podnet warp down removes it.",
     },
     FileEntry {
+        path: "<state directory>/link-identity.key",
+        meaning: "The Ed25519 key of this install for podnet link (mode 0600; a wider mode exits 71). podnet link listen, dial and status --create make it on first use. podnet link status prints its fingerprint. The seed is never printed, logged or put in JSON.",
+    },
+    FileEntry {
+        path: "ALLOW (podnet link listen --allow, podnet link dial --allow)",
+        meaning: "An allow list of the link: one peer on each line (the fingerprint of podnet link status, a SHA256: fingerprint, or a key in hex), 4096 lines at most. A line that starts with # is a comment. The list is default deny. The file must belong to this user and must not be writable by others (exit 71); a missing file exits 66.",
+    },
+    FileEntry {
         path: "podnet-ca.pem (beside the binary)",
         meaning: "Extra TLS roots (PEM), for example the root of a TLS-inspecting proxy. podnet reads it when --ca-file and SSL_CERT_FILE are not set.",
     },
@@ -558,6 +566,14 @@ pub const EXAMPLES: &[Example] = &[
     Example {
         command: "podnet net switch --listen tcp://127.0.0.1:7000 --switch-token-file /run/secrets/switch",
         meaning: "A switch on TCP. Each stack gives the same token: --switch-token-file, or PODNET_SWITCH_TOKEN.",
+    },
+    Example {
+        command: "podnet link listen /run/user/1000/app.sock --allow peers.txt --to unix:/run/user/1000/origin.sock --detach",
+        meaning: "A link listener on a unix socket (mode 0600). A peer must prove its key and be in peers.txt.",
+    },
+    Example {
+        command: "podnet link dial /run/user/1000/app.sock --peer FINGERPRINT --check",
+        meaning: "Connect to a link listener, check its key, and print its fingerprint.",
     },
     Example {
         command: "podnet status",

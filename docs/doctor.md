@@ -105,6 +105,7 @@ removed or renamed. A consumer ignores a key that it does not know. The tests pi
 | `legs` | `quic`, `http2`, `quic+warp` and `http2+relay`, each with `verdict`, `status` and `reason`. |
 | `paths` | One object for each TCP path: `id`, `target`, `via`, `verdict`, `detail`, `samples` (loss, best, median, p95, jitter), `tls` and `dns`. |
 | `clock`, `git`, `ssh_relay`, `proxy`, `udp` | The clock, the installed git, the SSH relay, the proxy of the run and the UDP 7844 probe. |
+| `carriers` | One object for each carrier of `podnet link` ([link.md](link.md)): `carrier`, `verdict`, `status` and `detail` (the reason when the host cannot use the carrier). |
 
 `docs/protocol.md` section 9 gives each key and its type. Section 10 is the profile for a program that
 reads the document (flags, exit codes, readiness, failure causes).

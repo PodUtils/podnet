@@ -450,6 +450,7 @@ one of `answered`, `refused` and `unknown`.
 | `clock` | object | The clock against the `Date` of an API. |
 | `git` | object | The installed git. |
 | `ssh_relay` | object | The SSH relay of `podnet ssh-relay`. |
+| `carriers` | array | One object for each carrier of `podnet link`. |
 | `proxy` | object | The proxy of the run. |
 | `udp` | object | The UDP 7844 probe. |
 
@@ -483,6 +484,8 @@ Each object of `paths`:
   and `detail` is `no SSH relay is given`. A stage that fails has `fail`
   and the stage in `detail` (`connect`, `banner`, `handshake` or `auth`). A
   stage with no answer in three times `--timeout` has `unknown`.
+* `carriers`: one object for each carrier of the registry, in its order: `carrier`, `verdict`, `status` and `detail` (strings).
+  `ok` means that the host can use the carrier. `fail` means that it cannot, and `detail` gives the reason of `available()`.
 * `proxy`: `url` (string or null), `credentials` (bool or null), `direct`
   (strings), `text` (string).
 * `udp`: `target`, `verdict`, `status` and `detail` (strings).

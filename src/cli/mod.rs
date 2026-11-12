@@ -23,6 +23,7 @@ use cmd::connect::{connect, ConnectArgs};
 use cmd::git::{git, GitArgs};
 use cmd::host::{DoctorArgs, ManArgs, PortsArgs, QrArgs, UpdateArgs};
 use cmd::instances::{instances_logs, instances_ps, instances_stop, instances_wait};
+use cmd::link::{link, LinkArgs};
 use cmd::net::{net, NetArgs};
 use cmd::relay::{relay, RelayArgs};
 use cmd::serve::{serve, ServeArgs};
@@ -168,6 +169,11 @@ pub(crate) enum Command {
     /// Inbound access to this host through the WebSocket relay (--relay):
     /// pair, run a node for a local port, connect as the operator.
     Relay(RelayArgs),
+    /// A link between two installs over a carrier (a unix socket, memory):
+    /// each end proves its Ed25519 key, and an allow list (default deny)
+    /// says which peers may open streams. Listen, dial, status, close,
+    /// carriers.
+    Link(LinkArgs),
     /// Run a program with all its traffic sent through a proxy (podnet-netns).
     ///
     /// Give the podnet-netns arguments after `pod`. See `podnet pod --help`.
@@ -271,6 +277,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Net(args) => net(args).await,
         Command::Warp(args) => warp(*args).await,
         Command::Relay(args) => relay(args).await,
+        Command::Link(args) => link(args).await,
         Command::SshRelay(args) => ssh_relay(args).await,
         Command::Pod { .. } => Err(podnet::exit::fault(
             Fault::Usage,

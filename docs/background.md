@@ -13,7 +13,7 @@ podnet stop web                                  # or: podnet stop --all
 
 `--detach` works with `tunnel`, `serve`, `share`, `demo`, `connect`,
 `warp proxy`, `warp forward`, `warp tun`, `warp exec`, `relay node`,
-`net proxy` and `net switch`. The command runs in the foreground until it
+`link listen`, `net proxy` and `net switch`. The command runs in the foreground until it
 is ready: until the public URL answers, or until the listener is bound.
 Then it leaves the terminal (`setsid`, SIGHUP ignored, stdin to
 `/dev/null`, stdout and stderr to its log), and the start prints one JSON

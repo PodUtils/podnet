@@ -272,6 +272,8 @@ pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
             } => Some(detach),
             _ => None,
         },
+        // T-265: the listener of the link.
+        Command::Link(args) => crate::cli::cmd::link::detach_of(args),
         Command::Net(args) => match &args.command {
             NetCommand::Proxy(args) => Some(&args.detach),
             NetCommand::Switch(args) => Some(&args.detach),

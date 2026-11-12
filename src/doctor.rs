@@ -214,6 +214,8 @@ pub struct Report {
     pub git: Git,
     /// The SSH relay of `podnet ssh-relay` (T-165).
     pub ssh_relay: SshRelay,
+    /// The carriers of `podnet link` (T-265).
+    pub carriers: Carriers,
     /// True for a run of `--quick`.
     pub quick: bool,
     /// The probes of the lanes `masque_udp443` and `ws_upgrade` (T-260).
@@ -339,6 +341,7 @@ impl Report {
         ));
         out.push_str(&self.git.line());
         out.push_str(&self.ssh_relay.line());
+        out.push_str(&self.carriers.text());
         out.push_str("\nroads\n");
         for (road, verdict, reason) in self.roads() {
             out.push_str(&format!("  {road:<10} {:<8} {reason}\n", verdict.name()));
@@ -444,6 +447,7 @@ pub async fn run(options: Options) -> Report {
         legs,
         clock,
         git: git_check::git("git"),
+        carriers: carrier_check::carriers(),
         ssh_relay,
         quick: options.deadline.is_some(),
         probes,
@@ -471,10 +475,12 @@ fn unfinished(target: &Target, limit: Option<Duration>) -> Path {
     }
 }
 
+mod carrier_check;
 mod clock_check;
 mod git_check;
 mod json;
 mod lane_probes;
+pub use carrier_check::{CarrierRow, Carriers};
 use clock_check::clock;
 pub use clock_check::parse_imf_fixdate;
 pub use git_check::Git;

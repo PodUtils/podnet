@@ -6973,6 +6973,467 @@ COMMANDS
             The form of the log on stderr: text, or json (one object for each
             line). Default: text. Values: text, json.
 
+    podnet link [OPTIONS] <COMMAND>
+        A link between two installs over a carrier (a unix socket, memory):
+        each end proves its Ed25519 key, and an allow list (default deny) says
+        which peers may open streams. Listen, dial, status, close, carriers
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+        Commands of podnet link: listen, dial, status, close, carriers.
+
+    podnet link listen [OPTIONS] --allow <FILE> <ADDRESS>
+        Listen at an address of a carrier. A peer must prove its key, and the
+        allow list (--allow) must hold it, before it can open a stream. Print
+        the address (for the unix carrier: the path and its mode 0600) and the
+        fingerprint of this install. Each stream of an admitted peer goes to
+        --to. A second listener at a live address exits 69; a peer that the
+        list does not hold exits 77 at its side
+
+        <ADDRESS>
+            The address, in the form of the carrier: a path for `unix`, a name
+            for `memory`. Required.
+
+        --carrier <NAME>
+            The carrier (`podnet link carriers` lists them). Default: unix.
+
+        --allow-other-uid
+            The unix carrier accepts a peer of another uid. Each end checks
+            the uid of the other end (SO_PEERCRED), so give the flag at both
+            ends. Without it, a peer of another uid is refused (exit 69)
+
+        --ring <BYTES>
+            The bytes of each ring of the memory carrier: 65536 to 67108864
+            (64 KiB to 64 MiB). Default 1048576
+
+        --allow <FILE>
+            The allow list: a file with one peer on each line (the fingerprint
+            that `podnet link status` shows, a `SHA256:` fingerprint, or a key
+            in hex), 4096 lines at most. The list is default deny: a peer that
+            it does not hold gets exit 77. The file must not be writable by
+            others (else exit 71); a missing file exits 66. Required.
+
+        --to <TARGET>
+            Where each stream of an admitted peer goes: `host:port` or
+            `unix:/path`. Without it, podnet closes each stream at once
+
+        --json
+            Print the ready document as one line of JSON in place of the text
+
+        --detach
+            Run in the background: podnet prints one JSON document when the
+            command is ready (its URL or its listen address) and exits 0. The
+            instance keeps running when the shell or the terminal closes.
+            podnet ps, logs, wait and stop manage it
+
+        --name <NAME>
+            The name of the detached instance. Default: the command and a hash
+            of its arguments. A second start with the same name and the same
+            arguments gives the same instance. With no --detach: register this
+            process under the name (it is not forked and not restarted);
+            podnet ps, logs, wait and stop see it
+
+        --ready-timeout <SECS>
+            With --detach: seconds to wait for the instance to be ready (else
+            exit 124). Default: 60.
+
+        --replace
+            Stop a running instance of the same name that has other arguments,
+            and start this one (needs --detach). connect: also take a unix
+            socket of -L that another process serves (by default, a socket
+            that answers is refused, exit 69; a stale socket file is replaced)
+
+        --no-restart
+            Do not start the instance again when it ends. Without it, a
+            supervisor starts it again with a backoff (1 s to 30 s), but not
+            after exit 64 or 78, and not after a planned end (--stop-after,
+            --idle-secs, --run-for). A quick tunnel gets a new URL; podnet ps
+            shows it. With --name and no --detach, there is no supervisor
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+        Examples:
+        A link listener on a unix socket (mode 0600). A peer must prove its
+        key and be in peers.txt.
+            $ podnet link listen /run/user/1000/app.sock --allow peers.txt
+            --to unix:/run/user/1000/origin.sock --detach
+
+    podnet link dial [OPTIONS] <ADDRESS>
+        Connect to a listener, prove this key, and check the key of the
+        listener against --peer or --allow. Then copy stdin and stdout over
+        one stream. A listener that is not allowed exits 77
+
+        <ADDRESS>
+            The address of the listener, in the form of the carrier. Required.
+
+        --carrier <NAME>
+            The carrier (`podnet link carriers` lists them). Default: unix.
+
+        --allow-other-uid
+            The unix carrier accepts a peer of another uid. Each end checks
+            the uid of the other end (SO_PEERCRED), so give the flag at both
+            ends. Without it, a peer of another uid is refused (exit 69)
+
+        --ring <BYTES>
+            The bytes of each ring of the memory carrier: 65536 to 67108864
+            (64 KiB to 64 MiB). Default 1048576
+
+        --peer <FINGERPRINT>
+            The fingerprint that the listener must prove (the line that its
+            `podnet link listen` prints). Repeat it for more than one
+
+        --allow <FILE>
+            An allow list file, as `link listen --allow`, of the listeners
+            that this install trusts. Give --peer or --allow: the list is
+            default deny, and a listener that it does not hold exits 77
+
+        --check
+            Connect and check the peer, print its fingerprint, and exit 0. It
+            opens no stream
+
+        --json
+            With --check: print one JSON document
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+        Examples:
+        Connect to a link listener, check its key, and print its fingerprint.
+            $ podnet link dial /run/user/1000/app.sock --peer FINGERPRINT
+            --check
+
+    podnet link status [OPTIONS] [NAME]
+        Show the fingerprint of this install and the link instances that run
+        (podnet ps lists the other instances). With a NAME, show that instance
+        only
+
+        <NAME>
+            The name of a link instance (podnet ps). Default: each one
+
+        --create
+            Make the key of this install when there is none (mode 0600 in the
+            state directory). Without it, status writes nothing
+
+        --json
+            Print one JSON document
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+    podnet link close [OPTIONS] <NAME>
+        Stop a link instance that runs in the background (SIGTERM, then
+        SIGKILL after --timeout). The listener removes its unix socket
+
+        <NAME>
+            The name of the link instance (podnet link status). Required.
+
+        --timeout <TIMEOUT>
+            Seconds to wait before SIGKILL. Default: 10.
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+    podnet link carriers [OPTIONS]
+        List the carriers of this build, with the flags of each and whether
+        this host can use it. A carrier that this host cannot use gives its
+        reason
+
+        --carrier <NAME>
+            The carrier (`podnet link carriers` lists them). Default: unix.
+
+        --allow-other-uid
+            The unix carrier accepts a peer of another uid. Each end checks
+            the uid of the other end (SO_PEERCRED), so give the flag at both
+            ends. Without it, a peer of another uid is refused (exit 69)
+
+        --ring <BYTES>
+            The bytes of each ring of the memory carrier: 65536 to 67108864
+            (64 KiB to 64 MiB). Default 1048576
+
+        --json
+            Print one JSON document: {"carriers": [...]}
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
     podnet pod [OPTIONS] [ARGS]...
         Run a program with all its traffic sent through a proxy
         (podnet-netns).
@@ -8557,6 +9018,17 @@ FILES
         agent read it last, so that they find a podnet warp up with another
         state directory. podnet reads it only when this user owns it and no
         other user can read it. podnet warp down removes it.
+    <state directory>/link-identity.key
+        The Ed25519 key of this install for podnet link (mode 0600; a wider
+        mode exits 71). podnet link listen, dial and status --create make it
+        on first use. podnet link status prints its fingerprint. The seed is
+        never printed, logged or put in JSON.
+    ALLOW (podnet link listen --allow, podnet link dial --allow)
+        An allow list of the link: one peer on each line (the fingerprint of
+        podnet link status, a SHA256: fingerprint, or a key in hex), 4096
+        lines at most. A line that starts with # is a comment. The list is
+        default deny. The file must belong to this user and must not be
+        writable by others (exit 71); a missing file exits 66.
     podnet-ca.pem (beside the binary)
         Extra TLS roots (PEM), for example the root of a TLS-inspecting proxy.
         podnet reads it when --ca-file and SSL_CERT_FILE are not set.
@@ -8759,6 +9231,14 @@ EXAMPLES
         $ podnet net switch --listen tcp://127.0.0.1:7000 --switch-token-file
         /run/secrets/switch
 
+    A link listener on a unix socket (mode 0600). A peer must prove its key
+    and be in peers.txt.
+        $ podnet link listen /run/user/1000/app.sock --allow peers.txt --to
+        unix:/run/user/1000/origin.sock --detach
+
+    Connect to a link listener, check its key, and print its fingerprint.
+        $ podnet link dial /run/user/1000/app.sock --peer FINGERPRINT --check
+
     One JSON line about this host, for a program.
         $ podnet status
 
@@ -8858,6 +9338,7 @@ podnet man                                      # the manual
 | Router | `route --config`, `--check --to`, `--status`, `--export` | Networks, groups, policies, health, doors, DNS door, kernel mode. | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
 | Forwards | `forward -L`, `forward --dns` | TCP and UDP forwards and a DNS door through a network. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Relays | `relay pair`, `node`, `connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
+| Link | `link listen`, `dial`, `status`, `close`, `carriers` | A link between two installs over a carrier (unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
 | Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
 | Checks | `doctor`, `doctor --agent`, `status`, `ports`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
@@ -8894,6 +9375,7 @@ GitHub runner on each push and each day.
 * [docs/router.md](https://github.com/PodUtils/podnet/blob/main/docs/router.md): `podnet route`.
 * [docs/forward.md](https://github.com/PodUtils/podnet/blob/main/docs/forward.md): `forward`, the DNS door, `expose`.
 * [docs/relay.md](https://github.com/PodUtils/podnet/blob/main/docs/relay.md): `relay` and `ssh-relay`.
+* [docs/link.md](https://github.com/PodUtils/podnet/blob/main/docs/link.md): `link` (the key of an install, the allow list, the carriers).
 * [docs/egress.md](https://github.com/PodUtils/podnet/blob/main/docs/egress.md): network specs and `--egress`.
 * [docs/proxies.md](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md): proxies, DNS, TLS roots.
 * [docs/background.md](https://github.com/PodUtils/podnet/blob/main/docs/background.md): `--detach`, `ps`, autostart.
@@ -11014,7 +11496,7 @@ podnet stop web                                  # or: podnet stop --all
 
 `--detach` works with `tunnel`, `serve`, `share`, `demo`, `connect`,
 `warp proxy`, `warp forward`, `warp tun`, `warp exec`, `relay node`,
-`net proxy` and `net switch`. The command runs in the foreground until it
+`link listen`, `net proxy` and `net switch`. The command runs in the foreground until it
 is ready: until the public URL answers, or until the listener is bound.
 Then it leaves the terminal (`setsid`, SIGHUP ignored, stdin to
 `/dev/null`, stdout and stderr to its log), and the start prints one JSON
@@ -11210,6 +11692,7 @@ removed or renamed. A consumer ignores a key that it does not know. The tests pi
 | `legs` | `quic`, `http2`, `quic+warp` and `http2+relay`, each with `verdict`, `status` and `reason`. |
 | `paths` | One object for each TCP path: `id`, `target`, `via`, `verdict`, `detail`, `samples` (loss, best, median, p95, jitter), `tls` and `dns`. |
 | `clock`, `git`, `ssh_relay`, `proxy`, `udp` | The clock, the installed git, the SSH relay, the proxy of the run and the UDP 7844 probe. |
+| `carriers` | One object for each carrier of `podnet link` ([link.md](link.md)): `carrier`, `verdict`, `status` and `detail` (the reason when the host cannot use the carrier). |
 
 `docs/protocol.md` section 9 gives each key and its type. Section 10 is the profile for a program that
 reads the document (flags, exit codes, readiness, failure causes).
@@ -11367,6 +11850,7 @@ file of the host cannot be used (a key file with a mode that is not 0600), 77
 when a peer is not in the allow list of the link, 78 for a bad configuration
 (for example `PODNET_EDGE`). 68 is for an address of a peer that does not
 resolve. `podnet man exit-status` gives all of them.
+The exit codes of `podnet link` are in [link.md](link.md).
 
 `PODNET_ERROR_PROGRAM=/path/to/program` gives a JSON report of each failure
 (version, system, command, exit code, the last 64 log lines) to that program
@@ -11935,6 +12419,7 @@ one of `answered`, `refused` and `unknown`.
 | `clock` | object | The clock against the `Date` of an API. |
 | `git` | object | The installed git. |
 | `ssh_relay` | object | The SSH relay of `podnet ssh-relay`. |
+| `carriers` | array | One object for each carrier of `podnet link`. |
 | `proxy` | object | The proxy of the run. |
 | `udp` | object | The UDP 7844 probe. |
 
@@ -11968,6 +12453,8 @@ Each object of `paths`:
   and `detail` is `no SSH relay is given`. A stage that fails has `fail`
   and the stage in `detail` (`connect`, `banner`, `handshake` or `auth`). A
   stage with no answer in three times `--timeout` has `unknown`.
+* `carriers`: one object for each carrier of the registry, in its order: `carrier`, `verdict`, `status` and `detail` (strings).
+  `ok` means that the host can use the carrier. `fail` means that it cannot, and `detail` gives the reason of `available()`.
 * `proxy`: `url` (string or null), `credentials` (bool or null), `direct`
   (strings), `text` (string).
 * `udp`: `target`, `verdict`, `status` and `detail` (strings).

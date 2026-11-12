@@ -82,6 +82,7 @@ pub mod fetch;
 #[doc(hidden)]
 pub mod forwards;
 pub mod fuzzing;
+pub mod hello;
 pub mod identity;
 pub mod link;
 pub mod manual;
