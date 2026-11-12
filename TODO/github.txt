@@ -195,5 +195,5 @@
 508 issue open
 509 issue open
 510 issue open
-511 issue open
+511 issue closed
 512 issue open
