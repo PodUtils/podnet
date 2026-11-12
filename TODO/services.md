@@ -1744,7 +1744,7 @@ the take of `pod-warp` (T-050).
 
 ## Done
 
-2026-11-12, commit 2fb1f82. Tests: `cargo test -p podnet --lib route_control` (3:
+2026-11-12, commit 31b74c0. Tests: `cargo test -p podnet --lib route_control` (3:
 `route_control_rotate_reuses_the_state_dir`, `route_control_needs_the_gate`,
 `route_control_select_and_interval`), `cargo test -p podnet-core --lib route_control_pin` (1),
 `cargo test -p podnet-core --lib swap` (1), `cargo test -p podnet --test detach route_control_flags` (1: the

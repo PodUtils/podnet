@@ -191,7 +191,7 @@ fn router_status_json_keys() {
     let keys: Vec<&String> = status.as_object().unwrap().keys().collect();
     assert_eq!(
         keys,
-        ["group", "head", "members", "policy", "refused", "split"]
+        ["group", "head", "members", "pinned", "policy", "refused", "split"]
     );
     let member = &status["members"][0];
     let keys: Vec<&String> = member.as_object().unwrap().keys().collect();

@@ -137,6 +137,14 @@ async fn route_control_rotate_reuses_the_state_dir() {
     // The new flows take the new way; the other member is as it was.
     assert_eq!(way_of(&router, "home"), "gen2");
     assert_eq!(way_of(&router, "other"), "other");
+    // The close of the old link runs in a task: wait for it, so that the
+    // order of the log does not depend on the scheduler.
+    for _ in 0..200 {
+        if log.lock().unwrap().len() >= 3 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
     // The gap: a second rotate at once is refused and makes no link.
     let err = request(&path, "POST", "/route/rotate", Some(&body))
         .await
