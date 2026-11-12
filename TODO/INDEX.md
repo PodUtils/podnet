@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**260 entries: 33 open, 14 partial, 22 blocked, 191 done.**
+**260 entries: 32 open, 14 partial, 22 blocked, 192 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 20 | 7 | 14 | 116 | 157 |
-| P3 | 13 | 6 | 6 | 49 | 74 |
-| **All** | 33 | 14 | 22 | 191 | 260 |
+| P3 | 12 | 6 | 6 | 50 | 74 |
+| **All** | 32 | 14 | 22 | 192 | 260 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -221,7 +221,7 @@ M8 Overlays, M9 Later.
 | [T-173](fixes.md) | P2 | S | M5 | feature | partial | A WARP identity of another uid, with a consent variable (GitHub #368) |
 | [T-174](pods.md) | P3 | M | M7 | feature | done | netns: a veth wire when `/dev/net/tun` is not there (GitHub #369) |
 | [T-175](crates.md) | P2 | M | M3 | feature | done | DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370) |
-| [T-176](later.md) | P3 | S | M9 | research | open | Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372) |
+| [T-176](later.md) | P3 | S | M9 | research | done | Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372) |
 | [T-177](services.md) | P3 | S | M6 | feature | done | Router: `podnet route check`, a dry run of the rules (GitHub #375) |
 | [T-178](later.md) | P3 | M | M9 | feature | done | Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375) |
 | [T-179](later.md) | P3 | S | M9 | research | partial | Research: a direction split for asymmetric uplinks (GitHub #375) |

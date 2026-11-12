@@ -226,7 +226,7 @@ async fn guest_wire_accept_queue_drops_a_flow_after_the_handshake() {
 /// first ones (the channel of 64 and the buffer of 64 packets), loses the
 /// rest, keeps the order, and counts none: `dropped` and `rx_dropped` stay 0.
 #[tokio::test]
-async fn guest_wire_udp_has_a_bounded_queue() {
+async fn guest_wire_stack_udp_queue_is_bounded_and_silent() {
     let (router, guest, _wire) = pair(router_config(), guest_config());
     let mut flows = router.bind_udp_any(5353).await.unwrap();
     let sender = guest.bind_udp(at("10.66.0.4", 40000)).await.unwrap();

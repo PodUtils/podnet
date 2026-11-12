@@ -51,7 +51,7 @@ Tests: `guest_wire_handshake_ends_before_the_app_accepts`, `guest_wire_held_syn_
 | Buffer of 65535 bytes | `udp_payload` is 64 KiB (65536), so one datagram of 65535 bytes fits an empty buffer; the metadata ring is separate (`udp_packets`). With fragmentation on, 65507 passed alone (one datagram in the buffer). | Keep `udp_payload` at 65536 or more. The oversized-datagram counter must be the router's. |
 | Partial write of a stream | A TCP socket buffer of 4 KiB takes 2 000 000 bytes with a reader that sleeps: the bytes arrive equal. `Conn::pending` keeps the offset. | None for TCP. The record stream of the UDP flow (`udpflow.rs`) keeps its test `a_partial_stream_write_keeps_the_record_stream_aligned`. |
 
-Tests: `guest_wire_udp_has_a_bounded_queue`, `guest_wire_udp_over_the_mtu_is_lost_without_fragmentation`,
+Tests: `guest_wire_stack_udp_queue_is_bounded_and_silent`, `guest_wire_udp_over_the_mtu_is_lost_without_fragmentation`,
 `guest_wire_partial_write_keeps_the_byte_order`, `guest_wire_link_queue_says_full_and_has_no_wait_for_room`.
 
 ## 3. Asks for pod-netstack

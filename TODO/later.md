@@ -1230,7 +1230,7 @@ podcrates gives the changeable pin table.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1262,12 +1262,39 @@ holds its constraints; the router itself is new work.
 ## Prove
 
 ```sh
-cargo test -p podnet-netns -- a_stale_tuple_is_released_by_a_new_syn a_partial_stream_write_keeps_the_record_stream_aligned
+cargo test -p podnet-vnet --test guest_wire
+cargo test -p podnet-netns -- a_partial_stream_write_keeps_the_record_stream_aligned
 ```
 
 ## Start condition
 
-None: the owner ruled. The netstack of `pod-netstack` (taken at v0.20.0) carries the guest wire.
+None: the owner ruled. The netstack of `pod-netstack` (taken at v0.20.0, now v0.26.0) carries the guest wire.
+
+## Correction
+
+2026-11-12: the lead asked for measures, so the Approach ("do no work now") went further: the constraints are
+measured against `pod-netstack` v0.26.0 in `crates/podnet-vnet/tests/guest_wire.rs`. The result changes three
+items of the Problem. (1) The stack of `pod-netstack` reaps `TimeWait`, so the 10 s tuple hold does not exist
+there; the real cost is one SYN retransmit (1 s) for a flow that the guest forgot. (2) The stack ends the
+handshake before the app sees the flow, so the dial before the handshake is a hold of the SYN on the wire, not
+a call of the stack. (3) A datagram over `mtu - 28` is lost with no error and no counter, because the smoltcp of
+podnet has no IPv4 fragmentation. The note `docs/research/podnet/guest-wire-router.md` has the table of the
+constraints and five asks for `pod-netstack`.
+
+## Done
+
+2026-11-12, commit e030e2f. Eleven tests in `crates/podnet-vnet/tests/guest_wire.rs` pass (3 runs, 5.8 s each):
+`guest_wire_closed_tuple_is_free_at_once`, `guest_wire_stale_tuple_is_released_by_a_new_syn`,
+`guest_wire_handshake_ends_before_the_app_accepts`, `guest_wire_held_syn_dials_before_the_handshake`,
+`guest_wire_abort_after_the_handshake_sends_no_reset`, `guest_wire_accept_queue_drops_a_flow_after_the_handshake`,
+`guest_wire_stack_udp_queue_is_bounded_and_silent`, `guest_wire_udp_over_the_mtu_is_lost_without_fragmentation`,
+`guest_wire_partial_write_keeps_the_byte_order`, `guest_wire_a_drop_loses_the_tail_and_a_held_shutdown_does_not`,
+`guest_wire_link_queue_says_full_and_has_no_wait_for_room`. The note is
+`docs/research/podnet/guest-wire-router.md`. No router code changed. Not proven: the RST answer to a held SYN
+(`rst_reply_for_syn`), a guest with a kernel TCP stack, load with many flows, and the IPv4 fragmentation
+features (measured once by hand, not in the repository). Five asks for `pod-netstack` are open (the note,
+section 3); `abort` with no RST and the drop of a stream with queued bytes (#457) block a refusal after the
+handshake.
 
 # T-178: Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375)
 
@@ -1579,3 +1606,22 @@ cargo test --workspace -- guest_wire_routes_tcp_by_the_rules guest_wire_udp_has_
 ## Start condition
 
 T-249 is done.
+
+## Correction
+
+2026-11-12, from T-176 (`docs/research/podnet/guest-wire-router.md`, `pod-netstack` v0.26.0, tests in
+`crates/podnet-vnet/tests/guest_wire.rs`). The Premise and the Approach change:
+
+- The stack is at v0.26.0. It reaps `TimeWait`, so the router adds no timer. A flow that the guest forgot costs
+  one SYN retransmit (1 s). Do not drop a SYN for a tuple that the router holds.
+- Approach 2 dials at the wire, not in the stack: the stack ends the handshake before `accept`. Hold the SYN in
+  the pump (key it by the tuple, a retransmit is a copy), dial, then release it into `link_in`. A failed dial
+  answers the SYN with `rst_reply_for_syn` (not proven).
+- The router cannot refuse a flow after the handshake: `TcpStream::abort` sends no RST, and the accept queue (32
+  flows) drops a flow with no RST. These are asks for `pod-netstack` (the note, section 3, asks 1 and 2), beside
+  the three gaps of PodUtils/podnet#457. Until they close, T-248 holds the hold of the SYN and uses `shutdown`.
+- Approach 3: the UDP path loses a datagram over `mtu - 28` and a burst past 113 datagrams with no error and no
+  counter (asks 3 to 5). The router needs its own bounded queue and its own counters. T-248 decides the smoltcp
+  features for IPv4 fragmentation (measured: they carry a datagram of 65507 bytes).
+- The Prove name `guest_wire_udp_has_a_bounded_queue` is for the router. The test of the stack in T-176 is
+  `guest_wire_stack_udp_queue_is_bounded_and_silent`.

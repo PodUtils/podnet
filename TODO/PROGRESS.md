@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 260 entries: 33 open, 14 partial, 22 blocked, 191 done.
+`TODO/INDEX.md` holds 260 entries: 32 open, 14 partial, 22 blocked, 192 done.
 
 ## State
 
@@ -83,7 +83,6 @@ These entries stay open. The condition in each entry tells when it can start.
 | --- | --- |
 | T-131 | T-137 takes `pod-session`, `pod-e2e` and `pod-identity` (the owner chose the source: a git tag) |
 | T-153 | T-152 gives a pass on the target hosts (the netfilter plane; T-111 stays) |
-| T-176 | A guest-wire router (smoltcp) is planned |
 | T-237 | T-061 has moved `pod --serve` onto `Door` (tier A can land earlier) |
 | T-179 | partial: the UDP split is built (an option, off by default); the TCP split waits for a far end that joins two connections |
 
