@@ -2164,7 +2164,7 @@ T-264 is done.
 ## Correction
 
 - The ruling of 2026-11-12 (`docs/decisions.md`, "The link crate: pod-link of podcrates") puts the multiplexer and the carriers in `pod-link`. podnet has no link crate. The parser is the CLI surface of podnet, so it is `src/link_query.rs` in podnet, not a new crate.
-- `name` is parsed and checked (1 to 32 characters of `a-z 0-9 -`). It is not wired to the record: T-308 wires it. Until then a command that gets `name` exits 64 and names T-308.
+- `name` is parsed and checked (1 to 32 characters of `a-z 0-9 -`). T-308 binds a name before the command starts, so the query key has no effect: a command that gets it exits 64 and names `--name`.
 - The key `carrier` has an effect: it takes the place of `--carrier`. Each other key is parsed and checked, and a command that gets one exits 64 and names the entry that adds it (`podnet::link_query::KEYS`). `retry` names T-263 and `window` names T-262: no entry of their own exists, so the entry named is the nearest one. The owner can add the entries.
 - `mtu` is checked against the carrier (`carriers::check_query`): a stream carrier has no unit, and a value over the unit exits 64. `window` is checked against the range of `pod_link::Settings`, in the parser.
 

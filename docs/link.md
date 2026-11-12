@@ -143,7 +143,7 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `maxhops` | 1 to 8 | T-287 adds it. |
 | `poll` | 1 to 60 (seconds) | T-271 adds it. |
 | `window` | 16384 to 8388608 (bytes) | T-262 adds it. |
-| `name` | 1 to 32 characters of `a-z 0-9 -` | T-308 adds it. |
+| `name` | 1 to 32 characters of `a-z 0-9 -` | No effect in a query: give the name with `--name` (T-308). |
 
 * A key with no effect now is parsed and checked. Then the command exits 64 and names the entry that adds it.
 * Each key is given once. A repeated key exits 64.

@@ -260,6 +260,12 @@ impl Query {
             if key == "carrier" {
                 continue;
             }
+            // T-308 binds the name before the command starts: the flag gives it.
+            if key == "name" {
+                return Err(usage(
+                    "the query key name has no effect: give the name with --name".into(),
+                ));
+            }
             let entry = KEYS.iter().find(|k| k.0 == key).map_or("", |k| k.1);
             return Err(usage(format!(
                 "the query key {key} has no effect yet: {entry} adds it"
@@ -392,7 +398,7 @@ mod tests {
         let m = format!("{:#}", q.require_wired().unwrap_err());
         assert!(m.contains("T-299"), "{m}");
         let q = parse("name=x").unwrap();
-        assert!(format!("{:#}", q.require_wired().unwrap_err()).contains("T-308"));
+        assert!(format!("{:#}", q.require_wired().unwrap_err()).contains("--name"));
         assert!(parse("carrier=unix").unwrap().require_wired().is_ok());
         assert!(Query::default().require_wired().is_ok());
     }

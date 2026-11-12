@@ -95,7 +95,7 @@ fn a_key_with_no_effect_names_its_entry() {
         ("pad=on", "T-300"),
         ("lb=rr", "T-288"),
         ("maxhops=3", "T-287"),
-        ("name=ab-1", "T-308"),
+        ("name=ab-1", "--name"),
     ] {
         refused(q, entry);
     }
