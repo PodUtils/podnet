@@ -4828,3 +4828,45 @@ sh scripts/agent/check.sh
 release run 43190862473 passed. The release is a prerelease with the 8 binaries, `podnet.1`, `llms.txt`,
 `llms-full.txt`, `SHA256SUMS`, `SHA256SUMS.sigstore.json`, `provenance.sigstore.json` and `THIRD-PARTY-LICENSES.md`.
 `release-proofs.yml` 43193362865: success.
+
+
+# T-314: Publish `v0.4.0-beta.7`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md` (Releases, 2026-11-09): cut the next prerelease when a batch of fixes is green;
+`docs/maintenance.md`, section "Release".
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The work after `v0.4.0-beta.6` (T-043, T-049, T-083, T-162, T-163, and the take of podcrates v0.30.0) is on `main`
+only.
+
+## Premise
+
+- `v0.4.0-beta.6` is the newest release (T-313).
+
+## Approach
+
+1. Set the version `0.4.0-beta.7` in `Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, and regenerate the llms files.
+2. Write `docs/releases/v0.4.0-beta.7.md`, with `## Breaking`.
+3. Push, and wait until `ci` and `live` pass on that commit.
+4. Dispatch `release.yml` on `main` with `publish` empty (the dry run), then with
+   `publish=v0.4.0-beta.7`.
+5. Check the files of the release and `release-proofs.yml`.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next
+prerelease unattended when a batch is green.
+
+## Prove
+
+```sh
+cargo test -p podnet --test docs
+sh scripts/agent/check.sh
+```
