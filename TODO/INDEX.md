@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**315 entries: 75 open, 15 partial, 24 blocked, 201 done.**
+**316 entries: 76 open, 15 partial, 24 blocked, 201 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 1 | 2 | 25 | 29 |
-| P2 | 20 | 7 | 10 | 123 | 160 |
+| P2 | 21 | 7 | 10 | 123 | 161 |
 | P3 | 54 | 7 | 12 | 52 | 125 |
-| **All** | 75 | 15 | 24 | 201 | 315 |
+| **All** | 76 | 15 | 24 | 201 | 316 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -361,3 +361,4 @@ M8 Overlays, M9 Later.
 | [T-313](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.6`: the dry run, the publish and the release proofs |
 | [T-314](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.7`: the dry run, the publish and the release proofs |
 | [T-315](fixes.md) | P1 | M | M5 | defect | open | live: `relay connect` hangs on the runner after the take of pod-relay (GitHub #483) |
+| [T-316](fixes.md) | P2 | L | M5 | feature | open | A local stand-in of the quick-tunnel service and the edge, so that CI runs the quick tunnel with no call to Cloudflare |

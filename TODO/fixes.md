@@ -4909,3 +4909,49 @@ relay": the quick-tunnel service answered HTTP 429 with Retry-After 3600 s (a ra
 ```sh
 # live.yml, step "SSH through the reverse relay": relay-ssh-ok, parallel-1, parallel-2 and the banner.
 ```
+
+
+# T-316: A local stand-in of the quick-tunnel service and the edge, so that CI runs the quick tunnel with no call to Cloudflare
+
+**Source:** the owner, 2026-11-12 ("can the quick tunnel test be stubbed/emulated with a self hosted one? for
+instance headscale is used for stand in for tailscale"); the study in `.work/cf-edge-standins.md`.
+**Category:** feature
+**Milestone:** M5
+**Priority:** P2
+**Effort:** L
+**Status:** open
+
+## Problem
+
+`live.yml` runs 25 steps of the quick tunnel against `api.trycloudflare.com` and the Cloudflare edge. The service
+answers HTTP 429 (error 1015, Retry-After 3600 s) after many runs (T-315), and the steps run only in `live`, not on
+each push.
+
+## Premise
+
+- No open-source, self-hostable Cloudflare Tunnel edge exists. `flolep2607/cctop` (MIT OR Apache-2.0) has a fake edge
+  in its tests (`flolep2607/cctop:crates/tunnel/src/cloudflare/fake_edge/`: QUIC and HTTP/2 listeners, `registerConnection`, visitor
+  streams, a fake quick-tunnel API). `cloudflare/cloudflared` has Go test fakes only.
+- podnet has `--service-url` (the provision endpoint), `PODNET_EDGE` (replaces the discovery of the edge,
+  `src/tunnel.rs`) and an in-memory fake edge (`src/cloudflare/rpc.rs`, `fake_edge`).
+- The roots of the edge are built in (`src/cloudflare/`); no override exists. `src/cloudflare/` is frozen for
+  `pod-cloudflare`: a test hook there is a change to report to podcrates.
+- A stand-in tests podnet against its own reading of the protocol, not against a change of Cloudflare.
+
+## Approach
+
+1. A test support crate or module with: a fake provision API (`POST /tunnel`, the body of the service, a 429 mode);
+   an edge listener over TLS on HTTP/2 that answers `registerConnection` and opens visitor streams; a front that
+   maps the Host of a visitor to its tunnel. QUIC after HTTP/2.
+2. A hook for the trust roots of the edge in tests (an environment variable read only with a test CA), written as a
+   COORD issue (to podcrates) because `src/cloudflare/` is frozen.
+3. Move the quick-tunnel steps of `live.yml` that test podnet (the proxy, no DNS, dropped 7844, `--detach`, `ps`,
+   `--json`, `--auth-user`, the leg fallback) into `ci` against the stand-in. Keep one real quick tunnel per leg in
+   `live`.
+4. Move the study to docs/research/podnet (cf-edge-standins.md). Keep the notice of cctop with each part of its code.
+
+## Prove
+
+```sh
+cargo test --workspace -- quick_tunnel_standin
+```
