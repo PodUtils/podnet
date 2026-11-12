@@ -2220,7 +2220,7 @@ Not proven: `rotate` and `reconnect`; a client of another uid (the gate is a clo
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2252,6 +2252,12 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-267 and T-265 are done.
+
+## Done
+
+2026-11-12, commit 24d3af3. `src/link_alias.rs`: `check` (1 to 32 characters of `a-z 0-9 -`, else 64), `precheck` (a live instance that holds the name exits 64 unless `--replace`; the 65th live link instance exits 64), `bind` (a name maps to the fingerprint that the dialer proved first). `src/main.rs` runs `precheck` for `link listen` and `link connect` with `--name`, before the start. `link connect` binds the name after the hello; the file `NAME.peer` in the run directory holds the fingerprint and lives as long as the record (`instances::remove`). A dial under the same name to another fingerprint exits 77 and keeps the file (`instances::KEEP_PEER`). A name does not replace `--peer`: the first dial still needs `--peer` or `--allow` (64). `podnet ps` and `link status NAME` show the name. `docs/link.md` has the section "Names for live links"; the help of `link connect` and the llms files are current.
+`cargo test --test link_alias`: 4 passed (`a_bad_name_exits_64`, `a_duplicate_name_exits_64_and_ps_shows_the_name`, `a_name_does_not_replace_the_peer_key`, `a_name_keeps_its_fingerprint_and_a_changed_key_exits_77`). `cargo test --lib link_alias`: 3 passed (`a_name_has_1_to_32_characters_of_a_z_0_9_dash`, `the_65th_live_link_exits_64`, `a_binding_keeps_its_fingerprint`). Fail first: with `src/main.rs` and `connect.rs` as before, `a_duplicate_name_exits_64_and_ps_shows_the_name` and `a_name_keeps_its_fingerprint_and_a_changed_key_exits_77` failed, and `a_bad_name_exits_64` did not end (the listener ran with the name `Web`).
+Not proven: a name over a carrier that crosses a network (T-268); a supervisor restart that meets a changed key (the test uses a process that ended with no clean stop, which leaves the same record and binding); the stored name as a way to a peer (a name never replaces the fingerprint, so no such way exists); a listener has no binding (it takes many peers).
 
 # T-309: link: the redacted state dump and bug-report --include-link (GitHub #476)
 
