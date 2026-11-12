@@ -201,11 +201,7 @@ async fn closed_connections_do_not_accumulate_in_the_socket_set() {
     // against the connection map, which *did* shrink; the leak was in the
     // smoltcp SocketSet, which nothing bounded. So the observable has to be the
     // count itself, which is why `NetStack::socket_count` exists.
-    let config = StackConfig {
-        accept_pool: 2,
-        ..StackConfig::default()
-    };
-    let net = NetStack::loopback_with(config);
+    let net = NetStack::loopback_with(StackConfig::default());
     let mut listener = net.listen(local(19001)).await.expect("listen");
 
     // The listener pool is created up front, so the resting count is that pool
