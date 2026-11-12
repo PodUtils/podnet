@@ -456,6 +456,11 @@ sh scripts/agent/check.sh
 
 T-261, T-262 and T-264 are done. Ask A7 is answered.
 
+## Correction
+
+2026-11-12, the lead: the TCP carrier does not reuse the hello of T-265 (`src/hello.rs`) as its proof: the hello does not bind the streams after it. The pinned Ed25519 key goes into the TLS handshake of the carrier.
+
+
 # T-269: link: the WebSocket carrier, its server half and its wrapper (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-2.
@@ -1768,6 +1773,11 @@ PodUtils/podcrates must release `pod-e2e` (T-086, T-137) and answer ask A3 (a CO
 ## Start condition
 
 T-086 is done (the take of `pod-e2e`), and T-262 is done.
+
+## Correction
+
+2026-11-12, the lead: the hello of T-265 (`src/hello.rs`) proves the keys of the two ends but makes no key for the link and does not bind the streams after it. It holds for the unix and memory carriers only. A carrier that crosses a network does not rely on it: this entry gives the link its keys from the end-to-end handshake of `pod-e2e`, bound to the session, before the carrier is offered.
+
 
 # T-299: link: snappy compression of records (GitHub #472)
 

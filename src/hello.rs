@@ -17,9 +17,15 @@
 //!
 //! The transcript holds both public keys and both nonces, and the role of
 //! the signer, so a signature of one role is no proof for the other role
-//! and a signature of another hello is no proof for this one. The TLS
-//! carrier has its own handshake (T-268); this hello is for the carriers
-//! that have none.
+//! and a signature of another hello is no proof for this one.
+//!
+//! Limit: the hello proves the keys of the two ends, but it makes no key
+//! for the link and does not bind the streams after it. It is for the
+//! carriers whose channel the kernel keeps on this host (unix, memory). A
+//! carrier that crosses a network must not rely on it: a party between the
+//! ends could pass the hello on and then take the link. Such a carrier
+//! takes the end-to-end handshake of `pod-e2e` (T-298) or its own TLS
+//! handshake with the pinned key (T-268).
 
 use std::time::Duration;
 

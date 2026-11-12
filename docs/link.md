@@ -83,6 +83,10 @@ The transcript holds both keys, both nonces and the role of the signer. A dialer
 refused. The hello ends in 10 s (else exit 124). The listener names each peer that it refuses on stderr (and in the log of an
 instance).
 
+The hello proves the keys of the two ends. It makes no key for the link and does not protect the streams after it. It is for
+the unix and memory carriers, whose channel the kernel keeps on this host. A carrier that crosses a network does not rely on
+it: it takes the end-to-end handshake of `pod-e2e` (T-298) or a TLS handshake that pins the key of the peer (T-268).
+
 ## Exit codes
 
 | Code | Case |
