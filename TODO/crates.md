@@ -853,7 +853,7 @@ cargo test --test relay_reverse -- a_node_renews_its_pair_before_the_expiry a_la
 
 ## Blocker
 
-The owner of the relay server and the session of `PodUtils/podcrates` (the crate `pod-relay`). No relay of the contract serves a renew call (`tcp.ssh.relay.ajam.dev` publishes none). The crate has a call that differs from the Decision (see the Correction), and its node does not renew. Send a COORD issue (to podcrates) to ask whether the node renews at half the TTL with the call of the Decision or with the call of the crate. The entry is unblocked when a relay serves a renew call and the node of `pod-relay` renews.
+The owner of the relay server and the session of `PodUtils/podcrates` (the crate `pod-relay`). No relay of the contract serves a renew call (`tcp.ssh.relay.ajam.dev` publishes none). The crate has a call that differs from the Decision (see the Correction), and its node does not renew. Send a COORD issue (to podcrates) to ask whether the node renews at half the TTL with the call of the Decision or with the call of the crate. The entry is unblocked when a relay serves a renew call and the node of `pod-relay` renews. The ask is GitHub #482 (COORD-051).
 
 ## Start condition
 
@@ -1071,7 +1071,7 @@ The lead, 2026-11-09: the failover of the reverse road is done in `pod-relay` of
 
 ## Blocker
 
-The relay contract and the session of `PodUtils/podcrates` (the crate `pod-relay`). The relay makes a pair on the control host only (PodUtils/podcrates#89, 2026-11-12), and the reverse road of the crate (`reverse::run`, `operator::run`, `pair::create`) uses `Relay::primary()`, the first host. A relay of the contract does not serve the node socket of that pair on another host, so the measure of the Approach, item 2, has no host to test. Send a COORD issue (to podcrates). The entry is unblocked when podcrates or the owner of the relay says that an alternate host serves the node socket of a pair.
+The relay contract and the session of `PodUtils/podcrates` (the crate `pod-relay`). The relay makes a pair on the control host only (PodUtils/podcrates#89, 2026-11-12), and the reverse road of the crate (`reverse::run`, `operator::run`, `pair::create`) uses `Relay::primary()`, the first host. A relay of the contract does not serve the node socket of that pair on another host, so the measure of the Approach, item 2, has no host to test. Send a COORD issue (to podcrates). The entry is unblocked when podcrates or the owner of the relay says that an alternate host serves the node socket of a pair. The ask is GitHub #482 (COORD-051).
 
 ## Correction
 
