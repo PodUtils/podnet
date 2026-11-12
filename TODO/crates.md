@@ -763,6 +763,11 @@ Done so far:
   `CongestionControl::None`, the default of podnet's stacks: on smoltcp 0.14, Reno and CUBIC grow the window by
   one segment for each ACK, so `warp --cc reno|cubic` is slower (podcrates T-188). Each pod-* dependency names
   `tag = "v0.20.0"`. Each line of the `.run` passed, except the zig build and the check of the toolchains.
+- `pod-netstack` v0.27.0 (PodUtils/podcrates#85; 28c0e3d, ce28780): each `pod-*` dependency names
+  `tag = "v0.27.0"`. `StackConfig` loses `accept_pool` and has `linger`; `tests/vnet_regressions.rs` no longer sets
+  `accept_pool`. The close of a listener and of a stream, the RST of `abort`, `ConnectionReset` for a RST of the
+  peer and no RST for a burst of SYNs close the gaps of PodUtils/podnet#457. The tests of T-176 pin the new
+  behaviour (`crates/podnet-vnet/tests/guest_wire.rs`). T-249 drops its workarounds for these gaps.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
