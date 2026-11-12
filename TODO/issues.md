@@ -160,5 +160,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #462 | COORD-042: a change in the frozen src/doctor.rs for the lanes of A-C-10 (T-260) (to podcrates) | open (a COORD issue between sessions) | none |
 | #463 | COORD-043: a weekly watch of the relay contract in pod-relay (podnet T-134) (to podcrates) | open (a COORD issue between sessions) | none |
 | #464 | COORD-044: five more gaps of pod-netstack for the guest-wire router (podnet T-176, T-248) (to podcrates) | open (a COORD issue between sessions) | none |
+| #465 | COORD-045: podnet took v0.27.0 at 28c0e3d (to podcrates) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
