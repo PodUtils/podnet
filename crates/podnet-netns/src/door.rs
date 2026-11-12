@@ -29,6 +29,10 @@ pub const DIAL_LIMIT: Duration = Duration::from_secs(30);
 /// The buffer of each direction of a flow (T-151).
 const RELAY_BUFFER: usize = 64 * 1024;
 
+/// The most bytes that the door holds for a client whose dial is not done
+/// (`--early-reply`). The read of the client stops when the hold is full.
+pub const EARLY_HOLD: usize = 64 * 1024;
+
 /// The body of the 405 answer of a door that takes `CONNECT` only.
 const CONNECT_ONLY: &str =
     "this proxy speaks HTTP CONNECT only: use it as https_proxy, or as socks5h://\n";
@@ -53,6 +57,10 @@ pub trait Extension: Send + Sync {
     ) -> BoxFuture<'a, Result<bool>>;
 }
 
+/// The local rule check of `--early-reply`: true when the rules take the
+/// target, so that the door can answer before the dial.
+pub type Admit = Arc<dyn Fn(&Target) -> bool + Send + Sync>;
+
 /// A check of a user and a password of a client.
 pub type Users = Arc<dyn Fn(&str, &str) -> bool + Send + Sync>;
 
@@ -68,6 +76,7 @@ pub struct Door {
     flow_limit: Option<Duration>,
     connect_only: bool,
     extension: Option<Arc<dyn Extension>>,
+    early: Option<Admit>,
     on_error: Option<ErrorHook>,
 }
 
@@ -87,6 +96,7 @@ impl Door {
             flow_limit: None,
             connect_only: false,
             extension: None,
+            early: None,
             on_error: None,
         }
     }
@@ -121,6 +131,17 @@ impl Door {
     /// `extension`.
     pub fn with_extension(mut self, extension: Arc<dyn Extension>) -> Door {
         self.extension = Some(extension);
+        self
+    }
+
+    /// Answer a CONNECT before the dial (T-237, `--early-reply`) when
+    /// `admit` takes the target. The door then holds the first bytes of the
+    /// client (at most [`EARLY_HOLD`]) until the dial is done, and closes the
+    /// connection when the dial fails: the client gets no error code. A
+    /// target that `admit` refuses gets its real answer, after the dial
+    /// call, as with no option.
+    pub fn with_early_reply(mut self, admit: Admit) -> Door {
+        self.early = Some(admit);
         self
     }
 
@@ -228,6 +249,9 @@ impl Door {
         match request {
             Request::Socks(req) => {
                 let target = self.target_of(&req);
+                if self.admits_early(&target) {
+                    return self.dial_early(&mut stream, &target, true).await;
+                }
                 match self.dial.dial(&target, Instant::now() + DIAL_LIMIT).await {
                     Ok(mut conn) => {
                         socks::socks5_reply(&mut stream, 0, conn.local).await?;
@@ -254,6 +278,9 @@ impl Door {
             }
             Request::Http(HttpRequest::Connect(req)) => {
                 let target = self.target_of(&req);
+                if self.admits_early(&target) {
+                    return self.dial_early(&mut stream, &target, false).await;
+                }
                 match self.dial.dial(&target, Instant::now() + DIAL_LIMIT).await {
                     Ok(mut conn) => {
                         socks::http_connect_ok(&mut stream).await?;
@@ -283,6 +310,58 @@ impl Door {
             Request::Refused => {}
         }
         Ok(())
+    }
+
+    /// True when the option is on and the rules take `target`.
+    fn admits_early(&self, target: &Target) -> bool {
+        self.early.as_ref().is_some_and(|admit| admit(target))
+    }
+
+    /// `--early-reply`: answer the client first (SOCKS5 success, or HTTP
+    /// 200), then dial and hold the bytes of the client in the meantime. A
+    /// failed dial closes the connection.
+    async fn dial_early<S>(&self, client: &mut S, target: &Target, socks5: bool) -> Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send,
+    {
+        if socks5 {
+            socks::socks5_reply(client, 0, None).await?;
+        } else {
+            socks::http_connect_ok(client).await?;
+        }
+        let deadline = Instant::now() + DIAL_LIMIT;
+        let dial = tokio::time::timeout_at(deadline, self.dial.dial(target, deadline));
+        tokio::pin!(dial);
+        let mut held: Vec<u8> = Vec::new();
+        let mut chunk = vec![0u8; 16 * 1024];
+        let mut open = true;
+        let dialed = loop {
+            let room = EARLY_HOLD - held.len();
+            let part = room.min(chunk.len());
+            tokio::select! {
+                dialed = &mut dial => break dialed,
+                read = client.read(&mut chunk[..part]), if open && room > 0 => match read {
+                    // The client ends its side: the splice sends the end on
+                    // after the held bytes.
+                    Ok(0) => open = false,
+                    Ok(n) => held.extend_from_slice(&chunk[..n]),
+                    Err(_) => return Ok(()),
+                },
+            }
+        };
+        let failure = match dialed {
+            Ok(Ok(mut conn)) => {
+                if conn.io.write_all(&held).await.is_err() {
+                    return Ok(());
+                }
+                self.splice(client, &mut conn.io).await;
+                return Ok(());
+            }
+            Ok(Err(e)) => e.text().to_string(),
+            Err(_) => "the dial timed out".to_string(),
+        };
+        let _ = client.shutdown().await;
+        anyhow::bail!("an early-replied dial failed: {failure}")
     }
 
     /// Copy both ways until a side ends, or until the flow limit.
@@ -464,3 +543,6 @@ impl<S: AsyncWrite + Unpin> AsyncWrite for Prefixed<'_, S> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod early_tests;

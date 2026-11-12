@@ -45,7 +45,8 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
 * `--serve LISTEN` runs no program. It serves SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or
   `tcp://host:port`, and sends the flows through the chain. It is the front door of
   [proxies.md](proxies.md), over the chain and the rules. UDP ASSOCIATE and UDP in the stream go
-  through the first upstream, which must be SOCKS5. BIND gets `0x07`.
+  through the first upstream, which must be SOCKS5. BIND gets `0x07`. `--early-reply` answers a CONNECT
+  before the dial (see [proxies.md](proxies.md), "Early reply").
 
 By default the program does not get `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and `NO_PROXY`.
 `--keep-proxy-env` keeps them.

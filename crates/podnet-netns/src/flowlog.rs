@@ -106,6 +106,27 @@ pub(crate) fn dial(proto: &str, target: &str, rule: &str, chain: Option<&[Proxy]
     Some(flow)
 }
 
+/// Write the line of an upstream that refused the flow `flow` of `target`
+/// with the SOCKS5 reply code `code` (T-237). With `--early-reply` the
+/// client has its answer already and sees only a closed connection, so this
+/// line is the diagnosis.
+pub(crate) fn refused(flow: Option<u64>, target: &str, code: u8) {
+    if on() {
+        write(refused_line(flow, target, code));
+    }
+}
+
+fn refused_line(flow: Option<u64>, target: &str, code: u8) -> serde_json::Value {
+    serde_json::json!({
+        "time": now(),
+        "event": "refused",
+        "flow": flow,
+        "proto": "tcp",
+        "target": target,
+        "code": code,
+    })
+}
+
 /// [`dial`] with the decision of the rules.
 pub(crate) fn decided(proto: &str, target: &str, picked: &Selected<'_>) -> Option<u64> {
     dial(proto, target, picked.rule_name(), picked.chain())
@@ -327,6 +348,16 @@ where
 #[cfg(test)]
 mod tests {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    // T-237: the line of a refusal names the target and the code.
+    #[test]
+    fn the_refused_line_names_the_target_and_the_code() {
+        let line = super::refused_line(Some(3), "example.test:443", 5);
+        assert_eq!(line["event"], "refused");
+        assert_eq!(line["flow"], 3);
+        assert_eq!(line["target"], "example.test:443");
+        assert_eq!(line["code"], 5);
+    }
 
     // T-151: a relay with the large buffers keeps the byte totals.
     #[test]

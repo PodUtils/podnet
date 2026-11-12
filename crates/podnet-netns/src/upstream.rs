@@ -192,6 +192,9 @@ impl Proxy {
     }
 }
 
+mod early;
+pub use early::{socks5_hop, Handshake, RefusedHook, UpstreamRefused};
+
 pub use crate::rules::{
     domain_matches, in_cidr, load_nets, select_chain, Choice, Net, Rule, RuleAction, RuleMatch,
     Selected, MAX_NETS,
@@ -231,6 +234,16 @@ pub type Upstream = Box<dyn AsyncStream>;
 /// and finally ask the last for the target. Each intermediate hop sees only the
 /// address of the next one.
 pub async fn connect_upstream_async(chain: &[Proxy], target: &str) -> Result<Upstream> {
+    connect_upstream_with(chain, target, Handshake::Serial).await
+}
+
+/// [`connect_upstream_async`] with the order of the SOCKS5 handshake of
+/// `handshake` (T-237).
+pub async fn connect_upstream_with(
+    chain: &[Proxy],
+    target: &str,
+    handshake: Handshake,
+) -> Result<Upstream> {
     let (first, rest) = chain.split_first().context("no proxy configured")?;
     if first.kind == ProxyKind::Direct {
         if !rest.is_empty() {
@@ -256,7 +269,7 @@ pub async fn connect_upstream_async(chain: &[Proxy], target: &str) -> Result<Ups
     let mut stream: Upstream = dial_proxy(first).await?;
     if rest.is_empty() {
         return match first.kind {
-            ProxyKind::Socks5 => socks5_connect(stream, first, target).await,
+            ProxyKind::Socks5 => socks5_hop(stream, first, target, handshake).await,
             ProxyKind::Http => http_connect(stream, first, target).await,
             ProxyKind::Tailscale | ProxyKind::Direct => unreachable!("handled above"),
         };
@@ -270,11 +283,14 @@ pub async fn connect_upstream_async(chain: &[Proxy], target: &str) -> Result<Ups
             );
         }
         let next = &chain[i + 1];
-        stream = socks5_connect(stream, hop, &next.chain_addr()).await?;
+        // A hop in front of the last one is confirmed before the bytes of
+        // the next hop: at most pipelined.
+        let step = handshake.confirmed();
+        stream = socks5_hop(stream, hop, &next.chain_addr(), step).await?;
     }
     let last = chain.last().unwrap();
     match last.kind {
-        ProxyKind::Socks5 => socks5_connect(stream, last, target).await,
+        ProxyKind::Socks5 => socks5_hop(stream, last, target, handshake).await,
         ProxyKind::Http => http_connect(stream, last, target).await,
         ProxyKind::Tailscale => bail!("a tailscale hop must be the only hop"),
         ProxyKind::Direct => bail!("direct must be the only hop"),
@@ -382,6 +398,15 @@ where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
     use tokio::io::AsyncWriteExt;
+    let req = socks5_request(target)?;
+    let mut stream = socks5_handshake(stream, proxy).await?;
+    stream.write_all(&req).await?;
+    read_socks5_reply(&mut stream, target).await?;
+    Ok(stream)
+}
+
+/// The SOCKS5 CONNECT request for `target`.
+fn socks5_request(target: &str) -> Result<Vec<u8>> {
     // A chained hop is addressed as `unix:<path>`; there is no host:port, so
     // the whole string goes as a domain and the port is 0. The hop resolves it.
     let (host, port) = if target.starts_with("unix:") {
@@ -394,7 +419,6 @@ where
     if bare.parse::<IpAddr>().is_err() && host.len() > 255 {
         bail!("the target name {host:?} is longer than 255 bytes (the limit of SOCKS5)");
     }
-    let mut stream = socks5_handshake(stream, proxy).await?;
     let mut req = vec![0x05, 0x01, 0x00];
     if let Ok(ip) = bare.parse::<Ipv4Addr>() {
         req.push(0x01);
@@ -408,14 +432,25 @@ where
         req.extend_from_slice(host.as_bytes());
     }
     req.extend_from_slice(&port.to_be_bytes());
-    stream.write_all(&req).await?;
+    Ok(req)
+}
+
+/// Read the reply of a SOCKS5 CONNECT: the head and the bound address.
+async fn read_socks5_reply<S>(stream: &mut S, target: &str) -> Result<()>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
     let mut head = [0u8; 4];
-    tokio::io::AsyncReadExt::read_exact(&mut stream, &mut head).await?;
+    tokio::io::AsyncReadExt::read_exact(stream, &mut head).await?;
     if head[1] != 0x00 {
-        bail!("SOCKS5 connect to {target} failed: code {}", head[1]);
+        return Err(UpstreamRefused {
+            target: target.to_string(),
+            code: head[1],
+        }
+        .into());
     }
-    read_socks_addr(&mut stream, head[3]).await?;
-    Ok(stream)
+    read_socks_addr(stream, head[3]).await?;
+    Ok(())
 }
 
 /// `UDP ASSOCIATE` (`pod_proxy::udp::associate`): keep the TCP control

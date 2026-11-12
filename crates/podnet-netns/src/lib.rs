@@ -171,6 +171,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
             args.proxies.clone(),
             args.rules.clone(),
             args.verbose,
+            args.early_reply,
         ));
         match outcome {
             Ok(()) => return 0,

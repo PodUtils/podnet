@@ -103,3 +103,47 @@ The door has these rules for each client:
   gets 405. `net proxy` and `net tailscale` end a flow after 300 s.
 * BIND gets SOCKS5 `0x07` (command not supported). UDP ASSOCIATE goes through the first upstream for
   `pod --serve`, and gets `0x07` for `net proxy` and `net tailscale`.
+
+### Early reply
+
+`podnet pod --serve LISTEN -x UPSTREAM --early-reply` answers a client before the dial. It is off by
+default. Use it on an upstream of high latency (a satellite or a cellular link), where the time to the first
+byte of a new connection is three round trips: the TCP connect, the method reply and the reply of the
+request.
+
+With the option, the door does this for a SOCKS5 CONNECT and an HTTP CONNECT:
+
+1. The door checks the target against the rules of `-r`. A target that a rule refuses gets its real answer
+   (SOCKS5 `0x02`, HTTP 403) with no early reply.
+2. The door answers success (SOCKS5 `0x00` with the bound address `0.0.0.0:0`, HTTP 200). The client sends
+   its first bytes at once.
+3. The door dials and holds the bytes of the client in the meantime. It holds at most 64 KiB. When the hold
+   is full, the door stops to read, and the TCP window of the client closes. A client that ends its side
+   before the dial is done has its end sent to the upstream after the held bytes.
+4. For a SOCKS5 upstream without a user, the door sends the greeting and the request in one write. For
+   the last hop, it writes the held bytes behind the request and reads the two replies later. A hop in
+   front of the last hop sends the greeting and the request in one write and reads both replies. A hop with
+   a user and a password runs the serial handshake, because the method reply must come before the next bytes.
+   An HTTP upstream runs its serial handshake. The door still answers the client early, and holds the
+   bytes of the client until the upstream says yes.
+5. The wait for the replies has the same 30 s limit as the dial.
+
+What the client sees when the flow fails after the early reply:
+
+| The failure | Without the option | With the option |
+| --- | --- | --- |
+| The upstream refuses (a reply code other than `0x00`) | SOCKS5 `0x01` and HTTP 502 | The client has the success reply. The connection then closes with no byte. |
+| The connect to the upstream fails, or the wait for it ends | The failure reply by its class: SOCKS5 `0x01` or `0x04`, HTTP 502 | The same closed connection |
+
+The client cannot get a SOCKS5 error code or an HTTP status after the early reply: the reply that said
+success is sent already. A client that reads `connection reset` or an empty answer cannot tell a refused
+target from a closed server. The cost is this loss of the diagnosis. A program that reads the reply code to
+choose its next step (a fallback to another route) must not use the option.
+
+The flow log (`--flow-log FILE`) records the loss. An upstream that refuses a flow gives a line
+`{"event":"refused","flow":N,"proto":"tcp","target":"HOST:PORT","code":C}`, with or without the option. `-v`
+prints the same text.
+
+The option does not apply to UDP, to `podssh -D` (an SSH channel cannot carry data before its open is
+confirmed), to TLS early data, to `net proxy`, to `net tailscale`, to `podnet route` and to
+`podnet warp proxy`.

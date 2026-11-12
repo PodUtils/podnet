@@ -46,6 +46,8 @@ pub(crate) struct Args {
     /// `--loopback-rules` (T-231): the seccomp backend applies the rules to
     /// a TCP connect to 127.0.0.0/8 and ::1.
     pub(crate) loopback_rules: bool,
+    /// `--early-reply` (T-237): `--serve` answers a CONNECT before the dial.
+    pub(crate) early_reply: bool,
 }
 
 /// The mode of the learned set (T-158).
@@ -186,6 +188,13 @@ Options:
                            unix:/path or tcp://host:port, forwarding through
                            the -x chain. At most 1024 live clients; a plain
                            http:// request gets 405 and BIND gets 0x07
+      --early-reply        With --serve: answer a CONNECT that the rules take
+                           before the dial, hold the first 64 KiB of the
+                           client, and send the SOCKS5 greeting and request
+                           to the upstream in one write. A failed dial then
+                           closes the connection: the client gets no error
+                           code. The flow log has a refused line. Off by
+                           default
   -v, --verbose            Log each flow; with seccomp, also each socket and
                            each setsockopt that the pod emulates
   -V, --version            Print the version
@@ -222,6 +231,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut allow_shadowed = false;
     let mut flow_log = None;
     let mut loopback_rules = false;
+    let mut early_reply = false;
     let mut learned = None;
     let mut flow_budget = None;
     let mut i = 0;
@@ -277,6 +287,10 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
                     other => bail!("--default-action {other:?}: give allow or reject"),
                 };
                 i += 2;
+            }
+            "--early-reply" => {
+                early_reply = true;
+                i += 1;
             }
             "--loopback-rules" => {
                 loopback_rules = true;
@@ -421,6 +435,9 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     if default_reject {
         rules.push(Rule::default_reject());
     }
+    if early_reply && serve.is_none() {
+        bail!("--early-reply works with --serve");
+    }
     if learned.is_some() && serve.is_some() {
         bail!("--learn and --fail-on-violation work with a program, not with --serve");
     }
@@ -457,5 +474,6 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         learned,
         flow_budget,
         loopback_rules,
+        early_reply,
     })
 }

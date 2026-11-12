@@ -6,6 +6,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::time::Instant;
 
 use crate::door::{Door, Duplex, Extension};
+use crate::upstream::{connect_upstream_with, Handshake, UpstreamRefused};
 
 // ── front door: podnet-netns as a proxy for others ─────────────────────────────
 
@@ -23,6 +24,7 @@ pub(crate) async fn serve_front_door(
     chain: Vec<Proxy>,
     rules: Vec<Rule>,
     verbose: bool,
+    early_reply: bool,
 ) -> Result<()> {
     let (listener, bound) = bind_front_door(&listen).await?;
     // Issue 300: the bound address, so a TCP port 0 shows the port that
@@ -32,7 +34,7 @@ pub(crate) async fn serve_front_door(
         crate::cli::program_name(),
         chain.len()
     );
-    let door = Arc::new(front_door(chain, rules, verbose));
+    let door = Arc::new(front_door_with(chain, rules, verbose, early_reply));
     match listener {
         FrontListener::Unix(listener) => door.serve_unix(listener).await,
         FrontListener::Tcp(listener) => door.serve_tcp(listener).await,
@@ -41,7 +43,20 @@ pub(crate) async fn serve_front_door(
 
 /// The door of `pod --serve`: the rules choose the chain of each flow, the
 /// first upstream carries UDP, and a plain `http://` request gets 405.
+#[cfg(test)]
 pub(crate) fn front_door(chain: Vec<Proxy>, rules: Vec<Rule>, verbose: bool) -> Door {
+    front_door_with(chain, rules, verbose, false)
+}
+
+/// [`front_door`] with `--early-reply` (T-237) when `early_reply` is true:
+/// the door answers a CONNECT that the rules take before the dial, and the
+/// last SOCKS5 hop sends the greeting and the request in one write.
+pub(crate) fn front_door_with(
+    chain: Vec<Proxy>,
+    rules: Vec<Rule>,
+    verbose: bool,
+    early_reply: bool,
+) -> Door {
     let udp = Arc::new(PodUdp {
         chain: chain.clone(),
         verbose,
@@ -50,8 +65,12 @@ pub(crate) fn front_door(chain: Vec<Proxy>, rules: Vec<Rule>, verbose: bool) -> 
         chain,
         rules,
         verbose,
+        early_reply,
     });
-    let door = Door::new(dial).with_extension(udp).connect_only();
+    let mut door = Door::new(dial.clone()).with_extension(udp).connect_only();
+    if early_reply {
+        door = door.with_early_reply(Arc::new(move |target: &Target| dial.admits(target)));
+    }
     door.on_error(Arc::new(move |e: &anyhow::Error| {
         if verbose {
             eprintln!("{}: front door: {e:#}", crate::cli::program_name());
@@ -85,6 +104,17 @@ struct PodDial {
     chain: Vec<Proxy>,
     rules: Vec<Rule>,
     verbose: bool,
+    /// `--early-reply`: the last SOCKS5 hop returns before its replies.
+    early_reply: bool,
+}
+
+impl PodDial {
+    /// True when the rules take `target` (the check before an early reply).
+    fn admits(&self, target: &Target) -> bool {
+        select_chain(&self.rules, &self.chain, &target.to_string())
+            .chain()
+            .is_some()
+    }
 }
 
 impl Dial for PodDial {
@@ -121,9 +151,23 @@ impl Dial for PodDial {
                     selected[0].endpoint()
                 );
             }
+            let handshake = if self.early_reply {
+                let (verbose, shown) = (self.verbose, text.clone());
+                Handshake::Optimistic(Arc::new(move |code| {
+                    crate::flowlog::refused(flow, &shown, code);
+                    if verbose {
+                        eprintln!(
+                            "{}: front door {shown}: the upstream refused with code {code}",
+                            crate::cli::program_name()
+                        );
+                    }
+                }))
+            } else {
+                Handshake::Serial
+            };
             let upstream = within_timeout(
                 "front door connect",
-                connect_upstream_async(selected, &text),
+                connect_upstream_with(selected, &text, handshake),
             )
             .await;
             match upstream {
@@ -131,6 +175,9 @@ impl Dial for PodDial {
                     upstream, flow, &text,
                 ))),
                 Err(e) => {
+                    if let Some(refused) = e.downcast_ref::<UpstreamRefused>() {
+                        crate::flowlog::refused(flow, &text, refused.code);
+                    }
                     // The reply code follows the words of the outer text.
                     if self.verbose {
                         eprintln!("{}: front door: {e:#}", crate::cli::program_name());
@@ -294,3 +341,7 @@ where
 #[cfg(test)]
 #[path = "frontdoor_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "frontdoor_early_tests.rs"]
+mod early_tests;
