@@ -30,9 +30,16 @@
 //!   into the bytes of the stream. This is how `peer:FP/SERVICE` of the
 //!   network registry reaches a link of another process.
 //!
-//! The verbs that change a link (T-307) and the state dump (T-309) plug in
-//! at `Hub::verb`.
+//! * `close-link` (`"link":ID`), `close-stream` (`"link":ID,"stream":ID`)
+//!   and `select` (`"link":ID|null`) change a link (T-307, `verbs.rs`).
+//!   Each one answers the status document after the change. They sit
+//!   behind the token and the uid check like every verb. `rotate` and
+//!   `reconnect` need a carrier that the instance dials again; they
+//!   answer 69.
+//!
+//! The state dump (T-309) plugs in at `Hub::verb`.
 
+use std::collections::BTreeMap;
 use std::os::unix::fs::OpenOptionsExt as _;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -46,12 +53,14 @@ use podnet_netns::listen::bind_private;
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
-use tokio::sync::Semaphore;
+use tokio::sync::{Notify, Semaphore};
 use tokio::task::JoinHandle;
 
 use crate::exit::{self, Fault};
 use crate::identity::AllowList;
-use crate::link::{Link, Stream};
+use crate::link::{Link, ResetCode, Stream};
+
+mod verbs;
 
 /// The most bytes of a request line.
 pub const REQUEST_LIMIT: usize = 4096;
@@ -119,11 +128,63 @@ pub struct Held {
     since: u64,
     opened: AtomicU64,
     accepted: AtomicU64,
+    /// The streams that a task serves and a verb can end: the id, and the
+    /// signal that the task waits for.
+    streams: Mutex<BTreeMap<u32, Arc<Notify>>>,
+}
+
+/// The most stream ids that a row of `status` lists.
+const STREAM_IDS: usize = 64;
+
+/// A stream that a verb can end. The task that serves the stream waits on
+/// [`Tracked::cancelled`], and resets the stream when it returns. The drop
+/// takes the stream out of the table.
+pub struct Tracked {
+    held: Arc<Held>,
+    id: u32,
+    cancel: Arc<Notify>,
+}
+
+impl Tracked {
+    /// Return when `close-stream` names this stream. A signal that came
+    /// before the call is not lost.
+    pub async fn cancelled(&self) {
+        self.cancel.notified().await;
+    }
+}
+
+impl Drop for Tracked {
+    fn drop(&mut self) {
+        self.held
+            .streams
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&self.id);
+    }
 }
 
 impl Held {
+    fn track(self: &Arc<Held>, id: u32) -> Tracked {
+        let cancel = Arc::new(Notify::new());
+        self.streams
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id, cancel.clone());
+        Tracked {
+            held: self.clone(),
+            id,
+            cancel,
+        }
+    }
+
+    fn stream_ids(&self) -> Vec<u32> {
+        let streams = self.streams.lock().unwrap_or_else(|e| e.into_inner());
+        streams.keys().copied().take(STREAM_IDS).collect()
+    }
+
     fn row(&self) -> Value {
         json!({
+            "stream_ids": self.stream_ids(),
             "id": self.id,
             "carrier": self.carrier,
             "address": self.address,
@@ -144,6 +205,8 @@ pub struct Hub {
     fingerprint: String,
     held: Mutex<Vec<Arc<Held>>>,
     next: AtomicU64,
+    /// The link that serves new streams (`select`), when one is pinned.
+    selected: Mutex<Option<u64>>,
 }
 
 /// The place of a link in a [`Hub`]. Its drop takes the link out.
@@ -157,12 +220,22 @@ impl Slot {
     pub fn count_accepted(&self) {
         self.held.accepted.fetch_add(1, Ordering::Relaxed);
     }
+
+    /// Put a stream of this link in the table that `close-stream` reads.
+    /// The task that serves the stream waits on the result.
+    pub fn track(&self, stream: &Stream) -> Tracked {
+        self.held.track(stream.id())
+    }
 }
 
 impl Drop for Slot {
     fn drop(&mut self) {
         let mut held = self.hub.held.lock().unwrap_or_else(|e| e.into_inner());
         held.retain(|h| h.id != self.held.id);
+        let mut pinned = self.hub.selected.lock().unwrap_or_else(|e| e.into_inner());
+        if *pinned == Some(self.held.id) {
+            *pinned = None;
+        }
     }
 }
 
@@ -173,6 +246,7 @@ impl Hub {
             fingerprint: fingerprint.to_string(),
             held: Mutex::new(Vec::new()),
             next: AtomicU64::new(1),
+            selected: Mutex::new(None),
         })
     }
 
@@ -195,6 +269,7 @@ impl Hub {
             since: now(),
             opened: AtomicU64::new(0),
             accepted: AtomicU64::new(0),
+            streams: Mutex::new(BTreeMap::new()),
         });
         self.held
             .lock()
@@ -218,6 +293,7 @@ impl Hub {
             "verb": "status",
             "fingerprint": self.fingerprint,
             "pid": std::process::id(),
+            "selected": *self.selected.lock().unwrap_or_else(|e| e.into_inner()),
             "links": self.rows().iter().map(|h| h.row()).collect::<Vec<_>>(),
         })
     }
@@ -236,7 +312,14 @@ impl Hub {
                 "this instance holds no link that is up",
             ));
         }
-        up.into_iter()
+        let pinned = *self.selected.lock().unwrap_or_else(|e| e.into_inner());
+        let pinned = up
+            .iter()
+            .find(|h| Some(h.id) == pinned && peer.admits(&h.peer))
+            .cloned();
+        pinned
+            .into_iter()
+            .chain(up)
             .find(|h| peer.admits(&h.peer))
             .ok_or_else(|| {
                 Answer::new(
@@ -246,7 +329,11 @@ impl Hub {
             })
     }
 
-    async fn open(&self, peer: &AllowList, service: &str) -> Result<(Stream, String), Answer> {
+    async fn open(
+        &self,
+        peer: &AllowList,
+        service: &str,
+    ) -> Result<(Stream, String, Tracked), Answer> {
         crate::link_service::check_name(service).map_err(|e| Answer::of(&e))?;
         let held = self.find(peer)?;
         let mut stream = held
@@ -254,9 +341,10 @@ impl Hub {
             .open()
             .map_err(|e| Answer::of(&crate::link::fault(e)))?;
         held.opened.fetch_add(1, Ordering::Relaxed);
+        let tracked = held.track(stream.id());
         match tokio::time::timeout(LIMIT, crate::link_service::request(&mut stream, service)).await
         {
-            Ok(Ok(())) => Ok((stream, held.peer.display_fingerprint())),
+            Ok(Ok(())) => Ok((stream, held.peer.display_fingerprint(), tracked)),
             Ok(Err(e)) => Err(Answer::of(&e)),
             Err(_) => Err(Answer::new(
                 exit::TIMEOUT,
@@ -283,15 +371,25 @@ impl Hub {
                     ));
                 }
                 let service = request["service"].as_str().unwrap_or_default();
-                let (stream, fp) = self.open(&peer, service).await?;
+                let (stream, fp, tracked) = self.open(&peer, service).await?;
                 Ok(Reply::Pipe(
                     stream,
                     json!({"ok": true, "verb": "open", "peer": fp}),
+                    tracked,
                 ))
             }
+            "close-link" => self.close_link(request).await,
+            "close-stream" => self.close_stream(request).await,
+            "select" => self.select(request),
+            "rotate" | "reconnect" => Err(Answer::new(
+                exit::UNAVAILABLE,
+                format!(
+                    "{name}: not built: the instance does not dial a carrier again, so it can make no new link"
+                ),
+            )),
             other => Err(Answer::new(
                 exit::USAGE,
-                format!("{other:?} is no verb of the control socket: use status, peer or open"),
+                format!("{other:?} is no verb of the control socket: use {}", verbs::LIST),
             )),
         }
     }
@@ -301,7 +399,7 @@ impl Hub {
 /// of a stream.
 enum Reply {
     Json(Value),
-    Pipe(Stream, Value),
+    Pipe(Stream, Value, Tracked),
 }
 
 /// The allow list of one fingerprint (the peer of `peer:FP/SERVICE`). A
@@ -563,7 +661,7 @@ async fn session(
                     return;
                 }
             }
-            Ok(Reply::Pipe(mut far, doc)) => {
+            Ok(Reply::Pipe(mut far, doc, tracked)) => {
                 // The connection is now the bytes of the stream: it no
                 // longer counts as a client.
                 drop(permit);
@@ -573,7 +671,11 @@ async fn session(
                 if !pending.is_empty() && far.write_all(&pending).await.is_err() {
                     return;
                 }
-                let _ = tokio::io::copy_bidirectional(&mut stream, &mut far).await;
+                tokio::select! {
+                    _ = tokio::io::copy_bidirectional(&mut stream, &mut far) => {}
+                    // `close-stream` names this stream.
+                    _ = tracked.cancelled() => far.reset(ResetCode::CANCEL),
+                }
                 return;
             }
             Err(answer) => {

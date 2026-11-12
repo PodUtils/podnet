@@ -210,8 +210,51 @@ pub(crate) async fn status(ask: Ask<'_>) -> Result<()> {
     Ok(())
 }
 
-/// `podnet link close`.
-pub(crate) fn close(name: &str, timeout: u64) -> Result<()> {
+/// The time that `close` gives to the control socket to end the links.
+const CLOSE_LIMIT: Duration = Duration::from_secs(15);
+
+/// End the links of the instance `name` with the verb `close-link` of its
+/// control socket, so that the peers get a GOAWAY and not a cut carrier.
+/// An instance with no socket, or a socket that does not answer, is left to
+/// the stop by signal: the failure is a line on stderr, not an error.
+async fn close_links(name: &str) {
+    let dir = instances::lookup_dir();
+    let control = instances::read(&dir, name)
+        .and_then(|r| r.ready)
+        .and_then(|d| d["control"].as_str().map(std::path::PathBuf::from));
+    let Some(socket) = control else { return };
+    let work = async {
+        let token = link_ctl::read_token(&link_ctl::token_path(&socket))?;
+        let mut client = link_ctl::Client::connect(&socket).await?;
+        let status = client.call(&token, "status", json!({})).await?;
+        for row in status["links"].as_array().into_iter().flatten() {
+            if row["state"] != "up" {
+                continue;
+            }
+            client
+                .call(&token, "close-link", json!({"link": row["id"]}))
+                .await?;
+            println!(
+                "closed link {}  {}",
+                row["id"],
+                row["peer"].as_str().unwrap_or("-")
+            );
+        }
+        Ok::<(), anyhow::Error>(())
+    };
+    let why = match tokio::time::timeout(CLOSE_LIMIT, work).await {
+        Ok(Ok(())) => return,
+        Ok(Err(err)) => format!("{err:#}"),
+        Err(_) => format!("no answer in {} s", CLOSE_LIMIT.as_secs()),
+    };
+    eprintln!(
+        "podnet: link close: the control socket of {name}: {why}; the instance stops by signal"
+    );
+}
+
+/// `podnet link close`: end each link of the instance through its control
+/// socket when the socket answers, then stop the instance.
+pub(crate) async fn close(name: &str, timeout: u64) -> Result<()> {
     instances::check_name(name).map_err(|e| exit::fault(Fault::Usage, e))?;
     let dir = instances::lookup_dir();
     if let Some(record) = instances::read(&dir, name) {
@@ -225,6 +268,7 @@ pub(crate) fn close(name: &str, timeout: u64) -> Result<()> {
             ));
         }
     }
+    close_links(name).await;
     instances_stop(Some(name.to_string()), false, timeout)
 }
 

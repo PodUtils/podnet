@@ -38,8 +38,9 @@ podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of
   the peer, the role, the streams and the counters), or `live: null` and `live_error` when the socket does not answer: the row is
   then the background record. `--control PATH [--token-file FILE]` asks one socket (the `control` of a ready document); a wrong
   token exits 77, and a socket that does not answer exits 69.
-* `link close NAME` stops a link instance (SIGTERM, then SIGKILL after `--timeout`, default 10 s). A name that is no link
-  instance exits 64: use `podnet stop`.
+* `link close NAME` ends each link that the instance holds with the verb `close-link` of its control socket (one line `closed link
+  ID  PEER` for each), then stops the instance (SIGTERM, then SIGKILL after `--timeout`, default 10 s). A socket that does not
+  answer is one line on stderr, and the stop goes on. A name that is no link instance exits 64: use `podnet stop`.
 * `link carriers [--json]` prints one line for each carrier: its framing, duplex, order, MTU, cost, address form and
   addressing mode, then `available` or `unavailable:` with the reason. The JSON has the same facts, `available` (bool) and
   `reason` (string or null).
@@ -70,13 +71,24 @@ removes both files at its stop. The token is never in the ready document, `statu
 * Verbs:
   * `status`: `fingerprint`, `pid` and `links`, a row for each held link: `id`, `carrier`, `address`, `role`
     (`listener` or `dialer`), `peer` (the fingerprint), `state` (`up` or `ended`), `streams`, `rtt_ms`, `opened` and `accepted`
-    (the streams opened here and by the peer), `since`. It has no seed and no token.
+    (the streams opened here and by the peer), `since`, and `stream_ids` (the streams that a task serves, 64 at most), and at the
+    top `selected` (the pinned link, or `null`). It has no seed and no token.
   * `peer` (`"peer":FINGERPRINT`): `ok` when a link that is up goes to that peer; 77 when the links go to other peers; 69 when
     the instance holds no link that is up.
   * `open` (`"peer":FINGERPRINT,"service":NAME`): opens one stream, asks for the service, and on `ok` the connection carries the
     bytes of the stream. The network `peer:FINGERPRINT/SERVICE` uses it.
-  * The verbs that change a link (`rotate`, `close-stream`, `close-link`, `select`, `reconnect`) and the state dump are separate
-    work. An unknown verb gets 64.
+  * `close-link` (`"link":ID`): end the link with a GOAWAY after the frames that wait. A link that has ended is not an error.
+  * `close-stream` (`"link":ID,"stream":ID`): reset one stream. The other streams and the link stay. The ids are the
+    `stream_ids` of the row of `status` (64 ids at most for each link).
+  * `select` (`"link":ID` or `"link":null`): pin the link that serves the streams opened from now on (the verb `open`, so
+    `peer:FINGERPRINT/SERVICE`); `null` returns to the first link that is up. The streams that run stay where they are. The
+    pin ends with its link. A link that has ended exits 69. `status` shows the pin as `selected`.
+  * Each of the three answers the document of `status` after the change, with `verb` set to its name. An id that is missing,
+    is no number or names no link or stream gets 64. They need the token and the user check, like every verb: a refused
+    request changes nothing.
+  * `rotate` and `reconnect` need a carrier that the instance dials again. An instance holds links and not the way to make
+    them, so both get 69 (`not built`).
+  * An unknown verb gets 64 and the list of the verbs.
 
 `PODNET_LINK_CONTROL` names the one socket that `peer:FINGERPRINT/SERVICE` asks. Without it, the network asks the control socket
 of each link instance in the run directory, and takes the first that holds a link to the peer.

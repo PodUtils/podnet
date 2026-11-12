@@ -94,8 +94,10 @@ pub(crate) enum LinkCommand {
         #[arg(long, value_name = "FILE", requires = "control")]
         token_file: Option<PathBuf>,
     },
-    /// Stop a link instance that runs in the background (SIGTERM, then
-    /// SIGKILL after --timeout). The listener removes its unix socket.
+    /// Stop a link instance that runs in the background. First end each
+    /// link of the instance through its control socket (the verb
+    /// close-link), so that the peers get a GOAWAY; then SIGTERM, and
+    /// SIGKILL after --timeout. The listener removes its unix socket.
     Close {
         /// The name of the link instance (podnet link status).
         name: String,
@@ -164,7 +166,7 @@ pub(crate) async fn link(args: LinkArgs) -> Result<()> {
             };
             info::status(ask).await
         }
-        LinkCommand::Close { name, timeout } => info::close(&name, timeout),
+        LinkCommand::Close { name, timeout } => info::close(&name, timeout).await,
         LinkCommand::Carriers { carrier, json } => info::carriers(&carrier.options(), json),
     }
 }

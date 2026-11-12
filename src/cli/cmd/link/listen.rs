@@ -213,9 +213,17 @@ async fn serve(link: Link, held: Held) {
     while let Ok(stream) = link.accept().await {
         slot.count_accepted();
         let (services, shown) = (held.services.clone(), shown.clone());
+        // `close-stream` of the control socket names the stream by its id.
+        let tracked = slot.track(&stream);
         tokio::spawn(async move {
-            if let Err(err) = bridge(stream, &services).await {
-                tracing::warn!(peer = shown, error = %format!("{err:#}"), "a stream ended");
+            let mut stream = stream;
+            tokio::select! {
+                done = bridge(&mut stream, &services) => {
+                    if let Err(err) = done {
+                        tracing::warn!(peer = shown, error = %format!("{err:#}"), "a stream ended");
+                    }
+                }
+                _ = tracked.cancelled() => stream.reset(link::ResetCode::CANCEL),
             }
         });
     }
@@ -224,10 +232,10 @@ async fn serve(link: Link, held: Held) {
 
 /// Read the service of a stream, connect to its target, and copy the
 /// stream to the connection and back.
-async fn bridge(mut stream: link::Stream, services: &BTreeMap<String, Target>) -> Result<()> {
-    let name = service::accept(&mut stream).await?;
+async fn bridge(stream: &mut link::Stream, services: &BTreeMap<String, Target>) -> Result<()> {
+    let name = service::accept(stream).await?;
     let Some(target) = services.get(&name) else {
-        service::reply(&mut stream, service::NO_SERVICE).await?;
+        service::reply(stream, service::NO_SERVICE).await?;
         return Err(anyhow!(
             "the peer asked for the service {name:?}, which this listener does not have"
         ));
@@ -235,12 +243,12 @@ async fn bridge(mut stream: link::Stream, services: &BTreeMap<String, Target>) -
     let mut io = match connect(target).await {
         Ok(io) => io,
         Err(err) => {
-            service::reply(&mut stream, service::NO_ORIGIN).await?;
+            service::reply(stream, service::NO_ORIGIN).await?;
             return Err(err);
         }
     };
-    service::reply(&mut stream, service::OPEN).await?;
-    tokio::io::copy_bidirectional(&mut stream, &mut io).await?;
+    service::reply(stream, service::OPEN).await?;
+    tokio::io::copy_bidirectional(stream, &mut io).await?;
     Ok(())
 }
 

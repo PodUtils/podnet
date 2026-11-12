@@ -13,8 +13,8 @@
 
 use pod_core::Class;
 pub use pod_link::{
-    BoxIo, Carrier, CarrierError, CarrierErrorKind, Error, Facts, Link, Listener, Role, Settings,
-    Stream,
+    BoxIo, Carrier, CarrierError, CarrierErrorKind, Error, Facts, Link, Listener, ResetCode, Role,
+    Settings, Stream,
 };
 use tokio::io::{AsyncRead, AsyncWrite};
 
