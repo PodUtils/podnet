@@ -37,20 +37,15 @@ use std::task::{Context as TaskContext, Poll};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader, ReadBuf};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
 use tokio::net::{TcpStream, UnixStream};
 use tokio::task::JoinHandle;
 
 use crate::listen::ProxyListen;
-use crate::opening::{read_opening, Opening, REQUEST_LIMIT};
-use crate::socks;
 
 /// The path `tailscaled` uses when `--socket` is not given and the process is
 /// running as root. A per-user install should pass `--socket` explicitly.
 pub const DEFAULT_SOCKET: &str = "/var/run/tailscale/tailscaled.sock";
-
-/// How long one proxied client connection may take, end to end.
-const CLIENT_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// How long one dial through tailscaled may take (issue 181: a logged-out
 /// tailscaled never answered, and the client hung with no error).
@@ -120,6 +115,7 @@ impl Dialer {
     }
 }
 
+mod door;
 #[cfg(test)]
 mod guard_tests;
 mod status;
@@ -322,32 +318,28 @@ pub async fn serve_guarded(
             // Issue 300: keep the bound address (the port that the kernel
             // chose for port 0), not the requested one.
             listen = ProxyListen::Tcp(listener.local_addr()?);
-            let dialer = dialer.clone();
+            let door = Arc::new(door::door(
+                dialer.clone(),
+                default_port,
+                DIAL_TIMEOUT,
+                gate.clone(),
+            ));
             tokio::spawn(async move {
-                while let Ok((stream, _)) = listener.accept().await {
-                    tokio::spawn(handle_client(
-                        stream,
-                        dialer.clone(),
-                        default_port,
-                        gate.clone(),
-                    ));
-                }
+                let _ = door.serve_tcp(listener).await;
             })
         }
         ProxyListen::Unix(path) => {
             #[cfg(unix)]
             {
                 let listener = bind_unix(&path)?;
-                let dialer = dialer.clone();
+                let door = Arc::new(door::door(
+                    dialer.clone(),
+                    default_port,
+                    DIAL_TIMEOUT,
+                    gate.clone(),
+                ));
                 tokio::spawn(async move {
-                    while let Ok((stream, _)) = listener.accept().await {
-                        tokio::spawn(handle_client(
-                            stream,
-                            dialer.clone(),
-                            default_port,
-                            gate.clone(),
-                        ));
-                    }
+                    let _ = door.serve_unix(listener).await;
                 })
             }
             #[cfg(not(unix))]
@@ -369,13 +361,8 @@ fn bind_unix(path: &Path) -> Result<tokio::net::UnixListener> {
     crate::listen::bind_claimed(path).with_context(|| format!("binding unix:{}", path.display()))
 }
 
-async fn handle_client<S>(stream: S, dialer: Dialer, default_port: u16, gate: Option<Arc<Gate>>)
-where
-    S: AsyncRead + AsyncWrite + Unpin,
-{
-    handle_client_within(stream, dialer, default_port, DIAL_TIMEOUT, gate).await;
-}
-
+/// Serve one client of the door with the dial time limit `dial_timeout`.
+#[cfg(test)]
 async fn handle_client_within<S>(
     stream: S,
     dialer: Dialer,
@@ -383,80 +370,10 @@ async fn handle_client_within<S>(
     dial_timeout: Duration,
     gate: Option<Arc<Gate>>,
 ) where
-    S: AsyncRead + AsyncWrite + Unpin,
+    S: AsyncRead + AsyncWrite + Unpin + Send,
 {
-    let mut reader = BufReader::new(stream);
-    let (is_socks, request) = match read_opening(&mut reader, REQUEST_LIMIT).await {
-        Opening::Request { is_socks, request } => (is_socks, request),
-        _ => return,
-    };
-    // T-243: the daemon is in another tailnet.
-    if gate.as_ref().is_some_and(|gate| gate.is_blocked()) {
-        if is_socks {
-            let _ = socks::socks5_reply(&mut reader, 0x02, None).await; // not allowed
-        } else {
-            let _ = socks::http_connect_reply(&mut reader, 403, "Forbidden").await;
-        }
-        return;
-    }
-
-    let port = if request.port == 0 {
-        default_port
-    } else {
-        request.port
-    };
-    let host = request.host.to_string();
-    let dialed = match tokio::time::timeout(dial_timeout, dialer.dial(&host, port)).await {
-        Ok(result) => result,
-        Err(_) => Err(io::Error::new(
-            io::ErrorKind::TimedOut,
-            format!(
-                "tailscaled did not answer the dial in {} ms (is it logged in? tailscale status)",
-                dial_timeout.as_millis()
-            ),
-        )),
-    };
-    match dialed {
-        Ok(mut remote) => {
-            let reply = if is_socks {
-                socks::socks5_reply(&mut reader, 0x00, None).await
-            } else {
-                socks::http_connect_ok(&mut reader).await
-            };
-            if reply.is_err() {
-                return;
-            }
-            let _ = tokio::time::timeout(
-                CLIENT_TIMEOUT,
-                tokio::io::copy_bidirectional(&mut reader, &mut remote),
-            )
-            .await;
-        }
-        Err(err) => {
-            tokio::spawn(check_state(dialer.clone()));
-            if let Some(gate) = gate {
-                let dialer = dialer.clone();
-                tokio::spawn(async move { gate.refresh(&dialer).await });
-            }
-            let message = err.to_string();
-            crate::warn(&format!("tailscale: {host}:{port} failed: {message}"));
-            if is_socks {
-                let code = if err.kind() == io::ErrorKind::TimedOut {
-                    0x04 // host unreachable
-                } else {
-                    socks::socks5_code_for_error(&message)
-                };
-                let _ = socks::socks5_reply(&mut reader, code, None).await;
-            } else {
-                let (code, text) = if err.kind() == io::ErrorKind::TimedOut {
-                    (504, "Gateway Timeout")
-                } else {
-                    (502, "Bad Gateway")
-                };
-                let _ = socks::http_connect_reply(&mut reader, code, text).await;
-            }
-        }
-    }
+    let door = door::door(dialer, default_port, dial_timeout, gate);
+    let _ = door.handle(stream).await;
 }
 
 /// The Tailscale IPv4 range, `100.64.0.0/10` (CGNAT).
