@@ -4733,7 +4733,7 @@ cargo test -p podnet doctor -- lanes
 
 ## Done
 
-2026-11-12, commit 10389da. `doctor --json` gives a probe for each of the lanes `masque_udp443` and `ws_upgrade`. The code is in `src/doctor/lane_probes.rs`. `src/doctor.rs` (frozen) has only the field `Report.probes` and two calls in `run`.
+2026-11-12, commit 9814f2d. `doctor --json` gives a probe for each of the lanes `masque_udp443` and `ws_upgrade`. The code is in `src/doctor/lane_probes.rs`. `src/doctor.rs` (frozen) has only the field `Report.probes` and two calls in `run`.
 
 - `masque_udp443`: one QUIC packet (`udp::probe`) to the MASQUE endpoint on UDP 443. `ok` on any answer (`ms` is the time). `fail` on a refusal, and on silence when the probe of UDP 7844 answers. `unknown` on silence when UDP 7844 does not answer. With a proxy for the endpoint no packet is sent: `unknown`, reason "no proxy carries UDP".
 - `ws_upgrade`: an HTTP/1.1 `Upgrade: websocket` request over TLS to the target `edge-name` (the edge host on 7844, SNI `h2.cftunnel.com`, the roots of the edge), through the proxy when one is set. `ok` on `101`. `fail` on another status, a TLS fault, a refusal or a close with no status line. `unknown` when no answer comes in twice `--timeout`.
