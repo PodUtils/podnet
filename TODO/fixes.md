@@ -4842,7 +4842,7 @@ release run 43190862473 passed. The release is a prerelease with the 8 binaries,
 
 ## Problem
 
-The work after `v0.4.0-beta.6` (T-043, T-049, T-083, T-162, T-163, and the take of podcrates v0.30.0) is on `main`
+The work after `v0.4.0-beta.6` (T-043, T-049, T-083, T-162, T-163, T-315, T-316, and the takes of podcrates v0.30.0 and v0.31.0) is on `main`
 only.
 
 ## Premise
@@ -4879,7 +4879,7 @@ sh scripts/agent/check.sh
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -4920,6 +4920,12 @@ the crate on its `main` (f891d89; the next tag). podnet's glue wraps the output 
 flushes after each write (`src/relay_reverse/flush_each.rs`, test
 `relay_connect_output_reaches_the_reader_with_no_newline`: with the flush off it fails). The entry is done when the
 step of `live.yml` passes.
+
+## Done
+
+2026-11-12, f539ccd (the writer that flushes each frame; 0ff53a5 the rustfmt). `live` 43226426806 at 0ff53a5: the
+step "SSH through the reverse relay" passed (`relay-ssh-ok`, the two parallel sessions, the banner), and `ci`
+43226426336 passed. The fix of the crate (podcrates f891d89) comes with its next tag; podnet keeps the writer.
 
 
 # T-316: A local stand-in of the quick-tunnel service and the edge, so that CI runs the quick tunnel with no call to Cloudflare
