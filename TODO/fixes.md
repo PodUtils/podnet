@@ -5288,3 +5288,39 @@ sh -n scripts/live-ws-url.sh
 2026-11-12. `scripts/live-ws-url.sh`: a free port for each run, the PIDs killed at the end, 30 tries of the client.
 The echo server with port 0 was run here with `websockets` (the client got its echo). Not proven here: the step in
 `live` (the next run). The WARP door scan is a state of the service, not of podnet.
+
+
+# T-324: doctor: the test of a refused direct dial holds its port
+
+**Source:** the lead, 2026-11-12: `doctor::tests::a_direct_refusal_is_an_answer` failed once in a full run (the run of
+T-261 and T-263) and passed alone.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The test bound a listener on port 0, dropped it, then dialed the port and expected a refusal. Between the drop and
+the dial, another test of the same run can bind the free port, and the dial then connects.
+
+## Premise
+
+- Read: `src/doctor/tests.rs`, `a_direct_refusal_is_an_answer`.
+- On Linux a connect to a port that a socket holds with `bind` and no `listen` is refused.
+
+## Approach
+
+1. Hold the port with a `TcpSocket` that is bound and does not listen, for the whole test.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib a_direct_refusal_is_an_answer
+```
+
+## Done
+
+2026-11-12. The test holds the port with a bound `tokio::net::TcpSocket` and no `listen`; the dial gets "connection
+refused". 5 runs in a row passed. Not proven: the race under the load of a full run (it was seen once).

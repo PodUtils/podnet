@@ -5,12 +5,12 @@ use super::*;
 #[tokio::test]
 async fn a_direct_refusal_is_an_answer() {
     crate::test_host::need_loopback!();
-    let port = std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let addr: std::net::SocketAddr = ([127, 0, 0, 1], port).into();
+    // A socket that is bound and does not listen holds the port for the test
+    // (T-324): a connect to it is refused, and no other test can take the
+    // port between the bind and the dial.
+    let held = tokio::net::TcpSocket::new_v4().unwrap();
+    held.bind(([127, 0, 0, 1], 0).into()).unwrap();
+    let addr = held.local_addr().unwrap();
     let err = crate::egress::dial_addrs(&[addr], Duration::from_secs(5))
         .await
         .unwrap_err();
