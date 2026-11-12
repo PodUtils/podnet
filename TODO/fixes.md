@@ -5387,7 +5387,7 @@ sh scripts/agent/check.sh
 2026-11-12, commits fb47f09 (`T-325: version 0.4.0-beta.8 and its release notes`) and 97687dc (T-326: the ignore of
 RUSTSEC-2023-0071; the first `deny` run 43295725441 failed on it). On 97687dc: `ci` 43321245519, `live` 43321245503 and
 `deny` 43321245726 passed. `release.yml`: the dry run 43324008185 passed, the publish 43326653552 passed. The release
-`v0.4.0-beta.8` is a prerelease with 15 files. `release-proofs.yml`: run 43328735562.
+`v0.4.0-beta.8` is a prerelease with 15 files. `release-proofs.yml`: run 43328735562 passed.
 
 
 # T-326: Remove the ignore of RUSTSEC-2023-0071 when russh takes `rsa` 0.10.0
