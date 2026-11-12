@@ -1,13 +1,14 @@
-//! `podnet ssh-relay` (T-165): publish a unix socket through an SSH relay,
-//! and keep the session. The relay, the user and the URL rule are flags
-//! until `pod-services` holds them (T-166).
+//! `podnet ssh-relay` (T-165, T-166): publish a unix socket through an SSH
+//! relay, and keep the session. The endpoints, the user and the URL rule of
+//! a known relay are data of `pod-services`; a flag overrides each of them.
 
 use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Result;
-use clap::{ArgGroup, Args};
+use clap::Args;
 use podnet::exit::{Fault, ResultExt};
+use podnet::relay::facts::{self, Facts};
 use podnet::relay::supervise::{supervise, Backoff, Event};
 use podnet::relay::{RelayConfig, TunnelHandle, UrlRule};
 
@@ -20,23 +21,32 @@ use crate::cli::signals::shutdown_signal;
 const KEEPALIVE: Duration = Duration::from_secs(30);
 
 #[derive(Args, Debug)]
-#[command(group(ArgGroup::new("url_rule").args(["url_match", "url_skip"]).required(true).multiple(true)))]
 pub(crate) struct SshRelayArgs {
+    /// The known relay to use: its endpoints, its user and its URL rule
+    /// come from the data of pod-services. Default: pinggy. The flags
+    /// --server, --user, --url-match and --url-skip override these facts.
+    /// An unknown name lists the known relays.
+    #[arg(long, value_name = "NAME")]
+    service: Option<String>,
     /// The SSH server of the relay: HOST:PORT. Use a port that the
-    /// egress allows (443 for most proxies).
-    #[arg(long, value_name = "HOST:PORT", required = true)]
-    server: String,
+    /// egress allows (443 for most proxies). Default: the plain SSH
+    /// endpoints of the relay, tried in order. With --server and no
+    /// --service, the relay is not a known one: give --user and a URL rule.
+    #[arg(long, value_name = "HOST:PORT")]
+    server: Option<String>,
     /// The SSH user of the relay. The relay takes an ephemeral key.
-    #[arg(long, value_name = "USER", required = true)]
-    user: String,
+    /// Default: the user of the facts of the relay, else "podnet".
+    #[arg(long, value_name = "USER")]
+    user: Option<String>,
     /// Which URL of the banner of the relay is the tunnel URL: it holds
     /// this text (the tunnel domain of the relay). Repeatable: the URL
-    /// holds each text. Give --url-match or --url-skip, or both.
+    /// holds each text. Replaces the texts of the facts.
     #[arg(long, value_name = "TEXT")]
     url_match: Vec<String>,
     /// Which URL of the banner is not the tunnel URL: it holds this text
     /// (the dashboard of the relay). Repeatable: the URL holds none of the
-    /// texts.
+    /// texts. Replaces the texts of the facts, which are the dashboards of
+    /// all known relays.
     #[arg(long, value_name = "TEXT")]
     url_skip: Vec<String>,
     /// The unix socket of the origin: the relay opens one channel for each
@@ -62,12 +72,30 @@ impl SshRelayArgs {
         &self.detach
     }
 
+    /// The facts that the flags start from: those of the named relay, or of
+    /// the default one. None: a `--server` with no `--service` is a relay
+    /// that no data describes.
+    fn facts(&self) -> Result<Option<Facts>> {
+        if self.service.is_none() && self.server.is_some() {
+            return Ok(None);
+        }
+        let name = self.service.as_deref().unwrap_or(facts::DEFAULT);
+        let found = facts::lookup(name)
+            .map_err(|e| anyhow::anyhow!("--service: {e}"))
+            .fault(Fault::Usage)?;
+        Ok(Some(found))
+    }
+
     /// The configuration of the leg, or the usage error of a bad flag.
     fn config(&self) -> Result<RelayConfig> {
-        podnet::relay::check_address(&self.server)
-            .map_err(anyhow::Error::from)
-            .map_err(|e| e.context("--server"))
-            .fault(Fault::Usage)?;
+        let found = self.facts()?;
+        let usage = |text: &str| Err(anyhow::anyhow!("{text}")).fault(Fault::Usage);
+        if let Some(server) = &self.server {
+            podnet::relay::check_address(server)
+                .map_err(anyhow::Error::from)
+                .map_err(|e| e.context("--server"))
+                .fault(Fault::Usage)?;
+        }
         if let Some(proxy) = &self.connect_proxy {
             podnet::relay::check_address(proxy)
                 .map_err(anyhow::Error::from)
@@ -79,22 +107,51 @@ impl SshRelayArgs {
             ("--url-skip", &self.url_skip),
         ] {
             if texts.iter().any(|t| t.is_empty()) {
-                return Err(anyhow::anyhow!("{flag}: give a text, not an empty word"))
-                    .fault(Fault::Usage);
+                return usage(&format!("{flag}: give a text, not an empty word"));
             }
         }
+        let own_rule = !self.url_match.is_empty() || !self.url_skip.is_empty();
+        if found.is_none() {
+            if self.user.is_none() {
+                return usage("--server with no --service needs --user");
+            }
+            if !own_rule {
+                return usage("--server with no --service needs --url-match or --url-skip");
+            }
+        }
+        let (mut addresses, mut user, mut rule, mut keepalive) =
+            (Vec::new(), None, UrlRule::default(), None);
+        if let Some(found) = found {
+            (addresses, user, rule, keepalive) =
+                (found.addresses, found.user, found.rule, found.keepalive);
+        }
+        if let Some(server) = &self.server {
+            addresses = vec![server.clone()];
+        }
+        if !self.url_match.is_empty() {
+            rule.matches = self.url_match.clone();
+        }
+        if !self.url_skip.is_empty() {
+            rule.skips = self.url_skip.clone();
+        }
+        let mut addresses = addresses.into_iter();
+        let Some(address) = addresses.next() else {
+            return usage("the relay has no plain SSH endpoint: give --server");
+        };
         let mut config = RelayConfig {
-            address: self.server.clone(),
+            address,
+            fallbacks: addresses.collect(),
             proxy: self.connect_proxy.clone(),
-            username: self.user.clone(),
-            url_rule: UrlRule {
-                skip: self.url_skip.clone(),
-                hold: self.url_match.clone(),
-            },
+            username: self
+                .user
+                .clone()
+                .or(user)
+                .unwrap_or_else(|| "podnet".to_string()),
+            url_rule: rule,
             // The relay ends a session at its own time. The keepalive finds
             // a dead session; an idle session is not dead.
             inactivity: None,
-            keepalive: Some(KEEPALIVE),
+            keepalive: Some(keepalive.unwrap_or(KEEPALIVE)),
             ..RelayConfig::default()
         };
         if let Some(socket) = &self.socket {
@@ -192,49 +249,92 @@ mod tests {
         ".tunnel.example.test",
     ];
 
-    #[test]
-    fn ssh_relay_takes_the_relay_the_user_and_the_url_rule_as_flags() {
-        let cli = parse(&FULL).unwrap();
-        let Command::SshRelay(args) = cli.command else {
+    fn config(words: &[&str]) -> anyhow::Result<podnet::relay::RelayConfig> {
+        let Command::SshRelay(args) = parse(words).unwrap().command else {
             panic!("not ssh-relay");
         };
-        let config = args.config().unwrap();
+        args.config()
+    }
+
+    #[test]
+    fn ssh_relay_takes_the_relay_the_user_and_the_url_rule_as_flags() {
+        let config = config(&FULL).unwrap();
         assert_eq!(config.address, "relay.example.test:443");
+        assert!(config.fallbacks.is_empty());
         assert_eq!(config.username, "podnet");
-        assert_eq!(config.url_rule.skip, ["dashboard.example.test"]);
-        assert_eq!(config.url_rule.hold, [".tunnel.example.test"]);
+        assert_eq!(config.url_rule.skips, ["dashboard.example.test"]);
+        assert_eq!(config.url_rule.matches, [".tunnel.example.test"]);
         assert!(config.keepalive.is_some());
         assert_eq!(config.inactivity, None);
     }
 
     #[test]
-    fn ssh_relay_refuses_a_missing_flag_and_names_it() {
+    fn ssh_relay_with_no_flag_uses_the_facts_of_the_default_relay() {
+        let config = config(&["ssh-relay"]).unwrap();
+        let found = podnet::relay::facts::default_facts();
+        assert_eq!(config.address, found.addresses[0]);
+        assert_eq!(config.username, found.user.unwrap());
+        assert_eq!(config.url_rule, found.rule);
+        assert_eq!(config.keepalive, found.keepalive);
+    }
+
+    #[test]
+    fn ssh_relay_takes_the_facts_of_a_named_relay_and_the_address_list() {
+        let config = config(&["ssh-relay", "--service", "serveo"]).unwrap();
+        let found = podnet::relay::facts::lookup("serveo").unwrap();
+        assert_eq!(config.address, found.addresses[0]);
+        assert_eq!(config.fallbacks, found.addresses[1..]);
+        assert!(!config.fallbacks.is_empty());
+        assert_eq!(config.url_rule, found.rule);
+    }
+
+    #[test]
+    fn a_flag_overrides_the_facts_of_the_relay() {
+        let config = config(&[
+            "ssh-relay",
+            "--service",
+            "serveo",
+            "--server",
+            "other.example.test:2222",
+            "--user",
+            "me",
+            "--url-match",
+            ".mine.test",
+        ])
+        .unwrap();
+        let found = podnet::relay::facts::lookup("serveo").unwrap();
+        assert_eq!(config.address, "other.example.test:2222");
+        assert!(config.fallbacks.is_empty());
+        assert_eq!(config.username, "me");
+        assert_eq!(config.url_rule.matches, [".mine.test"]);
+        assert_eq!(config.url_rule.skips, found.rule.skips);
+    }
+
+    #[test]
+    fn ssh_relay_refuses_an_unknown_relay_and_lists_the_known_ones() {
+        let err = config(&["ssh-relay", "--service", "nope"]).unwrap_err();
+        assert_eq!(podnet::exit::code_of(&err), podnet::exit::USAGE);
+        let text = format!("{err:#}");
+        assert!(text.contains("nope") && text.contains("pinggy"), "{text}");
+    }
+
+    #[test]
+    fn ssh_relay_refuses_a_server_of_no_known_relay_without_user_and_rule() {
         // The flag and its value go; the other flags stay.
-        for (at, name) in [(1, "--server"), (3, "--user")] {
+        for (range, name) in [(3..5, "--user"), (5..9, "--url")] {
             let mut words = FULL.to_vec();
-            words.drain(at..at + 2);
-            let err = parse(&words).unwrap_err();
-            assert_eq!(err.kind(), clap::error::ErrorKind::MissingRequiredArgument);
-            assert!(err.to_string().contains(name), "{name}: {err}");
+            words.drain(range);
+            let err = config(&words).unwrap_err();
+            assert_eq!(podnet::exit::code_of(&err), podnet::exit::USAGE);
+            assert!(format!("{err:#}").contains(name), "{name}: {err:#}");
         }
-        // No URL rule: neither --url-skip nor --url-match.
-        let err = parse(&FULL[..5]).unwrap_err();
-        assert_eq!(err.kind(), clap::error::ErrorKind::MissingRequiredArgument);
-        let text = err.to_string();
-        assert!(
-            text.contains("--url-skip") && text.contains("--url-match"),
-            "{text}"
-        );
     }
 
     #[test]
     fn ssh_relay_refuses_a_bad_address() {
         let mut words = FULL.to_vec();
         words[2] = "no-port";
-        let Command::SshRelay(args) = parse(&words).unwrap().command else {
-            panic!("not ssh-relay");
-        };
-        let err = args.config().unwrap_err();
+        let err = config(&words).unwrap_err();
         assert_eq!(podnet::exit::code_of(&err), podnet::exit::USAGE);
         assert!(format!("{err:#}").contains("--server"), "{err:#}");
     }

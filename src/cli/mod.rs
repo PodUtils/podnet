@@ -120,8 +120,9 @@ pub(crate) enum Command {
     Route(cmd::route::RouteArgs),
     /// Publish a unix socket through an SSH relay (a remote forward on port
     /// 443), and keep the session: when the relay ends it, podnet connects
-    /// again with a backoff and prints the new URL. The relay, the user and
-    /// the URL rule are flags.
+    /// again with a backoff and prints the new URL. The relay (--service),
+    /// its endpoints, its user and its URL rule are data of pod-services;
+    /// --server, --user, --url-match and --url-skip override them.
     SshRelay(SshRelayArgs),
     /// Send GET requests to a URL through the way out (--egress, --proxy) and
     /// measure the latency (p50, p95, p99), the rate and the errors.

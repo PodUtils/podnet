@@ -5,6 +5,7 @@
 //! built-in set when it builds, so a missing service or fact here is a
 //! defect of that set, and panics.
 
+pub use pod_services::forward;
 pub use pod_services::{Endpoint, Service};
 
 /// The built-in service `id`.
@@ -175,4 +176,13 @@ pub mod warp {
     pub fn connect_uri() -> &'static str {
         text(WARP, "connect-uri")
     }
+}
+
+/// The SSH forward relays of the built-in set (the services that
+/// `forward::Relay::of` reads), in the order of the set.
+pub fn forward_relays() -> Vec<forward::Relay<'static>> {
+    pod_services::all()
+        .iter()
+        .filter_map(forward::Relay::of)
+        .collect()
 }

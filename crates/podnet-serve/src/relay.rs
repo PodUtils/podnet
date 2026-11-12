@@ -37,8 +37,11 @@ use tokio::net::UnixStream;
 
 use podnet_core::connect;
 
+pub mod facts;
 pub mod probe;
 pub mod supervise;
+
+pub use facts::{Banner, UrlRule};
 
 /// Default relay, reachable on port 443 through the CONNECT proxy: the
 /// endpoint `ssh` of `pinggy` (`pod-services`).
@@ -51,6 +54,9 @@ pub fn default_relay() -> String {
 pub struct RelayConfig {
     /// `host:port` of the SSH server.
     pub address: String,
+    /// More `host:port` of the same relay, tried in order when the transport
+    /// to `address` fails (the plain SSH endpoints of the facts).
+    pub fallbacks: Vec<String>,
     /// `host:port` of the HTTP CONNECT proxy, or `None` for a direct connect.
     pub proxy: Option<String>,
     /// SSH user. The free relay tier takes an anonymous login.
@@ -69,63 +75,16 @@ pub struct RelayConfig {
     pub keepalive: Option<Duration>,
 }
 
-/// The rule that picks the tunnel URL out of the banner of a relay.
-///
-/// A token is a candidate when it starts with `http://` or `https://`.
-/// The first candidate that holds no text of `skip` and each text of
-/// `hold` is the tunnel URL.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UrlRule {
-    /// A candidate that holds one of these texts is not the tunnel URL
-    /// (the dashboard of the relay: the fact `url-skip` of `pinggy`).
-    pub skip: Vec<String>,
-    /// A candidate must hold each of these texts (the tunnel domain of the
-    /// relay).
-    pub hold: Vec<String>,
-}
-
-impl Default for UrlRule {
-    /// The rule of the default relay: not its dashboard.
-    fn default() -> Self {
-        Self {
-            skip: podnet_core::services::get("pinggy")
-                .texts("url-skip")
-                .unwrap_or_default()
-                .iter()
-                .map(|text| text.to_string())
-                .collect(),
-            hold: Vec::new(),
-        }
-    }
-}
-
-impl UrlRule {
-    /// The tunnel URL in `text`, or `None`.
-    ///
-    /// The relay prints an upgrade pitch (which points at its dashboard) and
-    /// then the tunnel hostname(s). Both are URLs, so the rule must exclude
-    /// the dashboard or it gets picked as the tunnel.
-    pub fn pick(&self, text: &str) -> Option<String> {
-        text.split_whitespace()
-            .filter(|t| t.starts_with("http://") || t.starts_with("https://"))
-            .map(|t| t.trim_end_matches([',', '.', ')', '"']))
-            .find(|url| {
-                !self.skip.iter().any(|s| url.contains(s.as_str()))
-                    && self.hold.iter().all(|h| url.contains(h.as_str()))
-            })
-            .map(str::to_string)
-    }
-}
-
 impl Default for RelayConfig {
     fn default() -> Self {
         Self {
             address: default_relay(),
+            fallbacks: Vec::new(),
             proxy: None,
             username: "podnet".to_string(),
             unix_socket: default_origin_socket(),
             connect_timeout: Duration::from_secs(15),
-            url_rule: UrlRule::default(),
+            url_rule: facts::default_rule(),
             inactivity: Some(Duration::from_secs(3600)),
             keepalive: None,
         }
@@ -418,9 +377,31 @@ where
     Ok(())
 }
 
-/// Open an SSH transport to the relay, honouring the proxy setting.
+/// Open an SSH transport to the relay, honouring the proxy setting. It tries
+/// `address`, then each of `fallbacks`, in order; the error is the one of
+/// the last address. A bad address is an error at once.
 async fn connect_transport(config: &RelayConfig) -> Result<PrefixedStream, RelayError> {
-    let (host, port) = split_address(&config.address)?;
+    let all = std::iter::once(&config.address).chain(&config.fallbacks);
+    let mut last = None;
+    for address in all {
+        match connect_address(config, address).await {
+            Ok(stream) => return Ok(stream),
+            Err(e @ RelayError::BadAddress(_)) => return Err(e),
+            Err(e) => {
+                tracing::debug!(%address, error = %e, "the relay address did not answer");
+                last = Some(e);
+            }
+        }
+    }
+    Err(last.unwrap_or_else(|| RelayError::BadAddress(config.address.clone())))
+}
+
+/// Open an SSH transport to one address of the relay.
+async fn connect_address(
+    config: &RelayConfig,
+    address: &str,
+) -> Result<PrefixedStream, RelayError> {
+    let (host, port) = split_address(address)?;
 
     let Some(proxy_addr) = &config.proxy else {
         let stream = tokio::net::TcpStream::connect((host.as_str(), port))
@@ -493,6 +474,35 @@ pub async fn run(config: RelayConfig) -> Result<(TunnelHandle, Handle<Client>), 
     Ok((session.tunnel, session.handle))
 }
 
+/// What the next message of the banner channel does to the [`Banner`].
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Step {
+    /// No URL yet: read the next message.
+    More,
+    /// The rule accepted this URL.
+    Url(String),
+    /// The channel ended with no URL.
+    End,
+}
+
+/// Give a message of the session channel to the banner reader. A URL that
+/// crosses two frames is whole: the [`Banner`] holds the word that a frame
+/// cut. `None`: the channel is gone.
+pub(crate) fn feed(banner: &mut Banner, msg: Option<ChannelMsg>) -> Step {
+    match msg {
+        Some(ChannelMsg::Data { data }) => {
+            eprint!("  [relay] {}", String::from_utf8_lossy(&data));
+            banner
+                .push(&data)
+                .map_or(Step::More, |u| Step::Url(u.to_string()))
+        }
+        Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => banner
+            .finish()
+            .map_or(Step::End, |u| Step::Url(u.to_string())),
+        _ => Step::More,
+    }
+}
+
 /// Establish the tunnel and return the live [`Live`], with the banner
 /// channel. [`supervise::supervise`] watches it.
 pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
@@ -558,24 +568,16 @@ pub async fn open(config: &RelayConfig) -> Result<Live, RelayError> {
 
     // Drain the shell channel for the URL. The relay prints several URLs: an
     // upgrade pitch pointing at its dashboard, then the real tunnel URL(s).
-    // The tunnel hostnames carry the relay's tunnel domain, so pick a token
-    // that is NOT the dashboard.
+    // The rule skips the dashboards and holds the tunnel domain.
+    let mut banner = Banner::new(config.url_rule.clone());
     let url = loop {
         let msg = tokio::time::timeout(Duration::from_secs(45), session_channel.wait())
             .await
             .map_err(|_| RelayError::NoUrl)?;
-        match msg {
-            Some(ChannelMsg::Data { data }) => {
-                let text = String::from_utf8_lossy(&data);
-                eprint!("  [relay] {text}");
-                if let Some(url) = config.url_rule.pick(&text) {
-                    break url;
-                }
-            }
-            Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => {
-                return Err(RelayError::NoUrl)
-            }
-            _ => continue,
+        match feed(&mut banner, msg) {
+            Step::More => continue,
+            Step::Url(url) => break url,
+            Step::End => return Err(RelayError::NoUrl),
         }
     };
 

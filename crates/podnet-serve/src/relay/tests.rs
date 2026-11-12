@@ -48,15 +48,16 @@ fn default_config_targets_port_443() {
 
 #[test]
 fn picks_the_tunnel_url_and_not_the_dashboard() {
-    // This is the real relay output shape observed on 2026-10-09.
+    // The shape of the banner of free.pinggy.io (read on 2026-10-09). The
+    // facts of the relay hold the tunnel domain; the rule takes the URL of it.
     let line = "  You are not authenticated.\n  Your tunnel will expire in 60 minutes. \
 Upgrade to Pinggy Pro to get unrestricted tunnels. https://dashboard.pinggy.io\n  \
-https://blirg-2400-1a00-5b2f-821c-869e-56ff-fe03-2b71.free.pinggy.net\n  \
+http://jcydy-2400-1a00-5b2f-821c-869e-56ff-fe03-2b71.run.pinggy-free.link\n  \
 https://jcydy-2400-1a00-5b2f-821c-869e-56ff-fe03-2b71.run.pinggy-free.link\n";
-    let url = UrlRule::default().pick(line).expect("a tunnel url");
+    let url = UrlRule::pick(&facts::default_rule(), line).expect("a tunnel url");
     assert_eq!(
         url,
-        "https://blirg-2400-1a00-5b2f-821c-869e-56ff-fe03-2b71.free.pinggy.net"
+        "https://jcydy-2400-1a00-5b2f-821c-869e-56ff-fe03-2b71.run.pinggy-free.link"
     );
     assert!(
         !url.contains("dashboard"),
@@ -66,10 +67,10 @@ https://jcydy-2400-1a00-5b2f-821c-869e-56ff-fe03-2b71.run.pinggy-free.link\n";
 
 #[test]
 fn trailing_punctuation_is_stripped_from_a_url() {
-    let line = "visit https://x.free.pinggy.net.";
+    let line = "visit https://x.run.pinggy-free.link.";
     assert_eq!(
-        UrlRule::default().pick(line).as_deref(),
-        Some("https://x.free.pinggy.net")
+        facts::default_rule().pick(line).as_deref(),
+        Some("https://x.run.pinggy-free.link")
     );
 }
 
@@ -77,16 +78,76 @@ fn trailing_punctuation_is_stripped_from_a_url() {
 fn a_dashboard_only_line_yields_no_tunnel_url() {
     // Guards against silently returning the dashboard as if it were a tunnel.
     let line = "Upgrade for more at https://dashboard.pinggy.io\n";
-    assert_eq!(UrlRule::default().pick(line), None);
+    assert_eq!(facts::default_rule().pick(line), None);
 }
 
-/// Drives the production copy logic (`copy_bidirectional`) over in-memory
-/// duplex pipes shaped like an SSH channel and a unix origin.
-///
-/// Both halves share ONE origin connection and both must run to completion.
-/// This is the regression for the live bug: the request reached the origin,
-/// but the response never reached the visitor. An empty-body GET, whose
-/// request leg finishes immediately, is exactly the shape that exposed it.
+fn data(text: &str) -> ChannelMsg {
+    ChannelMsg::Data {
+        data: text.as_bytes().to_vec().into(),
+    }
+}
+
+/// The URL that the banner reader gives after the frames, or the error.
+fn read_frames(rule: &UrlRule, frames: Vec<ChannelMsg>) -> Result<String, RelayError> {
+    let mut banner = Banner::new(rule.clone());
+    for frame in frames {
+        match feed(&mut banner, Some(frame)) {
+            Step::More => {}
+            Step::Url(url) => return Ok(url),
+            Step::End => return Err(RelayError::NoUrl),
+        }
+    }
+    Err(RelayError::NoUrl)
+}
+
+#[test]
+fn url_across_two_frames() {
+    let rule = facts::default_rule();
+    let frames = vec![
+        data("pitch https://dashboard.pinggy.io\n  https://jcydy-1.run.ping"),
+        data("gy-free.link\n"),
+    ];
+    assert_eq!(
+        read_frames(&rule, frames).unwrap(),
+        "https://jcydy-1.run.pinggy-free.link"
+    );
+    // A frame that ends inside the scheme.
+    let frames = vec![
+        data("go to ht"),
+        data("tps://a.run.pinggy-free.link "),
+        data("x"),
+    ];
+    assert_eq!(
+        read_frames(&rule, frames).unwrap(),
+        "https://a.run.pinggy-free.link"
+    );
+}
+
+#[test]
+fn a_banner_with_no_end_of_line_is_whole_when_the_channel_closes() {
+    let rule = facts::default_rule();
+    let frames = vec![
+        data("https://a.run.pinggy-"),
+        data("free.link"),
+        ChannelMsg::Eof,
+    ];
+    assert_eq!(
+        read_frames(&rule, frames).unwrap(),
+        "https://a.run.pinggy-free.link"
+    );
+}
+
+#[test]
+fn a_banner_with_only_a_dashboard_ends_with_no_url() {
+    let rule = facts::default_rule();
+    let frames = vec![
+        data("https://dash"),
+        data("board.pinggy.io\n"),
+        ChannelMsg::Close,
+    ];
+    assert!(matches!(read_frames(&rule, frames), Err(RelayError::NoUrl)));
+}
+
 #[tokio::test]
 async fn copy_bidirectional_carries_request_and_response_on_one_origin_connection() {
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
@@ -157,20 +218,108 @@ fn a_url_rule_skips_and_holds_texts() {
     let banner = "pitch https://dash.example.test and then https://a.other.test \
                   https://b.tunnel.test\n";
     let rule = UrlRule {
-        skip: vec!["dash.example.test".into()],
-        hold: vec![],
+        skips: vec!["dash.example.test".into()],
+        matches: vec![],
     };
     assert_eq!(rule.pick(banner).as_deref(), Some("https://a.other.test"));
     let rule = UrlRule {
-        skip: vec!["dash.example.test".into()],
-        hold: vec![".tunnel.test".into()],
+        skips: vec!["dash.example.test".into()],
+        matches: vec![".tunnel.test".into()],
     };
     assert_eq!(rule.pick(banner).as_deref(), Some("https://b.tunnel.test"));
     let rule = UrlRule {
-        skip: vec![],
-        hold: vec!["nothing".into()],
+        skips: vec![],
+        matches: vec!["nothing".into()],
     };
     assert_eq!(rule.pick(banner), None);
+}
+
+#[test]
+fn the_facts_of_the_default_relay_come_from_pod_services() {
+    let f = facts::default_facts();
+    assert_eq!(f.name, facts::DEFAULT);
+    assert_eq!(f.addresses, [default_relay()]);
+    assert!(f.user.is_some());
+    assert!(f.keepalive.is_some());
+    assert!(!f.rule.matches.is_empty());
+}
+
+#[test]
+fn the_known_relays_have_facts_and_an_unknown_name_lists_them() {
+    let names = facts::names();
+    assert!(
+        names.contains(&"pinggy") && names.contains(&"serveo"),
+        "{names:?}"
+    );
+    for name in &names {
+        let f = facts::lookup(name).unwrap();
+        assert!(!f.addresses.is_empty(), "{name}");
+        assert!(
+            f.addresses.iter().all(|a| check_address(a).is_ok()),
+            "{name}"
+        );
+    }
+    let err = facts::lookup("no-such-relay").unwrap_err();
+    assert!(
+        err.contains("no-such-relay") && err.contains("pinggy"),
+        "{err}"
+    );
+}
+
+#[test]
+fn the_rule_of_each_relay_skips_every_known_dashboard() {
+    // Approach 2: the dashboard of Pinggy is skipped on another relay too.
+    let dashboards = facts::dashboards();
+    assert!(dashboards.iter().any(|d| d.contains("dashboard.pinggy.io")));
+    for name in facts::names() {
+        let rule = facts::lookup(name).unwrap().rule;
+        for d in &dashboards {
+            assert!(rule.skips.contains(d), "{name} does not skip {d}");
+            assert!(!rule.accepts(&format!("https://{d}")), "{name}");
+        }
+    }
+    let serveo = facts::lookup("serveo").unwrap().rule;
+    let banner = "https://dashboard.pinggy.io https://abc.serveo.net\n";
+    assert_eq!(
+        serveo.pick(banner).as_deref(),
+        Some("https://abc.serveo.net")
+    );
+}
+
+#[test]
+fn a_relay_with_more_than_one_endpoint_gives_the_address_list_in_order() {
+    let f = facts::lookup("serveo").unwrap();
+    assert!(f.addresses.len() > 1, "{:?}", f.addresses);
+    assert!(f.addresses[0].ends_with(":443"), "{:?}", f.addresses);
+}
+
+#[tokio::test]
+async fn the_transport_tries_the_address_list_in_order() {
+    let dead = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let dead_address = dead.local_addr().unwrap().to_string();
+    drop(dead);
+    let live = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let live_address = live.local_addr().unwrap().to_string();
+    let accept = tokio::spawn(async move { live.accept().await.is_ok() });
+    let config = RelayConfig {
+        address: dead_address,
+        fallbacks: vec![live_address],
+        connect_timeout: Duration::from_secs(5),
+        ..RelayConfig::default()
+    };
+    connect_transport(&config)
+        .await
+        .expect("the second address answers");
+    assert!(accept.await.unwrap());
+    // No address answers: the error is the one of the last address.
+    let config = RelayConfig {
+        fallbacks: vec![],
+        ..config
+    };
+    assert!(matches!(
+        connect_transport(&config).await,
+        Err(RelayError::Transport(_))
+    ));
 }
 
 #[test]
@@ -325,8 +474,8 @@ fn test_config(address: String) -> RelayConfig {
         address,
         username: "test".into(),
         url_rule: UrlRule {
-            skip: vec!["dash.example.test".into()],
-            hold: vec![],
+            skips: vec!["dash.example.test".into()],
+            matches: vec![],
         },
         inactivity: None,
         ..RelayConfig::default()

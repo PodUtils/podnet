@@ -1513,30 +1513,39 @@ COMMANDS
             The form of the log on stderr: text, or json (one object for each
             line). Default: text. Values: text, json.
 
-    podnet ssh-relay [OPTIONS] --server <HOST:PORT> --user <USER> <--url-match
-    <TEXT>|--url-skip <TEXT>>
+    podnet ssh-relay [OPTIONS]
         Publish a unix socket through an SSH relay (a remote forward on port
         443), and keep the session: when the relay ends it, podnet connects
-        again with a backoff and prints the new URL. The relay, the user and
-        the URL rule are flags
+        again with a backoff and prints the new URL. The relay (--service),
+        its endpoints, its user and its URL rule are data of pod-services;
+        --server, --user, --url-match and --url-skip override them
+
+        --service <NAME>
+            The known relay to use: its endpoints, its user and its URL rule
+            come from the data of pod-services. Default: pinggy. The flags
+            --server, --user, --url-match and --url-skip override these facts.
+            An unknown name lists the known relays
 
         --server <HOST:PORT>
             The SSH server of the relay: HOST:PORT. Use a port that the egress
-            allows (443 for most proxies). Required.
+            allows (443 for most proxies). Default: the plain SSH endpoints of
+            the relay, tried in order. With --server and no --service, the
+            relay is not a known one: give --user and a URL rule
 
         --user <USER>
             The SSH user of the relay. The relay takes an ephemeral key.
-            Required.
+            Default: the user of the facts of the relay, else "podnet"
 
         --url-match <TEXT>
             Which URL of the banner of the relay is the tunnel URL: it holds
             this text (the tunnel domain of the relay). Repeatable: the URL
-            holds each text. Give --url-match or --url-skip, or both
+            holds each text. Replaces the texts of the facts
 
         --url-skip <TEXT>
             Which URL of the banner is not the tunnel URL: it holds this text
             (the dashboard of the relay). Repeatable: the URL holds none of
-            the texts
+            the texts. Replaces the texts of the facts, which are the
+            dashboards of all known relays
 
         --socket <PATH>
             The unix socket of the origin: the relay opens one channel for
@@ -1631,8 +1640,17 @@ COMMANDS
             line). Default: text. Values: text, json.
 
         Examples:
-        Publish a unix socket through an SSH relay. The URL is in the ready
-        document; podnet ps shows the URL after each reconnect.
+        Publish a unix socket through the default SSH relay (pinggy). The
+        endpoint, the user and the URL rule are data of pod-services. The URL
+        is in the ready document; podnet ps shows the URL after each
+        reconnect.
+            $ podnet ssh-relay --socket /run/user/1000/origin.sock --detach
+        Publish a unix socket through a named SSH relay. podnet tries its
+        plain SSH endpoints in order.
+            $ podnet ssh-relay --service serveo --socket
+            /run/user/1000/origin.sock --detach
+        Publish a unix socket through an SSH relay that pod-services does not
+        know: give the server, the user and the URL rule.
             $ podnet ssh-relay --server relay.example.net:443 --user podnet
             --url-skip dashboard.example.net --socket
             /run/user/1000/origin.sock --detach
@@ -8491,8 +8509,18 @@ EXAMPLES
     relay.
         $ podnet relay node --to 127.0.0.1:22
 
-    Publish a unix socket through an SSH relay. The URL is in the ready
-    document; podnet ps shows the URL after each reconnect.
+    Publish a unix socket through the default SSH relay (pinggy). The
+    endpoint, the user and the URL rule are data of pod-services. The URL is
+    in the ready document; podnet ps shows the URL after each reconnect.
+        $ podnet ssh-relay --socket /run/user/1000/origin.sock --detach
+
+    Publish a unix socket through a named SSH relay. podnet tries its plain
+    SSH endpoints in order.
+        $ podnet ssh-relay --service serveo --socket
+        /run/user/1000/origin.sock --detach
+
+    Publish a unix socket through an SSH relay that pod-services does not
+    know: give the server, the user and the URL rule.
         $ podnet ssh-relay --server relay.example.net:443 --user podnet
         --url-skip dashboard.example.net --socket /run/user/1000/origin.sock
         --detach
