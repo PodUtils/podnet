@@ -1210,7 +1210,7 @@ and its last flow end (`close_idle_ports`).
 
 ## Done
 
-2026-11-12, commit 8f68f54 (`T-249: the router of the netns backend runs on the stack of pod-netstack`), on the
+2026-11-12, commit a7350b2 (`T-249: the router of the netns backend runs on the stack of pod-netstack`), on the
 local branch `worktree-agent-a35ab25d8cf7315bb`. The pump of the wire (`netns/tun.rs`) reads each packet before
 the stack. It answers DNS, takes the UDP flows, and holds each new SYN (`HeldSyn`, T-111). It gives the rest to
 `NetStack::over_link` of `pod-netstack` v0.27.0 with `any_ip`, `listen_any` and `Checksum::Tx` on the veth wire.
