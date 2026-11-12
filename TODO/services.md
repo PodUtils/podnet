@@ -1688,7 +1688,7 @@ exited 1 for a domain of a `reject` rule, and exited 64 for `--door 5` of a file
 **Milestone:** M6
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1717,6 +1717,42 @@ cargo test --workspace -- route_control_rotate_reuses_the_state_dir route_contro
 ## Start condition
 
 T-095 and T-097 are done.
+
+## Correction
+
+2026-11-12: partial. The control side is done in the router; the proof with a real WARP identity waits for
+the take of `pod-warp` (T-050).
+
+* Approach 1: the control socket of T-097 (`control: unix:/PATH`, mode 0600) takes `POST /route/select`,
+  `/route/rotate`, `/route/reconnect` and `PATCH /route/interval` (`src/router/control.rs`). The gate is the
+  gate of the status socket: the mode of the socket, and a check of the user of the peer (the user of the
+  router, or root); a peer that is not allowed gets 403 for a read and for each write. The router has no TCP
+  control listener, so the loopback and credential gate of `src/warp/proxy.rs` and the PIN gate of
+  `podnet-serve` do not apply. Each write answers with the status document (`route --status --json`).
+  `route --control unix:/PATH` has the flags `--select GROUP=MEMBER|auto`, `--rotate MEMBER`, `--reconnect
+  MEMBER` and `--interval SECONDS`. A pin is `Balance::pin`: a pinned member that is down refuses the flows.
+* Approach 2: each network sits behind a `Swap` (`crates/podnet-core/src/network/swap.rs`), so a swap reaches
+  each group, rule and door. A rotate and a reconnect bring up the new link, give it to the new flows, and
+  end the old link after 30 s. `Ctx.state_dir` (the key `state_dir`, `DIR/NETWORK`) is the same for the first
+  link and for each rotate. `Network::rotate` is the hook for an identity; its default is `up`. A rotate of a
+  network keeps a gap of 60 s (429, exit 75) and each rotate and reconnect is logged on stderr.
+* Left: a network of the registry has no identity, so a rotate there is a new link. WARP is not a network of
+  the registry (`src/networks.rs`; `src/warp/` waits for `pod-warp`, T-050), so the rotate of a real WARP
+  device with the state of T-095 is not proven. When `pod-warp` gives the WARP network, it implements
+  `Network::rotate` over `Ctx.state_dir`; then add a test that two rotates register no new device on the edge
+  stand-in of T-012.
+
+## Done
+
+2026-11-12, commit 2fb1f82. Tests: `cargo test -p podnet --lib route_control` (3:
+`route_control_rotate_reuses_the_state_dir`, `route_control_needs_the_gate`,
+`route_control_select_and_interval`), `cargo test -p podnet-core --lib route_control_pin` (1),
+`cargo test -p podnet-core --lib swap` (1), `cargo test -p podnet --test detach route_control_flags` (1: the
+flags against a running router, exit 75 for a second rotate, 64 for an unknown member, 69 with no router).
+With the state directory and the gate disabled, `route_control_rotate_reuses_the_state_dir` and
+`route_control_needs_the_gate` fail; with the code, they pass. `sh scripts/agent/check.sh`: exit 0. CI: at the
+merge. Not proven: the rotate of a real WARP device (see Left), and a flow that lasts past the 30 s drain of
+the old link.
 
 # T-219: `podnet service install`: a hardened system unit (PodUtils/podcrates#35, A-N-11)
 

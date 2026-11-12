@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**260 entries: 38 open, 11 partial, 22 blocked, 189 done.**
+**260 entries: 37 open, 12 partial, 22 blocked, 189 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
 | P2 | 22 | 6 | 14 | 115 | 157 |
-| P3 | 16 | 4 | 6 | 48 | 74 |
-| **All** | 38 | 11 | 22 | 189 | 260 |
+| P3 | 15 | 5 | 6 | 48 | 74 |
+| **All** | 37 | 12 | 22 | 189 | 260 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -225,7 +225,7 @@ M8 Overlays, M9 Later.
 | [T-177](services.md) | P3 | S | M6 | feature | done | Router: `podnet route check`, a dry run of the rules (GitHub #375) |
 | [T-178](later.md) | P3 | M | M9 | feature | done | Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375) |
 | [T-179](later.md) | P3 | S | M9 | research | partial | Research: a direction split for asymmetric uplinks (GitHub #375) |
-| [T-180](services.md) | P3 | M | M6 | feature | open | Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376) |
+| [T-180](services.md) | P3 | M | M6 | feature | partial | Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376) |
 | [T-181](pods.md) | P3 | M | M7 | feature | done | seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376) |
 | [T-182](fixes.md) | P2 | M | M5 | defect | done | `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378) |
 | [T-183](fixes.md) | P2 | S | M5 | defect | done | One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379) |

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 260 entries: 38 open, 11 partial, 22 blocked, 189 done.
+`TODO/INDEX.md` holds 260 entries: 37 open, 12 partial, 22 blocked, 189 done.
 
 ## State
 
@@ -53,7 +53,7 @@ not wait for a larger one.
    server and git: done; the router T-095, T-097,
    T-098, T-099, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The triage adds
-    T-180 (the router control); the router additions are in T-097 to T-099 (GitHub #372 to #374).
+    T-180 (the router control; partial: the rotate of a real WARP device waits for T-050); the router additions are in T-097 to T-099 (GitHub #372 to #374).
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).
