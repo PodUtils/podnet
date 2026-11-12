@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**324 entries: 69 open, 17 partial, 21 blocked, 217 done.**
+**324 entries: 66 open, 19 partial, 21 blocked, 218 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 9 | 10 | 127 | 165 |
-| P3 | 50 | 7 | 9 | 62 | 128 |
-| **All** | 69 | 17 | 21 | 217 | 324 |
+| P3 | 47 | 9 | 9 | 63 | 128 |
+| **All** | 66 | 19 | 21 | 218 | 324 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -352,11 +352,11 @@ M8 Overlays, M9 Later.
 | [T-304](link.md) | P3 | L | M9 | feature | open | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
 | [T-305](link.md) | P3 | L | M9 | feature | blocked | link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475) |
 | [T-306](link.md) | P3 | M | M9 | feature | open | link: the query keys of a carrier URL (GitHub #476) |
-| [T-307](link.md) | P3 | M | M9 | feature | open | link: the write verbs of the control plane (GitHub #476) |
+| [T-307](link.md) | P3 | M | M9 | feature | partial | link: the write verbs of the control plane (GitHub #476) |
 | [T-308](link.md) | P3 | S | M9 | feature | open | link: names for live links (GitHub #476) |
-| [T-309](link.md) | P3 | M | M9 | feature | open | link: the redacted state dump and bug-report --include-link (GitHub #476) |
+| [T-309](link.md) | P3 | M | M9 | feature | partial | link: the redacted state dump and bug-report --include-link (GitHub #476) |
 | [T-310](link.md) | P3 | M | M9 | feature | open | link: the component inventory command (GitHub #476) |
-| [T-311](link.md) | P3 | M | M9 | feature | open | link: Cargo features for the link carriers and services (GitHub #476) |
+| [T-311](link.md) | P3 | M | M9 | feature | done | link: Cargo features for the link carriers and services (GitHub #476) |
 | [T-312](fixes.md) | P2 | S | M5 | defect | done | tests/signals.rs: the test sends a stop signal before the ready of the command (flaky under load) |
 | [T-313](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.6`: the dry run, the publish and the release proofs |
 | [T-314](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.7`: the dry run, the publish and the release proofs |

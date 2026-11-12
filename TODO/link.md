@@ -2158,7 +2158,7 @@ T-264 is done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -2192,6 +2192,16 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-267 is done.
+
+## Correction
+
+2026-11-12: the entry is `partial`. Done: the three verbs that the control socket can carry out with what an instance holds: `close-link`, `close-stream` and `select`. Left: `rotate` and `reconnect`. An instance holds links and has no way to make a link again (the carrier, the address and the identity are in the command that dialed), so both verbs answer 69 with `not built`. They land with the entry that gives `link connect` a loop that dials again (a start condition for a new entry); `rotate` is make-before-break and `reconnect` makes a new link, so each opens the new carrier first. The rule "one command at a time for each object" is the rule of a client (one command at a time on a connection); a second client can call a write verb on the same link at the same time, and `close-link` of a link that has ended is not an error, so the case is safe but a lock for each link is not built.
+
+## Done
+
+2026-11-12, commits f8221c6 and 60f8b3e. The socket (`src/link_ctl.rs`, `src/link_ctl/verbs.rs`) has the verbs `close-link` (`"link":ID`: a GOAWAY after the frames that wait; a link that has ended is not an error), `close-stream` (`"link":ID,"stream":ID`: a reset of one stream; the other streams and the link stay) and `select` (`"link":ID` or `null`: the link that serves the streams opened from now on, so `peer:FINGERPRINT/SERVICE`; the streams that run stay; a link that has ended exits 69; the pin ends with its link). Each answers the document of `status` after the change, with `verb` set to its name. The rows of `status` have `stream_ids` (64 at most) and the top has `selected`. A stream is in the table when a task serves it and waits on `Tracked::cancelled` (the verb `open` and the bridge of `link listen`). A missing or bad id, or an id that names no link or stream, exits 64; `rotate` and `reconnect` exit 69; an unknown verb exits 64 and lists the verbs. The verbs run after the token and the uid check of T-267: a bad token exits 77 and a refused user exits 77, and the link is not changed. `podnet link close NAME` calls `close-link` for each link that is up (one line `closed link ID  PEER`) before the stop by signal; a socket that does not answer is one line on stderr. `docs/link.md` has the verbs.
+Fail first: before the change 8 of the 11 tests of `tests/link_ctl_plane.rs` failed (the verbs were unknown: exit 64, no `stream_ids`, no `selected`; the 3 that passed were the refusals, which hold for an unknown verb too). `cargo test --test link_ctl_plane`: 11 passed, 3 runs: `close_link_ends_the_link_and_answers_the_status_after_the_change`, `close_link_leaves_the_other_links_up`, `a_write_verb_with_a_bad_token_exits_77_and_changes_nothing`, `a_write_verb_from_a_user_that_the_gate_refuses_exits_77`, `a_bad_link_or_stream_id_exits_64`, `rotate_and_reconnect_exit_69_and_an_unknown_verb_exits_64`, `close_stream_resets_one_stream_and_leaves_the_others`, `select_moves_new_streams_only`, `select_refuses_a_link_that_has_ended_and_a_pin_falls_back_when_it_ends`, `close_stream_ends_the_stream_of_a_peer_of_a_listener_process` (a listener process, a dialer in the test: the stream gets a reset and the link stays up), `link_close_uses_the_close_link_verb_when_the_socket_answers`. `cargo test --test link_ctl`: 11 passed as before. Suite: default build: 1650 passed, 2 failed (the llms files that I had not regenerated after a doc edit, and quick_tunnel_standin_falls_back_to_http2_when_quic_has_no_listener under load), 2 ignored, 69 test binaries; both pass after the regeneration and alone (3 runs); --features full: 1652 passed, 0 failed, 2 ignored, 69 binaries; `sh scripts/agent/check.sh` at the end: fmt, clippy, record, size, doc, layers and test all 0 (its default `cargo test --workspace` passed whole).
+Not proven: `rotate` and `reconnect`; a client of another uid (the gate is a closure, as in T-267); two clients that call a write verb on one link at the same time; the pin over two links of two different peers (the tests use one peer).
 
 # T-308: link: names for live links (GitHub #476)
 
@@ -2240,7 +2250,7 @@ T-267 and T-265 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -2272,6 +2282,16 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-267 is done. The route table part waits for T-286.
+
+## Correction
+
+2026-11-12: the entry is `partial`. Done: the verb `dump` and the flag `bug-report --include-link`. Left: the route table (it waits for T-286; the dump has `routes.built: false` with the reason). The cap of the dump is 256 KiB (`DUMP_LIMIT`), as this entry says, and not the 64 KiB of the other answers of T-267: only the answer to `dump` may be longer, and the client of `dump` reads up to 256 KiB. The dump has no "record contents": the hub holds fingerprints, addresses and counters only, and no record of the background record.
+
+## Done
+
+2026-11-12, commits 9193789 and 60f8b3e. The verb `dump` (`src/link_ctl/dump.rs`) answers `build` (the version, the optional `features` of the binary, the `carriers` with `feature` and `built`), `fingerprint`, `pid`, `settings` (`selected`, the `limits`), `totals`, `links` (the row of `status`, `stream_table` with `id` and `owner`, and `streams_cut`), the last 20 `errors` (`at`, `text`; 512 characters at most; the listener notes a refused peer and each stream that ends in an error), `routes` and `cut`. Every string passes `report::mask` and `report::clean`. The token of the run (`Control::start`) and the text of the key file (`identity::load`) go to `report::hide`, so no report holds them. A table that does not fit the cap is cut from its last rows (steps 1024, 256, 64, 16, 4, 1, 0 rows for each link), and `streams_cut` and `cut.stream_rows` count what was cut; the counters stay whole. `podnet bug-report --include-link` adds the dump of each link instance that runs (`link_ctl::dump_all`), one line with the error for an instance that does not answer; `docs/link.md` and `docs/doctor.md` have it, and the llms files are regenerated.
+Fail first: before the change `tests/link_dump.rs` did not compile (`unresolved import podnet::link_ctl::DUMP_LIMIT`, no `Hub::note_error`); with the call of `redact` removed 2 tests failed (`the_dump_holds_no_seed_no_token_and_no_secret`, `every_string_loses_its_control_characters`). `cargo test --test link_dump`: 8 passed: `the_dump_holds_the_carrier_the_peer_the_counters_the_streams_and_the_build`, `the_dump_needs_the_token_and_the_user_check`, `the_dump_holds_no_seed_no_token_and_no_secret`, `every_string_loses_its_control_characters`, `the_dump_keeps_the_last_20_errors_in_order`, `a_table_over_the_cap_is_cut_with_a_count`, `an_answer_over_64_kib_and_under_the_cap_reaches_the_client` (4000 streams, about 105 KB through the socket), `bug_report_include_link_adds_the_dump_of_a_running_instance_and_no_token` (a detached listener; no token and no seed in the text). Suite: default build: 1650 passed, 2 failed (the llms files that I had not regenerated after a doc edit, and quick_tunnel_standin_falls_back_to_http2_when_quic_has_no_listener under load), 2 ignored, 69 test binaries; both pass after the regeneration and alone (3 runs); --features full: 1652 passed, 0 failed, 2 ignored, 69 binaries; `sh scripts/agent/check.sh` at the end: fmt, clippy, record, size, doc, layers and test all 0 (its default `cargo test --workspace` passed whole).
+Not proven: the route table (T-286); a dump of 256 KiB or more through the socket (the cut is proven with `dump_within` and a small cap); a dump of an instance with many links (the dump lists 512 links at most and counts the rest in `cut.links`; no test builds that many).
 
 # T-310: link: the component inventory command (GitHub #476)
 
@@ -2322,7 +2342,7 @@ T-264 is done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2357,3 +2377,9 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-262 is done (the crate). Each optional entry lands after this one.
+
+## Done
+
+2026-11-12, commits a47f665 and 60f8b3e. `Cargo.toml` of `podnet` has a `[features]` table: `default = []`, the optional features `quic`, `s3`, `icmp`, `ss`, `trojan`, `c-abi` and `portable`, and `full` (each optional feature but `portable`, which takes code away). `src/build_features.rs` (`podnet::build_features`) has `OPTIONAL`, `FULL`, `built`, `enabled`, `reason` and `require` (a feature that is off exits 69 and names the feature; a name that is no feature exits 64). The registry `src/carriers.rs` has the rows `quic`, `s3` and `icmp` with the field `feature` filled (`Some("quic")` and so on; `unix` and `memory` keep `None`). A carrier whose feature is off is listed by `podnet link carriers` as `unavailable: not built: the feature NAME is off (build with --features NAME)`, the JSON has `built: false`, `feature` and `reason`, `podnet doctor` shows it as `unknown` (not `fail`), and `--carrier NAME` exits 69 with the same reason. With the feature on, the row says that the code of the carrier is not in this build and names its entry (T-273, T-279, T-282). The CI job `features` runs clippy and `cargo test --locked --workspace --features full`. `docs/build.md` has the section Features; `docs/link.md` has the three rows.
+Fail first: at base `cargo test --workspace --features full` exits 101 with `none of the selected packages contains this feature: full`; before the change `tests/link_features.rs` did not compile (`unresolved import podnet::build_features`). `cargo test --test link_features`: 10 passed in the default build and 10 passed with `--features full`, among them `a_gated_command_in_a_default_build_exits_69_with_the_feature_name`, `a_carrier_whose_feature_is_off_is_listed_as_not_built_and_exits_69_when_named`, `link_carriers_lists_a_gated_carrier_with_not_built_and_the_json_has_the_feature`, `a_command_that_names_a_carrier_that_is_not_built_exits_69` (the binary: `link dial --carrier quic` exits 69), `full_holds_each_optional_feature_but_portable`. `cargo test --workspace` (default) and `cargo test --workspace --features full`: default build: 1650 passed, 2 failed (the llms files that I had not regenerated after a doc edit, and quick_tunnel_standin_falls_back_to_http2_when_quic_has_no_listener under load), 2 ignored, 69 test binaries; both pass after the regeneration and alone (3 runs); --features full: 1652 passed, 0 failed, 2 ignored, 69 binaries; `sh scripts/agent/check.sh` at the end: fmt, clippy, record, size, doc, layers and test all 0 (its default `cargo test --workspace` passed whole).
+Not proven: the static musl build and the zig builds (not run; the default features add no code and no dependency, and `Cargo.lock` did not change); the default carriers `unix` and `memory` do not sit behind a feature (they stay in each build); no optional feature gates code yet, because no optional carrier or service exists (T-273, T-279, T-282, T-294, T-295 and T-304 land behind their features and replace the `pending` makers); `portable` gates nothing (T-305 is blocked).
