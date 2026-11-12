@@ -254,7 +254,7 @@ datagrams of any way below the network (`Ctx::below`); the WARP chain is not don
 
 ## Done
 
-2026-11-12, commit 8713683 (partial). `wg:FILE` is a row of the registry (`src/networks.rs`,
+2026-11-12, commit 9f3b0a8 (partial). `wg:FILE` is a row of the registry (`src/networks.rs`,
 `src/networks/wg.rs`): the handshake with `pod-wg`, a stack of `pod-netstack` over the tunnel (TCP and UDP
 from the `Address` of the file), the UDP of the tunnel on the datagrams of `Ctx::below`, else on a UDP socket
 of this host. The handshake is the UDP probe: no answer in 15 s gives one line about a closed UDP path.
