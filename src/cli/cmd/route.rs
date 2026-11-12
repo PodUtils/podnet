@@ -14,16 +14,40 @@ use crate::cli::signals::sleep_or_signal;
 pub(crate) struct RouteArgs {
     /// The config file of the router: networks, groups, health and doors
     /// (YAML; podnet man route names the keys).
-    #[arg(long, value_name = "FILE", required_unless_present = "status")]
+    #[arg(long, value_name = "FILE", required_unless_present_any = ["status", "control"])]
     pub(crate) config: Option<std::path::PathBuf>,
     /// Print the state of a running router: each group and member (health,
     /// round-trip time, flows), from its control socket (the key `control`
     /// of its file). Exit 69 when no router answers
     #[arg(long, value_name = "unix:/PATH", conflicts_with_all = ["config", "check"])]
     pub(crate) status: Option<String>,
-    /// With --status: print the JSON document
-    #[arg(long, requires = "status")]
+    /// With --status or a control flag: print the JSON document
+    #[arg(long)]
     pub(crate) json: bool,
+    /// Change a running router through its control socket (the key `control`
+    /// of its file; mode 0600, the same user or root). Give one of --select,
+    /// --rotate, --reconnect and --interval. Exit 69 when no router answers,
+    /// 64 when it refuses the request, 75 when a rotate came too soon
+    #[arg(long, value_name = "unix:/PATH", conflicts_with_all = ["config", "check", "status"])]
+    pub(crate) control: Option<String>,
+    /// With --control: pin a group to one member, GROUP=MEMBER; GROUP=auto
+    /// gives the choice back to the policy. A pinned member that is down
+    /// refuses the flows (no direct way)
+    #[arg(long, value_name = "GROUP=MEMBER", requires = "control", conflicts_with_all = ["rotate", "reconnect", "interval"])]
+    pub(crate) select: Option<String>,
+    /// With --control: make a new identity of the network MEMBER, make the
+    /// new link before the old one ends, and keep its state directory (the
+    /// key `state_dir`). One rotate for each minute and network
+    #[arg(long, value_name = "MEMBER", requires = "control", conflicts_with_all = ["select", "reconnect", "interval"])]
+    pub(crate) rotate: Option<String>,
+    /// With --control: make a new link of the network MEMBER with the same
+    /// identity, make before break
+    #[arg(long, value_name = "MEMBER", requires = "control", conflicts_with_all = ["select", "rotate", "interval"])]
+    pub(crate) reconnect: Option<String>,
+    /// With --control: the seconds between two probes (1 to 86400). The
+    /// router needs a health section
+    #[arg(long, value_name = "SECONDS", requires = "control", conflicts_with_all = ["select", "rotate", "reconnect"])]
+    pub(crate) interval: Option<u64>,
     /// Read the file and bring up nothing: exit 0 when it is valid, 64 with
     /// the key that is wrong. For each tailscale:/PATH network, print the
     /// login state of tailscaled (one read of its socket).
@@ -53,6 +77,12 @@ pub(crate) struct RouteArgs {
 pub(crate) async fn route(args: RouteArgs) -> Result<()> {
     if let Some(control) = &args.status {
         return print_status(control, args.json).await;
+    }
+    if let Some(control) = &args.control {
+        return control_write(control, &args).await;
+    }
+    if args.json {
+        return Err(anyhow::anyhow!("--json needs --status or --control")).fault(Fault::Usage);
     }
     let Some(path) = &args.config else {
         return Err(anyhow::anyhow!("give --config FILE")).fault(Fault::Usage);
@@ -231,6 +261,55 @@ fn check_target(config: &podnet::router::Config, to: &str, only: Option<usize>) 
     }
 }
 
+/// `route --control unix:/PATH --select|--rotate|--reconnect|--interval`
+/// (T-180): one write to a running router, then its new state.
+async fn control_write(control: &str, args: &RouteArgs) -> Result<()> {
+    use serde_json::json;
+    let Ok(ProxyListen::Unix(path)) = ProxyListen::parse(control) else {
+        return Err(anyhow::anyhow!("--control {control:?}: give unix:/PATH")).fault(Fault::Usage);
+    };
+    let (method, route, body) = if let Some(spec) = &args.select {
+        let Some((group, member)) = spec
+            .split_once('=')
+            .filter(|(g, m)| !g.is_empty() && !m.is_empty())
+        else {
+            return Err(anyhow::anyhow!(
+                "--select {spec:?}: give GROUP=MEMBER or GROUP=auto"
+            ))
+            .fault(Fault::Usage);
+        };
+        (
+            "POST",
+            "/route/select",
+            json!({"group": group, "member": member}),
+        )
+    } else if let Some(member) = &args.rotate {
+        ("POST", "/route/rotate", json!({"member": member}))
+    } else if let Some(member) = &args.reconnect {
+        ("POST", "/route/reconnect", json!({"member": member}))
+    } else if let Some(seconds) = args.interval {
+        ("PATCH", "/route/interval", json!({"seconds": seconds}))
+    } else {
+        return Err(anyhow::anyhow!(
+            "--control: give one of --select, --rotate, --reconnect and --interval"
+        ))
+        .fault(Fault::Usage);
+    };
+    let status = match podnet::router::control::request(&path, method, route, Some(&body)).await {
+        Ok(status) => status,
+        Err(e) => {
+            let fault = match e.downcast_ref::<podnet::router::control::Answer>() {
+                Some(a) if a.code == 429 => Fault::TempFail,
+                Some(a) if a.code < 500 => Fault::Usage,
+                _ => Fault::Unavailable,
+            };
+            return Err(e).fault(fault);
+        }
+    };
+    print_state(&status, args.json);
+    Ok(())
+}
+
 /// `route --status unix:/PATH [--json]` (T-097): the state of a running
 /// router.
 async fn print_status(control: &str, json: bool) -> Result<()> {
@@ -240,9 +319,18 @@ async fn print_status(control: &str, json: bool) -> Result<()> {
     let status = podnet::router::read_status(&path)
         .await
         .fault(Fault::Unavailable)?;
+    print_state(&status, json);
+    Ok(())
+}
+
+/// Print the status document of a router: the JSON, or the lines.
+fn print_state(status: &serde_json::Value, json: bool) {
     if json {
         println!("{status:#}");
-        return Ok(());
+        return;
+    }
+    if let Some(seconds) = status["interval"].as_u64() {
+        println!("probe every {seconds} s");
     }
     for door in status["doors"].as_array().into_iter().flatten() {
         println!(
@@ -253,9 +341,10 @@ async fn print_status(control: &str, json: bool) -> Result<()> {
     }
     for group in status["groups"].as_array().into_iter().flatten() {
         println!(
-            "group {}  policy {}  split {}  head {}  refused {}",
+            "group {}  policy {}  pinned {}  split {}  head {}  refused {}",
             group["group"].as_str().unwrap_or("?"),
             group["policy"].as_str().unwrap_or("weighted"),
+            group["pinned"].as_str().unwrap_or("-"),
             split_text(&group["split"]),
             group["head"].as_str().unwrap_or("-"),
             group["refused"]
@@ -277,7 +366,6 @@ async fn print_status(control: &str, json: bool) -> Result<()> {
             );
         }
     }
-    Ok(())
 }
 
 /// The state of the split of a group: `off`, or `udp(up A, down B)` with

@@ -159,6 +159,7 @@ async fn a_network_comes_up_and_its_link_closes() {
     assert!(net.checks().is_empty());
     let ctx = Ctx {
         below: Some(fake("socks5h://p:1080")),
+        ..Ctx::default()
     };
     assert_eq!(
         format!("{ctx:?}"),

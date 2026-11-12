@@ -45,7 +45,10 @@ use podnet_vnet::routes::RulesFile;
 use serde::Deserialize;
 use tokio::time::Instant;
 
+pub mod control;
 pub mod kernel;
+
+pub use control::read_status;
 
 use crate::network::{
     parse_group, probe, Balance, Choice, Ctx, Dial, Member, Network as _, Policy, Selection,
@@ -72,6 +75,10 @@ pub struct Config {
     /// `unix:/PATH`: the control socket (mode 0600) of `route --status`.
     #[serde(default)]
     pub control: Option<String>,
+    /// A directory for the identity of each network, `DIR/NETWORK` (T-180);
+    /// a reconnect and a rotate give it to the network again.
+    #[serde(default)]
+    pub state_dir: Option<PathBuf>,
     /// The kernel mode (T-119): tables, rules and a multipath route.
     #[serde(default)]
     pub kernel: Option<kernel::KernelConfig>,
@@ -286,6 +293,8 @@ pub struct Router {
     pub groups: Vec<(String, Arc<Balance>)>,
     pub doors: Vec<RouterDoor>,
     pub health: Option<(Target, Thresholds)>,
+    /// The write side of the control socket (T-180).
+    pub control: control::ControlState,
 }
 
 /// The choice of a door for one target (T-177): the rule, the way and the
@@ -342,6 +351,7 @@ impl Router {
     /// Bring up each network, build the groups and the doors.
     pub async fn up(config: &Config) -> Result<Router> {
         let mut ways = HashMap::new();
+        let mut links = HashMap::new();
         for (name, spec) in &config.networks {
             let network = crate::networks::parse(spec)
                 .map_err(|e| anyhow::anyhow!("networks.{name}: {}", e.text()))?;
@@ -351,10 +361,14 @@ impl Router {
                 .with_context(|| format!("networks.{name}"))?;
             let way = link
                 .way
+                .clone()
                 .with_context(|| format!("networks.{name}: the network gives no way out"))?;
             ways.insert(name.clone(), way);
+            links.insert(name.clone(), link);
         }
-        Router::build(config, ways)
+        let router = Router::build(config, ways)?;
+        router.control.keep(links).await;
+        Ok(router)
     }
 
     /// The router of `config` with no network up and no dial: each network
@@ -374,6 +388,14 @@ impl Router {
     }
 
     fn build(config: &Config, mut ways: HashMap<String, Way>) -> Result<Router> {
+        // Each network sits behind a `Swap`: a reconnect or a rotate (T-180)
+        // reaches each group, each rule and each door.
+        let mut swaps = HashMap::new();
+        for (name, way) in ways.iter_mut() {
+            let swap = Arc::new(crate::network::Swap::new(way.dial.clone()));
+            way.dial = swap.clone();
+            swaps.insert(name.clone(), swap);
+        }
         let mut groups = Vec::new();
         for (name, list) in &config.groups {
             let (_, members) = parse_group(&format!("{name}={list}"))
@@ -448,11 +470,18 @@ impl Router {
             )),
             None => None,
         };
+        let control = control::ControlState::new(
+            swaps,
+            &config.networks,
+            config.state_dir.clone(),
+            health.as_ref().map(|(_, t)| t.interval),
+        );
         Ok(Router {
             ways,
             groups,
             doors,
             health,
+            control,
         })
     }
 
@@ -491,49 +520,8 @@ impl Router {
         serde_json::json!({
             "doors": self.doors.iter().map(|d| serde_json::json!({"listen": d.listen.to_string(), "via": d.label})).collect::<Vec<_>>(),
             "groups": self.groups.iter().map(|(_, g)| g.status()).collect::<Vec<_>>(),
+            "interval": self.control.interval().map(|d| d.as_secs()),
         })
-    }
-
-    /// Answer `GET /route/status` on the control socket with
-    /// [`Router::status`] (T-097), until the listener fails. The mode of the
-    /// socket (0600) is the gate. Each other request gets 404.
-    pub async fn serve_control(self: Arc<Self>, listener: tokio::net::UnixListener) -> Result<()> {
-        loop {
-            let (mut stream, _) = listener.accept().await.context("the control socket")?;
-            let router = self.clone();
-            tokio::spawn(async move {
-                let answer = router.answer(&mut stream);
-                let _ = tokio::time::timeout(CONTROL_LIMIT, answer).await;
-            });
-        }
-    }
-
-    async fn answer(&self, stream: &mut tokio::net::UnixStream) -> std::io::Result<()> {
-        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
-        let mut head = Vec::new();
-        let mut buf = [0u8; 512];
-        while !head.windows(4).any(|w| w == b"\r\n\r\n") && head.len() < 8192 {
-            let n = stream.read(&mut buf).await?;
-            if n == 0 {
-                break;
-            }
-            head.extend_from_slice(&buf[..n]);
-        }
-        let head = String::from_utf8_lossy(&head);
-        let (code, body) = if head.starts_with("GET /route/status ") {
-            ("200 OK", self.status().to_string())
-        } else {
-            (
-                "404 Not Found",
-                r#"{"error":"the control socket answers GET /route/status only"}"#.to_string(),
-            )
-        };
-        let reply = format!(
-            "HTTP/1.0 {code}\r\ncontent-type: application/json\r\ncontent-length: {}\r\n\r\n{body}",
-            body.len()
-        );
-        stream.write_all(reply.as_bytes()).await?;
-        stream.shutdown().await
     }
 
     /// Probe each member of each group, each interval, until the end. The
@@ -543,7 +531,6 @@ impl Router {
         let Some((target, thresholds)) = self.health.clone() else {
             return std::future::pending().await;
         };
-        let interval = thresholds.interval;
         loop {
             for (_, group) in &self.groups {
                 let mut results = Vec::new();
@@ -559,52 +546,9 @@ impl Router {
                 }
                 group.end_round();
             }
-            tokio::time::sleep(interval).await;
+            self.control.pause().await;
         }
     }
-}
-
-/// The time limit of one exchange on the control socket.
-const CONTROL_LIMIT: Duration = Duration::from_secs(5);
-
-/// The status document of the router of the control socket `path`
-/// (`podnet route --status`).
-pub async fn read_status(path: &Path) -> Result<serde_json::Value> {
-    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
-    let exchange = async {
-        let mut stream = tokio::net::UnixStream::connect(path)
-            .await
-            .with_context(|| format!("the control socket unix:{}", path.display()))?;
-        stream
-            .write_all(b"GET /route/status HTTP/1.0\r\n\r\n")
-            .await?;
-        let mut answer = Vec::new();
-        (&mut stream)
-            .take(16 << 20)
-            .read_to_end(&mut answer)
-            .await?;
-        Ok::<_, anyhow::Error>(answer)
-    };
-    let answer = tokio::time::timeout(CONTROL_LIMIT, exchange)
-        .await
-        .map_err(|_| {
-            anyhow::anyhow!(
-                "the control socket unix:{} gave no answer in 5 s",
-                path.display()
-            )
-        })??;
-    let split = answer
-        .windows(4)
-        .position(|w| w == b"\r\n\r\n")
-        .context("the control socket gave no HTTP answer")?;
-    let status_line = String::from_utf8_lossy(&answer[..split]);
-    if !status_line.starts_with("HTTP/1.0 200") {
-        bail!(
-            "the control socket answered: {}",
-            status_line.lines().next().unwrap_or("")
-        );
-    }
-    serde_json::from_slice(&answer[split + 4..]).context("the status of the control socket")
 }
 
 #[cfg(test)]

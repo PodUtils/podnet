@@ -215,7 +215,7 @@ async fn router_status_json_keys_over_the_control_socket() {
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
     let mut other = tokio::net::UnixStream::connect(&path).await.unwrap();
     other
-        .write_all(b"POST /route/select HTTP/1.0\r\n\r\n")
+        .write_all(b"POST /route/other HTTP/1.0\r\n\r\n")
         .await
         .unwrap();
     let mut answer = String::new();

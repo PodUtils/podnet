@@ -56,6 +56,7 @@ impl Network for Chain {
                 let up = layer
                     .up(&Ctx {
                         below: below.clone(),
+                        state_dir: ctx.state_dir.clone(),
                     })
                     .await;
                 let step = up.map_err(|e| {
@@ -325,7 +326,13 @@ mod tests {
         let log = log();
         let below: Arc<dyn Dial> = Arc::new(Fake::up("socks5h", &log));
         let chain = chain(vec![Layer::new("relay", &log)]);
-        let link = chain.up(&Ctx { below: Some(below) }).await.unwrap();
+        let link = chain
+            .up(&Ctx {
+                below: Some(below),
+                ..Ctx::default()
+            })
+            .await
+            .unwrap();
         assert_eq!(link.way.as_ref().unwrap().label(), "relay over socks5h");
         assert_eq!(chain.caps(), Caps::EGRESS_TCP);
         assert!(Chain::new(Vec::new()).is_err());

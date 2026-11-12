@@ -67,3 +67,65 @@ fn route_detaches_and_lists_its_members() {
     assert_eq!(bad.status.code(), Some(64));
     assert!(String::from_utf8_lossy(&bad.stderr).contains("doors[0].via"));
 }
+
+/// T-180: `route --control` pins a member, changes the probe interval,
+/// rotates a network (one rotate for each minute) and reconnects it, on a
+/// running router.
+#[test]
+fn route_control_flags_drive_a_running_router() {
+    let env = Env::new();
+    let dir = env.sock.parent().unwrap().to_path_buf();
+    let (door, ctl) = (dir.join("door.sock"), dir.join("ctl.sock"));
+    let config = dir.join("route.yml");
+    std::fs::write(
+        &config,
+        format!(
+            "networks:\n  home: direct\n  spare: direct\ngroups:\n  egress: home*2, spare*1\nhealth:\n  target: 192.0.2.1:443\n  interval: 30\nstate_dir: {}\ncontrol: unix:{}\ndoors:\n  - listen: unix:{}\n    via: egress\n",
+            dir.join("state").display(),
+            ctl.display(),
+            door.display()
+        ),
+    )
+    .unwrap();
+    let start = env.run(&[
+        "route",
+        "--config",
+        config.to_str().unwrap(),
+        "--detach",
+        "--name",
+        "r2",
+    ]);
+    assert!(
+        start.status.success(),
+        "{}",
+        String::from_utf8_lossy(&start.stderr)
+    );
+    let control = format!("unix:{}", ctl.display());
+    let run = |flags: &[&str]| {
+        let mut args = vec!["route", "--control", control.as_str()];
+        args.extend_from_slice(flags);
+        env.run(&args)
+    };
+    let pinned = run(&["--select", "egress=spare", "--json"]);
+    assert!(
+        pinned.status.success(),
+        "{}",
+        String::from_utf8_lossy(&pinned.stderr)
+    );
+    let doc: serde_json::Value = serde_json::from_slice(&pinned.stdout).unwrap();
+    assert_eq!(doc["groups"][0]["pinned"], "spare");
+    let text = run(&["--select", "egress=auto"]);
+    assert!(String::from_utf8_lossy(&text.stdout).contains("pinned -"));
+    let interval = run(&["--interval", "7", "--json"]);
+    let doc: serde_json::Value = serde_json::from_slice(&interval.stdout).unwrap();
+    assert_eq!(doc["interval"], 7);
+    assert!(run(&["--reconnect", "home"]).status.success());
+    assert!(run(&["--rotate", "home"]).status.success());
+    assert_eq!(run(&["--rotate", "home"]).status.code(), Some(75));
+    assert!(dir.join("state/home").is_dir());
+    assert_eq!(run(&["--select", "egress=nope"]).status.code(), Some(64));
+    assert_eq!(run(&["--interval", "0"]).status.code(), Some(64));
+    let stop = env.run(&["stop", "r2", "--timeout", "5"]);
+    assert!(stop.status.success());
+    assert_eq!(run(&["--interval", "7"]).status.code(), Some(69));
+}

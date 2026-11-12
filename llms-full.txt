@@ -1411,7 +1411,32 @@ COMMANDS
             `control` of its file). Exit 69 when no router answers
 
         --json
-            With --status: print the JSON document
+            With --status or a control flag: print the JSON document
+
+        --control <unix:/PATH>
+            Change a running router through its control socket (the key
+            `control` of its file; mode 0600, the same user or root). Give one
+            of --select, --rotate, --reconnect and --interval. Exit 69 when no
+            router answers, 64 when it refuses the request, 75 when a rotate
+            came too soon
+
+        --select <GROUP=MEMBER>
+            With --control: pin a group to one member, GROUP=MEMBER;
+            GROUP=auto gives the choice back to the policy. A pinned member
+            that is down refuses the flows (no direct way)
+
+        --rotate <MEMBER>
+            With --control: make a new identity of the network MEMBER, make
+            the new link before the old one ends, and keep its state directory
+            (the key `state_dir`). One rotate for each minute and network
+
+        --reconnect <MEMBER>
+            With --control: make a new link of the network MEMBER with the
+            same identity, make before break
+
+        --interval <SECONDS>
+            With --control: the seconds between two probes (1 to 86400). The
+            router needs a health section
 
         --check
             Read the file and bring up nothing: exit 0 when it is valid, 64
@@ -10088,6 +10113,11 @@ podnet route --config router.yml --check                # read the file and brin
 podnet route --config router.yml --check --to example.com:443   # a dry run for one target
 podnet route --status unix:/run/r.ctl                   # the state of a running router
 podnet route --status unix:/run/r.ctl --json
+podnet route --control unix:/run/r.ctl --select egress=proxy    # pin a group to one member
+podnet route --control unix:/run/r.ctl --select egress=auto     # give the choice back to the policy
+podnet route --control unix:/run/r.ctl --rotate proxy           # a new identity of a network
+podnet route --control unix:/run/r.ctl --reconnect proxy        # a new link, the same identity
+podnet route --control unix:/run/r.ctl --interval 5             # seconds between two probes
 podnet route --config router.yml --export mwan-json     # the WANs of the kernel section as JSON
 ```
 
@@ -10111,7 +10141,8 @@ health:                   # the probe of the members of each group
   cooldown: 30
   timeout: 5
   window: 8
-control: unix:/run/r.ctl  # optional: the socket of `route --status`
+control: unix:/run/r.ctl  # optional: the socket of `route --status` and `--control`
+state_dir: /var/lib/r     # optional: DIR/NETWORK holds the identity of a network
 doors:
   - listen: unix:/run/r.sock    # HOST:PORT, tcp://HOST:PORT or unix:/PATH
     via: egress                 # a network or a group of the file
@@ -10202,8 +10233,42 @@ door	listen	rule	way	member	health
 
 A router with the key `control` serves a unix socket (mode 0600). `podnet route --status unix:/PATH`
 prints the state of that router: each group, each member with its health, round-trip time and floor, the
-flows, the bytes and the head. `--json` prints the document. Exit 69 when no router answers. `--status`
-cannot be used with `--config`.
+flows, the bytes, the pinned member and the head. `--json` prints the document. Exit 69 when no router
+answers. `--status` cannot be used with `--config`.
+
+## Control: `--control`
+
+`podnet route --control unix:/PATH` changes a running router with no restart. Flows that run go on. Give one of
+these flags. Each prints the new state (`--json` for the JSON document).
+
+| Flag | What it does |
+| --- | --- |
+| `--select GROUP=MEMBER` | Pins the group to one member. Each new flow takes it, whatever the policy says. A pinned member that is down refuses the flows: the group does not fall back to another member or to direct. |
+| `--select GROUP=auto` | Gives the choice back to the policy. |
+| `--rotate MEMBER` | Makes a new identity of the network. The router brings up the new link first, gives it to the new flows, and ends the old link after 30 s (a flow on it can end before). The network keeps its state directory (`state_dir/NETWORK`), so it registers no new device. One rotate for each network and minute: a second one gets exit 75. Each rotate is logged on stderr. |
+| `--reconnect MEMBER` | Makes a new link of the network with the same identity, make before break. |
+| `--interval SECONDS` | Sets the seconds between two probes (1 to 86400). The wait of the probe ends at once. The file needs a `health` section. |
+
+A `MEMBER` is a network of the file. A rotate or a reconnect reaches each group, rule and door that
+uses the network. The networks of the registry (`direct`, a proxy, the relay) have no identity, so a
+rotate makes a new link as a reconnect does. A network with an identity takes the rotate; WARP
+becomes a network of the registry with the take of `pod-warp` (T-050).
+
+The socket answers an HTTP/1.0 request with JSON. The gate is the mode 0600 of the socket and the user
+of the peer: the user of the router, or root. A peer that is not allowed gets 403 and nothing changes.
+
+| Request | Body |
+| --- | --- |
+| `GET /route/status` | none |
+| `POST /route/select` | `{"group": "egress", "member": "proxy"}`; `"member": null` or `"auto"` frees the group |
+| `POST /route/rotate` | `{"member": "proxy"}` |
+| `POST /route/reconnect` | `{"member": "proxy"}` |
+| `PATCH /route/interval` | `{"seconds": 5}` |
+
+A write answers with the status document of the new state. An error answers `{"error": TEXT}` with
+400 (a bad request), 403 (the gate), 404 (an unknown path, group or member), 405 (a wrong method), 409
+(no `health` section), 429 (a rotate too soon) or 502 (the network did not come up; the way stays as it
+was). The exit codes of the flags: 64 for 4xx, 75 for 429, 69 when no router answers.
 
 ## Kernel mode
 

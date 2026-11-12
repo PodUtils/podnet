@@ -41,6 +41,7 @@ pub mod policy;
 pub mod race;
 pub mod rules;
 pub mod split;
+pub mod swap;
 
 pub use balance::{parse_group, Balance, Health, Member, Selection};
 pub use chain::Chain;
@@ -51,6 +52,7 @@ pub use policy::Policy;
 pub use race::Race;
 pub use rules::{matcher, Choice, Matcher, Rule, Rules};
 pub use split::{Split, SplitDatagrams};
+pub use swap::Swap;
 
 pub use pod_core::datagrams::{recv_from, send_to};
 pub use pod_core::{
@@ -220,13 +222,20 @@ pub struct Ctx {
     /// through it (the relay through a proxy, WARP through the relay).
     /// With `None`, the network uses the egress of the process.
     pub below: Option<Arc<dyn Dial>>,
+    /// The directory in which the network keeps its identity (T-180). A
+    /// reconnect and a rotate of the router give the same directory again, so
+    /// a network registers no new device.
+    pub state_dir: Option<std::path::PathBuf>,
 }
 
 impl fmt::Debug for Ctx {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Ctx")
-            .field("below", &self.below.as_ref().map(|d| d.label()))
-            .finish()
+        let mut s = f.debug_struct("Ctx");
+        s.field("below", &self.below.as_ref().map(|d| d.label()));
+        if let Some(dir) = &self.state_dir {
+            s.field("state_dir", dir);
+        }
+        s.finish()
     }
 }
 
@@ -330,6 +339,13 @@ pub trait Network: Send + Sync {
     /// Make the network ready (register, do the handshake, bind), and give
     /// its link.
     fn up<'a>(&'a self, ctx: &'a Ctx) -> BoxFuture<'a, anyhow::Result<Link>>;
+
+    /// Make a link with a new identity (T-180). It keeps `ctx.state_dir`.
+    /// The default: a new link, as [`Network::up`]; a network with an
+    /// identity (a WARP device) replaces it.
+    fn rotate<'a>(&'a self, ctx: &'a Ctx) -> BoxFuture<'a, anyhow::Result<Link>> {
+        self.up(ctx)
+    }
 
     /// The rows of `podnet doctor` for this network. The default: no row.
     fn checks(&self) -> Vec<Check> {

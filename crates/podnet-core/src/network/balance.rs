@@ -4,7 +4,7 @@
 //! no member is healthy, the flow is refused: the group never falls back to
 //! direct. The health of each member comes from the checks of T-097.
 
-use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tokio::time::Instant;
@@ -168,7 +168,11 @@ pub struct Balance {
     split: Option<Split>,
     split_sockets: AtomicU64,
     split_fallbacks: AtomicU64,
+    /// The index of the pinned member (T-180); `NO_PIN` for none.
+    pinned: AtomicUsize,
 }
+
+const NO_PIN: usize = usize::MAX;
 
 impl Balance {
     /// The group `name` of `members`. Each member dials a destination and
@@ -195,6 +199,7 @@ impl Balance {
             split: None,
             split_sockets: AtomicU64::new(0),
             split_fallbacks: AtomicU64::new(0),
+            pinned: AtomicUsize::new(NO_PIN),
         })
     }
 
@@ -238,6 +243,30 @@ impl Balance {
 
     pub fn split(&self) -> Option<Split> {
         self.split
+    }
+
+    /// Pin the group to the member `name` (T-180): each flow takes it, and
+    /// is refused when it does not take flows (no other member, no direct
+    /// way). `None` gives the policy back. A name that is not a member is
+    /// an error and the pin stays.
+    pub fn pin(&self, name: Option<&str>) -> Result<(), Failure> {
+        let at = match name {
+            None => NO_PIN,
+            Some(n) => self
+                .members
+                .iter()
+                .position(|m| m.name == n)
+                .ok_or_else(|| usage(format!("the group {} has no member {n}", self.name)))?,
+        };
+        self.pinned.store(at, Ordering::Relaxed);
+        Ok(())
+    }
+
+    /// The name of the pinned member.
+    pub fn pinned(&self) -> Option<String> {
+        self.members
+            .get(self.pinned.load(Ordering::Relaxed))
+            .map(|m| m.name.clone())
     }
 
     /// End a probe round of the group: `minrtt` may move its head.
@@ -314,6 +343,7 @@ impl Balance {
         serde_json::json!({
             "group": self.name,
             "policy": self.policy.name(),
+            "pinned": self.pinned(),
             "split": self.split_status(),
             "head": head.and_then(|i| self.members.get(i)).map(|m| m.name.as_str()),
             "members": members,
@@ -350,7 +380,10 @@ impl Balance {
         let snaps: Vec<Snapshot> = self.members.iter().map(|m| m.snapshot(now)).collect();
         let head = *self.head.lock().unwrap_or_else(|e| e.into_inner());
         let turn = self.turn.fetch_add(1, Ordering::Relaxed);
-        let chosen = if snaps.iter().any(|s| s.health.takes_flows()) {
+        let pinned = self.pinned.load(Ordering::Relaxed);
+        let chosen = if let Some(s) = snaps.get(pinned) {
+            s.health.takes_flows().then_some(pinned)
+        } else if snaps.iter().any(|s| s.health.takes_flows()) {
             choose(self.policy, &snaps, self.next(), turn, &head)
         } else {
             None
@@ -390,7 +423,7 @@ impl Balance {
     /// (a member of the split does not take flows). The fallback keeps the
     /// pick of the group, so it never leaves the members that take flows.
     async fn split_datagrams(&self) -> Result<Option<Arc<dyn Datagrams>>, Failure> {
-        let Some(split) = self.split else {
+        let Some(split) = self.split.filter(|_| self.pinned().is_none()) else {
             return Ok(None);
         };
         let (up, down) = (&self.members[split.up], &self.members[split.down]);

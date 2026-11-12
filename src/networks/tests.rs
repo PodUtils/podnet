@@ -161,6 +161,7 @@ async fn network_spec_up_gives_a_way_and_refuses_a_way_below() {
     let hop = parse("unix:/run/proxy.sock").unwrap();
     let below = Ctx {
         below: Some(link.way.as_ref().unwrap().dial.clone()),
+        ..Ctx::default()
     };
     let err = hop.up(&below).await.expect_err("no way below yet");
     assert_eq!(

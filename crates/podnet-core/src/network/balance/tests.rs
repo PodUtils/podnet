@@ -99,3 +99,34 @@ fn router_group_refuses_a_peer_way_and_a_zero_weight() {
     assert!(zero.err().unwrap().text().contains("weight 0"));
     assert!(Balance::new("g", Vec::new()).is_err());
 }
+
+/// T-180: a pin sends each flow to one member, whatever the policy and the
+/// weights say; a pin on a member that is down refuses the flow (no other
+/// member, no direct way); `pin(None)` gives the policy back.
+#[tokio::test]
+async fn route_control_pin_holds_one_member_and_fails_closed() {
+    let log = log();
+    let balance = group(&log);
+    assert!(balance.pinned().is_none());
+    assert!(balance.pin(Some("c")).is_err());
+    balance.pin(Some("b")).unwrap();
+    assert_eq!(balance.pinned(), Some("b".to_string()));
+    assert_eq!(balance.status()["pinned"], "b");
+    for _ in 0..200 {
+        match balance.pick() {
+            Selection::One(m) => assert_eq!(m.name, "b"),
+            Selection::None => panic!("b is up"),
+        }
+    }
+    balance.set_health(1, Health::Down);
+    assert!(matches!(balance.pick(), Selection::None));
+    assert_eq!(balance.refused(), 1);
+    balance.pin(None).unwrap();
+    assert_eq!(balance.status()["pinned"], serde_json::Value::Null);
+    for _ in 0..50 {
+        match balance.pick() {
+            Selection::One(m) => assert_eq!(m.name, "a"),
+            Selection::None => panic!("a is up"),
+        }
+    }
+}
