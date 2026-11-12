@@ -325,7 +325,7 @@ fn exit_codes_of_flags_and_configuration() {
         assert_eq!(code, Some(69), "{args:?}: {err}");
     }
     std::fs::create_dir_all(state.path().join("relay")).unwrap();
-    std::fs::write(state.path().join("relay/bad.json"), "{").unwrap();
+    std::fs::write(state.path().join("relay/pair-bad.json"), "{").unwrap();
     for args in [&["relay", "connect", "bad"][..], &["relay", "stop", "bad"]] {
         let (code, err) = run(args, &env);
         assert_eq!(code, Some(78), "{args:?}: {err}");

@@ -1,66 +1,61 @@
 //! The reverse mode of the WebSocket relay (issue 88): inbound access to a
-//! host that has outbound HTTPS only.
+//! host that has outbound HTTPS only, over the reverse road of `pod-relay`
+//! (PodUtils/podcrates) in its plain mode.
 //!
 //! * `podnet relay pair` asks the relay for a pair (`POST /v1/pair`): a name,
 //!   a node token, a connect token and a stop token. podnet keeps the pair in
 //!   a file of mode 0600 and prints the connect token for the operator.
 //! * `podnet relay node` holds the WebSocket `/v1/node/NAME`. For each
 //!   `open {id}`, it connects to the local target and answers `ready {id}`
-//!   or `reject {id, reason}`. Each binary frame is the 32 hex characters of
-//!   the session id and at most 64 KiB of bytes. A lost socket is opened
-//!   again with a backoff (1 s to 30 s, with jitter). A close for cause
-//!   (the pair expired, the operator stopped it, a refused token) stops the
-//!   node: a new pair is necessary.
+//!   or `reject {id, reason}`. A lost socket is opened again with a backoff.
+//!   A close for cause (the pair expired, the operator stopped it, a refused
+//!   token) stops the node: a new pair is necessary. After the target shuts
+//!   down its write side, the session waits [`HALF_CLOSE_IDLE`] for the last
+//!   bytes of the operator (T-196).
 //! * `podnet relay connect NAME` opens `/v1/connect/NAME` for the operator,
 //!   waits for `ready`, and then copies raw bytes: stdin and stdout (for an
-//!   SSH `ProxyCommand`), or each connection of a local listener.
+//!   SSH `ProxyCommand`), or each connection of a local listener. After the
+//!   end of the input, the answer of the target still comes for
+//!   [`EOF_IDLE`] (issue 109).
 //!
 //! The relay authenticates tokens, not persons: give the connect token only
 //! over a channel that you trust.
 
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context as _, Result};
-use futures::{SinkExt as _, StreamExt as _};
-use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
-use tokio::sync::mpsc;
-use tokio_tungstenite::tungstenite::Message;
+use pod_relay::pair::PairContext;
+use pod_relay::reverse::{self as road, Exit, OperatorConfig, OperatorLimits, Outcome};
+use pod_ws::ConnectError;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::exit::{fault, Fault};
 use crate::ws_relay::Relay;
 
 mod pairfile;
-mod session;
-pub use pairfile::{load, save};
-use session::{end_session, session, valid_id, Gate, Out, OutKind, Sessions, SESSION_QUEUE};
+pub use pairfile::{file_of, load, remove, save};
+pub use pod_relay::reverse::local::Target;
+pub use pod_relay::reverse::{EOF_IDLE, HALF_CLOSE_IDLE};
 
 /// The environment variable with the connect token of the operator.
 pub const CONNECT_TOKEN_VARIABLE: &str = crate::instances::CONNECT_TOKEN_VARIABLE;
-/// The most bytes in one data frame.
-const FRAME: usize = 64 * 1024;
-/// The length of a session id: 32 lowercase hex characters.
-const ID_LEN: usize = 32;
-/// The interval of the WebSocket pings (the relay drops a quiet socket).
-const PING_EVERY: Duration = Duration::from_secs(20);
-/// The time for a WebSocket handshake, and for a local connect (the relay
-/// reaps a session with no `ready` after 15 s).
+/// The time for a WebSocket handshake and for a call of the relay.
 const TIMEOUT: Duration = Duration::from_secs(20);
+/// The time for a local connect (the relay reaps a session with no `ready`
+/// after 15 s).
 const LOCAL_CONNECT: Duration = Duration::from_secs(10);
 
-/// A pair of the relay.
-#[derive(Clone, Serialize, Deserialize)]
+/// A pair of the relay: the pair of `pod-relay`, with the URL of its relay
+/// (its scheme too: a plain relay of a test is `http://`).
 pub struct Pair {
     pub name: String,
-    pub node_token: String,
-    pub connect_token: String,
-    #[serde(default)]
-    pub stop_token: String,
     /// Milliseconds since the epoch.
     pub expires: u64,
     /// The base URL of the relay.
     pub relay: String,
+    inner: pod_relay::pair::Pair,
 }
 
 impl std::fmt::Debug for Pair {
@@ -75,58 +70,63 @@ impl std::fmt::Debug for Pair {
 }
 
 impl Pair {
+    fn of(inner: pod_relay::pair::Pair, relay: String) -> Self {
+        Self {
+            name: inner.name.clone(),
+            expires: u64::try_from(inner.expires_ms).unwrap_or(0),
+            relay,
+            inner,
+        }
+    }
+
+    /// For the node's socket, `/v1/node/NAME`.
+    pub fn node_token(&self) -> &str {
+        self.inner.node_token()
+    }
+
+    /// For the operator's socket, `/v1/connect/NAME`.
+    pub fn connect_token(&self) -> &str {
+        self.inner.connect_token()
+    }
+
+    /// For `/v1/stop/NAME`; empty in a pair file with none.
+    pub fn stop_token(&self) -> &str {
+        self.inner.stop_token()
+    }
+
     /// The time that is left; zero when the pair expired.
     pub fn left(&self) -> Duration {
-        let end = UNIX_EPOCH + Duration::from_millis(self.expires);
-        end.duration_since(SystemTime::now()).unwrap_or_default()
+        left_of(self.expires)
     }
 }
 
-/// A name of a pair is safe for a file name and a URL path.
-fn check_name(name: &str) -> Result<()> {
-    if name.is_empty()
-        || name.len() > 128
-        || !name
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
-    {
-        bail!("{name:?} is not a pair name (letters, digits, - and _)");
+/// The time that is left before `expires` (milliseconds since the epoch).
+fn left_of(expires: u64) -> Duration {
+    let end = UNIX_EPOCH + Duration::from_millis(expires);
+    end.duration_since(SystemTime::now()).unwrap_or_default()
+}
+
+/// The calls of the relay of `relay` about a pair.
+fn pair_context(relay: &Relay) -> PairContext<'_> {
+    static TRUST: pod_ws::Trust = pod_ws::Trust::Default;
+    PairContext {
+        ctx: relay.ctx(),
+        relay: relay.primary(),
+        trust: &TRUST,
+        timeout: TIMEOUT,
     }
-    Ok(())
 }
 
 /// Ask the relay for a new pair. A name collision (409) is asked again
 /// once: names are random.
 pub async fn pair(relay: &Relay) -> Result<Pair> {
-    for _ in 0..2 {
-        match relay.post_json("/v1/pair", None).await? {
-            Ok(body) => {
-                let text = |key: &str| {
-                    body.get(key)
-                        .and_then(|v| v.as_str())
-                        .filter(|v| !v.is_empty())
-                        .map(str::to_string)
-                        .with_context(|| format!("the pair answer has no {key}"))
-                };
-                let pair = Pair {
-                    name: text("name")?,
-                    node_token: text("node_token")?,
-                    connect_token: text("connect_token")?,
-                    stop_token: text("stop_token").unwrap_or_default(),
-                    expires: body
-                        .get("expires")
-                        .and_then(|v| v.as_u64())
-                        .context("the pair answer has no expires")?,
-                    relay: relay.url(),
-                };
-                check_name(&pair.name)?;
-                return Ok(pair);
-            }
-            Err((409, _)) => continue,
-            Err((status, text)) => bail!("the relay refused a pair: HTTP {status}: {text}"),
-        }
+    if relay.wire() != road::Wire::Tls {
+        bail!("a pair is made over TLS: {} is a plain relay", relay.url());
     }
-    bail!("the relay gave a name that is in use two times (409)")
+    let inner = pod_relay::pair::create(&pair_context(relay))
+        .await
+        .map_err(|e| anyhow::anyhow!("the relay refused a pair: {e}"))?;
+    Ok(Pair::of(inner, relay.url()))
 }
 
 /// The directory of the pairs: `relay` in the state directory.
@@ -139,121 +139,23 @@ pub fn pairs_dir() -> Result<PathBuf> {
 
 /// Stop the node of `pair` and its sessions at the relay
 /// (`POST /v1/stop/NAME` with the stop token).
-pub async fn stop(relay: &Relay, pair: &Pair) -> Result<()> {
-    if pair.stop_token.is_empty() {
+pub async fn stop(pair: &Pair) -> Result<()> {
+    if pair.stop_token().is_empty() {
         bail!("the pair {} has no stop token", pair.name);
     }
-    let path = format!("/v1/stop/{}", pair.name);
-    match relay.post_json(&path, Some(&pair.stop_token)).await? {
-        Ok(_) => Ok(()),
-        Err((status, text)) => bail!(
-            "the relay did not stop {}: HTTP {status}: {text}",
-            pair.name
-        ),
-    }
+    let relay = Relay::single(&pair.relay, None)?;
+    pod_relay::pair::stop(&pair_context(&relay), &pair.inner)
+        .await
+        .map(|_| ())
+        .map_err(|e| anyhow::anyhow!("the relay did not stop {}: {e}", pair.name))
 }
 
-/// The local service of a node.
-#[derive(Clone, Debug)]
-pub enum Target {
-    /// `host:port` (a name is resolved for each session).
-    Tcp(String),
-    /// `unix:/path`.
-    Unix(PathBuf),
-}
-
-impl Target {
-    /// `host:port`, `tcp://host:port` or `unix:/path`.
-    pub fn parse(text: &str) -> Result<Self> {
-        if let Some(path) = text.strip_prefix("unix:") {
-            let path = path.trim_start_matches("//");
-            if path.is_empty() {
-                bail!("--to unix: has no path");
-            }
-            return Ok(Self::Unix(PathBuf::from(path)));
-        }
-        let rest = text.strip_prefix("tcp://").unwrap_or(text);
-        match rest.rsplit_once(':') {
-            Some((host, port)) if !host.is_empty() && port.parse::<u16>().is_ok() => {
-                Ok(Self::Tcp(rest.to_string()))
-            }
-            _ => bail!("--to {text:?} is not host:port or unix:/path"),
-        }
-    }
-
-    async fn connect(&self) -> Result<Box<dyn LocalIo>> {
-        Ok(match self {
-            Self::Tcp(addr) => Box::new(tokio::net::TcpStream::connect(addr).await?),
-            Self::Unix(path) => Box::new(tokio::net::UnixStream::connect(path).await?),
-        })
-    }
-}
-
-impl std::fmt::Display for Target {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Tcp(addr) => write!(f, "{addr}"),
-            Self::Unix(path) => write!(f, "unix:{}", path.display()),
-        }
-    }
-}
-
-trait LocalIo: AsyncRead + AsyncWrite + Unpin + Send {}
-impl<T: AsyncRead + AsyncWrite + Unpin + Send> LocalIo for T {}
-
-/// How one node socket ended.
-#[derive(Debug, PartialEq, Eq)]
-enum NodeEnd {
-    /// Open the socket again.
-    Again(String),
-    /// Do not open it again: a new pair is necessary.
-    Stop(String),
-}
-
-/// Run the node of `pair` until the relay ends the pair. A lost socket is
-/// opened again with a backoff.
-pub async fn node(relay: &Relay, pair: &Pair, target: &Target) -> Result<()> {
-    let mut backoff = Duration::from_secs(1);
-    loop {
-        if pair.left().is_zero() {
-            return Err(fault(
-                Fault::Config,
-                anyhow::anyhow!(
-                    "the pair {} expired; make a new pair (podnet relay pair)",
-                    pair.name
-                ),
-            ));
-        }
-        let started = Instant::now();
-        let end = match node_once(relay, pair, target).await {
-            Ok(end) => end,
-            Err(err) => NodeEnd::Again(format!("{err:#}")),
-        };
-        match end {
-            NodeEnd::Stop(reason) => {
-                return Err(fault(
-                    Fault::Config,
-                    anyhow::anyhow!("the relay ended the node {}: {reason}", pair.name),
-                ))
-            }
-            NodeEnd::Again(reason) => {
-                if started.elapsed() > Duration::from_secs(60) {
-                    backoff = Duration::from_secs(1);
-                }
-                let mut byte = [0u8; 2];
-                let _ = getrandom::fill(&mut byte);
-                let jitter = Duration::from_millis(u64::from(u16::from_le_bytes(byte) % 1000));
-                tracing::warn!(
-                    name = %pair.name,
-                    %reason,
-                    again_in = ?(backoff + jitter),
-                    "the node socket ended; podnet opens it again"
-                );
-                tokio::time::sleep(backoff + jitter).await;
-                backoff = (backoff * 2).min(Duration::from_secs(30));
-            }
-        }
-    }
+/// The dial of a TCP target of a node: direct, with podnet's resolver of no
+/// DoH, as a local service is on this host or its network.
+fn direct_dialer() -> pod_proxy::Dialer {
+    let mut settings = pod_proxy::Settings::new("podnet", pod_proxy::ProxyChoice::Direct);
+    settings.lowat = None;
+    pod_proxy::Dialer::new(settings, crate::resolve::plain())
 }
 
 /// The times before the expiry of a pair at which the node warns, the
@@ -284,11 +186,14 @@ fn band(left: Duration) -> Option<usize> {
 /// The warning for `pair` with `left` time. `follow`: the node takes the
 /// next stored pair at the expiry.
 pub fn expiry_line(pair: &Pair, left: Duration, follow: bool) -> String {
+    expiry_words(&pair.name, pair.expires, left, follow)
+}
+
+fn expiry_words(name: &str, expires: u64, left: Duration, follow: bool) -> String {
     let when = format!(
-        "the pair {} expires in {}, at {}",
-        pair.name,
+        "the pair {name} expires in {}, at {}",
         left_words(left),
-        pod_core::clock::utc_minutes(pair.expires / 1000)
+        pod_core::clock::utc_minutes(expires / 1000)
     );
     if follow {
         format!("{when}; make the next pair now (podnet relay pair): this node takes it at the expiry, and its operators need its name and connect token")
@@ -297,18 +202,18 @@ pub fn expiry_line(pair: &Pair, left: Duration, follow: bool) -> String {
     }
 }
 
-/// Warn for `pair` at each part of [`WARN_BEFORE`] once; the first at
-/// once when the node starts within it. Ends at the expiry.
-async fn warn_expiry(pair: Pair, follow: bool) {
+/// Warn for the pair `name` at each part of [`WARN_BEFORE`] once; the first
+/// at once when the node starts within it. Ends at the expiry.
+async fn warn_expiry(name: String, expires: u64, follow: bool) {
     let mut said: Option<usize> = None;
     loop {
-        let left = pair.left();
+        let left = left_of(expires);
         if left.is_zero() {
             return;
         }
         if let Some(part) = band(left) {
             if said.is_none_or(|before| part > before) {
-                tracing::warn!("{}", expiry_line(&pair, left, follow));
+                tracing::warn!("{}", expiry_words(&name, expires, left, follow));
                 said = Some(part);
             }
         }
@@ -326,37 +231,30 @@ async fn warn_expiry(pair: Pair, follow: bool) {
     }
 }
 
-/// The stored pair that the node takes at the expiry of `ending`: one
-/// that expires later and has time left.
-pub fn next_pair(stored: Option<Pair>, ending: &Pair) -> Option<Pair> {
-    stored.filter(|next| next.expires > ending.expires && !next.left().is_zero())
-}
-
-/// Run the node of `pair`, with the expiry warnings. With `follow` (the
-/// pair directory, when no pair name was given), the node takes the next
-/// stored pair at the expiry, with no new start.
+/// Run the node of `pair` until the pair ends, with the expiry warnings. A
+/// lost socket is opened again with a backoff. With `follow` (the pair
+/// directory, when no pair name was given), the node takes the next stored
+/// pair at the expiry, with no new start.
 pub async fn run_node(follow: Option<&Path>, pair: Pair, target: &Target) -> Result<()> {
     let mut pair = pair;
     loop {
-        let relay = Relay::single(&pair.relay, None)?;
-        let warnings = tokio::spawn(warn_expiry(pair.clone(), follow.is_some()));
-        let result = tokio::select! {
-            result = node(&relay, &pair, target) => result,
-            _ = tokio::time::sleep(pair.left()) => Err(fault(
-                Fault::Config,
-                anyhow::anyhow!("the pair {} expired; make a new pair (podnet relay pair)", pair.name),
-            )),
-        };
+        let warnings = tokio::spawn(warn_expiry(
+            pair.name.clone(),
+            pair.expires,
+            follow.is_some(),
+        ));
+        let (result, back) = node(pair, target).await;
+        pair = back;
         warnings.abort();
         let expired = pair.left() < Duration::from_secs(5);
         let next = match follow {
-            Some(dir) if result.is_err() && expired => next_pair(load(dir, None).ok(), &pair),
+            Some(dir) if result.is_err() && expired => pairfile::next(dir, &pair.inner),
             _ => None,
         };
         let Some(next) = next else {
             return result;
         };
-        crate::report::hide(&next.node_token);
+        crate::report::hide(next.node_token());
         tracing::warn!(
             old = %pair.name,
             new = %next.name,
@@ -367,147 +265,94 @@ pub async fn run_node(follow: Option<&Path>, pair: Pair, target: &Target) -> Res
     }
 }
 
-/// The meaning of a close of the node socket by the relay.
-fn node_close(code: u16, reason: &str) -> NodeEnd {
-    let text = format!("{code} {reason}");
-    match code {
-        // The operator stopped the name, or the pair expired.
-        1001 if reason.contains("stopped") || reason.contains("expired") => NodeEnd::Stop(text),
-        1008 if reason.contains("token") => NodeEnd::Stop(text),
-        _ => NodeEnd::Again(text),
-    }
-}
-
-async fn node_once(relay: &Relay, pair: &Pair, target: &Target) -> Result<NodeEnd> {
-    let path = format!("/v1/node/{}", pair.name);
-    let ws = match relay.websocket(&path, &pair.node_token, TIMEOUT).await? {
-        Ok(ws) => ws,
-        Err((409, _)) => {
-            return Ok(NodeEnd::Again(
-                "another node holds the name (409); the old socket may still close".into(),
-            ))
-        }
-        Err((status @ (401 | 403), body)) => {
-            return Ok(NodeEnd::Stop(format!(
-                "the relay refused the node token ({status}): {}",
-                body.chars().take(200).collect::<String>()
-            )))
-        }
-        Err((status, body)) => {
-            return Ok(NodeEnd::Again(format!(
-                "HTTP {status}: {}",
-                body.chars().take(200).collect::<String>()
-            )))
+/// The node of `pair` until it ends: at the expiry of the pair, at a close
+/// for cause, or at a fault that a new socket would repeat. Gives `pair`
+/// back.
+async fn node(pair: Pair, target: &Target) -> (Result<()>, Pair) {
+    let relay = match Relay::single(&pair.relay, None) {
+        Ok(relay) => relay,
+        Err(err) => return (Err(fault(Fault::Config, err)), pair),
+    };
+    let left = pair.left();
+    let Pair {
+        name,
+        expires,
+        relay: url,
+        inner,
+    } = pair;
+    let shown = target.to_string();
+    let (said_name, said_url) = (name.clone(), url.clone());
+    let say = move |line: String| {
+        if line.starts_with("online") {
+            tracing::info!(name = %said_name, target = %shown, "the node is connected to the relay");
+            crate::detach::ready(ready_document(&said_name, &said_url, expires, &shown));
+        } else {
+            tracing::warn!(name = %said_name, "{line}");
         }
     };
-    tracing::info!(name = %pair.name, %target, "the node is connected to the relay");
-    crate::detach::ready(node_ready(pair, target));
-    let (mut sink, mut stream) = ws.split();
-    let (out_tx, mut out_rx) = mpsc::channel::<Out>(256);
-    // The data queue of each session, and its task.
-    let mut sessions = Sessions::new();
-    let mut gate = Gate::default();
-    let mut ping = tokio::time::interval(PING_EVERY);
-    ping.tick().await;
-    loop {
-        tokio::select! {
-            message = stream.next() => match message {
-                None => return Ok(NodeEnd::Again("the relay closed the socket".into())),
-                Some(Err(err)) => return Ok(NodeEnd::Again(format!("{err}"))),
-                Some(Ok(Message::Text(text))) => {
-                    let Ok(doc) = serde_json::from_str::<serde_json::Value>(text.as_str()) else {
-                        continue;
-                    };
-                    let kind = doc.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                    let id = doc.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                    match kind {
-                        "open" if valid_id(&id) => {
-                            if !gate.opened(&id) {
-                                tracing::debug!(%id, "the relay opened an id that is open");
-                                continue;
-                            }
-                            let (data_tx, data_rx) = mpsc::channel::<Vec<u8>>(SESSION_QUEUE);
-                            let task = tokio::spawn(session(target.clone(), id.clone(), data_rx, out_tx.clone()));
-                            sessions.insert(id, (data_tx, task.abort_handle()));
-                        }
-                        "close" => {
-                            // An abort ends the task, also in a write to a
-                            // target that does not read. Its queued frames
-                            // do not go out.
-                            gate.closed_by_relay(&id);
-                            end_session(&mut sessions, &id);
-                        }
-                        "hello" => tracing::debug!("hello from the relay"),
-                        other => tracing::debug!(kind = other, "a control message that podnet does not use"),
-                    }
-                }
-                Some(Ok(Message::Binary(data))) => {
-                    if data.len() <= ID_LEN {
-                        continue;
-                    }
-                    let Ok(id) = std::str::from_utf8(&data[..ID_LEN]) else {
-                        continue;
-                    };
-                    let Some((tx, _)) = sessions.get(id) else { continue };
-                    // The reader never waits for one session: a local side
-                    // that does not read ends its own session.
-                    let reason = match tx.try_send(data[ID_LEN..].to_vec()) {
-                        Ok(()) => continue,
-                        Err(mpsc::error::TrySendError::Full(_)) => "the local side does not read",
-                        Err(mpsc::error::TrySendError::Closed(_)) => "the session ended",
-                    };
-                    let id = id.to_string();
-                    end_session(&mut sessions, &id);
-                    tracing::info!(%id, reason, "a session is closed");
-                    let end = Out::end(&id, "close", Some(reason));
-                    if gate.pass(&end) {
-                        if let Err(err) = sink.send(end.message).await {
-                            return Ok(NodeEnd::Again(format!("{err}")));
-                        }
-                    }
-                }
-                Some(Ok(Message::Close(frame))) => {
-                    return Ok(match frame {
-                        Some(frame) => node_close(u16::from(frame.code), frame.reason.as_str()),
-                        None => NodeEnd::Again("the relay closed the socket".into()),
-                    });
-                }
-                Some(Ok(_)) => {}
-            },
-            Some(out) = out_rx.recv() => {
-                if !gate.pass(&out) {
-                    continue;
-                }
-                if out.kind == OutKind::End {
-                    end_session(&mut sessions, &out.id);
-                }
-                if let Err(err) = sink.send(out.message).await {
-                    return Ok(NodeEnd::Again(format!("{err}")));
-                }
-            }
-            _ = ping.tick() => {
-                if let Err(err) = sink.send(Message::Ping(Vec::new().into())).await {
-                    return Ok(NodeEnd::Again(format!("{err}")));
-                }
-            }
-        }
-    }
+    let handler = Arc::new(road::LocalHandler {
+        target: target.clone(),
+        timeout: LOCAL_CONNECT,
+        dialer: Arc::new(direct_dialer()),
+    });
+    let trust = pod_ws::Trust::Default;
+    let mut config = road::NodeConfig {
+        pair: inner,
+        label: None,
+        trust: &trust,
+        ctx: relay.ctx(),
+        timeout: TIMEOUT,
+        settings: road::Settings {
+            half_close: Some(HALF_CLOSE_IDLE),
+            ..road::Settings::default()
+        },
+        repair: None,
+        wire: relay.wire(),
+        say: Some(&say),
+    };
+    let exit = road::run(&mut config, handler, tokio::time::sleep(left)).await;
+    let pair = Pair::of(config.pair, url);
+    let name = &name;
+    let (class, why) = match exit {
+        // The only stop is the end of the pair.
+        Exit::Stopped | Exit::PairExpired => (
+            Fault::Config,
+            format!("the pair {name} expired; make a new pair (podnet relay pair)"),
+        ),
+        Exit::PairStopped => (
+            Fault::Config,
+            format!("the relay ended the node {name}: the operator stopped the pair; make a new pair (podnet relay pair)"),
+        ),
+        Exit::Forbidden => (
+            Fault::Config,
+            format!("the relay refused the node token of {name}: the pair is stopped or the token is wrong; make a new pair (podnet relay pair)"),
+        ),
+        Exit::NameInUse => (
+            Fault::Unavailable,
+            format!("another node holds the name {name} at the relay (409)"),
+        ),
+        Exit::Unusable(why) => (
+            Fault::Config,
+            format!("the node {name} cannot connect to the relay: {why}"),
+        ),
+    };
+    (Err(fault(class, anyhow::anyhow!(why))), pair)
 }
 
-/// The operator side: open a session to the node `name`, wait for
-/// `ready`, then copy `input` to the node and the node to `output`.
-/// After the end of the input of `relay connect`, the time with no data from
-/// the target after which the session ends (issue 109).
 /// The ready document of a node (issue 119): the key `name` is the name of
 /// the instance (`detach::ready` sets it), so the pair is `pair`, with its
 /// end.
 pub fn node_ready(pair: &Pair, target: &Target) -> serde_json::Value {
+    ready_document(&pair.name, &pair.relay, pair.expires, &target.to_string())
+}
+
+fn ready_document(name: &str, relay: &str, expires: u64, target: &str) -> serde_json::Value {
     serde_json::json!({
-        "pair": pair.name,
-        "relay": pair.relay,
-        "target": target.to_string(),
-        "expires": pair.expires,
-        "expires_in": pair.left().as_secs(),
+        "pair": name,
+        "relay": relay,
+        "target": target,
+        "expires": expires,
+        "expires_in": left_of(expires).as_secs(),
     })
 }
 
@@ -529,145 +374,66 @@ pub fn instances_of_pair(records: &[crate::instances::Record], name: &str) -> Ve
         .collect()
 }
 
-/// After the end of the input, the session ends when no data came for this
-/// time: the idle time of the relay (podssh #84; before, 5 s lost a slow
-/// answer).
-pub const EOF_IDLE: Duration = Duration::from_secs(15);
-
+/// The operator side: open a session to the node `name`, wait for `ready`,
+/// then copy `input` to the node and the node to `output`. The end of the
+/// input does not close the session (issue 109): it ends when the relay
+/// closes it, or after [`EOF_IDLE`] with no data of the node. A close other
+/// than 1000 is an error (podssh #84): the output can be cut.
 pub async fn connect<R, W>(
     relay: &Relay,
     name: &str,
     token: &str,
-    mut input: R,
-    mut output: W,
+    input: R,
+    output: W,
 ) -> Result<()>
 where
-    R: AsyncRead + Unpin,
-    W: AsyncWrite + Unpin,
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
 {
-    check_name(name)?;
-    let path = format!("/v1/connect/{name}");
-    let ws = match relay.websocket(&path, token, TIMEOUT).await? {
-        Ok(ws) => ws,
-        Err((status @ (401 | 403), _)) => {
-            return Err(fault(
-                Fault::Config,
-                anyhow::anyhow!("the relay refused the connect token for {name} ({status})"),
-            ))
-        }
-        Err((status, body)) => {
-            return Err(fault(
-                Fault::Unavailable,
-                anyhow::anyhow!(
-                    "the relay refused the session to {name}: HTTP {status}: {}",
-                    body.chars().take(200).collect::<String>()
-                ),
-            ))
-        }
+    let trust = pod_ws::Trust::Default;
+    let config = OperatorConfig {
+        relay: relay.primary(),
+        name,
+        connect_token: token,
+        trust: &trust,
+        ctx: relay.ctx(),
+        timeout: TIMEOUT,
+        limits: OperatorLimits {
+            eof_idle: Some(EOF_IDLE),
+            ..OperatorLimits::default()
+        },
+        wire: relay.wire(),
     };
-    let (mut sink, mut stream) = ws.split();
-    // Wait for ready.
-    let ready = async {
-        loop {
-            match stream.next().await {
-                Some(Ok(Message::Text(text))) => {
-                    let doc: serde_json::Value =
-                        serde_json::from_str(text.as_str()).unwrap_or_default();
-                    match doc.get("type").and_then(|v| v.as_str()) {
-                        Some("ready") => return Ok(()),
-                        Some("reject") => {
-                            let reason = doc
-                                .get("reason")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("no reason");
-                            bail!("the node {name} refused the session: {reason}");
-                        }
-                        _ => continue,
-                    }
-                }
-                Some(Ok(Message::Close(frame))) => {
-                    let text = frame
-                        .map(|f| format!("{} {}", u16::from(f.code), f.reason))
-                        .unwrap_or_else(|| "no reason".into());
-                    bail!("the relay closed the session to {name}: {text}");
-                }
-                Some(Ok(_)) => continue,
-                Some(Err(err)) => bail!("the session to {name}: {err}"),
-                None => bail!("the relay closed the session to {name}"),
-            }
-        }
-    };
-    tokio::time::timeout(TIMEOUT, ready)
-        .await
-        .map_err(|_| anyhow::anyhow!("the node {name} did not answer in {} s", TIMEOUT.as_secs()))?
-        .map_err(|err| fault(Fault::Unavailable, err))?;
-    tracing::debug!(%name, "the session is ready");
-    let mut buf = vec![0u8; FRAME];
-    let mut ping = tokio::time::interval(PING_EVERY);
-    ping.tick().await;
-    let mut input_open = true;
-    // Issue 109: the end of the input does not close the session at once
-    // (the protocol has no half-close, and a close lost the answer of the
-    // target). The session ends when the target closes, or after EOF_IDLE
-    // with no data from it.
-    let mut last_data = tokio::time::Instant::now();
-    let ended = loop {
-        tokio::select! {
-            read = input.read(&mut buf), if input_open => match read {
-                Ok(0) | Err(_) => {
-                    input_open = false;
-                    last_data = tokio::time::Instant::now();
-                }
-                Ok(n) => sink.send(Message::binary(buf[..n].to_vec())).await?,
-            },
-            _ = tokio::time::sleep_until(last_data + EOF_IDLE), if !input_open => {
-                let _ = sink.send(Message::Close(None)).await;
-                break Ok(());
-            }
-            message = stream.next() => match message {
-                Some(Ok(Message::Binary(data))) => {
-                    last_data = tokio::time::Instant::now();
-                    if !data.is_empty() {
-                        output.write_all(&data).await?;
-                        output.flush().await?;
-                    }
-                }
-                Some(Ok(Message::Text(text))) => {
-                    let doc: serde_json::Value =
-                        serde_json::from_str(text.as_str()).unwrap_or_default();
-                    if doc.get("type").and_then(|v| v.as_str()) == Some("reject") {
-                        let reason = doc.get("reason").and_then(|v| v.as_str()).unwrap_or("");
-                        bail!("the node {name} ended the session: {reason}");
-                    }
-                }
-                // podssh #84: a close other than 1000 (for example 1009 at the
-                // cap of the relay) or a lost link ends the session with an
-                // error, also after the end of the input: the output can be
-                // cut. Before, it exited 0.
-                Some(Ok(Message::Close(frame))) => {
-                    break match frame {
-                        Some(frame) if u16::from(frame.code) != 1000 => Err(anyhow::anyhow!(
-                            "the session to {name} ended: {} {}{}",
-                            u16::from(frame.code),
-                            frame.reason,
-                            close_hint(u16::from(frame.code))
-                        )),
-                        _ => Ok(()),
-                    };
-                }
-                Some(Ok(_)) => {}
-                Some(Err(err)) => {
-                    break Err(anyhow::anyhow!("the session to {name} was lost: {err}"))
-                }
-                None => break Err(anyhow::anyhow!("the session to {name} was lost (no close)")),
-            },
-            _ = ping.tick() => {
-                sink.send(Message::Ping(Vec::new().into())).await?;
-            }
-        }
-    };
-    let _ = output.flush().await;
-    ended.map_err(|err| fault(Fault::Unavailable, err))
+    let unavailable = |why: String| Err(fault(Fault::Unavailable, anyhow::anyhow!(why)));
+    match road::operator::run(&config, tokio::io::join(input, output)).await {
+        Ok(outcome) if outcome.is_success() => Ok(()),
+        Ok(Outcome::NeverReady { code, reason }) => match (reason.is_empty(), code) {
+            (false, _) => unavailable(format!("the node {name} refused the session: {reason}")),
+            (true, Some(code)) => unavailable(format!(
+                "the relay closed the session to {name}: {code}{}",
+                close_hint(code)
+            )),
+            (true, None) => unavailable(format!("the relay closed the session to {name}")),
+        },
+        Ok(Outcome::Ended { code, reason }) => unavailable(format!(
+            "the session to {name} ended: {code} {reason}{}",
+            close_hint(code)
+        )),
+        Ok(Outcome::LocalEnd) => Ok(()),
+        Err(ConnectError::Config(why)) => Err(fault(Fault::Usage, anyhow::anyhow!(why))),
+        Err(ConnectError::Refused {
+            status: status @ (401 | 403),
+            ..
+        }) => Err(fault(
+            Fault::Config,
+            anyhow::anyhow!("the relay refused the connect token for {name} ({status})"),
+        )),
+        Err(ConnectError::Refused { status, body }) => unavailable(format!(
+            "the relay refused the session to {name}: HTTP {status}: {}",
+            body.chars().take(200).collect::<String>()
+        )),
+        Err(err) => unavailable(format!("the session to {name}: {err}")),
+    }
 }
 
 /// What a close code of the relay means, for the error line.
@@ -723,45 +489,19 @@ mod tests {
     // Issue 119: the ready document names the pair and its end.
     #[test]
     fn the_node_ready_document_names_the_pair() {
-        let pair = Pair {
-            name: "ssh-box".into(),
-            node_token: "n".into(),
-            connect_token: "c".into(),
-            stop_token: String::new(),
-            expires: (SystemTime::now() + Duration::from_secs(600))
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64,
-            relay: "https://relay.example".into(),
-        };
+        let dir = tempfile::tempdir().unwrap();
+        let expires = (SystemTime::now() + Duration::from_secs(600))
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        let pair = pairfile::tests::written(dir.path(), "ssh-box", expires);
+        assert_eq!(pair.relay, "https://relay.example");
         let doc = node_ready(&pair, &Target::parse("127.0.0.1:22").unwrap());
         assert_eq!(doc["pair"], "ssh-box");
         assert!(doc.get("name").is_none());
         assert_eq!(doc["expires"], pair.expires);
+        assert_eq!(doc["target"], "127.0.0.1:22");
         assert!(doc["expires_in"].as_u64().unwrap() > 590);
-    }
-
-    #[test]
-    fn targets_and_names() {
-        assert!(
-            matches!(Target::parse("127.0.0.1:22").unwrap(), Target::Tcp(a) if a == "127.0.0.1:22")
-        );
-        assert!(
-            matches!(Target::parse("tcp://localhost:5432").unwrap(), Target::Tcp(a) if a == "localhost:5432")
-        );
-        assert!(
-            matches!(Target::parse("unix:///run/x.sock").unwrap(), Target::Unix(p) if p == Path::new("/run/x.sock"))
-        );
-        for bad in ["22", "host:", "host:x", "unix:", ":22"] {
-            assert!(Target::parse(bad).is_err(), "{bad}");
-        }
-        assert!(check_name("0123abcd").is_ok());
-        for bad in ["", "../x", "a/b", "a b"] {
-            assert!(check_name(bad).is_err(), "{bad:?}");
-        }
-        assert!(valid_id("0123456789abcdef0123456789abcdef"));
-        assert!(!valid_id("0123456789ABCDEF0123456789abcdef"));
-        assert!(!valid_id("0123"));
     }
 
     #[test]
@@ -778,7 +518,8 @@ mod tests {
         assert_eq!(band(Duration::from_secs(7 * 3600)), Some(0));
         assert_eq!(band(Duration::from_secs(6 * 3600)), Some(1));
         assert_eq!(band(Duration::from_secs(59 * 60)), Some(2));
-        let pair = test_pair("abc", 0);
+        let dir = tempfile::tempdir().unwrap();
+        let pair = pairfile::tests::written(dir.path(), "abc", 0);
         let line = expiry_line(&pair, Duration::from_secs(3600), true);
         assert!(
             line.contains("the pair abc expires in 1 h, at 1970-01-01 00:00 UTC"),
@@ -787,105 +528,5 @@ mod tests {
         assert!(line.contains("takes it at the expiry"), "{line}");
         let line = expiry_line(&pair, Duration::from_secs(3600), false);
         assert!(line.contains("a new start of the node"), "{line}");
-    }
-
-    #[test]
-    fn the_next_pair_expires_later_and_has_time_left() {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
-        let ending = test_pair("old", now + 1000);
-        let later = test_pair("new", now + 3_600_000);
-        assert_eq!(next_pair(Some(later.clone()), &ending).unwrap().name, "new");
-        assert!(
-            next_pair(Some(ending.clone()), &ending).is_none(),
-            "the same pair"
-        );
-        assert!(
-            next_pair(Some(test_pair("gone", 1)), &test_pair("x", 0)).is_none(),
-            "expired"
-        );
-        assert!(next_pair(None, &ending).is_none());
-    }
-
-    fn test_pair(name: &str, expires: u64) -> Pair {
-        Pair {
-            name: name.into(),
-            node_token: "n".into(),
-            connect_token: "c".into(),
-            stop_token: String::new(),
-            expires,
-            relay: "https://relay.example".into(),
-        }
-    }
-
-    /// No frame goes before `ready` or after a `close`, and each session
-    /// has one end.
-    #[test]
-    fn the_gate_passes_frames_in_the_correct_state() {
-        let id = "0123456789abcdef0123456789abcdef";
-        let mut gate = Gate::default();
-        assert!(!gate.pass(&Out::data(id, vec![1])), "no data before open");
-        assert!(!gate.pass(&Out::ready(id)), "no ready before open");
-        assert!(gate.opened(id));
-        assert!(!gate.opened(id), "an open id is not opened again");
-        assert!(!gate.pass(&Out::data(id, vec![1])), "no data before ready");
-        assert!(gate.pass(&Out::ready(id)));
-        assert!(gate.pass(&Out::data(id, vec![1])));
-        assert!(gate.pass(&Out::end(id, "close", None)));
-        assert!(!gate.pass(&Out::data(id, vec![1])), "no data after close");
-        assert!(!gate.pass(&Out::end(id, "close", None)), "one close only");
-
-        // A close of the relay: the queued frames and the close of the
-        // session task do not go.
-        assert!(gate.opened(id));
-        assert!(gate.pass(&Out::ready(id)));
-        gate.closed_by_relay(id);
-        assert!(!gate.pass(&Out::data(id, vec![1])));
-        assert!(!gate.pass(&Out::end(id, "close", None)));
-
-        // A reject before ready.
-        assert!(gate.opened(id));
-        assert!(gate.pass(&Out::end(id, "reject", Some("refused"))));
-        assert!(!gate.pass(&Out::ready(id)));
-    }
-
-    #[test]
-    fn close_codes() {
-        assert!(matches!(
-            node_close(1001, "operator stopped reverse relay"),
-            NodeEnd::Stop(_)
-        ));
-        assert!(matches!(node_close(1001, "pair expired"), NodeEnd::Stop(_)));
-        assert!(matches!(
-            node_close(1011, "socket error"),
-            NodeEnd::Again(_)
-        ));
-        assert!(matches!(
-            node_close(1003, "unknown session id"),
-            NodeEnd::Again(_)
-        ));
-    }
-
-    #[test]
-    fn a_pair_file_is_private_and_the_newest_is_chosen() {
-        use std::os::unix::fs::PermissionsExt as _;
-        let dir = tempfile::tempdir().unwrap();
-        let pair = |name: &str, expires| Pair {
-            name: name.into(),
-            node_token: "n".into(),
-            connect_token: "c".into(),
-            stop_token: "s".into(),
-            expires,
-            relay: "https://relay.example".into(),
-        };
-        let path = save(&pair("old", 1), dir.path()).unwrap();
-        save(&pair("new", 2), dir.path()).unwrap();
-        let mode = std::fs::metadata(&path).unwrap().permissions().mode();
-        assert_eq!(mode & 0o777, 0o600);
-        assert_eq!(load(dir.path(), None).unwrap().name, "new");
-        assert_eq!(load(dir.path(), Some("old")).unwrap().name, "old");
-        assert!(!format!("{:?}", pair("x", 1)).contains("\"n\""));
     }
 }

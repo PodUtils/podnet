@@ -1051,7 +1051,7 @@ The rules of the issue that apply to this row:
 
 - The overlay and the relay exist. Candidate exchange and traversal do not.
 - STUN hosts are data of `pod-services` (`PodUtils/podcrates:crates/pod-services/services/google-stun.toml`). Add no hardcoded host (`docs/decisions.md`, Services crate).
-- The relay client is `src/ws_relay.rs` and `src/relay_pool.rs`. They are frozen and go to `pod-relay` (T-049, T-161, T-162).
+- The relay client is glue over `pod-relay` (`src/ws_relay.rs`; T-049, taken at podcrates v0.30.0).
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 
 ## Approach

@@ -10646,18 +10646,21 @@ podnet relay stop NAME
 ```
 
 * `podnet relay pair` asks the relay for a pair (`POST /v1/pair`). A pair lasts
-  at most 72 h. The file is `relay/NAME.json` in the state directory, with
-  mode 0600. `--json` prints the name, the connect token and the end time.
+  at most 72 h. The file is `relay/pair-NAME.json` in the state directory,
+  with mode 0600. `--json` prints the name, the connect token and the end
+  time.
 * `podnet relay node [NAME] --to TARGET` takes the pair with the most time left
   when no name is given. `TARGET` is `host:port` or `unix:/path`. The node
   answers each `open` with `ready` after its local connection is ready, or
-  with `reject` and the cause. A lost node socket is opened again after 1 s
-  to 30 s, with jitter. The node warns 24 h, 6 h and 1 h before the pair
+  with `reject` and the cause. A lost node socket is opened again at once
+  after a socket that served, else after a backoff with jitter (`pod-relay`
+  of PodUtils/podcrates). The node warns 24 h, 6 h and 1 h before the pair
   expires. A node with no pair name takes the next stored pair at the
   expiry (a pair that `podnet relay pair` made since), with no new start. Its
   operators need the name and the connect token of the next pair. When the
   relay ends the pair (it expired with no next pair, or `podnet relay stop`
-  ran), the node exits 78 and is not started again.
+  ran), or refuses the node token, the node exits 78 and is not started
+  again. When another node holds the name for 30 s, the node exits 69.
 * `podnet relay connect NAME` waits for `ready`, then copies stdin and stdout.
   A refused session exits 69 with the cause from the node. A refused token
   exits 78. After the end of stdin, the session ends when the node closes,
@@ -11604,18 +11607,18 @@ that names the ALLOW list is a policy refusal: a new token does not help.
 A minted token is kept in `relay-token-HOST.json` (mode 0600) in the state
 directory, so the next process does not mint again.
 
-The hosts: `--relay` (or `PODNET_RELAY`) takes one URL or a comma list. Each
-host of a list must be under the parent domain of the first host (one
-deployment), because the token goes to each host. For one host, the
-alternates are the first 3 hosts of its pool (`MAX_ALTERNATES` in
-`src/relay_pool.rs`): the `pool[].host` names of
+The hosts: `--relay` (or `PODNET_RELAY`) takes one URL or a comma list.
+`pod-relay` of PodUtils/podcrates keeps the hosts, the tokens and the pool
+(`src/ws_relay.rs` is the glue). Each deployment of a list gets its own
+token. The default relay takes the first 3 hosts of its pool as alternates
+(`MAX_ALTERNATES` of `pod-relay`): the `pool[].host` names of
 `/relays.json`, read after a mint and kept for 7 days in
 `relay-pool-HOST.json`. Until a pool is cached, the default relay uses the
 first 3 hosts of its seed. The seed holds 6 hosts in different regions
-(`src/relay_pool.rs`). A connect tries the
+(`pod-services`). Another relay host has no alternates. A connect tries the
 first host, then the next host after 2 s, or at once after a failure. A
 refused fixed token or a policy refusal stops the hosts that did not start:
-they are of the same deployment. On 2026-11-04 each of the 37 hosts of the
+another host gives the same answer. On 2026-11-04 each of the 37 hosts of the
 pool reached `198.41.192.167:7844` (`/trace?target=`, road `vpc`).
 
 Limits of `tcp.ssh.relay.ajam.dev` (podssh measured them; the relay sets

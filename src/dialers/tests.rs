@@ -242,7 +242,7 @@ async fn dialer_relay_carries_tcp_to_an_address_and_to_a_name() {
     crate::test_host::need_loopback!();
     let echo = echo_server().await;
     let url = fake_relay().await;
-    let relay = Arc::new(Relay::new(&url, Some("good".into())).unwrap());
+    let relay = Arc::new(Relay::new(&url, Some("testonly-good-token".into())).unwrap());
     let table = Table(vec![
         ("echo.test", IpAddr::V6(Ipv6Addr::LOCALHOST)),
         ("echo.test", IpAddr::V4(Ipv4Addr::LOCALHOST)),

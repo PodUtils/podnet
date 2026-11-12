@@ -66,9 +66,11 @@ with `--relay` or `PODNET_RELAY`.
   bytes of each session as they are. There is no encryption from end to
   end in podnet. Use a protocol with its own encryption through it (SSH,
   TLS).
-* The token goes only to the hosts of one deployment: the hosts under the
-  parent domain of the first host (`src/relay_pool.rs`). A fixed token
-  (`PODNET_RELAY_TOKEN`) goes to each host of the list.
+* A minted token goes only to the hosts of its deployment: the hosts
+  under the parent domain of the first host (`pod-relay` of
+  PodUtils/podcrates, its `token::token_key`). Each deployment of a list
+  gets its own token. A fixed token (`PODNET_RELAY_TOKEN`) goes to each
+  host of the list.
 * The relay can end a session at any time. It ends each session at 64 MiB
   or after 12 h. podnet replaces an edge connection before that (60 MiB,
   11 h 30 min).
@@ -102,8 +104,8 @@ defaults in this table against `podnet man --json`.
 | Named-tunnel token and secret | In memory only. Give it in `TUNNEL_TOKEN`, a file (`--token-file`, `TUNNEL_TOKEN_FILE`), a config file or a cloudflared credentials file. `--token` also works, but other users of the host can read a command line. |
 | WARP device token, MASQUE private key, WARP+ license | The identity file (`podnet man files`), mode 0600, in a directory with mode 0700. podnet writes it to a new file and then renames it. podnet refuses an identity file that belongs to another user, or that the group or other users can read. |
 | Proxy user and password | In the proxy variables or `-x`. |
-| Relay token | `PODNET_RELAY_TOKEN`, or a minted token in `relay-token-HOST.json` (mode 0600) in the state directory. podnet does not use a cache file that is a link, of another user, readable by others or over 64 KiB. |
-| Relay pair (node, connect and stop tokens) | `relay/NAME.json` in the state directory, mode 0600. |
+| Relay token | `PODNET_RELAY_TOKEN`, or a minted token in `relay-token-HOST.json` (mode 0600) in the state directory, in the form of `pod-relay`. podnet does not use a cache file that is a link, of another user, readable by others or over 64 KiB. |
+| Relay pair (node, connect and stop tokens) | `relay/pair-NAME.json` in the state directory, mode 0600, in a directory of mode 0700. |
 
 These rules apply to each secret:
 

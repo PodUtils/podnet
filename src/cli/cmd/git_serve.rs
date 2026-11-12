@@ -404,7 +404,7 @@ async fn serve_relay(
     let pairs = reverse::pairs_dir()?;
     let follow = args.pair.is_none().then_some(pairs.as_path());
     let pair = reverse::load(&pairs, args.pair.as_deref())?;
-    podnet::report::hide(&pair.node_token);
+    podnet::report::hide(pair.node_token());
     podnet::ws_relay::Relay::single(&pair.relay, None).fault(Fault::Config)?;
     let socket = podnet::instances::run_dir()?.join(format!(
         "git-ssh-{}.sock",

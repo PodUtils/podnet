@@ -290,7 +290,7 @@ of each crate. `tools/ts-sshd.sh`, the documents and the record name the new pat
 **Milestone:** M3
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -299,14 +299,14 @@ The relay client and the reverse road (about 2,400 lines) are in the root crate.
 ## Premise
 
 - The crate takes the client of `src/ws_relay.rs` (`Relay`, `Host`, the mint, the token cache,
-  `RelayBudget`, `websocket_at`), `src/relay_pool.rs` and `src/relay_reverse.rs`.
+  `RelayBudget`, `websocket_at`), src/relay_pool.rs and `src/relay_reverse.rs`.
 - The HTTP/2 leg through the relay stays for the Cloudflare crate (T-052).
 - `tests/relay_reverse.rs` calls the library of the reverse road.
 
 ## Approach
 
 1. Take `pod-relay` of PodUtils/podcrates (a git tag) in place of the relay modules. Remove
-   `src/ws_relay.rs`, `src/relay_pool.rs` and `src/relay_reverse.rs` from podnet when the crate has
+   `src/ws_relay.rs`, src/relay_pool.rs and `src/relay_reverse.rs` from podnet when the crate has
    their code.
 2. Leave the HTTP/2 leg of `src/ws_relay.rs` in the root crate until T-052.
 
@@ -334,6 +334,21 @@ The crate of this entry has a release in `PodUtils/podcrates`, with its hand-off
 
 2026-11-05, The work goes to `pod-relay` in PodUtils/podcrates. podnet only takes the crate (T-137). Do not do it in podnet. The Approach names the take. A fix of the relay
 code before the take goes to the podcrates session too (`docs/decisions.md`, Who edits a shared crate).
+
+## Done
+
+2026-11-12, the take of podcrates v0.30.0 with `adoption/podnet/pod-relay.patch` (trial at 98d8a71: `adoption.yml`
+43191076065, 22 steps). `src/ws_relay.rs` (353 lines, was 994) is glue over `pod-relay` with one `Context` of the
+process; `ws_relay::{set, active}` stay. the pool and the session files of the old client are gone;
+`src/relay_reverse.rs` (532 lines, was 891) runs over `pair::{create, stop}`, `reverse::run` and `operator::run`.
+`pod-relay` has the features `pair` and `plain-ws`. Changes for a user: a node whose name another node holds exits 69
+after 30 s; a Close 1008 with "token" does not stop a node (a 401 or 403 of its upgrade does); a pair file is
+`relay/pair-NAME.json` and an old `relay/NAME.json` is not read; a bad pair name of `relay connect` exits 64. The
+steps of `pod-relay.run` that ran here passed: the record, size, layers, build, `cargo deny check bans sources`, the
+features in the tree, the files and the items gone, clippy, the tests, the fuzz check, rustfmt; `cargo test
+--workspace --no-fail-fast`: 0 failed. Not run here: `check-consumer-toolchains.py` and the zig build (CI builds
+the static binaries).
+
 
 # T-050: Move the WARP adapter to the shared crate `pod-warp` in `PodUtils/podcrates`
 
@@ -780,6 +795,8 @@ Done so far:
   DNS, the UDP flows and the device of the wire. The crate fixes four defects of the router of T-249 (a SYN past
   the budget, the late dial to the gateway, a second accept of a tuple, stale cites). `cargo test --workspace
   --no-fail-fast`: 0 failed; the netns tests as root: 0 failed.
+- `pod-relay` v0.30.0 (PodUtils/podcrates#89; hand-off `adoption/podnet/pod-relay.patch`, trial at 98d8a71): each `pod-*`
+  dependency names `tag = "v0.30.0"`. The relay client is glue over `pod-relay` (T-049).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
@@ -1020,10 +1037,12 @@ are never used). A node whose primary host stops answering retries that host for
 
 ## Premise
 
-- `src/ws_relay.rs:561-568` (`websocket`, `hosts[0]`), `:572-592` (`post_json`, `self.url()`), `:326-328` (`url()`),
-  `:428-497` (`connect`), `:254-264` (`new` adds up to 3 alternates), `:275-284` (`single`).
-- `src/relay_reverse.rs:341` (`run_node` builds `Relay::single`), `:215-257` (reconnect loop).
-- `src/cli/cmd/relay.rs:82`, `:129` (validation only), `:246`.
+- `src/ws_relay.rs` lines 561-568 at `98d8a71` (`websocket`, `hosts[0]`), lines 572-592 at `98d8a71` (`post_json`,
+  `self.url()`), lines 326-328 at `98d8a71` (`url()`), lines 428-497 at `98d8a71` (`connect`), lines 254-264 at
+  `98d8a71` (`new` adds up to 3 alternates), lines 275-284 at `98d8a71` (`single`).
+- `src/relay_reverse.rs` line 341 at `98d8a71` (`run_node` builds `Relay::single`), lines 215-257 at `98d8a71`
+  (reconnect loop).
+- `src/cli/cmd/relay.rs:82`, `:131` (validation only), `:248`.
 - Not measured: whether the relay accepts a node socket for a pair on every host of the deployment.
   `docs/protocol.md:209-215` measures the forward road only.
 

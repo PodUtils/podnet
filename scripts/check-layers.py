@@ -51,7 +51,7 @@ LAYER = {
     "fetch": "core", "udp": "core", "connect": "core", "detach": "core",
     "instances": "core", "autostart": "core",
     "vnet": "vnet",
-    "ws_relay": "relay", "relay_pool": "relay", "relay_reverse": "relay",
+    "ws_relay": "relay", "relay_reverse": "relay",
     "dialers": "relay",
     "warp": "warp",
     "share": "serve", "gate": "serve", "service": "serve", "ingress": "serve",

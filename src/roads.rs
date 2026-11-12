@@ -150,7 +150,7 @@ impl Road for Relay {
         Box::pin(async move {
             let pairs = reverse::pairs_dir()?;
             let pair = reverse::load(&pairs, self.pair.as_deref())?;
-            crate::report::hide(&pair.node_token);
+            crate::report::hide(pair.node_token());
             crate::ws_relay::Relay::single(&pair.relay, None)?;
             let (path, server) = private_socket(&socket_dir()?, "road-relay", service)?;
             let ready =

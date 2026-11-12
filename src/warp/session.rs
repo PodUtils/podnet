@@ -410,7 +410,7 @@ impl MasqueSession {
                             relay.url()
                         )
                     })?;
-                let (io, spent) = crate::ws_relay::RelayBudget::meter(io);
+                let (io, spent) = crate::ws_relay::meter(io);
                 budget = Some(spent);
                 io
             }

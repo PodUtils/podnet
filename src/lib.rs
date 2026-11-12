@@ -86,7 +86,6 @@ pub mod networks;
 pub mod preflight;
 pub mod proxy;
 pub mod quicktunnel;
-pub mod relay_pool;
 pub mod relay_reverse;
 pub mod report;
 pub mod resolve;

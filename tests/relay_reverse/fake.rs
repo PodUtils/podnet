@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use crate::NAME;
+use crate::{CONNECT_TOKEN, NAME, NODE_TOKEN};
 
 use futures::{SinkExt as _, StreamExt as _};
 use tokio::sync::mpsc;
@@ -26,7 +26,8 @@ pub(crate) struct State {
 }
 
 /// A relay on loopback with the reverse protocol of tcp.ssh.relay.ajam.dev:
-/// `/v1/node/NAME` (token "node") and `/v1/connect/NAME` (token "connect").
+/// `/v1/node/NAME` (token NODE_TOKEN) and `/v1/connect/NAME` (token
+/// CONNECT_TOKEN).
 pub(crate) async fn fake_relay(drop_first_after: Option<u64>) -> (String, Arc<Mutex<State>>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
@@ -59,8 +60,8 @@ async fn serve(socket: tokio::net::TcpStream, state: Arc<Mutex<State>>, id: Stri
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
         let path = request.uri().path().to_string();
-        let good = (path.starts_with("/v1/node/") && token == "node")
-            || (path == format!("/v1/connect/{NAME}") && token == "connect");
+        let good = (path.starts_with("/v1/node/") && token == NODE_TOKEN)
+            || (path == format!("/v1/connect/{NAME}") && token == CONNECT_TOKEN);
         *seen.lock().unwrap() = path;
         if good {
             Ok(response)
@@ -115,7 +116,9 @@ async fn serve(socket: tokio::net::TcpStream, state: Arc<Mutex<State>>, id: Stri
                     let Some(operator) = operator else { continue };
                     match doc["type"].as_str() {
                         Some("ready") => {
-                            let _ = operator.send(Message::text(r#"{"type":"ready"}"#));
+                            // The relay gives the operator the ready of the node
+                            // with its id, as `pod-relay` reads it.
+                            let _ = operator.send(Message::text(text.to_string()));
                         }
                         Some("reject") => {
                             let _ = operator.send(Message::text(text.to_string()));

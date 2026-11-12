@@ -78,7 +78,7 @@ cargo test --test relay_reverse -- a_node_serves_an_in_process_handler
 ## Blocker
 
 The session of `PodUtils/podcrates` (the crate `pod-relay`). The relay node (`Target`, `node`, `session`) is in
-`src/relay_reverse.rs` and `src/relay_reverse/session.rs`. These files go to `pod-relay` and take fixes only
+`src/relay_reverse.rs` and src/relay_reverse/session.rs. These files go to `pod-relay` and take fixes only
 (`docs/decisions.md`, 2026-11-06, Order). A handler target is a new variant of `Target`: a feature of that code.
 No part of the entry lands in the crates of podnet: the users of the handler (T-091, T-094, T-104) do not exist.
 The entry is unblocked when podnet takes `pod-relay` (T-049, through T-137). Then add the target to `pod-relay`

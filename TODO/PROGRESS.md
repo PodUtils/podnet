@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 313 entries: 73 open, 14 partial, 29 blocked, 197 done.
+`TODO/INDEX.md` holds 313 entries: 72 open, 14 partial, 29 blocked, 198 done.
 
 ## State
 
@@ -43,9 +43,9 @@ not wait for a larger one.
    - the donor review (GitHub #429 to #434): done, except #433 and #435: T-242 is partial (its WARP half waits for the take of `pod-warp`), and T-244 is blocked on `pod-cloudflare`.
 4. **M2, the splits:** T-035, T-036, T-039 (moved files: podcrates); T-043 and T-044 (blocked:
    the rows left go with the takes, T-137); T-045.
-5. **M3, the crates:** T-053, then the prerelease T-054. T-049, T-050
-   and T-052 are the takes of `pod-relay`, `pod-warp` and `pod-cloudflare` of `PodUtils/podcrates`
-   (T-137): do not do them in podnet.
+5. **M3, the crates:** T-053, then the prerelease T-054. T-050 and T-052 are the takes of `pod-warp`
+   and `pod-cloudflare` of `PodUtils/podcrates` (T-137): do not do them in podnet. The take of
+   `pod-relay` is done (v0.30.0).
 6. **M4, the adapters:** T-057, T-061 (partial: only the WARP door is left, it waits for the take of `pod-warp`, T-050).
 7. **M6, the services:** the shared parts T-083, T-086 (a take of
    `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
@@ -68,7 +68,7 @@ not wait for a larger one.
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161, T-162, T-163,
     T-200 (`pod-relay`), T-244 (`pod-cloudflare`); and the link entries T-261, T-263, T-298, T-294, T-295, T-284.
-12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-261 to T-311 in `TODO/link.md`, in the order of the entries (E0 first). Start with T-262 (the session) and the two carriers that run on a restricted host, T-274 and T-275. Then T-264, T-265, T-266 and T-267 (E0), the stream carriers (T-268 to T-275), the ARQ and the datagram carriers (T-276 to T-280), the record layer (T-298 to T-301), the mesh (T-285 to T-290), the services (T-291 to T-297), the rest of E3 and E7 to E10. The features entry T-311 goes before each optional carrier. Blocked: T-261 and T-263 (the takes of `pod-identity` and `pod-session`, T-086), T-298 (`pod-e2e`, T-086), T-294 and T-295 (`pod-egress`, T-127), T-284 (`pod-relay`, T-049), T-305 (the owner: Linux only, 2026-11-12), T-262 (the take of `pod-link`, podcrates T-300; PodUtils/podcrates#88: each podcrates entry starts when its podnet entry starts, by a COORD issue). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
+12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-261 to T-311 in `TODO/link.md`, in the order of the entries (E0 first). Start with T-262 (the session) and the two carriers that run on a restricted host, T-274 and T-275. Then T-264, T-265, T-266 and T-267 (E0), the stream carriers (T-268 to T-275), the ARQ and the datagram carriers (T-276 to T-280), the record layer (T-298 to T-301), the mesh (T-285 to T-290), the services (T-291 to T-297), the rest of E3 and E7 to E10. The features entry T-311 goes before each optional carrier. Blocked: T-261 and T-263 (the takes of `pod-identity` and `pod-session`, T-086), T-298 (`pod-e2e`, T-086), T-294 and T-295 (`pod-egress`, T-127), T-284 (`pod-relay`, the answer to A5 is in its Correction), T-305 (the owner: Linux only, 2026-11-12), T-262 (the take of `pod-link`, podcrates T-300; PodUtils/podcrates#88: each podcrates entry starts when its podnet entry starts, by a COORD issue). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).

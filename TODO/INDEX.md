@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**313 entries: 73 open, 14 partial, 29 blocked, 197 done.**
+**313 entries: 72 open, 14 partial, 29 blocked, 198 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 20 | 6 | 13 | 120 | 159 |
+| P2 | 19 | 6 | 13 | 121 | 159 |
 | P3 | 53 | 7 | 14 | 51 | 125 |
-| **All** | 73 | 14 | 29 | 197 | 313 |
+| **All** | 72 | 14 | 29 | 198 | 313 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -94,7 +94,7 @@ M8 Overlays, M9 Later.
 | [T-046](crates.md) | P2 | M | M3 | chore | done | Prepare the workspace for more crates: the print macros, the build facts, the scans, the package list and the test helpers |
 | [T-047](crates.md) | P2 | L | M3 | chore | done | Extract the crate `podnet-core` |
 | [T-048](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-vnet`, with the C sources of the shims |
-| [T-049](crates.md) | P2 | S | M3 | chore | open | The relay client of podnet becomes the shared crate `pod-relay` |
+| [T-049](crates.md) | P2 | S | M3 | chore | done | The relay client of podnet becomes the shared crate `pod-relay` |
 | [T-050](crates.md) | P2 | M | M3 | chore | open | Move the WARP adapter to the shared crate `pod-warp` in `PodUtils/podcrates` |
 | [T-051](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-serve`, with the library-only modules |
 | [T-052](crates.md) | P2 | M | M3 | chore | open | Move the Cloudflare adapter to the shared crate `pod-cloudflare` in `PodUtils/podcrates` |

@@ -29,7 +29,7 @@ pub(super) async fn serve_relay(
     // With no pair name, the node takes the next stored pair at the expiry.
     let follow = name.is_none().then_some(pairs.as_path());
     let pair = reverse::load(&pairs, name)?;
-    podnet::report::hide(&pair.node_token);
+    podnet::report::hide(pair.node_token());
     podnet::ws_relay::Relay::single(&pair.relay, None).fault(Fault::Config)?;
     let socket = podnet::instances::run_dir()?.join(format!(
         "serve-{}.sock",

@@ -84,8 +84,8 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
     match args.command {
         RelayCommand::Pair { json } => {
             let pair = reverse::pair(&relay).await.fault(Fault::Unavailable)?;
-            podnet::report::hide(&pair.node_token);
-            podnet::report::hide(&pair.stop_token);
+            podnet::report::hide(pair.node_token());
+            podnet::report::hide(pair.stop_token());
             let path = reverse::save(&pair, &dir)?;
             let left = pair.left().as_secs();
             if json {
@@ -93,7 +93,7 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                     "{}",
                     serde_json::json!({
                         "name": pair.name,
-                        "connect_token": pair.connect_token,
+                        "connect_token": pair.connect_token(),
                         "expires": pair.expires,
                         "relay": pair.relay,
                         "file": path,
@@ -103,7 +103,7 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                 println!("name        {}", pair.name);
                 println!("expires     in {} h {} min", left / 3600, left % 3600 / 60);
                 println!("file        {} (node token, mode 0600)", path.display());
-                println!("connect     {}", pair.connect_token);
+                println!("connect     {}", pair.connect_token());
                 println!();
                 println!(
                     "On this host: podnet relay node {} --to 127.0.0.1:22 --detach",
@@ -120,12 +120,14 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             Ok(())
         }
         RelayCommand::Node { pair, to, .. } => {
-            let target = reverse::Target::parse(&to).fault(Fault::Usage)?;
+            let target = reverse::Target::parse(&to)
+                .map_err(|e| anyhow::anyhow!("--to {e}"))
+                .fault(Fault::Usage)?;
             // With no pair name, the node takes the next stored pair at
             // the expiry.
             let follow = pair.is_none().then_some(dir.as_path());
             let pair = reverse::load(&dir, pair.as_deref())?;
-            podnet::report::hide(&pair.node_token);
+            podnet::report::hide(pair.node_token());
             podnet::ws_relay::Relay::single(&pair.relay, None).fault(Fault::Config)?;
             tokio::select! {
                 result = reverse::run_node(follow, pair, &target) => result,
@@ -146,7 +148,7 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                         .context("no --token and no local pair file")?;
                     let relay =
                         podnet::ws_relay::Relay::new(&pair.relay, None).fault(Fault::Config)?;
-                    (pair.connect_token, relay)
+                    (pair.connect_token().to_string(), relay)
                 }
             };
             podnet::report::hide(&token);
@@ -232,8 +234,8 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             let pair = reverse::load(&dir, Some(&name))?;
             // Check the pair before the first local stop: a stop that the
             // relay cannot get must not leave a node that is stopped.
-            let relay = podnet::ws_relay::Relay::new(&pair.relay, None).fault(Fault::Config)?;
-            if pair.stop_token.is_empty() {
+            podnet::ws_relay::Relay::single(&pair.relay, None).fault(Fault::Config)?;
+            if pair.stop_token().is_empty() {
                 return Err(anyhow::anyhow!("the pair {name} has no stop token"))
                     .fault(Fault::Unavailable);
             }
@@ -250,8 +252,8 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                     println!("podnet: relay    stopped the node instance {instance}");
                 }
             }
-            let file = dir.join(format!("{name}.json"));
-            reverse::stop(&relay, &pair)
+            let file = reverse::file_of(&dir, &name)?;
+            reverse::stop(&pair)
                 .await
                 .with_context(|| {
                     format!(
@@ -261,7 +263,7 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                     )
                 })
                 .fault(Fault::Unavailable)?;
-            let _ = std::fs::remove_file(&file);
+            let _ = reverse::remove(&dir, &name);
             println!("podnet: relay    {name} stopped");
             Ok(())
         }

@@ -24,18 +24,21 @@ podnet relay stop NAME
 ```
 
 * `podnet relay pair` asks the relay for a pair (`POST /v1/pair`). A pair lasts
-  at most 72 h. The file is `relay/NAME.json` in the state directory, with
-  mode 0600. `--json` prints the name, the connect token and the end time.
+  at most 72 h. The file is `relay/pair-NAME.json` in the state directory,
+  with mode 0600. `--json` prints the name, the connect token and the end
+  time.
 * `podnet relay node [NAME] --to TARGET` takes the pair with the most time left
   when no name is given. `TARGET` is `host:port` or `unix:/path`. The node
   answers each `open` with `ready` after its local connection is ready, or
-  with `reject` and the cause. A lost node socket is opened again after 1 s
-  to 30 s, with jitter. The node warns 24 h, 6 h and 1 h before the pair
+  with `reject` and the cause. A lost node socket is opened again at once
+  after a socket that served, else after a backoff with jitter (`pod-relay`
+  of PodUtils/podcrates). The node warns 24 h, 6 h and 1 h before the pair
   expires. A node with no pair name takes the next stored pair at the
   expiry (a pair that `podnet relay pair` made since), with no new start. Its
   operators need the name and the connect token of the next pair. When the
   relay ends the pair (it expired with no next pair, or `podnet relay stop`
-  ran), the node exits 78 and is not started again.
+  ran), or refuses the node token, the node exits 78 and is not started
+  again. When another node holds the name for 30 s, the node exits 69.
 * `podnet relay connect NAME` waits for `ready`, then copies stdin and stdout.
   A refused session exits 69 with the cause from the node. A refused token
   exits 78. After the end of stdin, the session ends when the node closes,
