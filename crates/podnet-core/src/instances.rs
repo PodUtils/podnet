@@ -186,8 +186,15 @@ pub fn write(dir: &Path, record: &Record) -> Result<()> {
     std::fs::rename(&tmp, &path).with_context(|| format!("writing {}", path.display()))
 }
 
-/// The variables that hold a secret of an instance.
-pub const SECRET_VARIABLES: &[&str] = &["TUNNEL_TOKEN", "PODNET_PROXY", CONNECT_TOKEN_VARIABLE];
+/// The variables that hold a secret of podnet. This is the one list: the
+/// record of an instance keeps them out of its files, and the program of
+/// `PODNET_ERROR_PROGRAM` does not get them.
+pub const SECRET_VARIABLES: &[&str] = &[
+    "TUNNEL_TOKEN",
+    "PODNET_PROXY",
+    "PODNET_RELAY_TOKEN",
+    CONNECT_TOKEN_VARIABLE,
+];
 
 /// The variable with the connect token of `relay connect`.
 pub const CONNECT_TOKEN_VARIABLE: &str = "PODNET_RELAY_CONNECT_TOKEN";
@@ -499,6 +506,28 @@ pub fn now() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Issue 459: one list of secret variables, for the record and for the
+    // error program.
+    #[test]
+    fn each_secret_variable_stays_out_of_the_record() {
+        let mut vars: Vec<(String, String)> = [
+            "TUNNEL_TOKEN",
+            "PODNET_PROXY",
+            "PODNET_RELAY_TOKEN",
+            "PODNET_RELAY_CONNECT_TOKEN",
+        ]
+        .iter()
+        .map(|k| (k.to_string(), "secret".to_string()))
+        .collect();
+        vars.push(("RUST_LOG".to_string(), "info".to_string()));
+        let secrets = secrets_of(&vars);
+        assert_eq!(secrets.len(), 4, "{secrets:?}");
+        assert!(secrets.iter().all(|(k, _)| k != "RUST_LOG"), "{secrets:?}");
+        let dir = tempfile::tempdir().unwrap();
+        write_secrets(dir.path(), "a", &secrets).unwrap();
+        assert_eq!(read_secrets(dir.path(), "a"), secrets);
+    }
 
     #[test]
     fn names() {

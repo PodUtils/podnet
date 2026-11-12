@@ -97,11 +97,13 @@ fn variables() -> Vec<String> {
     names
 }
 
-/// The last `n` lines of the file at `path`.
+/// Read the whole file at `path` (a byte that is not UTF-8 becomes U+FFFD),
+/// and keep its last `n` lines.
 fn tail(path: &str, n: usize) -> Vec<String> {
-    let Ok(text) = std::fs::read_to_string(path) else {
+    let Ok(bytes) = std::fs::read(path) else {
         return vec![format!("(the log {path} cannot be read)")];
     };
+    let text = String::from_utf8_lossy(&bytes);
     let lines: Vec<&str> = text.lines().collect();
     lines[lines.len().saturating_sub(n)..]
         .iter()
@@ -182,6 +184,18 @@ mod tests {
             scrub("/run/1f2e3d4c-aaaa-bbbb-cccc-0123456789ab.json"),
             "/run/<uuid>.json"
         );
+    }
+
+    // Issue 459: a byte that is not UTF-8 does not hide the log.
+    #[test]
+    fn tail_reads_a_log_with_an_invalid_byte() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("log");
+        std::fs::write(&path, b"one\ntw\xffo\nthree\n").unwrap();
+        let out = tail(path.to_str().unwrap(), 2);
+        assert_eq!(out, vec!["tw\u{fffd}o".to_string(), "three".to_string()]);
+        assert_eq!(tail(path.to_str().unwrap(), 9).len(), 3);
+        assert!(tail("/nonexistent/log", 2)[0].contains("cannot be read"));
     }
 
     #[test]

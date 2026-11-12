@@ -384,18 +384,8 @@ pub fn document(
     })
 }
 
-/// The variables that hold a secret of podnet. The program of
-/// `PODNET_ERROR_PROGRAM` does not get them (podssh): it reads a report, not
-/// the credentials of the run.
-const SECRET_VARIABLES: &[&str] = &[
-    "TUNNEL_TOKEN",
-    "PODNET_RELAY_TOKEN",
-    "PODNET_RELAY_CONNECT_TOKEN",
-];
-
 /// The proxy variables, which hold a secret when they have a user part.
 const PROXY_VARIABLES: &[&str] = &[
-    "PODNET_PROXY",
     "HTTPS_PROXY",
     "https_proxy",
     "ALL_PROXY",
@@ -405,9 +395,9 @@ const PROXY_VARIABLES: &[&str] = &[
 ];
 
 /// The variables that the program of `PODNET_ERROR_PROGRAM` does not get:
-/// the secrets, and a proxy variable with a user and a password.
+/// the secrets ([`crate::instances::SECRET_VARIABLES`]), and a proxy variable with a user and a password.
 pub fn withheld(env: &dyn Fn(&str) -> Option<String>) -> Vec<&'static str> {
-    let mut out: Vec<&'static str> = SECRET_VARIABLES.to_vec();
+    let mut out: Vec<&'static str> = crate::instances::SECRET_VARIABLES.to_vec();
     for key in PROXY_VARIABLES {
         if env(key).is_some_and(|v| {
             v.split("://")
@@ -520,6 +510,17 @@ mod tests {
             assert!(out.contains(&key), "{key}: {out:?}");
         }
         assert!(!out.contains(&"HTTPS_PROXY"), "{out:?}");
+    }
+
+    // Issue 459: the error program gets none of the secrets that the record
+    // of an instance keeps out (one list).
+    #[test]
+    fn the_error_program_withholds_the_list_of_the_instances() {
+        let out = withheld(&|_| None);
+        for key in crate::instances::SECRET_VARIABLES {
+            assert!(out.contains(key), "{key}: {out:?}");
+        }
+        assert_eq!(out.iter().filter(|k| **k == "PODNET_PROXY").count(), 1);
     }
 
     // Issue 267: the lines of the issue, and the limits of each rule.

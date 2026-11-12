@@ -11,8 +11,6 @@ impl<T: AsyncRead + AsyncWrite + Unpin + Send> AsyncReadWrite for T {}
 
 pub type BoxedIo = Box<dyn AsyncReadWrite>;
 
-/// Install the ring crypto provider once per process, before the first TLS
-/// configuration is made.
 /// Make `path` free for a new unix listener (issues 202 and 115, and the
 /// rule of podssh): a socket that answers belongs to another process and
 /// is refused (exit 69), unless `replace`; a stale socket file is removed;
