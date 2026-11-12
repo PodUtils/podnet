@@ -179,6 +179,49 @@ ChannelData. podnet has no TURN code of its own.
 * Not in the network: NAT traversal between two peers, TURN over plain TCP or DTLS, a row of `podnet doctor`
   (the probe at `up` gives the stage), and the credentials of a named service.
 
+## Dev Tunnels: `devtunnel://TUNNEL`
+
+```sh
+export PODNET_DEVTUNNEL_TOKEN_FILE=/etc/podnet/devtunnel-token   # the first line is the token
+podnet forward -L 127.0.0.1:5432=127.0.0.1:5432 --network devtunnel://lab
+podnet forward -L 127.0.0.1:8080=127.0.0.1:80 --network devtunnel://bcd123.usw2
+```
+
+A host that reaches only TCP 443 can still reach a port of a Microsoft Dev Tunnels tunnel host through the relay
+of the service. The network opens one `direct-tcpip` channel of an SSH session for each stream. The SSH session
+runs over the relay WebSocket. podnet has no Dev Tunnels code of its own: `pod-devtunnel` reads the connect
+information from the management API, opens the relay WebSocket, runs the SSH session with no user
+authentication, and opens the channels.
+
+* `devtunnel://NAME` or `devtunnel://ID.CLUSTER` names the tunnel (lower case; each part is a label of a host
+  name). A spec with a user, a path, a query or a port is a usage error (exit 64) that does not repeat the
+  secret.
+* The port of the target is the port on the tunnel host. The host of the target is the local address of the
+  tunnel host: `127.0.0.1`, `::1` or `localhost`. Another host is refused by name.
+* The management token is a setting, not a part of the spec, because a spec goes into `argv`, into logs and into
+  JSON. `PODNET_DEVTUNNEL_TOKEN_FILE` is a file whose first line is the token. `PODNET_DEVTUNNEL_TOKEN` is the
+  token itself (give one of them). `PODNET_DEVTUNNEL_SCHEME` is `github` (default), `aad` or `bearer`. A missing
+  token is a usage error. The token is read when the network comes up. The connect token comes from the connect
+  information for each attempt, inside the crate. Neither token is in a log line, an error or `--json`.
+* The management host, the API version and the SSH facts are facts of `pod-services` (`microsoft-devtunnel`).
+  The relay URI comes from the connect information. `PODNET_DEVTUNNEL_MANAGEMENT` replaces the base of the
+  management API (`https://HOST[:PORT]`, or `http://` to a loopback host, for a test).
+* The management request and the relay WebSocket use the way out of the process (`--proxy`, the variables) and
+  the roots of podnet (`--ca-file`). A way below the network carries them.
+* `up` reads the connect information and opens the first relay session. A fault names the step: the management
+  API (a refused token, an unknown tunnel), the relay WebSocket, the SSH session or the channel. The status of
+  the link has the scheme, the spec, the tunnel ids and the session count.
+* A relay session that ends ends each open stream with an error of the kind `ConnectionAborted` ("the relay
+  session of the stream ended"). The next stream connects again, within a bounded number of tries, each with a
+  fresh connect token. After the last try the error names the reconnect step.
+* TCP only. The network has no host side (it does not publish a port). `--egress devtunnel://...` and
+  `podnet pod -x` refuse it by name: it is not a proxy.
+* Tests use the stand-in of `pod-devtunnel` on the loopback (`tests/devtunnel_network.rs`,
+  `src/networks/devtunnel_tests.rs`). They need no account.
+* Not in the network: the creation and the deletion of tunnels, the device-code login, a token store, and a row of
+  `podnet doctor` (the check of `podnet net doctor` probes the management host with TLS; the step of a fault is in
+  the error of `up`).
+
 ## A user with no passwd entry
 
 On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.

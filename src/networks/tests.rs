@@ -116,6 +116,7 @@ fn network_spec_the_table_has_one_row_for_each_scheme() {
             "netbird",
             "wg",
             "turn",
+            "devtunnel",
             "peer"
         ]
     );

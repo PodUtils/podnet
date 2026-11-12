@@ -67,8 +67,7 @@ not wait for a larger one.
     that a new client tests from.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
-10b. **Networks over the new crates (podcrates v0.33.0):** T-320 (`devtunnel://`, `pod-devtunnel`), T-321 (`turn://`,
-    `pod-turn`).
+10b. **Networks over the new crates (podcrates v0.33.0):** T-321 (`turn://`, `pod-turn`).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-298, T-294, T-295.

@@ -1332,7 +1332,8 @@ COMMANDS
     podnet forward [OPTIONS]
         Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or
         UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC
-        (direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP)
+        (direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP,
+        devtunnel://TUNNEL)
 
         -L, --local <LISTEN=HOST:PORT>
             A forward: LISTEN=HOST:PORT (repeatable). LISTEN is PORT (on
@@ -1361,9 +1362,11 @@ COMMANDS
             unix:/PATH, turn://HOST[:PORT] or turns://HOST[:PORT] (UDP flows
             through an allocation on a TURN server; the user and the password
             come from PODNET_TURN_USER and PODNET_TURN_PASSWORD_FILE; a TCP
-            forward is refused). A SOCKS5 or HTTP proxy carries no UDP.
-            Default: the way out of the process (--proxy, the variables, else
-            direct)
+            forward is refused), or devtunnel://TUNNEL (TCP to a port of the
+            host of a Dev Tunnels tunnel through its relay; the target host is
+            127.0.0.1; the token comes from PODNET_DEVTUNNEL_TOKEN_FILE). A
+            SOCKS5 or HTTP proxy carries no UDP. Default: the way out of the
+            process (--proxy, the variables, else direct)
 
         --run-for <SECONDS>
             Stop after this many seconds
@@ -9068,6 +9071,18 @@ ENVIRONMENT
         the file (mode 0600), with SOCKS5 (RFC 1929) or HTTP Basic. A client
         with no or wrong credentials gets 0xff, 0x01 or 407. (warp proxy, warp
         up)
+    PODNET_DEVTUNNEL_TOKEN_FILE, PODNET_DEVTUNNEL_TOKEN,
+    PODNET_DEVTUNNEL_SCHEME, PODNET_DEVTUNNEL_MANAGEMENT
+        The management token of Microsoft Dev Tunnels and its scheme. The
+        token is the first line of the file in PODNET_DEVTUNNEL_TOKEN_FILE,
+        else the value of PODNET_DEVTUNNEL_TOKEN (give one of them).
+        PODNET_DEVTUNNEL_SCHEME is github (default), aad or bearer.
+        PODNET_DEVTUNNEL_MANAGEMENT replaces the base of the management API
+        (https://HOST[:PORT], or http:// to a loopback host); the default is
+        the fact of pod-services. A spec holds no token, and no token is in a
+        log line, an error or --json. A missing token is a usage error (exit
+        64). (the network devtunnel://TUNNEL (forward --network, a networks:
+        entry of route))
     PODNET_TURN_USER, PODNET_TURN_PASSWORD_FILE, PODNET_TURN_PASSWORD,
     PODNET_TURN_REALM
         The user, the password and the realm of the TURN server (RFC 8656).
@@ -9551,7 +9566,7 @@ podnet man                                      # the manual
 | Forwards | `forward -L`, `forward --dns` | TCP and UDP forwards and a DNS door through a network. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Relays | `relay pair`, `node`, `connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
 | Link | `link listen`, `connect`, `dial`, `status`, `close`, `carriers`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. A control socket shows the links. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
-| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `turn:` (UDP), `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
+| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
 | Checks | `doctor`, `doctor --agent`, `status`, `ports`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
 | Update | `update` | Replace the binary after a check of the signature. | [install](https://github.com/PodUtils/podnet/blob/main/docs/install.md) |
@@ -10967,6 +10982,49 @@ ChannelData. podnet has no TURN code of its own.
 * Not in the network: NAT traversal between two peers, TURN over plain TCP or DTLS, a row of `podnet doctor`
   (the probe at `up` gives the stage), and the credentials of a named service.
 
+## Dev Tunnels: `devtunnel://TUNNEL`
+
+```sh
+export PODNET_DEVTUNNEL_TOKEN_FILE=/etc/podnet/devtunnel-token   # the first line is the token
+podnet forward -L 127.0.0.1:5432=127.0.0.1:5432 --network devtunnel://lab
+podnet forward -L 127.0.0.1:8080=127.0.0.1:80 --network devtunnel://bcd123.usw2
+```
+
+A host that reaches only TCP 443 can still reach a port of a Microsoft Dev Tunnels tunnel host through the relay
+of the service. The network opens one `direct-tcpip` channel of an SSH session for each stream. The SSH session
+runs over the relay WebSocket. podnet has no Dev Tunnels code of its own: `pod-devtunnel` reads the connect
+information from the management API, opens the relay WebSocket, runs the SSH session with no user
+authentication, and opens the channels.
+
+* `devtunnel://NAME` or `devtunnel://ID.CLUSTER` names the tunnel (lower case; each part is a label of a host
+  name). A spec with a user, a path, a query or a port is a usage error (exit 64) that does not repeat the
+  secret.
+* The port of the target is the port on the tunnel host. The host of the target is the local address of the
+  tunnel host: `127.0.0.1`, `::1` or `localhost`. Another host is refused by name.
+* The management token is a setting, not a part of the spec, because a spec goes into `argv`, into logs and into
+  JSON. `PODNET_DEVTUNNEL_TOKEN_FILE` is a file whose first line is the token. `PODNET_DEVTUNNEL_TOKEN` is the
+  token itself (give one of them). `PODNET_DEVTUNNEL_SCHEME` is `github` (default), `aad` or `bearer`. A missing
+  token is a usage error. The token is read when the network comes up. The connect token comes from the connect
+  information for each attempt, inside the crate. Neither token is in a log line, an error or `--json`.
+* The management host, the API version and the SSH facts are facts of `pod-services` (`microsoft-devtunnel`).
+  The relay URI comes from the connect information. `PODNET_DEVTUNNEL_MANAGEMENT` replaces the base of the
+  management API (`https://HOST[:PORT]`, or `http://` to a loopback host, for a test).
+* The management request and the relay WebSocket use the way out of the process (`--proxy`, the variables) and
+  the roots of podnet (`--ca-file`). A way below the network carries them.
+* `up` reads the connect information and opens the first relay session. A fault names the step: the management
+  API (a refused token, an unknown tunnel), the relay WebSocket, the SSH session or the channel. The status of
+  the link has the scheme, the spec, the tunnel ids and the session count.
+* A relay session that ends ends each open stream with an error of the kind `ConnectionAborted` ("the relay
+  session of the stream ended"). The next stream connects again, within a bounded number of tries, each with a
+  fresh connect token. After the last try the error names the reconnect step.
+* TCP only. The network has no host side (it does not publish a port). `--egress devtunnel://...` and
+  `podnet pod -x` refuse it by name: it is not a proxy.
+* Tests use the stand-in of `pod-devtunnel` on the loopback (`tests/devtunnel_network.rs`,
+  `src/networks/devtunnel_tests.rs`). They need no account.
+* Not in the network: the creation and the deletion of tunnels, the device-code login, a token store, and a row of
+  `podnet doctor` (the check of `podnet net doctor` probes the management host with TLS; the step of a fault is in
+  the error of `up`).
+
 ## A user with no passwd entry
 
 On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.
@@ -11332,9 +11390,12 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
 * `-L LISTEN=peer:FINGERPRINT/SERVICE` opens one stream of a link to a peer for each accepted connection, and asks the peer
   for its service (see "A service of a peer" below). It carries TCP only.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
-  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
+  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `devtunnel://TUNNEL` (TCP only), `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
   only), `unix:/PATH`. The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
+* `devtunnel://TUNNEL` carries a TCP forward through a Microsoft Dev Tunnels relay to a port of the tunnel host:
+  `-L 127.0.0.1:5432=127.0.0.1:5432 --network devtunnel://lab`. The target host is the local address of the tunnel
+  host. The token is in `PODNET_DEVTUNNEL_TOKEN_FILE` ([networks.md](networks.md)).
 * UDP: `-L udp:PORT=HOST:PORT` (or `udp:ADDR:PORT`) carries UDP over the datagrams of the network. Each
   client has its own flow. A flow ends after 60 s with no datagram. A datagram for a full flow is dropped.
   A SOCKS5 or HTTP proxy network carries no UDP: the forward logs the refusal and ends the flow. `direct`
@@ -11569,6 +11630,7 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `netbird` | `netbird`, `netbird:[PORT]` | The SOCKS5 listener of NetBird in netstack mode on `127.0.0.1:PORT` (default 1080). The target must be an IP address ([networks.md](networks.md)). | TCP |
 | `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. The target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
 | `turn` | `turn://HOST[:PORT]`, `turns://HOST[:PORT]` | An allocation on a TURN server (RFC 8656), over UDP (`turn`, port 3478) or over TLS on TCP (`turns`, port 5349). The user and the password come from `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE`, never from the spec ([networks.md](networks.md)). | UDP |
+| `devtunnel` | `devtunnel://NAME`, `devtunnel://ID.CLUSTER` | A stream to a port of the host of a Microsoft Dev Tunnels tunnel, through its relay. The target host is `127.0.0.1`. The token comes from `PODNET_DEVTUNNEL_TOKEN_FILE`, never from the spec ([networks.md](networks.md)). | TCP |
 | `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
 * A spec with no scheme (`HOST:PORT`) is a SOCKS5 proxy, as in `podnet pod -x`.
@@ -11579,6 +11641,8 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 * `turn://` and `turns://` carry UDP only. A TCP target is refused by name (the TCP relay of RFC 6062 is not
   in podnet). Use them with `podnet forward -L udp:... --network SPEC` or in a `networks:` entry of a router
   file. `--egress` is a way for TCP: `--egress turn://...` gives one line that says so.
+* `devtunnel://` opens streams to ports of the tunnel host and is not a proxy. Use it with `podnet forward -L ... --network SPEC`.
+  `--egress devtunnel://...` gives one line that says so.
 * `warp` is not a network of the registry. Use `podnet warp proxy` ([warp.md](warp.md)) or
   `tunnel --transport warp`.
 

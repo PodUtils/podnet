@@ -15,6 +15,7 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `netbird` | `netbird`, `netbird:[PORT]` | The SOCKS5 listener of NetBird in netstack mode on `127.0.0.1:PORT` (default 1080). The target must be an IP address ([networks.md](networks.md)). | TCP |
 | `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. The target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
 | `turn` | `turn://HOST[:PORT]`, `turns://HOST[:PORT]` | An allocation on a TURN server (RFC 8656), over UDP (`turn`, port 3478) or over TLS on TCP (`turns`, port 5349). The user and the password come from `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE`, never from the spec ([networks.md](networks.md)). | UDP |
+| `devtunnel` | `devtunnel://NAME`, `devtunnel://ID.CLUSTER` | A stream to a port of the host of a Microsoft Dev Tunnels tunnel, through its relay. The target host is `127.0.0.1`. The token comes from `PODNET_DEVTUNNEL_TOKEN_FILE`, never from the spec ([networks.md](networks.md)). | TCP |
 | `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
 * A spec with no scheme (`HOST:PORT`) is a SOCKS5 proxy, as in `podnet pod -x`.
@@ -25,6 +26,8 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 * `turn://` and `turns://` carry UDP only. A TCP target is refused by name (the TCP relay of RFC 6062 is not
   in podnet). Use them with `podnet forward -L udp:... --network SPEC` or in a `networks:` entry of a router
   file. `--egress` is a way for TCP: `--egress turn://...` gives one line that says so.
+* `devtunnel://` opens streams to ports of the tunnel host and is not a proxy. Use it with `podnet forward -L ... --network SPEC`.
+  `--egress devtunnel://...` gives one line that says so.
 * `warp` is not a network of the registry. Use `podnet warp proxy` ([warp.md](warp.md)) or
   `tunnel --transport warp`.
 

@@ -77,6 +77,33 @@ fn the_manual_names_the_turn_network_and_its_variables() {
     }
 }
 
+/// T-320: the help of `forward` has the Dev Tunnels form, and the manual has
+/// the variables of the token (a spec holds none).
+#[test]
+fn the_manual_names_the_devtunnel_network_and_its_variables() {
+    let help = podnet(&["forward", "--help"]);
+    let help = String::from_utf8(help.stdout).unwrap();
+    assert!(help.contains("devtunnel://TUNNEL"));
+    assert!(help.contains("PODNET_DEVTUNNEL_TOKEN_FILE"));
+    let out = podnet(&["man", "environment", "--json"]);
+    assert_eq!(out.status.code(), Some(0));
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).expect("valid JSON");
+    let row = json
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["names"].to_string().contains("PODNET_DEVTUNNEL_TOKEN_FILE"))
+        .expect("a row for PODNET_DEVTUNNEL_TOKEN_FILE");
+    let names = row["names"].to_string();
+    for name in [
+        "PODNET_DEVTUNNEL_TOKEN",
+        "PODNET_DEVTUNNEL_SCHEME",
+        "PODNET_DEVTUNNEL_MANAGEMENT",
+    ] {
+        assert!(names.contains(name), "{names}");
+    }
+}
+
 #[test]
 fn ports_json_is_one_object() {
     let out = podnet(&["ports", "--json"]);

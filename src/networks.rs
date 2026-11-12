@@ -4,7 +4,8 @@
 //! proxy URL (`socks5h://HOST:PORT`, `http://HOST:PORT`,
 //! `SCHEME+unix:/PATH`, `SCHEME+exec:COMMAND`), a hop of the pod
 //! (`unix:/PATH`, `HOST:PORT`, `socks://`, `https://`), `tailscale:/PATH`,
-//! `netbird:[PORT]`, `wg:FILE` (WireGuard), `turn://HOST[:PORT]` and
+//! `netbird:[PORT]`, `wg:FILE` (WireGuard), `devtunnel://TUNNEL` (TCP through
+//! a Dev Tunnels relay), `turn://HOST[:PORT]` and
 //! `turns://HOST[:PORT]` (UDP through a TURN server), or the relay (`relay`,
 //! `relay:URL`). [`networks`] is the table of the
 //! networks of this build: a static table in the binary, with no
@@ -26,6 +27,7 @@ use crate::network::{
 };
 use crate::ws_relay::Relay;
 
+mod devtunnel;
 mod netbird;
 mod peer;
 pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
@@ -48,7 +50,7 @@ pub struct Row {
     pub caps: Caps,
 }
 
-const ROWS: [Row; 8] = [
+const ROWS: [Row; 9] = [
     Row {
         scheme: "direct",
         forms: &["direct"],
@@ -101,6 +103,12 @@ const ROWS: [Row; 8] = [
         caps: Caps::EGRESS_UDP,
     },
     Row {
+        scheme: "devtunnel",
+        forms: &["devtunnel://NAME", "devtunnel://ID.CLUSTER"],
+        about: "TCP to a port of the host of a Microsoft Dev Tunnels tunnel, through the relay (WebSocket and SSH); the target is 127.0.0.1:PORT of the tunnel host",
+        caps: Caps::EGRESS_TCP,
+    },
+    Row {
         scheme: "peer",
         forms: &["peer:FINGERPRINT/SERVICE"],
         about: "one stream to a service of a peer, over a link that a running podnet link instance holds (a peer way: it meets a peer, it dials no destination)",
@@ -132,6 +140,8 @@ enum Kind {
     Wg(std::path::PathBuf),
     /// The TURN server of this spec (T-321).
     Turn(turn::Spec),
+    /// The Dev Tunnels tunnel of this spec (T-320).
+    Devtunnel(devtunnel::Spec),
     /// A service of the peer with this fingerprint (T-266).
     Peer {
         fingerprint: String,
@@ -194,6 +204,9 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
     if turn::is_turn(spec) {
         return turn::parse(spec).map(Kind::Turn);
     }
+    if devtunnel::is_devtunnel(spec) {
+        return devtunnel::parse(spec).map(Kind::Devtunnel);
+    }
     if let Some(rest) = spec.strip_prefix("peer:") {
         // `peer:PORT` is the SOCKS hop of a host named peer, as it was.
         if rest.parse::<u16>().is_err() {
@@ -253,6 +266,7 @@ impl SpecNetwork {
             Kind::Netbird(port) => format!("netbird:{port}"),
             Kind::Wg(path) => format!("wg:{}", path.display()),
             Kind::Turn(spec) => spec.label(),
+            Kind::Devtunnel(spec) => spec.label(),
             _ => redacted(&self.spec),
         }
     }
@@ -280,6 +294,14 @@ impl SpecNetwork {
     pub fn turn(&self) -> Option<(String, bool)> {
         match &self.kind {
             Kind::Turn(spec) => Some((spec.server.to_string(), spec.tls)),
+            _ => None,
+        }
+    }
+
+    /// The tunnel (`NAME` or `ID.CLUSTER`), for `devtunnel://TUNNEL`.
+    pub fn devtunnel(&self) -> Option<String> {
+        match &self.kind {
+            Kind::Devtunnel(spec) => Some(spec.locator.to_string()),
             _ => None,
         }
     }
@@ -335,7 +357,9 @@ impl SpecNetwork {
                 UpstreamChain::parse(&[self.spec.as_str()])
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
             ),
-            Kind::Wg(_) | Kind::Turn(_) => unreachable!("wg:FILE and turn:// come up in `up`"),
+            Kind::Wg(_) | Kind::Turn(_) | Kind::Devtunnel(_) => {
+                unreachable!("wg:FILE, turn:// and devtunnel:// come up in `up`")
+            }
             Kind::Peer {
                 fingerprint,
                 service,
@@ -363,6 +387,7 @@ impl Network for SpecNetwork {
             Kind::Netbird(_) => "netbird",
             Kind::Wg(_) => "wg",
             Kind::Turn(_) => "turn",
+            Kind::Devtunnel(_) => "devtunnel",
             Kind::Peer { .. } => "peer",
         }
     }
@@ -386,6 +411,12 @@ impl Network for SpecNetwork {
                 // parse: a parse reads no variable.
                 let account = turn::account(&|name| std::env::var(name).ok())?;
                 return Ok(turn::up(spec, account, ctx.below.as_ref(), Default::default()).await?);
+            }
+            if let Kind::Devtunnel(spec) = &self.kind {
+                // The token comes from the environment, now and not at the
+                // parse: a parse reads no variable.
+                let account = devtunnel::account(&|name| std::env::var(name).ok())?;
+                return Ok(devtunnel::up(spec, account, ctx.below.as_ref()).await?);
             }
             if let Some(below) = &ctx.below {
                 return Err(Failure::new(
@@ -444,6 +475,7 @@ impl Network for SpecNetwork {
                 target: spec.server.clone(),
                 tls: true,
             }],
+            Kind::Devtunnel(_) => devtunnel::checks(),
             Kind::Netbird(port) => vec![Check {
                 name: "netbird".into(),
                 target: Target::new("127.0.0.1", *port),
@@ -462,6 +494,8 @@ impl Network for SpecNetwork {
     }
 }
 
+#[cfg(test)]
+mod devtunnel_tests;
 #[cfg(test)]
 mod tailscale_tests;
 #[cfg(test)]

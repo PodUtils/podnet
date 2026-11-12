@@ -237,6 +237,14 @@ fn egress_alias_a_spec_that_the_command_cannot_take_is_one_usage_line() {
         assert!(text.contains("carries UDP only"), "{text}");
         assert!(text.contains("podnet forward"), "{text}");
     }
+    for words in [
+        &["podnet", "--egress", "devtunnel://lab", "status"][..],
+        &["podnet", "--egress", "devtunnel://lab", "pod", "--", "true"],
+    ] {
+        let text = err(words);
+        assert!(text.contains("is not a proxy"), "{text}");
+        assert!(text.contains("podnet forward"), "{text}");
+    }
     assert!(err(&["podnet", "--egress", "warp", "status"])
         .contains("not a network of the registry yet"));
     assert!(err(&["podnet", "status", "--egress"]).contains("--egress needs a value"));

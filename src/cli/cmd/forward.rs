@@ -37,7 +37,9 @@ pub(crate) struct ForwardArgs {
     /// unix:/PATH, turn://HOST[:PORT] or turns://HOST[:PORT] (UDP flows
     /// through an allocation on a TURN server; the user and the password
     /// come from PODNET_TURN_USER and PODNET_TURN_PASSWORD_FILE; a TCP
-    /// forward is refused). A SOCKS5 or HTTP proxy carries no UDP. Default:
+    /// forward is refused), or devtunnel://TUNNEL (TCP to a port of the host
+    /// of a Dev Tunnels tunnel through its relay; the target host is
+    /// 127.0.0.1; the token comes from PODNET_DEVTUNNEL_TOKEN_FILE). A SOCKS5 or HTTP proxy carries no UDP. Default:
     /// the way out of the process (--proxy, the variables, else direct).
     #[arg(long, value_name = "SPEC")]
     network: Option<String>,

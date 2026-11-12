@@ -23,9 +23,12 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
 * `-L LISTEN=peer:FINGERPRINT/SERVICE` opens one stream of a link to a peer for each accepted connection, and asks the peer
   for its service (see "A service of a peer" below). It carries TCP only.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
-  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
+  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `devtunnel://TUNNEL` (TCP only), `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
   only), `unix:/PATH`. The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
+* `devtunnel://TUNNEL` carries a TCP forward through a Microsoft Dev Tunnels relay to a port of the tunnel host:
+  `-L 127.0.0.1:5432=127.0.0.1:5432 --network devtunnel://lab`. The target host is the local address of the tunnel
+  host. The token is in `PODNET_DEVTUNNEL_TOKEN_FILE` ([networks.md](networks.md)).
 * UDP: `-L udp:PORT=HOST:PORT` (or `udp:ADDR:PORT`) carries UDP over the datagrams of the network. Each
   client has its own flow. A flow ends after 60 s with no datagram. A datagram for a full flow is dropped.
   A SOCKS5 or HTTP proxy network carries no UDP: the forward logs the refusal and ends the flow. `direct`

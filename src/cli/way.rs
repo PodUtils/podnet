@@ -126,6 +126,14 @@ fn turn_refusal(label: &str) -> String {
     )
 }
 
+/// The line for `--egress devtunnel://TUNNEL`: the network opens its own
+/// streams (a relay session), and no command takes it as a proxy.
+fn devtunnel_refusal(label: &str) -> String {
+    format!(
+        "--egress {label}: a Dev Tunnels network opens streams to ports of the tunnel host and is not a proxy; use podnet forward -L LISTEN=127.0.0.1:PORT --network {label}, or a networks: entry of podnet route"
+    )
+}
+
 /// `podnet --egress A --egress B pod ...`: `-x A -x B` after the word pod.
 fn pod_hops(
     mut kept: Vec<String>,
@@ -146,6 +154,9 @@ fn pod_hops(
         }
         if network.turn().is_some() {
             return Err(turn_refusal(&network.label()));
+        }
+        if network.devtunnel().is_some() {
+            return Err(devtunnel_refusal(&network.label()));
         }
         if let Some(port) = network.netbird_port() {
             // The listener of NetBird netstack mode is a SOCKS5 hop.
@@ -194,6 +205,9 @@ fn process_way(
     }
     if network.turn().is_some() {
         return Err(turn_refusal(&network.label()));
+    }
+    if network.devtunnel().is_some() {
+        return Err(devtunnel_refusal(&network.label()));
     }
     let flags: Vec<String> = match (network.scheme(), network.relay_url()) {
         ("direct", _) => vec!["--no-proxy".into()],

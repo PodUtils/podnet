@@ -2399,6 +2399,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pod-devtunnel"
+version = "0.34.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.34.0#ee514e740ffc61c595daf9c6e22deb0238fa1ece"
+dependencies = [
+ "pod-core",
+ "pod-proxy",
+ "pod-services",
+ "pod-tls",
+ "pod-ws",
+ "russh",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "zeroize",
+]
+
+[[package]]
 name = "pod-dns"
 version = "0.34.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.34.0#ee514e740ffc61c595daf9c6e22deb0238fa1ece"
@@ -2681,6 +2699,7 @@ dependencies = [
  "libc",
  "noq",
  "pod-core",
+ "pod-devtunnel",
  "pod-dns",
  "pod-hold",
  "pod-identity",
