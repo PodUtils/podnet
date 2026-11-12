@@ -35,7 +35,7 @@ use cmd::warp::{warp, WarpArgs};
 #[command(
     name = "podnet",
     version = concat!(env!("CARGO_PKG_VERSION"), " (", env!("PODNET_BUILD_COMMIT"), ")"),
-    about = "Cloudflare tunnels and the WARP client for hosts with strong network limits"
+    about = "Bring your own network to hosts with strong network limits: tunnels, WARP, pods, router, relays, virtual networks and file serving"
 )]
 pub(crate) struct Cli {
     /// A file of TLS roots (PEM). podnet uses only these roots for each
