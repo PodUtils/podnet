@@ -130,6 +130,16 @@ pub fn paths(dir: &Path, name: &str) -> Result<Paths> {
     })
 }
 
+/// The file that holds the fingerprint of the peer of a link instance
+/// (T-308). It lives as long as the record.
+pub fn peer_path(dir: &Path, name: &str) -> PathBuf {
+    dir.join(format!("{name}.peer"))
+}
+
+/// Set by a process whose peer check failed: its [`remove`] keeps the file
+/// of [`peer_path`], so the name stays bound to the first key.
+pub static KEEP_PEER: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// The record of an instance.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Record {
@@ -399,6 +409,9 @@ pub fn remove(dir: &Path, name: &str) -> bool {
     }
     let _ = std::fs::remove_file(&p.record);
     let _ = std::fs::remove_file(&p.secrets);
+    if !KEEP_PEER.load(std::sync::atomic::Ordering::SeqCst) {
+        let _ = std::fs::remove_file(peer_path(dir, name));
+    }
     // Each lock is removed while this process holds it.
     for (lock, _held) in &free {
         let _ = std::fs::remove_file(lock);

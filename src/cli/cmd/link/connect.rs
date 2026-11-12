@@ -50,6 +50,10 @@ pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
     let me = identity::create(&identity::default_dir()?)?;
     let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow).await?;
     let shown = peer.display_fingerprint();
+    // T-308: a name maps to the fingerprint that it proved first.
+    if let Some((dir, name)) = podnet::detach::instance() {
+        podnet::link_alias::bind(&dir, &name, &shown)?;
+    }
     let link = Arc::new(link);
     let hub = Hub::new(&me.fingerprint());
     let slot = hub.hold(

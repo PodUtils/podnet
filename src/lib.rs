@@ -87,6 +87,7 @@ pub mod fuzzing;
 pub mod hello;
 pub mod identity;
 pub mod link;
+pub mod link_alias;
 pub mod link_ctl;
 pub mod link_service;
 #[cfg(feature = "tcp")]

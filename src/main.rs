@@ -149,6 +149,19 @@ fn main() {
     if !runs_a_program {
         podnet::rlimit::raise();
     }
+    // T-308: the name of a live link.
+    if let (Command::Link(_), Some(detach)) = (&cli.command, detach_of(&cli.command)) {
+        if let (Some(name), false) = (&detach.name, podnet::detach::is_child()) {
+            let checked = match podnet::instances::run_dir() {
+                Ok(dir) => podnet::link_alias::precheck(&dir, name, detach.replace),
+                Err(_) => podnet::link_alias::check(name),
+            };
+            if let Err(err) = checked {
+                eprintln!("podnet: {err:#}");
+                std::process::exit(podnet::exit::code_of(&err));
+            }
+        }
+    }
     if let Some(detach) = detach_of(&cli.command).filter(|d| d.detach) {
         let name = command.clone().unwrap_or_default();
         if !podnet::detach::is_child() {

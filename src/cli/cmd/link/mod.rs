@@ -152,7 +152,9 @@ pub(crate) enum LinkCommand {
     /// streams of the link through its control socket: `peer:FINGERPRINT/
     /// SERVICE` as a network (podnet forward -L LISTEN=peer:FINGERPRINT/
     /// SERVICE). The command ends when the link ends (exit 69) or at a stop
-    /// signal.
+    /// signal. --name is 1 to 32 characters from a-z 0-9 -, unique among
+    /// the live links (a duplicate exits 64), and bound to the fingerprint
+    /// of the peer: another key under the same name exits 77.
     Connect(connect::ConnectArgs),
     /// Show the fingerprint of this install and the link instances that run
     /// (podnet ps lists the other instances). With a NAME, show that

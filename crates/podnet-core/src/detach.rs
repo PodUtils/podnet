@@ -139,6 +139,14 @@ pub fn update_record(change: impl FnOnce(&mut Record)) {
     let _ = instances::write(&state.dir, &record);
 }
 
+/// The name of the instance that this process is (a detached child, or a
+/// process that `--name` registered), and the run directory of its record.
+pub fn instance() -> Option<(PathBuf, String)> {
+    let guard = STATE.lock().unwrap_or_else(|e| e.into_inner());
+    let state = guard.as_ref()?;
+    Some((state.dir.clone(), state.record.name.clone()))
+}
+
 /// The end of a detached child is planned (issue 195: `--stop-after`,
 /// `--idle-secs`, `--run-for`): the record says `done`, and the supervisor
 /// does not start it again. A no-op for another process.

@@ -50,6 +50,20 @@ podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of
 ([background.md](background.md)). `podnet ps`, `logs`, `wait` and `stop` work on a link instance. The ready document has
 `carrier`, `address`, `listen` (the same address), `mode`, `fingerprint`, `allow`, `to`, `services` (name to target) and `control`.
 
+## Names for live links
+
+`--name NAME` of `link listen` and `link connect` names the instance. For a link, the rules are:
+
+* A name has 1 to 32 characters from `a-z 0-9 -`. Another name exits 64.
+* A name is unique among the live instances. A second start with a name that a live instance holds exits 64 (also with
+  `--detach`; `--replace` stops the old instance first). At most 64 link instances are live; the 65th exits 64.
+* The name is in the background record, so `podnet ps` and `podnet link status NAME` show it.
+* A name never replaces the fingerprint. The first dial still needs `--peer` or `--allow` (else exit 64).
+* `link connect` binds its name to the fingerprint of the peer that it proved. The file `NAME.peer` in the run directory
+  holds it, and it lives as long as the record: a clean stop removes both, so a name is not reused while its record exists.
+  A dial under the same name to a peer with another fingerprint exits 77 and keeps the binding. A supervisor that starts
+  the instance again checks the same binding.
+
 ## The service of a stream
 
 The hello admits a peer for the whole link and binds no stream. The opener of a stream names the service in its first line,
