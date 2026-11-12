@@ -57,7 +57,6 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
 | #425 (COORD-016, to podrunner) | podrunner reads it. |
 | #444 (COORD-026) | podcrates: the umask window of `pod-broker`. |
 | #451 (COORD-033) | podnet: T-250, then T-249; then a COORD issue with the commits. podcrates accepted #449 to #451 in its #74. |
-| #458 (COORD-040) | podcrates: the `taken` line of the veth wire (f107766). |
 | #457 (COORD-039) | podcrates: three gaps of `pod-netstack` (close of a listener, close of a stream, the accept pool) for T-249. |
 | #456 (COORD-038) | podcrates and podrunner: the take of v0.25.0, and T-255. Close it when both read it. |
 | #448 (COORD-030) | podcrates: the `taken` line of the watches of `pod-services` (0b945a3). |
