@@ -9,23 +9,36 @@ set -eu
 podnet=$1
 protocol=$2
 dir=$(mktemp -d)
-port=18095
-trap 'kill $(jobs -p) 2> /dev/null || true' EXIT
+pids=""
+trap 'kill $pids 2> /dev/null || true' EXIT
 
+# The echo server takes a free port and writes it to a file, so that two runs
+# in one step do not meet on one port.
 python3 -I -c '
 import asyncio, sys, websockets
 async def echo(ws):
     async for message in ws:
         await ws.send(message)
 async def main():
-    async with websockets.serve(echo, "127.0.0.1", int(sys.argv[1])):
+    async with websockets.serve(echo, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        with open(sys.argv[1], "w") as f:
+            f.write(str(port))
         await asyncio.Future()
 asyncio.run(main())
-' "$port" &
-sleep 1
+' "$dir/port" &
+pids="$pids $!"
+i=0
+until [ -s "$dir/port" ]; do
+    i=$((i + 1))
+    [ "$i" -lt 20 ] || { echo "the echo server did not start"; exit 1; }
+    sleep 0.5
+done
+port=$(cat "$dir/port")
 
 "$podnet" tunnel --url "http://127.0.0.1:$port" --protocol "$protocol" --transport direct \
     --json --no-verify > "$dir/tunnel.out" 2> "$dir/tunnel.err" &
+pids="$pids $!"
 i=0
 until grep -q '"event":"ready"' "$dir/tunnel.out" 2> /dev/null; do
     i=$((i + 1))
@@ -47,7 +60,7 @@ async def main():
 asyncio.run(main())
 ' "wss://$host/" 2> "$dir/client.err"; do
     i=$((i + 1))
-    if [ "$i" -ge 10 ]; then
+    if [ "$i" -ge 30 ]; then
         tail -3 "$dir/client.err" | sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g'
         sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g' "$dir/tunnel.err" | tail -10
         echo "ws-url $protocol: the WebSocket through the --url origin failed"

@@ -5247,3 +5247,44 @@ Left (Approach 2): the fact. `pod-services` v0.32.0 has no `remote-port` fact an
 and podnet adds no relay fact in code (T-166). The ask for podcrates: the fact `remote-port` in the data file of
 Sandhole (80) and `forward::Relay::remote_port() -> Option<u16>`. Then `facts.rs` puts it in `Facts` and
 `ssh_relay.rs` uses it when no flag is given. Not proven: a live Sandhole demo.
+
+
+# T-323: live: the WebSocket step leaves its echo server, and waits 30 s for the DNS of a new name (GitHub #511)
+
+**Source:** GitHub #511 (https://github.com/PodUtils/podnet/issues/511), the issue of `live.yml` for two failed runs.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+Two `live` runs failed in a row. Run 43262551243 at 8ce65ba failed at "WebSocket through a --url origin":
+`scripts/live-ws-url.sh` runs twice in the step (QUIC, then HTTP/2) on the fixed port 18095, and its EXIT trap
+(`kill $(jobs -p)`) does not see the jobs in `sh`, so the echo server of the first run stays and the second one gets
+"address already in use"; the client then got "Name or service not known" for the new tunnel name 10 times in 30 s.
+Run 43259640036 at b17b907 failed at "The commands of the second batch": `warp scan` found no front door of WARP
+answering (162.159.198.1, 162.159.198.2, 2606:4700:103::2), a state of the WARP service.
+
+## Premise
+
+- Read: `scripts/live-ws-url.sh`, the logs of the two jobs.
+
+## Approach
+
+1. The echo server binds port 0 and writes its port to a file; the trap kills the PIDs that the script records.
+2. The client tries 30 times (90 s), as the wait of the tunnel's ready line.
+
+## Prove
+
+```sh
+sh -n scripts/live-ws-url.sh
+# live.yml, step "WebSocket through a --url origin": "ws-url quic" and "ws-url http2" echo.
+```
+
+## Done
+
+2026-11-12. `scripts/live-ws-url.sh`: a free port for each run, the PIDs killed at the end, 30 tries of the client.
+The echo server with port 0 was run here with `websockets` (the client got its echo). Not proven here: the step in
+`live` (the next run). The WARP door scan is a state of the service, not of podnet.

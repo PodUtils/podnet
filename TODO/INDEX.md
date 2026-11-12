@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**322 entries: 70 open, 20 partial, 25 blocked, 207 done.**
+**323 entries: 70 open, 20 partial, 25 blocked, 208 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
-| P2 | 19 | 9 | 10 | 126 | 164 |
+| P2 | 19 | 9 | 10 | 127 | 165 |
 | P3 | 51 | 10 | 13 | 53 | 127 |
-| **All** | 70 | 20 | 25 | 207 | 322 |
+| **All** | 70 | 20 | 25 | 208 | 323 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -368,3 +368,4 @@ M8 Overlays, M9 Later.
 | [T-320](later.md) | P3 | L | M9 | feature | blocked | net: a Dev Tunnels network for TCP streams (GitHub #503) |
 | [T-321](later.md) | P3 | L | M9 | feature | blocked | net: a TURN network for UDP flows (GitHub #507) |
 | [T-322](fixes.md) | P2 | S | M5 | defect | done | doctor: resolve the ssh-relay probe through the configured proxy (GitHub #504) |
+| [T-323](fixes.md) | P2 | S | M5 | defect | done | live: the WebSocket step leaves its echo server, and waits 30 s for the DNS of a new name (GitHub #511) |
