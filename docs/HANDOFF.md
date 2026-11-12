@@ -8,7 +8,7 @@ file when each step below is done.
 
 * All work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1
   (`rustup default 1.99.1`; the image has 1.97 as its default).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.25.0`
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.26.0` (with `pod-hold-veth`, f107766)
   (T-137), with the watches of `pod-services` (0b945a3, #448) and `pod-wg`
   (089e1c9, #447).
 * The newest release is `v0.4.0-beta.5` at 8f53288 (T-256; release run 43122020833,
@@ -39,7 +39,8 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
 
 1. **T-249:** built on the local branch `worktree-agent-ac60b45b681f3ed6a` (9d93516, bcf98f2), not merged:
    its workaround caps a pod at 256 destination ports. It waits for three gaps of `pod-netstack` (#457). On
-   the tag that closes them: rebase the branch, drop the workarounds, merge, and write the commit in #451.
+   the tag that closes them: rebase the branch (the take of v0.26.0 changed `netns/tun.rs` and `veth.rs` under
+   it), drop the workarounds, merge, and write the commit in #451.
 2. **Replies:** sent as #456. `crates/podnet-netns/src/netns/veth.rs` takes fixes only until the take of
    `pod-hold` with the wire (podcrates T-201).
 3. **T-248** (the guest-wire router) after T-249.
@@ -56,6 +57,7 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
 | #425 (COORD-016, to podrunner) | podrunner reads it. |
 | #444 (COORD-026) | podcrates: the umask window of `pod-broker`. |
 | #451 (COORD-033) | podnet: T-250, then T-249; then a COORD issue with the commits. podcrates accepted #449 to #451 in its #74. |
+| #458 (COORD-040) | podcrates: the `taken` line of the veth wire (f107766). |
 | #457 (COORD-039) | podcrates: three gaps of `pod-netstack` (close of a listener, close of a stream, the accept pool) for T-249. |
 | #456 (COORD-038) | podcrates and podrunner: the take of v0.25.0, and T-255. Close it when both read it. |
 | #448 (COORD-030) | podcrates: the `taken` line of the watches of `pod-services` (0b945a3). |
