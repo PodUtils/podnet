@@ -1034,7 +1034,7 @@ T-117 has its network (steps 1 and 3 done). The listen half waits for T-125.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1071,10 +1071,6 @@ cargo test --test link_p2p
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-PodUtils/podcrates must release `pod-relay` with its hand-off (T-049, T-137), and answer ask A5 (a COORD issue to podcrates). It unblocks when both exist.
-
 ## Start condition
 
 T-261, T-262 and T-049 are done.
@@ -1086,6 +1082,8 @@ exchange of candidates as a message of opaque binary data between the two ends b
 reflexive address: the peers learn their public addresses from STUN (the services of the kind `stun` of
 `pod-services`). The relay carries TCP only and takes no inbound TCP, so the direct path (a UDP hole punch) is the
 peers' own. A session needs the node online and its `ready` within 15 s, and lasts at most 720 min and 64 MiB.
+
+2026-11-12: `pod-relay` is released and taken (v0.30.0, 83e0c93), and ask A5 is answered (above). The blocker is gone. The entry waits for its start condition: T-261 and T-262.
 
 
 # T-285: link: signed route announcements (GitHub #470)

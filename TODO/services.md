@@ -52,7 +52,7 @@ command. `cargo test --test connect -- connect_stdio_carries_a_stream`: 1 passed
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -75,14 +75,13 @@ a transfer in the same process must open a socket file to be reached.
 cargo test --test relay_reverse -- a_node_serves_an_in_process_handler
 ```
 
-## Blocker
+## Correction
 
-The session of `PodUtils/podcrates` (the crate `pod-relay`). The relay node (`Target`, `node`, `session`) is in
-`src/relay_reverse.rs` and src/relay_reverse/session.rs. These files go to `pod-relay` and take fixes only
-(`docs/decisions.md`, 2026-11-06, Order). A handler target is a new variant of `Target`: a feature of that code.
-No part of the entry lands in the crates of podnet: the users of the handler (T-091, T-094, T-104) do not exist.
-The entry is unblocked when podnet takes `pod-relay` (T-049, through T-137). Then add the target to `pod-relay`
-or use its handler target.
+2026-11-12, the take of `pod-relay` v0.30.0 (83e0c93). The crate has the handler target: `pod_relay::reverse::local::channel(depth)` gives a `ChannelHandler` and a receiver (PodUtils/podcrates#89, ask 11 of GitHub #413, podcrates T-150). The node code is generic over `Handler`, so the work in podnet is glue: `relay_reverse::run_node_with` runs a node over any handler, and `run_node` builds the handler of a target. The users of the handler (T-091, T-094, T-104) still use the unix socket. They can move to the channel when they change.
+
+## Done
+
+2026-11-12, commit 7e462ec (the glue and the tests) over the take 83e0c93. `relay_reverse::run_node_with(follow, pair, handler, shown)` and the re-exports `channel`, `ChannelHandler`, `Handler` and `SessionId`. `cargo test --test relay_reverse -- a_node_serves_an_in_process_handler a_closed_channel_refuses_the_session`: 2 passed. `a_node_serves_an_in_process_handler`: two operator sessions get their own pipe and their own id from the service of the process, and no socket file is made. `a_closed_channel_refuses_the_session`: the operator learns the refusal ("the service of the process is gone"). Before the change the test target does not compile (E0432: `channel` and `run_node_with` do not exist). `cargo test --test relay_reverse`: 8 passed. `sh scripts/agent/check.sh`: exit 0. Not proven: a service of podnet (T-091, T-094, T-104) that uses the channel.
 
 # T-084: One HTTP authentication layer for the local listener, the tunnel and the relay
 
@@ -307,6 +306,8 @@ reverse road moves with `pod-relay` (T-049): the node and the client code of `sr
 after the take.
 
 2026-11-12, GitHub #466 (row E0-2). The link session (T-262, T-263) uses the same `pod-session` layer for its resume. The relay road of this entry does not change.
+
+2026-11-12, the take of `pod-relay` v0.30.0 (83e0c93). The crate holds the node end of the layer (`reverse::Layered`, over `pod-session`), and `src/relay_reverse.rs` is glue over `reverse::run` and `operator::run` in the plain mode. The work of this entry is glue over the crate: a node over `Layered::new(handler, settings, budget)` with `run_node_with`, and a link maker for `relay connect`. The start condition stays: T-086 makes `pod-session`, `pod-e2e` and `pod-identity` dependencies of podnet itself. Read, not run: `reverse/legs.rs` and `reverse/layered.rs`. Not measured: whether the relay serves a second leg of one session. The fake relay of `tests/relay_reverse/fake.rs` serves none.
 # T-088: File server: a directory listing in HTML and JSON
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 3.1 to 3.5.

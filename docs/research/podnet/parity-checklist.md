@@ -583,45 +583,45 @@ Pinned by: `tests/cli.rs` (`log_controls`, `log_format_json_gives_json_lines_onl
 
 ### `podnet relay`
 
-- [ ] command exists: Inbound access to this host through the WebSocket relay (--relay): pair, run a node for a local port, connect as the operator
-  - [ ] `--relay <URL>` (default `https://tcp.ssh.relay.ajam.dev`; env `PODNET_RELAY`)
+- [x] command exists: Inbound access to this host through the WebSocket relay (--relay): pair, run a node for a local port, connect as the operator
+  - [x] `--relay <URL>` (default `https://tcp.ssh.relay.ajam.dev`; env `PODNET_RELAY`)
 - tests: none found
 - live: -
 
 ### `podnet relay pair`
 
-- [ ] command exists: Ask the relay for a pair: a name, a node token (kept in a file of mode 0600 in the state directory) and a connect token for the operator. A pair lasts at most 72 h
-  - [ ] `--json`
+- [x] command exists: Ask the relay for a pair: a name, a node token (kept in a file of mode 0600 in the state directory) and a connect token for the operator. A pair lasts at most 72 h
+  - [x] `--json`
 - tests: none found
 - live: L398 --json
 
 ### `podnet relay node`
 
-- [ ] command exists: Hold the node socket of a pair, and connect each session of an operator to a local service. A lost socket is opened again
-  - [ ] `<PAIR>`
-  - [ ] `--to <TARGET>` (required)
-  - [ ] `--detach`
-  - [ ] `--name <NAME>`
-  - [ ] `--ready-timeout <SECS>` (default `60`)
-  - [ ] `--replace`
-  - [ ] `--no-restart`
+- [x] command exists: Hold the node socket of a pair, and connect each session of an operator to a local service. A lost socket is opened again
+  - [x] `<PAIR>`
+  - [x] `--to <TARGET>` (required)
+  - [x] `--detach`
+  - [x] `--name <NAME>`
+  - [x] `--ready-timeout <SECS>` (default `60`)
+  - [x] `--replace`
+  - [x] `--no-restart`
 - tests: none found
 - live: L398 --to --detach --name
 
 ### `podnet relay connect`
 
-- [ ] command exists: Open a session to a node and copy stdin and stdout (an SSH ProxyCommand), or each connection of --listen
-  - [ ] `<NAME>` (required)
-  - [ ] `--token <TOKEN>` (env `PODNET_RELAY_CONNECT_TOKEN`)
-  - [ ] `--token-file <PATH>`
-  - [ ] `--listen <LISTEN>`
+- [x] command exists: Open a session to a node and copy stdin and stdout (an SSH ProxyCommand), or each connection of --listen
+  - [x] `<NAME>` (required)
+  - [x] `--token <TOKEN>` (env `PODNET_RELAY_CONNECT_TOKEN`)
+  - [x] `--token-file <PATH>`
+  - [x] `--listen <LISTEN>`
 - tests: `cli.rs::exit_codes_of_flags_and_configuration`
 - live: L398 (ProxyCommand, 2 parallel sessions, banner)
 
 ### `podnet relay stop`
 
-- [ ] command exists: Stop a node and its sessions at the relay (POST /v1/stop), and remove the local pair file
-  - [ ] `<NAME>` (required)
+- [x] command exists: Stop a node and its sessions at the relay (POST /v1/stop), and remove the local pair file
+  - [x] `<NAME>` (required)
 - tests: `cli.rs::exit_codes_of_flags_and_configuration`
 - live: L398
 
@@ -914,8 +914,8 @@ checks `ps --json`, `ports --json`, `status`).
 | [ ] | `warp export --format json` | `warp::export` (WireGuard peer, keys, endpoint) | `warp/export.rs` tests, live-batch2.sh |
 | [ ] | `warp proxy`, `warp forward`, `warp tun` (ready) | ready documents (listen, default_route, ...) | live L684/L711 |
 | [ ] | `warp up` | `warp::up::start`: name, pid, port, tcp, persist, env_d, ... | `warp/up.rs` tests, live L525/L549 |
-| [ ] | `relay pair --json` | the pair with the connect token (not the node token) | live L398 |
-| [ ] | `relay node` (ready) | `relay_reverse::node_ready` (pair, target) | `tests/relay_reverse.rs`, live L398 |
+| [x] | `relay pair --json` | the pair with the connect token (not the node token) | live L398 |
+| [x] | `relay node` (ready) | `relay_reverse::node_ready` (pair, target) | `tests/relay_reverse.rs`, live L398 |
 | [ ] | `man --json` | `manual::model::Manual`: name, version, commands[], pod_usage, environment, files, exit_status, examples | `manual` tests, `tests/cli.rs::the_listen_defaults_agree_with_the_manual` |
 | [ ] | `--log-format json` | one JSON object per log line; the last error line is JSON too (`error_json`) | `tests/cli.rs::log_format_json_gives_json_lines_only` |
 | [ ] | `PODNET_ERROR_PROGRAM` stdin | `report::document`: schema, podnet, os, arch, command, exit, error[], hop, refusal (status, code, retry_after_s), messages[] | `report.rs` tests, `tests/cli.rs::the_failure_report_has_the_error_once` |
@@ -930,8 +930,8 @@ Pinned by `src/main.rs::each_example_of_the_manual_parses` (each parses with the
 - [ ] `podnet agent up`
 - [ ] `podnet tunnel --url http://127.0.0.1:8080 --detach`
 - [ ] `podnet ps --json`
-- [ ] `podnet relay pair`
-- [ ] `podnet relay node --to 127.0.0.1:22`
+- [x] `podnet relay pair`
+- [x] `podnet relay node --to 127.0.0.1:22`
 - [ ] `podnet update --check`
 - [ ] `podnet demo --exit-on-verify`
 - [ ] `podnet tunnel --url http://127.0.0.1:8080`

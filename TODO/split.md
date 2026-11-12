@@ -999,7 +999,7 @@ the six moved items: 1,295 commands, 1,108 tests, 1,294 items (1,293 before; the
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -1029,15 +1029,6 @@ cargo test --test relay_reverse --test connect
 gh workflow run live.yml
 ```
 
-## Blocker
-
-The session of `PodUtils/podcrates` and T-137. The three rows of the entry stay in
-`scripts/layers-allow.txt`: `ws -> relay_reverse`, `ws_relay -> edge_h2` and `ws_relay -> ws`.
-Each starts and ends in frozen code: `src/ws.rs` (`pod-ws`), `src/ws_relay.rs` and
-`src/relay_reverse.rs` (`pod-relay`), `src/edge_h2.rs` (`pod-cloudflare`). A cut is a change in
-these files beyond a fix. The rows disappear when podnet takes `pod-ws`, `pod-relay` (T-049) and
-`pod-cloudflare` (T-052). Then remove the rows and close the entry.
-
 ## Start condition
 
 T-010 is done.
@@ -1046,6 +1037,12 @@ T-010 is done.
 
 2026-11-05, `src/ws.rs` (`pod-ws`), `edge_h2` (`pod-cloudflare`) and `relay_reverse` (`pod-relay`) move to
 PodUtils/podcrates. The three rows disappear when podnet takes these crates. Read the rows again at the start.
+
+2026-11-12, the rows are gone with the takes: `ws -> relay_reverse` at 5eace6e (the take of `pod-ws`; `close_hint` is `pod_ws::close_hint`), `ws_relay -> edge_h2` and `ws_relay -> ws` at 83e0c93 (the take of `pod-relay`; `Metered` is `pod_core::Metered`). The moves of the Approach were not necessary: the code that had the rows is gone.
+
+## Done
+
+2026-11-12, commits 5eace6e and 83e0c93 (the takes). `scripts/layers-allow.txt` has four rows (`warp -> cloudflare`, `warp -> quicktunnel`, `ws -> cloudflare`, `ws -> proxy`) and none of the three rows of this entry. `python3 -I scripts/check-layers.py`: 0 faults. `src/ws_relay.rs` names neither `edge_h2` nor `crate::ws`. `src/ws.rs` names no `relay_reverse`. `cargo test --test relay_reverse --test connect`: 2 targets, 16 passed (connect 8, relay_reverse 8). Not run: `gh workflow run live.yml`. The other rows of `scripts/layers-allow.txt` are T-044.
 
 # T-044: Cut the upward references 10 to 17: the WARP QUIC configuration, `ShareLink`, `RULE_KEYS`, `connect_tunnel` and the edge side of `ws`
 

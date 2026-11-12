@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**313 entries: 72 open, 14 partial, 29 blocked, 198 done.**
+**313 entries: 73 open, 15 partial, 24 blocked, 201 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 19 | 6 | 13 | 121 | 159 |
-| P3 | 53 | 7 | 14 | 51 | 125 |
-| **All** | 72 | 14 | 29 | 198 | 313 |
+| P2 | 19 | 7 | 10 | 123 | 159 |
+| P3 | 54 | 7 | 12 | 52 | 125 |
+| **All** | 73 | 15 | 24 | 201 | 313 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -88,7 +88,7 @@ M8 Overlays, M9 Later.
 | [T-040](split.md) | P2 | L | M2 | chore | done | Split the seccomp backend and the netns backend of the pod crate |
 | [T-041](split.md) | P2 | M | M2 | chore | done | Split the four large test files |
 | [T-042](split.md) | P2 | M | M2 | chore | done | Cut the upward references 1 to 7: `net`, `util`, `fetch`, `hop`, `report`, `detach` and `relay_reverse` |
-| [T-043](split.md) | P2 | M | M2 | chore | blocked | Cut the upward references 8, 9 and 18: a WebSocket bridge and `Metered` in the core |
+| [T-043](split.md) | P2 | M | M2 | chore | done | Cut the upward references 8, 9 and 18: a WebSocket bridge and `Metered` in the core |
 | [T-044](split.md) | P2 | L | M2 | chore | blocked | Cut the upward references 10 to 17: the WARP QUIC configuration, `ShareLink`, `RULE_KEYS`, `connect_tunnel` and the edge side of `ws` |
 | [T-045](split.md) | P2 | S | M2 | chore | partial | Each file is under 800 lines, and the allowlists of the size check and the layer check are empty |
 | [T-046](crates.md) | P2 | M | M3 | chore | done | Prepare the workspace for more crates: the print macros, the build facts, the scans, the package list and the test helpers |
@@ -128,7 +128,7 @@ M8 Overlays, M9 Later.
 | [T-080](fixes.md) | P3 | M | M5 | feature | done | The errors of a config file name the line |
 | [T-081](fixes.md) | P2 | S | M5 | feature | done | The tailnet front door warns when `tailscaled` is not logged in |
 | [T-082](services.md) | P2 | S | M6 | feature | done | `connect --stdio` for an SSH `ProxyCommand` through `tunnel --forward` |
-| [T-083](services.md) | P2 | S | M6 | feature | blocked | A relay node serves a handler in the process, with no socket file |
+| [T-083](services.md) | P2 | S | M6 | feature | done | A relay node serves a handler in the process, with no socket file |
 | [T-084](services.md) | P2 | M | M6 | feature | done | One HTTP authentication layer for the local listener, the tunnel and the relay |
 | [T-085](services.md) | P2 | M | M6 | feature | done | A ustar writer and reader, and a directory as one tar download of the file server |
 | [T-086](services.md) | P2 | L | M6 | feature | open | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
@@ -207,8 +207,8 @@ M8 Overlays, M9 Later.
 | [T-159](fixes.md) | P3 | S | M5 | docs | done | research documents are readings; fix the stale counts of the record (GitHub #356) |
 | [T-160](fixes.md) | P2 | S | M5 | defect | done | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
 | [T-161](crates.md) | P2 | M | M3 | feature | blocked | relay node: renew the pair before it expires (GitHub #358) |
-| [T-162](crates.md) | P3 | M | M3 | feature | blocked | relay: a host that stalls is tried last on the next connect (GitHub #359) |
-| [T-163](crates.md) | P2 | M | M3 | feature | blocked | relay: the session budget comes from the pool document (GitHub #360) |
+| [T-162](crates.md) | P3 | M | M3 | feature | done | relay: a host that stalls is tried last on the next connect (GitHub #359) |
+| [T-163](crates.md) | P2 | M | M3 | feature | partial | relay: the session budget comes from the pool document (GitHub #360) |
 | [T-164](fixes.md) | P3 | S | M5 | docs | done | Document `--no-verify` in the README, and say what it does not do (GitHub #361) |
 | [T-165](later.md) | P3 | M | M9 | feature | done | The SSH forward-relay leg: supervise the session after `run()` returns (GitHub #362) |
 | [T-166](later.md) | P3 | M | M9 | feature | done | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
@@ -329,7 +329,7 @@ M8 Overlays, M9 Later.
 | [T-281](link.md) | P3 | L | M9 | feature | open | link: the DNS stream carrier with a pipelined query window (GitHub #469) |
 | [T-282](link.md) | P3 | L | M9 | feature | open | link: the ICMP echo carrier (GitHub #469) |
 | [T-283](link.md) | P3 | M | M9 | feature | open | link: a WireGuard peer as a carrier (GitHub #469) |
-| [T-284](link.md) | P3 | L | M9 | feature | blocked | link: NAT traversal with a relay fallback (GitHub #469) |
+| [T-284](link.md) | P3 | L | M9 | feature | open | link: NAT traversal with a relay fallback (GitHub #469) |
 | [T-285](link.md) | P3 | L | M9 | feature | open | link: signed route announcements (GitHub #470) |
 | [T-286](link.md) | P3 | M | M9 | feature | open | link: the path-vector route table (GitHub #470) |
 | [T-287](link.md) | P3 | L | M9 | feature | open | link: multi-hop forwarding of a session stream (GitHub #470) |
