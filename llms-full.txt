@@ -8183,6 +8183,10 @@ ENVIRONMENT
     PODNET_TEST_UMASK
         A test hook of the unix listeners: the test of bind_private runs again
         in a new process with this umask (octal). (pod (tests only))
+    PODNET_PROBE_CHILD
+        Set by podnet for its own child process of a namespace probe (net,
+        user-net or veth): the process runs the probe before main and exits
+        with the result code. Do not set it. (pod (internal))
     PODNET_NETNS_TEST_NO_NETNS
         A test hook of --backend auto: set and not empty, the netns backend
         cannot run, and auto takes the seccomp backend. (pod (tests only))

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**256 entries: 38 open, 10 partial, 23 blocked, 185 done.**
+**257 entries: 38 open, 10 partial, 23 blocked, 186 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 25 | 28 |
-| P2 | 21 | 6 | 14 | 113 | 154 |
+| P2 | 21 | 6 | 14 | 114 | 155 |
 | P3 | 17 | 3 | 7 | 46 | 73 |
-| **All** | 38 | 10 | 23 | 185 | 256 |
+| **All** | 38 | 10 | 23 | 186 | 257 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -302,3 +302,4 @@ M8 Overlays, M9 Later.
 | [T-254](fixes.md) | P2 | M | M5 | chore | done | Housekeeping: one footnote for cfrs, no narrative history |
 | [T-255](pods.md) | P2 | S | M7 | defect | done | seccomp: an IPv4-mapped loopback address is loopback |
 | [T-256](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.5`: the dry run, the publish and the release proofs |
+| [T-257](pods.md) | P2 | S | M7 | defect | done | doctor: the probes of the namespace allocate in a fork child |

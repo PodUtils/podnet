@@ -9,39 +9,15 @@ pub(crate) struct Probe {
     pub(crate) detail: String,
 }
 
+mod child;
+use child::{run_child_probe, ChildProbe};
+
 pub(crate) fn probe_unshare(flags: libc::c_int) -> Probe {
-    // Probe in a forked child: a successful unshare would otherwise take the
-    // probe process out of the host's network namespace permanently.
-    //
-    // A successful unshare is not sufficient. A security module (for example
-    // the AppArmor setting `apparmor_restrict_unprivileged_userns`) can remove
-    // the capabilities in the new user namespace. Thus the child also does
-    // what the backend does: bring up `lo` and make a TUN device.
-    let pid = unsafe { libc::fork() };
-    if pid == 0 {
-        close_inherited();
-        let r = unsafe { libc::unshare(flags) };
-        let code = if r != 0 {
-            std::io::Error::last_os_error().raw_os_error().unwrap_or(1)
-        } else if bringup_loopback().is_err() {
-            PROBE_NO_LOOPBACK
-        } else if create_tun("pnprobe0").is_ok() {
-            0
-        } else if create_veth("pnprobe0", "pnwire0").is_ok() {
-            // T-174: no TUN, but the veth wire works.
-            PROBE_VETH
-        } else {
-            PROBE_NO_TUN
-        };
-        unsafe { libc::_exit(code) };
-    }
-    let mut status = 0;
-    unsafe { libc::waitpid(pid, &mut status, 0) };
-    let code = if libc::WIFEXITED(status) {
-        libc::WEXITSTATUS(status)
+    let code = run_child_probe(if flags == libc::CLONE_NEWNET {
+        ChildProbe::Net
     } else {
-        -1
-    };
+        ChildProbe::UserNet
+    });
     let name = if flags == libc::CLONE_NEWNET {
         "unshare(CLONE_NEWNET)"
     } else {
@@ -63,6 +39,7 @@ pub(crate) fn probe_unshare(flags: libc::c_int) -> Probe {
             PROBE_NO_TUN => {
                 "unshare ok, but no TUN device and no veth pair in the namespace".to_string()
             }
+            -1 => "the probe process did not run or was killed".to_string(),
             code => format!("{}", std::io::Error::from_raw_os_error(code)),
         };
         Probe {
@@ -79,7 +56,7 @@ const PROBE_NO_TUN: i32 = 201;
 /// No TUN, but a veth pair works (T-174).
 const PROBE_VETH: i32 = 202;
 
-/// In a probe child: close each descriptor above stderr. A child of a
+/// In a probe child (a `fork` with no `exec`): close each descriptor above stderr. A child of a
 /// process with threads (a test, a daemon) holds the sockets of the other
 /// threads open while it lives; a socket that the parent closes must not
 /// stay open in the child. The child calls only async-signal-safe functions.
@@ -99,28 +76,7 @@ fn close_inherited() {
 /// when the namespace cannot open `/dev/net/tun`.
 pub(crate) fn probe_veth() -> Probe {
     const NAME: &str = "veth wire (no TUN)";
-    let pid = unsafe { libc::fork() };
-    if pid == 0 {
-        close_inherited();
-        let entered = unsafe { libc::unshare(libc::CLONE_NEWNET) } == 0
-            || unsafe { libc::unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET) } == 0;
-        let code = if !entered {
-            std::io::Error::last_os_error().raw_os_error().unwrap_or(1)
-        } else if bringup_loopback().is_err() {
-            PROBE_NO_LOOPBACK
-        } else if create_veth("pnprobe0", "pnwire0").is_err() {
-            PROBE_NO_TUN
-        } else {
-            0
-        };
-        unsafe { libc::_exit(code) };
-    }
-    let mut status = 0;
-    unsafe { libc::waitpid(pid, &mut status, 0) };
-    let code = match libc::WIFEXITED(status) {
-        true => libc::WEXITSTATUS(status),
-        false => -1,
-    };
+    let code = run_child_probe(ChildProbe::Veth);
     let detail = match code {
         0 => "a veth pair and a packet socket in the namespace".to_string(),
         PROBE_NO_LOOPBACK => "unshare ok, but lo cannot be set up (no capability)".to_string(),
@@ -641,6 +597,41 @@ pub fn verdict(ok: bool) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    // The probes run in a new process, so a thread that holds the allocator
+    // lock cannot stop a probe, and a probe does not change the namespace of
+    // the caller.
+    #[test]
+    fn the_namespace_probes_run_in_a_new_process() {
+        let before = std::fs::read_link("/proc/self/ns/net").expect("ns");
+        let busy: Vec<_> = (0..4)
+            .map(|_| {
+                std::thread::spawn(|| {
+                    for i in 0..20_000 {
+                        std::hint::black_box(vec![i; 64]);
+                    }
+                })
+            })
+            .collect();
+        let probes: Vec<_> = (0..4)
+            .map(|_| {
+                std::thread::spawn(|| {
+                    let one = super::probe_unshare(libc::CLONE_NEWNET);
+                    let two = super::probe_unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET);
+                    (one.detail, two.detail, super::probe_veth().detail)
+                })
+            })
+            .collect();
+        for thread in probes {
+            let details = thread.join().expect("probe thread");
+            assert_ne!(details.0, "the probe process did not run or was killed");
+            assert_ne!(details.2, "the probe process was killed");
+        }
+        for thread in busy {
+            thread.join().expect("busy thread");
+        }
+        assert_eq!(std::fs::read_link("/proc/self/ns/net").expect("ns"), before);
+    }
+
     // T-181: the doctor row names the ceiling and the descriptor limits.
     #[test]
     fn doctor_flow_budget_row_names_the_ceiling() {

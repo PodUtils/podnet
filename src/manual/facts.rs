@@ -168,6 +168,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "A test hook of the unix listeners: the test of bind_private runs again in a new process with this umask (octal).",
     },
     EnvVar {
+        names: &["PODNET_PROBE_CHILD"],
+        used_by: "pod (internal)",
+        meaning: "Set by podnet for its own child process of a namespace probe (net, user-net or veth): the process runs the probe before main and exits with the result code. Do not set it.",
+    },
+    EnvVar {
         names: &["PODNET_NETNS_TEST_NO_NETNS"],
         used_by: "pod (tests only)",
         meaning: "A test hook of --backend auto: set and not empty, the netns backend cannot run, and auto takes the seccomp backend.",

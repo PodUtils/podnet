@@ -1541,7 +1541,7 @@ The abstract-name shim has no option to hand a chosen address to the SOCKS door.
 - `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`crates/podnet-vnet/shim/podnet-socks.c:239-251`).
 - `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:125-134`). `ShimOptions`
   (`crates/podnet-vnet/src/shim.rs:30-50`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
-- The variable list is in `src/manual/facts.rs:321`. `docs/virtual-network.md` has no text on socksify
+- The variable list is in `src/manual/facts.rs:326`. `docs/virtual-network.md` has no text on socksify
   (README.md:921 only), so item 4 of the issue needs a new section.
 - Names are set by T-016 (`PODNET_SOCKS_*`).
 - Not measured: the external shim of the issue.

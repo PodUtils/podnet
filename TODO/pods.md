@@ -1303,3 +1303,50 @@ cargo test -p podnet-netns --lib a_mapped_loopback_address_is_loopback
 loopback, as `127.0.0.0/8` and `::1`. Test: `a_mapped_loopback_address_is_loopback` (it fails with the old test of
 `is_loopback()` on `::ffff:127.0.0.1`). Not measured end to end here: this sandbox has no IPv6 (`AF_INET6` gives
 EAFNOSUPPORT); the test `held` of `PodUtils/podrunner:crates/podrunner-broker-fake` proves the path on its runner.
+
+# T-257: doctor: the probes of the namespace allocate in a fork child
+
+**Source:** PodUtils/podcrates#77.
+**Category:** defect
+**Milestone:** M7
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The probe children of `crates/podnet-netns/src/doctor.rs` (`probe_unshare`, `probe_veth`) call `bringup_loopback`,
+`create_tun` and `create_veth` after `fork()`. These calls allocate (the netlink requests, the names, the errors).
+The comment above `close_inherited` says that the child calls only async-signal-safe functions. In a process with
+threads (a test, a daemon), another thread can hold the allocator lock at the time of the fork. The child then waits
+for the lock for ever, and `podnet pod doctor` does not finish.
+
+## Premise
+
+- The functions `create_tun` and `create_veth` of `pod_hold::netns` (podcrates v0.26.0) build their requests inside
+  the call. The caller cannot build them before the fork, so a fix in the child alone cannot remove the allocation.
+- The other probe children (`probe_ptrace`, `probe_seccomp_notif`, the memory probes) call syscalls only.
+- Not measured: a deadlock. It needs a thread that holds the lock at the fork; the test cannot make it certain.
+
+## Approach
+
+1. Run the probes that call `bringup_loopback`, `create_tun` and `create_veth` in a new process of the same program
+   (`/proc/self/exe`, started by `std::process::Command`; the code is `doctor/child.rs`) in place of a fork child. The variable `PODNET_PROBE_CHILD`
+   (`net`, `user-net`, `veth`) names the probe. A constructor in `.init_array` runs the probe before `main`, in a
+   process with one thread, and exits with the code. This works in the binary and in a test program.
+2. Add the variable to `src/manual/facts.rs`. Correct the comment above `close_inherited`.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib the_namespace_probes_run_in_a_new_process
+cargo test -p podnet --test doctor --test docs
+cargo run -q -- pod doctor
+```
+
+## Done
+
+2026-11-12, see the commit of this entry. The probes `unshare(CLONE_NEWNET)`, `unshare(NEWUSER|NEWNET)` and
+`veth wire (no TUN)` run in a new process. Test: `the_namespace_probes_run_in_a_new_process` (probes from four threads
+while four other threads allocate; each probe gives a verdict; the namespace of the caller stays the same). Not
+proven: the old deadlock itself, as no test can force it.
