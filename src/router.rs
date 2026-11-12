@@ -485,9 +485,14 @@ impl Router {
             };
             let listen = ProxyListen::parse(&door.listen)
                 .map_err(|e| anyhow::anyhow!("doors[{i}].listen: {e}"))?;
+            // A UDP ASSOCIATE answers with the address of the door (T-098).
+            let mut udp_door = Door::new(dial.clone());
+            if let ProxyListen::Tcp(addr) = &listen {
+                udp_door = udp_door.with_udp_bind(addr.ip());
+            }
             doors.push(RouterDoor {
                 listen,
-                door: Arc::new(Door::new(dial.clone())),
+                door: Arc::new(udp_door),
                 label: dial.label(),
                 via: door.via.clone(),
                 rules,
@@ -609,3 +614,5 @@ impl Router {
 mod health_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod udp_tests;

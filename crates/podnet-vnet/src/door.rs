@@ -17,6 +17,8 @@ use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 use tokio::sync::Semaphore;
 use tokio::time::Instant;
 
+mod udp;
+
 /// The deadline of the request of a client (`REQUEST_LIMIT` of the WARP door).
 pub const REQUEST_LIMIT: Duration = Duration::from_secs(30);
 /// The default cap of the live clients of one door.
@@ -34,6 +36,7 @@ pub struct Door {
     request_limit: Duration,
     clients: Arc<Semaphore>,
     turned_away: AtomicU64,
+    udp_bind: std::net::IpAddr,
 }
 
 impl Door {
@@ -44,7 +47,16 @@ impl Door {
             request_limit: REQUEST_LIMIT,
             clients: Arc::new(Semaphore::new(CLIENT_LIMIT)),
             turned_away: AtomicU64::new(0),
+            udp_bind: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
         }
+    }
+
+    /// The address of the UDP socket of a UDP ASSOCIATE (T-098). The default
+    /// is the loopback address: for a door on a TCP address, give that
+    /// address, so that a client of another host can send its datagrams.
+    pub fn with_udp_bind(mut self, ip: std::net::IpAddr) -> Door {
+        self.udp_bind = ip;
+        self
     }
 
     /// Ask each client for a user and a password (SOCKS5 RFC 1929, HTTP
@@ -139,8 +151,9 @@ impl Door {
                     }
                 }
             }
+            Request::SocksUdp => udp::associate(self, &mut stream).await?,
             Request::Socks5Unsupported => {
-                // BIND and UDP ASSOCIATE: the command is not supported.
+                // BIND: the command is not supported.
                 socks::socks5_reply(&mut stream, 0x07, None).await?;
             }
             Request::Http(HttpRequest::Connect(req)) => {
@@ -196,6 +209,7 @@ impl Door {
             let (command, req) = socks::socks5_read_command_auth(stream, check).await?;
             return Ok(match command {
                 1 => Request::Socks(req),
+                3 => Request::SocksUdp,
                 _ => Request::Socks5Unsupported,
             });
         }
@@ -213,6 +227,9 @@ impl Door {
 
 enum Request {
     Socks(ProxyRequest),
+    /// UDP ASSOCIATE; the address of the request is the expected source of
+    /// the client, which the relay does not need (it pins the first source).
+    SocksUdp,
     Socks5Unsupported,
     Http(HttpRequest),
     Refused,
