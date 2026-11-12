@@ -68,6 +68,7 @@ pub use podnet_vnet as vnet;
 pub mod agent;
 pub mod agent_files;
 pub mod bug_report;
+pub mod carriers;
 pub mod cloudflare;
 pub mod config;
 #[cfg(test)]
