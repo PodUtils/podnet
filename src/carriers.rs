@@ -91,15 +91,13 @@ fn make_memory(options: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     Ok(Box::new(Memory::new(options.ring)?))
 }
 
-/// A carrier whose feature is on but whose code is not in the tree yet. The
+/// A carrier whose feature is on but whose code is not in the tree. The
 /// entry that adds the carrier replaces the maker.
 fn pending(name: &'static str, entry: &str) -> Result<Box<dyn Carrier>, CarrierError> {
     Err(CarrierError::new(
         name,
         CarrierErrorKind::Unavailable,
-        format!(
-            "the feature is on, but the code of the carrier is not in this build yet ({entry})"
-        ),
+        format!("the feature is on, but the code of the carrier is not in this build ({entry})"),
     ))
 }
 

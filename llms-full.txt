@@ -12197,7 +12197,8 @@ cargo test --workspace --features full       # what the CI job features runs
   lists it with the reason `not built: the feature NAME is off (build with
   --features NAME)`, `podnet doctor` shows it as `unknown`, and a command
   that names it (`--carrier NAME`) exits 69 with the same reason. In a
-  `--features` build, a carrier whose code is not in the tree yet says so.
+  `--features` build, a carrier whose code is not in the tree says so and
+  names its entry (T-273, T-279 or T-282).
 * The static musl build of the release set uses the default features. Build
   a feature on every target of the release set before it joins that set.
 * `podnet::build_features` is the list (`OPTIONAL`, `FULL`), `built(NAME)`,

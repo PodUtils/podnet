@@ -125,7 +125,7 @@ The carriers `quic`, `s3` and `icmp` sit behind a build feature ([build.md](buil
 them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
-build yet until its entry lands.
+build, and names its entry (T-273, T-279 or T-282).
 
 Each carrier reports `framing`, `duplex`, `ordered`, `mtu`, the cost and `available()`. A carrier that this host cannot use
 gives its reason, and a command that needs it exits 69 with the reason. `podnet doctor` has a row `carriers` with the same

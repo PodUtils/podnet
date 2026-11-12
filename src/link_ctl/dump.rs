@@ -81,8 +81,8 @@ impl Held {
 }
 
 impl Hub {
-    /// Remember an error for the dump. The dump keeps the last
-    /// [`ERRORS`]; a text keeps its first 512 characters.
+    /// Remember an error for the dump. The dump keeps the last 20
+    /// errors; a text keeps its first 512 characters.
     pub fn note_error(&self, text: &str) {
         let text: String = text.chars().take(ERROR_TEXT).collect();
         let mut errors = self.errors.lock().unwrap_or_else(|e| e.into_inner());
