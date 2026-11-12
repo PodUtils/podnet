@@ -1645,7 +1645,7 @@ because one socket of the stack serves every flow of a port.
 
 ## Done
 
-2026-11-12, partial; commits 7894cbf (the code), 19cafad (the record) and 59b102b (the take of v0.28.0). The router file has a `guests` list (`src/router/guest.rs`, `src/router/guest/`).
+2026-11-12, partial; commits 9249037 (the code), 266fe0e (the record) and 6775594 (the take of v0.28.0). The router file has a `guests` list (`src/router/guest.rs`, `src/router/guest/`).
 
 * Approach 1: a wire is `unix:/PATH` (SOCK_SEQPACKET, mode 0600, a new guest replaces the old) or `tun:NAME` (an
   existing TUN, opened with TUNSETIFF). `net` gives the guest net; the router is its first host.
