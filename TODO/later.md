@@ -1467,7 +1467,8 @@ Left, with the reason.
   other far end exists. Write the design in `docs/research/podnet/` when a far end exists.
 - A far host that answers UDP on the path of `down`: it needs a cooperating far end or an endpoint that holds
   both sessions of one peer. podnet has none. Tunnels to one endpoint (WARP, a relay) do not steer answers.
-- The byte meter (T-178) does not count datagrams, so `leastload` does not see UDP bytes of a group.
+- The byte meter (T-178) did not count datagrams. 2026-11-12: T-097 (commit f4dd392) counts the UDP bytes for the
+  member in both directions, also with a split, so `leastload` sees them.
 - A measure of the uplink and the downlink of a member (to pick `up` and `down` without the operator).
 
 # T-244: `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435)
