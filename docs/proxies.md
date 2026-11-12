@@ -72,3 +72,34 @@ trusts `podnet-ca.pem` beside the binary, the first system bundle that it can
 read (for example `/etc/ssl/certs/ca-certificates.crt`), and the Mozilla
 roots compiled into podnet. `podnet status` shows the roots in `tls_roots`. See
 `SECURITY.md`.
+
+## Front doors
+
+A front door is a listener that speaks SOCKS5 and HTTP CONNECT. The listener detects the protocol from the
+first byte. These commands run the same door (`crates/podnet-netns/src/door.rs`, T-061):
+
+| Command | The way of a flow |
+| --- | --- |
+| `podnet pod --serve LISTEN -x UPSTREAM` | The chain of `-x`, or the chain that a `-r` rule chooses. |
+| `podnet net proxy` | The virtual network of the stack of the command (`--map`, `--forward`, `--switch`). |
+| `podnet net tailscale` | `tailscaled`, through its LocalAPI. |
+| `podnet route` | A network or a group of the router ([router.md](router.md)). |
+
+`podnet warp proxy` has its own door until the take of `pod-warp` (T-050).
+
+The door has these rules for each client:
+
+* The client has 30 s to send its first byte and its request. A client that is too slow gets SOCKS5 `0x04`
+  or HTTP 504, and the door closes the connection.
+* The door serves 1024 live clients at one time. It closes a client that comes over the cap.
+* The door waits at most 30 s for the connection to the far end. `net tailscale` waits 10 s and `net proxy`
+  waits 5 s.
+* The failure of a dial gives the reply by its class: a refusal of a rule or of a policy is SOCKS5 `0x02` and
+  HTTP 403; a time limit is SOCKS5 `0x04` and HTTP 504; any other failure is a general failure (or a
+  host unreachable, when the text says refused or denied) and HTTP 502. An HTTP answer has a short text
+  body.
+* A request with port 0 takes the port of `--port` (`net proxy` and `net tailscale`).
+* `pod --serve`, `net proxy` and `net tailscale` take SOCKS5 and CONNECT only. A plain `http://` request
+  gets 405. `net proxy` and `net tailscale` end a flow after 300 s.
+* BIND gets SOCKS5 `0x07` (command not supported). UDP ASSOCIATE goes through the first upstream for
+  `pod --serve`, and gets `0x07` for `net proxy` and `net tailscale`.

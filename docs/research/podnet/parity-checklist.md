@@ -290,17 +290,17 @@ Pinned by: `tests/cli.rs` (`log_controls`, `log_format_json_gives_json_lines_onl
 
 ### `podnet net proxy`
 
-- [ ] command exists: Run a SOCKS5 / HTTP CONNECT proxy into the virtual network
+- [x] command exists: Run a SOCKS5 / HTTP CONNECT proxy into the virtual network
   - [ ] `--detach`
   - [ ] `--name <NAME>`
   - [ ] `--ready-timeout <SECS>` (default `60`)
   - [ ] `--replace`
   - [ ] `--no-restart`
-  - [ ] `--listen <LISTEN>` (default `unix:/tmp/podnet-vnet.socks`)
-  - [ ] `--map <NAME=ADDR>` (repeatable)
-  - [ ] `--forward <VIRT=REAL>` (repeatable)
-  - [ ] `--port <PORT>` (default `80`)
-  - [ ] `--run-for <RUN_FOR>`
+  - [x] `--listen <LISTEN>` (default `unix:/tmp/podnet-vnet.socks`)
+  - [x] `--map <NAME=ADDR>` (repeatable)
+  - [x] `--forward <VIRT=REAL>` (repeatable)
+  - [x] `--port <PORT>` (default `80`)
+  - [x] `--run-for <RUN_FOR>`
   - [ ] `--switch <SWITCH>`
   - [ ] `--switch-token-file <PATH>`
   - [ ] `--address <ADDRESS>`
@@ -329,11 +329,11 @@ Pinned by: `tests/cli.rs` (`log_controls`, `log_format_json_gives_json_lines_onl
 
 ### `podnet net tailscale`
 
-- [ ] command exists: Run a SOCKS5 / HTTP CONNECT front door to a tailnet through tailscaled
-  - [ ] `--socket <SOCKET>` (default `/var/run/tailscale/tailscaled.sock`)
-  - [ ] `--listen <LISTEN>` (default `unix:/tmp/podnet-socks.sock`)
-  - [ ] `--port <PORT>` (default `80`)
-  - [ ] `--run-for <RUN_FOR>`
+- [x] command exists: Run a SOCKS5 / HTTP CONNECT front door to a tailnet through tailscaled
+  - [x] `--socket <SOCKET>` (default `/var/run/tailscale/tailscaled.sock`)
+  - [x] `--listen <LISTEN>` (default `unix:/tmp/podnet-socks.sock`)
+  - [x] `--port <PORT>` (default `80`)
+  - [x] `--run-for <RUN_FOR>`
 - tests: `cli.rs::a_missing_upstream_is_named_at_start`
 - live: -
 
@@ -762,9 +762,9 @@ Hand-written parser: `crates/pod-netns/src/cli.rs` `parse_args`.
 
 - [ ] `pod-netns [OPTIONS] -- PROGRAM [ARGS]...` runs the program; exit code of the program
 - [ ] `pod-netns doctor [--json]`: what the host permits; exit 3 when no backend can run (no `schema` key, own words `ok`/`no`/`available`)
-- [ ] `pod-netns --serve LISTEN -x PROXY`: SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or `tcp://host:port`
-- [ ] `-x, --proxy SPEC` repeatable, chains: `socks5://[user:pass@]host:port`, `http://...`, `socks5://unix:/path`, `http://unix:/path`, `tailscale:/path/to/tailscaled.sock`; default `ALL_PROXY`, `all_proxy`, `HTTPS_PROXY`, `https_proxy`, `HTTP_PROXY`, `http_proxy` (first that parses)
-- [ ] `-r, --rule SPEC`: `domain:NAME=PROXY`, `domain:.suffix=PROXY`, `cidr:NET=PROXY`, `cidr:NET=direct`; first match wins; seccomp: 127.0.0.0/8 direct
+- [x] `pod-netns --serve LISTEN -x PROXY`: SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or `tcp://host:port`
+- [x] `-x, --proxy SPEC` repeatable, chains: `socks5://[user:pass@]host:port`, `http://...`, `socks5://unix:/path`, `http://unix:/path`, `tailscale:/path/to/tailscaled.sock`; default `ALL_PROXY`, `all_proxy`, `HTTPS_PROXY`, `https_proxy`, `HTTP_PROXY`, `http_proxy` (first that parses)
+- [x] `-r, --rule SPEC`: `domain:NAME=PROXY`, `domain:.suffix=PROXY`, `cidr:NET=PROXY`, `cidr:NET=direct`; first match wins; seccomp: 127.0.0.0/8 direct
 - [ ] `--map NAME=ADDR` repeatable
 - [ ] `--keep-proxy-env`
 - [ ] `--backend auto|netns|seccomp`

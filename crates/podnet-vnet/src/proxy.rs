@@ -152,7 +152,7 @@ async fn wait_established(stream: &mut TcpStream) -> Result<(), Failure> {
 /// The front door of `net proxy` over `net`: SOCKS5 and HTTP `CONNECT` on
 /// one listener (the protocol is detected from the first byte), each flow
 /// dialed through the stack. A plain `http://` request gets 405. A port 0
-/// takes `default_port`. A flow ends after [`CLIENT_TIMEOUT`]: without it a
+/// takes `default_port`. A flow ends after 300 s: without it a
 /// client that opens a connection and then stops reading holds a task and
 /// both sockets indefinitely.
 pub fn door(net: Arc<NetStack>, resolver: Resolver, default_port: u16) -> Door {

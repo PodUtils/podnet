@@ -36,7 +36,7 @@ podnet pod doctor --json
 | `--name-backend` | Write one line on stderr that names the backend that runs (also after `auto`), its limits and the reason of the choice (`Choice: ...`). `podnet warp exec` and `podnet warp shell` set it. `PODNET_NETNS_QUIET` (`podnet -q`) removes the line. |
 | `--keep-proxy-env` | Keep `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY` and their lower-case forms for the program. By default the program does not get them: the pod is its egress, and a program that used them would send to a host proxy that it cannot reach. |
 | `--inbound-dir DIR` | Seccomp backend only: where a port that the program listens on becomes a unix socket (`DIR/<port>.sock`). The default is `$XDG_RUNTIME_DIR/podnet-netns-inbound` when that directory is of the user, else `$TMPDIR/podnet-netns-inbound-<uid>`. A new directory gets mode 0700. A directory of another user, a symbolic link, or a directory that the group or others can write is refused (exit 3). With `--backend netns` it is a usage error (exit 64); when `auto` picks netns, a warning says that it is not used. |
-| `--serve LISTEN` | Serve SOCKS5, HTTP `CONNECT` and UDP ASSOCIATE on `unix:/path` or `tcp://host:port`, through the `-x` chain. |
+| `--serve LISTEN` | Serve SOCKS5, HTTP `CONNECT` and UDP ASSOCIATE on `unix:/path` or `tcp://host:port`, through the `-x` chain. The door is `door::Door` over the rules and the chain. It serves at most 1024 live clients. A plain `http://` request gets 405 and BIND gets `0x07`. |
 | `-v, --verbose` | Log each flow. With `seccomp`, also log each socket that the pod makes as a socket pair and each `setsockopt` that the pod answers. |
 
 The pod counts each refused `socket` call of the seccomp backend by class:
@@ -368,6 +368,7 @@ The public modules are also used alone:
 | --- | --- |
 | `upstream` | Proxy specs, rules, SOCKS5 and HTTP `CONNECT` clients, chains, UDP ASSOCIATE. |
 | `socks` | The server side of SOCKS5 and HTTP `CONNECT`. |
+| `door` | The front door over a `pod_core::Dial` (T-061): the listener, the request deadline, the cap of clients, users, UDP ASSOCIATE over the datagrams of the dialer, and the hooks `Extension` and `on_error`. `pod --serve`, `net proxy`, `net tailscale` and `route` use it. |
 | `dns` | DNS query and answer encoding. |
 | `listen` | `unix:/path` and `tcp://host:port` listen addresses. |
 | `tailscale` | A dialer for the `ts-dial` endpoint of the `tailscaled` LocalAPI, and a SOCKS5 front door for it. |

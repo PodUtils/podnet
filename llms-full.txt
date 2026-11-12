@@ -7111,7 +7111,9 @@ COMMANDS
               --serve <LISTEN> Serve SOCKS5, HTTP CONNECT and UDP ASSOCIATE on
                                    unix:/path or tcp://host:port, forwarding
                                    through
-                                   the -x chain
+                                   the -x chain. At most 1024 live clients; a
+                                   plain
+                                   http:// request gets 405 and BIND gets 0x07
           -v, --verbose Log each flow; with seccomp, also each socket and
                                    each setsockopt that the pod emulates
           -V, --version Print the version
@@ -9982,7 +9984,9 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
 * `wg:FILE` is not a hop of a pod. Run `podnet route` with a `wg:FILE` network, and give its door to `-x`.
 * `netbird:[PORT]` through `--egress` (a SOCKS5 hop on `127.0.0.1:PORT`; [networks.md](networks.md)).
 * `--serve LISTEN` runs no program. It serves SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or
-  `tcp://host:port`, and sends the flows through the chain.
+  `tcp://host:port`, and sends the flows through the chain. It is the front door of
+  [proxies.md](proxies.md), over the chain and the rules. UDP ASSOCIATE and UDP in the stream go
+  through the first upstream, which must be SOCKS5. BIND gets `0x07`.
 
 By default the program does not get `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and `NO_PROXY`.
 `--keep-proxy-env` keeps them.
@@ -10080,6 +10084,9 @@ podnet net switch --listen unix:/tmp/podnet-vnet.switch   # connect stacks
 podnet net proxy --switch unix:/tmp/podnet-vnet.switch --address 10.66.0.3
 ```
 
+`net proxy` is the front door of [proxies.md](proxies.md) over the stack. The door
+answers a closed virtual port with 502 (SOCKS5 `0x04`), and an address that nothing owns with 504 after 5 s.
+
 A unix switch takes the same user only. A TCP switch needs a shared token:
 set `PODNET_SWITCH_TOKEN`, or give `--switch-token-file PATH`, to the switch
 and to each `net proxy --switch tcp://...`. With no token, the switch does
@@ -10110,7 +10117,9 @@ podnet net ts-shims --out /run/podnet-ts-shims                   # user tables f
 podnet pod -x tailscale:/run/tailscale/tailscaled.sock -- ssh host
 ```
 
-`tailscaled` must run with `--tun=userspace-networking`.
+`tailscaled` must run with `--tun=userspace-networking`. The door of `net tailscale` is the front door of
+[proxies.md](proxies.md) over `tailscaled`. A dial that `tailscaled` does not answer in 10 s gets
+SOCKS5 `0x04` or HTTP 504.
 
 `--tailnet NAME` (or `PODNET_TAILNET`) starts the door only when `tailscaled`
 is `Running` in that tailnet. NAME is the tailnet name or its DNS suffix.
@@ -10793,6 +10802,37 @@ trusts `podnet-ca.pem` beside the binary, the first system bundle that it can
 read (for example `/etc/ssl/certs/ca-certificates.crt`), and the Mozilla
 roots compiled into podnet. `podnet status` shows the roots in `tls_roots`. See
 `SECURITY.md`.
+
+## Front doors
+
+A front door is a listener that speaks SOCKS5 and HTTP CONNECT. The listener detects the protocol from the
+first byte. These commands run the same door (`crates/podnet-netns/src/door.rs`, T-061):
+
+| Command | The way of a flow |
+| --- | --- |
+| `podnet pod --serve LISTEN -x UPSTREAM` | The chain of `-x`, or the chain that a `-r` rule chooses. |
+| `podnet net proxy` | The virtual network of the stack of the command (`--map`, `--forward`, `--switch`). |
+| `podnet net tailscale` | `tailscaled`, through its LocalAPI. |
+| `podnet route` | A network or a group of the router ([router.md](router.md)). |
+
+`podnet warp proxy` has its own door until the take of `pod-warp` (T-050).
+
+The door has these rules for each client:
+
+* The client has 30 s to send its first byte and its request. A client that is too slow gets SOCKS5 `0x04`
+  or HTTP 504, and the door closes the connection.
+* The door serves 1024 live clients at one time. It closes a client that comes over the cap.
+* The door waits at most 30 s for the connection to the far end. `net tailscale` waits 10 s and `net proxy`
+  waits 5 s.
+* The failure of a dial gives the reply by its class: a refusal of a rule or of a policy is SOCKS5 `0x02` and
+  HTTP 403; a time limit is SOCKS5 `0x04` and HTTP 504; any other failure is a general failure (or a
+  host unreachable, when the text says refused or denied) and HTTP 502. An HTTP answer has a short text
+  body.
+* A request with port 0 takes the port of `--port` (`net proxy` and `net tailscale`).
+* `pod --serve`, `net proxy` and `net tailscale` take SOCKS5 and CONNECT only. A plain `http://` request
+  gets 405. `net proxy` and `net tailscale` end a flow after 300 s.
+* BIND gets SOCKS5 `0x07` (command not supported). UDP ASSOCIATE goes through the first upstream for
+  `pod --serve`, and gets `0x07` for `net proxy` and `net tailscale`.
 
 <!-- document: docs/background.md -->
 

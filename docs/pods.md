@@ -43,7 +43,9 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
 * `wg:FILE` is not a hop of a pod. Run `podnet route` with a `wg:FILE` network, and give its door to `-x`.
 * `netbird:[PORT]` through `--egress` (a SOCKS5 hop on `127.0.0.1:PORT`; [networks.md](networks.md)).
 * `--serve LISTEN` runs no program. It serves SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or
-  `tcp://host:port`, and sends the flows through the chain.
+  `tcp://host:port`, and sends the flows through the chain. It is the front door of
+  [proxies.md](proxies.md), over the chain and the rules. UDP ASSOCIATE and UDP in the stream go
+  through the first upstream, which must be SOCKS5. BIND gets `0x07`.
 
 By default the program does not get `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and `NO_PROXY`.
 `--keep-proxy-env` keeps them.

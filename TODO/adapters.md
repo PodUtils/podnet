@@ -454,7 +454,7 @@ T-058 is done.
 ## Correction
 
 2026-11-11: `src/warp/proxy.rs` is frozen for `pod-warp` (T-050), so the WARP door keeps its code until the
-take. Done so far (5c275ed): `crates/podnet-vnet/src/door.rs`, `Door` over any `Dial`: SOCKS5 and HTTP CONNECT
+take. Done so far (5c275ed): `door.rs` of `podnet-vnet` (now `crates/podnet-netns/src/door.rs`), `Door` over any `Dial`: SOCKS5 and HTTP CONNECT
 (and an `http://` request in absolute form, through `dial_http`) on one listener, one deadline for the
 request of a client (`REQUEST_LIMIT`, 30 s), a cap of the live clients with a count of the clients that
 it turned away (GitHub #384), and users for SOCKS5 (RFC 1929) and HTTP (`Proxy-Authorization: Basic`).
@@ -462,6 +462,42 @@ Tests: `cargo test -p podnet-vnet --lib front_door` (5). Left: UDP ASSOCIATE thr
 (the door answers "command not supported" now), the move of `pod --serve`, `net proxy` and `net tailscale`
 onto the door with their extras (`--dns`, the rules and their reload, `--map`, `--import`, `--control`),
 and the WARP door at the take of `pod-warp`.
+
+2026-11-12: only the WARP door is left (`src/warp/proxy.rs`, the take of `pod-warp`, T-050). Do not touch
+`src/warp/` before that take. UDP ASSOCIATE through `Dial::datagrams` is done: T-098 added it
+(`door/udp.rs`, commit d80e561 of the branch of T-098). The three other commands run on the one door.
+`Door` moved from `podnet-vnet` to `crates/podnet-netns/src/door.rs`, because `pod --serve` and the
+tailnet door are in `podnet-netns`, and that crate does not use `podnet-vnet`. `podnet_vnet::door` is the
+same module. The door has these options for the extras of the commands: `with_default_port` (`--port`),
+`with_flow_limit` (300 s), `connect_only` (405 for a plain `http://` request), `with_extension` (the
+SOCKS5 commands that the dialer cannot carry: the UDP ASSOCIATE and the UDP in the stream of the pod),
+and `on_error` (the `-v` line of the pod). The reply follows the class of the failure of the dial.
+
+## Done
+
+2026-11-12, five commits on the branch `worktree-agent-ae070f705e8d9f4a0` (the ids can change at the
+merge): 7b6fb6c (the door moves to `podnet-netns`), 6c18e1a (the options of the door), 9cedace (`net
+proxy`), 2c73785 (`net tailscale`), f88e0c2 (`pod --serve`). Result: `net proxy`, `net tailscale` and
+`pod --serve` serve their clients with `Door`. Each keeps its extras:
+`net proxy` keeps `--map`, `--map-file`, `--forward`, `--switch`, `--import`, `--control` and `--port` (the
+command and the stack read them as before); the 5 s wait for the handshake of a virtual address, the 502
+and 504 answers with a body, and the 405 for a plain `http://` request. `net tailscale` keeps the guard of
+the tailnet (T-243: SOCKS5 `0x02`, HTTP 403), the 10 s limit of the dial (issue 181), the notes of T-081
+and the exit codes of the command. `pod --serve` keeps the `-r` rules and their refusals, `-v`, `--flow-log`
+(the dial line and the close line with `bytes_out` and `bytes_in`), UDP ASSOCIATE and UDP in the stream
+through the first upstream, and the output line `serving ADDR (N upstream)`. The three doors have the cap of
+1024 live clients and the deadline of 30 s for the request (GitHub #384). A change of behaviour: BIND is
+`0x07` on `pod --serve` (it was a CONNECT), and an HTTP failure answer of `pod --serve` has a body.
+Tests: `cargo test -p podnet-netns --lib` (door: 7 new, `front_door_*`; `frontdoor::tests::the_pod_door_*`,
+2); `cargo test -p podnet-vnet --lib proxy` (6 old tests unchanged, 1 new:
+`the_proxy_is_the_door_over_the_stack`); `cargo test -p podnet-netns --lib tailscale` (11 old tests
+unchanged, 1 new: `the_tailnet_door_gives_port_0_the_port_option_and_takes_connect_only`);
+`cargo test --test pod_usage --test pod_seccomp --test vnet --test vnet_proxy_forward` and
+`cargo test --test cli` pass unchanged. Areas of `docs/research/podnet/parity-checklist.md` ticked: `net
+proxy`, `net tailscale` and `pod --serve`, `-x`, `-r` (section 4). Not proven: a live `tailscaled`, and the
+`live.yml` run; UDP ASSOCIATE on `net proxy` and `net tailscale` (they never had it: the answer is `0x07`);
+`--control` and `--import` of `net proxy` (the command code did not change; no test of them ran here); the
+WARP door (T-050).
 
 # T-062: The service and ingress traits, with wrappers of the Cloudflare tunnel, the local listener, the relay node and the virtual network
 
@@ -561,7 +597,7 @@ connection, not the bandwidth.
   `crates/podnet-netns/src/upstream.rs:380-413` (`socks5_connect`: the request, then `read_exact` of the
   reply head). A hop with `proxy.user` offers the methods `[0x00, 0x02]`, a hop without it `[0x00]`
   (`crates/podnet-netns/src/upstream.rs:309-313`).
-- `crates/podnet-vnet/src/door.rs:129-133` replies after the dial too.
+- `crates/podnet-netns/src/door.rs:233` and `:259` replies after the dial too.
 - The door of podnet reads a pipelined client: `crates/podnet-netns/src/socks.rs:61` (`socks5_read_request`)
   reads the greeting, the methods and the request with sequential `read_exact`.
 - `src/warp/proxy.rs` has its own dial (the replies at `src/warp/proxy.rs:657-733`). That door is frozen
@@ -615,3 +651,14 @@ a user and a password (the serial path runs, the flag changes nothing).
 T-061 has moved `pod --serve` onto `Door`. Tier A (one write of the greeting and the request, only for a
 hop with no credentials) can land earlier in `crates/podnet-netns/src/upstream.rs`, because it is
 retry-safe.
+
+## Correction
+
+2026-11-12: the start condition holds. T-061 has moved `pod --serve` onto `Door` (branch commits 7b6fb6c to
+f88e0c2). The code of the Premise has moved. The door is `crates/podnet-netns/src/door.rs` (it was
+in `podnet-vnet`). The dial of `pod --serve` is `PodDial` in
+`crates/podnet-netns/src/frontdoor.rs`. It replies after the dial in `Door::handle`
+(`socks5_reply`, `http_connect_ok`), and `serve_one` is gone. The place for the flag is `Door` (an option
+beside `with_default_port`) with a change of the reply order in `handle`, and the upstream client in
+`crates/podnet-netns/src/upstream.rs` (`socks5_handshake`, `socks5_connect`). This correction does
+not do the entry.

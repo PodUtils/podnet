@@ -30,6 +30,9 @@ podnet net switch --listen unix:/tmp/podnet-vnet.switch   # connect stacks
 podnet net proxy --switch unix:/tmp/podnet-vnet.switch --address 10.66.0.3
 ```
 
+`net proxy` is the front door of [proxies.md](proxies.md) over the stack. The door
+answers a closed virtual port with 502 (SOCKS5 `0x04`), and an address that nothing owns with 504 after 5 s.
+
 A unix switch takes the same user only. A TCP switch needs a shared token:
 set `PODNET_SWITCH_TOKEN`, or give `--switch-token-file PATH`, to the switch
 and to each `net proxy --switch tcp://...`. With no token, the switch does
@@ -60,7 +63,9 @@ podnet net ts-shims --out /run/podnet-ts-shims                   # user tables f
 podnet pod -x tailscale:/run/tailscale/tailscaled.sock -- ssh host
 ```
 
-`tailscaled` must run with `--tun=userspace-networking`.
+`tailscaled` must run with `--tun=userspace-networking`. The door of `net tailscale` is the front door of
+[proxies.md](proxies.md) over `tailscaled`. A dial that `tailscaled` does not answer in 10 s gets
+SOCKS5 `0x04` or HTTP 504.
 
 `--tailnet NAME` (or `PODNET_TAILNET`) starts the door only when `tailscaled`
 is `Running` in that tailnet. NAME is the tailnet name or its DNS suffix.

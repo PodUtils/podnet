@@ -46,7 +46,7 @@ not wait for a larger one.
 5. **M3, the crates:** T-053, then the prerelease T-054. T-049, T-050
    and T-052 are the takes of `pod-relay`, `pod-warp` and `pod-cloudflare` of `PodUtils/podcrates`
    (T-137): do not do them in podnet.
-6. **M4, the adapters:** T-057, T-061, T-237 (after T-061 has moved `pod --serve` onto the one door).
+6. **M4, the adapters:** T-057, T-061 (partial: only the WARP door is left, it waits for the take of `pod-warp`, T-050), T-237 (T-061 has moved `pod --serve` onto the one door: it can start).
 7. **M6, the services:** the shared parts T-083, T-086 (a take of
    `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
    server and git: done; the router T-095, T-097,
@@ -83,7 +83,6 @@ These entries stay open. The condition in each entry tells when it can start.
 | --- | --- |
 | T-131 | T-137 takes `pod-session`, `pod-e2e` and `pod-identity` (the owner chose the source: a git tag) |
 | T-153 | T-152 gives a pass on the target hosts (the netfilter plane; T-111 stays) |
-| T-237 | T-061 has moved `pod --serve` onto `Door` (tier A can land earlier) |
 | T-179 | partial: the UDP split is built (an option, off by default); the TCP split waits for a far end that joins two connections |
 
 ## Calls made without a ruling

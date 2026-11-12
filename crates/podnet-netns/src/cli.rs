@@ -184,7 +184,8 @@ Options:
                            not use it
       --serve <LISTEN>     Serve SOCKS5, HTTP CONNECT and UDP ASSOCIATE on
                            unix:/path or tcp://host:port, forwarding through
-                           the -x chain
+                           the -x chain. At most 1024 live clients; a plain
+                           http:// request gets 405 and BIND gets 0x07
   -v, --verbose            Log each flow; with seccomp, also each socket and
                            each setsockopt that the pod emulates
   -V, --version            Print the version

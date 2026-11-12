@@ -1080,11 +1080,11 @@ The upstream is needed in the file: the router names no resolver of another part
 flow goes to its member (`names_inside`), and the DNS door resolves over the way that the rules give, so a
 member resolves through its own network. Test: `route_door_dns_reaches_the_router`, new cases of
 `route_config_errors_name_the_key`. Measured: a router with a DNS door over `direct` gave the answer of a
-local upstream (id 1234, flags 8180). Left: UDP ASSOCIATE in the door (`crates/podnet-vnet/src/door.rs`
+local upstream (id 1234, flags 8180). Left: UDP ASSOCIATE in the door (`crates/podnet-netns/src/door.rs`
 answers "command not supported"; T-061), and the `WrongEgress` member of item 3 (the egress check of T-097
 item 9, which waits for `pod-warp`).
 
-2026-11-12, d80e561 and bc4b06a: every item is done. UDP ASSOCIATE: `crates/podnet-vnet/src/door/udp.rs` relays the
+2026-11-12, d80e561 and bc4b06a: every item is done. UDP ASSOCIATE: `crates/podnet-netns/src/door/udp.rs` relays the
 SOCKS5 datagrams of one client over `Dial::datagrams` of the door (the group's pick, the byte meter counts them). The
 first datagram fixes the client; other sources and fragments are dropped; an answer goes back only from an address that
 the client sent to; the control stream ends the association (300 s idle). A way with no datagrams answers 0x07, a group

@@ -2618,7 +2618,7 @@ python3 scripts/check-size.py
 ## Premise
 
 - Printed at `src/cli/cmd/net/mod.rs:298-299`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
-- `docs/networks.md:35-37` uses `net switch --listen tcp://` as its example.
+- `docs/networks.md:38-40` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 

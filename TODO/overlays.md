@@ -362,9 +362,9 @@ exits 78 before it binds the listener, and the message names both tailnets.
   and keep only the string `BackendState`. `crates/podnet-netns/src/tailscale.rs:172-191` (`state_warning`,
   `check_state`) is called at the start and after a failed dial (`crates/podnet-netns/src/tailscale.rs:317`
   and `crates/podnet-netns/src/tailscale.rs:413`); it warns once and never refuses.
-- `src/cli/cmd/net/shim.rs:56-88` (`net_tailscale`) reads no tailnet. `docs/networks.md:63` says only that
+- `src/cli/cmd/net/shim.rs:56-88` (`net_tailscale`) reads no tailnet. `docs/networks.md:66` says only that
   `tailscaled` must run with `--tun=userspace-networking`. The test with a fake LocalAPI:
-  `crates/podnet-netns/src/tailscale.rs:624-655`.
+  `crates/podnet-netns/src/tailscale.rs:569-600`.
 - `Fault::Config` (exit 78) and `Fault::Unavailable` (exit 69) are in `crates/podnet-core/src/exit.rs`.
 - T-081 (done) did the warning and left its step 3 ("the state in a doctor of the door") undone
   (`TODO/fixes.md:1108`). This entry closes that step. A done entry is not reopened. T-114 (open, the
@@ -389,7 +389,7 @@ exits 78 before it binds the listener, and the message names both tailnets.
 5. Add a doctor row for the door: the socket, `BackendState`, the name and the suffix of the tailnet, and the
    value of `TS_FORCE_NOISE_443` as the podnet process sees it (the environment of the daemon cannot be
    read). The row says `unknown` when the daemon does not answer.
-6. Docs: under `docs/networks.md:63`, add that a host whose outbound traffic is limited to the port 443 starts
+6. Docs: under `docs/networks.md:66`, add that a host whose outbound traffic is limited to the port 443 starts
    `tailscaled` with `TS_FORCE_NOISE_443=true`. The help text says that the DNS suffix is the safer value
    of the flag (Inferred).
 7. The check reads the status only. It never changes the login, the exit node or the prefs. The hop
