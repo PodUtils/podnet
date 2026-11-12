@@ -97,6 +97,15 @@ gh workflow run ts-headscale.yml
 
 T-059 and T-114 are done.
 
+## Correction
+
+2026-11-12, the Start condition does not hold. T-059 is done. T-114 is open: it has no headscale harness, and
+its own Start condition needs a release of the shared crate that holds the harness (`pod-testkit`, the
+candidate; T-137). No work was done. State in the tree: `src/networks.rs` already parses `tailscale:/PATH` as a
+`Kind::Hop { tailscale: true }` and reports it as `tailscale` (T-059). The Approach steps 1 and 2 (the row of
+`doctor` with the login state of T-081, `--via`, `--net` of the router, groups) can start without T-114. Step 3
+waits for T-114.
+
 # T-116: WireGuard: read a wg-quick file into a peer, with optional reserved bytes
 
 **Source:** `docs/research/podnet/podssh.md`, section 2.3, step 2.
