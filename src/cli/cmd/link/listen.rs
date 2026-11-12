@@ -53,7 +53,8 @@ pub(crate) struct ListenArgs {
     #[arg(long, value_name = "FILE", required = true)]
     pub(crate) allow: PathBuf,
     /// Where the streams of the service `raw` go: `host:port` or
-    /// `unix:/path`. It is the same as `--service raw=TARGET`. Without a
+    /// `unix:/path`. It is the same as `--service raw=TARGET`. The bytes
+    /// pass with no framing, and half-close goes both ways. Without a
     /// service, the listener refuses each stream (the opener exits 69).
     #[arg(long, value_name = "TARGET")]
     pub(crate) to: Option<String>,

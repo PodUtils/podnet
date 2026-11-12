@@ -71,6 +71,13 @@ The hello admits a peer for the whole link and binds no stream. The opener of a 
 0 open, 1 no such service, 2 the origin of the service did not answer. A byte other than 0 exits 69 at the opener. The default
 service is `raw`.
 
+### The service `raw`
+
+The service `raw` copies the bytes of the stream to its target and back. It adds no framing: one byte in is one byte out. Half-close
+goes in both directions. The end of the input of one side shuts down the write side of the other side, and the other direction stays
+open until its own end. A stream of 4 MiB in each direction arrives unchanged (`tests/link_raw.rs`). The copy has no record size
+of its own.
+
 ## The control socket
 
 `link listen` and `link connect` run a control socket for the links they hold. It is a unix socket with the mode 0600, at
