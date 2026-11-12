@@ -4778,3 +4778,45 @@ cargo test -q --test signals
 2026-11-12, commit 78dec0d. Cause: the test. `start` waited for the socket file and then slept 300 ms. The socket comes before `detach::ready`, which arms the stop signals. On a loaded host the ready came after the 300 ms, and the stop signal had the default action (exit by the signal, not 0). The code is as designed (issue 91: the default action before the ready). Fix: `start` reads stdout and waits for the line `podnet: proxy`, then waits 200 ms; the stop limit is 30 s; the checks are the same.
 
 Failure rate: before, 0 of about 500 runs under load (40 busy loops, 200 parallel runs; 24 busy loops with 150 runs; one-CPU pinning) failed, so the failure of the full run was not reproduced on demand. The window was shown with a signal at the socket: 4 of 8 runs ended by SIGTERM (rc 143). After: 0 of 200 runs under the same load. `cargo test -q --test signals`: 3 passed. Not proven: the failure message "did not stop" (a hang) was not reproduced; the measured fault is an exit by the signal.
+
+
+# T-313: Publish `v0.4.0-beta.6`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md` (Releases, 2026-11-09): cut the next prerelease when a batch of fixes is green;
+`docs/maintenance.md`, section "Release".
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The work after `v0.4.0-beta.5` (T-061, T-097, T-098, T-115, T-117, T-166, T-176, T-180, T-237, T-248, T-249,
+T-258, T-259, T-260, T-312, and the takes of podcrates v0.27.0 to v0.29.0) is on `main` only.
+
+## Premise
+
+- `v0.4.0-beta.5` is the newest release (T-256).
+
+## Approach
+
+1. Set the version `0.4.0-beta.6` in `Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, and regenerate the llms files.
+2. Write `docs/releases/v0.4.0-beta.6.md`, with `## Breaking`.
+3. Push, and wait until `ci` and `live` pass on that commit.
+4. Dispatch `release.yml` on `main` with `publish` empty (the dry run), then with
+   `publish=v0.4.0-beta.6`.
+5. Check the files of the release and `release-proofs.yml`.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next
+prerelease unattended when a batch is green.
+
+## Prove
+
+```sh
+cargo test -p podnet --test docs
+sh scripts/agent/check.sh
+```

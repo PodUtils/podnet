@@ -3,7 +3,7 @@
 The manual is the output of `podnet man --no-pager`.
 
 ```text
-PODNET(1)                                        podnet 0.4.0-beta.5
+PODNET(1)                                        podnet 0.4.0-beta.6
 
 NAME
     podnet - Bring your own network to hosts with strong network limits:
