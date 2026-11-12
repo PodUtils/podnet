@@ -36,8 +36,8 @@ use crate::ws_relay::Relay;
 
 mod pairfile;
 pub use pairfile::{file_of, load, remove, save};
-pub use pod_relay::reverse::local::Target;
-pub use pod_relay::reverse::{EOF_IDLE, HALF_CLOSE_IDLE};
+pub use pod_relay::reverse::local::{channel, ChannelHandler, Target};
+pub use pod_relay::reverse::{Handler, SessionId, EOF_IDLE, HALF_CLOSE_IDLE};
 
 /// The environment variable with the connect token of the operator.
 pub const CONNECT_TOKEN_VARIABLE: &str = crate::instances::CONNECT_TOKEN_VARIABLE;
@@ -236,6 +236,25 @@ async fn warn_expiry(name: String, expires: u64, follow: bool) {
 /// directory, when no pair name was given), the node takes the next stored
 /// pair at the expiry, with no new start.
 pub async fn run_node(follow: Option<&Path>, pair: Pair, target: &Target) -> Result<()> {
+    let handler = Arc::new(road::LocalHandler {
+        target: target.clone(),
+        timeout: LOCAL_CONNECT,
+        dialer: Arc::new(direct_dialer()),
+    });
+    run_node_with(follow, pair, handler, &target.to_string()).await
+}
+
+/// [`run_node`] with a `handler` of the process in place of a target: each
+/// session that the relay opens goes to the handler, with no socket file
+/// (T-083). [`channel`] gives a handler whose sessions a service of the
+/// process takes. `shown` names the handler in the log and in the ready
+/// document.
+pub async fn run_node_with<H: Handler>(
+    follow: Option<&Path>,
+    pair: Pair,
+    handler: Arc<H>,
+    shown: &str,
+) -> Result<()> {
     let mut pair = pair;
     loop {
         let warnings = tokio::spawn(warn_expiry(
@@ -243,7 +262,7 @@ pub async fn run_node(follow: Option<&Path>, pair: Pair, target: &Target) -> Res
             pair.expires,
             follow.is_some(),
         ));
-        let (result, back) = node(pair, target).await;
+        let (result, back) = node(pair, handler.clone(), shown).await;
         pair = back;
         warnings.abort();
         let expired = pair.left() < Duration::from_secs(5);
@@ -268,7 +287,7 @@ pub async fn run_node(follow: Option<&Path>, pair: Pair, target: &Target) -> Res
 /// The node of `pair` until it ends: at the expiry of the pair, at a close
 /// for cause, or at a fault that a new socket would repeat. Gives `pair`
 /// back.
-async fn node(pair: Pair, target: &Target) -> (Result<()>, Pair) {
+async fn node<H: Handler>(pair: Pair, handler: Arc<H>, shown: &str) -> (Result<()>, Pair) {
     let relay = match Relay::single(&pair.relay, None) {
         Ok(relay) => relay,
         Err(err) => return (Err(fault(Fault::Config, err)), pair),
@@ -280,7 +299,7 @@ async fn node(pair: Pair, target: &Target) -> (Result<()>, Pair) {
         relay: url,
         inner,
     } = pair;
-    let shown = target.to_string();
+    let shown = shown.to_string();
     let (said_name, said_url) = (name.clone(), url.clone());
     let say = move |line: String| {
         if line.starts_with("online") {
@@ -290,11 +309,6 @@ async fn node(pair: Pair, target: &Target) -> (Result<()>, Pair) {
             tracing::warn!(name = %said_name, "{line}");
         }
     };
-    let handler = Arc::new(road::LocalHandler {
-        target: target.clone(),
-        timeout: LOCAL_CONNECT,
-        dialer: Arc::new(direct_dialer()),
-    });
     let trust = pod_ws::Trust::Default;
     let mut config = road::NodeConfig {
         pair: inner,

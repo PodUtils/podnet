@@ -11,7 +11,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use podnet::relay_reverse::{connect, load, run_node, Target};
+use podnet::relay_reverse::{channel, connect, load, run_node, run_node_with, Target};
 use podnet::ws_relay::Relay;
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
@@ -331,4 +331,106 @@ async fn git_serve_via_relay_gives_the_ssh_server() {
         "{left:?}"
     );
     assert!(home.path().join("git/ssh_host_ed25519_key").is_file());
+}
+
+// T-083: a node hands each session to a handler of the process: a service of
+// the process takes the stream with the session id, and no socket file is
+// made. Two sessions run at one time, and each one gets its own stream.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_node_serves_an_in_process_handler() {
+    test_host::need_loopback!();
+    let (url, state) = fake_relay(None).await;
+    let dir = tempfile::tempdir().unwrap();
+    write_pair(
+        dir.path(),
+        NAME,
+        &url,
+        ms_from_now(Duration::from_secs(3600)),
+        "",
+    );
+    let pair = load(dir.path(), Some(NAME)).unwrap();
+    let (handler, mut sessions) = channel(4);
+    // The service: it answers `hello <id>` and then echoes in upper case.
+    let served = Arc::new(Mutex::new(Vec::new()));
+    let seen = served.clone();
+    tokio::spawn(async move {
+        while let Some((id, mut stream)) = sessions.recv().await {
+            seen.lock().unwrap().push(id.as_str().to_string());
+            tokio::spawn(async move {
+                let mut line = [0u8; 5];
+                if stream.read_exact(&mut line).await.is_ok() {
+                    let _ = stream.write_all(&line.to_ascii_uppercase()).await;
+                }
+            });
+        }
+    });
+    let node =
+        tokio::spawn(
+            async move { run_node_with(None, pair, Arc::new(handler), "in-process").await },
+        );
+    wait_for_node(&state, 1).await;
+    let relay = Relay::new(&url, None).unwrap();
+    let mut replies = Vec::new();
+    for word in ["alpha", "bravo"] {
+        let (ours, theirs) = tokio::io::duplex(1 << 16);
+        let relay = relay.clone();
+        let session = tokio::spawn(async move {
+            let (read, write) = tokio::io::split(theirs);
+            connect(&relay, NAME, CONNECT_TOKEN, read, write).await
+        });
+        let (mut read, mut write) = tokio::io::split(ours);
+        write.write_all(word.as_bytes()).await.unwrap();
+        let mut reply = [0u8; 5];
+        tokio::time::timeout(Duration::from_secs(20), read.read_exact(&mut reply))
+            .await
+            .expect("the answer in time")
+            .unwrap();
+        replies.push(String::from_utf8(reply.to_vec()).unwrap());
+        drop((read, write));
+        let _ = tokio::time::timeout(Duration::from_secs(5), session).await;
+    }
+    assert_eq!(replies, ["ALPHA", "BRAVO"]);
+    let ids = served.lock().unwrap().clone();
+    assert_eq!(ids.len(), 2, "{ids:?}");
+    assert_ne!(ids[0], ids[1], "each session has its own id");
+    node.abort();
+}
+
+// T-083: a closed channel refuses a session: the operator learns it at once.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_closed_channel_refuses_the_session() {
+    test_host::need_loopback!();
+    let (url, state) = fake_relay(None).await;
+    let dir = tempfile::tempdir().unwrap();
+    write_pair(
+        dir.path(),
+        NAME,
+        &url,
+        ms_from_now(Duration::from_secs(3600)),
+        "",
+    );
+    let pair = load(dir.path(), Some(NAME)).unwrap();
+    let (handler, sessions) = channel(1);
+    drop(sessions);
+    let node =
+        tokio::spawn(
+            async move { run_node_with(None, pair, Arc::new(handler), "in-process").await },
+        );
+    wait_for_node(&state, 1).await;
+    let relay = Relay::new(&url, None).unwrap();
+    let err = tokio::time::timeout(
+        Duration::from_secs(20),
+        connect(
+            &relay,
+            NAME,
+            CONNECT_TOKEN,
+            tokio::io::empty(),
+            tokio::io::sink(),
+        ),
+    )
+    .await
+    .expect("an answer in time")
+    .unwrap_err();
+    assert!(format!("{err:#}").contains("gone"), "{err:#}");
+    node.abort();
 }

@@ -72,19 +72,25 @@ pub fn active() -> Option<&'static Relay> {
 pub fn context() -> &'static Context {
     static CONTEXT: OnceLock<Context> = OnceLock::new();
     CONTEXT.get_or_init(|| {
-        let way = pod_ws::Way::new(
-            crate::trust::context().clone(),
-            crate::egress::egress(None),
-            format!("podnet/{}", env!("CARGO_PKG_VERSION")),
-        );
         let cache = match crate::state::state_dir() {
             Ok(Some(dir)) => Cache::in_dirs(vec![dir]),
             _ => Cache::none(),
         };
-        Context::new(way, cache)
-            .with_settings(settings(None))
-            .with_proxy_of(Arc::new(|host| crate::egress::proxy_for(host, 443)))
+        context_in(cache)
     })
+}
+
+/// A relay client in the way out of this process, with `cache` for the
+/// tokens, the pool and the record of failures.
+fn context_in(cache: Cache) -> Context {
+    let way = pod_ws::Way::new(
+        crate::trust::context().clone(),
+        crate::egress::egress(None),
+        format!("podnet/{}", env!("CARGO_PKG_VERSION")),
+    );
+    Context::new(way, cache)
+        .with_settings(settings(None))
+        .with_proxy_of(Arc::new(|host| crate::egress::proxy_for(host, 443)))
 }
 
 /// podnet's settings of the relay client: the token that the user gave.
@@ -106,7 +112,14 @@ fn settings(token: Option<String>) -> Settings {
 /// relay in use: spent at its bytes or at its age. A MASQUE session through
 /// the relay is replaced when it is spent (the owner ruling of 2026-11-04).
 pub fn meter(io: BoxedIo) -> (BoxedIo, RelayBudget) {
-    let (io, budget) = RelayBudget::meter_for(context(), io);
+    meter_in(context(), io)
+}
+
+/// [`meter`] under the limits that the relay of `ctx` published in its pool
+/// document: the budget is less than the constants when the caps of the
+/// relay are less, and never more.
+fn meter_in(ctx: &Context, io: BoxedIo) -> (BoxedIo, RelayBudget) {
+    let (io, budget) = RelayBudget::meter_for(ctx, io);
     (Box::new(io), budget)
 }
 
@@ -310,6 +323,9 @@ impl Relay {
         Ok(Box::new(pod_relay::stream::of(opened.session)))
     }
 }
+
+#[cfg(test)]
+mod relay_tests;
 
 #[cfg(test)]
 mod tests {

@@ -26,7 +26,7 @@ podnet relay stop NAME
 * `podnet relay pair` asks the relay for a pair (`POST /v1/pair`). A pair lasts
   at most 72 h. The file is `relay/pair-NAME.json` in the state directory,
   with mode 0600. `--json` prints the name, the connect token and the end
-  time.
+  time. An old file `relay/NAME.json` is not read: make a new pair.
 * `podnet relay node [NAME] --to TARGET` takes the pair with the most time left
   when no name is given. `TARGET` is `host:port` or `unix:/path`. The node
   answers each `open` with `ready` after its local connection is ready, or
@@ -37,9 +37,12 @@ podnet relay stop NAME
   expiry (a pair that `podnet relay pair` made since), with no new start. Its
   operators need the name and the connect token of the next pair. When the
   relay ends the pair (it expired with no next pair, or `podnet relay stop`
-  ran), or refuses the node token, the node exits 78 and is not started
-  again. When another node holds the name for 30 s, the node exits 69.
+  ran), or refuses the node token (a 401 or 403 at the upgrade of the node
+  socket), the node exits 78 and is not started again. A Close 1008 that
+  names the token does not stop the node: it opens the socket again. When
+  another node holds the name for 30 s, the node exits 69.
 * `podnet relay connect NAME` waits for `ready`, then copies stdin and stdout.
+  A name that is not a valid pair name exits 64.
   A refused session exits 69 with the cause from the node. A refused token
   exits 78. After the end of stdin, the session ends when the node closes,
   or 15 s (the idle time of the relay) after the last data. A close of the
@@ -50,6 +53,23 @@ podnet relay stop NAME
 * The relay sets its own limits; podnet does not enforce them. Measured on
   `tcp.ssh.relay.ajam.dev`: 64 MiB and 12 h for each session, and it can end
   a session after 180 s with no payload. Open a new session after a limit.
+
+## Hosts and limits
+
+* A list in `--relay` (comma-separated) is a preference of order. A host that
+  fails with an error that another host can repair, or that says nothing while
+  a host after it opens, is tried last for 10 minutes. A host that opens is
+  tried first for the same time. One failure moves a host. No host is left
+  out. The record is a private file in the state directory
+  (`pod-relay` of PodUtils/podcrates).
+* The budget of a stream through the relay (the edge leg of a tunnel and the
+  MASQUE leg of WARP) follows the `limits` of the pool document of the relay
+  (`max_session_bytes`, `max_session_ms`): 4 MiB under the byte cap and 30
+  minutes under the time cap, never more than 60 MiB and 11.5 h. A relay with
+  no `limits` keeps these values. The HTTP/2 edge leg still counts the
+  constants (T-163).
+* A pair is made on the control host of the relay only. The node and the
+  operator use the first host of the list (T-200).
 
 ## Other uses of the relay
 
@@ -62,6 +82,12 @@ podnet relay stop NAME
 * `podnet warp nc --via-relay HOST PORT` and the relay path of the MASQUE connection ([warp.md](warp.md))
   use the same relay.
 * `podnet relay connect` and `podnet relay node` take `--detach` ([background.md](background.md)).
+* A program that uses the library gives a node a handler in place of a target:
+  `relay_reverse::channel(depth)` returns a handler and a receiver. Each
+  session that the relay opens is one end of a pipe; the receiver gives the
+  other end with the session id. `relay_reverse::run_node_with` runs the node
+  over the handler. No socket file is made, and a closed receiver refuses a
+  session.
 * `podnet doctor` tests the TCP and TLS path to the relay ([doctor.md](doctor.md)).
 
 ## SSH forward relay: `podnet ssh-relay`
