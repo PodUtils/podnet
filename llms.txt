@@ -75,7 +75,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet link dial`: Connect to a listener, prove this key, and check the key of the listener against --peer or --allow. Then copy stdin and stdout over one stream. A listener that is not allowed exits 77
 - `podnet link connect`: Connect to a listener, prove this key, check the key of the listener against --peer or --allow, and hold the link. Other programs open streams of the link through its control socket: `peer:FINGERPRINT/ SERVICE` as a network (podnet forward -L LISTEN=peer:FINGERPRINT/ SERVICE). The command ends when the link ends (exit 69) or at a stop signal
 - `podnet link status`: Show the fingerprint of this install and the link instances that run (podnet ps lists the other instances). With a NAME, show that instance only. For an instance with a control socket, status asks the socket for the links it holds (peer, streams, counters) and shows them under `live`; if the socket does not answer, status shows the record
-- `podnet link close`: Stop a link instance that runs in the background (SIGTERM, then SIGKILL after --timeout). The listener removes its unix socket
+- `podnet link close`: Stop a link instance that runs in the background. First end each link of the instance through its control socket (the verb close-link), so that the peers get a GOAWAY; then SIGTERM, and SIGKILL after --timeout. The listener removes its unix socket
 - `podnet link carriers`: List the carriers of this build, with the flags of each and whether this host can use it. A carrier that this host cannot use gives its reason
 - `podnet pod`: Run a program with all its traffic sent through a proxy (podnet-netns)
 - `podnet man`: Show the manual, generated from this binary

@@ -37,7 +37,9 @@
 //!   `reconnect` need a carrier that the instance dials again; they
 //!   answer 69.
 //!
-//! The state dump (T-309) plugs in at `Hub::verb`.
+//! * `dump`: the state of the instance for a bug report (T-309,
+//!   `dump.rs`). Its answer may be 256 KiB; the other answers are 64 KiB at
+//!   most.
 
 use std::collections::BTreeMap;
 use std::os::unix::fs::OpenOptionsExt as _;
@@ -60,12 +62,15 @@ use crate::exit::{self, Fault};
 use crate::identity::AllowList;
 use crate::link::{Link, ResetCode, Stream};
 
+mod dump;
 mod verbs;
 
 /// The most bytes of a request line.
 pub const REQUEST_LIMIT: usize = 4096;
 /// The most bytes of a response line.
 pub const RESPONSE_LIMIT: usize = 64 * 1024;
+/// The most bytes of the answer to `dump` (T-309).
+pub const DUMP_LIMIT: usize = 256 * 1024;
 /// The most clients at one time.
 pub const MAX_CLIENTS: usize = 16;
 /// The time that a client can take to send a line, and the time that an
@@ -207,6 +212,8 @@ pub struct Hub {
     next: AtomicU64,
     /// The link that serves new streams (`select`), when one is pinned.
     selected: Mutex<Option<u64>>,
+    /// The last errors, for the verb `dump`.
+    errors: Mutex<dump::ErrorRing>,
 }
 
 /// The place of a link in a [`Hub`]. Its drop takes the link out.
@@ -247,6 +254,7 @@ impl Hub {
             held: Mutex::new(Vec::new()),
             next: AtomicU64::new(1),
             selected: Mutex::new(None),
+            errors: Mutex::new(Default::default()),
         })
     }
 
@@ -381,6 +389,7 @@ impl Hub {
             "close-link" => self.close_link(request).await,
             "close-stream" => self.close_stream(request).await,
             "select" => self.select(request),
+            "dump" => Ok(self.dump_reply()),
             "rotate" | "reconnect" => Err(Answer::new(
                 exit::UNAVAILABLE,
                 format!(
@@ -399,6 +408,8 @@ impl Hub {
 /// of a stream.
 enum Reply {
     Json(Value),
+    /// A document that may exceed [`RESPONSE_LIMIT`], up to [`DUMP_LIMIT`].
+    Big(Value),
     Pipe(Stream, Value, Tracked),
 }
 
@@ -456,6 +467,8 @@ impl Control {
             )
         })?;
         let token: String = raw.iter().map(|b| format!("{b:02x}")).collect();
+        // No report, dump or log line of this process may hold the token.
+        crate::report::hide(&token);
         if path.exists() && std::os::unix::net::UnixStream::connect(path).is_err() {
             // A socket that nobody serves: the leftover of a crash.
             let _ = std::fs::remove_file(path);
@@ -566,11 +579,15 @@ async fn read_line(stream: &mut UnixStream, pending: &mut Vec<u8>) -> std::io::R
 }
 
 async fn write_line(stream: &mut UnixStream, doc: &Value) -> std::io::Result<()> {
+    write_limited(stream, doc, RESPONSE_LIMIT).await
+}
+
+async fn write_limited(stream: &mut UnixStream, doc: &Value, limit: usize) -> std::io::Result<()> {
     let mut text = doc.to_string();
-    if text.len() >= RESPONSE_LIMIT {
+    if text.len() >= limit {
         text = Answer::new(
             exit::UNAVAILABLE,
-            format!("the answer is longer than {RESPONSE_LIMIT} bytes"),
+            format!("the answer is longer than {limit} bytes"),
         )
         .json()
         .to_string();
@@ -661,6 +678,11 @@ async fn session(
                     return;
                 }
             }
+            Ok(Reply::Big(doc)) => {
+                if write_limited(&mut stream, &doc, DUMP_LIMIT).await.is_err() {
+                    return;
+                }
+            }
             Ok(Reply::Pipe(mut far, doc, tracked)) => {
                 // The connection is now the bytes of the stream: it no
                 // longer counts as a client.
@@ -687,4 +709,4 @@ async fn session(
 }
 
 mod client;
-pub use client::{discover, open_peer, probe_peer, read_token, Client};
+pub use client::{discover, dump_all, open_peer, probe_peer, read_token, Client};

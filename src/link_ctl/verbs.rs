@@ -20,7 +20,7 @@ use super::{Answer, Held, Hub, Reply, LIMIT};
 use crate::exit;
 
 /// The verbs of the socket, as the error of an unknown verb lists them.
-pub(super) const LIST: &str = "status, peer, open, close-link, close-stream or select";
+pub(super) const LIST: &str = "status, peer, open, close-link, close-stream, select or dump";
 
 /// The time that `close-stream` waits for the task of the stream to take
 /// the stream out of the table.

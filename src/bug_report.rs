@@ -114,6 +114,13 @@ fn tail(path: &str, n: usize) -> Vec<String> {
 /// The text of the report. `doctor` is the JSON of `podnet doctor`, when it
 /// ran.
 pub fn text(doctor: Option<&serde_json::Value>) -> String {
+    text_with(doctor, None)
+}
+
+/// [`text`] with the dump of each link instance (`--include-link`, T-309):
+/// one value for each control socket, from
+/// [`crate::link_ctl::dump_all`].
+pub fn text_with(doctor: Option<&serde_json::Value>, link: Option<&[serde_json::Value]>) -> String {
     let mut out = String::new();
     out.push_str(&format!(
         "podnet bug-report\n\npodnet {} ({})\n\n## status\n\n{}\n",
@@ -155,6 +162,16 @@ pub fn text(doctor: Option<&serde_json::Value>) -> String {
         out.push_str("\n## podnet doctor --json\n\n");
         out.push_str(&serde_json::to_string_pretty(doctor).unwrap_or_default());
         out.push('\n');
+    }
+    if let Some(link) = link {
+        out.push_str("\n## podnet link dump (the control socket of each instance)\n\n");
+        if link.is_empty() {
+            out.push_str("(no link instance runs)\n");
+        }
+        for dump in link {
+            out.push_str(&serde_json::to_string_pretty(dump).unwrap_or_default());
+            out.push('\n');
+        }
     }
     out.lines().map(scrub).collect::<Vec<_>>().join("\n") + "\n"
 }

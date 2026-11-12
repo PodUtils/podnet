@@ -127,10 +127,11 @@ reads the document (flags, exit codes, readiness, failure causes).
 * `podnet ports [--probe] [--json]` lists the listening TCP ports of this host (Linux).
   `--probe` connects to each port and lists only those that accept. With `--json`, the others are in
   `unreachable`.
-* `podnet bug-report [--doctor]` prints a text for a bug report: the version, `podnet status`, the
+* `podnet bug-report [--doctor] [--include-link]` prints a text for a bug report: the version, `podnet status`, the
   detached instances with the end of their logs, and the names of the variables that are set. It hides
   device IDs, tunnel IDs, tokens and credentials. It opens no connection unless `--doctor` adds the JSON
-  of `podnet doctor`.
+  of `podnet doctor`. `--include-link` adds the dump of each link instance that runs (the verb `dump` of its control
+  socket, [link.md](link.md)); an instance that does not answer is one line with the error.
 
 ## Measure a way out: `podnet bench`
 

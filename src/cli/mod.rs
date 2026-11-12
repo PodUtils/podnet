@@ -140,6 +140,11 @@ pub(crate) enum Command {
         /// Also run podnet doctor and add its JSON (network).
         #[arg(long)]
         doctor: bool,
+        /// Also add the dump of each link instance that runs (the verb dump
+        /// of its control socket): the peers, the counters, the streams, the
+        /// last errors and the build features. No seed and no token.
+        #[arg(long)]
+        include_link: bool,
     },
     /// Print a completion script for a shell: bash, zsh, fish, elvish or
     /// powershell.
@@ -287,7 +292,10 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Doctor(args) => cmd::host::doctor(args).await,
         Command::Autostart(args) => autostart(args.command),
         Command::Status { .. } => cmd::host::status(),
-        Command::BugReport { doctor } => cmd::host::bug_report(doctor).await,
+        Command::BugReport {
+            doctor,
+            include_link,
+        } => cmd::host::bug_report(doctor, include_link).await,
     }
 }
 

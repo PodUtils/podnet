@@ -200,6 +200,7 @@ async fn serve(link: Link, held: Held) {
         Ok(peer) => peer,
         Err(err) => {
             eprintln!("podnet: peer refused: {err:#}");
+            held.hub.note_error(&format!("peer refused: {err:#}"));
             // The close sends what waits (the verdict of the hello) first.
             link.close().await;
             return;
@@ -215,11 +216,13 @@ async fn serve(link: Link, held: Held) {
         let (services, shown) = (held.services.clone(), shown.clone());
         // `close-stream` of the control socket names the stream by its id.
         let tracked = slot.track(&stream);
+        let hub = held.hub.clone();
         tokio::spawn(async move {
             let mut stream = stream;
             tokio::select! {
                 done = bridge(&mut stream, &services) => {
                     if let Err(err) = done {
+                        hub.note_error(&format!("a stream of {shown} ended: {err:#}"));
                         tracing::warn!(peer = shown, error = %format!("{err:#}"), "a stream ended");
                     }
                 }

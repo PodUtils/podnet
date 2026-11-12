@@ -1856,6 +1856,11 @@ COMMANDS
         --doctor
             Also run podnet doctor and add its JSON (network)
 
+        --include-link
+            Also add the dump of each link instance that runs (the verb dump
+            of its control socket): the peers, the counters, the streams, the
+            last errors and the build features. No seed and no token
+
         --ca-file <PATH>
             A file of TLS roots (PEM). podnet uses only these roots for each
             connection that it opens as a client. Without it, podnet reads
@@ -7472,8 +7477,10 @@ COMMANDS
             line). Default: text. Values: text, json.
 
     podnet link close [OPTIONS] <NAME>
-        Stop a link instance that runs in the background (SIGTERM, then
-        SIGKILL after --timeout). The listener removes its unix socket
+        Stop a link instance that runs in the background. First end each link
+        of the instance through its control socket (the verb close-link), so
+        that the peers get a GOAWAY; then SIGTERM, and SIGKILL after
+        --timeout. The listener removes its unix socket
 
         <NAME>
             The name of the link instance (podnet link status). Required.
@@ -11930,10 +11937,11 @@ reads the document (flags, exit codes, readiness, failure causes).
 * `podnet ports [--probe] [--json]` lists the listening TCP ports of this host (Linux).
   `--probe` connects to each port and lists only those that accept. With `--json`, the others are in
   `unreachable`.
-* `podnet bug-report [--doctor]` prints a text for a bug report: the version, `podnet status`, the
+* `podnet bug-report [--doctor] [--include-link]` prints a text for a bug report: the version, `podnet status`, the
   detached instances with the end of their logs, and the names of the variables that are set. It hides
   device IDs, tunnel IDs, tokens and credentials. It opens no connection unless `--doctor` adds the JSON
-  of `podnet doctor`.
+  of `podnet doctor`. `--include-link` adds the dump of each link instance that runs (the verb `dump` of its control
+  socket, [link.md](link.md)); an instance that does not answer is one line with the error.
 
 ## Measure a way out: `podnet bench`
 
@@ -12161,6 +12169,40 @@ CC_x86_64_unknown_linux_musl=clang cargo build --release --target x86_64-unknown
 
 The `LD_PRELOAD` shims need a C compiler at run time (`cc`, `gcc` or
 `clang`). The other commands do not.
+
+## Features
+
+The default build has no optional feature. An optional carrier or service of
+the link sits behind a Cargo feature of the `podnet` crate:
+
+| Feature | Holds | Entry |
+| --- | --- | --- |
+| `quic` | The QUIC carrier. | T-273 |
+| `s3` | The object-storage carrier. | T-279 |
+| `icmp` | The ICMP echo carrier. | T-282 |
+| `ss` | The Shadowsocks service. | T-294 |
+| `trojan` | The Trojan service. | T-295 |
+| `c-abi` | The C ABI. | T-304 |
+| `portable` | The portable subset. It takes code away. | T-305 |
+| `full` | `quic`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
+
+```sh
+cargo build --release --features quic,icmp   # two optional carriers
+cargo test --workspace --features full       # what the CI job features runs
+```
+
+* `full` is for CI. No flag at run time turns a feature on: a binary cannot
+  run code that it was not built with.
+* A carrier whose feature is off stays in the registry. `podnet link carriers`
+  lists it with the reason `not built: the feature NAME is off (build with
+  --features NAME)`, `podnet doctor` shows it as `unknown`, and a command
+  that names it (`--carrier NAME`) exits 69 with the same reason. In a
+  `--features` build, a carrier whose code is not in the tree yet says so.
+* The static musl build of the release set uses the default features. Build
+  a feature on every target of the release set before it joins that set.
+* `podnet::build_features` is the list (`OPTIONAL`, `FULL`), `built(NAME)`,
+  `enabled()` and `require(NAME)` (the gate of a command: exit 69 with the
+  feature name).
 
 ## Fuzz
 

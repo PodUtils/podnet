@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
-use super::{peer_list, token_path, CONTROL_VARIABLE, RESPONSE_LIMIT};
+use super::{peer_list, token_path, CONTROL_VARIABLE, DUMP_LIMIT, RESPONSE_LIMIT};
 use crate::exit::{self, Fault};
 
 /// The exit class of an error answer.
@@ -59,6 +59,12 @@ impl Client {
                 anyhow!("the control socket {}: {e}", self.path.display()),
             )
         };
+        // The dump may be longer than the answer of any other verb.
+        let limit = if verb == "dump" {
+            DUMP_LIMIT
+        } else {
+            RESPONSE_LIMIT
+        };
         self.stream.write_all(line.as_bytes()).await.map_err(gone)?;
         let mut got = Vec::new();
         let mut byte = [0u8; 1];
@@ -77,10 +83,10 @@ impl Client {
                 break;
             }
             got.push(byte[0]);
-            if got.len() > RESPONSE_LIMIT {
+            if got.len() > limit {
                 return Err(exit::fault(
                     Fault::Unavailable,
-                    anyhow!("the answer is longer than {RESPONSE_LIMIT} bytes"),
+                    anyhow!("the answer is longer than {limit} bytes"),
                 ));
             }
         }
@@ -242,4 +248,33 @@ pub async fn open_peer(fingerprint: &str, service: &str) -> anyhow::Result<UnixS
             .await
     })
     .await
+}
+
+/// The time that `dump_all` waits for one socket.
+const DUMP_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// The dump of each control socket that [`discover`] finds, for
+/// `bug-report --include-link` (T-309). A socket that does not answer is
+/// `{"control":PATH,"error":TEXT}`: a report is useful with one instance
+/// down.
+pub async fn dump_all() -> Vec<Value> {
+    let mut all = Vec::new();
+    for socket in discover() {
+        let ask = async {
+            let token = read_token(&token_path(&socket))?;
+            Client::connect(&socket)
+                .await?
+                .call(&token, "dump", json!({}))
+                .await
+        };
+        let doc = match tokio::time::timeout(DUMP_WAIT, ask).await {
+            Ok(Ok(doc)) => doc,
+            Ok(Err(e)) => json!({"error": format!("{e:#}")}),
+            Err(_) => json!({"error": format!("no answer in {} s", DUMP_WAIT.as_secs())}),
+        };
+        let mut doc = doc;
+        doc["control"] = socket.display().to_string().into();
+        all.push(doc);
+    }
+    all
 }

@@ -181,11 +181,23 @@ fn load(dir: &Path, make: bool) -> anyhow::Result<Identity> {
             }
         }
     };
+    hide_key_file(&path);
     Ok(Identity {
         inner: key.identity,
         path,
         made: key.made,
     })
+}
+
+/// Tell the reports of this process to hide the text of the key file, so
+/// that no report, dump or log line shows the seed whatever its form.
+fn hide_key_file(path: &Path) {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return;
+    };
+    for line in text.lines().map(str::trim).filter(|l| l.len() >= 16) {
+        crate::report::hide(line);
+    }
 }
 
 /// One line of an allow list.

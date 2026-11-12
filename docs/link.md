@@ -88,6 +88,16 @@ removes both files at its stop. The token is never in the ready document, `statu
     request changes nothing.
   * `rotate` and `reconnect` need a carrier that the instance dials again. An instance holds links and not the way to make
     them, so both get 69 (`not built`).
+  * `dump`: the state of the instance for a bug report. It has `build` (`version`, the optional `features` that this binary
+    holds, and the `carriers` with `feature` and `built`), `fingerprint`, `pid`, `settings` (`selected` and the `limits`),
+    `totals` (`links`, `up`, `streams`, `opened`, `accepted`), `links` (the row of `status`, and `stream_table`: one
+    `{id, owner}` for each stream, `owner` being `local` or `peer`, and `streams_cut`), the last 20 `errors` (`at`, `text`; a text
+    keeps 512 characters), `routes` (`built: false`: the route table waits for the mesh) and `cut`. It has no seed, no token
+    and no secret of a peer: every string passes `report::mask` (credentials in URLs, `Authorization` values, runs of 32 or more
+    hex characters, the token of the instance, the text of the key file) and `report::clean` (control characters). Its answer
+    may be 256 KiB; every other answer is 64 KiB at most. A table that does not fit is cut from its last rows, and `streams_cut`
+    (for a link) and `cut.stream_rows` and `cut.links` (at the top) count the rows that the dump cut; the counters stay whole.
+    `podnet bug-report --include-link` adds the dump of each link instance that runs.
   * An unknown verb gets 64 and the list of the verbs.
 
 `PODNET_LINK_CONTROL` names the one socket that `peer:FINGERPRINT/SERVICE` asks. Without it, the network asks the control socket

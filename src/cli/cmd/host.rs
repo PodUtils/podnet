@@ -332,7 +332,7 @@ pub(crate) fn status() -> Result<()> {
 }
 
 /// `podnet bug-report`.
-pub(crate) async fn bug_report(doctor: bool) -> Result<()> {
+pub(crate) async fn bug_report(doctor: bool, include_link: bool) -> Result<()> {
     let report = if doctor {
         let options = podnet::doctor::Options {
             samples: 3,
@@ -342,6 +342,14 @@ pub(crate) async fn bug_report(doctor: bool) -> Result<()> {
     } else {
         None
     };
-    print!("{}", podnet::bug_report::text(report.as_ref()));
+    let link = if include_link {
+        Some(podnet::link_ctl::dump_all().await)
+    } else {
+        None
+    };
+    print!(
+        "{}",
+        podnet::bug_report::text_with(report.as_ref(), link.as_deref())
+    );
     Ok(())
 }

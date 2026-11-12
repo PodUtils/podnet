@@ -231,7 +231,7 @@ async fn rotate_and_reconnect_exit_69_and_an_unknown_verb_exits_64() {
     let err = rig.call("format-disk", json!({})).await.unwrap_err();
     assert_eq!(code_of(&err), 64);
     let text = format!("{err:#}");
-    for verb in ["close-stream", "close-link", "select"] {
+    for verb in ["close-stream", "close-link", "select", "dump"] {
         assert!(
             text.contains(verb),
             "the list of verbs names {verb}: {text}"
