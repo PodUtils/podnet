@@ -125,6 +125,59 @@ pub async fn probe(way: &Way, target: &Target, timeout: Duration) -> ProbeResult
     }
 }
 
+/// The most bytes that an echo endpoint may answer.
+const ECHO_LIMIT: u64 = 128;
+
+/// The egress check of a member (T-097): connect through `way` to `echo`,
+/// a TCP service of the operator that writes the address it sees as the peer
+/// (an IP address, with an optional port, then a new line or the end) and
+/// closes. The address must be `expect`, else the result is `WrongEgress`.
+/// An answer that is no address is a miss that is not clean. The time is the
+/// time of the whole check.
+pub async fn probe_egress(
+    way: &Way,
+    echo: &Target,
+    expect: std::net::IpAddr,
+    timeout: Duration,
+) -> ProbeResult {
+    use tokio::io::AsyncReadExt as _;
+    let start = Instant::now();
+    let deadline = start + timeout;
+    let mut conn = match tokio::time::timeout_at(deadline, way.dial.dial(echo, deadline)).await {
+        Ok(Ok(conn)) => conn,
+        Ok(Err(e)) => {
+            return ProbeResult::ConnectFailed {
+                clean: !matches!(e.class, Class::Timeout | Class::TempFail),
+            }
+        }
+        Err(_) => return ProbeResult::ConnectFailed { clean: false },
+    };
+    let mut answer = Vec::new();
+    let read = tokio::time::timeout_at(
+        deadline,
+        (&mut conn.io).take(ECHO_LIMIT).read_to_end(&mut answer),
+    )
+    .await;
+    if !matches!(read, Ok(Ok(_))) {
+        return ProbeResult::ConnectFailed { clean: false };
+    }
+    match echoed_address(&String::from_utf8_lossy(&answer)) {
+        Some(seen) if seen == expect => ProbeResult::Ok(start.elapsed()),
+        Some(_) => ProbeResult::WrongEgress,
+        None => ProbeResult::ConnectFailed { clean: false },
+    }
+}
+
+/// The address in the answer of an echo endpoint: `IP`, `IP:PORT`,
+/// `[IP]:PORT`, on the first line.
+fn echoed_address(text: &str) -> Option<std::net::IpAddr> {
+    let word = text.split_whitespace().next()?;
+    if let Ok(ip) = word.parse::<std::net::IpAddr>() {
+        return Some(ip);
+    }
+    word.parse::<std::net::SocketAddr>().ok().map(|a| a.ip())
+}
+
 /// The state of one member, between the probes.
 #[derive(Clone, Debug)]
 pub struct Tracker {
@@ -206,6 +259,10 @@ impl Tracker {
         let may_go_down = !result.ok() && result.clean() && control;
         let before = self.health;
         self.health = match self.health {
+            // A flow through a member of the wrong egress would leave by
+            // another address: the member leaves the pick at once, whatever
+            // the control says (the control is about the reach, not this).
+            _ if result == ProbeResult::WrongEgress => Health::Down,
             Health::Up if !result.ok() => {
                 self.since = Some(now);
                 Health::Cooldown
@@ -238,5 +295,7 @@ impl Tracker {
     }
 }
 
+#[cfg(test)]
+mod egress_tests;
 #[cfg(test)]
 mod tests;

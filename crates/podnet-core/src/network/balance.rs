@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use tokio::time::Instant;
 
 use super::health::{ProbeResult, Step, Thresholds, Tracker};
-use super::meter::{Meter, Metered, OpenGuard};
+use super::meter::{Meter, Metered, MeteredDatagrams, OpenGuard};
 use super::policy::{choose, next_head, Head, Policy, Snapshot};
 use super::race::admit;
 use super::split::{Split, SplitDatagrams};
@@ -106,6 +106,11 @@ impl Member {
     /// since the start.
     pub fn bytes(&self) -> u64 {
         self.meter.total.load(Ordering::Relaxed)
+    }
+
+    /// `socket` with its bytes counted for this member.
+    fn metered(&self, socket: Arc<dyn Datagrams>) -> Arc<dyn Datagrams> {
+        Arc::new(MeteredDatagrams::new(socket, self.meter.clone()))
     }
 
     /// The least of the window of passing probe times.
@@ -431,13 +436,14 @@ impl Balance {
             self.split_fallbacks.fetch_add(1, Ordering::Relaxed);
             return Ok(None);
         }
-        let sender = up.way.dial.datagrams().await?;
+        let sender = up.metered(up.way.dial.datagrams().await?);
         up.flows.fetch_add(1, Ordering::Relaxed);
         let Ok(receiver) = down.way.dial.datagrams().await else {
             // The member `down` has no datagrams: the socket keeps `up`.
             self.split_fallbacks.fetch_add(1, Ordering::Relaxed);
             return Ok(Some(sender));
         };
+        let receiver = down.metered(receiver);
         down.flows.fetch_add(1, Ordering::Relaxed);
         self.split_sockets.fetch_add(1, Ordering::Relaxed);
         Ok(Some(Arc::new(SplitDatagrams::new(sender, receiver))))
@@ -506,7 +512,7 @@ impl Dial for Balance {
                 return Ok(socket);
             }
             match self.pick() {
-                Selection::One(member) => member.way.dial.datagrams().await,
+                Selection::One(member) => Ok(member.metered(member.way.dial.datagrams().await?)),
                 Selection::None => Err(self.refusal("a datagram socket")),
             }
         })

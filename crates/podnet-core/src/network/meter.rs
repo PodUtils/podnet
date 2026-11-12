@@ -4,6 +4,8 @@
 //! atomic adds. The decay of the load (`leastload`) is folded in when the
 //! pick reads the member.
 
+use std::io::{self, IoSliceMut};
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -13,7 +15,7 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::time::Instant;
 
 use super::policy::Load;
-use super::BoxedIo;
+use super::{BoxedIo, Datagrams, RecvMeta, Transmit};
 
 /// The counters of one member.
 #[derive(Default)]
@@ -137,6 +139,70 @@ impl AsyncWrite for Metered {
 
     fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         Pin::new(&mut self.get_mut().inner).poll_shutdown(cx)
+    }
+}
+
+/// A datagram socket that counts its bytes for a member (T-097), in both
+/// directions, as [`Metered`] does for a stream.
+#[derive(Debug)]
+pub struct MeteredDatagrams {
+    inner: Arc<dyn Datagrams>,
+    meter: Arc<Meter>,
+}
+
+impl MeteredDatagrams {
+    pub(super) fn new(inner: Arc<dyn Datagrams>, meter: Arc<Meter>) -> MeteredDatagrams {
+        MeteredDatagrams { inner, meter }
+    }
+}
+
+impl std::fmt::Debug for Meter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Meter")
+            .field("total", &self.total.load(Ordering::Relaxed))
+            .finish()
+    }
+}
+
+impl Datagrams for MeteredDatagrams {
+    fn poll_writable(&self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        self.inner.poll_writable(cx)
+    }
+
+    fn try_send(&self, transmit: &Transmit<'_>) -> io::Result<()> {
+        self.inner.try_send(transmit)?;
+        self.meter.note(transmit.contents.len() as u64);
+        Ok(())
+    }
+
+    fn poll_recv(
+        &self,
+        cx: &mut Context<'_>,
+        bufs: &mut [IoSliceMut<'_>],
+        meta: &mut [RecvMeta],
+    ) -> Poll<io::Result<usize>> {
+        let poll = self.inner.poll_recv(cx, bufs, meta);
+        if let Poll::Ready(Ok(n)) = &poll {
+            let bytes: usize = meta.iter().take(*n).map(|m| m.len).sum();
+            self.meter.note(bytes as u64);
+        }
+        poll
+    }
+
+    fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.inner.local_addr()
+    }
+
+    fn max_transmit_segments(&self) -> usize {
+        self.inner.max_transmit_segments()
+    }
+
+    fn max_receive_segments(&self) -> usize {
+        self.inner.max_receive_segments()
+    }
+
+    fn may_fragment(&self) -> bool {
+        self.inner.may_fragment()
     }
 }
 

@@ -77,3 +77,57 @@ async fn group_meter_feeds_leastload_with_the_bytes_of_the_flows() {
         }
     }
 }
+
+/// T-097: the datagrams of a socket count for the member that carries them,
+/// in both directions, as the bytes of a TCP flow do.
+#[tokio::test]
+async fn group_meter_counts_udp_bytes_in_both_directions() {
+    use super::super::fakes::{udp_way, Pipe};
+    use super::super::{recv_from, send_to};
+    let pipe = std::sync::Arc::new(Pipe::default());
+    let b = Balance::new(
+        "g",
+        vec![Member::new("a", udp_way("a", Some(pipe.clone())), 1)],
+    )
+    .unwrap();
+    let socket = b.datagrams().await.unwrap();
+    let to = std::net::SocketAddr::from(([192, 0, 2, 9], 53));
+    send_to(&*socket, &[1u8; 300], to).await.unwrap();
+    assert_eq!(b.members()[0].bytes(), 300, "the send counts");
+    pipe.inbox.lock().unwrap().push_back(vec![2u8; 120]);
+    let mut buf = [0u8; 256];
+    let (n, _) = recv_from(&*socket, &mut buf).await.unwrap();
+    assert_eq!(n, 120);
+    assert_eq!(b.members()[0].bytes(), 420, "the receive counts");
+    assert_eq!(b.status()["members"][0]["bytes"], 420);
+}
+
+/// T-097 with T-179: with a split, `up` counts the bytes that it sends and
+/// `down` counts the bytes that it receives.
+#[tokio::test]
+async fn group_meter_counts_split_udp_bytes_for_each_member() {
+    use super::super::fakes::{udp_way, Pipe};
+    use super::super::{recv_from, send_to};
+    let (pa, pb) = (
+        std::sync::Arc::new(Pipe::default()),
+        std::sync::Arc::new(Pipe::default()),
+    );
+    let b = Balance::new(
+        "g",
+        vec![
+            Member::new("a", udp_way("a", Some(pa.clone())), 1),
+            Member::new("b", udp_way("b", Some(pb.clone())), 1),
+        ],
+    )
+    .unwrap()
+    .with_split("a", "b")
+    .unwrap();
+    let socket = b.datagrams().await.unwrap();
+    let to = std::net::SocketAddr::from(([192, 0, 2, 9], 53));
+    send_to(&*socket, &[1u8; 50], to).await.unwrap();
+    pb.inbox.lock().unwrap().push_back(vec![2u8; 700]);
+    let mut buf = [0u8; 1024];
+    recv_from(&*socket, &mut buf).await.unwrap();
+    assert_eq!(b.members()[0].bytes(), 50, "up counts what it sent");
+    assert_eq!(b.members()[1].bytes(), 700, "down counts what it received");
+}

@@ -46,7 +46,7 @@ pub mod swap;
 pub use balance::{parse_group, Balance, Health, Member, Selection};
 pub use chain::Chain;
 pub use failover::Failover;
-pub use health::{probe, ProbeResult, Step, Thresholds, Tracker};
+pub use health::{probe, probe_egress, ProbeResult, Step, Thresholds, Tracker};
 pub use meter::OpenGuard;
 pub use policy::Policy;
 pub use race::Race;

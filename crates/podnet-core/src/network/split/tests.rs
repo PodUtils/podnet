@@ -1,95 +1,13 @@
-use std::collections::VecDeque;
-use std::io::{self, IoSliceMut};
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll};
+use std::sync::Arc;
 
 use super::super::balance::{Balance, Health, Member};
-use super::super::fakes::{log, soon, Fake};
-use super::super::{
-    recv_from, send_to, BoxFuture, Class, Connected, Datagrams, Dial, Failure, RecvMeta, Stage,
-    Target, Transmit, Way,
-};
+use super::super::fakes::{soon, udp_way, Pipe};
+use super::super::{recv_from, send_to, Class, Dial, Target, Way};
 use super::*;
 
-/// A datagram socket in memory: it keeps what it sent, and it receives
-/// what a test put in its inbox.
-#[derive(Debug, Default)]
-struct Pipe {
-    sent: Mutex<Vec<Vec<u8>>>,
-    inbox: Mutex<VecDeque<Vec<u8>>>,
-}
-
-impl Datagrams for Pipe {
-    fn poll_writable(&self, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn try_send(&self, t: &Transmit<'_>) -> io::Result<()> {
-        self.sent.lock().unwrap().push(t.contents.to_vec());
-        Ok(())
-    }
-
-    fn poll_recv(
-        &self,
-        _cx: &mut Context<'_>,
-        bufs: &mut [IoSliceMut<'_>],
-        meta: &mut [RecvMeta],
-    ) -> Poll<io::Result<usize>> {
-        let Some(data) = self.inbox.lock().unwrap().pop_front() else {
-            return Poll::Pending;
-        };
-        bufs[0][..data.len()].copy_from_slice(&data);
-        meta[0] = RecvMeta {
-            addr: SocketAddr::from(([192, 0, 2, 9], 53)),
-            len: data.len(),
-            stride: data.len(),
-            dst_ip: None,
-        };
-        Poll::Ready(Ok(1))
-    }
-
-    fn local_addr(&self) -> io::Result<SocketAddr> {
-        Ok(SocketAddr::from(([127, 0, 0, 1], 0)))
-    }
-}
-
-/// A way that carries datagrams over one [`Pipe`] (TCP is a fake stream).
-struct UdpWay {
-    tcp: Fake,
-    pipe: Option<Arc<Pipe>>,
-}
-
-impl Dial for UdpWay {
-    fn label(&self) -> String {
-        self.tcp.label.to_string()
-    }
-
-    fn dial<'a>(
-        &'a self,
-        target: &'a Target,
-        deadline: tokio::time::Instant,
-    ) -> BoxFuture<'a, Result<Connected, Failure>> {
-        self.tcp.dial(target, deadline)
-    }
-
-    fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn Datagrams>, Failure>> {
-        Box::pin(async move {
-            match &self.pipe {
-                Some(p) => Ok(p.clone() as Arc<dyn Datagrams>),
-                None => Err(Failure::new(
-                    Stage::Connect,
-                    Class::Unavailable,
-                    "no UDP".to_string(),
-                )),
-            }
-        })
-    }
-}
-
 fn way(label: &'static str, pipe: Option<Arc<Pipe>>) -> Way {
-    let tcp = Fake::up(label, &log());
-    Way::destination(Arc::new(UdpWay { tcp, pipe }))
+    udp_way(label, pipe)
 }
 
 fn pair() -> (Arc<Pipe>, Arc<Pipe>) {

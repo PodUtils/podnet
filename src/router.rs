@@ -34,6 +34,7 @@
 //! ```
 
 use std::collections::{BTreeMap, HashMap};
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -51,8 +52,8 @@ pub mod kernel;
 pub use control::read_status;
 
 use crate::network::{
-    parse_group, probe, Balance, Choice, Ctx, Dial, Member, Network as _, Policy, Selection,
-    Target, Thresholds, Way,
+    parse_group, probe, probe_egress, Balance, Choice, Ctx, Dial, Member, Network as _, Policy,
+    Selection, Target, Thresholds, Way,
 };
 
 /// The config file.
@@ -111,6 +112,13 @@ pub struct Health {
     /// How many passing probe times the floor of `minrtt` reads (default 8).
     #[serde(default)]
     pub window: Option<usize>,
+    /// The egress check of a network (T-097): `NETWORK: HOST:PORT=IP`. The
+    /// probe also connects through the member to the echo endpoint
+    /// `HOST:PORT` of the operator, which writes the address it sees for
+    /// the peer. Another address than `IP` is `WrongEgress`. A network with
+    /// no entry has no egress check.
+    #[serde(default)]
+    pub egress: BTreeMap<String, String>,
 }
 
 impl Health {
@@ -136,6 +144,28 @@ impl Health {
         t.check()
             .map_err(|e| anyhow::anyhow!("health: {}", e.text()))?;
         Ok(t)
+    }
+}
+
+impl Health {
+    /// The egress checks of the file, by network name: the echo endpoint
+    /// and the address that it must name.
+    pub fn egress_checks(&self, config: &Config) -> Result<HashMap<String, (Target, IpAddr)>> {
+        let mut checks = HashMap::new();
+        for (name, value) in &self.egress {
+            if !config.networks.contains_key(name) {
+                bail!("health.egress.{name}: not a network of the file");
+            }
+            let bad = || anyhow::anyhow!("health.egress.{name}: give HOST:PORT=IP");
+            let (echo, expect) = value.rsplit_once('=').ok_or_else(bad)?;
+            let echo: Target = echo.trim().parse().map_err(|_| bad())?;
+            let expect: IpAddr = expect.trim().parse().map_err(|_| bad())?;
+            if echo.port() == 0 {
+                bail!("health.egress.{name}: the port must be 1 to 65535");
+            }
+            checks.insert(name.clone(), (echo, expect));
+        }
+        Ok(checks)
     }
 }
 
@@ -261,6 +291,7 @@ pub fn parse(text: &str) -> Result<Config> {
             .parse::<Target>()
             .map_err(|_| anyhow::anyhow!("health.target: give HOST:PORT"))?;
         health.thresholds()?;
+        health.egress_checks(&config)?;
     }
     if let Some(control) = &config.control {
         match ProxyListen::parse(control) {
@@ -293,6 +324,8 @@ pub struct Router {
     pub groups: Vec<(String, Arc<Balance>)>,
     pub doors: Vec<RouterDoor>,
     pub health: Option<(Target, Thresholds)>,
+    /// The egress checks of the networks (`health.egress`, T-097).
+    pub egress: HashMap<String, (Target, IpAddr)>,
     /// The write side of the control socket (T-180).
     pub control: control::ControlState,
 }
@@ -470,6 +503,10 @@ impl Router {
             )),
             None => None,
         };
+        let egress = match &config.health {
+            Some(h) => h.egress_checks(config)?,
+            None => HashMap::new(),
+        };
         let control = control::ControlState::new(
             swaps,
             &config.networks,
@@ -481,6 +518,7 @@ impl Router {
             groups,
             doors,
             health,
+            egress,
             control,
         })
     }
@@ -524,32 +562,49 @@ impl Router {
         })
     }
 
-    /// Probe each member of each group, each interval, until the end. The
-    /// control of an interval passes when one member or more reached the
-    /// target: a failure of each member is an outage of the host.
+    /// Probe each member of each group, each interval, until the end.
     pub async fn probe_forever(&self) {
-        let Some((target, thresholds)) = self.health.clone() else {
+        if self.health.is_none() {
             return std::future::pending().await;
-        };
+        }
         loop {
-            for (_, group) in &self.groups {
-                let mut results = Vec::new();
-                for member in group.members() {
-                    results.push(probe(&member.way, &target, thresholds.timeout).await);
-                }
-                let control = results
-                    .iter()
-                    .any(|r| matches!(r, crate::network::ProbeResult::Ok(_)));
-                let now = Instant::now();
-                for (i, result) in results.into_iter().enumerate() {
-                    group.observe(i, result, control, now, &thresholds);
-                }
-                group.end_round();
-            }
+            self.probe_round().await;
             self.control.pause().await;
+        }
+    }
+
+    /// One round: probe each member of each group. The control of a group
+    /// passes when one member or more reached the target: a failure of each
+    /// member is an outage of the host. A member with an egress check
+    /// (`health.egress`) also asks the echo endpoint for its address.
+    pub async fn probe_round(&self) {
+        let Some((target, thresholds)) = self.health.clone() else {
+            return;
+        };
+        for (_, group) in &self.groups {
+            let mut results = Vec::new();
+            for member in group.members() {
+                let mut result = probe(&member.way, &target, thresholds.timeout).await;
+                if let (crate::network::ProbeResult::Ok(_), Some((echo, expect))) =
+                    (result, self.egress.get(&member.name))
+                {
+                    result = probe_egress(&member.way, echo, *expect, thresholds.timeout).await;
+                }
+                results.push(result);
+            }
+            let control = results
+                .iter()
+                .any(|r| matches!(r, crate::network::ProbeResult::Ok(_)));
+            let now = Instant::now();
+            for (i, result) in results.into_iter().enumerate() {
+                group.observe(i, result, control, now, &thresholds);
+            }
+            group.end_round();
         }
     }
 }
 
+#[cfg(test)]
+mod health_tests;
 #[cfg(test)]
 mod tests;
