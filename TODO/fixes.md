@@ -4573,3 +4573,62 @@ prerelease with the 8 binaries, `podnet.1`, `llms.txt`, `llms-full.txt`, `SHA256
 `SHA256SUMS.sigstore.json`, `provenance.sigstore.json` and `THIRD-PARTY-LICENSES.md`. `release-proofs.yml`
 43123633932: success.
 
+
+# T-258: Docs: stale or misleading comments and records (GitHub #459)
+
+**Source:** GitHub #459.
+**Category:** docs
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+Stale or misleading comments and records, found at `76e8b60`:
+
+- `crates/podnet-core/src/net.rs:13-14`: a doc comment ("Install the ring crypto provider once per process...") sits
+  above the doc comment of `claim_socket_path`, so rustdoc merges the two. No item `install_crypto_provider` exists.
+- `src/bug_report.rs` `tail`: the doc says "The last `n` lines of the file". The code reads the whole file with
+  `read_to_string`, so one invalid UTF-8 byte prints "(the log ... cannot be read)".
+- `TODO/PROGRESS.md`: "the donor review (GitHub #429 to #434): done." The row of #433 is open and T-242 is partial.
+- `TODO/issues.md`: #441, #442 and #443 are COORD issues; no entry describes them, as the rules require.
+- Two lists of secret variables disagree: `crates/podnet-core/src/instances.rs` (`TUNNEL_TOKEN`, `PODNET_PROXY`,
+  `PODNET_RELAY_CONNECT_TOKEN`) and `crates/podnet-core/src/report.rs` (`TUNNEL_TOKEN`, `PODNET_RELAY_TOKEN`,
+  `PODNET_RELAY_CONNECT_TOKEN`, with the proxy variables in `PROXY_VARIABLES`).
+- The text of #442 (airhand 9) cites `is_ours` at the wrong line, and #443 names `podwatch` (now `podstat`). These
+  are the bodies of GitHub issues; the lead amends them.
+
+## Premise
+
+- Read: the files above at `76e8b60`. `withheld` and `secrets_of` are the only users of the two lists.
+- A union of the two lists loses no secret. Effect: `PODNET_RELAY_TOKEN` stays out of the record of a detached
+  instance, and `PODNET_PROXY` is always withheld from the error program (it was withheld only with a user part).
+- Not measured: the rendered rustdoc.
+
+## Approach
+
+1. Delete the stray doc comment in `net.rs`.
+2. `tail` reads bytes and uses `String::from_utf8_lossy`; the doc comment says what the code does.
+3. `instances::SECRET_VARIABLES` is the one list (the union of four names); `report::withheld` uses it.
+4. Correct the lines of `TODO/PROGRESS.md` and the rows of `TODO/issues.md`.
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib each_secret_variable_stays_out_of_the_record
+cargo test -p podnet-core --lib the_error_program_withholds_the_list_of_the_instances
+cargo test -p podnet --lib tail_reads_a_log_with_an_invalid_byte
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-11, 05af4d3. `net.rs`: the stray doc comment is gone. `bug_report::tail` reads bytes and uses
+`String::from_utf8_lossy`; its doc says that it reads the whole file and keeps the last `n` lines.
+`instances::SECRET_VARIABLES` is the one list (`TUNNEL_TOKEN`, `PODNET_PROXY`, `PODNET_RELAY_TOKEN`,
+`PODNET_RELAY_CONNECT_TOKEN`); `report::withheld` uses it, and `PODNET_PROXY` left `PROXY_VARIABLES` there.
+`TODO/PROGRESS.md` and the rows of #441 to #443 of `TODO/issues.md` are true. Tests (each failed on the old
+code): `each_secret_variable_stays_out_of_the_record`, `the_error_program_withholds_the_list_of_the_instances`,
+`tail_reads_a_log_with_an_invalid_byte`. `sh scripts/agent/check.sh`: all 0. Not proven: the rendered rustdoc;
+the corrections of the bodies of #442 and #443 (the lead amends the issues).

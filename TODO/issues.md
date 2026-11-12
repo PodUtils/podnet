@@ -136,9 +136,9 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #438 | COORD-020: proposals for podssh from the donor review (to podssh) | closed (podssh recorded them in its record, PodUtils/podssh#188) | none |
 | #439 | COORD-021: proposals for podrunner from the donor review, part 1 of 2 (to podrunner) | open (a COORD issue between sessions) | none |
 | #440 | COORD-022: proposals for podrunner from the donor review, part 2 of 2 (to podrunner) | open (a COORD issue between sessions) | none |
-| #441 | COORD-023: proposals for the stub repositories from the donor review, part 1 of 3 (to all) | open (a COORD issue between sessions) | none |
-| #442 | COORD-024: proposals for the stub repositories from the donor review, part 2 of 3 (to all) | open (a COORD issue between sessions) | none |
-| #443 | COORD-025: proposals for the stub repositories from the donor review, part 3 of 3 (to all) | open (a COORD issue between sessions) | none |
+| #441 | COORD-023: proposals for the stub repositories from the donor review, part 1 of 3 (to all) | open (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
+| #442 | COORD-024: proposals for the stub repositories from the donor review, part 2 of 3 (to all) | open (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
+| #443 | COORD-025: proposals for the stub repositories from the donor review, part 3 of 3 (to all) | open (a COORD issue between sessions; no entry, as CLAUDE.md says) | none |
 | #444 | COORD-026: pod-broker bind_unix has the umask window of bind_private (to podcrates) | open (a COORD issue between sessions) | none |
 | #445 | COORD-027: podnet took pod-netstack of v0.20.0 (to podcrates) | closed (podcrates recorded it: taken d23ce4e) | none |
 | #446 | COORD-028: podnet changed three frozen files: register.rs, route.rs (fixes) and netns/tun.rs (the veth wire) (to podcrates) | closed (podcrates answered in its #68: no port; the wire stays in veth.rs, podcrates T-201) | none |
@@ -154,5 +154,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #456 | COORD-038: podnet took podcrates v0.25.0; the mapped loopback address of the seccomp hold is fixed (to podcrates, to podrunner) | open (a COORD issue between sessions) | none |
 | #457 | COORD-039: pod-netstack v0.25.0: three gaps that the netns router hits; podnet T-249 waits (to podcrates) | open (a COORD issue between sessions) | none |
 | #458 | COORD-040: podnet took pod-hold-veth of podcrates v0.26.0; the fork finding of doctor.rs is fixed (to podcrates) | closed (podcrates wrote taken f107766) | none |
+| #459 | Docs: stale or misleading comments and records (net.rs, bug_report.rs, TODO files) | open | T-258 |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
