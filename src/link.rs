@@ -100,3 +100,28 @@ impl Door {
         from_io(io, Role::Listener, settings)
     }
 }
+
+/// Two links in one process over a unix socket pair: (dialer, listener).
+/// It needs `AF_UNIX`, and no path.
+pub fn unix_pair(settings: Settings) -> anyhow::Result<(Link, Link)> {
+    let (a, b) = pod_link::unix::pair()
+        .map_err(|e| carrier_fault(CarrierError::io("unix", "a socket pair", e)))?;
+    Ok((
+        from_io(a, Role::Dialer, settings)?,
+        from_io(b, Role::Listener, settings)?,
+    ))
+}
+
+/// Two links in one process over a memory pair with a ring of `ring`
+/// bytes for each direction: (dialer, listener). The ring is 64 KiB to
+/// 64 MiB.
+pub fn memory_pair(ring: usize, settings: Settings) -> anyhow::Result<(Link, Link)> {
+    let ring = pod_link::memory::Memory::new(ring)
+        .map_err(carrier_fault)?
+        .ring();
+    let (a, b) = pod_link::memory::pair(ring);
+    Ok((
+        from_io(a, Role::Dialer, settings)?,
+        from_io(b, Role::Listener, settings)?,
+    ))
+}
