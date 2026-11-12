@@ -4838,7 +4838,7 @@ release run 43190862473 passed. The release is a prerelease with the 8 binaries,
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -4870,6 +4870,14 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-12, b8514a3 (the head of the release: ci 43243606655, live 43243604963, deny 43243604316). The dry run
+43246835031 and the publish dispatch 43249788105 passed; the dispatch made the tag `v0.4.0-beta.7` at b8514a3, and the
+release run 43249820078 passed. The release is a prerelease with the 8 binaries, `podnet.1`, `llms.txt`,
+`llms-full.txt`, `SHA256SUMS`, `SHA256SUMS.sigstore.json`, `provenance.sigstore.json` and `THIRD-PARTY-LICENSES.md`.
+`release-proofs.yml` 43252551977: success.
 
 
 # T-315: live: `relay connect` hangs on the runner after the take of pod-relay (GitHub #483)

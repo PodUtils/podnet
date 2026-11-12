@@ -186,5 +186,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #506 | ssh-relay: take the remote port from the service data | open | T-319 |
 | #507 | net: add a TURN network for UDP flows | open (blocked: `pod-turn` of podcrates) | T-321 |
 | #508 | COORD-053: podnet took v0.32.0 at fa6b5ba; pod-link is next (to podcrates) | open (a COORD issue between sessions) | none |
+| #509 | COORD-054: the mapped loopback address is now dialed direct (T-317); it comes in v0.4.0-beta.7 (to podrunner) | open (a COORD issue between sessions) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.

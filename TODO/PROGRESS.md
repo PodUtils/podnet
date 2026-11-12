@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 322 entries: 75 open, 17 partial, 25 blocked, 205 done.
+`TODO/INDEX.md` holds 322 entries: 74 open, 17 partial, 25 blocked, 206 done.
 
 ## State
 
@@ -25,7 +25,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). The newest is `v0.4.0-beta.6`.
+3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). The newest is `v0.4.0-beta.7`.
 
 ### The order of podnet's own work
 
