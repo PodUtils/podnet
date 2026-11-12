@@ -1688,7 +1688,7 @@ because one socket of the stack serves every flow of a port.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1761,6 +1761,10 @@ The take of `pod-devtunnel` is done (T-137).
 with TLS) exists, and the step is in the error of `up`; the fixed row list of `src/doctor/targets.rs` needs a rule for a row
 that depends on a spec. (2) Not proven: a live Dev Tunnels account.
 
+2026-11-12, 7d849e1: item (1) is done in another form. `podnet net doctor --network SPEC` brings up any network of the
+registry and adds the row `network SPEC`: `ok` with the status of the link, or `fail` with the error of `up`, which names
+the step. The fixed rows of `podnet doctor` stay. The entry is done; a live Dev Tunnels account is not proven.
+
 ## Done
 
 2026-11-12, commit 5f1981a (`T-320: devtunnel://TUNNEL, a Dev Tunnels network for TCP streams over pod-devtunnel`), partial
@@ -1778,6 +1782,11 @@ devtunnel://standin-box`: two echoes, two channels, no token in the output), `a_
 `a_devtunnel_spec_with_a_token_in_it_is_refused_and_not_echoed`, `a_wrong_token_ends_the_command_at_the_management_step`,
 `the_manual_names_the_devtunnel_network_and_its_variables`. Fail first (plant): with the loopback rule of the target host off,
 `devtunnel_target_host_is_the_local_address_of_the_tunnel_host` failed. Not proven: a live Dev Tunnels account.
+
+2026-11-12, commit 7d849e1 (`T-320, T-321: net doctor --network SPEC: the row of a network names the stage that failed`):
+the row of the network. Test: `net_doctor_has_a_row_for_a_devtunnel_network_that_names_the_stage` (`--test
+devtunnel_network`; the stand-in: the right token gives `ok`, a wrong token gives `fail` with "Dev Tunnels management
+API"; no token in the document). Fail first: before 7d849e1, `net doctor` refused `--network` (a usage error).
 
 
 # T-321: net: a TURN network for UDP flows (GitHub #507)
@@ -1869,6 +1878,11 @@ the entry stays partial); (2) a row of `podnet doctor` for TURN: `doctor` takes 
 size limit; the stage shows at `up` and in the status; (3) one account for each process (a TURN network of the router with
 its own account needs a form for it); (4) the host and the port of a named TURN service from `pod-services` (the crate
 has no such fact). Not proven: a live TURN server.
+
+2026-11-12, 7d849e1: item (2) is done: `podnet net doctor --network turn://HOST:PORT` adds the row of the network, and
+a failure names the stage (`allocate` and the code). Test: `net_doctor_has_a_row_for_a_turn_network_that_names_the_stage`
+(`--test turn_network`; the stand-in: the right password gives `ok`, a wrong one gives `fail` with `allocate`; no password
+in the document). Items (1), (3) and (4) stay.
 
 ## Done
 
