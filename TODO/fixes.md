@@ -4531,7 +4531,7 @@ are not updated one by one.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -4563,3 +4563,13 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-12, 8f53288 (the head of the release: ci 43113581495; live 43113581673, attempt 2: attempt 1 failed at
+"The commands of the second batch" on HTTP 429 of the WARP service, error 1015). The dry run 43120242252 and the
+release run 43122020833 passed; the dispatch 43121998362 made the tag `v0.4.0-beta.5` at 8f53288. The release is a
+prerelease with the 8 binaries, `podnet.1`, `llms.txt`, `llms-full.txt`, `SHA256SUMS`,
+`SHA256SUMS.sigstore.json`, `provenance.sigstore.json` and `THIRD-PARTY-LICENSES.md`. `release-proofs.yml`
+43123633932: success.
+

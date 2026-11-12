@@ -11,8 +11,8 @@ file when each step below is done.
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.25.0`
   (T-137), with the watches of `pod-services` (0b945a3, #448) and `pod-wg`
   (089e1c9, #447).
-* The newest release is `v0.4.0-beta.4` at 9df5438 (T-245; release run 43104434114,
-  release-proofs 43107969792). The work after it is in no release.
+* The newest release is `v0.4.0-beta.5` at 8f53288 (T-256; release run 43122020833,
+  release-proofs 43123633932). The work after it is in no release.
 
 ## Work of this session after v0.4.0-beta.3
 
@@ -45,7 +45,8 @@ Run two worktree agents at a time at most. Merge each as before: rebase on `main
 3. **T-248** (the guest-wire router) after T-249.
 4. **podcrates:** at each new tag, `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at
    the tag (T-137). #448 waits for the `taken` line of the watches of `pod-services`; #455 is its T-224.
-5. **The next beta (T-256, v0.4.0-beta.5):** the version and the notes are on `main`; when `ci` and `live` pass on the head, cut it (steps 4 to 6 of "Release" of `docs/maintenance.md`). The local branch of T-249 holds an entry T-256 of its own: give it the next free id at its merge.
+5. **The next beta:** when a batch after 8f53288 is green. The local branch of T-249 holds an entry T-256 of its
+   own: give it the next free id at its merge.
 
 ## Open COORD issues
 
