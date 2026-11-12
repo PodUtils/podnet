@@ -992,6 +992,36 @@ status document. Test: `router_health_rtt_window_changes_no_step`.
 Left: the bytes of each member (the meter of the doors), the rows of the metrics, and items 3, 7, 9 and 10 (the WARP adapter, frozen for
 `pod-warp`, T-050).
 
+2026-11-12, 3ac59ee and fe18049: the bytes and the rows are done, and item 9 is done for a member that is not
+WARP. (1) The bytes of a member counted TCP flows only. `Balance::datagrams` now gives the socket in a
+`MeteredDatagrams` (`crates/podnet-core/src/network/meter.rs`): both directions count for the member, and with a split
+`up` counts what it sends and `down` what it receives. (2) The rows: `GET /route/metrics` on the control socket and
+`podnet route --status unix:/PATH --metrics` give the Prometheus text, one row for each member and metric
+(`src/router/metrics.rs`; `docs/router.md`, "State"). (3) Item 9: `health.egress` (`NETWORK: HOST:PORT=IP`) is the
+operator input for a member that is not WARP. `probe_egress` connects through the member to the echo endpoint of the
+operator and compares the address that it names; another address is `WrongEgress`. The router names no echo service.
+`WrongEgress` takes the member to `Down` at once, whatever the control says, and no direct way replaces it (T-098
+item 3). Left, each with what it waits for:
+
+- Items 3 and 10 (the renew of a WARP member, make-before-break, with the stored registration): the WARP adapter,
+  frozen for `pod-warp` (T-050). `Step::renew` already tells when to renew.
+- Item 7, the gate of `tcp_dead` at the two sites of `src/warp/live.rs`: frozen for `pod-warp` (T-050).
+- Item 9 for a WARP member (the trace request of `src/warp/exit.rs`): frozen for `pod-warp` (T-050). The generic
+  check and the step to `Down` are in place; the WARP member only has to give `WrongEgress`.
+
+## Done
+
+2026-11-12, partial, commits 3ac59ee (UDP bytes, `probe_egress`, `health.egress`, `WrongEgress`) and fe18049 (the
+metrics rows). Tests: `group_meter_counts_udp_bytes_in_both_directions`, `group_meter_counts_split_udp_bytes_for_each_member`,
+`router_probe_egress_passes_when_the_echo_names_the_expected_address`, `router_probe_egress_fails_on_another_address_or_no_address`,
+`router_health_wrong_egress_leaves_the_pick_at_once`, `route_config_health_egress_errors_name_the_key`,
+`route_health_wrong_egress_member_leaves_the_pick`, `router_metrics_rows_follow_the_status`,
+`router_metrics_rows_hold_the_round_trip_time`, `router_metrics_over_the_control_socket` and, in `tests/detach`,
+`route_status_metrics_prints_the_rows`. The UDP byte tests failed first (0 bytes counted), the tracker test failed on a stub
+(the member stayed `Cooldown`), and `route_status_metrics_prints_the_rows` failed first with "unexpected argument
+'--metrics'". Not proven: the echo protocol against a real echo service; `WrongEgress` from a real WARP member;
+the metrics in a scrape by a Prometheus server (the text is checked by string).
+
 # T-098: Router: doors with a default network, and rules to a network, a group or a refusal
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 2.1 to 2.3; GitHub #372 and #374.
@@ -999,7 +1029,7 @@ Left: the bytes of each member (the meter of the doors), the rows of the metrics
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1053,6 +1083,30 @@ member resolves through its own network. Test: `route_door_dns_reaches_the_route
 local upstream (id 1234, flags 8180). Left: UDP ASSOCIATE in the door (`crates/podnet-vnet/src/door.rs`
 answers "command not supported"; T-061), and the `WrongEgress` member of item 3 (the egress check of T-097
 item 9, which waits for `pod-warp`).
+
+2026-11-12, f7e532c and 74c276f: every item is done. UDP ASSOCIATE: `crates/podnet-vnet/src/door/udp.rs` relays the
+SOCKS5 datagrams of one client over `Dial::datagrams` of the door (the group's pick, the byte meter counts them). The
+first datagram fixes the client; other sources and fragments are dropped; an answer goes back only from an address that
+the client sent to; the control stream ends the association (300 s idle). A way with no datagrams answers 0x07, a group
+that the kill switch closed answers 0x02. A door on a TCP address answers with that address (`Door::with_udp_bind`). Item
+3: `resolvers: NETWORK: HOST:PORT` (`src/router/resolving.rs`) makes a member resolve the names of its flows through its own
+network: A and AAAA over DNS on TCP over the dial of the member, IPv4 first, up to 8 addresses, no fallback to the host
+resolver; a way that resolves names at the far end gets the name as it is. The `WrongEgress` member leaves the pick
+(T-097, 3ac59ee), and the group never falls back to direct. The WARP trace check that makes a WARP member give
+`WrongEgress` stays in T-097 (`pod-warp`).
+
+## Done
+
+2026-11-12, commits f7e532c and 74c276f. Tests: `front_door_udp_associate_carries_datagrams`,
+`front_door_udp_associate_relays_answers_from_known_peers_only`, `front_door_udp_associate_replies_for_a_way_with_no_datagrams`
+(`podnet-vnet`), `route_door_udp_associate_reaches_the_router`, `route_config_resolvers_errors_name_the_key`,
+`route_resolver_pinned_member_resolves_through_its_network`, `route_resolver_name_resolves_through_the_member`,
+`route_resolver_leaves_addresses_and_far_end_names_alone`, `route_resolver_unknown_name_is_an_error_with_no_fallback`,
+`route_resolver_tries_the_next_address` and the existing `router_rules_pick_the_network`. The door tests failed first on the
+old answer (0x07 for each association); `route_door_udp_associate_reaches_the_router` failed first with the door
+address 127.0.0.1 in place of 127.0.0.2. Not proven: UDP ASSOCIATE with a real SOCKS5 client program (the tests speak the
+protocol by hand); a member resolver against a real DNS server of a tunnel; `--door LISTEN=NET` is the key `doors` of the file
+(T-100), not a flag.
 
 # T-099: Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose`
 
@@ -1119,6 +1173,13 @@ datagram (UDP has no flow control). The pump of the byte stream (`carry_in_strea
 datagrams in order). A name target of a UDP forward resolves with the resolver of the host, because
 `Datagrams` takes an address. A SOCKS or HTTP proxy network carries no UDP: the forward logs the refusal and
 ends the flow.
+
+2026-11-12: the entry was read again with T-097 and T-098. The only item left is the alias `warp forward` (item 1). It waits
+for WARP to be a network of the registry (`podnet forward --network warp` would be the alias): `src/warp/forward.rs` and the
+WARP session are frozen for `pod-warp` (T-050), and the registry has no `warp` network yet (T-028). `warp forward` keeps its
+own options (`--list`, the detached instances), so an alias in the CLI only would change them. Docs: `docs/forward.md` now
+lists `netbird:` and `wg:FILE` as networks and says which networks carry UDP. The SOCKS5 UDP ASSOCIATE of the router
+door (T-098) and the resolver of a member (T-098) are the router's answers for UDP and names through a chosen network.
 
 
 ## Done

@@ -28,7 +28,8 @@ pub(crate) struct ForwardArgs {
     #[arg(long, value_name = "HOST:PORT", default_value = "1.1.1.1:53")]
     dns_upstream: String,
     /// The network of the forwards, as a spec: direct, a proxy URL,
-    /// relay or relay:URL, tailscale:/PATH, unix:/PATH. Default: the way
+    /// relay or relay:URL, tailscale:/PATH, netbird:[PORT], wg:FILE,
+    /// unix:/PATH. A SOCKS5 or HTTP proxy carries no UDP. Default: the way
     /// out of the process (--proxy, the variables, else direct).
     #[arg(long, value_name = "SPEC")]
     network: Option<String>,

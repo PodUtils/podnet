@@ -22,8 +22,9 @@ T-218 (the connector profile, `docs/protocol.md` section 10), T-222 (`--help
 --json`, `llms.txt`, `llms-full.txt`), T-239, T-240, T-241, T-243, T-118 (the
 research on NetBird, Firezone and ZeroTier; it opened T-246 and T-247).
 
-Partial: T-097 (thresholds and `route --status`), T-098 (the DNS door of a
-door), T-099 (UDP forwards, the DNS door, `podnet expose`), T-178 (group
+Partial: T-097 (thresholds, `route --status`, the metrics rows, the egress
+check; the WARP parts wait for `pod-warp`), T-099 (UDP forwards, the DNS door,
+`podnet expose`; `warp forward` as an alias waits for WARP as a network), T-178 (group
 policies), T-221 (`podnet bench`), T-242 (the lint of shadowed rules).
 
 Test fixes: the shim datagram test takes a port of its run and reaps its

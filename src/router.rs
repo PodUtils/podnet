@@ -19,12 +19,16 @@
 //!   cooldown: 30       # seconds in cooldown before up
 //!   timeout: 5         # seconds of one probe
 //!   window: 8          # passing probe times for the floor (0 to 64; minrtt)
+//!   egress:            # optional: NETWORK: ECHO_HOST:PORT=IP (WrongEgress, T-097)
+//!     proxy: 203.0.113.9:7=198.51.100.4
+//! resolvers:           # optional: NETWORK: HOST:PORT, a DNS server at the far end (T-098)
+//!   proxy: 10.0.0.53:53
 //! kernel:              # optional: tables, rules and a multipath route (T-119)
 //!   wans:              # see `kernel` for the keys; needs CAP_NET_ADMIN
 //!     - {name: a, dev: tun0}
 //!     - {name: b, dev: tun1, weight: 2}
 //! control: unix:/run/r.ctl  # optional: `podnet route --status` reads it
-//! doors:               # SOCKS5 and HTTP CONNECT doors (T-061)
+//! doors:               # SOCKS5 (CONNECT and UDP ASSOCIATE) and HTTP CONNECT doors (T-061)
 //!   - listen: unix:/run/r.sock
 //!     via: egress      # a network or a group
 //!     rules: /etc/r.rules   # optional: the rules of T-098

@@ -15,6 +15,7 @@ podnet route --config router.yml --check                # read the file and brin
 podnet route --config router.yml --check --to example.com:443   # a dry run for one target
 podnet route --status unix:/run/r.ctl                   # the state of a running router
 podnet route --status unix:/run/r.ctl --json
+podnet route --status unix:/run/r.ctl --metrics         # the rows of the metrics (Prometheus text)
 podnet route --control unix:/run/r.ctl --select egress=proxy    # pin a group to one member
 podnet route --control unix:/run/r.ctl --select egress=auto     # give the choice back to the policy
 podnet route --control unix:/run/r.ctl --rotate proxy           # a new identity of a network
@@ -43,6 +44,10 @@ health:                   # the probe of the members of each group
   cooldown: 30
   timeout: 5
   window: 8
+  egress:                 # optional: the egress check of a network (see below)
+    proxy: 203.0.113.9:7=198.51.100.4
+resolvers:                # optional: NETWORK: HOST:PORT, a DNS server at the far end of the network
+  proxy: 10.0.0.53:53
 control: unix:/run/r.ctl  # optional: the socket of `route --status` and `--control`
 state_dir: /var/lib/r     # optional: DIR/NETWORK holds the identity of a network
 doors:
@@ -70,7 +75,17 @@ doors:
 
 ## Doors
 
-* A door accepts SOCKS5 (TCP) and HTTP CONNECT. The door has no UDP ASSOCIATE.
+* A door accepts SOCKS5 (CONNECT and UDP ASSOCIATE) and HTTP CONNECT.
+* UDP ASSOCIATE (RFC 1928) carries the datagrams of a client over the datagrams of the network or the
+  group of the door. The door answers with a UDP socket on its own address (the address of `listen`;
+  the loopback address for a `unix:` door). The first datagram fixes the source of the client; a datagram
+  of another source and a fragment are dropped. An answer goes back only from an address that the client
+  sent to. The association ends when the client closes the control connection, or after 300 s with no
+  datagram. A name in a datagram resolves with the resolver of this host (the datagrams of a network take
+  an address). The reply is 0x07 (command not supported) when the network carries no UDP (a SOCKS5 or
+  HTTP proxy), and 0x02 (not allowed) when the group has no member that takes flows. The bytes count
+  for the member that carries the socket. The rules of the door choose by the target of a CONNECT only:
+  a UDP association goes over `via`.
 * `via` names the network or the group for a target that no rule matches.
 * `rules` is a rules file. A rule is `domain:NAME=WAY`, `domain:.NAME=WAY` (the name and each name under
   it), `cidr:NET=WAY` or `cidr:@FILE=WAY` (one prefix on each line of FILE). `WAY` is a network or a
@@ -81,6 +96,13 @@ doors:
 * `dns` and `dns_upstream` start a DNS door (UDP and TCP) on `dns`. It sends each query over the same
   way as the door, to the resolver `dns_upstream` at the far end of the way. The router names no resolver
   of its own, so give both keys or none.
+* `resolvers` gives a network a DNS server at the far end of the network: `NETWORK: HOST:PORT`. A name
+  that a flow brings to a member of that network resolves there, with DNS over TCP (RFC 7766) over the
+  dial of the member, and never with the resolver of this host. A, then AAAA, are asked over one
+  connection; IPv4 addresses go first, and the flow tries up to 8 addresses. A name that the network
+  cannot resolve is an error: there is no fallback to the host. A network whose far end resolves names
+  (a `socks5h://` proxy, `relay`) gets the name as it is, and needs no entry. A flow that has an address
+  needs no query.
 
 ## Groups, health and policies
 
@@ -96,9 +118,29 @@ The probe connects to `health.target` through each member of each group, each `i
 | `cooldown` | 30 | The least seconds in cooldown before a member is up again. |
 | `timeout` | 5 | Seconds of one probe. 1 or more. |
 | `window` | 8 | How many passing probe times the floor of `minrtt` reads (0 to 64). |
+| `egress` | none | A map `NETWORK: HOST:PORT=IP`, the egress check of a network (below). |
 
 The values must give K > R > 1 and R > K/2. A member in `cooldown` or `probation` is not up. A group
 with no member that takes flows refuses new flows.
+
+### Egress check
+
+A probe that connects says that a network reaches the target. It does not say by which address the
+traffic leaves. `egress` adds a check for the networks that it names. After the probe passes, the router
+connects through the same member to `HOST:PORT`, an echo service of the operator, and reads at most 128
+bytes. The service writes the address that it sees for the peer (an IP address, `IP:PORT` or `[IP]:PORT`,
+then a new line or the end) and closes. The address must be the `IP` of the entry. podnet names no echo
+service of another party: give one that you run or trust.
+
+* The same address: the probe passes, and its time is the time of both connects.
+* Another address: the result is `WrongEgress`. The member goes `down` at once, with no K misses, whatever
+  the control probe says. No other way replaces it: the group has no direct way, so a group with no other
+  member refuses its flows. One pass puts the member on `probation`, as after any `down`.
+* An answer that is no address, or a read that fails: a miss that is not clean (as a time out), so it
+  alone never takes the member down.
+
+A WARP member has its own check (the trace request of the WARP session). It waits for `pod-warp`
+(T-050).
 
 A policy chooses the member of a new flow:
 
@@ -112,7 +154,8 @@ A policy chooses the member of a new flow:
 
 `splits` sends the UDP datagrams of a group out through one member and receives them on another:
 `NAME: up=MEMBER down=MEMBER`. It is off by default. TCP is not split. The byte meter of a member counts
-TCP flows only.
+TCP flows and UDP datagrams, in both directions. With a split, `up` counts the datagrams that it sends
+and `down` counts the datagrams that it receives.
 
 ## Dry run: `--check --to`
 
@@ -138,6 +181,22 @@ prints the state of that router: each group, each member with its health, round-
 flows, the bytes, the pinned member and the head. `--json` prints the document. Exit 69 when no router
 answers. `--status` cannot be used with `--config`.
 
+`podnet route --status unix:/PATH --metrics` prints the rows of the metrics in the text format of
+Prometheus (it cannot be used with `--json`). There is one row for each member and metric, with the
+labels `group` and `member`:
+
+| Row | Type | Meaning |
+| --- | --- | --- |
+| `podnet_route_member_up` | gauge | 1 when the member is `up`; 0 in `cooldown`, on `probation` or `down`. |
+| `podnet_route_member_takes_flows` | gauge | 1 when the member is not `down`. |
+| `podnet_route_member_weight` | gauge | The weight of the member. |
+| `podnet_route_member_rtt_seconds` | gauge | The time of the last probe that passed (no row before the first). |
+| `podnet_route_member_rtt_floor_seconds` | gauge | The least time in the window of passing probes. |
+| `podnet_route_member_open_dials` | gauge | The dials that have not ended. |
+| `podnet_route_member_flows_total` | counter | The flows that the pick gave the member. |
+| `podnet_route_member_bytes_total` | counter | The bytes of TCP and UDP, both directions. |
+| `podnet_route_group_refused_total` | counter | The flows that the kill switch of the group refused (label `group` only). |
+
 ## Control: `--control`
 
 `podnet route --control unix:/PATH` changes a running router with no restart. Flows that run go on. Give one of
@@ -162,6 +221,7 @@ of the peer: the user of the router, or root. A peer that is not allowed gets 40
 | Request | Body |
 | --- | --- |
 | `GET /route/status` | none |
+| `GET /route/metrics` | none; the answer is the text format of Prometheus, not JSON |
 | `POST /route/select` | `{"group": "egress", "member": "proxy"}`; `"member": null` or `"auto"` frees the group |
 | `POST /route/rotate` | `{"member": "proxy"}` |
 | `POST /route/reconnect` | `{"member": "proxy"}` |

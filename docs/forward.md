@@ -21,10 +21,14 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
 * `-L, --local LISTEN=HOST:PORT` is repeatable. `LISTEN` is `PORT` (on 127.0.0.1), `ADDR:PORT`,
   `tcp://ADDR:PORT` or `unix:/PATH`.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
-  `relay:URL`, `tailscale:/PATH`, `unix:/PATH`. The default is the way out of the process: `--proxy`, the
+  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `unix:/PATH`. The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
 * UDP: `-L udp:PORT=HOST:PORT` (or `udp:ADDR:PORT`) carries UDP over the datagrams of the network. Each
   client has its own flow. A flow ends after 60 s with no datagram. A datagram for a full flow is dropped.
+  A SOCKS5 or HTTP proxy network carries no UDP: the forward logs the refusal and ends the flow. `direct`
+  and `wg:FILE` carry UDP. A name in the target of a UDP forward resolves with the resolver of this host.
+  For UDP through a door that clients choose (SOCKS5 UDP ASSOCIATE) and for names that resolve inside a
+  network, use the router ([router.md](router.md), "Doors" and `resolvers`).
 * `--run-for SECONDS` stops after that time.
 
 ### DNS door
