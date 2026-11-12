@@ -40,6 +40,7 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
 * `socks5://unix:/path` and `http://unix:/path` (also `socks5h+unix:/path` and `http+unix:/path`): a proxy
   on a unix socket.
 * `tailscale:/path/to/tailscaled.sock`: a tailnet ([networks.md](networks.md)).
+* `wg:FILE` is not a hop of a pod. Run `podnet route` with a `wg:FILE` network, and give its door to `-x`.
 * `netbird:[PORT]` through `--egress` (a SOCKS5 hop on `127.0.0.1:PORT`; [networks.md](networks.md)).
 * `--serve LISTEN` runs no program. It serves SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or
   `tcp://host:port`, and sends the flows through the chain.

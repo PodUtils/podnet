@@ -1,8 +1,8 @@
 # Virtual networks and overlays
 
-This page gives `podnet net`: the virtual network, Tailscale, NetBird and the passwd shim. The design
-of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:` and
-`netbird:` are networks of the registry ([egress.md](egress.md)).
+This page gives `podnet net`: the virtual network, Tailscale, NetBird, WireGuard and the passwd shim. The design
+of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:`, `netbird:` and
+`wg:` are networks of the registry ([egress.md](egress.md)).
 
 | Command | Function |
 | --- | --- |
@@ -106,6 +106,30 @@ line, because netstack mode has no DNS. The listener has no authentication:
 keep it on `127.0.0.1`. The doctor row sends a SOCKS5 greeting to the port
 (`NB_SOCKS5_LISTENER_PORT`, else 1080). A listener that does not answer is
 `unknown`, not a fault.
+
+## WireGuard: `wg:FILE`
+
+```sh
+podnet forward --network wg:/etc/wireguard/wg0.conf -L 127.0.0.1:8080=10.9.0.1:80
+```
+
+The spec `wg:FILE` makes a WireGuard peer a network. `FILE` is a wg-quick file with one peer
+(`PrivateKey`, `Address`, `MTU`; `PublicKey`, `Endpoint`, `Reserved`). podnet does the handshake itself and
+runs a userspace stack over the tunnel. It makes no TUN device and needs no capability. The spec gives TCP and
+UDP from the `Address` of the file.
+
+* The target must be an IP address. The network does not resolve names.
+* A file with a `PresharedKey` is refused with one line.
+* `up` does the handshake. A path with no UDP gives no answer in 15 s, and the error says that the UDP path
+  may be closed.
+* The UDP of the tunnel goes out from this host. A way below the network (`Ctx::below`, a layer of a chain)
+  can carry it instead. That way must carry UDP (`Dial::datagrams`). The status of the link names it in
+  `carrier`. A way that carries no UDP, a proxy for example, is refused with `carries no UDP`.
+* `wg:FILE` is a network of `podnet forward --network` and of a `networks:` entry of a router file
+  ([router.md](router.md)). It is not a hop of `podnet pod` (T-117): run `podnet route` with the network and
+  give its door to `-x`.
+* The WARP datagram path (MASQUE CONNECT-IP) is not a carrier of the registry (T-117), because `warp` is not a
+  network of the registry ([egress.md](egress.md)).
 
 ## A user with no passwd entry
 

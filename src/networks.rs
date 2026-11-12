@@ -4,7 +4,7 @@
 //! proxy URL (`socks5h://HOST:PORT`, `http://HOST:PORT`,
 //! `SCHEME+unix:/PATH`, `SCHEME+exec:COMMAND`), a hop of the pod
 //! (`unix:/PATH`, `HOST:PORT`, `socks://`, `https://`), `tailscale:/PATH`,
-//! `netbird:[PORT]`, or the relay (`relay`, `relay:URL`). [`networks`] is the table of the
+//! `netbird:[PORT]`, `wg:FILE` (WireGuard), or the relay (`relay`, `relay:URL`). [`networks`] is the table of the
 //! networks of this build: a static table in the binary, with no
 //! dependency (`docs/research/podnet/architecture.md`, section 4.3).
 //!
@@ -27,6 +27,7 @@ use crate::ws_relay::Relay;
 mod netbird;
 pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
 mod tailscale;
+mod wg;
 pub use tailscale::{rows as tailscale_rows, state as tailscale_state};
 
 /// One row of the registry: a scheme, its forms and what it gives.
@@ -42,7 +43,7 @@ pub struct Row {
     pub caps: Caps,
 }
 
-const ROWS: [Row; 5] = [
+const ROWS: [Row; 6] = [
     Row {
         scheme: "direct",
         forms: &["direct"],
@@ -82,6 +83,12 @@ const ROWS: [Row; 5] = [
         about: "TCP to a peer address through the SOCKS5 listener of NetBird netstack mode",
         caps: Caps::EGRESS_TCP,
     },
+    Row {
+        scheme: "wg",
+        forms: &["wg:FILE"],
+        about: "TCP and UDP through a WireGuard peer of a wg-quick file, on a userspace stack",
+        caps: Caps::EGRESS_TCP.with(Caps::EGRESS_UDP),
+    },
 ];
 
 /// The networks of this build, in the order of their parse.
@@ -104,6 +111,8 @@ enum Kind {
     Relay(Option<String>),
     /// The SOCKS5 listener of NetBird netstack mode on 127.0.0.1:PORT.
     Netbird(u16),
+    /// The WireGuard peer of this wg-quick file (T-117).
+    Wg(std::path::PathBuf),
 }
 
 /// A network that a spec names.
@@ -158,6 +167,13 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
         };
         return Ok(Kind::Netbird(port));
     }
+    if let Some(path) = wg::file_of(spec) {
+        if path.as_os_str().is_empty() {
+            return Err(usage(format!("{spec}: give the path of a wg-quick file")));
+        }
+        wg::check(&path)?;
+        return Ok(Kind::Wg(path));
+    }
     if spec == "warp" || spec.starts_with("warp:") {
         return Err(Failure::new(
             Stage::Connect,
@@ -202,6 +218,7 @@ impl SpecNetwork {
         match &self.kind {
             Kind::Proxy(proxy) => proxy.label(),
             Kind::Netbird(port) => format!("netbird:{port}"),
+            Kind::Wg(path) => format!("wg:{}", path.display()),
             _ => redacted(&self.spec),
         }
     }
@@ -220,6 +237,14 @@ impl SpecNetwork {
     pub fn netbird_port(&self) -> Option<u16> {
         match self.kind {
             Kind::Netbird(port) => Some(port),
+            _ => None,
+        }
+    }
+
+    /// The wg-quick file, for `wg:FILE`.
+    pub fn wg_file(&self) -> Option<&std::path::Path> {
+        match &self.kind {
+            Kind::Wg(path) => Some(path),
             _ => None,
         }
     }
@@ -256,6 +281,7 @@ impl SpecNetwork {
                 UpstreamChain::parse(&[self.spec.as_str()])
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
             ),
+            Kind::Wg(_) => unreachable!("wg:FILE comes up in `up`"),
             Kind::Netbird(port) => Arc::new(
                 netbird::NetbirdDialer::new(*port)
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
@@ -277,6 +303,7 @@ impl Network for SpecNetwork {
             Kind::Hop { tailscale: true } => "tailscale",
             Kind::Relay(_) => "relay",
             Kind::Netbird(_) => "netbird",
+            Kind::Wg(_) => "wg",
         }
     }
 
@@ -285,9 +312,14 @@ impl Network for SpecNetwork {
     }
 
     /// The way of the spec. These networks dial from this host: a way
-    /// below them (`ctx.below`) is refused, not ignored.
+    /// below them (`ctx.below`) is refused, not ignored. `wg:FILE` sends
+    /// its UDP over the datagrams of that way.
     fn up<'a>(&'a self, ctx: &'a Ctx) -> BoxFuture<'a, anyhow::Result<Link>> {
         Box::pin(async move {
+            if let Kind::Wg(path) = &self.kind {
+                let (_, link) = wg::up(path, self.label(), ctx.below.as_ref()).await?;
+                return Ok(link);
+            }
             if let Some(below) = &ctx.below {
                 return Err(Failure::new(
                     Stage::Connect,
@@ -355,3 +387,5 @@ impl Network for SpecNetwork {
 mod tailscale_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod wg_tests;

@@ -23,7 +23,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet git urls`: Print the clone URLs of each repository under the root, from the last git serve of the root, and the fingerprint of the SSH host key
 - `podnet connect`: Bridge a local socket to a remote WebSocket forward endpoint
 - `podnet expose`: Publish a local service by one word: --via tunnel (a Cloudflare tunnel), relay (a node of the reverse relay) or switch (a virtual address). It runs `tunnel`, `relay node` or `net proxy --forward`
-- `podnet forward`: Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC (direct, a proxy, the relay, a tailnet)
+- `podnet forward`: Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC (direct, a proxy, the relay, a tailnet, wg:FILE)
 - `podnet route`: A router of networks, groups and doors from a config file (--config FILE), with health probes and --detach
 - `podnet ssh-relay`: Publish a unix socket through an SSH relay (a remote forward on port 443), and keep the session: when the relay ends it, podnet connects again with a backoff and prints the new URL. The relay (--service), its endpoints, its user and its URL rule are data of pod-services; --server, --user, --url-match and --url-skip override them
 - `podnet bench`: Send GET requests to a URL through the way out (--egress, --proxy) and measure the latency (p50, p95, p99), the rate and the errors

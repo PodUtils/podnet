@@ -95,6 +95,13 @@ pub(crate) fn rewrite(words: &[String]) -> Result<Vec<String>, String> {
     }
 }
 
+/// The line for `--egress wg:FILE` where the command cannot start the tunnel.
+fn wg_refusal(label: &str) -> String {
+    format!(
+        "--egress {label}: this command does not start a WireGuard tunnel; use podnet forward --network {label}, or a networks: entry of podnet route and give its door to the command"
+    )
+}
+
 /// The count of the words of `--egress` before `at`.
 fn removed_before(words: &[String], at: usize) -> usize {
     let mut n = 0;
@@ -125,6 +132,9 @@ fn pod_hops(
                 "--egress {}: the relay is not a hop of podnet pod; give a proxy, direct or tailscale:/PATH",
                 network.label()
             ));
+        }
+        if network.wg_file().is_some() {
+            return Err(wg_refusal(&network.label()));
         }
         if let Some(port) = network.netbird_port() {
             // The listener of NetBird netstack mode is a SOCKS5 hop.
@@ -168,6 +178,9 @@ fn process_way(
         return Err(format!("--egress and {old} name one way: give one of them"));
     }
     let (spec, network) = (&specs[0], &networks[0]);
+    if network.wg_file().is_some() {
+        return Err(wg_refusal(&network.label()));
+    }
     let flags: Vec<String> = match (network.scheme(), network.relay_url()) {
         ("direct", _) => vec!["--no-proxy".into()],
         (_, Some(url)) => {

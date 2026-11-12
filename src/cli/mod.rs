@@ -67,7 +67,8 @@ pub(crate) struct Cli {
     /// The way out, as a network spec: direct (as --no-proxy), a proxy URL
     /// (as --proxy), relay or relay:URL (as --transport relay and --relay).
     /// With podnet pod, each --egress is one -x hop of the chain, in its order
-    /// (also tailscale:/PATH, netbird:[PORT] and unix:/PATH).
+    /// (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE is for
+    /// podnet forward --network and podnet route.
     #[arg(long, global = true, value_name = "SPEC")]
     pub(crate) egress: Vec<String>,
     /// Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
@@ -113,7 +114,7 @@ pub(crate) enum Command {
     Expose(cmd::expose::ExposeArgs),
     /// Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or
     /// UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC
-    /// (direct, a proxy, the relay, a tailnet).
+    /// (direct, a proxy, the relay, a tailnet, wg:FILE).
     Forward(cmd::forward::ForwardArgs),
     /// A router of networks, groups and doors from a config file (--config
     /// FILE), with health probes and --detach.

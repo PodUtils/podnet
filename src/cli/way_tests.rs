@@ -129,6 +129,30 @@ fn network_spec_tailscale_is_a_hop_of_the_pod_and_refused_by_a_process_command()
     assert!(refused.contains(spec), "{refused}");
 }
 
+/// T-117: a WireGuard network is not a hop of the pod and not a flag of a
+/// process command. The refusal names the commands that start it.
+#[test]
+fn network_spec_wg_is_refused_by_the_pod_and_by_a_process_command_with_one_line() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("wg0.conf");
+    let key = "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=";
+    std::fs::write(
+        &path,
+        format!("[Interface]\nPrivateKey = {key}\nAddress = 10.9.0.2/32\n[Peer]\nPublicKey = {key}\nEndpoint = 127.0.0.1:51820\n"),
+    )
+    .unwrap();
+    let spec = format!("wg:{}", path.display());
+    for args in [
+        words(&["podnet", "--egress", &spec, "pod", "--", "true"]),
+        words(&["podnet", "--egress", &spec, "status"]),
+    ] {
+        let refused = rewrite(&args).unwrap_err();
+        assert!(refused.contains("forward --network"), "{refused}");
+        assert!(refused.contains("podnet route"), "{refused}");
+        assert!(!refused.contains('\n'), "{refused}");
+    }
+}
+
 #[test]
 fn egress_alias_pod_takes_each_via_as_an_x_hop_in_order() {
     let rewritten = rewrite(&words(&[

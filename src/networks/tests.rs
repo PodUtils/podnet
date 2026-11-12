@@ -108,7 +108,7 @@ fn network_spec_the_table_has_one_row_for_each_scheme() {
     let schemes: Vec<&str> = networks().iter().map(|r| r.scheme).collect();
     assert_eq!(
         schemes,
-        ["direct", "proxy", "relay", "tailscale", "netbird"]
+        ["direct", "proxy", "relay", "tailscale", "netbird", "wg"]
     );
     for spec in ["direct", "http://p.example:3128", "relay", "tailscale:/s"] {
         let network = parse(spec).unwrap();

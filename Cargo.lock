@@ -2432,6 +2432,7 @@ dependencies = [
  "pod-core",
  "pod-dns",
  "pod-hold",
+ "pod-netstack",
  "pod-proxy",
  "pod-quic",
  "pod-services",

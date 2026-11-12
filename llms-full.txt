@@ -223,7 +223,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -476,7 +477,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -692,7 +694,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -750,7 +753,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -971,7 +975,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1040,7 +1045,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1106,7 +1112,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1223,7 +1230,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1298,7 +1306,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1323,7 +1332,7 @@ COMMANDS
     podnet forward [OPTIONS]
         Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or
         UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC
-        (direct, a proxy, the relay, a tailnet)
+        (direct, a proxy, the relay, a tailnet, wg:FILE)
 
         -L, --local <LISTEN=HOST:PORT>
             A forward: LISTEN=HOST:PORT (repeatable). LISTEN is PORT (on
@@ -1375,7 +1384,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1517,7 +1527,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1643,7 +1654,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1727,7 +1739,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1785,7 +1798,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1842,7 +1856,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1906,7 +1921,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1969,7 +1985,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2029,7 +2046,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2199,7 +2217,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2254,7 +2273,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2308,7 +2328,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2366,7 +2387,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2445,7 +2467,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2499,7 +2522,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2641,7 +2665,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2740,7 +2765,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2821,7 +2847,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2893,7 +2920,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2968,7 +2996,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3041,7 +3070,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3183,7 +3213,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3329,7 +3360,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3474,7 +3506,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3624,7 +3657,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3766,7 +3800,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3908,7 +3943,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4054,7 +4090,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4206,7 +4243,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4386,7 +4424,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4541,7 +4580,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4733,7 +4773,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4972,7 +5013,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5162,7 +5204,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5305,7 +5348,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5449,7 +5493,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5650,7 +5695,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5807,7 +5853,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5982,7 +6029,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6145,7 +6193,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6330,7 +6379,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6496,7 +6546,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6556,7 +6607,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6619,7 +6671,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6716,7 +6769,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6822,7 +6876,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6881,7 +6936,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7095,7 +7151,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7165,7 +7222,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7223,7 +7281,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7315,7 +7374,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7373,7 +7433,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7440,7 +7501,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7495,7 +7557,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7546,7 +7609,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7604,7 +7668,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7657,7 +7722,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7724,7 +7790,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7780,7 +7847,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7835,7 +7903,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7889,7 +7958,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7953,7 +8023,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8013,7 +8084,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8070,7 +8142,8 @@ COMMANDS
             URL (as --proxy), relay or relay:URL (as --transport relay and
             --relay). With podnet pod, each --egress is one -x hop of the
             chain, in its order (also tailscale:/PATH, netbird:[PORT] and
-            unix:/PATH)
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8734,11 +8807,11 @@ podnet man                                      # the manual
 | WARP | `warp register`, `proxy`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan` | The Cloudflare WARP client on TCP 443, with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
 | Pods | `pod`, `pod doctor` | Run a program with all its traffic sent through a proxy chain, with rules and audit. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
 | Virtual networks | `net proxy`, `switch`, `shim`, `doctor` | IP addresses for programs on a host that refuses `AF_INET` binds. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
-| Overlays | `net tailscale`, `net socksify`, `netbird:` | Tailscale and NetBird on a host with no TUN. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
+| Overlays | `net tailscale`, `net socksify`, `netbird:`, `wg:` | Tailscale, NetBird and WireGuard on a host with no TUN. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
 | Router | `route --config`, `--check --to`, `--status`, `--export` | Networks, groups, policies, health, doors, DNS door, kernel mode. | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
 | Forwards | `forward -L`, `forward --dns` | TCP and UDP forwards and a DNS door through a network. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Relays | `relay pair`, `node`, `connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
-| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
+| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
 | Checks | `doctor`, `doctor --agent`, `status`, `ports`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
 | Update | `update` | Replace the binary after a check of the signature. | [install](https://github.com/PodUtils/podnet/blob/main/docs/install.md) |
@@ -9900,6 +9973,7 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
 * `socks5://unix:/path` and `http://unix:/path` (also `socks5h+unix:/path` and `http+unix:/path`): a proxy
   on a unix socket.
 * `tailscale:/path/to/tailscaled.sock`: a tailnet ([networks.md](networks.md)).
+* `wg:FILE` is not a hop of a pod. Run `podnet route` with a `wg:FILE` network, and give its door to `-x`.
 * `netbird:[PORT]` through `--egress` (a SOCKS5 hop on `127.0.0.1:PORT`; [networks.md](networks.md)).
 * `--serve LISTEN` runs no program. It serves SOCKS5, HTTP CONNECT and UDP ASSOCIATE on `unix:/path` or
   `tcp://host:port`, and sends the flows through the chain.
@@ -9970,9 +10044,9 @@ podnet pod -x socks5://127.0.0.1:1080 \
 
 # Virtual networks and overlays
 
-This page gives `podnet net`: the virtual network, Tailscale, NetBird and the passwd shim. The design
-of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:` and
-`netbird:` are networks of the registry ([egress.md](egress.md)).
+This page gives `podnet net`: the virtual network, Tailscale, NetBird, WireGuard and the passwd shim. The design
+of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:`, `netbird:` and
+`wg:` are networks of the registry ([egress.md](egress.md)).
 
 | Command | Function |
 | --- | --- |
@@ -10077,6 +10151,30 @@ keep it on `127.0.0.1`. The doctor row sends a SOCKS5 greeting to the port
 (`NB_SOCKS5_LISTENER_PORT`, else 1080). A listener that does not answer is
 `unknown`, not a fault.
 
+## WireGuard: `wg:FILE`
+
+```sh
+podnet forward --network wg:/etc/wireguard/wg0.conf -L 127.0.0.1:8080=10.9.0.1:80
+```
+
+The spec `wg:FILE` makes a WireGuard peer a network. `FILE` is a wg-quick file with one peer
+(`PrivateKey`, `Address`, `MTU`; `PublicKey`, `Endpoint`, `Reserved`). podnet does the handshake itself and
+runs a userspace stack over the tunnel. It makes no TUN device and needs no capability. The spec gives TCP and
+UDP from the `Address` of the file.
+
+* The target must be an IP address. The network does not resolve names.
+* A file with a `PresharedKey` is refused with one line.
+* `up` does the handshake. A path with no UDP gives no answer in 15 s, and the error says that the UDP path
+  may be closed.
+* The UDP of the tunnel goes out from this host. A way below the network (`Ctx::below`, a layer of a chain)
+  can carry it instead. That way must carry UDP (`Dial::datagrams`). The status of the link names it in
+  `carrier`. A way that carries no UDP, a proxy for example, is refused with `carries no UDP`.
+* `wg:FILE` is a network of `podnet forward --network` and of a `networks:` entry of a router file
+  ([router.md](router.md)). It is not a hop of `podnet pod` (T-117): run `podnet route` with the network and
+  give its door to `-x`.
+* The WARP datagram path (MASQUE CONNECT-IP) is not a carrier of the registry (T-117), because `warp` is not a
+  network of the registry ([egress.md](egress.md)).
+
 ## A user with no passwd entry
 
 On a host where `/etc/passwd` has no entry for your uid, `getpwuid` fails.
@@ -10157,7 +10255,7 @@ doors:
   error names the key or the line.
 * A name is letters, digits, `-` and `_`. A group and a network cannot have the same name.
 * `networks` maps a name to a network spec (see [egress.md](egress.md)): `direct`, a proxy URL, `relay`,
-  `tailscale:/PATH`, `netbird:[PORT]` or `unix:/PATH`. A `tailscale:/PATH` network is a member of a group
+  `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE` or `unix:/PATH`. A `tailscale:/PATH` network is a member of a group
   and the `via` of a door, as each other network. When `tailscaled` is not `Running` at the start, the
   router prints one warning and goes on: each dial through that network fails until the daemon is logged
   in.
@@ -10507,6 +10605,7 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `relay` | `relay`, `relay:URL`, `relay:HOST` | The WebSocket relay (`PODNET_RELAY`, default `https://tcp.ssh.relay.ajam.dev`). IPv4 TCP only. | TCP |
 | `tailscale` | `tailscale:/PATH/tailscaled.sock` | A tailnet, through the LocalAPI of `tailscaled` ([networks.md](networks.md)). | TCP |
 | `netbird` | `netbird`, `netbird:[PORT]` | The SOCKS5 listener of NetBird in netstack mode on `127.0.0.1:PORT` (default 1080). The target must be an IP address ([networks.md](networks.md)). | TCP |
+| `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. The target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
 
 * A spec with no scheme (`HOST:PORT`) is a SOCKS5 proxy, as in `podnet pod -x`.
 * `socks5://` resolves the name on this host. `socks5h://` gives the name to the proxy.
@@ -10532,6 +10631,8 @@ and it replaces the older flags:
 * With `podnet pod`, each `--egress` is one hop `-x SPEC` of the chain, in its order. The forms
   `tailscale:/PATH`, `netbird:[PORT]` and `unix:/PATH` are hops of a pod. The relay is not a hop of a
   pod.
+* `wg:FILE` is not a hop of a pod, and no process command takes it in `--egress`: each gives one line.
+  Use `podnet forward --network wg:FILE` or a `networks:` entry of a router file.
 * `tailscale:/PATH` is a hop of a pod and the only hop of its chain. A command that is not `pod` refuses
   `--egress tailscale:/PATH` with one line: use `podnet pod`, `podnet forward --network` or a router file.
 * A spec that the command cannot use is a usage error with one line that names the spec.
