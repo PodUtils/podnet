@@ -5339,3 +5339,45 @@ cargo test -p podnet --lib a_direct_refusal_is_an_answer
 
 2026-11-12. The test holds the port with a bound `tokio::net::TcpSocket` and no `listen`; the dial gets "connection
 refused". 5 runs in a row passed. Not proven: the race under the load of a full run (it was seen once).
+
+
+# T-325: Publish `v0.4.0-beta.8`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md` (Releases, 2026-11-09): cut the next prerelease when a batch of fixes is green;
+`docs/maintenance.md`, section "Release".
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The work after `v0.4.0-beta.7` (T-261 to T-267, T-274, T-275, T-307, T-309, T-311, T-316, T-318, T-319, T-321 to T-324, and
+the take of podcrates v0.33.0) is on `main` only.
+
+## Premise
+
+- `v0.4.0-beta.7` is the newest release (T-314).
+
+## Approach
+
+1. Set the version `0.4.0-beta.8` in `Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, and regenerate the llms files.
+2. Write `docs/releases/v0.4.0-beta.8.md`, with `## Breaking`.
+3. Push, and wait until `ci` and `live` pass on that commit.
+4. Dispatch `release.yml` on `main` with `publish` empty (the dry run), then with
+   `publish=v0.4.0-beta.8`.
+5. Check the files of the release and `release-proofs.yml`.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next
+prerelease unattended when a batch is green.
+
+## Prove
+
+```sh
+cargo test -p podnet --test docs
+sh scripts/agent/check.sh
+```
