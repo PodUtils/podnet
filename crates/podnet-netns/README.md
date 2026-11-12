@@ -135,8 +135,11 @@ socket) when there is one, else to TCP on the host.
   copies the bytes. When the dial fails (a dead
   proxy, a 407 of the proxy), the program gets a RST, and its `connect()`
   fails with `ECONNREFUSED`. The program cannot read the HTTP status of the
-  proxy; `-v` prints it. The parse of a SYN and the RST are `pod_hold::packet`
-  of PodUtils/podcrates.
+  proxy; `-v` prints it. A new SYN past the budget (4096 connections:
+  held, dialed and open) waits: the program sends it again. The hold of each
+  SYN (`pod_hold::syn_hold`), the parse of a SYN and the RST
+  (`pod_hold::packet`) are of PodUtils/podcrates; the dial, the rules, the
+  flow log and the copy of a flow are podnet's.
 * The parent answers each UDP query to port 53, to any resolver address, from
   the fake-IP pool. The answer comes from the address that the program sent
   the query to.

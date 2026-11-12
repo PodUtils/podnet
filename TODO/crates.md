@@ -773,6 +773,13 @@ Done so far:
   `udp_tx_dropped` and `udp_oversize`, `max_datagram` (a larger send is `InvalidInput`), and the feature
   `ipv4-fragmentation` (off). The test `guest_wire_udp_over_the_mtu_is_refused_without_fragmentation` pins the
   refusal. `cargo test --workspace --no-fail-fast`: 0 failed.
+- `pod-hold` v0.29.0 (PodUtils/podcrates#87; hand-off `adoption/podnet/pod-hold-syn.patch`, trial at a7350b2): each
+  `pod-*` dependency names `tag = "v0.29.0"`, and `podnet-netns` takes the feature `syn-hold`. `netns/backend.rs`
+  takes `pod_hold::syn_hold::SynHold`: the hold of each SYN with its dial, the release or the RST, the listeners of
+  the ports and the late dial. podnet keeps the dial (`TcpRoute` as `Dial`), the flow log, the copy of a flow, the
+  DNS, the UDP flows and the device of the wire. The crate fixes four defects of the router of T-249 (a SYN past
+  the budget, the late dial to the gateway, a second accept of a tuple, stale cites). `cargo test --workspace
+  --no-fail-fast`: 0 failed; the netns tests as root: 0 failed.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

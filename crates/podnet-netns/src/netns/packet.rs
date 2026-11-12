@@ -1,11 +1,11 @@
 //! The packet builders of the netns backend: the DNS reply of the fake
-//! DNS. The parse of a SYN, the RST to a SYN and the IPv4 checksum are
-//! `pod_hold::packet` (PodUtils/podcrates).
+//! DNS. The IPv4 checksum is `pod_hold::packet` (PodUtils/podcrates); the
+//! hold of a SYN (`pod_hold::syn_hold`) parses each SYN and makes its RST.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
 
-pub(crate) use pod_hold::packet::{ipv4_checksum, parse_tcp_syn, rst_reply_for_syn};
+pub(crate) use pod_hold::packet::ipv4_checksum;
 
 /// If `pkt` is an IPv4 UDP datagram to port 53 that holds a DNS query, return
 /// the reply datagram. Return `None` for any other packet.

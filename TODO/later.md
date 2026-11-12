@@ -1246,7 +1246,7 @@ an oversized datagram needs its own counter.
 - Present in podnet: `HeldSyn` (`crates/podnet-netns/src/netns/backend.rs:13,146`; its RST is `rst_reply_for_syn` of `pod_hold::packet`, PodUtils/podcrates); `reap_closed`
   (`crates/podnet-netns/src/netns/backend.rs:326`) reaps at `Closed`; the vnet stack treats `TimeWait` as closed (`close_and_check`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`)
   and defers `close` until the queues are empty (the same function). `NetStack` defaults hold the payload at
-  64 KiB (`:114-115`). Async writers use `write_all` (`upstream.rs:626`, `framing.rs:43`).
+  64 KiB (`:76-77`). Async writers use `write_all` (`upstream.rs:626`, `framing.rs:43`).
 - No present defect. smoltcp lines are not re-read; the prototype is not in the repo.
 - Overlap: #352 (netns netfilter), T-111 (takes datagrams before smoltcp).
 
