@@ -5252,7 +5252,7 @@ Sandhole (80) and `forward::Relay::remote_port() -> Option<u16>`. Then `facts.rs
 
 ## Done
 
-2026-11-12, commit 2ad72c1 (`T-319: ssh-relay: the remote-port fact of the relay`). Approach 2 is done with podcrates
+2026-11-12, commit 3e4c999 (`T-319: ssh-relay: the remote-port fact of the relay`). Approach 2 is done with podcrates
 v0.33.0 (main takes it). `relay/facts.rs`: `Facts::remote_port` is `forward::Relay::remote_port()`. `ssh_relay.rs`:
 the port of the config is `--remote-port`, else the fact, else port 0 (`--server` with no `--service` has no fact).
 `docs/relay.md` and the help of `--remote-port` say it. Tests: `relay::tests::the_remote_port_is_a_fact_of_the_relay_that_needs_one`

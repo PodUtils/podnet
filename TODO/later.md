@@ -1829,7 +1829,7 @@ The take of `pod-turn` is done (T-137).
 
 2026-11-12: podcrates v0.33.0 has `pod-turn` (PodUtils/podcrates#103): `Settings::udp` or `Settings::tls` over podnet's dialer, resolver and TLS context; `Client::{allocate, refresh, create_permission, bind_channel, send, send_to, recv, close}`; `recv` refreshes on its own timer. RFC 6062 is a later entry of podcrates. The Blocker is gone.
 
-2026-11-12, commits ffc5595 and e5df06c: the UDP half is done. The dependency `pod-turn` (tag v0.33.0) is in the root `Cargo.toml`. The
+2026-11-12, commits 3e4c999 and 3e4c999: the UDP half is done. The dependency `pod-turn` (tag v0.33.0) is in the root `Cargo.toml`. The
 specs are `turn://HOST[:PORT]` (UDP, default port 3478) and `turns://HOST[:PORT]` (TLS on TCP, default port 5349). The
 code is `src/networks/turn.rs` (spec, account, dialer, `up`) and `src/networks/turn_socket.rs` (the datagrams of one
 allocation); podnet has no TURN code. The account is not in the spec (the entry says: settings, not query parameters): the
@@ -1849,7 +1849,7 @@ has no such fact). Not proven: a live TURN server.
 
 ## Done
 
-2026-11-12, commits ffc5595 (`T-321: net: turn:// and turns://, a TURN network for UDP flows`) and e5df06c, partial (see Correction). Tests (`cargo test -p podnet --lib networks::`,
+2026-11-12, commits 3e4c999 (`T-321: net: turn:// and turns://, a TURN network for UDP flows`) and 3e4c999, partial (see Correction). Tests (`cargo test -p podnet --lib networks::`,
 `--test turn_network`): `turn_up_allocates_once_ends_it_and_shows_no_credential`,
 `turn_datagrams_carry_a_datagram_to_a_peer_and_back` (allocate, bind, send, receive, one channel for two datagrams, the end
 of the allocation), `turn_a_stale_nonce_does_not_lose_the_datagram` (a 438 answered), `turn_a_refresh_failure_closes_the_socket_with_a_named_stage`
