@@ -4775,6 +4775,6 @@ cargo test -q --test signals
 
 ## Done
 
-2026-11-12, commit e2dd43f. Cause: the test. `start` waited for the socket file and then slept 300 ms. The socket comes before `detach::ready`, which arms the stop signals. On a loaded host the ready came after the 300 ms, and the stop signal had the default action (exit by the signal, not 0). The code is as designed (issue 91: the default action before the ready). Fix: `start` reads stdout and waits for the line `podnet: proxy`, then waits 200 ms; the stop limit is 30 s; the checks are the same.
+2026-11-12, commit 78dec0d. Cause: the test. `start` waited for the socket file and then slept 300 ms. The socket comes before `detach::ready`, which arms the stop signals. On a loaded host the ready came after the 300 ms, and the stop signal had the default action (exit by the signal, not 0). The code is as designed (issue 91: the default action before the ready). Fix: `start` reads stdout and waits for the line `podnet: proxy`, then waits 200 ms; the stop limit is 30 s; the checks are the same.
 
 Failure rate: before, 0 of about 500 runs under load (40 busy loops, 200 parallel runs; 24 busy loops with 150 runs; one-CPU pinning) failed, so the failure of the full run was not reproduced on demand. The window was shown with a signal at the socket: 4 of 8 runs ended by SIGTERM (rc 143). After: 0 of 200 runs under the same load. `cargo test -q --test signals`: 3 passed. Not proven: the failure message "did not stop" (a hang) was not reproduced; the measured fault is an exit by the signal.
