@@ -1600,7 +1600,7 @@ T-266 is done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1630,6 +1630,13 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-266 is done.
+
+## Done
+
+2026-11-12, commit 931277a. What was there before: T-266 built the service `raw` (`--to TARGET` is `--service raw=TARGET`; `bridge` in `src/cli/cmd/link/listen.rs` copies with `tokio::io::copy_bidirectional`, which passes the end of one direction as a shutdown of the write side of the other). No code needed a change. This entry adds the tests that prove it and the text in `docs/link.md` (the part "The service `raw`"), the help of `--to` and `llms-full.txt`.
+`cargo test --test link_raw`: 4 passed: `a_close_of_the_opener_reaches_the_origin_and_the_answer_still_comes` (stdin of `link dial` ends, the origin reads to the end, then answers), `a_close_of_the_origin_reaches_the_opener_and_the_opener_can_still_send` (the origin closes its write side, the opener reads the end, then sends and the origin reads it), `four_mebibytes_each_way_arrive_unchanged`, `the_service_raw_has_no_framing_a_single_byte_stays_a_single_byte`. Fail first: with `bridge` changed to stop at the first end of one direction (no half-close), 3 of the 4 tests failed; the old code passes all 4.
+Not proven: a record of 1 MiB as a limit (the copy has no record size of its own; a frame limit is the link's); a carrier that crosses a network.
+
 
 # T-294: link: a Shadowsocks AEAD service at a peer (GitHub #471)
 

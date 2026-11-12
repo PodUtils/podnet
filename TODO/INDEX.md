@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**330 entries: 55 open, 20 partial, 29 blocked, 226 done.**
+**330 entries: 54 open, 20 partial, 29 blocked, 227 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 8 | 11 | 129 | 167 |
-| P3 | 36 | 11 | 16 | 69 | 132 |
-| **All** | 55 | 20 | 29 | 226 | 330 |
+| P3 | 35 | 11 | 16 | 70 | 132 |
+| **All** | 54 | 20 | 29 | 227 | 330 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -338,7 +338,7 @@ M8 Overlays, M9 Later.
 | [T-290](link.md) | P3 | M | M9 | feature | open | link: per-hop access control for services and forwarding (GitHub #470) |
 | [T-291](link.md) | P3 | M | M9 | feature | open | link: a SOCKS5 service at a peer (GitHub #471) |
 | [T-292](link.md) | P3 | M | M9 | feature | open | link: an HTTP forward proxy service at a peer (GitHub #471) |
-| [T-293](link.md) | P3 | S | M9 | feature | open | link: a raw passthrough service at a peer (GitHub #471) |
+| [T-293](link.md) | P3 | S | M9 | feature | done | link: a raw passthrough service at a peer (GitHub #471) |
 | [T-294](link.md) | P3 | M | M9 | feature | blocked | link: a Shadowsocks AEAD service at a peer (GitHub #471) |
 | [T-295](link.md) | P3 | M | M9 | feature | blocked | link: a Trojan service at a peer (GitHub #471) |
 | [T-296](link.md) | P3 | M | M9 | feature | open | link: an exec adapter that runs a program for each stream (GitHub #471) |
