@@ -61,7 +61,7 @@ const DISABLED: [Row; 1] = [Row {
 
 #[test]
 fn the_names_have_a_fixed_order() {
-    assert_eq!(carriers::names(), ["unix", "memory"]);
+    assert_eq!(carriers::names(), ["unix", "memory", "quic", "s3", "icmp"]);
 }
 
 #[test]
@@ -70,13 +70,17 @@ fn an_unknown_name_exits_64_and_lists_the_names() {
     assert_eq!(code_of(&e), exit::USAGE);
     let text = format!("{e:#}");
     assert!(text.contains("tcp"), "{text}");
-    assert!(text.contains("unix, memory"), "{text}");
+    assert!(text.contains("unix, memory, quic, s3, icmp"), "{text}");
     assert!(!text.contains("unknown carrier."), "{text}");
 }
 
 #[test]
 fn a_carrier_that_the_host_allows_opens() {
-    for name in carriers::names() {
+    for name in carriers::ROWS
+        .iter()
+        .filter(|r| r.feature.is_none())
+        .map(|r| r.name)
+    {
         let c = carriers::open(name, &Options::default()).unwrap();
         assert_eq!(c.name(), name);
         assert!(c.available().is_ok());
@@ -124,8 +128,9 @@ fn the_report_gives_the_reason_of_a_disabled_carrier() {
 #[test]
 fn the_report_of_the_built_in_carriers_has_the_facts() {
     let report = carriers::report(&Options::default());
-    assert_eq!(report.len(), 2);
-    for r in &report {
+    assert_eq!(report.len(), 5);
+    // The carriers of the default build: the others sit behind a feature.
+    for r in report.iter().filter(|r| r.feature.is_none()) {
         assert!(r.available.is_ok(), "{}: {:?}", r.name, r.available);
         assert!(r.facts.ordered && r.facts.reliable && r.facts.duplex);
         assert_eq!(r.facts.mtu, None);

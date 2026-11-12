@@ -241,6 +241,7 @@ fn report_doc(r: &Report) -> Value {
         "cost": r.cost,
         "needs_privilege": r.needs_privilege,
         "feature": r.feature,
+        "built": r.built,
         "available": r.available.is_ok(),
         "reason": r.available.as_ref().err(),
     })

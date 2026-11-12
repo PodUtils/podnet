@@ -95,6 +95,15 @@ of each link instance in the run directory, and takes the first that holds a lin
 | --- | --- | --- |
 | `unix` | a path (1 to 107 bytes) | A stream over `AF_UNIX`. The socket has the mode 0600. The uid of the peer is checked. It needs no network. |
 | `memory` | a name | Two ends in one process, with a ring for each direction. A full ring blocks the writer. It is for tests and for programs that embed the link. |
+| `quic` | `HOST:PORT` | QUIC streams (T-273). Build feature `quic`. |
+| `s3` | `BUCKET/PREFIX` | A simplex pair of objects in a bucket (T-279). Build feature `s3`. |
+| `icmp` | `HOST` | ICMP echo, a datagram carrier (T-282). Build feature `icmp`; it needs a privilege. |
+
+The carriers `quic`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
+them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
+(the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
+carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
+build yet until its entry lands.
 
 Each carrier reports `framing`, `duplex`, `ordered`, `mtu`, the cost and `available()`. A carrier that this host cannot use
 gives its reason, and a command that needs it exits 69 with the reason. `podnet doctor` has a row `carriers` with the same

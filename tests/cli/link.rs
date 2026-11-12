@@ -374,7 +374,7 @@ fn carriers_lists_each_carrier_with_its_diagnosis() {
     let out = host.run(&["link", "carriers"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let lines: Vec<String> = text(&out.stdout).lines().map(String::from).collect();
-    assert_eq!(lines.len(), 2, "{lines:?}");
+    assert_eq!(lines.len(), 5, "{lines:?}");
     assert!(lines[0].starts_with("unix: stream"), "{}", lines[0]);
     assert!(lines[0].ends_with(": available"), "{}", lines[0]);
     assert!(lines[1].starts_with("memory: stream"), "{}", lines[1]);

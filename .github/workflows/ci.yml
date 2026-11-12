@@ -188,6 +188,26 @@ jobs:
       - name: Check with rust-version
         run: cargo +"$MSRV" check --locked --workspace
 
+  # T-311: the optional carriers and services of the link sit behind Cargo
+  # features. The default build has none; `full` turns on each of them but
+  # `portable`. This job builds and tests the workspace with `full`, so that a
+  # feature that fails to build or breaks a test is found before a release.
+  features:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: |
+          sh scripts/retry.sh rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal -c clippy
+          rustup default "$RUST_TOOLCHAIN"
+      - name: Clippy with the feature full
+        run: cargo clippy --locked --workspace --all-targets --features full -- -D warnings
+      - name: Test with the feature full
+        run: cargo test --locked --workspace --features full
+
   static:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -395,7 +415,7 @@ jobs:
   all:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [test, restricted-host, no-loopback, msrv, static, workflows, record, plant]
+    needs: [test, restricted-host, no-loopback, msrv, features, static, workflows, record, plant]
     if: always()
     steps:
       - name: Each job passed

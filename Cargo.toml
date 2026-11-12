@@ -210,6 +210,31 @@ uuid = { version = "1", features = ["v4", "serde"] }
 webpki-roots = "1"
 x509-parser = "0.18"
 
+[features]
+# The build features of the link (T-311, docs/build.md). The default build
+# holds the carriers of today (unix, memory) and has no optional feature.
+# An optional carrier or service sits behind its feature; a carrier whose
+# feature is off is listed by `podnet link carriers` as "not built" and a
+# command that names it exits 69. No flag at run time enables a feature: a
+# binary cannot run code that it was not built with.
+default = []
+# The QUIC carrier (T-273).
+quic = []
+# The object-storage carrier (T-279).
+s3 = []
+# The ICMP echo carrier (T-282).
+icmp = []
+# The Shadowsocks service (T-294).
+ss = []
+# The Trojan service (T-295).
+trojan = []
+# The C ABI (T-304).
+c-abi = []
+# The portable subset (T-305). It takes away; `full` does not hold it.
+portable = []
+# Each optional carrier and service, for CI (`cargo test --features full`).
+full = ["quic", "s3", "icmp", "ss", "trojan", "c-abi"]
+
 [dev-dependencies]
 # The responder of the tests of WireGuard (src/warp/wg/standin.rs).
 pod-wg = { git = "https://github.com/PodUtils/podcrates", tag = "v0.33.0", version = "0.33.0", features = ["standin"] }

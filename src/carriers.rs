@@ -18,8 +18,9 @@
 use anyhow::anyhow;
 use pod_link::memory::{self, Memory};
 use pod_link::unix::{self, Unix};
-use pod_link::{Carrier, CarrierError, Facts};
+use pod_link::{Carrier, CarrierError, CarrierErrorKind, Facts};
 
+use crate::build_features;
 use crate::exit::{self, Fault};
 use crate::link::carrier_fault;
 use crate::network::Addressing;
@@ -62,6 +63,24 @@ pub struct Row {
     pub make: fn(&Options) -> Result<Box<dyn Carrier>, CarrierError>,
 }
 
+impl Row {
+    /// True when this binary holds the carrier: it has no feature, or its
+    /// feature is on (T-311).
+    pub fn built(&self) -> bool {
+        self.feature.is_none_or(build_features::built)
+    }
+
+    /// The error of a carrier that this build leaves out, when it does.
+    fn off(&self) -> Option<CarrierError> {
+        let feature = self.feature.filter(|f| !build_features::built(f))?;
+        Some(CarrierError::new(
+            self.name,
+            CarrierErrorKind::Unavailable,
+            build_features::reason(feature),
+        ))
+    }
+}
+
 fn make_unix(options: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     Ok(Box::new(Unix {
         allow_other_uid: options.allow_other_uid,
@@ -72,9 +91,33 @@ fn make_memory(options: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     Ok(Box::new(Memory::new(options.ring)?))
 }
 
+/// A carrier whose feature is on but whose code is not in the tree yet. The
+/// entry that adds the carrier replaces the maker.
+fn pending(name: &'static str, entry: &str) -> Result<Box<dyn Carrier>, CarrierError> {
+    Err(CarrierError::new(
+        name,
+        CarrierErrorKind::Unavailable,
+        format!(
+            "the feature is on, but the code of the carrier is not in this build yet ({entry})"
+        ),
+    ))
+}
+
+fn make_quic(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("quic", "T-273")
+}
+
+fn make_s3(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("s3", "T-279")
+}
+
+fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("icmp", "T-282")
+}
+
 /// The carriers of this build, in the order of the lists and of the
 /// first choice.
-pub const ROWS: [Row; 2] = [
+pub const ROWS: [Row; 5] = [
     Row {
         name: unix::NAME,
         about: "a stream over AF_UNIX, mode 0600, the uid of the peer checked",
@@ -92,6 +135,33 @@ pub const ROWS: [Row; 2] = [
         needs_privilege: false,
         feature: None,
         make: make_memory,
+    },
+    Row {
+        name: "quic",
+        about: "QUIC streams to a peer, TLS 1.3 with the key of the peer pinned",
+        address: "HOST:PORT",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("quic"),
+        make: make_quic,
+    },
+    Row {
+        name: "s3",
+        about: "a simplex pair of objects in a bucket",
+        address: "BUCKET/PREFIX",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("s3"),
+        make: make_s3,
+    },
+    Row {
+        name: "icmp",
+        about: "echo requests and replies, a datagram carrier",
+        address: "HOST",
+        cost: "network",
+        needs_privilege: true,
+        feature: Some("icmp"),
+        make: make_icmp,
     },
 ];
 
@@ -123,6 +193,9 @@ pub fn open(name: &str, options: &Options) -> anyhow::Result<Box<dyn Carrier>> {
 /// [`open`] over the rows `rows`.
 pub fn open_in(rows: &[Row], name: &str, options: &Options) -> anyhow::Result<Box<dyn Carrier>> {
     let row = find(rows, name)?;
+    if let Some(off) = row.off() {
+        return Err(carrier_fault(off));
+    }
     let carrier = (row.make)(options).map_err(carrier_fault)?;
     carrier.available().map_err(carrier_fault)?;
     Ok(carrier)
@@ -137,6 +210,9 @@ pub struct Report {
     pub cost: &'static str,
     pub needs_privilege: bool,
     pub feature: Option<&'static str>,
+    /// False when the feature of the carrier is off: the facts are then
+    /// unknown (the default ones), and `available` holds "not built".
+    pub built: bool,
     pub facts: Facts,
     /// How the address names the other end.
     pub addressing: Addressing,
@@ -156,6 +232,16 @@ impl Report {
 
     /// One line: the name, the flags and the diagnosis.
     pub fn line(&self) -> String {
+        if !self.built {
+            let reason = self.available.as_ref().err().map_or("", String::as_str);
+            return format!(
+                "{name}: cost {cost}, address {address} ({addressing}): unavailable: {reason}",
+                name = self.name,
+                cost = self.cost,
+                address = self.address,
+                addressing = self.addressing.name(),
+            );
+        }
         let state = match &self.available {
             Ok(()) => "available".to_string(),
             Err(reason) => format!("unavailable: {reason}"),
@@ -183,7 +269,11 @@ pub fn report(options: &Options) -> Vec<Report> {
 pub fn report_in(rows: &[Row], options: &Options) -> Vec<Report> {
     rows.iter()
         .map(|row| {
-            let (facts, available) = match (row.make)(options) {
+            let made = match row.off() {
+                Some(off) => Err(off),
+                None => (row.make)(options),
+            };
+            let (facts, available) = match made {
                 Ok(c) => (c.facts(), c.available().map_err(|e| e.to_string())),
                 Err(e) => (Facts::STREAM, Err(e.to_string())),
             };
@@ -194,6 +284,7 @@ pub fn report_in(rows: &[Row], options: &Options) -> Vec<Report> {
                 cost: row.cost,
                 needs_privilege: row.needs_privilege,
                 feature: row.feature,
+                built: row.built(),
                 facts,
                 addressing: Addressing::Peer,
                 available,

@@ -26,6 +26,12 @@ impl Carriers {
             reports
                 .iter()
                 .map(|r| match &r.available {
+                    // A carrier that the build leaves out is not judged.
+                    Err(reason) if !r.built => CarrierRow {
+                        name: r.name,
+                        verdict: Verdict::Unknown,
+                        detail: reason.clone(),
+                    },
                     Ok(()) => CarrierRow {
                         name: r.name,
                         verdict: Verdict::Ok,

@@ -523,6 +523,7 @@ fn carrier_report(name: &'static str, available: Result<(), String>) -> crate::c
         cost: "free",
         needs_privilege: false,
         feature: None,
+        built: true,
         facts: pod_link::Facts::STREAM,
         addressing: crate::network::Addressing::Peer,
         available,
@@ -550,6 +551,18 @@ fn the_doctor_has_a_row_for_each_carrier_with_its_reason() {
         text.contains("denied     fail     the seccomp filter"),
         "{text}"
     );
+}
+
+// T-311: a carrier that the build leaves out is "unknown" in the doctor, not
+// "fail": the host is not at fault.
+#[test]
+fn a_carrier_that_the_build_leaves_out_is_unknown_in_the_doctor() {
+    let mut off = carrier_report("quic", Err("not built: the feature quic is off".into()));
+    off.built = false;
+    let rows = carrier_check::Carriers::from_reports(&[off]);
+    let doc = rows.to_json();
+    assert_eq!(doc[0]["verdict"], "unknown");
+    assert!(doc[0]["detail"].as_str().unwrap().contains("not built"));
 }
 
 // T-264, T-265: the registry of this build is in the report.

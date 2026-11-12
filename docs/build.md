@@ -31,6 +31,40 @@ CC_x86_64_unknown_linux_musl=clang cargo build --release --target x86_64-unknown
 The `LD_PRELOAD` shims need a C compiler at run time (`cc`, `gcc` or
 `clang`). The other commands do not.
 
+## Features
+
+The default build has no optional feature. An optional carrier or service of
+the link sits behind a Cargo feature of the `podnet` crate:
+
+| Feature | Holds | Entry |
+| --- | --- | --- |
+| `quic` | The QUIC carrier. | T-273 |
+| `s3` | The object-storage carrier. | T-279 |
+| `icmp` | The ICMP echo carrier. | T-282 |
+| `ss` | The Shadowsocks service. | T-294 |
+| `trojan` | The Trojan service. | T-295 |
+| `c-abi` | The C ABI. | T-304 |
+| `portable` | The portable subset. It takes code away. | T-305 |
+| `full` | `quic`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
+
+```sh
+cargo build --release --features quic,icmp   # two optional carriers
+cargo test --workspace --features full       # what the CI job features runs
+```
+
+* `full` is for CI. No flag at run time turns a feature on: a binary cannot
+  run code that it was not built with.
+* A carrier whose feature is off stays in the registry. `podnet link carriers`
+  lists it with the reason `not built: the feature NAME is off (build with
+  --features NAME)`, `podnet doctor` shows it as `unknown`, and a command
+  that names it (`--carrier NAME`) exits 69 with the same reason. In a
+  `--features` build, a carrier whose code is not in the tree yet says so.
+* The static musl build of the release set uses the default features. Build
+  a feature on every target of the release set before it joins that set.
+* `podnet::build_features` is the list (`OPTIONAL`, `FULL`), `built(NAME)`,
+  `enabled()` and `require(NAME)` (the gate of a command: exit 69 with the
+  feature name).
+
 ## Fuzz
 
 `fuzz/` has a libFuzzer target for each parser of bytes from the network
