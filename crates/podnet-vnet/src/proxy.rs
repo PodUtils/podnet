@@ -19,12 +19,14 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::net::IpAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
-use tokio::io::{AsyncRead, AsyncWrite, BufReader};
+use podnet_core::network::{BoxFuture, Class, Connected, Dial, Failure, Stage, Target};
+use podnet_netns::door::Door;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::task::JoinHandle;
-
-use podnet_netns::opening::{read_opening, Opening, REQUEST_LIMIT};
+use tokio::time::Instant;
 
 use crate::addr::VirtAddr;
 use crate::socks::{self, ProxyHost};
@@ -64,83 +66,81 @@ pub fn resolve_target(
     }
 }
 
-/// Serve one proxy client: negotiate, dial `net`, and splice both directions.
-///
-/// The protocol is detected from the first byte (SOCKS5 begins with `0x05`),
-/// so one listener serves both SOCKS5 and HTTP `CONNECT` clients.
 pub use crate::stack::TcpStream;
 
 /// How long the copy of one proxied client connection may take. It does not
 /// bound the opening: `REQUEST_LIMIT` bounds that.
-const CLIENT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
-
-pub async fn handle_connection<S>(
-    stream: S,
-    net: Arc<NetStack>,
-    resolver: Resolver,
-    default_port: u16,
-) where
-    S: AsyncRead + AsyncWrite + Unpin,
-{
-    let mut reader = BufReader::new(stream);
-    let (is_socks, request) = match read_opening(&mut reader, REQUEST_LIMIT).await {
-        Opening::Request { is_socks, request } => (is_socks, request),
-        _ => return,
-    };
-
-    let target = match resolve_target(&request, &resolver, default_port) {
-        Ok(target) => target,
-        Err(err) => {
-            fail(&mut reader, is_socks, &err.to_string()).await;
-            return;
-        }
-    };
-    // `net.connect` returns as soon as the socket exists and the SYN is queued,
-    // which is not the same as the connection being established. The client has
-    // already sent its request and is waiting, so if nothing is listening it
-    // waits for data that will never arrive. Refusing instead means the client
-    // gets a SOCKS5 error or a 502, which it can act on.
-    match net.connect(target).await {
-        Ok(mut remote) => {
-            if let Err((status, message)) = wait_established(&mut remote).await {
-                fail_with(&mut reader, is_socks, status, &message).await;
-                return;
-            }
-            let reply = if is_socks {
-                socks::socks5_reply(&mut reader, 0x00, None).await
-            } else {
-                socks::http_connect_ok(&mut reader).await
-            };
-            if reply.is_err() {
-                return;
-            }
-            // Bound the whole exchange. Without this a client that opens a
-            // connection and then stops reading holds a task and both sockets
-            // indefinitely, and there is nothing else in the process that would
-            // notice.
-            let _ = tokio::time::timeout(
-                CLIENT_TIMEOUT,
-                tokio::io::copy_bidirectional(&mut reader, &mut remote),
-            )
-            .await;
-        }
-        Err(err) => fail(&mut reader, is_socks, &err.to_string()).await,
-    }
-}
+const CLIENT_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// The time limit of the handshake with a virtual address. A SYN to an
 /// address that nothing owns gets no answer; the client gets 504 after this.
-pub const CONNECT_LIMIT: std::time::Duration = std::time::Duration::from_secs(5);
+pub const CONNECT_LIMIT: Duration = Duration::from_secs(5);
+
+/// The way out of `net proxy`: a TCP flow to an address of the virtual
+/// network, with the names of the table.
+struct StackDial {
+    net: Arc<NetStack>,
+    resolver: Resolver,
+}
+
+impl Dial for StackDial {
+    fn label(&self) -> String {
+        "vnet".into()
+    }
+
+    /// The table resolves the name, so the door sends it.
+    fn names_inside(&self) -> bool {
+        true
+    }
+
+    fn dial<'a>(
+        &'a self,
+        target: &'a Target,
+        _deadline: Instant,
+    ) -> BoxFuture<'a, Result<Connected, Failure>> {
+        Box::pin(async move {
+            let request = match target {
+                Target::Addr(addr) => socks::ProxyRequest {
+                    host: ProxyHost::Ip(addr.ip()),
+                    port: addr.port(),
+                },
+                Target::Name { host, port } => socks::ProxyRequest {
+                    host: ProxyHost::Domain(host.clone()),
+                    port: *port,
+                },
+            };
+            let to = resolve_target(&request, &self.resolver, 0)
+                .map_err(|e| Failure::new(Stage::Dns, Class::NotFound, e.to_string()))?;
+            // `net.connect` returns as soon as the socket exists and the SYN is queued,
+            // which is not the same as the connection being established. The client has
+            // already sent its request and is waiting, so if nothing is listening it
+            // waits for data that will never arrive. Refusing instead means the client
+            // gets a SOCKS5 error or a 502, which it can act on.
+            let mut remote = self
+                .net
+                .connect(to)
+                .await
+                .map_err(|e| Failure::new(Stage::Connect, Class::Unavailable, e.to_string()))?;
+            wait_established(&mut remote).await?;
+            Ok(Connected::new(Box::new(remote)))
+        })
+    }
+}
 
 /// Wait for the virtual connection to be established, or report why it
-/// failed: the status for HTTP (502 refused, 504 no answer) and a message.
-async fn wait_established(stream: &mut TcpStream) -> Result<(), (u16, String)> {
+/// failed: a refusal (502) or no answer (504, a timeout).
+async fn wait_established(stream: &mut TcpStream) -> Result<(), Failure> {
     let peer = stream.peer_addr();
     match tokio::time::timeout(CONNECT_LIMIT, stream.established()).await {
         Ok(Ok(())) => Ok(()),
-        Ok(Err(err)) => Err((502, format!("{peer} refused the connection: {err}"))),
-        Err(_) => Err((
-            504,
+        Ok(Err(err)) => Err(Failure::new(
+            Stage::Connect,
+            Class::Unavailable,
+            format!("{peer} refused the connection: {err}"),
+        )),
+        Err(_) => Err(Failure::new(
+            Stage::Connect,
+            Class::Timeout,
             format!(
                 "no answer from {peer} in {} s: no virtual host has this address",
                 CONNECT_LIMIT.as_secs()
@@ -149,33 +149,30 @@ async fn wait_established(stream: &mut TcpStream) -> Result<(), (u16, String)> {
     }
 }
 
-async fn fail<S>(stream: &mut S, is_socks: bool, message: &str)
-where
-    S: AsyncWrite + Unpin,
-{
-    fail_with(stream, is_socks, 502, message).await
+/// The front door of `net proxy` over `net`: SOCKS5 and HTTP `CONNECT` on
+/// one listener (the protocol is detected from the first byte), each flow
+/// dialed through the stack. A plain `http://` request gets 405. A port 0
+/// takes `default_port`. A flow ends after [`CLIENT_TIMEOUT`]: without it a
+/// client that opens a connection and then stops reading holds a task and
+/// both sockets indefinitely.
+pub fn door(net: Arc<NetStack>, resolver: Resolver, default_port: u16) -> Door {
+    Door::new(Arc::new(StackDial { net, resolver }))
+        .with_default_port(default_port)
+        .with_flow_limit(CLIENT_TIMEOUT)
+        .connect_only()
 }
 
-/// Refuse a client: a SOCKS5 error code, or an HTTP status with the message
-/// as the body.
-async fn fail_with<S>(stream: &mut S, is_socks: bool, status: u16, message: &str)
-where
-    S: AsyncWrite + Unpin,
+/// Serve one proxy client: negotiate, dial `net`, and splice both directions.
+pub async fn handle_connection<S>(
+    stream: S,
+    net: Arc<NetStack>,
+    resolver: Resolver,
+    default_port: u16,
+) where
+    S: AsyncRead + AsyncWrite + Unpin + Send,
 {
-    tracing::debug!(status, message, "proxy request refused");
-    if is_socks {
-        let code = match status {
-            504 => 0x04, // host unreachable
-            _ => socks::socks5_code_for_error(message),
-        };
-        let _ = socks::socks5_reply(stream, code, None).await;
-    } else {
-        let reason = if status == 504 {
-            "Gateway Timeout"
-        } else {
-            "Bad Gateway"
-        };
-        let _ = socks::http_reply_with_body(stream, status, reason, &format!("{message}\n")).await;
+    if let Err(err) = door(net, resolver, default_port).handle(stream).await {
+        tracing::debug!("a client of the proxy: {err:#}");
     }
 }
 
@@ -258,45 +255,28 @@ pub async fn serve(
     default_port: u16,
 ) -> Result<Proxy> {
     let mut listen = listen;
+    let door = Arc::new(door(net, resolver, default_port));
     let accepts = match &listen {
         ProxyListen::Tcp(bind) => {
             let listener = podnet_core::net::bind_tcp(*bind).await?;
             // Issue 300: keep the bound address (the port that the kernel
             // chose for port 0), not the requested one.
             listen = ProxyListen::Tcp(listener.local_addr()?);
-            let net = net.clone();
-            let resolver = resolver.clone();
             tokio::spawn(async move {
-                while let Ok((stream, _)) = listener.accept().await {
-                    tokio::spawn(handle_connection(
-                        stream,
-                        net.clone(),
-                        resolver.clone(),
-                        default_port,
-                    ));
-                }
+                let _ = door.serve_tcp(listener).await;
             })
         }
         ProxyListen::Unix(path) => {
             #[cfg(unix)]
             {
                 let listener = bind_unix(path)?;
-                let net = net.clone();
-                let resolver = resolver.clone();
                 tokio::spawn(async move {
-                    while let Ok((stream, _)) = listener.accept().await {
-                        tokio::spawn(handle_connection(
-                            stream,
-                            net.clone(),
-                            resolver.clone(),
-                            default_port,
-                        ));
-                    }
+                    let _ = door.serve_unix(listener).await;
                 })
             }
             #[cfg(not(unix))]
             {
-                let _ = (net, path);
+                let _ = (door, path);
                 bail!("unix sockets are not supported on this platform");
             }
         }
@@ -415,6 +395,48 @@ mod tests {
             "{answer}"
         );
         assert!(answer.contains("HTTP CONNECT only"), "{answer}");
+    }
+
+    /// T-061: the proxy is the front door over the stack. A client that
+    /// asks for UDP ASSOCIATE (the stack of the proxy carries no datagrams
+    /// for it) gets "command not supported", not a closed connection; and
+    /// a request with port 0 takes the port of the proxy.
+    #[tokio::test]
+    async fn the_proxy_is_the_door_over_the_stack() {
+        let net = Arc::new(NetStack::loopback());
+        let (mut client, server) = tokio::io::duplex(4096);
+        let n = net.clone();
+        tokio::spawn(async move { handle_connection(server, n, Resolver::new(), 80).await });
+        client.write_all(&[5, 1, 0]).await.unwrap();
+        let mut method = [0u8; 2];
+        client.read_exact(&mut method).await.unwrap();
+        client
+            .write_all(&[5, 3, 0, 1, 0, 0, 0, 0, 0, 0])
+            .await
+            .unwrap();
+        let mut reply = [0u8; 10];
+        client.read_exact(&mut reply).await.unwrap();
+        assert_eq!(reply[1], 0x07, "{reply:?}");
+
+        let virt: VirtAddr = "10.66.0.2:8080".parse().unwrap();
+        let handle = forward(net.clone(), virt, || async {
+            let (real, far) = tokio::io::duplex(4096);
+            tokio::spawn(echo(far));
+            Ok(real)
+        })
+        .await
+        .unwrap();
+        let (mut client, server) = tokio::io::duplex(4096);
+        tokio::spawn(async move { handle_connection(server, net, Resolver::new(), 8080).await });
+        client.write_all(&[5, 1, 0]).await.unwrap();
+        client.read_exact(&mut method).await.unwrap();
+        client
+            .write_all(&[5, 1, 0, 1, 10, 66, 0, 2, 0, 0])
+            .await
+            .unwrap();
+        client.read_exact(&mut reply).await.unwrap();
+        assert_eq!(reply[1], 0, "port 0 takes the default port: {reply:?}");
+        handle.abort();
     }
 
     #[tokio::test]
