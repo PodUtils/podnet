@@ -1391,7 +1391,7 @@ T-262, T-268, T-285, T-286 and T-298 are done. The claim of end-to-end secrecy n
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1428,6 +1428,13 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-262 and T-264 are done.
+
+## Done
+
+2026-11-13, commit 7568a04. A link is a member of a group of the router engine. `Balance::peers` builds a group of peer ways, and `Balance::way` gives the group the addressing mode of its members. A group does not mix peer ways and destination ways. The router file takes a group of `peer:FINGERPRINT/SERVICE` networks (`src/router.rs`), with the limits of a link group. `src/link_group.rs` (`podnet::link_group::LinkGroup`) has the limits (1 to 16 members, weights 1 to 100, interval 1 to 60 s) and the probe round: the control probe is the verb `peer` of the control socket, and a member that fails it is down at once (`Balance::drop_member`); the data probe opens one stream to the service, and `down_after` failures in a row (default 4) take the member down. A member that is down goes through probation. The pick, the pin of a stream to its member, the policies, the health steps and the kill switch are the code of the router engine, and the router tests are unchanged. `docs/router.md` has "Groups of links", `docs/link.md` has "Link groups", and `llms-full.txt` is regenerated.
+`cargo test --test link_lb`: 6 passed (3 runs): `link_lb_weighted_pick_pins_each_stream_to_one_link`, `link_lb_rr_and_leastload_policies_spread_streams`, `link_lb_control_probe_drops_a_member_at_once_and_it_comes_back`, `link_lb_data_probe_drops_a_member_after_k_misses_and_no_member_refuses`, `link_lb_limits_are_16_members_weights_1_to_100_interval_1_to_60`, `link_lb_the_router_file_takes_a_group_of_links`. Without the change the test file does not compile (`unresolved import podnet::link_group`). `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers and test all 0.
+Not proven: a group over real TCP carriers; the `minrtt` move over a link group (the engine tests cover `minrtt`); the router probe loop of a router file still uses its own probe (one stream to the service, with the group control of the router), not the control probe of `LinkGroup::probe_round`; no command or flag builds a `LinkGroup` outside a router file (`src/cli/cmd/link/` belongs to T-291).
+
 
 # T-289: link: the local topology and the status view of a mesh (GitHub #470)
 
