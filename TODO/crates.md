@@ -839,6 +839,11 @@ Done so far:
   `pod-warp` takes the port of the target (`tests/rule_words.rs` gives `None`). New in the tag: the port rules of
   `pod-warp` (T-328), `pod_dns::txt` (T-281), the record layer of `pod-e2e` (T-298, T-300, T-301), `pod_ws::serve` and
   the carriers `ws` and `h2` of `pod-link` (T-269, T-270). `cargo deny --locked check bans sources`: ok.
+- v0.39.0 (PodUtils/podcrates#137): each `pod-*` dependency names `tag = "v0.39.0"`; nothing breaks. The datagrams of
+  `WarpNet` send an IPv4-mapped destination as IPv4 and give the answers in the mapped form (PodUtils/podnet#524): podnet
+  drops src/warp/one_family.rs at `ca53a72` (T-332) and takes `pod_core::Dial::datagrams` of the session again for QUIC and nc; the
+  fix of podnet's own `nc_session` (the session lives until the pipe ends) stays. The `ws` carrier takes the subprotocol
+  `podnet/1` (`ws::Ws::with_protocol`). `pod_link::arq` is the ARQ of T-277. `cargo deny --locked check bans sources`: ok.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**332 entries: 32 open, 18 partial, 34 blocked, 248 done.**
+**332 entries: 33 open, 18 partial, 33 blocked, 248 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 1 | 2 | 27 | 31 |
 | P2 | 17 | 7 | 11 | 133 | 168 |
-| P3 | 14 | 10 | 21 | 87 | 132 |
-| **All** | 32 | 18 | 34 | 248 | 332 |
+| P3 | 15 | 10 | 20 | 87 | 132 |
+| **All** | 33 | 18 | 33 | 248 | 332 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -322,7 +322,7 @@ M8 Overlays, M9 Later.
 | [T-274](link.md) | P3 | S | M9 | feature | done | link: the unix-socket carrier and its socketpair half (GitHub #467) |
 | [T-275](link.md) | P3 | S | M9 | feature | done | link: the in-process memory carrier (GitHub #467) |
 | [T-276](link.md) | P3 | L | M9 | feature | blocked | link: the UDP carrier with KCP (GitHub #468) |
-| [T-277](link.md) | P3 | L | M9 | feature | blocked | link: a selective-repeat ARQ for any lossy carrier (GitHub #468) |
+| [T-277](link.md) | P3 | L | M9 | feature | open | link: a selective-repeat ARQ for any lossy carrier (GitHub #468) |
 | [T-278](link.md) | P3 | L | M9 | feature | blocked | link: the DNS simplex carrier (GitHub #468) |
 | [T-279](link.md) | P3 | L | M9 | feature | blocked | link: the object-storage simplex carrier (GitHub #468) |
 | [T-280](link.md) | P3 | M | M9 | feature | blocked | link: the HTTP poll simplex carrier (GitHub #468) |

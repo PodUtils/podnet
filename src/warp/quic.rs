@@ -17,6 +17,7 @@ use std::sync::Arc;
 use anyhow::Result;
 
 use super::ip::WarpStack;
+use super::Warped as _;
 
 /// Build a QUIC endpoint whose only socket is the WARP session.
 ///
@@ -24,7 +25,7 @@ use super::ip::WarpStack;
 /// TCP 443 inside the MASQUE session and arrive at the edge on 7844, so this
 /// host never opens a connection to 7844.
 pub async fn endpoint(stack: &WarpStack) -> Result<noq::Endpoint> {
-    let datagrams = super::one_family::socket(stack, false).await?;
+    let datagrams = pod_core::Dial::datagrams(stack).await.warped()?;
     let endpoint = pod_quic::over(datagrams, None)
         .map_err(|err| anyhow::anyhow!("building the QUIC endpoint: {err}"))?;
     endpoint.set_default_client_config(client_config()?);

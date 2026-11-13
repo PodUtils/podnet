@@ -889,7 +889,7 @@ T-277 is done (or lands in the same change), and T-262 and T-264 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -921,15 +921,13 @@ The rules of the issue that apply to this row:
 cargo test --test link_arq
 sh scripts/agent/check.sh
 ```
-
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 310 in the record of podcrates (the selective-repeat ARQ) (PodUtils/podcrates#106, 2026-11-13). It
-comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
-
 ## Start condition
 
 T-262 and T-264 are done. The rekey part waits for T-298.
+
+## Correction
+
+2026-11-13: `pod_link::arq` (Arq, ArqStream, ArqHandle) is in podcrates `v0.39.0` (taken): the block is gone. It runs a `Link` over a lossy `datagram::Datagrams`: 256 frames in flight, the RTO of RFC 6298, a fast retransmit. Open in podcrates: an `arq-timeout` ends the whole link (its entry 514), no congestion window yet (its entry 515). The first lossy carrier of podnet that takes it is T-276 (UDP), still blocked.
 
 # T-278: link: the DNS simplex carrier (GitHub #468)
 

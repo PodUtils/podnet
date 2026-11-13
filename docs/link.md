@@ -343,6 +343,8 @@ Build with `--features ws` (it holds `tcp`). `pod-link` of PodUtils/podcrates do
   or by name and does not end the TLS can carry it. The dial goes through the way out of the process (`--proxy`). The key that the
   listener proves must also be in the allow list of the dialer (`--peer` or `--allow`). `--egress` is for the `tcp` carrier only.
 * A key that is not pinned exits 77 at the dialer. The accept loop of the listener cuts a connection that fails a stage and goes on, so the listener gets no error for it and keeps its door open. A host that denies the socket exits 69.
+* The subprotocol is `podnet/1` (GitHub #467). The dial offers it; a listener refuses a dial without it (426) and names it in the 101.
+  A text message ends the link (Close 1003). Each end sends a Ping each 20 s and ends the link when no frame comes within 10 s of it.
 
 ```sh
 podnet link listen 0.0.0.0:7000 --carrier ws --allow allowed.txt --to 127.0.0.1:22

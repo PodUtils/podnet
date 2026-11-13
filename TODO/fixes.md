@@ -2222,7 +2222,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 ## Premise
 
 - src/warp/mod.rs:885-892 at `9c1fc4b` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
-  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:416-418`) refuses and does not write over the file.
+  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:415-417`) refuses and does not write over the file.
 - `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:136` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
@@ -4326,9 +4326,9 @@ create call makes the next run send `PATCH` for the same device id and no second
 - This is a defect of the WARP code (`src/warp/`). That code waits for `pod-warp` (T-050), and it takes
   fixes. The record needs a `state` field in `warp.json`: a format change. Breaking changes are allowed
   (beta).
-- `src/warp/mod.rs:416-418` (`register_or_load`): `check_file_writable` at `src/warp/mod.rs:451`, the
-  registration at `:452`, the save at `:453`, with no lock between. A stored device that is not enrolled
-  for MASQUE counts as "register again", not as "resume" (`src/warp/mod.rs:439-447`).
+- `src/warp/mod.rs:415-417` (`register_or_load`): `check_file_writable` at `src/warp/mod.rs:450`, the
+  registration at `:451`, the save at `:452`, with no lock between. A stored device that is not enrolled
+  for MASQUE counts as "register again", not as "resume" (`src/warp/mod.rs:438-446`).
 - src/warp/mod.rs:202-241 at `9c1fc4b` (`register_with`): `create_device`, then `enrol_masque`; the token stays in
   memory.
 - The call sites with no lock: `src/cli/cmd/warp/client.rs:153`, `src/tunnel.rs:828` (only with
@@ -5535,7 +5535,7 @@ sh scripts/agent/check.sh
 2026-11-13: the live run 43394125862 on 917a0ae passed the step "Throughput through WARP" (the QUIC fix holds), then
 failed at "WARP account and probe": `warp nc -u 1.1.1.1 53` with no `warp up` got no answer. The same socket of `WarpNet`
 (`[::]:port`) is the way of `pod_warp::nc::udp_via_net`, which keeps an answer only when its source equals the IPv4 target.
-`src/warp/one_family.rs` now holds the socket of one family for both: `quic.rs` takes it, and `nc.rs` resolves the host
+src/warp/one_family.rs at `ca53a72` now holds the socket of one family for both: `quic.rs` takes it, and `nc.rs` resolves the host
 first and gives `udp_via_net` a way (`OneFamily`) whose datagrams bind the family of the target.
 
 2026-11-13: the live run 43397473033 on ca53a72 failed at the same step: `warp nc -u` ended 40 ms after its line "opens a
@@ -5550,3 +5550,7 @@ probe through the WebSocket relay": the probe worked, but the step looks for the
 relay", which `pod-warp` writes as "MASQUE goes through the relay" with the target `pod_warp`, and the job's `RUST_LOG`
 (`podnet=info`) hid that target. `.github/workflows/live.yml`: `RUST_LOG` is `podnet=info,pod_warp=info`, and the step
 looks for the new line.
+
+2026-11-13: podcrates `v0.39.0` (PodUtils/podcrates#137, its entry 508) fixes the datagrams of `WarpNet` for both
+paths. The take drops src/warp/one_family.rs at `ca53a72`: `quic.rs` and `nc.rs` take the datagrams of the session again. The
+fix of `nc_session` stays: it is podnet's own.

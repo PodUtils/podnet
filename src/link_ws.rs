@@ -29,16 +29,24 @@ use crate::link::{self, carrier_fault, Door};
 pub use crate::link_tcp::keys;
 use crate::link_tcp::{key_of, provider};
 
+/// The WebSocket subprotocol of podnet's link (GitHub #467): the dial offers
+/// it, the listener refuses a dial without it (426), and the 101 names it.
+pub const PROTOCOL: &str = "podnet/1";
+
 /// The carrier of this install: it presents the key of `me`, a listener
 /// takes the clients of `allow`, and a dial goes through the way out of
 /// the process.
 pub fn carrier(me: &Identity, allow: &AllowList) -> Ws {
-    Ws::new(provider(), key_of(me), crate::egress::egress(None)).with_clients(keys(allow))
+    Ws::new(provider(), key_of(me), crate::egress::egress(None))
+        .with_clients(keys(allow))
+        .with_protocol(PROTOCOL)
 }
 
 /// [`carrier`] with the dial `via` in place of the way out of the process.
 pub fn carrier_via(me: &Identity, allow: &AllowList, via: Arc<dyn pod_core::Dial>) -> Ws {
-    Ws::new(provider(), key_of(me), via).with_clients(keys(allow))
+    Ws::new(provider(), key_of(me), via)
+        .with_clients(keys(allow))
+        .with_protocol(PROTOCOL)
 }
 
 /// Listen at `address` (`IP:PORT`) through `ws`.
