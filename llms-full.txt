@@ -7457,11 +7457,13 @@ COMMANDS
             reaches it with `link dial --service NAME` or
             `peer:FINGERPRINT/NAME`. The service `socks5` takes no target:
             `--service socks5` makes this end the server side of SOCKS5
-            (CONNECT only; a name resolves here). The service `http` takes no
-            target either: `--service http` makes this end an HTTP proxy
-            (`CONNECT` and absolute form, one request for each stream, 8 KiB
-            of head at most). A target is the name of another service of this
-            listener; there is no DNS lookup. Repeat it: 16 services at most.
+            (CONNECT, and UDP as frames on the stream with the command 0x83; a
+            name resolves here; BIND and command 3 get reply 7). The service
+            `http` takes no target either: `--service http` makes this end an
+            HTTP proxy (`CONNECT` and absolute form, one request for each
+            stream, 8 KiB of head at most). A target is the name of another
+            service of this listener; there is no DNS lookup. Repeat it: 16
+            services at most.
 
             A TARGET `exec:/ABS/PATH` runs a program for each stream (no
             shell): its stdin and stdout are the stream and its stderr goes to

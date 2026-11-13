@@ -6,14 +6,16 @@
 //! this host, and a name resolves with the resolver of this host. The
 //! allow list of the listener has admitted the peer before the stream
 //! opened. The door takes SOCKS5 only here: a first byte that is not 5
-//! ends the stream. Not built yet: `BIND`, `UDP ASSOCIATE`, `--resolve
-//! local`.
+//! ends the stream. UDP is the command 0x83 of `pod-proxy` (UDP in the
+//! stream): each datagram is a frame on the stream, and the datagrams leave
+//! from a UDP socket of this host. `UDP ASSOCIATE` (command 3) and `BIND`
+//! get the reply 0x07. Not built yet: `BIND`, `--resolve local`.
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
-use pod_core::{BoxFuture, Class, Connected, Dial, Failure, Stage, Target};
+use pod_core::{BoxFuture, Class, Connected, Datagrams, Dial, Failure, Stage, Target};
 use podnet_netns::door::Door;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
 use tokio::time::Instant;
@@ -60,6 +62,17 @@ impl Dial for Direct {
             }
         })
     }
+
+    /// One UDP socket of this host (IPv4, any port).
+    fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn Datagrams>, Failure>> {
+        Box::pin(async move {
+            let any = std::net::SocketAddr::from((std::net::Ipv4Addr::UNSPECIFIED, 0));
+            let socket = crate::network::SystemDatagrams::bind(any)
+                .await
+                .map_err(|e| Failure::io(Stage::Connect, e))?;
+            Ok(Arc::new(socket) as Arc<dyn Datagrams>)
+        })
+    }
 }
 
 /// Serve SOCKS5 on `stream` until the flow ends. The first byte must be 5.
@@ -75,6 +88,10 @@ where
     }
     // The door reads the byte again: give it back in front of the stream.
     let again = tokio::io::join(std::io::Cursor::new(first).chain(read), write);
-    let door = Door::new(Arc::new(Direct)).connect_only();
+    // Command 3 would open a UDP socket here that the opener cannot reach.
+    let door = Door::new(Arc::new(Direct))
+        .connect_only()
+        .with_extension(Arc::new(crate::exit_stdio::NoAssociate))
+        .with_udp_in_stream();
     door.handle(again).await
 }

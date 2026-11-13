@@ -233,11 +233,86 @@ fn a_connect_to_a_closed_port_gets_a_failure_reply_and_the_stream_ends() {
 }
 
 #[test]
-fn bind_and_udp_associate_are_not_served_and_say_command_not_supported() {
+fn bind_and_udp_associate_say_command_not_supported() {
     let pair = pair();
     let mut dial = pair.dial(&pair.client);
     let (_, reply) = handshake(&mut dial, &request(2, 1, &[127, 0, 0, 1], 9));
     assert_eq!(&reply[..2], &[5, 7], "BIND: {reply:?}");
+    drop(dial.stdin.take());
+    assert_eq!(dial.wait().unwrap().code(), Some(0));
+    // Command 3 would open a UDP socket at the peer that the opener cannot
+    // reach: it gets 7 as well.
+    let mut dial = pair.dial(&pair.client);
+    let (_, reply) = handshake(&mut dial, &request(3, 1, &[0, 0, 0, 0], 0));
+    assert_eq!(&reply[..2], &[5, 7], "UDP ASSOCIATE: {reply:?}");
+    drop(dial.stdin.take());
+    assert_eq!(dial.wait().unwrap().code(), Some(0));
+}
+
+/// A UDP origin that echoes each datagram. It gives the port.
+fn udp_echo() -> u16 {
+    let socket = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+    let port = socket.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        let mut buf = [0u8; 65535];
+        while let Ok((n, from)) = socket.recv_from(&mut buf) {
+            let _ = socket.send_to(&buf[..n], from);
+        }
+    });
+    port
+}
+
+/// One frame: the length, then a SOCKS5 UDP datagram to `atyp` and `addr`.
+fn frame(atyp: u8, addr: &[u8], port: u16, payload: &[u8]) -> Vec<u8> {
+    let mut datagram = vec![0, 0, 0, atyp];
+    datagram.extend_from_slice(addr);
+    datagram.extend_from_slice(&port.to_be_bytes());
+    datagram.extend_from_slice(payload);
+    let mut out = (datagram.len() as u16).to_be_bytes().to_vec();
+    out.extend_from_slice(&datagram);
+    out
+}
+
+/// Read one frame of the stream: the source port and the payload after the
+/// 10-byte IPv4 header.
+fn read_frame(dial: &mut Child) -> (u16, Vec<u8>) {
+    let out = dial.stdout.as_mut().unwrap();
+    let mut len = [0u8; 2];
+    out.read_exact(&mut len).unwrap();
+    let mut datagram = vec![0u8; usize::from(u16::from_be_bytes(len))];
+    out.read_exact(&mut datagram).unwrap();
+    assert_eq!(&datagram[..4], &[0, 0, 0, 1], "{datagram:?}");
+    assert_eq!(&datagram[4..8], &[127, 0, 0, 1]);
+    (
+        u16::from_be_bytes([datagram[8], datagram[9]]),
+        datagram[10..].to_vec(),
+    )
+}
+
+#[test]
+fn a_udp_datagram_goes_through_the_peer_to_an_echo_and_back() {
+    test_host::need_loopback!();
+    let pair = pair();
+    let port = udp_echo();
+    let mut dial = pair.dial(&pair.client);
+    let (method, reply) = handshake(&mut dial, &request(0x83, 1, &[0, 0, 0, 0], 0));
+    assert_eq!(method, [5, 0]);
+    assert_eq!(reply, [5, 0, 0, 1, 0, 0, 0, 0, 0, 0], "{reply:?}");
+    // Two datagrams in one write: the reader counts bytes.
+    let mut both = frame(1, &[127, 0, 0, 1], port, b"one");
+    both.extend(frame(1, &[127, 0, 0, 1], port, b"two"));
+    dial.stdin.as_mut().unwrap().write_all(&both).unwrap();
+    let mut got = vec![read_frame(&mut dial), read_frame(&mut dial)];
+    got.sort();
+    assert_eq!(got, vec![(port, b"one".to_vec()), (port, b"two".to_vec())]);
+    // A name resolves at the peer (the frame has the name).
+    let v4 = std::net::ToSocketAddrs::to_socket_addrs(&("localhost", 0))
+        .is_ok_and(|mut a| a.any(|a| a.ip().is_loopback() && a.is_ipv4()));
+    if v4 {
+        let named = frame(3, b"\x09localhost", port, b"named");
+        dial.stdin.as_mut().unwrap().write_all(&named).unwrap();
+        assert_eq!(read_frame(&mut dial), (port, b"named".to_vec()));
+    }
     drop(dial.stdin.take());
     assert_eq!(dial.wait().unwrap().code(), Some(0));
 }

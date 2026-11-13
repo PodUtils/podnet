@@ -68,7 +68,8 @@ pub(crate) struct ListenArgs {
     /// characters from A-Z a-z 0-9 . _ - and a TARGET as in --to. A peer
     /// reaches it with `link dial --service NAME` or `peer:FINGERPRINT/NAME`.
     /// The service `socks5` takes no target: `--service socks5` makes this
-    /// end the server side of SOCKS5 (CONNECT only; a name resolves here).
+    /// end the server side of SOCKS5 (CONNECT, and UDP as frames on the stream with the
+    /// command 0x83; a name resolves here; BIND and command 3 get reply 7).
     /// The service `http` takes no target either: `--service http` makes
     /// this end an HTTP proxy (`CONNECT` and absolute form, one request for
     /// each stream, 8 KiB of head at most). A target is the name of

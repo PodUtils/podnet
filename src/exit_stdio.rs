@@ -86,7 +86,7 @@ impl Dial for ExitDial {
 }
 
 /// The refusal of `UDP ASSOCIATE` (command 3) on a stream.
-struct NoAssociate;
+pub(crate) struct NoAssociate;
 
 impl Extension for NoAssociate {
     fn command<'a>(

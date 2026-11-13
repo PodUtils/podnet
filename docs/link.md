@@ -85,7 +85,13 @@ stream. The opener speaks SOCKS5 on its end, for example `podnet link dial ADDRE
 allow list before the stream opens, so a stranger gets exit 77 and no service runs. `CONNECT` goes from the host of the listener. A name
 resolves there. A refused or failed `CONNECT` gets a SOCKS5 failure reply. A stream whose first byte is not 5 (HTTP `CONNECT`, for
 example) ends with no answer. `socks5` takes no target: `--service socks5=TARGET` exits 64. There is no user and password: the link
-admits the peer. Not built (T-291 is partial): `BIND` and `UDP ASSOCIATE` (both get reply 7, command not supported), and `--resolve local`.
+admits the peer. `BIND` and `UDP ASSOCIATE` (command 3) get reply 7, command not supported: a listener of the peer would be
+unreachable for the opener. UDP uses the command `0x83` of `pod-proxy` (UDP in the stream): after the greeting, the opener sends the
+request `05 83 00 01 00 00 00 00 00 00` and gets `05 00 00 01 00 00 00 00 00 00`. Then each datagram in each direction is a frame on
+the stream: a length of 2 bytes (big endian), then a SOCKS5 UDP datagram (RFC 1928, section 7). The datagrams leave from one UDP socket
+of the host of the listener, and a name in a frame resolves there. The frame is in `docs/proxies.md`, "UDP in the stream". `link dial`
+carries bytes only, so an opener that is a plain SOCKS5 client with a UDP socket has no local door yet: it writes the frames itself.
+Not built (T-291 is partial): `BIND`, the local door for UDP, and `--resolve local`.
 `link dial` exits at once when the far end ends the stream, also when stdin is still open.
 
 ### The service `http`
