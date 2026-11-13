@@ -1625,11 +1625,23 @@ T-266 is done.
 
 2026-11-12: this entry builds `CONNECT` only. `BIND` through a peer listener, `UDP ASSOCIATE` through a peer UDP forward, and `--resolve local` are left: `BIND` needs a listener of the peer that the opener can reach (a second stream), and `--resolve local` needs a SOCKS5 parser at the opener (the connector end of a stream is raw bytes). The door answers both commands with reply 7 (command not supported).
 
+2026-11-13: UDP is built on the service side with the command `0x83` of `pod-proxy` (T-329): datagrams are frames on the stream (`docs/proxies.md`, "UDP in the stream"). Left, and why:
+1. A local door for UDP. `link dial` copies stdin and stdout and has no SOCKS5 code. A plain SOCKS5 client with a UDP socket needs a local listener that turns its datagrams (command 3) into frames. No such listener exists in `link dial` or `forward`. The opener writes the frames itself.
+2. `--resolve local`. The connector end carries raw bytes and cannot parse SOCKS5: the name stays in the request, and the peer resolves it. It needs the local door of item 1.
+3. `BIND`. It needs a second stream from the peer to the opener. The connector does not accept streams (the same limit as T-297). The door answers with reply 7.
+`UDP ASSOCIATE` (command 3) gets reply 7 at the peer, as its UDP socket would be at the peer.
+
 ## Done
 
 2026-11-12, commit 97c7196. `--service socks5` (no target; `socks5=TARGET` exits 64) of `link listen` runs `podnet_netns::door::Door` (the code of the front door, no second SOCKS5 server) on the session stream with a direct dial (`src/link_socks.rs`). A name resolves at the peer. The stream takes SOCKS5 only (another first byte ends it with no answer). The allow list admits the peer before any service (a stranger exits 77). Also fixed: `link dial` did not exit when the far end ended the stream while stdin was open (a blocking stdin read held the runtime); and a stream that ends in error now gets a clean shutdown at the listener.
 `cargo test --test link_socks5`: 7 passed: `a_connect_through_the_peer_reaches_an_origin_at_the_peer`, `a_name_resolves_at_the_peer`, `a_connect_to_a_closed_port_gets_a_failure_reply_and_the_stream_ends`, `bind_and_udp_associate_are_not_served_and_say_command_not_supported`, `a_stream_that_does_not_speak_socks5_ends_with_no_answer`, `a_peer_that_is_not_on_the_allow_list_gets_77_before_the_service`, `the_service_socks5_takes_no_target`. Fail first: on the old code 6 of the 7 failed and the seventh hung (no service `socks5`). The tests need a loopback and skip without one.
 Not proven: BIND, UDP ASSOCIATE, `--resolve local`, user and password, a carrier that crosses a network.
+
+2026-11-13, UDP in the stream: see the second Correction.
+
+2026-11-13, commit 6432a62. UDP in the stream at the service `socks5`: the door takes the command `0x83` of `pod-proxy` with a UDP socket of the host of the listener (`src/link_socks.rs`). Command 3 gets reply 7 (`exit_stdio::NoAssociate`). Help and `docs/link.md` are updated.
+`cargo test --test link_socks5`: 8 passed: the 7 of the first commit (`bind_and_udp_associate_say_command_not_supported` has the old name `bind_and_udp_associate_are_not_served_and_say_command_not_supported` and now also checks command 3), and `a_udp_datagram_goes_through_the_peer_to_an_echo_and_back` (two frames in one write, a name in a frame). Fail first: on the old code the new test failed (reply 7 to command 0x83).
+Not proven or not built: BIND, the local door for UDP, `--resolve local` (see the Correction of 2026-11-13), a carrier that crosses a network.
 
 
 # T-292: link: an HTTP forward proxy service at a peer (GitHub #471)
