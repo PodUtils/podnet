@@ -12383,7 +12383,7 @@ and `down` counts the datagrams that it receives.
 
 ### WARP as a member
 
-`warp` and `warp:identity=FILE` are networks of the registry (`podnet networks`). A `networks:` entry
+`warp` and `warp:identity=FILE` are networks of the registry ([egress.md](egress.md)). A `networks:` entry
 `w: warp` gives TCP and UDP through a WARP session. A name is resolved inside the tunnel. The session is
 `pod-warp` `Live`: a session that the edge ends is replaced, and a dial waits for the new one (20 s at most).
 
