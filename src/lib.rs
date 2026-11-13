@@ -90,6 +90,7 @@ pub mod identity;
 pub mod link;
 pub mod link_alias;
 pub mod link_announce;
+pub mod link_arq;
 pub mod link_chain;
 pub mod link_ctl;
 #[cfg(feature = "dns")]

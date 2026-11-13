@@ -70,7 +70,7 @@ LAYER = {
     "cli": "podnet",
     # The file transfer of magic-wormhole over pod-wormhole (T-102 to T-105).
     "transfer": "podnet",
-    "mesh_table": "podnet", "link_announce": "podnet", "link_forward": "podnet", "link_record": "podnet", "mesh_announce": "podnet",
+    "mesh_table": "podnet", "link_announce": "podnet", "link_arq": "podnet", "link_forward": "podnet", "link_record": "podnet", "mesh_announce": "podnet",
     # The modules of crates/podnet-core that are new there.
     "build": "core", "network": "core",
     # The tests of the core that read a higher layer (src/core_tests.rs).

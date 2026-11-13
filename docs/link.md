@@ -520,6 +520,27 @@ podnet link listen 0.0.0.0 --carrier icmp --allow-raw icmp --allow allowed.txt -
 podnet link dial SERVER-FINGERPRINT@203.0.113.7 --carrier icmp --allow-raw icmp --allow servers.txt
 ```
 
+## The ARQ under a link
+
+`pod_link::arq` of PodUtils/podcrates is the selective-repeat ARQ: it makes one ordered byte stream of datagrams that a carrier can
+lose, reorder or repeat. The carriers `dns` and `icmp` run it inside `pod-link`, under their TLS. The `udp` carrier runs KCP, its
+own ARQ, and not this one. `podnet::link_arq` is the glue for a carrier of datagrams that has no ARQ (a
+`pod_link::datagram::Datagrams` of a program that embeds podnet). It has no command. (T-277)
+
+* A write of the link is one record. The ARQ cuts a record into fragments of 1 KiB at most. Each fragment has a 32-bit sequence, a
+  16-bit index and the count of the record. Each datagram fits the unit of the carrier.
+* An `ACK` has a bitmap of 256 frames. At most 256 frames are in flight. The ARQ sends each lost fragment again by itself. The RTO
+  is 200 ms to 8 s. A frame gets 8 retries.
+* The ARQ is below the link and knows no stream. A stream that ends or that its peer resets closes alone; the link and its other
+  streams go on. When a frame of the link gets no acknowledgement after its 8 retries, the carrier is gone: the ARQ ends with
+  `arq-timeout`, and the link ends with it (exit 124). The keepalive of the link (30 s) can end the link first.
+* The sequence does not wrap to 0 with no rekey. The ARQ asks for a rekey before the wrap, and new frames wait at the wrap until
+  the rekey is done. `Rekey::Above` lets the sequence wrap: the TLS of a carrier and the record layer of a sealed stream seal each
+  byte with their own nonces, and the sequence of the ARQ is not one of them. `Rekey::With(hook)` runs the hook first; a hook that
+  fails keeps the frames at the wrap, and the link ends.
+* `podnet::link_arq::arq_fault` gives an error of the ARQ its exit code: a setting out of its limits 64, `arq-timeout` 124, a
+  broken protocol 65, a failed carrier 69.
+
 ## A chain before the carrier
 
 `podnet link dial` and `podnet link connect` take each `--egress SPEC` as one element of a chain before the `tcp` carrier. Only the
@@ -821,6 +842,6 @@ library ([build.md](build.md), "The C library"). Linux only.
 
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
-`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
+`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_arq` runs a link over the ARQ of `pod-link` over any lossy carrier of datagrams. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
 listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`) `podnet::link_udp` (feature `udp`) `podnet::link_poll` (feature `poll`), `podnet::link_dns` (feature `dns`) and `podnet::link_icmp` (feature `icmp`).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates. `crates/podnet-capi` is the C interface of the link (see The C library).

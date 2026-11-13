@@ -937,7 +937,7 @@ CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -976,6 +976,19 @@ T-262 and T-264 are done. The rekey part waits for T-298.
 ## Correction
 
 2026-11-13: `pod_link::arq` (Arq, ArqStream, ArqHandle) is in podcrates `v0.39.0` (taken): the block is gone. It runs a `Link` over a lossy `datagram::Datagrams`: 256 frames in flight, the RTO of RFC 6298, a fast retransmit. Open in podcrates: an `arq-timeout` ends the whole link (its entry 514), no congestion window yet (its entry 515). The first lossy carrier of podnet that takes it is T-276 (UDP), still blocked.
+
+2026-11-13, read at v0.40.0 (the owner is away; the calls of this entry). The crate does the ARQ: the frame of row E2-2, the SACK bitmap of 256 frames, the resend of each fragment, the RTO of 200 ms to 8 s, 8 retries, `arq-timeout`, and the stop at the wrap until `ArqHandle::rekeyed` (`pod-link` tests `arq` and `arq_machine`). The carriers `dns` and `icmp` run it inside `pod-link`, under their TLS (`dgram_tls`). The `udp` carrier runs KCP, its own ARQ (T-276), not this one. So no lossy carrier of podnet is without an ARQ. The glue that is left: a link of podnet over the ARQ over any lossy `Datagrams` of a caller, with the answer to the rekey, and the tests of row E2-2 in podnet.
+Call 1 (an isolated stream close): the ARQ is below the link and knows no stream (podcrates call C262). One stream cannot use up the retries of the ARQ: a frame of each stream and the control frames of the link share one sequence. When a frame gets no acknowledgement after 8 retries, the carrier is gone and the control channel with it, which is the exception of the rule ("unless the control channel is also lost"). So the link ends with the ARQ (podcrates entry 514 is this design, not a defect), and the isolated close is the reset or the end of one stream while the link and its other streams go on. The test proves that at 3 % loss.
+Call 2 (the rekey at the wrap): the sequence of the ARQ is no nonce of a layer that seals: TLS (dns, icmp) and the record layer (T-298) have their own nonces and their own rekey. The glue answers the ask of the ARQ with `Rekey::Above` (the wrap passes and is counted) or with a hook of the caller (`Rekey::With`); a hook that fails keeps each new frame at the wrap, so no sequence is used again, and the keepalive ends the link.
+Call 3 (exit codes): `arq-timeout` exits 124 (the class of a timeout of podnet), a setting out of its limits 64, a broken protocol 65, a failed carrier 69.
+Ask for podcrates (read, not measured): `dgram_tls` of `pod-link` keeps no `ArqHandle` and never calls `rekeyed`, so a link of `dns` or `icmp` stops at the wrap of one direction, after 2^32 - 2^20 frames (about 4 TiB). The TLS above seals each byte, so the crate can answer the ask itself, as `Rekey::Above` does.
+
+## Done
+
+2026-11-13, commit COMMIT. `src/link_arq.rs` (`podnet::link_arq`): `over` (the ARQ of `pod-link` over a `Datagrams` of the caller, a link of podnet over it, and the task that answers each rekey), `Rekey` (`Above`, `With`), `ArqLink` (`link`, `arq`, `rekeys`, `rekey_failure`, `arq_error`), `arq_fault`. `scripts/check-layers.py` puts the module in the layer `podnet`. `docs/link.md` (The ARQ under a link, Library) and `docs/library.md`.
+`cargo test --test link_arq`: 7 passed, three runs in a row: `a_record_is_cut_into_fragments_of_one_kib_with_their_count` (a tap on the carrier: each payload 1 KiB at most, each datagram within the unit, the indexes 0 to count - 1 on sequences in a row, records of more than one fragment), `a_reset_stream_closes_alone_and_the_link_goes_on` (3 % loss, 1 % reorder, 1 % duplicates: the reset stream fails at the peer, 1 MiB on a second stream with the same SHA-256, the link and the ARQ live), `a_silent_carrier_ends_the_link_and_the_arq_with_exit_124`, `the_glue_answers_the_rekey_and_the_bytes_cross_the_wrap` (the first sequence 100 frames before the wrap, 1 MiB at 3 % loss, one wrap), `a_rekey_hook_runs_before_the_wrap`, `a_failed_rekey_keeps_the_frames_at_the_wrap_and_the_link_ends` (no frame past the wrap, no wrap counted), `a_setting_out_of_its_limits_exits_64`. `cargo test --features dns --test link_arq`: 8 passed (also `the_dns_carrier_runs_its_own_arq_under_a_link_at_three_percent_loss`: the dns carrier of podnet over the lossy shim, 256 KiB on one stream after the reset of another).
+Plant: with no task that answers the rekey, 3 tests failed (the two wraps and the failed rekey); with a failed hook that still lets the sequence wrap, `a_failed_rekey_keeps_the_frames_at_the_wrap_and_the_link_ends` failed. `sh scripts/agent/check.sh`: each step 0.
+Not proven: a command that runs a link over this glue (the carriers of the CLI have their own reliability); the stop of `dns` and `icmp` at the wrap (the ask above, read only); the gates of row E2-1 in a release build (`pod-link`, `udp_loss`).
 
 # T-278: link: the DNS simplex carrier (GitHub #468)
 
