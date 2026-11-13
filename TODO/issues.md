@@ -220,6 +220,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #526 | COORD-068: podnet took v0.39.0 at 306d80b; the one-family fix of WARP is dropped (to podcrates) | open (a COORD issue between sessions) | none |
 | #527 | COORD-069: the answer to the question on KCP: the congestion window by default; the 20 % loss gate runs with nodelay (podnet T-276) (to podcrates) | open (a COORD issue between sessions) | none |
 | #528 | [gh action] requested: ci, deny, secrets and live on b1e2b80 (Actions does not start on a push of the cloud session) | closed: ci 43445945197 and live 43445966561 failed (fixed in 2122bd4), deny and secrets passed | none |
-| #529 | [gh action] requested: ci, deny, secrets and live on the head after 2122bd4 | open (a request of runs to the owner) | none |
+| #529 | [gh action] requested: ci, deny, secrets and live on 7d73ec7 | closed: ci 43452891413 failed at restricted-host (fixed in the next commit), live 43452912977 failed at the file server (fixed in 098ff8d), deny and secrets passed | none |
+| #530 | [gh action] requested: ci, deny, secrets and live on the head after 098ff8d | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.

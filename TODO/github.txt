@@ -227,4 +227,5 @@
 526 issue open
 527 issue open
 528 issue closed
-529 issue open
+529 issue closed
+530 issue open

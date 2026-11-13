@@ -507,6 +507,7 @@ async fn warp_network_refused_key_is_enrolled_again_for_the_same_device() {
 // A way below WARP is refused, not ignored.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn warp_network_below_is_refused() {
+    pod_testkit::need_loopback!();
     let world = world().await;
     let below: Arc<dyn Dial> = Arc::new(Moved(Vec::new()));
     let ctx = Ctx {
