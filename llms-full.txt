@@ -7182,6 +7182,18 @@ COMMANDS
         --json
             Print the ready document as one line of JSON in place of the text
 
+        --announce
+            Send and take signed route announcements on each link (the service
+            `announce`, each 10 s): this end tells its peer its neighbours and
+            its services, and learns the routes of the peer. The control
+            socket shows the routes with the verb `routes`. The name
+            `announce` cannot be a --service with this flag. The peer must run
+            it too
+
+        --announce-weight <COST>
+            With --announce: the cost of each link, 1 to 4294967295. Without
+            it, the cost is the RTT of the link in ms (10 until it is known)
+
         --detach
             Run in the background: podnet prints one JSON document when the
             command is ready (its URL or its listen address) and exits 0. The
@@ -7310,6 +7322,16 @@ COMMANDS
             name of 1 to 32 characters from A-Z a-z 0-9 . _ -. A listener with
             no such service, or whose origin does not answer, exits 69.
             Default: raw.
+
+        --announce
+            Send and take signed route announcements on this link (the service
+            `announce`; see `link listen --announce`). The listener must run
+            it too. The dialer has no control socket: it logs a dropped
+            announcement and shows no routes
+
+        --announce-weight <COST>
+            With --announce: the cost of the link (1 or more). Default: the
+            RTT
 
         --check
             Connect and check the peer, print its fingerprint, and exit 0. It

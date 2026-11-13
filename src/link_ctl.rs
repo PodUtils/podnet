@@ -37,6 +37,9 @@
 //!   `reconnect` need a carrier that the instance dials again; they
 //!   answer 69.
 //!
+//! * `routes`: the best route of each origin that the announcements
+//!   (`--announce`, T-285) taught this instance; 69 without `--announce`;
+//!
 //! * `dump`: the state of the instance for a bug report (T-309,
 //!   `dump.rs`). Its answer may be 256 KiB; the other answers are 64 KiB at
 //!   most.
@@ -214,6 +217,8 @@ pub struct Hub {
     selected: Mutex<Option<u64>>,
     /// The last errors, for the verb `dump`.
     errors: Mutex<dump::ErrorRing>,
+    /// The route announcements, when the instance runs `--announce`.
+    mesh: std::sync::OnceLock<Arc<crate::link_announce::Mesh>>,
 }
 
 /// The place of a link in a [`Hub`]. Its drop takes the link out.
@@ -255,7 +260,13 @@ impl Hub {
             next: AtomicU64::new(1),
             selected: Mutex::new(None),
             errors: Mutex::new(Default::default()),
+            mesh: std::sync::OnceLock::new(),
         })
+    }
+
+    /// Give the verb `routes` the mesh of an instance that runs `--announce`.
+    pub fn attach_mesh(&self, mesh: Arc<crate::link_announce::Mesh>) {
+        let _ = self.mesh.set(mesh);
     }
 
     /// Hold `link`, whose peer proved `peer`, until the slot drops.
@@ -390,6 +401,13 @@ impl Hub {
             "close-stream" => self.close_stream(request).await,
             "select" => self.select(request),
             "dump" => Ok(self.dump_reply()),
+            "routes" => match self.mesh.get() {
+                Some(mesh) => Ok(Reply::Json(mesh.routes(crate::link_announce::now_ms()))),
+                None => Err(Answer::new(
+                    exit::UNAVAILABLE,
+                    "routes: this instance runs without --announce",
+                )),
+            },
             "rotate" | "reconnect" => Err(Answer::new(
                 exit::UNAVAILABLE,
                 format!(

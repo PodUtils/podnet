@@ -368,6 +368,14 @@ impl RouteTable {
         routes
     }
 
+    /// The best usable route of each origin, in no order.
+    pub fn best_routes(&self, now: u64) -> Vec<&Route> {
+        self.origins
+            .keys()
+            .filter_map(|origin| self.best(origin, now))
+            .collect()
+    }
+
     /// The session of `peer` closed. End its direct route at once and mark
     /// the routes through it as down. Return the number of routes that ended
     /// at once.

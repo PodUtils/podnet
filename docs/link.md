@@ -274,8 +274,8 @@ handshake of `pod-e2e` (T-298).
 
 ## The route announcement
 
-`podnet::mesh_announce` is the signed route announcement of the mesh (T-285). It is a library part. No command sends it yet:
-`--announce` on `link listen` and `link dial` is not built (T-285, step 3).
+`podnet::mesh_announce` is the signed route announcement of the mesh (T-285). `--announce` on `link listen` and `link dial`
+sends it over a link (`podnet::link_announce`, see "Announcements on a link" below).
 
 * The functions do no I/O. The caller gives the time in milliseconds.
 * The signed body has a fixed field order, all integers big-endian: version (1), origin key (32), `seq` (8), time of issue
@@ -295,10 +295,35 @@ handshake of `pod-e2e` (T-298).
 * Only an announcement with the path `[origin]` is a neighbour claim (`Verified::neighbour_claims`). A multi-hop announcement
   tells reachability. `Verified::route` gives the announcement for `mesh_table`.
 
+## Announcements on a link
+
+`link listen --announce` and `link dial --announce` (T-285) turn the route announcements on for each link of the command. The
+peer must run the flag too: a peer without it answers "no such service" to the stream, and the other end logs it and sends
+nothing.
+
+* Each end opens one stream of the service `announce` to the other end and sends its announcement on it at once, then each 10 s
+  with a jitter of 10% either way. The announcement lists the peers of the links that are up (direct neighbours, each with the
+  cost of its link) and the services of this end (the listener: the names of `--service` and `--to`; the dialer: none).
+* A frame is a big-endian `u16` length and the wire bytes of the announcement. A length above 8769 ends the announce stream.
+  The link stays up.
+* The receiver takes only an announcement whose path is `[origin]` and whose origin is the peer of the link. Any other
+  announcement is dropped (`not from the peer itself`) until the forwarding exists (T-287). Then it runs the rules of the
+  announcement and the seen-`seq` rule, and gives the announcement to the route table. A dropped announcement changes no route,
+  keeps no `seq`, and the link stays up. The listener and the dialer log it.
+* The first `seq` of a run is the time in ms, so a restart does not use a `seq` again.
+* The cost of a link is `--announce-weight COST` (1 or more), else the RTT of the link in ms (at least 1), else 10.
+* The end of a link ends the direct route of its peer at once.
+* The name `announce` cannot be a `--service` of a listener that runs `--announce` (exit 64).
+* The control socket of a listener has the verb `routes`: `{"verb":"routes","token":...}` gives `node`, `neighbours`,
+  `received`, `dropped`, `evictions` and `routes`, the best route of each origin (`origin`, `next_hop`, `cost`, `hops`, `seq`,
+  `expires_ms`, `direct`). Without `--announce` the verb exits 69. The dialer has no control socket and shows no routes.
+  `link connect` has no `--announce` (T-285 left it out).
+* The path and the cost of a hop are not signed. T-287 adds the signature of each hop.
+
 ## The route table
 
-`podnet::mesh_table` is the path-vector route table of the mesh (T-286). It is a library part. No command calls it: the
-signed announcements (T-285), the forwarding (T-287) and the status view (T-289) will use it.
+`podnet::mesh_table` is the path-vector route table of the mesh (T-286). `--announce` fills it from the announcements of the direct peers (verb `routes`). The forwarding (T-287) and the status view
+(T-289) will use it.
 
 * The table does no I/O. The caller gives the time in milliseconds to each call, and checks the signature of an announcement
   before `RouteTable::learn`.
@@ -333,6 +358,6 @@ signed announcements (T-285), the forwarding (T-287) and the status view (T-289)
 
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
-`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
+`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
 listens (`listen`) and dials (`dial`, which gives the key that the listener proved).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates.

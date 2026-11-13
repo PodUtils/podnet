@@ -88,6 +88,7 @@ pub mod hello;
 pub mod identity;
 pub mod link;
 pub mod link_alias;
+pub mod link_announce;
 pub mod link_ctl;
 pub mod link_group;
 pub mod link_query;

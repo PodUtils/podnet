@@ -523,6 +523,14 @@ impl Receiver {
     /// kept. A dropped announcement changes nothing.
     pub fn accept(&mut self, wire: &[u8], now: u64) -> Result<Verified, Drop> {
         let v = verify(wire, &self.me, now)?;
+        self.note(v, now)
+    }
+
+    /// The `seq` rule for an announcement that [`verify`] passed. On
+    /// success the `seq` is kept. A caller that has more rules than
+    /// [`verify`] runs them before this call, so that a dropped
+    /// announcement does not use the `seq` of its origin.
+    pub fn note(&mut self, v: Verified, now: u64) -> Result<Verified, Drop> {
         let origin = v.body.origin;
         if self.seen.get(&origin).is_some_and(|e| v.body.seq <= e.0) {
             return Err(Drop::SeenSeq);

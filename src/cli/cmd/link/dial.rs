@@ -1,6 +1,7 @@
 //! `podnet link dial`.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use clap::Args;
@@ -9,6 +10,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use podnet::exit::{self, Fault};
 use podnet::identity::{self, AllowList};
 use podnet::link;
+use podnet::link_announce::{self as announce, Guard, Mesh};
+use podnet::mesh_announce::INTERVAL_MS;
 
 use super::CarrierArgs;
 
@@ -39,6 +42,15 @@ pub(crate) struct DialArgs {
     /// service, or whose origin does not answer, exits 69.
     #[arg(long, value_name = "NAME", default_value = podnet::link_service::RAW)]
     pub(crate) service: String,
+    /// Send and take signed route announcements on this link (the service
+    /// `announce`; see `link listen --announce`). The listener must run it
+    /// too. The dialer has no control socket: it logs a dropped announcement
+    /// and shows no routes.
+    #[arg(long, conflicts_with = "check")]
+    pub(crate) announce: bool,
+    /// With --announce: the cost of the link (1 or more). Default: the RTT.
+    #[arg(long, value_name = "COST", requires = "announce", value_parser = clap::value_parser!(u32).range(1..))]
+    pub(crate) announce_weight: Option<u32>,
     /// Connect and check the peer, print its fingerprint, and exit 0. It
     /// opens no stream.
     #[arg(long)]
@@ -66,7 +78,7 @@ pub(crate) async fn dial(mut args: DialArgs) -> Result<()> {
     args.address = super::apply_query(&args.address, &mut args.carrier)?;
     let carrier = super::open_carrier(&args.carrier)?;
     let allow = trusted(&args.allow, &args.peer)?;
-    let me = identity::create(&identity::default_dir()?)?;
+    let me = Arc::new(identity::create(&identity::default_dir()?)?);
     let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow).await?;
     let (mine, theirs) = (me.fingerprint(), peer.display_fingerprint());
     if args.check {
@@ -87,6 +99,18 @@ pub(crate) async fn dial(mut args: DialArgs) -> Result<()> {
         return Ok(());
     }
     eprintln!("podnet: peer {theirs}, this install {mine}");
+    let link = Arc::new(link);
+    // The guard stops the announcements and ends the route at the exit.
+    let _guard = args.announce.then(|| {
+        let mesh = Mesh::new(me.clone(), Vec::new(), announce::now_ms());
+        tokio::spawn(announce::serve_streams(
+            mesh.clone(),
+            link.clone(),
+            peer,
+            args.announce_weight,
+        ));
+        Guard::start(&mesh, &link, peer, args.announce_weight, INTERVAL_MS)
+    });
     let mut stream = link.open().map_err(link::fault)?;
     podnet::link_service::request(&mut stream, &args.service).await?;
     let (mut down, mut up) = tokio::io::split(stream);

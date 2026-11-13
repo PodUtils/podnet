@@ -15,8 +15,10 @@ use pod_identity::PublicKey;
 use podnet::exit::{self, Fault};
 use podnet::identity::{self, AllowList, Identity};
 use podnet::link::{Link, Settings};
+use podnet::link_announce::{self as announce, Guard, Mesh};
 use podnet::link_ctl::{Hub, Slot};
 use podnet::link_service as service;
+use podnet::mesh_announce::INTERVAL_MS;
 use podnet::{hello, link};
 
 use super::CarrierArgs;
@@ -74,6 +76,17 @@ pub(crate) struct ListenArgs {
     /// Print the ready document as one line of JSON in place of the text.
     #[arg(long)]
     pub(crate) json: bool,
+    /// Send and take signed route announcements on each link (the service
+    /// `announce`, each 10 s): this end tells its peer its neighbours and
+    /// its services, and learns the routes of the peer. The control socket
+    /// shows the routes with the verb `routes`. The name `announce` cannot
+    /// be a --service with this flag. The peer must run it too.
+    #[arg(long)]
+    pub(crate) announce: bool,
+    /// With --announce: the cost of each link, 1 to 4294967295. Without it,
+    /// the cost is the RTT of the link in ms (10 until it is known).
+    #[arg(long, value_name = "COST", requires = "announce", value_parser = clap::value_parser!(u32).range(1..))]
+    pub(crate) announce_weight: Option<u32>,
     #[command(flatten)]
     pub(crate) detach: DetachArgs,
 }
@@ -146,6 +159,12 @@ fn services_of(args: &ListenArgs) -> Result<BTreeMap<String, Service>> {
             )));
         }
     }
+    if args.announce && out.contains_key(announce::NAME) {
+        return Err(usage(format!(
+            "--service {}: this name is the stream of --announce",
+            announce::NAME
+        )));
+    }
     if out.len() > MAX_SERVICES {
         return Err(usage(format!(
             "a listener has {MAX_SERVICES} services at most"
@@ -164,6 +183,12 @@ pub(crate) async fn listen(mut args: ListenArgs) -> Result<()> {
     let address = door.address();
     let mode = mode_of(&args.carrier.carrier, &address);
     let hub = Hub::new(&me.fingerprint());
+    let mesh = args.announce.then(|| {
+        let names = services.keys().cloned().collect();
+        let mesh = Mesh::new(me.clone(), names, announce::now_ms());
+        hub.attach_mesh(mesh.clone());
+        mesh
+    });
     let control = super::start_control(&hub, args.control.as_deref())?;
     let doc = serde_json::json!({
         "carrier": args.carrier.carrier,
@@ -214,6 +239,8 @@ pub(crate) async fn listen(mut args: ListenArgs) -> Result<()> {
                     hub: hub.clone(),
                     carrier: args.carrier.carrier.clone(),
                     address: address.clone(),
+                    mesh: mesh.clone(),
+                    weight: args.announce_weight,
                 };
                 tokio::spawn(async move {
                     serve(link, proved, held).await;
@@ -233,6 +260,8 @@ struct Held {
     hub: Arc<Hub>,
     carrier: String,
     address: String,
+    mesh: Option<Arc<Mesh>>,
+    weight: Option<u32>,
 }
 
 /// One link: the hello, then the streams. A carrier that proved the key of
@@ -258,16 +287,25 @@ async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
     let slot: Slot = held
         .hub
         .hold(link.clone(), peer, &held.carrier, &held.address, "listener");
+    // The guard stops the announcements and ends the route of the peer.
+    let _guard = held
+        .mesh
+        .as_ref()
+        .map(|mesh| Guard::start(mesh, &link, peer, held.weight, INTERVAL_MS));
     while let Ok(stream) = link.accept().await {
         slot.count_accepted();
         let (services, shown) = (held.services.clone(), shown.clone());
         // `close-stream` of the control socket names the stream by its id.
         let tracked = slot.track(&stream);
         let hub = held.hub.clone();
+        let announced = held
+            .mesh
+            .clone()
+            .map(|mesh| (mesh, link.clone(), held.weight));
         tokio::spawn(async move {
             let mut stream = stream;
             tokio::select! {
-                done = bridge(&mut stream, &services) => {
+                done = bridge(&mut stream, &services, announced, peer) => {
                     if let Err(err) = done {
                         // Tell the opener that the stream is over.
                         let _ = tokio::io::AsyncWriteExt::shutdown(&mut stream).await;
@@ -284,8 +322,17 @@ async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
 
 /// Read the service of a stream, connect to its target, and copy the
 /// stream to the connection and back.
-async fn bridge(stream: &mut link::Stream, services: &BTreeMap<String, Service>) -> Result<()> {
+async fn bridge(
+    stream: &mut link::Stream,
+    services: &BTreeMap<String, Service>,
+    announced: Option<(Arc<Mesh>, Arc<Link>, Option<u32>)>,
+    peer: PublicKey,
+) -> Result<()> {
     let name = service::accept(stream).await?;
+    if let (Some((mesh, link, weight)), true) = (announced, name == announce::NAME) {
+        announce::receive_stream(mesh, link, peer, weight, stream).await;
+        return Ok(());
+    }
     let Some(found) = services.get(&name) else {
         service::reply(stream, service::NO_SERVICE).await?;
         return Err(anyhow!(
