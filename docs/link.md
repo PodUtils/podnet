@@ -280,20 +280,28 @@ sends it over a link (`podnet::link_announce`, see "Announcements on a link" bel
 * The functions do no I/O. The caller gives the time in milliseconds.
 * The signed body has a fixed field order, all integers big-endian: version (1), origin key (32), `seq` (8), time of issue
   (8), expiry (8), neighbour count (2) and each neighbour (key 32, cost 4), service count (2) and each service (length 1,
-  UTF-8 name). Then the signature (64). Then the path: a length (1) and the keys (32 each).
+  UTF-8 name). Then the signature (64). Then the path: a length n (1 to 16), the origin key (32), and for each of the n - 1
+  forwarders its key (32), the cost of its link (4) and the signature of its hop (64).
 * The encoding is canonical. The neighbours are in strictly ascending key order. The services are in strictly ascending byte
   order. The decoder refuses any other order and any byte after the end.
-* The origin signs the label `podnet-mesh-announce-v1\0` and the body with its identity key. The path is not signed: each
-  node adds itself (`append_hop`). The session with the sender authenticates the last node of the path.
+* The origin signs the label `podnet-mesh-announce-v1\0` and the body with its identity key. A forwarder adds its hop
+  (`append_hop(wire, identity, cost)`): it signs the label `podnet-mesh-hop-v1\0`, the signature before it (the origin
+  signature for the first hop), its key and the cost of its link to the node that sent it the announcement. The signatures
+  form a chain. A hop cannot be dropped from the middle, a key cannot be changed and a cost cannot be lowered: the next
+  signature covers the one before it, and `verify` checks the whole chain (`BadHopSignature`). A forwarder vouches only for
+  itself: it can cut the chain at its own hop and claim to be next to the origin. The session with the sender authenticates
+  the last node of the path.
 * Bounds: 64 neighbours, 16 services, a service name of 1 to 64 bytes, 16 nodes in the path, 8 KiB for the body. An interval
   is 10 s, the life is at most 3 intervals (30 s), the clock skew is 120 s in each direction.
 * `verify` drops an announcement for the first failed rule: shape and bounds, path (not from the origin, a node two times,
-  this node), a time of issue more than 120 s ahead or behind, a bad lifetime, an expired announcement, a bad signature.
+  this node), a time of issue more than 120 s ahead or behind, a bad lifetime, an expired announcement, a bad signature, a
+  bad hop signature.
 * `Receiver::accept` is `verify` and the seen-`seq` rule. It keeps the newest `seq` of each origin for 4096 origins. An entry
   is removed when its time of issue is more than 120 s old (a replay then fails the skew rule). At the limit, the entry with
   the oldest time of issue is removed.
 * Only an announcement with the path `[origin]` is a neighbour claim (`Verified::neighbour_claims`). A multi-hop announcement
-  tells reachability. `Verified::route` gives the announcement for `mesh_table`.
+  tells reachability. `Verified::route` gives the announcement for `mesh_table`, with the sum of the signed hop costs
+  (`Verified::path_cost`) as the cost from the sender to the origin.
 
 ## Announcements on a link
 
@@ -304,7 +312,7 @@ nothing.
 * Each end opens one stream of the service `announce` to the other end and sends its announcement on it at once, then each 10 s
   with a jitter of 10% either way. The announcement lists the peers of the links that are up (direct neighbours, each with the
   cost of its link) and the services of this end (the listener: the names of `--service` and `--to`; the dialer: none).
-* A frame is a big-endian `u16` length and the wire bytes of the announcement. A length above 8769 ends the announce stream.
+* A frame is a big-endian `u16` length and the wire bytes of the announcement. A length above 9789 ends the announce stream.
   The link stays up.
 * The receiver takes only an announcement whose path is `[origin]` and whose origin is the peer of the link. Any other
   announcement is dropped (`not from the peer itself`) until the forwarding exists (T-287). Then it runs the rules of the
@@ -318,7 +326,6 @@ nothing.
   `received`, `dropped`, `evictions` and `routes`, the best route of each origin (`origin`, `next_hop`, `cost`, `hops`, `seq`,
   `expires_ms`, `direct`). Without `--announce` the verb exits 69. The dialer has no control socket and shows no routes.
   `link connect` has no `--announce` (T-285 left it out).
-* The path and the cost of a hop are not signed. T-287 adds the signature of each hop.
 
 ## The route table
 

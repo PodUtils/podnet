@@ -47,7 +47,7 @@ pub const NAME: &str = "announce";
 pub const DEFAULT_COST: u32 = 10;
 
 /// The most bytes of one frame: the largest announcement.
-pub const MAX_FRAME: usize = announce::MAX_BODY + 64 + 1 + 32 * announce::MAX_PATH;
+pub const MAX_FRAME: usize = announce::MAX_WIRE;
 
 /// The time in ms since the unix epoch.
 pub fn now_ms() -> u64 {
@@ -190,7 +190,7 @@ impl Mesh {
             neighbours,
             services: self.services.clone(),
         };
-        announce::encode(self.me.key(), &body, &[origin])
+        announce::encode(self.me.key(), &body)
     }
 
     /// Take an announcement that the peer `from` sent over a link of cost
@@ -225,7 +225,7 @@ impl Mesh {
         }
         let v = st.receiver.note(v, now).map_err(Dropped::Announcement)?;
         st.table
-            .learn(*from, cost, &v.route(0), now)
+            .learn(*from, cost, &v.route(), now)
             .map_err(Dropped::Table)
     }
 
