@@ -5,7 +5,7 @@ mod dial;
 mod door;
 mod info;
 pub(crate) mod listen;
-mod services;
+pub(crate) mod services;
 mod swap;
 
 use std::path::{Path, PathBuf};
@@ -51,6 +51,20 @@ pub(crate) struct CarrierArgs {
     /// (64 KiB to 64 MiB). Default 1048576.
     #[arg(long, value_name = "BYTES")]
     pub(crate) ring: Option<usize>,
+    /// Seal each stream end to end (T-298): the two ends of a stream run
+    /// the handshake of `pod-e2e` with their keys and send AEAD records
+    /// (chacha20-poly1305 or aes-256-gcm, agreed), so a hop between them
+    /// (a mesh node that forwards the stream) sees ciphertext only. Give it
+    /// at both ends: a listener with --seal serves sealed streams only, and
+    /// a dialer with --seal opens sealed streams only. A suite that does
+    /// not match exits 78; a key that is refused exits 77. The query keys
+    /// `pad=on` and `compress=snappy` need it. The local door (`dial
+    /// --listen`) and the control socket do not seal yet.
+    #[arg(long)]
+    pub(crate) seal: bool,
+    /// The options of the sealed records, from the query of the address.
+    #[arg(skip)]
+    pub(crate) record: Option<podnet::link_record::Options>,
 }
 
 impl CarrierArgs {
@@ -90,7 +104,9 @@ pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Chosen> {
 
 /// Split the query off `address` and check it before any socket opens
 /// (T-306). The key `carrier` takes the place of --carrier. A key that has
-/// no effect yet exits 64. The result is the address with no query.
+/// no effect yet exits 64. The keys `pad` and `compress` need --seal (exit
+/// 64), and they set `carrier.record`. The result is the address with no
+/// query.
 pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<String> {
     let (base, query) = podnet::link_query::split(address)?;
     if let Some(name) = &query.carrier {
@@ -98,6 +114,15 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
     }
     carriers::check_query(&carrier.carrier, &query)?;
     query.require_wired()?;
+    if !carrier.seal && (query.pad.is_some() || query.compress.is_some()) {
+        return Err(podnet::exit::fault(
+            podnet::exit::Fault::Usage,
+            anyhow::anyhow!("the query keys pad and compress seal the records: give --seal"),
+        ));
+    }
+    carrier.record = carrier
+        .seal
+        .then(|| podnet::link_record::Options::of_query(&query));
     Ok(base.to_string())
 }
 
@@ -513,6 +538,8 @@ mod tests {
             carrier: "unix".into(),
             allow_other_uid,
             ring,
+            seal: false,
+            record: None,
         }
     }
 

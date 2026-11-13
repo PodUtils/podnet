@@ -267,8 +267,8 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `tls` | `on`, `off` | T-269 adds it. |
 | `retry` | 0 to 16 | T-263 adds it. |
 | `lb` | `weighted`, `rr`, `minrtt`, `leastload` | T-288 adds it. |
-| `compress` | `none`, `snappy` | T-299 adds it. |
-| `pad` | `on`, `off` | T-300 adds it. |
+| `compress` | `none`, `snappy` | Compresses the payload of each record with snappy before the seal (T-299). It needs `--seal` (else exit 64). |
+| `pad` | `on`, `off` | Pads each record to a bucket (T-300). It needs `--seal` (else exit 64). |
 | `mtu` | 64 to 65535, at most the unit of the carrier | T-276 adds it. A stream carrier has no unit: exit 64. |
 | `maxhops` | 1 to 8 | T-287 adds it. |
 | `poll` | 1 to 60 (seconds) | T-271 adds it. |
@@ -455,7 +455,7 @@ instance).
 The hello proves the keys of the two ends. It makes no key for the link and does not protect the streams after it. It is for
 the unix and memory carriers, whose channel the kernel keeps on this host. A carrier that crosses a network does not rely on
 it: the `tcp` carrier pins the key of the peer in its TLS handshake (T-268), and the other network carriers take the end-to-end
-handshake of `pod-e2e` (T-298).
+handshake of `pod-e2e` (T-298, see "Sealed streams").
 
 ## The route announcement
 
@@ -565,8 +565,40 @@ request. Exit 69 when no route comes, the node has no such service, or the path 
 * 8 links by default, 16 at most (`--hops`). A route longer than the hop limit of a node is not used.
 * The listener runs this when it has `--announce`. The name `fwd` cannot be a `--service` then (exit 64). A dialer with
   `--announce` relays a stream that its peer sends, but it has no service of its own.
-* Not done: the bytes are not encrypted end to end (T-298), so each hop sees them. The CLI has no node that both listens and
+* With `--seal` at both ends, the hops see sealed records only (see "Sealed streams"). The CLI has no node that both listens and
   dials, so a chain of three podnet processes needs a library caller (`link_forward::open`).
+
+## Sealed streams
+
+`--seal` of `link listen`, `link connect` and `link dial` seals each stream of a service end to end (T-298, T-299, T-300,
+T-301; `podnet::link_record`, over `pod-e2e` of podcrates). Give it at both ends. A listener with `--seal` serves sealed
+streams only. A dialer with `--seal` opens sealed streams only. A dialer with `--seal` and a listener without it fail (exit
+non-zero, no data).
+
+* The handshake runs on the stream, after the answer OPEN of the service request. It is Noise XX with the Ed25519 key of each
+  end. The end that serves the stream must hold the key of the opener in its allow list (else exit 77). The opener checks the
+  key of the end that serves: the listener of the link, or the node of `--node` (else exit 77). A hop of a mesh that forwards
+  the stream copies the bytes of the handshake and of the records. It holds no key.
+* The two ends agree on a suite: `chacha20-poly1305` (default) or `aes-256-gcm`. A suite that the two ends do not share exits
+  78. The keys come from the exporter of the handshake, not from the TLS exporter of a hop.
+* A record has a header of 24 bytes (`version`, `type`, `flags`, `stream`, `counter`, `length`, `pad`, `reserved`), a body and
+  a tag of 16 bytes. The header is the associated data. The type `1` carries bytes. The type `2` (FIN) ends one direction. A
+  stream that ends with no FIN is a cut: the reader gets an error (`UnexpectedEof`), not an end.
+* The counter of each direction starts at 0. The key changes after 2^31 records, 1 GiB or 1 hour. The new key is in use before
+  the old key is dropped.
+* The receiver keeps a replay window of 1024 counters. A record at or below the window, or a repeat inside it, is dropped and
+  counted. A record that fails its check (a changed header, `pad` or body) ends the stream with an error.
+* `pad=on` (query key) pads each body to 0, 128, 512, 1024 or 2048 bytes, and above that to the next multiple of 2048. The
+  receiver removes the padding. `pad` is in the associated data.
+* `compress=snappy` (query key) compresses the payload before the seal (flag bit `0x0002`). A payload under 256 bytes, and a
+  payload that does not get smaller, go with no flag. The receiver refuses a compressed payload that says more than 8 MiB or
+  more than 64 times its own size: the stream ends with `decompress-limit`. The receiver reads compressed records at all
+  times. Each end sets `pad` and `compress` for its own direction.
+* The RESUME record (library: `Sealed::resume`): the peer sends again the payloads that the sender of the RESUME did not get
+  (it keeps up to 1 MiB of sent payloads). A RESUME is used once, within 10 minutes of the last record, as the resume of a link
+  (`RESUME_WINDOW`). A copy of a RESUME is refused and counted.
+* Not done: the local door of `link dial --listen` and the control socket do not seal. `link dial --listen` with `--seal`
+  exits 64. A RESUME after a lost carrier needs the caller to give the new carrier: the CLI does not send it.
 
 ## The route table
 
@@ -631,8 +663,8 @@ library ([build.md](build.md), "The C library"). Linux only.
 | 66 | The allow list file is missing. |
 | 69 | The address is held by a live listener, no listener answers, the host refuses the carrier, or a peer has another uid; an element of a chain that cannot be built or dialed. |
 | 71 | The key file or the allow list file has a mode that others can use. |
-| 77 | A peer is not in the allow list, or it did not prove its key. On `tcp`: a key that the handshake refused. |
-| 78 | The allow list has a line that is no peer, or more than 4096 entries; a duplicate element or a cycle in a chain. |
+| 77 | A peer is not in the allow list, or it did not prove its key. On `tcp`: a key that the handshake refused. With `--seal`: the end of a stream is not the expected key, or its key is not in the allow list. |
+| 78 | The allow list has a line that is no peer, or more than 4096 entries; a duplicate element or a cycle in a chain; with `--seal`, a suite that the two ends do not share. |
 | 124 | The hello did not end in 10 s. |
 
 ## Library

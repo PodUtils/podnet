@@ -257,7 +257,9 @@ impl Query {
     /// it. `carrier` has an effect. The others wait for their entry.
     pub fn require_wired(&self) -> Result<()> {
         for key in self.given() {
-            if key == "carrier" {
+            // `pad` and `compress` seal the records of a stream (T-299, T-300):
+            // the command checks that --seal is given.
+            if matches!(key, "carrier" | "pad" | "compress") {
                 continue;
             }
             // T-308 binds the name before the command starts: the flag gives it.
@@ -394,9 +396,13 @@ mod tests {
 
     #[test]
     fn a_key_with_no_effect_names_its_entry() {
-        let q = parse("compress=snappy").unwrap();
+        let q = parse("mtu=1200").unwrap();
         let m = format!("{:#}", q.require_wired().unwrap_err());
-        assert!(m.contains("T-299"), "{m}");
+        assert!(m.contains("T-276"), "{m}");
+        assert!(parse("compress=snappy&pad=on")
+            .unwrap()
+            .require_wired()
+            .is_ok());
         let q = parse("name=x").unwrap();
         assert!(format!("{:#}", q.require_wired().unwrap_err()).contains("--name"));
         assert!(parse("carrier=unix").unwrap().require_wired().is_ok());

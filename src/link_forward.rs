@@ -30,8 +30,8 @@
 //!   the answer 0 it answers 0 and copies the bytes both ways. The credit
 //!   windows of the links give the back-pressure hop by hop.
 //!
-//! The bytes between the ends are not encrypted end to end yet (T-298): each
-//! hop sees them.
+//! The bytes between the ends are sealed end to end when the ends run the
+//! record layer ([`crate::link_record`], T-298): a hop sees records only.
 
 use std::fmt;
 use std::sync::Arc;

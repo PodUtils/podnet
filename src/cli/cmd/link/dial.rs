@@ -7,6 +7,7 @@ use anyhow::{anyhow, Result};
 use clap::Args;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+use pod_identity::PublicKey;
 use podnet::exit::{self, Fault};
 use podnet::identity::{self, AllowList};
 use podnet::link;
@@ -28,7 +29,7 @@ pub(crate) struct DialArgs {
     /// `KEY@HOST:PORT`, with the key of the listener).
     /// A query can follow the address: `ADDRESS?key=value&key=value` (keys:
     /// carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window,
-    /// name). Only `carrier` has an effect yet; a key with no effect, a repeated
+    /// name). Only `carrier`, `pad` and `compress` have an effect yet (the last two need --seal); a key with no effect, a repeated
     /// key, an unknown key or a secret key (password, key, token, identity)
     /// exits 64, and no message shows a value.
     #[arg(value_name = "ADDRESS")]
@@ -112,7 +113,12 @@ pub(super) fn trusted(allow: &Option<PathBuf>, peer: &[String]) -> Result<AllowL
 const ROUTE_WAIT: std::time::Duration = std::time::Duration::from_secs(20);
 
 /// Open a stream to the service of the node with the fingerprint `node`.
-async fn open_node(mesh: &Arc<Mesh>, node: &str, service: &str, hops: u8) -> Result<link::Stream> {
+async fn open_node(
+    mesh: &Arc<Mesh>,
+    node: &str,
+    service: &str,
+    hops: u8,
+) -> Result<(link::Stream, PublicKey)> {
     let unavailable = |e: anyhow::Error| exit::fault(Fault::Unavailable, e);
     let end = std::time::Instant::now() + ROUTE_WAIT;
     let dest = loop {
@@ -127,9 +133,27 @@ async fn open_node(mesh: &Arc<Mesh>, node: &str, service: &str, hops: u8) -> Res
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     };
-    podnet::link_forward::open(mesh, &dest, service, hops)
+    let stream = podnet::link_forward::open(mesh, &dest, service, hops)
         .await
-        .map_err(|e| unavailable(anyhow!("the stream to the node {node}: {e}")))
+        .map_err(|e| unavailable(anyhow!("the stream to the node {node}: {e}")))?;
+    Ok((stream, dest))
+}
+
+/// The bytes of the stream of a dialer: the stream itself or, with --seal,
+/// its sealed form (T-298). The end that serves the stream must prove
+/// `expect`: the node of --node, or the listener of the link.
+async fn wire(
+    stream: link::Stream,
+    me: &identity::Identity,
+    expect: &PublicKey,
+    options: Option<podnet::link_record::Options>,
+) -> Result<Box<dyn super::services::Wire>> {
+    match options {
+        None => Ok(Box::new(stream)),
+        Some(options) => Ok(Box::new(
+            podnet::link_record::dial(stream, me, Some(expect), options).await?,
+        )),
+    }
 }
 
 pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> {
@@ -137,6 +161,12 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
         return Err(exit::fault(
             Fault::Usage,
             anyhow!("--listen serves SOCKS5: give --service socks5"),
+        ));
+    }
+    if args.listen.is_some() && args.carrier.seal {
+        return Err(exit::fault(
+            Fault::Usage,
+            anyhow!("--listen does not seal the streams of its door yet: leave out --seal"),
         ));
     }
     args.address = super::apply_query(&args.address, &mut args.carrier)?;
@@ -186,14 +216,15 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
         ));
         Guard::start(mesh, &link, peer, args.announce_weight, INTERVAL_MS)
     });
-    let stream = match (&args.node, &mesh) {
+    let (stream, expect) = match (&args.node, &mesh) {
         (Some(node), Some(mesh)) => open_node(mesh, node, &args.service, args.hops).await?,
         _ => {
             let mut stream = link.open().map_err(link::fault)?;
             podnet::link_service::request(&mut stream, &args.service).await?;
-            stream
+            (stream, peer)
         }
     };
+    let stream = wire(stream, &me, &expect, args.carrier.record.clone()).await?;
     let (mut down, mut up) = tokio::io::split(stream);
     let send = tokio::spawn(async move {
         let mut stdin = tokio::io::stdin();

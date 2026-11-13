@@ -13,7 +13,7 @@ use podnet::link::Link;
 use podnet::link_ctl::{Dialing, Hub, Redial, Slot};
 
 use super::dial::trusted;
-use super::services::{services_of, ServiceArgs, Streams};
+use super::services::{services_of, Seal, ServiceArgs, Streams};
 use super::CarrierArgs;
 use crate::cli::opts::DetachArgs;
 use crate::cli::signals::shutdown_signal;
@@ -190,6 +190,11 @@ impl Dialer {
             peer,
             shown: shown.clone(),
             mesh: None,
+            seal: self.args.record.clone().map(|options| Seal {
+                me: self.me.clone(),
+                allow: self.allow.clone(),
+                options,
+            }),
         };
         tokio::spawn(accept_streams(link, slot, streams));
         id

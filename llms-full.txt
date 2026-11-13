@@ -7447,10 +7447,11 @@ COMMANDS
             The address, in the form of the carrier: a path for `unix`, a name
             for `memory`, `IP:PORT` for `tcp`. A query can follow the address:
             `ADDRESS?key=value&key=value` (keys: carrier, tls, retry, lb,
-            compress, pad, mtu, maxhops, poll, window, name). Only `carrier`
-            has an effect yet; a key with no effect, a repeated key, an
-            unknown key or a secret key (password, key, token, identity) exits
-            64, and no message shows a value. Required.
+            compress, pad, mtu, maxhops, poll, window, name). Only `carrier`,
+            `pad` and `compress` have an effect yet (the last two need
+            --seal); a key with no effect, a repeated key, an unknown key or a
+            secret key (password, key, token, identity) exits 64, and no
+            message shows a value. Required.
 
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build
@@ -7469,6 +7470,17 @@ COMMANDS
         --ring <BYTES>
             The bytes of each ring of the memory carrier: 65536 to 67108864
             (64 KiB to 64 MiB). Default 1048576
+
+        --seal
+            Seal each stream end to end (T-298): the two ends of a stream run
+            the handshake of `pod-e2e` with their keys and send AEAD records
+            (chacha20-poly1305 or aes-256-gcm, agreed), so a hop between them
+            (a mesh node that forwards the stream) sees ciphertext only. Give
+            it at both ends: a listener with --seal serves sealed streams
+            only, and a dialer with --seal opens sealed streams only. A suite
+            that does not match exits 78; a key that is refused exits 77. The
+            query keys `pad=on` and `compress=snappy` need it. The local door
+            (`dial --listen`) and the control socket do not seal yet
 
         --allow <FILE>
             The allow list: a file with one peer on each line (the fingerprint
@@ -7645,9 +7657,10 @@ COMMANDS
             `tcp`: `KEY@HOST:PORT`, with the key of the listener). A query can
             follow the address: `ADDRESS?key=value&key=value` (keys: carrier,
             tls, retry, lb, compress, pad, mtu, maxhops, poll, window, name).
-            Only `carrier` has an effect yet; a key with no effect, a repeated
-            key, an unknown key or a secret key (password, key, token,
-            identity) exits 64, and no message shows a value. Required.
+            Only `carrier`, `pad` and `compress` have an effect yet (the last
+            two need --seal); a key with no effect, a repeated key, an unknown
+            key or a secret key (password, key, token, identity) exits 64, and
+            no message shows a value. Required.
 
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build
@@ -7666,6 +7679,17 @@ COMMANDS
         --ring <BYTES>
             The bytes of each ring of the memory carrier: 65536 to 67108864
             (64 KiB to 64 MiB). Default 1048576
+
+        --seal
+            Seal each stream end to end (T-298): the two ends of a stream run
+            the handshake of `pod-e2e` with their keys and send AEAD records
+            (chacha20-poly1305 or aes-256-gcm, agreed), so a hop between them
+            (a mesh node that forwards the stream) sees ciphertext only. Give
+            it at both ends: a listener with --seal serves sealed streams
+            only, and a dialer with --seal opens sealed streams only. A suite
+            that does not match exits 78; a key that is refused exits 77. The
+            query keys `pad=on` and `compress=snappy` need it. The local door
+            (`dial --listen`) and the control socket do not seal yet
 
         --peer <FINGERPRINT>
             The fingerprint that the listener must prove (the line that its
@@ -7804,9 +7828,10 @@ COMMANDS
             `tcp`: `KEY@HOST:PORT`, with the key of the listener). A query can
             follow the address: `ADDRESS?key=value&key=value` (keys: carrier,
             tls, retry, lb, compress, pad, mtu, maxhops, poll, window, name).
-            Only `carrier` has an effect yet; a key with no effect, a repeated
-            key, an unknown key or a secret key (password, key, token,
-            identity) exits 64, and no message shows a value. Required.
+            Only `carrier`, `pad` and `compress` have an effect yet (the last
+            two need --seal); a key with no effect, a repeated key, an unknown
+            key or a secret key (password, key, token, identity) exits 64, and
+            no message shows a value. Required.
 
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build
@@ -7825,6 +7850,17 @@ COMMANDS
         --ring <BYTES>
             The bytes of each ring of the memory carrier: 65536 to 67108864
             (64 KiB to 64 MiB). Default 1048576
+
+        --seal
+            Seal each stream end to end (T-298): the two ends of a stream run
+            the handshake of `pod-e2e` with their keys and send AEAD records
+            (chacha20-poly1305 or aes-256-gcm, agreed), so a hop between them
+            (a mesh node that forwards the stream) sees ciphertext only. Give
+            it at both ends: a listener with --seal serves sealed streams
+            only, and a dialer with --seal opens sealed streams only. A suite
+            that does not match exits 78; a key that is refused exits 77. The
+            query keys `pad=on` and `compress=snappy` need it. The local door
+            (`dial --listen`) and the control socket do not seal yet
 
         --peer <FINGERPRINT>
             The fingerprint that the listener must prove (the line that its
@@ -8344,6 +8380,17 @@ COMMANDS
         --ring <BYTES>
             The bytes of each ring of the memory carrier: 65536 to 67108864
             (64 KiB to 64 MiB). Default 1048576
+
+        --seal
+            Seal each stream end to end (T-298): the two ends of a stream run
+            the handshake of `pod-e2e` with their keys and send AEAD records
+            (chacha20-poly1305 or aes-256-gcm, agreed), so a hop between them
+            (a mesh node that forwards the stream) sees ciphertext only. Give
+            it at both ends: a listener with --seal serves sealed streams
+            only, and a dialer with --seal opens sealed streams only. A suite
+            that does not match exits 78; a key that is refused exits 77. The
+            query keys `pad=on` and `compress=snappy` need it. The local door
+            (`dial --listen`) and the control socket do not seal yet
 
         --json
             Print one JSON document: {"carriers": [...]}
@@ -13372,7 +13419,8 @@ handle.shutdown().await;
 * `podnet::link` opens a link over a carrier. `podnet::carriers` is the registry. `podnet::link_chain` and
   `podnet::link_tcp` build a chain of `--egress` elements and the TCP carrier. `podnet::mesh_announce`,
   `podnet::mesh_table`, `podnet::link_announce` and `podnet::link_forward` are the mesh. `podnet::link_group` is the
-  link group. [link.md](link.md) has each of them.
+  link group. `podnet::link_record` seals a stream end to end (`dial`, `accept`, `accept_with`: a `Sealed` byte stream over the
+  records of `pod-e2e`, with the suite, padding, snappy, the replay window and RESUME). [link.md](link.md) has each of them.
 * `crates/podnet-capi` is the C ABI of the link (`include/podnet.h`, `libpodnet.so`, `libpodnet.a`; [build.md](build.md), "The C
   library"; [link.md](link.md), "The C library"). It is a C interface, not a stable Rust interface.
 * `podnet_netns::main_with_args` runs the command line of `podnet pod`. The modules

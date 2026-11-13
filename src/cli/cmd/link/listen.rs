@@ -16,7 +16,7 @@ use podnet::link_announce::{self as announce, Guard, Mesh};
 use podnet::link_ctl::{Hub, Slot};
 use podnet::mesh_announce::INTERVAL_MS;
 
-use super::services::{services_of, ServiceArgs, Services, Streams};
+use super::services::{services_of, Seal, ServiceArgs, Services, Streams};
 use super::CarrierArgs;
 use crate::cli::opts::DetachArgs;
 use crate::cli::signals::shutdown_signal;
@@ -30,7 +30,7 @@ pub(crate) struct ListenArgs {
     /// for `memory`, `IP:PORT` for `tcp`.
     /// A query can follow the address: `ADDRESS?key=value&key=value` (keys:
     /// carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window,
-    /// name). Only `carrier` has an effect yet; a key with no effect, a repeated
+    /// name). Only `carrier`, `pad` and `compress` have an effect yet (the last two need --seal); a key with no effect, a repeated
     /// key, an unknown key or a secret key (password, key, token, identity)
     /// exits 64, and no message shows a value.
     #[arg(value_name = "ADDRESS")]
@@ -165,6 +165,7 @@ pub(crate) async fn listen(mut args: ListenArgs) -> Result<()> {
                     address: address.clone(),
                     mesh: mesh.clone(),
                     weight: args.announce_weight,
+                    seal: args.carrier.record.clone(),
                 };
                 tokio::spawn(async move {
                     serve(link, proved, held).await;
@@ -186,6 +187,7 @@ struct Held {
     address: String,
     mesh: Option<Arc<Mesh>>,
     weight: Option<u32>,
+    seal: Option<podnet::link_record::Options>,
 }
 
 /// One link: the hello, then the streams. A carrier that proved the key of
@@ -227,6 +229,11 @@ async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
             .mesh
             .clone()
             .map(|mesh| (mesh, link.clone(), held.weight)),
+        seal: held.seal.clone().map(|options| Seal {
+            me: held.me.clone(),
+            allow: held.allow.clone(),
+            options,
+        }),
     };
     while let Ok(stream) = link.accept().await {
         streams.spawn(stream, &slot);

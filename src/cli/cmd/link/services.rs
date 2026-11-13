@@ -13,11 +13,12 @@ use clap::Args;
 use pod_core::BoxedIo;
 use pod_identity::PublicKey;
 use podnet::exit::{self, Fault};
-use podnet::identity::Grant;
+use podnet::identity::{AllowList, Grant, Identity};
 use podnet::link;
 use podnet::link::Link;
 use podnet::link_announce::{self as announce, Mesh};
 use podnet::link_ctl::{Hub, Slot};
+use podnet::link_record::{self as record, Options as RecordOptions};
 use podnet::link_service as service;
 use podnet::relay_reverse::Target;
 
@@ -199,6 +200,89 @@ fn values_of<'a>(list: &'a [String], name: &str) -> Vec<&'a str> {
         .collect()
 }
 
+/// What a listener needs to seal the streams that reach it (`--seal`).
+#[derive(Clone)]
+pub(super) struct Seal {
+    pub(super) me: Arc<Identity>,
+    /// The keys that may seal a stream to this end: the allow list.
+    pub(super) allow: AllowList,
+    pub(super) options: RecordOptions,
+}
+
+/// The bytes of a stream, as the service sees them: the stream itself or its
+/// sealed form.
+pub(super) trait Wire: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send {}
+impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send> Wire for T {}
+
+/// The stream of a service: plain, or sealed (`--seal`).
+enum Io<'a> {
+    Plain(&'a mut link::Stream),
+    Sealed(record::Sealed),
+}
+
+macro_rules! each {
+    ($self:ident, $io:ident => $call:expr) => {
+        match $self.get_mut() {
+            Io::Plain($io) => $call,
+            Io::Sealed($io) => $call,
+        }
+    };
+}
+
+impl tokio::io::AsyncRead for Io<'_> {
+    fn poll_read(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        each!(self, io => std::pin::Pin::new(io).poll_read(cx, buf))
+    }
+}
+
+impl tokio::io::AsyncWrite for Io<'_> {
+    fn poll_write(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        each!(self, io => std::pin::Pin::new(io).poll_write(cx, buf))
+    }
+    fn poll_flush(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        each!(self, io => std::pin::Pin::new(io).poll_flush(cx))
+    }
+    fn poll_shutdown(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        each!(self, io => std::pin::Pin::new(io).poll_shutdown(cx))
+    }
+}
+
+/// Answer OPEN, then run `serve` over the stream. With --seal, the two ends
+/// run the end-to-end handshake first, and `serve` gets the sealed stream
+/// (T-298).
+async fn over<'a, Fut: std::future::Future<Output = Result<()>>>(
+    stream: &'a mut link::Stream,
+    seal: Option<&Seal>,
+    serve: impl FnOnce(Io<'a>) -> Fut,
+) -> Result<()> {
+    service::reply(stream, service::OPEN).await?;
+    let Some(seal) = seal else {
+        return serve(Io::Plain(stream)).await;
+    };
+    record::accept_with(
+        stream,
+        &seal.me,
+        &seal.allow,
+        seal.options.clone(),
+        |sealed| serve(Io::Sealed(sealed)),
+    )
+    .await?
+}
+
 /// The program of the service `name`, from `--exec-*`.
 fn exec_of(args: &ServiceArgs, name: &str, program: &str) -> Result<podnet::link_exec::Spec> {
     let own = |list: &[String]| -> Vec<String> {
@@ -230,6 +314,7 @@ pub(super) async fn bridge(
     announced: Option<(Arc<Mesh>, Arc<Link>, Option<u32>)>,
     peer: PublicKey,
     (grant, refusals): (&Grant, &podnet::link_ctl::Refusals),
+    seal: Option<&Seal>,
 ) -> Result<()> {
     let mut name = service::accept(stream).await?;
     if let Some((mesh, link, weight)) = announced {
@@ -274,16 +359,17 @@ pub(super) async fn bridge(
                     return Err(err);
                 }
             };
-            service::reply(stream, service::OPEN).await?;
-            return running.pump(stream).await;
+            return over(stream, seal, |io| running.pump(io)).await;
         }
         Service::Socks5(bind_ip) => {
-            service::reply(stream, service::OPEN).await?;
-            return podnet::link_socks::serve_with(stream, *bind_ip).await;
+            return over(stream, seal, |io| {
+                podnet::link_socks::serve_with(io, *bind_ip)
+            })
+            .await;
         }
         Service::Http => {
-            service::reply(stream, service::OPEN).await?;
-            return podnet::link_http::serve(stream, resolver(services)).await;
+            let resolve = resolver(services);
+            return over(stream, seal, |io| podnet::link_http::serve(io, resolve)).await;
         }
     };
     let mut io = match connect(target).await {
@@ -293,9 +379,11 @@ pub(super) async fn bridge(
             return Err(err);
         }
     };
-    service::reply(stream, service::OPEN).await?;
-    tokio::io::copy_bidirectional(stream, &mut io).await?;
-    Ok(())
+    over(stream, seal, |mut wire| async move {
+        tokio::io::copy_bidirectional(&mut wire, &mut io).await?;
+        Ok(())
+    })
+    .await
 }
 
 /// The names that the service `http` reaches: each service with a target.
@@ -342,6 +430,8 @@ pub(super) struct Streams {
     pub(super) shown: String,
     /// The route announcements, for a listener with `--announce`.
     pub(super) mesh: Option<(Arc<Mesh>, Arc<Link>, Option<u32>)>,
+    /// Seal the streams that reach a service (`--seal`).
+    pub(super) seal: Option<Seal>,
 }
 
 impl Streams {
@@ -353,10 +443,11 @@ impl Streams {
         let refusals = slot.refusals();
         let (hub, services, grant) = (self.hub.clone(), self.services.clone(), self.grant.clone());
         let (peer, shown, mesh) = (self.peer, self.shown.clone(), self.mesh.clone());
+        let seal = self.seal.clone();
         tokio::spawn(async move {
             let mut stream = stream;
             tokio::select! {
-                done = bridge(&mut stream, (&services, &hub), mesh, peer, (&grant, &refusals)) => {
+                done = bridge(&mut stream, (&services, &hub), mesh, peer, (&grant, &refusals), seal.as_ref()) => {
                     if let Err(err) = done {
                         // Tell the opener that the stream is over.
                         let _ = tokio::io::AsyncWriteExt::shutdown(&mut stream).await;

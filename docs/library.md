@@ -35,7 +35,8 @@ handle.shutdown().await;
 * `podnet::link` opens a link over a carrier. `podnet::carriers` is the registry. `podnet::link_chain` and
   `podnet::link_tcp` build a chain of `--egress` elements and the TCP carrier. `podnet::mesh_announce`,
   `podnet::mesh_table`, `podnet::link_announce` and `podnet::link_forward` are the mesh. `podnet::link_group` is the
-  link group. [link.md](link.md) has each of them.
+  link group. `podnet::link_record` seals a stream end to end (`dial`, `accept`, `accept_with`: a `Sealed` byte stream over the
+  records of `pod-e2e`, with the suite, padding, snappy, the replay window and RESUME). [link.md](link.md) has each of them.
 * `crates/podnet-capi` is the C ABI of the link (`include/podnet.h`, `libpodnet.so`, `libpodnet.a`; [build.md](build.md), "The C
   library"; [link.md](link.md), "The C library"). It is a C interface, not a stable Rust interface.
 * `podnet_netns::main_with_args` runs the command line of `podnet pod`. The modules

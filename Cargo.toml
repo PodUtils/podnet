@@ -126,6 +126,11 @@ pod-identity = { git = "https://github.com/PodUtils/podcrates", tag = "v0.39.0",
 # The resumable layer (T-263): offsets that never reset, a 256-bit secret
 # and the 10-minute window. The glue is src/session.rs.
 pod-session = { git = "https://github.com/PodUtils/podcrates", tag = "v0.39.0", version = "0.39.0" }
+# The end-to-end channel and its record layer (T-298): the AEAD records of a
+# stream, end to end between its two ends. The glue is src/link_record.rs.
+pod-e2e = { git = "https://github.com/PodUtils/podcrates", tag = "v0.39.0", version = "0.39.0" }
+# Snappy of the records (T-299): the format of the compression of a record.
+snap = "1"
 # The TURN client (RFC 8656) over UDP and TLS of PodUtils/podcrates: the
 # network turn://HOST:PORT (src/networks/turn.rs) allocates with it.
 pod-turn = { git = "https://github.com/PodUtils/podcrates", tag = "v0.39.0", version = "0.39.0" }

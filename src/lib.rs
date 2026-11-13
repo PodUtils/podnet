@@ -100,6 +100,7 @@ pub mod link_group;
 pub mod link_h2;
 pub mod link_http;
 pub mod link_query;
+pub mod link_record;
 pub mod link_service;
 pub mod link_socks;
 #[cfg(feature = "tcp")]
