@@ -8,8 +8,7 @@ The state at 2026-11-13. Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.
 * All work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.36.0` (T-137). The next take is `pod-warp`: its
   patch waits for the COORD issue of the freeze with the next tag (COORD-063, GitHub #520).
-* The newest release is `v0.4.0-beta.8`. `v0.4.0-beta.9` is in the publish step (T-331): the dry run, the publish and
-  `release-proofs.yml`.
+* The newest release is `v0.4.0-beta.9` (T-331, published on 2026-11-13).
 * The record is `TODO/`. `cargo todo check` agrees. `TODO/PROGRESS.md` has the work order.
 
 ## Next steps

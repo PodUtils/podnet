@@ -5442,7 +5442,7 @@ Each russh release up to 0.65.1 pins `rsa = "=0.10.0-rc.18"`. A russh release th
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -5475,3 +5475,11 @@ prerelease unattended when a batch is green.
 cargo test -p podnet --test docs
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-13, commits 6be9e76 (`T-331: version 0.4.0-beta.9 and its release notes`) and f566e3b (the notes name T-289
+and T-329). On f566e3b: `ci` 43363112482, `deny` 43363112416 and `secrets` 43363112643 passed; `live` 43363112516
+failed once at the WARP door scan (an external flake) and passed on its rerun. `release.yml`: the dry run 43368235597
+passed, the publish 43370009549 passed. The release `v0.4.0-beta.9` is a prerelease with 16 files, with
+`pod-report.schema.json` (T-330). `release-proofs.yml`: run 43371748745.

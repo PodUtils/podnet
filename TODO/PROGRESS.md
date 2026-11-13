@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 331 entries: 44 open, 22 partial, 30 blocked, 235 done.
+`TODO/INDEX.md` holds 331 entries: 43 open, 22 partial, 30 blocked, 236 done.
 
 ## State
 
@@ -14,7 +14,7 @@
   reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `src/warp/`, `src/cloudflare/`, `src/proxy.rs`, `src/tunnel.rs`,
   `crates/podnet-netns/src/rules.rs` (for `pod-warp`) and `tests/test_host/mod.rs` (in `pod-testkit`).
-- The newest release is `v0.4.0-beta.8`. `v0.4.0-beta.9` is in the publish step (T-331).
+- The newest release is `v0.4.0-beta.9` (T-331).
 - Keep this section short. Write the current state only; git keeps the history.
 
 ## Work order
@@ -26,7 +26,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). The newest is `v0.4.0-beta.8`.
+3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). The newest is `v0.4.0-beta.9`.
 
 ### The order of podnet's own work
 
