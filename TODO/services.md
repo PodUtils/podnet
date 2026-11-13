@@ -1028,7 +1028,7 @@ metrics rows). Tests: `group_meter_counts_udp_bytes_in_both_directions`, `group_
 '--metrics'". Not proven: the echo protocol against a real echo service; `WrongEgress` from a real WARP member;
 the metrics in a scrape by a Prometheus server (the text is checked by string).
 
-2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit WARPCOMMIT. `warp` and `warp:identity=FILE` are networks of the registry
+2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit 3855573. `warp` and `warp:identity=FILE` are networks of the registry
 (`src/networks/warp.rs`, over `pod-warp` `Live`). Items 3 and 10: the probe of the router renews a WARP member on `Down`,
 `WrongEgress` and `AuthExpired`, make-before-break, from the stored identity file, with a gap of 30 s; a refused key
 enrols a new key for the same device once (`src/router/probe.rs`). Item 7: the session of a WARP member runs with the
@@ -1214,7 +1214,7 @@ expose` (3 passed: `expose_via_relay_is_a_relay_node`, `expose_via_tunnel_picks_
 doors. Not proven: UDP through a real WARP, relay or tailnet network (the tests use `direct`); `expose` runs
 the other commands as they are (it starts no tunnel in a test). `sh scripts/agent/check.sh`: exit 0.
 
-2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit WARPCOMMIT. `podnet forward --network warp` takes the network `warp` of the
+2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit 3855573. `podnet forward --network warp` takes the network `warp` of the
 registry: TCP, `-L udp:...` and `--dns` through the session; `warp forward` stays the alias of `podnet forward` with the
 options of `podnet warp` (`docs/forward.md`). Tests: `network_spec_warp_is_in_the_registry`,
 `network_spec_warp_forms_are_checked`, `warp_network_carries_tcp_and_a_name_inside_the_tunnel`,
@@ -1843,7 +1843,7 @@ With the state directory and the gate disabled, `route_control_rotate_reuses_the
 merge. Not proven: the rotate of a real WARP device (see Left), and a flow that lasts past the 30 s drain of
 the old link.
 
-2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit WARPCOMMIT. The WARP network implements `Network::rotate` over `Ctx.state_dir`:
+2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit 3855573. The WARP network implements `Network::rotate` over `Ctx.state_dir`:
 it loads `state_dir/NETWORK/warp.json`, enrols a new MASQUE key for the stored device, saves the file and opens a session
 with the new key. Tests: `route_control_rotate_of_a_warp_member_registers_no_new_device` (two rotates, one registration
 on the edge stand-in), `warp_network_rotate_reuses_the_stored_device`. Not proven: a rotate against the real WARP edge.

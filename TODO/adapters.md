@@ -499,7 +499,7 @@ proxy`, `net tailscale` and `pod --serve`, `-x`, `-r` (section 4). Not proven: a
 `--control` and `--import` of `net proxy` (the command code did not change; no test of them ran here); the
 WARP door (T-050).
 
-2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit WARPCOMMIT. The WARP door: `Door` over the network `warp` carries SOCKS5 CONNECT,
+2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit 3855573. The WARP door: `Door` over the network `warp` carries SOCKS5 CONNECT,
 HTTP CONNECT and UDP ASSOCIATE through the session (`Dial::datagrams` of `pod-warp`). `podnet warp proxy` is the door of
 `pod-warp` since its take (T-137). Test: `front_door_over_the_warp_network`.
 
