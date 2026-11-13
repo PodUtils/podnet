@@ -118,7 +118,13 @@ pub async fn udp_via_stack(
     port: u16,
 ) -> Result<UdpEnds> {
     let names = super::proxy::names();
-    pod_warp::nc::udp_via_net(stack, &names, host, port)
+    // T-332: the datagrams bind the family of the far end (see one_family).
+    let ip = names
+        .resolve(stack.as_ref(), host)
+        .await
+        .map_err(super::failed)?;
+    let way = std::sync::Arc::new(super::one_family::OneFamily::to(stack, ip));
+    pod_warp::nc::udp_via_net(way, &names, host, port)
         .await
         .map_err(super::failed)
 }

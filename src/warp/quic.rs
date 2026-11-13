@@ -24,51 +24,12 @@ use super::ip::WarpStack;
 /// TCP 443 inside the MASQUE session and arrive at the edge on 7844, so this
 /// host never opens a connection to 7844.
 pub async fn endpoint(stack: &WarpStack) -> Result<noq::Endpoint> {
-    let datagrams = one_family_socket(stack).await?;
+    let datagrams = super::one_family::socket(stack, false).await?;
     let endpoint = pod_quic::over(datagrams, None)
         .map_err(|err| anyhow::anyhow!("building the QUIC endpoint: {err}"))?;
     endpoint.set_default_client_config(client_config()?);
     Ok(endpoint)
 }
-
-/// A UDP socket of the stack on one address of the device: the IPv4 address,
-/// else the IPv6 address.
-///
-/// A fix (PodUtils/podnet#523): the datagrams of `WarpNet` bind `[::]:port`
-/// (`bind_udp_any`). noq sends an IPv4 destination on an IPv6 socket as an
-/// IPv4-mapped IPv6 address, which the stack does not route, so the QUIC
-/// handshake with the edge timed out. A socket on the IPv4 address of the
-/// device sends IPv4, as the socket of podnet did before the take of pod-warp.
-async fn one_family_socket(stack: &WarpStack) -> Result<Arc<dyn pod_core::Datagrams>> {
-    use anyhow::Context as _;
-    let addresses = stack.addresses();
-    let ip = addresses
-        .iter()
-        .find(|ip| ip.is_ipv4())
-        .or_else(|| addresses.first())
-        .copied()
-        .context("the WARP device has no address")?;
-    let mut last = None;
-    for step in 0..64u16 {
-        let port = EPHEMERAL_BASE + (std::process::id() as u16).wrapping_add(step * 97) % 16384;
-        match stack
-            .stack()
-            .bind_udp(std::net::SocketAddr::new(ip, port))
-            .await
-        {
-            Ok(socket) => return Ok(Arc::new(socket.into_datagrams())),
-            Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => last = Some(err),
-            Err(err) => return Err(err).context("binding a UDP socket inside the WARP session"),
-        }
-    }
-    Err(last
-        .map(anyhow::Error::from)
-        .unwrap_or_else(|| anyhow::anyhow!("no free port")))
-    .context("binding a UDP socket inside the WARP session")
-}
-
-/// The first port of the ephemeral range (RFC 6335).
-const EPHEMERAL_BASE: u16 = 49152;
 
 /// The TLS and transport configuration the edge expects.
 fn client_config() -> Result<noq::ClientConfig> {
