@@ -1452,7 +1452,8 @@ COMMANDS
         --control <unix:/PATH>
             Change a running router through its control socket (the key
             `control` of its file; mode 0600, the same user or root). Give one
-            of --select, --rotate, --reconnect and --interval. Exit 69 when no
+            of --select, --rotate, --reconnect, --interval, --add-door,
+            --remove-door, --add-network and --remove-network. Exit 69 when no
             router answers, 64 when it refuses the request, 75 when a rotate
             came too soon
 
@@ -1473,6 +1474,25 @@ COMMANDS
         --interval <SECONDS>
             With --control: the seconds between two probes (1 to 86400). The
             router needs a health section
+
+        --add-door <DOOR>
+            With --control: add a door while the router runs. DOOR holds its
+            keys as YAML (listen, via, rules, allow_shadowed_rules, dns,
+            dns_upstream) or as a JSON object. The door listens at once. Exit
+            64 when the router refuses it
+
+        --remove-door <LISTEN>
+            With --control: stop the door that listens on LISTEN (as the file
+            writes it). Its open flows end at their own end; the other doors
+            are not cut
+
+        --add-network <NAME=SPEC>
+            With --control: add a network, NAME=SPEC (a spec of
+            docs/egress.md). A door can name it in `via` at once
+
+        --remove-network <NAME>
+            With --control: remove a network. Exit 64 when a door, a guest or
+            a group uses it
 
         --check
             Read the file and bring up nothing: exit 0 when it is valid, 64
@@ -11255,6 +11275,10 @@ podnet route --control unix:/run/r.ctl --select egress=auto     # give the choic
 podnet route --control unix:/run/r.ctl --rotate proxy           # a new identity of a network
 podnet route --control unix:/run/r.ctl --reconnect proxy        # a new link, the same identity
 podnet route --control unix:/run/r.ctl --interval 5             # seconds between two probes
+podnet route --control unix:/run/r.ctl --add-door '{"listen":"tcp://127.0.0.1:0","via":"egress"}'
+podnet route --control unix:/run/r.ctl --remove-door tcp://127.0.0.1:1081
+podnet route --control unix:/run/r.ctl --add-network lab=socks5h://127.0.0.1:1090
+podnet route --control unix:/run/r.ctl --remove-network lab
 podnet route --config router.yml --export mwan-json     # the WANs of the kernel section as JSON
 ```
 
@@ -11465,6 +11489,11 @@ prints the state of that router: each group, each member with its health, round-
 flows, the bytes, the pinned member and the head. `--json` prints the document. Exit 69 when no router
 answers. `--status` cannot be used with `--config`.
 
+Each door shows its counters: `flows` (the flows that came through the door, and the UDP associations),
+`open` (the flows that have not ended) and `bytes` (TCP and UDP, both directions, counted at the door). The
+counters of a door start at 0 when it is added and go with it when it is removed. A door that the file
+names and a door that `--add-door` added have the same counters.
+
 `podnet route --status unix:/PATH --metrics` prints the rows of the metrics in the text format of
 Prometheus (it cannot be used with `--json`). There is one row for each member and metric, with the
 labels `group` and `member`:
@@ -11480,6 +11509,9 @@ labels `group` and `member`:
 | `podnet_route_member_flows_total` | counter | The flows that the pick gave the member. |
 | `podnet_route_member_bytes_total` | counter | The bytes of TCP and UDP, both directions. |
 | `podnet_route_group_refused_total` | counter | The flows that the kill switch of the group refused (label `group` only). |
+| `podnet_route_door_flows_total` | counter | The flows that came through the door (label `door` only: the listen address). |
+| `podnet_route_door_open_flows` | gauge | The flows of the door that have not ended (label `door`). |
+| `podnet_route_door_bytes_total` | counter | The bytes of TCP and UDP, both directions, that the door carried (label `door`). |
 
 ## Control: `--control`
 
@@ -11493,6 +11525,10 @@ these flags. Each prints the new state (`--json` for the JSON document).
 | `--rotate MEMBER` | Makes a new identity of the network. The router brings up the new link first, gives it to the new flows, and ends the old link after 30 s (a flow on it can end before). The network keeps its state directory (`state_dir/NETWORK`), so it registers no new device. One rotate for each network and minute: a second one gets exit 75. Each rotate is logged on stderr. |
 | `--reconnect MEMBER` | Makes a new link of the network with the same identity, make before break. |
 | `--interval SECONDS` | Sets the seconds between two probes (1 to 86400). The wait of the probe ends at once. The file needs a `health` section. |
+| `--add-door DOOR` | Adds a door. The value has the keys of a door of the file (`listen`, `via`, `rules`, `allow_shadowed_rules`, `dns`, `dns_upstream`) as a JSON object or as YAML text. The door listens at once. A `via` is a network or a group of the file, or a network that `--add-network` added. With port 0 the router picks a port; `--status` shows it. |
+| `--remove-door LISTEN` | Removes the door that listens on `LISTEN` (the text of `--status`). The listener stops and the unix socket file goes. The flows that the door has open end at their own end. The other doors are not cut. A door of the file can be removed too. |
+| `--add-network NAME=SPEC` | Brings up a network (a spec of [egress.md](egress.md)) with the name `NAME`. A door can use it at once as `via` or in its rules. It is not a member of a group. It has a swap, so `--rotate` and `--reconnect` reach it. The identity goes in `state_dir/NAME`. |
+| `--remove-network NAME` | Removes a network. Exit 64 when a group has it as a member, or when a door or a guest names it in `via` or in its rules file. The link ends after 30 s, so the flows on it can end. A network of the file that nothing uses can be removed. |
 
 A `MEMBER` is a network of the file. A rotate or a reconnect reaches each group, rule and door that
 uses the network. The networks of the registry (`direct`, a proxy, the relay) have no identity, so a
@@ -11510,11 +11546,16 @@ of the peer: the user of the router, or root. A peer that is not allowed gets 40
 | `POST /route/rotate` | `{"member": "proxy"}` |
 | `POST /route/reconnect` | `{"member": "proxy"}` |
 | `PATCH /route/interval` | `{"seconds": 5}` |
+| `POST /route/add-door` | the keys of a door: `{"listen": "tcp://127.0.0.1:0", "via": "egress"}` |
+| `POST /route/remove-door` | `{"listen": "tcp://127.0.0.1:1081"}` |
+| `POST /route/add-network` | `{"name": "lab", "spec": "direct"}` |
+| `POST /route/remove-network` | `{"name": "lab"}` |
 
 A write answers with the status document of the new state. An error answers `{"error": TEXT}` with
-400 (a bad request), 403 (the gate), 404 (an unknown path, group or member), 405 (a wrong method), 409
-(no `health` section), 429 (a rotate too soon) or 502 (the network did not come up; the way stays as it
-was). The exit codes of the flags: 64 for 4xx, 75 for 429, 69 when no router answers.
+400 (a bad request, an unknown key of a door), 403 (the gate), 404 (an unknown path, group, member, door or
+network), 405 (a wrong method), 409 (no `health` section; a door that listens there; a name that is taken; a
+network that a door, a guest or a group uses), 429 (a rotate too soon) or 502 (the network did not come
+up, or the door could not bind; the router stays as it was). The exit codes of the flags: 64 for 4xx, 75 for 429, 69 when no router answers.
 
 ## Kernel mode
 

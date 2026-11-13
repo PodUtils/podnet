@@ -400,7 +400,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- The router has a control socket: `src/router/control.rs:257` (`peer_allowed`), `:288` (`peer_cred`) and `:328` (it answers "HTTP/1.0" with JSON bodies).
+- The router has a control socket: `src/router/control.rs:300` (`peer_allowed`), `:331` (`peer_cred`) and `:371` (it answers "HTTP/1.0" with JSON bodies).
 - The socket is bound with `bind_private` (`crates/podnet-netns/src/listen.rs:127`).
 - The issue marks this row "partial" for these parts. No link socket exists.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
@@ -743,7 +743,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- `bind_private` and `bind_claimed` in `crates/podnet-netns/src/listen.rs:127` and `:250` bind at mode 0600, refuse a regular file and replace a stale socket. The peer check exists in `src/router/control.rs:288`.
+- `bind_private` and `bind_claimed` in `crates/podnet-netns/src/listen.rs:127` and `:250` bind at mode 0600, refuse a regular file and replace a stale socket. The peer check exists in `src/router/control.rs:331`.
 - `AF_UNIX` is allowed on the test host (measured by the issue). The CI jobs `restricted-host` and `no-loopback` exist (`scripts/restricted-host.sh`, `.github/workflows/ci.yml`).
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 

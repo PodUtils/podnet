@@ -11,6 +11,7 @@ use crate::cli::opts::DetachArgs;
 use crate::cli::signals::sleep_or_signal;
 
 #[derive(Args, Debug)]
+#[command(group = clap::ArgGroup::new("change").args(["select", "rotate", "reconnect", "interval", "add_door", "remove_door", "add_network", "remove_network"]))]
 pub(crate) struct RouteArgs {
     /// The config file of the router: networks, groups, health, doors and
     /// guest wires (YAML; podnet man route names the keys).
@@ -31,7 +32,8 @@ pub(crate) struct RouteArgs {
     pub(crate) metrics: bool,
     /// Change a running router through its control socket (the key `control`
     /// of its file; mode 0600, the same user or root). Give one of --select,
-    /// --rotate, --reconnect and --interval. Exit 69 when no router answers,
+    /// --rotate, --reconnect, --interval, --add-door, --remove-door,
+    /// --add-network and --remove-network. Exit 69 when no router answers,
     /// 64 when it refuses the request, 75 when a rotate came too soon
     #[arg(long, value_name = "unix:/PATH", conflicts_with_all = ["config", "check", "status"])]
     pub(crate) control: Option<String>,
@@ -53,6 +55,25 @@ pub(crate) struct RouteArgs {
     /// router needs a health section
     #[arg(long, value_name = "SECONDS", requires = "control", conflicts_with_all = ["select", "rotate", "reconnect"])]
     pub(crate) interval: Option<u64>,
+    /// With --control: add a door while the router runs. DOOR holds its keys as
+    /// YAML (listen, via, rules, allow_shadowed_rules, dns, dns_upstream) or
+    /// as a JSON object. The door listens at once. Exit 64 when the router
+    /// refuses it
+    #[arg(long, value_name = "DOOR", requires = "control")]
+    pub(crate) add_door: Option<String>,
+    /// With --control: stop the door that listens on LISTEN (as the file
+    /// writes it). Its open flows end at their own end; the other doors are
+    /// not cut
+    #[arg(long, value_name = "LISTEN", requires = "control")]
+    pub(crate) remove_door: Option<String>,
+    /// With --control: add a network, NAME=SPEC (a spec of docs/egress.md).
+    /// A door can name it in `via` at once
+    #[arg(long, value_name = "NAME=SPEC", requires = "control")]
+    pub(crate) add_network: Option<String>,
+    /// With --control: remove a network. Exit 64 when a door, a guest or a
+    /// group uses it
+    #[arg(long, value_name = "NAME", requires = "control")]
+    pub(crate) remove_network: Option<String>,
     /// Read the file and bring up nothing: exit 0 when it is valid, 64 with
     /// the key that is wrong. For each tailscale:/PATH network, print the
     /// login state of tailscaled (one read of its socket).
@@ -133,35 +154,7 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
     }
     let router = Arc::new(podnet::router::Router::up(&config).await?);
     let mut servers = tokio::task::JoinSet::new();
-    for podnet::router::RouterDoor {
-        listen,
-        door,
-        label,
-        ..
-    } in &router.doors
-    {
-        match listen {
-            ProxyListen::Tcp(addr) => {
-                let listener = tokio::net::TcpListener::bind(addr)
-                    .await
-                    .with_context(|| format!("door {addr}"))
-                    .map_err(podnet::net::bind_fault)?;
-                println!(
-                    "podnet: route  door {}  via {label}",
-                    listener.local_addr()?
-                );
-                servers.spawn(door.clone().serve_tcp(listener));
-            }
-            ProxyListen::Unix(path) => {
-                podnet::net::claim_socket_path(path, args.detach.replace)?;
-                let listener = podnet_netns::listen::bind_private(path)
-                    .with_context(|| format!("door unix:{}", path.display()))
-                    .map_err(podnet::net::bind_fault)?;
-                println!("podnet: route  door unix:{}  via {label}", path.display());
-                servers.spawn(door.clone().serve_unix(listener));
-            }
-        }
-    }
+    router.open_doors(args.detach.replace).await?;
     for guest in &router.guests {
         let opened = guest
             .open(args.detach.replace)
@@ -174,16 +167,6 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
             guest.label()
         );
         servers.spawn(guest.clone().serve(opened));
-    }
-    for d in &router.doors {
-        if let Some((addr, upstream)) = &d.dns {
-            println!("podnet: route  dns {addr}  via {}  to {upstream}", d.label);
-            servers.spawn(podnet::forwards::serve_dns(
-                *addr,
-                d.dial.clone(),
-                upstream.clone(),
-            ));
-        }
     }
     if let Some(control) = &config.control {
         let Ok(ProxyListen::Unix(path)) = ProxyListen::parse(control) else {
@@ -202,7 +185,8 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
     let ended = tokio::select! {
         _ = sleep_or_signal(args.run_for) => Ok(()),
         _ = probing.probe_forever() => Ok(()),
-        Some(ended) = servers.join_next() => ended.context("a door stopped")?,
+        Some(ended) = servers.join_next() => ended.context("a server stopped")?,
+        failed = router.door_failure() => Err(failed),
     };
     if let Some(plan) = kernel {
         if let Err(e) = podnet::router::kernel::remove(&plan) {
@@ -313,9 +297,28 @@ async fn control_write(control: &str, args: &RouteArgs) -> Result<()> {
         ("POST", "/route/reconnect", json!({"member": member}))
     } else if let Some(seconds) = args.interval {
         ("PATCH", "/route/interval", json!({"seconds": seconds}))
+    } else if let Some(door) = &args.add_door {
+        ("POST", "/route/add-door", door_keys(door)?)
+    } else if let Some(listen) = &args.remove_door {
+        ("POST", "/route/remove-door", json!({"listen": listen}))
+    } else if let Some(spec) = &args.add_network {
+        let Some((name, spec)) = spec
+            .split_once('=')
+            .filter(|(n, s)| !n.is_empty() && !s.is_empty())
+        else {
+            return Err(anyhow::anyhow!("--add-network {spec:?}: give NAME=SPEC"))
+                .fault(Fault::Usage);
+        };
+        (
+            "POST",
+            "/route/add-network",
+            json!({"name": name, "spec": spec}),
+        )
+    } else if let Some(name) = &args.remove_network {
+        ("POST", "/route/remove-network", json!({"name": name}))
     } else {
         return Err(anyhow::anyhow!(
-            "--control: give one of --select, --rotate, --reconnect and --interval"
+            "--control: give one of --select, --rotate, --reconnect, --interval, --add-door, --remove-door, --add-network and --remove-network"
         ))
         .fault(Fault::Usage);
     };
@@ -332,6 +335,23 @@ async fn control_write(control: &str, args: &RouteArgs) -> Result<()> {
     };
     print_state(&status, args.json);
     Ok(())
+}
+
+/// The keys of a door from `--add-door`: a JSON object, or YAML.
+fn door_keys(text: &str) -> Result<serde_json::Value> {
+    let value = match serde_json::from_str::<serde_json::Value>(text) {
+        Ok(v) => v,
+        Err(_) => podnet_core::yaml::parse(text)
+            .map_err(|e| anyhow::anyhow!("--add-door: {e:#}"))
+            .fault(Fault::Usage)?,
+    };
+    if !value.is_object() {
+        return Err(anyhow::anyhow!(
+            "--add-door: give the keys of a door (listen, via, ...)"
+        ))
+        .fault(Fault::Usage);
+    }
+    Ok(value)
 }
 
 /// `route --status unix:/PATH [--json]` (T-097): the state of a running
@@ -365,9 +385,12 @@ fn print_state(status: &serde_json::Value, json: bool) {
     }
     for door in status["doors"].as_array().into_iter().flatten() {
         println!(
-            "door {}  via {}",
+            "door {}  via {}  flows {}  open {}  bytes {}",
             door["listen"].as_str().unwrap_or("?"),
-            door["via"].as_str().unwrap_or("?")
+            door["via"].as_str().unwrap_or("?"),
+            door["flows"],
+            door["open"],
+            door["bytes"]
         );
     }
     for group in status["groups"].as_array().into_iter().flatten() {

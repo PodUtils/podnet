@@ -10,6 +10,10 @@
 //! POST  /route/rotate      {"member":M}      a new identity, make before break
 //! POST  /route/reconnect   {"member":M}      a new link, same identity
 //! PATCH /route/interval    {"seconds":N}     the seconds between two probes
+//! POST  /route/add-door    {"listen":L,"via":V,...}  a door (the keys of the file)
+//! POST  /route/remove-door {"listen":L}      stop a door
+//! POST  /route/add-network {"name":N,"spec":S}  a network
+//! POST  /route/remove-network {"name":N}     a network that nothing uses
 //! ```
 //!
 //! Each write answers with the status document of the new state. An error
@@ -44,8 +48,8 @@ pub type Connector = Arc<dyn Fn(&str) -> Result<Arc<dyn Network>, Failure> + Sen
 
 /// The state that the write side of the control socket needs.
 pub struct ControlState {
-    swaps: HashMap<String, Arc<Swap>>,
-    specs: BTreeMap<String, String>,
+    swaps: Mutex<HashMap<String, Arc<Swap>>>,
+    specs: Mutex<BTreeMap<String, String>>,
     state_dir: Option<PathBuf>,
     links: tokio::sync::Mutex<HashMap<String, Link>>,
     busy: tokio::sync::Mutex<()>,
@@ -65,8 +69,8 @@ impl ControlState {
         interval: Option<Duration>,
     ) -> ControlState {
         ControlState {
-            swaps,
-            specs: specs.clone(),
+            swaps: Mutex::new(swaps),
+            specs: Mutex::new(specs.clone()),
             state_dir,
             links: Default::default(),
             busy: Default::default(),
@@ -79,6 +83,48 @@ impl ControlState {
             })),
             interval: AtomicU64::new(interval.map_or(0, |d| d.as_secs())),
             wake: Default::default(),
+        }
+    }
+
+    /// The network of `spec`, made with the connector of the router.
+    pub(super) fn connect(&self, spec: &str) -> Result<Arc<dyn Network>, Failure> {
+        let connector = lock(&self.connector).clone();
+        connector(spec)
+    }
+
+    /// The context of the network `name`: its state directory.
+    pub(super) fn ctx_of(&self, name: &str) -> Result<Ctx, Answer> {
+        let ctx = Ctx {
+            below: None,
+            state_dir: self.state_dir.as_ref().map(|d| d.join(name)),
+        };
+        if let Some(dir) = &ctx.state_dir {
+            std::fs::create_dir_all(dir)
+                .map_err(|e| Answer::new(502, format!("{name}: {}: {e}", dir.display())))?;
+        }
+        Ok(ctx)
+    }
+
+    /// Add the network `name`: its swap, its spec and its link.
+    pub(super) async fn add_network(&self, name: &str, spec: &str, swap: Arc<Swap>, link: Link) {
+        lock(&self.swaps).insert(name.to_string(), swap);
+        lock(&self.specs).insert(name.to_string(), spec.to_string());
+        self.links.lock().await.insert(name.to_string(), link);
+    }
+
+    /// Remove the network `name`; its link ends after the drain time, so
+    /// that the flows on it can end.
+    pub(super) async fn remove_network(&self, name: &str) {
+        lock(&self.swaps).remove(name);
+        lock(&self.specs).remove(name);
+        lock(&self.last_rotate).remove(name);
+        let old = self.links.lock().await.remove(name);
+        if let Some(old) = old {
+            let drain = *lock(&self.drain);
+            tokio::spawn(async move {
+                tokio::time::sleep(drain).await;
+                old.close().await;
+            });
         }
     }
 
@@ -128,9 +174,9 @@ impl ControlState {
     /// directory either way. Rotations of one network keep a gap, and each
     /// attempt is logged.
     async fn renew(&self, name: &str, rotate: bool) -> Result<(), Answer> {
-        let swap = self
-            .swaps
+        let swap = lock(&self.swaps)
             .get(name)
+            .cloned()
             .ok_or_else(|| Answer::new(404, format!("{name:?} is not a network of the file")))?;
         let _one_at_a_time = self.busy.lock().await;
         if rotate {
@@ -151,22 +197,15 @@ impl ControlState {
             }
             last.insert(name.to_string(), Instant::now());
         }
-        let ctx = Ctx {
-            below: None,
-            state_dir: self.state_dir.as_ref().map(|d| d.join(name)),
-        };
-        if let Some(dir) = &ctx.state_dir {
-            std::fs::create_dir_all(dir)
-                .map_err(|e| Answer::new(502, format!("{name}: {}: {e}", dir.display())))?;
-        }
+        let ctx = self.ctx_of(name)?;
         let connector = self
             .connector
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone();
-        let spec = &self.specs[name];
+        let spec = lock(&self.specs).get(name).cloned().unwrap_or_default();
         let network =
-            connector(spec).map_err(|e| Answer::new(502, format!("{name}: {}", e.text())))?;
+            connector(&spec).map_err(|e| Answer::new(502, format!("{name}: {}", e.text())))?;
         let up = if rotate {
             network.rotate(&ctx).await
         } else {
@@ -208,6 +247,10 @@ impl ControlState {
     }
 }
 
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 /// The body of a good answer.
 enum Reply {
     Json(Value),
@@ -222,7 +265,7 @@ pub struct Answer {
 }
 
 impl Answer {
-    fn new(code: u16, text: String) -> Answer {
+    pub(super) fn new(code: u16, text: String) -> Answer {
         Answer { code, text }
     }
 }
@@ -258,7 +301,7 @@ pub fn peer_allowed(peer: u32, own: u32) -> bool {
     peer == own || peer == 0
 }
 
-fn string_of(body: &Value, key: &str) -> Result<String, Answer> {
+pub(super) fn string_of(body: &Value, key: &str) -> Result<String, Answer> {
     body[key]
         .as_str()
         .map(str::to_string)
@@ -337,11 +380,12 @@ impl Router {
     pub async fn handle(&self, method: &str, route: &str, body: &[u8]) -> Result<Value, Answer> {
         let allowed = match route {
             "/route/status" => "GET",
-            "/route/select" | "/route/rotate" | "/route/reconnect" => "POST",
+            "/route/select" | "/route/rotate" | "/route/reconnect" | "/route/add-door"
+            | "/route/remove-door" | "/route/add-network" | "/route/remove-network" => "POST",
             "/route/interval" => "PATCH",
             _ => return Err(Answer::new(
                 404,
-                "the control socket answers /route/status, metrics, select, rotate, reconnect and interval"
+                "the control socket answers /route/status, metrics, select, rotate, reconnect, interval, add-door, remove-door, add-network and remove-network"
                     .into(),
             )),
         };
@@ -383,6 +427,13 @@ impl Router {
                     .renew(&string_of(&body, "member")?, false)
                     .await?
             }
+            "/route/add-door" => self.add_door(body).await?,
+            "/route/remove-door" => self.remove_door(&string_of(&body, "listen")?).await?,
+            "/route/add-network" => {
+                self.add_network(&string_of(&body, "name")?, &string_of(&body, "spec")?)
+                    .await?
+            }
+            "/route/remove-network" => self.remove_network(&string_of(&body, "name")?).await?,
             _ => {
                 let seconds = body["seconds"]
                     .as_u64()

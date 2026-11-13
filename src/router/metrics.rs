@@ -64,6 +64,28 @@ const MEMBER_METRICS: [(&str, &str, &str, Reader); 8] = [
     ),
 ];
 
+/// The counters of a door: the key of the status, the row, its type, its help.
+const DOOR_METRICS: [(&str, &str, &str, &str); 3] = [
+    (
+        "flows",
+        "podnet_route_door_flows_total",
+        "counter",
+        "The flows that came through the door.",
+    ),
+    (
+        "open",
+        "podnet_route_door_open_flows",
+        "gauge",
+        "The flows of the door that have not ended.",
+    ),
+    (
+        "bytes",
+        "podnet_route_door_bytes_total",
+        "counter",
+        "The bytes (TCP and UDP, both directions) that the flows of the door carried.",
+    ),
+];
+
 fn flag(on: bool) -> String {
     if on { "1" } else { "0" }.to_string()
 }
@@ -103,6 +125,18 @@ pub fn render(status: &Value) -> String {
             label(&group["group"]),
             group["refused"]
         );
+    }
+    let doors = status["doors"].as_array().cloned().unwrap_or_default();
+    for (key, name, kind, help) in DOOR_METRICS {
+        let _ = writeln!(out, "# HELP {name} {help}\n# TYPE {name} {kind}");
+        for door in &doors {
+            let _ = writeln!(
+                out,
+                "{name}{{door=\"{}\"}} {}",
+                label(&door["listen"]),
+                door[key]
+            );
+        }
     }
     let guests = status["guests"].as_array().cloned().unwrap_or_default();
     if !guests.is_empty() {

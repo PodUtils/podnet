@@ -50,9 +50,12 @@ use podnet_vnet::routes::RulesFile;
 use serde::Deserialize;
 use tokio::time::Instant;
 
+pub mod change;
 pub mod control;
+pub mod door_stats;
 pub mod guest;
 pub mod kernel;
+pub mod live;
 pub mod metrics;
 pub mod resolving;
 
@@ -380,8 +383,67 @@ pub struct RouterDoor {
     pub rules: Option<Arc<RulesFile>>,
     /// The DNS door over the same dial: its address and its upstream.
     pub dns: Option<(std::net::SocketAddr, Target)>,
-    /// The dial of the door (its rules, or the way of `via`).
+    /// The dial of the door (its rules, or the way of `via`), with the
+    /// counters of the door (T-327).
     pub dial: Arc<dyn Dial>,
+    /// The path of the rules file, if any.
+    pub rules_path: Option<PathBuf>,
+    /// The flows and the bytes of the door.
+    pub stats: Arc<door_stats::DoorStats>,
+}
+
+impl RouterDoor {
+    /// The door of `config` over the `ways`. `what` names it in an error
+    /// (`doors[0]`, or `door` for a door that the control socket adds).
+    pub(super) fn build(
+        what: &str,
+        door: &DoorConfig,
+        ways: &HashMap<String, Way>,
+    ) -> Result<RouterDoor> {
+        let way = ways
+            .get(&door.via)
+            .with_context(|| format!("{what}.via: {:?} is not a network or a group", door.via))?
+            .clone();
+        let rules = match &door.rules {
+            Some(path) => Some(Arc::new(
+                RulesFile::open_with(
+                    path,
+                    ways.clone(),
+                    Some(way.clone()),
+                    door.allow_shadowed_rules,
+                )
+                .with_context(|| format!("{what}.rules"))?,
+            )),
+            None => None,
+        };
+        let inner: Arc<dyn Dial> = match &rules {
+            Some(rules) => rules.clone(),
+            None => way.dial,
+        };
+        let label = inner.label();
+        let stats = Arc::new(door_stats::DoorStats::default());
+        let dial: Arc<dyn Dial> = Arc::new(door_stats::Counting::new(inner, stats.clone()));
+        let listen =
+            ProxyListen::parse(&door.listen).map_err(|e| anyhow::anyhow!("{what}.listen: {e}"))?;
+        // A UDP ASSOCIATE answers with the address of the door (T-098).
+        let mut udp_door = Door::new(dial.clone());
+        if let ProxyListen::Tcp(addr) = &listen {
+            udp_door = udp_door.with_udp_bind(addr.ip());
+        }
+        Ok(RouterDoor {
+            listen,
+            door: Arc::new(udp_door),
+            label,
+            via: door.via.clone(),
+            rules,
+            dns: door
+                .dns(0)
+                .map_err(|e| anyhow::anyhow!("{}", e.to_string().replace("doors[0]", what)))?,
+            dial,
+            rules_path: door.rules.clone(),
+            stats,
+        })
+    }
 }
 
 /// A router that is up: its ways, its groups and its doors.
@@ -396,6 +458,8 @@ pub struct Router {
     pub egress: HashMap<String, (Target, IpAddr)>,
     /// The write side of the control socket (T-180).
     pub control: control::ControlState,
+    /// The doors and the networks that run, with the counters (T-327).
+    pub live: Arc<live::Live>,
 }
 
 /// The choice of a door for one target (T-177): the rule, the way and the
@@ -549,42 +613,12 @@ impl Router {
             ways.insert(name.clone(), group.way());
             groups.push((name.clone(), group));
         }
-        let mut doors = Vec::new();
-        for (i, door) in config.doors.iter().enumerate() {
-            let way = ways[&door.via].clone();
-            let rules = match &door.rules {
-                Some(path) => Some(Arc::new(
-                    RulesFile::open_with(
-                        path,
-                        ways.clone(),
-                        Some(way.clone()),
-                        door.allow_shadowed_rules,
-                    )
-                    .with_context(|| format!("doors[{i}].rules"))?,
-                )),
-                None => None,
-            };
-            let dial: Arc<dyn Dial> = match &rules {
-                Some(rules) => rules.clone(),
-                None => way.dial,
-            };
-            let listen = ProxyListen::parse(&door.listen)
-                .map_err(|e| anyhow::anyhow!("doors[{i}].listen: {e}"))?;
-            // A UDP ASSOCIATE answers with the address of the door (T-098).
-            let mut udp_door = Door::new(dial.clone());
-            if let ProxyListen::Tcp(addr) = &listen {
-                udp_door = udp_door.with_udp_bind(addr.ip());
-            }
-            doors.push(RouterDoor {
-                listen,
-                door: Arc::new(udp_door),
-                label: dial.label(),
-                via: door.via.clone(),
-                rules,
-                dns: door.dns(i)?,
-                dial,
-            });
-        }
+        let doors = config
+            .doors
+            .iter()
+            .enumerate()
+            .map(|(i, door)| RouterDoor::build(&format!("doors[{i}]"), door, &ways))
+            .collect::<Result<Vec<_>>>()?;
         let guests = config
             .guests
             .iter()
@@ -610,6 +644,14 @@ impl Router {
             config.state_dir.clone(),
             health.as_ref().map(|(_, t)| t.interval),
         );
+        let live = Arc::new(live::Live::new(
+            &doors,
+            config
+                .guests
+                .iter()
+                .map(|g| (g.via.clone(), g.rules.clone()))
+                .collect(),
+        ));
         Ok(Router {
             ways,
             groups,
@@ -618,6 +660,7 @@ impl Router {
             health,
             egress,
             control,
+            live,
         })
     }
 
@@ -665,7 +708,7 @@ impl Router {
     /// The ready document: each door and the status of each group.
     pub fn status(&self) -> serde_json::Value {
         serde_json::json!({
-            "doors": self.doors.iter().map(|d| serde_json::json!({"listen": d.listen.to_string(), "via": d.label})).collect::<Vec<_>>(),
+            "doors": self.live.doors_json(),
             "groups": self.groups.iter().map(|(_, g)| g.status()).collect::<Vec<_>>(),
             "guests": self.guests.iter().map(|g| g.status()).collect::<Vec<_>>(),
             "interval": self.control.interval().map(|d| d.as_secs()),
