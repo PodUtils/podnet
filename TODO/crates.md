@@ -815,6 +815,10 @@ Done so far:
   `src/warp/` to fixes follows the trial of podssh. Breaking in `pod-netstack` (a socket that the TCP timeout ends reads
   `TimedOut`) and `pod-warp` (`DataPathCheck::servers`): no podnet code uses them yet. `cargo test --workspace
   --no-fail-fast`: 81 test binaries, 0 failed. `cargo deny --locked check bans sources`: ok.
+- v0.36.0 (PodUtils/podcrates#129): each `pod-*` dependency names `tag = "v0.36.0"` (and `version = "0.36.0"` where a
+  version is named; `pod-todo` names the tag only); no hand-off for podnet. The trial of `pod-warp` in `src/warp/` passes
+  at podcrates (adoption run 43347062071); the COORD issue of the freeze follows the next tag. `cargo test --workspace
+  --no-fail-fast`: 82 test binaries, 0 failed. `cargo deny --locked check bans sources`: ok.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

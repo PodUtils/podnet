@@ -34,7 +34,7 @@ serde_json = "1"
 # 65507 bytes in both directions over each MTU (a guest wire). Each interface
 # of smoltcp in the binary holds a buffer of 64 KiB for the fragments that it
 # sends, and smoltcp puts together one datagram at a time.
-pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.35.0", version = "0.35.0", features = ["ipv4-fragmentation"] }
+pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.36.0", version = "0.36.0", features = ["ipv4-fragmentation"] }
 # The version of pod-netstack and the features of the root crate (Cargo.toml
 # of podnet): the proof of `net doctor` (stack/proof.rs) drives the link
 # device of pod-netstack with it.
@@ -67,4 +67,4 @@ tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
 # need_loopback! of the tests, from the test kit of PodUtils/podcrates at
 # the git tag of the root.
-pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.35.0", version = "0.35.0" }
+pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.36.0", version = "0.36.0" }
