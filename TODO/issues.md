@@ -217,5 +217,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #523 | live: two runs in a row failed | open | T-332 |
 | #524 | COORD-066: a fix in src/warp/quic.rs: WarpNet's datagrams bind [::], so QUIC to an IPv4 edge goes as IPv4-mapped and times out (to podcrates) | open (a COORD issue between sessions) | none |
 | #525 | COORD-067: podnet took v0.38.0 (to podcrates) | closed (a COORD issue between sessions) | none |
+| #526 | COORD-068: podnet took v0.39.0 at 306d80b; the one-family fix of WARP is dropped (to podcrates) | open (a COORD issue between sessions) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
