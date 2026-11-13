@@ -106,7 +106,7 @@ async fn main() -> anyhow::Result<()> {
     // A closed port on a reachable host.
     match tokio::time::timeout(
         Duration::from_secs(8),
-        stack.tcp_connect("1.1.1.1:9".parse()?),
+        podnet::warp::tcp_connect(&stack, "1.1.1.1:9".parse()?),
     )
     .await
     {
@@ -120,7 +120,7 @@ async fn main() -> anyhow::Result<()> {
     // An address that is not routable at all (TEST-NET-1).
     match tokio::time::timeout(
         Duration::from_secs(8),
-        stack.tcp_connect("192.0.2.1:443".parse()?),
+        podnet::warp::tcp_connect(&stack, "192.0.2.1:443".parse()?),
     )
     .await
     {
@@ -133,14 +133,19 @@ async fn main() -> anyhow::Result<()> {
     }
 
     println!("\n== a real payload: DNS over the tunnel ==");
-    let udp = stack.udp_bind().await?;
+    let udp = pod_core::Dial::datagrams(&stack).await?;
     let id: u16 = 0x4b1d;
     let query = dns_query("example.com", id);
     let dns: SocketAddr = "1.1.1.1:53".parse()?;
-    udp.send_to(query.clone(), dns).await?;
-    let (reply, from) = tokio::time::timeout(Duration::from_secs(8), udp.recv_from(4096))
-        .await
-        .context_wrap()??;
+    pod_core::datagrams::send_to(&*udp, &query, dns).await?;
+    let mut reply = vec![0u8; 4096];
+    let (n, from) = tokio::time::timeout(
+        Duration::from_secs(8),
+        pod_core::datagrams::recv_from(&*udp, &mut reply),
+    )
+    .await
+    .context_wrap()??;
+    reply.truncate(n);
     let qdcount = u16::from_be_bytes([reply[4], reply[5]]);
     let ancount = u16::from_be_bytes([reply[6], reply[7]]);
     let echoed_id = u16::from_be_bytes([reply[0], reply[1]]);
@@ -153,11 +158,15 @@ async fn main() -> anyhow::Result<()> {
 
     println!("\n== the destination this host refuses: the tunnel edge on 7844 ==");
     let edge: SocketAddr = "198.41.192.27:7844".parse()?;
-    let edge_ok = match tokio::time::timeout(Duration::from_secs(10), stack.tcp_connect(edge)).await
+    let edge_ok = match tokio::time::timeout(
+        Duration::from_secs(10),
+        podnet::warp::tcp_connect(&stack, edge),
+    )
+    .await
     {
         Ok(Ok(conn)) => {
             println!("   ok   {edge} connected from inside the tunnel");
-            conn.close().await;
+            drop(conn);
             true
         }
         Ok(Err(err)) => {

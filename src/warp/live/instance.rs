@@ -32,16 +32,8 @@ pub fn publish_own<T: Closable>(live: &Live<T>) {
     });
 }
 
-/// Give each new report of `live` to `sink`, until `live` ends.
-pub fn publish<T: Closable>(live: &Live<T>, sink: impl Fn(Report) + Send + 'static) {
-    let mut changes = live.report();
-    tokio::spawn(async move {
-        while changes.changed().await.is_ok() {
-            let report = *changes.borrow_and_update();
-            sink(report);
-        }
-    });
-}
+/// Give each new report of a [`Live`] to a sink, until it ends.
+pub use pod_warp::live::publish;
 
 fn insert(doc: &mut serde_json::Map<String, Value>, report: Report) {
     doc.insert("data_path".into(), report.data_path.into());
@@ -266,7 +258,11 @@ mod tests {
                 let allow = allow.clone();
                 Box::pin(async move {
                     if !allow.load(Ordering::SeqCst) {
-                        anyhow::bail!("the front door does not answer");
+                        return Err(pod_core::Failure::new(
+                            pod_core::Stage::Warp,
+                            pod_core::Class::Unavailable,
+                            "the front door does not answer",
+                        ));
                     }
                     Ok(Fake {
                         tcp: true,
@@ -315,7 +311,15 @@ mod tests {
     /// T-140: the ready document of `warp proxy` has the two keys.
     #[tokio::test]
     async fn the_ready_document_names_the_data_path() {
-        let connect: Connect<Fake> = Box::new(|| Box::pin(async { anyhow::bail!("no session") }));
+        let connect: Connect<Fake> = Box::new(|| {
+            Box::pin(async {
+                Err(pod_core::Failure::new(
+                    pod_core::Stage::Warp,
+                    pod_core::Class::Unavailable,
+                    "no session",
+                ))
+            })
+        });
         let first = Fake {
             tcp: true,
             closed: AtomicBool::new(false),

@@ -136,7 +136,7 @@ pub use metrics::{Metrics, MetricsSnapshot};
 pub use share::{ShareApp, ShareConfig, ShareControl, ShareMode};
 pub use tunnel::{Tunnel, TunnelBuilder, TunnelHandle, Verified};
 pub use vnet::{NetStack, VirtAddr, VirtualSubnet};
-pub use warp::{Identity, MasqueSession, StackConfig, WarpClient, WarpStack};
+pub use warp::{Identity, MasqueSession, WarpClient, WarpStack};
 pub use ws::LocalSpec;
 
 /// Install the rustls crypto provider. Called automatically by

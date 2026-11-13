@@ -315,7 +315,10 @@ fn warp_tun_takes_session_max_age() {
     let err = String::from_utf8_lossy(&out.stderr);
     assert_ne!(out.status.code(), Some(64), "{err}");
     assert!(!err.contains("--session-max-age works with"), "{err}");
-    assert!(err.contains("parsing the WARP identity"), "{err}");
+    assert!(
+        err.contains("the WARP identity in") && err.contains("does not parse"),
+        "{err}"
+    );
 }
 
 /// T-074: `warp export --check` writes no config, so it refuses `--out`

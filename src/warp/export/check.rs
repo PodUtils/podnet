@@ -8,13 +8,11 @@
 //! the reserved bytes and with zeros, and connects to the TCP probe target
 //! through each.
 
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context as _, Result};
 
-use crate::warp::ip::{StackConfig, WarpStack};
-use crate::warp::session::MasqueSession;
 use crate::warp::wg::Peer;
 
 /// The result of the check.
@@ -58,19 +56,16 @@ pub fn zeroed(peer: &Peer) -> Peer {
 /// One leg: the handshake with `peer`, then a TCP connect to `target`
 /// through a stack on the leg, in `limit`. The time of the connect.
 pub async fn probe(peer: &Peer, target: SocketAddr, limit: Duration) -> Result<Duration> {
-    let session = MasqueSession::connect_wg(peer)
+    let session = crate::warp::wg::session(peer)
         .await
         .context("the WireGuard handshake")?;
-    let local = peer
-        .v4
-        .map(IpAddr::V4)
-        .or(peer.v6.map(IpAddr::V6))
-        .context("the WireGuard device has no address")?;
-    let (tx, rx) = session.split();
-    let stack = WarpStack::start(tx, rx, StackConfig::new(local).with_ipv6(peer.v6))?;
+    if peer.v4.is_none() && peer.v6.is_none() {
+        bail!("the WireGuard device has no address");
+    }
+    let stack = crate::warp::ip::start(session, peer.v4, peer.v6)?;
     let start = Instant::now();
-    let result = tokio::time::timeout(limit, stack.tcp_connect(target)).await;
-    stack.close_session("warp export --check");
+    let result = tokio::time::timeout(limit, crate::warp::tcp_connect(&stack, target)).await;
+    stack.close("warp export --check");
     match result {
         Ok(Ok(_)) => Ok(start.elapsed()),
         Ok(Err(err)) => Err(err.context(format!("TCP to {target}"))),

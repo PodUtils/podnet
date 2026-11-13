@@ -104,10 +104,10 @@ fn stored(path: &Path) -> serde_json::Value {
 /// A record with the state `state` and the device `id`.
 fn plant(path: &Path, id: &str, state: &str) {
     use std::os::unix::fs::PermissionsExt as _;
-    let (cert_pem, key_pem) = Identity::generate().unwrap().to_pem().unwrap();
+    let (cert_pem, key_pem) = Identity::generate().unwrap().to_pem();
     let record = serde_json::json!({
         "device": serde_json::from_str::<serde_json::Value>(&device(id, "wireguard")).unwrap(),
-        "cert_pem": cert_pem, "key_pem": key_pem, "state": state,
+        "cert_pem": cert_pem, "key_pem": key_pem.as_str(), "state": state,
     });
     std::fs::write(path, record.to_string()).unwrap();
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).unwrap();

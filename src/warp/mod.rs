@@ -7,14 +7,14 @@
 //!   MASQUE front door are both reachable on 443, so a host that permits
 //!   nothing else still gets a working WARP tunnel.
 //! * **A destination the host's firewall refuses.** Packets are built by
-//!   `smoltcp` and carried inside the tunnel, so the host never issues a
-//!   `connect()` to the real address. That is how a Cloudflare tunnel edge on
-//!   port 7844 becomes reachable on a host where 7844 is filtered.
+//!   the userspace stack and carried inside the tunnel, so the host never
+//!   issues a `connect()` to the real address. That is how a Cloudflare
+//!   tunnel edge on port 7844 becomes reachable on a host where 7844 is
+//!   filtered.
 //!
-//! Everything is in-crate: no `wgcf`, no `warp-cli`, no `cloudflared`, no
-//! external tunnel binary. The registration is two HTTP calls
-//! ([`register`]), the tunnel is one HTTP/2 CONNECT ([`session`]), and the
-//! routing is `smoltcp` ([`ip`]).
+//! The client is `pod-warp` of PodUtils/podcrates. This module is the glue:
+//! podnet's flags, variables and state files into its settings, podnet's
+//! egress and relay as its dials, and its events into podnet's log.
 //!
 //! ```no_run
 //! # async fn demo() -> anyhow::Result<()> {
@@ -25,30 +25,25 @@
 //! // Open the tunnel; only TCP 443 is needed.
 //! let stack = client.connect().await?;
 //! // Reach anything, including ports the host blocks.
-//! let conn = stack.tcp_connect("198.41.192.27:7844".parse()?).await?;
+//! let conn = podnet::warp::tcp_connect(&stack, "198.41.192.27:7844".parse()?).await?;
 //! # let _ = conn;
 //! # Ok(())
 //! # }
 //! ```
 
 pub mod capsule;
-mod door;
-use door::endpoint_order;
-mod enrol;
 pub mod exit;
 pub mod export;
+#[cfg(unix)]
 pub mod find;
 pub mod forward;
-pub mod h3;
-mod hints;
+pub mod hints;
 pub mod identity;
 pub mod ip;
 pub mod l4;
 pub mod live;
 pub mod nc;
 pub mod pod;
-mod private;
-pub(crate) use private::check_private;
 pub mod proxy;
 pub mod quic;
 pub mod register;
@@ -62,45 +57,216 @@ pub mod up;
 pub mod wg;
 
 pub use identity::Identity;
-pub use ip::{check_cc, check_tcp_burst, StackConfig, TcpConn, UdpConn, WarpStack};
+pub use ip::{check_cc, check_tcp_burst, WarpStack};
 pub use live::{Closable, Live};
+pub use pod_warp::h3;
 pub use register::Device;
-pub use session::{Dial, MasqueRx, MasqueSession, MasqueTx};
+pub use session::{MasqueRx, MasqueSession, MasqueTx};
 
-use anyhow::{bail, Context, Result};
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use anyhow::{Context, Result};
+use pod_core::{BoxFuture, Connected, Dial, Failure, Target};
 
 use crate::egress::Proxy;
 
-/// A registered WARP device with a MASQUE identity ready to dial.
-pub struct WarpClient {
-    device: Device,
-    identity: Identity,
-    proxy: Option<Proxy>,
-    masque: MasqueOptions,
-    /// The relay of the fallback, made on first use.
-    relay: std::sync::OnceLock<Option<std::sync::Arc<crate::ws_relay::Relay>>>,
-    /// The last session went through the relay: try it first next time.
-    relay_first: std::sync::atomic::AtomicBool,
-    /// The file that keeps the leg that worked between two runs (issue
-    /// 126), next to the identity file.
-    leg_file: Option<std::path::PathBuf>,
-    /// The leg file was read.
-    leg_read: std::sync::Once,
-    /// The address of the front door that worked last (issue 124).
-    endpoint_won: std::sync::Mutex<Option<std::net::SocketAddr>>,
-    /// The address of a front door whose session carried no packet (issue
-    /// 133): it goes last.
-    door_bad: std::sync::Mutex<Option<std::net::SocketAddr>>,
-    /// WireGuard in place of MASQUE (issue 152): the peer of the device
-    /// of `warp export`.
-    wireguard: Option<wg::Peer>,
-    /// A second device on WireGuard inside the first session (issues 154
-    /// and 155): the stack of the tools is the stack of this one.
-    carry: Option<wg::Peer>,
+/// A failure of `pod-warp` as an error of podnet: the class of the failure
+/// gives the exit code (`crate::exit`).
+pub fn failed(failure: Failure) -> anyhow::Error {
+    use crate::exit::Fault;
+    use pod_core::Class;
+    let fault = match failure.class {
+        Class::Usage => Fault::Usage,
+        Class::Config | Class::Revoked => Fault::Config,
+        Class::NotFound => Fault::NoInput,
+        Class::TempFail => Fault::TempFail,
+        _ => Fault::Unavailable,
+    };
+    crate::exit::fault(fault, anyhow::Error::new(failure))
 }
 
+/// `?` for a result of `pod-warp`, with the class of [`failed`].
+pub trait Warped<T> {
+    fn warped(self) -> Result<T>;
+}
+
+impl<T> Warped<T> for std::result::Result<T, Failure> {
+    fn warped(self) -> Result<T> {
+        self.map_err(failed)
+    }
+}
+
+/// The events of `pod-warp` into podnet's log, and its decisions into
+/// podnet's counters with podnet's names.
+pub fn report() -> pod_core::Report {
+    pod_core::Report {
+        events: Arc::new(|event: pod_core::Event| match event.level {
+            pod_core::Level::Info => tracing::info!(kind = event.kind, "{}", event.text),
+            pod_core::Level::Warn => tracing::warn!(kind = event.kind, "{}", event.text),
+        }),
+        observer: Arc::new(Decisions),
+    }
+}
+
+/// podnet's counters of the decisions of `pod-warp`.
+struct Decisions;
+
+impl pod_core::Observer for Decisions {
+    fn decision(&self, decision: &'static str, outcome: &str) {
+        match decision {
+            "warp.leg" => crate::decisions::count("masque", &outcome.replace('-', "_")),
+            "warp.carry" => crate::decisions::count("masque", "carry"),
+            "warp.dispatch" => crate::decisions::count("dispatch", outcome),
+            "warp.rule" => crate::decisions::count("rule", outcome),
+            other => crate::decisions::count(other, outcome),
+        }
+    }
+}
+
+/// The TLS provider of podnet.
+pub(crate) fn provider() -> Arc<rustls::crypto::CryptoProvider> {
+    crate::trust::context().provider().clone()
+}
+
+/// The TLS client of podnet for HTTPS and DNS over TLS inside the tunnel.
+pub(crate) fn tls_client() -> Result<Arc<rustls::ClientConfig>> {
+    Ok(Arc::new(
+        crate::trust::context().client_config_with(&[], &[b"http/1.1"])?,
+    ))
+}
+
+/// A TCP stream to `addr` through `net`.
+pub async fn tcp_connect(net: &dyn Dial, addr: SocketAddr) -> Result<pod_core::BoxedIo> {
+    let deadline = tokio::time::Instant::now() + pod_warp::session::CONNECT_TIMEOUT;
+    let connected = net.dial(&Target::Addr(addr), deadline).await.warped()?;
+    Ok(connected.io)
+}
+
+/// The dial of a MASQUE session: podnet's egress, with the split of the
+/// first ClientHello of `--fragment-client-hello` (issue 135).
+struct MasqueDial(Arc<dyn Dial>);
+
+impl Dial for MasqueDial {
+    fn label(&self) -> String {
+        self.0.label()
+    }
+
+    fn dial<'a>(
+        &'a self,
+        target: &'a Target,
+        deadline: tokio::time::Instant,
+    ) -> BoxFuture<'a, std::result::Result<Connected, Failure>> {
+        Box::pin(async move {
+            let mut connected = self.0.dial(target, deadline).await?;
+            connected.io = pod_tls::fragment::wrap(connected.io, live::split());
+            Ok(connected)
+        })
+    }
+
+    fn names_inside(&self) -> bool {
+        self.0.names_inside()
+    }
+}
+
+/// The WebSocket relay of podnet as the relay leg of a session (issue 76).
+struct RelayDial(Arc<crate::ws_relay::Relay>);
+
+impl Dial for RelayDial {
+    fn label(&self) -> String {
+        format!("the relay {}", self.0.url())
+    }
+
+    fn dial<'a>(
+        &'a self,
+        target: &'a Target,
+        deadline: tokio::time::Instant,
+    ) -> BoxFuture<'a, std::result::Result<Connected, Failure>> {
+        Box::pin(async move {
+            let Target::Addr(addr) = target else {
+                let text = format!("the relay takes an address, not {target}");
+                return Err(Failure::new(
+                    pod_core::Stage::Connect,
+                    pod_core::Class::Usage,
+                    text,
+                ));
+            };
+            let limit = deadline.saturating_duration_since(tokio::time::Instant::now());
+            let io = self.0.connect(*addr, limit).await.map_err(|e| {
+                let text = format!("{target} through the relay {}: {e:#}", self.0.url());
+                Failure::caused(
+                    pod_core::Stage::Connect,
+                    pod_core::Class::Unavailable,
+                    text,
+                    e,
+                )
+            })?;
+            let io = pod_tls::fragment::wrap(Box::new(io), live::split());
+            Ok(Connected::new(io))
+        })
+    }
+}
+
+/// The relay of the fallback: the relay of `--transport relay` when it is
+/// set, else the relay of `PODNET_RELAY` or the default relay. One for the
+/// process.
+fn masque_relay() -> Option<Arc<crate::ws_relay::Relay>> {
+    static RELAY: std::sync::OnceLock<Option<Arc<crate::ws_relay::Relay>>> =
+        std::sync::OnceLock::new();
+    RELAY
+        .get_or_init(|| match crate::ws_relay::Relay::from_env(None) {
+            Ok(relay) => Some(Arc::new(relay)),
+            Err(err) => {
+                tracing::warn!(error = %format!("{err:#}"), "no WebSocket relay for MASQUE");
+                None
+            }
+        })
+        .clone()
+}
+
+/// The relay leg of `pod-warp` over `relay`, with the budget of a relay
+/// session (the owner ruling of 2026-11-04).
+fn relay_leg(relay: &Arc<crate::ws_relay::Relay>) -> pod_warp::Relay {
+    let mut leg = pod_warp::Relay::new(Arc::new(RelayDial(relay.clone())), relay.url());
+    leg.meter = Some(Arc::new(|io| {
+        let (io, budget) = crate::ws_relay::meter(Box::new(io));
+        let renew: pod_warp::net::Renew = Arc::new(move || budget.spent());
+        (Box::new(io) as pod_core::BoxedIo, renew)
+    }));
+    leg
+}
+
+/// The API of WARP through `proxy`, or the egress of the process. A bad
+/// [`register::API_VARIABLE`] is a configuration error (exit 78).
+pub(crate) fn api(proxy: Option<&Proxy>) -> Result<pod_warp::Api> {
+    let bases = register::api_bases(std::env::var(register::API_VARIABLE).ok().as_deref())
+        .map_err(|e| crate::exit::fault(crate::exit::Fault::Config, e))?;
+    Ok(api_client(proxy).with_bases(bases))
+}
+
+/// The API of WARP through `proxy` at the bases of the variable, or at the
+/// default bases when the variable is bad: a constructor that reads the
+/// variable reports it first ([`api`]).
+fn api_or_default(proxy: Option<&Proxy>) -> pod_warp::Api {
+    api(proxy).unwrap_or_else(|_| api_client(proxy))
+}
+
+/// The API of WARP at the default bases, through `proxy`.
+fn api_client(proxy: Option<&Proxy>) -> pod_warp::Api {
+    let client = pod_proxy::Client::new(
+        crate::trust::context().clone(),
+        crate::egress::egress(proxy.cloned()),
+    )
+    .with_user_agent(format!("podnet/{}", env!("CARGO_PKG_VERSION")));
+    pod_warp::Api::new(client)
+}
+
+/// The MTU of the stack of a carried device (issues 154 and 155).
+pub const CARRY_MTU: usize = pod_warp::CARRY_MTU;
+
 /// The door file of an identity file: `warp.json` gives `warp-door.json`.
-fn door_file_of(identity: &std::path::Path) -> std::path::PathBuf {
+fn door_file_of(identity: &Path) -> PathBuf {
     let stem = identity
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
@@ -108,62 +274,13 @@ fn door_file_of(identity: &std::path::Path) -> std::path::PathBuf {
     identity.with_file_name(format!("{stem}-door.json"))
 }
 
-/// The MTU of the stack of a carried device (issues 154 and 155): 1280 of
-/// the outer stack, less the IPv4 and UDP headers (28), the header and the
-/// tag of WireGuard (32), and its padding (at most 15).
-pub const CARRY_MTU: usize = 1200;
-
-/// A door in the door file is used for this time.
-const DOOR_TTL: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 3600);
-
-/// The door of the text of a door file, when it is recent (less than
-/// [`DOOR_TTL`] before `now`) and one of `candidates` (issue 133).
-fn door_from(
-    text: &str,
-    now: u64,
-    candidates: &[std::net::SocketAddr],
-) -> Option<std::net::SocketAddr> {
-    let doc: serde_json::Value = serde_json::from_str(text).ok()?;
-    if doc["schema"] != 1 {
-        return None;
-    }
-    let at = doc["at"].as_u64()?;
-    if at > now || now - at >= DOOR_TTL.as_secs() {
-        return None;
-    }
-    let door: std::net::SocketAddr = doc["door"].as_str()?.parse().ok()?;
-    candidates.contains(&door).then_some(door)
-}
-
-/// The delay of the relay after the start of the direct path.
-const RELAY_DELAY: std::time::Duration = std::time::Duration::from_secs(3);
-/// The delay of the relay when the relay worked last: a direct path that
-/// works opens in less.
-const RELAY_DELAY_KNOWN: std::time::Duration = std::time::Duration::from_millis(500);
-
-/// A leg in the leg file is used for this time.
-const LEG_TTL: std::time::Duration = std::time::Duration::from_secs(6 * 3600);
-
 /// The leg file of an identity file: `warp.json` gives `warp-leg.json`.
-fn leg_file_of(identity: &std::path::Path) -> std::path::PathBuf {
+fn leg_file_of(identity: &Path) -> PathBuf {
     let stem = identity
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "warp".into());
     identity.with_file_name(format!("{stem}-leg.json"))
-}
-
-/// True when the text of a leg file says that the relay `relay` worked
-/// less than [`LEG_TTL`] before `now` (unix seconds).
-fn relay_first_from(text: &str, now: u64, relay: &str) -> bool {
-    let Ok(doc) = serde_json::from_str::<serde_json::Value>(text) else {
-        return false;
-    };
-    doc["leg"] == "relay"
-        && doc["relay"] == relay
-        && doc["at"]
-            .as_u64()
-            .is_some_and(|at| at <= now && now - at < LEG_TTL.as_secs())
 }
 
 fn unix_now() -> u64 {
@@ -179,7 +296,7 @@ pub struct MasqueOptions {
     /// No WebSocket relay when the direct path fails.
     pub no_relay: bool,
     /// The front door in place of the one of the device record.
-    pub endpoint: Option<std::net::SocketAddr>,
+    pub endpoint: Option<SocketAddr>,
     /// The TLS name in place of `consumer-masque.cloudflareclient.com`.
     pub sni: Option<String>,
     /// HTTP/3 on UDP 443 in place of HTTP/2 on TCP 443 (issue 157). No
@@ -187,107 +304,168 @@ pub struct MasqueOptions {
     pub h3: bool,
 }
 
+/// A registered WARP device with a MASQUE identity ready to dial: a
+/// `pod_warp::Warp` with podnet's settings and state files.
+pub struct WarpClient {
+    warp: pod_warp::Warp,
+    proxy: Option<Proxy>,
+    masque: MasqueOptions,
+    wireguard: Option<wg::Peer>,
+    carry: Option<wg::Peer>,
+    /// The file that keeps the leg that worked between two runs (issue
+    /// 126), next to the identity file.
+    leg_file: Option<PathBuf>,
+}
+
 impl WarpClient {
     /// Register anonymously and enrol the MASQUE identity.
-    ///
-    /// This is the whole of the "self registration" step: a `POST` that creates
-    /// the device, a `PATCH` that swaps its key for a P-256 one and switches it
-    /// to MASQUE, and a locally generated keypair. No account, no token, no
-    /// external tool.
     pub async fn register() -> Result<Self> {
         Self::register_with(None).await
     }
 
     /// Register through a specific proxy, or directly when `proxy` is `None`.
     pub async fn register_with(proxy: Option<Proxy>) -> Result<Self> {
-        let identity = Identity::generate().context("generating the MASQUE identity")?;
-        let device = register::create_device(proxy.as_ref())
+        api(proxy.as_ref())?;
+        let settings = Self::settings_of(proxy.as_ref(), &MasqueOptions::default(), None, None);
+        let warp = pod_warp::Warp::register(settings)
             .await
-            .context("creating an anonymous WARP device")?;
-        if device.token.is_empty() {
-            bail!("the registration response carried no token");
-        }
-        let mut enrolled = register::enrol_masque(
-            &device.id,
-            &device.token,
-            identity.spki_b64(),
-            proxy.as_ref(),
-        )
-        .await
-        .context("enrolling the MASQUE identity")?;
-        // Only the registration answer has the token. Keep it: the account
-        // calls and the key rotation need it.
-        enrolled.token = device.token;
-        if enrolled.tunnel_type != "masque" {
-            bail!(
-                "the API kept tunnel_type {:?} instead of masque",
-                enrolled.tunnel_type
-            );
-        }
-        Ok(Self {
-            device: enrolled,
-            identity,
-            proxy,
-            masque: MasqueOptions::default(),
-            relay: std::sync::OnceLock::new(),
-            relay_first: std::sync::atomic::AtomicBool::new(false),
-            leg_file: None,
-            leg_read: std::sync::Once::new(),
-            endpoint_won: std::sync::Mutex::new(None),
-            door_bad: std::sync::Mutex::new(None),
-            wireguard: None,
-            carry: None,
-        })
+            .warped()
+            .context("registering a WARP device")?;
+        Ok(Self::of(warp, proxy, None))
     }
 
     /// Build a client from an already-enrolled device and identity, for callers
     /// that persist them.
     pub fn from_parts(device: Device, identity: Identity) -> Self {
+        let settings = Self::settings_of(None, &MasqueOptions::default(), None, None);
+        Self::of(
+            pod_warp::Warp::from_parts(settings, device, identity),
+            None,
+            None,
+        )
+    }
+
+    fn of(warp: pod_warp::Warp, proxy: Option<Proxy>, leg_file: Option<PathBuf>) -> Self {
         Self {
-            device,
-            identity,
-            proxy: None,
+            warp,
+            proxy,
             masque: MasqueOptions::default(),
-            relay: std::sync::OnceLock::new(),
-            relay_first: std::sync::atomic::AtomicBool::new(false),
-            leg_file: None,
-            leg_read: std::sync::Once::new(),
-            endpoint_won: std::sync::Mutex::new(None),
-            door_bad: std::sync::Mutex::new(None),
             wireguard: None,
             carry: None,
+            leg_file,
         }
+    }
+
+    /// The settings of `pod-warp` for podnet's options.
+    fn settings_of(
+        proxy: Option<&Proxy>,
+        masque: &MasqueOptions,
+        wireguard: Option<&wg::Peer>,
+        carry: Option<&wg::Peer>,
+    ) -> pod_warp::Settings {
+        let dial: Arc<dyn Dial> = Arc::new(MasqueDial(crate::egress::egress(proxy.cloned())));
+        let mut way = pod_warp::Way::new(dial, provider());
+        way.sni = masque.sni.clone();
+        way.h3 = masque.h3;
+        if masque.h3 || wireguard.is_some() {
+            way.udp = Some(Arc::new(pod_warp::SystemUdp));
+        }
+        let mut settings = pod_warp::Settings::new(api_or_default(proxy), way);
+        // Issue 157: HTTP/3 has no relay (the relay carries TCP).
+        if !masque.no_relay && !masque.h3 && wireguard.is_none() {
+            settings.relay = masque_relay().as_ref().map(relay_leg);
+        }
+        settings.wireguard = wireguard.cloned();
+        settings.carry = carry.cloned();
+        if let Some(door) = masque.endpoint {
+            settings.door = pod_warp::Door::Pinned(Target::Addr(door));
+        }
+        // A proxy reaches both families for podnet.
+        settings.routes = pod_warp::Routes {
+            v4: proxy.is_some() || crate::resolve::has_default_route(false),
+            v6: proxy.is_some() || crate::resolve::has_default_route(true),
+        };
+        settings.hints = hints::current();
+        settings.report = report();
+        settings.net = ip::net_settings();
+        settings
+    }
+
+    /// The same device with the options of now; the door that worked and
+    /// the leg of the files go with it.
+    fn rebuild(self) -> Self {
+        let settings = Self::settings_of(
+            self.proxy.as_ref(),
+            &self.masque,
+            self.wireguard.as_ref(),
+            self.carry.as_ref(),
+        );
+        let won = self.warp.won_door();
+        let relay_first = match (&settings.relay, &self.leg_file) {
+            (Some(relay), Some(path)) => std::fs::read_to_string(path)
+                .map(|text| pod_warp::leg::relay_first_from(&text, unix_now(), &relay.name))
+                .unwrap_or(false),
+            _ => false,
+        };
+        if relay_first {
+            tracing::debug!("the last run used the relay; it goes first");
+        }
+        let device = self.warp.device().clone();
+        let identity = self.warp.identity().clone();
+        let warp = pod_warp::Warp::from_parts(settings, device, identity)
+            .with_won_door(won)
+            .with_relay_first(relay_first);
+        Self { warp, ..self }
     }
 
     /// How to reach the MASQUE front door: the relay fallback and the
     /// overrides of the endpoint and the TLS name.
     pub fn with_masque(mut self, masque: MasqueOptions) -> Self {
         self.masque = masque;
-        self
+        self.rebuild()
     }
 
     /// Carry the tunnel on WireGuard with `peer` (issue 152), in place of
     /// MASQUE.
     pub fn with_wireguard(mut self, peer: Option<wg::Peer>) -> Self {
         self.wireguard = peer;
-        self
-    }
-
-    /// The L4 door of `warp proxy --l4` (issue 140): the front door of the
-    /// device (or `--masque-endpoint`), the TLS name `sni`, the client
-    /// certificate and the pinned key.
-    pub fn l4(&self, sni: &str) -> Result<l4::L4> {
-        let (endpoint, pinned) = Self::endpoint_and_pin(&self.device)?;
-        let endpoint = self.masque.endpoint.unwrap_or(endpoint);
-        let tls = session::tls_config_alpn(&self.identity, pinned, h3::ALPN)?;
-        Ok(l4::L4::new(endpoint, tls, sni))
+        self.rebuild()
     }
 
     /// Carry a second WireGuard device inside the session (issues 154 and
     /// 155).
     pub fn with_carry(mut self, peer: Option<wg::Peer>) -> Self {
         self.carry = peer;
-        self
+        self.rebuild()
+    }
+
+    /// Use this proxy for the registration calls and the MASQUE dial, or none
+    /// for a direct connection.
+    pub fn with_proxy(mut self, proxy: Option<Proxy>) -> Self {
+        self.proxy = proxy;
+        self.rebuild()
+    }
+
+    /// The L4 door of `warp proxy --l4` (issue 140): the front door of the
+    /// device (or `--masque-endpoint`), the TLS name `sni`, the client
+    /// certificate and the pinned key.
+    pub fn l4(&self, sni: &str) -> Result<pod_warp::L4> {
+        let mut masque = self.masque.clone();
+        masque.h3 = true;
+        let settings = Self::settings_of(self.proxy.as_ref(), &masque, None, None);
+        let warp = pod_warp::Warp::from_parts(
+            settings,
+            self.warp.device().clone(),
+            self.warp.identity().clone(),
+        );
+        let mut door = warp.l4().warped()?.with_sni(sni);
+        if let Some(value) = std::env::var(l4::FORM_VARIABLE)
+            .ok()
+            .filter(|v| !v.is_empty())
+        {
+            door = door.with_form(pod_warp::l4::Form::parse(&value).warped()?);
+        }
+        Ok(door)
     }
 
     /// True when the tunnel goes on WireGuard.
@@ -295,199 +473,99 @@ impl WarpClient {
         self.wireguard.is_some()
     }
 
-    /// The relay of the fallback: the relay of `--transport relay` when it
-    /// is set, else the relay of `PODNET_RELAY` or the default relay. None
-    /// with `--no-relay`.
-    fn relay(&self) -> Option<std::sync::Arc<crate::ws_relay::Relay>> {
-        if self.masque.no_relay {
-            return None;
-        }
-        self.relay
-            .get_or_init(|| match crate::ws_relay::Relay::from_env(None) {
-                Ok(relay) => Some(std::sync::Arc::new(relay)),
-                Err(err) => {
-                    tracing::warn!(error = %format!("{err:#}"), "no WebSocket relay for MASQUE");
-                    None
-                }
-            })
-            .clone()
-    }
-
-    /// Use this proxy for the registration calls and the MASQUE dial, or none
-    /// for a direct connection.
-    pub fn with_proxy(mut self, proxy: Option<Proxy>) -> Self {
-        self.proxy = proxy;
-        self
-    }
-
     /// The proxy in use, if any.
     pub fn proxy(&self) -> Option<&Proxy> {
         self.proxy.as_ref()
     }
 
-    /// Write the device and the identity to one JSON file, so a later run can
-    /// resume the tunnel without registering a second device.
-    ///
-    /// The file holds the private key. It is written with mode 0600 and the
-    /// caller owns where it goes.
-    pub fn save(&self, path: &std::path::Path) -> Result<()> {
-        enrol::save(path, &self.device, &self.identity)
+    /// Write the device and the identity to one JSON file (mode 0600), so a
+    /// later run can resume the tunnel without registering a second device.
+    pub fn save(&self, path: &Path) -> Result<()> {
+        self.warp.save(path).warped()
     }
 
     /// Read a client written by [`WarpClient::save`]. A record with the
     /// state `created` (a device with no MASQUE key) is refused.
-    pub fn load(path: &std::path::Path) -> Result<Self> {
-        let (device, identity) = enrol::load(path)?;
-        let mut client = Self::from_parts(device, identity);
-        client.leg_file = Some(leg_file_of(path));
-        // Issue 133: the door that carried data last goes first.
+    pub fn load(path: &Path) -> Result<Self> {
+        let stored = pod_warp::store::load(&pod_warp::IdentityFile::new(path)).warped()?;
+        api(None)?;
+        let settings = Self::settings_of(None, &MasqueOptions::default(), None, None);
+        Self::of(
+            pod_warp::Warp::from_stored(settings, stored),
+            None,
+            Some(path.to_path_buf()),
+        )
+        .with_files(path)
+    }
+
+    /// The door of the door file (issue 133) and the leg of the leg file
+    /// (issue 126) of the identity file `path`.
+    fn with_files(mut self, path: &Path) -> Result<Self> {
+        self.leg_file = Some(leg_file_of(path));
         if let Ok(text) = std::fs::read_to_string(door_file_of(path)) {
-            let door = door_from(&text, unix_now(), &client.device.masque_endpoints());
-            *client
-                .endpoint_won
-                .lock()
-                .unwrap_or_else(|e| e.into_inner()) = door;
+            let doors = self.warp.device().masque_endpoints();
+            let door = pod_warp::door::door_from(&text, unix_now(), &doors);
+            self.warp = self.warp.with_won_door(door);
         }
-        Ok(client)
-    }
-
-    /// Read the leg file once: a relay that worked in the last hours goes
-    /// first (issue 126: a restart started with the direct path, which can
-    /// time out for a long time on a blocked front door).
-    fn read_leg(&self, relay: &crate::ws_relay::Relay) {
-        self.leg_read.call_once(|| {
-            let Some(path) = &self.leg_file else { return };
-            let Ok(text) = std::fs::read_to_string(path) else {
-                return;
-            };
-            if relay_first_from(&text, unix_now(), &relay.url()) {
-                tracing::debug!("the last run used the relay; it goes first");
-                self.relay_first
-                    .store(true, std::sync::atomic::Ordering::SeqCst);
-            }
-        });
-    }
-
-    /// Keep the door that carried data (issue 133). A failure to write is
-    /// not an error; the file is written only when the door changed.
-    fn write_door(&self) {
-        let Some(leg) = &self.leg_file else { return };
-        let Some(door) = *self.endpoint_won.lock().unwrap_or_else(|e| e.into_inner()) else {
-            return;
-        };
-        let path = leg.with_file_name(
-            leg.file_name()
-                .map(|n| n.to_string_lossy().replace("-leg.json", "-door.json"))
-                .unwrap_or_else(|| "warp-door.json".into()),
-        );
-        let now = unix_now();
-        let old = std::fs::read_to_string(&path).ok();
-        if old.and_then(|t| door_from(&t, now, &[door])).is_some() {
-            return;
-        }
-        let text =
-            serde_json::json!({"schema": 1, "door": door.to_string(), "at": now}).to_string();
-        if let Err(err) = write_private(&path, text.as_bytes()) {
-            tracing::debug!(error = %err, path = %path.display(), "the door file is not written");
-        }
-    }
-
-    /// Keep the leg that worked. A failure to write is not an error.
-    fn write_leg(&self, leg: &str, relay: &crate::ws_relay::Relay) {
-        let Some(path) = &self.leg_file else { return };
-        let text =
-            serde_json::json!({"leg": leg, "at": unix_now(), "relay": relay.url()}).to_string();
-        if let Err(err) = write_private(path, text.as_bytes()) {
-            tracing::debug!(error = %err, path = %path.display(), "the leg file is not written");
-        }
+        Ok(self.rebuild())
     }
 
     /// Register if `path` holds nothing yet, otherwise resume what it holds.
     ///
-    /// This is the call a daemon wants: one device per installation, not one
-    /// per start.
-    ///
-    /// A file that cannot be read, or that other users can read, is an
-    /// error: podnet does not write over it.
-    ///
     /// The call holds the lock `PATH.lock` and saves the device after the
-    /// first remote call (T-241): see `src/warp/enrol.rs`.
-    pub async fn register_or_load(path: &std::path::Path) -> Result<Self> {
-        enrol::register_or_load(path, enrol::LOCK_WAIT).await
+    /// first remote call (T-241). A file that cannot be read, or that other
+    /// users can read, is an error: podnet does not write over it.
+    pub async fn register_or_load(path: &Path) -> Result<Self> {
+        api(None)?;
+        let settings = Self::settings_of(None, &MasqueOptions::default(), None, None);
+        let warp = pod_warp::Warp::register_or_load(settings, &pod_warp::IdentityFile::new(path))
+            .await
+            .warped()?;
+        Self::of(warp, None, None).with_files(path)
     }
 
     /// The default place for the saved identity: `warp.json` in the state
     /// directory of [`crate::state`], or `None` with `PODNET_STATE_DIR=none`.
-    pub fn default_identity_path() -> Result<Option<std::path::PathBuf>> {
+    pub fn default_identity_path() -> Result<Option<PathBuf>> {
         Ok(crate::state::state_dir()?.map(|dir| dir.join("warp.json")))
     }
 
     /// Read the device record from the API again. Keep the token, which only
     /// the registration answer has.
     pub async fn refresh(&mut self) -> Result<()> {
-        let token = self.device.token.clone();
-        let mut device = register::get_device(&self.device.id, &token, self.proxy.as_ref()).await?;
-        device.token = token;
-        self.device = device;
-        Ok(())
+        self.warp.refresh().await.warped()
     }
 
     /// The account record: type, WARP+ state and quota. The license key is
-    /// hidden (`register::redact_account`).
+    /// hidden.
     pub async fn account(&self) -> Result<serde_json::Value> {
-        let mut account =
-            register::get_account(&self.device.id, &self.device.token, self.proxy.as_ref()).await?;
-        register::redact_account(&mut account);
-        Ok(account)
+        self.warp.account().await.warped()
     }
 
     /// Attach a WARP+ license key, then read the device again.
     pub async fn set_license(&mut self, license: &str) -> Result<serde_json::Value> {
-        let account = register::set_license(
-            &self.device.id,
-            &self.device.token,
-            license,
-            self.proxy.as_ref(),
-        )
-        .await?;
-        self.refresh().await?;
-        let mut account = account;
-        register::redact_account(&mut account);
-        Ok(account)
+        self.warp.set_license(license).await.warped()
     }
 
     /// Make a new MASQUE key and enrol it. The old key stops working.
     pub async fn rotate_key(&mut self) -> Result<()> {
-        let identity = Identity::generate().context("generating the MASQUE identity")?;
-        let token = self.device.token.clone();
-        let mut device = register::enrol_masque(
-            &self.device.id,
-            &token,
-            identity.spki_b64(),
-            self.proxy.as_ref(),
-        )
-        .await
-        .context("enrolling the new MASQUE identity")?;
-        device.token = token;
-        self.device = device;
-        self.identity = identity;
-        Ok(())
+        self.warp.rotate_key().await.warped()
     }
 
     /// Remove the device from the WARP service.
     pub async fn delete(&self) -> Result<()> {
-        register::delete_device(&self.device.id, &self.device.token, self.proxy.as_ref()).await
+        self.warp.delete().await.warped()
     }
 
     /// The device record, including the assigned addresses and the pinned peer
     /// key.
     pub fn device(&self) -> &Device {
-        &self.device
+        self.warp.device()
     }
 
     /// The identity presented to the front door.
     pub fn identity(&self) -> &Identity {
-        &self.identity
+        self.warp.identity()
     }
 
     /// The address the tunnel assigned to us.
@@ -499,253 +577,130 @@ impl WarpClient {
                 .or(peer.v6.map(std::net::IpAddr::V6))
                 .context("the WireGuard device has no address");
         }
-        self.device
+        let device = self.device();
+        device
             .ipv4()
             .map(std::net::IpAddr::V4)
-            .or_else(|| self.device.ipv6().map(std::net::IpAddr::V6))
+            .or_else(|| device.ipv6().map(std::net::IpAddr::V6))
             .context("the tunnel assigned no address")
     }
 
-    /// Open the MASQUE session and start the userspace stack on top of it.
+    /// Open the MASQUE session and start the userspace stack on top of it
+    /// (with `--carry`, the stack of the carried device).
     pub async fn connect(&self) -> Result<WarpStack> {
-        let outer = self.connect_outer().await?;
-        match &self.carry {
-            None => Ok(outer),
-            Some(peer) => self.connect_carried(outer, peer).await,
-        }
+        let net = self.warp.connect().await.warped()?;
+        self.keep_files();
+        Ok(net)
     }
 
-    /// The stack of a second WireGuard device inside the stack `outer`
-    /// (issues 154 and 155). Its MTU leaves room for WireGuard and the
-    /// headers of the outer packet; it has IPv4 only (IPv6 needs an MTU of
-    /// 1280).
-    async fn connect_carried(&self, outer: WarpStack, peer: &wg::Peer) -> Result<WarpStack> {
-        let session = MasqueSession::connect_wg_inside(peer, &outer)
-            .await
-            .context("the carried WireGuard tunnel")?;
-        let local = peer
-            .v4
-            .map(std::net::IpAddr::V4)
-            .context("the carried device has no IPv4 address")?;
-        let mut config = StackConfig::new(local);
-        config.mtu = CARRY_MTU;
-        let (tx, rx) = session.split();
-        let inner = WarpStack::start(tx, rx, config)?;
-        // The outer stack lives as long as the inner one.
-        let watch = inner.clone();
-        tokio::spawn(async move {
-            while !watch.is_closed() {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            }
-            drop(outer);
-        });
-        if std::env::var_os(proxy::NO_CHECK_VARIABLE).is_none_or(|v| v.is_empty()) {
-            let took = proxy::check_data_path(&inner, true)
-                .await
-                .context("the carried tunnel carries no packet")?;
-            tracing::info!(
-                ms = took.as_millis() as u64,
-                "a packet crossed the carried WireGuard tunnel"
+    /// Keep the door that carried data (issue 133) and the leg that changed
+    /// (issue 126). A failure to write is not an error.
+    fn keep_files(&self) {
+        let Some(leg_path) = &self.leg_file else {
+            return;
+        };
+        let now = unix_now();
+        if let Some(door) = self.warp.won_door() {
+            let path = leg_path.with_file_name(
+                leg_path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().replace("-leg.json", "-door.json"))
+                    .unwrap_or_else(|| "warp-door.json".into()),
             );
-        }
-        crate::decisions::count("masque", "carry");
-        Ok(inner)
-    }
-
-    /// The session of this client and the stack on it.
-    async fn connect_outer(&self) -> Result<WarpStack> {
-        let session = self.open_session().await?;
-        let local = self.local_address()?;
-        let renew = session.relay_budget();
-        let (tx, rx) = session.split();
-        let mut config = StackConfig::new(local).with_ipv6(match &self.wireguard {
-            Some(peer) => peer.v6,
-            None => self.device.ipv6(),
-        });
-        config.renew = renew;
-        let stack = WarpStack::start(tx, rx, config)?;
-        // Issue 120: the session is up when a packet crossed it.
-        if std::env::var_os(proxy::NO_CHECK_VARIABLE).is_some_and(|v| !v.is_empty()) {
-            tracing::debug!(
-                "{} is set: no check of the data path",
-                proxy::NO_CHECK_VARIABLE
-            );
-        } else {
-            let took = match proxy::check_data_path(&stack, local.is_ipv4()).await {
-                Ok(took) => took,
-                Err(err) => {
-                    // Issue 133: the next session tries the other door
-                    // first. Before, the door that answered the handshake
-                    // and carried nothing stayed first.
-                    let mut won = self.endpoint_won.lock().unwrap_or_else(|e| e.into_inner());
-                    *self.door_bad.lock().unwrap_or_else(|e| e.into_inner()) = won.take();
-                    return Err(err);
+            let old = std::fs::read_to_string(&path).ok();
+            if old
+                .and_then(|t| pod_warp::door::door_from(&t, now, &[door]))
+                .is_none()
+            {
+                let text = pod_warp::door::door_text(door, now);
+                if let Err(err) = write_private(&path, text.as_bytes()) {
+                    tracing::debug!(error = %err, path = %path.display(), "the door file is not written");
                 }
-            };
-            tracing::info!(
-                ms = took.as_millis() as u64,
-                "a packet crossed the MASQUE session"
-            );
-            self.write_door();
+            }
         }
-        Ok(stack)
+        if let (Some(leg), Some(relay)) = (
+            self.warp.take_leg_change(),
+            self.warp.settings().relay.as_ref(),
+        ) {
+            let text = pod_warp::leg::leg_text(leg, now, &relay.name);
+            if let Err(err) = write_private(leg_path, text.as_bytes()) {
+                tracing::debug!(error = %err, path = %leg_path.display(), "the leg file is not written");
+            }
+        }
     }
 
     /// The address of the front door of the last session: the override of
     /// `--masque-endpoint`, else the address that worked, else the first of
     /// the device record (the IPv6-only kit, 0001).
-    pub fn endpoint_in_use(&self) -> Option<std::net::SocketAddr> {
-        self.masque
-            .endpoint
-            .or(*self.endpoint_won.lock().unwrap_or_else(|e| e.into_inner()))
-            .or_else(|| self.device.masque_endpoint())
+    pub fn endpoint_in_use(&self) -> Option<SocketAddr> {
+        match self.warp.endpoint_in_use()? {
+            Target::Addr(addr) => Some(addr),
+            Target::Name { .. } => None,
+        }
     }
 
     /// Open the session without the userspace stack, for callers that only want
     /// the raw packet pipe.
     pub async fn connect_raw(&self) -> Result<MasqueSession> {
         if self.carry.is_some() {
-            bail!(
+            anyhow::bail!(
                 "--carry is for the userspace stack (warp proxy, run, nc, probe), not for warp tun"
             );
         }
-        self.open_session().await
+        let session = self.warp.open_session().await.warped()?;
+        self.keep_files();
+        Ok(session)
     }
 
-    /// The endpoint and the pinned key of a device record.
-    fn endpoint_and_pin(device: &Device) -> Result<(std::net::SocketAddr, Vec<u8>)> {
-        let endpoint = device
-            .masque_endpoint()
-            .context("the device has no MASQUE endpoint")?;
-        let pinned = device
-            .peer_public_key_pem()
-            .context("the device has no peer key to pin; podnet does not connect without one")
-            .and_then(identity::spki_from_pem)
-            .context("parsing the pinned peer key")?;
-        Ok((endpoint, pinned))
+    /// Open the stack, and keep it open: see [`Live`]. Each new session
+    /// keeps the door file and the leg file.
+    pub async fn connect_live(self: Arc<Self>) -> Result<Arc<Live<WarpStack>>> {
+        let first = self.connect().await?;
+        let client = self.clone();
+        let connect: pod_warp::live::Connect<WarpStack> = Box::new(move || {
+            let client = client.clone();
+            Box::pin(async move {
+                let net = client.warp.connect().await?;
+                client.keep_files();
+                Ok(net)
+            })
+        });
+        Ok(live::start(first, connect))
     }
 
-    /// Open the MASQUE session. When the front door shows a key that is not
-    /// the pinned key (live run 41272909372, on a new device), read the
-    /// device record again and try with its key and endpoint, then once
-    /// more after 1 s (a new connection may reach another server). A key
-    /// that the API did not give is never accepted.
-    /// Open a session: direct (through the proxy of the egress), and when
-    /// that fails, through the WebSocket relay (issue 76). The path that
-    /// worked last goes first.
-    async fn open_session(&self) -> Result<MasqueSession> {
-        use std::sync::atomic::Ordering;
-        // Issue 152: WireGuard on UDP, with no relay and no proxy.
-        if let Some(peer) = &self.wireguard {
-            let session = MasqueSession::connect_wg(peer).await?;
-            crate::decisions::count("masque", "wireguard");
-            return Ok(session);
-        }
-        // Issue 157: HTTP/3 has no relay (the relay carries TCP).
-        let relay = if self.masque.h3 { None } else { self.relay() };
-        let Some(relay) = relay else {
-            let session = self.open_on(None).await?;
-            crate::decisions::count("masque", "no_relay");
-            return Ok(session);
-        };
-        self.read_leg(&relay);
-        // The direct path goes first, each time; the relay starts after a
-        // delay, and the first session that opens wins. A host where the
-        // direct path works again leaves the relay (before, a relay that
-        // worked once went first, also from the leg file, and the direct
-        // path was not tried again). The delay is short when the relay
-        // worked last.
-        let relay_first = self.relay_first.load(Ordering::SeqCst);
-        let delay = if relay_first {
-            RELAY_DELAY_KNOWN
-        } else {
-            RELAY_DELAY
-        };
-        let direct = self.open_on(None);
-        let through = async {
-            tokio::time::sleep(delay).await;
-            self.open_on(Some(&relay)).await
-        };
-        tokio::pin!(direct);
-        tokio::pin!(through);
-        let mut direct_err: Option<anyhow::Error> = None;
-        let mut relay_err: Option<anyhow::Error> = None;
-        while direct_err.is_none() || relay_err.is_none() {
-            tokio::select! {
-                result = &mut direct, if direct_err.is_none() => match result {
-                    Ok(session) => {
-                        crate::decisions::count("masque", "direct");
-                        if relay_first {
-                            self.relay_first.store(false, Ordering::SeqCst);
-                            self.write_leg("direct", &relay);
-                        }
-                        return Ok(session);
-                    }
-                    Err(err) => {
-                        tracing::warn!(
-                            error = %format!("{err:#}"),
-                            relay = %relay.url(),
-                            "the direct MASQUE path failed; the WebSocket relay is tried (--no-relay turns this off)"
-                        );
-                        direct_err = Some(err);
-                    }
-                },
-                result = &mut through, if relay_err.is_none() => match result {
-                    Ok(session) => {
-                        tracing::info!(relay = %relay.url(), "MASQUE goes through the WebSocket relay");
-                        crate::decisions::count("masque", if relay_first { "relay_first" } else { "relay" });
-                        if !relay_first {
-                            self.relay_first.store(true, Ordering::SeqCst);
-                            self.write_leg("relay", &relay);
-                        }
-                        return Ok(session);
-                    }
-                    Err(err) => relay_err = Some(err),
-                },
-            }
-        }
-        let (Some(direct), Some(through)) = (direct_err, relay_err) else {
-            unreachable!("the loop ends when both failed");
-        };
-        Err(direct.context(format!(
-            "and through the relay {}: {through:#}",
-            relay.url()
-        )))
-    }
-
-    /// Open a session on one path; a key that is not the pinned key reads
-    /// the device record again (the front door changed its key).
     /// Measure each of `candidates` and the front doors of the device
     /// record (issue 139), at most 8 at the same time. The result is in
     /// the order of the total time; a failure goes last.
     pub async fn scan(
         &self,
-        candidates: &[std::net::SocketAddr],
+        candidates: &[SocketAddr],
         timeout: std::time::Duration,
-    ) -> Result<Vec<(std::net::SocketAddr, Result<session::DoorTimes>)>> {
+    ) -> Result<Vec<(SocketAddr, Result<session::DoorTimes>)>> {
         use futures::StreamExt as _;
-        let (_, pinned) = Self::endpoint_and_pin(&self.device)?;
-        let mut all: Vec<std::net::SocketAddr> = Vec::new();
+        let pinned = self
+            .device()
+            .peer_public_key_pem()
+            .context("the device has no peer key to pin; podnet does not connect without one")
+            .and_then(|pem| pod_warp::identity::spki_from_pem(pem).warped())
+            .context("parsing the pinned peer key")?;
+        let mut all: Vec<SocketAddr> = Vec::new();
         for a in candidates
             .iter()
             .copied()
-            .chain(self.device.masque_endpoints())
+            .chain(self.device().masque_endpoints())
         {
             if !all.contains(&a) {
                 all.push(a);
             }
         }
-        let dial = session::Dial {
-            proxy: self.proxy.as_ref(),
-            relay: None,
-            sni: self.masque.sni.as_deref(),
-            h3: false,
-        };
+        let sni = self.masque.sni.as_deref();
+        let proxy = self.proxy.as_ref();
+        let identity = self.identity();
         let mut out: Vec<_> = futures::stream::iter(all)
             .map(|a| {
                 let pinned = pinned.clone();
                 async move {
-                    let r = session::probe_door(a, &self.identity, pinned, dial, timeout).await;
+                    let r = session::probe_door(a, identity, pinned, proxy, sni, timeout).await;
                     (a, r)
                 }
             })
@@ -758,245 +713,64 @@ impl WarpClient {
         });
         Ok(out)
     }
-
-    async fn open_on(&self, relay: Option<&crate::ws_relay::Relay>) -> Result<MasqueSession> {
-        let dial = session::Dial {
-            proxy: self.proxy.as_ref(),
-            relay,
-            sni: self.masque.sni.as_deref(),
-            h3: self.masque.h3,
-        };
-        let (endpoint, pinned) = Self::endpoint_and_pin(&self.device)?;
-        // Issue 124: the IPv4 and the IPv6 address of the front door, the
-        // one that worked last first. An override is the only one.
-        let candidates = match self.masque.endpoint {
-            Some(one) => vec![one],
-            None => {
-                let won = *self.endpoint_won.lock().unwrap_or_else(|e| e.into_inner());
-                let bad = *self.door_bad.lock().unwrap_or_else(|e| e.into_inner());
-                let ipv6 = relay.is_some()
-                    || self.proxy.is_some()
-                    || crate::resolve::has_default_route(true);
-                let v4_route = relay.is_some()
-                    || self.proxy.is_some()
-                    || crate::resolve::has_default_route(false);
-                let order =
-                    endpoint_order(self.device.masque_endpoints(), won, bad, ipv6, v4_route);
-                if order.is_empty() {
-                    vec![endpoint]
-                } else {
-                    order
-                }
-            }
-        };
-        let mut failures = Vec::new();
-        let mut mismatch = None;
-        for (i, endpoint) in candidates.iter().enumerate() {
-            match MasqueSession::connect(*endpoint, &self.identity, pinned.clone(), dial).await {
-                Ok(session) => {
-                    *self.endpoint_won.lock().unwrap_or_else(|e| e.into_inner()) = Some(*endpoint);
-                    return Ok(session);
-                }
-                Err(err) if format!("{err:#}").contains(session::PIN_MISMATCH) => {
-                    mismatch = Some(err);
-                    break;
-                }
-                Err(err) => {
-                    if i + 1 < candidates.len() {
-                        tracing::warn!(error = %format!("{err:#}"), "the front door {endpoint} failed; trying {}", candidates[i + 1]);
-                    }
-                    failures.push(err);
-                }
-            }
-        }
-        let Some(err) = mismatch else {
-            let mut errs = failures.into_iter();
-            let first = errs
-                .next()
-                .unwrap_or_else(|| anyhow::anyhow!("no front door address"));
-            return Err(errs.fold(first, |acc, e| {
-                acc.context(format!(
-                    "the other address of the front door failed too ({e:#})"
-                ))
-            }));
-        };
-        tracing::warn!(error = %format!("{err:#}"), "the MASQUE key is not the pinned key; reading the device record again");
-        let fresh = register::get_device(&self.device.id, &self.device.token, self.proxy.as_ref())
-            .await
-            .context("reading the device record again after a MASQUE key mismatch")?;
-        let (endpoint, pinned) = Self::endpoint_and_pin(&fresh)?;
-        let endpoint = self.masque.endpoint.unwrap_or(endpoint);
-        for attempt in 0..2 {
-            if attempt > 0 {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            }
-            match MasqueSession::connect(endpoint, &self.identity, pinned.clone(), dial).await {
-                Ok(session) => return Ok(session),
-                Err(err) if attempt == 0 && format!("{err:#}").contains(session::PIN_MISMATCH) => {
-                    tracing::warn!("the MASQUE key is still not the pinned key; trying once more");
-                }
-                Err(err) => return Err(err),
-            }
-        }
-        unreachable!("the loop returns")
-    }
 }
 
-/// Write `bytes` to `path` with mode 0600: to a new file beside it, then a
-/// rename. No other user can read the file at any time, and a reader never
-/// sees half a file.
-pub(crate) fn write_private(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
-    use std::io::Write;
-    use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
-    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-        std::fs::DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(parent)?;
-    }
-    let name = path
-        .file_name()
-        .ok_or_else(|| std::io::Error::other("the path has no file name"))?;
-    let mut tmp_name = std::ffi::OsString::from(".");
-    tmp_name.push(name);
-    tmp_name.push(format!(".{}.tmp", std::process::id()));
-    let tmp = path.with_file_name(tmp_name);
-    let result = (|| {
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(0o600)
-            .open(&tmp)?;
-        file.write_all(bytes)?;
-        file.sync_all()?;
-        std::fs::rename(&tmp, path)
-    })();
-    if result.is_err() {
-        let _ = std::fs::remove_file(&tmp);
-    }
-    result
-}
+/// Write `bytes` to `path` with mode 0600 (`pod-warp`'s private file).
+pub(crate) use pod_warp::files::write_private;
 
 /// `write_private` for the commands of the binary.
-pub fn write_private_file(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+pub fn write_private_file(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     write_private(path, bytes)
 }
 
+/// Refuse `path` when its owner is another user, or when its group or other
+/// users may read or write it.
+pub(crate) fn check_private(path: &Path) -> Result<()> {
+    pod_warp::files::check_private(path, pod_warp::Foreign::Refuse)
+        .map(drop)
+        .warped()
+}
+
 #[cfg(test)]
-mod private_file_tests {
+mod tests {
     use super::*;
 
-    mod foreign;
-
-    // Issue 133: the door file is used when it is recent and names a door
-    // of the device.
     #[test]
-    fn the_door_file() {
-        let v4: std::net::SocketAddr = "162.159.198.2:443".parse().unwrap();
-        let v6: std::net::SocketAddr = "[2606:4700:103::2]:443".parse().unwrap();
-        let doc = |door: &str, at: u64, schema: u64| {
-            serde_json::json!({"schema": schema, "door": door, "at": at}).to_string()
-        };
-        let now = 1_800_000_000;
-        let doors = [v4, v6];
+    fn the_files_beside_an_identity_file() {
         assert_eq!(
-            door_from(&doc("[2606:4700:103::2]:443", now - 60, 1), now, &doors),
-            Some(v6)
+            door_file_of(Path::new("/s/warp.json")),
+            Path::new("/s/warp-door.json")
         );
         assert_eq!(
-            door_from(&doc("162.159.198.2:443", now - 8 * 86400, 1), now, &doors),
-            None
-        );
-        assert_eq!(
-            door_from(&doc("192.0.2.1:443", now - 60, 1), now, &doors),
-            None
-        );
-        assert_eq!(
-            door_from(&doc("162.159.198.2:443", now - 60, 2), now, &doors),
-            None
-        );
-        assert_eq!(door_from("{", now, &doors), None);
-        assert_eq!(
-            door_file_of(std::path::Path::new("/s/warp.json")),
-            std::path::Path::new("/s/warp-door.json")
+            leg_file_of(Path::new("/s/warp.json")),
+            Path::new("/s/warp-leg.json")
         );
     }
 
-    // Issue 126: a relay that worked in the last hours goes first; an old
-    // entry, another relay or a bad file does not.
+    // The classes of `pod-warp` give podnet's exit codes.
     #[test]
-    fn the_leg_file_puts_a_recent_relay_first() {
-        let relay = "https://relay.example";
-        let doc = |leg: &str, at: u64, r: &str| {
-            serde_json::json!({"leg": leg, "at": at, "relay": r}).to_string()
-        };
-        let now = 1_800_000_000;
-        assert!(relay_first_from(&doc("relay", now - 60, relay), now, relay));
-        assert!(!relay_first_from(
-            &doc("direct", now - 60, relay),
-            now,
-            relay
-        ));
-        assert!(!relay_first_from(
-            &doc("relay", now - 7 * 3600, relay),
-            now,
-            relay
-        ));
-        assert!(!relay_first_from(
-            &doc("relay", now - 60, "https://other"),
-            now,
-            relay
-        ));
-        assert!(!relay_first_from(
-            &doc("relay", now + 60, relay),
-            now,
-            relay
-        ));
-        assert!(!relay_first_from("not json", now, relay));
-        assert_eq!(
-            leg_file_of(std::path::Path::new("/s/warp.json")),
-            std::path::Path::new("/s/warp-leg.json")
-        );
+    fn a_failure_keeps_its_exit_code() {
+        use pod_core::{Class, Stage};
+        let code = |class| crate::exit::code_of(&failed(Failure::new(Stage::Warp, class, "x")));
+        assert_eq!(code(Class::Usage), crate::exit::USAGE);
+        assert_eq!(code(Class::Config), crate::exit::CONFIG);
+        assert_eq!(code(Class::Unavailable), crate::exit::UNAVAILABLE);
+        assert_eq!(code(Class::Protocol), crate::exit::UNAVAILABLE);
     }
-    use std::os::unix::fs::PermissionsExt;
 
+    // A loose identity file is refused with the remedy (issue 253: a
+    // directory is a usage error).
     #[test]
-    fn a_private_file_has_mode_0600_and_a_loose_one_is_refused() {
+    fn a_loose_identity_file_is_refused() {
+        use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("state/podnet/warp.json");
         write_private(&path, b"{}").unwrap();
-        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
-        assert_eq!(mode, 0o600);
-        let parent = std::fs::metadata(path.parent().unwrap())
-            .unwrap()
-            .permissions()
-            .mode()
-            & 0o777;
-        assert_eq!(parent, 0o700);
         check_private(&path).unwrap();
-        // A second write replaces the file and leaves no temporary file.
-        write_private(&path, b"{\"a\":1}").unwrap();
-        assert_eq!(std::fs::read(&path).unwrap(), b"{\"a\":1}");
-        assert_eq!(
-            std::fs::read_dir(path.parent().unwrap()).unwrap().count(),
-            1
-        );
-
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
-        let err = check_private(&path).unwrap_err().to_string();
-        assert!(
-            err.contains("mode 0644") && err.contains("chmod 600"),
-            "{err}"
-        );
-        let err = WarpClient::load(&path).err().unwrap().to_string();
-        assert!(err.contains("mode 0644"), "{err}");
-        // Issue 253: a directory is not a loose file.
+        let err = format!("{:#}", check_private(&path).unwrap_err());
+        assert!(err.contains("chmod 600"), "{err}");
         let err = check_private(dir.path()).unwrap_err();
-        assert_eq!(crate::exit::code_of(&err), 64);
-        let err = err.to_string();
-        assert!(
-            err.contains("is a directory") && !err.contains("chmod"),
-            "{err}"
-        );
+        assert_eq!(crate::exit::code_of(&err), crate::exit::USAGE, "{err:#}");
     }
 }

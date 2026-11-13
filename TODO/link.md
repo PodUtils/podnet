@@ -31,7 +31,7 @@ The rules of the issue that apply to this row:
 - `pod-identity` of `PodUtils/podcrates` v0.28.0 holds the key files, the Ed25519 key and its fingerprint in the OpenSSH form (`SHA256:` prefix), and an allow list (`PodUtils/podcrates:crates/pod-identity/src/allow.rs`, `Allowlist::admits`). podnet does not depend on it: `Cargo.toml` has no `pod-identity` line.
 - The OpenSSH form is not the form of the issue (base32, five groups, a checksum). No other form exists in `pod-identity`.
 - The exit codes 66, 68, 71 and 77 that the issue uses are not in the table `TABLE` of `crates/podnet-core/src/exit.rs`. The table has 0, 1, 3, 64, 69, 75, 78 and 124.
-- A key file with a wide mode is refused today for the WARP key: `src/warp/private.rs` tests `mode & 0o077 != 0`. This is the pattern for exit 71.
+- A key file with a wide mode is refused today for the WARP key: src/warp/private.rs at `9c1fc4b` tests `mode & 0o077 != 0`. This is the pattern for exit 71.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 
 ## Approach

@@ -13038,8 +13038,9 @@ handle.shutdown().await;
 ```
 
 * `podnet::Ingress` holds ordered rules for a tunnel with more than one service.
-* `podnet::warp::WarpClient` registers a device and opens a `WarpStack`, which
-  has `tcp_connect` and `udp_bind` through the tunnel.
+* `podnet::warp::WarpClient` registers a device and opens a `WarpStack` (the
+  `WarpNet` of `pod-warp`, a `pod_core::Dial`): `podnet::warp::tcp_connect`
+  and its datagrams go through the tunnel.
 * `podnet::vnet::NetStack` is the userspace IP stack.
 * `podnet::identity` keeps the Ed25519 key of an install in the state directory
   (`link-identity.key`, mode 0600) and shows its fingerprint in base32 in five

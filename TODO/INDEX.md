@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 29 open, 22 partial, 41 blocked, 239 done.**
+**331 entries: 28 open, 22 partial, 41 blocked, 240 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
-| P2 | 18 | 9 | 11 | 130 | 168 |
+| P2 | 17 | 9 | 11 | 131 | 168 |
 | P3 | 11 | 12 | 28 | 81 | 132 |
-| **All** | 29 | 22 | 41 | 239 | 331 |
+| **All** | 28 | 22 | 41 | 240 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -95,7 +95,7 @@ M8 Overlays, M9 Later.
 | [T-047](crates.md) | P2 | L | M3 | chore | done | Extract the crate `podnet-core` |
 | [T-048](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-vnet`, with the C sources of the shims |
 | [T-049](crates.md) | P2 | S | M3 | chore | done | The relay client of podnet becomes the shared crate `pod-relay` |
-| [T-050](crates.md) | P2 | M | M3 | chore | open | Move the WARP adapter to the shared crate `pod-warp` in `PodUtils/podcrates` |
+| [T-050](crates.md) | P2 | M | M3 | chore | done | Move the WARP adapter to the shared crate `pod-warp` in `PodUtils/podcrates` |
 | [T-051](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-serve`, with the library-only modules |
 | [T-052](crates.md) | P2 | M | M3 | chore | open | Move the Cloudflare adapter to the shared crate `pod-cloudflare` in `PodUtils/podcrates` |
 | [T-053](crates.md) | P2 | M | M3 | chore | open | The root package is the CLI and a facade that keeps each library path |

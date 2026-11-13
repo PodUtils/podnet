@@ -38,8 +38,8 @@ pub(crate) async fn carry_peer(args: &WarpArgs) -> Result<Option<podnet::warp::w
     let exported = podnet::warp::export::load_or_register(&path, false, None)
         .await
         .map_err(unavailable_unless_classed)?;
-    let peer = podnet::warp::wg::Peer::from_exported(&exported, args.carry_endpoint)
-        .fault(Fault::Config)?;
+    let peer =
+        podnet::warp::wg::from_exported(&exported, args.carry_endpoint).fault(Fault::Config)?;
     tracing::info!(endpoint = %peer.endpoint, "a second WireGuard device goes inside the tunnel");
     Ok(Some(peer))
 }
@@ -57,8 +57,8 @@ pub(crate) async fn wireguard_peer(args: &WarpArgs) -> Result<Option<podnet::war
     let exported = podnet::warp::export::load_or_register(&path, false, None)
         .await
         .map_err(unavailable_unless_classed)?;
-    let peer = podnet::warp::wg::Peer::from_exported(&exported, args.wireguard_endpoint)
-        .fault(Fault::Config)?;
+    let peer =
+        podnet::warp::wg::from_exported(&exported, args.wireguard_endpoint).fault(Fault::Config)?;
     tracing::info!(endpoint = %peer.endpoint, "the tunnel goes on WireGuard (UDP)");
     Ok(Some(peer))
 }

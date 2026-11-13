@@ -436,7 +436,7 @@ The router of M6 needs a door over any network.
    the door or of the command.
 3. The one door has one deadline for the request, and one cap or counter of live client tasks (GitHub #384).
    The deadline covers the first byte, the SOCKS5 request and the CONNECT head (30 s as `REQUEST_LIMIT`
-   in `src/warp/proxy.rs:586`). T-185 fixes the defect first in two doors and names the constant.
+   in src/warp/proxy.rs:586 at `9c1fc4b`). T-185 fixes the defect first in two doors and names the constant.
 
 ## Prove
 
@@ -600,7 +600,7 @@ connection, not the bandwidth.
 - `crates/podnet-netns/src/door.rs:244` and `:270` replies after the dial too.
 - The door of podnet reads a pipelined client: `crates/podnet-netns/src/socks.rs:61` (`socks5_read_request`)
   reads the greeting, the methods and the request with sequential `read_exact`.
-- `src/warp/proxy.rs` has its own dial (the replies at `src/warp/proxy.rs:657-733`). That door is frozen
+- `src/warp/proxy.rs` has its own dial (the replies at src/warp/proxy.rs:657-733 at `9c1fc4b`). That door is frozen
   for `pod-warp` (T-061, Correction). Leave it out.
 - T-061 (partial) plans one door over a dialer. It says nothing about the order of the reply. This entry
   stays apart, so that T-061 stays a refactor. The option belongs in the one door of T-061.

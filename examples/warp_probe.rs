@@ -50,10 +50,15 @@ async fn main() -> anyhow::Result<()> {
     println!("== 3. TCP through the tunnel ==");
     for (name, addr) in targets {
         let t = Instant::now();
-        match tokio::time::timeout(Duration::from_secs(12), stack.tcp_connect(addr)).await {
+        match tokio::time::timeout(
+            Duration::from_secs(12),
+            podnet::warp::tcp_connect(&stack, addr),
+        )
+        .await
+        {
             Ok(Ok(conn)) => {
                 println!("   OK   {name:<24} {addr} connected in {:?}", t.elapsed());
-                conn.close().await;
+                drop(conn);
             }
             Ok(Err(err)) => println!("   FAIL {name:<24} {addr} {err}"),
             Err(_) => println!("   TIMEOUT {name:<24} {addr}"),

@@ -357,7 +357,7 @@ the static binaries).
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -398,6 +398,13 @@ The crate of this entry has a release in `PodUtils/podcrates`, with its hand-off
 
 2026-11-05, The work goes to `pod-warp` in PodUtils/podcrates. podnet only takes the crate (T-137). Do not do it in podnet. `pod-warp` is in wave 3 and uses smoltcp 0.14 and
 Rust 1.99. A fix in `src/warp/` before the take stays a fix, and the podcrates session ports it.
+
+## Done
+
+2026-11-13: the take of podcrates `v0.37.0` with `adoption/podnet/pod-warp.patch` (T-137). `pod-warp` of
+PodUtils/podcrates holds the WARP adapter; podnet depends on it by `tag = "v0.37.0"` and keeps the WARP CLI and the glue in
+`src/warp/`. The stand-ins of T-012 are the tests of `pod-warp` in podcrates. Checks: the steps of
+`adoption/podnet/pod-warp.run` and `sh scripts/agent/check.sh` (fmt, clippy, record, size, doc, layers and test: 0).
 
 # T-051: Extract the crate `podnet-serve`, with the library-only modules
 
@@ -821,6 +828,13 @@ Done so far:
   version is named; `pod-todo` names the tag only); no hand-off for podnet. The trial of `pod-warp` in `src/warp/` passes
   at podcrates (adoption run 43347062071); the COORD issue of the freeze follows the next tag. `cargo test --workspace
   --no-fail-fast`: 82 test binaries, 0 failed. `cargo deny --locked check bans sources`: ok.
+- v0.37.0 (PodUtils/podcrates#134, #135): each `pod-*` dependency names `tag = "v0.37.0"`. The hand-off
+  `adoption/podnet/pod-warp.patch` (the entry 412 of podcrates, at 9c1fc4b) is applied with `git apply -3`: `pod-warp` holds the
+  WARP chain, and `src/warp/` is glue over it (34 files: 1163 lines in, 12437 lines out). `export.rs`, `up.rs`, `pod.rs`,
+  `ssh_config.rs`, the record of the instance, the bind of the listeners, nc's search and relay leg and the lint of the
+  rules stay in podnet. `src/warp/` holds fixes only from now on; each fix goes to podcrates as a COORD issue. The checks of
+  `adoption/podnet/pod-warp.run` pass: the record, the size and the layers, `cargo deny` bans and sources, `pod-warp` in the
+  tree, no moved file or item left, clippy of the workspace, `sh scripts/agent/check.sh` (each test), the fuzz targets.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
@@ -915,7 +929,7 @@ mint, and only the cache file changes, not the running list.
 - Correction of the issue: a stalled host costs the stagger (2 s), not the full timeout. The race starts
   the next host after the stagger and the first success wins (`crates/podnet-core/src/race.rs:1-9`). The loopback test of
   the issue must assert a connect time near 2 s before and near 0 s after, not a full timeout.
-- Precedent: the front door orders the address that worked first (`src/warp/mod.rs:911`, issue 124).
+- Precedent: the front door orders the address that worked first (src/warp/mod.rs:911 at `9c1fc4b`, issue 124).
 - `ws_relay.rs` and `relay_pool.rs` go to `pod-relay` (T-049): a new feature waits for the crate.
   T-056 and T-058 plan the dialer combinators; T-097 plans router health.
 
@@ -974,7 +988,7 @@ cuts streams with no replacement. A larger cap wastes sessions.
 ## Premise
 
 - Read: constants at `ws_relay.rs:49-52`. `RelayBudget::meter` applies them (`:66`) and `meter_with`
-  takes values (`:70`). Other users: `src/warp/session.rs:413` (through `meter`), `src/edge_h2.rs:409`
+  takes values (`:70`). Other users: src/warp/session.rs:413 at `9c1fc4b` (through `meter`), `src/edge_h2.rs:409`
   and `:644` (direct, outside `RelayBudget`). `parse_pool` reads only `pool[].host`
   (`relay_pool.rs:83-100`). `CachedPool` has no limits (`:121-129`).
 - Measured on 2026-11-09: `https://tcp.ssh.relay.ajam.dev/relays.json` already has a `limits` object

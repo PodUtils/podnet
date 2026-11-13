@@ -74,14 +74,18 @@ pub fn load(path: &Path) -> Result<Exported> {
 /// The exported device of `path`; a new one when there is none or `new`.
 pub async fn load_or_register(path: &Path, new: bool, proxy: Option<&Proxy>) -> Result<Exported> {
     // T-241: one registration at a time, and the file is writable first.
-    let _held = super::enrol::lock(path, super::enrol::LOCK_WAIT).await?;
+    let _held = pod_warp::files::lock(path, pod_warp::store::LOCK_WAIT)
+        .await
+        .map_err(super::failed)?;
     if crate::state::exists(path)? && !new {
         return load(path);
     }
     crate::state::check_file_writable(path)?;
     let (private_key, public_key) = keypair()?;
-    let device = register::create_device_with_key(&public_key, proxy)
+    let hints = super::hints::current();
+    let device = register::create_device_with_key(&super::api(proxy)?, &public_key, &hints)
         .await
+        .map_err(super::failed)
         .context("registering the WireGuard device")?;
     if device.config.peers.is_empty() {
         bail!("the WARP API gave no peer for the WireGuard device");
@@ -107,7 +111,13 @@ pub async fn delete(path: &Path, proxy: Option<&Proxy>) -> Result<String> {
         ));
     }
     let exported = load(path)?;
-    register::delete_device(&exported.device.id, &exported.device.token, proxy).await?;
+    register::delete_device(
+        &super::api(proxy)?,
+        &exported.device.id,
+        &exported.device.token,
+    )
+    .await
+    .map_err(super::failed)?;
     std::fs::remove_file(path).with_context(|| format!("removing {}", path.display()))?;
     Ok(exported.device.id)
 }
@@ -451,9 +461,8 @@ mod tests {
             |h: &str, v4: &str| keyed(exported(h, v4)),
             |h: &str, v4: &str, v6: &str| keyed(exported_v6(h, v4, v6)),
         );
-        let wg = |e: &Exported| {
-            crate::warp::wg::Peer::from_exported(e, None).map(|p| p.endpoint.to_string())
-        };
+        let wg =
+            |e: &Exported| crate::warp::wg::from_exported(e, None).map(|p| p.endpoint.to_string());
         let text = |e: &Exported| Config::of(e, None, 25).map(|c| c.endpoint);
         for (record, want) in [
             (exported("162.159.192.1", ""), "162.159.192.1:2408"),

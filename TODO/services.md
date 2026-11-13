@@ -939,7 +939,7 @@ TCP (T-068).
    that a control corroborates. The renewal of a WARP member fires on `Down`.
 7. Add a control probe: one extra probe for each interval, through a second member or to a second target.
    A correlated failure of all members stops the down step and the renewals. The control gates both sites
-   of `tcp_dead` (`src/warp/live.rs:279` and `:387`).
+   of `tcp_dead` (src/warp/live.rs:279 at `9c1fc4b` and :387 at `9c1fc4b`).
 8. The probe is a method of the member (`Uplink::probe`). It never re-enters the group pick (GitHub #374).
    The probe goes through its own member, and the resolver of that member resolves its name.
 9. `ProbeResult` is `Ok`, `ConnectFailed`, `WrongEgress` or `AuthExpired`. The egress check is on for WARP
@@ -1709,7 +1709,7 @@ T-098 has doors and rules with no way to ask "which member takes this flow" with
 ## Premise
 
 - `src/warp/rules.rs:30-56` (`Action`: `reject` and `block` both parse), `Table::for_name`
-  (`:122`), `Table::for_ip` (`:133`). The router rules do not exist (T-098).
+  (:122 at `9c1fc4b`), `Table::for_ip` (:133 at `9c1fc4b`). The router rules do not exist (T-098).
 
 ## Approach
 
@@ -2030,8 +2030,8 @@ rule today) when the shadowed action is `reject` and the flag that allows it is 
 - Implement from the description, not from the donor source (the donor is GPL-3.0-or-later). The donor
   removes the order dependence by a sort. The issue does not propose that: first match stays.
 - `src/warp/rules.rs:1-12` documents that the first rule that matches wins. `Table::build`
-  (`src/warp/rules.rs:100`) joins the flags and the file and compares nothing. `for_name`
-  (`src/warp/rules.rs:122-129`) takes `.find`.
+  (src/warp/rules.rs:100 at `9c1fc4b`) joins the flags and the file and compares nothing. `for_name`
+  (src/warp/rules.rs:122-129 at `9c1fc4b`) takes `.find`.
 - The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:242-262`) is the same loop;
   `domain_matches` (`crates/podnet-netns/src/rules.rs:199-206`): `NAME` matches the name only, `.NAME`
   matches the name and each name under it.

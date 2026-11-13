@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 331 entries: 29 open, 22 partial, 41 blocked, 239 done.
+`TODO/INDEX.md` holds 331 entries: 28 open, 22 partial, 41 blocked, 240 done.
 
 ## State
 
@@ -47,15 +47,15 @@ not wait for a larger one.
    - the donor review (GitHub #429 to #434): done, except #433 and #435: T-242 is partial (its WARP half waits for the take of `pod-warp`), and T-244 is blocked on `pod-cloudflare`.
 4. **M2, the splits:** T-035, T-036, T-039 (moved files: podcrates); T-044 (blocked:
    the rows left go with the takes, T-137); T-045.
-5. **M3, the crates:** T-053, then the prerelease T-054. T-050 and T-052 are the takes of `pod-warp`
-   and `pod-cloudflare` of `PodUtils/podcrates` (T-137): do not do them in podnet. The take of
-   `pod-relay` is done (v0.30.0).
-6. **M4, the adapters:** T-057, T-061 (partial: only the WARP door is left, it waits for the take of `pod-warp`, T-050).
+5. **M3, the crates:** T-053, then the prerelease T-054. T-052 is the take of `pod-cloudflare` of
+   `PodUtils/podcrates` (T-137): do not do it in podnet. The takes of `pod-relay` (v0.30.0) and `pod-warp`
+   (v0.37.0) are done.
+6. **M4, the adapters:** T-057, T-061 (partial: only the WARP door is left; `pod-warp` is taken at v0.37.0).
 7. **M6, the services:** the shared parts T-086 (partial: `pod-session` and `pod-identity` are taken; `pod-e2e` is left), T-087; the file
    server and git: done; the router T-095, T-097,
    T-099, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The triage adds
-    T-180 (the router control; partial: the rotate of a real WARP device waits for T-050); the router additions are in T-097 to T-099 (GitHub #372 to #374).
+    T-180 (the router control; partial: the rotate of a real WARP device; `pod-warp` is taken at v0.37.0); the router additions are in T-097 to T-099 (GitHub #372 to #374).
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).

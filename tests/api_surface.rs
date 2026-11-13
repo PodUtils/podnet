@@ -12,7 +12,7 @@
 
 use std::net::SocketAddr;
 
-use podnet::warp::{Identity, MasqueSession, StackConfig, WarpClient, WarpStack};
+use podnet::warp::{Identity, MasqueSession, WarpClient, WarpStack};
 use podnet::{Service, Transport, Tunnel};
 
 /// The `lib.rs` example: a quick tunnel around an HTTP origin.
@@ -45,8 +45,8 @@ async fn explicit_transport_example() -> anyhow::Result<()> {
 async fn warp_client_example() -> anyhow::Result<()> {
     let client = WarpClient::register().await?;
     let stack: WarpStack = client.connect().await?;
-    let conn = stack.tcp_connect("198.41.192.27:7844".parse()?).await?;
-    conn.close().await;
+    let conn = podnet::warp::tcp_connect(&stack, "198.41.192.27:7844".parse()?).await?;
+    drop(conn);
     Ok(())
 }
 
@@ -55,16 +55,20 @@ fn identity_example() -> anyhow::Result<()> {
     let identity = Identity::generate()?;
     let spki = identity.spki_b64().to_string();
     assert!(!spki.is_empty());
-    assert_eq!(identity.cert_chain().len(), 1);
-    let _ = StackConfig::new("172.16.0.2".parse()?);
+    assert_eq!(identity.spki_der().len(), 91);
     Ok(())
 }
 
 /// The raw session, for callers that want the packet pipe without the stack.
 async fn raw_session_example(addr: SocketAddr, pinned_spki: Vec<u8>) -> anyhow::Result<()> {
     let identity = Identity::generate()?;
+    let way = pod_warp::Way::new(
+        podnet::egress::egress(None),
+        std::sync::Arc::new(rustls::crypto::ring::default_provider()),
+    );
+    let door = pod_core::Target::Addr(addr);
     let _session: MasqueSession =
-        MasqueSession::connect(addr, &identity, pinned_spki, podnet::warp::Dial::default()).await?;
+        MasqueSession::connect(&door, &identity, pinned_spki, &way).await?;
     Ok(())
 }
 

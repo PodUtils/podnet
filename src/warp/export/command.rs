@@ -120,7 +120,7 @@ async fn check(args: &Args, path: &std::path::Path) -> Result<()> {
                 .fault(Fault::Usage)?,
         ),
     };
-    let peer = crate::warp::wg::Peer::from_exported(&exported, endpoint).fault(Fault::Config)?;
+    let peer = crate::warp::wg::from_exported(&exported, endpoint).fault(Fault::Config)?;
     let probe = crate::warp::live::DEFAULT_PROBE;
     let target = crate::warp::live::probe().map_or(probe.target, |p| p.target);
     let report = super::check::run(&peer, target, probe.limit).await;

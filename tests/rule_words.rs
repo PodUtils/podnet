@@ -20,7 +20,7 @@ fn reject_and_block_mean_the_same_in_both_rule_engines() {
     }
     // One rule text means the same in both engines.
     for spec in ["cidr:10.0.0.0/8=block", "domain:.ads.example=reject"] {
-        let warp = WarpRule::parse(spec).unwrap();
+        let warp = WarpRule::parse(spec, "-r 1").unwrap();
         let pod = Rule::parse(spec).unwrap();
         assert_eq!(warp.action, Action::Reject);
         assert!(matches!(pod.action, RuleAction::Reject));

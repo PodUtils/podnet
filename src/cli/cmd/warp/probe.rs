@@ -143,7 +143,7 @@ pub(crate) async fn run(args: WarpArgs, client: podnet::warp::WarpClient) -> Res
             // Issue 178: the summary names the failed checks.
             let mut names: Vec<String> = Vec::new();
             // Issue 115: the UDP data path: a DNS query through the tunnel.
-            match podnet::warp::proxy::check_data_path(&stack, true).await {
+            match podnet::warp::proxy::check_data_path(&stack).await {
                 Ok(took) => println!("OK          udp 1.1.1.1:53 (DNS) in {took:?}"),
                 Err(err) => {
                     failed += 1;
@@ -157,13 +157,13 @@ pub(crate) async fn run(args: WarpArgs, client: podnet::warp::WarpClient) -> Res
                     // A name is resolved by DNS through the tunnel.
                     let ip = podnet::warp::proxy::resolve(&stack, &host).await?;
                     let addr = std::net::SocketAddr::new(ip, port);
-                    let conn = stack.tcp_connect(addr).await?;
+                    let conn = podnet::warp::tcp_connect(&stack, addr).await?;
                     Ok::<_, anyhow::Error>((addr, conn))
                 };
                 match tokio::time::timeout(std::time::Duration::from_secs(12), attempt).await {
                     Ok(Ok((addr, conn))) => {
                         println!("OK          {spec} ({addr}) in {:?}", started.elapsed());
-                        conn.close().await;
+                        drop(conn);
                     }
                     Ok(Err(err)) => {
                         failed += 1;

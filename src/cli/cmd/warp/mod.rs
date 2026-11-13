@@ -53,12 +53,11 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
         podnet::warp::live::set_split(split);
     }
     // Issue 141: the name, the model and the locale of a new device.
-    podnet::warp::register::DeviceHints {
+    podnet::warp::hints::set(podnet::warp::register::DeviceHints {
         name: args.device_name.clone(),
         model: args.device_model.clone(),
         locale: args.device_locale.clone(),
-    }
-    .set()
+    })
     .fault(Fault::Usage)?;
     // These commands use the running instance of podnet warp up.
     if up::before_client(&args).await? {

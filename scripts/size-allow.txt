@@ -10,9 +10,4 @@
 2034 src/proxy.rs
 850 src/quicktunnel.rs
 1404 src/tunnel.rs
-1680 src/warp/ip.rs
-1002 src/warp/mod.rs
-1870 src/warp/proxy.rs
-855 src/warp/register.rs
-1211 src/warp/session.rs
 817 src/warp/up.rs

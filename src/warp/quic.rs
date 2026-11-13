@@ -2,10 +2,8 @@
 //!
 //! The Cloudflare edge's preferred transport is QUIC on UDP 7844. WARP carries
 //! UDP, so the only missing piece is a QUIC socket backed by the userspace
-//! stack instead of a kernel socket. pod-quic has that adapter
-//! (`pod_quic::queued::QueuedDatagrams`: a send queue with a writer task, a
-//! receive queue with a reader task, a waker for each sender of noq); this
-//! module gives it the UDP socket of the stack.
+//! stack instead of a kernel socket: the datagrams of the session
+//! (`pod_core::Datagrams` of `pod-warp`'s `WarpNet`).
 //!
 //! # Why not a kernel socket
 //!
@@ -14,38 +12,12 @@
 //! socket inside the tunnel's address space, so the adapter moves datagrams
 //! between noq and that socket and the kernel is never asked.
 
-use std::io;
-use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::{Context as _, Result};
-use pod_core::BoxFuture;
-use pod_quic::queued::{Link, QueuedDatagrams};
+use anyhow::Result;
 
-use super::ip::{UdpConn, WarpStack};
-
-/// The UDP socket of the userspace stack as a link of pod-quic.
-struct StackLink(UdpConn);
-
-impl Link for StackLink {
-    fn send_to(&self, datagram: Vec<u8>, to: SocketAddr) -> BoxFuture<'_, io::Result<()>> {
-        Box::pin(async move {
-            self.0
-                .send_to(datagram, to)
-                .await
-                .map(drop)
-                .map_err(io::Error::other)
-        })
-    }
-
-    fn recv_from(&self, max: usize) -> BoxFuture<'_, io::Result<(Vec<u8>, SocketAddr)>> {
-        Box::pin(async move { self.0.recv_from(max).await.map_err(io::Error::other) })
-    }
-
-    fn local_addr(&self) -> SocketAddr {
-        self.0.local_addr()
-    }
-}
+use super::ip::WarpStack;
+use super::Warped as _;
 
 /// Build a QUIC endpoint whose only socket is the WARP session.
 ///
@@ -53,12 +25,8 @@ impl Link for StackLink {
 /// TCP 443 inside the MASQUE session and arrive at the edge on 7844, so this
 /// host never opens a connection to 7844.
 pub async fn endpoint(stack: &WarpStack) -> Result<noq::Endpoint> {
-    let udp = stack
-        .udp_bind()
-        .await
-        .context("binding a UDP socket inside the WARP session")?;
-    let datagrams = QueuedDatagrams::new(Arc::new(StackLink(udp)));
-    let endpoint = pod_quic::over(Arc::new(datagrams), None)
+    let datagrams = pod_core::Dial::datagrams(stack).await.warped()?;
+    let endpoint = pod_quic::over(datagrams, None)
         .map_err(|err| anyhow::anyhow!("building the QUIC endpoint: {err}"))?;
     endpoint.set_default_client_config(client_config()?);
     Ok(endpoint)

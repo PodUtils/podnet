@@ -1,288 +1,22 @@
-//! Full-device mode: a TUN interface whose packets go through WARP.
-//!
-//! This mode needs `CAP_NET_ADMIN` and `/dev/net/tun`. Use `podnet warp proxy`
-//! or `podnet warp run` where these are not available.
-//!
-//! `podnet` makes the interface, sets the tunnel address and the MTU, and moves
-//! the packets between the interface and the MASQUE session. It does not
-//! change the routes. Add routes for the destinations to send through WARP.
-//! Do not send the MASQUE endpoint itself through the interface, or the
-//! session goes into its own tunnel.
+//! A TUN interface over a WARP session (`podnet warp tun`, `podnet warp
+//! run`): `pod-warp`'s TUN and its loop, with podnet's `--probe`,
+//! `--session-max-age` and `--keep-rp-filter`.
 
-#![cfg(target_os = "linux")]
+use anyhow::Result;
 
-use std::net::Ipv4Addr;
-use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
-use std::time::Duration;
+use super::MasqueSession;
+use super::Warped as _;
 
-use anyhow::{bail, Context, Result};
-use tokio::io::unix::AsyncFd;
-use tracing::{debug, info};
+pub use pod_warp::tun::{probe, Tun, TunSettings, KEEPALIVE};
 
-use super::ip::TUNNEL_MTU;
-use super::session::MasqueSession;
-
-// The ioctl number of the target, from pod-hold: powerpc puts the direction
-// at bit 29, so the x86_64 number 0x4004_54CA is wrong there.
-const TUNSETIFF: libc::c_ulong = pod_hold::abi::TUNSETIFF as libc::c_ulong;
-const IFF_TUN: libc::c_short = 0x0001;
-const IFF_NO_PI: libc::c_short = 0x1000;
-/// The interval of the HTTP/2 PING on an idle session.
-const KEEPALIVE: Duration = Duration::from_secs(15);
-
-pub mod probe;
-pub mod rp_filter;
-
-/// An open TUN interface.
-pub struct Tun {
-    fd: AsyncFd<OwnedFd>,
-    /// The interface name that the kernel gave.
-    pub name: String,
-    /// The IPv4 address of the interface, when this process gave it: the
-    /// source of the TCP probe (T-069).
-    pub address: Option<Ipv4Addr>,
-}
-
-fn ifreq(name: &str) -> Result<libc::ifreq> {
-    if name.len() >= libc::IFNAMSIZ {
-        bail!("the interface name {name:?} is too long");
-    }
-    let mut req: libc::ifreq = unsafe { std::mem::zeroed() };
-    for (slot, byte) in req.ifr_name.iter_mut().zip(name.bytes()) {
-        *slot = byte as libc::c_char;
-    }
-    Ok(req)
-}
-
-impl Tun {
-    /// A TUN that another part made: the raw pod of `podnet warp run
-    /// --backend netns-raw` (issue 79). The descriptor becomes non-blocking.
-    pub fn from_fd(fd: OwnedFd, name: &str) -> Result<Self> {
-        // SAFETY: fcntl on a descriptor that this value owns.
-        unsafe {
-            let flags = libc::fcntl(fd.as_raw_fd(), libc::F_GETFL);
-            if flags < 0 || libc::fcntl(fd.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK) < 0
-            {
-                return Err(std::io::Error::last_os_error()).context("making the TUN non-blocking");
-            }
-        }
-        Ok(Self {
-            // SAFETY: the descriptor is owned by the AsyncFd and is not
-            // closed while it is registered.
-            fd: unsafe { AsyncFd::register(fd) }
-                .map_err(std::io::Error::from)
-                .context("registering the TUN")?,
-            name: name.to_string(),
-            address: None,
-        })
-    }
-}
-
-/// `struct in6_ifreq` of linux/ipv6.h (SIOCSIFADDR on an AF_INET6 socket).
-#[repr(C)]
-struct In6Ifreq {
-    addr: libc::in6_addr,
-    prefixlen: u32,
-    ifindex: libc::c_int,
-}
-
-impl Tun {
-    /// Add the IPv6 address of the tunnel (/128) to the interface (issue
-    /// 81). A host with no IPv6 refuses the AF_INET6 socket: the error
-    /// says so, and IPv4 still works.
-    pub fn add_ipv6(&self, address: std::net::Ipv6Addr) -> Result<()> {
-        // SAFETY: a socket call; the descriptor is owned below.
-        let control =
-            unsafe { libc::socket(libc::AF_INET6, libc::SOCK_DGRAM | libc::SOCK_CLOEXEC, 0) };
-        if control < 0 {
-            return Err(std::io::Error::last_os_error())
-                .context("an AF_INET6 socket (no IPv6 on this host?)");
-        }
-        // SAFETY: a descriptor that this function opened.
-        let control = unsafe { OwnedFd::from_raw_fd(control) };
-        let mut index = ifreq(&self.name)?;
-        ioctl(
-            control.as_raw_fd(),
-            libc::SIOCGIFINDEX,
-            &mut index,
-            "SIOCGIFINDEX",
-        )?;
-        // SAFETY: SIOCGIFINDEX wrote the index in the union.
-        let ifindex = unsafe { index.ifr_ifru.ifru_ifindex };
-        let mut req = In6Ifreq {
-            addr: libc::in6_addr {
-                s6_addr: address.octets(),
-            },
-            prefixlen: 128,
-            ifindex,
-        };
-        // SAFETY: an ioctl with a live in6_ifreq of the size that the
-        // kernel reads.
-        if unsafe {
-            libc::ioctl(
-                control.as_raw_fd(),
-                libc::SIOCSIFADDR as _,
-                &mut req as *mut In6Ifreq,
-            )
-        } < 0
-        {
-            return Err(std::io::Error::last_os_error()).context("SIOCSIFADDR (IPv6)");
-        }
-        Ok(())
-    }
-}
-
-fn ioctl(fd: RawFd, request: libc::c_ulong, req: &mut libc::ifreq, what: &str) -> Result<()> {
-    if unsafe { libc::ioctl(fd, request as _, req as *mut libc::ifreq) } < 0 {
-        return Err(std::io::Error::last_os_error()).with_context(|| what.to_string());
-    }
-    Ok(())
-}
-
-impl Tun {
-    /// Make the interface `name` (for example `podnet0`), set `address/32` and
-    /// `mtu`, and bring it up.
-    pub fn create(name: &str, address: Ipv4Addr, mtu: usize) -> Result<Self> {
-        let path = c"/dev/net/tun";
-        let raw = unsafe {
-            libc::open(
-                path.as_ptr(),
-                libc::O_RDWR | libc::O_CLOEXEC | libc::O_NONBLOCK,
-            )
-        };
-        if raw < 0 {
-            return Err(std::io::Error::last_os_error()).context("opening /dev/net/tun");
-        }
-        let fd = unsafe { OwnedFd::from_raw_fd(raw) };
-        let mut req = ifreq(name)?;
-        req.ifr_ifru.ifru_flags = IFF_TUN | IFF_NO_PI;
-        ioctl(
-            fd.as_raw_fd(),
-            TUNSETIFF,
-            &mut req,
-            "TUNSETIFF (needs CAP_NET_ADMIN)",
-        )?;
-        let name = unsafe { std::ffi::CStr::from_ptr(req.ifr_name.as_ptr()) }
-            .to_string_lossy()
-            .into_owned();
-
-        // Address, MTU and flags are set on an ordinary socket.
-        let control =
-            unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM | libc::SOCK_CLOEXEC, 0) };
-        if control < 0 {
-            return Err(std::io::Error::last_os_error()).context("socket for the interface ioctls");
-        }
-        let control = unsafe { OwnedFd::from_raw_fd(control) };
-        let mut addr = ifreq(&name)?;
-        let sin = libc::sockaddr_in {
-            sin_family: libc::AF_INET as libc::sa_family_t,
-            sin_port: 0,
-            sin_addr: libc::in_addr {
-                s_addr: u32::from(address).to_be(),
-            },
-            sin_zero: [0; 8],
-        };
-        unsafe {
-            std::ptr::write(
-                &mut addr.ifr_ifru.ifru_addr as *mut libc::sockaddr as *mut libc::sockaddr_in,
-                sin,
-            );
-        }
-        ioctl(
-            control.as_raw_fd(),
-            libc::SIOCSIFADDR,
-            &mut addr,
-            "SIOCSIFADDR",
-        )?;
-        let mut mask = ifreq(&name)?;
-        let sin = libc::sockaddr_in {
-            sin_family: libc::AF_INET as libc::sa_family_t,
-            sin_port: 0,
-            sin_addr: libc::in_addr { s_addr: u32::MAX },
-            sin_zero: [0; 8],
-        };
-        unsafe {
-            std::ptr::write(
-                &mut mask.ifr_ifru.ifru_netmask as *mut libc::sockaddr as *mut libc::sockaddr_in,
-                sin,
-            );
-        }
-        ioctl(
-            control.as_raw_fd(),
-            libc::SIOCSIFNETMASK,
-            &mut mask,
-            "SIOCSIFNETMASK",
-        )?;
-        let mut size = ifreq(&name)?;
-        size.ifr_ifru.ifru_mtu = mtu as libc::c_int;
-        ioctl(
-            control.as_raw_fd(),
-            libc::SIOCSIFMTU,
-            &mut size,
-            "SIOCSIFMTU",
-        )?;
-        let mut flags = ifreq(&name)?;
-        ioctl(
-            control.as_raw_fd(),
-            libc::SIOCGIFFLAGS,
-            &mut flags,
-            "SIOCGIFFLAGS",
-        )?;
-        unsafe {
-            flags.ifr_ifru.ifru_flags |= (libc::IFF_UP | libc::IFF_RUNNING) as libc::c_short;
-        }
-        ioctl(
-            control.as_raw_fd(),
-            libc::SIOCSIFFLAGS,
-            &mut flags,
-            "SIOCSIFFLAGS",
-        )?;
-
-        // SAFETY: `fd` is an OwnedFd: it holds the TUN descriptor open and
-        // returns it from as_raw_fd until the AsyncFd drops it.
-        let fd = unsafe { AsyncFd::register(fd) }.map_err(std::io::Error::from)?;
-        Ok(Self {
-            fd,
-            name,
-            address: Some(address),
-        })
-    }
-
-    /// Read one packet.
-    pub async fn read(&self, buf: &mut [u8]) -> std::io::Result<usize> {
-        loop {
-            let mut guard = self.fd.readable().await?;
-            match guard.try_io(|fd| {
-                let n = unsafe { libc::read(fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
-                if n < 0 {
-                    Err(std::io::Error::last_os_error())
-                } else {
-                    Ok(n as usize)
-                }
-            }) {
-                Ok(result) => return result,
-                Err(_would_block) => continue,
-            }
-        }
-    }
-
-    /// Write one packet.
-    pub async fn write(&self, packet: &[u8]) -> std::io::Result<usize> {
-        loop {
-            let mut guard = self.fd.writable().await?;
-            match guard.try_io(|fd| {
-                let n =
-                    unsafe { libc::write(fd.as_raw_fd(), packet.as_ptr().cast(), packet.len()) };
-                if n < 0 {
-                    Err(std::io::Error::last_os_error())
-                } else {
-                    Ok(n as usize)
-                }
-            }) {
-                Ok(result) => return result,
-                Err(_would_block) => continue,
-            }
-        }
+/// The settings of the loop of this process.
+pub fn settings() -> TunSettings {
+    TunSettings {
+        probe: super::live::probe(),
+        max_age: super::live::max_age(),
+        rp_filter: Some(rp_filter::system()),
+        report: super::report(),
+        ..TunSettings::default()
     }
 }
 
@@ -290,146 +24,30 @@ impl Tun {
 /// session closes, the TCP probe gets no answer (T-069), or the session
 /// reaches `--session-max-age`.
 pub async fn run(tun: &Tun, session: MasqueSession) -> Result<()> {
-    let (mut tx, mut rx) = session.split();
-    let keepalive = tx.keepalive(&rx);
-    info!(interface = %tun.name, "the TUN interface is connected to WARP");
-    // T-072: rp_filter 0 at each session, and again 2 s later (udev).
-    rp_filter::apply(&tun.name);
-    let name = tun.name.clone();
-    let recheck = tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        rp_filter::apply(&name);
-    });
-    let _recheck = scopeguard(recheck);
-    let settings = super::live::probe();
-    let state = match (tun.address, settings.map(|p| p.target)) {
-        (Some(source), Some(std::net::SocketAddr::V4(target))) => Some(std::sync::Mutex::new(
-            probe::TunProbe::new(source, target, settings.map_or(3, |p| p.misses)),
-        )),
-        _ => None,
-    };
-    let every = settings.map_or(Duration::from_secs(30), |p| p.every);
-    let (rst_tx, mut rst_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(4);
-    let outbound = async {
-        let mut buf = vec![0u8; 65_536];
-        let mut ticks = tokio::time::interval_at(tokio::time::Instant::now() + every, every);
-        loop {
-            tokio::select! {
-                n = tun.read(&mut buf) => {
-                    let n = n.context("reading the TUN interface")?;
-                    if n == 0 {
-                        continue;
-                    }
-                    if n > TUNNEL_MTU {
-                        debug!(n, "dropped a packet larger than the tunnel MTU");
-                        continue;
-                    }
-                    tx.send_packet(&buf[..n]).await?;
-                }
-                _ = ticks.tick(), if state.is_some() => {
-                    let tick = state.as_ref().map(|s| s.lock().unwrap_or_else(|e| e.into_inner()).tick());
-                    match tick {
-                        Some(Ok(syn)) => tx.send_packet(&syn).await?,
-                        Some(Err(misses)) => bail!("the TCP probe got no answer {misses} times: the session carries no TCP (reason=tcp-probe)"),
-                        None => {}
-                    }
-                }
-                Some(rst) = rst_rx.recv() => tx.send_packet(&rst).await?,
-            }
-        }
-        #[allow(unreachable_code)]
-        Ok::<(), anyhow::Error>(())
-    };
-    let inbound = async {
-        while let Some(packet) = rx.recv_packet().await? {
-            // T-069: the answer to the probe does not go to the TUN.
-            if let Some(state) = &state {
-                let taken = state
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .take(&packet);
-                if let Some(rst) = taken {
-                    if let Some(rst) = rst {
-                        let _ = rst_tx.try_send(rst);
-                    }
-                    continue;
-                }
-            }
-            if let Err(err) = tun.write(&packet).await {
-                debug!(error = %err, "writing to the TUN interface failed");
-            }
-        }
-        Ok::<(), anyhow::Error>(())
-    };
-    // Issue 104: the liveness check is its own task, not a tick of the
-    // send loop (a wait for send capacity starved it). A dead session ends
-    // run, and the caller opens a new one.
-    let alive = async {
-        match keepalive {
-            Some(keepalive) => keepalive.run(KEEPALIVE).await,
-            None => std::future::pending().await,
-        }
-    };
-    tokio::select! {
-        result = outbound => result,
-        result = inbound => {
-            result?;
-            bail!("the MASQUE session ended")
-        }
-        result = alive => {
-            result?;
-            bail!("the MASQUE session ended")
-        }
-        // T-069: --session-max-age on warp tun.
-        _ = async {
-            match super::live::max_age() {
-                Some(age) => tokio::time::sleep(age).await,
-                None => std::future::pending().await,
-            }
-        } => bail!("the session ends on purpose (--session-max-age)"),
-    }
+    pod_warp::tun::run(tun, session, &settings()).await.warped()
 }
 
-/// Abort the task when the guard drops.
-fn scopeguard(task: tokio::task::JoinHandle<()>) -> impl Drop {
-    struct Abort(tokio::task::JoinHandle<()>);
-    impl Drop for Abort {
-        fn drop(&mut self) {
-            self.0.abort();
-        }
+/// The reverse path filter of the TUN of `warp tun` (T-072).
+pub mod rp_filter {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    pub use pod_warp::tun::rp_filter::{effective, RpFilter};
+
+    static KEEP: AtomicBool = AtomicBool::new(false);
+
+    /// `--keep-rp-filter`: do not write `rp_filter`.
+    pub fn set_keep(keep: bool) {
+        KEEP.store(keep, Ordering::SeqCst);
     }
-    Abort(task)
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    /// The filter of the system, with `--keep-rp-filter`.
+    pub fn system() -> RpFilter {
+        RpFilter::system(KEEP.load(Ordering::SeqCst))
+    }
 
-    /// Make an interface where the host permits it, and check the address.
-    #[tokio::test]
-    async fn creates_an_interface_with_the_address() {
-        let name = format!("podnett{}", std::process::id() % 10_000);
-        let tun = match Tun::create(&name, Ipv4Addr::new(172, 16, 0, 2), 1280) {
-            Ok(tun) => tun,
-            Err(err) => {
-                eprintln!("skipping: {err:#}");
-                return;
-            }
-        };
-        assert_eq!(tun.name, name);
-        // Issue 217: in a new network namespace (unshare -n), /sys can be
-        // the sysfs of the namespace before, with no entry for the new
-        // interface.
-        if !std::path::Path::new(&format!("/sys/class/net/{name}")).exists() {
-            eprintln!(
-                "skipping, /sys/class/net has no {name} (the sysfs of another network namespace)"
-            );
-            return;
-        }
-        let mtu = std::fs::read_to_string(format!("/sys/class/net/{name}/mtu")).unwrap();
-        assert_eq!(mtu.trim(), "1280");
-        let flags = std::fs::read_to_string(format!("/sys/class/net/{name}/flags")).unwrap();
-        let flags = u32::from_str_radix(flags.trim().trim_start_matches("0x"), 16).unwrap();
-        assert_ne!(flags & libc::IFF_UP as u32, 0, "the interface is up");
+    /// Write 0 for `interface` (unless `--keep-rp-filter`), and give the
+    /// value that the kernel uses, with a warning when it is not 0.
+    pub fn apply(interface: &str) -> Option<u32> {
+        system().apply(interface, &super::super::report())
     }
 }
