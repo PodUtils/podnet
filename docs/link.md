@@ -140,7 +140,7 @@ removes both files at its stop. The token is never in the ready document, `statu
     holds, and the `carriers` with `feature` and `built`), `fingerprint`, `pid`, `settings` (`selected` and the `limits`),
     `totals` (`links`, `up`, `streams`, `opened`, `accepted`), `links` (the row of `status`, and `stream_table`: one
     `{id, owner}` for each stream, `owner` being `local` or `peer`, and `streams_cut`), the last 20 `errors` (`at`, `text`; a text
-    keeps 512 characters), `routes` (`built: false`: the route table waits for the mesh) and `cut`. It has no seed, no token
+    keeps 512 characters), `routes` and `cut`. With `--announce`, `routes` is the mesh view of the verb `mesh` (`built: true`, `node`, `limits`, `counters`, `truncated`, `nodes` with the edges; at most 96 KiB, and the rows of the stream tables set its nodes and edges when the dump is cut). Without `--announce`, `routes` is `{built: false, reason}`. It has no seed, no token
     and no secret of a peer: every string passes `report::mask` (credentials in URLs, `Authorization` values, runs of 32 or more
     hex characters, the token of the instance, the text of the key file) and `report::clean` (control characters). Its answer
     may be 256 KiB; every other answer is 64 KiB at most. A table that does not fit is cut from its last rows, and `streams_cut`

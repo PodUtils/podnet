@@ -357,3 +357,69 @@ fn bug_report_include_link_adds_the_dump_of_a_running_instance_and_no_token() {
     let text = String::from_utf8_lossy(&out.stdout).into_owned();
     assert!(text.contains("(no link instance runs)"), "{text}");
 }
+
+/// A mesh with one learned origin, named with text that must not leak.
+fn learned_mesh(dir: &Path, name: &str) -> (Arc<podnet::link_announce::Mesh>, Identity) {
+    use podnet::link_announce::{now_ms, Mesh};
+    let a = Arc::new(install(dir, "mesh-a"));
+    let b = Arc::new(install(dir, "mesh-b"));
+    let ma = Mesh::new(a.clone(), vec!["socks5".into()], now_ms());
+    let mb = Mesh::new(b.clone(), vec!["raw".into()], now_ms());
+    mb.neighbour_up(a.public(), 3);
+    ma.neighbour_up(b.public(), 3);
+    let wire = mb.make(now_ms()).unwrap();
+    ma.receive(&b.public(), 3, &wire, now_ms()).unwrap();
+    assert!(ma.set_name(b.public(), name));
+    (ma, identity::open(&dir.join("mesh-b")).unwrap())
+}
+
+#[tokio::test]
+async fn the_dump_of_an_instance_with_announce_holds_the_route_table() {
+    let rig = Rig::new(Settings::default()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let (mesh, origin) = learned_mesh(dir.path(), "edge-node");
+    rig.hub.attach_mesh(mesh);
+    let doc = rig.dump().await.unwrap();
+    let routes = &doc["routes"];
+    assert_eq!(routes["built"], true, "{doc}");
+    assert!(routes.get("reason").is_none(), "{routes}");
+    assert!(routes.get("verb").is_none(), "{routes}");
+    let nodes = routes["nodes"].as_array().unwrap();
+    assert_eq!(nodes.len(), 2, "{routes}");
+    assert_eq!(nodes[0]["self"], true);
+    let far = &nodes[1];
+    assert_eq!(far["fingerprint"], origin.fingerprint().as_str(), "{far}");
+    assert_eq!(far["name"], "edge-node");
+    assert_eq!(far["hops"], 1);
+    assert_eq!(far["cost"], 3);
+    assert_eq!(far["state"], "up");
+    assert_eq!(routes["counters"]["announcements_received"], 1);
+    assert_eq!(routes["truncated"]["nodes"], 0);
+}
+
+#[tokio::test]
+async fn the_dump_without_announce_says_why_the_routes_are_not_built() {
+    let rig = Rig::new(Settings::default()).await;
+    let doc = rig.dump().await.unwrap();
+    assert_eq!(doc["routes"]["built"], false, "{doc}");
+    let reason = doc["routes"]["reason"].as_str().unwrap();
+    assert!(reason.contains("--announce"), "{reason}");
+    assert!(doc["routes"].get("nodes").is_none());
+}
+
+#[tokio::test]
+async fn the_route_table_of_the_dump_is_redacted() {
+    let rig = Rig::new(Settings::default()).await;
+    let dir = tempfile::tempdir().unwrap();
+    let hex = "ab".repeat(32);
+    let (mesh, _) = learned_mesh(dir.path(), &hex);
+    rig.hub.attach_mesh(mesh);
+    let seed = std::fs::read_to_string(dir.path().join("mesh-a").join("link-identity.key"))
+        .unwrap_or_default();
+    let shown = rig.dump().await.unwrap().to_string();
+    assert!(!shown.contains(&hex), "{shown}");
+    assert!(shown.contains("<hidden>"), "{shown}");
+    if !seed.trim().is_empty() {
+        assert!(!shown.contains(seed.trim()));
+    }
+}

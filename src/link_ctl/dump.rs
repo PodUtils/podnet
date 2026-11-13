@@ -7,8 +7,11 @@
 //! table, and the last 20 errors. It holds no seed, no token and no secret
 //! of a peer: the hub knows fingerprints and addresses only, and the text
 //! that came from outside (the errors) goes through [`report::mask`] and
-//! [`report::clean`], as does every other string. The route table waits for
-//! the mesh (T-286): `routes.built` is false.
+//! [`report::clean`], as does every other string. The route table is the
+//! mesh view of T-289 (`Mesh::view`), when the instance runs `--announce`:
+//! `routes.built` is true and `routes` holds the nodes, the edges and the
+//! counters. Without `--announce`, `routes.built` is false and `routes.reason`
+//! says why.
 //!
 //! The cap of the document is [`DUMP_LIMIT`] (256 KiB), more than the
 //! answer limit of the other verbs. A table that does not fit is cut, from
@@ -28,6 +31,8 @@ pub const ERRORS: usize = 20;
 const ERROR_TEXT: usize = 512;
 /// The most links that the dump lists.
 const LINK_ROWS: usize = 512;
+/// The most bytes of the route table in the dump.
+const ROUTES_BYTES: usize = 96 * 1024;
 /// The rows of a stream table to try, from the most to none. The dump takes
 /// the first that fits the cap.
 const ROW_STEPS: [usize; 8] = [usize::MAX, 1024, 256, 64, 16, 4, 1, 0];
@@ -166,11 +171,34 @@ impl Hub {
             },
             "links": table,
             "errors": errors,
-            "routes": {"built": false, "reason": "the route table waits for the mesh (T-286)"},
+            "routes": self.dump_routes(rows),
             "cut": {"links": links_cut, "stream_rows": cut},
         });
         redact(&mut doc);
         doc
+    }
+
+    /// The route table of the dump: the mesh view, cut with the rows of the
+    /// stream tables (`rows`) and to [`ROUTES_BYTES`].
+    fn dump_routes(&self, rows: usize) -> Value {
+        let Some(mesh) = self.mesh.get() else {
+            return json!({
+                "built": false,
+                "reason": "this instance runs without --announce",
+            });
+        };
+        let limits = crate::link_announce::ViewLimits {
+            nodes: rows.clamp(1, crate::link_announce::ViewLimits::default().nodes),
+            edges: rows.min(crate::link_announce::ViewLimits::default().edges),
+            bytes: ROUTES_BYTES,
+        };
+        let mut view = mesh.view(crate::link_announce::now_ms(), limits);
+        if let Some(map) = view.as_object_mut() {
+            map.remove("ok");
+            map.remove("verb");
+            map.insert("built".into(), true.into());
+        }
+        view
     }
 
     pub(super) fn dump_reply(&self) -> Reply {
