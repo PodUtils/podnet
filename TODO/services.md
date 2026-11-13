@@ -1884,7 +1884,7 @@ The abstract-name shim has no option to hand a chosen address to the SOCKS door.
 - `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`crates/podnet-vnet/shim/podnet-socks.c:239-251`).
 - `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:125-134`). `ShimOptions`
   (`crates/podnet-vnet/src/shim.rs:30-50`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
-- The variable list is in `src/manual/facts.rs:346`. `docs/virtual-network.md` has no text on socksify
+- The variable list is in `src/manual/facts.rs:351`. `docs/virtual-network.md` has no text on socksify
   (README.md:921 only), so item 4 of the issue needs a new section.
 - Names are set by T-016 (`PODNET_SOCKS_*`).
 - Not measured: the external shim of the issue.
@@ -2461,7 +2461,7 @@ receiver after the first, whose nameplate it released).
 **Milestone:** M6
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2499,6 +2499,23 @@ T-103 is done (the transit of `pod-transit`).
 PodUtils/podcrates T-214). The piping servers are services of the kind `piping` of `pod-services` (`ppng-piping`,
 `onrender-piping`). What is left: the PUT and the GET in chunks through the way of podnet, the path of the transit
 key, the switch to turn it off, and a local piping-server for the test.
+
+2026-11-13, calls of the work (the owner is away):
+
+- The hint is `piping-v1` with `url`, and the base path is the first 32 hex digits of HKDF-SHA256 of the transit key with the info `podnet piping path v1`: the words of PodUtils/podnet#452 (PodUtils/podcrates T-214). A client of magic-wormhole ignores the kind; `Hint::from_json` of podnet ignores a kind that it does not know.
+- #452 says "the sender PUTs, the receiver GETs". The transit needs the bytes of the receiver too (its handshake and its ack), so each end PUTs its bytes and GETs the bytes of the other end: the sender at `/BASE/s/N`, the receiver at `/BASE/r/N`, N from 0. The bytes go in numbered pieces of at most 256 KiB, not in one stream: the fact `streams-request-body = false` of `onrender-piping` in `pod-services` (the body reaches the GET only at the end of the request). An empty piece ends the bytes of an end.
+- The servers: each end gives a hint for each of its servers; the two ends use the first server of the sender that the receiver names too. With no server in the two lists, the transfer does not use a piping server. The CLI takes the services of the kind `piping` of `pod-services` (`ppng-piping`, `onrender-piping`), or `--piping URL` (repeated) and `PODNET_PIPING` (commas); `--piping none` turns it off (step 2 of the Approach). The library (`Settings::new`) has no server: a caller names its servers in `Settings::piping`.
+- The last way: the dial starts 6 s (3 times `RELAY_DELAY`) after the other hints when a direct hint, a transit relay or the podnet relay exists, else at once.
+- A request has a bound of 60 s; a time-out goes again with no count (the other end did not send its piece yet). Five other failures in a row (an error, a status that is not 2xx) end that direction; a write then fails with `BrokenPipe`.
+- The code is podnet's own (`src/transfer/piping.rs`) over the HTTP client of `pod-proxy` with the dial and the TLS of the way of the transfer. `pod-piping` (PodUtils/podcrates T-032) does not exist at v0.40.0. No new dependency.
+- The Prove's filter names the tests: `cargo test --workspace -- transit_over_piping_server`.
+
+## Done
+
+2026-11-13, commit (cited in the next commit). `src/transfer/piping.rs` (new: `common`, `base`, `open`, the stream `Piped`), `Hint::Piping` and `PIPING` in `src/transfer/messages.rs`, the dial of the piping server in `connect::connect` and its hints in `connect::prepare`, `Settings::piping`, `transfer::piping` and `transfer::default_piping` in `src/transfer/mod.rs`, the ability `piping-v1` of both ends, `podnet send|receive --piping URL` and `PODNET_PIPING` (`src/cli/cmd/transfer.rs`, `src/manual/facts.rs`), `docs/transfer.md` (A piping server: a podnet extension; the piping server sees only the sealed records), `README.md`, `llms-full.txt`.
+`cargo test --workspace -- transit_over_piping_server`: 6 passed: the unit tests `transit_over_piping_server_the_base_path_is_hkdf_of_the_transit_key`, `transit_over_piping_server_the_server_is_the_first_of_the_sender_that_both_name`, `transit_over_piping_server_the_hint_is_its_own_kind`, and `tests/transfer_piping.rs` (new; a stand-in piping server on 127.0.0.1 that gives the body of a PUT to the one GET on its path), three runs in a row: `transit_over_piping_server_when_no_other_way_works` (no listener and no relay at the two ends: 700,001 bytes land with the SHA-256 of the sender, `via` is `piping URL` at both ends, at least 4 pieces of the sender, each piece at most 256 KiB, each path under one base of 32 hex digits, no plain mark of the file in any body), `transit_over_piping_server_waits_behind_a_direct_hint` (the receiver listens: the direct way wins and the piping server gets no request), `transit_over_piping_server_needs_a_server_that_both_ends_name` (the receiver names no server: 69 at both ends, no request). `cargo test --test transfer`: 9 passed; `cargo test --test transfer_relay`: 4 passed.
+Plants: with the dial of the piping server off in `connect::connect`, `transit_over_piping_server_when_no_other_way_works` failed; with `common` that takes the first server of the sender alone, `transit_over_piping_server_needs_a_server_that_both_ends_name` failed. `sh scripts/agent/check.sh`: each step 0.
+Not proven: a real piping-server (1.12.9) and a buffering proxy (the live step, T-253 and T-106); a transfer of more than 1 MiB through it; the loss of a piece between the answer of its PUT and the end of its GET (the transfer then stops at the bound of the transit).
 
 # T-253: Live: probe the hosted mailboxes and relays from a proxy-only runner
 

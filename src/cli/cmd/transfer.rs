@@ -36,6 +36,20 @@ pub(crate) struct WayArgs {
     /// pod-services; none gives no relay of this end.
     #[arg(long, value_name = "URL")]
     transit_relay: Vec<String>,
+    /// A piping server (https://HOST[:PORT][/PATH]) for the last way of
+    /// the transit between two podnet ends: the sealed records go through
+    /// it in pieces. Repeat it for a list, in order: the two ends use the
+    /// first server of the sender that the receiver names too. The default
+    /// is each piping server of pod-services; none gives no piping server.
+    /// PODNET_PIPING gives the same list, separated by commas.
+    #[arg(
+        long,
+        value_name = "URL",
+        env = "PODNET_PIPING",
+        hide_env_values = true,
+        value_delimiter = ','
+    )]
+    piping: Vec<String>,
     /// Listen for a direct connection on this address only (the hint is
     /// this address, also a loopback address). The default is each address
     /// of the host, on a free port.
@@ -112,6 +126,7 @@ fn settings(way: &WayArgs) -> Result<Settings> {
             .map_err(usage)?,
     };
     let mut settings = Settings::new(mailboxes, relays, podnet::ws::way());
+    settings.piping = transfer::piping(&way.piping).map_err(usage)?;
     settings.listen = match (way.listen, way.no_listen) {
         (Some(at), _) => Listen::At(at),
         (None, true) => Listen::No,

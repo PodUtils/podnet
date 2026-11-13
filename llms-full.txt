@@ -1239,6 +1239,15 @@ COMMANDS
             Repeat it for more. The default is each transit relay of
             pod-services; none gives no relay of this end
 
+        --piping <URL>
+            A piping server (https://HOST[:PORT][/PATH]) for the last way of
+            the transit between two podnet ends: the sealed records go through
+            it in pieces. Repeat it for a list, in order: the two ends use the
+            first server of the sender that the receiver names too. The
+            default is each piping server of pod-services; none gives no
+            piping server. PODNET_PIPING gives the same list, separated by
+            commas. Variable: PODNET_PIPING.
+
         --listen <ADDR>
             Listen for a direct connection on this address only (the hint is
             this address, also a loopback address). The default is each
@@ -1341,6 +1350,15 @@ COMMANDS
             A transit relay of this end: tcp:HOST:PORT, ws://... or wss://...
             Repeat it for more. The default is each transit relay of
             pod-services; none gives no relay of this end
+
+        --piping <URL>
+            A piping server (https://HOST[:PORT][/PATH]) for the last way of
+            the transit between two podnet ends: the sealed records go through
+            it in pieces. Repeat it for a list, in order: the two ends use the
+            first server of the sender that the receiver names too. The
+            default is each piping server of pod-services; none gives no
+            piping server. PODNET_PIPING gives the same list, separated by
+            commas. Variable: PODNET_PIPING.
 
         --listen <ADDR>
             Listen for a direct connection on this address only (the hint is
@@ -10212,6 +10230,11 @@ ENVIRONMENT
         The value of --mailbox when the flag is not given: the mailboxes of
         magic-wormhole (wss:// or ws://), separated by commas, in order. The
         default is each mailbox of pod-services. (send, receive)
+    PODNET_PIPING
+        The value of --piping when the flag is not given: the piping servers
+        (https:// or http://), separated by commas, in order, for the last way
+        of the transit between two podnet ends; none gives no piping server.
+        The default is each piping server of pod-services. (send, receive)
     PODNET_RELAY
         The value of --relay when the flag is not given: the WebSocket-to-TCP
         relay of --transport relay (https:// and a host), or a comma list of
@@ -10948,7 +10971,7 @@ podnet man                                      # the manual
 | Tunnels | `tunnel`, `demo`, `qr` | Quick tunnels and named tunnels to a local origin (HTTP, unix socket, TCP). | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | Raw streams | `tunnel --forward`, `connect` | SSH, databases and unix sockets through a quick tunnel. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | File server, transfer, git | `serve`, `share`, `git` | Serve a directory, receive or send files with a PIN, host git repositories. | [serve](https://github.com/PodUtils/podnet/blob/main/docs/serve.md) |
-| Transfer by code | `send`, `receive` | A file, a directory or a text to another host with a short code, as magic-wormhole does: a public mailbox for the code, the bytes direct or through a transit relay, sealed end to end. | [transfer](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md) |
+| Transfer by code | `send`, `receive` | A file, a directory or a text to another host with a short code, as magic-wormhole does: a public mailbox for the code, the bytes direct or through a transit relay (from podnet to podnet also the podnet relay or a piping server), sealed end to end. | [transfer](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md) |
 | Publish by one word | `expose` | Publish a local service by a tunnel, the relay or a virtual address. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | WARP | `warp register`, `proxy`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan` | The Cloudflare WARP client on TCP 443, with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
 | Pods | `pod`, `pod doctor`, `pod --report`, `pod --backend netns\|netns-kernel\|seccomp` | Run a program with all its traffic sent through a proxy chain, with rules, audit and a JSON report. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
@@ -11852,8 +11875,9 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
 This page gives `podnet send` and `podnet receive`: a file, a directory or a
 text from one host to another with a short code, as magic-wormhole does. The
 code meets at a public mailbox. The bytes go direct between the hosts, or
-through a transit relay. Each byte is sealed end to end: the mailbox and the
-relay see no plain text.
+through a transit relay. Between two podnet ends, the podnet relay and a
+piping server are the last ways. Each byte is sealed end to end: the
+mailbox, the relays and the piping server see no plain text.
 
 ## Send and receive
 
@@ -11977,6 +12001,50 @@ podnet receive
 * After the ack, the sender waits at most 2.5 s for the end of the receiver
   before its node stops. The receiver waits at most 15 s for the end of the
   session.
+
+## A piping server: a podnet extension
+
+When no direct hint, no transit relay and no podnet relay works, a piping
+server carries the transit. A piping server gives the body of a request
+`PUT /PATH` to the one request `GET /PATH` on the same path, on HTTPS port
+443. This way is a podnet extension: it works from podnet to podnet only.
+
+```sh
+# The servers of pod-services (the default):
+podnet send report.pdf
+# A server of your own, at the two ends:
+podnet send --piping https://piping.example report.pdf
+PODNET_PIPING=https://piping.example podnet receive
+# No piping server:
+podnet send --piping none report.pdf
+```
+
+* The servers of an end are the services of the kind `piping` of
+  `pod-services`, in their order. `--piping URL` (repeat it for a list) or
+  `PODNET_PIPING` (URLs separated by commas) gives other servers.
+  `--piping none` gives no piping server.
+* Each end adds one hint of the kind `piping-v1` (`url`) for each of its
+  servers. The two ends use the first server of the sender that the
+  receiver names too. When no server is in the two lists, the transfer
+  does not use a piping server. A client of magic-wormhole ignores the
+  hint.
+* It is the last way: it starts 6 s after the other hints when another way
+  exists (a direct hint, a transit relay or the podnet relay), else at
+  once.
+* The base path is the first 32 hex digits of HKDF-SHA256 of the transit
+  key with the info `podnet piping path v1`. Only the two ends know it.
+* The bytes go in numbered pieces of at most 256 KiB, not in one stream: a
+  server or a proxy can give the body of a request only at its end. The
+  bytes of the sender go to `/BASE/s/N`, the bytes of the receiver to
+  `/BASE/r/N`, with N from 0. An empty piece ends the bytes of an end.
+* Each request goes through the way out of podnet. A request that times
+  out (60 s) goes again. Five other failures in a row stop that
+  direction, and the transfer fails.
+* The piping server sees only the sealed records: the handshakes of the
+  transit and the records that the transit key seals. It sees no byte of
+  the file, no name and no code. It sees the size and the time of each
+  piece, and the addresses of the two ends. The line of the sender and of
+  the receiver says `piping URL`.
 
 ## What the receiver writes
 
@@ -12979,6 +13047,9 @@ and `down` counts the datagrams that it receives.
 `warp` and `warp:identity=FILE` are networks of the registry ([egress.md](egress.md)). A `networks:` entry
 `w: warp` gives TCP and UDP through a WARP session. A name is resolved inside the tunnel. The session is
 `pod-warp` `Live`: a session that the edge ends is replaced, and a dial waits for the new one (20 s at most).
+When the MASQUE front door refuses the session, the new session goes through the relay of `PODNET_RELAY` (else the
+default relay), as `podnet warp` does: the member stays `up`. Set `PODNET_RELAY` to an address that refuses for a router
+whose WARP member must go `down` when its front door refuses, and give a relay member its URL (`relay:URL`).
 
 The device is kept in the identity file: `FILE`, else `warp.json` in `state_dir/NETWORK`, else the default
 file of `podnet warp` ([warp.md](warp.md)). A file that is new is registered, and the registration is logged

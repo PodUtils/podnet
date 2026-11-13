@@ -138,6 +138,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "The value of --mailbox when the flag is not given: the mailboxes of magic-wormhole (wss:// or ws://), separated by commas, in order. The default is each mailbox of pod-services.",
     },
     EnvVar {
+        names: &["PODNET_PIPING"],
+        used_by: "send, receive",
+        meaning: "The value of --piping when the flag is not given: the piping servers (https:// or http://), separated by commas, in order, for the last way of the transit between two podnet ends; none gives no piping server. The default is each piping server of pod-services.",
+    },
+    EnvVar {
         names: &["PODNET_RELAY"],
         used_by: "tunnel, serve, share, demo, relay",
         meaning: "The value of --relay when the flag is not given: the WebSocket-to-TCP relay of --transport relay (https:// and a host), or a comma list of hosts of one deployment. The default is https://tcp.ssh.relay.ajam.dev; when a host does not answer, podnet tries hosts of its pool.",

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**335 entries: 15 open, 13 partial, 26 blocked, 281 done.**
+**335 entries: 14 open, 13 partial, 26 blocked, 282 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 6 | 5 | 11 | 146 | 168 |
-| P3 | 9 | 7 | 13 | 105 | 134 |
-| **All** | 15 | 13 | 26 | 281 | 335 |
+| P3 | 8 | 7 | 13 | 106 | 134 |
+| **All** | 14 | 13 | 26 | 282 | 335 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -297,7 +297,7 @@ M8 Overlays, M9 Later.
 | [T-249](pods.md) | P2 | M | M7 | chore | done | netns: the router of the namespace runs on the interface of `pod-netstack` |
 | [T-250](pods.md) | P2 | S | M7 | chore | done | CI: a root step that runs the netns tests that skip on a runner |
 | [T-251](services.md) | P2 | S | M6 | feature | done | Transfer: the hosted magic-wormhole mailboxes on 443 as the default, with a choice that the code carries |
-| [T-252](services.md) | P3 | M | M6 | feature | open | Transfer: a piping-server relay as a transit carrier of last resort |
+| [T-252](services.md) | P3 | M | M6 | feature | done | Transfer: a piping-server relay as a transit carrier of last resort |
 | [T-253](services.md) | P3 | S | M6 | measurement | done | Live: probe the hosted mailboxes and relays from a proxy-only runner |
 | [T-254](fixes.md) | P2 | M | M5 | chore | done | Housekeeping: one footnote for cfrs, no narrative history |
 | [T-255](pods.md) | P2 | S | M7 | defect | done | seccomp: an IPv4-mapped loopback address is loopback |

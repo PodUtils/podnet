@@ -170,23 +170,27 @@ async fn land_offer(
     theirs: Transit,
 ) -> Result<Received> {
     let hints = theirs.hints;
-    let mut ours = match connect::prepare(&settings.listen, &settings.relays).await {
-        Ok(ours) => ours,
-        Err(err) => {
-            return Err(decline(
-                &mut hole,
-                unavailable(format!("no listener for the transit: {err}")),
-            )
-            .await)
-        }
-    };
+    let mut ours =
+        match connect::prepare(&settings.listen, &settings.relays, &settings.piping).await {
+            Ok(ours) => ours,
+            Err(err) => {
+                return Err(decline(
+                    &mut hole,
+                    unavailable(format!("no listener for the transit: {err}")),
+                )
+                .await)
+            }
+        };
     ours.token = theirs.relay_token;
     ours.resume = settings.relay_resume;
-    let abilities = vec![
+    let mut abilities = vec![
         messages::DIRECT.to_string(),
         messages::RELAY.to_string(),
         messages::PODNET_RELAY.to_string(),
     ];
+    if !settings.piping.is_empty() {
+        abilities.push(messages::PIPING.to_string());
+    }
     let mine = Transit {
         abilities,
         hints: ours.hints.clone(),

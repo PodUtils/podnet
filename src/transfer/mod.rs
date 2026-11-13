@@ -10,6 +10,9 @@
 //! * The file-transfer protocol of magic-wormhole over the wormhole is
 //!   [`messages`]; its transit (the hints, the handshakes and the records
 //!   sealed with SecretBox) is [`transit`] and [`connect`].
+//! * A piping server is the last way of the transit between two podnet
+//!   ends ([`mod@piping`], T-252): the servers of the kind `piping` of
+//!   `pod-services`, or `--piping` and `PODNET_PIPING`.
 //! * A directory goes as a zip ([`zip`]); the receiver checks each name
 //!   before it writes one ([`land`]).
 //!
@@ -24,6 +27,7 @@
 pub mod connect;
 pub mod land;
 pub mod messages;
+pub mod piping;
 pub mod podnet_relay;
 mod receive;
 mod send;
@@ -50,6 +54,10 @@ pub const MAILBOX_VARIABLE: &str = "PODNET_MAILBOX";
 /// The kind of the mailboxes and of the transit relays in `pod-services`.
 pub const MAILBOX_KIND: &str = "mailbox";
 pub const TRANSIT_KIND: &str = "transit";
+/// The kind of the piping servers in `pod-services`.
+pub const PIPING_KIND: &str = "piping";
+/// The variable of the piping servers: URLs, separated by commas.
+pub const PIPING_VARIABLE: &str = "PODNET_PIPING";
 /// How long a sender waits for a receiver to take its code, by default.
 pub const WAIT: Duration = Duration::from_secs(30 * 60);
 /// The bound of one step of the exchange, by default.
@@ -83,6 +91,10 @@ pub struct Settings {
     /// A receiver: the moves of the session of the layer over the podnet
     /// relay.
     pub relay_resume: crate::relay_reverse::Resume,
+    /// The piping servers of this end (URLs), in order: the last way of
+    /// the transit between two podnet ends (T-252). Empty: no piping
+    /// server.
+    pub piping: Vec<String>,
 }
 
 impl Settings {
@@ -100,6 +112,7 @@ impl Settings {
             giver_wait: GIVER_WAIT,
             relay_pair: None,
             relay_resume: crate::relay_reverse::Resume::default(),
+            piping: Vec::new(),
         }
     }
 
@@ -125,6 +138,42 @@ pub fn default_relays() -> Vec<Relay> {
         .filter_map(|s| s.endpoint("relay"))
         .map(|e| e.url());
     urls.filter_map(|url| Relay::parse(&url).ok()).collect()
+}
+
+/// The piping servers of `pod-services`, in their order.
+pub fn default_piping() -> Vec<String> {
+    pod_services::of_kind(PIPING_KIND)
+        .filter_map(|s| s.endpoint("server"))
+        .map(|e| e.url())
+        .collect()
+}
+
+/// The piping servers: the given URLs (flags or the variable), else
+/// [`default_piping`]. `none` alone gives no piping server.
+pub fn piping(given: &[String]) -> Result<Vec<String>, String> {
+    let given: Vec<&str> = given
+        .iter()
+        .map(|u| u.trim())
+        .filter(|u| !u.is_empty())
+        .collect();
+    match given.as_slice() {
+        [] => Ok(default_piping()),
+        ["none"] => Ok(Vec::new()),
+        urls => urls
+            .iter()
+            .map(|u| {
+                let ok = (u.starts_with("https://") || u.starts_with("http://"))
+                    && !u.contains(['?', '#', ' '])
+                    && u.split("://").nth(1).is_some_and(|rest| !rest.is_empty());
+                ok.then(|| u.trim_end_matches('/').to_string())
+                    .ok_or_else(|| {
+                        format!(
+                            "piping server {u:?}: give https://HOST[:PORT][/PATH] or http://..."
+                        )
+                    })
+            })
+            .collect(),
+    }
 }
 
 /// The mailboxes: the flags, else the variable (URLs separated by commas),
@@ -214,6 +263,16 @@ mod tests {
         let from_flags = mailboxes(&flags, Some("ws://127.0.0.1:4000/v1")).unwrap();
         assert_eq!(from_flags[0].port, 5000);
         assert!(mailboxes(&["http://x".to_string()], None).is_err());
+        let servers = piping(&[]).unwrap();
+        assert!(!servers.is_empty(), "pod-services names a piping server");
+        assert!(servers.iter().all(|u| u.starts_with("https://")));
+        assert!(piping(&["none".to_string()]).unwrap().is_empty());
+        assert_eq!(
+            piping(&["http://127.0.0.1:9/".to_string()]).unwrap(),
+            ["http://127.0.0.1:9"]
+        );
+        assert!(piping(&["ftp://x".to_string()]).is_err());
+        assert!(piping(&["https://".to_string()]).is_err());
         assert!(default_relays()
             .iter()
             .all(|r| matches!(r, Relay::WebSocket(_) | Relay::Tcp { .. })));

@@ -19,6 +19,10 @@ pub const PODNET_RELAY: &str = "podnet-relay-v1";
 /// The key of the connect token of that node in the `transit` message of a
 /// podnet sender (the message is sealed in its phase of the wormhole).
 pub const PODNET_RELAY_TOKEN: &str = "podnet-relay-token";
+/// podnet's kind of hint of a piping server (T-252; the words of
+/// PodUtils/podnet#452): the last way of the transit, between two podnet
+/// ends.
+pub const PIPING: &str = "piping-v1";
 /// The mode of a directory, as magic-wormhole names it. A zip with stored
 /// entries is a valid zip of this mode.
 pub const ZIP_MODE: &str = "zipfile/deflated";
@@ -65,6 +69,8 @@ pub enum Hint {
     /// `url` (the reverse road). The connect token comes in
     /// [`Transit::relay_token`].
     PodnetRelay { url: String, name: String },
+    /// podnet's own kind: a piping server at `url` ([`mod@super::piping`]).
+    Piping { url: String },
 }
 
 /// The `transit` message: the abilities and the hints of one end.
@@ -216,6 +222,7 @@ impl Hint {
             Hint::PodnetRelay { url, name } => {
                 json!({ "type": PODNET_RELAY, "url": url, "name": name, "priority": 0.0 })
             }
+            Hint::Piping { url } => json!({ "type": PIPING, "url": url, "priority": 0.0 }),
         }
     }
 
@@ -239,6 +246,9 @@ impl Hint {
             PODNET_RELAY => Some(Hint::PodnetRelay {
                 url: value["url"].as_str()?.to_string(),
                 name: value["name"].as_str()?.to_string(),
+            }),
+            PIPING => Some(Hint::Piping {
+                url: value["url"].as_str()?.to_string(),
             }),
             _ => None,
         }
@@ -443,6 +453,27 @@ mod tests {
             .filter(|h| matches!(h["type"].as_str(), Some(DIRECT | RELAY)))
             .count();
         assert_eq!(known, 0);
+    }
+
+    #[test]
+    fn transit_over_piping_server_the_hint_is_its_own_kind() {
+        let mine = Transit {
+            abilities: vec![DIRECT.into(), PIPING.into()],
+            hints: vec![Hint::Piping {
+                url: "https://piping.example".into(),
+            }],
+            key: Some([1; 32]),
+            relay_token: None,
+        };
+        let bytes = mine.encode();
+        let value: Value = serde_json::from_slice(&bytes).unwrap();
+        let hint = &value["transit"]["hints-v1"][0];
+        assert_eq!(hint["type"], "piping-v1");
+        assert_eq!(hint["url"], "https://piping.example");
+        let Message::Transit(again) = parse(&bytes).unwrap() else {
+            panic!("a transit message")
+        };
+        assert_eq!(again, mine);
     }
 
     #[test]

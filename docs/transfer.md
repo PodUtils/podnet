@@ -3,8 +3,9 @@
 This page gives `podnet send` and `podnet receive`: a file, a directory or a
 text from one host to another with a short code, as magic-wormhole does. The
 code meets at a public mailbox. The bytes go direct between the hosts, or
-through a transit relay. Each byte is sealed end to end: the mailbox and the
-relay see no plain text.
+through a transit relay. Between two podnet ends, the podnet relay and a
+piping server are the last ways. Each byte is sealed end to end: the
+mailbox, the relays and the piping server see no plain text.
 
 ## Send and receive
 
@@ -128,6 +129,50 @@ podnet receive
 * After the ack, the sender waits at most 2.5 s for the end of the receiver
   before its node stops. The receiver waits at most 15 s for the end of the
   session.
+
+## A piping server: a podnet extension
+
+When no direct hint, no transit relay and no podnet relay works, a piping
+server carries the transit. A piping server gives the body of a request
+`PUT /PATH` to the one request `GET /PATH` on the same path, on HTTPS port
+443. This way is a podnet extension: it works from podnet to podnet only.
+
+```sh
+# The servers of pod-services (the default):
+podnet send report.pdf
+# A server of your own, at the two ends:
+podnet send --piping https://piping.example report.pdf
+PODNET_PIPING=https://piping.example podnet receive
+# No piping server:
+podnet send --piping none report.pdf
+```
+
+* The servers of an end are the services of the kind `piping` of
+  `pod-services`, in their order. `--piping URL` (repeat it for a list) or
+  `PODNET_PIPING` (URLs separated by commas) gives other servers.
+  `--piping none` gives no piping server.
+* Each end adds one hint of the kind `piping-v1` (`url`) for each of its
+  servers. The two ends use the first server of the sender that the
+  receiver names too. When no server is in the two lists, the transfer
+  does not use a piping server. A client of magic-wormhole ignores the
+  hint.
+* It is the last way: it starts 6 s after the other hints when another way
+  exists (a direct hint, a transit relay or the podnet relay), else at
+  once.
+* The base path is the first 32 hex digits of HKDF-SHA256 of the transit
+  key with the info `podnet piping path v1`. Only the two ends know it.
+* The bytes go in numbered pieces of at most 256 KiB, not in one stream: a
+  server or a proxy can give the body of a request only at its end. The
+  bytes of the sender go to `/BASE/s/N`, the bytes of the receiver to
+  `/BASE/r/N`, with N from 0. An empty piece ends the bytes of an end.
+* Each request goes through the way out of podnet. A request that times
+  out (60 s) goes again. Five other failures in a row stop that
+  direction, and the transfer fails.
+* The piping server sees only the sealed records: the handshakes of the
+  transit and the records that the transit key seals. It sees no byte of
+  the file, no name and no code. It sees the size and the time of each
+  piece, and the addresses of the two ends. The line of the sender and of
+  the receiver says `piping URL`.
 
 ## What the receiver writes
 

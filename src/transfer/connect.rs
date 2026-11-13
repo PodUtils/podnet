@@ -2,7 +2,8 @@
 //! to the other end. Each end listens for a direct connection (unless it
 //! must not), dials each direct hint of the other end, and after
 //! [`RELAY_DELAY`] (at once when no direct hint exists) dials each transit
-//! relay of the two ends. Each connection that opens runs the handshake of
+//! relay of the two ends. The podnet relay (T-104) and a piping server
+//! (T-252) are the last ways. Each connection that opens runs the handshake of
 //! [`super::transit`]; the sender takes the first one that passes and says
 //! `go` on it, and `nevermind` on each later one.
 //!
@@ -22,6 +23,7 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::task::JoinSet;
 
 use super::messages::{Hint, RelayEnd};
+use super::piping;
 use super::podnet_relay::{self, Sessions};
 use super::transit::{self, Records, Role};
 use crate::relay_reverse::Resume;
@@ -108,9 +110,13 @@ pub struct Ours {
     pub(super) resume: Resume,
 }
 
-/// Listen as `listen` says, and give the hints of the listener and of
-/// `relays`.
-pub async fn prepare(listen: &Listen, relays: &[Relay]) -> std::io::Result<Ours> {
+/// Listen as `listen` says, and give the hints of the listener, of
+/// `relays` and of the piping servers `piping` (URLs).
+pub async fn prepare(
+    listen: &Listen,
+    relays: &[Relay],
+    piping: &[String],
+) -> std::io::Result<Ours> {
     let (listener, mut hints) = match listen {
         Listen::No => (None, Vec::new()),
         Listen::Any => {
@@ -152,6 +158,7 @@ pub async fn prepare(listen: &Listen, relays: &[Relay]) -> std::io::Result<Ours>
         }
     };
     hints.extend(relays.iter().map(Relay::hint));
+    hints.extend(piping.iter().map(|url| Hint::Piping { url: url.clone() }));
     Ok(Ours {
         listener,
         hints,
@@ -249,6 +256,7 @@ pub async fn connect(
             }
         });
     }
+    let node = ours.node.is_some();
     if let Some((name, mut sessions)) = ours.node {
         let (tx, won) = (tx.clone(), won.clone());
         tasks.spawn(async move {
@@ -266,9 +274,11 @@ pub async fn connect(
         match hint {
             Hint::Relay { ends, .. } => relays.extend(ends.iter().cloned()),
             Hint::Direct { .. } => directs += 1,
-            Hint::PodnetRelay { .. } => {}
+            Hint::PodnetRelay { .. } | Hint::Piping { .. } => {}
         }
     }
+    let podnet_relay =
+        theirs.iter().any(|h| matches!(h, Hint::PodnetRelay { .. })) && ours.token.is_some();
     for hint in theirs {
         if let Hint::Direct { host, port } = hint {
             let (tx, won, way, host, port) =
@@ -311,6 +321,22 @@ pub async fn connect(
             if let Some(won) = podnet_relay::dial(url, name, token, resume, role, key, won).await {
                 let _ = tx.send(won).await;
             }
+        });
+    }
+    // A piping server is the last way of all: after the podnet relay when
+    // another way exists.
+    if let Some(server) = piping::common(role, &ours.hints, theirs) {
+        let others = directs > 0 || !relays.is_empty() || podnet_relay || node;
+        let after = if others {
+            RELAY_DELAY * 3
+        } else {
+            Duration::ZERO
+        };
+        let (tx, won, way) = (tx.clone(), won.clone(), way.clone());
+        tasks.spawn(async move {
+            tokio::time::sleep(after).await;
+            let io = piping::open(&server, &key, role, &way);
+            negotiate(io, format!("piping {server}"), role, key, won, tx).await;
         });
     }
     let mut seen = Vec::new();

@@ -135,14 +135,18 @@ async fn send_payload(
 ) -> Result<Sent> {
     let mut key = [0u8; 32];
     getrandom::fill(&mut key).map_err(|_| failed(Failed::NoRandom))?;
-    let mut ours = match connect::prepare(&settings.listen, &settings.relays).await {
-        Ok(ours) => ours,
-        Err(err) => {
-            hole.close(Mood::Errory).await;
-            return Err(unavailable(format!("no listener for the transit: {err}")));
-        }
-    };
+    let mut ours =
+        match connect::prepare(&settings.listen, &settings.relays, &settings.piping).await {
+            Ok(ours) => ours,
+            Err(err) => {
+                hole.close(Mood::Errory).await;
+                return Err(unavailable(format!("no listener for the transit: {err}")));
+            }
+        };
     let mut abilities = vec![messages::DIRECT.to_string(), messages::RELAY.to_string()];
+    if !settings.piping.is_empty() {
+        abilities.push(messages::PIPING.to_string());
+    }
     // The node of the podnet relay runs until the end of this function.
     let node = match settings.relay_pair.as_ref().map(podnet_relay::start) {
         Some(Ok((node, sessions))) => {
