@@ -526,7 +526,7 @@ library ([build.md](build.md), "The C library"). Linux only.
 * A call takes at most 1 MiB (`PODNET_MAX_IO`); more returns `PODNET_E_LIMIT`. Use one thread for each direction of a
   stream, and do not close a handle while another thread uses it.
 * Only the memory carrier is in the interface now. Two ends of one process meet with `podnet_link_pair`. A network carrier
-  has no C function yet (not done: T-304 Correction).
+  has no C function in this version.
 * The tests are `crates/podnet-capi/tests/c_abi.rs`, `c_abi.c` and `c_abi.py`: a memory link, a service `echo`, 1 MiB, the
   digest of the bytes that came back.
 

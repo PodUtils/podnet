@@ -2228,7 +2228,7 @@ Not proven: a `peer:` element in a running chain (only the missing-peer case, ex
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2267,6 +2267,21 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-262, T-275 and T-311 are done.
+
+## Correction
+
+2026-11-13 (the lead's call; the owner can rule otherwise; `docs/decisions.md`, 2026-11-13): the crate types are not added to the root package, because a `cdylib` would build in every build. The C ABI is the workspace member `crates/podnet-capi` (crate types `cdylib`, `staticlib`, `rlib`), not a default member, over `podnet` with no feature. The header is `include/podnet.h`. The library crate is `podnet_capi` (a library named `podnet` collides with the root crate): the files are `libpodnet_capi.so` (soname `libpodnet.so`) and `libpodnet_capi.a`. The feature `c-abi` of the root stays a marker that gates no code, because a dependency that turns it on turns it on in each `--workspace` build (the test `the_default_build_holds_no_optional_feature` fails then). Prove: `cargo test -p podnet-capi` (not `--test c_abi --features c-abi`).
+
+2026-11-13: the version script of the Approach is not used. For a `cdylib`, rustc writes its own version script and exports only the `#[no_mangle]` items of the crate. A second `--version-script` fails under rust-lld (`attempt to reassign symbol`). `crates/podnet-capi/tests/c_abi.rs` checks that `nm -D --defined-only` of the shared library equals the list of the header. A static library keeps the other symbols of Rust; the test checks the symbols `podnet_*` of it.
+
+2026-11-13: the API of the issue has no way to learn the fingerprint of an install and no way to join two ends in one process. Two functions are added: `podnet_identity_fingerprint(dir, buf, len)` and `podnet_link_pair(dialer, listener)` (a memory carrier with the hello of each end). `podnet_free()` stops the library (it exits `PODNET_E_STATE` while a handle is open), and `podnet_stream_service(s)` gives the service name of a stream. `podnet_link_new` makes an end with the key of `identity_path` and one admitted `peer_fp`. A network carrier has no C function yet.
+
+## Done
+
+2026-11-13, commit 09ef55e. `include/podnet.h` declares 14 functions (the 11 of the issue, `podnet_identity_fingerprint`, `podnet_link_pair`, `podnet_stream_service`); `crates/podnet-capi/src/lib.rs` implements them over `podnet::link`, `hello` and `link_service` on a tokio runtime that `podnet_init` starts. Each entry point runs in `guard` (`catch_unwind`, thread-local error text of at most 64 KiB, codes -1 to -6 and -99). `docs/build.md` ("The C library"), `docs/link.md`, `docs/library.md`, `docs/decisions.md` and `README.md` say it; `llms-full.txt` is regenerated. `scripts/check-layers.py` has the crate (one module `capi`). The CI job `c-abi` is in `.github/workflows/ci.yml` and in `needs` of `all`.
+Fail first: with a planted line `int podnet_planted(void);` in the header, `cargo test -p podnet-capi --test c_abi symbols` fails: `assertion left == right failed: dynamic symbols against the header` (the header has `podnet_planted`, the library does not). Without the plant: `cargo test -p podnet-capi`: 5 unit tests passed (`a_panic_is_mapped_to_the_panic_code_and_the_error_text`, `the_error_text_is_cut_to_64_kib_on_a_character_boundary`, `a_null_argument_is_a_bad_argument`, `init_is_idempotent_and_a_bad_config_is_refused`, `the_version_is_the_version_of_the_crate`) and 6 passed in `crates/podnet-capi/tests/c_abi.rs` (`the_header_lists_the_functions_of_the_api`, `the_exported_symbols_of_the_shared_library_equal_the_header`, `the_static_library_defines_the_functions_of_the_header`, `a_c_program_echoes_1_mib_over_a_memory_link_with_the_shared_library`, `a_c_program_echoes_1_mib_over_a_memory_link_with_the_static_library`, `ctypes_echoes_1_mib_over_a_memory_link`). The C test prints `c_abi: ok, 1 MiB echoed, digest ac51aa6881728030`; the ctypes test prints `c_abi.py: ok, 1 MiB echoed, sha256 ...`. Run by hand: the C test under `-fsanitize=address,undefined`: exit 0; under valgrind 3.22 (`--leak-check=full`, `--errors-for-leak-kinds=definite,indirect,possible`): 0 errors, no leak (the runtime has no signal driver and `podnet_free` joins its threads); `cargo rustc -p podnet-capi --target x86_64-unknown-linux-musl --crate-type staticlib` builds, and `cargo build -p podnet-capi --target x86_64-unknown-linux-musl` drops the `cdylib` with a warning.
+Not proven: the CI job `c-abi` (not run here: the release build for the glibc target, the apt install of valgrind, the musl static library in CI); the ASan and valgrind runs were on a debug build of the library (the job uses the release build); no C function for a network carrier, and no `portable` build (T-305); the library has no test of a panic across the C boundary from a C program (a unit test checks `guard`); aarch64 and the other targets of the release set are not built.
+
 
 # T-305: link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475)
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 28 open, 22 partial, 41 blocked, 240 done.**
+**331 entries: 27 open, 22 partial, 41 blocked, 241 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 17 | 9 | 11 | 131 | 168 |
-| P3 | 11 | 12 | 28 | 81 | 132 |
-| **All** | 28 | 22 | 41 | 240 | 331 |
+| P3 | 10 | 12 | 28 | 82 | 132 |
+| **All** | 27 | 22 | 41 | 241 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -349,7 +349,7 @@ M8 Overlays, M9 Later.
 | [T-301](link.md) | P3 | M | M9 | feature | blocked | link: the replay window and the RESUME record (GitHub #472) |
 | [T-302](link.md) | P3 | L | M9 | feature | blocked | link: split one session across an up carrier and a down carrier (GitHub #473) |
 | [T-303](link.md) | P3 | M | M9 | feature | done | link: chain composition with a peer element and --check (GitHub #473) |
-| [T-304](link.md) | P3 | L | M9 | feature | open | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
+| [T-304](link.md) | P3 | L | M9 | feature | done | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
 | [T-305](link.md) | P3 | L | M9 | feature | blocked | link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475) |
 | [T-306](link.md) | P3 | M | M9 | feature | done | link: the query keys of a carrier URL (GitHub #476) |
 | [T-307](link.md) | P3 | M | M9 | feature | partial | link: the write verbs of the control plane (GitHub #476) |
