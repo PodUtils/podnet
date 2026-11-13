@@ -1486,8 +1486,7 @@ within `--timeout` exits 124.
 
 ## Done
 
-2026-11-13, the commit "T-102, T-103, T-105, T-251: the transfer of magic-wormhole over pod-wormhole" (its hash
-follows in the next commit). `cargo tree -p podnet --depth 1 | grep pod-wormhole` gives
+2026-11-13, commit d5c38c1. `cargo tree -p podnet --depth 1 | grep pod-wormhole` gives
 `pod-wormhole v0.40.0 (https://github.com/PodUtils/podcrates?tag=v0.40.0#1335e9af)`. `cargo test -p podnet --test
 transfer`: 9 passed, among them `wormhole_rendezvous_two_ends_move_a_text` and
 `wormhole_rendezvous_a_wrong_code_fails_at_both_ends` (exit 77 at the two ends, the mood `scary` at the stand-in);
@@ -1582,8 +1581,7 @@ random bytes and sends them as `podnet-transit-key-v1` in its sealed `transit` m
 `{"podnet": {"transit-key": 1}}` in their `version`, and a podnet end that meets another client for a file stops
 with a line that says why. What is left: the derivation of the key (Blocker), then the interop test (T-106).
 
-The proof so far (2026-11-13, the commit "T-102, T-103, T-105, T-251: the transfer of magic-wormhole over
-pod-wormhole"): `cargo test --workspace -- wormhole_transfer_` passed: the unit tests of `src/transfer/` (11, among
+The proof so far (2026-11-13, commit d5c38c1): `cargo test --workspace -- wormhole_transfer_` passed: the unit tests of `src/transfer/` (11, among
 them `wormhole_transfer_the_keys_are_hkdf_of_the_transit_key`,
 `wormhole_transfer_records_go_both_ways_and_a_changed_one_fails`, `wormhole_transfer_a_record_out_of_order_fails`,
 `wormhole_transfer_hints_of_unknown_kinds_are_ignored`) and `tests/transfer.rs`:
@@ -1737,8 +1735,7 @@ podcrates 63348de; Unverified).
 
 ## Done
 
-2026-11-13, the commit "T-102, T-103, T-105, T-251: the transfer of magic-wormhole over pod-wormhole" (its hash
-follows in the next commit). `src/cli/cmd/transfer.rs` (`podnet send`, `podnet receive`), `src/transfer/`,
+2026-11-13, commit d5c38c1. `src/cli/cmd/transfer.rs` (`podnet send`, `podnet receive`), `src/transfer/`,
 `docs/transfer.md` (with its row in the map of `README.md`, the list of `scripts/gen-llms.py`, and the llms files),
 the exit code 65 in `docs/cli.md` and `podnet man exit-status`. `cargo test --test cli -- send_and_receive_on_the_loopback
 a_wrong_code_ends_the_code`: both passed (a file of 400,000 bytes with the sender's SHA-256, a directory and a text
@@ -2400,8 +2397,7 @@ mailbox server waits for PodUtils/podcrates T-215.
 
 ## Done
 
-2026-11-13, the commit "T-102, T-103, T-105, T-251: the transfer of magic-wormhole over pod-wormhole" (its hash
-follows in the next commit). `transfer::default_mailboxes` reads the services of the kind `mailbox` of
+2026-11-13, commit d5c38c1. `transfer::default_mailboxes` reads the services of the kind `mailbox` of
 `pod-services` in their order (the public mailbox of magic-wormhole, then Least Authority's), and
 `transfer::default_relays` the kind `transit`. `cargo test --workspace -- transfer_mailbox_choice_is_found_by_the_receiver
 transfer_mailbox_falls_back`: both passed (a dead first mailbox; a sender at the second mailbox, found by the
