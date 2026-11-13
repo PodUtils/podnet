@@ -1829,7 +1829,7 @@ T-127 is done (the take of `pod-egress`), and T-266 and T-311 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1861,6 +1861,13 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-266 is done.
+
+## Done
+
+2026-11-13, commit 3fb067a. `src/link_exec.rs` (`podnet::link_exec`) is the service `exec`: `link listen --service NAME=exec:/ABS/PATH` with `--exec-arg NAME=ARG` (an array, repeat it), `--exec-env NAME=VAR` (the allow list; the environment is empty beyond it) and `--exec-user NAME=USER` (root only; the setup exits 64 without root; the program runs with the uid and gid of the user and no supplementary groups). A relative path, a `..`, a missing file and a shell by name exit 64. stdin and stdout are the stream, stderr goes to the log, the working directory is `/`. At most 64 programs run at once (answer 4 over the limit; answer 2 when the program cannot start). `docs/link.md` has the section "The service `exec`"; `llms-full.txt` is generated again.
+`cargo test --test service_exec`: 7 passed: `a_program_that_echoes_answers_on_the_stream`, `the_arguments_are_an_array_and_no_shell_expands_them`, `a_relative_path_is_refused`, `the_environment_holds_only_the_allowed_names`, `the_stderr_of_the_program_does_not_reach_the_stream`, `a_program_that_cannot_start_gets_exit_69`, `a_user_needs_root`. With `env_clear` disabled, `the_environment_holds_only_the_allowed_names` failed (the variables of the test process reached the program). `cargo test --lib link_exec`: 1 passed. `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers and test all 0.
+Not proven: `--exec-user` as root (the test runs as root in one session and skips; without privilege it checks the refusal); the text of the log line in a test (the stderr is proven to stay out of the stream); a program that ignores a reset (the kill is by `kill_on_drop`).
+
 
 # T-297: link: serve a file tree at a peer (GitHub #471)
 

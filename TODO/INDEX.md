@@ -341,7 +341,7 @@ M8 Overlays, M9 Later.
 | [T-293](link.md) | P3 | S | M9 | feature | done | link: a raw passthrough service at a peer (GitHub #471) |
 | [T-294](link.md) | P3 | M | M9 | feature | blocked | link: a Shadowsocks AEAD service at a peer (GitHub #471) |
 | [T-295](link.md) | P3 | M | M9 | feature | blocked | link: a Trojan service at a peer (GitHub #471) |
-| [T-296](link.md) | P3 | M | M9 | feature | open | link: an exec adapter that runs a program for each stream (GitHub #471) |
+| [T-296](link.md) | P3 | M | M9 | feature | done | link: an exec adapter that runs a program for each stream (GitHub #471) |
 | [T-297](link.md) | P3 | M | M9 | feature | open | link: serve a file tree at a peer (GitHub #471) |
 | [T-298](link.md) | P3 | L | M9 | feature | blocked | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
 | [T-299](link.md) | P3 | S | M9 | feature | blocked | link: snappy compression of records (GitHub #472) |
