@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**332 entries: 33 open, 18 partial, 33 blocked, 248 done.**
+**332 entries: 33 open, 17 partial, 33 blocked, 249 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 1 | 2 | 27 | 31 |
 | P2 | 17 | 7 | 11 | 133 | 168 |
-| P3 | 15 | 10 | 20 | 87 | 132 |
-| **All** | 33 | 18 | 33 | 248 | 332 |
+| P3 | 15 | 9 | 20 | 88 | 132 |
+| **All** | 33 | 17 | 33 | 249 | 332 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -352,7 +352,7 @@ M8 Overlays, M9 Later.
 | [T-304](link.md) | P3 | L | M9 | feature | done | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
 | [T-305](link.md) | P3 | L | M9 | feature | blocked | link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475) |
 | [T-306](link.md) | P3 | M | M9 | feature | done | link: the query keys of a carrier URL (GitHub #476) |
-| [T-307](link.md) | P3 | M | M9 | feature | partial | link: the write verbs of the control plane (GitHub #476) |
+| [T-307](link.md) | P3 | M | M9 | feature | done | link: the write verbs of the control plane (GitHub #476) |
 | [T-308](link.md) | P3 | S | M9 | feature | done | link: names for live links (GitHub #476) |
 | [T-309](link.md) | P3 | M | M9 | feature | done | link: the redacted state dump and bug-report --include-link (GitHub #476) |
 | [T-310](link.md) | P3 | M | M9 | feature | done | link: the component inventory command (GitHub #476) |
