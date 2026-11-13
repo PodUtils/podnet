@@ -92,6 +92,7 @@ pub mod link_alias;
 pub mod link_announce;
 pub mod link_chain;
 pub mod link_ctl;
+pub mod link_door;
 pub mod link_exec;
 pub mod link_forward;
 pub mod link_group;

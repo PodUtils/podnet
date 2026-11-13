@@ -88,13 +88,39 @@ stream. The opener speaks SOCKS5 on its end, for example `podnet link dial ADDRE
 allow list before the stream opens, so a stranger gets exit 77 and no service runs. `CONNECT` goes from the host of the listener. A name
 resolves there. A refused or failed `CONNECT` gets a SOCKS5 failure reply. A stream whose first byte is not 5 (HTTP `CONNECT`, for
 example) ends with no answer. `socks5` takes no target: `--service socks5=TARGET` exits 64. There is no user and password: the link
-admits the peer. `BIND` and `UDP ASSOCIATE` (command 3) get reply 7, command not supported: a listener of the peer would be
-unreachable for the opener. UDP uses the command `0x83` of `pod-proxy` (UDP in the stream): after the greeting, the opener sends the
+admits the peer. `UDP ASSOCIATE` (command 3) gets reply 7, command not supported: a UDP socket of the peer would be
+unreachable for the opener. `BIND` (command 2) listens on a TCP port of the host of the listener: on the loopback, or on the address
+of `--socks-bind-ip IP` (a bad address exits 64). Reply 1 gives the address and the port. The first incoming connection (30 s at
+most; else reply 6) ends the wait and the listener closes. Reply 2 gives its source, and its bytes pass on the same stream. RFC 1928
+puts the incoming connection on the control connection, so the opener needs no second stream. The `BIND` address of the request is
+not checked against the source of the incoming connection. UDP uses the command `0x83` of `pod-proxy` (UDP in the stream): after the greeting, the opener sends the
 request `05 83 00 01 00 00 00 00 00 00` and gets `05 00 00 01 00 00 00 00 00 00`. Then each datagram in each direction is a frame on
 the stream: a length of 2 bytes (big endian), then a SOCKS5 UDP datagram (RFC 1928, section 7). The datagrams leave from one UDP socket
-of the host of the listener, and a name in a frame resolves there. The frame is in `docs/proxies.md`, "UDP in the stream". `link dial`
-carries bytes only, so an opener that is a plain SOCKS5 client with a UDP socket has no local door yet: it writes the frames itself.
-Not built (T-291 is partial): `BIND`, the local door for UDP, and `--resolve local`.
+of the host of the listener, and a name in a frame resolves there. The frame is in `docs/proxies.md`, "UDP in the stream". Without
+`--listen`, `link dial` carries bytes only: an opener that is a plain SOCKS5 client writes the frames itself.
+
+#### The local door (`link dial --service socks5 --listen ADDRESS`)
+
+`podnet link dial ADDRESS --peer FP --service socks5 --listen 127.0.0.1:1080 [--resolve-at peer|local]` does not copy stdin and
+stdout. It listens at `ADDRESS` (`HOST:PORT`, or `unix:/PATH`; no default) and serves the front door (`podnet_netns::door::Door`;
+SOCKS5 and HTTP `CONNECT`) to local clients. The line `podnet: socks5 door  ADDRESS` is the first line of stdout. The door runs
+until a stop signal (exit 0) or the end of the link (exit 69). `--listen` needs `--service socks5` (else exit 64) and conflicts with
+`--check` and `--announce`. The code is `podnet::link_door`.
+
+* `CONNECT`: the door opens one stream of the link for each request, speaks SOCKS5 to the service `socks5` of the peer, and copies the
+  bytes. A refusal of the peer is a failure reply to the client (the code is coarse: the door maps the text of the failure).
+* Names: `--resolve-at peer` (the default) sends the name in the request, and the peer resolves it. `--resolve-at local` resolves the
+  name at the opener (the system resolver, and the pins of the global `--resolve`) and sends an address. The flag is not called
+  `--resolve`: that name is the global flag of the pins.
+* `BIND`: the door opens a stream, sends the request, and copies both replies and the bytes of the incoming connection. The listener
+  is at the peer (see above).
+* `UDP ASSOCIATE`: the door opens a UDP socket for the client (the address of the reply) and one stream with the command `0x83` of the
+  peer. Each datagram of the client is a frame on the stream, and each answer is a frame back. A name in a datagram resolves at the
+  opener (the datagrams of a way take an address). The association ends when the client closes the control connection, after 300 s
+  with no datagram, or when the link ends. The queue is 256 datagrams: a datagram for a full queue is dropped.
+* The door checks no user: it serves each local client that can reach `ADDRESS`. Use a loopback address, or a unix socket.
+
+Proof: `tests/link_door.rs`, `tests/link_socks5.rs`.
 `link dial` exits at once when the far end ends the stream, also when stdin is still open.
 
 ### The service `http`

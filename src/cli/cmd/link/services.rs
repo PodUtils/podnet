@@ -4,6 +4,7 @@
 //! grant of the peer is checked, and then the service runs.
 
 use std::collections::BTreeMap;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -34,7 +35,7 @@ pub(crate) struct ServiceArgs {
     /// reaches it with `link dial --service NAME` or `peer:FINGERPRINT/NAME`.
     /// The service `socks5` takes no target: `--service socks5` makes this
     /// end the server side of SOCKS5 (CONNECT, and UDP as frames on the stream with the
-    /// command 0x83; a name resolves here; BIND and command 3 get reply 7).
+    /// command 0x83; a name resolves here; BIND listens here on the loopback or --socks-bind-ip; command 3 gets reply 7).
     /// The service `http` takes no target either: `--service http` makes
     /// this end an HTTP proxy (`CONNECT` and absolute form, one request for
     /// each stream, 8 KiB of head at most). A target is the name of
@@ -48,6 +49,11 @@ pub(crate) struct ServiceArgs {
     /// --exec-user (root only).
     #[arg(long, value_name = "NAME=TARGET")]
     pub(crate) service: Vec<String>,
+    /// The address where `BIND` of the service `socks5` listens (default
+    /// 127.0.0.1). Give a public address only when the incoming connections
+    /// must come from the network.
+    #[arg(long, value_name = "IP")]
+    pub(crate) socks_bind_ip: Option<String>,
     /// An argument of the program of the service NAME: NAME=ARG. Repeat it
     /// for each argument, in order (64 at most for each service).
     #[arg(long, value_name = "NAME=ARG")]
@@ -67,7 +73,7 @@ pub(super) enum Service {
     /// Copy the bytes to a target (`raw` and each `NAME=TARGET`).
     Target(Target),
     /// Serve SOCKS5 on the stream (`--service socks5`, T-291).
-    Socks5,
+    Socks5(IpAddr),
     /// Serve an HTTP proxy on the stream (`--service http`, T-292).
     Http,
     /// Run a program for each stream (`--service NAME=exec:/PATH`, T-296).
@@ -78,7 +84,7 @@ impl std::fmt::Display for Service {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Service::Target(target) => write!(f, "{target}"),
-            Service::Socks5 => f.write_str("socks5"),
+            Service::Socks5(_) => f.write_str("socks5"),
             Service::Http => f.write_str("http"),
             Service::Exec(spec) => write!(f, "{spec}"),
         }
@@ -110,7 +116,7 @@ pub(super) fn services_of(
             let kind = if item == podnet::link_http::NAME {
                 Service::Http
             } else {
-                Service::Socks5
+                Service::Socks5(bind_ip(args)?)
             };
             if out.insert(item.clone(), kind).is_some() {
                 return Err(usage(format!("--service {item}: given twice")));
@@ -170,6 +176,19 @@ pub(super) fn services_of(
         )));
     }
     Ok(out)
+}
+
+/// The address of `--socks-bind-ip`. A bad address exits 64.
+fn bind_ip(args: &ServiceArgs) -> Result<IpAddr> {
+    match &args.socks_bind_ip {
+        None => Ok(IpAddr::from([127, 0, 0, 1])),
+        Some(text) => text.parse().map_err(|_| {
+            exit::fault(
+                Fault::Usage,
+                anyhow!("--socks-bind-ip {text:?} is no IP address"),
+            )
+        }),
+    }
 }
 
 /// The values of the flag `list` (NAME=VALUE) for the service `name`.
@@ -258,9 +277,9 @@ pub(super) async fn bridge(
             service::reply(stream, service::OPEN).await?;
             return running.pump(stream).await;
         }
-        Service::Socks5 => {
+        Service::Socks5(bind_ip) => {
             service::reply(stream, service::OPEN).await?;
-            return podnet::link_socks::serve(stream).await;
+            return podnet::link_socks::serve_with(stream, *bind_ip).await;
         }
         Service::Http => {
             service::reply(stream, service::OPEN).await?;

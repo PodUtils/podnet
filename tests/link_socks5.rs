@@ -233,19 +233,62 @@ fn a_connect_to_a_closed_port_gets_a_failure_reply_and_the_stream_ends() {
 }
 
 #[test]
-fn bind_and_udp_associate_say_command_not_supported() {
-    let pair = pair();
-    let mut dial = pair.dial(&pair.client);
-    let (_, reply) = handshake(&mut dial, &request(2, 1, &[127, 0, 0, 1], 9));
-    assert_eq!(&reply[..2], &[5, 7], "BIND: {reply:?}");
-    drop(dial.stdin.take());
-    assert_eq!(dial.wait().unwrap().code(), Some(0));
+fn udp_associate_says_command_not_supported() {
     // Command 3 would open a UDP socket at the peer that the opener cannot
-    // reach: it gets 7 as well.
+    // reach: it gets 7.
+    let pair = pair();
     let mut dial = pair.dial(&pair.client);
     let (_, reply) = handshake(&mut dial, &request(3, 1, &[0, 0, 0, 0], 0));
     assert_eq!(&reply[..2], &[5, 7], "UDP ASSOCIATE: {reply:?}");
     drop(dial.stdin.take());
+    assert_eq!(dial.wait().unwrap().code(), Some(0));
+}
+
+fn address(reply: &[u8; 10]) -> std::net::SocketAddr {
+    let ip = std::net::Ipv4Addr::new(reply[4], reply[5], reply[6], reply[7]);
+    std::net::SocketAddr::from((ip, u16::from_be_bytes([reply[8], reply[9]])))
+}
+
+#[test]
+fn a_bind_through_the_peer_listens_at_the_peer_and_relays_an_incoming_connection() {
+    test_host::need_loopback!();
+    let pair = pair();
+    let mut dial = pair.dial(&pair.client);
+    let (method, first) = handshake(&mut dial, &request(2, 1, &[127, 0, 0, 1], 0));
+    assert_eq!(method, [5, 0]);
+    assert_eq!(&first[..2], &[5, 0], "reply 1: {first:?}");
+    let listening = address(&first);
+    assert!(
+        listening.ip().is_loopback() && listening.port() != 0,
+        "{listening}"
+    );
+    // The remote server of the protocol connects to the address of reply 1.
+    let mut incoming = std::net::TcpStream::connect(listening).unwrap();
+    let mut second = [0u8; 10];
+    dial.stdout
+        .as_mut()
+        .unwrap()
+        .read_exact(&mut second)
+        .unwrap();
+    assert_eq!(&second[..2], &[5, 0], "reply 2: {second:?}");
+    assert_eq!(address(&second), incoming.local_addr().unwrap());
+    // Bytes pass both ways on the one stream.
+    incoming.write_all(b"from the server").unwrap();
+    let mut got = [0u8; 15];
+    dial.stdout.as_mut().unwrap().read_exact(&mut got).unwrap();
+    assert_eq!(&got, b"from the server");
+    dial.stdin
+        .as_mut()
+        .unwrap()
+        .write_all(b"from the client")
+        .unwrap();
+    let mut back = [0u8; 15];
+    incoming.read_exact(&mut back).unwrap();
+    assert_eq!(&back, b"from the client");
+    // One connection only: the listener is gone.
+    assert!(std::net::TcpStream::connect(listening).is_err());
+    drop(dial.stdin.take());
+    drop(incoming);
     assert_eq!(dial.wait().unwrap().code(), Some(0));
 }
 

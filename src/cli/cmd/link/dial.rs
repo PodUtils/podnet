@@ -15,6 +15,13 @@ use podnet::mesh_announce::INTERVAL_MS;
 
 use super::CarrierArgs;
 
+/// The values of `--resolve`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub(crate) enum ResolveArg {
+    Peer,
+    Local,
+}
+
 #[derive(Args, Debug)]
 pub(crate) struct DialArgs {
     /// The address of the listener, in the form of the carrier (for `tcp`:
@@ -42,6 +49,21 @@ pub(crate) struct DialArgs {
     /// service, or whose origin does not answer, exits 69.
     #[arg(long, value_name = "NAME", default_value = podnet::link_service::RAW)]
     pub(crate) service: String,
+    /// With `--service socks5`: do not copy stdin and stdout. Listen here
+    /// instead (`HOST:PORT`, or `unix:/PATH`) and serve a SOCKS5 door
+    /// (also HTTP `CONNECT`) whose requests go to the service `socks5` of
+    /// the peer: `CONNECT`, `BIND` (the peer listens) and `UDP ASSOCIATE`
+    /// (the datagrams are frames of the command 0x83 on one stream; a name
+    /// in a datagram resolves here). The door runs until a stop signal or
+    /// the end of the link. No default address: give a loopback address
+    /// unless other hosts may use the door.
+    #[arg(long, value_name = "ADDRESS", conflicts_with_all = ["check", "announce"])]
+    pub(crate) listen: Option<String>,
+    /// With --listen: where a name of a `CONNECT` resolves: `peer` (the
+    /// name goes to the peer, the default) or `local` (this host resolves
+    /// it and the peer gets an address).
+    #[arg(long, value_enum, default_value = "peer", requires = "listen")]
+    pub(crate) resolve_at: ResolveArg,
     /// Send and take signed route announcements on this link (the service
     /// `announce`; see `link listen --announce`). The listener must run it
     /// too. The dialer has no control socket: it logs a dropped announcement
@@ -111,6 +133,12 @@ async fn open_node(mesh: &Arc<Mesh>, node: &str, service: &str, hops: u8) -> Res
 }
 
 pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> {
+    if args.listen.is_some() && args.service != podnet::link_socks::NAME {
+        return Err(exit::fault(
+            Fault::Usage,
+            anyhow!("--listen serves SOCKS5: give --service socks5"),
+        ));
+    }
     args.address = super::apply_query(&args.address, &mut args.carrier)?;
     let carrier = super::open_carrier(&args.carrier)?;
     let allow = trusted(&args.allow, &args.peer)?;
@@ -141,6 +169,9 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
     }
     eprintln!("podnet: peer {theirs}, this install {mine}");
     let link = Arc::new(link);
+    if let Some(listen) = &args.listen {
+        return super::door::run(link, listen, args.resolve_at == ResolveArg::Local).await;
+    }
     // The guard stops the announcements and ends the route at the exit.
     let mesh = args
         .announce

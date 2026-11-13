@@ -7491,18 +7491,23 @@ COMMANDS
             `peer:FINGERPRINT/NAME`. The service `socks5` takes no target:
             `--service socks5` makes this end the server side of SOCKS5
             (CONNECT, and UDP as frames on the stream with the command 0x83; a
-            name resolves here; BIND and command 3 get reply 7). The service
-            `http` takes no target either: `--service http` makes this end an
-            HTTP proxy (`CONNECT` and absolute form, one request for each
-            stream, 8 KiB of head at most). A target is the name of another
-            service of this listener; there is no DNS lookup. Repeat it: 16
-            services at most.
+            name resolves here; BIND listens here on the loopback or
+            --socks-bind-ip; command 3 gets reply 7). The service `http` takes
+            no target either: `--service http` makes this end an HTTP proxy
+            (`CONNECT` and absolute form, one request for each stream, 8 KiB
+            of head at most). A target is the name of another service of this
+            listener; there is no DNS lookup. Repeat it: 16 services at most.
 
             A TARGET `exec:/ABS/PATH` runs a program for each stream (no
             shell): its stdin and stdout are the stream and its stderr goes to
             the log. Give its arguments with --exec-arg, its environment with
             --exec-env (the environment is empty beyond the names given) and
             its user with --exec-user (root only).
+
+        --socks-bind-ip <IP>
+            The address where `BIND` of the service `socks5` listens (default
+            127.0.0.1). Give a public address only when the incoming
+            connections must come from the network
 
         --exec-arg <NAME=ARG>
             An argument of the program of the service NAME: NAME=ARG. Repeat
@@ -7671,6 +7676,22 @@ COMMANDS
             no such service, or whose origin does not answer, exits 69.
             Default: raw.
 
+        --listen <ADDRESS>
+            With `--service socks5`: do not copy stdin and stdout. Listen here
+            instead (`HOST:PORT`, or `unix:/PATH`) and serve a SOCKS5 door
+            (also HTTP `CONNECT`) whose requests go to the service `socks5` of
+            the peer: `CONNECT`, `BIND` (the peer listens) and `UDP ASSOCIATE`
+            (the datagrams are frames of the command 0x83 on one stream; a
+            name in a datagram resolves here). The door runs until a stop
+            signal or the end of the link. No default address: give a loopback
+            address unless other hosts may use the door
+
+        --resolve-at <RESOLVE_AT>
+            With --listen: where a name of a `CONNECT` resolves: `peer` (the
+            name goes to the peer, the default) or `local` (this host resolves
+            it and the peer gets an address). Default: peer. Values: peer,
+            local.
+
         --announce
             Send and take signed route announcements on this link (the service
             `announce`; see `link listen --announce`). The listener must run
@@ -7811,18 +7832,23 @@ COMMANDS
             `peer:FINGERPRINT/NAME`. The service `socks5` takes no target:
             `--service socks5` makes this end the server side of SOCKS5
             (CONNECT, and UDP as frames on the stream with the command 0x83; a
-            name resolves here; BIND and command 3 get reply 7). The service
-            `http` takes no target either: `--service http` makes this end an
-            HTTP proxy (`CONNECT` and absolute form, one request for each
-            stream, 8 KiB of head at most). A target is the name of another
-            service of this listener; there is no DNS lookup. Repeat it: 16
-            services at most.
+            name resolves here; BIND listens here on the loopback or
+            --socks-bind-ip; command 3 gets reply 7). The service `http` takes
+            no target either: `--service http` makes this end an HTTP proxy
+            (`CONNECT` and absolute form, one request for each stream, 8 KiB
+            of head at most). A target is the name of another service of this
+            listener; there is no DNS lookup. Repeat it: 16 services at most.
 
             A TARGET `exec:/ABS/PATH` runs a program for each stream (no
             shell): its stdin and stdout are the stream and its stderr goes to
             the log. Give its arguments with --exec-arg, its environment with
             --exec-env (the environment is empty beyond the names given) and
             its user with --exec-user (root only).
+
+        --socks-bind-ip <IP>
+            The address where `BIND` of the service `socks5` listens (default
+            127.0.0.1). Give a public address only when the incoming
+            connections must come from the network
 
         --exec-arg <NAME=ARG>
             An argument of the program of the service NAME: NAME=ARG. Repeat

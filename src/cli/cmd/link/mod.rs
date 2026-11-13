@@ -2,6 +2,7 @@
 
 mod connect;
 mod dial;
+mod door;
 mod info;
 pub(crate) mod listen;
 mod services;
