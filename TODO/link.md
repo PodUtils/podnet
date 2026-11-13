@@ -1972,7 +1972,7 @@ Not proven: a carrier that crosses a network (only the unix carrier is tested); 
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2008,7 +2008,7 @@ The rules of the issue that apply to this row:
 ## Prove
 
 ```sh
-cargo test --test link_record
+cargo test --test link_record --test link_record_mesh --test link_seal
 sh scripts/agent/check.sh
 ```
 ## Start condition
@@ -2021,6 +2021,13 @@ T-086 is done (the take of `pod-e2e`), and T-262 is done.
 
 2026-11-12, the lead: the hello of T-265 (`src/hello.rs`) proves the keys of the two ends but makes no key for the link and does not bind the streams after it. It holds for the unix and memory carriers only. A carrier that crosses a network does not rely on it: this entry gives the link its keys from the end-to-end handshake of `pod-e2e`, bound to the session, before the carrier is offered.
 
+## Done
+
+2026-11-13, commits cccc2df and c30cba6 (branch t298). `Cargo.toml` takes `pod-e2e` (tag v0.38.0). `src/link_record.rs` (`podnet::link_record`) is the glue: `dial`, `accept` and `accept_with` run the handshake of `pod-e2e` on one stream (Noise XX with the key of each end), agree on the suite (`chacha20-poly1305` by default, `aes-256-gcm`), take the records from the exporter, and give a `Sealed` byte stream. The keys are the two ends' keys, so a hop that forwards the stream sees records only. A suite mismatch exits 78, a key that is not expected or not in the allow list exits 77. A stream that ends with no FIN record is a cut (`UnexpectedEof`). `--seal` of `link listen`, `link connect` and `link dial` runs it on the streams of a service (`src/cli/cmd/link/services.rs`, `dial.rs`).
+`cargo test --test link_record`: 8 passed: `a_sealed_stream_echoes` (300 KB), `each_suite_carries_the_stream`, `a_suite_mismatch_exits_78`, `a_peer_that_is_not_the_expected_key_exits_77`, `a_tampered_record_is_refused`, `a_changed_header_is_refused`, `a_cut_stream_is_not_a_clean_end`, `the_key_changes_at_the_limit_and_the_stream_goes_on` (rekey after 3 records, both phases seen). `cargo test --test link_record_mesh`: 2 passed: `a_middle_hop_sees_no_plaintext_of_a_sealed_stream` (A to C through B with the real `link_forward`; the bytes that B reads from its links hold no marker) and its control `without_the_layer_the_middle_hop_sees_the_plaintext`. `cargo test --test link_seal`: 4 passed (CLI). The end-to-end item of T-287 is done by this: B sees records only.
+Not proven: a rekey at 2^31 records or 1 GiB (the test uses a limit of 3 records; `pod-e2e` tests the real limits); a chain of three podnet processes (the CLI has no node that listens and dials). Not done: the local door of `link dial --listen` and the control socket do not seal; `--seal` is an option at both ends, not a default.
+
+
 
 # T-299: link: snappy compression of records (GitHub #472)
 
@@ -2029,7 +2036,7 @@ T-086 is done (the take of `pod-e2e`), and T-262 is done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2065,6 +2072,13 @@ T-298 and T-306 are done.
 
 2026-11-13: The record layer of `pod-e2e` is in podcrates `v0.38.0` (taken, c65090d): the block is gone; the compression runs before its seal.
 
+2026-11-13, the choice of the crate: no snappy crate was in `Cargo.lock`. `snap` 1 (pure Rust, BSD-3-Clause) is added; `cargo deny --locked check bans sources licenses` passes.
+
+## Done
+
+2026-11-13, commits cccc2df and c30cba6 (branch t298). `src/link_record/pack.rs`: `pack` compresses a payload of 256 bytes or more and returns `None` when the result is not smaller (no flag); `unpack` refuses a payload that says more than 8 MiB or more than 64 times its own size (`decompress-limit`). The flag is `0x0002` of the record. The query key `compress=snappy` has an effect with `--seal` (without `--seal`: exit 64); `compress` of `src/link_query.rs` is wired. `cargo test --test link_compress`: 3 passed: `compression_shrinks_a_compressible_payload_and_the_data_stays_equal` (380000 bytes go out as under 95000; with the compression disabled the test failed: "380520 bytes for 380000"), `a_payload_that_does_not_shrink_or_is_short_goes_with_no_flag`, `a_compressed_record_over_the_cap_closes_the_stream_with_decompress_limit` (a real sealed record that says 9 MiB). Unit tests of `pack.rs` (6) test each cap, also the ratio of 64 to 1.
+Not proven: a compressed stream over a mesh hop; a decompress bomb inside the caps.
+
 # T-300: link: padding of records to buckets (GitHub #472)
 
 **Source:** GitHub #472 (https://github.com/PodUtils/podnet/issues/472), row E6-3.
@@ -2072,7 +2086,7 @@ T-298 and T-306 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2107,6 +2121,13 @@ T-298 and T-306 are done.
 
 2026-11-13: The padding of `pod-e2e` is in podcrates `v0.38.0` (taken, c65090d): the block is gone.
 
+## Done
+
+2026-11-13, commits cccc2df and c30cba6 (branch t298). The padding is the one of `pod-e2e` (`Settings::pad`); `Options::pad` and the query key `pad=on` (with `--seal`) set it. `cargo test --test link_pad`: 2 passed: `padding_gives_sizes_from_the_buckets` (payloads of 1, 100, 128, 200, 600, 1500 and 3000 bytes give bodies of 128, 128, 128, 512, 1024, 2048 and 4096 bytes, as the middle hop sees them; the reader gets the exact bytes) and `a_tampered_pad_fails_authentication` (the relay lowers `pad` by 1; the reader gets an error with "check").
+Not proven: the padding of a stream with the compression on at the same time.
+
+
+
 # T-301: link: the replay window and the RESUME record (GitHub #472)
 
 **Source:** GitHub #472 (https://github.com/PodUtils/podnet/issues/472), row E6-4.
@@ -2114,7 +2135,7 @@ T-298 and T-306 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -2148,6 +2169,11 @@ T-298 and T-263 are done.
 ## Correction
 
 2026-11-13: The replay window and RESUME of `pod-e2e` are in podcrates `v0.38.0` (taken, c65090d): the block is gone.
+
+2026-11-13, partial. Done: the replay window (1024 counters; a repeat inside it and a record below it are dropped and counted: `Stats::replayed`), the RESUME record (`Sealed::resume`; the peer sends again, in new records, the payloads from the counter that the RESUME names, from a log of 1 MiB; a copy of a RESUME is refused and counted: `Stats::refused`). Commits cccc2df and c30cba6 (branch t298). `cargo test --test link_replay`: 4 passed: `a_replayed_record_is_refused`, `a_record_below_the_window_is_dropped_and_counted` (a record kept back for 1100 records), `resume_sends_again_what_the_peer_did_not_get_and_is_used_once`, `a_resume_that_comes_twice_is_refused_the_second_time`.
+Left: (1) the RESUME is not sent by the resume of T-263: the CLI does not send it after a lost carrier, and the layer runs over one stream, not over a new carrier of `pod-session`. The token and the 10-minute window are those of `pod-e2e`; they are not yet shared with `session::RESUME_WINDOW` in one code path. (2) The close of the link with `ResumeExpired` after three failed RESUME records is `Fault::ResumeExpired` of `pod-e2e`; the glue ends the stream with an error, not with the exit 69 of `ResumeExpired`.
+
+
 
 # T-302: link: split one session across an up carrier and a down carrier (GitHub #473)
 

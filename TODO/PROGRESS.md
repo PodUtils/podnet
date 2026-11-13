@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 332 entries: 31 open, 17 partial, 33 blocked, 251 done.
+`TODO/INDEX.md` holds 332 entries: 27 open, 18 partial, 33 blocked, 254 done.
 
 ## State
 
@@ -71,8 +71,8 @@ not wait for a larger one.
 10b. **Networks over the new crates (podcrates v0.33.0):** T-321 (`turn://`, `pod-turn`).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-326 (a release of `russh` that takes `rsa` 0.10.0); T-163 is
-    partial (its edge leg waits for `pod-cloudflare`); and the link entries T-298, T-294, T-295.
-12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-271 to T-305 in `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws and h2 are done; T-271 to T-273 and T-276 (UDP with KCP) are takes of `pod-link`, blocked until podcrates releases them (PodUtils/podcrates#133); T-277 (the ARQ) is open: `pod_link::arq` is in v0.39.0. Go on with the datagram carriers T-278 to T-280, the record layer (T-298 to T-301), the mesh (T-287), the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-298 (`pod-e2e`, T-086), T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
+    partial (its edge leg waits for `pod-cloudflare`); and the link entries T-294, T-295.
+12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-271 to T-305 in `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws and h2 are done; T-271 to T-273 and T-276 (UDP with KCP) are takes of `pod-link`, blocked until podcrates releases them (PodUtils/podcrates#133); T-277 (the ARQ) is open: `pod_link::arq` is in v0.39.0. Go on with the datagram carriers T-278 to T-280, the replay window and RESUME of the record layer (T-301), the mesh (T-287), the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).

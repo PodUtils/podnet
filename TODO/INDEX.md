@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**332 entries: 31 open, 17 partial, 33 blocked, 251 done.**
+**332 entries: 27 open, 18 partial, 33 blocked, 254 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 1 | 2 | 27 | 31 |
 | P2 | 15 | 7 | 11 | 135 | 168 |
-| P3 | 15 | 9 | 20 | 88 | 132 |
-| **All** | 31 | 17 | 33 | 251 | 332 |
+| P3 | 11 | 10 | 20 | 91 | 132 |
+| **All** | 27 | 18 | 33 | 254 | 332 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -343,10 +343,10 @@ M8 Overlays, M9 Later.
 | [T-295](link.md) | P3 | M | M9 | feature | blocked | link: a Trojan service at a peer (GitHub #471) |
 | [T-296](link.md) | P3 | M | M9 | feature | done | link: an exec adapter that runs a program for each stream (GitHub #471) |
 | [T-297](link.md) | P3 | M | M9 | feature | done | link: serve a file tree at a peer (GitHub #471) |
-| [T-298](link.md) | P3 | L | M9 | feature | open | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
-| [T-299](link.md) | P3 | S | M9 | feature | open | link: snappy compression of records (GitHub #472) |
-| [T-300](link.md) | P3 | S | M9 | feature | open | link: padding of records to buckets (GitHub #472) |
-| [T-301](link.md) | P3 | M | M9 | feature | open | link: the replay window and the RESUME record (GitHub #472) |
+| [T-298](link.md) | P3 | L | M9 | feature | done | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
+| [T-299](link.md) | P3 | S | M9 | feature | done | link: snappy compression of records (GitHub #472) |
+| [T-300](link.md) | P3 | S | M9 | feature | done | link: padding of records to buckets (GitHub #472) |
+| [T-301](link.md) | P3 | M | M9 | feature | partial | link: the replay window and the RESUME record (GitHub #472) |
 | [T-302](link.md) | P3 | L | M9 | feature | blocked | link: split one session across an up carrier and a down carrier (GitHub #473) |
 | [T-303](link.md) | P3 | M | M9 | feature | done | link: chain composition with a peer element and --check (GitHub #473) |
 | [T-304](link.md) | P3 | L | M9 | feature | done | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
