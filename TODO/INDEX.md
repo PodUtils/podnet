@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**330 entries: 49 open, 20 partial, 30 blocked, 231 done.**
+**330 entries: 48 open, 21 partial, 30 blocked, 231 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 8 | 11 | 129 | 167 |
-| P3 | 30 | 11 | 17 | 74 | 132 |
-| **All** | 49 | 20 | 30 | 231 | 330 |
+| P3 | 29 | 12 | 17 | 74 | 132 |
+| **All** | 48 | 21 | 30 | 231 | 330 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -332,7 +332,7 @@ M8 Overlays, M9 Later.
 | [T-284](link.md) | P3 | L | M9 | feature | open | link: NAT traversal with a relay fallback (GitHub #469) |
 | [T-285](link.md) | P3 | L | M9 | feature | done | link: signed route announcements (GitHub #470) |
 | [T-286](link.md) | P3 | M | M9 | feature | done | link: the path-vector route table (GitHub #470) |
-| [T-287](link.md) | P3 | L | M9 | feature | open | link: multi-hop forwarding of a session stream (GitHub #470) |
+| [T-287](link.md) | P3 | L | M9 | feature | partial | link: multi-hop forwarding of a session stream (GitHub #470) |
 | [T-288](link.md) | P3 | M | M9 | feature | done | link: load balancing across link groups (GitHub #470) |
 | [T-289](link.md) | P3 | M | M9 | feature | open | link: the local topology and the status view of a mesh (GitHub #470) |
 | [T-290](link.md) | P3 | M | M9 | feature | open | link: per-hop access control for services and forwarding (GitHub #470) |
