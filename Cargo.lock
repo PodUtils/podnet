@@ -2511,10 +2511,14 @@ name = "pod-link"
 version = "0.38.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.38.0#370ab45a235d59c524af5d247d51dd29f6bb814c"
 dependencies = [
+ "bytes",
+ "h2",
+ "http",
  "libc",
  "pod-core",
  "pod-identity",
  "pod-tls",
+ "pod-ws",
  "rustls",
  "tokio",
  "tokio-rustls",
@@ -2716,10 +2720,12 @@ dependencies = [
  "http",
  "libc",
  "pod-core",
+ "pod-identity",
  "pod-proxy",
  "pod-tls",
  "rustls",
  "rustls-pki-types",
+ "socket2",
  "tokio",
  "tokio-rustls",
  "tracing",

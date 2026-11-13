@@ -40,6 +40,8 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | Feature | Holds | Entry |
 | --- | --- | --- |
 | `tcp` | The TCP carrier with TLS 1.3 and a pinned Ed25519 key. | T-268 |
+| `ws` | The WebSocket carrier with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-269 |
+| `h2` | The HTTP/2 carrier (one POST) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-270 |
 | `quic` | The QUIC carrier. | T-273 |
 | `s3` | The object-storage carrier. | T-279 |
 | `icmp` | The ICMP echo carrier. | T-282 |
@@ -47,7 +49,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `trojan` | The Trojan service. | T-295 |
 | `c-abi` | The C ABI. The code is the crate `crates/podnet-capi` (see The C library), which does not turn the feature on: the feature gates no code. | T-304 |
 | `portable` | The portable subset. It takes code away. | T-305 |
-| `full` | `tcp`, `quic`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
+| `full` | `tcp`, `ws`, `h2`, `quic`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
 
 ```sh
 cargo build --release --features quic,icmp   # two optional carriers

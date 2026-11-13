@@ -7455,8 +7455,11 @@ COMMANDS
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build
             feature `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end:
-            listen at `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused
-            exits 77. Default: unix.
+            listen at `IP:PORT`, dial `KEY@HOST:PORT`. `ws` (feature `ws`) and
+            `h2` (feature `h2`) pin the keys in the same way over a WebSocket
+            and over one POST of HTTP/2: dial `KEY@wss://HOST[:PORT]/PATH` and
+            `KEY@https://HOST[:PORT]/PATH`. A key that is refused exits 77.
+            Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -7649,8 +7652,11 @@ COMMANDS
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build
             feature `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end:
-            listen at `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused
-            exits 77. Default: unix.
+            listen at `IP:PORT`, dial `KEY@HOST:PORT`. `ws` (feature `ws`) and
+            `h2` (feature `h2`) pin the keys in the same way over a WebSocket
+            and over one POST of HTTP/2: dial `KEY@wss://HOST[:PORT]/PATH` and
+            `KEY@https://HOST[:PORT]/PATH`. A key that is refused exits 77.
+            Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -7804,8 +7810,11 @@ COMMANDS
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build
             feature `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end:
-            listen at `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused
-            exits 77. Default: unix.
+            listen at `IP:PORT`, dial `KEY@HOST:PORT`. `ws` (feature `ws`) and
+            `h2` (feature `h2`) pin the keys in the same way over a WebSocket
+            and over one POST of HTTP/2: dial `KEY@wss://HOST[:PORT]/PATH` and
+            `KEY@https://HOST[:PORT]/PATH`. A key that is refused exits 77.
+            Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -8192,8 +8201,11 @@ COMMANDS
         --carrier <NAME>
             The carrier (`podnet link carriers` lists them). `tcp` (build
             feature `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end:
-            listen at `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused
-            exits 77. Default: unix.
+            listen at `IP:PORT`, dial `KEY@HOST:PORT`. `ws` (feature `ws`) and
+            `h2` (feature `h2`) pin the keys in the same way over a WebSocket
+            and over one POST of HTTP/2: dial `KEY@wss://HOST[:PORT]/PATH` and
+            `KEY@https://HOST[:PORT]/PATH`. A key that is refused exits 77.
+            Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -10021,6 +10033,19 @@ INVENTORY
         key of the other end in the handshake; a key that is not pinned exits
         77. Duplex, ordered, cost class network, no privilege. Address:
         KEY@HOST:PORT to dial, IP:PORT to listen. Build feature tcp.
+    ws (carrier)
+        A WebSocket over TLS 1.3, ALPN http/1.1, binary messages only. Each
+        end pins the Ed25519 key of the other end in the handshake; a key that
+        is not pinned exits 77. Duplex, ordered, cost class network, no
+        privilege. Address: KEY@wss://HOST[:PORT]/PATH to dial, IP:PORT to
+        listen. Build feature ws.
+    h2 (carrier)
+        One POST of HTTP/2 over TLS 1.3, ALPN h2: the request body is one
+        direction and the response body is the other. Each end pins the
+        Ed25519 key of the other end in the handshake; a key that is not
+        pinned exits 77. Duplex, ordered, cost class network, no privilege.
+        Address: KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen.
+        Build feature h2.
     quic (carrier)
         QUIC streams to a peer, TLS 1.3 with the key of the peer pinned. Cost
         class network, no privilege. Address: HOST:PORT. Build feature quic.
@@ -13268,6 +13293,8 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | Feature | Holds | Entry |
 | --- | --- | --- |
 | `tcp` | The TCP carrier with TLS 1.3 and a pinned Ed25519 key. | T-268 |
+| `ws` | The WebSocket carrier with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-269 |
+| `h2` | The HTTP/2 carrier (one POST) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-270 |
 | `quic` | The QUIC carrier. | T-273 |
 | `s3` | The object-storage carrier. | T-279 |
 | `icmp` | The ICMP echo carrier. | T-282 |
@@ -13275,7 +13302,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `trojan` | The Trojan service. | T-295 |
 | `c-abi` | The C ABI. The code is the crate `crates/podnet-capi` (see The C library), which does not turn the feature on: the feature gates no code. | T-304 |
 | `portable` | The portable subset. It takes code away. | T-305 |
-| `full` | `tcp`, `quic`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
+| `full` | `tcp`, `ws`, `h2`, `quic`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
 
 ```sh
 cargo build --release --features quic,icmp   # two optional carriers

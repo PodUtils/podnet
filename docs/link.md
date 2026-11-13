@@ -281,11 +281,13 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `unix` | a path (1 to 107 bytes) | A stream over `AF_UNIX`. The socket has the mode 0600. The uid of the peer is checked. It needs no network. |
 | `memory` | a name | Two ends in one process, with a ring for each direction. A full ring blocks the writer. It is for tests and for programs that embed the link. |
 | `tcp` | `KEY@HOST:PORT` to dial, `IP:PORT` to listen | TCP with TLS 1.3 and a pinned Ed25519 key (T-268). Build feature `tcp`. See "The TCP carrier". |
+| `ws` | `KEY@wss://HOST[:PORT]/PATH` to dial, `IP:PORT` to listen | A WebSocket over TLS 1.3 and a pinned Ed25519 key (T-269). Build feature `ws`. See "The WebSocket carrier". |
+| `h2` | `KEY@https://HOST[:PORT]/PATH` to dial, `IP:PORT` to listen | One POST of HTTP/2 over TLS 1.3 and a pinned Ed25519 key (T-270). Build feature `h2`. See "The HTTP/2 carrier". |
 | `quic` | `HOST:PORT` | QUIC streams (T-273). Build feature `quic`. |
 | `s3` | `BUCKET/PREFIX` | A simplex pair of objects in a bucket (T-279). Build feature `s3`. |
 | `icmp` | `HOST` | ICMP echo, a datagram carrier (T-282). Build feature `icmp`; it needs a privilege. |
 
-The carriers `tcp`, `quic`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
+The carriers `tcp`, `ws`, `h2`, `quic`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
 them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
@@ -326,6 +328,46 @@ Each carrier reports `framing`, `duplex`, `ordered`, `mtu`, the cost and `availa
 gives its reason, and a command that needs it exits 69 with the reason. `podnet doctor` has a row `carriers` with the same
 diagnosis. The addressing mode of each carrier is `peer`: the address names a peer, not a destination, so a consumer of
 destinations does not take it.
+
+## The WebSocket carrier
+
+Build with `--features ws` (it holds `tcp`). `pod-link` of PodUtils/podcrates does the work (`pod_link::ws`, with the accept loop of
+`pod_ws::serve`); `podnet::link_ws` is the glue. It has the same calls as `podnet::link_tcp`.
+
+* A WebSocket (RFC 6455) runs over TLS 1.3 with the ALPN `http/1.1`. The bytes of the link go in binary messages. Each end pins the key
+  of the other end in the TLS handshake, as the `tcp` carrier does. The hello does not run on this carrier.
+* A listener binds `IP:PORT` and takes any path of the request. It takes a client only when its key is in the allow list (`--allow`,
+  default deny). The listener sends the 101 after it checked the key, so a refused key is an error of the dial. The accept loop
+  limits the time of each stage and the count of the connections that wait.
+* A dialer gives `KEY@wss://HOST[:PORT]/PATH`. The request goes to `PATH` with the `Host` of the URL, so a front that routes by path
+  or by name and does not end the TLS can carry it. The dial goes through the way out of the process (`--proxy`). The key that the
+  listener proves must also be in the allow list of the dialer (`--peer` or `--allow`). `--egress` is for the `tcp` carrier only.
+* A key that is not pinned exits 77 at the dialer. The accept loop of the listener cuts a connection that fails a stage and goes on, so the listener gets no error for it and keeps its door open. A host that denies the socket exits 69.
+
+```sh
+podnet link listen 0.0.0.0:7000 --carrier ws --allow allowed.txt --to 127.0.0.1:22
+podnet link dial SERVER-FINGERPRINT@wss://host.example:7000/link --carrier ws --allow servers.txt
+```
+
+## The HTTP/2 carrier
+
+Build with `--features h2` (it holds `tcp`). `pod-link` of PodUtils/podcrates does the work (`pod_link::h2`); `podnet::link_h2` is the
+glue. It has the same calls as `podnet::link_tcp`.
+
+* The dialer opens one POST of HTTP/2 over TLS 1.3 with the ALPN `h2`. The request body carries the bytes of the dialer and the
+  response body carries the bytes of the listener. Both stay open for the life of the link. END_STREAM is the half close.
+* Each end pins the key of the other end in the TLS handshake. The listener sends its SETTINGS after it checked the key of the dialer,
+  so a refused key is an error of the dial. The hello does not run on this carrier.
+* A listener binds `IP:PORT` and takes a client only when its key is in the allow list (`--allow`, default deny). At most 64
+  handshakes run at once, each for at most 10 s.
+* A dialer gives `KEY@https://HOST[:PORT]/PATH`. The dial goes through the way out of the process (`--proxy`). The key that the
+  listener proves must also be in the allow list of the dialer. `--egress` is for the `tcp` carrier only.
+* A key that is not pinned exits 77. A host that denies the socket exits 69.
+
+```sh
+podnet link listen 0.0.0.0:7000 --carrier h2 --allow allowed.txt --to 127.0.0.1:22
+podnet link dial SERVER-FINGERPRINT@https://host.example:7000/link --carrier h2 --allow servers.txt
+```
 
 ## A chain before the carrier
 
@@ -586,5 +628,5 @@ library ([build.md](build.md), "The C library"). Linux only.
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
 `podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
-listens (`listen`) and dials (`dial`, which gives the key that the listener proved).
+listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier.
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates. `crates/podnet-capi` is the C interface of the link (see The C library).

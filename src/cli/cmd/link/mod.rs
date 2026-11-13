@@ -35,7 +35,10 @@ pub(crate) struct LinkArgs {
 pub(crate) struct CarrierArgs {
     /// The carrier (`podnet link carriers` lists them). `tcp` (build feature
     /// `tcp`) runs TLS 1.3 and pins the Ed25519 key of each end: listen at
-    /// `IP:PORT`, dial `KEY@HOST:PORT`. A key that is refused exits 77.
+    /// `IP:PORT`, dial `KEY@HOST:PORT`. `ws` (feature `ws`) and `h2`
+    /// (feature `h2`) pin the keys in the same way over a WebSocket and
+    /// over one POST of HTTP/2: dial `KEY@wss://HOST[:PORT]/PATH` and
+    /// `KEY@https://HOST[:PORT]/PATH`. A key that is refused exits 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
     /// The unix carrier accepts a peer of another uid. Each end checks the
@@ -59,16 +62,29 @@ impl CarrierArgs {
     }
 }
 
-/// The carrier `args` names, or `None` for `tcp`: that carrier needs the key
-/// of this install and the allow list, so [`dial_peer`] and [`listen_door`]
-/// build it. A name that is unknown exits 64; a carrier that this build
-/// leaves out (`tcp` too) exits 69.
-pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Option<Box<dyn Carrier>>> {
-    if args.carrier == "tcp" {
-        podnet::build_features::require("tcp")?;
-        return Ok(None);
+/// The carriers that carry the key of this install in their handshake:
+/// [`dial_peer`] and [`listen_door`] build them from the key and the allow
+/// list.
+const KEYED: [&str; 3] = ["tcp", "ws", "h2"];
+
+/// The carrier that a command opens: a carrier of the registry, or one of
+/// the [`KEYED`] carriers that needs the key of this install.
+pub(super) enum Chosen {
+    Plain(Box<dyn Carrier>),
+    Keyed(&'static str),
+}
+
+/// The carrier `args` names. A name that is unknown exits 64; a carrier
+/// that this build leaves out exits 69.
+pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Chosen> {
+    if let Some(name) = KEYED.iter().find(|n| **n == args.carrier) {
+        podnet::build_features::require(name)?;
+        return Ok(Chosen::Keyed(name));
     }
-    Ok(Some(carriers::open(&args.carrier, &args.options())?))
+    Ok(Chosen::Plain(carriers::open(
+        &args.carrier,
+        &args.options(),
+    )?))
 }
 
 /// Split the query off `address` and check it before any socket opens
@@ -88,19 +104,21 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
 /// (unix, memory) runs the hello above it. `tcp` proves the key in the TLS
 /// handshake, and `address` is `KEY@HOST:PORT`.
 pub(super) async fn dial_peer(
-    carrier: Option<Box<dyn Carrier>>,
+    carrier: Chosen,
     address: &str,
     me: &Identity,
     allow: AllowList,
     via: Option<Arc<dyn podnet::network::Dial>>,
 ) -> Result<(Link, PublicKey)> {
     match carrier {
-        Some(carrier) => {
+        Chosen::Plain(carrier) => {
             let link = podnet::link::dial(&*carrier, address, Settings::default()).await?;
             let peer = hello::dial(&link, me, allow).await?;
             Ok((link, peer))
         }
-        None => tcp::dial(me, allow, address, via).await,
+        Chosen::Keyed("ws") => ws::dial(me, allow, address, via).await,
+        Chosen::Keyed("h2") => h2::dial(me, allow, address, via).await,
+        Chosen::Keyed(_) => tcp::dial(me, allow, address, via).await,
     }
 }
 
@@ -150,14 +168,16 @@ pub(crate) fn takes_chain(args: &LinkArgs) -> bool {
 
 /// Listen at `address`. `tcp` takes the clients of `allow` in its handshake.
 pub(super) async fn listen_door(
-    carrier: Option<Box<dyn Carrier>>,
+    carrier: Chosen,
     address: &str,
     me: &Identity,
     allow: &AllowList,
 ) -> Result<Door> {
     match carrier {
-        Some(carrier) => podnet::link::listen(&*carrier, address).await,
-        None => tcp::listen(me, allow, address).await,
+        Chosen::Plain(carrier) => podnet::link::listen(&*carrier, address).await,
+        Chosen::Keyed("ws") => ws::listen(me, allow, address).await,
+        Chosen::Keyed("h2") => h2::listen(me, allow, address).await,
+        Chosen::Keyed(_) => tcp::listen(me, allow, address).await,
     }
 }
 
@@ -200,6 +220,90 @@ mod tcp {
 
     pub(super) async fn listen(_: &Identity, _: &AllowList, _: &str) -> Result<Door> {
         podnet::build_features::require("tcp").map(|()| unreachable!())
+    }
+}
+
+#[cfg(feature = "ws")]
+mod ws {
+    use super::*;
+
+    pub(super) async fn dial(
+        me: &Identity,
+        allow: AllowList,
+        address: &str,
+        via: Option<Arc<dyn podnet::network::Dial>>,
+    ) -> Result<(Link, PublicKey)> {
+        let carrier = match via {
+            Some(via) => podnet::link_ws::carrier_via(me, &allow, via),
+            None => podnet::link_ws::carrier(me, &allow),
+        };
+        podnet::link_ws::dial(&carrier, &allow, address, Settings::default()).await
+    }
+
+    pub(super) async fn listen(me: &Identity, allow: &AllowList, address: &str) -> Result<Door> {
+        let carrier = podnet::link_ws::carrier(me, allow);
+        podnet::link_ws::listen(&carrier, address).await
+    }
+}
+
+/// This build has no `ws` carrier: `open_carrier` already exited 69.
+#[cfg(not(feature = "ws"))]
+mod ws {
+    use super::*;
+
+    pub(super) async fn dial(
+        _: &Identity,
+        _: AllowList,
+        _: &str,
+        _: Option<Arc<dyn podnet::network::Dial>>,
+    ) -> Result<(Link, PublicKey)> {
+        podnet::build_features::require("ws").map(|()| unreachable!())
+    }
+
+    pub(super) async fn listen(_: &Identity, _: &AllowList, _: &str) -> Result<Door> {
+        podnet::build_features::require("ws").map(|()| unreachable!())
+    }
+}
+
+#[cfg(feature = "h2")]
+mod h2 {
+    use super::*;
+
+    pub(super) async fn dial(
+        me: &Identity,
+        allow: AllowList,
+        address: &str,
+        via: Option<Arc<dyn podnet::network::Dial>>,
+    ) -> Result<(Link, PublicKey)> {
+        let carrier = match via {
+            Some(via) => podnet::link_h2::carrier_via(me, &allow, via),
+            None => podnet::link_h2::carrier(me, &allow),
+        };
+        podnet::link_h2::dial(&carrier, &allow, address, Settings::default()).await
+    }
+
+    pub(super) async fn listen(me: &Identity, allow: &AllowList, address: &str) -> Result<Door> {
+        let carrier = podnet::link_h2::carrier(me, allow);
+        podnet::link_h2::listen(&carrier, address).await
+    }
+}
+
+/// This build has no `h2` carrier: `open_carrier` already exited 69.
+#[cfg(not(feature = "h2"))]
+mod h2 {
+    use super::*;
+
+    pub(super) async fn dial(
+        _: &Identity,
+        _: AllowList,
+        _: &str,
+        _: Option<Arc<dyn podnet::network::Dial>>,
+    ) -> Result<(Link, PublicKey)> {
+        podnet::build_features::require("h2").map(|()| unreachable!())
+    }
+
+    pub(super) async fn listen(_: &Identity, _: &AllowList, _: &str) -> Result<Door> {
+        podnet::build_features::require("h2").map(|()| unreachable!())
     }
 }
 

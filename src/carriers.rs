@@ -116,6 +116,30 @@ fn make_tcp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("tcp", "T-268")
 }
 
+/// The carrier `ws` for the registry: the facts and the host check, no key
+/// of this install (`podnet::link_ws::carrier` is the real one).
+#[cfg(feature = "ws")]
+fn make_ws(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_ws::Probe::new()))
+}
+
+#[cfg(not(feature = "ws"))]
+fn make_ws(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("ws", "T-269")
+}
+
+/// The carrier `h2` for the registry: the facts and the host check, no key
+/// of this install (`podnet::link_h2::carrier` is the real one).
+#[cfg(feature = "h2")]
+fn make_h2(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_h2::Probe::new()))
+}
+
+#[cfg(not(feature = "h2"))]
+fn make_h2(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("h2", "T-270")
+}
+
 fn make_quic(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("quic", "T-273")
 }
@@ -130,7 +154,7 @@ fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 /// The carriers of this build, in the order of the lists and of the
 /// first choice.
-pub const ROWS: [Row; 6] = [
+pub const ROWS: [Row; 8] = [
     Row {
         name: unix::NAME,
         about: "a stream over AF_UNIX, mode 0600, the uid of the peer checked",
@@ -157,6 +181,25 @@ pub const ROWS: [Row; 6] = [
         needs_privilege: false,
         feature: Some("tcp"),
         make: make_tcp,
+    },
+    Row {
+        name: "ws",
+        about: "a WebSocket over TLS 1.3, the Ed25519 key of each end pinned in the handshake",
+        address: "KEY@wss://HOST[:PORT]/PATH to dial, IP:PORT to listen",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("ws"),
+        make: make_ws,
+    },
+    Row {
+        name: "h2",
+        about:
+            "one POST of HTTP/2 over TLS 1.3, the Ed25519 key of each end pinned in the handshake",
+        address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("h2"),
+        make: make_h2,
     },
     Row {
         name: "quic",

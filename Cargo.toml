@@ -238,6 +238,11 @@ x509-parser = "0.18"
 default = []
 # The TCP carrier: TLS 1.3 with the Ed25519 key of each end pinned (T-268).
 tcp = ["pod-link/tcp"]
+# The WebSocket carrier: a WebSocket over the TLS of `tcp`, with the accept
+# loop of pod-ws on the listener side (T-269).
+ws = ["tcp", "pod-link/ws"]
+# The HTTP/2 carrier: one POST over the TLS of `tcp` (T-270).
+h2 = ["tcp", "pod-link/h2"]
 # The QUIC carrier (T-273).
 quic = []
 # The object-storage carrier (T-279).
@@ -253,7 +258,7 @@ c-abi = []
 # The portable subset (T-305). It takes away; `full` does not hold it.
 portable = []
 # Each optional carrier and service, for CI (`cargo test --features full`).
-full = ["tcp", "quic", "s3", "icmp", "ss", "trojan", "c-abi"]
+full = ["tcp", "ws", "h2", "quic", "s3", "icmp", "ss", "trojan", "c-abi"]
 
 [dev-dependencies]
 # The responder of the tests of WireGuard (src/warp/wg/standin.rs).

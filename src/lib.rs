@@ -96,12 +96,16 @@ pub mod link_door;
 pub mod link_exec;
 pub mod link_forward;
 pub mod link_group;
+#[cfg(feature = "h2")]
+pub mod link_h2;
 pub mod link_http;
 pub mod link_query;
 pub mod link_service;
 pub mod link_socks;
 #[cfg(feature = "tcp")]
 pub mod link_tcp;
+#[cfg(feature = "ws")]
+pub mod link_ws;
 pub mod manual;
 pub mod mesh_announce;
 pub mod mesh_table;

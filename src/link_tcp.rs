@@ -38,7 +38,7 @@ pub fn provider() -> Arc<CryptoProvider> {
 }
 
 /// The key of this install, as the carrier takes it.
-fn key_of(me: &Identity) -> Arc<pod_identity::Identity> {
+pub(crate) fn key_of(me: &Identity) -> Arc<pod_identity::Identity> {
     Arc::new(pod_identity::Identity::from_seed(&me.key().seed()))
 }
 

@@ -32,6 +32,16 @@ pub const COMPONENTS: &[ComponentEntry] = &[
         meaning: "A TCP stream with TLS 1.3, ALPN podlink/1. Each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. Duplex, ordered, cost class network, no privilege. Address: KEY@HOST:PORT to dial, IP:PORT to listen. Build feature tcp.",
     },
     ComponentEntry {
+        name: "ws",
+        kind: "carrier",
+        meaning: "A WebSocket over TLS 1.3, ALPN http/1.1, binary messages only. Each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. Duplex, ordered, cost class network, no privilege. Address: KEY@wss://HOST[:PORT]/PATH to dial, IP:PORT to listen. Build feature ws.",
+    },
+    ComponentEntry {
+        name: "h2",
+        kind: "carrier",
+        meaning: "One POST of HTTP/2 over TLS 1.3, ALPN h2: the request body is one direction and the response body is the other. Each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. Duplex, ordered, cost class network, no privilege. Address: KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen. Build feature h2.",
+    },
+    ComponentEntry {
         name: "quic",
         kind: "carrier",
         meaning: "QUIC streams to a peer, TLS 1.3 with the key of the peer pinned. Cost class network, no privilege. Address: HOST:PORT. Build feature quic.",
