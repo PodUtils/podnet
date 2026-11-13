@@ -118,28 +118,6 @@ fn pair() -> Pair {
 }
 
 impl Pair {
-    /// `link dial --service socks5` of the client install, as the
-    /// opener of the stream.
-    fn dial(&self, host: &Host) -> Child {
-        let sock = self.server.path("l.sock");
-        host.command(&[
-            "link",
-            "dial",
-            sock.to_str().unwrap(),
-            "--peer",
-            &self.server_fp,
-            "--service",
-            "socks5",
-        ])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap()
-    }
-}
-
-impl Pair {
     /// The door of the client install: the process and its address.
     fn door(&self, extra: &[&str]) -> (Proc, std::net::SocketAddr) {
         let sock = self.server.path("l.sock");

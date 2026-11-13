@@ -86,24 +86,6 @@ fn start(cmd: &mut Command) -> (Proc, String) {
     (Proc(child), line)
 }
 
-/// An echo service on a unix socket.
-fn echo(path: &Path) {
-    let listener = std::os::unix::net::UnixListener::bind(path).unwrap();
-    std::thread::spawn(move || {
-        for conn in listener.incoming() {
-            let Ok(mut conn) = conn else { return };
-            std::thread::spawn(move || {
-                let mut buf = [0u8; 4096];
-                while let Ok(n) = conn.read(&mut buf) {
-                    if n == 0 || conn.write_all(&buf[..n]).is_err() {
-                        break;
-                    }
-                }
-            });
-        }
-    });
-}
-
 /// The listener (the opener of the streams), the connector that holds
 /// the link and a control socket, and the tree.
 struct Ends {

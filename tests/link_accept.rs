@@ -112,7 +112,7 @@ fn echo(path: &Path) {
 /// service. The connector serves `--service` and holds the link.
 struct Pair {
     server: Host,
-    client: Host,
+    _client: Host,
     client_fp: String,
     control: PathBuf,
     connector: Proc,
@@ -177,7 +177,7 @@ fn pair(services: &[String], grant: &str) -> Pair {
     }
     Pair {
         server,
-        client,
+        _client: client,
         client_fp: cfp,
         control,
         connector,
@@ -297,7 +297,6 @@ fn a_grant_of_the_allow_list_applies_before_the_service() {
 #[test]
 fn the_connector_gives_a_bad_service_flag_exit_64() {
     let host = Host::new();
-    let fp = host.fingerprint();
     for bad in ["no equals sign", "bad name=unix:/x", "socks5=unix:/x"] {
         let out = host.run(&[
             "link",

@@ -121,9 +121,9 @@ pub fn udp_probe(target: std::net::SocketAddr) -> Probe {
 /// Which commands need which listener, and what a UDP result does.
 pub const NEEDS: &str = "\
 listen(AF_INET): warp proxy --listen tcp://, connect -L tcp://, net proxy --listen tcp://,
-  net switch --listen tcp://, net tailscale --listen tcp://, relay connect --listen tcp://
+  net switch --listen tcp://, net tailscale --listen tcp://, relay connect --listen tcp://, link dial --listen HOST:PORT
 listen(AF_UNIX): warp proxy --listen unix:, connect -L unix://, net proxy, net switch and
-  net tailscale (each defaults to a unix path), relay connect --listen unix:
+  net tailscale (each defaults to a unix path), relay connect --listen unix:, link dial --listen unix:
 no listener: tunnel, serve, share and demo (the edge carries each request)
 UDP egress: refused makes --protocol auto skip QUIC on UDP 7844; unknown keeps the
   order (the next leg starts after 2 s); PODNET_UDP=off|on|probe sets it

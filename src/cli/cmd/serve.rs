@@ -100,7 +100,7 @@ pub(crate) struct ServeArgs {
     /// --users, and exit.
     #[arg(long, conflicts_with_all = ["path", "dir", "users", "pin", "anon_read", "local", "ingress"])]
     hash_password: bool,
-    /// The road to the visitors: tunnel (the default with no --local),
+    /// The road to the visitors, ROAD: tunnel (the default with no --local),
     /// relay, or none (the default with --local). --ingress tunnel or relay
     /// with --local serves the local listeners too. `peer:FINGERPRINT/SERVICE`
     /// serves the files on the streams that the peer of a running `podnet
@@ -111,7 +111,7 @@ pub(crate) struct ServeArgs {
     /// Index, range and HEAD work as on any listener; --list, --spa, --tar,
     /// --users and --pin apply. The `--allow` grant of the peer must name
     /// SERVICE. It makes no tunnel.
-    #[arg(long, value_name = "tunnel|relay|none|peer:FP/SERVICE", value_parser = parse_ingress)]
+    #[arg(long, value_name = "ROAD", value_parser = parse_ingress)]
     ingress: Option<IngressArg>,
     /// Serve the files to one peer of a link, on a stream of its service:
     /// peer:FINGERPRINT/SERVICE. The peer opens the stream (podnet link
