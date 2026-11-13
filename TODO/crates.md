@@ -809,6 +809,12 @@ Done so far:
 - v0.34.0 (PodUtils/podcrates#104): each `pod-*` dependency names `tag = "v0.34.0"`; no hand-off. `pod-link` has
   the TCP carrier with TLS 1.3 and a pinned Ed25519 key (feature `tcp`, for T-268). A read after the stop of a
   `pod-netstack` stack returns `ConnectionReset`. `cargo test --workspace --no-fail-fast`: 0 failed.
+- v0.35.0 (PodUtils/podcrates#127): each `pod-*` dependency names `tag = "v0.35.0"` and `version = "0.35.0"`; no
+  hand-off for podnet at the tag. `pod-warp` holds the rest of the WARP chain; the adoption trial of `src/warp/` passes at
+  9c1fc4b (`adoption/podnet/pod-warp.patch` on `main` of podcrates after the tag); the COORD issue that holds
+  `src/warp/` to fixes follows the trial of podssh. Breaking in `pod-netstack` (a socket that the TCP timeout ends reads
+  `TimedOut`) and `pod-warp` (`DataPathCheck::servers`): no podnet code uses them yet. `cargo test --workspace
+  --no-fail-fast`: 81 test binaries, 0 failed. `cargo deny --locked check bans sources`: ok.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
