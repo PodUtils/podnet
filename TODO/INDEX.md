@@ -337,7 +337,7 @@ M8 Overlays, M9 Later.
 | [T-289](link.md) | P3 | M | M9 | feature | done | link: the local topology and the status view of a mesh (GitHub #470) |
 | [T-290](link.md) | P3 | M | M9 | feature | open | link: per-hop access control for services and forwarding (GitHub #470) |
 | [T-291](link.md) | P3 | M | M9 | feature | partial | link: a SOCKS5 service at a peer (GitHub #471) |
-| [T-292](link.md) | P3 | M | M9 | feature | open | link: an HTTP forward proxy service at a peer (GitHub #471) |
+| [T-292](link.md) | P3 | M | M9 | feature | done | link: an HTTP forward proxy service at a peer (GitHub #471) |
 | [T-293](link.md) | P3 | S | M9 | feature | done | link: a raw passthrough service at a peer (GitHub #471) |
 | [T-294](link.md) | P3 | M | M9 | feature | blocked | link: a Shadowsocks AEAD service at a peer (GitHub #471) |
 | [T-295](link.md) | P3 | M | M9 | feature | blocked | link: a Trojan service at a peer (GitHub #471) |
