@@ -474,6 +474,9 @@ pub fn send(command: Option<&str>, exit: i32, error: Option<&anyhow::Error>) {
 /// the crates of PodUtils/podcrates that write its diagnostics (the resolver,
 /// the dial, TLS), so that `-v` shows their lines too.
 pub fn log_filter(level: &str) -> String {
+    // Each crate of PodUtils/podcrates that podnet runs: a line of a crate
+    // that is not here is hidden at the default level (T-332: the TUN of
+    // `warp tun` and the relay leg of WARP log as `pod_warp`).
     [
         "podnet",
         "pod_core",
@@ -481,6 +484,19 @@ pub fn log_filter(level: &str) -> String {
         "pod_proxy",
         "pod_tls",
         "pod_services",
+        "pod_warp",
+        "pod_relay",
+        "pod_link",
+        "pod_ws",
+        "pod_quic",
+        "pod_netstack",
+        "pod_hold",
+        "pod_wg",
+        "pod_turn",
+        "pod_devtunnel",
+        "pod_session",
+        "pod_identity",
+        "pod_e2e",
     ]
     .map(|target| format!("{target}={level}"))
     .join(",")
@@ -489,6 +505,25 @@ pub fn log_filter(level: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // T-332: the default filter holds each crate of podcrates that podnet
+    // depends on, so a line of pod-warp shows at the default level.
+    #[test]
+    fn the_log_filter_names_each_pod_crate_of_podnet() {
+        let manifest = include_str!("../../../Cargo.toml");
+        let filter = log_filter("info");
+        for line in manifest.lines() {
+            let Some(name) = line.strip_prefix("pod-") else {
+                continue;
+            };
+            let name = name.split([' ', '=']).next().unwrap_or("");
+            if name.is_empty() || name == "testkit" || name == "todo" {
+                continue;
+            }
+            let target = format!("pod_{}=info", name.replace('-', "_"));
+            assert!(filter.contains(&target), "{target} is not in {filter}");
+        }
+    }
 
     // The program of PODNET_ERROR_PROGRAM gets no secret of podnet.
     #[test]

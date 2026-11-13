@@ -5554,3 +5554,10 @@ looks for the new line.
 2026-11-13: podcrates `v0.39.0` (PodUtils/podcrates#137, its entry 508) fixes the datagrams of `WarpNet` for both
 paths. The take drops src/warp/one_family.rs at `ca53a72`: `quic.rs` and `nc.rs` take the datagrams of the session again. The
 fix of `nc_session` stays: it is podnet's own.
+
+2026-11-13: the live run 43407944050 on dfc1695 passed the steps of WARP through QUIC, nc and the relay (the fix of
+podcrates `v0.39.0` holds). It failed at "warp tun --default-route (root)": the step looks for "the routes and the
+resolver are as before" in the log of the instance, a line that `pod-warp` writes with the target `pod_warp`. The default
+log filter of podnet (`podnet_core::report::log_filter`) named six targets and hid each line of `pod-warp` and of the other
+crates of podcrates. The filter now names each `pod-*` crate that podnet runs. Test:
+`the_log_filter_names_each_pod_crate_of_podnet` (it reads the root `Cargo.toml`).
