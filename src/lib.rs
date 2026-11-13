@@ -94,6 +94,7 @@ pub mod link_service;
 #[cfg(feature = "tcp")]
 pub mod link_tcp;
 pub mod manual;
+pub mod mesh_announce;
 pub mod mesh_table;
 pub mod networks;
 pub mod preflight;

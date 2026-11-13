@@ -238,6 +238,29 @@ the unix and memory carriers, whose channel the kernel keeps on this host. A car
 it: the `tcp` carrier pins the key of the peer in its TLS handshake (T-268), and the other network carriers take the end-to-end
 handshake of `pod-e2e` (T-298).
 
+## The route announcement
+
+`podnet::mesh_announce` is the signed route announcement of the mesh (T-285). It is a library part. No command sends it yet:
+`--announce` on `link listen` and `link dial` is not built (T-285, step 3).
+
+* The functions do no I/O. The caller gives the time in milliseconds.
+* The signed body has a fixed field order, all integers big-endian: version (1), origin key (32), `seq` (8), time of issue
+  (8), expiry (8), neighbour count (2) and each neighbour (key 32, cost 4), service count (2) and each service (length 1,
+  UTF-8 name). Then the signature (64). Then the path: a length (1) and the keys (32 each).
+* The encoding is canonical. The neighbours are in strictly ascending key order. The services are in strictly ascending byte
+  order. The decoder refuses any other order and any byte after the end.
+* The origin signs the label `podnet-mesh-announce-v1\0` and the body with its identity key. The path is not signed: each
+  node adds itself (`append_hop`). The session with the sender authenticates the last node of the path.
+* Bounds: 64 neighbours, 16 services, a service name of 1 to 64 bytes, 16 nodes in the path, 8 KiB for the body. An interval
+  is 10 s, the life is at most 3 intervals (30 s), the clock skew is 120 s in each direction.
+* `verify` drops an announcement for the first failed rule: shape and bounds, path (not from the origin, a node two times,
+  this node), a time of issue more than 120 s ahead or behind, a bad lifetime, an expired announcement, a bad signature.
+* `Receiver::accept` is `verify` and the seen-`seq` rule. It keeps the newest `seq` of each origin for 4096 origins. An entry
+  is removed when its time of issue is more than 120 s old (a replay then fails the skew rule). At the limit, the entry with
+  the oldest time of issue is removed.
+* Only an announcement with the path `[origin]` is a neighbour claim (`Verified::neighbour_claims`). A multi-hop announcement
+  tells reachability. `Verified::route` gives the announcement for `mesh_table`.
+
 ## The route table
 
 `podnet::mesh_table` is the path-vector route table of the mesh (T-286). It is a library part. No command calls it: the
@@ -276,6 +299,6 @@ signed announcements (T-285), the forwarding (T-287) and the status view (T-289)
 
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
-`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_table` is the route table of the mesh. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
+`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
 listens (`listen`) and dials (`dial`, which gives the key that the listener proved).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates.
