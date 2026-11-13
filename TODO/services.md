@@ -853,7 +853,7 @@ T-057 is done.
 
 ## Done
 
-2026-11-13, commit T095COMMIT. Items 1 to 3 are in 3855573 (the network `warp` and its device for each network); this
+2026-11-13, commit a10d70c. Items 1 to 3 are in 3855573 (the network `warp` and its device for each network); this
 commit adds the proof. `src/router/control/tests.rs`, `two_warp_identities_keep_their_counters`: a router with two
 members `warp` in one group, on the edge stand-in of `tests/warp_edge`: two devices, two identity files that differ, and
 the bytes of each member count only its own flows (an echo of 1000 bytes through `a`, of 5000 bytes through `b`).
