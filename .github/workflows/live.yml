@@ -534,6 +534,45 @@ jobs:
           target/release/podnet stop filesconnect
           target/release/podnet stop filesrelay
           target/release/podnet relay stop "$name" > /dev/null
+      # T-087: the resumable layer on the reverse road. 200 MiB in each
+      # direction pass the limit of one relay session (64 MiB): the session
+      # moves to new legs, and the SHA-256 of the echo is equal.
+      - name: 200 MiB each way through the reverse relay with --resume
+        timeout-minutes: 20
+        run: |
+          set -eu
+          export PODNET_RUN_DIR="$RUNNER_TEMP/resume-relay-run"
+          umask 077
+          target/release/podnet relay pair --json > resume-pair.json
+          name=$(jq -r .name resume-pair.json)
+          echo "::add-mask::$name"
+          echo "::add-mask::$(jq -r .connect_token resume-pair.json)"
+          python3 -c '
+          import socket, threading
+          s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+          s.bind(("127.0.0.1", 18193)); s.listen(4)
+          def echo(c):
+              while True:
+                  b = c.recv(1 << 16)
+                  if not b:
+                      break
+                  c.sendall(b)
+              c.shutdown(socket.SHUT_WR); c.close()
+          while True:
+              c, _ = s.accept(); threading.Thread(target=echo, args=(c,), daemon=True).start()
+          ' &
+          target/release/podnet relay node "$name" --to 127.0.0.1:18193 --resume --detach --name resumenode > /dev/null
+          head -c 209715200 /dev/urandom > "$RUNNER_TEMP/big.bin"
+          start=$(date +%s)
+          target/release/podnet relay connect "$name" --resume -v < "$RUNNER_TEMP/big.bin" > "$RUNNER_TEMP/big.back" 2> resume.err || true
+          echo "200 MiB each way in $(( $(date +%s) - start )) s; moves: $(grep -c -i 'move' resume.err || true)"
+          if ! cmp "$RUNNER_TEMP/big.bin" "$RUNNER_TEMP/big.back"; then
+            echo "bytes back: $(stat -c %s "$RUNNER_TEMP/big.back")"
+            sed "s/$name/<pair>/g" resume.err | cut -c1-300 | tail -40
+            exit 1
+          fi
+          target/release/podnet stop resumenode
+          target/release/podnet relay stop "$name" > /dev/null
       # T-094: git over SSH through the reverse relay: git serve --ingress
       # relay, and ssh with podnet relay connect as the ProxyCommand.
       - name: Git over SSH through the reverse relay

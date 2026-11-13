@@ -344,6 +344,10 @@ memory: the crate reads the clock of tokio (`tokio::time::Instant`) for `move_ag
 Left: the end-to-end channel (`--key`, `--allow`, approach item 4), for later; the live step of 200 MiB through the real
 relay (`gh workflow run live.yml`), for later: `.github/workflows/` does not change in this work.
 
+2026-11-13, the lead: `.github/workflows/live.yml` has the step "200 MiB each way through the reverse relay with
+--resume" (a relay node with `--resume` in front of a TCP echo, and `relay connect --resume`; `cmp` of 200 MiB). It waits
+for a run (GitHub #531).
+
 ## Done
 
 2026-11-13, commit 030c7ae. `src/relay_reverse/resume.rs`: `run_node_resumable` (the node over
