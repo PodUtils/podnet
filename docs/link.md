@@ -110,7 +110,9 @@ until a stop signal (exit 0) or the end of the link (exit 69). `--listen` needs 
 * `CONNECT`: the door opens one stream of the link for each request, speaks SOCKS5 to the service `socks5` of the peer, and copies the
   bytes. A refusal of the peer is a failure reply to the client (the code is coarse: the door maps the text of the failure).
 * Names: `--resolve-at peer` (the default) sends the name in the request, and the peer resolves it. `--resolve-at local` resolves the
-  name at the opener (the system resolver, and the pins of the global `--resolve`) and sends an address. The flag is not called
+  name at the opener (the system resolver, and the pins of the global `--resolve`) and sends an address. The door tries each
+  address in the order of the resolver, on a new stream for each, until the peer accepts one. The failure of the last address
+  goes to the client. The flag is not called
   `--resolve`: that name is the global flag of the pins.
 * `BIND`: the door opens a stream, sends the request, and copies both replies and the bytes of the incoming connection. The listener
   is at the peer (see above).

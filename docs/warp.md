@@ -96,8 +96,8 @@ podnet warp down                    # stop it
 through a WARP session, with names resolved inside the tunnel. `podnet forward --network warp` and a
 `networks:` entry of a router file take them ([router.md](router.md), "WARP as a member": health, the egress
 check by the exit trace, the renewal of a member, `--rotate` and `--reconnect`). The device is kept in `FILE`,
-else in the default identity file of `podnet warp`, else (in a router with `state_dir`) in
-`state_dir/NETWORK/warp.json`. The network has none of the flags of `podnet warp` (`--cc`, `--masque-endpoint`, `--session-max-age` and the
+else (in a router with `state_dir`) in `state_dir/NETWORK/warp.json`, else in the default identity file of
+`podnet warp`. The network has none of the flags of `podnet warp` (`--cc`, `--masque-endpoint`, `--session-max-age` and the
 others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WARP_TCP_BURST` and
 `PODNET_WARP_NO_CHECK`.
 

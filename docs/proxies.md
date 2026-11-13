@@ -85,7 +85,8 @@ first byte. These commands run the same door (`crates/podnet-netns/src/door.rs`,
 | `podnet net tailscale` | `tailscaled`, through its LocalAPI. |
 | `podnet route` | A network or a group of the router ([router.md](router.md)). |
 
-`podnet warp proxy` has its own door until the take of `pod-warp` (T-050).
+`podnet warp proxy` is the door of `pod-warp`. The door of podnet carries the network `warp` in `podnet route`
+([router.md](router.md), "WARP as a member").
 
 The door has these rules for each client:
 
