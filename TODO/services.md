@@ -1412,6 +1412,11 @@ route` with `w: warp:identity=FILE`, `r: relay` and a group `g` (policy `protect
 place of `warp` (the router starts; `down_after: 3`, `up_after: 2` hold K > R > 1 and R > K/2). It waits for a run
 (GitHub #531).
 
+2026-11-13: the live run 43491840609 on d53df25 failed at the step: the relay's own exit is Cloudflare, so a trace through
+the relay also says `warp=on` (measured from this host with `podnet forward --network relay`). The step now tells the
+members apart by the state of the router (`route --status --json`): each door answers, `w` is `up`, then with the reset
+rule `w` goes `down` in 90 s at most and the group still carries a flow (c02da54). It waits for a run.
+
 
 # T-102: Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole`
 

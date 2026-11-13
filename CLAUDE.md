@@ -83,7 +83,7 @@ These rules apply to each session. Obey them before any other default.
   disk is full.
 - Documents: `README.md` (short: the overview, the install, a map of the
   capabilities), the topic documents `docs/install.md`, `docs/tunnels.md`,
-  `docs/serve.md`, `docs/warp.md`, `docs/pods.md`, `docs/networks.md`,
+  `docs/serve.md`, `docs/transfer.md`, `docs/warp.md`, `docs/pods.md`, `docs/networks.md`,
   `docs/router.md`, `docs/forward.md`, `docs/relay.md`, `docs/link.md`, `docs/egress.md`,
   `docs/proxies.md`, `docs/background.md`, `docs/doctor.md`, `docs/cli.md`,
   `docs/library.md`, `docs/build.md` (a new capability goes into its topic

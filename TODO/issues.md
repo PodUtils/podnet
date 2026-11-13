@@ -226,5 +226,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #532 | COORD-070: podnet took v0.40.0 at 1c88531 (to podcrates) | open (a COORD issue between sessions) | none |
 | #533 | COORD-071: two asks of the carriers of pod-link: a typed refusal of the key, and the TC rule of the dns carrier (to podcrates) | open (a COORD issue between sessions) | none |
 | #534 | [gh action] requested: ci, deny, secrets and live on d53df25 | closed: ci 43491819082, deny 43491826156 and secrets 43491833085 passed; live 43491840609 failed at the new router step (fixed in c02da54) | none |
+| #535 | COORD-072: the asks of the transfer of podnet over pod-wormhole: the derivation of a key, a stand-in mailbox, the count of words, the TCP transit relay (to podcrates) | open (a COORD issue between sessions) | none |
+| #536 | [gh action] requested: ci, deny, secrets and live on the head after 9d16352 (T-101, the transfer) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
