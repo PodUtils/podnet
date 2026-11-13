@@ -58,13 +58,13 @@ async fn one_family_socket(stack: &WarpStack) -> Result<Arc<dyn pod_core::Datagr
         {
             Ok(socket) => return Ok(Arc::new(socket.into_datagrams())),
             Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => last = Some(err),
-            Err(err) => {
-                return Err(err).context("binding a UDP socket inside the WARP session")
-            }
+            Err(err) => return Err(err).context("binding a UDP socket inside the WARP session"),
         }
     }
-    Err(last.map(anyhow::Error::from).unwrap_or_else(|| anyhow::anyhow!("no free port")))
-        .context("binding a UDP socket inside the WARP session")
+    Err(last
+        .map(anyhow::Error::from)
+        .unwrap_or_else(|| anyhow::anyhow!("no free port")))
+    .context("binding a UDP socket inside the WARP session")
 }
 
 /// The first port of the ephemeral range (RFC 6335).
