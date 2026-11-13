@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**332 entries: 28 open, 22 partial, 41 blocked, 241 done.**
+**332 entries: 35 open, 22 partial, 34 blocked, 241 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 1 | 2 | 27 | 31 |
 | P2 | 17 | 9 | 11 | 131 | 168 |
-| P3 | 10 | 12 | 28 | 82 | 132 |
-| **All** | 28 | 22 | 41 | 241 | 332 |
+| P3 | 17 | 12 | 21 | 82 | 132 |
+| **All** | 35 | 22 | 34 | 241 | 332 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -314,8 +314,8 @@ M8 Overlays, M9 Later.
 | [T-266](link.md) | P3 | M | M9 | feature | done | link: `peer:FINGERPRINT/SERVICE` as a network target and `forward -L LISTEN=peer:...` (GitHub #466 and #471) |
 | [T-267](link.md) | P3 | M | M9 | feature | done | link: the control socket, its discipline and the status verb (GitHub #466) |
 | [T-268](link.md) | P3 | L | M9 | feature | done | link: the TCP carrier with TLS 1.3, the accept side and the peer handshake (GitHub #467) |
-| [T-269](link.md) | P3 | M | M9 | feature | blocked | link: the WebSocket carrier, its server half and its wrapper (GitHub #467) |
-| [T-270](link.md) | P3 | M | M9 | feature | blocked | link: the HTTP/2 carrier with one bidirectional POST (GitHub #467) |
+| [T-269](link.md) | P3 | M | M9 | feature | open | link: the WebSocket carrier, its server half and its wrapper (GitHub #467) |
+| [T-270](link.md) | P3 | M | M9 | feature | open | link: the HTTP/2 carrier with one bidirectional POST (GitHub #467) |
 | [T-271](link.md) | P3 | M | M9 | feature | blocked | link: the HTTP/1.1 long-poll carrier (GitHub #467) |
 | [T-272](link.md) | P3 | M | M9 | feature | blocked | link: the SSE and chunked-stream carrier (GitHub #467) |
 | [T-273](link.md) | P3 | M | M9 | feature | blocked | link: the QUIC carrier (GitHub #467) |
@@ -343,10 +343,10 @@ M8 Overlays, M9 Later.
 | [T-295](link.md) | P3 | M | M9 | feature | blocked | link: a Trojan service at a peer (GitHub #471) |
 | [T-296](link.md) | P3 | M | M9 | feature | done | link: an exec adapter that runs a program for each stream (GitHub #471) |
 | [T-297](link.md) | P3 | M | M9 | feature | partial | link: serve a file tree at a peer (GitHub #471) |
-| [T-298](link.md) | P3 | L | M9 | feature | blocked | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
-| [T-299](link.md) | P3 | S | M9 | feature | blocked | link: snappy compression of records (GitHub #472) |
-| [T-300](link.md) | P3 | S | M9 | feature | blocked | link: padding of records to buckets (GitHub #472) |
-| [T-301](link.md) | P3 | M | M9 | feature | blocked | link: the replay window and the RESUME record (GitHub #472) |
+| [T-298](link.md) | P3 | L | M9 | feature | open | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
+| [T-299](link.md) | P3 | S | M9 | feature | open | link: snappy compression of records (GitHub #472) |
+| [T-300](link.md) | P3 | S | M9 | feature | open | link: padding of records to buckets (GitHub #472) |
+| [T-301](link.md) | P3 | M | M9 | feature | open | link: the replay window and the RESUME record (GitHub #472) |
 | [T-302](link.md) | P3 | L | M9 | feature | blocked | link: split one session across an up carrier and a down carrier (GitHub #473) |
 | [T-303](link.md) | P3 | M | M9 | feature | done | link: chain composition with a peer element and --check (GitHub #473) |
 | [T-304](link.md) | P3 | L | M9 | feature | done | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
@@ -373,7 +373,7 @@ M8 Overlays, M9 Later.
 | [T-325](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.8`: the dry run, the publish and the release proofs |
 | [T-326](fixes.md) | P2 | S | M5 | chore | blocked | Remove the ignore of RUSTSEC-2023-0071 when russh takes `rsa` 0.10.0 |
 | [T-327](services.md) | P3 | M | M6 | feature | done | Router: add and remove a door and a network while the router runs (N-1) |
-| [T-328](services.md) | P3 | S | M6 | feature | blocked | Router: rules by port, also on the loopback (N-2) |
+| [T-328](services.md) | P3 | S | M6 | feature | open | Router: rules by port, also on the loopback (N-2) |
 | [T-329](services.md) | P3 | M | M6 | feature | done | `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3) |
 | [T-330](pods.md) | P3 | S | M7 | feature | done | `podnet pod --report FILE`: a JSON report of the backend and the hold (N-5) |
 | [T-331](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.9`: the dry run, the publish and the release proofs |

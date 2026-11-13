@@ -2304,7 +2304,7 @@ time (the DNS bind error shows in the log, not in the answer); a flow through a 
 **Milestone:** M6
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -2333,20 +2333,16 @@ fallback in podswarm, and no milestone of podswarm waits for it. The owner can r
 ```sh
 cargo test --workspace -- rules_port
 ```
-
-## Blocker
-
-The one reader of the rules, `RuleMatch::parse` in `crates/podnet-netns/src/rules.rs`, is frozen for `pod-warp` of
-PodUtils/podcrates (`sh scripts/agent/podcrates.sh`; no `taken` line). The port rules are a feature, not a fix. COORD-061
-(GitHub #518) asks podcrates to add them. Podnet changes `crates/podnet-netns/src/rules/shadow.rs` (not frozen) with the
-take.
-
 ## Correction
 
 2026-11-13: podcrates takes the ask as its entry 475 (P3, PodUtils/podcrates#126): `RuleMatch::Port(lo, hi)` and
 `RuleMatch::Tcp(host, port)` in the rules reader of `pod-warp`, with the acceptance test of podswarm. podnet changes
 `shadow.rs` with the take of the tag that has it.
 
+2026-11-13: the port rules are in `pod-warp` at podcrates `v0.38.0` (taken, c65090d): the block is gone. The doors and the
+pods of podnet read the frozen `crates/podnet-netns/src/rules.rs`, not `pod-warp`'s reader: the work moves them onto
+`pod_warp`'s `Table` and `RuleMatch` (the freeze of that file ends with it), and changes `rules/shadow.rs` for the kinds
+`port:` and `tcp:`.
 
 # T-329: `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3)
 

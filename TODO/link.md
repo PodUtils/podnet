@@ -501,7 +501,7 @@ Not proven: a host that denies TCP loopback (the skip line is the host's own tex
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -532,15 +532,13 @@ The rules of the issue that apply to this row:
 cargo test --test link_ws
 sh scripts/agent/check.sh
 ```
-
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 420 in the record of podcrates (the WebSocket carrier over `pod-ws`) (PodUtils/podcrates#106, 2026-11-13). It
-comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
-
 ## Start condition
 
 T-261, T-262 and T-264 are done.
+
+## Correction
+
+2026-11-13: The carrier `ws` of `pod-link` is in podcrates `v0.38.0` (taken, c65090d): the block is gone.
 
 # T-270: link: the HTTP/2 carrier with one bidirectional POST (GitHub #467)
 
@@ -549,7 +547,7 @@ T-261, T-262 and T-264 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -576,15 +574,13 @@ The rules of the issue that apply to this row:
 cargo test --test link_h2
 sh scripts/agent/check.sh
 ```
-
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 421 in the record of podcrates (the HTTP/2 carrier) (PodUtils/podcrates#106, 2026-11-13). It
-comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
-
 ## Start condition
 
 T-268 is done.
+
+## Correction
+
+2026-11-13: The carrier `h2` of `pod-link` is in podcrates `v0.38.0` (taken, c65090d): the block is gone.
 
 # T-271: link: the HTTP/1.1 long-poll carrier (GitHub #467)
 
@@ -1943,7 +1939,7 @@ Not proven: the kind `peer` of `--ingress` and `--name` (see the Correction); a 
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1982,16 +1978,13 @@ The rules of the issue that apply to this row:
 cargo test --test link_record
 sh scripts/agent/check.sh
 ```
-
-## Blocker
-
-PodUtils/podcrates must release `pod-e2e` (T-086, T-137) and answer ask A3 (a COORD issue to podcrates): an interface to the handshake hash and the transport keys. It unblocks when the release exists.
-
 ## Start condition
 
 T-086 is done (the take of `pod-e2e`), and T-262 is done.
 
 ## Correction
+
+2026-11-13: The record layer of `pod-e2e` is in podcrates `v0.38.0` (taken, c65090d): the block is gone.
 
 2026-11-12, the lead: the hello of T-265 (`src/hello.rs`) proves the keys of the two ends but makes no key for the link and does not bind the streams after it. It holds for the unix and memory carriers only. A carrier that crosses a network does not rely on it: this entry gives the link its keys from the end-to-end handshake of `pod-e2e`, bound to the session, before the carrier is offered.
 
@@ -2003,7 +1996,7 @@ T-086 is done (the take of `pod-e2e`), and T-262 is done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -2031,16 +2024,13 @@ The rules of the issue that apply to this row:
 cargo test --test link_compress
 sh scripts/agent/check.sh
 ```
-
-## Blocker
-
-The entry adds a feature to the records of the AEAD record layer, T-298, which is blocked on `pod-e2e` of
-PodUtils/podcrates (ask A3; its entry 301, estimate: tag `v0.38.0`, PodUtils/podcrates#133). The compression stays
-podnet's code (call C246 of podcrates): it runs before the seal of `pod-e2e`.
-
 ## Start condition
 
 T-298 and T-306 are done.
+
+## Correction
+
+2026-11-13: The record layer of `pod-e2e` is in podcrates `v0.38.0` (taken, c65090d): the block is gone; the compression runs before its seal.
 
 # T-300: link: padding of records to buckets (GitHub #472)
 
@@ -2049,7 +2039,7 @@ T-298 and T-306 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -2076,15 +2066,13 @@ The rules of the issue that apply to this row:
 cargo test --test link_pad
 sh scripts/agent/check.sh
 ```
-
-## Blocker
-
-`pod-e2e` of PodUtils/podcrates holds this part (its entry 301, call C246, estimate: tag `v0.38.0`,
-PodUtils/podcrates#133): no raw transport key leaves the crate. The entry is a take of that tag.
-
 ## Start condition
 
 T-298 and T-306 are done.
+
+## Correction
+
+2026-11-13: The padding of `pod-e2e` is in podcrates `v0.38.0` (taken, c65090d): the block is gone.
 
 # T-301: link: the replay window and the RESUME record (GitHub #472)
 
@@ -2093,7 +2081,7 @@ T-298 and T-306 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -2120,15 +2108,13 @@ The rules of the issue that apply to this row:
 cargo test --test link_replay
 sh scripts/agent/check.sh
 ```
-
-## Blocker
-
-`pod-e2e` of PodUtils/podcrates holds this part (its entry 301, call C246, estimate: tag `v0.38.0`,
-PodUtils/podcrates#133): no raw transport key leaves the crate. The entry is a take of that tag.
-
 ## Start condition
 
 T-298 and T-263 are done.
+
+## Correction
+
+2026-11-13: The replay window and RESUME of `pod-e2e` are in podcrates `v0.38.0` (taken, c65090d): the block is gone.
 
 # T-302: link: split one session across an up carrier and a down carrier (GitHub #473)
 
