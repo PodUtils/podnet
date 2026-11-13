@@ -23,8 +23,8 @@ bring `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`.
 None. The patches of the earlier session are merged: T-153 (085f5c8) and the WARP parts of the router, T-097, T-180, T-099
 and T-061 (3855573).
 
-Not started: the rest of T-287 (a test with three podnet processes) and of T-301 (RESUME inside the session resume of
-T-263). A worktree brief for them is in the record (their Corrections).
+Not started: the rest of T-287 (a test with three podnet processes). A worktree brief for it is in the record (its
+Corrections). T-301 is done.
 
 ## CI
 

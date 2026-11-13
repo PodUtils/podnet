@@ -6,6 +6,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+mod link_record_harness;
+
 use pod_link::memory::Memory;
 use pod_link::Error;
 use podnet::link::{self, Link, Role, Settings};
@@ -432,5 +434,65 @@ mod resume {
             .unwrap_or_else(|| panic!("not ResumeExpired: {error:#}"));
         assert_eq!(expired.window, window);
         assert_eq!(code_of(&error), podnet::exit::UNAVAILABLE);
+    }
+
+    /// A sealed stream (T-301) over a link of a session: the session sends
+    /// again the bytes of the lost carrier from offsets, so the record
+    /// layer sees no loss and sends no RESUME record.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_sealed_stream_over_a_cut_session_carries_one_mebibyte_each_way() {
+        use link_record_harness::{allow, install};
+        use podnet::link_record::{self as record, Options};
+        let far = Arc::new(Far::new(RESUME_WINDOW));
+        let (session, listener, gate, _notes) = cut_session(&far, 300_000, RESUME_WINDOW).await;
+        let dir = tempfile::tempdir().unwrap();
+        let (a, c) = (install(dir.path(), "a"), install(dir.path(), "c"));
+        let (cp, list) = (c.public(), allow(&[&a]));
+        let opened = session.link().open().unwrap();
+        let listener = Arc::new(listener);
+        let accepting = listener.clone();
+        let far_end = async move {
+            let stream = accepting.accept().await.unwrap();
+            record::accept(stream, &c, &list, Options::default()).await
+        };
+        let (near, far_end) = tokio::join!(
+            record::dial(opened, &a, Some(&cp), Options::default()),
+            far_end
+        );
+        let (mut near, mut far_end) = (near.unwrap(), far_end.unwrap());
+        let (to_c, to_a) = (pseudo_random(MIB, 11), pseudo_random(MIB, 13));
+        async fn both_ways(s: &mut record::Sealed, data: Vec<u8>) -> Vec<u8> {
+            let (mut r, mut w) = tokio::io::split(s);
+            let send = async {
+                w.write_all(&data).await.unwrap();
+                w.shutdown().await.unwrap();
+            };
+            let mut got = Vec::new();
+            let (_, read) = tokio::join!(send, r.read_to_end(&mut got));
+            read.unwrap();
+            got
+        }
+        let run = async {
+            lost(&far).await;
+            gate.send(()).unwrap();
+        };
+        let (at_c, at_a, ()) = timeout(LIMIT, async {
+            tokio::join!(
+                both_ways(&mut far_end, to_a.clone()),
+                both_ways(&mut near, to_c.clone()),
+                run
+            )
+        })
+        .await
+        .expect("the bytes came through");
+        assert_eq!(sha256(&at_c), sha256(&to_c), "A to C differs");
+        assert_eq!(sha256(&at_a), sha256(&to_a), "C to A differs");
+        assert!(far.lost() > 0, "the carrier was cut");
+        // The record layer saw no loss: no RESUME, no repeat.
+        for end in [&near, &far_end] {
+            assert_eq!(end.stats().refused(), 0);
+            assert_eq!(end.stats().replayed(), 0);
+        }
+        assert!(session.link().ended().is_none(), "the link did not end");
     }
 }

@@ -3,16 +3,18 @@
 
 use std::collections::VecDeque;
 use std::io;
+use std::pin::Pin;
 use std::sync::Arc;
+use std::task::{Context, Poll};
 use std::time::Instant;
 
 use pod_core::entropy::OsEntropy;
 use pod_e2e::record::{record_len, Fault, Opened, HEADER};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, DuplexStream};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, DuplexStream, ReadBuf};
 use tokio::sync::mpsc;
 
 use super::pack::{self, Refused};
-use super::{lock, Command, Shared, COMPRESSED, DATA, FIN};
+use super::{lock, Command, NewCarrier, Reader, Shared, COMPRESSED, DATA, FIN};
 
 /// The bytes between the application and the sender.
 pub(super) const PIPE: usize = 256 * 1024;
@@ -22,6 +24,53 @@ const CHUNK: usize = 32 * 1024;
 
 /// The bytes of sent payloads that the sender keeps for a RESUME.
 const LOG_LIMIT: usize = 1024 * 1024;
+
+/// The first carrier of the stream, or a later one of
+/// [`super::Sealed::rebind`].
+enum Carrier<F, N> {
+    First(F),
+    Next(N),
+}
+
+impl<F: AsyncRead + Unpin, N: AsyncRead + Unpin> AsyncRead for Carrier<F, N> {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        match self.get_mut() {
+            Carrier::First(io) => Pin::new(io).poll_read(cx, buf),
+            Carrier::Next(io) => Pin::new(io).poll_read(cx, buf),
+        }
+    }
+}
+
+impl<F: AsyncWrite + Unpin, N: AsyncWrite + Unpin> AsyncWrite for Carrier<F, N> {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        match self.get_mut() {
+            Carrier::First(io) => Pin::new(io).poll_write(cx, buf),
+            Carrier::Next(io) => Pin::new(io).poll_write(cx, buf),
+        }
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        match self.get_mut() {
+            Carrier::First(io) => Pin::new(io).poll_flush(cx),
+            Carrier::Next(io) => Pin::new(io).poll_flush(cx),
+        }
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        match self.get_mut() {
+            Carrier::First(io) => Pin::new(io).poll_shutdown(cx),
+            Carrier::Next(io) => Pin::new(io).poll_shutdown(cx),
+        }
+    }
+}
 
 /// A sent record: its counter, type, flags and payload.
 type Row = (u64, u8, u16, Vec<u8>);
@@ -92,71 +141,134 @@ async fn put<W: AsyncWrite + Unpin>(
 }
 
 /// Seal the bytes of `app` into records on `io`, and serve the commands.
-pub(super) async fn send<W: AsyncWrite + Unpin>(
+pub(super) async fn send<W: AsyncWrite + Unpin + Send>(
     shared: Arc<Shared>,
     mut app: DuplexStream,
-    mut io: W,
+    io: W,
     mut commands: mpsc::UnboundedReceiver<Command>,
 ) {
+    let mut io: Out<W> = Some(Carrier::First(io));
     let _ = run_send(&shared, &mut app, &mut io, &mut commands).await;
-    let _ = io.shutdown().await;
+    if let Some(mut io) = io {
+        let _ = io.shutdown().await;
+    }
+}
+
+/// The carrier of the sender. A write that fails drops it when the stream
+/// can move to a new carrier ([`super::Options::carry_over`]); the record
+/// stays in the log for the RESUME of the peer.
+type Out<W> = Option<Carrier<W, super::Writer>>;
+
+fn lost<W>(io: &mut Out<W>, carry: bool, sent: io::Result<()>) -> io::Result<()> {
+    match sent {
+        Err(_) if carry => {
+            *io = None;
+            Ok(())
+        }
+        other => other,
+    }
 }
 
 async fn run_send<W: AsyncWrite + Unpin>(
     shared: &Shared,
     app: &mut DuplexStream,
-    io: &mut W,
+    io: &mut Out<W>,
     commands: &mut mpsc::UnboundedReceiver<Command>,
 ) -> io::Result<()> {
+    let carry = shared.options.carry_over;
     let mut log = Log::default();
     let mut buf = vec![0u8; CHUNK];
     let mut commanded = true;
+    // The FIN record is not sent yet.
+    let mut open = true;
+    // A new carrier waits for the RESUME of the peer: no new record.
+    let mut held = false;
     loop {
+        let reading = open && !held && io.is_some();
+        if !reading && !commanded {
+            return Ok(());
+        }
         tokio::select! {
-            read = app.read(&mut buf) => {
+            read = app.read(&mut buf), if reading => {
                 let n = read?;
-                if n == 0 {
-                    return put(shared, Some(&mut log), io, FIN, 0, &[]).await;
-                }
-                let packed = shared.options.compress.then(|| pack::pack(&buf[..n])).flatten();
-                match &packed {
-                    Some(p) => put(shared, Some(&mut log), io, DATA, COMPRESSED, p).await?,
-                    None => put(shared, Some(&mut log), io, DATA, 0, &buf[..n]).await?,
+                let Some(w) = io.as_mut() else { continue };
+                let sent = if n == 0 {
+                    open = false;
+                    put(shared, Some(&mut log), w, FIN, 0, &[]).await
+                } else {
+                    let packed = shared.options.compress.then(|| pack::pack(&buf[..n])).flatten();
+                    match &packed {
+                        Some(p) => put(shared, Some(&mut log), w, DATA, COMPRESSED, p).await,
+                        None => put(shared, Some(&mut log), w, DATA, 0, &buf[..n]).await,
+                    }
+                };
+                lost(io, carry, sent)?;
+                // Without a new carrier to come, the FIN ends the sender.
+                if !open && !carry {
+                    return Ok(());
                 }
             }
             command = commands.recv(), if commanded => match command {
-                // No end can command any more: only the application is left.
+                // The application dropped its end: only its bytes are left.
                 None => commanded = false,
                 Some(Command::Stop) => return Ok(()),
                 Some(Command::Resume) => {
-                    let record = lock(&shared.records).resume(&mut OsEntropy).map_err(bad)?;
-                    shared.stats.wire_out.fetch_add(record.len() as u64, std::sync::atomic::Ordering::SeqCst);
-                    io.write_all(&record).await?;
+                    let Some(w) = io.as_mut() else { continue };
+                    let sent = resume(shared, w).await;
+                    lost(io, carry, sent)?;
                 }
                 Some(Command::Resend(next)) => {
+                    held = false;
                     let rows = log.from(next).ok_or_else(|| {
                         bad("the records that the peer misses are no longer kept")
                     })?;
                     for (_, kind, flags, payload) in rows {
-                        put(shared, Some(&mut log), io, kind, flags, &payload).await?;
+                        let Some(w) = io.as_mut() else { break };
+                        let sent = put(shared, Some(&mut log), w, kind, flags, &payload).await;
+                        lost(io, carry, sent)?;
                     }
+                }
+                Some(Command::Carry(w)) => {
+                    let mut w = Carrier::Next(w);
+                    let sent = resume(shared, &mut w).await;
+                    *io = Some(w);
+                    held = true;
+                    lost(io, carry, sent)?;
                 }
             },
         }
     }
 }
 
+/// Write the RESUME record of this end on `io`.
+async fn resume<W: AsyncWrite + Unpin>(shared: &Shared, io: &mut W) -> io::Result<()> {
+    let record = lock(&shared.records).resume(&mut OsEntropy).map_err(bad)?;
+    shared
+        .stats
+        .wire_out
+        .fetch_add(record.len() as u64, std::sync::atomic::Ordering::SeqCst);
+    io.write_all(&record).await
+}
+
 /// Open the records of `io` and give the bytes to the application. A fault
-/// ends the stream: the reader gets the error, and the sender stops.
-pub(super) async fn receive<R: AsyncRead + Unpin>(
+/// ends the stream: the reader gets the error, and the sender stops. A new
+/// carrier of [`super::Sealed::rebind`] takes the place of `io`.
+pub(super) async fn receive<R: AsyncRead + Unpin + Send>(
     shared: Arc<Shared>,
-    mut io: R,
+    io: R,
     out: mpsc::Sender<io::Result<Vec<u8>>>,
-    commands: mpsc::UnboundedSender<Command>,
+    commands: mpsc::WeakUnboundedSender<Command>,
+    mut carriers: mpsc::UnboundedReceiver<NewCarrier>,
 ) {
-    if let Err(e) = run_receive(&shared, &mut io, &out, &commands).await {
-        let _ = commands.send(Command::Stop);
-        let _ = out.send(Err(e)).await;
+    let mut out = Some(out);
+    let io = Carrier::First(io);
+    if let Err(e) = run_receive(&shared, io, &mut out, &commands, &mut carriers).await {
+        if let Some(commands) = commands.upgrade() {
+            let _ = commands.send(Command::Stop);
+        }
+        if let Some(out) = out {
+            let _ = out.send(Err(e)).await;
+        }
     }
 }
 
@@ -174,11 +286,40 @@ async fn read_record<R: AsyncRead + Unpin>(io: &mut R) -> io::Result<Option<Vec<
     Ok(Some(record))
 }
 
+/// What the receiver waits for.
+enum Event {
+    /// The application dropped its reader.
+    Closed,
+    /// A new carrier, or `None` when no end can give one.
+    Carrier(Option<NewCarrier>),
+    Read(io::Result<Option<Vec<u8>>>),
+}
+
+/// Read the new carrier from now on, and give its write half to the
+/// sender, which sends the RESUME record on it.
+fn take<R>(
+    (read, write): NewCarrier,
+    commands: &mpsc::WeakUnboundedSender<Command>,
+) -> Carrier<R, Reader> {
+    if let Some(commands) = commands.upgrade() {
+        let _ = commands.send(Command::Carry(write));
+    }
+    Carrier::Next(read)
+}
+
+async fn closed(out: &Option<mpsc::Sender<io::Result<Vec<u8>>>>) {
+    match out {
+        Some(out) => out.closed().await,
+        None => std::future::pending().await,
+    }
+}
+
 async fn run_receive<R: AsyncRead + Unpin>(
     shared: &Shared,
-    io: &mut R,
-    out: &mpsc::Sender<io::Result<Vec<u8>>>,
-    commands: &mpsc::UnboundedSender<Command>,
+    mut io: Carrier<R, Reader>,
+    out: &mut Option<mpsc::Sender<io::Result<Vec<u8>>>>,
+    commands: &mpsc::WeakUnboundedSender<Command>,
+    carriers: &mut mpsc::UnboundedReceiver<NewCarrier>,
 ) -> io::Result<()> {
     use std::sync::atomic::Ordering::SeqCst;
     let cut = || {
@@ -187,13 +328,46 @@ async fn run_receive<R: AsyncRead + Unpin>(
             "the stream was cut: it ended with no FIN record",
         )
     };
+    let (carry, window) = (
+        shared.options.carry_over,
+        shared.options.records.resume_window,
+    );
+    let mut rebinding = true;
     loop {
-        // The reader is gone: nobody wants the bytes.
-        let read = tokio::select! {
-            () = out.closed() => return Ok(()),
-            read = read_record(io) => read,
+        let event = tokio::select! {
+            () = closed(out) => Event::Closed,
+            new = carriers.recv(), if rebinding => Event::Carrier(new),
+            read = read_record(&mut io) => Event::Read(read),
         };
-        let record = read?.ok_or_else(cut)?;
+        let record = match event {
+            Event::Closed => return Ok(()),
+            Event::Carrier(Some(new)) => {
+                io = take(new, commands);
+                continue;
+            }
+            Event::Carrier(None) => {
+                rebinding = false;
+                continue;
+            }
+            Event::Read(read) => read?,
+        };
+        let Some(record) = record else {
+            if !carry || !rebinding {
+                return Err(cut());
+            }
+            // The carrier is lost: wait for a new one for the window.
+            match tokio::time::timeout(window, carriers.recv()).await {
+                Ok(Some(new)) => io = take(new, commands),
+                Ok(None) => return Err(cut()),
+                Err(_) => {
+                    return Err(super::expired(
+                        window,
+                        format!("no new carrier came in {} s", window.as_secs()),
+                    ))
+                }
+            }
+            continue;
+        };
         let len = record.len();
         shared.stats.wire_in.fetch_add(len as u64, SeqCst);
         let opened = lock(&shared.records).open(Instant::now(), &record);
@@ -210,22 +384,33 @@ async fn run_receive<R: AsyncRead + Unpin>(
                             })?,
                             other => return Err(bad(format!("a record has the flags {other:#x}"))),
                         };
-                        if !payload.is_empty() && out.send(Ok(payload)).await.is_err() {
+                        let Some(to) = out.as_ref() else { continue };
+                        if !payload.is_empty() && to.send(Ok(payload)).await.is_err() {
                             return Ok(());
                         }
                     }
+                    // With a new carrier to come, the receiver stays for a
+                    // RESUME of the peer; the application reads the end.
+                    FIN if carry => *out = None,
                     FIN => return Ok(()),
                     other => return Err(bad(format!("a record has the type {other}"))),
                 }
             }
             Ok(Opened::Resume { next }) => {
-                let _ = commands.send(Command::Resend(next));
+                if let Some(commands) = commands.upgrade() {
+                    let _ = commands.send(Command::Resend(next));
+                }
             }
             Err(Fault::Replayed(_) | Fault::Stale(_)) => {
                 shared.stats.replayed.fetch_add(1, SeqCst);
             }
             Err(Fault::Resume(_)) => {
                 shared.stats.refused.fetch_add(1, SeqCst);
+            }
+            // The third failed RESUME, or one after the window (T-301).
+            Err(Fault::ResumeExpired) => {
+                shared.stats.refused.fetch_add(1, SeqCst);
+                return Err(super::expired(window, Fault::ResumeExpired.to_string()));
             }
             Err(fault) => return Err(bad(fault)),
         }

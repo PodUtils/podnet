@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**333 entries: 20 open, 16 partial, 32 blocked, 265 done.**
+**333 entries: 20 open, 15 partial, 32 blocked, 266 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 11 | 6 | 10 | 141 | 168 |
-| P3 | 9 | 9 | 20 | 94 | 132 |
-| **All** | 20 | 16 | 32 | 265 | 333 |
+| P3 | 9 | 8 | 20 | 95 | 132 |
+| **All** | 20 | 15 | 32 | 266 | 333 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -346,7 +346,7 @@ M8 Overlays, M9 Later.
 | [T-298](link.md) | P3 | L | M9 | feature | done | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
 | [T-299](link.md) | P3 | S | M9 | feature | done | link: snappy compression of records (GitHub #472) |
 | [T-300](link.md) | P3 | S | M9 | feature | done | link: padding of records to buckets (GitHub #472) |
-| [T-301](link.md) | P3 | M | M9 | feature | partial | link: the replay window and the RESUME record (GitHub #472) |
+| [T-301](link.md) | P3 | M | M9 | feature | done | link: the replay window and the RESUME record (GitHub #472) |
 | [T-302](link.md) | P3 | L | M9 | feature | blocked | link: split one session across an up carrier and a down carrier (GitHub #473) |
 | [T-303](link.md) | P3 | M | M9 | feature | done | link: chain composition with a peer element and --check (GitHub #473) |
 | [T-304](link.md) | P3 | L | M9 | feature | done | link: a C ABI with a header, a shared library and a static library (GitHub #474) |

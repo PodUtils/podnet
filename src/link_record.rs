@@ -22,7 +22,16 @@
 //!   ends the stream.
 //! * [`Sealed::resume`] sends the RESUME record of the layer: the peer
 //!   sends again the payloads that this end did not get (T-301). The token
-//!   is used once, and the window is the one of [`crate::session`].
+//!   is used once. The window is [`crate::session::RESUME_WINDOW`]: the
+//!   default [`Options`] put it in `resume_window` of `pod-e2e`, so the two
+//!   layers read one constant.
+//! * [`Sealed::rebind`] moves the stream to a new carrier when the stream
+//!   has no `pod-session` below it ([`Options::carry_over`]). Each end sends
+//!   its RESUME record first on the new carrier, and the peer sends again
+//!   from the counter that it names. A link over [`crate::session`] does
+//!   not need this: the session sends the lost bytes again from offsets.
+//! * Three failed RESUME records, or no new carrier in the window, end the
+//!   stream with [`crate::session::ResumeExpired`] (exit 69, [`ended`]).
 //!
 //! A dropped [`Sealed`] ends its direction as a shutdown does: the tasks
 //! send the `FIN` record and end.
@@ -38,7 +47,7 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
 use pod_e2e::record::{Records, Settings};
@@ -52,6 +61,7 @@ pub use pod_e2e::record::Suite;
 
 use crate::exit::{self, Fault};
 use crate::identity::{AllowList, Identity};
+use crate::session::{ResumeExpired, RESUME_WINDOW};
 
 /// The type of a record that carries bytes of the stream.
 pub const DATA: u8 = 1;
@@ -73,7 +83,17 @@ pub struct Options {
     /// The settings of `pod-e2e` (the rekey, the resume window). `pad` of
     /// this value is set from [`Options::pad`].
     pub records: Settings,
+    /// After a cut, wait for a new carrier ([`Sealed::rebind`]) for the
+    /// resume window, and do not end the stream. Off: a cut ends the stream.
+    pub carry_over: bool,
 }
+
+/// The settings of `pod-e2e` of podnet: the resume window is
+/// [`RESUME_WINDOW`] of the session (T-301), 10 minutes.
+pub const SETTINGS: Settings = Settings {
+    resume_window: RESUME_WINDOW,
+    ..Settings::DEFAULT
+};
 
 impl Default for Options {
     fn default() -> Options {
@@ -81,7 +101,8 @@ impl Default for Options {
             suites: Suite::ALL.to_vec(),
             pad: false,
             compress: false,
-            records: Settings::DEFAULT,
+            records: SETTINGS,
+            carry_over: false,
         }
     }
 }
@@ -150,7 +171,19 @@ pub(crate) enum Command {
     Resend(u64),
     /// The receiving task failed: end the stream.
     Stop,
+    /// A new carrier: send the RESUME record on it, then wait for the
+    /// RESUME of the peer before new records.
+    Carry(Writer),
 }
+
+/// The read half of a carrier.
+pub(crate) type Reader = Box<dyn AsyncRead + Unpin + Send>;
+/// The write half of a carrier.
+pub(crate) type Writer = Box<dyn AsyncWrite + Unpin + Send>;
+/// A new carrier. The receiver stops to read the old one first, and then
+/// gives the write half to the sender: the counter that the RESUME names
+/// is then final.
+pub(crate) type NewCarrier = (Reader, Writer);
 
 pub(crate) struct Shared {
     pub(crate) records: Mutex<Records>,
@@ -165,6 +198,7 @@ pub struct Sealed {
     rest: Vec<u8>,
     at: usize,
     commands: mpsc::UnboundedSender<Command>,
+    carriers: mpsc::UnboundedSender<NewCarrier>,
     shared: Arc<Shared>,
     peer: PublicKey,
     suite: Suite,
@@ -195,10 +229,78 @@ impl Sealed {
     /// Send the RESUME record: the peer sends again the payloads that this
     /// end did not get. Exit 69 when the stream has ended.
     pub fn resume(&self) -> anyhow::Result<()> {
-        self.commands
-            .send(Command::Resume)
-            .map_err(|_| exit::fault(Fault::Unavailable, anyhow!("the sealed stream has ended")))
+        self.commands.send(Command::Resume).map_err(|_| gone())
     }
+
+    /// Move the stream to the new carrier `io` (T-301). Each end calls it
+    /// with its end of the new carrier, after the loss of the old one. This
+    /// end sends its RESUME record first on `io`, and sends no new record
+    /// until the RESUME of the peer comes; then it sends again the records
+    /// that the peer names. Use it with [`Options::carry_over`]. Exit 69
+    /// when the stream has ended.
+    pub fn rebind<S>(&self, io: S) -> anyhow::Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        self.rebinder().rebind(io)
+    }
+
+    /// A handle that calls [`Sealed::rebind`] while a task reads and writes
+    /// the stream. After the drop of the [`Sealed`], a rebind has no effect.
+    pub fn rebinder(&self) -> Rebinder {
+        Rebinder {
+            carriers: self.carriers.clone(),
+        }
+    }
+}
+
+/// The handle of [`Sealed::rebinder`].
+#[derive(Clone)]
+pub struct Rebinder {
+    carriers: mpsc::UnboundedSender<NewCarrier>,
+}
+
+impl Rebinder {
+    /// See [`Sealed::rebind`].
+    pub fn rebind<S>(&self, io: S) -> anyhow::Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        let (read, write) = tokio::io::split(io);
+        self.carriers
+            .send((Box::new(read), Box::new(write)))
+            .map_err(|_| gone())
+    }
+}
+
+fn gone() -> anyhow::Error {
+    exit::fault(Fault::Unavailable, anyhow!("the sealed stream has ended"))
+}
+
+/// The error of a stream that the resume window ended: three failed RESUME
+/// records, or no new carrier in `window`. [`ended`] gives exit 69.
+pub(crate) fn expired(window: Duration, reason: impl Into<String>) -> io::Error {
+    io::Error::new(
+        io::ErrorKind::ConnectionAborted,
+        ResumeExpired {
+            window,
+            reason: reason.into(),
+        },
+    )
+}
+
+/// The exit error of a read of a [`Sealed`] that failed: exit 69, with
+/// [`ResumeExpired`] in the chain when the resume window ended the stream.
+pub fn ended(error: io::Error) -> anyhow::Error {
+    let expired = error
+        .get_ref()
+        .and_then(|e| e.downcast_ref::<ResumeExpired>())
+        .cloned();
+    let error = match expired {
+        Some(e) => anyhow::Error::new(e),
+        None => anyhow::Error::new(error),
+    };
+    exit::fault(Fault::Unavailable, error.context("the sealed stream ended"))
 }
 
 pub(crate) fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -415,15 +517,23 @@ where
     let (write, sender_read) = tokio::io::duplex(pump::PIPE);
     let (tx, read) = mpsc::channel(8);
     let (commands, command_rx) = mpsc::unbounded_channel();
+    let (carriers, carrier_rx) = mpsc::unbounded_channel();
     let (io_read, io_write) = tokio::io::split(io);
     let send = pump::send(shared.clone(), sender_read, io_write, command_rx);
-    let receive = pump::receive(shared.clone(), io_read, tx, commands.clone());
+    let receive = pump::receive(
+        shared.clone(),
+        io_read,
+        tx,
+        commands.downgrade(),
+        carrier_rx,
+    );
     let sealed = Sealed {
         write,
         read,
         rest: Vec::new(),
         at: 0,
         commands,
+        carriers,
         shared,
         peer,
         suite,

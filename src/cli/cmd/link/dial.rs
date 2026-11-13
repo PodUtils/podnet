@@ -156,6 +156,12 @@ async fn wire(
     }
 }
 
+/// A read error of a sealed stream that the resume window ended.
+fn is_expired(e: &std::io::Error) -> bool {
+    e.get_ref()
+        .is_some_and(|e| e.is::<podnet::session::ResumeExpired>())
+}
+
 pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> {
     if args.listen.is_some() && args.service != podnet::link_socks::NAME {
         return Err(exit::fault(
@@ -234,7 +240,16 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
     let mut stdout = tokio::io::stdout();
     let mut buf = vec![0u8; 16 * 1024];
     loop {
-        let n = down.read(&mut buf).await.unwrap_or(0);
+        let n = match down.read(&mut buf).await {
+            Ok(n) => n,
+            // The resume window ended the sealed stream: exit 69 (T-301).
+            Err(e) if is_expired(&e) => {
+                send.abort();
+                link.close().await;
+                return Err(podnet::link_record::ended(e));
+            }
+            Err(_) => 0,
+        };
         if n == 0 {
             break;
         }

@@ -2137,7 +2137,7 @@ Not proven: the padding of a stream with the compression on at the same time.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -2162,6 +2162,7 @@ The rules of the issue that apply to this row:
 
 ```sh
 cargo test --test link_replay
+cargo test --test link_session -- resume
 sh scripts/agent/check.sh
 ```
 ## Start condition
@@ -2174,6 +2175,25 @@ T-298 and T-263 are done.
 
 2026-11-13, partial. Done: the replay window (1024 counters; a repeat inside it and a record below it are dropped and counted: `Stats::replayed`), the RESUME record (`Sealed::resume`; the peer sends again, in new records, the payloads from the counter that the RESUME names, from a log of 1 MiB; a copy of a RESUME is refused and counted: `Stats::refused`). Commits ea9b6c0 and e109559 (branch t298). `cargo test --test link_replay`: 4 passed: `a_replayed_record_is_refused`, `a_record_below_the_window_is_dropped_and_counted` (a record kept back for 1100 records), `resume_sends_again_what_the_peer_did_not_get_and_is_used_once`, `a_resume_that_comes_twice_is_refused_the_second_time`.
 Left: (1) the RESUME is not sent by the resume of T-263: the CLI does not send it after a lost carrier, and the layer runs over one stream, not over a new carrier of `pod-session`. The token and the 10-minute window are those of `pod-e2e`; they are not yet shared with `session::RESUME_WINDOW` in one code path. (2) The close of the link with `ResumeExpired` after three failed RESUME records is `Fault::ResumeExpired` of `pod-e2e`; the glue ends the stream with an error, not with the exit 69 of `ResumeExpired`.
+
+2026-11-13, call 1 (where the RESUME belongs): the link of `podnet::session` runs over the application side of `pod-session`, and a sealed stream is a stream of that link. After a lost carrier, the session sends the lost bytes again from offsets, so the record layer sees no loss: a RESUME record there is not necessary and would repeat bytes. Measured: `a_sealed_stream_over_a_cut_session_carries_one_mebibyte_each_way` passes with no code of this entry. The RESUME record belongs where a sealed stream runs over a carrier with no `pod-session` below it (for example a path of the mesh, T-287): the library call `Sealed::rebind` (and `Sealed::rebinder`, a handle for a task that reads and writes the stream), with `Options::carry_over`. The CLI runs no session below a link and has no second carrier for a stream yet (T-265): it does not call `rebind`.
+
+2026-11-13, call 2 (one window): `link_record::SETTINGS` is `pod-e2e`'s `Settings::DEFAULT` with `resume_window` set to `session::RESUME_WINDOW` (which is `pod-session`'s `RESUME_DEADLINE`, 600 s). The default `Options` use it. The wait for a new carrier after a cut reads the same `resume_window`. The crates do not allow one shared value at the source: `pod-e2e` has a 600 s constant in its own `Settings::DEFAULT`; podnet sets it from the session constant.
+
+2026-11-13, call 3 (the order of a rebind): the receiver stops to read the old carrier first, and only then gives the write half of the new carrier to the sender, which seals the RESUME record. A first build let the sender seal the RESUME while the receiver still opened records of the old carrier: the peer sent those records again, and the test got 32 KiB twice (1081344 bytes, not 1048576). After a RESUME on a new carrier, the sender sends no new record until the RESUME of the peer comes, so that the records sent again come before the new ones.
+
+2026-11-13, call 4 (the end of a sealed stream): `Fault::ResumeExpired` of `pod-e2e` (the third failed RESUME, or a RESUME after the window) and no new carrier in the window give an `io::Error` that holds `session::ResumeExpired` (with the window). `link_record::ended` makes it exit 69 with `ResumeExpired` in the chain. `link dial` exits with it; before, it ended a read error as an end of the stream (exit 0). The `link listen` side ends only the stream, not the process. A failed RESUME that ends the stream counts in `Stats::refused`.
+
+2026-11-13, call 5 (`carry_over`): off by default. Off, a cut ends the stream at once (`UnexpectedEof`), as before; the CLI keeps this. On, a cut waits for a new carrier for the window, and the receiver stays after the FIN of the peer, so that a RESUME can still come.
+
+Observation, not changed: `Sealed::resume` on the same stream (no new carrier) sends again each record from the counter of the RESUME. Records that were on their way, not lost, then come twice with new counters. It is correct only when the records on the stream were lost; a rebind does not have this case (call 3).
+
+## Done
+
+2026-11-13, the commit "T-301: a sealed stream resumes on a new carrier; ResumeExpired exits 69" (its hash follows in the next commit). `src/link_record.rs`: `SETTINGS` (one window), `Options::carry_over`, `Sealed::rebind`, `Sealed::rebinder` and `Rebinder`, `ended` (exit 69). `src/link_record/pump.rs`: the sender and the receiver take a new carrier (the RESUME first, then a hold until the RESUME of the peer), the wait of the window after a cut, and `Fault::ResumeExpired` to `ResumeExpired`. `src/cli/cmd/link/dial.rs`: a read that `ResumeExpired` ended exits 69. `docs/link.md`, "Sealed streams": how a sealed stream resumes. `docs/link.md` is not in `llms-full.txt`: `scripts/gen-llms.py --check` agrees with no change.
+`cargo test --test link_replay`: 8 passed, with the new `the_record_layer_and_the_session_share_one_window`, `a_sealed_stream_moves_to_a_new_carrier_with_no_lost_byte` (the first carrier is cut after 300 kB, both ends rebind to a new one: 1 MiB each way, equal SHA-256, no refused or repeated record), `three_failed_resume_records_end_the_stream_with_exit_69` (a relay changes each RESUME: 3 refused, exit 69, `ResumeExpired` with the window of 600 s), `no_new_carrier_in_the_window_ends_with_resume_expired` (window 1 s). `cargo test --test link_session -- resume`: 5 passed, with the new `a_sealed_stream_over_a_cut_session_carries_one_mebibyte_each_way` (carrier cut at 300 kB, 1 MiB each way, equal SHA-256, no RESUME and no repeat in the record layer). Each test passed 8 times in a row.
+Plant: with the RESUME of a rebind off, the rebind test got 950272 of 1048576 bytes; with the map of `Fault::ResumeExpired` off, the exit 69 test failed with "not ResumeExpired"; with the window error off, the window test failed with "not ResumeExpired". With `resumes: false` in `session::settings`, the session test failed with `BrokenPipe`. The test of the one window has no plant: the two constants are 600 s in the crates; the test fails when one of them changes.
+`sh scripts/agent/check.sh`: each step 0.
 
 
 

@@ -597,10 +597,21 @@ non-zero, no data).
   more than 64 times its own size: the stream ends with `decompress-limit`. The receiver reads compressed records at all
   times. Each end sets `pad` and `compress` for its own direction.
 * The RESUME record (library: `Sealed::resume`): the peer sends again the payloads that the sender of the RESUME did not get
-  (it keeps up to 1 MiB of sent payloads). A RESUME is used once, within 10 minutes of the last record, as the resume of a link
-  (`RESUME_WINDOW`). A copy of a RESUME is refused and counted.
+  (it keeps up to 1 MiB of sent payloads). A RESUME is used once, within 10 minutes of the last record. A copy of a RESUME is
+  refused and counted.
+* One resume window: `link_record::SETTINGS` sets `resume_window` of `pod-e2e` to `session::RESUME_WINDOW` (10 minutes, the
+  `resume_deadline` of `pod-session`). The default `Options` of the layer use it.
+* How a sealed stream resumes after the loss of its carrier:
+  * Over a link of a session (`podnet::session`): the session sends again the lost bytes from offsets. The sealed stream sees
+    no loss and sends no RESUME record. The stream goes on with no lost or repeated byte.
+  * Over a carrier with no session below it (library: `Options::carry_over` and `Sealed::rebind`): after a cut, the stream
+    waits for a new carrier for the window. Each end gives its end of the new carrier to `rebind`. Each end sends its RESUME
+    record first on the new carrier, and sends no new record until the RESUME of the peer comes. Then it sends again the
+    records from the counter that the RESUME names.
+* Three failed RESUME records, a RESUME after the window, or no new carrier in the window end the stream with
+  `ResumeExpired`. `link dial` then exits 69 (`link_record::ended`).
 * Not done: the local door of `link dial --listen` and the control socket do not seal. `link dial --listen` with `--seal`
-  exits 64. A RESUME after a lost carrier needs the caller to give the new carrier: the CLI does not send it.
+  exits 64. The CLI runs no session below a link and does not call `rebind`: a lost carrier ends a sealed stream of the CLI.
 
 ## The route table
 
@@ -663,7 +674,7 @@ library ([build.md](build.md), "The C library"). Linux only.
 | --- | --- |
 | 64 | A bad flag or value: an unknown carrier, a ring out of its limits, a regular file at the address, no `--peer` or `--allow`; a chain of more than 8 elements, a network that is not an element, a chain with a carrier that is not `tcp`. |
 | 66 | The allow list file is missing. |
-| 69 | The address is held by a live listener, no listener answers, the host refuses the carrier, or a peer has another uid; an element of a chain that cannot be built or dialed. |
+| 69 | The address is held by a live listener, no listener answers, the host refuses the carrier, or a peer has another uid; an element of a chain that cannot be built or dialed; with `--seal`, `ResumeExpired` (three failed RESUME records). |
 | 71 | The key file or the allow list file has a mode that others can use. |
 | 77 | A peer is not in the allow list, or it did not prove its key. On `tcp`: a key that the handshake refused. With `--seal`: the end of a stream is not the expected key, or its key is not in the allow list. |
 | 78 | The allow list has a line that is no peer, or more than 4096 entries; a duplicate element or a cycle in a chain; with `--seal`, a suite that the two ends do not share. |
