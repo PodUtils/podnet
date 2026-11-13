@@ -882,6 +882,10 @@ comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
 
 T-277 is done (or lands in the same change), and T-262 and T-264 are done.
 
+## Correction
+
+2026-11-13, the lead (PodUtils/podcrates#138, answered in GitHub #527): the congestion window of KCP is the default (`nodelay` off). The 5 % gate runs with the default; the 20 % gate runs with `nodelay` on, with the bound that a release build holds. `--carrier udp` takes `?kcp-nodelay=1`.
+
 # T-277: link: a selective-repeat ARQ for any lossy carrier (GitHub #468)
 
 **Source:** GitHub #468 (https://github.com/PodUtils/podnet/issues/468), row E2-2.
