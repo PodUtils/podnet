@@ -1451,7 +1451,7 @@ Not proven: a group over real TCP carriers; the `minrtt` move over a link group 
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1484,6 +1484,13 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-267, T-285 and T-286 are done.
+
+## Done
+
+2026-11-13, commit a64f158. The verb `mesh` of the control socket and the command `podnet link mesh --control unix:PATH [--json | --metrics] [--token-file FILE] [--max-nodes N] [--max-edges N]`. `src/link_announce/status.rs`: `Mesh::view` (nodes: fingerprint, name, self, seq, hops, cost, next_hop, state, services, age_ms, edges; edges: peer, cost, last_probe_ms, state), `ViewLimits` (4096 nodes, 64 edges for each node, 262143 bytes; a request can only lower them), `metrics_text` (Prometheus text). The edges of this node are its links (`up`); the edges of another node are the neighbours that it signed (`claimed`). `truncated` counts the nodes, the edges and the nodes cut to fit the size. `Mesh` keeps what each accepted announcement said (services, neighbours, time) and local names (`Mesh::set_name`). The answer uses `Reply::Big` (256 KiB); the client reads up to that size for the verb. `docs/link.md` has the section "The status view of a mesh"; `llms.txt` files regenerated.
+`cargo test --test mesh_status`: 4 passed (3 runs after the last change): `mesh_json_has_the_nodes_and_the_edges`, `the_command_prints_json_text_and_metrics_from_a_socket_of_mode_0600`, `a_view_over_the_limits_is_cut_with_a_count`, `without_announce_the_verb_exits_69`. With the node and edge cuts disabled, `a_view_over_the_limits_is_cut_with_a_count` failed. `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc and layers 0; test: `quick_tunnel_standin_serves_a_visitor_over_http2` failed once under load and passed alone 3 times; the first run of `mesh_status` under load failed once (a wait that was too weak, fixed: the test waits for the claims of B and C).
+Not proven: the carriers other than unix; a view of a node with 4096 origins (the limits are tested with small values and with a small size); the view of a dialer (it has no control socket); `last_probe_ms` is the time of the last announcement, not an active probe; `name` is a local name only, the announcement carries no name; a multi-hop node shows the neighbours that it signed (`claimed`), not proven adjacency.
+
 
 # T-290: link: per-hop access control for services and forwarding (GitHub #470)
 
