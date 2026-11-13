@@ -51,7 +51,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #349 | fake-IP pool wraps at 131072; names case-sensitive | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-145 |
 | #350 | seccomp UDP: AF_UNSPEC, source filter, sockopts, ICMP | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-146, T-147, T-148, T-149 |
 | #351 | seccomp TCP copied in user space | closed | T-150, T-151 |
-| #352 | netns: in-namespace netfilter in place of smoltcp | open | T-152, T-153 |
+| #352 | netns: in-namespace netfilter in place of smoltcp | closed (ci 43459872995 at bf01ac6) | T-152, T-153 |
 | #353 | no fuzz targets for seccomp handlers | closed | T-154, T-155 |
 | #354 | pod rules: no reject action (also no `block`) | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-156 |
 | #355 | pod: default-deny, flow log, learn | closed | T-157, T-158 |
@@ -71,11 +71,11 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #369 | netns veth wire without /dev/net/tun | closed | T-174 |
 | #370 | one TLS connection per DoH query | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-175 |
 | #371 | TCP flow terminators (design limits, no present defect) | closed | T-176 |
-| #372 | router datagram carrier | open | T-098, T-099, T-111 |
-| #373 | router health: hysteresis, cooldown | open | T-096, T-097 |
-| #374 | router probes via own member; resolver | open | T-097, T-098 |
+| #372 | router datagram carrier | closed (ci 43459872995 at bf01ac6) | T-098, T-099, T-111 |
+| #373 | router health: hysteresis, cooldown | closed (ci 43459872995 at bf01ac6) | T-096, T-097 |
+| #374 | router probes via own member; resolver | closed (ci 43459872995 at bf01ac6) | T-097, T-098 |
 | #375 | `route check`, group policies, direction split | open | T-177, T-178, T-179 |
-| #376 | router control, typed selection, seccomp budget | open | T-096, T-180, T-181 |
+| #376 | router control, typed selection, seccomp budget | closed (ci 43459872995 at bf01ac6) | T-096, T-180, T-181 |
 | #377 | Transport trait addressing; gsr transport | closed | T-055, T-058 |
 | #378 | doctor --agent checks index host, not file host | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-182 |
 | #379 | http:// proxy default port 8080 vs 80 | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-183 |

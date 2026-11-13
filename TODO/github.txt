@@ -54,7 +54,7 @@
 349 issue closed
 350 issue closed
 351 issue closed
-352 issue open
+352 issue closed
 353 issue closed
 354 issue closed
 355 issue closed
@@ -74,11 +74,11 @@
 369 issue closed
 370 issue closed
 371 issue closed
-372 issue open
-373 issue open
-374 issue open
+372 issue closed
+373 issue closed
+374 issue closed
 375 issue open
-376 issue open
+376 issue closed
 377 issue closed
 378 issue closed
 379 issue closed
