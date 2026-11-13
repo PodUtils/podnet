@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**326 entries: 58 open, 20 partial, 22 blocked, 226 done.**
+**326 entries: 51 open, 20 partial, 29 blocked, 226 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 8 | 11 | 129 | 167 |
-| P3 | 39 | 11 | 9 | 69 | 128 |
-| **All** | 58 | 20 | 22 | 226 | 326 |
+| P3 | 32 | 11 | 16 | 69 | 128 |
+| **All** | 51 | 20 | 29 | 226 | 326 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -314,15 +314,15 @@ M8 Overlays, M9 Later.
 | [T-266](link.md) | P3 | M | M9 | feature | done | link: `peer:FINGERPRINT/SERVICE` as a network target and `forward -L LISTEN=peer:...` (GitHub #466 and #471) |
 | [T-267](link.md) | P3 | M | M9 | feature | done | link: the control socket, its discipline and the status verb (GitHub #466) |
 | [T-268](link.md) | P3 | L | M9 | feature | done | link: the TCP carrier with TLS 1.3, the accept side and the peer handshake (GitHub #467) |
-| [T-269](link.md) | P3 | M | M9 | feature | open | link: the WebSocket carrier, its server half and its wrapper (GitHub #467) |
-| [T-270](link.md) | P3 | M | M9 | feature | open | link: the HTTP/2 carrier with one bidirectional POST (GitHub #467) |
-| [T-271](link.md) | P3 | M | M9 | feature | open | link: the HTTP/1.1 long-poll carrier (GitHub #467) |
-| [T-272](link.md) | P3 | M | M9 | feature | open | link: the SSE and chunked-stream carrier (GitHub #467) |
-| [T-273](link.md) | P3 | M | M9 | feature | open | link: the QUIC carrier (GitHub #467) |
+| [T-269](link.md) | P3 | M | M9 | feature | blocked | link: the WebSocket carrier, its server half and its wrapper (GitHub #467) |
+| [T-270](link.md) | P3 | M | M9 | feature | blocked | link: the HTTP/2 carrier with one bidirectional POST (GitHub #467) |
+| [T-271](link.md) | P3 | M | M9 | feature | blocked | link: the HTTP/1.1 long-poll carrier (GitHub #467) |
+| [T-272](link.md) | P3 | M | M9 | feature | blocked | link: the SSE and chunked-stream carrier (GitHub #467) |
+| [T-273](link.md) | P3 | M | M9 | feature | blocked | link: the QUIC carrier (GitHub #467) |
 | [T-274](link.md) | P3 | S | M9 | feature | done | link: the unix-socket carrier and its socketpair half (GitHub #467) |
 | [T-275](link.md) | P3 | S | M9 | feature | done | link: the in-process memory carrier (GitHub #467) |
-| [T-276](link.md) | P3 | L | M9 | feature | open | link: the UDP carrier with KCP (GitHub #468) |
-| [T-277](link.md) | P3 | L | M9 | feature | open | link: a selective-repeat ARQ for any lossy carrier (GitHub #468) |
+| [T-276](link.md) | P3 | L | M9 | feature | blocked | link: the UDP carrier with KCP (GitHub #468) |
+| [T-277](link.md) | P3 | L | M9 | feature | blocked | link: a selective-repeat ARQ for any lossy carrier (GitHub #468) |
 | [T-278](link.md) | P3 | L | M9 | feature | open | link: the DNS simplex carrier (GitHub #468) |
 | [T-279](link.md) | P3 | L | M9 | feature | open | link: the object-storage simplex carrier (GitHub #468) |
 | [T-280](link.md) | P3 | M | M9 | feature | open | link: the HTTP poll simplex carrier (GitHub #468) |

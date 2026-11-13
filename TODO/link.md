@@ -501,7 +501,7 @@ Not proven: a host that denies TCP loopback (the skip line is the host's own tex
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -533,6 +533,11 @@ cargo test --test link_ws
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 420 in the record of podcrates (the WebSocket carrier over `pod-ws`) (PodUtils/podcrates#106, 2026-11-13). It
+comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
+
 ## Start condition
 
 T-261, T-262 and T-264 are done.
@@ -544,7 +549,7 @@ T-261, T-262 and T-264 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -572,6 +577,11 @@ cargo test --test link_h2
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 421 in the record of podcrates (the HTTP/2 carrier) (PodUtils/podcrates#106, 2026-11-13). It
+comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
+
 ## Start condition
 
 T-268 is done.
@@ -583,7 +593,7 @@ T-268 is done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -613,6 +623,11 @@ cargo test --test link_poll
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 422 in the record of podcrates (the long-poll, SSE and chunked-stream carriers) (PodUtils/podcrates#106, 2026-11-13). It
+comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
+
 ## Start condition
 
 T-268 is done (the secure stream).
@@ -624,7 +639,7 @@ T-268 is done (the secure stream).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -653,6 +668,11 @@ cargo test --test link_sse
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 422 in the record of podcrates (the long-poll, SSE and chunked-stream carriers) (PodUtils/podcrates#106, 2026-11-13). It
+comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
+
 ## Start condition
 
 T-268 and T-271 are done.
@@ -664,7 +684,7 @@ T-268 and T-271 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -692,6 +712,11 @@ The rules of the issue that apply to this row:
 cargo test --test link_quic --features quic
 sh scripts/agent/check.sh
 ```
+
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 423 in the record of podcrates (the QUIC carrier over `pod-quic`) (PodUtils/podcrates#106, 2026-11-13). It
+comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
 
 ## Start condition
 
@@ -805,7 +830,7 @@ Not proven: the CI jobs `restricted-host` and `no-loopback` (not run here; the t
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -836,6 +861,11 @@ cargo test --test link_udp
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 424 in the record of podcrates (the UDP carrier with KCP) (PodUtils/podcrates#106, 2026-11-13). It
+comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
+
 ## Start condition
 
 T-277 is done (or lands in the same change), and T-262 and T-264 are done.
@@ -847,7 +877,7 @@ T-277 is done (or lands in the same change), and T-262 and T-264 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -879,6 +909,11 @@ The rules of the issue that apply to this row:
 cargo test --test link_arq
 sh scripts/agent/check.sh
 ```
+
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 310 in the record of podcrates (the selective-repeat ARQ) (PodUtils/podcrates#106, 2026-11-13). It
+comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
 
 ## Start condition
 
