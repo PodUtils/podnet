@@ -1437,6 +1437,8 @@ T-262, T-268, T-285, T-286 and T-298 are done. The claim of end-to-end secrecy n
 
 ## Correction
 
+2026-11-13: item 1 of the Correction (the secrecy from end to end) is done by T-298 (f748eb4): with `--seal`, a stream is sealed between its two ends, and a middle hop forwards records only (`tests/link_record_mesh.rs`). Left: the test with three podnet processes, now possible because a `link connect` accepts streams (T-297).
+
 2026-11-13, the lead (from T-285): the path and the cost of a hop in an announcement are not signed. This entry adds a signature for each hop: a forwarder signs its key, the cost of its link and the signature of the hop before it, and `verify` of `src/mesh_announce.rs` checks the chain.
 
 2026-11-13, partial. Done in commit c9581c1: the chain of hop signatures (`append_hop(wire, identity, cost)`, `verify` returns `BadHopSignature`, `Verified::route` uses the signed cost sum, `Verified::path_cost`). `cargo test --test mesh_announce`: 29 passed, among them `tampered_hop_is_dropped`, `dropped_hop_is_a_bad_hop_signature`, `lowered_cost_is_a_bad_hop_signature`, `hop_signature_of_another_key_is_dropped`, `append_hop_signs_the_hop_and_the_chain_verifies`. With the hop check disabled, 4 tests failed.
