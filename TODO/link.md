@@ -1238,7 +1238,7 @@ peers' own. A session needs the node online and its `ready` within 15 s, and las
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1277,7 +1277,7 @@ T-261, T-262 and T-265 are done.
 
 ## Correction
 
-Steps 1 and 2 are done. Step 3 is left: `--announce` on `link listen` and `link dial` needs edits in `src/link_service.rs` and `src/cli/cmd/link/`, which T-293 and T-291 change now. Nothing sends an announcement over a link yet.
+Steps 1 and 2 were done first. Step 3 (`--announce`) is done 2026-11-13.
 
 
 2026-11-13, the lead: the origin signs the body only. The path and the cost of a hop are not signed, so a forwarder can drop
@@ -1289,6 +1289,10 @@ hop before it), and `verify` checks the chain.
 2026-11-13, commit 6103521 (steps 1 and 2). `src/mesh_announce.rs` (`podnet::mesh_announce`): the deterministic binary encoding (fixed field order, big-endian, sorted neighbours and services, no JSON), `encode` (Ed25519 signature of a label and the body with the key of `pod-identity`), `append_hop`, `verify` and `Receiver::accept`. The bounds: 64 neighbours, 16 services, a name of 1 to 64 bytes, 16 path nodes, 8 KiB body, a life of at most 30 s, a skew of 120 s each way. `verify` drops: bad shape, a path that does not start at the origin, a repeat in the path, this node in the path, a time of issue too far ahead or behind, a bad lifetime, expiry, a bad signature. `Receiver` keeps the newest `seq` of up to 4096 origins and drops a seen `seq`. Only the path `[origin]` is a neighbour claim. `Verified::route` gives the announcement for `mesh_table`. The path is not signed (a forwarder adds to it). `docs/link.md` has the section "The route announcement".
 `cargo test --test mesh_announce`: 25 passed, among them `skew_ahead_boundary`, `skew_behind_boundary`, `path_with_self_is_dropped`, `seen_seq_is_dropped`, `neighbour_bound`, `service_bounds`, `path_bounds`, `tampered_cost_is_a_bad_signature`, `every_flipped_byte_is_dropped`, `verified_announcement_feeds_the_route_table`. With the signature check and the seen-`seq` check disabled, 5 tests failed. `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers and test all 0.
 Not proven: `--announce`, a send or receive over a real link, the interval with jitter (the constants exist, no timer), the use of the unsigned `cost` of a multi-hop announcement (the caller gives it to `route`), the signature of the path.
+
+2026-11-13, step 3, commit ebd0ceb. `src/link_announce.rs` (`podnet::link_announce`): `Mesh` (neighbours, `seq`, `Receiver`, `RouteTable`; pure, time given), `run_sender` (the stream of the service `announce`, each 10 s with jitter, the first at once), `receive_stream`, `serve_streams` (the dialer), `Guard` (the neighbour is up while it lives; the end of the link ends the direct route at once). The receiver takes only the path `[origin]` with the origin equal to the peer (T-287 adds multi-hop), checks `verify`, then the `seq` (`Receiver::note`, so a refused announcement does not use a `seq`), then `RouteTable::learn`. The cost is `--announce-weight`, else the RTT, else 10. `link listen --announce [--announce-weight N]` and `link dial --announce [--announce-weight N]`; the control verb `routes` (listener; `RouteTable::best_routes`). `docs/link.md` has the section "Announcements on a link"; `llms.txt` files regenerated.
+`cargo test --test link_announce`: 6 passed: `two_ends_with_announce_learn_each_other`, `a_tampered_announcement_is_dropped_and_the_link_stays_up`, `an_announcement_of_another_origin_is_not_direct`, `the_cost_and_the_delay_follow_their_rules`, `the_commands_announce_and_the_control_socket_shows_the_routes`, `announce_flags_are_checked`. With the receive step replaced by a drop, 3 tests failed (the two-ends, the tampered and the command test). `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers and test all 0.
+Not proven: `link connect --announce` (not built); a dialer that shows its routes (it has no control socket); multi-hop announcements and their forwarding (T-287); the signature of each hop (T-287); a measured RTT as the cost (only the configured weight is tested); the carriers other than unix.
 
 # T-286: link: the path-vector route table (GitHub #470)
 
