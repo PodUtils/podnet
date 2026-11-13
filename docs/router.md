@@ -71,7 +71,8 @@ doors:
 * `groups` maps a name to a list of members. A member is a network name with an optional weight
   (`home*2`). The default weight is 1.
 * The file needs one door or more, unless it has a `guests` entry or a `kernel` section. A file with `kernel` needs no door.
-* A flow takes one member and never moves to another.
+* A flow takes one member and never moves to another. A group balances flows, not the bytes of one flow: one
+  flow never uses the bandwidth of two members (no bonding).
 
 ## Doors
 

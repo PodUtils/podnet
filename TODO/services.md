@@ -2240,3 +2240,119 @@ wormhole-mailbox ok 430 ms; winden-mailbox ok 857 ms; piping-ppng ok 1330 ms; pi
 (13018 ms in an earlier run); iroh-relay (`use1-1`) ok 326 ms. `euw1-1.relay.n0.iroh.link` gave 502 here, so
 the script uses `use1-1`. The local proxy with port 443 only gave 200 for port 443 and 403 for port 8443.
 Not proven: the run of the step on a GitHub runner; the first run of `live` after the merge proves it.
+
+# T-327: Router: add and remove a door and a network while the router runs (N-1)
+
+**Source:** PodUtils/podcrates#125 (podswarm), ask N-1.
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+podswarm runs `podnet route` as a child, with one door for each policy and member set. It asks for calls on the
+control socket that add and remove a door and a network while the router runs, with the bytes and the flows of each
+door. Acceptance: a test adds a door, sends a flow through it, reads its counters and removes it, with no restart;
+the flows of the other doors go on.
+
+## Premise
+
+- The control socket of `podnet route` (`control: unix:/PATH`) has `--select`, `--rotate`, `--reconnect`,
+  `--interval`, `--status` and `--metrics` (`docs/router.md`, "Control"). It cannot add or remove a door or a network.
+- The meter counts bytes and flows for each member (`crates/podnet-core/src/network/meter.rs`), not for each door.
+
+## Approach
+
+1. Add the verbs `add-door`, `remove-door`, `add-network` and `remove-network` to the control socket. A door takes the
+   keys of a door of the router file. A network that a door or a group uses cannot be removed (exit 64).
+2. Count the bytes and the flows of each door; `--status` and `--metrics` show them.
+3. A removed door stops its listener; its open flows end at their own end.
+
+## Decision
+
+The lead (2026-11-13): an ask of a new product of PodUtils (podswarm) is P3, after podnet's own work. The ask has a
+fallback in podswarm, and no milestone of podswarm waits for it. The owner can rule otherwise.
+
+## Prove
+
+```sh
+cargo test --test router_control -- door_add_remove
+```
+
+# T-328: Router: rules by port, also on the loopback (N-2)
+
+**Source:** PodUtils/podcrates#125 (podswarm), ask N-2.
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+podswarm asks for the rules `tcp:HOST:PORT=WAY` and `port:N=WAY`, also for `127.0.0.1`. Acceptance: with
+`tcp:127.0.0.1:5432=home`, a connect to `127.0.0.1:5432` goes to the way `home`; a connect to another loopback port
+does not.
+
+## Premise
+
+- A rule of a door is `domain:NAME=WAY`, `domain:.NAME=WAY`, `cidr:NET=WAY` or `cidr:@FILE=WAY`, or `reject`
+  (`docs/router.md`, "Doors"). No rule matches a port. `cidr:127.0.0.1/32` matches each port of the loopback.
+
+## Approach
+
+1. Add `port:N=WAY` (a port or a range `N-M`) and `tcp:HOST:PORT=WAY` (`HOST` is a name or an address) to the
+   rules reader of the router and of the pod. The shadow check covers them.
+2. Test the acceptance case, and a rule of a port that a `cidr` rule shadows.
+
+## Decision
+
+The lead (2026-11-13): an ask of a new product of PodUtils (podswarm) is P3, after podnet's own work. The ask has a
+fallback in podswarm, and no milestone of podswarm waits for it. The owner can rule otherwise.
+
+## Prove
+
+```sh
+cargo test --workspace -- rules_port
+```
+
+# T-329: `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3)
+
+**Source:** PodUtils/podcrates#125 (podswarm), ask N-3.
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+podswarm asks for a SOCKS5 server on stdin and stdout, with UDP ASSOCIATE, so a machine of a run can be the exit
+over any road (ssh, `exec:`) with no listener. Acceptance: a test sends a UDP datagram through the exit on stdio and
+reads the answer; a TCP connect through it works.
+
+## Premise
+
+- The SOCKS5 server of podnet is the front door (`crates/podnet-netns/src/frontdoor.rs`, `socks.rs`); UDP ASSOCIATE
+  needs a UDP socket next to the TCP control connection, which a pipe does not have.
+- T-291 (a SOCKS5 service at a peer) runs the front door on a stream of a link.
+
+## Approach
+
+1. One stdio stream carries one SOCKS5 session: CONNECT is the stream itself. For UDP ASSOCIATE, use the frames of
+   `pod-proxy` UDP over a stream (a length before each datagram), as the relay roads do, and say so in the help.
+2. Or reuse T-291: `podnet exit --stdio` is the `socks5` service of a link on the stdio carrier. Choose by what T-291
+   builds; write the choice in a Correction.
+
+## Decision
+
+The lead (2026-11-13): an ask of a new product of PodUtils (podswarm) is P3, after podnet's own work. The ask has a
+fallback in podswarm, and no milestone of podswarm waits for it. The owner can rule otherwise.
+
+## Prove
+
+```sh
+cargo test --test exit_stdio
+```

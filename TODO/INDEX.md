@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**326 entries: 51 open, 20 partial, 29 blocked, 226 done.**
+**330 entries: 55 open, 20 partial, 29 blocked, 226 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 8 | 11 | 129 | 167 |
-| P3 | 32 | 11 | 16 | 69 | 128 |
-| **All** | 51 | 20 | 29 | 226 | 326 |
+| P3 | 36 | 11 | 16 | 69 | 132 |
+| **All** | 55 | 20 | 29 | 226 | 330 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -372,3 +372,7 @@ M8 Overlays, M9 Later.
 | [T-324](fixes.md) | P3 | S | M5 | defect | done | doctor: the test of a refused direct dial holds its port |
 | [T-325](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.8`: the dry run, the publish and the release proofs |
 | [T-326](fixes.md) | P2 | S | M5 | chore | blocked | Remove the ignore of RUSTSEC-2023-0071 when russh takes `rsa` 0.10.0 |
+| [T-327](services.md) | P3 | M | M6 | feature | open | Router: add and remove a door and a network while the router runs (N-1) |
+| [T-328](services.md) | P3 | S | M6 | feature | open | Router: rules by port, also on the loopback (N-2) |
+| [T-329](services.md) | P3 | M | M6 | feature | open | `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3) |
+| [T-330](pods.md) | P3 | S | M7 | feature | open | `podnet pod --report FILE`: a JSON report of the backend and the hold (N-5) |

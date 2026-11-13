@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 326 entries: 51 open, 20 partial, 29 blocked, 226 done.
+`TODO/INDEX.md` holds 330 entries: 55 open, 20 partial, 29 blocked, 226 done.
 
 ## State
 
@@ -75,6 +75,10 @@ not wait for a larger one.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
+14. **The asks of podswarm (PodUtils/podcrates#125), after podnet's own work (P3; each has a fallback in podswarm):**
+    T-328 (port rules), T-330 (the report of `pod`), T-327 (doors and networks over the control socket), T-329
+    (`exit --stdio`, after T-291). N-4 (one flow over several uplinks) is answered in `docs/router.md`: per flow only;
+    GitHub #495 stays deferred (the owner, 2026-11-12).
 
 Releases (2026-11-09: betas, no crates.io): cut the next prerelease (`v0.4.0-beta.N`) unattended when
 a batch is green (`CLAUDE.md`).

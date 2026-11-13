@@ -1414,3 +1414,40 @@ cargo test --test pod_seccomp seccomp_backend_sends_a_mapped_loopback_direct
 `a_mapped_loopback_address_is_dialed_direct`: with the old rule (`ip.is_loopback()`) it fails, with the new rule
 it passes. The end-to-end test `seccomp_backend_sends_a_mapped_loopback_direct` skips in this sandbox (no IPv6) and
 runs in `ci`. Not proven here: the podvm unit of podrunner (its test `held`).
+
+# T-330: `podnet pod --report FILE`: a JSON report of the backend and the hold (N-5)
+
+**Source:** PodUtils/podcrates#125 (podswarm), ask N-5.
+**Category:** feature
+**Milestone:** M7
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+podswarm asks for a JSON report of `podnet pod`: the backend, the level of the hold and the UDP limit, with a schema
+in the release. It also asks that the exit status of `podnet pod` is the status of the command: that is so now
+(`docs/pods.md`, "Exit status"; a program that exits 7 makes `podnet pod` exit 7).
+
+## Premise
+
+- `podnet pod` writes its choice on stderr. `--flow-log FILE` writes one JSON line for each decision. No report of
+  the backend and the hold exists. `podnet pod doctor --json` measures the host, not a run.
+
+## Approach
+
+1. Add `--report FILE`: one JSON object, written when the pod starts and again at its end (`schema`, `backend`,
+   `hold` level, `udp`, `exit`). Publish its JSON schema with the release files.
+2. Test that a program that exits 7 makes `podnet pod` exit 7, and that the report validates against the schema.
+
+## Decision
+
+The lead (2026-11-13): an ask of a new product of PodUtils (podswarm) is P3, after podnet's own work. The ask has a
+fallback in podswarm, and no milestone of podswarm waits for it. The owner can rule otherwise.
+
+## Prove
+
+```sh
+cargo test --test pod_report
+```
