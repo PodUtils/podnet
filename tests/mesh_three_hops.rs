@@ -405,3 +405,35 @@ fn a_multi_hop_announcement_needs_a_valid_chain() {
         Dropped::Announcement(Rule::BadHopSignature)
     );
 }
+
+/// A chain of 10 nodes: 9 links. Each node takes and sends on paths of up
+/// to 16 nodes, so A learns the 9-link route to J. The default hop limit
+/// of 8 refuses the path with `HopsExceeded`; a limit of 9 carries 1 MiB
+/// there and back with the same SHA-256.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_default_hop_limit_refuses_a_nine_link_path() {
+    use sha2::{Digest, Sha256};
+    let dir = tempfile::tempdir().unwrap();
+    let mut n: Vec<Node> = (0..10)
+        .map(|i| node(dir.path(), &format!("n{i}")))
+        .collect();
+    for node in &n {
+        node.mesh.set_hop_limit(forward::MAX_HOPS);
+    }
+    for i in 0..9 {
+        let (left, right) = n.split_at_mut(i + 1);
+        join(&mut left[i], &mut right[0], 1).await;
+    }
+    has_route(&n[0], &n[9], 9).await;
+    let dest = n[9].id.public();
+    let err = forward::open(&n[0].mesh, &dest, "echo", forward::DEFAULT_HOPS)
+        .await
+        .unwrap_err();
+    assert_eq!(err, ForwardError::HopsExceeded);
+    let data: Vec<u8> = (0..1u32 << 20)
+        .map(|i| (i.wrapping_mul(2_654_435_761) >> 24) as u8)
+        .collect();
+    let stream = forward::open(&n[0].mesh, &dest, "echo", 9).await.unwrap();
+    let back = echo_roundtrip(stream, data.clone()).await;
+    assert_eq!(Sha256::digest(&back), Sha256::digest(&data));
+}

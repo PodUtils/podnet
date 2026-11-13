@@ -1530,7 +1530,7 @@ Not proven: the table with real signed announcements (T-285 has not started; the
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1575,6 +1575,45 @@ T-262, T-268, T-285, T-286 and T-298 are done. The claim of end-to-end secrecy n
 2026-11-13, partial. Done in commit c9581c1: the chain of hop signatures (`append_hop(wire, identity, cost)`, `verify` returns `BadHopSignature`, `Verified::route` uses the signed cost sum, `Verified::path_cost`). `cargo test --test mesh_announce`: 29 passed, among them `tampered_hop_is_dropped`, `dropped_hop_is_a_bad_hop_signature`, `lowered_cost_is_a_bad_hop_signature`, `hop_signature_of_another_key_is_dropped`, `append_hop_signs_the_hop_and_the_chain_verifies`. With the hop check disabled, 4 tests failed.
 Done in commit cc68ec8: the forwarding of announcements (`Mesh::receive` takes a path that ends at the peer and sends it on with its hop; hop limit 8 by default) and of streams (`src/link_forward.rs`: `PNSVC1 fwd` and the header `PNFWD1`, hop count, loop rule with the list of visited nodes, retry of the next route on `RESOURCE_LIMIT` or `NO_ROUTE` or a 30 s timeout, answers 3, 4 and 5). `link listen --announce` relays; `link dial --announce --node FINGERPRINT [--hops N]` opens a stream to a node by its fingerprint. `cargo test --test mesh_three_hops`: 7 passed: `a_reaches_a_service_of_c_through_b` (1 MiB through B, equal bytes, cost 3 + 5), `the_hop_limit_refuses_a_longer_path` (4 links, `HopsExceeded` for 0, 1 and 3), `the_hop_limit_bounds_the_forwarding_of_announcements`, `a_loop_is_refused`, `a_closed_middle_link_fails_one_stream_not_the_process`, `a_hop_without_a_stream_makes_the_sender_try_the_next_route`, `a_multi_hop_announcement_needs_a_valid_chain`. `cargo test --test link_announce`: 7 passed (`dial_node_reaches_the_service_of_the_listener_by_its_fingerprint` is new). With the forwarding of announcements disabled, 5 of the 7 tests of `mesh_three_hops` failed.
 Left: (1) the end-to-end record layer (T-298, blocked): a middle hop sees the bytes of a stream, so "B sees records only" is not proven. (2) A SHA-256 test over four nodes A, B, C, D with 8 hops and a 9-hop path (the test uses a chain of 5 nodes, 4 links, and 1 MiB over 2 links, compared byte for byte, not by SHA-256). (3) A test with three podnet processes: the CLI has no node that both listens and dials, so a chain needs a listener that also dials (an `--uplink` flag or the like). (4) The route table keeps one `seq` for each origin, so two routes of one round (a diamond) are not both held: the later path of the same `seq` is dropped. A diamond with two live next hops needs the seen-`seq` rule of `Receiver` to take the same `seq` from another next hop. (5) The carriers other than unix. (6) The 1 MiB limit in flight for each stream and hop is the credit window of `pod-link`; no test shows it.
+
+2026-11-13, the rest (the owner is away; the calls). `link connect --announce [--announce-weight COST]` makes a node that dials and serves: it announces its `--service` names and takes the streams that its peer forwards. So the CLI makes a chain of three processes with no new command: B `link listen --announce`, C `link connect --announce` to B with a service, A `link dial --announce --node C` to B. Call 1: the last hop sends C the plain request of the service (not `fwd`); a plant with the stream handling of the mesh off at C still passed, a plant with no announcements from C failed. Call 2: the announcements of a node go 8 hops by default, so a 9-link route never enters the table and a default dial gets `NoRoute` before `HopsExceeded`; the test of the 9-link path sets the hop limit of the announcements of each node to 16 (`Mesh::set_hop_limit`) and then shows `HopsExceeded` at the default stream limit of 8. Call 3: item (4) (a diamond with two live next hops of one round) is the new entry T-335. Call 4: item (6) is the credit window of `pod-link` (T-262, its tests `windows` and `limits`); this entry adds no test of it.
+
+## Done
+
+2026-11-13, commit COMMIT. `src/cli/cmd/link/connect.rs`: `--announce` and `--announce-weight` (the mesh, its guard on each link and its redial, the services in the announcements, the streams of `announce` and `fwd`). `docs/link.md` (Announcements on a link, Forwarding a stream: the chain of three processes).
+`cargo test --test mesh_processes` (new; the real binary, three processes): 4 passed, three runs in a row: `a_reaches_a_service_of_c_through_b_with_three_processes_sealed` (unix links: 1 MiB from A to the echo of C through B and back, the same SHA-256; a spy between A and B sees no plaintext mark with `--seal` at A and C), `without_the_seal_the_link_a_to_b_shows_the_plaintext` (the control), `a_closed_middle_link_fails_the_stream_and_b_lives_on` (C ends: the stream at A ends, A exits, B runs on and drops its route to C), `the_announce_flags_of_link_connect_are_checked` (exit 64). `cargo test --features tcp --test mesh_processes`: 5 passed (also `a_reaches_a_service_of_c_through_b_over_tcp_on_the_loopback`, TCP with TLS 1.3 on 127.0.0.1). `cargo test --test mesh_three_hops`: 8 passed, three runs (new: `the_default_hop_limit_refuses_a_nine_link_path`: 10 nodes, 9 links, `HopsExceeded` at the default limit of 8, 1 MiB there and back with the same SHA-256 at a limit of 9).
+Plant: with no announcements from `link connect` (its guard off), the 3 chain tests of `mesh_processes` failed. `sh scripts/agent/check.sh`: each step 0.
+Not proven: a diamond with two live next hops of one round (T-335); the 1 MiB in flight for each stream and hop (the credit window of `pod-link`); the carriers other than unix and tcp in a chain.
+
+# T-335: link: keep the routes of two next hops for one announcement (GitHub #470)
+
+**Source:** GitHub #470 (https://github.com/PodUtils/podnet/issues/470), row E4-3; split from T-287.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Row E4-3 of GitHub #470: "A hop that cannot allocate a stream returns `RESOURCE_LIMIT`, and the previous hop tries the next route." A next route exists only when the table holds more than one route to an origin. In a diamond (A to D through B and through C), one round of D gives one `seq`, and the two paths of that `seq` reach A through B and through C.
+
+## Premise
+
+- Read on 2026-11-13 (T-287, its Correction, item 4). `Mesh::receive` (`src/link_announce.rs`) checks the `seq` of an origin with `Receiver::note` before `RouteTable::learn`. The path of one `seq` that comes later from another next hop is dropped as a seen `seq`. So the table holds one live next hop for each round, and the retry of `link_forward` has a second route only from an older round.
+- The retry itself is proven with two rounds (`a_hop_without_a_stream_makes_the_sender_try_the_next_route` of `tests/mesh_three_hops.rs`). Nothing was measured for a diamond.
+
+## Approach
+
+1. Take the same `seq` from another next hop when its path is new for that origin (the replay rule stays for the same next hop and path).
+2. Test a diamond: two live routes to D at A after one round; a `RESOURCE_LIMIT` at B makes A use C.
+
+## Prove
+
+```sh
+cargo test --test mesh_three_hops
+sh scripts/agent/check.sh
+```
 
 # T-288: link: load balancing across link groups (GitHub #470)
 

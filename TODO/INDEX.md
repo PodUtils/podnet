@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**334 entries: 15 open, 15 partial, 26 blocked, 278 done.**
+**335 entries: 16 open, 14 partial, 26 blocked, 279 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 6 | 6 | 11 | 145 | 168 |
-| P3 | 9 | 8 | 13 | 103 | 133 |
-| **All** | 15 | 15 | 26 | 278 | 334 |
+| P3 | 10 | 7 | 13 | 104 | 134 |
+| **All** | 16 | 14 | 26 | 279 | 335 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -332,7 +332,7 @@ M8 Overlays, M9 Later.
 | [T-284](link.md) | P3 | L | M9 | feature | blocked | link: NAT traversal with a relay fallback (GitHub #469) |
 | [T-285](link.md) | P3 | L | M9 | feature | done | link: signed route announcements (GitHub #470) |
 | [T-286](link.md) | P3 | M | M9 | feature | done | link: the path-vector route table (GitHub #470) |
-| [T-287](link.md) | P3 | L | M9 | feature | partial | link: multi-hop forwarding of a session stream (GitHub #470) |
+| [T-287](link.md) | P3 | L | M9 | feature | done | link: multi-hop forwarding of a session stream (GitHub #470) |
 | [T-288](link.md) | P3 | M | M9 | feature | done | link: load balancing across link groups (GitHub #470) |
 | [T-289](link.md) | P3 | M | M9 | feature | done | link: the local topology and the status view of a mesh (GitHub #470) |
 | [T-290](link.md) | P3 | M | M9 | feature | done | link: per-hop access control for services and forwarding (GitHub #470) |
@@ -380,3 +380,4 @@ M8 Overlays, M9 Later.
 | [T-332](fixes.md) | P1 | S | M5 | defect | done | QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523) |
 | [T-333](fixes.md) | P1 | S | M5 | defect | done | link door: --resolve-at local tries only the first address of a name |
 | [T-334](link.md) | P3 | S | M9 | feature | open | pod: the seccomp rule of a raw ICMP socket (GitHub #469) |
+| [T-335](link.md) | P3 | S | M9 | feature | open | link: keep the routes of two next hops for one announcement (GitHub #470) |

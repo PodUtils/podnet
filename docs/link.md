@@ -650,13 +650,15 @@ sends it over a link (`podnet::link_announce`, see "Announcements on a link" bel
 
 ## Announcements on a link
 
-`link listen --announce` and `link dial --announce` (T-285) turn the route announcements on for each link of the command. The
+`link listen --announce`, `link dial --announce` (T-285) and `link connect --announce` (T-287) turn the route announcements on
+for each link of the command. The
 peer must run the flag too: a peer without it answers "no such service" to the stream, and the other end logs it and sends
 nothing.
 
 * Each end opens one stream of the service `announce` to the other end and sends its announcement on it at once, then each 10 s
   with a jitter of 10% either way. The announcement lists the peers of the links that are up (direct neighbours, each with the
-  cost of its link) and the services of this end (the listener: the names of `--service` and `--to`; the dialer: none).
+  cost of its link) and the services of this end (the listener: the names of `--service` and `--to`; `link connect`: the names
+  of `--service`; `link dial`: none). `link connect --announce-weight COST` sets the cost of its link, as on the other commands.
 * A frame is a big-endian `u16` length and the wire bytes of the announcement. A length above 9789 ends the announce stream.
   The link stays up.
 * The receiver takes an announcement whose path ends at the peer of the link (T-287; a path `[origin]` is a direct
@@ -725,8 +727,17 @@ request. Exit 69 when no route comes, the node has no such service, or the path 
 * 8 links by default, 16 at most (`--hops`). A route longer than the hop limit of a node is not used.
 * The listener runs this when it has `--announce`. The name `fwd` cannot be a `--service` then (exit 64). A dialer with
   `--announce` relays a stream that its peer sends, but it has no service of its own.
-* With `--seal` at both ends, the hops see sealed records only (see "Sealed streams"). The CLI has no node that both listens and
-  dials, so a chain of three podnet processes needs a library caller (`link_forward::open`).
+* With `--seal` at both ends, the hops see sealed records only (see "Sealed streams").
+* `link connect --announce` is a node that dials and serves: it announces its `--service` names, and a stream that its peer
+  forwards for it reaches them. So three processes make a chain: B runs `link listen --announce`, C runs `link connect --announce`
+  to B with a service, and A runs `link dial --announce --node C` to B. The names `announce` and `fwd` cannot be a `--service` of
+  `link connect --announce` (exit 64).
+
+```sh
+podnet link listen 0.0.0.0:7000 --carrier tcp --allow nodes.txt --announce                                   # B
+podnet link connect 'B-FINGERPRINT@b.example:7000' --carrier tcp --allow nodes.txt --announce --seal --service ssh=127.0.0.1:22   # C
+podnet link dial 'B-FINGERPRINT@b.example:7000' --carrier tcp --peer B-FINGERPRINT --announce --seal --node C-FINGERPRINT --service ssh   # A
+```
 
 ## Sealed streams
 

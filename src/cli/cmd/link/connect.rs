@@ -10,7 +10,9 @@ use pod_identity::PublicKey;
 use podnet::exit::{self, Fault};
 use podnet::identity;
 use podnet::link::Link;
+use podnet::link_announce::{self as announce, Guard, Mesh};
 use podnet::link_ctl::{Dialing, Hub, Redial, Slot};
+use podnet::mesh_announce::INTERVAL_MS;
 
 use super::dial::trusted;
 use super::services::{services_of, Seal, ServiceArgs, Streams};
@@ -42,6 +44,19 @@ pub(crate) struct ConnectArgs {
     pub(crate) allow: Option<PathBuf>,
     #[command(flatten)]
     pub(crate) services: ServiceArgs,
+    /// Send and take signed route announcements on the link (the service
+    /// `announce`; see `link listen --announce`). The listener must run it
+    /// too. The services of --service go into the announcements, and a
+    /// stream that the listener forwards for this node reaches them (`link
+    /// dial --node`). The names `announce` and `fwd` cannot be a --service
+    /// with this flag. The verb `routes` of the control socket shows the
+    /// routes.
+    #[arg(long, conflicts_with = "check")]
+    pub(crate) announce: bool,
+    /// With --announce: the cost of the link, 1 to 4294967295. Without it,
+    /// the RTT of the link in milliseconds.
+    #[arg(long, value_name = "COST", requires = "announce", value_parser = clap::value_parser!(u32).range(1..))]
+    pub(crate) announce_weight: Option<u32>,
     /// The control socket (mode 0600, with the token file PATH.token). The
     /// default is `link-PID.ctl` in the run directory of podnet. The ready
     /// document names it.
@@ -61,7 +76,7 @@ pub(crate) struct ConnectArgs {
 
 pub(crate) async fn connect(mut args: ConnectArgs, egress: Vec<String>) -> Result<()> {
     args.address = super::apply_query(&args.address, &mut args.carrier)?;
-    let services = Arc::new(services_of(None, &args.services, false)?);
+    let services = Arc::new(services_of(None, &args.services, args.announce)?);
     let carrier = super::open_carrier(&args.carrier)?;
     let allow = trusted(&args.allow, &args.peer)?;
     let me = Arc::new(identity::create(&identity::default_dir()?)?);
@@ -97,6 +112,13 @@ pub(crate) async fn connect(mut args: ConnectArgs, egress: Vec<String>) -> Resul
     let link = Arc::new(link);
     let hub = Hub::new(&me.fingerprint());
     hub.reserve(services.keys());
+    // T-287: a node of the mesh that dials.
+    let mesh = args.announce.then(|| {
+        let names = services.keys().cloned().collect();
+        let mesh = Mesh::new(me.clone(), names, announce::now_ms());
+        hub.attach_mesh(mesh.clone());
+        mesh
+    });
     // T-307: `reconnect` and `rotate` dial again with what this dial used.
     let dialer = Arc::new(Dialer {
         args: args.carrier.clone(),
@@ -105,6 +127,7 @@ pub(crate) async fn connect(mut args: ConnectArgs, egress: Vec<String>) -> Resul
         allow: allow.clone(),
         services: services.clone(),
         via: via.clone(),
+        mesh: mesh.map(|mesh| (mesh, args.announce_weight)),
         _chain: std::sync::Mutex::new(chain),
     });
     hub.attach_redial(dialer.clone());
@@ -164,6 +187,8 @@ struct Dialer {
     allow: identity::AllowList,
     services: super::services::Services,
     via: Option<Arc<dyn podnet::network::Dial>>,
+    /// The mesh of --announce and the cost of --announce-weight.
+    mesh: Option<(Arc<Mesh>, Option<u32>)>,
     /// Keeps the chain of --egress up.
     _chain: std::sync::Mutex<Option<podnet::link_chain::Opened>>,
 }
@@ -189,19 +214,28 @@ impl Dialer {
             grant: self.allow.grant(&peer).unwrap_or_default(),
             peer,
             shown: shown.clone(),
-            mesh: None,
+            mesh: self
+                .mesh
+                .as_ref()
+                .map(|(mesh, weight)| (mesh.clone(), link.clone(), *weight)),
             seal: self.args.record.clone().map(|options| Seal {
                 me: self.me.clone(),
                 allow: self.allow.clone(),
                 options,
             }),
         };
-        tokio::spawn(accept_streams(link, slot, streams));
+        // The guard stops the announcements and ends the route of the peer
+        // when the link ends.
+        let guard = self
+            .mesh
+            .as_ref()
+            .map(|(mesh, weight)| Guard::start(mesh, &link, peer, *weight, INTERVAL_MS));
+        tokio::spawn(accept_streams(link, slot, streams, guard));
         id
     }
 }
 
-async fn accept_streams(link: Arc<Link>, slot: Slot, streams: Streams) {
+async fn accept_streams(link: Arc<Link>, slot: Slot, streams: Streams, _guard: Option<Guard>) {
     while let Ok(stream) = link.accept().await {
         streams.spawn(stream, &slot);
     }

@@ -8206,6 +8206,19 @@ COMMANDS
             The user of the program of the service NAME: NAME=USER. It needs
             root; without it the listener exits 64
 
+        --announce
+            Send and take signed route announcements on the link (the service
+            `announce`; see `link listen --announce`). The listener must run
+            it too. The services of --service go into the announcements, and a
+            stream that the listener forwards for this node reaches them
+            (`link dial --node`). The names `announce` and `fwd` cannot be a
+            --service with this flag. The verb `routes` of the control socket
+            shows the routes
+
+        --announce-weight <COST>
+            With --announce: the cost of the link, 1 to 4294967295. Without
+            it, the RTT of the link in milliseconds
+
         --control <PATH>
             The control socket (mode 0600, with the token file PATH.token).
             The default is `link-PID.ctl` in the run directory of podnet. The

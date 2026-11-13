@@ -165,7 +165,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #467 | link: stream carriers and availability (E1) | open | T-268, T-269, T-270, T-271, T-272, T-273, T-274, T-275 |
 | #468 | link: datagram reliability, ARQ, and simplex carriers (E2) | open | T-276, T-277, T-278, T-279, T-280 |
 | #469 | link: DNS stream, ICMP, WireGuard and NAT traversal carriers (E3) | open | T-281, T-282, T-283, T-284, T-334 |
-| #470 | link: mesh announcements, path-vector routing, forwarding and ACLs (E4) | open | T-285, T-286, T-287, T-288, T-289, T-290 |
+| #470 | link: mesh announcements, path-vector routing, forwarding and ACLs (E4) | open | T-285, T-286, T-287, T-288, T-289, T-290, T-335 |
 | #471 | link: services at a peer (SOCKS5, HTTP, raw, forward, Shadowsocks, Trojan, exec, serve-at) (E5) | open | T-266, T-291, T-292, T-293, T-294, T-295, T-296, T-297 |
 | #472 | link: record layer (AEAD, compression, padding, replay and resume) (E6) | closed: T-298 to T-301 done; ci 43491819082 on d53df25 | T-298, T-299, T-300, T-301 |
 | #473 | link: direction split and chain composition (E7) | open | T-302, T-303 |
