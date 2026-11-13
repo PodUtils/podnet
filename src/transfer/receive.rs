@@ -100,8 +100,8 @@ pub async fn receive(
             Ok(false) => return Err(decline(&mut hole, anyhow::anyhow!("transfer rejected")).await),
             Err(err) => return Err(decline(&mut hole, err).await),
         }
-        let hints = transit.map(|t| t.hints).unwrap_or_default();
-        return land_offer(hole, settings, how, offer, offered, key, hints).await;
+        let theirs = transit.unwrap_or_default();
+        return land_offer(hole, settings, how, offer, offered, key, theirs).await;
     }
 }
 
@@ -167,9 +167,10 @@ async fn land_offer(
     offer: Offer,
     offered: Offered,
     key: [u8; 32],
-    hints: Vec<messages::Hint>,
+    theirs: Transit,
 ) -> Result<Received> {
-    let ours = match connect::prepare(&settings.listen, &settings.relays).await {
+    let hints = theirs.hints;
+    let mut ours = match connect::prepare(&settings.listen, &settings.relays).await {
         Ok(ours) => ours,
         Err(err) => {
             return Err(decline(
@@ -179,11 +180,18 @@ async fn land_offer(
             .await)
         }
     };
-    let abilities = vec![messages::DIRECT.to_string(), messages::RELAY.to_string()];
+    ours.token = theirs.relay_token;
+    ours.resume = settings.relay_resume;
+    let abilities = vec![
+        messages::DIRECT.to_string(),
+        messages::RELAY.to_string(),
+        messages::PODNET_RELAY.to_string(),
+    ];
     let mine = Transit {
         abilities,
         hints: ours.hints.clone(),
         key: None,
+        relay_token: None,
     };
     let sent = hole.send(&mine.encode()).await;
     or_close(&mut hole, sent).await.map_err(failed)?;

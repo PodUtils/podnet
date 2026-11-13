@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**334 entries: 17 open, 15 partial, 26 blocked, 276 done.**
+**334 entries: 16 open, 15 partial, 26 blocked, 277 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
-| P2 | 7 | 6 | 11 | 144 | 168 |
+| P2 | 6 | 6 | 11 | 145 | 168 |
 | P3 | 10 | 8 | 13 | 102 | 133 |
-| **All** | 17 | 15 | 26 | 276 | 334 |
+| **All** | 16 | 15 | 26 | 277 | 334 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -149,7 +149,7 @@ M8 Overlays, M9 Later.
 | [T-101](services.md) | P2 | M | M6 | measurement | partial | Router: the live step with WARP, the relay and direct, and a failover |
 | [T-102](services.md) | P2 | M | M6 | feature | done | Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole` |
 | [T-103](services.md) | P2 | L | M6 | feature | blocked | The file-transfer protocol and the transit protocol of magic-wormhole |
-| [T-104](services.md) | P2 | M | M6 | feature | open | The podnet relay as a carrier of a transfer |
+| [T-104](services.md) | P2 | M | M6 | feature | done | The podnet relay as a carrier of a transfer |
 | [T-105](services.md) | P2 | M | M6 | feature | done | `podnet send` and `podnet receive` |
 | [T-106](services.md) | P2 | M | M6 | measurement | open | An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB |
 | [T-107](pods.md) | P2 | M | M7 | feature | done | seccomp: the pod lives past its first program |

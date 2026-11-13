@@ -154,6 +154,20 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Records<S> {
     pub async fn close(&mut self) {
         let _ = self.io.shutdown().await;
     }
+
+    /// Read and drop the bytes of the other end until its end, for at most
+    /// `limit`.
+    pub async fn drain(&mut self, limit: std::time::Duration) {
+        let mut buf = [0u8; 512];
+        let _ = tokio::time::timeout(limit, async {
+            while let Ok(n) = self.io.read(&mut buf).await {
+                if n == 0 {
+                    break;
+                }
+            }
+        })
+        .await;
+    }
 }
 
 /// The nonce of record `n`: big-endian in 24 bytes, as transit.py writes it.

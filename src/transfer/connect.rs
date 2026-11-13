@@ -22,7 +22,9 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::task::JoinSet;
 
 use super::messages::{Hint, RelayEnd};
+use super::podnet_relay::{self, Sessions};
 use super::transit::{self, Records, Role};
+use crate::relay_reverse::Resume;
 
 /// The wait before the relays, when a direct hint exists: transit.py's.
 pub const RELAY_DELAY: Duration = Duration::from_secs(2);
@@ -93,10 +95,17 @@ pub enum Listen {
     At(SocketAddr),
 }
 
-/// This end's listener and hints.
+/// This end's listener and hints, and its part of the podnet relay
+/// (T-104).
 pub struct Ours {
     listener: Option<TcpListener>,
     pub hints: Vec<Hint>,
+    /// A sender: the name of its pair and the sessions of its node.
+    pub(super) node: Option<(String, Sessions)>,
+    /// A receiver: the connect token of the node of the sender.
+    pub(super) token: Option<String>,
+    /// A receiver: the moves of the layer.
+    pub(super) resume: Resume,
 }
 
 /// Listen as `listen` says, and give the hints of the listener and of
@@ -143,7 +152,13 @@ pub async fn prepare(listen: &Listen, relays: &[Relay]) -> std::io::Result<Ours>
         }
     };
     hints.extend(relays.iter().map(Relay::hint));
-    Ok(Ours { listener, hints })
+    Ok(Ours {
+        listener,
+        hints,
+        node: None,
+        token: None,
+        resume: Resume::default(),
+    })
 }
 
 fn direct(ip: IpAddr, port: u16) -> Hint {
@@ -234,12 +249,24 @@ pub async fn connect(
             }
         });
     }
+    if let Some((name, mut sessions)) = ours.node {
+        let (tx, won) = (tx.clone(), won.clone());
+        tasks.spawn(async move {
+            let mut each = JoinSet::new();
+            while let Some((_, io)) = sessions.recv().await {
+                let (tx, won) = (tx.clone(), won.clone());
+                let what = format!("podnet relay {name}");
+                each.spawn(negotiate(Box::new(io), what, role, key, won, tx));
+            }
+        });
+    }
     let mut relays: Vec<RelayEnd> = Vec::new();
     let mut directs = 0;
     for hint in ours.hints.iter().chain(theirs) {
         match hint {
             Hint::Relay { ends, .. } => relays.extend(ends.iter().cloned()),
             Hint::Direct { .. } => directs += 1,
+            Hint::PodnetRelay { .. } => {}
         }
     }
     for hint in theirs {
@@ -266,6 +293,26 @@ pub async fn connect(
     } else {
         Duration::ZERO
     };
+    // The podnet relay is the last way: after the transit relays when a
+    // direct hint or a transit relay exists.
+    let last = if directs > 0 || !relays.is_empty() {
+        RELAY_DELAY * 2
+    } else {
+        Duration::ZERO
+    };
+    for hint in theirs {
+        let (Hint::PodnetRelay { url, name }, Some(token)) = (hint, &ours.token) else {
+            continue;
+        };
+        let (tx, won) = (tx.clone(), won.clone());
+        let (url, name, token, resume) = (url.clone(), name.clone(), token.clone(), ours.resume);
+        tasks.spawn(async move {
+            tokio::time::sleep(last).await;
+            if let Some(won) = podnet_relay::dial(url, name, token, resume, role, key, won).await {
+                let _ = tx.send(won).await;
+            }
+        });
+    }
     let mut seen = Vec::new();
     for end in relays {
         if seen.contains(&end) {
@@ -329,13 +376,26 @@ async fn through_relay(end: &RelayEnd, key: &[u8; 32], way: &Way) -> Option<(Box
 /// The handshake of the ends on `io`; the connection goes to `tx` when it
 /// wins.
 async fn negotiate(
-    mut io: BoxedIo,
+    io: BoxedIo,
     what: String,
     role: Role,
     key: [u8; 32],
     won: Arc<Mutex<bool>>,
     tx: mpsc::Sender<(BoxedIo, String)>,
 ) {
+    if let Some(io) = handshake(io, role, key, won).await {
+        let _ = tx.send((io, what)).await;
+    }
+}
+
+/// The handshake of the ends on `io`, within [`STEP`]: the connection when
+/// it wins.
+pub(super) async fn handshake(
+    mut io: BoxedIo,
+    role: Role,
+    key: [u8; 32],
+    won: Arc<Mutex<bool>>,
+) -> Option<BoxedIo> {
     let theirs = match role {
         Role::Sender => Role::Receiver,
         Role::Receiver => Role::Sender,
@@ -368,8 +428,9 @@ async fn negotiate(
             }
         }
     };
-    if let Ok(Some(())) = tokio::time::timeout(STEP, steps).await {
-        let _ = tx.send((io, what)).await;
+    match tokio::time::timeout(STEP, steps).await {
+        Ok(Some(())) => Some(io),
+        _ => None,
     }
 }
 

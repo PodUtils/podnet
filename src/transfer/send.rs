@@ -12,6 +12,7 @@ use pod_wormhole::{Code, Failed, Wormhole};
 use sha2::{Digest, Sha256};
 
 use super::messages::{self, Answer, Hint, Message, Offer, Transit};
+use super::podnet_relay;
 use super::transit::{Role, CHUNK};
 use super::{connect, failed, podnet_peer, unavailable, versions, Settings, NOT_PODNET};
 
@@ -134,18 +135,37 @@ async fn send_payload(
 ) -> Result<Sent> {
     let mut key = [0u8; 32];
     getrandom::fill(&mut key).map_err(|_| failed(Failed::NoRandom))?;
-    let ours = match connect::prepare(&settings.listen, &settings.relays).await {
+    let mut ours = match connect::prepare(&settings.listen, &settings.relays).await {
         Ok(ours) => ours,
         Err(err) => {
             hole.close(Mood::Errory).await;
             return Err(unavailable(format!("no listener for the transit: {err}")));
         }
     };
-    let abilities = vec![messages::DIRECT.to_string(), messages::RELAY.to_string()];
+    let mut abilities = vec![messages::DIRECT.to_string(), messages::RELAY.to_string()];
+    // The node of the podnet relay runs until the end of this function.
+    let node = match settings.relay_pair.as_ref().map(podnet_relay::start) {
+        Some(Ok((node, sessions))) => {
+            abilities.push(messages::PODNET_RELAY.to_string());
+            ours.hints.push(node.hint.clone());
+            if let Hint::PodnetRelay { name, .. } = &node.hint {
+                ours.node = Some((name.clone(), sessions));
+            }
+            Some(node)
+        }
+        Some(Err(err)) => {
+            let words = format!("the sender cannot run the node of its relay pair: {err:#}");
+            let _ = hole.send(&messages::error(&words)).await;
+            hole.close(Mood::Errory).await;
+            return Err(err);
+        }
+        None => None,
+    };
     let transit = Transit {
         abilities,
         hints: ours.hints.clone(),
         key: Some(key),
+        relay_token: node.as_ref().map(|n| n.token.clone()),
     };
     let sent = hole.send(&transit.encode()).await;
     or_close(&mut hole, sent).await.map_err(failed)?;
@@ -199,6 +219,13 @@ async fn send_payload(
         .await
         .map_err(|e| unavailable(format!("no ack came over the transit ({via}): {e}")))?;
     records.close().await;
+    if node.is_some() {
+        // The end of this side must pass the node before it stops: wait for
+        // the end of the receiver, then for the layer of the node.
+        records.drain(podnet_relay::GRACE).await;
+        tokio::time::sleep(podnet_relay::GRACE / 4).await;
+    }
+    drop(node);
     match messages::read_ack(&ack) {
         Ok(Some(theirs)) if theirs != sha256 => Err(super::refused(format!(
             "the receiver got other data: SHA-256 {theirs}, sent {sha256}"

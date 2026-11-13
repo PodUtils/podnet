@@ -280,7 +280,7 @@ pub async fn run_node_with<H: Handler>(
             pair.expires,
             follow.is_some(),
         ));
-        let (result, back) = node(pair, handler.clone(), shown).await;
+        let (result, back) = node(pair, handler.clone(), shown, true).await;
         pair = back;
         warnings.abort();
         let expired = pair.left() < Duration::from_secs(5);
@@ -302,10 +302,24 @@ pub async fn run_node_with<H: Handler>(
     }
 }
 
+/// The node of `pair` for a service of the process that is not a node
+/// command (the transit of a transfer, T-104): no expiry warnings, no next
+/// pair, and no ready document, so the signals of the process keep their
+/// default action. It ends as [`run_node_with`] ends.
+pub async fn serve_pair<H: Handler>(pair: Pair, handler: Arc<H>, shown: &str) -> Result<()> {
+    node(pair, handler, shown, false).await.0
+}
+
 /// The node of `pair` until it ends: at the expiry of the pair, at a close
 /// for cause, or at a fault that a new socket would repeat. Gives `pair`
-/// back.
-async fn node<H: Handler>(pair: Pair, handler: Arc<H>, shown: &str) -> (Result<()>, Pair) {
+/// back. With `ready`, the node sends the ready document of a command when
+/// it is online.
+async fn node<H: Handler>(
+    pair: Pair,
+    handler: Arc<H>,
+    shown: &str,
+    ready: bool,
+) -> (Result<()>, Pair) {
     let relay = match Relay::single(&pair.relay, None) {
         Ok(relay) => relay,
         Err(err) => return (Err(fault(Fault::Config, err)), pair),
@@ -322,7 +336,9 @@ async fn node<H: Handler>(pair: Pair, handler: Arc<H>, shown: &str) -> (Result<(
     let say = move |line: String| {
         if line.starts_with("online") {
             tracing::info!(name = %said_name, target = %shown, "the node is connected to the relay");
-            crate::detach::ready(ready_document(&said_name, &said_url, expires, &shown));
+            if ready {
+                crate::detach::ready(ready_document(&said_name, &said_url, expires, &shown));
+            }
         } else {
             tracing::warn!(name = %said_name, "{line}");
         }

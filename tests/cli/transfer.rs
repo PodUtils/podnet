@@ -12,6 +12,8 @@ use std::process::{Child, Command, Output, Stdio};
 
 use sha2::{Digest, Sha256};
 
+use crate::test_host;
+
 const PROXIES: [&str; 7] = [
     "HTTPS_PROXY",
     "https_proxy",
@@ -120,6 +122,7 @@ fn text(out: &Output) -> String {
 
 #[test]
 fn send_and_receive_on_the_loopback() {
+    test_host::need_loopback!();
     let rt = runtime();
     let mailbox = rt.block_on(harness::Mailbox::start());
     let (src, out) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
@@ -175,6 +178,7 @@ fn send_and_receive_on_the_loopback() {
 
 #[test]
 fn a_wrong_code_ends_the_code() {
+    test_host::need_loopback!();
     let rt = runtime();
     let mailbox = rt.block_on(harness::Mailbox::start());
     let out = tempfile::tempdir().unwrap();
@@ -213,6 +217,7 @@ fn receive_takes_no_code_from_the_command_line() {
 
 #[test]
 fn receive_of_a_file_needs_yes_when_stdin_is_not_a_terminal() {
+    test_host::need_loopback!();
     let rt = runtime();
     let mailbox = rt.block_on(harness::Mailbox::start());
     let (src, out) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
@@ -234,6 +239,7 @@ fn receive_of_a_file_needs_yes_when_stdin_is_not_a_terminal() {
 
 #[test]
 fn receive_refuses_a_name_that_exists_with_65() {
+    test_host::need_loopback!();
     let rt = runtime();
     let mailbox = rt.block_on(harness::Mailbox::start());
     let (src, out) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());

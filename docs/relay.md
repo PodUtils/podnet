@@ -118,6 +118,8 @@ ssh -o ProxyCommand='podnet relay connect NAME --resume' USER@NAME
 * `podnet serve --ingress relay --pair NAME` and `podnet git serve --ingress relay --pair NAME` put the
   file server and the git SSH server on the node of a pair ([serve.md](serve.md)).
 * `podnet expose TARGET --via relay` starts a node for a local service ([forward.md](forward.md)).
+* `podnet send --relay-pair NAME` runs the node of a stored pair for the time of a transfer: the last way of the
+  transit to a podnet receiver, with the resumable layer ([transfer.md](transfer.md), The podnet relay).
 * `--egress relay` (or `--transport relay`) sends the edge connection of a tunnel in a WebSocket to the
   relay ([tunnels.md](tunnels.md), "Edge protocol and transport"). `--egress relay` is also a network of
   `podnet forward` and of a router ([egress.md](egress.md)).

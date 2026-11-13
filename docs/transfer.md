@@ -86,6 +86,49 @@ of Least Authority. The public TCP relay of magic-wormhole
 (`tcp:transit.magic-wormhole.io:4001`) is not in `pod-services`; give it
 with `--transit-relay` when port 4001 is open.
 
+## The podnet relay: a podnet extension
+
+Two hosts that reach only TCP 443 through a proxy can fail to reach a
+transit relay. Then the podnet relay (the reverse road, [relay.md](relay.md))
+carries the transit. This way is a podnet extension: it works from podnet
+to podnet only.
+
+```sh
+# On the first host (a pair of `podnet relay pair`; no node of it runs):
+podnet send --relay-pair NAME report.pdf
+# On the second host:
+podnet receive
+```
+
+* `podnet send --relay-pair NAME` runs the node of the stored pair `NAME`
+  (`podnet relay pair`) for the time of the transfer. Do not run another
+  node of the pair at the same time: the relay gives the name to one node.
+  A pair that is not stored stops the sender before its offer, with the
+  error of `podnet relay node`, and the receiver gets the error.
+* The sender adds one hint of its own kind, `podnet-relay-v1`, with the URL
+  of the relay and the name of the pair. It puts the connect token of the
+  pair under the key `podnet-relay-token` of its `transit` message. The
+  wormhole seals this message, so only the receiver of the code reads the
+  token.
+* A client of magic-wormhole ignores a hint of a kind that it does not know,
+  and a key of the `transit` message that it does not know. podnet sends a
+  file or a directory to podnet only, so the hint goes to podnet only.
+* The receiver dials the node as an operator of the reverse road. It is the
+  last way: it starts 4 s after the other hints when a direct hint or a
+  transit relay exists, else at once. A node that is not online is
+  dialed again each second, until the end of the wait of the transit.
+* Each session runs the resumable layer of `relay node --resume` and
+  `relay connect --resume`: the session moves to a new leg before the byte
+  cap of the relay (48 MiB of a leg), and resumes after the loss of a leg.
+  A transfer thus goes past the 64 MiB of one relay session.
+* On the stream, the two ends run the handshake of the transit and the
+  records that the transit key seals, as on a direct connection. The relay
+  sees no byte of the file. The line of the sender and of the receiver says
+  `podnet relay NAME`.
+* After the ack, the sender waits at most 2.5 s for the end of the receiver
+  before its node stops. The receiver waits at most 15 s for the end of the
+  session.
+
 ## What the receiver writes
 
 The receiver checks each name before it writes a byte:

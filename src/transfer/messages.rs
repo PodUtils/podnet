@@ -13,6 +13,12 @@ pub const DIRECT: &str = "direct-tcp-v1";
 pub const RELAY: &str = "relay-v1";
 /// The kind of a WebSocket end of a relay.
 pub const WEBSOCKET: &str = "websocket-v1";
+/// podnet's own kind of hint (T-104): the node of a pair of the podnet
+/// relay. A client of magic-wormhole ignores a kind that it does not know.
+pub const PODNET_RELAY: &str = "podnet-relay-v1";
+/// The key of the connect token of that node in the `transit` message of a
+/// podnet sender (the message is sealed in its phase of the wormhole).
+pub const PODNET_RELAY_TOKEN: &str = "podnet-relay-token";
 /// The mode of a directory, as magic-wormhole names it. A zip with stored
 /// entries is a valid zip of this mode.
 pub const ZIP_MODE: &str = "zipfile/deflated";
@@ -55,6 +61,10 @@ pub enum Hint {
         name: Option<String>,
         ends: Vec<RelayEnd>,
     },
+    /// podnet's own kind: the node of the pair `name` at the podnet relay
+    /// `url` (the reverse road). The connect token comes in
+    /// [`Transit::relay_token`].
+    PodnetRelay { url: String, name: String },
 }
 
 /// The `transit` message: the abilities and the hints of one end.
@@ -64,6 +74,9 @@ pub struct Transit {
     pub hints: Vec<Hint>,
     /// podnet's transit key, from a podnet sender.
     pub key: Option<[u8; 32]>,
+    /// The connect token of the node of a [`Hint::PodnetRelay`], from a
+    /// podnet sender.
+    pub relay_token: Option<String>,
 }
 
 /// The answer of a receiver.
@@ -147,6 +160,9 @@ impl Transit {
         if let Some(key) = &self.key {
             body.insert(PODNET_KEY.into(), Value::String(pod_wormhole::hex(key)));
         }
+        if let Some(token) = &self.relay_token {
+            body.insert(PODNET_RELAY_TOKEN.into(), Value::String(token.clone()));
+        }
         json!({ "transit": body }).to_string().into_bytes()
     }
 
@@ -170,10 +186,15 @@ impl Transit {
             .and_then(Value::as_str)
             .and_then(pod_wormhole::unhex);
         let key = key.and_then(|k| <[u8; 32]>::try_from(k.as_slice()).ok());
+        let relay_token = value
+            .get(PODNET_RELAY_TOKEN)
+            .and_then(Value::as_str)
+            .map(str::to_string);
         Transit {
             abilities: abilities.collect(),
             hints,
             key,
+            relay_token,
         }
     }
 }
@@ -191,6 +212,9 @@ impl Hint {
                     hint["name"] = Value::String(name.clone());
                 }
                 hint
+            }
+            Hint::PodnetRelay { url, name } => {
+                json!({ "type": PODNET_RELAY, "url": url, "name": name, "priority": 0.0 })
             }
         }
     }
@@ -212,6 +236,10 @@ impl Hint {
                 let name = value["name"].as_str().map(str::to_string);
                 Some(Hint::Relay { name, ends })
             }
+            PODNET_RELAY => Some(Hint::PodnetRelay {
+                url: value["url"].as_str()?.to_string(),
+                name: value["name"].as_str()?.to_string(),
+            }),
             _ => None,
         }
     }
@@ -375,12 +403,46 @@ mod tests {
         assert_eq!(transit.key, None);
         let mine = Transit {
             key: Some([7; 32]),
+            relay_token: Some("t".into()),
             ..transit
         };
         let Message::Transit(again) = parse(&mine.encode()).unwrap() else {
             panic!("a transit message")
         };
         assert_eq!(again, mine);
+    }
+
+    #[test]
+    fn transfer_podnet_relay_hint_is_its_own_kind_and_the_token_is_out_of_the_hints() {
+        let mine = Transit {
+            abilities: vec![DIRECT.into(), RELAY.into(), PODNET_RELAY.into()],
+            hints: vec![Hint::PodnetRelay {
+                url: "https://relay.example".into(),
+                name: "abc".into(),
+            }],
+            key: Some([1; 32]),
+            relay_token: Some("secret".into()),
+        };
+        let bytes = mine.encode();
+        let value: Value = serde_json::from_slice(&bytes).unwrap();
+        let hints = value["transit"]["hints-v1"].as_array().unwrap();
+        assert_eq!(hints[0]["type"], PODNET_RELAY);
+        assert!(
+            !hints.iter().any(|h| h.to_string().contains("secret")),
+            "the token is not in a hint"
+        );
+        assert_eq!(value["transit"][PODNET_RELAY_TOKEN], "secret");
+        let Message::Transit(again) = parse(&bytes).unwrap() else {
+            panic!("a transit message")
+        };
+        assert_eq!(again, mine);
+        // A reader that knows only the kinds of magic-wormhole keeps the
+        // other hints and drops this one, as it drops `tor-tcp-v1`.
+        let known = hints
+            .iter()
+            .filter(|h| matches!(h["type"].as_str(), Some(DIRECT | RELAY)))
+            .count();
+        assert_eq!(known, 0);
     }
 
     #[test]

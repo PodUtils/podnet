@@ -7,6 +7,8 @@
 #[path = "transfer_harness/mod.rs"]
 mod harness;
 
+mod test_host;
+
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
@@ -80,6 +82,7 @@ fn sha256(path: &Path) -> String {
 
 #[tokio::test]
 async fn wormhole_rendezvous_two_ends_move_a_text() {
+    test_host::need_loopback!();
     let mailbox = Mailbox::start().await;
     let out = tempfile::tempdir().unwrap();
     let (sender, receiver) = (
@@ -98,6 +101,7 @@ async fn wormhole_rendezvous_two_ends_move_a_text() {
 
 #[tokio::test]
 async fn wormhole_rendezvous_a_wrong_code_fails_at_both_ends() {
+    test_host::need_loopback!();
     let mailbox = Mailbox::start().await;
     let out = tempfile::tempdir().unwrap();
     let sender = settings(&[&mailbox.url], &[], loopback());
@@ -136,6 +140,7 @@ async fn wormhole_rendezvous_a_wrong_code_fails_at_both_ends() {
 
 #[tokio::test]
 async fn wormhole_transfer_a_file_lands_with_the_sha256_of_the_sender() {
+    test_host::need_loopback!();
     let mailbox = Mailbox::start().await;
     let (src, out) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
     let file = src.path().join("data.bin");
@@ -166,6 +171,7 @@ async fn wormhole_transfer_a_file_lands_with_the_sha256_of_the_sender() {
 
 #[tokio::test]
 async fn wormhole_transfer_a_directory_lands_with_the_sha256_of_each_file() {
+    test_host::need_loopback!();
     let mailbox = Mailbox::start().await;
     let (src, out) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
     let top = src.path().join("tree");
@@ -196,6 +202,7 @@ async fn wormhole_transfer_a_directory_lands_with_the_sha256_of_each_file() {
 
 #[tokio::test]
 async fn wormhole_transfer_goes_through_the_relay_when_no_end_listens() {
+    test_host::need_loopback!();
     let (mailbox, relay) = (Mailbox::start().await, Relay::start().await);
     let (src, out) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
     let file = src.path().join("f");
@@ -214,6 +221,7 @@ async fn wormhole_transfer_goes_through_the_relay_when_no_end_listens() {
 
 #[tokio::test]
 async fn wormhole_transfer_with_no_way_fails_with_69() {
+    test_host::need_loopback!();
     let mailbox = Mailbox::start().await;
     let (src, out) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
     let file = src.path().join("f");
@@ -234,6 +242,7 @@ async fn wormhole_transfer_with_no_way_fails_with_69() {
 
 #[tokio::test]
 async fn transfer_mailbox_falls_back() {
+    test_host::need_loopback!();
     let mailbox = Mailbox::start().await;
     let out = tempfile::tempdir().unwrap();
     let dead = nobody_there();
@@ -246,6 +255,7 @@ async fn transfer_mailbox_falls_back() {
 
 #[tokio::test]
 async fn transfer_mailbox_choice_is_found_by_the_receiver() {
+    test_host::need_loopback!();
     // The sender meets at the second mailbox; the receiver tries the first,
     // where no giver waits, then finds the code at the second one.
     let (first, second) = (Mailbox::start().await, Mailbox::start().await);
@@ -271,6 +281,7 @@ async fn transfer_mailbox_choice_is_found_by_the_receiver() {
 
 #[tokio::test]
 async fn wormhole_transfer_a_refused_offer_writes_nothing() {
+    test_host::need_loopback!();
     let mailbox = Mailbox::start().await;
     let (src, out) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
     let file = src.path().join("f");

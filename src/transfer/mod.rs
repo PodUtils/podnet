@@ -24,6 +24,7 @@
 pub mod connect;
 pub mod land;
 pub mod messages;
+pub mod podnet_relay;
 mod receive;
 mod send;
 pub mod transit;
@@ -37,6 +38,7 @@ use serde_json::{json, Value};
 
 use crate::exit::{self, Fault};
 pub use connect::{Listen, Relay};
+pub use podnet_relay::RelayPair;
 pub use receive::{receive, Offered, Receive, Received};
 pub use send::{open, Opened, Sent, What};
 
@@ -75,6 +77,12 @@ pub struct Settings {
     pub transit_wait: Duration,
     /// How long a receiver waits for the giver at each mailbox.
     pub giver_wait: Duration,
+    /// A sender: the stored pair of the podnet relay whose node it offers
+    /// to a podnet receiver (T-104).
+    pub relay_pair: Option<RelayPair>,
+    /// A receiver: the moves of the session of the layer over the podnet
+    /// relay.
+    pub relay_resume: crate::relay_reverse::Resume,
 }
 
 impl Settings {
@@ -90,6 +98,8 @@ impl Settings {
             step: STEP,
             transit_wait: TRANSIT_WAIT,
             giver_wait: GIVER_WAIT,
+            relay_pair: None,
+            relay_resume: crate::relay_reverse::Resume::default(),
         }
     }
 

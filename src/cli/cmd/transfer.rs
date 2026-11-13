@@ -62,6 +62,13 @@ pub(crate) struct SendArgs {
     /// Send this text in place of a file.
     #[arg(long, value_name = "TEXT")]
     text: Option<String>,
+    /// Offer the node of the stored pair NAME of the podnet relay (podnet
+    /// relay pair) as the last way of the transit, to a podnet receiver.
+    /// The node runs for the time of the transfer; do not run another node
+    /// of the pair at the same time. A podnet extension: a client of
+    /// magic-wormhole ignores it.
+    #[arg(long, value_name = "NAME", conflicts_with = "text")]
+    relay_pair: Option<String>,
     /// Seconds to wait for a receiver to take the code, and for its answer.
     #[arg(long, default_value_t = 1800, value_parser = clap::value_parser!(u64).range(1..=86_400))]
     timeout: u64,
@@ -126,6 +133,12 @@ fn say(json: bool, event: serde_json::Value, text: &str) {
 pub(crate) async fn send(args: SendArgs) -> Result<()> {
     let mut settings = settings(&args.way)?;
     settings.wait = Duration::from_secs(args.timeout);
+    if let Some(name) = &args.relay_pair {
+        settings.relay_pair = Some(transfer::RelayPair {
+            dir: podnet::relay_reverse::pairs_dir()?,
+            name: name.clone(),
+        });
+    }
     let what = match (&args.text, &args.path) {
         (Some(text), _) => What::Text(text.clone()),
         (None, Some(path)) => What::Path(path.clone()),

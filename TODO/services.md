@@ -1605,7 +1605,7 @@ failed.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1644,6 +1644,22 @@ T-103): a new kind of hint is a variant of `Hint` in `src/transfer/messages.rs` 
 PodUtils/podcrates T-214 (`relay`, `pair`, `resume`; the connect token in a sealed phase with the key
 `podnet-relay-token`). What is left: the hint, the pair of a relay node by the sender, the connect of the receiver
 through `pod-relay` with `pod-session` past the cap, and the test of the Prove.
+
+2026-11-13, calls of the work (the owner is away):
+
+- The hint is podnet's own kind `podnet-relay-v1` in `hints-v1` (`url`, `name`, `priority`), and the connect token is the key `podnet-relay-token` of the sealed `transit` message of the sender, out of the hints: the words of PodUtils/podcrates T-214. A client of magic-wormhole drops a hint of a kind that it does not know (`Hint::from_json` of podnet does the same) and a key that it does not know; podnet sends a file only to podnet, so the hint goes to podnet only. The change is in podnet (`src/transfer/`), not in `pod-transit`: the transit of magic-wormhole is podnet's code since T-103.
+- The sender does not make a new pair for each transfer: it runs the node of a stored pair (`podnet send --relay-pair NAME`, a pair of `podnet relay pair`) for the time of the transfer, with no ready document and no expiry warnings (`relay_reverse::serve_pair`). A pair lasts 72 h, and a pair for each transfer would load the shared relay.
+- Each session runs the resumable layer (T-087): the node is `relay_reverse::layered` over a channel handler, and the receiver is `relay_reverse::connect_resumable` over a memory pipe. Thus a transfer goes past the cap of one relay session.
+- The podnet relay is the last way: the receiver dials it 4 s after the other hints when a direct hint or a transit relay exists (2 s after the transit relays), else at once, and again each 1 s while the node is not online.
+- The end: after the ack, the sender reads to the end of the receiver for at most 2 s, waits 0.5 s, and then stops its node; the receiver waits for the end of the bytes of the sender, or of the session, for at most 15 s. Without it, the receiver of a test waited the 15 s.
+
+## Done
+
+2026-11-13, commit COMMIT. `src/transfer/podnet_relay.rs` (`RelayPair`, `start`, `dial`, the stream `Carried`), `Hint::PodnetRelay` and `Transit::relay_token` in `src/transfer/messages.rs`, the sessions of the node and the dial of the receiver in `connect::connect` (`handshake` is now a function of its own), `Settings::relay_pair` and `Settings::relay_resume`, `Records::drain`, `relay_reverse::serve_pair`, `podnet send --relay-pair NAME`, `docs/transfer.md` (The podnet relay: a podnet extension) and `docs/relay.md`.
+
+`cargo test --test transfer_relay`, 4 passed: `transfer_over_the_relay_crosses_the_cap` (the fake relay of `tests/relay_reverse/fake.rs` closes each relay session at 1 MiB with 1009; 4 MiB land with the SHA-256 of the sender; no relay session carried more than 1 MiB, at least 4 legs), `transfer_over_the_relay_when_the_direct_path_is_refused` (no end listens and the transit relay of the sender refuses; 300,001 bytes with equal SHA-256, `via` is `podnet relay testnode` at both ends), `transfer_a_direct_hint_wins_over_the_relay`, `transfer_a_relay_pair_that_is_not_stored_is_refused`. The unit test `messages::tests::transfer_podnet_relay_hint_is_its_own_kind_and_the_token_is_out_of_the_hints` passed. `cargo test --test transfer`: 9 passed. Plant: with the dial of the podnet relay hint off in `connect::connect`, the two relay tests failed (no way within the wait). `sh scripts/agent/check.sh` (with `CARGO_PROFILE_DEV_DEBUG=0` for the disk): each step 0, the tests 1904 passed, 0 failed (116 targets).
+
+Not proven: a transfer through the public relay and a real proxy (T-106); the end of a pair during a transfer.
 
 # T-105: `podnet send` and `podnet receive`
 
@@ -1737,6 +1753,8 @@ podcrates 63348de; Unverified).
    refused (EEXIST), and `--out DIR` names another directory. `pod-extract` v0.40.0 is a dependency for
    `pod_extract::safety::components`.
 6. `--json` prints one object for each event on stdout (`code`, `sent`, `received`).
+
+2026-11-13, the lead: CI on 0dd7663 failed in the jobs `no-loopback` and `restricted-host` (ci run 43499850487). The tests of the transfer bind loopback ports with no skip guard: `tests/cli/transfer.rs` panicked at "a port of the loopback: Permission denied" (`tests/transfer_harness/mod.rs`), and `tests/transfer.rs` had the same gap. The fix: `test_host::need_loopback!()` is the first line of each test that binds or connects on the loopback (4 tests of `tests/cli/transfer.rs`, the 9 tests of `tests/transfer.rs`, the 4 tests of `tests/transfer_relay.rs`). `tests/transfer_land.rs` binds no socket, and the unit tests of `src/transfer/` use memory pipes. Measured here with `unshare -n` (no loopback): `transfer` 9 passed (each one prints `skipping, this host has no loopback: ...`), `transfer_relay` 4 passed (4 skip lines), `cli transfer::` 5 passed (4 skip lines). Commit: the commit of T-104 (its Done section).
 
 ## Done
 

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 334 entries: 17 open, 15 partial, 26 blocked, 276 done.
+`TODO/INDEX.md` holds 334 entries: 16 open, 15 partial, 26 blocked, 277 done.
 
 ## State
 
@@ -56,7 +56,8 @@ not wait for a larger one.
    server and git: done; the router T-101; the transfer by code: `podnet send` and `podnet receive` are done
    over `pod-wormhole` v0.40.0 (`docs/transfer.md`; `docs/decisions.md`, 2026-11-13, The transfer layer).
    T-103 is blocked: `pod-wormhole` derives no key of a wormhole, so a file goes from podnet to podnet only
-   (an ask for podcrates). Open: T-104 (the podnet relay as a carrier), T-252 (a piping-server transit),
+   (an ask for podcrates). The podnet relay is the last way of the transit from podnet to podnet (done:
+   `podnet send --relay-pair NAME`). Open: T-252 (a piping-server transit),
    T-106 (the interop test and the live step).
     The donor review adds T-242 (the lint of shadowed rules).
     The owner's rulings of 2026-11-11 add: T-179 (the
