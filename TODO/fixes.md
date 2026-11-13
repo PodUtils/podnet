@@ -3250,7 +3250,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 ## Premise
 
-- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:425-437` (`warp_up_tun_args`), `:229-233` (the
+- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:430-442` (`warp_up_tun_args`), `:234-238` (the
   proxy path pushes `--replace`).
 - `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:529-544` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
@@ -5537,3 +5537,10 @@ failed at "WARP account and probe": `warp nc -u 1.1.1.1 53` with no `warp up` go
 (`[::]:port`) is the way of `pod_warp::nc::udp_via_net`, which keeps an answer only when its source equals the IPv4 target.
 `src/warp/one_family.rs` now holds the socket of one family for both: `quic.rs` takes it, and `nc.rs` resolves the host
 first and gives `udp_via_net` a way (`OneFamily`) whose datagrams bind the family of the target.
+
+2026-11-13: the live run 43397473033 on ca53a72 failed at the same step: `warp nc -u` ended 40 ms after its line "opens a
+WARP session of its own", with no answer and no error. A second cause: `pod_warp::nc::udp_via_net` keeps the socket in its
+tasks, not the session, and `nc_session` (`src/cli/cmd/warp/up.rs`) gave its only handle of the session to
+`udp_via_stack`, so the session was dropped when that function returned. A stopped stack ends each read with
+`ConnectionReset` (pod-netstack since podcrates v0.34.0): the receive task ended, the channel of the answers closed, and
+the pipe ended at once. `nc_session` now keeps the session until the pipe ends.

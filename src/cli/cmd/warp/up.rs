@@ -174,10 +174,15 @@ pub(crate) async fn nc_session(
     tracing::info!("podnet warp up is not running; warp nc opens a WARP session of its own");
     let stack = Arc::new(client.connect().await.fault(Fault::Unavailable)?);
     if udp {
-        let (out, back) = podnet::warp::nc::udp_via_stack(stack, host, port)
+        // T-332: the pipe holds only the socket, so this function keeps the
+        // session: a dropped WarpNet stops its stack, and each read then
+        // ends with ConnectionReset (pod-netstack since podcrates v0.34.0).
+        let (out, back) = podnet::warp::nc::udp_via_stack(Arc::clone(&stack), host, port)
             .await
             .fault(Fault::Unavailable)?;
-        return udp_nc(out, back, idle.unwrap_or(UDP_NC_IDLE)).await;
+        let done = udp_nc(out, back, idle.unwrap_or(UDP_NC_IDLE)).await;
+        drop(stack);
+        return done;
     }
     let target = match host.parse::<std::net::IpAddr>() {
         Ok(ip) => podnet_netns::socks::ProxyHost::Ip(ip),
