@@ -38,7 +38,7 @@ concurrency:
 env:
   RUST_TOOLCHAIN: "1.99.1"
   CARGO_TERM_COLOR: never
-  RUST_LOG: podnet=info
+  RUST_LOG: podnet=info,pod_warp=info
 
 jobs:
   live:
@@ -633,7 +633,7 @@ jobs:
           trap 'sudo iptables -D OUTPUT -p tcp -d 162.159.198.0/24 --dport 443 -j DROP' EXIT
           sh scripts/live-run.sh warprelay timeout 180 target/release/podnet warp probe ||
             { tail -30 warprelay.err; exit 1; }
-          grep -q 'MASQUE goes through the WebSocket relay' warprelay.err
+          grep -q 'MASQUE goes through the relay' warprelay.err
           ! grep -E 'ephm1\.' warprelay.out warprelay.err
       # Issue 78: one warp up; later shells join it with warp env, warp
       # exec and the --persist block; warp down removes each change.
@@ -924,7 +924,7 @@ jobs:
           curl -sS --max-time 30 -x socks5h://127.0.0.1:40000 https://www.cloudflare.com/cdn-cgi/trace | grep '^warp=on'
           if grep -q 'panicked' warpproxy.log; then grep -A2 'panicked' warpproxy.log; exit 1; fi
           # The leg of the session (the relay only when the direct path fails).
-          if grep -q 'MASQUE goes through the WebSocket relay' warpproxy.log; then echo "warp proxy leg: relay"; else echo "warp proxy leg: direct"; fi
+          if grep -q 'MASQUE goes through the relay' warpproxy.log; then echo "warp proxy leg: relay"; else echo "warp proxy leg: direct"; fi
           # Issue 120: the session was up after a packet crossed it.
           grep -m1 'a packet crossed the MASQUE session' warpproxy.log | sed -E 's/^[^ ]+ +//'
           # Issue 121: what the front door assigned (if it sends it).
@@ -965,7 +965,7 @@ jobs:
             rate=$(curl -sS --max-time 45 -o /dev/null -w '%{speed_download} %{size_download}' -x "socks5h://127.0.0.1:$port" \
               'https://speed.cloudflare.com/__down?bytes=20000000' || true)
             leg=direct
-            if grep -q 'MASQUE goes through the WebSocket relay' "burst-$port.log"; then leg=relay; fi
+            if grep -q 'MASQUE goes through the relay' "burst-$port.log"; then leg=relay; fi
             echo "warp proxy download, TCP window ${burst}, leg ${leg}: ${rate:-none} (bytes/s, bytes)"
             case "$rate" in
               *" 20000000") ;;

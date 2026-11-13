@@ -5544,3 +5544,9 @@ tasks, not the session, and `nc_session` (`src/cli/cmd/warp/up.rs`) gave its onl
 `udp_via_stack`, so the session was dropped when that function returned. A stopped stack ends each read with
 `ConnectionReset` (pod-netstack since podcrates v0.34.0): the receive task ended, the channel of the answers closed, and
 the pipe ended at once. `nc_session` now keeps the session until the pipe ends.
+
+2026-11-13: the live run 43401730194 on ef240bb passed "WARP account and probe" (`warp nc -u` answers). It failed at "WARP
+probe through the WebSocket relay": the probe worked, but the step looks for the line "MASQUE goes through the WebSocket
+relay", which `pod-warp` writes as "MASQUE goes through the relay" with the target `pod_warp`, and the job's `RUST_LOG`
+(`podnet=info`) hid that target. `.github/workflows/live.yml`: `RUST_LOG` is `podnet=info,pod_warp=info`, and the step
+looks for the new line.
