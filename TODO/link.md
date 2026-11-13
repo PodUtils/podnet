@@ -1244,6 +1244,11 @@ T-261, T-262 and T-265 are done.
 
 Steps 1 and 2 are done. Step 3 is left: `--announce` on `link listen` and `link dial` needs edits in `src/link_service.rs` and `src/cli/cmd/link/`, which T-293 and T-291 change now. Nothing sends an announcement over a link yet.
 
+
+2026-11-13, the lead: the origin signs the body only. The path and the cost of a hop are not signed, so a forwarder can drop
+hops and give a shorter path, or a lower cost, than the real one. A loop through a dropped hop is then not seen. T-287 (the
+forwarding) closes this: each hop signs its addition to the path (its key, the cost of its link, and the signature of the
+hop before it), and `verify` checks the chain.
 ## Done
 
 2026-11-13, commit 6103521 (steps 1 and 2). `src/mesh_announce.rs` (`podnet::mesh_announce`): the deterministic binary encoding (fixed field order, big-endian, sorted neighbours and services, no JSON), `encode` (Ed25519 signature of a label and the body with the key of `pod-identity`), `append_hop`, `verify` and `Receiver::accept`. The bounds: 64 neighbours, 16 services, a name of 1 to 64 bytes, 16 path nodes, 8 KiB body, a life of at most 30 s, a skew of 120 s each way. `verify` drops: bad shape, a path that does not start at the origin, a repeat in the path, this node in the path, a time of issue too far ahead or behind, a bad lifetime, expiry, a bad signature. `Receiver` keeps the newest `seq` of up to 4096 origins and drops a seen `seq`. Only the path `[origin]` is a neighbour claim. `Verified::route` gives the announcement for `mesh_table`. The path is not signed (a forwarder adds to it). `docs/link.md` has the section "The route announcement".
