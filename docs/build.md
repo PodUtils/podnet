@@ -42,7 +42,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `tcp` | The TCP carrier with TLS 1.3 and a pinned Ed25519 key. | T-268 |
 | `ws` | The WebSocket carrier with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-269 |
 | `h2` | The HTTP/2 carrier (one POST) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-270 |
-| `quic` | The QUIC carrier. | T-273 |
+| `quic` | The QUIC carrier (one stream of a QUIC connection) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-273 |
 | `s3` | The object-storage carrier. | T-279 |
 | `icmp` | The ICMP echo carrier. | T-282 |
 | `ss` | The Shadowsocks service. | T-294 |
@@ -63,7 +63,7 @@ cargo test --workspace --features full       # what the CI job features runs
   --features NAME)`, `podnet doctor` shows it as `unknown`, and a command
   that names it (`--carrier NAME`) exits 69 with the same reason. In a
   `--features` build, a carrier whose code is not in the tree says so and
-  names its entry (T-273, T-279 or T-282).
+  names its entry (T-279 or T-282).
 * The static musl build of the release set uses the default features. Build
   a feature on every target of the release set before it joins that set.
 * `podnet::build_features` is the list (`OPTIONAL`, `FULL`), `built(NAME)`,

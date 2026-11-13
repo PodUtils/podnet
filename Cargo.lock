@@ -2517,6 +2517,7 @@ dependencies = [
  "libc",
  "pod-core",
  "pod-identity",
+ "pod-quic",
  "pod-tls",
  "pod-ws",
  "rustls",

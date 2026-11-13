@@ -39,7 +39,9 @@ pub(crate) struct CarrierArgs {
     /// `IP:PORT`, dial `KEY@HOST:PORT`. `ws` (feature `ws`) and `h2`
     /// (feature `h2`) pin the keys in the same way over a WebSocket and
     /// over one POST of HTTP/2: dial `KEY@wss://HOST[:PORT]/PATH` and
-    /// `KEY@https://HOST[:PORT]/PATH`. A key that is refused exits 77.
+    /// `KEY@https://HOST[:PORT]/PATH`. `quic` (feature `quic`) is one
+    /// stream of a QUIC connection with the same pins: listen at `IP:PORT`
+    /// (UDP), dial `KEY@HOST:PORT`. A key that is refused exits 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
     /// The unix carrier accepts a peer of another uid. Each end checks the
@@ -65,6 +67,10 @@ pub(crate) struct CarrierArgs {
     /// The options of the sealed records, from the query of the address.
     #[arg(skip)]
     pub(crate) record: Option<podnet::link_record::Options>,
+    /// What the query of the address gives to a carrier of
+    /// `podnet::link_keyed`.
+    #[arg(skip)]
+    pub(crate) tune: podnet::link_keyed::Tune,
 }
 
 impl CarrierArgs {
@@ -87,6 +93,8 @@ const KEYED: [&str; 3] = ["tcp", "ws", "h2"];
 pub(super) enum Chosen {
     Plain(Box<dyn Carrier>),
     Keyed(&'static str),
+    /// A carrier of `podnet::link_keyed`, with its tune.
+    Peer(&'static str, podnet::link_keyed::Tune),
 }
 
 /// The carrier `args` names. A name that is unknown exits 64; a carrier
@@ -95,6 +103,12 @@ pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Chosen> {
     if let Some(name) = KEYED.iter().find(|n| **n == args.carrier) {
         podnet::build_features::require(name)?;
         return Ok(Chosen::Keyed(name));
+    }
+    let keyed = &podnet::link_keyed::NAMES;
+    if let Some(name) = keyed.iter().find(|n| **n == args.carrier) {
+        let feature = podnet::link_keyed::feature_of(name).unwrap_or(name);
+        podnet::build_features::require(feature)?;
+        return Ok(Chosen::Peer(name, args.tune.clone()));
     }
     Ok(Chosen::Plain(carriers::open(
         &args.carrier,
@@ -123,6 +137,7 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
     carrier.record = carrier
         .seal
         .then(|| podnet::link_record::Options::of_query(&query));
+    carrier.tune = podnet::link_keyed::Tune::of_query(&carrier.carrier, &query)?;
     Ok(base.to_string())
 }
 
@@ -141,6 +156,9 @@ pub(super) async fn dial_peer(
             let link = podnet::link::dial(&*carrier, address, Settings::default()).await?;
             let peer = hello::dial(&link, me, allow).await?;
             Ok((link, peer))
+        }
+        Chosen::Peer(name, tune) => {
+            podnet::link_keyed::dial(name, &tune, me, &allow, address, Settings::default()).await
         }
         Chosen::Keyed("ws") => ws::dial(me, allow, address, via).await,
         Chosen::Keyed("h2") => h2::dial(me, allow, address, via).await,
@@ -201,6 +219,9 @@ pub(super) async fn listen_door(
 ) -> Result<Door> {
     match carrier {
         Chosen::Plain(carrier) => podnet::link::listen(&*carrier, address).await,
+        Chosen::Peer(name, tune) => {
+            podnet::link_keyed::listen(name, &tune, me, allow, address).await
+        }
         Chosen::Keyed("ws") => ws::listen(me, allow, address).await,
         Chosen::Keyed("h2") => h2::listen(me, allow, address).await,
         Chosen::Keyed(_) => tcp::listen(me, allow, address).await,
@@ -540,6 +561,7 @@ mod tests {
             ring,
             seal: false,
             record: None,
+            tune: Default::default(),
         }
     }
 

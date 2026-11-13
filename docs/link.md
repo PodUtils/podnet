@@ -295,7 +295,7 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `tcp` | `KEY@HOST:PORT` to dial, `IP:PORT` to listen | TCP with TLS 1.3 and a pinned Ed25519 key (T-268). Build feature `tcp`. See "The TCP carrier". |
 | `ws` | `KEY@wss://HOST[:PORT]/PATH` to dial, `IP:PORT` to listen | A WebSocket over TLS 1.3 and a pinned Ed25519 key (T-269). Build feature `ws`. See "The WebSocket carrier". |
 | `h2` | `KEY@https://HOST[:PORT]/PATH` to dial, `IP:PORT` to listen | One POST of HTTP/2 over TLS 1.3 and a pinned Ed25519 key (T-270). Build feature `h2`. See "The HTTP/2 carrier". |
-| `quic` | `HOST:PORT` | QUIC streams (T-273). Build feature `quic`. |
+| `quic` | `KEY@HOST:PORT` to dial, `IP:PORT` (UDP) to listen | One stream of a QUIC connection with TLS 1.3 and a pinned Ed25519 key (T-273). Build feature `quic`. See "The QUIC carrier". |
 | `s3` | `BUCKET/PREFIX` | A simplex pair of objects in a bucket (T-279). Build feature `s3`. |
 | `icmp` | `HOST` | ICMP echo, a datagram carrier (T-282). Build feature `icmp`; it needs a privilege. |
 
@@ -303,7 +303,7 @@ The carriers `tcp`, `ws`, `h2`, `quic`, `s3` and `icmp` sit behind a build featu
 them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
-build, and names its entry (T-273, T-279 or T-282).
+build, and names its entry (T-279 or T-282).
 
 `podnet components [--json]` lists each carrier and each service of this build (T-310). A row has the fields `name`, `kind`
 (`carrier` or `service`), `framing`, `duplex`, `needs_privilege`, `available`, `reason`, `cost`, `feature`, `built`, `about` and
@@ -381,6 +381,27 @@ glue. It has the same calls as `podnet::link_tcp`.
 ```sh
 podnet link listen 0.0.0.0:7000 --carrier h2 --allow allowed.txt --to 127.0.0.1:22
 podnet link dial SERVER-FINGERPRINT@https://host.example:7000/link --carrier h2 --allow servers.txt
+```
+
+## The QUIC carrier
+
+Build with `--features quic` (it holds `tcp`). `pod-link` of PodUtils/podcrates does the work (`pod_link::quic`, over `pod-quic`);
+`podnet::link_quic` is the glue.
+
+* One bidirectional stream of a QUIC connection carries the link. TLS 1.3 with the ALPN `podlink/1` (as the `tcp` carrier), no
+  resumption, no 0-RTT. Each end pins the key of the other end in the TLS handshake. The hello does not run on this carrier.
+* A listener binds `IP:PORT` on UDP and takes a client only when its key is in the allow list (`--allow`, default deny). After its
+  handshake the listener opens the stream, so a refused key is an error of the dial. At most 64 handshakes run at once, each for at
+  most 10 s.
+* A dialer gives `KEY@HOST:PORT`. The dial sends from a UDP socket of the system: the way out of the process (`--proxy`) carries
+  no datagrams, and `--egress` is for the `tcp` carrier only. The key that the listener proves must also be in the allow list of the
+  dialer (`--peer` or `--allow`).
+* The connection ends after 30 s of silence; each end sends a keepalive each 10 s.
+* A key that is not pinned exits 77. A host that denies UDP sockets exits 69, and `podnet link carriers` gives the reason.
+
+```sh
+podnet link listen 0.0.0.0:7000 --carrier quic --allow allowed.txt --to 127.0.0.1:22
+podnet link dial SERVER-FINGERPRINT@host.example:7000 --carrier quic --allow servers.txt
 ```
 
 ## A chain before the carrier
@@ -685,5 +706,5 @@ library ([build.md](build.md), "The C library"). Linux only.
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
 `podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
-listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier.
+listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates. `crates/podnet-capi` is the C interface of the link (see The C library).

@@ -248,8 +248,9 @@ tcp = ["pod-link/tcp"]
 ws = ["tcp", "pod-link/ws"]
 # The HTTP/2 carrier: one POST over the TLS of `tcp` (T-270).
 h2 = ["tcp", "pod-link/h2"]
-# The QUIC carrier (T-273).
-quic = []
+# The QUIC carrier: one bidirectional stream of a QUIC connection of
+# pod-quic, with the TLS and the pinned keys of `tcp` (T-273).
+quic = ["tcp", "pod-link/quic"]
 # The object-storage carrier (T-279).
 s3 = []
 # The ICMP echo carrier (T-282).

@@ -140,6 +140,14 @@ fn make_h2(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("h2", "T-270")
 }
 
+/// The carrier `quic` for the registry: the facts and the host check, no
+/// key of this install (`podnet::link_quic::carrier` is the real one).
+#[cfg(feature = "quic")]
+fn make_quic(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_quic::probe()))
+}
+
+#[cfg(not(feature = "quic"))]
 fn make_quic(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("quic", "T-273")
 }
@@ -203,8 +211,8 @@ pub const ROWS: [Row; 8] = [
     },
     Row {
         name: "quic",
-        about: "QUIC streams to a peer, TLS 1.3 with the key of the peer pinned",
-        address: "HOST:PORT",
+        about: "one stream of a QUIC connection, the Ed25519 key of each end pinned in the TLS 1.3 handshake",
+        address: "KEY@HOST:PORT to dial, IP:PORT to listen",
         cost: "network",
         needs_privilege: false,
         feature: Some("quic"),

@@ -46,7 +46,8 @@ pub fn fault(error: Error) -> anyhow::Error {
 
 /// True when a handshake refused a key: the pin of this end refused the
 /// key of the peer (`pod_tls::peer::Refusal`), or the peer sent the alert
-/// of a refused certificate. A refusal of the host (a bind that `EACCES`
+/// of a refused certificate (or closed its QUIC connection in the handshake
+/// with that code). A refusal of the host (a bind that `EACCES`
 /// denies) is not one.
 fn key_refused(error: &CarrierError) -> bool {
     if error.kind != CarrierErrorKind::Refused {
@@ -62,6 +63,13 @@ fn key_refused(error: &CarrierError) -> bool {
             .and_then(std::io::Error::get_ref);
         if let Some(rustls::Error::AlertReceived(_)) =
             inner.and_then(|i| i.downcast_ref::<rustls::Error>())
+        {
+            return true;
+        }
+        // The quic carrier gives the close of the connection by the peer
+        // in its handshake (T-273): the peer refused the key of this end.
+        if let Some(pod_quic::noq::ConnectionError::ConnectionClosed(_)) =
+            inner.and_then(|i| i.downcast_ref::<pod_quic::noq::ConnectionError>())
         {
             return true;
         }

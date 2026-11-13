@@ -692,7 +692,7 @@ T-268 and T-271 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -728,6 +728,17 @@ T-268 is done (the verifier) and T-311 is done (the feature).
 ## Correction
 
 2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
+
+2026-11-13, calls of the glue (the owner is away): the ALPN stays `podlink/1`, the default of `pod-link` and the ALPN of the `tcp` carrier of podnet, not the `podnet/1` of the issue; the two carriers of one install keep one ALPN. A dial sends from a UDP socket of the system: the way out of the process (`crate::egress`) has no datagrams, and `--egress` stays for `tcp`. The close of a QUIC connection by the peer in the handshake (the peer refused the key of this end) comes as `noq::ConnectionError::ConnectionClosed` in a `Refused` error, with no rustls alert: `src/link.rs` (`key_refused`) reads it, so it exits 77, not 69. Ask for podcrates: one typed mark for "the peer refused the key of this end" on each carrier, so a consumer does not read the errors of `noq`.
+
+## Done
+
+2026-11-13, the commit "T-273: the quic carrier in link listen, dial and connect" (its hash follows in the next commit). Feature `quic` of podnet is `["tcp", "pod-link/quic"]` (in `full`; `quic` was already in `OPTIONAL` and `FULL` of `src/build_features.rs`). `src/link_quic.rs` (`podnet::link_quic`): `carrier`, `listen` (`IP:PORT`, UDP), `dial` (`KEY@HOST:PORT`) and `probe`. `src/link_keyed.rs` (`podnet::link_keyed`): the carriers of v0.40.0 by name (`NAMES`, `feature_of`, `Tune`, `dial`, `listen`); a name whose feature is off exits 69 and names the feature. `src/link_probe.rs`: the generic registry probe (no key of this install). `link listen|dial|connect --carrier quic` (`Chosen::Peer` in `src/cli/cmd/link/mod.rs`), the registry row and the inventory entry, `docs/link.md` (The QUIC carrier), `docs/build.md`.
+
+Tests (`tests/link_quic.rs`, build `--features quic`; UDP loopback allowed here, none skipped), 8 passed: `a_link_crosses_quic_and_each_end_learns_the_key_of_the_other` (256 KiB there and back on one stream), `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77`, `link_dial_check_meets_link_listen_over_quic_and_a_stranger_exits_77`, `a_dial_address_with_no_key_exits_64`, `a_query_key_of_another_carrier_exits_64`, `the_registry_row_has_no_key_and_refuses_a_dial`, `the_carrier_is_a_stream_with_the_alpn_of_tcp`. `tests/link_peer/mod.rs` is the shared part of the tests of the carriers of `link_keyed`. Plant: with the arms of `quic` in `link_keyed` off, 4 tests failed (the link, the stranger, the other key, the command); with the read of `ConnectionClosed` in `key_refused` off, the stranger tests got 69 for 77. `sh scripts/agent/check.sh`: each step 0.
+
+Not proven: a host that denies UDP (the row of `link carriers` says why; the CI job `no-loopback`); a link over a proxy; the resume of a session over `quic`.
+
 # T-274: link: the unix-socket carrier and its socketpair half (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-7.

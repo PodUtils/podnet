@@ -44,7 +44,7 @@ pub const COMPONENTS: &[ComponentEntry] = &[
     ComponentEntry {
         name: "quic",
         kind: "carrier",
-        meaning: "QUIC streams to a peer, TLS 1.3 with the key of the peer pinned. Cost class network, no privilege. Address: HOST:PORT. Build feature quic.",
+        meaning: "One stream of a QUIC connection, TLS 1.3 with ALPN podlink/1. Each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. Duplex, ordered, cost class network, no privilege. Address: KEY@HOST:PORT to dial, IP:PORT (UDP) to listen. Build feature quic.",
     },
     ComponentEntry {
         name: "s3",
