@@ -5555,7 +5555,7 @@ on a runner that resolves `localhost` to `::1` first. The ci run 43459872995 on 
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -5639,3 +5639,12 @@ resolver file in the state directory, else the run directory; the lab sets `PODN
 up (its check through DNS over HTTPS got the answer 401), but the resolver of the runner did not resolve the new name, and
 curl stopped after 5 tries. The steps of the file server and of `git serve` now run `scripts/live-wait-name.sh` (issue
 119) before the first request, as the step of the user service does.
+
+## Done
+
+2026-11-13. The fixes, in order: the datagrams of `WarpNet` (podcrates v0.39.0, GitHub #524; the take 306d80b), the
+session of `nc_session` (ef240bb), the log filters of the job and of podnet (e1c5b34, 6fec3df, ecbd88b), the wait for
+HTTP 429 in `scripts/live-batch2.sh` (a48d3e7), a run directory for each `warp tun` of `scripts/v6only/` (2122bd4), and
+the wait for the new name of the quick tunnel in the steps of the file server and `git serve` (098ff8d). The live run
+43459893595 on bf01ac6 passed each step, among them "Throughput through WARP, 1 to 16 MiB", "WARP run", "The commands
+of the second batch" and "An IPv6-only host". ci 43459872995, deny 43459879363 and secrets 43459886257 on bf01ac6 passed.

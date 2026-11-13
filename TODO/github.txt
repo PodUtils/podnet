@@ -221,11 +221,11 @@
 520 issue closed
 521 issue closed
 522 issue open
-523 issue open
-524 issue open
+523 issue closed
+524 issue closed
 525 issue closed
 526 issue open
 527 issue open
 528 issue closed
 529 issue closed
-530 issue open
+530 issue closed

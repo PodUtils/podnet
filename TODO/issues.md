@@ -214,13 +214,13 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #520 | COORD-063: podnet took v0.36.0 at 775486f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #521 | COORD-064: what podnet waits for to close its issues: the datagram carriers of pod-link, pod-e2e, pod-wormhole, pod-warp's freeze and the others (to podcrates) | closed (answered by PodUtils/podcrates#133) | none |
 | #522 | COORD-065: podnet took v0.37.0 and pod-warp at f6abdc3; src/warp/ holds fixes only (to podcrates) | open (a COORD issue between sessions) | none |
-| #523 | live: two runs in a row failed | open | T-332 |
-| #524 | COORD-066: a fix in src/warp/quic.rs: WarpNet's datagrams bind [::], so QUIC to an IPv4 edge goes as IPv4-mapped and times out (to podcrates) | open (a COORD issue between sessions) | none |
+| #523 | live: two runs in a row failed | closed: live 43459893595 on bf01ac6 passed | T-332 |
+| #524 | COORD-066: a fix in src/warp/quic.rs: WarpNet's datagrams bind [::], so QUIC to an IPv4 edge goes as IPv4-mapped and times out (to podcrates) | closed: live 43459893595 on bf01ac6 passed with the fix of pod-warp v0.39.0 | none |
 | #525 | COORD-067: podnet took v0.38.0 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #526 | COORD-068: podnet took v0.39.0 at 306d80b; the one-family fix of WARP is dropped (to podcrates) | open (a COORD issue between sessions) | none |
 | #527 | COORD-069: the answer to the question on KCP: the congestion window by default; the 20 % loss gate runs with nodelay (podnet T-276) (to podcrates) | open (a COORD issue between sessions) | none |
 | #528 | [gh action] requested: ci, deny, secrets and live on b1e2b80 (Actions does not start on a push of the cloud session) | closed: ci 43445945197 and live 43445966561 failed (fixed in 2122bd4), deny and secrets passed | none |
 | #529 | [gh action] requested: ci, deny, secrets and live on 7d73ec7 | closed: ci 43452891413 failed at restricted-host (fixed in the next commit), live 43452912977 failed at the file server (fixed in 098ff8d), deny and secrets passed | none |
-| #530 | [gh action] requested: ci, deny, secrets and live on the head after 098ff8d | open (a request of runs to the owner) | none |
+| #530 | [gh action] requested: ci, deny, secrets and live on bf01ac6 | closed: each run passed (ci 43459872995, deny 43459879363, secrets 43459886257, live 43459893595) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
