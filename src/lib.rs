@@ -90,6 +90,7 @@ pub mod identity;
 pub mod link;
 pub mod link_alias;
 pub mod link_announce;
+pub mod link_chain;
 pub mod link_ctl;
 pub mod link_forward;
 pub mod link_group;

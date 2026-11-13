@@ -45,17 +45,44 @@ pub(crate) struct ConnectArgs {
     /// Print the ready document as one line of JSON in place of the text.
     #[arg(long)]
     pub(crate) json: bool,
+    /// Connect through the --egress elements and check the peer, print the
+    /// result (each element, then the peer), and exit 0. It holds no link and
+    /// starts no control socket. An element that fails exits 69 and is named.
+    #[arg(long, conflicts_with_all = ["detach", "control"])]
+    pub(crate) check: bool,
     #[command(flatten)]
     pub(crate) detach: DetachArgs,
 }
 
-pub(crate) async fn connect(mut args: ConnectArgs) -> Result<()> {
+pub(crate) async fn connect(mut args: ConnectArgs, egress: Vec<String>) -> Result<()> {
     args.address = super::apply_query(&args.address, &mut args.carrier)?;
     let carrier = super::open_carrier(&args.carrier)?;
     let allow = trusted(&args.allow, &args.peer)?;
     let me = identity::create(&identity::default_dir()?)?;
-    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow).await?;
+    let (chain, rows) =
+        super::open_chain(&egress, &args.carrier, &args.address, args.check, args.json).await?;
+    let via = chain.as_ref().map(podnet::link_chain::Opened::dial);
+    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow, via).await?;
     let shown = peer.display_fingerprint();
+    if args.check {
+        // No name, no control socket and no listener.
+        if args.json {
+            println!(
+                "{}",
+                podnet::status::stamped(serde_json::json!({
+                    "carrier": args.carrier.carrier,
+                    "address": args.address,
+                    "fingerprint": me.fingerprint(),
+                    "peer": shown,
+                    "elements": rows,
+                }))
+            );
+        } else {
+            println!("podnet: peer admitted   {shown}");
+        }
+        link.close().await;
+        return Ok(());
+    }
     // T-308: a name maps to the fingerprint that it proved first.
     if let Some((dir, name)) = podnet::detach::instance() {
         podnet::link_alias::bind(&dir, &name, &shown)?;

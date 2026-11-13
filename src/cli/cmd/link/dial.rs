@@ -62,7 +62,9 @@ pub(crate) struct DialArgs {
     #[arg(long, value_name = "N", requires = "node", default_value_t = podnet::link_forward::DEFAULT_HOPS, value_parser = clap::value_parser!(u8).range(1..=16))]
     pub(crate) hops: u8,
     /// Connect and check the peer, print its fingerprint, and exit 0. It
-    /// opens no stream.
+    /// opens no stream. With --egress elements, first resolve and dial each
+    /// element once and print the result (exit 69, naming the element, when
+    /// one fails).
     #[arg(long)]
     pub(crate) check: bool,
     /// With --check: print one JSON document.
@@ -108,12 +110,15 @@ async fn open_node(mesh: &Arc<Mesh>, node: &str, service: &str, hops: u8) -> Res
         .map_err(|e| unavailable(anyhow!("the stream to the node {node}: {e}")))
 }
 
-pub(crate) async fn dial(mut args: DialArgs) -> Result<()> {
+pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> {
     args.address = super::apply_query(&args.address, &mut args.carrier)?;
     let carrier = super::open_carrier(&args.carrier)?;
     let allow = trusted(&args.allow, &args.peer)?;
     let me = Arc::new(identity::create(&identity::default_dir()?)?);
-    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow).await?;
+    let (chain, rows) =
+        super::open_chain(&egress, &args.carrier, &args.address, args.check, args.json).await?;
+    let via = chain.as_ref().map(podnet::link_chain::Opened::dial);
+    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow, via).await?;
     let (mine, theirs) = (me.fingerprint(), peer.display_fingerprint());
     if args.check {
         if args.json {
@@ -124,6 +129,7 @@ pub(crate) async fn dial(mut args: DialArgs) -> Result<()> {
                     "address": args.address,
                     "fingerprint": mine,
                     "peer": theirs,
+                    "elements": rows,
                 }))
             );
         } else {

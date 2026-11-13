@@ -264,3 +264,44 @@ fn egress_alias_the_old_via_of_serve_names_ingress() {
         "{hints:?}"
     );
 }
+
+/// T-303: `link dial` and `link connect` keep each `--egress` as an element
+/// of the chain, in the order of the line, from before and after the command.
+#[test]
+fn egress_of_link_dial_and_connect_is_a_chain_in_order() {
+    for command in ["dial", "connect"] {
+        let line = words(&[
+            "podnet",
+            "--egress",
+            "socks5://a:1",
+            "link",
+            command,
+            "K@h:2",
+            "--egress=socks5://b:1",
+            "--egress",
+            "http://c:3",
+        ]);
+        let rewritten = rewrite(&line).unwrap();
+        assert!(rewritten
+            .iter()
+            .all(|w| w != "--proxy" && w != "--no-proxy"));
+        let cli = parse(&rewritten);
+        assert_eq!(
+            cli.egress,
+            ["socks5://a:1", "socks5://b:1", "http://c:3"],
+            "{command}"
+        );
+        assert!(cli.proxy.is_none());
+    }
+    let both = words(&[
+        "podnet",
+        "--proxy",
+        "http://p:1",
+        "link",
+        "dial",
+        "K@h:2",
+        "--egress",
+        "direct",
+    ]);
+    assert!(rewrite(&both).unwrap_err().contains("name one way"));
+}

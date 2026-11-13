@@ -287,7 +287,9 @@ pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
 pub(crate) fn network_options(cli: &Cli) -> Result<()> {
     use podnet::egress::Proxy;
     // T-060: main rewrites each --egress into its old flag before the parse.
-    if let Some(spec) = cli.egress.first() {
+    // T-303: link dial and link connect keep the elements of the chain.
+    let chain = matches!(&cli.command, Command::Link(a) if crate::cli::cmd::link::takes_chain(a));
+    if let Some(spec) = cli.egress.first().filter(|_| !chain) {
         bail!("--egress {spec}: give --egress before the -- of the program");
     }
     // The pins first: the first dialer, of --proxy or --no-proxy, takes them.

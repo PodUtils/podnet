@@ -47,13 +47,17 @@ and it replaces the older flags:
 * With `podnet pod`, each `--egress` is one hop `-x SPEC` of the chain, in its order. The forms
   `tailscale:/PATH`, `netbird:[PORT]` and `unix:/PATH` are hops of a pod. The relay is not a hop of a
   pod.
-* `peer:FINGERPRINT/SERVICE` is a peer way. A consumer that dials a destination (`--egress`, `podnet forward --network`, `pod -x`)
+* `peer:FINGERPRINT/SERVICE` is a peer way. A consumer that dials a destination (`--egress` of the other commands, `podnet forward --network`, `pod -x`)
   refuses it with exit 64. Use `podnet forward -L LISTEN=peer:FINGERPRINT/SERVICE` ([forward.md](forward.md)). A `PORT` after
   `peer:` (`peer:1080`) is still the SOCKS5 hop of a host named `peer`.
 * `wg:FILE` is not a hop of a pod, and no process command takes it in `--egress`: each gives one line.
   Use `podnet forward --network wg:FILE` or a `networks:` entry of a router file.
 * `tailscale:/PATH` is a hop of a pod and the only hop of its chain. A command that is not `pod` refuses
   `--egress tailscale:/PATH` with one line: use `podnet pod`, `podnet forward --network` or a router file.
+* `podnet link dial` and `podnet link connect` take each `--egress` as one element of a chain before the `tcp` carrier, in
+  order: the last element reaches the carrier address, and no `direct` is added. The elements are `direct`, a proxy and
+  `peer:FINGERPRINT/SERVICE`; at most 8; a duplicate or a cycle exits 78; an element that cannot be built exits 69 and is named.
+  `--check` dials each element once ([link.md](link.md), "A chain before the carrier").
 * A spec that the command cannot use is a usage error with one line that names the spec.
 * `podnet forward --network SPEC` selects the network of the forwards ([forward.md](forward.md)). Its default
   is the way out of the process.

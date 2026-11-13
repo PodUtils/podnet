@@ -224,7 +224,7 @@ Build with `--features tcp`. `pod-link` of PodUtils/podcrates does the work (`po
   `with_clients` of the carrier, and a change of the set applies at the next handshake. At most 64 handshakes run at once, each
   for at most 10 s, so a peer that sends nothing holds no other peer.
 * A dialer gives `KEY@HOST:PORT`. `KEY` is the key of the listener: the display fingerprint that `link listen` prints, a `SHA256:`
-  fingerprint, or the key in hex or base32. The dial goes through the way out of the process (`--proxy`). It ends in 20 s. The key
+  fingerprint, or the key in hex or base32. The dial goes through the chain of `--egress` elements (see "A chain before the carrier"), or, with none, through the way out of the process (`--proxy`). It ends in 20 s. The key
   that the listener proves must also be in the allow list of the dialer (`--peer` or `--allow`).
 * A key that is not pinned exits 77, at the dialer and at the listener. The listener names the key that it refused on stderr and keeps
   its door open. A host that denies the socket (`EACCES`) exits 69: it is not a refused key.
@@ -240,6 +240,33 @@ Each carrier reports `framing`, `duplex`, `ordered`, `mtu`, the cost and `availa
 gives its reason, and a command that needs it exits 69 with the reason. `podnet doctor` has a row `carriers` with the same
 diagnosis. The addressing mode of each carrier is `peer`: the address names a peer, not a destination, so a consumer of
 destinations does not take it.
+
+## A chain before the carrier
+
+`podnet link dial` and `podnet link connect` take each `--egress SPEC` as one element of a chain before the `tcp` carrier. Only the
+`tcp` carrier opens a network connection: a chain with another carrier exits 64. A `--egress` beside `--proxy`, `--no-proxy`,
+`--transport` or `--relay` exits 64.
+
+* The elements apply in order. The first element is the first hop from this host. The last element reaches the carrier address.
+  There is no `direct` at the end: give `direct` as the first element if you want it.
+* An element is `direct` (first only), a proxy (`socks5://`, `socks5h://`, `http://`; a proxy on a unix socket is first only), or
+  `peer:FINGERPRINT/SERVICE` (first only). A `peer:` stream is the connection to the next element or to the carrier address, so
+  the service of the peer must lead there ([egress.md](egress.md)). Each other network of the registry exits 64.
+* The chain is a `Chain` of `podnet::network`: each element comes up over the way of the element below it.
+* At most 8 elements (else exit 64) and 10 s for each element, to come up and to dial. A duplicate element, two elements at one place
+  (`socks5://H:1` and `socks5h://H:1`), or an element at the place of the carrier address (a cycle) exits 78.
+* A chain that cannot be built (a name that does not resolve, a unix socket that is not there, no running link for a `peer:` element)
+  exits 69 and names the element with its number. It exits before the carrier opens. The line shows no password.
+* `--check` resolves each element and dials it once, then connects and checks the peer, prints the result and ends. The dial of
+  element `n` goes through elements 1 to `n` to the place of element `n + 1` (the last one: to the carrier address) and ends at once.
+  Each line is `podnet: element N of M  SPEC  resolved ADDRESS  dialed in T ms`; with `--json` the document has `elements`. A
+  failed element exits 69 and is named. `link connect --check` holds no link, starts no control socket, takes no name and leaves
+  no listener.
+
+```sh
+podnet link dial KEY@host.example:7000 --carrier tcp --allow servers.txt \
+  --egress socks5://127.0.0.1:1080 --egress socks5://hop2.example:1080 --check
+```
 
 ## Identity and allow list
 
@@ -409,18 +436,18 @@ request. Exit 69 when no route comes, the node has no such service, or the path 
 
 | Code | Case |
 | --- | --- |
-| 64 | A bad flag or value: an unknown carrier, a ring out of its limits, a regular file at the address, no `--peer` or `--allow`. |
+| 64 | A bad flag or value: an unknown carrier, a ring out of its limits, a regular file at the address, no `--peer` or `--allow`; a chain of more than 8 elements, a network that is not an element, a chain with a carrier that is not `tcp`. |
 | 66 | The allow list file is missing. |
-| 69 | The address is held by a live listener, no listener answers, the host refuses the carrier, or a peer has another uid. |
+| 69 | The address is held by a live listener, no listener answers, the host refuses the carrier, or a peer has another uid; an element of a chain that cannot be built or dialed. |
 | 71 | The key file or the allow list file has a mode that others can use. |
 | 77 | A peer is not in the allow list, or it did not prove its key. On `tcp`: a key that the handshake refused. |
-| 78 | The allow list has a line that is no peer, or more than 4096 entries. |
+| 78 | The allow list has a line that is no peer, or more than 4096 entries; a duplicate element or a cycle in a chain. |
 | 124 | The hello did not end in 10 s. |
 
 ## Library
 
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
-`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
+`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
 listens (`listen`) and dials (`dial`, which gives the key that the listener proved).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates.

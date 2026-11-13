@@ -54,6 +54,12 @@ pub fn carrier(me: &Identity, allow: &AllowList) -> Tcp {
     Tcp::new(provider(), key_of(me), crate::egress::egress(None)).with_clients(keys(allow))
 }
 
+/// [`carrier`] with the dial `via` in place of the way out of the process:
+/// the chain of `--egress` elements (T-303, [`crate::link_chain`]).
+pub fn carrier_via(me: &Identity, allow: &AllowList, via: Arc<dyn pod_core::Dial>) -> Tcp {
+    Tcp::new(provider(), key_of(me), via).with_clients(keys(allow))
+}
+
 /// Listen at `address` (`IP:PORT`) through `tcp`.
 pub async fn listen(tcp: &Tcp, address: &str) -> anyhow::Result<Door> {
     tcp.available().map_err(carrier_fault)?;

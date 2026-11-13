@@ -83,6 +83,9 @@ pub(crate) fn rewrite(words: &[String]) -> Result<Vec<String>, String> {
         .iter()
         .map(|s| networks::parse(s).map_err(|e| format!("--egress: {}", e.text())))
         .collect::<Result<Vec<_>, _>>()?;
+    if matches!(command.as_deref(), Some("link dial" | "link connect")) {
+        return link_chain(kept, &specs);
+    }
     match pod_at {
         Some(at) => pod_hops(kept, at - removed_before(words, at), &specs, &networks),
         None => process_way(
@@ -93,6 +96,26 @@ pub(crate) fn rewrite(words: &[String]) -> Result<Vec<String>, String> {
             command.as_deref(),
         ),
     }
+}
+
+/// `link dial` and `link connect` (T-303): each `--egress` is one element of
+/// the chain before the carrier, in the order of the command line. The
+/// command reads them from its own options. They go together at the end of
+/// the arguments, because a global option that is given before and after the
+/// command keeps the values of the last place only. The old flags name
+/// another way: a usage error.
+fn link_chain(mut kept: Vec<String>, specs: &[String]) -> Result<Vec<String>, String> {
+    let end = kept.iter().position(|w| w == "--").unwrap_or(kept.len());
+    if let Some(old) = kept[..end].iter().find_map(|w| {
+        OLD_FLAGS
+            .iter()
+            .find(|f| w == *f || w.starts_with(&format!("{f}=")))
+    }) {
+        return Err(format!("--egress and {old} name one way: give one of them"));
+    }
+    let given = specs.iter().map(|s| format!("--egress={s}"));
+    kept.splice(end..end, given);
+    Ok(kept)
 }
 
 /// The line for `--egress wg:FILE` where the command cannot start the tunnel.

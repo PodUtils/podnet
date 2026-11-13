@@ -90,6 +90,7 @@ pub(super) async fn dial_peer(
     address: &str,
     me: &Identity,
     allow: AllowList,
+    via: Option<Arc<dyn podnet::network::Dial>>,
 ) -> Result<(Link, PublicKey)> {
     match carrier {
         Some(carrier) => {
@@ -97,8 +98,52 @@ pub(super) async fn dial_peer(
             let peer = hello::dial(&link, me, allow).await?;
             Ok((link, peer))
         }
-        None => tcp::dial(me, allow, address).await,
+        None => tcp::dial(me, allow, address, via).await,
     }
+}
+
+/// The chain of the `--egress` elements of `link dial` and `link connect`
+/// (T-303), checked and up before the carrier opens. `None` with no element.
+/// With `check`, resolve and dial each element once first, and print the
+/// result (`json`: the documents are returned in the second value instead).
+/// Only the `tcp` carrier opens a network connection: a chain with another
+/// carrier exits 64.
+pub(super) async fn open_chain(
+    egress: &[String],
+    carrier: &CarrierArgs,
+    address: &str,
+    check: bool,
+    json: bool,
+) -> Result<(Option<podnet::link_chain::Opened>, Vec<serde_json::Value>)> {
+    if egress.is_empty() {
+        return Ok((None, Vec::new()));
+    }
+    if carrier.carrier != "tcp" {
+        return Err(podnet::exit::fault(
+            podnet::exit::Fault::Usage,
+            anyhow::anyhow!(
+                "--egress: the {} carrier opens no network connection; a chain is for the tcp carrier",
+                carrier.carrier
+            ),
+        ));
+    }
+    let plan = podnet::link_chain::Plan::parse(egress, address)?;
+    let mut docs = Vec::new();
+    if check {
+        let rows = plan.check().await?;
+        for row in &rows {
+            if !json {
+                println!("{}", row.line(plan.len()));
+            }
+            docs.push(row.json());
+        }
+    }
+    Ok((Some(plan.open().await?), docs))
+}
+
+/// True for the commands that take a chain of `--egress` elements.
+pub(crate) fn takes_chain(args: &LinkArgs) -> bool {
+    matches!(args.command, LinkCommand::Dial(_) | LinkCommand::Connect(_))
 }
 
 /// Listen at `address`. `tcp` takes the clients of `allow` in its handshake.
@@ -122,8 +167,12 @@ mod tcp {
         me: &Identity,
         allow: AllowList,
         address: &str,
+        via: Option<Arc<dyn podnet::network::Dial>>,
     ) -> Result<(Link, PublicKey)> {
-        let carrier = podnet::link_tcp::carrier(me, &allow);
+        let carrier = match via {
+            Some(via) => podnet::link_tcp::carrier_via(me, &allow, via),
+            None => podnet::link_tcp::carrier(me, &allow),
+        };
         podnet::link_tcp::dial(&carrier, &allow, address, Settings::default()).await
     }
 
@@ -138,7 +187,12 @@ mod tcp {
 mod tcp {
     use super::*;
 
-    pub(super) async fn dial(_: &Identity, _: AllowList, _: &str) -> Result<(Link, PublicKey)> {
+    pub(super) async fn dial(
+        _: &Identity,
+        _: AllowList,
+        _: &str,
+        _: Option<Arc<dyn podnet::network::Dial>>,
+    ) -> Result<(Link, PublicKey)> {
         podnet::build_features::require("tcp").map(|()| unreachable!())
     }
 
@@ -161,7 +215,8 @@ pub(crate) enum LinkCommand {
     /// one stream. A listener that is not allowed exits 77.
     Dial(dial::DialArgs),
     /// Connect to a listener, prove this key, check the key of the listener
-    /// against --peer or --allow, and hold the link. Other programs open
+    /// against --peer or --allow, and hold the link. With --check: connect,
+    /// check, print and exit 0, and start no control socket. Other programs open
     /// streams of the link through its control socket: `peer:FINGERPRINT/
     /// SERVICE` as a network (podnet forward -L LISTEN=peer:FINGERPRINT/
     /// SERVICE). The command ends when the link ends (exit 69) or at a stop
@@ -272,11 +327,11 @@ pub(crate) fn detach_of(args: &LinkArgs) -> Option<&DetachArgs> {
 }
 
 /// `podnet link`.
-pub(crate) async fn link(args: LinkArgs) -> Result<()> {
+pub(crate) async fn link(args: LinkArgs, egress: Vec<String>) -> Result<()> {
     match args.command {
         LinkCommand::Listen(args) => listen::listen(args).await,
-        LinkCommand::Dial(args) => dial::dial(args).await,
-        LinkCommand::Connect(args) => connect::connect(args).await,
+        LinkCommand::Dial(args) => dial::dial(args, egress).await,
+        LinkCommand::Connect(args) => connect::connect(args, egress).await,
         LinkCommand::Status {
             name,
             json,

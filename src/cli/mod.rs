@@ -70,7 +70,10 @@ pub(crate) struct Cli {
     /// (as --proxy), relay or relay:URL (as --transport relay and --relay).
     /// With podnet pod, each --egress is one -x hop of the chain, in its order
     /// (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE is for
-    /// podnet forward --network and podnet route.
+    /// podnet forward --network and podnet route. With podnet link dial and
+    /// podnet link connect, each --egress is one element of the chain before
+    /// the tcp carrier (direct, a proxy, peer:FINGERPRINT/SERVICE), in order:
+    /// the last element reaches the carrier address.
     #[arg(long, global = true, value_name = "SPEC")]
     pub(crate) egress: Vec<String>,
     /// Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
@@ -266,6 +269,7 @@ pub(crate) enum Command {
 }
 
 pub(crate) async fn async_main(cli: Cli) -> Result<()> {
+    let egress = cli.egress.clone();
     match cli.command {
         Command::Tunnel(args) => tunnel(args).await,
         Command::Serve(args) => serve(args).await,
@@ -295,7 +299,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Net(args) => net(args).await,
         Command::Warp(args) => warp(*args).await,
         Command::Relay(args) => relay(args).await,
-        Command::Link(args) => link(args).await,
+        Command::Link(args) => link(args, egress).await,
         Command::SshRelay(args) => ssh_relay(args).await,
         Command::Pod { .. } => Err(podnet::exit::fault(
             Fault::Usage,
