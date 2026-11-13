@@ -22,10 +22,12 @@ DESCRIPTION
     expose), SSH forward relays (ssh-relay), the file server (serve), file
     transfer (share) and git hosting (git serve). To reach out: the Cloudflare
     WARP client with no root (warp, agent), the relay (relay, connect),
-    forwards (forward) and the router with networks, groups, policies and a
-    kernel mode (route). To contain programs: pods (pod) and virtual networks
-    (net). To check and keep it running: doctor, bench, status, the background
-    runs (--detach, ps, logs, stop, autostart) and update.
+    forwards (forward), a SOCKS5 exit on stdin and stdout (exit) and the
+    router with networks, groups, policies and a kernel mode (route). To join
+    two installs: the link (link) over a carrier, with services at a peer and
+    a mesh. To contain programs: pods (pod) and virtual networks (net). To
+    check and keep it running: doctor, bench, status, components, the
+    background runs (--detach, ps, logs, stop, autostart) and update.
 
     A tunnel reaches the edge with one of four legs: QUIC on UDP 7844, HTTP/2
     on TCP 7844 (directly or through HTTPS_PROXY), QUIC inside a WARP MASQUE
@@ -7326,9 +7328,10 @@ COMMANDS
             line). Default: text. Values: text, json.
 
     podnet link [OPTIONS] <COMMAND>
-        A link between two installs over a carrier (a unix socket, memory):
-        each end proves its Ed25519 key, and an allow list (default deny) says
-        which peers may open streams. Listen, dial, status, close, carriers
+        A link between two installs over a carrier (a unix socket, memory; TCP
+        and more behind build features): each end proves its Ed25519 key, and
+        an allow list (default deny) says which peers may open streams.
+        Listen, dial, connect, status, mesh, close, carriers
 
         --ca-file <PATH>
             A file of TLS roots (PEM). podnet uses only these roots for each
@@ -10169,17 +10172,17 @@ podnet man                                      # the manual
 | File server, transfer, git | `serve`, `share`, `git` | Serve a directory, receive or send files with a PIN, host git repositories. | [serve](https://github.com/PodUtils/podnet/blob/main/docs/serve.md) |
 | Publish by one word | `expose` | Publish a local service by a tunnel, the relay or a virtual address. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | WARP | `warp register`, `proxy`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan` | The Cloudflare WARP client on TCP 443, with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
-| Pods | `pod`, `pod doctor` | Run a program with all its traffic sent through a proxy chain, with rules and audit. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
-| Virtual networks | `net proxy`, `switch`, `shim`, `doctor` | IP addresses for programs on a host that refuses `AF_INET` binds. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
+| Pods | `pod`, `pod doctor`, `pod --report` | Run a program with all its traffic sent through a proxy chain, with rules, audit and a JSON report. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
+| Virtual networks | `net proxy`, `switch`, `shim`, `doctor`, `doctor --network` | IP addresses for programs on a host that refuses `AF_INET` binds. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
 | Overlays | `net tailscale`, `net socksify`, `netbird:`, `wg:` | Tailscale, NetBird and WireGuard on a host with no TUN. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
-| Router | `route --config`, `--check --to`, `--status`, `--export` | Networks, groups, policies, health, doors, DNS door, kernel mode. | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
+| Router | `route --config`, `--check --to`, `--status`, `--control`, `--export` | Networks, groups, policies, health, doors, DNS door, kernel mode, and changes of a running router (`--control`: select, rotate, add or remove a door or a network). | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
 | Forwards | `forward -L`, `forward --dns` | TCP and UDP forwards and a DNS door through a network. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Exit on stdio | `exit --stdio` | One SOCKS5 session (CONNECT, and UDP in frames) on stdin and stdout, with no listener, for a pipe such as ssh. | [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Relays | `relay pair`, `node`, `connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
-| Link | `link listen`, `connect`, `dial`, `status`, `close`, `carriers`, `components`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. A control socket shows the links. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
+| Link | `link listen`, `dial`, `connect`, `status`, `mesh`, `close`, `carriers`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory; TCP with TLS, QUIC, S3 and ICMP behind build features): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. Services at a peer: `raw`, `socks5`, `http`. Names for live links, query keys, chains of `--egress` before the carrier, link groups, a mesh (`--announce`, `link mesh`) and a control socket. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
 | Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
-| Checks | `doctor`, `doctor --agent`, `status`, `ports`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
+| Checks | `doctor`, `doctor --agent`, `status`, `ports`, `components`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
 | Update | `update` | Replace the binary after a check of the signature. | [install](https://github.com/PodUtils/podnet/blob/main/docs/install.md) |
 | Manual | `man`, `--help --json`, `completions` | The manual, JSON help, the llms files, exit codes. | [cli](https://github.com/PodUtils/podnet/blob/main/docs/cli.md) |
 
@@ -10213,11 +10216,11 @@ GitHub runner on each push and each day.
 * [docs/router.md](https://github.com/PodUtils/podnet/blob/main/docs/router.md): `podnet route`.
 * [docs/forward.md](https://github.com/PodUtils/podnet/blob/main/docs/forward.md): `forward`, the DNS door, `expose`.
 * [docs/relay.md](https://github.com/PodUtils/podnet/blob/main/docs/relay.md): `relay` and `ssh-relay`.
-* [docs/link.md](https://github.com/PodUtils/podnet/blob/main/docs/link.md): `link` (the key of an install, the allow list, the carriers).
+* [docs/link.md](https://github.com/PodUtils/podnet/blob/main/docs/link.md): `link` (the key of an install, the allow list, the carriers, the services, the mesh).
 * [docs/egress.md](https://github.com/PodUtils/podnet/blob/main/docs/egress.md): network specs and `--egress`.
 * [docs/proxies.md](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md): proxies, DNS, TLS roots.
 * [docs/background.md](https://github.com/PodUtils/podnet/blob/main/docs/background.md): `--detach`, `ps`, autostart.
-* [docs/doctor.md](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md): `doctor`, `bench`, `status`, `agent`.
+* [docs/doctor.md](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md): `doctor`, `bench`, `status`, `components`, `agent`.
 * [docs/cli.md](https://github.com/PodUtils/podnet/blob/main/docs/cli.md): the manual, JSON help, llms files, exit codes.
 * [docs/library.md](https://github.com/PodUtils/podnet/blob/main/docs/library.md) and [docs/build.md](https://github.com/PodUtils/podnet/blob/main/docs/build.md): the Rust library, build and fuzz.
 * [docs/protocol.md](https://github.com/PodUtils/podnet/blob/main/docs/protocol.md): the edge protocol and the WARP protocol.
@@ -11018,9 +11021,12 @@ podnet warp license <KEY>           # attach a WARP+ license key
 podnet warp rotate                  # make and enrol a new MASQUE key
 podnet warp delete                  # remove the device and the saved file
 podnet warp probe                   # test TCP connects through the tunnel
-podnet warp exit                    # the exit colo, country, address and IPv6 address
-podnet warp scan --candidate 162.159.198.1   # measure front doors (TCP and TLS)
+podnet warp exit                    # the exit colo, country, address and IPv6 address (--no-ipv6: no IPv6 address)
+podnet warp scan --candidate 162.159.198.1   # measure front doors (TCP and TLS; --timeout-ms 100 to 60000, default 3000)
 podnet warp export --out warp.conf  # a WireGuard device for other clients (UDP)
+podnet warp export --format json --keepalive 0 --endpoint HOST:PORT   # the JSON form; no keepalive line; another endpoint
+podnet warp export --export-identity dev.json   # the file of the exported device (default: warp-wg.json in the state directory)
+podnet warp export --delete         # remove the exported device from the service and delete its file
 podnet warp proxy                   # local SOCKS5 and HTTP CONNECT proxy
 podnet warp forward -L 5432=db.internal:5432   # as ssh -L, through WARP
 podnet warp forward --list          # the forwards of the detached instances
@@ -11237,8 +11243,9 @@ podnet warp down                    # stop it
   config block and a `GIT_SSH_COMMAND`. SSH checks the host key as on a
   direct connection. At the end of stdin, podnet sends no FIN: the pipe ends
   when the far end closes, or `--idle` seconds (default 5) after the last
-  data. `-N` sends the FIN at the end of stdin, for a server that waits for
-  it. An error of the far end exits 69.
+  data. `-N` (`--shutdown`) sends the FIN at the end of stdin, then waits for the far end to close, for a
+  server that waits for it. `-u` (`--udp`) sends each read of stdin as one datagram to HOST:PORT, and writes
+  each datagram that comes back to stdout. An error of the far end exits 69.
 * `podnet warp ssh-config --write --host github.com` puts the block in
   `~/.ssh/config` (or `--config FILE`), between two marker lines, before
   the first `Host` or `Match` line. A second `--write` replaces it (for
@@ -11265,7 +11272,7 @@ podnet warp down                    # stop it
   `podnet warp up --tun` starts it detached (instance `warp-tun`), and
   `podnet warp down` stops it.
 * `podnet warp tun` makes a TUN interface with the tunnel address and moves its
-  packets through WARP. It does not change the routes: add routes for the
+  packets through WARP. It writes 0 to the `rp_filter` of the interface; `--keep-rp-filter` keeps the value. It does not change the routes: add routes for the
   destinations to send through WARP, and keep a route for the MASQUE endpoint
   outside the interface. The command prints examples.
 ## Sessions, relay and the registration API
@@ -11455,7 +11462,7 @@ It needs no namespace, no TUN device and no capability.
 ```sh
 podnet net doctor                         # what this host permits
 podnet net doctor --network SPEC          # also the row of one network (repeatable)
-podnet net shim --out /tmp/podnet-vnet        # build the LD_PRELOAD shim
+podnet net shim --out /tmp/podnet-vnet        # build the LD_PRELOAD shim (--map-loopback: 127.0.0.1 connects go to the stack)
 LD_PRELOAD=/tmp/podnet-vnet/libpodnet-vnet.so ./server      # bind 10.66.0.2:8080 works
 podnet net proxy --forward 10.66.0.2:8080=unix:/run/app.sock
 podnet net switch --listen unix:/tmp/podnet-vnet.switch   # connect stacks
@@ -12558,14 +12565,15 @@ Limits and drops:
 podnet tunnel --port 3000 --detach --name web   # prints one JSON line, exits 0
 podnet warp proxy --listen unix:/tmp/warp.sock --detach
 podnet ps                                        # name, state, pid, URL or listen address
-podnet logs web -f
+podnet logs web -f                               # -n LINES: only the last lines
 podnet wait web                                  # the ready document again (exit 124 at --timeout)
 podnet stop web                                  # or: podnet stop --all
 ```
 
 `--detach` works with `tunnel`, `serve`, `share`, `demo`, `connect`,
 `warp proxy`, `warp forward`, `warp tun`, `warp exec`, `relay node`,
-`link listen`, `net proxy` and `net switch`. The command runs in the foreground until it
+`relay connect`, `ssh-relay`, `git serve`, `route`, `link listen`, `link connect`,
+`net proxy` and `net switch`. The command runs in the foreground until it
 is ready: until the public URL answers, or until the listener is bound.
 Then it leaves the terminal (`setsid`, SIGHUP ignored, stdin to
 `/dev/null`, stdout and stderr to its log), and the start prints one JSON
@@ -12648,6 +12656,8 @@ podnet autostart remove web
 * `remove` deletes only what `add` wrote (a marker line in the unit, a
   marker comment on the crontab line).
 * Each program that `add` or `remove` runs has a limit of 10 s.
+* `podnet autostart run NAME --dir DIR` is the entry point of the unit and of the crontab line. It reads
+  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. Do not call it by hand.
 * With no systemd user manager and no cron, `add` exits 69. Its error text
   gives a `nohup` line: put it in a login script (for example
   `~/.profile`).
@@ -12657,7 +12667,7 @@ podnet autostart remove web
 # Checks: doctor, status, bench and bug reports
 
 This page gives the commands that check this host and podnet: `doctor` (the path to the edge, and what
-dev work can do), `pod doctor`, `net doctor`, `status`, `ports`, `bench`, `bug-report` and `agent`. Each
+dev work can do), `pod doctor`, `net doctor`, `status`, `ports`, `components`, `bench`, `bug-report` and `agent`. Each
 check gives `ok`, `fail` or `unknown`.
 
 ## `podnet doctor`
@@ -12779,6 +12789,8 @@ reads the document (flags, exit codes, readiness, failure causes).
   `--network SPEC` (repeatable) brings up a network of the registry, as `forward --network` takes it, and adds
   its row `network SPEC`: `ok` with the status of the link, or `fail` with the stage that failed. The row holds
   no credential.
+* `podnet components [--json]` lists each carrier and each service of this build, with whether this host can use it
+  and the reason if not ([link.md](link.md), Carriers).
 * `podnet status` prints one line of JSON about this host and opens no connection: the version,
   the platform, the proxy and its source, the TLS roots in `tls_roots`, the state of the WARP identity,
   the limit of open files in `nofile`, the detached instances and `PODNET_ERROR_PROGRAM`. It has
@@ -12934,7 +12946,7 @@ password in its environment. Use it to collect failures in tests.
 ## Machine-readable help and the llms files
 
 * `podnet man --json` prints the manual as one JSON object: `name`, `version`, `about`, `description`,
-  `commands`, `pod_usage`, `environment`, `files`, `exit_status` and `examples`. Each entry of `commands`
+  `commands`, `pod_usage`, `environment`, `files`, `inventory`, `exit_status` and `examples`. Each entry of `commands`
   has `path`, `usage`, `about`, `long_about`, `args` and `subcommands`.
 * `podnet COMMAND --help --json` prints the same entry for one command, at each level
   (`podnet route --help --json`, `podnet warp run --help --json`). Each argument has `synopsis`, `id`,
@@ -12981,6 +12993,10 @@ handle.shutdown().await;
 * `podnet::session` carries a link over the resumable layer `pod-session`. A
   link survives the loss of its carrier for 10 minutes (`RESUME_WINDOW`). A
   resume after the window fails with `ResumeExpired`, which exits 69.
+* `podnet::link` opens a link over a carrier. `podnet::carriers` is the registry. `podnet::link_chain` and
+  `podnet::link_tcp` build a chain of `--egress` elements and the TCP carrier. `podnet::mesh_announce`,
+  `podnet::mesh_table`, `podnet::link_announce` and `podnet::link_forward` are the mesh. `podnet::link_group` is the
+  link group. [link.md](link.md) has each of them.
 * `podnet_netns::main_with_args` runs the command line of `podnet pod`. The modules
   `podnet_netns::upstream`, `socks`, `dns` and `tailscale` are also public.
 

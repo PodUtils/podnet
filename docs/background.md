@@ -6,14 +6,15 @@
 podnet tunnel --port 3000 --detach --name web   # prints one JSON line, exits 0
 podnet warp proxy --listen unix:/tmp/warp.sock --detach
 podnet ps                                        # name, state, pid, URL or listen address
-podnet logs web -f
+podnet logs web -f                               # -n LINES: only the last lines
 podnet wait web                                  # the ready document again (exit 124 at --timeout)
 podnet stop web                                  # or: podnet stop --all
 ```
 
 `--detach` works with `tunnel`, `serve`, `share`, `demo`, `connect`,
 `warp proxy`, `warp forward`, `warp tun`, `warp exec`, `relay node`,
-`link listen`, `net proxy` and `net switch`. The command runs in the foreground until it
+`relay connect`, `ssh-relay`, `git serve`, `route`, `link listen`, `link connect`,
+`net proxy` and `net switch`. The command runs in the foreground until it
 is ready: until the public URL answers, or until the listener is bound.
 Then it leaves the terminal (`setsid`, SIGHUP ignored, stdin to
 `/dev/null`, stdout and stderr to its log), and the start prints one JSON
@@ -96,6 +97,8 @@ podnet autostart remove web
 * `remove` deletes only what `add` wrote (a marker line in the unit, a
   marker comment on the crontab line).
 * Each program that `add` or `remove` runs has a limit of 10 s.
+* `podnet autostart run NAME --dir DIR` is the entry point of the unit and of the crontab line. It reads
+  `NAME.args` and `NAME.env` in DIR and runs the command in the place of its own process. Do not call it by hand.
 * With no systemd user manager and no cron, `add` exits 69. Its error text
   gives a `nohup` line: put it in a login script (for example
   `~/.profile`).

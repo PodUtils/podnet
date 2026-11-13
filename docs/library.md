@@ -31,5 +31,9 @@ handle.shutdown().await;
 * `podnet::session` carries a link over the resumable layer `pod-session`. A
   link survives the loss of its carrier for 10 minutes (`RESUME_WINDOW`). A
   resume after the window fails with `ResumeExpired`, which exits 69.
+* `podnet::link` opens a link over a carrier. `podnet::carriers` is the registry. `podnet::link_chain` and
+  `podnet::link_tcp` build a chain of `--egress` elements and the TCP carrier. `podnet::mesh_announce`,
+  `podnet::mesh_table`, `podnet::link_announce` and `podnet::link_forward` are the mesh. `podnet::link_group` is the
+  link group. [link.md](link.md) has each of them.
 * `podnet_netns::main_with_args` runs the command line of `podnet pod`. The modules
   `podnet_netns::upstream`, `socks`, `dns` and `tailscale` are also public.

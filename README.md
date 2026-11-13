@@ -76,17 +76,17 @@ podnet man                                      # the manual
 | File server, transfer, git | `serve`, `share`, `git` | Serve a directory, receive or send files with a PIN, host git repositories. | [serve](https://github.com/PodUtils/podnet/blob/main/docs/serve.md) |
 | Publish by one word | `expose` | Publish a local service by a tunnel, the relay or a virtual address. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | WARP | `warp register`, `proxy`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan` | The Cloudflare WARP client on TCP 443, with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
-| Pods | `pod`, `pod doctor` | Run a program with all its traffic sent through a proxy chain, with rules and audit. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
-| Virtual networks | `net proxy`, `switch`, `shim`, `doctor` | IP addresses for programs on a host that refuses `AF_INET` binds. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
+| Pods | `pod`, `pod doctor`, `pod --report` | Run a program with all its traffic sent through a proxy chain, with rules, audit and a JSON report. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
+| Virtual networks | `net proxy`, `switch`, `shim`, `doctor`, `doctor --network` | IP addresses for programs on a host that refuses `AF_INET` binds. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
 | Overlays | `net tailscale`, `net socksify`, `netbird:`, `wg:` | Tailscale, NetBird and WireGuard on a host with no TUN. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
-| Router | `route --config`, `--check --to`, `--status`, `--export` | Networks, groups, policies, health, doors, DNS door, kernel mode. | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
+| Router | `route --config`, `--check --to`, `--status`, `--control`, `--export` | Networks, groups, policies, health, doors, DNS door, kernel mode, and changes of a running router (`--control`: select, rotate, add or remove a door or a network). | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
 | Forwards | `forward -L`, `forward --dns` | TCP and UDP forwards and a DNS door through a network. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Exit on stdio | `exit --stdio` | One SOCKS5 session (CONNECT, and UDP in frames) on stdin and stdout, with no listener, for a pipe such as ssh. | [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Relays | `relay pair`, `node`, `connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
-| Link | `link listen`, `connect`, `dial`, `status`, `close`, `carriers`, `components`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. A control socket shows the links. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
+| Link | `link listen`, `dial`, `connect`, `status`, `mesh`, `close`, `carriers`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory; TCP with TLS, QUIC, S3 and ICMP behind build features): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. Services at a peer: `raw`, `socks5`, `http`. Names for live links, query keys, chains of `--egress` before the carrier, link groups, a mesh (`--announce`, `link mesh`) and a control socket. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
 | Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `unix:`. | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
-| Checks | `doctor`, `doctor --agent`, `status`, `ports`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
+| Checks | `doctor`, `doctor --agent`, `status`, `ports`, `components`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
 | Update | `update` | Replace the binary after a check of the signature. | [install](https://github.com/PodUtils/podnet/blob/main/docs/install.md) |
 | Manual | `man`, `--help --json`, `completions` | The manual, JSON help, the llms files, exit codes. | [cli](https://github.com/PodUtils/podnet/blob/main/docs/cli.md) |
 
@@ -120,11 +120,11 @@ GitHub runner on each push and each day.
 * [docs/router.md](https://github.com/PodUtils/podnet/blob/main/docs/router.md): `podnet route`.
 * [docs/forward.md](https://github.com/PodUtils/podnet/blob/main/docs/forward.md): `forward`, the DNS door, `expose`.
 * [docs/relay.md](https://github.com/PodUtils/podnet/blob/main/docs/relay.md): `relay` and `ssh-relay`.
-* [docs/link.md](https://github.com/PodUtils/podnet/blob/main/docs/link.md): `link` (the key of an install, the allow list, the carriers).
+* [docs/link.md](https://github.com/PodUtils/podnet/blob/main/docs/link.md): `link` (the key of an install, the allow list, the carriers, the services, the mesh).
 * [docs/egress.md](https://github.com/PodUtils/podnet/blob/main/docs/egress.md): network specs and `--egress`.
 * [docs/proxies.md](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md): proxies, DNS, TLS roots.
 * [docs/background.md](https://github.com/PodUtils/podnet/blob/main/docs/background.md): `--detach`, `ps`, autostart.
-* [docs/doctor.md](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md): `doctor`, `bench`, `status`, `agent`.
+* [docs/doctor.md](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md): `doctor`, `bench`, `status`, `components`, `agent`.
 * [docs/cli.md](https://github.com/PodUtils/podnet/blob/main/docs/cli.md): the manual, JSON help, llms files, exit codes.
 * [docs/library.md](https://github.com/PodUtils/podnet/blob/main/docs/library.md) and [docs/build.md](https://github.com/PodUtils/podnet/blob/main/docs/build.md): the Rust library, build and fuzz.
 * [docs/protocol.md](https://github.com/PodUtils/podnet/blob/main/docs/protocol.md): the edge protocol and the WARP protocol.

@@ -188,10 +188,10 @@ pub(crate) enum Command {
     /// Inbound access to this host through the WebSocket relay (--relay):
     /// pair, run a node for a local port, connect as the operator.
     Relay(RelayArgs),
-    /// A link between two installs over a carrier (a unix socket, memory):
-    /// each end proves its Ed25519 key, and an allow list (default deny)
-    /// says which peers may open streams. Listen, dial, status, close,
-    /// carriers.
+    /// A link between two installs over a carrier (a unix socket, memory;
+    /// TCP and more behind build features): each end proves its Ed25519 key,
+    /// and an allow list (default deny) says which peers may open streams.
+    /// Listen, dial, connect, status, mesh, close, carriers.
     Link(LinkArgs),
     /// Run a program with all its traffic sent through a proxy (podnet-netns).
     ///

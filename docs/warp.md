@@ -11,9 +11,12 @@ podnet warp license <KEY>           # attach a WARP+ license key
 podnet warp rotate                  # make and enrol a new MASQUE key
 podnet warp delete                  # remove the device and the saved file
 podnet warp probe                   # test TCP connects through the tunnel
-podnet warp exit                    # the exit colo, country, address and IPv6 address
-podnet warp scan --candidate 162.159.198.1   # measure front doors (TCP and TLS)
+podnet warp exit                    # the exit colo, country, address and IPv6 address (--no-ipv6: no IPv6 address)
+podnet warp scan --candidate 162.159.198.1   # measure front doors (TCP and TLS; --timeout-ms 100 to 60000, default 3000)
 podnet warp export --out warp.conf  # a WireGuard device for other clients (UDP)
+podnet warp export --format json --keepalive 0 --endpoint HOST:PORT   # the JSON form; no keepalive line; another endpoint
+podnet warp export --export-identity dev.json   # the file of the exported device (default: warp-wg.json in the state directory)
+podnet warp export --delete         # remove the exported device from the service and delete its file
 podnet warp proxy                   # local SOCKS5 and HTTP CONNECT proxy
 podnet warp forward -L 5432=db.internal:5432   # as ssh -L, through WARP
 podnet warp forward --list          # the forwards of the detached instances
@@ -230,8 +233,9 @@ podnet warp down                    # stop it
   config block and a `GIT_SSH_COMMAND`. SSH checks the host key as on a
   direct connection. At the end of stdin, podnet sends no FIN: the pipe ends
   when the far end closes, or `--idle` seconds (default 5) after the last
-  data. `-N` sends the FIN at the end of stdin, for a server that waits for
-  it. An error of the far end exits 69.
+  data. `-N` (`--shutdown`) sends the FIN at the end of stdin, then waits for the far end to close, for a
+  server that waits for it. `-u` (`--udp`) sends each read of stdin as one datagram to HOST:PORT, and writes
+  each datagram that comes back to stdout. An error of the far end exits 69.
 * `podnet warp ssh-config --write --host github.com` puts the block in
   `~/.ssh/config` (or `--config FILE`), between two marker lines, before
   the first `Host` or `Match` line. A second `--write` replaces it (for
@@ -258,7 +262,7 @@ podnet warp down                    # stop it
   `podnet warp up --tun` starts it detached (instance `warp-tun`), and
   `podnet warp down` stops it.
 * `podnet warp tun` makes a TUN interface with the tunnel address and moves its
-  packets through WARP. It does not change the routes: add routes for the
+  packets through WARP. It writes 0 to the `rp_filter` of the interface; `--keep-rp-filter` keeps the value. It does not change the routes: add routes for the
   destinations to send through WARP, and keep a route for the MASQUE endpoint
   outside the interface. The command prints examples.
 ## Sessions, relay and the registration API

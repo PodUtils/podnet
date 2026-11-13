@@ -102,7 +102,7 @@ password in its environment. Use it to collect failures in tests.
 ## Machine-readable help and the llms files
 
 * `podnet man --json` prints the manual as one JSON object: `name`, `version`, `about`, `description`,
-  `commands`, `pod_usage`, `environment`, `files`, `exit_status` and `examples`. Each entry of `commands`
+  `commands`, `pod_usage`, `environment`, `files`, `inventory`, `exit_status` and `examples`. Each entry of `commands`
   has `path`, `usage`, `about`, `long_about`, `args` and `subcommands`.
 * `podnet COMMAND --help --json` prints the same entry for one command, at each level
   (`podnet route --help --json`, `podnet warp run --help --json`). Each argument has `synopsis`, `id`,

@@ -24,7 +24,7 @@ It needs no namespace, no TUN device and no capability.
 ```sh
 podnet net doctor                         # what this host permits
 podnet net doctor --network SPEC          # also the row of one network (repeatable)
-podnet net shim --out /tmp/podnet-vnet        # build the LD_PRELOAD shim
+podnet net shim --out /tmp/podnet-vnet        # build the LD_PRELOAD shim (--map-loopback: 127.0.0.1 connects go to the stack)
 LD_PRELOAD=/tmp/podnet-vnet/libpodnet-vnet.so ./server      # bind 10.66.0.2:8080 works
 podnet net proxy --forward 10.66.0.2:8080=unix:/run/app.sock
 podnet net switch --listen unix:/tmp/podnet-vnet.switch   # connect stacks
