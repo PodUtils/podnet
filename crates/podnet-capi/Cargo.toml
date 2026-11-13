@@ -1,0 +1,32 @@
+[package]
+name = "podnet-capi"
+version.workspace = true
+edition = "2021"
+rust-version = "1.99"
+license = "0BSD"
+description = "The C ABI of podnet (T-304): include/podnet.h, a shared library and a static library over the link session. Not a stable Rust interface."
+repository = "https://github.com/PodUtils/podnet"
+homepage = "https://github.com/PodUtils/podnet"
+publish = false
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+# cdylib: libpodnet_capi.so (soname libpodnet.so). staticlib:
+# libpodnet_capi.a. rlib: the unit tests. The name of the library differs from
+# the name of the root crate (podnet), which this crate uses.
+[lib]
+name = "podnet_capi"
+path = "src/lib.rs"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+# No feature of podnet: the feature c-abi of the root crate gates no code, and
+# a dependency that turned it on would turn it on in each `--workspace` build.
+podnet = { path = "../..", version = "0.4.0-beta.9" }
+anyhow = "1"
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "io-util", "sync"] }
+
+[dev-dependencies]
+tempfile = "3"

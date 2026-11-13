@@ -32,9 +32,12 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [workspace]
 # crates/podnet-todo checks the work record in TODO/ (`cargo todo`). It is
-# not a default member: no release builds it.
+# not a default member: no release builds it. crates/podnet-capi (T-304) is
+# the C ABI: a cdylib does not build for the static musl targets, so it is
+# not a default member either (docs/build.md, section The C library).
 members = [
   ".",
+  "crates/podnet-capi",
   "crates/podnet-core",
   "crates/podnet-netns",
   "crates/podnet-serve",

@@ -497,6 +497,39 @@ request. Exit 69 when no route comes, the node has no such service, or the path 
   cost, then the most hops, then the oldest `seq`. A direct route is not evicted: a table that holds direct routes only refuses
   the new origin (`Full`). `evictions()` counts the evictions.
 
+## The C library
+
+`include/podnet.h` is the C interface of the link (T-304). `crates/podnet-capi` builds it as a shared library and a static
+library ([build.md](build.md), "The C library"). Linux only.
+
+| Function | What it does |
+| --- | --- |
+| `podnet_init(config_json, err)` | Starts the library. `config_json` is NULL, empty, or `{"threads": N}` (1 to 64, default 2). It is idempotent: a second call returns 0 and changes nothing. The other functions start the library with the defaults when no call did. |
+| `podnet_free()` | Stops the library. It returns `PODNET_E_STATE` while a link or a stream is open. |
+| `podnet_identity_fingerprint(dir, buf, len)` | Writes the fingerprint of the install key in `dir` (made when missing). A peer gives it as `peer_fp`. |
+| `podnet_link_new(identity_path, peer_fp, out)` | Makes an end that has the key of `identity_path` and admits only the key of `peer_fp`. |
+| `podnet_link_pair(dialer, listener)` | Joins two ends over a memory carrier (1 MiB ring in each direction) and runs the hello of each end. A key that is not the `peer_fp` of the other end returns `PODNET_E_PERMISSION`. |
+| `podnet_link_open(l, service, out)` | Opens a stream to a service and waits for the answer. |
+| `podnet_link_accept(l, out)` | Waits for a stream of the peer, reads its service name and answers open. |
+| `podnet_stream_service(s)` | The service name of a stream. |
+| `podnet_stream_read(s, buf, len)` | Blocks. Returns the count (1 to `len`), 0 at the end of the stream, or a negative code. |
+| `podnet_stream_write(s, buf, len)` | Blocks until the link took all `len` bytes. Returns `len`. |
+| `podnet_stream_close(s)` / `podnet_link_close(l)` | End the stream (the peer reads the end of the stream) or the link, and free the handle. |
+| `podnet_last_error()` / `podnet_version()` | The text of the last failure of the thread, and the version. |
+
+* A function returns 0 or a count, or a negative code: `PODNET_E_ARG` -1, `PODNET_E_UNAVAILABLE` -2 (exit 69),
+  `PODNET_E_PERMISSION` -3 (exit 77), `PODNET_E_IO` -4, `PODNET_E_STATE` -5, `PODNET_E_LIMIT` -6, `PODNET_E_PANIC` -99.
+* `podnet_last_error()` is thread-local, UTF-8 and at most 64 KiB. It stays valid until the next call on the thread. Each
+  call but `podnet_last_error()` and `podnet_version()` clears it.
+* Handles are opaque. The caller owns each buffer; the library never frees a caller pointer. No Rust panic crosses the
+  interface: each entry point catches it and returns `PODNET_E_PANIC`. The library calls no function of the caller.
+* A call takes at most 1 MiB (`PODNET_MAX_IO`); more returns `PODNET_E_LIMIT`. Use one thread for each direction of a
+  stream, and do not close a handle while another thread uses it.
+* Only the memory carrier is in the interface now. Two ends of one process meet with `podnet_link_pair`. A network carrier
+  has no C function yet (not done: T-304 Correction).
+* The tests are `crates/podnet-capi/tests/c_abi.rs`, `c_abi.c` and `c_abi.py`: a memory link, a service `echo`, 1 MiB, the
+  digest of the bytes that came back.
+
 ## Exit codes
 
 | Code | Case |
@@ -515,4 +548,4 @@ request. Exit 69 when no route comes, the node has no such service, or the path 
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
 `podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
 listens (`listen`) and dials (`dial`, which gives the key that the listener proved).
-The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates.
+The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates. `crates/podnet-capi` is the C interface of the link (see The C library).

@@ -208,6 +208,58 @@ jobs:
       - name: Test with the feature full
         run: cargo test --locked --workspace --features full
 
+  # T-304: the C ABI (crates/podnet-capi, include/podnet.h). The shared library
+  # is for a glibc target: a cdylib does not build for the static musl targets
+  # (docs/build.md). The job builds the shared and the static library, runs the
+  # C test and the ctypes test (tests/c_abi.rs runs both, and checks that the
+  # exported symbols equal the header), then runs the C test under ASan and
+  # under valgrind, which must report no leak.
+  c-abi:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CAPI_TARGET: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: |
+          sh scripts/retry.sh rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal -c clippy -t "$CAPI_TARGET"
+          rustup default "$RUST_TOOLCHAIN"
+      - name: Install valgrind
+        run: |
+          sh scripts/retry.sh sudo apt-get update -qq
+          sh scripts/retry.sh sudo apt-get install -y -qq valgrind > /dev/null
+      - name: Build the shared and the static library
+        run: cargo build --locked --release -p podnet-capi --target "$CAPI_TARGET"
+      - name: Tests of the library, the symbols, the C test and the ctypes test
+        run: cargo test --locked -p podnet-capi --target "$CAPI_TARGET"
+      - name: The C test under ASan, and under valgrind
+        run: |
+          set -eu
+          lib="target/$CAPI_TARGET/release"
+          w=$(mktemp -d)
+          cp "$lib/libpodnet_capi.so" "$w/libpodnet.so"
+          mkdir "$w/work"
+          cc -g -fsanitize=address,undefined -fno-omit-frame-pointer -I include \
+            crates/podnet-capi/tests/c_abi.c -L "$w" -lpodnet -lpthread \
+            -Wl,-rpath,"$w" -o "$w/c_asan"
+          "$w/c_asan" "$w/work"
+          cc -g -I include crates/podnet-capi/tests/c_abi.c -L "$w" -lpodnet \
+            -lpthread -Wl,-rpath,"$w" -o "$w/c_plain"
+          valgrind --leak-check=full --show-leak-kinds=definite,indirect,possible \
+            --errors-for-leak-kinds=definite,indirect,possible --error-exitcode=9 \
+            "$w/c_plain" "$w/work"
+      - name: The static library for the static musl target
+        run: |
+          set -eu
+          sh scripts/retry.sh rustup target add x86_64-unknown-linux-musl
+          sudo apt-get install -y -qq clang musl-tools > /dev/null
+          CC_x86_64_unknown_linux_musl=clang cargo rustc --locked --release -p podnet-capi \
+            --target x86_64-unknown-linux-musl --crate-type staticlib
+          ls -l target/x86_64-unknown-linux-musl/release/libpodnet_capi.a
+
   static:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -415,7 +467,7 @@ jobs:
   all:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [test, restricted-host, no-loopback, msrv, features, static, workflows, record, plant]
+    needs: [test, restricted-host, no-loopback, msrv, features, c-abi, static, workflows, record, plant]
     if: always()
     steps:
       - name: Each job passed

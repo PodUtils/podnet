@@ -51,6 +51,8 @@ LAYER = {
     "fetch": "core", "udp": "core", "connect": "core", "detach": "core",
     "instances": "core", "autostart": "core",
     "vnet": "vnet",
+    # The C ABI (crates/podnet-capi, T-304): one module over the root crate.
+    "capi": "podnet",
     "ws_relay": "relay", "relay_reverse": "relay",
     "dialers": "relay",
     "warp": "warp",
@@ -83,11 +85,13 @@ CRATES = {
     "podnet-core": "core",
     "podnet-serve": "serve",
     "podnet-vnet": "vnet",
+    "podnet-capi": "podnet",
 }
 
 # The crates of CRATES that are one module of LAYER, and that module.
 ONE_MODULE = {
     "podnet-vnet": "vnet",
+    "podnet-capi": "capi",
 }
 
 USES = {

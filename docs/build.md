@@ -9,6 +9,7 @@ The repository is a Cargo workspace:
 | `crates/podnet-serve` | A library: the services of podnet (the file server, the file transfer, the gate, the ingress rules, the origins, the client of the SSH relay). It uses `podnet-core`. |
 | `crates/podnet-netns` | A library: run a program with all its traffic sent through a proxy (`podnet pod`). |
 | `crates/podnet-vnet` | A library: the userspace virtual network (`podnet net`) and the C sources of its `LD_PRELOAD` shims. |
+| `crates/podnet-capi` | The C ABI: `include/podnet.h`, a shared library and a static library over the link. It is not a default member (see The C library). |
 
 ## Build
 
@@ -44,7 +45,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `icmp` | The ICMP echo carrier. | T-282 |
 | `ss` | The Shadowsocks service. | T-294 |
 | `trojan` | The Trojan service. | T-295 |
-| `c-abi` | The C ABI. | T-304 |
+| `c-abi` | The C ABI. The code is the crate `crates/podnet-capi` (see The C library), which does not turn the feature on: the feature gates no code. | T-304 |
 | `portable` | The portable subset. It takes code away. | T-305 |
 | `full` | `tcp`, `quic`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
 
@@ -66,6 +67,47 @@ cargo test --workspace --features full       # what the CI job features runs
 * `podnet::build_features` is the list (`OPTIONAL`, `FULL`), `built(NAME)`,
   `enabled()` and `require(NAME)` (the gate of a command: exit 69 with the
   feature name).
+
+## The C library
+
+`crates/podnet-capi` builds the C ABI of the link (T-304). The header is
+`include/podnet.h` at the root of the repository. The crate has the crate
+types `cdylib`, `staticlib` and `rlib`. The root crate has no `crate-type`:
+no other build makes a shared library. The crate is a member of the workspace
+and not a default member, so `cargo build --release` does not build it.
+
+```sh
+# The shared library (glibc target) and the static library:
+cargo build --release -p podnet-capi --target x86_64-unknown-linux-gnu
+#   target/x86_64-unknown-linux-gnu/release/libpodnet_capi.so  (soname libpodnet.so)
+#   target/x86_64-unknown-linux-gnu/release/libpodnet_capi.a
+# The static library for a static musl target:
+CC_x86_64_unknown_linux_musl=clang cargo rustc --release -p podnet-capi \
+  --target x86_64-unknown-linux-musl --crate-type staticlib
+```
+
+* The library crate is `podnet_capi`, so the files are `libpodnet_capi.so`
+  and `libpodnet_capi.a`. The soname of the shared library is
+  `libpodnet.so`. Copy the file to `libpodnet.so` to link with `-lpodnet`.
+* A `cdylib` does not build for a static musl target: `cargo build` drops the
+  crate type with the warning `dropping unsupported crate type cdylib`, and
+  builds the static library. The shared library is a glibc build. The static
+  library is the build for the musl target.
+* The shared library exports the 14 functions of `include/podnet.h` and no
+  other symbol: rustc hides each symbol that is not a `#[no_mangle]` item
+  of the crate. A second linker version script conflicts with the script of
+  rustc (`rust-lld: attempt to reassign symbol`), so the crate has none. A
+  static library keeps the other symbols of Rust; its interface is the
+  names `podnet_*`.
+* Link a program with the static library: `cc prog.c libpodnet_capi.a
+  -lpthread -lm -ldl`. Use `-I include`.
+* Tests: `cargo test -p podnet-capi` runs the tests of the crate and
+  `crates/podnet-capi/tests/c_abi.rs`. That test checks the symbols of the shared library and of
+  the static library against the header, builds `crates/podnet-capi/tests/c_abi.c` against both
+  libraries, and runs `crates/podnet-capi/tests/c_abi.py` (ctypes). A host without `nm`, `cc` or
+  `python3` prints `SKIP NAME: TOOL not found` for that test. The CI job
+  `c-abi` also runs the C test under AddressSanitizer and under valgrind (no
+  leak), and builds the static library for musl.
 
 ## Fuzz
 

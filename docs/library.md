@@ -36,5 +36,7 @@ handle.shutdown().await;
   `podnet::link_tcp` build a chain of `--egress` elements and the TCP carrier. `podnet::mesh_announce`,
   `podnet::mesh_table`, `podnet::link_announce` and `podnet::link_forward` are the mesh. `podnet::link_group` is the
   link group. [link.md](link.md) has each of them.
+* `crates/podnet-capi` is the C ABI of the link (`include/podnet.h`, `libpodnet.so`, `libpodnet.a`; [build.md](build.md), "The C
+  library"; [link.md](link.md), "The C library"). It is a C interface, not a stable Rust interface.
 * `podnet_netns::main_with_args` runs the command line of `podnet pod`. The modules
   `podnet_netns::upstream`, `socks`, `dns` and `tailscale` are also public.

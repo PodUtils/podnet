@@ -2777,6 +2777,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "podnet-capi"
+version = "0.4.0-beta.9"
+dependencies = [
+ "anyhow",
+ "podnet",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "podnet-core"
 version = "0.4.0-beta.9"
 dependencies = [
