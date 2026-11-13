@@ -7447,7 +7447,25 @@ COMMANDS
             target either: `--service http` makes this end an HTTP proxy
             (`CONNECT` and absolute form, one request for each stream, 8 KiB
             of head at most). A target is the name of another service of this
-            listener; there is no DNS lookup. Repeat it: 16 services at most
+            listener; there is no DNS lookup. Repeat it: 16 services at most.
+
+            A TARGET `exec:/ABS/PATH` runs a program for each stream (no
+            shell): its stdin and stdout are the stream and its stderr goes to
+            the log. Give its arguments with --exec-arg, its environment with
+            --exec-env (the environment is empty beyond the names given) and
+            its user with --exec-user (root only).
+
+        --exec-arg <NAME=ARG>
+            An argument of the program of the service NAME: NAME=ARG. Repeat
+            it for each argument, in order (64 at most for each service)
+
+        --exec-env <NAME=VAR>
+            A name of the environment that the program of the service NAME
+            gets from this process: NAME=VAR. No other variable passes
+
+        --exec-user <NAME=USER>
+            The user of the program of the service NAME: NAME=USER. It needs
+            root; without it the listener exits 64
 
         --control <PATH>
             The control socket (mode 0600, with the token file PATH.token).

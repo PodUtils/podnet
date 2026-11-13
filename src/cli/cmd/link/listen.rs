@@ -74,8 +74,26 @@ pub(crate) struct ListenArgs {
     /// each stream, 8 KiB of head at most). A target is the name of
     /// another service of this listener; there is no DNS lookup.
     /// Repeat it: 16 services at most.
+    ///
+    /// A TARGET `exec:/ABS/PATH` runs a program for each stream (no shell):
+    /// its stdin and stdout are the stream and its stderr goes to the log.
+    /// Give its arguments with --exec-arg, its environment with --exec-env
+    /// (the environment is empty beyond the names given) and its user with
+    /// --exec-user (root only).
     #[arg(long, value_name = "NAME=TARGET")]
     pub(crate) service: Vec<String>,
+    /// An argument of the program of the service NAME: NAME=ARG. Repeat it
+    /// for each argument, in order (64 at most for each service).
+    #[arg(long, value_name = "NAME=ARG")]
+    pub(crate) exec_arg: Vec<String>,
+    /// A name of the environment that the program of the service NAME gets
+    /// from this process: NAME=VAR. No other variable passes.
+    #[arg(long, value_name = "NAME=VAR")]
+    pub(crate) exec_env: Vec<String>,
+    /// The user of the program of the service NAME: NAME=USER. It needs
+    /// root; without it the listener exits 64.
+    #[arg(long, value_name = "NAME=USER")]
+    pub(crate) exec_user: Vec<String>,
     /// The control socket (mode 0600, with the token file PATH.token). The
     /// default is `link-PID.ctl` in the run directory of podnet. The ready
     /// document names it. `podnet link status` reads it.
@@ -120,6 +138,8 @@ enum Service {
     Socks5,
     /// Serve an HTTP proxy on the stream (`--service http`, T-292).
     Http,
+    /// Run a program for each stream (`--service NAME=exec:/PATH`, T-296).
+    Exec(podnet::link_exec::Spec),
 }
 
 impl std::fmt::Display for Service {
@@ -128,6 +148,7 @@ impl std::fmt::Display for Service {
             Service::Target(target) => write!(f, "{target}"),
             Service::Socks5 => f.write_str("socks5"),
             Service::Http => f.write_str("http"),
+            Service::Exec(spec) => write!(f, "{spec}"),
         }
     }
 }
@@ -171,11 +192,28 @@ fn services_of(args: &ListenArgs) -> Result<BTreeMap<String, Service>> {
                 "--service {name}: the service {name} takes no target: give `--service {name}`"
             )));
         }
-        let found = Service::Target(target(text, "--service")?);
+        let found = match text.strip_prefix(podnet::link_exec::PREFIX) {
+            Some(program) => Service::Exec(exec_of(args, name, program)?),
+            None => Service::Target(target(text, "--service")?),
+        };
         if out.insert(name.to_string(), found).is_some() {
             return Err(usage(format!(
                 "--service {name}: the service {name:?} has two targets (--to is the service raw)"
             )));
+        }
+    }
+    for (flag, list) in [
+        ("--exec-arg", &args.exec_arg),
+        ("--exec-env", &args.exec_env),
+        ("--exec-user", &args.exec_user),
+    ] {
+        for item in list {
+            let name = item.split_once('=').map_or("", |(n, _)| n);
+            if !matches!(out.get(name), Some(Service::Exec(_))) {
+                return Err(usage(format!(
+                    "{flag} {item:?}: give NAME=VALUE for a service NAME with an exec: target"
+                )));
+            }
         }
     }
     if args.announce && out.contains_key(announce::NAME) {
@@ -196,6 +234,37 @@ fn services_of(args: &ListenArgs) -> Result<BTreeMap<String, Service>> {
         )));
     }
     Ok(out)
+}
+
+/// The values of the flag `list` (NAME=VALUE) for the service `name`.
+fn values_of<'a>(list: &'a [String], name: &str) -> Vec<&'a str> {
+    list.iter()
+        .filter_map(|i| i.split_once('=').filter(|(n, _)| *n == name))
+        .map(|(_, v)| v)
+        .collect()
+}
+
+/// The program of the service `name`, from `--exec-*`.
+fn exec_of(args: &ListenArgs, name: &str, program: &str) -> Result<podnet::link_exec::Spec> {
+    let own = |list: &[String]| -> Vec<String> {
+        values_of(list, name)
+            .into_iter()
+            .map(String::from)
+            .collect()
+    };
+    let users = values_of(&args.exec_user, name);
+    if users.len() > 1 {
+        return Err(exit::fault(
+            Fault::Usage,
+            anyhow!("--exec-user: the service {name:?} has two users"),
+        ));
+    }
+    podnet::link_exec::Spec::new(
+        program,
+        own(&args.exec_arg),
+        own(&args.exec_env),
+        users.first().copied(),
+    )
 }
 
 pub(crate) async fn listen(mut args: ListenArgs) -> Result<()> {
@@ -389,6 +458,17 @@ async fn bridge(
     };
     let target = match found {
         Service::Target(target) => target,
+        Service::Exec(spec) => {
+            let running = match podnet::link_exec::start(&name, spec) {
+                Ok(running) => running,
+                Err((answer, err)) => {
+                    service::reply(stream, answer).await?;
+                    return Err(err);
+                }
+            };
+            service::reply(stream, service::OPEN).await?;
+            return running.pump(stream).await;
+        }
         Service::Socks5 => {
             service::reply(stream, service::OPEN).await?;
             return podnet::link_socks::serve(stream).await;

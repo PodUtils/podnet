@@ -64,7 +64,7 @@ LAYER = {
     "doctor": "podnet", "preflight": "podnet", "agent": "podnet", "agent_files": "podnet",
     "status": "podnet", "bug_report": "podnet", "manual": "podnet",
     "update": "podnet", "fuzzing": "podnet", "lib": "podnet", "networks": "podnet", "roads": "podnet", "forwards": "podnet", "router": "podnet",
-    "test_host": "podnet", "link": "podnet", "link_ctl": "podnet", "link_service": "podnet", "link_group": "podnet", "link_tcp": "podnet", "link_chain": "podnet", "link_alias": "podnet", "link_socks": "podnet", "link_http": "podnet", "exit_stdio": "podnet", "exit_stdio_tests": "podnet", "link_query": "podnet", "carriers": "podnet", "components": "podnet", "build_features": "podnet", "identity": "podnet", "hello": "podnet", "session": "podnet", "services": "core", "main": "podnet",
+    "test_host": "podnet", "link": "podnet", "link_ctl": "podnet", "link_service": "podnet", "link_group": "podnet", "link_tcp": "podnet", "link_chain": "podnet", "link_alias": "podnet", "link_socks": "podnet", "link_http": "podnet", "link_exec": "podnet", "exit_stdio": "podnet", "exit_stdio_tests": "podnet", "link_query": "podnet", "carriers": "podnet", "components": "podnet", "build_features": "podnet", "identity": "podnet", "hello": "podnet", "session": "podnet", "services": "core", "main": "podnet",
     "cli": "podnet",
     "mesh_table": "podnet", "link_announce": "podnet", "link_forward": "podnet", "mesh_announce": "podnet",
     # The modules of crates/podnet-core that are new there.

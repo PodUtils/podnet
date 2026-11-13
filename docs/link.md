@@ -23,7 +23,7 @@ podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of
 * `link listen ADDRESS --allow FILE` binds the address through the carrier. It prints the address (for the unix carrier: the
   path and its mode, 0600), the fingerprint of this install and the size of the allow list. `--service NAME=TARGET` (repeat it,
   16 at most) sets where the streams of the service NAME go; `--to TARGET` is `--service raw=TARGET`. A TARGET is `host:port` or
-  `unix:/path`. `--service socks5` (no target) makes this end the server side of SOCKS5 (see "The service `socks5`"). `--service http` (no target) makes this end an HTTP proxy (see "The service `http`"). A stream for a service that the listener does not have is refused (the opener exits 69). A second
+  `unix:/path`. `--service socks5` (no target) makes this end the server side of SOCKS5 (see "The service `socks5`"). `--service http` (no target) makes this end an HTTP proxy (see "The service `http`"). `--service NAME=exec:/ABS/PATH` runs a program for each stream (see "The service `exec`"). A stream for a service that the listener does not have is refused (the opener exits 69). A second
   listener at a live address exits 69. A regular file at the address exits 64 and stays. A stale socket file is replaced.
 * `link dial ADDRESS` connects, proves the key of this install, and checks the key of the listener. Give `--peer FINGERPRINT`
   (repeat it for more than one) or `--allow FILE`: the dialer trusts no listener by default (else exit 64). Then it copies stdin
@@ -103,6 +103,34 @@ no service runs.
 * There is no cache and no user and password. `http` takes no target: `--service http=TARGET` exits 64.
 
 Proof: `tests/link_http.rs`.
+
+### The service `exec`
+
+`--service NAME=exec:/ABS/PATH` runs one program for each stream of the service NAME. The stdin and the stdout of the program are the
+stream. The stderr of the program goes to the log (`tracing`, one record for each line), never to the stream. The peer is on the allow
+list before the stream opens.
+
+```sh
+podnet link listen ADDRESS --allow FILE \
+  --service tool=exec:/usr/local/bin/tool --exec-arg tool=--stdio --exec-arg tool=--quiet \
+  --exec-env tool=LANG --exec-user tool=nobody
+podnet link dial ADDRESS --peer FP --service tool
+```
+
+* The program is an absolute path to a file. A relative path, a `..` in the path, a missing file, and a program named `sh`, `bash`,
+  `dash`, `zsh`, `ash`, `ksh`, `mksh`, `csh`, `tcsh`, `fish` or `busybox` exit 64. No shell runs: the arguments are an array.
+* `--exec-arg NAME=ARG` adds one argument (repeat it for each argument, in order; 64 at most, 4096 bytes each). No word splitting or
+  expansion takes place.
+* The environment is empty. `--exec-env NAME=VAR` passes the variable VAR of the listener (repeat it; 32 at most). A variable that the
+  listener does not have is left out. The working directory is `/`.
+* `--exec-user NAME=USER` runs the program as USER, with no supplementary groups. It needs root: without root the listener exits 64.
+* The flags `--exec-*` for a service that has no `exec:` target exit 64.
+* At most 64 programs run at one time. A stream over the limit gets the answer 4 (the opener exits 69). A program that cannot start
+  gets the answer 2 (the opener exits 69).
+* When the program closes its stdout, the stream ends, and the program has 10 s to end (else it is killed). When the peer ends its side,
+  the stdin of the program closes. A reset stream kills the program. A program that ends with a fault is logged.
+
+Proof: `tests/service_exec.rs`. Not proven: `--exec-user` as root (the test runs without privilege and checks the refusal).
 
 ## The control socket
 
