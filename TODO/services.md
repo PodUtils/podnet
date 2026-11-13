@@ -2032,7 +2032,7 @@ rule today) when the shadowed action is `reject` and the flag that allows it is 
 - `src/warp/rules.rs:1-12` documents that the first rule that matches wins. `Table::build`
   (src/warp/rules.rs:100 at `9c1fc4b`) joins the flags and the file and compares nothing. `for_name`
   (src/warp/rules.rs:122-129 at `9c1fc4b`) takes `.find`.
-- The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:242-262`) is the same loop;
+- The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:111-148`) is the same loop;
   `domain_matches` (`crates/podnet-netns/src/rules.rs:199-206`): `NAME` matches the name only, `.NAME`
   matches the name and each name under it.
 - `warp proxy --check` is handled in `src/cli/cmd/warp/front.rs:25-41` (the flag `check: bool` is in the
@@ -2304,7 +2304,7 @@ time (the DNS bind error shows in the log, not in the answer); a flow through a 
 **Milestone:** M6
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2343,6 +2343,25 @@ cargo test --workspace -- rules_port
 pods of podnet read the frozen `crates/podnet-netns/src/rules.rs`, not `pod-warp`'s reader: the work moves them onto
 `pod_warp`'s `Table` and `RuleMatch` (the freeze of that file ends with it), and changes `rules/shadow.rs` for the kinds
 `port:` and `tcp:`.
+
+## Done
+
+2026-11-13, commit 163ab15. The doors, the router and the pods read the matcher of `pod-warp`
+(`pod_warp::rules::matcher`): `crates/podnet-netns/src/rules.rs` re-exports `RuleMatch`, `Net`, `TcpHost`,
+`load_nets`, `domain_matches` and `in_cidr`, and keeps only the action, the rule and `select_chain`. This ends
+the freeze of that file (the file of `pod-warp`): there is one reader. A CONNECT passes its port to
+`RuleMatch::matches`; a datagram flow passes `None` (`select_chain_udp`, `Matcher::matches_datagram` of
+`podnet-core`, used by the UDP flows of a router guest). `Rule.matcher` is an `Option` (`None`: the rule of
+`--default-action reject`). `rules/shadow.rs` covers `port:` and `tcp:`: a `cidr:` or `domain:` rule covers a
+`tcp:` rule of an address or a name it contains; a port range covers a port or a smaller range in it; `tcp:` covers
+the same `tcp:`. The old rules files load unchanged (`domain:` and `cidr:` kinds are the same code as `pod-warp`).
+Docs: `docs/router.md`, `docs/pods.md`, `crates/podnet-netns/README.md`, the help of `-r`, `llms-full.txt`.
+Tests: `rules_port_router_door_sends_a_loopback_port_to_its_way` (`src/router/tests.rs`: `tcp:127.0.0.1:5432=home`
+goes to `home`, `127.0.0.1:5433` does not), `rules_port_tcp_rule_picks_the_way_of_a_loopback_port` (door of a
+pod), `rules_port_rules_match_the_port_of_the_target`, `rules_port_pod_rule_matches_the_port_of_the_target`,
+`rules_port_shadow_check_covers_port_and_tcp_rules`. With the port forced to `None` the door and the
+`select_chain` tests fail. Not proven: a `seccomp` pod with `--loopback-rules` end to end with a program; the
+`netns` backend with a `tcp:` rule.
 
 # T-329: `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3)
 
