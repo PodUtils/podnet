@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 31 open, 21 partial, 41 blocked, 238 done.**
+**331 entries: 30 open, 22 partial, 41 blocked, 238 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 18 | 9 | 11 | 130 | 168 |
-| P3 | 13 | 11 | 28 | 80 | 132 |
-| **All** | 31 | 21 | 41 | 238 | 331 |
+| P3 | 12 | 12 | 28 | 80 | 132 |
+| **All** | 30 | 22 | 41 | 238 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -342,7 +342,7 @@ M8 Overlays, M9 Later.
 | [T-294](link.md) | P3 | M | M9 | feature | blocked | link: a Shadowsocks AEAD service at a peer (GitHub #471) |
 | [T-295](link.md) | P3 | M | M9 | feature | blocked | link: a Trojan service at a peer (GitHub #471) |
 | [T-296](link.md) | P3 | M | M9 | feature | done | link: an exec adapter that runs a program for each stream (GitHub #471) |
-| [T-297](link.md) | P3 | M | M9 | feature | open | link: serve a file tree at a peer (GitHub #471) |
+| [T-297](link.md) | P3 | M | M9 | feature | partial | link: serve a file tree at a peer (GitHub #471) |
 | [T-298](link.md) | P3 | L | M9 | feature | blocked | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
 | [T-299](link.md) | P3 | S | M9 | feature | blocked | link: snappy compression of records (GitHub #472) |
 | [T-300](link.md) | P3 | S | M9 | feature | blocked | link: padding of records to buckets (GitHub #472) |

@@ -1876,7 +1876,7 @@ Not proven: `--exec-user` as root (the test runs as root in one session and skip
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1912,6 +1912,17 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-266 is done.
+
+## Correction
+
+2026-11-13: the entry is `partial`. The way in is `podnet serve DIR --at peer:FINGERPRINT/SERVICE --at-listen ADDRESS`, not a kind `peer` of `--ingress`: a link has a listener that accepts streams and a connector that only opens them (T-266), so the serving process must be the listener, and `--at-listen` gives its address. The kind `peer:FP/NAME` of `--ingress` and the form `--name` of the issue are left: `--name` names the instance of `serve` (`--detach`), and a live name of a link is T-308. The call "the way in stays `--ingress`" of 2026-11-12 is not followed; the owner can rule otherwise.
+
+## Done
+
+2026-11-13, commit 7e7a87d. `src/cli/cmd/serve_at.rs`: `--at peer:FP/SERVICE` with `--at-listen ADDRESS` runs the router of the file server of `podnet serve` (`podnet::files::router`, no second server) on a unix socket in a private directory (mode 0700, removed at the end), and runs `link listen` in the process (`ListenArgs` parsed from a list, so a new flag of `link listen` needs no change here) with the allow list `{FP}` and the service SERVICE whose target is that socket. Index, range, `HEAD`, `--list`, `--spa`, `--tar`, `--upload`, `--users` and `--pin` are the ones of the file server; a directory has no listing unless `--list` is given. A bad spec, `--at` without `--at-listen`, and `--at` with `--ingress`, `--pair`, `--local` or `--check` exit 64. `docs/serve.md` has "Serve at a peer (`--at`)"; `docs/link.md` points to it.
+`cargo test --test service_serve_at`: 8 passed: `a_get_of_a_file_answers_the_bytes`, `a_directory_with_an_index_answers_the_index`, `a_range_answers_206_with_the_bytes_of_the_range`, `a_head_answers_the_head_and_no_body`, `a_directory_has_no_listing_by_default`, `a_listing_comes_only_with_list`, `a_peer_that_is_not_the_one_of_at_is_refused` (exit 77), `at_needs_at_listen_and_a_good_spec`. Without the change 7 of the 8 failed (`error: unexpected argument '--at' found`). `cargo test --lib serve_at`: 1 passed. `sh scripts/agent/check.sh`: all 0 (the record step after `cargo todo remap` of `TODO/fixes.md`).
+Not proven: the kind `peer` of `--ingress` and `--name` (see the Correction); a carrier that crosses a network; uploads and users on a link stream (the router is the same, no test).
+
 
 # T-298: link: the AEAD record layer with negotiated suite and rekey (GitHub #472)
 
