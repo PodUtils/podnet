@@ -1083,8 +1083,8 @@ jobs:
             echo "the box passed a planted binary"; exit 1
           fi
       # T-101: the router with a WARP member, a relay member and a group.
-      # WARP answers warp=on, the relay warp=off. With TCP 443 to the MASQUE
-      # front door refused, the group fails over to the relay. The step
+      # Each door answers. With TCP 443 to the MASQUE front door refused, the
+      # member w goes down and the group carries the flows through the relay. The step
       # registers its own device (owner, 2026-11-05) and deletes it.
       - name: Router with WARP, the relay and a failover
         timeout-minutes: 10
@@ -1133,22 +1133,39 @@ jobs:
               via: g
           EOF
           target/release/podnet route --config router.yml --detach --name router > /dev/null
+          # The relay's own exit is Cloudflare too (warp=on): the state of the
+          # router, not the trace, tells the members apart.
           trace() { curl -fsS --max-time 30 -x "socks5h://127.0.0.1:$1" https://one.one.one.one/cdn-cgi/trace | grep '^warp=' || true; }
-          test "$(trace 18301)" = warp=on
-          test "$(trace 18302)" = warp=off
-          target/release/podnet route --status "unix:$RUNNER_TEMP/router.ctl" | sed -E 's/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<ip>/g'
-          # The front door refuses: the group takes the relay.
+          health() {
+            target/release/podnet route --status "unix:$RUNNER_TEMP/router.ctl" --json |
+              jq -r --arg m "$1" '.groups[0].members[] | select(.name == $m) | .health'
+          }
+          for door in 18301 18302 18303; do
+            got=$(trace $door)
+            echo "door $door: ${got:-no answer}"
+            [ -n "$got" ] || { target/release/podnet logs router 2>&1 | tail -30; exit 1; }
+          done
+          i=0
+          until [ "$(health w)" = up ]; do
+            i=$((i + 1)); [ "$i" -le 12 ] || { echo "w is $(health w), not up"; exit 1; }
+            sleep 5
+          done
+          # The front door refuses: w goes down, and the group carries the
+          # flows through r.
           sudo iptables -I $rule
           i=0
-          until [ "$(trace 18303)" = warp=off ]; do
+          until [ "$(health w)" = down ]; do
             i=$((i + 1))
             if [ "$i" -gt 18 ]; then
               target/release/podnet route --status "unix:$RUNNER_TEMP/router.ctl"
-              echo "the group did not fail over to the relay in 90 s"; exit 1
+              echo "w did not go down in 90 s"; exit 1
             fi
             sleep 5
           done
-          echo "the group failed over to the relay after about $(( i * 5 )) s"
+          echo "w is down after about $(( i * 5 )) s; r is $(health r)"
+          got=$(trace 18303)
+          echo "the group after the failover: ${got:-no answer}"
+          [ -n "$got" ] || { echo "the group carried no flow after the failover"; exit 1; }
           sudo iptables -D $rule
       - name: Remove the WARP device
         if: always()
