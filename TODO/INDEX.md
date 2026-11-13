@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 43 open, 22 partial, 30 blocked, 236 done.**
+**331 entries: 40 open, 22 partial, 33 blocked, 236 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 18 | 9 | 11 | 130 | 168 |
-| P3 | 25 | 12 | 17 | 78 | 132 |
-| **All** | 43 | 22 | 30 | 236 | 331 |
+| P3 | 22 | 12 | 20 | 78 | 132 |
+| **All** | 40 | 22 | 33 | 236 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -344,9 +344,9 @@ M8 Overlays, M9 Later.
 | [T-296](link.md) | P3 | M | M9 | feature | open | link: an exec adapter that runs a program for each stream (GitHub #471) |
 | [T-297](link.md) | P3 | M | M9 | feature | open | link: serve a file tree at a peer (GitHub #471) |
 | [T-298](link.md) | P3 | L | M9 | feature | blocked | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
-| [T-299](link.md) | P3 | S | M9 | feature | open | link: snappy compression of records (GitHub #472) |
-| [T-300](link.md) | P3 | S | M9 | feature | open | link: padding of records to buckets (GitHub #472) |
-| [T-301](link.md) | P3 | M | M9 | feature | open | link: the replay window and the RESUME record (GitHub #472) |
+| [T-299](link.md) | P3 | S | M9 | feature | blocked | link: snappy compression of records (GitHub #472) |
+| [T-300](link.md) | P3 | S | M9 | feature | blocked | link: padding of records to buckets (GitHub #472) |
+| [T-301](link.md) | P3 | M | M9 | feature | blocked | link: the replay window and the RESUME record (GitHub #472) |
 | [T-302](link.md) | P3 | L | M9 | feature | open | link: split one session across an up carrier and a down carrier (GitHub #473) |
 | [T-303](link.md) | P3 | M | M9 | feature | done | link: chain composition with a peer element and --check (GitHub #473) |
 | [T-304](link.md) | P3 | L | M9 | feature | open | link: a C ABI with a header, a shared library and a static library (GitHub #474) |

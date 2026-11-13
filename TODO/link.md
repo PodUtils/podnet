@@ -1927,7 +1927,7 @@ T-086 is done (the take of `pod-e2e`), and T-262 is done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1956,6 +1956,11 @@ cargo test --test link_compress
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The entry adds a feature to the records of the AEAD record layer, T-298, which is blocked on `pod-e2e` of
+PodUtils/podcrates (ask A3). COORD-064 (GitHub #521) asks podcrates for its order.
+
 ## Start condition
 
 T-298 and T-306 are done.
@@ -1967,7 +1972,7 @@ T-298 and T-306 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1995,6 +2000,11 @@ cargo test --test link_pad
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The entry adds a feature to the records of the AEAD record layer, T-298, which is blocked on `pod-e2e` of
+PodUtils/podcrates (ask A3). COORD-064 (GitHub #521) asks podcrates for its order.
+
 ## Start condition
 
 T-298 and T-306 are done.
@@ -2006,7 +2016,7 @@ T-298 and T-306 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -2033,6 +2043,11 @@ The rules of the issue that apply to this row:
 cargo test --test link_replay
 sh scripts/agent/check.sh
 ```
+
+## Blocker
+
+The entry adds a feature to the records of the AEAD record layer, T-298, which is blocked on `pod-e2e` of
+PodUtils/podcrates (ask A3). COORD-064 (GitHub #521) asks podcrates for its order.
 
 ## Start condition
 

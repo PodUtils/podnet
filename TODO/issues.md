@@ -170,7 +170,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #472 | link: record layer (AEAD, compression, padding, replay and resume) (E6) | open | T-298, T-299, T-300, T-301 |
 | #473 | link: direction split and chain composition (E7) | open | T-302, T-303 |
 | #474 | link: C ABI (E8) | open | T-304 |
-| #475 | link: portable build subset (E9) | open | T-305 |
+| #475 | link: portable build subset (E9) | closed (not planned: the owner, 2026-11-12, Linux only) | T-305 |
 | #476 | link: CLI query keys, control plane, aliases, dump, components and build features (E10) | open | T-306, T-307, T-308, T-309, T-310, T-311 |
 | #477 | COORD-046: podnet took v0.28.0 at b08e06f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #478 | COORD-047: podnet took v0.29.0 and pod-hold syn-hold at 98d8a71 (to podcrates) | closed (a COORD issue between sessions) | none |
@@ -212,5 +212,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #518 | COORD-061: port rules in the rules reader of pod-warp: port:N=WAY and tcp:HOST:PORT=WAY (podnet T-328; ask N-2 of podswarm) (to podcrates) | open (a COORD issue between sessions) | none |
 | #519 | COORD-062: podnet took v0.35.0 at 5562f21 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #520 | COORD-063: podnet took v0.36.0 at 775486f (to podcrates) | closed (a COORD issue between sessions) | none |
+| #521 | COORD-064: what podnet waits for to close its issues: the datagram carriers of pod-link, pod-e2e, pod-wormhole, pod-warp's freeze and the others (to podcrates) | open (a COORD issue between sessions) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
