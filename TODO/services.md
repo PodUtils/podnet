@@ -2248,7 +2248,7 @@ Not proven: the run of the step on a GitHub runner; the first run of `live` afte
 **Milestone:** M6
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2280,6 +2280,19 @@ fallback in podswarm, and no milestone of podswarm waits for it. The owner can r
 ```sh
 cargo test --test router_control -- door_add_remove
 ```
+
+## Done
+
+2026-11-13, commit 361060d. The control socket of `podnet route` has the verbs `add-door`, `remove-door`,
+`add-network` and `remove-network` (`src/router/change.rs`, `src/router/live.rs`), and `podnet route --control` has
+the flags `--add-door`, `--remove-door`, `--add-network` and `--remove-network`. A door takes the keys of a door of the
+file, as JSON or as YAML. A network of the file or an added network can be removed when no group, door or guest uses
+it; else the answer is 409 and the exit code is 64. Each door counts flows, open flows and bytes
+(`src/router/door_stats.rs`); `--status` and `--metrics` show them (`podnet_route_door_*`). A removed door stops its
+listener; its open flows and the flows of the other doors go on. `cargo test --test router_control`: 3 passed
+(`door_add_remove`, `network_add_remove`, `route_control_flags_add_and_remove`). With the verb `add-door` disabled,
+`door_add_remove` fails (404). `sh scripts/agent/check.sh`: exit 0. Not proven: a door with a `dns` key added at run
+time (the DNS bind error shows in the log, not in the answer); a flow through a `rules` door over an added network.
 
 # T-328: Router: rules by port, also on the loopback (N-2)
 
