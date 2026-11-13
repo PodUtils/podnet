@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**335 entries: 16 open, 14 partial, 26 blocked, 279 done.**
+**335 entries: 16 open, 13 partial, 26 blocked, 280 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
-| P2 | 6 | 6 | 11 | 145 | 168 |
+| P2 | 6 | 5 | 11 | 146 | 168 |
 | P3 | 10 | 7 | 13 | 104 | 134 |
-| **All** | 16 | 14 | 26 | 279 | 335 |
+| **All** | 16 | 13 | 26 | 280 | 335 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -57,7 +57,7 @@ M8 Overlays, M9 Later.
 | [T-009](record.md) | P1 | S | M0 | chore | done | A size check: at most 800 lines in each source file, with an allowlist that can only shrink |
 | [T-010](record.md) | P1 | M | M0 | chore | done | A layer check: no module refers to a module of a higher layer, with an allowlist of 18 references that can only shrink |
 | [T-011](record.md) | P2 | M | M0 | chore | done | Loopback tests for the commands that have no behaviour test, before the splits |
-| [T-012](record.md) | P2 | L | M0 | chore | partial | WARP stand-ins on the loopback: the registration API and a MASQUE edge, with tests of the WARP commands |
+| [T-012](record.md) | P2 | L | M0 | chore | done | WARP stand-ins on the loopback: the registration API and a MASQUE edge, with tests of the WARP commands |
 | [T-013](record.md) | P2 | S | M0 | chore | done | A daily check that the record's list of GitHub numbers agrees with GitHub |
 | [T-014](record.md) | P2 | S | M0 | docs | done | The milestones M0 to M9 in a roadmap, and the open work of the maintenance page in the record |
 | [T-015](record.md) | P3 | S | M2 | chore | done | CI checks that each pushed commit moved the citations of the files that it changed |

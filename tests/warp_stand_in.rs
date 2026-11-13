@@ -437,4 +437,177 @@ mod through_the_edge {
         .unwrap();
         assert!(got.0, "the echo through the forward: {}", got.1);
     }
+
+    /// The port inside the tunnel that the edge carries to the HTTP server.
+    const HTTP_TCP: u16 = 9080;
+
+    /// The body of the HTTP server behind the edge.
+    const BODY: &str = "warp shell reached the edge";
+
+    /// An HTTP server on the loopback that answers each request with
+    /// [`BODY`].
+    async fn http_server() -> SocketAddr {
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            while let Ok((mut s, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut buf = [0u8; 4096];
+                    let mut head = Vec::new();
+                    while !head.windows(4).any(|w| w == b"\r\n\r\n") {
+                        match s.read(&mut buf).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(n) => head.extend_from_slice(&buf[..n]),
+                        }
+                    }
+                    let answer = format!(
+                        "HTTP/1.1 200 OK\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{BODY}",
+                        BODY.len()
+                    );
+                    let _ = s.write_all(answer.as_bytes()).await;
+                    let _ = s.shutdown().await;
+                });
+            }
+        });
+        addr
+    }
+
+    /// `podnet warp ARGS` with the edge as the front door and the run
+    /// directory of the world, with `envs` added.
+    fn warp_cmd(world: &World, edge: SocketAddr, args: &[&str]) -> Command {
+        let identity = world.identity();
+        let mut command = Command::new(env!("CARGO_BIN_EXE_podnet"));
+        command
+            .args([
+                "warp",
+                "--no-proxy",
+                "--identity",
+                identity.to_str().unwrap(),
+            ])
+            .args(["--masque-endpoint", &edge.to_string()])
+            .args(args)
+            .env("PODNET_WARP_API", format!("http://{}", world.served.addr()))
+            .env("PODNET_STATE_DIR", world.dir.path().join("state"))
+            .env("PODNET_RUN_DIR", world.dir.path().join("run"))
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .env_remove("ALL_PROXY")
+            .env_remove("all_proxy")
+            .env_remove("HTTPS_PROXY")
+            .env_remove("https_proxy")
+            .env_remove("HTTP_PROXY")
+            .env_remove("http_proxy")
+            .env_remove("NO_PROXY")
+            .env_remove("no_proxy")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        command
+    }
+
+    /// Stops the `warp up` of the world at the end of the test.
+    struct Down<'a>(&'a World, SocketAddr);
+
+    impl Drop for Down<'_> {
+        fn drop(&mut self) {
+            let _ = warp_cmd(self.0, self.1, &["down"]).output();
+        }
+    }
+
+    /// `warp up` over the edge stand-in, then `warp shell` with `$SHELL` a
+    /// script: the script runs `curl` to a route of the edge. Under the pod
+    /// the connection goes through the socket of `warp up`; when the pod
+    /// cannot start, the shell gets the proxy variables of the env file and
+    /// curl reads them. Both ways reach the HTTP server behind the edge.
+    /// The test prints the way that ran (the backend line of the pod, or
+    /// the line of the shell with no pod).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn warp_stand_in_shell_runs_a_command_that_reaches_the_edge() {
+        test_host::need_loopback!();
+        shell_reaches_the_edge("auto").await;
+    }
+
+    /// The same with the seccomp backend of the pod.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn warp_stand_in_shell_with_the_seccomp_backend_reaches_the_edge() {
+        test_host::need_loopback!();
+        shell_reaches_the_edge("seccomp").await;
+    }
+
+    async fn shell_reaches_the_edge(backend: &'static str) {
+        let Ok(curl) = which("curl") else {
+            eprintln!("skipping, this host has no curl");
+            return;
+        };
+        let world = World::new();
+        let http = http_server().await;
+        let edge = Edge::start(
+            world.api.clone(),
+            vec![Route {
+                port: HTTP_TCP,
+                outside: http,
+            }],
+        )
+        .await;
+        world.api.serve_key(&edge.pem());
+        let addr = edge.addr;
+        let (up, shell, files) = tokio::task::spawn_blocking(move || {
+            let port = free_port().to_string();
+            let up = warp_cmd(&world, addr, &["up", "--port", &port]).output().unwrap();
+            let _down = Down(&world, addr);
+            let out = world.dir.path().join("out");
+            std::fs::create_dir(&out).unwrap();
+            let script = world.dir.path().join("shell.sh");
+            std::fs::write(
+                &script,
+                format!(
+                    "#!/bin/sh\n\
+                     out={out}\n\
+                     echo \"$PODNET_WARP_SHELL\" > \"$out/var\"\n\
+                     env | grep -i '^all_proxy=' > \"$out/proxy\"\n\
+                     {curl} -sS -m 20 http://203.0.113.9:{HTTP_TCP}/ > \"$out/body\" 2> \"$out/err\"\n\
+                     echo $? > \"$out/code\"\n",
+                    out = out.display(),
+                    curl = curl.display(),
+                ),
+            )
+            .unwrap();
+            use std::os::unix::fs::PermissionsExt as _;
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+            let shell = warp_cmd(&world, addr, &["shell", "--backend", backend])
+                .env("SHELL", &script)
+                .output()
+                .unwrap();
+            let read = |name: &str| std::fs::read_to_string(out.join(name)).unwrap_or_default();
+            let files = ["var", "proxy", "body", "err", "code"].map(read);
+            (up, shell, files)
+        })
+        .await
+        .unwrap();
+        let [var, proxy, body, err, code] = files;
+        assert!(
+            up.status.success(),
+            "warp up: {}{}",
+            text(&up.stdout),
+            text(&up.stderr)
+        );
+        let said = text(&shell.stderr);
+        if code.is_empty() && !said.contains(" backend: ") && !said.contains("no pod") {
+            eprintln!("skipping, the pod of warp shell cannot run on this host: {said}");
+            return;
+        }
+        eprintln!("warp shell said: {said}");
+        eprintln!("the shell saw: {proxy}");
+        assert_eq!(var.trim(), "1", "the shell has PODNET_WARP_SHELL: {said}");
+        assert_eq!(code.trim(), "0", "curl: {err}; warp shell: {said}");
+        assert_eq!(body, BODY, "warp shell: {said}");
+    }
+
+    fn which(name: &str) -> Result<std::path::PathBuf, ()> {
+        let path = std::env::var_os("PATH").ok_or(())?;
+        std::env::split_paths(&path)
+            .map(|d| d.join(name))
+            .find(|p| p.is_file())
+            .ok_or(())
+    }
 }

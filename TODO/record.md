@@ -231,7 +231,7 @@ passed. Plant: `return Ok(())` at the start of each of the five arms in `src/mai
 **Milestone:** M0
 **Priority:** P2
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -324,6 +324,9 @@ down"), and the plant `warp_stand_in_proxy_refuses_an_edge_with_another_key` (th
 no CONNECT goes through). `cargo test --test warp_stand_in`: 10 passed, three runs in a row.
 
 CI: ci 43471936738, deny 43471944208, secrets 43471952954 and live 43471960138 on 6f8e69e passed (GitHub #531).
+
+2026-11-13, `warp shell`, commit COMMIT. `tests/warp_stand_in.rs`, module `through_the_edge`: `warp up --port PORT` with `--masque-endpoint` at the edge stand-in, `PODNET_WARP_API` at the API stand-in and `PODNET_STATE_DIR` and `PODNET_RUN_DIR` in a temporary directory; then `warp shell --backend B` with `$SHELL` a script that runs `curl` to `http://203.0.113.9:9080/`, a route of the edge to an HTTP server on the loopback; then `warp down`. The proxy variables of the host are removed from the environment of each command. Measured on this host (root, user and network namespaces and TUN allowed): with `auto` the pod ran the netns backend, with `seccomp` the seccomp backend; in both the script got `PODNET_WARP_SHELL=1`, no proxy variable, and the body of the server (curl exit 0). On a host where the pod cannot start, `warp shell` starts the shell with no pod and the proxy variables of the env file, and the same assertions hold; when the script does not run at all, the test prints `skipping, ...`. `cargo test --test warp_stand_in`: 12 passed, three runs in a row (new: `warp_stand_in_shell_runs_a_command_that_reaches_the_edge`, `warp_stand_in_shell_with_the_seccomp_backend_reaches_the_edge`). Plant: the API serves the key of another edge: `warp up` does not come up, and both new tests fail. `sh scripts/agent/check.sh`: each step 0.
+Not proven: the branch of `warp shell` with no pod and the proxy variables of the env file (this host runs the pod; the branch needs a `warp up` whose socket is gone and whose env file stays).
 
 # T-013: A daily check that the record's list of GitHub numbers agrees with GitHub
 
