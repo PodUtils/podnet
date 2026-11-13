@@ -179,8 +179,22 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #481 | COORD-050: podnet took v0.30.0 and pod-relay at 83e0c93 (to podcrates) | open (a COORD issue between sessions) | none |
 | #482 | COORD-051: two gaps of pod-relay after the take (pair renewal, pair on a second host) and the edge budget (to podcrates) | closed (a COORD issue between sessions) | none |
 | #483 | live: two runs in a row failed | closed | T-315 |
+| #484 | [DEFERRED] Carry a session in NTPv4 extension fields, SMTP and IMAP | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #485 | [DEFERRED] Carry a session through a TURN allocation, with RFC 6062 | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #486 | [DEFERRED] Close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #489 | [DEFERRED] Register third-party services as roads, with a watch, a date and a count | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #491 | [DEFERRED] Switch after a real handshake, with a cover script and multiplexed cover | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #493 | [DEFERRED] Shape the record layer: padding profiles, entropy, first flight, pacing | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #494 | [DEFERRED] Shape the application: deferred responses, a generator, carriers in the payload | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #495 | [DEFERRED] Add a packet sidecar: desync search, disagreement probe, fake TCP, bonding | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #496 | [DEFERRED] Keep the session end to end: opaque destination and keys from the ends | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #497 | [DEFERRED] Make the pool live, the budget per deployment, tokens expiring, hosts movable | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #498 | [DEFERRED] Resume a session across hours, and serve the full service surface at a peer | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #499 | [DEFERRED] Carry a session with no network: serial, HF, spool, discovery, pairing | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #500 | [DEFERRED] State the host runtime: no open port, classified egress, stated limits | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
+| #501 | [DEFERRED] Build the verification harness: classifier, exit codes, conformance matrix | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
 | #502 | COORD-052: podnet took v0.31.0 at e046560; relay connect hangs on a direct runner after the take of pod-relay (to podcrates) | closed (a COORD issue between sessions) | none |
-| #503 | net: add a Dev Tunnels network for TCP streams | open (blocked: `pod-devtunnel` of podcrates) | T-320 |
+| #503 | net: add a Dev Tunnels network for TCP streams | open (T-320 is done; the issue waits for its close) | T-320 |
 | #504 | doctor: resolve the ssh-relay probe through the configured proxy | closed | T-322 |
 | #505 | ssh-relay: try the authentication methods the relay offers | closed | T-318 |
 | #506 | ssh-relay: take the remote port from the service data | closed (T-319, commit 3e4c999) | T-319 |
@@ -199,4 +213,4 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #519 | COORD-062: podnet took v0.35.0 at 5562f21 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #520 | COORD-063: podnet took v0.36.0 at 775486f (to podcrates) | open (a COORD issue between sessions) | none |
 
-#318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
+#312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
