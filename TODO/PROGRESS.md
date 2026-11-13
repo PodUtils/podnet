@@ -1,17 +1,17 @@
 # Progress
 
-`TODO/INDEX.md` holds 333 entries: 20 open, 15 partial, 32 blocked, 266 done.
+`TODO/INDEX.md` holds 333 entries: 26 open, 15 partial, 26 blocked, 266 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.39.0`: `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.40.0`: `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp` and `pod-testkit`.
-  Next (PodUtils/podcrates#133): `v0.40.0` (the rest of the carriers, TURN over TCP, `pod-wormhole`), then
-  `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session
+  `v0.40.0` also holds `pod-wormhole` (the transfer, T-102 to T-106; podnet does not use it yet). Next
+  (PodUtils/podcrates#133): `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session
   reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `src/warp/` (glue over `pod-warp`), `src/cloudflare/`, `src/proxy.rs`,
   `src/tunnel.rs`, `crates/podnet-netns/src/rules.rs` and `tests/test_host/mod.rs` (in `pod-testkit`).
@@ -71,7 +71,7 @@ not wait for a larger one.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-326 (a release of `russh` that takes `rsa` 0.10.0); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-294, T-295.
-12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-271 to T-305 in `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws and h2 are done, and the record layer of E6; T-271 to T-273 and T-276 (UDP with KCP) are takes of `pod-link`, blocked until podcrates releases them (PodUtils/podcrates#133); T-277 (the ARQ) is open: `pod_link::arq` is in v0.39.0. Go on with the datagram carriers T-278 to T-280, the mesh (T-287), the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
+12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-271 to T-305 in `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws and h2 are done, and the record layer of E6; the carriers poll, quic, udp and dns are in `pod-link` at v0.40.0 (taken, 1c88531): T-271 to T-273, T-276, T-278 and T-280 are glue now (open); T-277 (the ARQ) is open: `pod_link::arq` is in v0.39.0. Go on with the carriers T-271 to T-280 (T-279 waits for an object store), the mesh (T-287), the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).

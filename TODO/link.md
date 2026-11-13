@@ -605,7 +605,7 @@ Not proven: a host that denies TCP loopback; a link over a proxy chain; the resu
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -635,15 +635,13 @@ cargo test --test link_poll
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 422 in the record of podcrates (the long-poll, SSE and chunked-stream carriers) (PodUtils/podcrates#106, 2026-11-13). It
-comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
-
 ## Start condition
 
 T-268 is done (the secure stream).
 
+## Correction
+
+2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
 # T-272: link: the SSE and chunked-stream carrier (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-5.
@@ -651,7 +649,7 @@ T-268 is done (the secure stream).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -680,15 +678,13 @@ cargo test --test link_sse
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 422 in the record of podcrates (the long-poll, SSE and chunked-stream carriers) (PodUtils/podcrates#106, 2026-11-13). It
-comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
-
 ## Start condition
 
 T-268 and T-271 are done.
 
+## Correction
+
+2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
 # T-273: link: the QUIC carrier (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-6.
@@ -696,7 +692,7 @@ T-268 and T-271 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -725,15 +721,13 @@ cargo test --test link_quic --features quic
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 423 in the record of podcrates (the QUIC carrier over `pod-quic`) (PodUtils/podcrates#106, 2026-11-13). It
-comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
-
 ## Start condition
 
 T-268 is done (the verifier) and T-311 is done (the feature).
 
+## Correction
+
+2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
 # T-274: link: the unix-socket carrier and its socketpair half (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-7.
@@ -842,7 +836,7 @@ Not proven: the CI jobs `restricted-host` and `no-loopback` (not run here; the t
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -873,11 +867,6 @@ cargo test --test link_udp
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 424 in the record of podcrates (the UDP carrier with KCP) (PodUtils/podcrates#106, 2026-11-13). It
-comes after the rest of `pod-warp`, at a later tag; the hand-off names it.
-
 ## Start condition
 
 T-277 is done (or lands in the same change), and T-262 and T-264 are done.
@@ -888,6 +877,7 @@ T-277 is done (or lands in the same change), and T-262 and T-264 are done.
 
 2026-11-13, the lead (PodUtils/podcrates#138, answered in GitHub #527): the congestion window of KCP is the default (`nodelay` off). The 5 % gate runs with the default; the 20 % gate runs with `nodelay` on, with the bound that a release build holds. `--carrier udp` takes `?kcp-nodelay=1`.
 
+2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
 # T-277: link: a selective-repeat ARQ for any lossy carrier (GitHub #468)
 
 **Source:** GitHub #468 (https://github.com/PodUtils/podnet/issues/468), row E2-2.
@@ -942,7 +932,7 @@ T-262 and T-264 are done. The rekey part waits for T-298.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -972,15 +962,13 @@ cargo test --test link_dns
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 493 in the record of podcrates (PodUtils/podcrates#133,
-2026-11-13; estimate: tag `v0.39.0`).
-
 ## Start condition
 
 T-277, T-262 and T-264 are done. Ask A10 is answered.
 
+## Correction
+
+2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
 # T-279: link: the object-storage simplex carrier (GitHub #468)
 
 **Source:** GitHub #468 (https://github.com/PodUtils/podnet/issues/468), row E2-4.
@@ -1037,7 +1025,7 @@ T-277, T-262, T-264 and T-311 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1066,15 +1054,13 @@ cargo test --test link_httppoll
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 495 in the record of podcrates (PodUtils/podcrates#133,
-2026-11-13; estimate: tag `v0.39.0`).
-
 ## Start condition
 
 T-271, T-277 and T-264 are done.
 
+## Correction
+
+2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
 # T-281: link: the DNS stream carrier with a pipelined query window (GitHub #469)
 
 **Source:** GitHub #469 (https://github.com/PodUtils/podnet/issues/469), row E3-1.
