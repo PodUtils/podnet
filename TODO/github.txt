@@ -86,7 +86,7 @@
 381 pull closed
 382 pull closed
 383 pull closed
-384 issue open
+384 issue closed
 385 issue closed
 386 issue closed
 387 issue closed

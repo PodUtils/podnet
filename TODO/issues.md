@@ -80,7 +80,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #378 | doctor --agent checks index host, not file host | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-182 |
 | #379 | http:// proxy default port 8080 vs 80 | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-183 |
 | #380 | doctor relay row from PODNET_RELAY only (partly) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-184 |
-| #384 | net proxy handshake has no deadline (pod --serve too) | open | T-061, T-185 |
+| #384 | net proxy handshake has no deadline (pod --serve too) | closed (ci 43382314031 at 9583ea3) | T-061, T-185 |
 | #385 | net tailscale unix bind deletes a live path (frontdoor too) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-186 |
 | #386 | net proxy --forward dials direct (partly disputed) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-187 |
 | #387 | --forward prints before bind; bind failure only logged | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-188 |
