@@ -158,33 +158,52 @@ fn refusal(code: u8, target: &Target) -> Failure {
 
 impl Way {
     async fn connect(&self, target: &Target) -> Result<Connected, Failure> {
-        let unavailable =
-            |e: anyhow::Error| failure(Stage::Connect, Class::Unavailable, format!("{e:#}"));
-        let (host, port) = match target {
-            Target::Addr(addr) => (ProxyHost::Ip(addr.ip()), addr.port()),
+        let (hosts, port) = match target {
+            Target::Addr(addr) => (vec![ProxyHost::Ip(addr.ip())], addr.port()),
             Target::Name { host, port } => match (self.resolve, host.parse::<IpAddr>()) {
-                (_, Ok(ip)) => (ProxyHost::Ip(ip), *port),
-                (Resolve::Peer, Err(_)) => (ProxyHost::Domain(host.clone()), *port),
+                (_, Ok(ip)) => (vec![ProxyHost::Ip(ip)], *port),
+                (Resolve::Peer, Err(_)) => (vec![ProxyHost::Domain(host.clone())], *port),
                 (Resolve::Local, Err(_)) => {
-                    let found = tokio::net::lookup_host((host.as_str(), *port))
+                    // Each address in the order of the resolver: a name such
+                    // as localhost can give ::1 first and 127.0.0.1 next.
+                    let found: Vec<ProxyHost> = tokio::net::lookup_host((host.as_str(), *port))
                         .await
-                        .ok()
-                        .and_then(|mut a| a.next())
-                        .ok_or_else(|| {
-                            failure(
-                                Stage::Dns,
-                                Class::NotFound,
-                                format!("{host} has no address"),
-                            )
-                        })?;
-                    (ProxyHost::Ip(found.ip()), *port)
+                        .map(|a| a.map(|a| ProxyHost::Ip(a.ip())).collect())
+                        .unwrap_or_default();
+                    if found.is_empty() {
+                        return Err(failure(
+                            Stage::Dns,
+                            Class::NotFound,
+                            format!("{host} has no address"),
+                        ));
+                    }
+                    (found, *port)
                 }
             },
             #[allow(unreachable_patterns)]
             _ => return Err(failure(Stage::Connect, Class::Usage, "no target")),
         };
+        let mut last = None;
+        for host in &hosts {
+            match self.connect_one(host, port, target).await {
+                Ok(c) => return Ok(c),
+                Err(e) => last = Some(e),
+            }
+        }
+        Err(last.unwrap_or_else(|| failure(Stage::Connect, Class::Usage, "no target")))
+    }
+
+    /// One CONNECT through a new stream of the link.
+    async fn connect_one(
+        &self,
+        host: &ProxyHost,
+        port: u16,
+        target: &Target,
+    ) -> Result<Connected, Failure> {
+        let unavailable =
+            |e: anyhow::Error| failure(Stage::Connect, Class::Unavailable, format!("{e:#}"));
         let mut stream = session(&self.link).await.map_err(unavailable)?;
-        let wire = request(1, &host, port).map_err(unavailable)?;
+        let wire = request(1, host, port).map_err(unavailable)?;
         stream
             .write_all(&wire)
             .await

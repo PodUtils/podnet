@@ -117,10 +117,32 @@ wait_port 18443 "$dir/fwd.log"
 curl -fsS --noproxy '*' --max-time 30 --resolve one.one.one.one:18443:127.0.0.1 https://one.one.one.one:18443/cdn-cgi/trace | grep '^warp='
 
 echo "== a nested session (issue 156)"
-"$podnet" --proxy socks5h://127.0.0.1:40010 warp --identity "$dir/b.json" proxy \
-    --listen tcp://127.0.0.1:40011 --run-for 180 > "$dir/nested.log" 2>&1 &
-pids="$pids $!"
-wait_port 40011 "$dir/nested.log"
+# The WARP service limits new devices for each address (HTTP 429). When
+# the session stops on that limit, wait the time that the service asks
+# for, then start it again. Do this at most 3 times.
+attempt=1
+while :; do
+    "$podnet" --proxy socks5h://127.0.0.1:40010 warp --identity "$dir/b.json" proxy \
+        --listen tcp://127.0.0.1:40011 --run-for 180 > "$dir/nested.log" 2>&1 &
+    nested=$!
+    pids="$pids $nested"
+    i=0
+    while kill -0 "$nested" 2> /dev/null && ! nc -z 127.0.0.1 40011 2> /dev/null && [ "$i" -lt 90 ]; do
+        i=$((i + 1))
+        sleep 1
+    done
+    if nc -z 127.0.0.1 40011 2> /dev/null; then
+        break
+    fi
+    if kill -0 "$nested" 2> /dev/null || [ "$attempt" -ge 3 ] || ! grep -q 'HTTP 429' "$dir/nested.log"; then
+        wait_port 40011 "$dir/nested.log"
+    fi
+    pause=$(grep -o 'wait [0-9]* s' "$dir/nested.log" | head -1 | tr -dc 0-9)
+    pause=$(( ${pause:-60} + 5 ))
+    echo "the WARP service limits new devices (HTTP 429): wait $pause s, then start again"
+    sleep "$pause"
+    attempt=$((attempt + 1))
+done
 curl -fsS --max-time 30 -x socks5h://127.0.0.1:40011 https://one.one.one.one/cdn-cgi/trace | grep '^warp=on'
 
 echo "== warp export (issue 148)"

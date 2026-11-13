@@ -328,7 +328,8 @@ async fn the_resolve_choice_decides_the_address_type_the_peer_gets() {
     use podnet::link_door::{Resolve, Way};
     use podnet::link_service as service;
     test_host::need_localhost!();
-    for (resolve, atyp) in [(Resolve::Peer, 3u8), (Resolve::Local, 1u8)] {
+    // The peer gets a name (3), or an address (1 or 4: localhost can be ::1).
+    for (resolve, atyps) in [(Resolve::Peer, &[3u8][..]), (Resolve::Local, &[1u8, 4][..])] {
         let (opener, far) = podnet::link::unix_pair(Settings::default()).unwrap();
         // A peer that records the address type of the CONNECT, then refuses.
         let peer = tokio::spawn(async move {
@@ -350,9 +351,10 @@ async fn the_resolve_choice_decides_the_address_type_the_peer_gets() {
             host: "localhost".into(),
             port: 80,
         };
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+        // A second address of the name waits for the deadline: keep it short.
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
         assert!(way.dial(&target, deadline).await.is_err());
         let (got, _far) = peer.await.unwrap();
-        assert_eq!(got, atyp, "{resolve:?}");
+        assert!(atyps.contains(&got), "{resolve:?}: {got}");
     }
 }

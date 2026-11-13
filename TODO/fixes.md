@@ -5492,6 +5492,43 @@ failed once at the WARP door scan (an external flake) and passed on its rerun. `
 passed, the publish 43370009549 passed. The release `v0.4.0-beta.9` is a prerelease with 16 files, with
 `pod-report.schema.json` (T-330). `release-proofs.yml`: run 43371748745 passed.
 
+# T-333: link door: --resolve-at local tries only the first address of a name
+
+**Source:** the `ci` runs 43438649213 on b4c8b23 and 43440773144 on db8c1b6: the jobs `test`, `features`,
+`no-loopback` and `restricted-host` fail in `tests/link_door.rs`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+On the runners of GitHub, `localhost` resolves to `::1` first. Two tests of `tests/link_door.rs` fail:
+`a_name_goes_to_the_peer_and_resolves_there_or_here` (`--resolve-at local`: the peer gets `::1`, the echo listens on
+`127.0.0.1`, the reply code is 1) and `the_resolve_choice_decides_the_address_type_the_peer_gets` (the peer gets the
+address type 4, the test expects 1).
+
+## Premise
+
+- `Way::connect` of `src/link_door.rs` (T-291) with `Resolve::Local` resolves the name and sends only the first address
+  to the peer.
+- A client that resolves a name tries each address of the name until one connects.
+
+## Approach
+
+1. `src/link_door.rs`: with `Resolve::Local`, send a CONNECT for each address of the name, in the order of the
+   resolver, until the peer answers 0. Give the last failure when none answers.
+2. `tests/link_door.rs`: the local choice gives the peer an address, of type 1 or 4.
+
+## Prove
+
+```sh
+cargo test -p podnet --test link_door
+sh scripts/agent/check.sh
+# the ci run of the commit: the jobs test, features, no-loopback and restricted-host pass
+```
+
 # T-332: QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523)
 
 **Source:** GitHub #523 (live: two runs in a row failed): runs 43380951617, 43382313993 and 43383091796, step
@@ -5567,3 +5604,8 @@ failed at "WARP run": the step looks for the debug line "a UDP association in th
 (`pod_warp::proxy::udp`); the step sets `RUST_LOG=podnet=debug`, which hid the target `pod_warp`. Each `RUST_LOG` of
 `podnet=debug` in `.github/workflows/live.yml` now adds `pod_warp=debug`. The later steps grep no other line that only a
 crate of podcrates writes, except the relay line, which the `RUST_LOG` of the job covers.
+
+2026-11-13: the live run 43438649254 on b4c8b23 passed "WARP run" (the `RUST_LOG` holds) and each step to "The commands
+of the second batch". It failed at "a nested session" of `scripts/live-batch2.sh`: the WARP service refused the new
+device of the nested session with HTTP 429 (error 1015, "wait 39 s"). The session ended and the port did not open. The
+step now waits the time that the service asks for, plus 5 s, and starts the session again, at most 3 times.
