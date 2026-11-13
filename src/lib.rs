@@ -92,6 +92,7 @@ pub mod link_ctl;
 pub mod link_group;
 pub mod link_query;
 pub mod link_service;
+pub mod link_socks;
 #[cfg(feature = "tcp")]
 pub mod link_tcp;
 pub mod manual;

@@ -105,7 +105,14 @@ pub(crate) async fn dial(mut args: DialArgs) -> Result<()> {
         stdout.write_all(&buf[..n]).await?;
         stdout.flush().await?;
     }
+    let stdin_done = send.is_finished();
     send.abort();
     link.close().await;
+    if !stdin_done {
+        // A blocking read of stdin cannot be stopped, and the runtime would
+        // wait for it at exit: the far end has ended the stream, so exit now.
+        stdout.flush().await?;
+        std::process::exit(0);
+    }
     Ok(())
 }

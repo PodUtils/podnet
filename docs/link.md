@@ -23,7 +23,7 @@ podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of
 * `link listen ADDRESS --allow FILE` binds the address through the carrier. It prints the address (for the unix carrier: the
   path and its mode, 0600), the fingerprint of this install and the size of the allow list. `--service NAME=TARGET` (repeat it,
   16 at most) sets where the streams of the service NAME go; `--to TARGET` is `--service raw=TARGET`. A TARGET is `host:port` or
-  `unix:/path`. A stream for a service that the listener does not have is refused (the opener exits 69). A second
+  `unix:/path`. `--service socks5` (no target) makes this end the server side of SOCKS5 (see "The service `socks5`"). A stream for a service that the listener does not have is refused (the opener exits 69). A second
   listener at a live address exits 69. A regular file at the address exits 64 and stays. A stale socket file is replaced.
 * `link dial ADDRESS` connects, proves the key of this install, and checks the key of the listener. Give `--peer FINGERPRINT`
   (repeat it for more than one) or `--allow FILE`: the dialer trusts no listener by default (else exit 64). Then it copies stdin
@@ -77,6 +77,16 @@ The service `raw` copies the bytes of the stream to its target and back. It adds
 goes in both directions. The end of the input of one side shuts down the write side of the other side, and the other direction stays
 open until its own end. A stream of 4 MiB in each direction arrives unchanged (`tests/link_raw.rs`). The copy has no record size
 of its own.
+
+### The service `socks5`
+
+`--service socks5` runs the server side of the SOCKS5 front door (`podnet_netns::door::Door`, the code of `podnet pod --serve`) on the
+stream. The opener speaks SOCKS5 on its end, for example `podnet link dial ADDRESS --peer FP --service socks5`. The peer is on the
+allow list before the stream opens, so a stranger gets exit 77 and no service runs. `CONNECT` goes from the host of the listener. A name
+resolves there. A refused or failed `CONNECT` gets a SOCKS5 failure reply. A stream whose first byte is not 5 (HTTP `CONNECT`, for
+example) ends with no answer. `socks5` takes no target: `--service socks5=TARGET` exits 64. There is no user and password: the link
+admits the peer. Not built (T-291 is partial): `BIND` and `UDP ASSOCIATE` (both get reply 7, command not supported), and `--resolve local`.
+`link dial` exits at once when the far end ends the stream, also when stdin is still open.
 
 ## The control socket
 

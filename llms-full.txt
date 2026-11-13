@@ -7169,7 +7169,10 @@ COMMANDS
             A service of this listener: NAME=TARGET, with a NAME of 1 to 32
             characters from A-Z a-z 0-9 . _ - and a TARGET as in --to. A peer
             reaches it with `link dial --service NAME` or
-            `peer:FINGERPRINT/NAME`. Repeat it: 16 services at most
+            `peer:FINGERPRINT/NAME`. The service `socks5` takes no target:
+            `--service socks5` makes this end the server side of SOCKS5
+            (CONNECT only; a name resolves here). Repeat it: 16 services at
+            most
 
         --control <PATH>
             The control socket (mode 0600, with the token file PATH.token).

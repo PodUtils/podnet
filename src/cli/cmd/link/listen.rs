@@ -61,6 +61,8 @@ pub(crate) struct ListenArgs {
     /// A service of this listener: NAME=TARGET, with a NAME of 1 to 32
     /// characters from A-Z a-z 0-9 . _ - and a TARGET as in --to. A peer
     /// reaches it with `link dial --service NAME` or `peer:FINGERPRINT/NAME`.
+    /// The service `socks5` takes no target: `--service socks5` makes this
+    /// end the server side of SOCKS5 (CONNECT only; a name resolves here).
     /// Repeat it: 16 services at most.
     #[arg(long, value_name = "NAME=TARGET")]
     pub(crate) service: Vec<String>,
@@ -86,25 +88,58 @@ fn mode_of(carrier: &str, address: &str) -> Option<String> {
     Some(format!("{:04o}", meta.permissions().mode() & 0o7777))
 }
 
-/// The services of a listener: a name and the target of its streams.
-type Services = Arc<BTreeMap<String, Target>>;
+/// What a service does with its streams.
+enum Service {
+    /// Copy the bytes to a target (`raw` and each `NAME=TARGET`).
+    Target(Target),
+    /// Serve SOCKS5 on the stream (`--service socks5`, T-291).
+    Socks5,
+}
+
+impl std::fmt::Display for Service {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Service::Target(target) => write!(f, "{target}"),
+            Service::Socks5 => f.write_str("socks5"),
+        }
+    }
+}
+
+/// The services of a listener: a name and what its streams do.
+type Services = Arc<BTreeMap<String, Service>>;
 
 /// The services of --to and --service. A bad name, a bad target, a
 /// duplicate name or more than 16 services exits 64.
-fn services_of(args: &ListenArgs) -> Result<BTreeMap<String, Target>> {
+fn services_of(args: &ListenArgs) -> Result<BTreeMap<String, Service>> {
     let usage = |text: String| exit::fault(Fault::Usage, anyhow!(text));
     let target =
         |text: &str, flag: &str| Target::parse(text).map_err(|e| usage(format!("{flag} {e}")));
     let mut out = BTreeMap::new();
     if let Some(text) = &args.to {
-        out.insert(service::RAW.to_string(), target(text, "--to")?);
+        out.insert(
+            service::RAW.to_string(),
+            Service::Target(target(text, "--to")?),
+        );
     }
     for item in &args.service {
-        let (name, text) = item
-            .split_once('=')
-            .ok_or_else(|| usage(format!("--service {item:?}: give NAME=TARGET")))?;
+        if item == podnet::link_socks::NAME {
+            if out.insert(item.clone(), Service::Socks5).is_some() {
+                return Err(usage(format!("--service {item}: given twice")));
+            }
+            continue;
+        }
+        let (name, text) = item.split_once('=').ok_or_else(|| {
+            usage(format!(
+                "--service {item:?}: give NAME=TARGET (or `socks5` with no target)"
+            ))
+        })?;
         service::check_name(name)?;
-        let found = target(text, "--service")?;
+        if name == podnet::link_socks::NAME {
+            return Err(usage(format!(
+                "--service {name}: the service {name} takes no target: give `--service {name}`"
+            )));
+        }
+        let found = Service::Target(target(text, "--service")?);
         if out.insert(name.to_string(), found).is_some() {
             return Err(usage(format!(
                 "--service {name}: the service {name:?} has two targets (--to is the service raw)"
@@ -234,6 +269,8 @@ async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
             tokio::select! {
                 done = bridge(&mut stream, &services) => {
                     if let Err(err) = done {
+                        // Tell the opener that the stream is over.
+                        let _ = tokio::io::AsyncWriteExt::shutdown(&mut stream).await;
                         hub.note_error(&format!("a stream of {shown} ended: {err:#}"));
                         tracing::warn!(peer = shown, error = %format!("{err:#}"), "a stream ended");
                     }
@@ -247,13 +284,20 @@ async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
 
 /// Read the service of a stream, connect to its target, and copy the
 /// stream to the connection and back.
-async fn bridge(stream: &mut link::Stream, services: &BTreeMap<String, Target>) -> Result<()> {
+async fn bridge(stream: &mut link::Stream, services: &BTreeMap<String, Service>) -> Result<()> {
     let name = service::accept(stream).await?;
-    let Some(target) = services.get(&name) else {
+    let Some(found) = services.get(&name) else {
         service::reply(stream, service::NO_SERVICE).await?;
         return Err(anyhow!(
             "the peer asked for the service {name:?}, which this listener does not have"
         ));
+    };
+    let target = match found {
+        Service::Target(target) => target,
+        Service::Socks5 => {
+            service::reply(stream, service::OPEN).await?;
+            return podnet::link_socks::serve(stream).await;
+        }
     };
     let mut io = match connect(target).await {
         Ok(io) => io,
