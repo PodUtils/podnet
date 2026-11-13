@@ -194,6 +194,19 @@ fn make_httppoll(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     make_poll_form("httppoll")
 }
 
+/// The carrier `dns` for the registry: the facts (the cost class
+/// `highest`) and the host check, no key of this install
+/// (`podnet::link_dns::carrier` is the real one).
+#[cfg(feature = "dns")]
+fn make_dns(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_dns::probe()))
+}
+
+#[cfg(not(feature = "dns"))]
+fn make_dns(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("dns", "T-278")
+}
+
 fn make_s3(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("s3", "T-279")
 }
@@ -204,7 +217,7 @@ fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 /// The carriers of this build, in the order of the lists and of the
 /// first choice.
-pub const ROWS: [Row; 13] = [
+pub const ROWS: [Row; 14] = [
     Row {
         name: unix::NAME,
         about: "a stream over AF_UNIX, mode 0600, the uid of the peer checked",
@@ -304,6 +317,15 @@ pub const ROWS: [Row; 13] = [
         needs_privilege: false,
         feature: Some("poll"),
         make: make_httppoll,
+    },
+    Row {
+        name: "dns",
+        about: "query names up and TXT answers down, an ARQ and TLS 1.3 above, the Ed25519 key of each end pinned",
+        address: "KEY@ZONE to dial (--dns-server), IP:PORT to listen (--dns-zone)",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("dns"),
+        make: make_dns,
     },
     Row {
         name: "s3",

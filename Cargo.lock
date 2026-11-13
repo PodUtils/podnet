@@ -2529,6 +2529,7 @@ dependencies = [
  "kcp",
  "libc",
  "pod-core",
+ "pod-dns",
  "pod-identity",
  "pod-quic",
  "pod-tls",

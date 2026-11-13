@@ -255,6 +255,8 @@ one in code with `podnet::link_group::LinkGroup`.
 * `--carrier NAME` selects the carrier (default `unix`). An unknown name exits 64 and lists the names.
 * `--allow-other-uid` (unix carrier) accepts a peer of another uid. Each end checks the uid of the other end with
   `SO_PEERCRED`, so give the flag at both ends. Without it, a peer of another uid exits 69.
+* `--dns-server IP:PORT` and `--dns-zone ZONE` (dns carrier): the server of the queries of a dial, and the zone of a listener. With
+  another carrier they exit 64.
 * `--ring BYTES` (memory carrier) sets the ring of each direction: 65536 to 67108864 (64 KiB to 64 MiB). Default 1048576. A
   value out of the limits exits 64.
 
@@ -302,10 +304,11 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `sse` | as `poll` | POSTs up, one answer of server-sent events down (T-272). Build feature `poll`. |
 | `chunked` | as `poll` | POSTs up, one chunked answer down (T-272). Build feature `poll`. |
 | `httppoll` | as `poll` | POSTs up, a GET poll down: the simplex poll, the highest overhead (T-280). Build feature `poll`. |
+| `dns` | `KEY@ZONE` to dial (`--dns-server`), `IP:PORT` (UDP) to listen (`--dns-zone`) | Query names up and TXT answers down, an ARQ and TLS 1.3 with a pinned Ed25519 key above (T-278). Build feature `dns`. See "The DNS carrier". |
 | `s3` | `BUCKET/PREFIX` | A simplex pair of objects in a bucket (T-279). Build feature `s3`. |
 | `icmp` | `HOST` | ICMP echo, a datagram carrier (T-282). Build feature `icmp`; it needs a privilege. |
 
-The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
+The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `dns`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
 them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
@@ -463,6 +466,29 @@ HTTP/1.1 that does not end the TLS, can carry it.
 podnet link listen 0.0.0.0:7000 --carrier poll --allow allowed.txt --to 127.0.0.1:22
 podnet link dial 'SERVER-FINGERPRINT@https://host.example:7000/link?poll=50' --carrier poll --allow servers.txt
 podnet link dial SERVER-FINGERPRINT@https://host.example:7000/link --carrier sse --allow servers.txt
+```
+
+## The DNS carrier
+
+Build with `--features dns` (it holds `tcp`). `pod-link` of PodUtils/podcrates does the work (`pod_link::dns`, with the TXT codec of
+`pod-dns`); `podnet::link_dns` is the glue. It is a carrier of the last resort for a host whose only way out is DNS.
+
+* The dialer sends each datagram up in base32 labels of a query name under the zone (253 bytes at most, labels of 63 bytes), and reads
+  the datagrams down from the TXT records of the answer (1232 bytes with EDNS0). It starts at most 20 queries a second, 8 in flight,
+  and polls with a backoff of 5 ms to 2 s when it has nothing to send, so the listener can send its bytes down.
+* The queries lose, reorder and repeat datagrams, so the selective-repeat ARQ of `pod-link` runs over them, and TLS 1.3 with the ALPN
+  `podlink/1` over the ARQ. Each end pins the key of the other end in the TLS handshake; a query of a stranger can end a link but not
+  change it.
+* A listener is the authoritative server of the zone `--dns-zone ZONE` on UDP `IP:PORT` (a listener with no zone exits 64). Delegate
+  the zone to it (an `NS` record) so that a resolver sends it the queries. It takes a client only when its key is in the allow list.
+* A dialer gives `KEY@ZONE` and sends its queries to `--dns-server IP:PORT` (a resolver or the listener itself), else to the first
+  `nameserver` of `/etc/resolv.conf` at port 53. With neither, the dial exits 64.
+* `--dns-server` and `--dns-zone` with another carrier exit 64. The overhead class is `highest`.
+* A key that is not pinned exits 77. A host that denies UDP sockets exits 69.
+
+```sh
+podnet link listen 0.0.0.0:53 --carrier dns --dns-zone t.example.com --allow allowed.txt --to 127.0.0.1:22
+podnet link dial SERVER-FINGERPRINT@t.example.com --carrier dns --allow servers.txt
 ```
 
 ## A chain before the carrier
@@ -767,5 +793,5 @@ library ([build.md](build.md), "The C library"). Linux only.
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
 `podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
-listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`) `podnet::link_udp` (feature `udp`) and `podnet::link_poll` (feature `poll`).
+listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`) `podnet::link_udp` (feature `udp`) `podnet::link_poll` (feature `poll`) and `podnet::link_dns` (feature `dns`).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates. `crates/podnet-capi` is the C interface of the link (see The C library).

@@ -92,6 +92,8 @@ pub mod link_alias;
 pub mod link_announce;
 pub mod link_chain;
 pub mod link_ctl;
+#[cfg(feature = "dns")]
+pub mod link_dns;
 pub mod link_door;
 pub mod link_exec;
 pub mod link_forward;

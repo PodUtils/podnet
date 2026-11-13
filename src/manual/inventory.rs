@@ -72,6 +72,11 @@ pub const COMPONENTS: &[ComponentEntry] = &[
         meaning: "The simplex poll: bytes up in POSTs (202 and an ack), bytes down in a GET at once (204 when empty) again after 100 ms to 5 s; 64 KiB for each request. Overhead class highest. TLS 1.3 with ALPN http/1.1; each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. No request lives as long as the link, so a proxy that ends idle connections or a front of HTTP/1.1 can carry it. A listener of any poll carrier serves each form. Duplex, ordered, cost class network, no privilege. Address: KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen. Build feature poll.",
     },
     ComponentEntry {
+        name: "dns",
+        kind: "carrier",
+        meaning: "The DNS simplex carrier: the bytes up go in base32 labels of query names under a zone, the bytes down in TXT answers (1232 bytes with EDNS0). The ARQ of pod-link runs over the queries and TLS 1.3 with ALPN podlink/1 over the ARQ; each end pins the Ed25519 key of the other end; a key that is not pinned exits 77. The dialer starts at most 20 queries a second, 8 in flight, and polls when it has nothing to send. Duplex, ordered, cost class network, overhead highest, no privilege. Address: KEY@ZONE to dial (--dns-server IP:PORT, default the first nameserver of /etc/resolv.conf), IP:PORT (UDP) to listen as the authoritative server of --dns-zone ZONE. Build feature dns.",
+    },
+    ComponentEntry {
         name: "s3",
         kind: "carrier",
         meaning: "A simplex pair of objects in a bucket of an object store. Cost class network, no privilege. Address: BUCKET/PREFIX. Build feature s3.",

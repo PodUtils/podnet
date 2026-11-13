@@ -976,7 +976,7 @@ T-262 and T-264 are done. The rekey part waits for T-298.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1013,6 +1013,17 @@ T-277, T-262 and T-264 are done. Ask A10 is answered.
 ## Correction
 
 2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
+
+2026-11-13, calls of the glue (the owner is away): the codec is in `pod-link` with the TXT halves of `pod-dns` (`pod_dns::txt`, podcrates v0.40.0): ask A10 is answered by podcrates. The ARQ under TLS is `pod_link::arq` (T-277 stays open for its own gates). The server of a dial is `--dns-server IP:PORT`, else the first `nameserver` of `/etc/resolv.conf` at port 53 (the code of the reader is in `src/link_dns.rs`); with neither, exit 64. The zone of a listener is `--dns-zone ZONE` (a listener with none exits 64). The two flags with another carrier exit 64. The rate (20 a second), the 8 in flight, the backoff of 0 to 2 s and the EDNS0 size are the defaults of `pod-link`; podnet gives no flag for them. The `TC` rule (a retry over TCP/53) is not in `pod-link` v0.40.0: the answers are built to fit 1232 bytes; ask for podcrates if a resolver truncates.
+
+## Done
+
+2026-11-13, the commit "T-278: the dns carrier in link listen, dial and connect" (its hash follows in the next commit). Feature `dns` of podnet is `["tcp", "pod-link/dns"]` (in `full`, `OPTIONAL` and `FULL`). `src/link_dns.rs` (`podnet::link_dns`): `first_nameserver`, `carrier` (the zone and the server of `Tune`), `listen` (`IP:PORT`, an authoritative server), `dial` (`KEY@ZONE`) and `probe`. `src/link_keyed.rs`: the name `dns`, `Tune::dns_server` and `Tune::dns_zone`. `--dns-server` and `--dns-zone` of `link listen|dial|connect`. The registry row, the inventory entry, `docs/link.md` (The DNS carrier, the flags), `docs/build.md`, the map row of `README.md`.
+
+Tests (`tests/link_dns.rs`, build `--features dns`, here `--features full`; a local authoritative server on the UDP loopback, none skipped), 8 passed: `a_link_crosses_dns_and_each_end_learns_the_key_of_the_other` (4 KiB there and back), `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77`, `link_dial_check_meets_link_listen_over_dns_and_a_stranger_exits_77` (`--dns-zone` and `--dns-server`), `a_listener_with_no_zone_and_an_address_with_no_key_exit_64`, `the_dns_flags_are_for_the_dns_carrier`, `the_carrier_is_a_stream_of_the_highest_overhead`, `the_registry_row_has_no_key_and_refuses_a_dial`; the unit test `link_dns::tests::the_first_nameserver_of_the_resolver_file`. Plant: with the arms of `dns` in `link_keyed` off, 5 of the 8 failed. `sh scripts/agent/check.sh`: each step 0.
+
+Not proven here: a link through a real recursive resolver; the token bucket, the backoff and the loss of queries (tests of `pod-link`, `dns` and `dns_loss`); the `TC` rule (not in `pod-link`).
+
 # T-279: link: the object-storage simplex carrier (GitHub #468)
 
 **Source:** GitHub #468 (https://github.com/PodUtils/podnet/issues/468), row E2-4.
@@ -1169,7 +1180,7 @@ T-277 and T-278 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1203,14 +1214,13 @@ cargo test --test link_icmp --features icmp
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 497 in the record of podcrates (PodUtils/podcrates#133,
-2026-11-13; estimate: tag `v0.39.0`).
-
 ## Start condition
 
 T-277, T-264 and T-311 are done.
+
+## Correction
+
+2026-11-13: the carrier `icmp` of `pod-link` is in podcrates v0.40.0 (taken, 1c88531; feature `icmp` of `pod-link`): the ARQ in the data of ICMP echo messages, TLS 1.3 above, `KEY@HOST`, a raw socket (`CAP_NET_RAW`) on unix, and `EchoFrames` over any carrier of ICMP messages. The block is gone. The work is the glue, as for the carriers of T-273 to T-280 (`podnet::link_keyed`): the feature `icmp` of podnet to `pod-link/icmp`, `--carrier icmp`, `--allow-raw icmp`, the order of `available()`, the `doctor` row and the seccomp test. The glue of the other carriers did not do it (2026-11-13): it needs the privilege and the seccomp rule, which are more than glue.
 
 # T-283: link: a WireGuard peer as a carrier (GitHub #469)
 

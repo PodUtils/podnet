@@ -65,7 +65,7 @@ fn the_names_have_a_fixed_order() {
         carriers::names(),
         [
             "unix", "memory", "tcp", "ws", "h2", "quic", "udp", "poll", "sse", "chunked",
-            "httppoll", "s3", "icmp"
+            "httppoll", "dns", "s3", "icmp"
         ]
     );
 }
@@ -78,7 +78,7 @@ fn an_unknown_name_exits_64_and_lists_the_names() {
     assert!(text.contains("pigeon"), "{text}");
     assert!(
         text.contains(
-            "unix, memory, tcp, ws, h2, quic, udp, poll, sse, chunked, httppoll, s3, icmp"
+            "unix, memory, tcp, ws, h2, quic, udp, poll, sse, chunked, httppoll, dns, s3, icmp"
         ),
         "{text}"
     );

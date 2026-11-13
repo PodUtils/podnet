@@ -1,6 +1,7 @@
 //! The carriers of `pod-link` that pin the Ed25519 key of each end and came
 //! with podcrates v0.40.0: `quic` (T-273), `udp` (T-276), and the poll
-//! carriers `poll`, `sse`, `chunked` and `httppoll` (T-271, T-272, T-280).
+//! carriers `poll`, `sse`, `chunked` and `httppoll` (T-271, T-272, T-280),
+//! and `dns` (T-278).
 //!
 //! `link listen`, `link dial` and `link connect` open them by name through
 //! [`dial`] and [`listen`]. Each one sits behind a build feature
@@ -19,7 +20,7 @@ use crate::link::{self, carrier_fault, Door};
 use crate::link_query::Query;
 
 /// The names of these carriers, the words of `--carrier`.
-pub const NAMES: [&str; 6] = ["quic", "udp", "poll", "sse", "chunked", "httppoll"];
+pub const NAMES: [&str; 7] = ["quic", "udp", "poll", "sse", "chunked", "httppoll", "dns"];
 
 /// The build feature that holds the carrier `name`, when it is one of
 /// [`NAMES`].
@@ -28,6 +29,7 @@ pub fn feature_of(name: &str) -> Option<&'static str> {
         "quic" => Some("quic"),
         "udp" => Some("udp"),
         "poll" | "sse" | "chunked" | "httppoll" => Some("poll"),
+        "dns" => Some("dns"),
         _ => None,
     }
 }
@@ -42,6 +44,10 @@ pub struct Tune {
     pub mtu: Option<usize>,
     /// `poll=N` (the poll carriers): the hold of a long poll, 1 to 60 s.
     pub hold: Option<u8>,
+    /// `--dns-server IP:PORT` (dns): the server of the queries of a dial.
+    pub dns_server: Option<std::net::SocketAddr>,
+    /// `--dns-zone ZONE` (dns): the zone of a listener.
+    pub dns_zone: Option<String>,
 }
 
 /// The largest `mtu` of the udp carrier: no IP fragmentation (GitHub #468).
@@ -146,6 +152,11 @@ pub async fn dial(
             let carrier = crate::link_poll::carrier(me, allow, form, tune);
             crate::link_poll::dial(&carrier, allow, address, settings).await
         }
+        #[cfg(feature = "dns")]
+        "dns" => {
+            let carrier = crate::link_dns::carrier(me, allow, tune);
+            crate::link_dns::dial(&carrier, allow, address, settings).await
+        }
         _ => Err(off(name)),
     }
 }
@@ -174,6 +185,8 @@ pub async fn listen(
             let carrier = crate::link_poll::carrier(me, allow, form, tune);
             crate::link_poll::listen(&carrier, address).await
         }
+        #[cfg(feature = "dns")]
+        "dns" => crate::link_dns::listen(&crate::link_dns::carrier(me, allow, tune), address).await,
         _ => Err(off(name)),
     }
 }

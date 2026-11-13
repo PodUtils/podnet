@@ -258,6 +258,9 @@ udp = ["tcp", "pod-link/udp"]
 # keys of `tcp`: the long poll, SSE, a chunked stream and the simplex poll
 # (T-271, T-272, T-280).
 poll = ["tcp", "pod-link/poll"]
+# The DNS simplex carrier: the frames in query names and TXT answers, the
+# ARQ of pod-link and the TLS and the pinned keys of `tcp` above (T-278).
+dns = ["tcp", "pod-link/dns"]
 # The object-storage carrier (T-279).
 s3 = []
 # The ICMP echo carrier (T-282).
@@ -271,7 +274,7 @@ c-abi = []
 # The portable subset (T-305). It takes away; `full` does not hold it.
 portable = []
 # Each optional carrier and service, for CI (`cargo test --features full`).
-full = ["tcp", "ws", "h2", "quic", "udp", "poll", "s3", "icmp", "ss", "trojan", "c-abi"]
+full = ["tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "trojan", "c-abi"]
 
 [dev-dependencies]
 # The responder of the tests of WireGuard (src/warp/wg/standin.rs).

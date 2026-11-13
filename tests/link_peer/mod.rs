@@ -213,7 +213,7 @@ pub fn write_allow(dir: &Path, name: &str, keys: &[&Identity]) -> PathBuf {
 /// `link listen --carrier NAME` and `link dial --check`: a peer of the list
 /// exits 0 and prints the key of the listener; a stranger exits 77. The
 /// listen address is `listen` with the flags `listen_flags`; the dial takes
-/// `dial_flags`.
+/// `dial_flags`, where `{listen}` is the address of the listener.
 pub fn cli_check(
     carrier: &str,
     listen: &str,
@@ -267,7 +267,12 @@ pub fn cli_check(
             allow.to_str().unwrap(),
             "--check",
         ];
-        args.extend_from_slice(dial_flags);
+        let listen = doc["listen"].as_str().unwrap();
+        let flags: Vec<String> = dial_flags
+            .iter()
+            .map(|f| f.replace("{listen}", listen))
+            .collect();
+        args.extend(flags.iter().map(String::as_str));
         podnet(dir.path(), state, &args).output().unwrap()
     };
     let ok = run("a", &allow_a);

@@ -47,7 +47,9 @@ pub(crate) struct CarrierArgs {
     /// `httppoll` (feature `poll`) carry the link in requests of HTTP/1.1
     /// over TLS with the same pins: listen at `IP:PORT`, dial
     /// `KEY@https://HOST[:PORT]/PATH`; `?poll=N` sets the hold of a long
-    /// poll. A key that is refused exits 77.
+    /// poll. `dns` (feature `dns`) carries the link in query names and TXT
+    /// answers: listen at `IP:PORT` with --dns-zone, dial `KEY@ZONE`. A key
+    /// that is refused exits 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
     /// The unix carrier accepts a peer of another uid. Each end checks the
@@ -73,6 +75,15 @@ pub(crate) struct CarrierArgs {
     /// The options of the sealed records, from the query of the address.
     #[arg(skip)]
     pub(crate) record: Option<podnet::link_record::Options>,
+    /// The dns carrier: the UDP address of the server (a resolver or the
+    /// authoritative server of the zone) that a dial sends its queries to.
+    /// Default: the first nameserver of /etc/resolv.conf, port 53.
+    #[arg(long, value_name = "IP:PORT")]
+    pub(crate) dns_server: Option<std::net::SocketAddr>,
+    /// The dns carrier: the zone that a listener serves as an authoritative
+    /// server (the dialer gives it in KEY@ZONE).
+    #[arg(long, value_name = "ZONE")]
+    pub(crate) dns_zone: Option<String>,
     /// What the query of the address gives to a carrier of
     /// `podnet::link_keyed`.
     #[arg(skip)]
@@ -144,6 +155,14 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
         .seal
         .then(|| podnet::link_record::Options::of_query(&query));
     carrier.tune = podnet::link_keyed::Tune::of_query(&carrier.carrier, &query)?;
+    if carrier.carrier != "dns" && (carrier.dns_server.is_some() || carrier.dns_zone.is_some()) {
+        return Err(podnet::exit::fault(
+            podnet::exit::Fault::Usage,
+            anyhow::anyhow!("--dns-server and --dns-zone are for the dns carrier"),
+        ));
+    }
+    carrier.tune.dns_server = carrier.dns_server;
+    carrier.tune.dns_zone.clone_from(&carrier.dns_zone);
     Ok(base.to_string())
 }
 
@@ -567,6 +586,8 @@ mod tests {
             ring,
             seal: false,
             record: None,
+            dns_server: None,
+            dns_zone: None,
             tune: Default::default(),
         }
     }
