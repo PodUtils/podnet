@@ -193,7 +193,7 @@
 506 issue closed
 507 issue open
 508 issue open
-509 issue open
+509 issue closed
 510 issue closed
 511 issue closed
 512 issue closed
