@@ -346,7 +346,7 @@ relay (`gh workflow run live.yml`), for later: `.github/workflows/` does not cha
 
 ## Done
 
-2026-11-13, commit (see the next commit). `src/relay_reverse/resume.rs`: `run_node_resumable` (the node over
+2026-11-13, commit 030c7ae. `src/relay_reverse/resume.rs`: `run_node_resumable` (the node over
 `Layered::new(handler, settings, NODE_BUDGET)` with `run_node_with`), `connect_resumable` (the client of the layer, a
 leg maker that opens `/v1/connect/NAME` again for each new leg), `carry` and `Resume` (48 MiB, 11 h). The CLI flags
 `relay node --resume` and `relay connect --resume` (also with `--listen`). Docs: `docs/relay.md` (Sessions past the
@@ -358,6 +358,8 @@ its first leg alone): the test fails ("8 MiB back: early eof"). Tests added: `re
 26 echoes), `resume::a_plain_operator_learns_that_the_node_resumes` (exit 78),
 `resume::a_resume_operator_keeps_the_plain_mode_with_a_plain_node`; the unit tests
 `the_guard_stops_only_a_greeting_of_the_layer` and `the_settings_move_under_the_limits_of_the_relay`: each passed.
+`sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace`: 1857 passed, 0 failed). CI: no run (a push of the
+cloud session starts none).
 
 # T-088: File server: a directory listing in HTML and JSON
 
