@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 333 entries: 24 open, 13 partial, 32 blocked, 264 done.
+`TODO/INDEX.md` holds 333 entries: 23 open, 14 partial, 32 blocked, 264 done.
 
 ## State
 
@@ -37,8 +37,8 @@ Finish each entry, close it in place, change this page in the same commit, then 
 one. In a milestone: P1, then P2, then P3. At one priority, an S entry goes first when it does
 not wait for a larger one.
 
-1. **M0, the record and the guards:** T-012 (open: its start condition holds; the stand-ins of `pod-testkit` are taken
-   at v0.39.0, and `src/networks/warp_tests/edge.rs` uses them).
+1. **M0, the record and the guards:** T-012 (partial: the account commands are tested; left: the tests of `warp proxy`,
+   `forward`, `nc` and `shell` over the edge stand-in, after its move out of `#[cfg(test)]`).
 2. **M1, the rename:** done (the public image was measured on 2026-11-11).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.

@@ -231,7 +231,7 @@ passed. Plant: `return Ok(())` at the start of each of the five arms in `src/mai
 **Milestone:** M0
 **Priority:** P2
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -296,6 +296,25 @@ of the shared crate. The adaptation to smoltcp 0.12 is not necessary.
 (`pod_testkit::stand::warp::Api`, feature `stand`) and the HTTP/2 part of an edge (`pod_testkit::masque`). podnet
 has an edge stand-in over them in `src/networks/warp_tests/edge.rs` (the tests of the network `warp`). The tests of the
 WARP commands can use these stand-ins.
+
+2026-11-13: partial. Step 1 is done (Done section). Left: step 2, the tests of `warp proxy`, `warp forward -L`, `warp nc`
+and `warp shell` over the edge stand-in, with the plant of a wrong pinned key. The edge stand-in is
+`src/networks/warp_tests/edge.rs`, a `#[cfg(test)]` module of the library, so a test of the binary cannot start it.
+Next: move it to a module that `tests/` can use (a `tests/` support module, or a feature of the library that no release
+enables, step 4), then run the commands with `--masque-endpoint 127.0.0.1:PORT` against it; the pin comes from the
+record of the API stand-in (`Api::serve_key`). Step 3 (the silenced mode): `Edge::end_sessions` covers the probe of the
+router (T-097).
+
+## Done
+
+2026-11-13, partial (step 1), commit WARPSTANDIN. `tests/warp_stand_in.rs` runs the binary with `PODNET_WARP_API` at the
+API stand-in of `pod-testkit` (`pod_testkit::stand::warp::Api`, plain HTTP on the loopback). `cargo test --test
+warp_stand_in`: 6 passed: `warp_stand_in_register_saves_one_device_and_a_second_run_loads_it` (one POST, mode 0600, a
+second run loads), `warp_stand_in_status_reads_the_account_of_the_saved_device`,
+`warp_stand_in_license_from_stdin_reaches_the_api` (and a key that the API refuses is an error),
+`warp_stand_in_rotate_enrols_a_new_key_for_the_same_device` (one PATCH, no POST),
+`warp_stand_in_delete_removes_the_device_and_the_file`, `warp_stand_in_register_names_the_limit_of_new_devices` (HTTP
+429, no file).
 
 # T-013: A daily check that the record's list of GitHub numbers agrees with GitHub
 
