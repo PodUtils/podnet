@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 46 open, 21 partial, 30 blocked, 234 done.**
+**331 entries: 45 open, 21 partial, 30 blocked, 235 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 20 | 8 | 11 | 129 | 168 |
-| P3 | 26 | 12 | 17 | 77 | 132 |
-| **All** | 46 | 21 | 30 | 234 | 331 |
+| P3 | 25 | 12 | 17 | 78 | 132 |
+| **All** | 45 | 21 | 30 | 235 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
