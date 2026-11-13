@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**332 entries: 35 open, 20 partial, 34 blocked, 243 done.**
+**332 entries: 35 open, 18 partial, 34 blocked, 245 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 1 | 2 | 27 | 31 |
 | P2 | 17 | 7 | 11 | 133 | 168 |
-| P3 | 17 | 12 | 21 | 82 | 132 |
-| **All** | 35 | 20 | 34 | 243 | 332 |
+| P3 | 17 | 10 | 21 | 84 | 132 |
+| **All** | 35 | 18 | 34 | 245 | 332 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -336,13 +336,13 @@ M8 Overlays, M9 Later.
 | [T-288](link.md) | P3 | M | M9 | feature | done | link: load balancing across link groups (GitHub #470) |
 | [T-289](link.md) | P3 | M | M9 | feature | done | link: the local topology and the status view of a mesh (GitHub #470) |
 | [T-290](link.md) | P3 | M | M9 | feature | done | link: per-hop access control for services and forwarding (GitHub #470) |
-| [T-291](link.md) | P3 | M | M9 | feature | partial | link: a SOCKS5 service at a peer (GitHub #471) |
+| [T-291](link.md) | P3 | M | M9 | feature | done | link: a SOCKS5 service at a peer (GitHub #471) |
 | [T-292](link.md) | P3 | M | M9 | feature | done | link: an HTTP forward proxy service at a peer (GitHub #471) |
 | [T-293](link.md) | P3 | S | M9 | feature | done | link: a raw passthrough service at a peer (GitHub #471) |
 | [T-294](link.md) | P3 | M | M9 | feature | blocked | link: a Shadowsocks AEAD service at a peer (GitHub #471) |
 | [T-295](link.md) | P3 | M | M9 | feature | blocked | link: a Trojan service at a peer (GitHub #471) |
 | [T-296](link.md) | P3 | M | M9 | feature | done | link: an exec adapter that runs a program for each stream (GitHub #471) |
-| [T-297](link.md) | P3 | M | M9 | feature | partial | link: serve a file tree at a peer (GitHub #471) |
+| [T-297](link.md) | P3 | M | M9 | feature | done | link: serve a file tree at a peer (GitHub #471) |
 | [T-298](link.md) | P3 | L | M9 | feature | open | link: the AEAD record layer with negotiated suite and rekey (GitHub #472) |
 | [T-299](link.md) | P3 | S | M9 | feature | open | link: snappy compression of records (GitHub #472) |
 | [T-300](link.md) | P3 | S | M9 | feature | open | link: padding of records to buckets (GitHub #472) |

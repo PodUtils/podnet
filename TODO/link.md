@@ -1581,7 +1581,7 @@ Not proven: the carriers other than unix; the view `link mesh` does not show the
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1627,6 +1627,8 @@ T-266 is done.
 3. `BIND`. It needs a second stream from the peer to the opener. The connector does not accept streams (the same limit as T-297). The door answers with reply 7.
 `UDP ASSOCIATE` (command 3) gets reply 7 at the peer, as its UDP socket would be at the peer.
 
+2026-11-13, later: the three items are built, with three changes to the text above. (1) `BIND` needs no second stream: RFC 1928 puts the incoming connection on the control connection, which is the stream. The service listens at the peer (loopback, or `--socks-bind-ip`), and replies 1 and 2 and the bytes of the incoming connection pass on the one stream. (2) The local door is `link dial --service socks5 --listen ADDRESS`; no `forward -L` form was added. (3) The flag for names is `--resolve-at peer|local`: `--resolve` is the global flag of the pins (`HOST=IP`).
+
 ## Done
 
 2026-11-12, commit 97c7196. `--service socks5` (no target; `socks5=TARGET` exits 64) of `link listen` runs `podnet_netns::door::Door` (the code of the front door, no second SOCKS5 server) on the session stream with a direct dial (`src/link_socks.rs`). A name resolves at the peer. The stream takes SOCKS5 only (another first byte ends it with no answer). The allow list admits the peer before any service (a stranger exits 77). Also fixed: `link dial` did not exit when the far end ended the stream while stdin was open (a blocking stdin read held the runtime); and a stream that ends in error now gets a clean shutdown at the listener.
@@ -1638,6 +1640,10 @@ Not proven: BIND, UDP ASSOCIATE, `--resolve local`, user and password, a carrier
 2026-11-13, commit 6432a62. UDP in the stream at the service `socks5`: the door takes the command `0x83` of `pod-proxy` with a UDP socket of the host of the listener (`src/link_socks.rs`). Command 3 gets reply 7 (`exit_stdio::NoAssociate`). Help and `docs/link.md` are updated.
 `cargo test --test link_socks5`: 8 passed: the 7 of the first commit (`bind_and_udp_associate_say_command_not_supported` has the old name `bind_and_udp_associate_are_not_served_and_say_command_not_supported` and now also checks command 3), and `a_udp_datagram_goes_through_the_peer_to_an_echo_and_back` (two frames in one write, a name in a frame). Fail first: on the old code the new test failed (reply 7 to command 0x83).
 Not proven or not built: BIND, the local door for UDP, `--resolve local` (see the Correction of 2026-11-13), a carrier that crosses a network.
+
+2026-11-13, commit d0cc71e (the entry is `done`). `BIND` at the service `socks5` (`src/link_socks.rs`, an `Extension` of the door for command 2): reply 1 with the listening address, one connection (30 s, else reply 6), reply 2 with its source, then the copy. `--socks-bind-ip IP` (default 127.0.0.1) sets the address. The local door `src/link_door.rs` (`podnet::link_door`, `src/cli/cmd/link/door.rs`): `podnet_netns::door::Door` over a `Way` that opens one stream of the link for each request. `CONNECT` goes as a SOCKS5 `CONNECT` to the service of the peer; `--resolve-at local` resolves a name at the opener and sends an address; `BIND` passes the request and the replies; `UDP ASSOCIATE` gives the client a local UDP socket and carries the datagrams as the frames of the command `0x83` (`Frames`, a `Datagrams` over one stream; a name in a datagram resolves at the opener).
+`cargo test --test link_socks5`: 9 passed, among them `a_bind_through_the_peer_listens_at_the_peer_and_relays_an_incoming_connection` (the old test `bind_and_udp_associate_say_command_not_supported` is `udp_associate_says_command_not_supported` and no longer checks BIND). `cargo test --test link_door`: 7 passed: `a_connect_through_the_local_door_reaches_an_origin_at_the_peer`, `a_connect_to_a_closed_port_gets_a_failure_reply`, `a_name_goes_to_the_peer_and_resolves_there_or_here`, `the_resolve_choice_decides_the_address_type_the_peer_gets` (address type 3 for `peer`, 1 for `local`), `a_bind_through_the_local_door_listens_at_the_peer`, `a_udp_datagram_goes_through_the_local_door_to_an_echo_and_back`, `listen_needs_the_service_socks5`. Fail first: on the old code BIND got reply 7, and `--listen` did not exist.
+Not proven: user and password (the link admits the peer); a carrier that crosses a network; the reply code of a failed `CONNECT` at the client is coarse (the door maps the text of the failure); the source of the incoming `BIND` connection is not checked against the address of the request; the `ASSOCIATE` association with many clients at one door.
 
 
 # T-292: link: an HTTP forward proxy service at a peer (GitHub #471)
@@ -1884,7 +1890,7 @@ Not proven: `--exec-user` as root (the test runs as root in one session and skip
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1925,11 +1931,18 @@ T-266 is done.
 
 2026-11-13: the entry is `partial`. The way in is `podnet serve DIR --at peer:FINGERPRINT/SERVICE --at-listen ADDRESS`, not a kind `peer` of `--ingress`: a link has a listener that accepts streams and a connector that only opens them (T-266), so the serving process must be the listener, and `--at-listen` gives its address. The kind `peer:FP/NAME` of `--ingress` and the form `--name` of the issue are left: `--name` names the instance of `serve` (`--detach`), and a live name of a link is T-308. The call "the way in stays `--ingress`" of 2026-11-12 is not followed; the owner can rule otherwise.
 
+2026-11-13, later: the form `--ingress peer:FINGERPRINT/SERVICE` is built (the ruling of 2026-11-12 holds). `--at` and `--at-listen` stay. `--name` stays out: `serve --name` names the instance of `serve` (`--detach`, T-308), so a service name for a link has no flag of its own; the SERVICE of the spec is the name.
+
 ## Done
 
 2026-11-13, commit d8960cb. `src/cli/cmd/serve_at.rs`: `--at peer:FP/SERVICE` with `--at-listen ADDRESS` runs the router of the file server of `podnet serve` (`podnet::files::router`, no second server) on a unix socket in a private directory (mode 0700, removed at the end), and runs `link listen` in the process (`ListenArgs` parsed from a list, so a new flag of `link listen` needs no change here) with the allow list `{FP}` and the service SERVICE whose target is that socket. Index, range, `HEAD`, `--list`, `--spa`, `--tar`, `--upload`, `--users` and `--pin` are the ones of the file server; a directory has no listing unless `--list` is given. A bad spec, `--at` without `--at-listen`, and `--at` with `--ingress`, `--pair`, `--local` or `--check` exit 64. `docs/serve.md` has "Serve at a peer (`--at`)"; `docs/link.md` points to it.
 `cargo test --test service_serve_at`: 8 passed: `a_get_of_a_file_answers_the_bytes`, `a_directory_with_an_index_answers_the_index`, `a_range_answers_206_with_the_bytes_of_the_range`, `a_head_answers_the_head_and_no_body`, `a_directory_has_no_listing_by_default`, `a_listing_comes_only_with_list`, `a_peer_that_is_not_the_one_of_at_is_refused` (exit 77), `at_needs_at_listen_and_a_good_spec`. Without the change 7 of the 8 failed (`error: unexpected argument '--at' found`). `cargo test --lib serve_at`: 1 passed. `sh scripts/agent/check.sh`: all 0 (the record step after `cargo todo remap` of `TODO/fixes.md`).
 Not proven: the kind `peer` of `--ingress` and `--name` (see the Correction); a carrier that crosses a network; uploads and users on a link stream (the router is the same, no test).
+
+2026-11-13, commits fac00d8 and f7c0b1e (the entry is `done`). fac00d8: `podnet link connect --service NAME=TARGET` serves the streams that the far end opens, with the service forms of `link listen` (raw target, `socks5`, `http`, `exec:`, `--exec-arg`, `--exec-env`, `--exec-user`, `--socks-bind-ip` came later). The code of the services moved to `src/cli/cmd/link/services.rs` and is shared by `link listen` and `link connect`. The grant of the peer in the `--allow` file applies before any service (answer 6, counted in `refused_service`); a stream for a service that the connector lacks gets answer 1. f7c0b1e: the verb `accept` of the control socket (`src/link_ctl/accept.rs`) registers a service that maps to a unix socket and lives while the client keeps the connection; `podnet serve DIR --ingress peer:FP/SERVICE` binds the file server on a unix socket in a private directory and registers it at the running instance (found by `PODNET_LINK_CONTROL` or the ready documents, as `forward` finds it). The target is a unix socket only (no TCP target and no program through the control socket). A name that the instance serves already, or that another client holds, exits 64; no instance exits 69; a link to another peer exits 77.
+`cargo test --test link_accept`: 5 passed: `a_stream_that_the_far_end_opens_reaches_the_service_of_the_connector`, `a_service_that_the_connector_lacks_closes_the_connection_and_the_link_stays`, `a_connector_with_no_service_refuses_each_stream`, `a_grant_of_the_allow_list_applies_before_the_service`, `the_connector_gives_a_bad_service_flag_exit_64`. Fail first (old `src`): 3 of 5 failed (`--service` unknown at `link connect`); the two others pass on the old code too (a refusal and a usage exit).
+`cargo test --test service_serve_ingress`: 6 passed: `a_get_and_a_range_answer_on_streams_that_the_peer_opens`, `a_grant_that_does_not_name_the_service_refuses_the_stream`, `the_service_ends_with_the_serve_process`, `a_name_that_the_connector_serves_already_exits_64`, `with_no_link_instance_serve_exits_69`, `a_bad_spec_or_a_second_road_exits_64`. Fail first (old `src`): 4 of 6 failed.
+Not proven: a carrier that crosses a network (only the unix carrier is tested); uploads and users on a stream of this road (the router is the same); `--ingress peer:` with `--detach`.
 
 
 # T-298: link: the AEAD record layer with negotiated suite and rekey (GitHub #472)
