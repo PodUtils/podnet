@@ -190,7 +190,9 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #510 | COORD-055: asks from GitHub #503 to #507: pod-devtunnel, pod-turn, a remote-port fact, the Serveo URL rule (to podcrates) | closed (a COORD issue between sessions) | none |
 | #511 | live: two runs in a row failed | closed | T-323 |
 | #512 | COORD-056: podnet takes pod-identity and pod-session (T-261, T-263); three small asks (to podcrates) | closed (a COORD issue between sessions) | none |
-| #513 | COORD-057: podnet starts the network carriers of the link: TCP with TLS first (T-268; your T-304, A7) (to podcrates) | open (a COORD issue between sessions) | none |
+| #513 | COORD-057: podnet starts the network carriers of the link: TCP with TLS first (T-268; your T-304, A7) (to podcrates) | closed (a COORD issue between sessions) | none |
 | #514 | COORD-058: podnet took v0.33.0 at 797104f (to podcrates) | open (a COORD issue between sessions) | none |
+| #515 | COORD-059: podnet took v0.34.0 at ef8c901; the TCP carrier is in; the next carriers of pod-link (to podcrates) | open (a COORD issue between sessions) | none |
+| #516 | live: two runs in a row failed | closed (quick-tunnel edge flakes; the rerun 43333498755 passed) | none |
 
 #318 is an open pull request. #312 to #315, #381 to #383 and #415 are closed; they are pull requests.
