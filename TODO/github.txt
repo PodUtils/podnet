@@ -68,9 +68,9 @@
 363 issue closed
 364 issue closed
 365 issue closed
-366 issue open
+366 issue closed
 367 issue closed
-368 issue open
+368 issue closed
 369 issue closed
 370 issue closed
 371 issue closed

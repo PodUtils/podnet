@@ -65,9 +65,9 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #363 | ssh relay leg: one relay, one user | closed | T-166 |
 | #364 | net socksify: no per-destination routing | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-167 |
 | #365 | fakepwd only via ts-shims (partly: it works, gap is name/docs) | closed (ci 42767983253, live 42767982942 at 5bf153d) | T-168 |
-| #366 | tunnel: no `--masque-endpoint`; v4 door first | open | T-169 |
+| #366 | tunnel: no `--masque-endpoint`; v4 door first | closed | T-169 |
 | #367 | provision retries DNS; verify has no pin path | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-170, T-171, T-172 |
-| #368 | WARP identity of another uid refused | open | T-173 |
+| #368 | WARP identity of another uid refused | closed | T-173 |
 | #369 | netns veth wire without /dev/net/tun | closed | T-174 |
 | #370 | one TLS connection per DoH query | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-175 |
 | #371 | TCP flow terminators (design limits, no present defect) | closed | T-176 |
