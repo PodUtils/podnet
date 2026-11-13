@@ -58,7 +58,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #356 | research documents cite old paths | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-159 |
 | #357 | verify: young name exits 69, tears down a working tunnel | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-160 |
 | #358 | relay node: pair cannot be renewed | open | T-161 |
-| #359 | relay alternates chosen once (cost is the 2 s stagger) | open | T-162 |
+| #359 | relay alternates chosen once (cost is the 2 s stagger) | closed | T-162 |
 | #360 | relay session budget is a constant | open | T-163 |
 | #361 | `--no-verify` undocumented, name misleads | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-164 |
 | #362 | ssh relay leg: no supervision (no caller) | closed | T-165 |
@@ -70,13 +70,13 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #368 | WARP identity of another uid refused | open | T-173 |
 | #369 | netns veth wire without /dev/net/tun | closed | T-174 |
 | #370 | one TLS connection per DoH query | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-175 |
-| #371 | TCP flow terminators (design limits, no present defect) | open | T-176 |
+| #371 | TCP flow terminators (design limits, no present defect) | closed | T-176 |
 | #372 | router datagram carrier | open | T-098, T-099, T-111 |
 | #373 | router health: hysteresis, cooldown | open | T-096, T-097 |
 | #374 | router probes via own member; resolver | open | T-097, T-098 |
 | #375 | `route check`, group policies, direction split | open | T-177, T-178, T-179 |
 | #376 | router control, typed selection, seccomp budget | open | T-096, T-180, T-181 |
-| #377 | Transport trait addressing; gsr transport | open | T-055, T-058 |
+| #377 | Transport trait addressing; gsr transport | closed | T-055, T-058 |
 | #378 | doctor --agent checks index host, not file host | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-182 |
 | #379 | http:// proxy default port 8080 vs 80 | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-183 |
 | #380 | doctor relay row from PODNET_RELAY only (partly) | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-184 |
@@ -123,7 +123,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #425 | COORD-016: T-229 measured, T-230 has the hold object, T-231 item 1 done (to podrunner) | open (a COORD issue between sessions) | none |
 | #426 | COORD-017: podnet took v0.17.0 and pod_hold::connect and pod_hold::packet | closed (podcrates recorded it: taken e4d4049) | none |
 | #427 | COORD-018: the cut of pod-netstack (to podcrates) | closed (podnet took pod-netstack at d23ce4e) | none |
-| #428 | pod --serve door: early reply and pipelined SOCKS5 upstream handshake (donor review) | open | T-237 |
+| #428 | pod --serve door: early reply and pipelined SOCKS5 upstream handshake (donor review) | closed | T-237 |
 | #429 | listen::bind_private: the socket has the umask mode between bind and chmod (donor review) | closed (fixed in 3c6173f) | T-238 |
 | #430 | install.sh and update: tag check, strict SHA256SUMS, install tests that can fail (donor review) | closed | T-239 |
 | #431 | warp tun --default-route: resolver backup on disk, restore after a kill, route table test (donor review) | closed | T-240 |
@@ -160,8 +160,8 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #462 | COORD-042: a change in the frozen src/doctor.rs for the lanes of A-C-10 (T-260) (to podcrates) | closed (a COORD issue between sessions) | none |
 | #463 | COORD-043: a weekly watch of the relay contract in pod-relay (podnet T-134) (to podcrates) | closed (a COORD issue between sessions) | none |
 | #464 | COORD-044: five more gaps of pod-netstack for the guest-wire router (podnet T-176, T-248) (to podcrates) | closed (a COORD issue between sessions) | none |
-| #465 | COORD-045: podnet took v0.27.0 at 28c0e3d (to podcrates) | open (a COORD issue between sessions) | none |
-| #466 | link: peer identity, session, carrier registry, and the link command (E0) | open | T-261, T-262, T-263, T-264, T-265, T-266, T-267 |
+| #465 | COORD-045: podnet took v0.27.0 at 28c0e3d (to podcrates) | closed (a COORD issue between sessions) | none |
+| #466 | link: peer identity, session, carrier registry, and the link command (E0) | closed | T-261, T-262, T-263, T-264, T-265, T-266, T-267 |
 | #467 | link: stream carriers and availability (E1) | open | T-268, T-269, T-270, T-271, T-272, T-273, T-274, T-275 |
 | #468 | link: datagram reliability, ARQ, and simplex carriers (E2) | open | T-276, T-277, T-278, T-279, T-280 |
 | #469 | link: DNS stream, ICMP, WireGuard and NAT traversal carriers (E3) | open | T-281, T-282, T-283, T-284 |
@@ -172,11 +172,11 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #474 | link: C ABI (E8) | open | T-304 |
 | #475 | link: portable build subset (E9) | open | T-305 |
 | #476 | link: CLI query keys, control plane, aliases, dump, components and build features (E10) | open | T-306, T-307, T-308, T-309, T-310, T-311 |
-| #477 | COORD-046: podnet took v0.28.0 at b08e06f (to podcrates) | open (a COORD issue between sessions) | none |
+| #477 | COORD-046: podnet took v0.28.0 at b08e06f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #478 | COORD-047: podnet took v0.29.0 and pod-hold syn-hold at 98d8a71 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #479 | COORD-048: asks for the link workstream of podnet (GitHub #466 to #476) (to podcrates) | closed (a COORD issue between sessions) | none |
-| #480 | COORD-049: podnet starts the link workstream: pod-link with the unix and memory carriers first (to podcrates) | open (a COORD issue between sessions) | none |
-| #481 | COORD-050: podnet took v0.30.0 and pod-relay at 83e0c93 (to podcrates) | open (a COORD issue between sessions) | none |
+| #480 | COORD-049: podnet starts the link workstream: pod-link with the unix and memory carriers first (to podcrates) | closed (a COORD issue between sessions) | none |
+| #481 | COORD-050: podnet took v0.30.0 and pod-relay at 83e0c93 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #482 | COORD-051: two gaps of pod-relay after the take (pair renewal, pair on a second host) and the edge budget (to podcrates) | closed (a COORD issue between sessions) | none |
 | #483 | live: two runs in a row failed | closed | T-315 |
 | #484 | [DEFERRED] Carry a session in NTPv4 extension fields, SMTP and IMAP | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
@@ -194,12 +194,12 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #500 | [DEFERRED] State the host runtime: no open port, classified egress, stated limits | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
 | #501 | [DEFERRED] Build the verification harness: classifier, exit codes, conformance matrix | open (deferred by the owner, 2026-11-12: the entries wait for the owner) | none |
 | #502 | COORD-052: podnet took v0.31.0 at e046560; relay connect hangs on a direct runner after the take of pod-relay (to podcrates) | closed (a COORD issue between sessions) | none |
-| #503 | net: add a Dev Tunnels network for TCP streams | open (T-320 is done; the issue waits for its close) | T-320 |
+| #503 | net: add a Dev Tunnels network for TCP streams | closed | T-320 |
 | #504 | doctor: resolve the ssh-relay probe through the configured proxy | closed | T-322 |
 | #505 | ssh-relay: try the authentication methods the relay offers | closed | T-318 |
 | #506 | ssh-relay: take the remote port from the service data | closed (T-319, commit 3e4c999) | T-319 |
 | #507 | net: add a TURN network for UDP flows | open (T-321 partial: the UDP half is done; the TCP relay, the doctor row and an account for each network stay) | T-321 |
-| #508 | COORD-053: podnet took v0.32.0 at fa6b5ba; pod-link is next (to podcrates) | open (a COORD issue between sessions) | none |
+| #508 | COORD-053: podnet took v0.32.0 at fa6b5ba; pod-link is next (to podcrates) | closed (a COORD issue between sessions) | none |
 | #509 | COORD-054: the mapped loopback address is now dialed direct (T-317); it comes in v0.4.0-beta.7 (to podrunner) | closed (a COORD issue between sessions; podrunner run 43337313388 passed) | none |
 | #510 | COORD-055: asks from GitHub #503 to #507: pod-devtunnel, pod-turn, a remote-port fact, the Serveo URL rule (to podcrates) | closed (a COORD issue between sessions) | none |
 | #511 | live: two runs in a row failed | closed | T-323 |
