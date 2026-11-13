@@ -209,7 +209,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #515 | COORD-059: podnet took v0.34.0 at ef8c901; the TCP carrier is in; the next carriers of pod-link (to podcrates) | closed (a COORD issue between sessions) | none |
 | #516 | live: two runs in a row failed | closed (quick-tunnel edge flakes; the rerun 43333498755 passed) | none |
 | #517 | COORD-060: the answer to the asks N-1 to N-5 of podswarm (PodUtils/podcrates#125) (to all) | open (a COORD issue between sessions) | none |
-| #518 | COORD-061: port rules in the rules reader of pod-warp: port:N=WAY and tcp:HOST:PORT=WAY (podnet T-328; ask N-2 of podswarm) (to podcrates) | open (a COORD issue between sessions) | none |
+| #518 | COORD-061: port rules in the rules reader of pod-warp: port:N=WAY and tcp:HOST:PORT=WAY (podnet T-328; ask N-2 of podswarm) (to podcrates) | closed (T-328 done, f5bab50) | none |
 | #519 | COORD-062: podnet took v0.35.0 at 5562f21 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #520 | COORD-063: podnet took v0.36.0 at 775486f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #521 | COORD-064: what podnet waits for to close its issues: the datagram carriers of pod-link, pod-e2e, pod-wormhole, pod-warp's freeze and the others (to podcrates) | closed (answered by PodUtils/podcrates#133) | none |
