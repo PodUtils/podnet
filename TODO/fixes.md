@@ -5561,3 +5561,9 @@ resolver are as before" in the log of the instance, a line that `pod-warp` write
 log filter of podnet (`podnet_core::report::log_filter`) named six targets and hid each line of `pod-warp` and of the other
 crates of podcrates. The filter now names each `pod-*` crate that podnet runs. Test:
 `the_log_filter_names_each_pod_crate_of_podnet` (it reads the root `Cargo.toml`).
+
+2026-11-13: the live run 43434773421 on 1765d1c passed "warp tun --default-route (root)" (the log filter holds) and
+failed at "WARP run": the step looks for the debug line "a UDP association in the stream", which `pod-warp` writes
+(`pod_warp::proxy::udp`); the step sets `RUST_LOG=podnet=debug`, which hid the target `pod_warp`. Each `RUST_LOG` of
+`podnet=debug` in `.github/workflows/live.yml` now adds `pod_warp=debug`. The later steps grep no other line that only a
+crate of podcrates writes, except the relay line, which the `RUST_LOG` of the job covers.

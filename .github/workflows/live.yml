@@ -308,7 +308,7 @@ jobs:
           if timeout 15 getent hosts api.trycloudflare.com; then echo "the system resolver still answers"; exit 1; fi
           # The resolver is pod-dns (T-137): its debug line "resolved" names
           # the source of the answer (source="doh").
-          RUST_LOG=podnet=debug,pod_dns=debug sh scripts/live-run.sh dns timeout 180 target/release/podnet demo --exit-on-verify --protocol http2 ||
+          RUST_LOG=podnet=debug,pod_warp=debug,pod_dns=debug sh scripts/live-run.sh dns timeout 180 target/release/podnet demo --exit-on-verify --protocol http2 ||
             { tail -40 dns.err; exit 1; }
           grep 'pod_dns' dns.err | head -10 || true
           grep -q 'source="doh"' dns.err
@@ -317,7 +317,7 @@ jobs:
           # With the servers of 1.1.1.1 refused, the DoH answer comes from
           # another operator: the debug line "doh answered" of pod_dns::way
           # names the server (pod-dns v0.6.0; COORD-004, PodUtils/podnet#322).
-          RUST_LOG=podnet=debug,pod_dns=debug sh scripts/live-run.sh dns2 timeout 240 target/release/podnet demo --exit-on-verify --protocol http2 ||
+          RUST_LOG=podnet=debug,pod_warp=debug,pod_dns=debug sh scripts/live-run.sh dns2 timeout 240 target/release/podnet demo --exit-on-verify --protocol http2 ||
             { tail -40 dns2.err; exit 1; }
           grep 'pod_dns' dns2.err | head -10 || true
           grep -q 'source="doh"' dns2.err
@@ -468,7 +468,7 @@ jobs:
           # The log of the first ssh: ssh -vvv, and the debug log of the
           # ProxyCommand (relay connect) and of the node (T-315).
           ok=0
-          RUST_LOG=podnet=debug,pod_relay=debug,pod_ws=debug timeout 150 \
+          RUST_LOG=podnet=debug,pod_warp=debug,pod_relay=debug,pod_ws=debug timeout 150 \
             ssh -vvv -i "$RUNNER_TEMP/relay_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$RUNNER_TEMP/relay_known" -o HostKeyAlias="$name" \
             -o HostKeyAlgorithms=ssh-ed25519 \
@@ -883,7 +883,7 @@ jobs:
           # the unix control connection (no kernel UDP socket). NTP, not DNS:
           # the pod answers port 53 itself.
           # RUST_LOG of the job (info) has priority over -v: set debug here.
-          RUST_LOG=podnet=debug sh scripts/live-run.sh warpudp timeout 120 target/release/podnet warp run --backend seccomp -- python3 -c "
+          RUST_LOG=podnet=debug,pod_warp=debug sh scripts/live-run.sh warpudp timeout 120 target/release/podnet warp run --backend seccomp -- python3 -c "
           import socket
           s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.settimeout(10)
           s.sendto(b'\x1b' + bytes(47), ('162.159.200.123', 123))
