@@ -1118,10 +1118,15 @@ jobs:
             sleep $(( ${pause:-60} + 5 ))
             target/release/podnet warp --identity "$id" register > /dev/null
           fi
+          # The member r names its relay; the router's own PODNET_RELAY is
+          # a dead address, so that the WARP session of w has no relay leg
+          # (with one, a refused door moves MASQUE onto the relay, and w
+          # stays up: live run 43515475108).
+          relay=$(target/release/podnet relay pair --help | grep -o 'default: https://[^]]*' | head -1 | cut -d' ' -f2)
           cat > router.yml <<EOF
           networks:
             w: warp:identity=$id
-            r: relay
+            r: relay:$relay
           groups:
             g: w*1, r*1
           policies:
@@ -1142,7 +1147,7 @@ jobs:
             - listen: tcp://127.0.0.1:18303
               via: g
           EOF
-          target/release/podnet route --config router.yml --detach --name router > /dev/null
+          PODNET_RELAY=http://127.0.0.1:9 target/release/podnet route --config router.yml --detach --name router > /dev/null
           # The relay's own exit is Cloudflare too (warp=on): the state of the
           # router, not the trace, tells the members apart.
           trace() { curl -fsS --max-time 30 -x "socks5h://127.0.0.1:$1" https://one.one.one.one/cdn-cgi/trace | grep '^warp=' || true; }

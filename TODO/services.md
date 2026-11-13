@@ -1438,6 +1438,13 @@ reached the tracker). A change of `LiveDial::session` (the last failure for each
 passed with and without it. The live step now prints the health of `w` and `r` after each 5 s and, on a failure, the log
 of the router (ids masked), so that the next run shows the cause.
 
+2026-11-13: the cause, from the live run 43515475108 on 54f0809 (the health each 5 s and the log of the router): with the
+door refused, `pod-warp` moved the WARP session of `w` onto the relay leg ("the direct MASQUE path failed [...] the relay
+is tried"; "MASQUE goes through the relay"), so `w` stayed `up` with a working session. The router is right; the step was
+wrong. The step now starts the router with `PODNET_RELAY=http://127.0.0.1:9` (no relay leg for WARP) and gives `r` its
+relay URL (`relay:URL`, the default of `podnet relay pair --help`); checked here: `r` carries a trace with the dead
+`PODNET_RELAY`. `docs/router.md` says that a WARP member takes the relay leg.
+
 
 # T-102: Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole`
 

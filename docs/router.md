@@ -238,6 +238,9 @@ and `down` counts the datagrams that it receives.
 `warp` and `warp:identity=FILE` are networks of the registry ([egress.md](egress.md)). A `networks:` entry
 `w: warp` gives TCP and UDP through a WARP session. A name is resolved inside the tunnel. The session is
 `pod-warp` `Live`: a session that the edge ends is replaced, and a dial waits for the new one (20 s at most).
+When the MASQUE front door refuses the session, the new session goes through the relay of `PODNET_RELAY` (else the
+default relay), as `podnet warp` does: the member stays `up`. Set `PODNET_RELAY` to an address that refuses for a router
+whose WARP member must go `down` when its front door refuses, and give a relay member its URL (`relay:URL`).
 
 The device is kept in the identity file: `FILE`, else `warp.json` in `state_dir/NETWORK`, else the default
 file of `podnet warp` ([warp.md](warp.md)). A file that is new is registered, and the registration is logged

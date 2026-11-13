@@ -232,6 +232,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #538 | COORD-073: pod-hold: a seccomp rule for a raw ICMP socket (podnet T-334) (to podcrates) | open (a COORD issue between sessions) | none |
 | #539 | [gh action] requested: ci, deny, secrets and live on c8a9510 | closed: ci 43506563209, deny 43506569632 and secrets 43506579272 passed; live 43506586024 failed at the router step (w stays up) | none |
 | #540 | COORD-074: pod-link: dgram_tls does not call rekeyed, so a dns or icmp link stops at the wrap of the ARQ (podnet T-277) (to podcrates) | open (a COORD issue between sessions) | none |
-| #541 | [gh action] requested: ci, deny, secrets and live on the head after 4c69b1c (T-277, T-287, T-012, the router step of T-101) | open (a request of runs to the owner) | none |
+| #541 | [gh action] requested: ci, deny, secrets and live on 54f0809 | closed: ci 43515459301, deny 43515464237 and secrets 43515470028 passed; live 43515475108 failed at the router step (the WARP session took the relay leg) | none |
+| #542 | [gh action] requested: ci, deny, secrets and live on the head after 54f0809 (the router step of T-101 with no relay leg for WARP) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
