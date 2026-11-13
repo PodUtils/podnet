@@ -94,6 +94,7 @@ pub mod link_chain;
 pub mod link_ctl;
 pub mod link_forward;
 pub mod link_group;
+pub mod link_http;
 pub mod link_query;
 pub mod link_service;
 pub mod link_socks;

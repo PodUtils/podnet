@@ -65,6 +65,10 @@ pub(crate) struct ListenArgs {
     /// reaches it with `link dial --service NAME` or `peer:FINGERPRINT/NAME`.
     /// The service `socks5` takes no target: `--service socks5` makes this
     /// end the server side of SOCKS5 (CONNECT only; a name resolves here).
+    /// The service `http` takes no target either: `--service http` makes
+    /// this end an HTTP proxy (`CONNECT` and absolute form, one request for
+    /// each stream, 8 KiB of head at most). A target is the name of
+    /// another service of this listener; there is no DNS lookup.
     /// Repeat it: 16 services at most.
     #[arg(long, value_name = "NAME=TARGET")]
     pub(crate) service: Vec<String>,
@@ -110,6 +114,8 @@ enum Service {
     Target(Target),
     /// Serve SOCKS5 on the stream (`--service socks5`, T-291).
     Socks5,
+    /// Serve an HTTP proxy on the stream (`--service http`, T-292).
+    Http,
 }
 
 impl std::fmt::Display for Service {
@@ -117,6 +123,7 @@ impl std::fmt::Display for Service {
         match self {
             Service::Target(target) => write!(f, "{target}"),
             Service::Socks5 => f.write_str("socks5"),
+            Service::Http => f.write_str("http"),
         }
     }
 }
@@ -138,19 +145,24 @@ fn services_of(args: &ListenArgs) -> Result<BTreeMap<String, Service>> {
         );
     }
     for item in &args.service {
-        if item == podnet::link_socks::NAME {
-            if out.insert(item.clone(), Service::Socks5).is_some() {
+        if item == podnet::link_socks::NAME || item == podnet::link_http::NAME {
+            let kind = if item == podnet::link_http::NAME {
+                Service::Http
+            } else {
+                Service::Socks5
+            };
+            if out.insert(item.clone(), kind).is_some() {
                 return Err(usage(format!("--service {item}: given twice")));
             }
             continue;
         }
         let (name, text) = item.split_once('=').ok_or_else(|| {
             usage(format!(
-                "--service {item:?}: give NAME=TARGET (or `socks5` with no target)"
+                "--service {item:?}: give NAME=TARGET (or `socks5` or `http` with no target)"
             ))
         })?;
         service::check_name(name)?;
-        if name == podnet::link_socks::NAME {
+        if name == podnet::link_socks::NAME || name == podnet::link_http::NAME {
             return Err(usage(format!(
                 "--service {name}: the service {name} takes no target: give `--service {name}`"
             )));
@@ -364,6 +376,10 @@ async fn bridge(
             service::reply(stream, service::OPEN).await?;
             return podnet::link_socks::serve(stream).await;
         }
+        Service::Http => {
+            service::reply(stream, service::OPEN).await?;
+            return podnet::link_http::serve(stream, resolver(services)).await;
+        }
     };
     let mut io = match connect(target).await {
         Ok(io) => io,
@@ -375,6 +391,22 @@ async fn bridge(
     service::reply(stream, service::OPEN).await?;
     tokio::io::copy_bidirectional(stream, &mut io).await?;
     Ok(())
+}
+
+/// The names that the service `http` reaches: each service with a target.
+fn resolver(services: &BTreeMap<String, Service>) -> podnet::link_http::Resolver {
+    use podnet::link_http::Origin;
+    let map: BTreeMap<String, Origin> = services
+        .iter()
+        .filter_map(|(name, service)| match service {
+            Service::Target(Target::Tcp { host, port }) => {
+                Some((name.clone(), Origin::Tcp(host.clone(), *port)))
+            }
+            Service::Target(Target::Unix(path)) => Some((name.clone(), Origin::Unix(path.clone()))),
+            _ => None,
+        })
+        .collect();
+    Arc::new(move |name| map.get(name).cloned())
 }
 
 /// A connection to `target`. A name resolves with the resolver of this

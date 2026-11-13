@@ -23,7 +23,7 @@ podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of
 * `link listen ADDRESS --allow FILE` binds the address through the carrier. It prints the address (for the unix carrier: the
   path and its mode, 0600), the fingerprint of this install and the size of the allow list. `--service NAME=TARGET` (repeat it,
   16 at most) sets where the streams of the service NAME go; `--to TARGET` is `--service raw=TARGET`. A TARGET is `host:port` or
-  `unix:/path`. `--service socks5` (no target) makes this end the server side of SOCKS5 (see "The service `socks5`"). A stream for a service that the listener does not have is refused (the opener exits 69). A second
+  `unix:/path`. `--service socks5` (no target) makes this end the server side of SOCKS5 (see "The service `socks5`"). `--service http` (no target) makes this end an HTTP proxy (see "The service `http`"). A stream for a service that the listener does not have is refused (the opener exits 69). A second
   listener at a live address exits 69. A regular file at the address exits 64 and stays. A stale socket file is replaced.
 * `link dial ADDRESS` connects, proves the key of this install, and checks the key of the listener. Give `--peer FINGERPRINT`
   (repeat it for more than one) or `--allow FILE`: the dialer trusts no listener by default (else exit 64). Then it copies stdin
@@ -87,6 +87,22 @@ resolves there. A refused or failed `CONNECT` gets a SOCKS5 failure reply. A str
 example) ends with no answer. `socks5` takes no target: `--service socks5=TARGET` exits 64. There is no user and password: the link
 admits the peer. Not built (T-291 is partial): `BIND` and `UDP ASSOCIATE` (both get reply 7, command not supported), and `--resolve local`.
 `link dial` exits at once when the far end ends the stream, also when stdin is still open.
+
+### The service `http`
+
+`--service http` runs an HTTP proxy on the stream (`podnet_netns::door::Door`, the same code as `podnet pod --serve`). The opener sends
+one request for each stream, for example `podnet link dial ADDRESS --peer FP --service http`. Two framings work: `CONNECT NAME:PORT`
+(the reply is `200`, then the bytes pass) and the absolute form `GET http://NAME/path HTTP/1.1` (the request goes on in origin form with
+`Connection: close`; the reply and the body pass). The peer is on the allow list before the stream opens, so a stranger gets exit 77 and
+no service runs.
+
+* A target is the name of a service of the listener (`--service NAME=TARGET`; `--to` is `raw`). The port of the request is not used:
+  the name stands for the target of the service. A host that is no such name, and each IP address, gets 403. The proxy does no DNS lookup.
+* The request head is 8 KiB at most (else 431). A `CONNECT` with a body (`Content-Length` other than 0, or `Transfer-Encoding`) gets 400. A
+  request that is neither `CONNECT` nor absolute form (`GET /x`) gets 400. A target that does not answer gets 502 or 504.
+* There is no cache and no user and password. `http` takes no target: `--service http=TARGET` exits 64.
+
+Proof: `tests/link_http.rs`.
 
 ## The control socket
 
