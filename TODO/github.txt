@@ -174,7 +174,7 @@
 469 issue open
 470 issue open
 471 issue open
-472 issue open
+472 issue closed
 473 issue open
 474 issue closed
 475 issue closed
@@ -225,11 +225,11 @@
 524 issue closed
 525 issue closed
 526 issue open
-527 issue open
+527 issue closed
 528 issue closed
 529 issue closed
 530 issue closed
 531 issue closed
 532 issue open
 533 issue open
-534 issue open
+534 issue closed

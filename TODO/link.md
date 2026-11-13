@@ -653,6 +653,8 @@ Tests (`tests/link_poll.rs`, build `--features poll`, here `--features full`; no
 
 Not proven here: the `429` rule and the 406 fallback (tests of `pod-link`, `poll` and `poll_lanes`); a link through a real proxy; a host that denies TCP loopback.
 
+CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (GitHub #534).
+
 # T-272: link: the SSE and chunked-stream carrier (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-5.
@@ -707,6 +709,8 @@ Tests (`tests/link_sse.rs`, build `--features poll`, here `--features full`; non
 
 Not proven here: the base64 events of 8 KiB, the `: ping` comment and the 406 fallback (tests of `pod-link`).
 
+CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (GitHub #534).
+
 # T-273: link: the QUIC carrier (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-6.
@@ -760,6 +764,8 @@ T-268 is done (the verifier) and T-311 is done (the feature).
 Tests (`tests/link_quic.rs`, build `--features quic`; UDP loopback allowed here, none skipped), 8 passed: `a_link_crosses_quic_and_each_end_learns_the_key_of_the_other` (256 KiB there and back on one stream), `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77`, `link_dial_check_meets_link_listen_over_quic_and_a_stranger_exits_77`, `a_dial_address_with_no_key_exits_64`, `a_query_key_of_another_carrier_exits_64`, `the_registry_row_has_no_key_and_refuses_a_dial`, `the_carrier_is_a_stream_with_the_alpn_of_tcp`. `tests/link_peer/mod.rs` is the shared part of the tests of the carriers of `link_keyed`. Plant: with the arms of `quic` in `link_keyed` off, 4 tests failed (the link, the stranger, the other key, the command); with the read of `ConnectionClosed` in `key_refused` off, the stranger tests got 69 for 77. `sh scripts/agent/check.sh`: each step 0.
 
 Not proven: a host that denies UDP (the row of `link carriers` says why; the CI job `no-loopback`); a link over a proxy; the resume of a session over `quic`.
+
+CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (GitHub #534).
 
 # T-274: link: the unix-socket carrier and its socketpair half (GitHub #467)
 
@@ -922,6 +928,8 @@ Tests (`tests/link_udp.rs`, build `--features udp`; none skipped), 11 passed: `a
 
 Not proven here: the gate at 20 % drop within the factor of the clean time and the 8 MiB gate with the defaults (release builds; tests of `pod-link`, `udp_loss`); exit 69 on a host that denies UDP (the CI job `no-loopback`); the profile of `kcp` (no test ends a stream at a wrap of its clock).
 
+CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (GitHub #534).
+
 # T-277: link: a selective-repeat ARQ for any lossy carrier (GitHub #468)
 
 **Source:** GitHub #468 (https://github.com/PodUtils/podnet/issues/468), row E2-2.
@@ -1023,6 +1031,8 @@ T-277, T-262 and T-264 are done. Ask A10 is answered.
 Tests (`tests/link_dns.rs`, build `--features dns`, here `--features full`; a local authoritative server on the UDP loopback, none skipped), 8 passed: `a_link_crosses_dns_and_each_end_learns_the_key_of_the_other` (4 KiB there and back), `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77`, `link_dial_check_meets_link_listen_over_dns_and_a_stranger_exits_77` (`--dns-zone` and `--dns-server`), `a_listener_with_no_zone_and_an_address_with_no_key_exit_64`, `the_dns_flags_are_for_the_dns_carrier`, `the_carrier_is_a_stream_of_the_highest_overhead`, `the_registry_row_has_no_key_and_refuses_a_dial`; the unit test `link_dns::tests::the_first_nameserver_of_the_resolver_file`. Plant: with the arms of `dns` in `link_keyed` off, 5 of the 8 failed. `sh scripts/agent/check.sh`: each step 0.
 
 Not proven here: a link through a real recursive resolver; the token bucket, the backoff and the loss of queries (tests of `pod-link`, `dns` and `dns_loss`); the `TC` rule (not in `pod-link`).
+
+CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (GitHub #534).
 
 # T-279: link: the object-storage simplex carrier (GitHub #468)
 
@@ -1126,6 +1136,8 @@ T-271, T-277 and T-264 are done.
 Tests (`tests/link_httppoll.rs`, build `--features poll`, here `--features full`; none skipped), 6 passed: `a_link_crosses_httppoll_and_each_end_learns_the_key_of_the_other` (512 KiB there and back), `a_dialer_of_httppoll_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77_on_httppoll`, `link_dial_check_meets_link_listen_over_httppoll_and_a_stranger_exits_77`, `the_registry_row_of_httppoll_has_no_key_and_refuses_a_dial`, `the_simplex_poll_reports_the_overhead_class_highest`. Plant: with the arms of the poll carriers in `link_keyed` off, 4 of the 6 failed.
 
 Not proven here: the 204 answer, the backoff of 100 ms to 5 s and the 4 KiB headers (tests of `pod-link`); the use of the carrier as one direction of a split (T-302).
+
+CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (GitHub #534).
 
 # T-281: link: the DNS stream carrier with a pipelined query window (GitHub #469)
 
@@ -2246,7 +2258,7 @@ Observation, not changed: `Sealed::resume` on the same stream (no new carrier) s
 Plant: with the RESUME of a rebind off, the rebind test got 950272 of 1048576 bytes; with the map of `Fault::ResumeExpired` off, the exit 69 test failed with "not ResumeExpired"; with the window error off, the window test failed with "not ResumeExpired". With `resumes: false` in `session::settings`, the session test failed with `BrokenPipe`. The test of the one window has no plant: the two constants are 600 s in the crates; the test fails when one of them changes.
 `sh scripts/agent/check.sh`: each step 0.
 
-
+CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (GitHub #534).
 
 # T-302: link: split one session across an up carrier and a down carrier (GitHub #473)
 
