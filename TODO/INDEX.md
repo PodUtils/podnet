@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**332 entries: 33 open, 17 partial, 33 blocked, 249 done.**
+**332 entries: 31 open, 17 partial, 33 blocked, 251 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 1 | 2 | 27 | 31 |
-| P2 | 17 | 7 | 11 | 133 | 168 |
+| P2 | 15 | 7 | 11 | 135 | 168 |
 | P3 | 15 | 9 | 20 | 88 | 132 |
-| **All** | 33 | 17 | 33 | 249 | 332 |
+| **All** | 31 | 17 | 33 | 251 | 332 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -80,8 +80,8 @@ M8 Overlays, M9 Later.
 | [T-032](split.md) | P2 | M | M2 | chore | done | `src/main.rs` to a CLI module, part 6: the unit tests go to the modules that they test |
 | [T-033](split.md) | P2 | M | M2 | chore | done | Split `src/egress.rs`, `crates/podnet-core/src/detach.rs`, `src/update.rs` and `src/doctor.rs` |
 | [T-034](split.md) | P2 | M | M2 | chore | done | Split `crates/podnet-vnet/src/stack.rs` |
-| [T-035](split.md) | P2 | M | M2 | chore | open | Split `src/warp/ip.rs`, `src/warp/session.rs` and `src/warp/wg.rs` |
-| [T-036](split.md) | P2 | M | M2 | chore | open | Split `src/warp/mod.rs` and `src/warp/proxy.rs` |
+| [T-035](split.md) | P2 | M | M2 | chore | done | Split `src/warp/ip.rs`, `src/warp/session.rs` and `src/warp/wg.rs` |
+| [T-036](split.md) | P2 | M | M2 | chore | done | Split `src/warp/mod.rs` and `src/warp/proxy.rs` |
 | [T-037](split.md) | P2 | M | M2 | chore | done | Split `src/relay_reverse.rs` and `crates/podnet-serve/src/share/mod.rs` |
 | [T-038](split.md) | P2 | M | M2 | chore | done | Split `crates/podnet-serve/src/feature/mod.rs` and `src/proxy.rs` |
 | [T-039](split.md) | P2 | M | M2 | chore | open | Split `src/edge_h2.rs` and `src/tunnel.rs` |

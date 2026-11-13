@@ -564,7 +564,7 @@ tests before and after. `check.sh` exit 0 (it runs `vnet_regressions`, `vnet_pro
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -601,6 +601,12 @@ T-008, T-009 and T-012 are done.
 
 2026-11-05, The named modules `src/warp/ip.rs`, `src/warp/session.rs` and `src/warp/wg.rs` move to PodUtils/podcrates (`pod-warp`, with `pod-netstack` and `pod-wg`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. No file of this entry stays in podnet. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
 
+## Done
+
+2026-11-13: done by the take of `pod-warp` (podcrates `v0.37.0`, f6abdc3; T-050): the WARP chain moved to the crate, and
+`src/warp/ip.rs` (152 lines), `src/warp/session.rs` (72) and `src/warp/wg.rs` (70) are glue under 800 lines. No split in podnet was needed. Check: `python3 scripts/check-size.py` (0 faults).
+
+
 # T-036: Split `src/warp/mod.rs` and `src/warp/proxy.rs`
 
 **Source:** `docs/research/podnet/architecture.md`, section 2.2 (the two rows).
@@ -608,7 +614,7 @@ T-008, T-009 and T-012 are done.
 **Milestone:** M2
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -646,6 +652,12 @@ T-008, T-009 and T-012 are done.
 ## Correction
 
 2026-11-05, The named modules `src/warp/mod.rs` and `src/warp/proxy.rs` move to PodUtils/podcrates (`pod-warp`, T-137). podnet does not split them: a split of a moved file is work of podcrates, under its checks. No file of this entry stays in podnet. Remove the row of a moved file from `scripts/size-allow.txt` when podnet takes its crate.
+
+## Done
+
+2026-11-13: done by the take of `pod-warp` (podcrates `v0.37.0`, f6abdc3; T-050): the WARP chain moved to the crate, and
+`src/warp/mod.rs` (788 lines) and `src/warp/proxy.rs` (425) are glue under 800 lines. No split in podnet was needed. Check: `python3 scripts/check-size.py` (0 faults).
+
 
 # T-037: Split `src/relay_reverse.rs` and `crates/podnet-serve/src/share/mod.rs`
 
