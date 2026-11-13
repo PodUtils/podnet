@@ -4,6 +4,7 @@ mod connect;
 mod dial;
 mod info;
 pub(crate) mod listen;
+mod services;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

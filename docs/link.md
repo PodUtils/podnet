@@ -31,8 +31,11 @@ podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of
   fingerprint of the peer; with `--json` it prints one document.
 * `link connect ADDRESS (--peer FINGERPRINT | --allow FILE)` connects, runs the hello, and holds the link until the link ends
   (exit 69) or a stop signal. It runs the control socket. The ready document has `carrier`, `address`, `fingerprint`, `peer` and
-  `control`. It accepts `--detach`, `--name` and the other flags of the background record. This end offers no service: it closes
-  each stream that the peer opens.
+  `control`. It accepts `--detach`, `--name` and the other flags of the background record. `--service NAME=TARGET` (the forms of
+  `link listen --service`: a raw target, `socks5`, `http`, `exec:/ABS/PATH` with `--exec-arg`, `--exec-env`, `--exec-user`) serves the
+  streams that the peer opens. The grant of the peer in the `--allow` file (`services=`; a `--peer` key has every service) applies before
+  any service: a service that it does not grant gets answer 6 and is counted in `refused_service`. A stream for a service that
+  this end does not have gets answer 1. With no `--service`, each stream gets answer 1.
 * `link status [NAME]` prints the fingerprint of this install and the link instances (`link listen --detach` or `--name`).
   `--create` makes the key when there is none; without it, `status` writes nothing. `--json` prints one document with `identity`
   and `links`. For an instance that runs a control socket, each row has `live` (the document of the verb `status`: the links, with

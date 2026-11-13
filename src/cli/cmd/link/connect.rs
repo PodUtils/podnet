@@ -11,6 +11,7 @@ use podnet::identity;
 use podnet::link_ctl::Hub;
 
 use super::dial::trusted;
+use super::services::{services_of, ServiceArgs, Streams};
 use super::CarrierArgs;
 use crate::cli::opts::DetachArgs;
 use crate::cli::signals::shutdown_signal;
@@ -37,6 +38,8 @@ pub(crate) struct ConnectArgs {
     /// listener that the list does not hold exits 77.
     #[arg(long, value_name = "FILE")]
     pub(crate) allow: Option<PathBuf>,
+    #[command(flatten)]
+    pub(crate) services: ServiceArgs,
     /// The control socket (mode 0600, with the token file PATH.token). The
     /// default is `link-PID.ctl` in the run directory of podnet. The ready
     /// document names it.
@@ -56,13 +59,14 @@ pub(crate) struct ConnectArgs {
 
 pub(crate) async fn connect(mut args: ConnectArgs, egress: Vec<String>) -> Result<()> {
     args.address = super::apply_query(&args.address, &mut args.carrier)?;
+    let services = Arc::new(services_of(None, &args.services, false)?);
     let carrier = super::open_carrier(&args.carrier)?;
     let allow = trusted(&args.allow, &args.peer)?;
     let me = identity::create(&identity::default_dir()?)?;
     let (chain, rows) =
         super::open_chain(&egress, &args.carrier, &args.address, args.check, args.json).await?;
     let via = chain.as_ref().map(podnet::link_chain::Opened::dial);
-    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow, via).await?;
+    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow.clone(), via).await?;
     let shown = peer.display_fingerprint();
     if args.check {
         // No name, no control socket and no listener.
@@ -122,8 +126,17 @@ pub(crate) async fn connect(mut args: ConnectArgs, egress: Vec<String>) -> Resul
         }
     }
     podnet::detach::ready(doc);
-    // The peer may open streams too. This end offers no service: it closes
-    // each one.
+    // The peer may open streams too: the services of --service serve them,
+    // after the grant of the peer in the allow list (T-290). With no
+    // service, each stream gets the answer "no such service".
+    let streams = Streams {
+        hub: hub.clone(),
+        services,
+        grant: allow.grant(&peer).unwrap_or_default(),
+        peer,
+        shown: shown.clone(),
+        mesh: None,
+    };
     loop {
         tokio::select! {
             _ = shutdown_signal() => {
@@ -131,10 +144,7 @@ pub(crate) async fn connect(mut args: ConnectArgs, egress: Vec<String>) -> Resul
                 return Ok(());
             }
             next = link.accept() => match next {
-                Ok(stream) => {
-                    slot.count_accepted();
-                    drop(stream);
-                }
+                Ok(stream) => streams.spawn(stream, &slot),
                 Err(err) => {
                     return Err(exit::fault(
                         Fault::Unavailable,
