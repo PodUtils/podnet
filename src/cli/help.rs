@@ -18,6 +18,8 @@ pub(crate) const HELP_GROUPS: &[(&str, &[&str])] = &[
             "ssh-relay",
             "serve",
             "share",
+            "send",
+            "receive",
             "git",
             "demo",
             "qr",

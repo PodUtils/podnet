@@ -1205,6 +1205,206 @@ COMMANDS
         key.
             $ podnet git urls --root ./repos
 
+    podnet send [OPTIONS] [PATH]
+        Send a file, a directory or a text with a short code, as
+        magic-wormhole does: the code meets at a public mailbox, and the bytes
+        go direct or through a transit relay, sealed end to end
+
+        <PATH>
+            The file or the directory to send. A directory goes as a zip
+
+        --text <TEXT>
+            Send this text in place of a file
+
+        --timeout <TIMEOUT>
+            Seconds to wait for a receiver to take the code, and for its
+            answer. Default: 1800.
+
+        --mailbox <URL>
+            A mailbox of magic-wormhole (wss:// or ws://), in place of the
+            mailboxes of pod-services. Repeat it for a list, in order: the
+            sender takes the first that answers, the receiver looks for the
+            code at each one. PODNET_MAILBOX gives the same list, separated by
+            commas. Variable: PODNET_MAILBOX.
+
+        --transit-relay <URL>
+            A transit relay of this end: tcp:HOST:PORT, ws://... or wss://...
+            Repeat it for more. The default is each transit relay of
+            pod-services; none gives no relay of this end
+
+        --listen <ADDR>
+            Listen for a direct connection on this address only (the hint is
+            this address, also a loopback address). The default is each
+            address of the host, on a free port
+
+        --no-listen
+            Do not listen: the other end must listen, or a relay must carry
+            the transfer
+
+        --json
+            Print one JSON object for each event on stdout, in place of the
+            text
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route. With podnet link dial and podnet link connect, each
+            --egress is one element of the chain before the tcp carrier
+            (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
+            element reaches the carrier address
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+        Examples:
+        Print a code such as 7-crossover-clockwork-adroitness, then send the
+        file to the receiver of the code (magic-wormhole's mailbox and
+        transit).
+            $ podnet send ./report.pdf
+
+    podnet receive [OPTIONS]
+        Receive what podnet send offers: type the code at the prompt, or give
+        it on stdin (never on the command line)
+
+        --out <DIR>
+            The directory where the file or the directory lands. It must
+            exist. Default: ..
+
+        --yes
+            Accept the offer with no question. Necessary when stdin is not a
+            terminal and the sender offers a file or a directory
+
+        --max-files <N>
+            The most entries of a directory. More is refused (exit 65).
+            Default: 100000.
+
+        --max-bytes <N>
+            The most bytes of a file or of the files of a directory. More is
+            refused (exit 65). Default: 68719476736.
+
+        --mailbox <URL>
+            A mailbox of magic-wormhole (wss:// or ws://), in place of the
+            mailboxes of pod-services. Repeat it for a list, in order: the
+            sender takes the first that answers, the receiver looks for the
+            code at each one. PODNET_MAILBOX gives the same list, separated by
+            commas. Variable: PODNET_MAILBOX.
+
+        --transit-relay <URL>
+            A transit relay of this end: tcp:HOST:PORT, ws://... or wss://...
+            Repeat it for more. The default is each transit relay of
+            pod-services; none gives no relay of this end
+
+        --listen <ADDR>
+            Listen for a direct connection on this address only (the hint is
+            this address, also a loopback address). The default is each
+            address of the host, on a free port
+
+        --no-listen
+            Do not listen: the other end must listen, or a relay must carry
+            the transfer
+
+        --json
+            Print one JSON object for each event on stdout, in place of the
+            text
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route. With podnet link dial and podnet link connect, each
+            --egress is one element of the chain before the tcp carrier
+            (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
+            element reaches the carrier address
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+        Examples:
+        Ask for the code, show the offer, and write the file or the directory
+        under ~/Downloads. It never overwrites.
+            $ podnet receive --out ~/Downloads
+
     podnet connect [OPTIONS] <REMOTE>
         Bridge a local socket to a remote WebSocket forward endpoint
 
@@ -9956,6 +10156,10 @@ ENVIRONMENT
         the hash of its arguments, the command, whether a supervisor runs it,
         and the --ready-timeout of the first start (a provision of a quick
         tunnel does not wait past it). Do not set them. (--detach)
+    PODNET_MAILBOX
+        The value of --mailbox when the flag is not given: the mailboxes of
+        magic-wormhole (wss:// or ws://), separated by commas, in order. The
+        default is each mailbox of pod-services. (send, receive)
     PODNET_RELAY
         The value of --relay when the flag is not given: the WebSocket-to-TCP
         relay of --transport relay (https:// and a host), or a comma list of
@@ -10410,6 +10614,11 @@ EXIT STATUS
     64 (usage)
         A bad command line: an unknown command or flag, a missing or bad
         value. Nothing was done.
+    65 (data-error)
+        Input that podnet refuses: podnet receive got an entry with a bad name
+        or kind, a name that exists (the receiver never overwrites), more
+        files or bytes than its caps, or data whose size or SHA-256 does not
+        agree. Nothing of a refused transfer stays on the disk.
     66 (no-input)
         A file that must exist is missing: the key of the link where a command
         needs an existing key, or the allow list of the link.
@@ -10559,6 +10768,14 @@ EXAMPLES
     A virtual address for a real service.
         $ podnet net proxy --forward 10.66.0.2:8080=unix:/run/app.sock
 
+    Print a code such as 7-crossover-clockwork-adroitness, then send the file
+    to the receiver of the code (magic-wormhole's mailbox and transit).
+        $ podnet send ./report.pdf
+
+    Ask for the code, show the offer, and write the file or the directory
+    under ~/Downloads. It never overwrites.
+        $ podnet receive --out ~/Downloads
+
     A switch on TCP. Each stack gives the same token: --switch-token-file, or
     PODNET_SWITCH_TOKEN.
         $ podnet net switch --listen tcp://127.0.0.1:7000 --switch-token-file
@@ -10673,6 +10890,7 @@ podnet man                                      # the manual
 | Tunnels | `tunnel`, `demo`, `qr` | Quick tunnels and named tunnels to a local origin (HTTP, unix socket, TCP). | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | Raw streams | `tunnel --forward`, `connect` | SSH, databases and unix sockets through a quick tunnel. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | File server, transfer, git | `serve`, `share`, `git` | Serve a directory, receive or send files with a PIN, host git repositories. | [serve](https://github.com/PodUtils/podnet/blob/main/docs/serve.md) |
+| Transfer by code | `send`, `receive` | A file, a directory or a text to another host with a short code, as magic-wormhole does: a public mailbox for the code, the bytes direct or through a transit relay, sealed end to end. | [transfer](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md) |
 | Publish by one word | `expose` | Publish a local service by a tunnel, the relay or a virtual address. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | WARP | `warp register`, `proxy`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan` | The Cloudflare WARP client on TCP 443, with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
 | Pods | `pod`, `pod doctor`, `pod --report`, `pod --backend netns\|netns-kernel\|seccomp` | Run a program with all its traffic sent through a proxy chain, with rules, audit and a JSON report. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
@@ -10713,6 +10931,7 @@ GitHub runner on each push and each day.
 * [docs/install.md](https://github.com/PodUtils/podnet/blob/main/docs/install.md): install, verify, update, rebuild a release.
 * [docs/tunnels.md](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md): origins, the configuration file, named tunnels, the edge protocol and transport, raw streams.
 * [docs/serve.md](https://github.com/PodUtils/podnet/blob/main/docs/serve.md): the file server, share, git hosting.
+* [docs/transfer.md](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md): `send` and `receive`, the transfer by code.
 * [docs/warp.md](https://github.com/PodUtils/podnet/blob/main/docs/warp.md): the WARP client.
 * [docs/pods.md](https://github.com/PodUtils/podnet/blob/main/docs/pods.md): `podnet pod`.
 * [docs/networks.md](https://github.com/PodUtils/podnet/blob/main/docs/networks.md): `podnet net`, Tailscale, NetBird, the passwd shim.
@@ -11567,6 +11786,144 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   mode, the replies of the local server keep their own headers.
 * A download answers `If-None-Match: *` and a weak tag (`W/"..."`) with
   304.
+
+<!-- document: docs/transfer.md -->
+
+# File transfer by code: `podnet send` and `podnet receive`
+
+This page gives `podnet send` and `podnet receive`: a file, a directory or a
+text from one host to another with a short code, as magic-wormhole does. The
+code meets at a public mailbox. The bytes go direct between the hosts, or
+through a transit relay. Each byte is sealed end to end: the mailbox and the
+relay see no plain text.
+
+## Send and receive
+
+```sh
+# On the first host:
+podnet send ./report.pdf          # prints: Wormhole code is: 7-crossover-clockwork-adroitness
+podnet send ./photos              # a directory goes as a zip
+podnet send --text "the words"    # a text goes in the wormhole: no transit
+
+# On the second host:
+podnet receive                    # asks for the code, shows the offer, asks y/N
+podnet receive --out ~/Downloads  # where the file or the directory lands
+echo 7-crossover-clockwork-adroitness | podnet receive --yes   # a script
+```
+
+* `podnet receive` reads the code from the terminal, or one line of stdin.
+  It takes no code on the command line: each user of the host sees the
+  command line of each process.
+* The code is a number and three words of the PGP word list. A code is good
+  for one exchange: a wrong code, a guess or a success spends it. A wrong
+  code fails at the two ends (exit 77): send again for a new code.
+* `--yes` accepts a file or a directory with no question. When stdin is
+  not a terminal, `--yes` is necessary (else exit 64). A text needs no
+  answer.
+* `--json` prints one JSON object for each event on stdout: the sender
+  prints `{"event": "code", "code", "mailbox"}` first, then
+  `{"event": "sent", "bytes", "sha256", "via"}`; the receiver prints
+  `{"event": "received", ...}`.
+* `podnet send --timeout SECS` is the wait for a receiver and for its
+  answer (default 1800).
+
+## The meeting: mailboxes
+
+The mailboxes are the services of the kind `mailbox` of `pod-services`
+(PodUtils/podcrates), in their order: the public mailbox of magic-wormhole,
+then the mailbox of Least Authority (Winden). `--mailbox URL` (more than
+one is permitted) or `PODNET_MAILBOX` (URLs separated by commas) replaces
+the list.
+
+* The sender takes the first mailbox that answers.
+* The receiver looks for the code at each mailbox in order: a mailbox that
+  lists the nameplate of the code has the sender; one that lists other
+  nameplates does not; at one that lists none, the receiver waits 10 s for
+  the sender's first message, then goes to the next mailbox.
+* The code carries no mark of its mailbox, so a code of magic-wormhole
+  works as it is. Known limit: magic-wormhole issue #754 (open, 2026-11-04)
+  says that two clients of the public mailbox can reach two instances of
+  it, which do not share their mailboxes. Then the receiver finds nobody
+  (exit 69). Give the two ends the same `--mailbox`, for example the
+  second mailbox of the list.
+
+The mailbox, SPAKE2 and the sealed phases are the crate `pod-wormhole` of
+PodUtils/podcrates. The AppID is `lothar.com/wormhole/text-or-file-xfer`,
+the AppID of magic-wormhole's file transfer.
+
+## The transit: direct or through a relay
+
+After the offer and its answer, the two ends connect for the bytes:
+
+* Each end listens on a free port of each address of the host (not the
+  loopback), and sends these addresses as hints. `--listen ADDR` listens on
+  one address only, and sends that address (also a loopback address).
+  `--no-listen` does not listen. A host that refuses a bind of `AF_INET`
+  has no listener: the other end or a relay carries the transfer.
+* Each end dials each hint of the other end through the way out of podnet
+  (`--proxy`, `--egress`, `NO_PROXY`).
+* After 2 s (at once when no end has a direct hint) each end also dials
+  each transit relay of the two ends. The relays of this end are the
+  services of the kind `transit` of `pod-services` (Least Authority's
+  WebSocket relay on port 443), or `--transit-relay URL` (`tcp:HOST:PORT`,
+  `ws://...`, `wss://...`; `none` for no relay of this end).
+* The sender takes the first connection that passes the handshake, and the
+  bytes go in records sealed with NaCl's SecretBox under the transit key.
+* The receiver sends the SHA-256 of the bytes at the end. The sender
+  compares it with its own.
+
+A host whose only way out is a proxy on TCP 443 reaches the WebSocket relay
+of Least Authority. The public TCP relay of magic-wormhole
+(`tcp:transit.magic-wormhole.io:4001`) is not in `pod-services`; give it
+with `--transit-relay` when port 4001 is open.
+
+## What the receiver writes
+
+The receiver checks each name before it writes a byte:
+
+* Each name goes through `pod_extract::safety::components`: no absolute
+  path, no `..`, no NUL. Also refused: a backslash in a component, a
+  component over 255 bytes, a path over 4096 bytes, two entries with the
+  same name after ASCII case folding.
+* Only regular files and directories: a symbolic link, a hard link, a
+  device, a fifo or a socket in a zip is refused.
+* The file or the directory of the transfer must not exist under `--out`.
+  The receiver never overwrites.
+* Each file is made new (`O_CREAT|O_EXCL|O_NOFOLLOW`) with the mode
+  `0666 & ~umask`: never an executable or a set-id bit.
+* `--max-files N` (default 100000) and `--max-bytes N` (default 64 GiB)
+  cap a transfer. The receiver checks them from the offer and the zip
+  directory before it writes, and again while it writes, as a header can
+  lie.
+* A refusal ends the whole transfer with exit 65, and no file of it stays
+  on the disk. When a write fails, the receiver removes each file and
+  directory that it made, and no other.
+
+A directory goes as a zip with stored entries. The receiver reads stored
+and deflated entries, as `wormhole send` makes them. There is no zip64: an
+entry of 4 GiB or more, or more than 65535 entries, is refused.
+
+## With magic-wormhole
+
+A text goes to and from each client of magic-wormhole. A file or a
+directory goes from podnet to podnet only for now: magic-wormhole derives
+the transit key from the key of the wormhole, and `pod-wormhole` 0.40.0
+gives no derivation of its key. A podnet sender draws a random transit key
+and sends it in its sealed `transit` message. A podnet end that meets a
+client of magic-wormhole for a file says so and stops.
+
+## Exit codes
+
+| Code | When |
+| --- | --- |
+| 0 | The transfer completed. |
+| 1 | The other end refused the offer, or broke the protocol. |
+| 64 | A bad command line, a bad code, or a file offer with no terminal and no `--yes`. |
+| 65 | The receiver refused the input: a name, a kind, a name that exists, a cap, a SHA-256 that differs. |
+| 66 | The path to send, or `--out`, does not exist. |
+| 69 | No mailbox answered, no sender waits at the code, or no way of the transit worked. |
+| 77 | The code did not match at the other end: the code is spent. |
+| 124 | No receiver took the code within `--timeout`. |
 
 <!-- document: docs/warp.md -->
 
@@ -13615,7 +13972,9 @@ podnet serve --check --dir ./site --spa
 podnet tunnel --check --json --config config.yml | jq -e .ok
 ```
 
-The exit codes follow sysexits.h: 64 for a bad command line, 66 when a file
+The exit codes follow sysexits.h: 64 for a bad command line, 65 for input
+that `podnet receive` refuses (a bad name in a transfer, a name that
+exists), 66 when a file
 that must exist is missing (the key or the allow list of the link), 69 when a
 service or a network path is not available (no edge leg worked), 71 when a
 file of the host cannot be used (a key file with a mode that is not 0600), 77
@@ -14373,6 +14732,7 @@ The list is `podnet man exit-status`. An error with no class exits 1.
 | 1 | `failure` |
 | 3 | `no-backend` |
 | 64 | `usage` |
+| 65 | `data-error` |
 | 66 | `no-input` |
 | 68 | `no-host` |
 | 69 | `unavailable` |

@@ -7,6 +7,8 @@
 //! podnet from the failure of another program:
 //!
 //! * 64 (`EX_USAGE`): a bad command line, before podnet does anything.
+//! * 65 (`EX_DATAERR`): input that podnet refuses: a received entry with a
+//!   bad name or kind, a name that exists, data that does not agree.
 //! * 66 (`EX_NOINPUT`): a file that must exist is missing: the key of the
 //!   link, or its allow list.
 //! * 68 (`EX_NOHOST`): the address of a peer does not resolve.
@@ -43,6 +45,8 @@ pub enum Fault {
     OsError,
     /// A peer that the allow list does not admit (77).
     NoPermission,
+    /// Input that podnet refuses (65).
+    DataError,
 }
 
 impl Fault {
@@ -58,6 +62,7 @@ impl Fault {
             Fault::NoHost => NO_HOST,
             Fault::OsError => OS_ERROR,
             Fault::NoPermission => NO_PERM,
+            Fault::DataError => DATA_ERROR,
         }
     }
 }
@@ -66,6 +71,8 @@ pub const SUCCESS: i32 = 0;
 pub const FAILURE: i32 = 1;
 pub const NO_BACKEND: i32 = 3;
 pub const USAGE: i32 = 64;
+/// Input that podnet refuses (EX_DATAERR).
+pub const DATA_ERROR: i32 = 65;
 /// A file that must exist is missing (EX_NOINPUT).
 pub const NO_INPUT: i32 = 66;
 /// The address of a peer does not resolve (EX_NOHOST).
@@ -111,6 +118,11 @@ pub const TABLE: &[ExitCode] = &[
         code: USAGE,
         name: "usage",
         meaning: "A bad command line: an unknown command or flag, a missing or bad value. Nothing was done.",
+    },
+    ExitCode {
+        code: DATA_ERROR,
+        name: "data-error",
+        meaning: "Input that podnet refuses: podnet receive got an entry with a bad name or kind, a name that exists (the receiver never overwrites), more files or bytes than its caps, or data whose size or SHA-256 does not agree. Nothing of a refused transfer stays on the disk.",
     },
     ExitCode {
         code: NO_INPUT,
@@ -247,6 +259,7 @@ mod tests {
             Fault::NoHost,
             Fault::OsError,
             Fault::NoPermission,
+            Fault::DataError,
         ] {
             assert!(TABLE.iter().any(|row| row.code == class.code()));
         }

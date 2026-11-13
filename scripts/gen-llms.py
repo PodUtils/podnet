@@ -37,6 +37,7 @@ DOCS = [
     ("docs/install.md", "Install, verify, update and rebuild a release."),
     ("docs/tunnels.md", "Quick and named tunnels, the configuration file, the edge protocol, raw streams."),
     ("docs/serve.md", "The file server, file transfer with a PIN, git hosting."),
+    ("docs/transfer.md", "podnet send and podnet receive: a transfer by code, as magic-wormhole does."),
     ("docs/warp.md", "The WARP client: proxy, run, up, exec, nc, tun, transports."),
     ("docs/pods.md", "podnet pod: a program with all its traffic through a proxy chain."),
     ("docs/networks.md", "podnet net, Tailscale, NetBird and the passwd shim."),

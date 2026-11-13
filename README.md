@@ -74,6 +74,7 @@ podnet man                                      # the manual
 | Tunnels | `tunnel`, `demo`, `qr` | Quick tunnels and named tunnels to a local origin (HTTP, unix socket, TCP). | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | Raw streams | `tunnel --forward`, `connect` | SSH, databases and unix sockets through a quick tunnel. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | File server, transfer, git | `serve`, `share`, `git` | Serve a directory, receive or send files with a PIN, host git repositories. | [serve](https://github.com/PodUtils/podnet/blob/main/docs/serve.md) |
+| Transfer by code | `send`, `receive` | A file, a directory or a text to another host with a short code, as magic-wormhole does: a public mailbox for the code, the bytes direct or through a transit relay, sealed end to end. | [transfer](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md) |
 | Publish by one word | `expose` | Publish a local service by a tunnel, the relay or a virtual address. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | WARP | `warp register`, `proxy`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan` | The Cloudflare WARP client on TCP 443, with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
 | Pods | `pod`, `pod doctor`, `pod --report`, `pod --backend netns\|netns-kernel\|seccomp` | Run a program with all its traffic sent through a proxy chain, with rules, audit and a JSON report. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
@@ -114,6 +115,7 @@ GitHub runner on each push and each day.
 * [docs/install.md](https://github.com/PodUtils/podnet/blob/main/docs/install.md): install, verify, update, rebuild a release.
 * [docs/tunnels.md](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md): origins, the configuration file, named tunnels, the edge protocol and transport, raw streams.
 * [docs/serve.md](https://github.com/PodUtils/podnet/blob/main/docs/serve.md): the file server, share, git hosting.
+* [docs/transfer.md](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md): `send` and `receive`, the transfer by code.
 * [docs/warp.md](https://github.com/PodUtils/podnet/blob/main/docs/warp.md): the WARP client.
 * [docs/pods.md](https://github.com/PodUtils/podnet/blob/main/docs/pods.md): `podnet pod`.
 * [docs/networks.md](https://github.com/PodUtils/podnet/blob/main/docs/networks.md): `podnet net`, Tailscale, NetBird, the passwd shim.

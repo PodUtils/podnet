@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**333 entries: 21 open, 15 partial, 25 blocked, 272 done.**
+**333 entries: 17 open, 15 partial, 26 blocked, 275 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
-| P2 | 11 | 6 | 10 | 141 | 168 |
+| P2 | 7 | 6 | 11 | 144 | 168 |
 | P3 | 10 | 8 | 13 | 101 | 132 |
-| **All** | 21 | 15 | 25 | 272 | 333 |
+| **All** | 17 | 15 | 26 | 275 | 333 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -147,10 +147,10 @@ M8 Overlays, M9 Later.
 | [T-099](services.md) | P2 | M | M6 | feature | done | Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose` |
 | [T-100](services.md) | P2 | M | M6 | feature | done | Router: a config file, and `podnet route` with `--detach` and autostart |
 | [T-101](services.md) | P2 | M | M6 | measurement | partial | Router: the live step with WARP, the relay and direct, and a failover |
-| [T-102](services.md) | P2 | M | M6 | feature | open | Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole` |
-| [T-103](services.md) | P2 | L | M6 | feature | open | The file-transfer protocol and the transit protocol of magic-wormhole |
+| [T-102](services.md) | P2 | M | M6 | feature | done | Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole` |
+| [T-103](services.md) | P2 | L | M6 | feature | blocked | The file-transfer protocol and the transit protocol of magic-wormhole |
 | [T-104](services.md) | P2 | M | M6 | feature | open | The podnet relay as a carrier of a transfer |
-| [T-105](services.md) | P2 | M | M6 | feature | open | `podnet send` and `podnet receive` |
+| [T-105](services.md) | P2 | M | M6 | feature | done | `podnet send` and `podnet receive` |
 | [T-106](services.md) | P2 | M | M6 | measurement | open | An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB |
 | [T-107](pods.md) | P2 | M | M7 | feature | done | seccomp: the pod lives past its first program |
 | [T-108](pods.md) | P2 | S | M7 | feature | done | netns: the pod lives past its first program |
@@ -296,7 +296,7 @@ M8 Overlays, M9 Later.
 | [T-248](later.md) | P3 | L | M9 | feature | partial | Router: a guest-wire router that ends guest TCP on smoltcp |
 | [T-249](pods.md) | P2 | M | M7 | chore | done | netns: the router of the namespace runs on the interface of `pod-netstack` |
 | [T-250](pods.md) | P2 | S | M7 | chore | done | CI: a root step that runs the netns tests that skip on a runner |
-| [T-251](services.md) | P2 | S | M6 | feature | open | Transfer: the hosted magic-wormhole mailboxes on 443 as the default, with a choice that the code carries |
+| [T-251](services.md) | P2 | S | M6 | feature | done | Transfer: the hosted magic-wormhole mailboxes on 443 as the default, with a choice that the code carries |
 | [T-252](services.md) | P3 | M | M6 | feature | open | Transfer: a piping-server relay as a transit carrier of last resort |
 | [T-253](services.md) | P3 | S | M6 | measurement | done | Live: probe the hosted mailboxes and relays from a proxy-only runner |
 | [T-254](fixes.md) | P2 | M | M5 | chore | done | Housekeeping: one footnote for cfrs, no narrative history |

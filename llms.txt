@@ -21,6 +21,8 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet git serve`: Serve the git repositories under a root: smart HTTP on --local, through a quick tunnel or both, and SSH on --ssh or through a relay pair. It runs the installed git (git http-backend, git upload-pack, git receive-pack)
 - `podnet git init`: Make a bare repository NAME under the root (NAME.git when NAME has no .git at its end)
 - `podnet git urls`: Print the clone URLs of each repository under the root, from the last git serve of the root, and the fingerprint of the SSH host key
+- `podnet send`: Send a file, a directory or a text with a short code, as magic-wormhole does: the code meets at a public mailbox, and the bytes go direct or through a transit relay, sealed end to end
+- `podnet receive`: Receive what podnet send offers: type the code at the prompt, or give it on stdin (never on the command line)
 - `podnet connect`: Bridge a local socket to a remote WebSocket forward endpoint
 - `podnet expose`: Publish a local service by one word: --via tunnel (a Cloudflare tunnel), relay (a node of the reverse relay) or switch (a virtual address). It runs `tunnel`, `relay node` or `net proxy --forward`
 - `podnet forward`: Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP with udp:LISTEN), a DNS door with --dns, with --network SPEC (direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL, warp)
@@ -106,6 +108,7 @@ llms-full.txt has the manual and the documents in one file.
 - [docs/install.md](https://github.com/PodUtils/podnet/blob/main/docs/install.md): Install, verify, update and rebuild a release.
 - [docs/tunnels.md](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md): Quick and named tunnels, the configuration file, the edge protocol, raw streams.
 - [docs/serve.md](https://github.com/PodUtils/podnet/blob/main/docs/serve.md): The file server, file transfer with a PIN, git hosting.
+- [docs/transfer.md](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md): podnet send and podnet receive: a transfer by code, as magic-wormhole does.
 - [docs/warp.md](https://github.com/PodUtils/podnet/blob/main/docs/warp.md): The WARP client: proxy, run, up, exec, nc, tun, transports.
 - [docs/pods.md](https://github.com/PodUtils/podnet/blob/main/docs/pods.md): podnet pod: a program with all its traffic through a proxy chain.
 - [docs/networks.md](https://github.com/PodUtils/podnet/blob/main/docs/networks.md): podnet net, Tailscale, NetBird and the passwd shim.

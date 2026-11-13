@@ -24,6 +24,7 @@ mod serve_at;
 mod serve_relay;
 pub(crate) mod share;
 pub(crate) mod ssh_relay;
+pub(crate) mod transfer;
 pub(crate) mod tunnel;
 pub(crate) mod warp;
 

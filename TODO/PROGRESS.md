@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 333 entries: 21 open, 15 partial, 25 blocked, 272 done.
+`TODO/INDEX.md` holds 333 entries: 17 open, 15 partial, 26 blocked, 275 done.
 
 ## State
 
@@ -53,12 +53,14 @@ not wait for a larger one.
 6. **M4, the adapters:** done.
 7. **M6, the services:** the shared part T-087 (partial: the layer is done; the end-to-end channel and the live
    step of 200 MiB are left); the file
-   server and git: done; the router T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
-    The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
+   server and git: done; the router T-101; the transfer by code: `podnet send` and `podnet receive` are done
+   over `pod-wormhole` v0.40.0 (`docs/transfer.md`; `docs/decisions.md`, 2026-11-13, The transfer layer).
+   T-103 is blocked: `pod-wormhole` derives no key of a wormhole, so a file goes from podnet to podnet only
+   (an ask for podcrates). Open: T-104 (the podnet relay as a carrier), T-252 (a piping-server transit),
+   T-106 (the interop test and the live step).
+    The donor review adds T-242 (the lint of shadowed rules).
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).
-    The study of hosted relays (`docs/research/podnet/hosted-relays.md`) adds T-251 (the hosted mailboxes on 443,
-    after T-102) and T-252 (a piping-server transit, after T-103).
 8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.
 9. **M8, the overlays:** T-114, T-115, T-117, T-247 (blocked: a NetBird account).
 10. **M9, later:** T-120 to T-129, each when its start condition holds; T-248 (the

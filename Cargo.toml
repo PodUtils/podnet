@@ -126,6 +126,20 @@ pod-identity = { git = "https://github.com/PodUtils/podcrates", tag = "v0.40.0",
 # The resumable layer (T-263): offsets that never reset, a 256-bit secret
 # and the 10-minute window. The glue is src/session.rs.
 pod-session = { git = "https://github.com/PodUtils/podcrates", tag = "v0.40.0", version = "0.40.0" }
+# The client of a magic-wormhole mailbox (T-102): the code, SPAKE2 and the
+# sealed phases of `podnet send` and `podnet receive`. The glue is
+# src/transfer/.
+pod-wormhole = { git = "https://github.com/PodUtils/podcrates", tag = "v0.40.0", version = "0.40.0" }
+# The lexical check of each name that `podnet receive` writes (T-105).
+pod-extract = { git = "https://github.com/PodUtils/podcrates", tag = "v0.40.0", version = "0.40.0" }
+# The inflate of a zip of magic-wormhole (`zipfile/deflated`, T-103): the
+# Rust backend, as pod-extract takes it. No C.
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+# The keys and the records of the transit of magic-wormhole (T-103):
+# HKDF-SHA256 and NaCl's SecretBox, the versions of pod-wormhole.
+hkdf = { version = "0.13", default-features = false }
+sha2 = { version = "0.11", default-features = false }
+crypto_secretbox = { version = "0.1", default-features = false, features = ["alloc", "salsa20"] }
 # The end-to-end channel and its record layer (T-298): the AEAD records of a
 # stream, end to end between its two ends. The glue is src/link_record.rs.
 pod-e2e = { git = "https://github.com/PodUtils/podcrates", tag = "v0.40.0", version = "0.40.0" }

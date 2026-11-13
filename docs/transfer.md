@@ -1,0 +1,135 @@
+# File transfer by code: `podnet send` and `podnet receive`
+
+This page gives `podnet send` and `podnet receive`: a file, a directory or a
+text from one host to another with a short code, as magic-wormhole does. The
+code meets at a public mailbox. The bytes go direct between the hosts, or
+through a transit relay. Each byte is sealed end to end: the mailbox and the
+relay see no plain text.
+
+## Send and receive
+
+```sh
+# On the first host:
+podnet send ./report.pdf          # prints: Wormhole code is: 7-crossover-clockwork-adroitness
+podnet send ./photos              # a directory goes as a zip
+podnet send --text "the words"    # a text goes in the wormhole: no transit
+
+# On the second host:
+podnet receive                    # asks for the code, shows the offer, asks y/N
+podnet receive --out ~/Downloads  # where the file or the directory lands
+echo 7-crossover-clockwork-adroitness | podnet receive --yes   # a script
+```
+
+* `podnet receive` reads the code from the terminal, or one line of stdin.
+  It takes no code on the command line: each user of the host sees the
+  command line of each process.
+* The code is a number and three words of the PGP word list. A code is good
+  for one exchange: a wrong code, a guess or a success spends it. A wrong
+  code fails at the two ends (exit 77): send again for a new code.
+* `--yes` accepts a file or a directory with no question. When stdin is
+  not a terminal, `--yes` is necessary (else exit 64). A text needs no
+  answer.
+* `--json` prints one JSON object for each event on stdout: the sender
+  prints `{"event": "code", "code", "mailbox"}` first, then
+  `{"event": "sent", "bytes", "sha256", "via"}`; the receiver prints
+  `{"event": "received", ...}`.
+* `podnet send --timeout SECS` is the wait for a receiver and for its
+  answer (default 1800).
+
+## The meeting: mailboxes
+
+The mailboxes are the services of the kind `mailbox` of `pod-services`
+(PodUtils/podcrates), in their order: the public mailbox of magic-wormhole,
+then the mailbox of Least Authority (Winden). `--mailbox URL` (more than
+one is permitted) or `PODNET_MAILBOX` (URLs separated by commas) replaces
+the list.
+
+* The sender takes the first mailbox that answers.
+* The receiver looks for the code at each mailbox in order: a mailbox that
+  lists the nameplate of the code has the sender; one that lists other
+  nameplates does not; at one that lists none, the receiver waits 10 s for
+  the sender's first message, then goes to the next mailbox.
+* The code carries no mark of its mailbox, so a code of magic-wormhole
+  works as it is. Known limit: magic-wormhole issue #754 (open, 2026-11-04)
+  says that two clients of the public mailbox can reach two instances of
+  it, which do not share their mailboxes. Then the receiver finds nobody
+  (exit 69). Give the two ends the same `--mailbox`, for example the
+  second mailbox of the list.
+
+The mailbox, SPAKE2 and the sealed phases are the crate `pod-wormhole` of
+PodUtils/podcrates. The AppID is `lothar.com/wormhole/text-or-file-xfer`,
+the AppID of magic-wormhole's file transfer.
+
+## The transit: direct or through a relay
+
+After the offer and its answer, the two ends connect for the bytes:
+
+* Each end listens on a free port of each address of the host (not the
+  loopback), and sends these addresses as hints. `--listen ADDR` listens on
+  one address only, and sends that address (also a loopback address).
+  `--no-listen` does not listen. A host that refuses a bind of `AF_INET`
+  has no listener: the other end or a relay carries the transfer.
+* Each end dials each hint of the other end through the way out of podnet
+  (`--proxy`, `--egress`, `NO_PROXY`).
+* After 2 s (at once when no end has a direct hint) each end also dials
+  each transit relay of the two ends. The relays of this end are the
+  services of the kind `transit` of `pod-services` (Least Authority's
+  WebSocket relay on port 443), or `--transit-relay URL` (`tcp:HOST:PORT`,
+  `ws://...`, `wss://...`; `none` for no relay of this end).
+* The sender takes the first connection that passes the handshake, and the
+  bytes go in records sealed with NaCl's SecretBox under the transit key.
+* The receiver sends the SHA-256 of the bytes at the end. The sender
+  compares it with its own.
+
+A host whose only way out is a proxy on TCP 443 reaches the WebSocket relay
+of Least Authority. The public TCP relay of magic-wormhole
+(`tcp:transit.magic-wormhole.io:4001`) is not in `pod-services`; give it
+with `--transit-relay` when port 4001 is open.
+
+## What the receiver writes
+
+The receiver checks each name before it writes a byte:
+
+* Each name goes through `pod_extract::safety::components`: no absolute
+  path, no `..`, no NUL. Also refused: a backslash in a component, a
+  component over 255 bytes, a path over 4096 bytes, two entries with the
+  same name after ASCII case folding.
+* Only regular files and directories: a symbolic link, a hard link, a
+  device, a fifo or a socket in a zip is refused.
+* The file or the directory of the transfer must not exist under `--out`.
+  The receiver never overwrites.
+* Each file is made new (`O_CREAT|O_EXCL|O_NOFOLLOW`) with the mode
+  `0666 & ~umask`: never an executable or a set-id bit.
+* `--max-files N` (default 100000) and `--max-bytes N` (default 64 GiB)
+  cap a transfer. The receiver checks them from the offer and the zip
+  directory before it writes, and again while it writes, as a header can
+  lie.
+* A refusal ends the whole transfer with exit 65, and no file of it stays
+  on the disk. When a write fails, the receiver removes each file and
+  directory that it made, and no other.
+
+A directory goes as a zip with stored entries. The receiver reads stored
+and deflated entries, as `wormhole send` makes them. There is no zip64: an
+entry of 4 GiB or more, or more than 65535 entries, is refused.
+
+## With magic-wormhole
+
+A text goes to and from each client of magic-wormhole. A file or a
+directory goes from podnet to podnet only for now: magic-wormhole derives
+the transit key from the key of the wormhole, and `pod-wormhole` 0.40.0
+gives no derivation of its key. A podnet sender draws a random transit key
+and sends it in its sealed `transit` message. A podnet end that meets a
+client of magic-wormhole for a file says so and stops.
+
+## Exit codes
+
+| Code | When |
+| --- | --- |
+| 0 | The transfer completed. |
+| 1 | The other end refused the offer, or broke the protocol. |
+| 64 | A bad command line, a bad code, or a file offer with no terminal and no `--yes`. |
+| 65 | The receiver refused the input: a name, a kind, a name that exists, a cap, a SHA-256 that differs. |
+| 66 | The path to send, or `--out`, does not exist. |
+| 69 | No mailbox answered, no sender waits at the code, or no way of the transit worked. |
+| 77 | The code did not match at the other end: the code is spent. |
+| 124 | No receiver took the code within `--timeout`. |

@@ -1682,7 +1682,7 @@ the datagrams of the peer.
 
 - Read: `Inbox::deliver` (`inbox.rs:79`) sends into the pair with no check of the source. Both relay
   reader tasks call it (`seccomp.rs:1226`, `:1246`). `Inbox::new` has no `dest`.
-- Read: the ruling of 2026-11-04 (`docs/decisions.md:39`): a read of a connected socket stays direct,
+- Read: the ruling of 2026-11-04 (`docs/decisions.md:40`): a read of a connected socket stays direct,
   so the filter must act at delivery.
 - Open: the form of the filter key. The relay source is a `WireSource` (name or address), the `dest` is
   a fake or real address. Compare after `name_for_ip` mapping.
@@ -2223,7 +2223,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 - src/warp/mod.rs:885-892 at `9c1fc4b` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
   `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:415-417`) refuses and does not write over the file.
-- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:136` lists `PODNET_FOREIGN_HOME`.
+- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:141` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 
@@ -2621,7 +2621,7 @@ python3 scripts/check-size.py
 
 ## Problem
 
-`NEEDS` (`crates/podnet-vnet/src/doctor.rs:122-129`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`crates/podnet-vnet/src/switch.rs:413-415`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:126` repeats the short list.
+`NEEDS` (`crates/podnet-vnet/src/doctor.rs:122-130`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`crates/podnet-vnet/src/switch.rs:413-415`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:126` repeats the short list.
 
 ## Premise
 
@@ -2655,7 +2655,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`crates/podnet-core/src/exit.rs:115-127` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `crates/podnet-vnet/src/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:219`, and also `crates/podnet-vnet/src/proxy.rs:262-264` and src/warp/proxy.rs:71-73 at `9c1fc4b` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`crates/podnet-core/src/exit.rs:122-139` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `crates/podnet-vnet/src/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:219`, and also `crates/podnet-vnet/src/proxy.rs:262-264` and src/warp/proxy.rs:71-73 at `9c1fc4b` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
@@ -4040,7 +4040,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   (`crates/podnet-netns/src/seccomp/accept.rs:43`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:44`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:78`, `src/cli/cmd/net/mod.rs:95` and
   `src/cli/cmd/net/mod.rs:173` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:237`).
-- `libc` is a dependency (`Cargo.toml:138`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `libc` is a dependency (`Cargo.toml:152`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.
@@ -4338,7 +4338,7 @@ create call makes the next run send `PATCH` for the same device id and no second
 - src/warp/register.rs:67-95 at `9c1fc4b` (`send_api_to`): a status of 500 or more, or a transport error, goes to the
   next API host for each request, the registration POST included (src/warp/register.rs:77 at `9c1fc4b`).
 - `instances::lock` and `try_lock` exist in `crates/podnet-core/src/instances.rs`; `delete_device` exists
-  in `src/warp/register.rs`. `docs/decisions.md:37` has the rule of the registration.
+  in `src/warp/register.rs`. `docs/decisions.md:38` has the rule of the registration.
 - T-173 (done, GitHub #368) changed the refusal for a file of another uid in the same function and keeps
   "a refused file never leads to a registration". It does not add a lock. GitHub #368 is open on GitHub
   while T-173 is done. A close of #368 may be due. Closed issues #50, #187, #141 and #150 do not cover a

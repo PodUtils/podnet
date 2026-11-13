@@ -1,0 +1,226 @@
+//! The file transfer of magic-wormhole: `podnet send` and `podnet receive`
+//! (T-102, T-103, T-105; `docs/transfer.md`).
+//!
+//! * The rendezvous is `pod-wormhole` (PodUtils/podcrates): the mailbox
+//!   client, the code of words and SPAKE2, and the sealed phases. The
+//!   mailboxes are the services of the kind `mailbox` of `pod-services`, in
+//!   their order, or `--mailbox` and `PODNET_MAILBOX`. The giver takes the
+//!   first mailbox that answers; the taker finds the giver's mailbox by its
+//!   list of nameplates (`pod_wormhole::joined`).
+//! * The file-transfer protocol of magic-wormhole over the wormhole is
+//!   [`messages`]; its transit (the hints, the handshakes and the records
+//!   sealed with SecretBox) is [`transit`] and [`connect`].
+//! * A directory goes as a zip ([`zip`]); the receiver checks each name
+//!   before it writes one ([`land`]).
+//!
+//! The transit key: magic-wormhole derives it from the key of the wormhole
+//! (`derive_key("lothar.com/wormhole/text-or-file-xfer/transit-key")`).
+//! `pod-wormhole` 0.40.0 gives no derivation of its key, so a podnet sender
+//! draws a random transit key and sends it in its sealed `transit` message
+//! ([`messages::PODNET_KEY`]). A text goes to and from each client of
+//! magic-wormhole; a file or a directory goes from podnet to podnet only,
+//! until the crate derives keys (T-103, Blocker).
+
+pub mod connect;
+pub mod land;
+pub mod messages;
+mod receive;
+mod send;
+pub mod transit;
+pub mod zip;
+
+use std::time::Duration;
+
+use pod_wormhole::{Ends, Failed};
+use pod_ws::url::WsUrl;
+use serde_json::{json, Value};
+
+use crate::exit::{self, Fault};
+pub use connect::{Listen, Relay};
+pub use receive::{receive, Offered, Receive, Received};
+pub use send::{open, Opened, Sent, What};
+
+/// The AppID of magic-wormhole's file transfer: a client of magic-wormhole
+/// and podnet meet only at it.
+pub const APPID: &str = "lothar.com/wormhole/text-or-file-xfer";
+/// The variable of the mailboxes: URLs, separated by commas.
+pub const MAILBOX_VARIABLE: &str = "PODNET_MAILBOX";
+/// The kind of the mailboxes and of the transit relays in `pod-services`.
+pub const MAILBOX_KIND: &str = "mailbox";
+pub const TRANSIT_KIND: &str = "transit";
+/// How long a sender waits for a receiver to take its code, by default.
+pub const WAIT: Duration = Duration::from_secs(30 * 60);
+/// The bound of one step of the exchange, by default.
+pub const STEP: Duration = Duration::from_secs(60);
+/// The bound of the connection of the transit, by default.
+pub const TRANSIT_WAIT: Duration = Duration::from_secs(120);
+/// How long a receiver waits for the giver's first message at a mailbox
+/// that lists no nameplate, by default: a giver waits there already.
+pub const GIVER_WAIT: Duration = Duration::from_secs(10);
+
+/// How a transfer meets and connects.
+pub struct Settings {
+    /// The mailboxes, in order, and the settings of the wormhole.
+    pub ends: Ends,
+    /// The transit relays of this end.
+    pub relays: Vec<Relay>,
+    /// Where this end listens for a direct connection.
+    pub listen: Listen,
+    /// How long a sender waits for its receiver, and for the answer of a
+    /// person at the other end.
+    pub wait: Duration,
+    /// The bound of each other step of the exchange.
+    pub step: Duration,
+    /// The bound of the connection of the transit.
+    pub transit_wait: Duration,
+    /// How long a receiver waits for the giver at each mailbox.
+    pub giver_wait: Duration,
+}
+
+impl Settings {
+    /// The settings for `mailboxes` and `relays`, through `way`, with the
+    /// default bounds and a listener on each address.
+    pub fn new(mailboxes: Vec<WsUrl>, relays: Vec<Relay>, way: pod_ws::Way) -> Settings {
+        let config = pod_wormhole::Config::new(APPID, "podnet", env!("CARGO_PKG_VERSION"), way);
+        Settings {
+            ends: Ends { mailboxes, config },
+            relays,
+            listen: Listen::Any,
+            wait: WAIT,
+            step: STEP,
+            transit_wait: TRANSIT_WAIT,
+            giver_wait: GIVER_WAIT,
+        }
+    }
+
+    fn transit_way(&self) -> connect::Way {
+        connect::Way {
+            way: self.ends.config.way.clone(),
+            trust: self.ends.config.trust.clone(),
+        }
+    }
+}
+
+/// The mailboxes of `pod-services`, in their order.
+pub fn default_mailboxes() -> Vec<WsUrl> {
+    let urls = pod_services::of_kind(MAILBOX_KIND)
+        .filter_map(|s| s.endpoint("mailbox"))
+        .map(|e| e.url());
+    urls.filter_map(|url| WsUrl::parse(&url).ok()).collect()
+}
+
+/// The transit relays of `pod-services`, in their order.
+pub fn default_relays() -> Vec<Relay> {
+    let urls = pod_services::of_kind(TRANSIT_KIND)
+        .filter_map(|s| s.endpoint("relay"))
+        .map(|e| e.url());
+    urls.filter_map(|url| Relay::parse(&url).ok()).collect()
+}
+
+/// The mailboxes: the flags, else the variable (URLs separated by commas),
+/// else [`default_mailboxes`].
+pub fn mailboxes(flags: &[String], variable: Option<&str>) -> Result<Vec<WsUrl>, String> {
+    let given: Vec<&str> = if flags.is_empty() {
+        variable
+            .map(|v| {
+                v.split(',')
+                    .map(str::trim)
+                    .filter(|u| !u.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default()
+    } else {
+        flags
+            .iter()
+            .map(|u| u.trim())
+            .filter(|u| !u.is_empty())
+            .collect()
+    };
+    if given.is_empty() {
+        return Ok(default_mailboxes());
+    }
+    given
+        .iter()
+        .map(|u| WsUrl::parse(u).map_err(|e| format!("mailbox {u:?}: {e}")))
+        .collect()
+}
+
+/// What this end says in its `version`: podnet, and its transit key.
+pub fn versions() -> Value {
+    json!({ "podnet": { "version": env!("CARGO_PKG_VERSION"), "transit-key": 1 } })
+}
+
+/// True when the other end's `app_versions` names podnet's transit key.
+fn podnet_peer(theirs: &Value) -> bool {
+    theirs["podnet"]["transit-key"].as_u64() == Some(1)
+}
+
+/// The words of a file transfer with a client that is not podnet.
+const NOT_PODNET: &str = "the other end is a client of magic-wormhole that is not podnet: \
+     podnet moves a file or a directory to and from podnet only for now (pod-wormhole 0.40.0 derives no transit key); a text works";
+
+/// A failure of the wormhole with its exit class.
+pub fn failed(failed: Failed) -> anyhow::Error {
+    let class = match &failed {
+        Failed::Unreachable(_) | Failed::Broken(_) | Failed::Nobody => Some(Fault::Unavailable),
+        Failed::Refused(_) | Failed::WrongCode => Some(Fault::NoPermission),
+        Failed::Expired(_) => Some(Fault::Timeout),
+        Failed::NoRandom => Some(Fault::OsError),
+        Failed::Peer(_) | Failed::Mine(_) => None,
+    };
+    let err = anyhow::Error::new(failed);
+    match class {
+        Some(class) => exit::fault(class, err),
+        None => err,
+    }
+}
+
+/// Input that the receiver refuses, with its exit class (65).
+pub fn refused(why: impl std::fmt::Display) -> anyhow::Error {
+    exit::fault(Fault::DataError, anyhow::anyhow!("{why}"))
+}
+
+/// A path to the other end that did not work (69).
+fn unavailable(why: impl std::fmt::Display) -> anyhow::Error {
+    exit::fault(Fault::Unavailable, anyhow::anyhow!("{why}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wormhole_rendezvous_the_mailboxes_come_from_the_flags_the_variable_or_pod_services() {
+        let defaults = mailboxes(&[], None).unwrap();
+        assert!(!defaults.is_empty(), "pod-services names a mailbox");
+        assert!(
+            defaults.iter().all(|u| u.tls),
+            "each public mailbox is wss://"
+        );
+        let from_variable =
+            mailboxes(&[], Some("ws://127.0.0.1:4000/v1, ws://127.0.0.1:4001/v1")).unwrap();
+        assert_eq!(from_variable.len(), 2);
+        let flags = vec!["ws://127.0.0.1:5000/v1".to_string()];
+        let from_flags = mailboxes(&flags, Some("ws://127.0.0.1:4000/v1")).unwrap();
+        assert_eq!(from_flags[0].port, 5000);
+        assert!(mailboxes(&["http://x".to_string()], None).is_err());
+        assert!(default_relays()
+            .iter()
+            .all(|r| matches!(r, Relay::WebSocket(_) | Relay::Tcp { .. })));
+    }
+
+    #[test]
+    fn wormhole_rendezvous_a_failure_has_the_exit_code_of_podnet() {
+        let code = |f: Failed| exit::code_of(&failed(f));
+        assert_eq!(code(Failed::WrongCode), exit::NO_PERM);
+        assert_eq!(code(Failed::Nobody), exit::UNAVAILABLE);
+        assert_eq!(
+            code(Failed::Expired(Duration::from_secs(60))),
+            exit::TIMEOUT
+        );
+        assert_eq!(code(Failed::Peer("x".into())), exit::FAILURE);
+        assert_eq!(exit::code_of(&refused("x")), exit::DATA_ERROR);
+        assert!(podnet_peer(&versions()));
+        assert!(!podnet_peer(&json!({})));
+    }
+}

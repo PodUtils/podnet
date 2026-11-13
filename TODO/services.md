@@ -1422,7 +1422,7 @@ place of `warp` (the router starts; `down_after: 3`, `up_after: 2` hold K > R > 
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1474,6 +1474,32 @@ The crate of this entry has a release in `PodUtils/podcrates`, with its hand-off
 
 2026-11-05, The work goes to `pod-wormhole` in PodUtils/podcrates. podnet only takes the crate (T-137). Do not do it in podnet. The title and the steps are changed. There is no crate `podnet-relay`.
 
+2026-11-13, The take (the lead's order; `docs/decisions.md`, 2026-11-13, The transfer layer). podnet depends on
+`pod-wormhole` v0.40.0 and copies none of its code. The glue is `src/transfer/mod.rs`: the `Config` of the crate
+with the AppID `lothar.com/wormhole/text-or-file-xfer`, the client `podnet` and the way out of podnet
+(`podnet::ws::way()`: `--proxy`, `--egress`, `NO_PROXY`, `--resolve`, `--ca-file`); the mailboxes of the kind
+`mailbox` of `pod-services`, or `--mailbox` and `PODNET_MAILBOX` (its row is in `src/manual/facts.rs`); the exit
+code of each `Failed`. The crate keeps its stand-in mailbox in its own tests, which a dependent crate cannot use,
+and `pod-testkit` has none: the stand-in of podnet is `tests/transfer_harness/mod.rs` (an ask for podcrates: a
+stand-in mailbox behind a feature). A wrong code exits 77 at both ends; no giver at a code exits 69; no receiver
+within `--timeout` exits 124.
+
+## Done
+
+2026-11-13, the commit "T-102, T-103, T-105, T-251: the transfer of magic-wormhole over pod-wormhole" (its hash
+follows in the next commit). `cargo tree -p podnet --depth 1 | grep pod-wormhole` gives
+`pod-wormhole v0.40.0 (https://github.com/PodUtils/podcrates?tag=v0.40.0#1335e9af)`. `cargo test -p podnet --test
+transfer`: 9 passed, among them `wormhole_rendezvous_two_ends_move_a_text` and
+`wormhole_rendezvous_a_wrong_code_fails_at_both_ends` (exit 77 at the two ends, the mood `scary` at the stand-in);
+the unit tests `wormhole_rendezvous_the_mailboxes_come_from_the_flags_the_variable_or_pod_services` and
+`wormhole_rendezvous_a_failure_has_the_exit_code_of_podnet` passed. Plant: with the check of the peer's `version`
+removed from the receiver (`src/transfer/receive.rs`), `wormhole_rendezvous_a_wrong_code_fails_at_both_ends` failed
+(exit 1, "the other end said nothing for 30 s", in place of 77). `cargo deny check` (cargo-deny 0.20.2, the
+release of `deny.yml`, checked by its SHA-256): advisories ok, bans ok, licenses ok, sources ok; the duplicate
+warnings go from 27 to 31 (`salsa20` and the crates of `crypto_secretbox` of `pod-wormhole`).
+Not proven: a live meeting at the public mailboxes (T-253, T-106).
+
+
 # T-103: The file-transfer protocol and the transit protocol of magic-wormhole
 
 **Source:** `docs/research/podnet/capabilities.md`, section 4.3;
@@ -1483,7 +1509,7 @@ ruling of 2026-11-05 (`docs/decisions.md`, File transfer).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1518,6 +1544,14 @@ cargo test --workspace -- wormhole_transfer_
 Each phase is checked against messages captured from the Python magic-wormhole. A changed record
 fails.
 
+## Blocker
+
+PodUtils/podcrates must act: `pod_wormhole::Wormhole` gives no derivation of its key (magic-wormhole's
+`derive_key(purpose, length)`, HKDF-SHA256 of the key of the wormhole). magic-wormhole's transit key is
+`derive_key("lothar.com/wormhole/text-or-file-xfer/transit-key", 32)`. Without it, a file or a directory goes
+from podnet to podnet only. The lead opens the COORD issue (to podcrates). PodUtils/podcrates T-214 (the
+file transfer in `pod-wormhole` and `pod-transit`) is open too.
+
 ## Start condition
 
 T-102 is done.
@@ -1527,6 +1561,38 @@ T-102 is done.
 2026-11-05, The file-transfer protocol and the transit protocol are work of `pod-wormhole` and `pod-transit` in
 PodUtils/podcrates. podnet takes the crates (T-137, step 3). The inflate decoder (step 2) is a call made
 without a ruling: it belongs to the crate that reads the zip.
+
+2026-11-13, The layer is in podnet (the lead's order; `docs/decisions.md`, 2026-11-13, The transfer layer): no
+crate of podcrates v0.40.0 holds it (`pod-transit` does not exist; PodUtils/podcrates T-214 and T-027 are open).
+Done in `src/transfer/`: `messages.rs` (the `transit`, `offer`, `answer` and `error` messages, a text, a file and
+a directory; a hint of an unknown kind is ignored), `transit.rs` (the keys `transit_sender`, `transit_receiver`,
+`transit_relay_token`, `transit_record_sender_key` and `transit_record_receiver_key`; the handshakes; the records
+with a big-endian nonce from 0, as transit.py writes it, with a bound of 64 MiB), `connect.rs` (a listener and the
+direct hints of the addresses of the host, the dials through the way of podnet, the relays after 2 s, the relay
+handshake over TCP and over a WebSocket of `pod-ws` with `pod_session::ws_link`, `go` and `nevermind`),
+`zip.rs` (a stored zip of a directory; stored and deflated entries read with `flate2`, its Rust backend, the one
+of `pod-extract`; no zip64). The forms were read from magic-wormhole/magic-wormhole-protocols:
+file-transfer-protocol.md and transit.md and from magic-wormhole/magic-wormhole:src/wormhole/transit.py,
+cmd_send.py and cmd_receive.py (0.24). The Prove's "messages captured from the Python magic-wormhole" are not
+available: no Python `magic-wormhole` is on this host, and it is not installed from the network. In their place:
+the HKDF keys are checked against values computed with the hmac and hashlib of Python, a zip of Python's
+`zipfile` (deflated) is a fixture (`tests/data/transfer/python-deflated.zip`), and Python's `zipfile` reads the
+zip of podnet (`transfer_land_python_reads_the_zip_of_podnet`). The interim transit key: a podnet sender draws 32
+random bytes and sends them as `podnet-transit-key-v1` in its sealed `transit` message; the two ends say
+`{"podnet": {"transit-key": 1}}` in their `version`, and a podnet end that meets another client for a file stops
+with a line that says why. What is left: the derivation of the key (Blocker), then the interop test (T-106).
+
+The proof so far (2026-11-13, the commit "T-102, T-103, T-105, T-251: the transfer of magic-wormhole over
+pod-wormhole"): `cargo test --workspace -- wormhole_transfer_` passed: the unit tests of `src/transfer/` (11, among
+them `wormhole_transfer_the_keys_are_hkdf_of_the_transit_key`,
+`wormhole_transfer_records_go_both_ways_and_a_changed_one_fails`, `wormhole_transfer_a_record_out_of_order_fails`,
+`wormhole_transfer_hints_of_unknown_kinds_are_ignored`) and `tests/transfer.rs`:
+`wormhole_transfer_a_file_lands_with_the_sha256_of_the_sender` (700,000 bytes, direct),
+`wormhole_transfer_a_directory_lands_with_the_sha256_of_each_file`,
+`wormhole_transfer_goes_through_the_relay_when_no_end_listens` (a stand-in TCP transit relay),
+`wormhole_transfer_with_no_way_fails_with_69`, `wormhole_transfer_a_refused_offer_writes_nothing`. Plant: with the
+check of the nonce of a record removed (`src/transfer/transit.rs`), `wormhole_transfer_a_record_out_of_order_fails`
+failed.
 
 # T-104: The podnet relay as a carrier of a transfer
 
@@ -1569,6 +1635,13 @@ T-087 and T-103 are done.
 2026-11-05, The transit carrier is `pod-transit`, and the relay client is `pod-relay`. The hint of podnet's own
 kind is a change of `pod-transit` (PodUtils/podcrates). There is no crate `podnet-relay`.
 
+2026-11-13, Nothing of this entry is done. The transit of magic-wormhole is now in podnet (`src/transfer/connect.rs`,
+T-103): a new kind of hint is a variant of `Hint` in `src/transfer/messages.rs` and one more dial in
+`connect::connect`; a client of magic-wormhole ignores it. The words of the hint `podnet-relay-v1` are in
+PodUtils/podcrates T-214 (`relay`, `pair`, `resume`; the connect token in a sealed phase with the key
+`podnet-relay-token`). What is left: the hint, the pair of a relay node by the sender, the connect of the receiver
+through `pod-relay` with `pod-session` past the cap, and the test of the Prove.
+
 # T-105: `podnet send` and `podnet receive`
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 4.2, 4.5 and 4.7; the owner's ruling
@@ -1577,7 +1650,7 @@ of 2026-11-05 (`docs/decisions.md`, File transfer).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1645,6 +1718,52 @@ then `create` must fail the test); and a positive control (`a/b.txt` and `c.txt`
 sender and the mode `0666 & ~umask`). Not read: `safety.rs` of `pod-extract` (the issue cites its lines at
 podcrates 63348de; Unverified).
 
+2026-11-13, The calls of the commands (the lead's order; the owner is away):
+
+1. `podnet send PATH` takes one path, as `wormhole send`: a directory goes as one zip. `--text TEXT` sends a
+   text. `--timeout SECS` (default 1800) is the wait for the receiver and its answer.
+2. No `--via`: the way out of a transfer is the way of podnet (`--egress`, `--proxy`, `NO_PROXY`). The carriers of
+   the transit are `--listen ADDR`, `--no-listen` and `--transit-relay URL` (`none` for no relay of this end).
+3. No `--words N`: `pod_wormhole::meet::opened` makes each code with `Code::make`, which takes
+   `pod_wormhole::WORDS` (3) words. An ask for podcrates: a count of words in `Ends` or `Config`.
+4. `podnet receive` reads the code from the terminal, or one line of stdin; never from argv (the Premise). A code
+   on the command line is a usage error (64).
+5. The rules of GitHub #436 (the Correction of 2026-11-11) are `src/transfer/land.rs`. The defaults of the caps
+   are `--max-files 100000` and `--max-bytes 68719476736` (64 GiB). The new exit class is `Fault::DataError`, 65,
+   `data-error` (`crates/podnet-core/src/exit.rs`). `--into` is not added: a top name that exists is always
+   refused (EEXIST), and `--out DIR` names another directory. `pod-extract` v0.40.0 is a dependency for
+   `pod_extract::safety::components`.
+6. `--json` prints one object for each event on stdout (`code`, `sent`, `received`).
+
+## Done
+
+2026-11-13, the commit "T-102, T-103, T-105, T-251: the transfer of magic-wormhole over pod-wormhole" (its hash
+follows in the next commit). `src/cli/cmd/transfer.rs` (`podnet send`, `podnet receive`), `src/transfer/`,
+`docs/transfer.md` (with its row in the map of `README.md`, the list of `scripts/gen-llms.py`, and the llms files),
+the exit code 65 in `docs/cli.md` and `podnet man exit-status`. `cargo test --test cli -- send_and_receive_on_the_loopback
+a_wrong_code_ends_the_code`: both passed (a file of 400,000 bytes with the sender's SHA-256, a directory and a text
+between two processes of podnet at a stand-in mailbox; a wrong code exits 77 at both ends, and the right code after
+it exits 69). Also passed: `receive_takes_no_code_from_the_command_line` (64),
+`receive_of_a_file_needs_yes_when_stdin_is_not_a_terminal` (64, the sender 1, nothing written),
+`receive_refuses_a_name_that_exists_with_65`. The table test of GitHub #436, `cargo test --test transfer_land`: 7
+passed (`transfer_land_refuses_each_hostile_name_and_writes_nothing`: `../x`, `a/../../x`, `/etc/x`, `a\..\x`, a NUL,
+a component of 300 bytes, `A` with `a`, a symlink `evil` then `evil/f`, a fifo, a device, each refused with 65 and
+the listing of the directory and of its parent unchanged; `transfer_land_a_header_that_lies_is_cut_at_its_size`: a
+header of 10 bytes with 10 MiB of data under a cap of 1 MiB; `transfer_land_an_existing_name_is_refused_and_keeps_its_bytes`;
+`transfer_land_two_receivers_of_one_name_one_wins`, 50 races; `transfer_land_a_good_zip_lands_with_the_bytes_and_the_mode_of_the_rules`,
+mode `0666 & ~umask` for an entry of mode 04755; `transfer_land_a_deflated_zip_of_python_lands`;
+`transfer_land_python_reads_the_zip_of_podnet`). Plant: with `O_EXCL` replaced by `O_TRUNC` in `Landing::file`,
+`transfer_land_an_existing_name_is_refused_and_keeps_its_bytes` and `transfer_land_two_receivers_of_one_name_one_wins`
+failed.
+The exit code 65 is also in the connector profile (`docs/protocol.md`, section 10, and `tests/cli/profile.rs`), and
+the log filter names `pod_wormhole` and `pod_extract` (`crates/podnet-core/src/report.rs`). `sh scripts/agent/check.sh`:
+fmt, clippy, record, size, doc and layers 0; the tests of the root package: 1472 passed, 0 failed (102 targets); then
+`cargo test -p podnet-core -p podnet-netns -p podnet-serve -p podnet-todo -p podnet-vnet -p podnet-capi`: 599
+passed, 0 failed; the doc tests of podnet: 2 passed. The disk of the session filled in the first whole run, so the
+packages after the root ran in a second command.
+Not proven: a transfer with a client of magic-wormhole for a file (T-103, Blocker; T-106); a transfer over the
+public mailbox and relay (T-106); `--into` (not added, item 5 above).
+
 # T-106: An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.2 and 3 (C15);
@@ -1690,6 +1809,11 @@ T-104 and T-105 are done.
 podnet. Read whether `pod-testkit` or `pod-wormhole` of PodUtils/podcrates has the interop harness; when it
 has not, write the harness in podnet (it is a CI file, no code of a crate).
 
+2026-11-13, Nothing of this entry is done. No Python `magic-wormhole` is on this host, and the entry does not say to
+install it from the network. A text between podnet and `wormhole send` can go now; a file or a directory waits for
+the derivation of the key of `pod-wormhole` (T-103, Blocker). The stand-ins of `tests/transfer_harness/mod.rs` (a
+mailbox and a TCP transit relay) serve the loopback tests; the workflow of this entry runs the server and the
+relay of magic-wormhole in place of them.
 
 # T-167: `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364)
 
@@ -1712,7 +1836,7 @@ The abstract-name shim has no option to hand a chosen address to the SOCKS door.
 - `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`crates/podnet-vnet/shim/podnet-socks.c:239-251`).
 - `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:125-134`). `ShimOptions`
   (`crates/podnet-vnet/src/shim.rs:30-50`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
-- The variable list is in `src/manual/facts.rs:341`. `docs/virtual-network.md` has no text on socksify
+- The variable list is in `src/manual/facts.rs:346`. `docs/virtual-network.md` has no text on socksify
   (README.md:921 only), so item 4 of the issue needs a new section.
 - Names are set by T-016 (`PODNET_SOCKS_*`).
 - Not measured: the external shim of the issue.
@@ -2231,7 +2355,7 @@ Relays and mailboxes).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2261,6 +2385,27 @@ cargo test --workspace -- transfer_mailbox_choice_rides_in_the_code transfer_mai
 ## Start condition
 
 T-102 is done (the mailbox client of `pod-wormhole`).
+
+## Correction
+
+2026-11-13, Step 2 is replaced (the lead's agent; `docs/decisions.md`, 2026-11-13, The transfer layer): the code
+carries no id of its mailbox, so that a code of magic-wormhole works as it is. The sender takes the first mailbox
+that answers (`pod_wormhole::opened`); the receiver looks for the code at each mailbox in order
+(`pod_wormhole::joined`: a mailbox that lists the nameplate has the giver, one that lists others has not, at one
+that lists none the receiver waits 10 s for the giver). The Prove's `transfer_mailbox_choice_rides_in_the_code` is
+`transfer_mailbox_choice_is_found_by_the_receiver`. Step 3: magic-wormhole/magic-wormhole#754 (read 2026-11-13;
+open, no comment): two clients of the public mailbox can reach two instances that do not share their mailboxes;
+then the receiver finds nobody (69). `docs/transfer.md` says so, and gives `--mailbox` as the way out. podnet's own
+mailbox server waits for PodUtils/podcrates T-215.
+
+## Done
+
+2026-11-13, the commit "T-102, T-103, T-105, T-251: the transfer of magic-wormhole over pod-wormhole" (its hash
+follows in the next commit). `transfer::default_mailboxes` reads the services of the kind `mailbox` of
+`pod-services` in their order (the public mailbox of magic-wormhole, then Least Authority's), and
+`transfer::default_relays` the kind `transit`. `cargo test --workspace -- transfer_mailbox_choice_is_found_by_the_receiver
+transfer_mailbox_falls_back`: both passed (a dead first mailbox; a sender at the second mailbox, found by the
+receiver after the first, whose nameplate it released).
 
 # T-252: Transfer: a piping-server relay as a transit carrier of last resort
 
@@ -2299,6 +2444,14 @@ cargo test --workspace -- transit_over_piping_server
 ## Start condition
 
 T-103 is done (the transit of `pod-transit`).
+
+## Correction
+
+2026-11-13, Nothing of this entry is done. The transit is now in podnet (`src/transfer/connect.rs`, T-103): a carrier
+"piping" is one more dial in `connect::connect` and one more kind of hint (`piping-v1`, the words of
+PodUtils/podcrates T-214). The piping servers are services of the kind `piping` of `pod-services` (`ppng-piping`,
+`onrender-piping`). What is left: the PUT and the GET in chunks through the way of podnet, the path of the transit
+key, the switch to turn it off, and a local piping-server for the test.
 
 # T-253: Live: probe the hosted mailboxes and relays from a proxy-only runner
 

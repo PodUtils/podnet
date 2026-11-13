@@ -133,6 +133,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "podnet sets them for the child of --detach: the name of the instance, the hash of its arguments, the command, whether a supervisor runs it, and the --ready-timeout of the first start (a provision of a quick tunnel does not wait past it). Do not set them.",
     },
     EnvVar {
+        names: &["PODNET_MAILBOX"],
+        used_by: "send, receive",
+        meaning: "The value of --mailbox when the flag is not given: the mailboxes of magic-wormhole (wss:// or ws://), separated by commas, in order. The default is each mailbox of pod-services.",
+    },
+    EnvVar {
         names: &["PODNET_RELAY"],
         used_by: "tunnel, serve, share, demo, relay",
         meaning: "The value of --relay when the flag is not given: the WebSocket-to-TCP relay of --transport relay (https:// and a host), or a comma list of hosts of one deployment. The default is https://tcp.ssh.relay.ajam.dev; when a host does not answer, podnet tries hosts of its pool.",
@@ -596,6 +601,14 @@ pub const EXAMPLES: &[Example] = &[
     Example {
         command: "podnet net proxy --forward 10.66.0.2:8080=unix:/run/app.sock",
         meaning: "A virtual address for a real service.",
+    },
+    Example {
+        command: "podnet send ./report.pdf",
+        meaning: "Print a code such as 7-crossover-clockwork-adroitness, then send the file to the receiver of the code (magic-wormhole's mailbox and transit).",
+    },
+    Example {
+        command: "podnet receive --out ~/Downloads",
+        meaning: "Ask for the code, show the offer, and write the file or the directory under ~/Downloads. It never overwrites.",
     },
     Example {
         command: "podnet net switch --listen tcp://127.0.0.1:7000 --switch-token-file /run/secrets/switch",

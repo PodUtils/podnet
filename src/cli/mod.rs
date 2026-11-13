@@ -111,6 +111,13 @@ pub(crate) enum Command {
     /// root over smart HTTP and SSH, make a repository, print the clone
     /// URLs.
     Git(GitArgs),
+    /// Send a file, a directory or a text with a short code, as
+    /// magic-wormhole does: the code meets at a public mailbox, and the
+    /// bytes go direct or through a transit relay, sealed end to end.
+    Send(cmd::transfer::SendArgs),
+    /// Receive what podnet send offers: type the code at the prompt, or
+    /// give it on stdin (never on the command line).
+    Receive(cmd::transfer::ReceiveArgs),
     /// Bridge a local socket to a remote WebSocket forward endpoint.
     Connect(ConnectArgs),
     /// Publish a local service by one word: --via tunnel (a Cloudflare
@@ -275,6 +282,8 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Serve(args) => serve(args).await,
         Command::Share(args) => share(args).await,
         Command::Git(args) => git(args).await,
+        Command::Send(args) => cmd::transfer::send(args).await,
+        Command::Receive(args) => cmd::transfer::receive(args).await,
         Command::Connect(args) => connect(args).await,
         Command::Update(args) => cmd::host::update(args).await,
         Command::Agent { command } => agent(command).await,

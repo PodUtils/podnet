@@ -84,7 +84,9 @@ podnet serve --check --dir ./site --spa
 podnet tunnel --check --json --config config.yml | jq -e .ok
 ```
 
-The exit codes follow sysexits.h: 64 for a bad command line, 66 when a file
+The exit codes follow sysexits.h: 64 for a bad command line, 65 for input
+that `podnet receive` refuses (a bad name in a transfer, a name that
+exists), 66 when a file
 that must exist is missing (the key or the allow list of the link), 69 when a
 service or a network path is not available (no edge leg worked), 71 when a
 file of the host cannot be used (a key file with a mode that is not 0600), 77
