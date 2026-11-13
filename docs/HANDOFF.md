@@ -30,7 +30,8 @@ T-263). A worktree brief for them is in the record (their Corrections).
 
 A push of the cloud session starts no workflow run. Ask the owner for runs with an issue titled `[gh action] requested`
 (a block of `gh workflow run` and `gh run watch` pinned to one commit; see GitHub #528 to #530). Map each request in
-`TODO/github.txt` and `TODO/issues.md`, and close it when its results are in.
+`TODO/github.txt` and `TODO/issues.md`, and close it when its results are in. Do not change the SHA of a request
+after it is sent: the owner can run it at once (GitHub #531). Put later commits into the next request.
 
 Each workflow passes on bf01ac6: ci 43459872995, deny 43459879363, secrets 43459886257, live 43459893595 (the first green
 `live` since the take of `pod-warp`; T-332 is done).

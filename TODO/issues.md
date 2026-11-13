@@ -222,6 +222,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #528 | [gh action] requested: ci, deny, secrets and live on b1e2b80 (Actions does not start on a push of the cloud session) | closed: ci 43445945197 and live 43445966561 failed (fixed in 2122bd4), deny and secrets passed | none |
 | #529 | [gh action] requested: ci, deny, secrets and live on 7d73ec7 | closed: ci 43452891413 failed at restricted-host (fixed in the next commit), live 43452912977 failed at the file server (fixed in 098ff8d), deny and secrets passed | none |
 | #530 | [gh action] requested: ci, deny, secrets and live on bf01ac6 | closed: each run passed (ci 43459872995, deny 43459879363, secrets 43459886257, live 43459893595) | none |
-| #531 | [gh action] requested: ci, deny, secrets and live on 4e80ca0 (T-012, T-095, T-087) | open (a request of runs to the owner) | none |
+| #531 | [gh action] requested: ci, deny, secrets and live on 6f8e69e (T-012, T-095, T-087); runs ci 43471936738, deny 43471944208, secrets 43471952954, live 43471960138 | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
