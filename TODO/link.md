@@ -501,7 +501,7 @@ Not proven: a host that denies TCP loopback (the skip line is the host's own tex
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -540,6 +540,14 @@ T-261, T-262 and T-264 are done.
 
 2026-11-13: The carrier `ws` of `pod-link` is in podcrates `v0.38.0` (taken, c65090d): the block is gone.
 
+## Done
+
+2026-11-13, commit 2212479 (one code commit with T-270). Feature `ws` of podnet is `["tcp", "pod-link/ws"]` (`Cargo.toml`; `ws` is in `OPTIONAL` and `FULL` of `src/build_features.rs`, and in `full`). `src/link_ws.rs` (`podnet::link_ws`) has `carrier(me, allow)`, `carrier_via`, `listen`, `dial` (pins `KEY` of `KEY@wss://HOST[:PORT]/PATH`, then checks the proved key against the allow list) and `Probe` (the registry row). The listener runs the accept loop of `pod_ws::serve`. The registry has the row `ws`, `link listen|dial|connect` take `--carrier ws` (`Chosen` in `src/cli/cmd/link/mod.rs`), `src/manual/inventory.rs` has the entry, `docs/link.md` (The WebSocket carrier) and `docs/build.md` have it. Podnet writes no carrier of its own: the binary frames, the ping and the text-frame rule are those of `pod-ws`.
+
+Tests (`tests/link_ws.rs`, build `--features ws`; this host allowed TCP loopback, none skipped), 13 tests: `a_link_crosses_ws_and_each_end_learns_the_key_of_the_other`, `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77`, `a_listener_that_the_dialer_list_does_not_hold_exits_77`, `a_change_of_the_client_keys_applies_to_the_next_handshake`, `a_peer_that_speaks_no_tls_is_not_a_link`, `link_dial_check_meets_link_listen_over_ws_and_a_stranger_exits_77`, and six with no socket. `tests/link_features.rs` and `tests/link_registry.rs` list the row. These tests cannot run on the old code: the carrier is new.
+
+Not proven: the text-frame protocol error and the ping and pong timing (tests of `pod-ws`); a host that denies TCP loopback; a link over a proxy chain (`--egress` is for `tcp`); the resume of a session over `ws`. The listener gets no error for a refused peer: the accept loop of `pod-ws` cuts the connection and goes on (the tests wait 3 s).
+
 # T-270: link: the HTTP/2 carrier with one bidirectional POST (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-3.
@@ -547,7 +555,7 @@ T-261, T-262 and T-264 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -581,6 +589,14 @@ T-268 is done.
 ## Correction
 
 2026-11-13: The carrier `h2` of `pod-link` is in podcrates `v0.38.0` (taken, c65090d): the block is gone.
+
+## Done
+
+2026-11-13, commit 2212479 (the code commit of T-269 holds both). Feature `h2` of podnet is `["tcp", "pod-link/h2"]`, in `OPTIONAL`, `FULL` and `full`. `src/link_h2.rs` (`podnet::link_h2`) has `carrier`, `carrier_via`, `listen`, `dial` (`KEY@https://HOST[:PORT]/PATH`) and `Probe`. The carrier is one POST of HTTP/2 over TLS 1.3 (ALPN `h2`) with the pinned keys; the request body and the response body are the two directions. The registry row `h2`, `--carrier h2`, the inventory entry, `docs/link.md` (The HTTP/2 carrier) and `docs/build.md` have it. `src/edge_h2.rs` is not used.
+
+Tests (`tests/link_h2.rs`, build `--features h2`; none skipped), 13 tests with the names of `tests/link_ws.rs` (`h2` in place of `ws`), among them `a_link_crosses_h2_and_each_end_learns_the_key_of_the_other` and `link_dial_check_meets_link_listen_over_h2_and_a_stranger_exits_77`. `cargo test --features full --test link_ws --test link_h2 --test link_tcp --test link_features --test link_registry` passes.
+
+Not proven: a host that denies TCP loopback; a link over a proxy chain; the resume of a session over `h2`; the HTTP/2 limits of `pod-link`.
 
 # T-271: link: the HTTP/1.1 long-poll carrier (GitHub #467)
 
