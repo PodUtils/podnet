@@ -14,7 +14,9 @@ use super::meter::{Meter, Metered, MeteredDatagrams, OpenGuard};
 use super::policy::{choose, next_head, Head, Policy, Snapshot};
 use super::race::admit;
 use super::split::{Split, SplitDatagrams};
-use super::{BoxFuture, Class, Connected, Datagrams, Dial, Failure, Stage, Target, Way};
+use super::{
+    Addressing, BoxFuture, Class, Connected, Datagrams, Dial, Failure, Stage, Target, Way,
+};
 
 /// The health of a member. `Cooldown` and `Probation` (T-097) still take
 /// flows; `Down` does not.
@@ -175,6 +177,8 @@ pub struct Balance {
     split_fallbacks: AtomicU64,
     /// The index of the pinned member (T-180); `NO_PIN` for none.
     pinned: AtomicUsize,
+    /// The addressing mode of each member, and so of the group.
+    addressing: Addressing,
 }
 
 const NO_PIN: usize = usize::MAX;
@@ -185,6 +189,38 @@ impl Balance {
     pub fn new(name: &str, members: Vec<Member>) -> Result<Balance, Failure> {
         let ways: Vec<Way> = members.iter().map(|m| m.way.clone()).collect();
         admit(&ways, &format!("the group {name}"))?;
+        Balance::build(name, members, Addressing::Destination)
+    }
+
+    /// A group of peer ways (the links of `peer:FINGERPRINT/SERVICE`). Each
+    /// member must be a peer way: a group does not mix the two modes. The
+    /// group is a peer way ([`Balance::way`]), and a consumer that dials a
+    /// destination refuses it.
+    pub fn peers(name: &str, members: Vec<Member>) -> Result<Balance, Failure> {
+        if members.is_empty() {
+            return Err(usage(format!("the group {name} needs one member or more")));
+        }
+        if let Some(m) = members
+            .iter()
+            .find(|m| m.way.addressing != Addressing::Peer)
+        {
+            return Err(usage(format!(
+                "the group {name} meets peers, but the member {} dials a destination: a group does not mix the two",
+                m.name
+            )));
+        }
+        Balance::build(name, members, Addressing::Peer)
+    }
+
+    /// The way of a group: it has the addressing mode of its members.
+    pub fn way(self: &Arc<Balance>) -> Way {
+        Way {
+            dial: self.clone(),
+            addressing: self.addressing,
+        }
+    }
+
+    fn build(name: &str, members: Vec<Member>, addressing: Addressing) -> Result<Balance, Failure> {
         if let Some(m) = members.iter().find(|m| m.weight == 0) {
             return Err(usage(format!(
                 "the member {} of the group {name} has the weight 0",
@@ -205,6 +241,7 @@ impl Balance {
             split_sockets: AtomicU64::new(0),
             split_fallbacks: AtomicU64::new(0),
             pinned: AtomicUsize::new(NO_PIN),
+            addressing,
         })
     }
 
@@ -294,6 +331,19 @@ impl Balance {
     pub fn set_health(&self, index: usize, health: Health) {
         if let Some(m) = self.members.get(index) {
             m.health.store(health.value(), Ordering::Relaxed);
+        }
+    }
+
+    /// Drop the member `index` at once (T-288): it takes no flow until a
+    /// probe passes, and then it goes through probation.
+    pub fn drop_member(&self, index: usize) {
+        if let Some(member) = self.members.get(index) {
+            let step = member
+                .tracker
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .drop_now();
+            member.health.store(step.health.value(), Ordering::Relaxed);
         }
     }
 

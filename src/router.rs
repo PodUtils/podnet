@@ -517,7 +517,21 @@ impl Router {
                 .get(name)
                 .and_then(|p| Policy::parse(p))
                 .unwrap_or_default();
-            let mut group = Balance::new(name, built)
+            // A group of links (`peer:FINGERPRINT/SERVICE`, T-288) takes the
+            // limits of the link group and is a peer way.
+            let peers = built
+                .iter()
+                .any(|m| m.way.addressing == crate::network::Addressing::Peer);
+            if peers {
+                crate::link_group::check_limits(&built)
+                    .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?;
+            }
+            let made = if peers {
+                Balance::peers(name, built)
+            } else {
+                Balance::new(name, built)
+            };
+            let mut group = made
                 .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?
                 .with_policy(policy);
             if let Some((up, down)) = config
@@ -532,7 +546,7 @@ impl Router {
                     .map_err(|e| anyhow::anyhow!("splits.{name}: {}", e.text()))?;
             }
             let group = Arc::new(group);
-            ways.insert(name.clone(), Way::destination(group.clone()));
+            ways.insert(name.clone(), group.way());
             groups.push((name.clone(), group));
         }
         let mut doors = Vec::new();

@@ -506,3 +506,11 @@ mod turn_mock;
 mod turn_tests;
 #[cfg(test)]
 mod wg_tests;
+
+/// The peer way of `peer:FINGERPRINT/SERVICE`, with no link check: the
+/// dial of each stream asks the running instance (T-288). A link group
+/// builds its members from it, so that a member exists while its link is
+/// down.
+pub fn peer_way(fingerprint: &str, service: &str) -> Way {
+    Way::peer(Arc::new(peer::PeerDial::new(fingerprint, service)))
+}

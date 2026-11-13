@@ -229,6 +229,19 @@ impl Tracker {
         self.window.iter().min().copied().or(self.rtt)
     }
 
+    /// Put the member `Down` at once (a failed control probe of a link
+    /// member, T-288). The next passing probe gives `Probation`.
+    pub fn drop_now(&mut self) -> Step {
+        let before = self.health;
+        self.health = Health::Down;
+        self.hits = 0;
+        self.since = None;
+        Step {
+            health: Health::Down,
+            renew: before != Health::Down,
+        }
+    }
+
     /// Take the probe `result` at `now`. `control` is the result of the
     /// control probe of the group in this interval.
     pub fn observe(

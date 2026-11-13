@@ -11343,6 +11343,14 @@ The probe connects to `health.target` through each member of each group, each `i
 The values must give K > R > 1 and R > K/2. A member in `cooldown` or `probation` is not up. A group
 with no member that takes flows refuses new flows.
 
+### Groups of links
+
+A member can be a link: a network `peer:FINGERPRINT/SERVICE`. A group whose members are links is a peer
+way. A group does not mix links and other networks. The pick, the policies, the health steps and the kill
+switch are the same as for other groups. A flow takes one link when it opens, and the stream stays on it.
+A group of links has 1 to 16 members, and each weight is 1 to 100. The probe of a link opens one stream
+to its service. See [link.md](link.md), "Link groups".
+
 ### Egress check
 
 A probe that connects says that a network reaches the target. It does not say by which address the

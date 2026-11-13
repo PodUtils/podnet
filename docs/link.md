@@ -125,6 +125,23 @@ removes both files at its stop. The token is never in the ready document, `statu
 `PODNET_LINK_CONTROL` names the one socket that `peer:FINGERPRINT/SERVICE` asks. Without it, the network asks the control socket
 of each link instance in the run directory, and takes the first that holds a link to the peer.
 
+## Link groups
+
+A link group is a group of the router engine ([router.md](router.md)) whose members are
+`peer:FINGERPRINT/SERVICE`. Put the members in the `networks` and the `groups` of a router file, or build
+one in code with `podnet::link_group::LinkGroup`.
+
+* A group has 1 to 16 members. A weight is 1 to 100. The probe interval is 1 to 60 s.
+* The policies are `weighted` (default), `rr`, `minrtt` and `leastload`. `minrtt` moves its head only for
+  `max(5 ms, 10%)` over three probe rounds.
+* A flow takes one member when it opens. The stream stays on that member.
+* The control probe asks the control socket whether the link to the peer is up. A member that fails it is
+  down at once.
+* The data probe opens one stream to the service of the member. A member that fails it is down after
+  `down_after` failures in a row (default 4). A member that is down goes through probation when a probe
+  passes.
+* When each member is down, the flow is refused with the class `policy`. There is no direct fallback.
+
 ## Flags of the carriers
 
 * `--carrier NAME` selects the carrier (default `unix`). An unknown name exits 64 and lists the names.
