@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**335 entries: 16 open, 13 partial, 26 blocked, 280 done.**
+**335 entries: 15 open, 13 partial, 26 blocked, 281 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 6 | 5 | 11 | 146 | 168 |
-| P3 | 10 | 7 | 13 | 104 | 134 |
-| **All** | 16 | 13 | 26 | 280 | 335 |
+| P3 | 9 | 7 | 13 | 105 | 134 |
+| **All** | 15 | 13 | 26 | 281 | 335 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -380,4 +380,4 @@ M8 Overlays, M9 Later.
 | [T-332](fixes.md) | P1 | S | M5 | defect | done | QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523) |
 | [T-333](fixes.md) | P1 | S | M5 | defect | done | link door: --resolve-at local tries only the first address of a name |
 | [T-334](link.md) | P3 | S | M9 | feature | open | pod: the seccomp rule of a raw ICMP socket (GitHub #469) |
-| [T-335](link.md) | P3 | S | M9 | feature | open | link: keep the routes of two next hops for one announcement (GitHub #470) |
+| [T-335](link.md) | P3 | S | M9 | feature | done | link: keep the routes of two next hops for one announcement (GitHub #470) |

@@ -24,8 +24,11 @@
 //! * A path that holds this node, or holds a node two times, is refused
 //!   (loop). A path of more than [`Limits::max_hops`] nodes is refused.
 //! * An announcement with a `seq` that is not above the `seq` of the route
-//!   of the same next hop, or below the newest `seq` of the origin, is
-//!   refused.
+//!   of the same next hop is refused. Another next hop can give an older
+//!   `seq` of the origin: each link of the origin gets its own `seq`, so
+//!   one round of the origin comes with a different `seq` on each path
+//!   (T-335). The expiry of the announcement bounds the age of such a
+//!   route.
 //! * A direct route ends at its expiry. A multi-hop route is held for one
 //!   expiry interval after its expiry and ends then. A held route is used
 //!   only when no fresh route exists.
@@ -213,8 +216,6 @@ impl std::error::Error for Refused {}
 
 #[derive(Debug, Default)]
 struct Entry {
-    /// The newest `seq` that this origin showed.
-    max_seq: u64,
     routes: Vec<Route>,
 }
 
@@ -314,7 +315,6 @@ impl RouteTable {
         if !known {
             self.make_room(now)?;
             let entry = Entry {
-                max_seq: route.seq,
                 routes: vec![route],
             };
             self.origins.insert(ann.origin, entry);
@@ -322,9 +322,6 @@ impl RouteTable {
         }
         let per_origin = self.limits.routes_per_origin;
         let entry = self.origins.get_mut(&ann.origin).expect("known origin");
-        if ann.seq < entry.max_seq {
-            return Err(Refused::StaleSeq);
-        }
         if let Some(slot) = entry.routes.iter_mut().find(|r| r.next_hop == from) {
             if ann.seq <= slot.seq {
                 return Err(Refused::StaleSeq);
@@ -343,7 +340,6 @@ impl RouteTable {
                 return Err(Refused::Full);
             }
         }
-        entry.max_seq = entry.max_seq.max(ann.seq);
         Ok(Learned::Updated)
     }
 

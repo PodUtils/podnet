@@ -176,16 +176,27 @@ fn seq_must_rise() {
         learn(&mut t, 2, 1, &multi(&[9, 2], 4, 1, 0), 0),
         Err(Refused::StaleSeq)
     );
-    // An older seq from another hop: the origin showed a newer one.
+    // An older seq from another hop is a second route: each link of the
+    // origin gets its own seq (T-335).
+    assert_eq!(
+        learn(&mut t, 3, 1, &multi(&[9, 3], 4, 1, 0), 0),
+        Ok(Learned::Updated)
+    );
+    // The same seq from a third hop is a third route.
+    assert_eq!(
+        learn(&mut t, 4, 1, &multi(&[9, 4], 5, 1, 0), 0),
+        Ok(Learned::Updated)
+    );
+    // The replay rule holds for each hop.
     assert_eq!(
         learn(&mut t, 3, 1, &multi(&[9, 3], 4, 1, 0), 0),
         Err(Refused::StaleSeq)
     );
-    // The same seq from another hop is a second route.
     assert_eq!(
-        learn(&mut t, 3, 1, &multi(&[9, 3], 5, 1, 0), 0),
+        learn(&mut t, 3, 1, &multi(&[9, 3], 6, 1, 0), 0),
         Ok(Learned::Updated)
     );
+    assert_eq!(t.ranked(&key(9), 0).len(), 3);
 }
 
 #[test]

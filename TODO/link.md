@@ -1592,7 +1592,7 @@ Not proven: a diamond with two live next hops of one round (T-335); the 1 MiB in
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1612,8 +1612,20 @@ Row E4-3 of GitHub #470: "A hop that cannot allocate a stream returns `RESOURCE_
 
 ```sh
 cargo test --test mesh_three_hops
+cargo test --test mesh_table
 sh scripts/agent/check.sh
 ```
+
+## Correction
+
+2026-11-13 (read in the code; the owner is away: the calls). The premise "one round of D gives one `seq`" is false for a live mesh: `Mesh::make` gives a new `seq` at each call, and the sender of each link calls it. So one round of D comes to A with two `seq`, one on each path. The `seq` through B can be older than the `seq` through C, and a later older `seq` was dropped twice: by `Receiver::note` (the seen `seq`) and by `RouteTable::learn` (below the newest `seq` of the origin). Call 1: step 1 of the Approach takes the same `seq` and also an older `seq` from another next hop. The table rule "below the newest `seq` of the origin" is removed; the rule "not above the `seq` of the same next hop" stays, and the expiry of the announcement bounds the age of the route. Call 2: such an announcement goes to the table only. It is not forwarded (the newest `seq` was) and it does not change the status view (`seen`). A replay from the same next hop stays `Dropped::Announcement(SeenSeq)`. Call 3: one `seq` for each round of a node (one timer for all links) is not done: the senders of the links keep their own timers and jitter. Call 4: the routes are in podnet (`src/mesh_table.rs`, `src/link_announce.rs`), not in `pod-link`; no ask for podcrates.
+
+## Done
+
+2026-11-13, commit (cited in the next commit). `src/mesh_table.rs`: `learn` takes a `seq` below the newest of the origin from another next hop (the field `max_seq` is gone). `src/link_announce.rs`: `Mesh::take_other_path` gives an announcement that is not the newest of its origin to the table only. `docs/link.md` (Announcements on a link, The route table).
+`cargo test --test mesh_three_hops`: 11 passed, three runs in a row. New: `a_diamond_keeps_both_next_hops_of_one_round` (one announcement of D on two paths: A holds the next hops B and C, B first; a replay through B is `SeenSeq`; B answers `RESOURCE_LIMIT` and the stream goes through C: each one asked once, the echo comes back), `an_older_seq_from_another_next_hop_is_a_second_route` (the path through B has the older `seq`: two next hops, the best through B at cost 2), `the_diamond_fails_over_when_the_first_next_hop_ends` (four nodes, unix links, an interval of 600 s, so one round only: A holds B and C, a stream goes through B, the link A to B closes, the next hop C is left and the next stream goes through C). `cargo test --test mesh_table`: 22 passed (`seq_must_rise` changed: an older `seq` from another hop is a second route; a third hop; the replay rule for each hop; three ranked routes).
+Plants: with the old drop of a seen `seq` in `Mesh::take`, `a_diamond_keeps_both_next_hops_of_one_round` and `an_older_seq_from_another_next_hop_is_a_second_route` failed; with the old table rule, `an_older_seq_from_another_next_hop_is_a_second_route` and `seq_must_rise` failed. The live test passed with the plants: there the order of arrival decides, and it is the proof of the failover only. `sh scripts/agent/check.sh`: each step 0.
+Not proven: a diamond of separate processes (the real binary); a diamond over carriers other than unix.
 
 # T-288: link: load balancing across link groups (GitHub #470)
 

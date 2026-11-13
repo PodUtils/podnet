@@ -2,7 +2,8 @@
 //! from A reaches a service of C through B, over unix links in one process.
 //! The announcements of the other nodes are forwarded with the hop of each
 //! node, the stream follows the best route, and the bounds hold: the hop
-//! limit, the loop rule, the retry on `RESOURCE_LIMIT`, a closed middle link.
+//! limit, the loop rule, the retry on `RESOURCE_LIMIT`, a closed middle link,
+//! and the two next hops of one round in a diamond (T-335).
 
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -82,14 +83,19 @@ async fn serve(mesh: Arc<Mesh>, link: Arc<Link>, peer: PublicKey, weight: u32) {
 
 /// A link between two nodes. Each end has the cost `cost` for it.
 async fn join(x: &mut Node, y: &mut Node, cost: u32) -> (Arc<Link>, Arc<Link>) {
+    join_every(x, y, cost, FAST).await
+}
+
+/// [`join`] with the interval `every` (ms) of the announcements.
+async fn join_every(x: &mut Node, y: &mut Node, cost: u32, every: u64) -> (Arc<Link>, Arc<Link>) {
     let (lx, ly) = link::unix_pair(Settings::default()).unwrap();
     let (lx, ly) = (Arc::new(lx), Arc::new(ly));
     tokio::spawn(serve(x.mesh.clone(), lx.clone(), y.id.public(), cost));
     tokio::spawn(serve(y.mesh.clone(), ly.clone(), x.id.public(), cost));
     x.guards
-        .push(Guard::start(&x.mesh, &lx, y.id.public(), Some(cost), FAST));
+        .push(Guard::start(&x.mesh, &lx, y.id.public(), Some(cost), every));
     y.guards
-        .push(Guard::start(&y.mesh, &ly, x.id.public(), Some(cost), FAST));
+        .push(Guard::start(&y.mesh, &ly, x.id.public(), Some(cost), every));
     (lx, ly)
 }
 
@@ -436,4 +442,131 @@ async fn the_default_hop_limit_refuses_a_nine_link_path() {
     let stream = forward::open(&n[0].mesh, &dest, "echo", 9).await.unwrap();
     let back = echo_roundtrip(stream, data.clone()).await;
     assert_eq!(Sha256::digest(&back), Sha256::digest(&data));
+}
+
+/// The next hops of the usable routes from `from` to `to`, best first.
+fn next_hops(from: &Node, to: &Node) -> Vec<PublicKey> {
+    from.mesh
+        .ways(&to.id.public(), &[], announce::now_ms())
+        .into_iter()
+        .map(|(hop, _)| hop)
+        .collect()
+}
+
+/// A diamond: A to D through B and through C. One announcement of D comes
+/// to A on the two paths. A keeps the two routes; B has no stream to give,
+/// so A takes C.
+#[tokio::test]
+async fn a_diamond_keeps_both_next_hops_of_one_round() {
+    let dir = tempfile::tempdir().unwrap();
+    let a = node(dir.path(), "a");
+    let (b, c, d) = (
+        node(dir.path(), "b"),
+        node(dir.path(), "c"),
+        node(dir.path(), "d"),
+    );
+    let now = announce::now_ms();
+    let (la_b, lb) = link::unix_pair(Settings::default()).unwrap();
+    let (la_c, lc) = link::unix_pair(Settings::default()).unwrap();
+    let (asked_b, asked_c) = (Arc::new(AtomicUsize::new(0)), Arc::new(AtomicUsize::new(0)));
+    stub(Arc::new(lb), Some(service::RESOURCE_LIMIT), asked_b.clone());
+    stub(Arc::new(lc), None, asked_c.clone());
+    let (tx, _rx) = tokio::sync::mpsc::channel(1);
+    a.mesh
+        .attach_link(b.id.public(), Arc::new(la_b), tx.clone());
+    a.mesh.attach_link(c.id.public(), Arc::new(la_c), tx);
+    // One round of D: one `seq` on two paths. C comes first.
+    let round = d.mesh.make(now).unwrap();
+    let via_c = wire::append_hop(&round, c.id.key(), 1).unwrap();
+    let via_b = wire::append_hop(&round, b.id.key(), 1).unwrap();
+    a.mesh.receive(&c.id.public(), 10, &via_c, now).unwrap();
+    a.mesh.receive(&b.id.public(), 1, &via_b, now).unwrap();
+    assert_eq!(next_hops(&a, &d), vec![b.id.public(), c.id.public()]);
+    // A replay from the same next hop stays a seen `seq`.
+    assert_eq!(
+        a.mesh.receive(&b.id.public(), 1, &via_b, now).unwrap_err(),
+        Dropped::Announcement(Rule::SeenSeq)
+    );
+    let stream = forward::open(&a.mesh, &d.id.public(), "echo", 8)
+        .await
+        .unwrap();
+    assert_eq!(
+        echo_roundtrip(stream, b"diamond".to_vec()).await,
+        b"diamond"
+    );
+    assert_eq!(asked_b.load(Ordering::SeqCst), 1, "B was tried first");
+    assert_eq!(asked_c.load(Ordering::SeqCst), 1, "C was tried second");
+}
+
+/// Each link of D gets its own `seq`: the path through B can bring an older
+/// `seq` than the path through C. A keeps it as a second route.
+#[tokio::test]
+async fn an_older_seq_from_another_next_hop_is_a_second_route() {
+    let dir = tempfile::tempdir().unwrap();
+    let (a, b, c, d) = (
+        node(dir.path(), "a"),
+        node(dir.path(), "b"),
+        node(dir.path(), "c"),
+        node(dir.path(), "d"),
+    );
+    let (tx, _rx) = tokio::sync::mpsc::channel(1);
+    for hop in [&b, &c] {
+        let (la, _) = link::unix_pair(Settings::default()).unwrap();
+        a.mesh
+            .attach_link(hop.id.public(), Arc::new(la), tx.clone());
+    }
+    let now = announce::now_ms();
+    let for_b = d.mesh.make(now).unwrap();
+    let for_c = d.mesh.make(now).unwrap();
+    let via_b = wire::append_hop(&for_b, b.id.key(), 1).unwrap();
+    let via_c = wire::append_hop(&for_c, c.id.key(), 1).unwrap();
+    a.mesh.receive(&c.id.public(), 5, &via_c, now).unwrap();
+    a.mesh.receive(&b.id.public(), 1, &via_b, now).unwrap();
+    assert_eq!(next_hops(&a, &d), vec![b.id.public(), c.id.public()]);
+    let row = route(&a.mesh, &d).unwrap();
+    assert_eq!(row["next_hop"], b.id.public().display_fingerprint());
+    assert_eq!(row["cost"], 2);
+    // A replay from B stays a seen `seq`.
+    assert_eq!(
+        a.mesh.receive(&b.id.public(), 1, &via_b, now).unwrap_err(),
+        Dropped::Announcement(Rule::SeenSeq)
+    );
+}
+
+/// A live diamond with one round of announcements (the interval is long).
+/// A holds two next hops to D. The link to the first one ends, and the next
+/// stream goes through the other one with no new round.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_diamond_fails_over_when_the_first_next_hop_ends() {
+    const ONCE: u64 = 600_000;
+    let dir = tempfile::tempdir().unwrap();
+    let (mut a, mut b, mut c, mut d) = (
+        node(dir.path(), "a"),
+        node(dir.path(), "b"),
+        node(dir.path(), "c"),
+        node(dir.path(), "d"),
+    );
+    let (la_b, _) = join_every(&mut a, &mut b, 1, ONCE).await;
+    join_every(&mut a, &mut c, 5, ONCE).await;
+    until("A knows B and C", || {
+        route(&a.mesh, &b).is_some() && route(&a.mesh, &c).is_some()
+    })
+    .await;
+    join_every(&mut b, &mut d, 1, ONCE).await;
+    join_every(&mut c, &mut d, 5, ONCE).await;
+    let (hop_b, hop_c) = (b.id.public(), c.id.public());
+    until("two next hops to D", || {
+        next_hops(&a, &d) == vec![hop_b, hop_c]
+    })
+    .await;
+    let dest = d.id.public();
+    let stream = forward::open(&a.mesh, &dest, "echo", 8).await.unwrap();
+    assert_eq!(echo_roundtrip(stream, b"via b".to_vec()).await, b"via b");
+    la_b.close().await;
+    until("B is no next hop", || next_hops(&a, &d) == vec![hop_c]).await;
+    let row = route(&a.mesh, &d).unwrap();
+    assert_eq!(row["next_hop"], hop_c.display_fingerprint());
+    assert_eq!(row["hops"], 2);
+    let stream = forward::open(&a.mesh, &dest, "echo", 8).await.unwrap();
+    assert_eq!(echo_roundtrip(stream, b"via c".to_vec()).await, b"via c");
 }

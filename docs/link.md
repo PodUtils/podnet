@@ -669,8 +669,12 @@ nothing.
 * A new announcement is forwarded: the node adds its hop (its key, the cost of its link to the peer, its signature over the
   signature before it) and sends it on the `announce` stream of each other neighbour that is not in the path. It forwards only
   a path that stays within the hop limit (8 nodes; `Mesh::set_hop_limit`, 16 at most). The forward queue of a link holds 64
-  frames: a full queue drops the frame, and the origin sends again. The route table keeps one `seq` for each origin: the
-  first announcement of a `seq` that arrives sets the route of that round, a longer path of the same `seq` is dropped.
+  frames: a full queue drops the frame, and the origin sends again. Only the newest `seq` of an origin is forwarded.
+* Each link of an origin gets its own `seq`, so one round of the origin comes on two paths with two `seq` (T-335). An
+  announcement whose `seq` is not the newest of its origin goes to the route table only: the table takes it when its next hop
+  has no newer route of that origin. It is not forwarded, and it does not change the status view. So in a diamond (A to D
+  through B and through C) A keeps the two next hops after one round. When the link to the first next hop ends, the next
+  stream takes the other one at once, with no new round. A replay from the same next hop is dropped (`the seq is not new`).
   The cost of a route is the cost of the link to the sender plus the signed costs of the hops.
 * The first `seq` of a run is the time in ms, so a restart does not use a `seq` again.
 * The cost of a link is `--announce-weight COST` (1 or more), else the RTT of the link in ms (at least 1), else 10.
@@ -795,8 +799,8 @@ non-zero, no data).
 * Selection (`best`, `ranked`): a fresh route before a held route, then the lowest cost, then the fewest hops, then the newest
   `seq`.
 * A path that holds this node or a node two times is refused (`Loop`). A path of more than 16 nodes is refused. An expired
-  announcement is refused. A `seq` that is not above the `seq` of the same next hop, or is below the newest `seq` of the origin,
-  is refused (`StaleSeq`).
+  announcement is refused. A `seq` that is not above the `seq` of the same next hop is refused (`StaleSeq`). Another next hop
+  can give an older `seq` of the origin; the expiry of the announcement bounds the age of that route.
 * A direct route ends at its expiry. A multi-hop route is held for one expiry interval (30 s) after its expiry, and it ends
   then. `session_closed` ends the direct route of that peer at once. The multi-hop routes through that peer are not used from
   then on, and they end after one expiry interval.

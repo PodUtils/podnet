@@ -308,6 +308,13 @@ impl Mesh {
         if v.path.last() != Some(from) {
             return Err(Dropped::NotDirect);
         }
+        if st
+            .receiver
+            .seq_of(&v.body.origin)
+            .is_some_and(|seen| v.body.seq <= seen)
+        {
+            return Self::take_other_path(st, from, cost, &v, now);
+        }
         let v = st.receiver.note(v, now).map_err(Dropped::Announcement)?;
         let learned = st
             .table
@@ -316,6 +323,27 @@ impl Mesh {
         Self::note_seen(st, &v, now);
         Self::forward(&self.me, st, wire, &v.path, cost);
         Ok(learned)
+    }
+
+    /// An announcement whose `seq` is not the newest of its origin (T-335).
+    /// Each link of the origin gets its own `seq`, so the path of a round
+    /// through another next hop can come with the same or an older `seq`.
+    /// The route table takes it when its next hop has no newer route of
+    /// that origin: then the origin has a second live next hop. It is not
+    /// forwarded (the newest `seq` was) and it does not change the status
+    /// view. A replay from the same next hop stays [`Rule::SeenSeq`].
+    fn take_other_path(
+        st: &mut State,
+        from: &PublicKey,
+        cost: u32,
+        v: &announce::Verified,
+        now: u64,
+    ) -> Result<Learned, Dropped> {
+        match st.table.learn(*from, cost, &v.route(), now) {
+            Ok(learned) => Ok(learned),
+            Err(Refused::StaleSeq) => Err(Dropped::Announcement(Rule::SeenSeq)),
+            Err(why) => Err(Dropped::Table(why)),
+        }
     }
 
     /// Keep what an accepted announcement said, for the status view. The
