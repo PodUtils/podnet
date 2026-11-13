@@ -835,6 +835,10 @@ Done so far:
   rules stay in podnet. `src/warp/` holds fixes only from now on; each fix goes to podcrates as a COORD issue. The checks of
   `adoption/podnet/pod-warp.run` pass: the record, the size and the layers, `cargo deny` bans and sources, `pod-warp` in the
   tree, no moved file or item left, clippy of the workspace, `sh scripts/agent/check.sh` (each test), the fuzz targets.
+- v0.38.0 (PodUtils/podcrates#136): each `pod-*` dependency names `tag = "v0.38.0"`. Breaking: `RuleMatch::matches` of
+  `pod-warp` takes the port of the target (`tests/rule_words.rs` gives `None`). New in the tag: the port rules of
+  `pod-warp` (T-328), `pod_dns::txt` (T-281), the record layer of `pod-e2e` (T-298, T-300, T-301), `pod_ws::serve` and
+  the carriers `ws` and `h2` of `pod-link` (T-269, T-270). `cargo deny --locked check bans sources`: ok.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

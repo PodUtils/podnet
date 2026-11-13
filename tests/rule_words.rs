@@ -30,7 +30,7 @@ fn reject_and_block_mean_the_same_in_both_rule_engines() {
             ("example.com", None),
         ] {
             assert_eq!(
-                warp.matcher.matches(host, ip),
+                warp.matcher.matches(host, ip, None),
                 pod.matcher.matches(host, ip),
                 "{spec} {host}"
             );
