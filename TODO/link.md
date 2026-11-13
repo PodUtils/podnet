@@ -1524,7 +1524,7 @@ T-261 and T-287 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1559,6 +1559,17 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-266 is done.
+
+## Correction
+
+2026-11-12: this entry builds `CONNECT` only. `BIND` through a peer listener, `UDP ASSOCIATE` through a peer UDP forward, and `--resolve local` are left: `BIND` needs a listener of the peer that the opener can reach (a second stream), and `--resolve local` needs a SOCKS5 parser at the opener (the connector end of a stream is raw bytes). The door answers both commands with reply 7 (command not supported).
+
+## Done
+
+2026-11-12, commit 97c7196. `--service socks5` (no target; `socks5=TARGET` exits 64) of `link listen` runs `podnet_netns::door::Door` (the code of the front door, no second SOCKS5 server) on the session stream with a direct dial (`src/link_socks.rs`). A name resolves at the peer. The stream takes SOCKS5 only (another first byte ends it with no answer). The allow list admits the peer before any service (a stranger exits 77). Also fixed: `link dial` did not exit when the far end ended the stream while stdin was open (a blocking stdin read held the runtime); and a stream that ends in error now gets a clean shutdown at the listener.
+`cargo test --test link_socks5`: 7 passed: `a_connect_through_the_peer_reaches_an_origin_at_the_peer`, `a_name_resolves_at_the_peer`, `a_connect_to_a_closed_port_gets_a_failure_reply_and_the_stream_ends`, `bind_and_udp_associate_are_not_served_and_say_command_not_supported`, `a_stream_that_does_not_speak_socks5_ends_with_no_answer`, `a_peer_that_is_not_on_the_allow_list_gets_77_before_the_service`, `the_service_socks5_takes_no_target`. Fail first: on the old code 6 of the 7 failed and the seventh hung (no service `socks5`). The tests need a loopback and skip without one.
+Not proven: BIND, UDP ASSOCIATE, `--resolve local`, user and password, a carrier that crosses a network.
+
 
 # T-292: link: an HTTP forward proxy service at a peer (GitHub #471)
 
