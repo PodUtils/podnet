@@ -884,6 +884,8 @@ T-277 is done (or lands in the same change), and T-262 and T-264 are done.
 
 ## Correction
 
+2026-11-13 (PodUtils/podcrates#139, their entry 526): with the take of the udp carrier, the root `Cargo.toml` sets `[profile.dev.package.kcp] overflow-checks = false` (the crate `kcp` wraps its clock and sequence numbers by design; with overflow checks a debug build ends a long stream). The profile goes when `kcp` fixes its arithmetic.
+
 2026-11-13, the lead (PodUtils/podcrates#138, answered in GitHub #527): the congestion window of KCP is the default (`nodelay` off). The 5 % gate runs with the default; the 20 % gate runs with `nodelay` on, with the bound that a release build holds. `--carrier udp` takes `?kcp-nodelay=1`.
 
 # T-277: link: a selective-repeat ARQ for any lossy carrier (GitHub #468)
