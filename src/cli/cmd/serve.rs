@@ -87,6 +87,20 @@ pub(crate) struct ServeArgs {
     /// with --local serves the local listeners too.
     #[arg(long, value_enum)]
     ingress: Option<Road>,
+    /// Serve the files to one peer of a link, on a stream of its service:
+    /// peer:FINGERPRINT/SERVICE. The peer opens the stream (podnet link
+    /// dial --service SERVICE, or forward -L PORT=peer:FP/SERVICE) and
+    /// speaks HTTP on it. Index, range and HEAD work as on any listener,
+    /// and --list, --spa, --tar, --users and --pin apply. Needs
+    /// --at-listen. It makes no tunnel.
+    #[arg(long, value_name = "peer:FP/SERVICE", requires = "at_listen", conflicts_with_all = ["ingress", "pair", "local", "check"])]
+    at: Option<String>,
+    /// With --at: where the link listener binds, in the form of the
+    /// carrier as `podnet link listen ADDRESS` (a path for the unix
+    /// carrier; a query `?carrier=NAME` picks another). Only the peer of
+    /// --at is admitted.
+    #[arg(long, value_name = "ADDRESS", requires = "at")]
+    at_listen: Option<String>,
     /// With --ingress relay: the pair name. Default: the pair with the most
     /// time left; at its expiry the node takes the next stored pair.
     #[arg(long, value_name = "NAME")]
@@ -161,6 +175,17 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
     }
     let router = podnet::files::router(&files)?;
     let pin = files.access.pin.as_ref().and_then(Gate::pin_display);
+    if let (Some(at), Some(address)) = (&args.at, &args.at_listen) {
+        return super::serve_at::serve_at(
+            at,
+            address,
+            router,
+            args.dir(),
+            pin,
+            args.common.run_for,
+        )
+        .await;
+    }
     let show = args.common.show();
     let mut locals = Vec::new();
     for local in &args.local {

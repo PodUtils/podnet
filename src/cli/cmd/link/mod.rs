@@ -3,7 +3,7 @@
 mod connect;
 mod dial;
 mod info;
-mod listen;
+pub(crate) mod listen;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

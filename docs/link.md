@@ -130,6 +130,8 @@ podnet link dial ADDRESS --peer FP --service tool
 * When the program closes its stdout, the stream ends, and the program has 10 s to end (else it is killed). When the peer ends its side,
   the stdin of the program closes. A reset stream kills the program. A program that ends with a fault is logged.
 
+The file server serves a tree at a peer with `podnet serve DIR --at peer:FP/SERVICE --at-listen ADDRESS` (see `docs/serve.md`, "Serve at a peer").
+
 Proof: `tests/service_exec.rs`. Not proven: `--exec-user` as root (the test runs without privilege and checks the refusal).
 
 ## The control socket

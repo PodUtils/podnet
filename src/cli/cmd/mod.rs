@@ -20,6 +20,7 @@ pub(crate) mod relay;
 pub(crate) mod route;
 pub(crate) mod run;
 pub(crate) mod serve;
+mod serve_at;
 mod serve_relay;
 pub(crate) mod share;
 pub(crate) mod ssh_relay;

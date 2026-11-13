@@ -3004,7 +3004,7 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 
 - `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:115` (field), `:125` (`root_404: false`),
   `src/cli/cmd/run.rs:44` (read).
-- `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:201`.
+- `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:226`.
 - The warn branch: `src/tunnel.rs:1266-1270`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
 
@@ -3204,7 +3204,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 - `crates/podnet-serve/src/origin/static_files.rs:256-258` (the `b'+'` arm), `:84-89` (`resolve`), test `:603-607` asserts `"a b"`.
 - `crates/podnet-serve/src/files/mod.rs:257-272`, `:170`. `crates/podnet-serve/src/ingress.rs:200-203`, test `:635-648` (`"a + stays a +"`).
-- `docs/serve.md:54-55`.
+- `docs/serve.md:76-77`.
 - One more divergence (not in the issue): a bad escape (`%zz`) passes through in the library decoder
   (`crates/podnet-serve/src/origin/static_files.rs:242-260`, test `:616-618`). The CLI decoder returns `None` (`crates/podnet-serve/src/files/mod.rs:262-265`), so the request is refused. A short escape at the
   end (`i + 2 < len`) also differs.

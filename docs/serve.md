@@ -43,6 +43,28 @@ local listener:
   With `--ingress none`, the tunnel flags have no effect, except `--auth-user`
   (see below). The `--json` ready line has `listens`, each listener.
 
+### Serve at a peer (`--at`)
+
+`--at peer:FINGERPRINT/SERVICE --at-listen ADDRESS` serves the files to one peer of a link, on a stream of the service SERVICE (T-297):
+
+```sh
+podnet serve ./public --at peer:CLIENT-FINGERPRINT/files --at-listen /run/files.sock
+podnet link dial /run/files.sock --peer SERVER-FINGERPRINT --service files   # the peer: HTTP on stdin and stdout
+```
+
+* The file server is the one of `--local`: the same router, the same index, range and `HEAD` answers. `--list`, `--spa`, `--tar`,
+  `--upload`, `--users` and `--pin` apply. A directory has no listing unless `--list` is given (a directory with no `index.html`
+  answers 404).
+* A link listener (as `podnet link listen ADDRESS`, see `docs/link.md`) runs at `--at-listen ADDRESS`. A query `?carrier=NAME` on the
+  address picks another carrier. Only the peer of `--at` is admitted (an other key exits 77 at the dialer). The fingerprint is the
+  one that `podnet link status` shows. The file server is bound on a unix socket in a private directory (mode 0700), which is removed
+  at the end.
+* `--at` and `--at-listen` need each other. `--at` is refused with `--ingress`, `--pair`, `--local` and `--check`. A bad spec exits 64.
+* `--name` of the entry is not built: `--name` names the instance of `serve` (see `--detach`). The form `peer:FINGERPRINT` is the only
+  one.
+
+Proof: `tests/service_serve_at.rs`.
+
 `podnet serve` serves only the files in `--dir`:
 
 * A symlink is served only when its real path is in `--dir`.
