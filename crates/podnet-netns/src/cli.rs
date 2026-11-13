@@ -48,6 +48,8 @@ pub(crate) struct Args {
     pub(crate) loopback_rules: bool,
     /// `--early-reply` (T-237): `--serve` answers a CONNECT before the dial.
     pub(crate) early_reply: bool,
+    /// `--report FILE` (T-330): the JSON report of the run.
+    pub(crate) report: Option<std::path::PathBuf>,
 }
 
 /// The mode of the learned set (T-158).
@@ -140,6 +142,13 @@ Options:
                            (time, target, rule or default, chain, verdict)
                            and one at the close of each relayed TCP flow
                            (bytes_out, bytes_in)
+      --report <FILE>      Write one JSON object to FILE when the pod starts
+                           and again when it ends: schema, version, backend,
+                           choice, hold (the words of pod doctor), not_held,
+                           udp_limit (bytes, or null: no limit), exit (null
+                           until the end) and reason. The JSON schema is the
+                           release file pod-report.schema.json. A pod that
+                           cannot start writes the report with its reason
       --learn <FILE>       Write each destination of the run to FILE, one
                            PROTO TARGET line each. A flow that a rule
                            refuses goes through the -x chain
@@ -232,6 +241,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut flow_log = None;
     let mut loopback_rules = false;
     let mut early_reply = false;
+    let mut report = None;
     let mut learned = None;
     let mut flow_budget = None;
     let mut i = 0;
@@ -299,6 +309,11 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             "--flow-log" => {
                 let path = argv.get(i + 1).context("--flow-log needs a file")?;
                 flow_log = Some(std::path::PathBuf::from(path));
+                i += 2;
+            }
+            "--report" => {
+                let path = argv.get(i + 1).context("--report needs a file")?;
+                report = Some(std::path::PathBuf::from(path));
                 i += 2;
             }
             "--learn" | "--fail-on-violation" => {
@@ -438,6 +453,9 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     if early_reply && serve.is_none() {
         bail!("--early-reply works with --serve");
     }
+    if report.is_some() && serve.is_some() {
+        bail!("--report works with a program, not with --serve");
+    }
     if learned.is_some() && serve.is_some() {
         bail!("--learn and --fail-on-violation work with a program, not with --serve");
     }
@@ -475,5 +493,6 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         flow_budget,
         loopback_rules,
         early_reply,
+        report,
     })
 }

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/PodUtils/podnet/releases/latest/download/pod-report.schema.json",
+  "title": "podnet pod --report",
+  "description": "The report of one run of podnet pod. The pod writes it when it starts (exit is null) and again when it ends.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema", "version", "backend", "choice", "hold", "not_held", "udp_limit", "exit", "reason"],
+  "properties": {
+    "schema": {
+      "description": "The version of this form.",
+      "const": 1
+    },
+    "version": {
+      "description": "The version of podnet.",
+      "type": "string"
+    },
+    "backend": {
+      "description": "The backend that runs the program, or null when no backend was chosen or none could start.",
+      "enum": ["netns", "seccomp", null]
+    },
+    "choice": {
+      "description": "The reason of the choice of the backend, or null when none was chosen.",
+      "type": ["string", "null"]
+    },
+    "hold": {
+      "description": "The hold level of the backend, in the words of podnet pod doctor --json: enforced (the kernel keeps the program in its network namespace), advisory (the supervisor holds the calls that it intercepts) or none.",
+      "enum": ["enforced", "advisory", "none"]
+    },
+    "not_held": {
+      "description": "The ways out that the backend does not hold.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "udp_limit": {
+      "description": "The most bytes of a UDP datagram that the backend carries, or null when it has no limit (or no backend).",
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "exit": {
+      "description": "The exit status of podnet pod: null until the run ends.",
+      "type": ["integer", "null"]
+    },
+    "reason": {
+      "description": "The cause of a failure (exit 3, 64), or null.",
+      "type": ["string", "null"]
+    }
+  }
+}

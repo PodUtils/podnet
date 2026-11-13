@@ -543,8 +543,8 @@ pub const NETNS_NOT_HELD: &[&str] = &[
 /// holds the calls that it intercepts; other calls go to the kernel) or
 /// `none` (the backend cannot run here).
 pub(crate) struct Hold {
-    netns: &'static str,
-    seccomp: &'static str,
+    pub(crate) netns: &'static str,
+    pub(crate) seccomp: &'static str,
 }
 
 impl Hold {

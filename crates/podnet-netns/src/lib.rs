@@ -58,6 +58,7 @@ mod netns;
 mod nfprobe;
 mod outlive;
 mod recvmmsg;
+mod report;
 mod seccomp;
 mod socket;
 mod sockopt;
@@ -132,10 +133,24 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     if args.doctor {
         return doctor(args.doctor_json);
     }
-    if let Some(path) = &args.flow_log {
-        if let Err(e) = flowlog::open(path) {
+    let report = match report::Report::begin(args.report.clone()) {
+        Ok(r) => r,
+        Err(e) => {
             eprintln!("{}: {e:#}", cli::program_name());
             return USAGE;
+        }
+    };
+    let code = run_args(args, &report);
+    report.finish(code);
+    code
+}
+
+/// The run of [`main_with_args`] after the parse: each failure goes into
+/// `report`.
+fn run_args(args: Args, report: &report::Report) -> i32 {
+    if let Some(path) = &args.flow_log {
+        if let Err(e) = flowlog::open(path) {
+            return report.fail(USAGE, &format!("{e:#}"));
         }
     }
     let learned = match &args.learned {
@@ -144,16 +159,11 @@ pub fn main_with_args(argv: &[String]) -> i32 {
         None => Ok(()),
     };
     if let Err(e) = learned {
-        eprintln!("{}: {e:#}", cli::program_name());
-        return USAGE;
+        return report.fail(USAGE, &format!("{e:#}"));
     }
     if args.serve.is_some() {
         if args.proxies.is_empty() {
-            eprintln!(
-                "{}: --serve needs at least one -x upstream",
-                crate::cli::program_name()
-            );
-            return USAGE;
+            return report.fail(USAGE, "--serve needs at least one -x upstream");
         }
         let listen = args.serve.clone().unwrap();
         let runtime = match tokio::runtime::Builder::new_multi_thread()
@@ -161,10 +171,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
             .build()
         {
             Ok(r) => r,
-            Err(e) => {
-                eprintln!("{}: {e:#}", crate::cli::program_name());
-                return EXIT_NO_BACKEND;
-            }
+            Err(e) => return report.fail(EXIT_NO_BACKEND, &format!("{e:#}")),
         };
         let outcome = runtime.block_on(serve_front_door(
             listen,
@@ -175,29 +182,21 @@ pub fn main_with_args(argv: &[String]) -> i32 {
         ));
         match outcome {
             Ok(()) => return 0,
-            Err(e) => {
-                eprintln!("{}: {e:#}", crate::cli::program_name());
-                return EXIT_NO_BACKEND;
-            }
+            Err(e) => return report.fail(EXIT_NO_BACKEND, &format!("{e:#}")),
         }
     }
     // Issue 95: no -x, no proxy variable and no rule is a usage mistake
     // (exit 64), not a host that has no backend (exit 3).
     if args.proxies.is_empty() && args.rules.is_empty() {
-        eprintln!(
-            "{}: no proxy: give -x PROXY, or set ALL_PROXY, HTTPS_PROXY or HTTP_PROXY",
-            crate::cli::program_name()
+        return report.fail(
+            USAGE,
+            "no proxy: give -x PROXY, or set ALL_PROXY, HTTPS_PROXY or HTTP_PROXY",
         );
-        return USAGE;
     }
     warn_unreachable(&args.proxies);
     // Inbound listeners exist on the seccomp backend only (issue 69).
     if args.inbound_dir_given && matches!(args.backend, BackendKind::Netns) {
-        eprintln!(
-            "{}: --inbound-dir works with --backend seccomp only",
-            crate::cli::program_name()
-        );
-        return USAGE;
+        return report.fail(USAGE, "--inbound-dir works with --backend seccomp only");
     }
     let warn_inbound = |backend: &str| {
         if args.inbound_dir_given {
@@ -209,6 +208,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     let name_backend = args.name_backend;
     let netns = |args: Args, reason: &str| {
         name_the_backend(name_backend, BackendKind::Netns, reason);
+        report.backend(BackendKind::Netns, reason);
         run(args)
     };
     let seccomp = |args: Args, reason: &str| {
@@ -216,6 +216,7 @@ pub fn main_with_args(argv: &[String]) -> i32 {
         // T-231: with no read of the memory of the program, the pod sees no
         // address and refuses each connect: refuse the run at its start.
         seccomp_can_hold(&doctor::probe_mem_read())?;
+        report.backend(BackendKind::Seccomp, reason);
         run_seccomp(args)
     };
     let result = match args.backend {
@@ -243,8 +244,8 @@ pub fn main_with_args(argv: &[String]) -> i32 {
     match result {
         Ok(code) => code,
         Err(e) => {
-            eprintln!("{}: {e:#}", crate::cli::program_name());
-            EXIT_NO_BACKEND
+            report.no_backend();
+            report.fail(EXIT_NO_BACKEND, &format!("{e:#}"))
         }
     }
 }

@@ -83,6 +83,10 @@ jobs:
             done
             want=$((want + 2))
           fi
+          if [ -f pod-report.schema.json ]; then
+            grep -q '  pod-report\.schema\.json$' SHA256SUMS || { echo "SHA256SUMS has no line for pod-report.schema.json"; exit 1; }
+            want=$((want + 1))
+          fi
           lines=$(wc -l < SHA256SUMS)
           test "$want" -eq "$lines" || { echo "SHA256SUMS has $lines lines, not $want"; exit 1; }
           sha256sum -c SHA256SUMS

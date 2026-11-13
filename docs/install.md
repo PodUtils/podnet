@@ -13,11 +13,12 @@ a tag has. Each release also has these files:
 
 | File | Contents |
 | --- | --- |
-| `SHA256SUMS` | The SHA-256 of each binary and of `podnet.1`. |
+| `SHA256SUMS` | The SHA-256 of each binary, of `podnet.1`, of the llms files and of `pod-report.schema.json`. |
 | `SHA256SUMS.sigstore.json` | The keyless cosign signature of `SHA256SUMS`. |
 | `provenance.sigstore.json` | The SLSA provenance of the binaries. |
 | `podnet.1` | The manual page (`podnet man --roff`). |
 | `llms.txt`, `llms-full.txt` | The index, and the manual with the documents, for agents. |
+| `pod-report.schema.json` | The JSON Schema of `podnet pod --report` ([pods.md](pods.md)). |
 | `THIRD-PARTY-LICENSES.md` | The license texts of the crates in the binaries. |
 
 Verify the files before you use them. Download the binary, `SHA256SUMS` and

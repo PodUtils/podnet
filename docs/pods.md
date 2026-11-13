@@ -84,6 +84,22 @@ podnet pod -x socks5://127.0.0.1:1080 \
   destination that a rule refuses is also a violation. The pod writes each violation on stderr and exits 4
   when the program exits 0.
 
+## Report
+
+* `--report FILE` writes one JSON object to FILE when the pod starts, and again when it ends. Each write
+  replaces the file with a rename of a temporary file in the same directory. The mode is 0600.
+* The keys: `schema` (1), `version` (of podnet), `backend` (`netns`, `seccomp` or null), `choice` (the reason
+  of the choice), `hold` (`enforced`, `advisory` or `none`: the words of `podnet pod doctor --json`),
+  `not_held` (the ways out that the backend does not hold), `udp_limit` (the most bytes of a UDP datagram:
+  1500 for `netns`, null for `seccomp`), `exit` and `reason`.
+* `exit` is null in the first write. In the last write it is the exit status of `podnet pod`. `reason` is
+  the cause of a failure (exit 64 or 3), else null.
+* A pod that cannot start writes the report with `backend` null, `hold` `none` and its `reason`. Exit 3 of a
+  child of the pod has the reason `the pod did not start the program, or the program exited 3`.
+* The release file `pod-report.schema.json` (source: `docs/schema/pod-report.schema.json`) is the JSON
+  Schema of the report. `--report` does not work with `--serve`. A file that cannot be written at the start
+  is exit 64.
+
 ## Other options
 
 * `--backend auto|netns|seccomp`; `--prefer-udp` (with `auto`: `seccomp` first when it works, because

@@ -150,6 +150,9 @@ jobs:
             python3 -I scripts/gen-llms.py --out dist target/${{ matrix.target }}/release/podnet
             test -s dist/llms.txt
             test -s dist/llms-full.txt
+            # T-330: the JSON Schema of `podnet pod --report`.
+            cp docs/schema/pod-report.schema.json dist/pod-report.schema.json
+            test -s dist/pod-report.schema.json
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -322,7 +325,7 @@ jobs:
         run: |
           set -eu
           cd dist
-          sha256sum podnet-* podnet.1 llms.txt llms-full.txt > SHA256SUMS
+          sha256sum podnet-* podnet.1 llms.txt llms-full.txt pod-report.schema.json > SHA256SUMS
           cat SHA256SUMS
       - name: the provenance of the binaries
         id: attest
