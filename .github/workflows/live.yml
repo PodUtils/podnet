@@ -564,13 +564,17 @@ jobs:
           target/release/podnet relay node "$name" --to 127.0.0.1:18193 --resume --detach --name resumenode > /dev/null
           head -c 209715200 /dev/urandom > "$RUNNER_TEMP/big.bin"
           start=$(date +%s)
-          target/release/podnet relay connect "$name" --resume -v < "$RUNNER_TEMP/big.bin" > "$RUNNER_TEMP/big.back" 2> resume.err || true
-          echo "200 MiB each way in $(( $(date +%s) - start )) s; moves: $(grep -c -i 'move' resume.err || true)"
+          # The job's RUST_LOG hides the debug line of each move: name debug here.
+          RUST_LOG=podnet=debug target/release/podnet relay connect "$name" --resume < "$RUNNER_TEMP/big.bin" > "$RUNNER_TEMP/big.back" 2> resume.err || true
+          moves=$(grep -c 'moved to a new leg' resume.err || true)
+          echo "200 MiB each way in $(( $(date +%s) - start )) s; moves: $moves; lost legs: $(grep -c 'lost its leg' resume.err || true)"
           if ! cmp "$RUNNER_TEMP/big.bin" "$RUNNER_TEMP/big.back"; then
             echo "bytes back: $(stat -c %s "$RUNNER_TEMP/big.back")"
             sed "s/$name/<pair>/g" resume.err | cut -c1-300 | tail -40
             exit 1
           fi
+          # 200 MiB pass the limit of one relay session (64 MiB) only by moves.
+          [ "${moves:-0}" -ge 1 ] || { echo "no move to a new leg"; sed "s/$name/<pair>/g" resume.err | cut -c1-300 | tail -20; exit 1; }
           target/release/podnet stop resumenode
           target/release/podnet relay stop "$name" > /dev/null
       # T-094: git over SSH through the reverse relay: git serve --ingress

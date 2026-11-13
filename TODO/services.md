@@ -348,6 +348,10 @@ relay (`gh workflow run live.yml`), for later: `.github/workflows/` does not cha
 --resume" (a relay node with `--resume` in front of a TCP echo, and `relay connect --resume`; `cmp` of 200 MiB). It waits
 for a run (GitHub #531).
 
+2026-11-13, the lead: the live run 43471960138 on 6f8e69e passed the step of 200 MiB each way (equal bytes, 30 s), but it
+counted 0 moves: the job's `RUST_LOG` (`podnet=info`) takes priority over `-v` and hid the debug line of each move. The
+step now sets `RUST_LOG=podnet=debug` for `relay connect` and fails with no move.
+
 ## Done
 
 2026-11-13, commit 030c7ae. `src/relay_reverse/resume.rs`: `run_node_resumable` (the node over
