@@ -198,8 +198,8 @@
 511 issue closed
 512 issue closed
 513 issue closed
-514 issue open
-515 issue open
+514 issue closed
+515 issue closed
 516 issue closed
 517 issue open
 518 issue open
