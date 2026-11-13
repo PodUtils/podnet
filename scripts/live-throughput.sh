@@ -19,8 +19,9 @@ sizes=${3:-16}
 transport=${4:-direct}
 dir=$(mktemp -d)
 here=$(cd "$(dirname "$0")" && pwd)
-port=18090
-local=18091
+# A free port of the loopback (a fixed port can be held by an earlier step).
+port=$(python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
+local=$(python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
 trap 'kill $(jobs -p) 2> /dev/null || true' EXIT
 largest=0
 for s in $sizes; do [ "$s" -gt "$largest" ] && largest=$s; done

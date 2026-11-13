@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 27 open, 22 partial, 41 blocked, 241 done.**
+**332 entries: 28 open, 22 partial, 41 blocked, 241 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 1 | 2 | 27 | 30 |
+| P1 | 1 | 1 | 2 | 27 | 31 |
 | P2 | 17 | 9 | 11 | 131 | 168 |
 | P3 | 10 | 12 | 28 | 82 | 132 |
-| **All** | 27 | 22 | 41 | 241 | 331 |
+| **All** | 28 | 22 | 41 | 241 | 332 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -377,3 +377,4 @@ M8 Overlays, M9 Later.
 | [T-329](services.md) | P3 | M | M6 | feature | done | `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3) |
 | [T-330](pods.md) | P3 | S | M7 | feature | done | `podnet pod --report FILE`: a JSON report of the backend and the hold (N-5) |
 | [T-331](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.9`: the dry run, the publish and the release proofs |
+| [T-332](fixes.md) | P1 | S | M5 | defect | open | QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523) |

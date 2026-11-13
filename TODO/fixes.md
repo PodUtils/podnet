@@ -5483,3 +5483,41 @@ and T-329). On f566e3b: `ci` 43363112482, `deny` 43363112416 and `secrets` 43363
 failed once at the WARP door scan (an external flake) and passed on its rerun. `release.yml`: the dry run 43368235597
 passed, the publish 43370009549 passed. The release `v0.4.0-beta.9` is a prerelease with 16 files, with
 `pod-report.schema.json` (T-330). `release-proofs.yml`: run 43371748745 passed.
+
+# T-332: QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523)
+
+**Source:** GitHub #523 (live: two runs in a row failed): runs 43380951617, 43382313993 and 43383091796, step
+"Throughput through WARP, 1 to 16 MiB".
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+After the take of `pod-warp` (f6abdc3), the tunnel leg `quic+warp` fails: "QUIC handshake with the Cloudflare edge: no
+edge answered: QUIC handshake with 198.41.192.67:7844 timed out" for each edge address. The run before the take (8fc8bb4)
+passed. The origin of `scripts/live-throughput.sh` also failed once with "Address already in use" on the fixed port 18090.
+
+## Premise
+
+- Before the take, `src/warp/quic.rs` bound a UDP socket of the stack on the IPv4 address of the device and gave it to
+  `pod_quic::queued::QueuedDatagrams`.
+- After the take, it takes `pod_core::Dial::datagrams` of `WarpNet`. That socket binds `[::]:port` (`bind_udp_any`).
+  noq sends an IPv4 destination on an IPv6 socket as an IPv4-mapped IPv6 address. The stack does not route it.
+
+## Approach
+
+1. `src/warp/quic.rs` (a fix of a frozen file): bind the socket on one address of the device (the IPv4 address, else the
+   IPv6 address) with `NetStack::bind_udp`, and give its datagrams to `pod_quic::over`.
+2. `scripts/live-throughput.sh`: take free ports of the loopback.
+3. Report the fix to podcrates as a COORD issue: `WarpNet`'s datagrams must not bind `[::]` for a consumer that sends to
+   IPv4.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+# the live run: the step "Throughput through WARP, 1 to 16 MiB" passes
+```
