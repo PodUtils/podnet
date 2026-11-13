@@ -229,5 +229,5 @@
 528 issue closed
 529 issue closed
 530 issue closed
-531 issue open
+531 issue closed
 532 issue open

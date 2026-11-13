@@ -369,6 +369,8 @@ its first leg alone): the test fails ("8 MiB back: early eof"). Tests added: `re
 `sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace`: 1857 passed, 0 failed). CI: no run (a push of the
 cloud session starts none).
 
+CI: ci 43471936738, deny 43471944208, secrets 43471952954 and live 43471960138 on 6f8e69e passed (GitHub #531).
+
 # T-088: File server: a directory listing in HTML and JSON
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 3.1 to 3.5.
@@ -904,6 +906,8 @@ commit adds the proof. `src/router/control/tests.rs`, `two_warp_identities_keep_
 members `warp` in one group, on the edge stand-in of `tests/warp_edge`: two devices, two identity files that differ, and
 the bytes of each member count only its own flows (an echo of 1000 bytes through `a`, of 5000 bytes through `b`).
 `cargo test -p podnet --lib two_warp_identities_keep_their_counters`: 1 passed.
+
+CI: ci 43471936738, deny 43471944208, secrets 43471952954 and live 43471960138 on 6f8e69e passed (GitHub #531).
 
 # T-096: Router: groups of networks with weights and a kill switch
 

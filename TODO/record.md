@@ -323,6 +323,8 @@ second run loads), `warp_stand_in_status_reads_the_account_of_the_saved_device`,
 down"), and the plant `warp_stand_in_proxy_refuses_an_edge_with_another_key` (the record pins the key of another edge;
 no CONNECT goes through). `cargo test --test warp_stand_in`: 10 passed, three runs in a row.
 
+CI: ci 43471936738, deny 43471944208, secrets 43471952954 and live 43471960138 on 6f8e69e passed (GitHub #531).
+
 # T-013: A daily check that the record's list of GitHub numbers agrees with GitHub
 
 **Source:** `docs/research/podnet/podssh.md`, sections 1.8 and 1.10;
