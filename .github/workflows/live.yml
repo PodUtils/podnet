@@ -1093,9 +1093,19 @@ jobs:
           export PODNET_RUN_DIR="$RUNNER_TEMP/router-run"
           umask 077
           id="$RUNNER_TEMP/router-warp.json"
-          rule="OUTPUT -d 162.159.198.0/24 -p tcp --dport 443 -j REJECT --reject-with tcp-reset"
+          # The MASQUE front doors: IPv4 in 162.159.0.0/16 and IPv6 in
+          # 2606:4700:100::/40, over TCP (h2) and UDP (h3). The relay's own
+          # addresses are outside both.
+          block() {
+            for p in tcp udp; do
+              how="-j REJECT"; [ $p = tcp ] && how="-j REJECT --reject-with tcp-reset"
+              sudo iptables "$1" OUTPUT -d 162.159.0.0/16 -p $p --dport 443 $how 2> /dev/null || true
+              how6="-j REJECT"; [ $p = tcp ] && how6="-j REJECT --reject-with tcp-reset"
+              sudo ip6tables "$1" OUTPUT -d 2606:4700:100::/40 -p $p --dport 443 $how6 2> /dev/null || true
+            done
+          }
           cleanup() {
-            sudo iptables -D $rule 2> /dev/null || true
+            block -D
             target/release/podnet stop router > /dev/null 2>&1 || true
             target/release/podnet warp --identity "$id" delete > /dev/null 2>&1 || true
           }
@@ -1152,12 +1162,16 @@ jobs:
           done
           # The front door refuses: w goes down, and the group carries the
           # flows through r.
-          sudo iptables -I $rule
+          echo "the connections of the router on port 443 (peer address):"
+          sudo ss -Htunp state established "( dport = :443 )" | grep -F 'podnet' | awk '{print $1, $5}' | sort | uniq -c || true
+          block -I
           i=0
           until [ "$(health w)" = down ]; do
             i=$((i + 1))
             if [ "$i" -gt 18 ]; then
               target/release/podnet route --status "unix:$RUNNER_TEMP/router.ctl"
+              echo "the connections of the router on port 443 now:"
+              sudo ss -Htunp "( dport = :443 )" | grep -F 'podnet' | awk '{print $1, $2, $6}' | sort | uniq -c || true
               echo "w did not go down in 90 s"; exit 1
             fi
             sleep 5
@@ -1166,7 +1180,7 @@ jobs:
           got=$(trace 18303)
           echo "the group after the failover: ${got:-no answer}"
           [ -n "$got" ] || { echo "the group carried no flow after the failover"; exit 1; }
-          sudo iptables -D $rule
+          block -D
       - name: Remove the WARP device
         if: always()
         timeout-minutes: 2
