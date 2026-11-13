@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**332 entries: 35 open, 22 partial, 34 blocked, 241 done.**
+**332 entries: 35 open, 20 partial, 34 blocked, 243 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 1 | 2 | 27 | 31 |
-| P2 | 17 | 9 | 11 | 131 | 168 |
+| P2 | 17 | 7 | 11 | 133 | 168 |
 | P3 | 17 | 12 | 21 | 82 | 132 |
-| **All** | 35 | 22 | 34 | 241 | 332 |
+| **All** | 35 | 20 | 34 | 243 | 332 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -214,11 +214,11 @@ M8 Overlays, M9 Later.
 | [T-166](later.md) | P3 | M | M9 | feature | done | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
 | [T-167](services.md) | P2 | M | M6 | feature | done | `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364) |
 | [T-168](services.md) | P2 | S | M6 | feature | done | A passwd shim for any client on a host with no `/etc/passwd` (GitHub #365) |
-| [T-169](fixes.md) | P2 | S | M5 | defect | partial | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
+| [T-169](fixes.md) | P2 | S | M5 | defect | done | `tunnel`: try the MASQUE door of the host's address family first, and take `--masque-endpoint` (GitHub #366) |
 | [T-170](fixes.md) | P2 | S | M5 | defect | done | Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367) |
 | [T-171](fixes.md) | P2 | S | M5 | defect | done | The verify loop names the remedy when the public name does not resolve (GitHub #367) |
 | [T-172](later.md) | P3 | M | M9 | feature | done | A pin of the new public name while the process runs (GitHub #367) |
-| [T-173](fixes.md) | P2 | S | M5 | feature | partial | A WARP identity of another uid, with a consent variable (GitHub #368) |
+| [T-173](fixes.md) | P2 | S | M5 | feature | done | A WARP identity of another uid, with a consent variable (GitHub #368) |
 | [T-174](pods.md) | P3 | M | M7 | feature | done | netns: a veth wire when `/dev/net/tun` is not there (GitHub #369) |
 | [T-175](crates.md) | P2 | M | M3 | feature | done | DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370) |
 | [T-176](later.md) | P3 | S | M9 | research | done | Guest-wire router on smoltcp: the constraints of the TCP terminator and the UDP socket (GitHub #371 and #372) |

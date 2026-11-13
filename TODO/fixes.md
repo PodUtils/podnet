@@ -2084,7 +2084,7 @@ cargo test --test cli -- help
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -2122,6 +2122,10 @@ cargo test --test cli -- tunnel_takes_masque_endpoint
 ## Correction
 
 2026-11-09, commit 243720f. Item 1 (the family order) is done: `endpoint_order` (now src/warp/door.rs at `9c1fc4b`) puts the IPv6 doors first with no IPv4 default route, no proxy, no relay and no door that won. Test: `warp::door::tests::endpoint_order_puts_v6_first_without_a_v4_route`. Item 2 (`--masque-endpoint` in `tunnel`) waits for pod-warp and pod-cloudflare (T-050, T-052) by the Decision; the COORD issue (to podcrates) is for the lead to open. The test `tunnel_takes_masque_endpoint` is not written. CI: at the merge.
+
+## Done
+
+2026-11-13, commit 164a4c0. Item 2: `tunnel` (and `share`, `serve`, `demo`: the option is global) takes `--masque-endpoint IP:PORT`. It goes through `Config::masque_endpoint` and `warp_targets` (now `src/tunnel/warp_targets.rs`) to `MasqueOptions::endpoint`, which is `Door::Pinned` of `pod-warp` v0.37.0 (a wrong value is exit 64). The doc and the profile (`docs/protocol.md`, section 10) list the flag. Item 1 was done on 2026-11-09 (see Correction). Test: `cargo test --test cli -- warp::tunnel_takes_masque_endpoint` (help, a bad value, a good value with `demo --check`; not run on the old code: the old binary has no such flag and clap exits 2). Not proven: a live WARP session on a host with no IPv4 route.
 
 # T-170: Quick-tunnel provisioning does not retry a DNS failure that cannot recover (GitHub #367)
 
@@ -2207,7 +2211,7 @@ cargo test -p podnet tunnel::tests::verify_failure_names_the_remedy
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -2245,6 +2249,10 @@ The tests cover: refuse, allow with the variable, mode still checked, no registr
 ## Correction
 
 2026-11-09, commit 5a21d81 (`T-173: a WARP identity of another uid is a Config error (exit 78)`). Done as the Decision says: item 2 (the exit code). `check_private` is in src/warp/private.rs at `9c1fc4b`; an owner of another uid gives `Fault::Config`. `warp_client_inner` and the carry and WireGuard peers keep a class that the library gave (the outer `Fault::Unavailable` hid it; this also gives a directory as `--identity` the exit 64 that its test names). A refused file leads to no registration. Tests: `warp::private_file_tests::foreign::{a_foreign_owner_is_a_config_error, a_refused_identity_leads_to_no_registration}` (the second one chowns the file, as root only), `cli::cmd::warp::client::tests::a_class_of_the_library_stays`. The message does not name `PODNET_FOREIGN_IDENTITY`: the variable has no effect until item 1 lands, and a message must not name a variable that does nothing. Item 1 (allow the owner mismatch with the variable, keep the mode check, warn) and the update of `src/manual/facts.rs` wait: a COORD issue (to podcrates) is to be opened by the lead (a worktree agent writes no issue); podnet takes it with `pod-warp` (T-050). Item 2 for the state-directory error: it names `PODNET_FOREIGN_HOME` already. `sh scripts/agent/check.sh`: exit 0. CI: at the merge.
+
+## Done
+
+2026-11-13, commit 164a4c0. Item 1: `PODNET_FOREIGN_IDENTITY=allow` gives `pod-warp` `Foreign::Allow` (`src/warp/foreign.rs`) for an identity file that the user named (`--identity`, `--warp-identity`). The default file of the state directory is never covered. The mode check stays (`pod-warp`); podnet logs a warning, and writes no door file and no leg file next to the file. The refusal (exit 78) names the variable. `src/manual/facts.rs`, `docs/warp.md` and `docs/tunnels.md` are updated. Tests (as root; they skip with a line otherwise): `warp::foreign::tests::{a_foreign_identity_needs_the_consent_variable, the_mode_is_checked_with_the_consent, the_consent_is_for_a_named_path_only}`; with the consent disabled in the code, the three fail (`belongs to user 65534 ... it is not used`). Not covered: the reader of the exported device `warp-wg.json` (`src/warp/export.rs`) keeps refusing a foreign owner; `pod-warp` takes the lock of the file (`PATH.lock`) before the check of the owner, so a refusal leaves a lock file next to the foreign file (ask for podcrates). Not proven: two real users.
 
 # T-182: `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378)
 
