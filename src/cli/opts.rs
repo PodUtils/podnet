@@ -51,6 +51,11 @@ pub(crate) struct TunnelOpts {
     /// Without it, every run registers a new anonymous device.
     #[arg(long, value_name = "PATH", global = true)]
     pub(crate) warp_identity: Option<PathBuf>,
+    /// The WARP MASQUE front door of `--transport warp`: IP:PORT, in place of
+    /// the doors of the device record. With no IPv4 route, the IPv6 door of
+    /// the record goes first.
+    #[arg(long, value_name = "IP:PORT", global = true)]
+    pub(crate) masque_endpoint: Option<std::net::SocketAddr>,
     /// How the next edge leg starts: staggered (when the leg before has not
     /// registered in 2 s, or at once when it fails) or serial (only after the
     /// leg before failed).
@@ -172,6 +177,7 @@ impl TunnelOpts {
             );
         }
         config.warp_identity = self.warp_identity.clone();
+        config.masque_endpoint = self.masque_endpoint;
         config.verify = !self.no_verify;
         config.failover = podnet::race::Failover::parse(&self.leg_failover)?;
         Ok(config)

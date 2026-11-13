@@ -148,6 +148,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "allow: write in a directory of another user anyway (with a warning). By default, podnet writes no file in a directory that belongs to another user (root with the HOME of a user): the state directory skips that HOME, and the other commands exit 78.",
     },
     EnvVar {
+        names: &["PODNET_FOREIGN_IDENTITY"],
+        used_by: "the commands of warp and the tunnel commands with --identity or --warp-identity",
+        meaning: "allow: read a WARP identity file of another user, named with --identity or --warp-identity (with a warning). podnet checks the mode (0600) and writes nothing next to the file. The default file of the state directory is not covered. By default, a file of another user exits 78.",
+    },
+    EnvVar {
         names: &["PODNET_AUTH_USER", "PODNET_AUTH_PASSWORD_FILE"],
         used_by: "tunnel, serve, share, demo, connect",
         meaning: "The values of --auth-user and --auth-password-file: each visitor of the tunnel must give this user and password (HTTP Basic); podnet connect sends them in the WebSocket upgrade. The file has the password on its first line and mode 0600.",

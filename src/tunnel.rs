@@ -28,8 +28,10 @@ const REGISTER_TIMEOUT: Duration = Duration::from_secs(30);
 const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
 
 mod verify;
+mod warp_targets;
 pub use verify::Verified;
 use verify::{verify_fetch, VERIFY_BUDGET, VERIFY_INTERVAL};
+use warp_targets::warp_targets;
 
 /// Fluent builder for a [`Tunnel`].
 pub struct TunnelBuilder {
@@ -159,6 +161,7 @@ impl Tunnel {
             protocol,
             transport,
             warp_identity,
+            masque_endpoint,
             ha_connections,
             reconnect,
             ingress,
@@ -263,7 +266,8 @@ impl Tunnel {
                     }))
                 }
                 LegKind::QuicWarp => Box::pin(async move {
-                    let (edges, link, endpoint) = warp_targets(warp_identity.as_deref()).await?;
+                    let (edges, link, endpoint) =
+                        warp_targets(warp_identity.as_deref(), masque_endpoint).await?;
                     let (conn, control, location) = register_retrying(|| {
                         connect_once(&endpoint, auth, tunnel_id, 0, false, &edges)
                     })
@@ -810,44 +814,6 @@ async fn direct_targets() -> Result<Vec<edge::EdgeAddr>> {
         bail!("edge discovery returned no addresses");
     }
     Ok(discovered)
-}
-
-async fn warp_targets(
-    identity: Option<&std::path::Path>,
-) -> Result<(Vec<edge::EdgeAddr>, Arc<WarpLink>, noq::Endpoint)> {
-    let discovered = match edge_override()? {
-        Some(list) => list,
-        None => crate::edge_discovery::discover(IpVersionFilter::V4Only)
-            .await
-            .context("edge discovery")?,
-    };
-    let Some(first) = discovered.first() else {
-        bail!("edge discovery returned no addresses");
-    };
-    let client = match identity {
-        Some(path) => WarpClient::register_or_load(path)
-            .await
-            .context("registering with WARP")?,
-        None => WarpClient::register()
-            .await
-            .context("registering with WARP")?,
-    };
-    let stack = client
-        .connect()
-        .await
-        .context("opening the WARP MASQUE tunnel on TCP 443")?;
-    let endpoint = crate::warp::quic::endpoint(&stack)
-        .await
-        .context("building the QUIC socket inside the WARP session")?;
-    info!(
-        edge = %first.socket(),
-        "the tunnel edge is reached through WARP on TCP 443"
-    );
-    let link = Arc::new(WarpLink {
-        client,
-        current: tokio::sync::Mutex::new((stack, endpoint.clone(), std::time::Instant::now())),
-    });
-    Ok((discovered, link, endpoint))
 }
 
 /// The WARP session of the `quic+warp` leg, and the QUIC endpoint in it.

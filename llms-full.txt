@@ -113,6 +113,11 @@ COMMANDS
             Keep the WARP device and MASQUE key here and resume them next run.
             Without it, every run registers a new anonymous device
 
+        --masque-endpoint <IP:PORT>
+            The WARP MASQUE front door of `--transport warp`: IP:PORT, in
+            place of the doors of the device record. With no IPv4 route, the
+            IPv6 door of the record goes first
+
         --leg-failover <LEG_FAILOVER>
             How the next edge leg starts: staggered (when the leg before has
             not registered in 2 s, or at once when it fails) or serial (only
@@ -340,6 +345,11 @@ COMMANDS
         --warp-identity <PATH>
             Keep the WARP device and MASQUE key here and resume them next run.
             Without it, every run registers a new anonymous device
+
+        --masque-endpoint <IP:PORT>
+            The WARP MASQUE front door of `--transport warp`: IP:PORT, in
+            place of the doors of the device record. With no IPv4 route, the
+            IPv6 door of the record goes first
 
         --leg-failover <LEG_FAILOVER>
             How the next edge leg starts: staggered (when the leg before has
@@ -597,6 +607,11 @@ COMMANDS
         --warp-identity <PATH>
             Keep the WARP device and MASQUE key here and resume them next run.
             Without it, every run registers a new anonymous device
+
+        --masque-endpoint <IP:PORT>
+            The WARP MASQUE front door of `--transport warp`: IP:PORT, in
+            place of the doors of the device record. With no IPv4 route, the
+            IPv6 door of the record goes first
 
         --leg-failover <LEG_FAILOVER>
             How the next edge leg starts: staggered (when the leg before has
@@ -883,6 +898,11 @@ COMMANDS
         --warp-identity <PATH>
             Keep the WARP device and MASQUE key here and resume them next run.
             Without it, every run registers a new anonymous device
+
+        --masque-endpoint <IP:PORT>
+            The WARP MASQUE front door of `--transport warp`: IP:PORT, in
+            place of the doors of the device record. With no IPv4 route, the
+            IPv6 door of the record goes first
 
         --leg-failover <LEG_FAILOVER>
             How the next edge leg starts: staggered (when the leg before has
@@ -2399,6 +2419,11 @@ COMMANDS
         --warp-identity <PATH>
             Keep the WARP device and MASQUE key here and resume them next run.
             Without it, every run registers a new anonymous device
+
+        --masque-endpoint <IP:PORT>
+            The WARP MASQUE front door of `--transport warp`: IP:PORT, in
+            place of the doors of the device record. With no IPv4 route, the
+            IPv6 door of the record goes first
 
         --leg-failover <LEG_FAILOVER>
             How the next edge leg starts: staggered (when the leg before has
@@ -9590,6 +9615,13 @@ ENVIRONMENT
         another user (root with the HOME of a user): the state directory skips
         that HOME, and the other commands exit 78. (the state directory, warp
         ssh-config --write, warp up --persist and --env-d, autostart)
+    PODNET_FOREIGN_IDENTITY
+        allow: read a WARP identity file of another user, named with
+        --identity or --warp-identity (with a warning). podnet checks the mode
+        (0600) and writes nothing next to the file. The default file of the
+        state directory is not covered. By default, a file of another user
+        exits 78. (the commands of warp and the tunnel commands with
+        --identity or --warp-identity)
     PODNET_AUTH_USER, PODNET_AUTH_PASSWORD_FILE
         The values of --auth-user and --auth-password-file: each visitor of
         the tunnel must give this user and password (HTTP Basic); podnet
@@ -10708,6 +10740,18 @@ old session for 90 s.
 registers a new anonymous device. `PODNET_EDGE=ip:port,...` replaces edge
 discovery.
 
+`--masque-endpoint IP:PORT` names the WARP MASQUE front door of
+`--transport warp`, in place of the doors of the device record (as in
+`podnet warp`). Without it, a host with no IPv4 default route tries the IPv6
+door of the record first.
+
+`PODNET_FOREIGN_IDENTITY=allow` lets `--warp-identity PATH` name a file that
+another user owns (root reads the device of a service user, and no second
+device is registered). podnet checks the mode of the file (0600), logs a
+warning, and writes nothing next to the file. The variable has no effect on
+the default file of the state directory. Without it, a file of another user
+exits 78 and the error names the variable.
+
 
 ## A credential in front of a tunnel
 
@@ -11109,7 +11153,11 @@ podnet warp down                    # stop it
   another user (root with the `HOME` of a user): the state directory skips
   that `HOME`, and `warp ssh-config --write`, `warp up --persist` and
   `--env-d`, and `autostart` exit 78. `PODNET_FOREIGN_HOME=allow` writes
-  anyway. Use `--identity PATH` for a different file,
+  anyway. A WARP identity file that another user owns is refused (exit 78).
+  `PODNET_FOREIGN_IDENTITY=allow` reads it when `--identity PATH` names it:
+  the mode must be 0600, podnet logs a warning and writes nothing next to
+  the file, and the default file of the state directory is not covered.
+  Use `--identity PATH` for a different file,
   `--ephemeral` or `PODNET_STATE_DIR=none` to use a new device for one run.
 * IPv6: the stack has the IPv4 and the IPv6 address of the device. The
   proxy asks for A and AAAA records through the tunnel and tries IPv4
@@ -11350,7 +11398,8 @@ podnet warp down                    # stop it
   client certificate and the pinned key stay end to end. The path that
   worked goes first at the next session. `--no-relay` turns this off.
   `--masque-endpoint IP:PORT` and `--masque-sni NAME` replace the front
-  door and its TLS name.
+  door and its TLS name. With no IPv4 default route, the IPv6 door of the device record goes
+  first. `podnet tunnel` takes `--masque-endpoint` too.
 * `--resolver SPEC` (repeatable; `PODNET_WARP_RESOLVERS`): the resolver of the DNS inside the tunnel, in
   place of `1.1.1.1:53`. `SPEC` is `IP[:PORT]` (UDP) or `tls://IP[:PORT][#NAME]` (DNS over TLS, port 853;
   the certificate must have `NAME`, or the IP address). The first resolver that answers wins.
@@ -13723,8 +13772,8 @@ against the binary and against this file. The test `the_ready_keys_are_fixed`
 `--auth-password-file`, `--auth-user`, `--ca-file`, `--check`, `--color`,
 `--config`, `--credentials-file`, `--detach`, `--egress`, `--forward`,
 `--ha-connections`, `--hello-world`, `--help`, `--http-host-header`, `--json`,
-`--leg-failover`, `--log-format`, `--name`, `--no-proxy`, `--no-restart`,
-`--no-tls-verify`, `--no-verify`, `--port`, `--protocol`, `--proxy`, `--qr`,
+`--leg-failover`, `--log-format`, `--masque-endpoint`, `--name`, `--no-proxy`,
+`--no-restart`, `--no-tls-verify`, `--no-verify`, `--port`, `--protocol`, `--proxy`, `--qr`,
 `--quiet`, `--ready-timeout`, `--relay`, `--replace`, `--resolve`,
 `--run-for`, `--service-url`, `--strip-accept-encoding`, `--tcp`, `--token`,
 `--token-file`, `--transport`, `--unix`, `--url`, `--user-agent`, `--verbose`,

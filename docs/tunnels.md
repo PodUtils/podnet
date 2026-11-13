@@ -195,6 +195,18 @@ old session for 90 s.
 registers a new anonymous device. `PODNET_EDGE=ip:port,...` replaces edge
 discovery.
 
+`--masque-endpoint IP:PORT` names the WARP MASQUE front door of
+`--transport warp`, in place of the doors of the device record (as in
+`podnet warp`). Without it, a host with no IPv4 default route tries the IPv6
+door of the record first.
+
+`PODNET_FOREIGN_IDENTITY=allow` lets `--warp-identity PATH` name a file that
+another user owns (root reads the device of a service user, and no second
+device is registered). podnet checks the mode of the file (0600), logs a
+warning, and writes nothing next to the file. The variable has no effect on
+the default file of the state directory. Without it, a file of another user
+exits 78 and the error names the variable.
+
 
 ## A credential in front of a tunnel
 

@@ -36,6 +36,7 @@ pub mod exit;
 pub mod export;
 #[cfg(unix)]
 pub mod find;
+pub mod foreign;
 pub mod forward;
 pub mod hints;
 pub mod identity;
@@ -316,6 +317,9 @@ pub struct WarpClient {
     /// The file that keeps the leg that worked between two runs (issue
     /// 126), next to the identity file.
     leg_file: Option<PathBuf>,
+    /// The identity file belongs to another user: podnet writes no door
+    /// file and no leg file next to it.
+    foreign: bool,
 }
 
 impl WarpClient {
@@ -354,6 +358,7 @@ impl WarpClient {
             wireguard: None,
             carry: None,
             leg_file,
+            foreign: false,
         }
     }
 
@@ -488,15 +493,18 @@ impl WarpClient {
     /// Read a client written by [`WarpClient::save`]. A record with the
     /// state `created` (a device with no MASQUE key) is refused.
     pub fn load(path: &Path) -> Result<Self> {
-        let stored = pod_warp::store::load(&pod_warp::IdentityFile::new(path)).warped()?;
+        let stored = pod_warp::store::load(&foreign::identity_file(path))
+            .warped()
+            .map_err(|e| foreign::hint(e, path))?;
         api(None)?;
         let settings = Self::settings_of(None, &MasqueOptions::default(), None, None);
-        Self::of(
+        let mut client = Self::of(
             pod_warp::Warp::from_stored(settings, stored),
             None,
             Some(path.to_path_buf()),
-        )
-        .with_files(path)
+        );
+        client.foreign = foreign::owner(path).is_some();
+        client.with_files(path)
     }
 
     /// The door of the door file (issue 133) and the leg of the leg file
@@ -519,10 +527,14 @@ impl WarpClient {
     pub async fn register_or_load(path: &Path) -> Result<Self> {
         api(None)?;
         let settings = Self::settings_of(None, &MasqueOptions::default(), None, None);
-        let warp = pod_warp::Warp::register_or_load(settings, &pod_warp::IdentityFile::new(path))
+        let warp = pod_warp::Warp::register_or_load(settings, &foreign::identity_file(path))
             .await
-            .warped()?;
-        Self::of(warp, None, None).with_files(path)
+            .warped()
+            .map_err(|e| foreign::hint(e, path))?;
+        foreign::warn(path);
+        let mut client = Self::of(warp, None, None);
+        client.foreign = foreign::owner(path).is_some();
+        client.with_files(path)
     }
 
     /// The default place for the saved identity: `warp.json` in the state
@@ -597,7 +609,7 @@ impl WarpClient {
     /// Keep the door that carried data (issue 133) and the leg that changed
     /// (issue 126). A failure to write is not an error.
     fn keep_files(&self) {
-        let Some(leg_path) = &self.leg_file else {
+        let Some(leg_path) = self.leg_file.as_ref().filter(|_| !self.foreign) else {
             return;
         };
         let now = unix_now();

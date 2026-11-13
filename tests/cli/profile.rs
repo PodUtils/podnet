@@ -70,6 +70,7 @@ fn connector_profile_is_pinned() {
         "--json",
         "--leg-failover",
         "--log-format",
+        "--masque-endpoint",
         "--name",
         "--no-proxy",
         "--no-restart",

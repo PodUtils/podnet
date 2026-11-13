@@ -1,5 +1,7 @@
 //! Configuration: credentials, transport, ingress and reconnect policy.
 
+mod keys;
+use keys::nearest_key;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -282,6 +284,9 @@ pub struct Config {
     /// it instead of registering a second device. `None` registers fresh each
     /// time, which is what a one-shot caller wants.
     pub warp_identity: Option<PathBuf>,
+    /// The WARP MASQUE front door in place of the doors of the device
+    /// record (`--masque-endpoint`).
+    pub masque_endpoint: Option<std::net::SocketAddr>,
     pub ha_connections: u8,
     pub reconnect: ReconnectPolicy,
     pub ingress: Ingress,
@@ -299,6 +304,7 @@ impl Default for Config {
             protocol: Protocol::Auto,
             transport: Transport::default(),
             warp_identity: None,
+            masque_endpoint: None,
             ha_connections: 2,
             reconnect: ReconnectPolicy::default(),
             ingress: Ingress::default(),
@@ -579,31 +585,6 @@ fn check_top_values(file: &std::path::Path, value: &serde_json::Value) -> Result
         }
     }
     Ok(())
-}
-
-/// The nearest key of `known` (by edit distance), for an error.
-fn nearest_key(key: &str, known: &[&'static str]) -> Option<&'static str> {
-    fn distance(a: &str, b: &str) -> usize {
-        let b: Vec<char> = b.chars().collect();
-        let mut row: Vec<usize> = (0..=b.len()).collect();
-        for (i, ca) in a.chars().enumerate() {
-            let mut prev = row[0];
-            row[0] = i + 1;
-            for (j, cb) in b.iter().enumerate() {
-                let cur = row[j + 1];
-                row[j + 1] = (prev + usize::from(ca != *cb)).min(row[j] + 1).min(cur + 1);
-                prev = cur;
-            }
-        }
-        row[b.len()]
-    }
-    known
-        .iter()
-        .map(|k| (distance(key, k), *k))
-        .min()
-        // Issue 172: a short key is near each short key; "a" is not "tag".
-        .filter(|(d, _)| *d <= (key.chars().count() / 3).max(1) && *d < key.chars().count())
-        .map(|(_, k)| k)
 }
 
 /// Load a cloudflared-style YAML config.

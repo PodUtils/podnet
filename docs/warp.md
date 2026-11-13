@@ -39,7 +39,11 @@ podnet warp down                    # stop it
   another user (root with the `HOME` of a user): the state directory skips
   that `HOME`, and `warp ssh-config --write`, `warp up --persist` and
   `--env-d`, and `autostart` exit 78. `PODNET_FOREIGN_HOME=allow` writes
-  anyway. Use `--identity PATH` for a different file,
+  anyway. A WARP identity file that another user owns is refused (exit 78).
+  `PODNET_FOREIGN_IDENTITY=allow` reads it when `--identity PATH` names it:
+  the mode must be 0600, podnet logs a warning and writes nothing next to
+  the file, and the default file of the state directory is not covered.
+  Use `--identity PATH` for a different file,
   `--ephemeral` or `PODNET_STATE_DIR=none` to use a new device for one run.
 * IPv6: the stack has the IPv4 and the IPv6 address of the device. The
   proxy asks for A and AAAA records through the tunnel and tries IPv4
@@ -280,7 +284,8 @@ podnet warp down                    # stop it
   client certificate and the pinned key stay end to end. The path that
   worked goes first at the next session. `--no-relay` turns this off.
   `--masque-endpoint IP:PORT` and `--masque-sni NAME` replace the front
-  door and its TLS name.
+  door and its TLS name. With no IPv4 default route, the IPv6 door of the device record goes
+  first. `podnet tunnel` takes `--masque-endpoint` too.
 * `--resolver SPEC` (repeatable; `PODNET_WARP_RESOLVERS`): the resolver of the DNS inside the tunnel, in
   place of `1.1.1.1:53`. `SPEC` is `IP[:PORT]` (UDP) or `tls://IP[:PORT][#NAME]` (DNS over TLS, port 853;
   the certificate must have `NAME`, or the IP address). The first resolver that answers wins.

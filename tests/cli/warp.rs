@@ -136,3 +136,41 @@ fn warp_env_with_no_proxy_variables_exits_69() {
         stderr(&out)
     );
 }
+
+/// T-169: `tunnel` takes `--masque-endpoint IP:PORT`, as `warp` does. A bad
+/// value is a usage error (exit 64) that names the flag.
+#[test]
+fn tunnel_takes_masque_endpoint() {
+    let help = podnet(&["tunnel", "--help"]);
+    assert!(
+        String::from_utf8_lossy(&help.stdout).contains("--masque-endpoint <IP:PORT>"),
+        "{}",
+        String::from_utf8_lossy(&help.stdout)
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let run = |value: &str| {
+        Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args([
+                "demo",
+                "--check",
+                "--transport",
+                "warp",
+                "--masque-endpoint",
+            ])
+            .arg(value)
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .env_remove("PODNET_EDGE")
+            .env("PODNET_STATE_DIR", dir.path())
+            .output()
+            .unwrap()
+    };
+    let out = run("not-an-address");
+    assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("--masque-endpoint"),
+        "{}",
+        stderr(&out)
+    );
+    let out = run("[2606:4700:103::2]:443");
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
+}
