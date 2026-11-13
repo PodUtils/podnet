@@ -5627,3 +5627,8 @@ instances need a run directory". Since the take of `pod-warp` (f6abdc3), `--defa
 resolver file in the state directory, else the run directory; the lab sets `PODNET_STATE_DIR=none`, and `sudo` drops
 `XDG_RUNTIME_DIR`. `scripts/v6only/up.sh` and `scripts/v6only/acceptance.sh` now give each tun a run directory
 (`PODNET_RUN_DIR`), and `scripts/v6only/down.sh` removes them.
+
+2026-11-13: the live run 43452912977 on 7d73ec7 failed earlier, at "File server through a quick tunnel": the tunnel was
+up (its check through DNS over HTTPS got the answer 401), but the resolver of the runner did not resolve the new name, and
+curl stopped after 5 tries. The steps of the file server and of `git serve` now run `scripts/live-wait-name.sh` (issue
+119) before the first request, as the step of the user service does.

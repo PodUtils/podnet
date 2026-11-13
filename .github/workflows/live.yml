@@ -150,6 +150,8 @@ jobs:
           sh scripts/live-run.sh files timeout 120 target/release/podnet serve "$www" --list --upload --users "$RUNNER_TEMP/files-users" --detach --name files
           url=$(tail -1 files.out | jq -r .url)
           url=${url%/}
+          # Issue 119: the resolver of the runner can keep a negative answer for a new name.
+          sh scripts/live-wait-name.sh "${url#https://}" 240
           auth="live:$(cat "$pass")"
           code() { curl -sS --retry 5 --retry-all-errors --retry-delay 2 -o /dev/null -w '%{http_code}' "$@"; }
           test "$(code "$url/")" = 401
@@ -178,6 +180,8 @@ jobs:
           sh scripts/live-run.sh gitserve timeout 120 target/release/podnet git serve --root "$repos" --anon-read --push-user live --push-password-file "$pass" --detach --name gitserve
           url=$(tail -1 gitserve.out | jq -r .url)
           url=${url%/}
+          # Issue 119: the resolver of the runner can keep a negative answer for a new name.
+          sh scripts/live-wait-name.sh "${url#https://}" 240
           work="$RUNNER_TEMP/gitwork"
           git -c init.defaultBranch=main init -q "$work"
           git -C "$work" -c user.name=live -c user.email=live@podnet commit -q --allow-empty -m one
