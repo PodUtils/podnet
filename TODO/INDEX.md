@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**326 entries: 59 open, 19 partial, 22 blocked, 226 done.**
+**326 entries: 58 open, 20 partial, 22 blocked, 226 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 8 | 11 | 129 | 167 |
-| P3 | 40 | 10 | 9 | 69 | 128 |
-| **All** | 59 | 19 | 22 | 226 | 326 |
+| P3 | 39 | 11 | 9 | 69 | 128 |
+| **All** | 58 | 20 | 22 | 226 | 326 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -330,7 +330,7 @@ M8 Overlays, M9 Later.
 | [T-282](link.md) | P3 | L | M9 | feature | open | link: the ICMP echo carrier (GitHub #469) |
 | [T-283](link.md) | P3 | M | M9 | feature | open | link: a WireGuard peer as a carrier (GitHub #469) |
 | [T-284](link.md) | P3 | L | M9 | feature | open | link: NAT traversal with a relay fallback (GitHub #469) |
-| [T-285](link.md) | P3 | L | M9 | feature | open | link: signed route announcements (GitHub #470) |
+| [T-285](link.md) | P3 | L | M9 | feature | partial | link: signed route announcements (GitHub #470) |
 | [T-286](link.md) | P3 | M | M9 | feature | done | link: the path-vector route table (GitHub #470) |
 | [T-287](link.md) | P3 | L | M9 | feature | open | link: multi-hop forwarding of a session stream (GitHub #470) |
 | [T-288](link.md) | P3 | M | M9 | feature | open | link: load balancing across link groups (GitHub #470) |

@@ -1203,7 +1203,7 @@ peers' own. A session needs the node online and its `ready` within 15 s, and las
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1239,6 +1239,16 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-261, T-262 and T-265 are done.
+
+## Correction
+
+Steps 1 and 2 are done. Step 3 is left: `--announce` on `link listen` and `link dial` needs edits in `src/link_service.rs` and `src/cli/cmd/link/`, which T-293 and T-291 change now. Nothing sends an announcement over a link yet.
+
+## Done
+
+2026-11-13, commit 6103521 (steps 1 and 2). `src/mesh_announce.rs` (`podnet::mesh_announce`): the deterministic binary encoding (fixed field order, big-endian, sorted neighbours and services, no JSON), `encode` (Ed25519 signature of a label and the body with the key of `pod-identity`), `append_hop`, `verify` and `Receiver::accept`. The bounds: 64 neighbours, 16 services, a name of 1 to 64 bytes, 16 path nodes, 8 KiB body, a life of at most 30 s, a skew of 120 s each way. `verify` drops: bad shape, a path that does not start at the origin, a repeat in the path, this node in the path, a time of issue too far ahead or behind, a bad lifetime, expiry, a bad signature. `Receiver` keeps the newest `seq` of up to 4096 origins and drops a seen `seq`. Only the path `[origin]` is a neighbour claim. `Verified::route` gives the announcement for `mesh_table`. The path is not signed (a forwarder adds to it). `docs/link.md` has the section "The route announcement".
+`cargo test --test mesh_announce`: 25 passed, among them `skew_ahead_boundary`, `skew_behind_boundary`, `path_with_self_is_dropped`, `seen_seq_is_dropped`, `neighbour_bound`, `service_bounds`, `path_bounds`, `tampered_cost_is_a_bad_signature`, `every_flipped_byte_is_dropped`, `verified_announcement_feeds_the_route_table`. With the signature check and the seen-`seq` check disabled, 5 tests failed. `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers and test all 0.
+Not proven: `--announce`, a send or receive over a real link, the interval with jitter (the constants exist, no timer), the use of the unsigned `cost` of a multi-hop announcement (the caller gives it to `route`), the signature of the path.
 
 # T-286: link: the path-vector route table (GitHub #470)
 
