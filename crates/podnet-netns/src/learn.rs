@@ -27,7 +27,7 @@ use std::sync::{LazyLock, Mutex, OnceLock};
 
 use anyhow::{bail, Context, Result};
 
-use crate::rules::{select_chain, Choice, Rule, RuleAction, RuleMatch, Selected};
+use crate::rules::{select_chain, select_chain_udp, Choice, Rule, RuleAction, Selected};
 use crate::upstream::Proxy;
 
 /// The exit status of a run with a violation of the learned set, when the
@@ -55,7 +55,7 @@ static FINISHED: OnceLock<bool> = OnceLock::new();
 
 /// The rule of a refusal of a destination that is not in the learned set.
 static NOT_LEARNED: LazyLock<Rule> = LazyLock::new(|| Rule {
-    matcher: RuleMatch::Any,
+    matcher: None,
     action: RuleAction::Reject,
     spec: "not-learned".into(),
 });
@@ -126,7 +126,11 @@ pub(crate) fn select<'a>(
     target: &str,
     proto: &str,
 ) -> Selected<'a> {
-    let picked = select_chain(rules, default, target);
+    // A datagram flow has no port for a rule of a port (T-328).
+    let picked = match proto {
+        "udp" => select_chain_udp(rules, default, target),
+        _ => select_chain(rules, default, target),
+    };
     let Some(mode) = MODE.get() else {
         return picked;
     };

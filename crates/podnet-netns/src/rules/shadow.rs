@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use anyhow::{bail, Result};
 
-use super::{Net, RuleMatch};
+use super::{Net, RuleMatch, TcpHost};
 
 /// The most pairs of prefixes that the lint compares for two rules. Two
 /// big prefix files over this size are not compared.
@@ -49,16 +49,33 @@ fn domain_covers(earlier: &str, later: &str) -> bool {
     }
 }
 
+fn tcp_host_equal(a: &TcpHost, b: &TcpHost) -> bool {
+    match (a, b) {
+        (TcpHost::Name(a), TcpHost::Name(b)) => a == b,
+        (TcpHost::Ip(a), TcpHost::Ip(b)) => a.to_canonical() == b.to_canonical(),
+        _ => false,
+    }
+}
+
 fn net_covers(earlier: &Net, later: &Net) -> bool {
     earlier.addr.is_ipv4() == later.addr.is_ipv4()
         && earlier.prefix <= later.prefix
         && earlier.contains(later.addr)
 }
 
-/// True when `earlier` matches each target that `later` matches. A domain
-/// rule and a prefix rule never cover each other.
+/// True when `earlier` matches each target that `later` matches. A rule of a
+/// name and a rule of prefixes never cover each other. A rule of a name
+/// or of prefixes matches each port; a rule of a port matches each host; a
+/// `tcp:` rule matches one host and one port (T-328).
 pub fn covers(earlier: &RuleMatch, later: &RuleMatch) -> bool {
     match (earlier, later) {
+        (RuleMatch::Port(lo, hi), RuleMatch::Port(l, h)) => lo <= l && h <= hi,
+        (RuleMatch::Port(lo, hi), RuleMatch::Tcp(_, p)) => (lo..=hi).contains(&p),
+        (RuleMatch::Domain(a), RuleMatch::Tcp(TcpHost::Name(b), _)) => domain_covers(a, b),
+        (RuleMatch::Cidr(a), RuleMatch::Tcp(TcpHost::Ip(ip), _)) => {
+            a.iter().any(|n| n.contains(*ip))
+        }
+        (RuleMatch::Tcp(a, p), RuleMatch::Tcp(b, q)) => p == q && tcp_host_equal(a, b),
         (RuleMatch::Domain(a), RuleMatch::Domain(b)) => domain_covers(a, b),
         (RuleMatch::Cidr(a), RuleMatch::Cidr(b)) => {
             a.len().saturating_mul(b.len()) <= MAX_PAIRS
@@ -82,7 +99,9 @@ pub fn shadowed(items: &[LintItem]) -> Vec<(usize, usize)> {
                 nets.add(j, list);
                 hit
             }
-            RuleMatch::Any => None,
+            // A rule of a port or of a host and a port: the scan of the
+            // earlier rules (a few rules in a list).
+            _ => (0..j).find(|&i| covers(items[i].matcher, later.matcher)),
         };
         if let Some(i) = first.filter(|&i| items[i].action != later.action) {
             found.push((j, i));

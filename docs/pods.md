@@ -64,6 +64,14 @@ podnet pod -x socks5://127.0.0.1:1080 \
 
 * `domain:NAME=WAY` matches a name. `domain:.NAME=WAY` matches the name and each name under it.
 * `cidr:ADDR/PREFIX=WAY` matches an address.
+* `port:N=WAY` and `port:N-M=WAY` match these ports of each host. `tcp:HOST:PORT=WAY` matches one host and one
+  port. `HOST` is a name, an IPv4 address or `[IPv6]`. A name matches the same name only: no lookup. These
+  rules match a TCP connect only. A datagram has no port for the rules, so it takes the next rule that
+  matches (a `domain:` or a `cidr:` rule) or the `-x` chain. The reader is the one of `podnet warp proxy -r`
+  (`pod-warp`). The shadow check covers the kinds: `cidr:127.0.0.1/32=a` before `tcp:127.0.0.1:5432=b`
+  shadows the second rule, and `port:8000-8100=a` before `port:8080=b` does too.
+* With `--loopback-rules` (backend `seccomp`), `tcp:127.0.0.1:5432=WAY` sends a connect to that port of the
+  loopback to `WAY`; a connect to another loopback port does not match.
 * `WAY` is an upstream (`socks5://host:port`), `direct` (no proxy) or `reject` (or `block`). A rejected
   connect fails with `ECONNREFUSED` (netns: a reset). A rejected datagram gets `EACCES` (netns: it is
   dropped). `--serve` answers SOCKS5 `0x02` or HTTP 403.

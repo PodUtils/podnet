@@ -35,6 +35,9 @@ pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.38.0", ve
 # the netns entry, the TUN, the veth wire, the SYN packets and (syn-hold)
 # the hold of each SYN of the router on the stack of pod-netstack.
 pod-hold = { git = "https://github.com/PodUtils/podcrates", tag = "v0.38.0", version = "0.38.0", features = ["syn-hold"] }
+# The reader of the rules (the matcher of a rule: domain, cidr, port, tcp) of
+# PodUtils/podcrates: one reader for the doors, the pods and WARP.
+pod-warp = { git = "https://github.com/PodUtils/podcrates", tag = "v0.38.0", version = "0.38.0" }
 serde_json = "1"
 # The userspace stack of the router (its config, its streams): the TUN or
 # the veth wire, under the hold of pod-hold. A build needs

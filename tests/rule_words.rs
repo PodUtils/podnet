@@ -31,7 +31,7 @@ fn reject_and_block_mean_the_same_in_both_rule_engines() {
         ] {
             assert_eq!(
                 warp.matcher.matches(host, ip, None),
-                pod.matcher.matches(host, ip),
+                pod.matcher.as_ref().unwrap().matches(host, ip, None),
                 "{spec} {host}"
             );
         }

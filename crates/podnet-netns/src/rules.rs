@@ -3,134 +3,20 @@
 //! rules (`podnet warp proxy`) use the same matcher and the same two words
 //! for a refusal.
 
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::IpAddr;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 
 use crate::upstream::Proxy;
 
 pub mod shadow;
 
-#[derive(Clone, Debug)]
-pub enum RuleMatch {
-    Domain(String),
-    /// One or more IPv4 or IPv6 prefixes (`cidr:NET`, or `cidr:@FILE`).
-    Cidr(std::sync::Arc<[Net]>),
-    /// Each target: the rule of `--default-action reject` (T-157).
-    Any,
-}
-
-impl RuleMatch {
-    /// `domain:NAME`, `domain:.NAME`, `cidr:ADDR/PREFIX` (IPv4 or IPv6) or
-    /// `cidr:@FILE` (one prefix on each line; `#` starts a comment).
-    pub fn parse(spec: &str) -> Result<Self> {
-        let (kind, value) = spec
-            .split_once(':')
-            .with_context(|| format!("{spec:?}: give KIND:VALUE (domain, cidr)"))?;
-        match kind {
-            "domain" if !value.is_empty() && !value.contains(['/', ' ', ':']) => {
-                Ok(RuleMatch::Domain(value.to_ascii_lowercase()))
-            }
-            "domain" => bail!("{spec:?}: give domain:NAME or domain:.NAME"),
-            "cidr" => match value.strip_prefix('@') {
-                Some(path) => Ok(RuleMatch::Cidr(
-                    load_nets(std::path::Path::new(path))?.into(),
-                )),
-                None => Ok(RuleMatch::Cidr(vec![Net::parse(value)?].into())),
-            },
-            other => bail!("unknown rule kind {other:?} (domain, cidr)"),
-        }
-    }
-
-    /// True when `host` (a name, or an address in text) or `ip` matches.
-    pub fn matches(&self, host: &str, ip: Option<IpAddr>) -> bool {
-        match self {
-            RuleMatch::Domain(d) => ip.is_none() && domain_matches(d, host),
-            RuleMatch::Cidr(nets) => ip.is_some_and(|ip| nets.iter().any(|n| n.contains(ip))),
-            RuleMatch::Any => true,
-        }
-    }
-}
-
-/// An IPv4 or an IPv6 prefix (issue 142).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Net {
-    pub addr: IpAddr,
-    pub prefix: u8,
-}
-
-impl Net {
-    /// `ADDR/PREFIX`, or `ADDR` (one address).
-    pub fn parse(text: &str) -> Result<Self> {
-        let text = text.trim();
-        let (addr, prefix) = match text.split_once('/') {
-            Some((a, p)) => (a, Some(p)),
-            None => (text, None),
-        };
-        let addr: IpAddr = addr
-            .trim_start_matches('[')
-            .trim_end_matches(']')
-            .parse()
-            .with_context(|| format!("{text:?} is not ADDR/PREFIX"))?;
-        let max = if addr.is_ipv4() { 32 } else { 128 };
-        let prefix = match prefix {
-            Some(p) => p
-                .parse::<u8>()
-                .ok()
-                .filter(|p| *p <= max)
-                .with_context(|| format!("{text:?}: the prefix is 0 to {max}"))?,
-            None => max,
-        };
-        Ok(Net { addr, prefix })
-    }
-
-    /// True when `ip` is in the prefix. An IPv4-mapped IPv6 address is
-    /// taken as its IPv4 address.
-    pub fn contains(&self, ip: IpAddr) -> bool {
-        match (self.addr, ip.to_canonical()) {
-            (IpAddr::V4(net), IpAddr::V4(ip)) => in_cidr(ip, net, self.prefix),
-            (IpAddr::V6(net), IpAddr::V6(ip)) => {
-                if self.prefix == 0 {
-                    return true;
-                }
-                let mask = u128::MAX << (128 - self.prefix as u32);
-                (u128::from(ip) & mask) == (u128::from(net) & mask)
-            }
-            _ => false,
-        }
-    }
-}
-
-impl std::fmt::Display for Net {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/{}", self.addr, self.prefix)
-    }
-}
-
-/// The most prefixes of one file.
-pub const MAX_NETS: usize = 1_000_000;
-
-/// The prefixes of a file: one on each line; a blank line, and the text
-/// after `#`, are ignored. A bad line is an error with its number.
-pub fn load_nets(path: &std::path::Path) -> Result<Vec<Net>> {
-    let text = std::fs::read_to_string(path)
-        .with_context(|| format!("reading the prefix file {}", path.display()))?;
-    let mut nets = Vec::new();
-    for (n, line) in text.lines().enumerate() {
-        let line = line.split('#').next().unwrap_or("").trim();
-        if line.is_empty() {
-            continue;
-        }
-        if nets.len() == MAX_NETS {
-            bail!("{}: more than {MAX_NETS} prefixes", path.display());
-        }
-        nets.push(Net::parse(line).with_context(|| format!("{}:{}", path.display(), n + 1))?);
-    }
-    if nets.is_empty() {
-        bail!("{}: no prefix", path.display());
-    }
-    Ok(nets)
-}
+// One reader of the matcher for the doors, the pods and WARP: the text of a
+// rule is read by `pod_warp::rules::matcher` (T-328; the freeze of this
+// file ended with the take of podcrates v0.38.0).
+pub use pod_warp::rules::matcher::{
+    domain_matches, in_cidr, load_nets, Net, RuleMatch, TcpHost, MAX_NETS,
+};
 
 /// What a rule does with a destination that it matches.
 #[derive(Clone, Debug)]
@@ -155,7 +41,8 @@ impl RuleAction {
 /// One rule of `-r`: `KIND:VALUE=ACTION`.
 #[derive(Clone, Debug)]
 pub struct Rule {
-    pub matcher: RuleMatch,
+    /// `None`: each target (the rule of `--default-action reject`).
+    pub matcher: Option<RuleMatch>,
     pub action: RuleAction,
     /// The text of the rule, for the log and the flow record.
     pub spec: String,
@@ -169,7 +56,7 @@ impl Rule {
             .split_once('=')
             .context("--rule needs KIND:VALUE=PROXY")?;
         Ok(Rule {
-            matcher: RuleMatch::parse(lhs)?,
+            matcher: Some(RuleMatch::parse(lhs)?),
             action: RuleAction::parse(rhs)?,
             spec: spec.to_string(),
         })
@@ -179,29 +66,10 @@ impl Rule {
     /// Its name in the log and in the record is `default`.
     pub fn default_reject() -> Self {
         Rule {
-            matcher: RuleMatch::Any,
+            matcher: None,
             action: RuleAction::Reject,
             spec: "default".into(),
         }
-    }
-}
-
-pub fn in_cidr(ip: Ipv4Addr, net: Ipv4Addr, prefix: u8) -> bool {
-    if prefix == 0 {
-        return true;
-    }
-    let mask = u32::MAX << (32 - prefix as u32);
-    (u32::from(ip) & mask) == (u32::from(net) & mask)
-}
-
-/// A domain rule: `NAME` matches the name only; `.NAME` matches the name
-/// and each name under it (`a.NAME`), not `NAMEx` or `NAME.evil`.
-pub fn domain_matches(rule: &str, host: &str) -> bool {
-    let host = host.trim_end_matches('.').to_ascii_lowercase();
-    let rule = rule.to_ascii_lowercase();
-    match rule.strip_prefix('.') {
-        Some(base) => host == base || host.ends_with(&format!(".{base}")),
-        None => host == rule.trim_end_matches('.'),
     }
 }
 
@@ -238,13 +106,31 @@ impl<'a> Selected<'a> {
 }
 
 /// First matching rule wins; otherwise the default `-x` chain. A rule is a
-/// single hop or a refusal; the default is a chain.
+/// single hop or a refusal; the default is a chain. `target` is `HOST:PORT`
+/// of a TCP connection: the rules of a port (`port:`, `tcp:`) match its port.
 pub fn select_chain<'a>(rules: &'a [Rule], default: &'a [Proxy], target: &str) -> Selected<'a> {
-    let host = target.rsplit_once(':').map_or(target, |(h, _)| h);
+    select(rules, default, target, true)
+}
+
+/// [`select_chain`] for a datagram flow: no rule of a port matches it.
+pub fn select_chain_udp<'a>(rules: &'a [Rule], default: &'a [Proxy], target: &str) -> Selected<'a> {
+    select(rules, default, target, false)
+}
+
+fn select<'a>(rules: &'a [Rule], default: &'a [Proxy], target: &str, tcp: bool) -> Selected<'a> {
+    let (host, port) = match target.rsplit_once(':') {
+        Some((h, p)) => (h, p.parse::<u16>().ok()),
+        None => (target, None),
+    };
+    let port = port.filter(|_| tcp);
     let bare = host.trim_start_matches('[').trim_end_matches(']');
     let ip: Option<IpAddr> = bare.parse().ok();
     for rule in rules {
-        if rule.matcher.matches(host, ip) {
+        if rule
+            .matcher
+            .as_ref()
+            .is_none_or(|m| m.matches(host, ip, port))
+        {
             let choice = match &rule.action {
                 RuleAction::Proxy(proxy) => Choice::Chain(std::slice::from_ref(proxy)),
                 RuleAction::Reject => Choice::Reject,
@@ -301,5 +187,40 @@ mod tests {
         assert_eq!(other.rule_name(), "default");
         assert_eq!(other.chain().unwrap()[0].port, 1);
         assert!(Rule::parse("domain:a=rejected").is_err());
+    }
+
+    // T-328: a rule of a port or of a host and a port; a datagram flow has
+    // no port for them.
+    #[test]
+    fn rules_port_rules_match_the_port_of_the_target() {
+        let default = vec![Proxy::parse("socks5://127.0.0.1:1").unwrap()];
+        let rules: Vec<Rule> = [
+            "tcp:127.0.0.1:5432=socks5://127.0.0.1:2",
+            "tcp:db.example:5432=socks5://127.0.0.1:3",
+            "port:8000-8010=reject",
+            "port:22=direct",
+        ]
+        .iter()
+        .map(|spec| Rule::parse(spec).unwrap())
+        .collect();
+        let hop = |target: &str| {
+            select_chain(&rules, &default, target)
+                .chain()
+                .map(|c| c.first().map(|p| p.port))
+        };
+        assert_eq!(hop("127.0.0.1:5432"), Some(Some(2)));
+        assert_eq!(hop("127.0.0.1:5433"), Some(Some(1)));
+        assert_eq!(hop("db.example:5432"), Some(Some(3)));
+        assert_eq!(hop("other.example:5432"), Some(Some(1)));
+        assert_eq!(hop("[::1]:8005"), None);
+        assert_eq!(hop("10.0.0.1:22").unwrap().unwrap(), 0);
+        let udp = select_chain_udp(&rules, &default, "127.0.0.1:5432");
+        assert_eq!(udp.rule_name(), "default");
+        assert!(select_chain_udp(&rules, &default, "10.0.0.1:8005")
+            .chain()
+            .is_some());
+        for bad in ["port:0=direct", "port:9-1=direct", "tcp:127.0.0.1=direct"] {
+            assert!(Rule::parse(bad).is_err(), "{bad}");
+        }
     }
 }

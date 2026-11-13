@@ -23,6 +23,13 @@ pub trait Matcher: Send + Sync {
     /// [`Target::Name`]: the caller sends the name ([`Rules`] says
     /// `names_inside`).
     fn matches(&self, target: &Target) -> bool;
+
+    /// True when the rule matches `target` for a datagram flow. A rule of
+    /// a port matches a TCP connection only (T-328): the default is
+    /// [`Matcher::matches`], which a rule of a port overrides.
+    fn matches_datagram(&self, target: &Target) -> bool {
+        self.matches(target)
+    }
 }
 
 /// A [`Matcher`] of a function.
@@ -99,7 +106,17 @@ impl Rules {
 
     /// The choice for `target`.
     pub fn choose(&self, target: &Target) -> Choice<'_> {
-        let (way, rule) = match self.rules.iter().find(|r| r.matcher.matches(target)) {
+        self.choose_with(|m| m.matches(target))
+    }
+
+    /// The choice for the datagrams of `target`: no rule of a port matches
+    /// them (T-328).
+    pub fn choose_datagram(&self, target: &Target) -> Choice<'_> {
+        self.choose_with(|m| m.matches_datagram(target))
+    }
+
+    fn choose_with(&self, matches: impl Fn(&dyn Matcher) -> bool) -> Choice<'_> {
+        let (way, rule) = match self.rules.iter().find(|r| matches(r.matcher.as_ref())) {
             Some(r) => (r.way.as_ref(), Some(r.matcher.label())),
             None => (self.default.as_ref(), None),
         };

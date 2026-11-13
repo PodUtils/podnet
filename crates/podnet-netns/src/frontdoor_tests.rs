@@ -61,6 +61,40 @@ fn name_request(command: u8, host: &str, port: u16) -> Vec<u8> {
     request
 }
 
+fn ip_request(host: [u8; 4], port: u16) -> Vec<u8> {
+    let mut request = vec![5, 1, 0, 1];
+    request.extend_from_slice(&host);
+    request.extend_from_slice(&port.to_be_bytes());
+    request
+}
+
+/// T-328: `tcp:127.0.0.1:5432=WAY` sends a CONNECT to that port of the
+/// loopback to WAY; another loopback port goes the default way. `port:`
+/// rules match a port of each host.
+#[tokio::test]
+async fn rules_port_tcp_rule_picks_the_way_of_a_loopback_port() {
+    pod_testkit::need_loopback!();
+    let home_seen: Arc<std::sync::Mutex<Vec<String>>> = Arc::default();
+    let other_seen: Arc<std::sync::Mutex<Vec<String>>> = Arc::default();
+    let home = fake_upstream(home_seen.clone()).await;
+    let other = fake_upstream(other_seen.clone()).await;
+    let chain = vec![Proxy::parse(&format!("socks5://127.0.0.1:{other}")).unwrap()];
+    let rules = vec![
+        Rule::parse(&format!("tcp:127.0.0.1:5432=socks5://127.0.0.1:{home}")).unwrap(),
+        Rule::parse("port:6000-6009=reject").unwrap(),
+    ];
+    let door = Arc::new(front_door(chain, rules, false));
+    let (_, reply) = socks5(&door, &ip_request([127, 0, 0, 1], 5432)).await;
+    assert_eq!(reply[1], 0x00, "{reply:?}");
+    let (_, reply) = socks5(&door, &ip_request([127, 0, 0, 1], 5433)).await;
+    assert_eq!(reply[1], 0x00, "{reply:?}");
+    let (_, reply) = socks5(&door, &name_request(1, "db.example", 6005)).await;
+    assert_eq!(reply[1], 0x02, "{reply:?}");
+    let seen = |s: &Arc<std::sync::Mutex<Vec<String>>>| s.lock().unwrap().clone();
+    assert_eq!(seen(&home_seen), vec!["127.0.0.1:5432"]);
+    assert_eq!(seen(&other_seen), vec!["127.0.0.1:5433"]);
+}
+
 /// A rule that refuses a target gives SOCKS5 2 and HTTP 403 with no dial;
 /// BIND is "command not supported" (the old door took it for CONNECT).
 #[tokio::test]

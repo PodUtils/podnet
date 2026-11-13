@@ -2840,6 +2840,7 @@ dependencies = [
  "pod-netstack",
  "pod-proxy",
  "pod-testkit",
+ "pod-warp",
  "serde_json",
  "tempfile",
  "tokio",

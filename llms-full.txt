@@ -8298,6 +8298,16 @@ COMMANDS
                                                                name under it)
                                      cidr:10.0.0.0/8=socks5://host:port
                                      cidr:10.0.0.0/8=direct (no proxy)
+                                     port:22=... port:8000-8100=... (these
+                                     ports of
+                                                               each host; TCP
+                                                               only)
+                                     tcp:127.0.0.1:5432=... (one host and one
+                                     port;
+                                                               a name, an IPv4
+                                                               address
+                                                               or [IPv6]; TCP
+                                                               only)
                                      domain:.ads.example=reject (refuse; also
                                      block):
                                      connect fails with ECONNREFUSED (netns: a
@@ -11571,6 +11581,14 @@ podnet pod -x socks5://127.0.0.1:1080 \
 
 * `domain:NAME=WAY` matches a name. `domain:.NAME=WAY` matches the name and each name under it.
 * `cidr:ADDR/PREFIX=WAY` matches an address.
+* `port:N=WAY` and `port:N-M=WAY` match these ports of each host. `tcp:HOST:PORT=WAY` matches one host and one
+  port. `HOST` is a name, an IPv4 address or `[IPv6]`. A name matches the same name only: no lookup. These
+  rules match a TCP connect only. A datagram has no port for the rules, so it takes the next rule that
+  matches (a `domain:` or a `cidr:` rule) or the `-x` chain. The reader is the one of `podnet warp proxy -r`
+  (`pod-warp`). The shadow check covers the kinds: `cidr:127.0.0.1/32=a` before `tcp:127.0.0.1:5432=b`
+  shadows the second rule, and `port:8000-8100=a` before `port:8080=b` does too.
+* With `--loopback-rules` (backend `seccomp`), `tcp:127.0.0.1:5432=WAY` sends a connect to that port of the
+  loopback to `WAY`; a connect to another loopback port does not match.
 * `WAY` is an upstream (`socks5://host:port`), `direct` (no proxy) or `reject` (or `block`). A rejected
   connect fails with `ECONNREFUSED` (netns: a reset). A rejected datagram gets `EACCES` (netns: it is
   dropped). `--serve` answers SOCKS5 `0x02` or HTTP 403.
@@ -11976,7 +11994,11 @@ doors:
   a UDP association goes over `via`.
 * `via` names the network or the group for a target that no rule matches.
 * `rules` is a rules file. A rule is `domain:NAME=WAY`, `domain:.NAME=WAY` (the name and each name under
-  it), `cidr:NET=WAY` or `cidr:@FILE=WAY` (one prefix on each line of FILE). `WAY` is a network or a
+  it), `cidr:NET=WAY` or `cidr:@FILE=WAY` (one prefix on each line of FILE), `port:N=WAY` or `port:N-M=WAY`
+  (these ports of each host), or `tcp:HOST:PORT=WAY` (one host and one port: a name, an IPv4 address or
+  `[IPv6]`; `tcp:127.0.0.1:5432=home` sends a CONNECT to that port of the loopback to `home`, and a CONNECT
+  to another loopback port does not match). A rule of a port matches a TCP connection only; a UDP flow
+  or association has no port for the rules. `WAY` is a network or a
   group of the router, or `reject` (or `block`). The first rule that matches wins. `#` starts a comment.
   podnet reads the file again when it changes. A rule that an earlier rule shadows gives a warning; a
   shadowed `reject` rule is an error, and the file does not load unless the door has

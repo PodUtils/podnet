@@ -357,7 +357,7 @@ impl RouterGuest {
             return Ok(self.default.clone());
         };
         let rules = rules.rules();
-        match rules.choose(target) {
+        match rules.choose_datagram(target) {
             Choice::Way { way, .. } => Ok(way.clone()),
             Choice::Refuse { rule } => Err(Failure::new(
                 Stage::Connect,

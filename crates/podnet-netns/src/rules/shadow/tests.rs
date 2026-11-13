@@ -7,7 +7,7 @@ fn items(rules: &[Rule]) -> Vec<LintItem<'_>> {
         .iter()
         .enumerate()
         .map(|(n, r)| LintItem {
-            matcher: &r.matcher,
+            matcher: r.matcher.as_ref().unwrap(),
             action: action_key(r.spec.split_once('=').unwrap().1),
             place: format!("-r {}", n + 1),
             spec: r.spec.clone(),
@@ -171,4 +171,56 @@ fn measure_ten_thousand_rules() {
             found.len()
         );
     }
+}
+
+// T-328: the kinds `port:` and `tcp:`.
+#[test]
+fn rules_port_shadow_check_covers_port_and_tcp_rules() {
+    let shadow = |specs: &[&str]| shadowed(&items(&parse(specs)));
+    // A prefix rule matches each port: it covers a tcp rule of an address.
+    assert_eq!(
+        shadow(&[
+            "cidr:127.0.0.1/32=direct",
+            "tcp:127.0.0.1:5432=socks5://127.0.0.1:1"
+        ]),
+        vec![(1, 0)]
+    );
+    // A range covers a single port in it, and a smaller range.
+    assert_eq!(
+        shadow(&[
+            "port:8000-8100=direct",
+            "port:8080=reject",
+            "port:8000-8010=direct"
+        ]),
+        vec![(1, 0)]
+    );
+    assert_eq!(
+        shadow(&[
+            "port:8000-8100=direct",
+            "port:8000-8010=socks5://127.0.0.1:1"
+        ]),
+        vec![(1, 0)]
+    );
+    assert_eq!(
+        shadow(&["port:5432=direct", "tcp:db.example:5432=reject"]),
+        vec![(1, 0)]
+    );
+    assert_eq!(
+        shadow(&["domain:.example=direct", "tcp:db.example:5432=reject"]),
+        vec![(1, 0)]
+    );
+    assert_eq!(
+        shadow(&["tcp:[::1]:80=direct", "tcp:[::1]:80=reject"]),
+        vec![(1, 0)]
+    );
+    // The narrow rule first, no shadow; other port, other host, same action.
+    assert!(shadow(&["tcp:127.0.0.1:5432=direct", "cidr:127.0.0.1/32=reject"]).is_empty());
+    assert!(shadow(&["port:8080=direct", "port:8000-8100=reject"]).is_empty());
+    assert!(shadow(&["port:8080=direct", "tcp:a.example:8081=reject"]).is_empty());
+    assert!(shadow(&["cidr:10.0.0.0/8=direct", "tcp:127.0.0.1:80=reject"]).is_empty());
+    assert!(shadow(&["domain:a.example=direct", "tcp:10.0.0.1:80=reject"]).is_empty());
+    assert!(shadow(&["port:80=direct", "tcp:a.example:80=direct"]).is_empty());
+    let rules = parse(&["port:8000-8100=direct", "port:8080=reject"]);
+    let err = check(&items(&rules), false).unwrap_err().to_string();
+    assert!(err.contains("-r 2") && err.contains("-r 1"), "{err}");
 }

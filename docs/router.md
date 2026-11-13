@@ -93,7 +93,11 @@ doors:
   a UDP association goes over `via`.
 * `via` names the network or the group for a target that no rule matches.
 * `rules` is a rules file. A rule is `domain:NAME=WAY`, `domain:.NAME=WAY` (the name and each name under
-  it), `cidr:NET=WAY` or `cidr:@FILE=WAY` (one prefix on each line of FILE). `WAY` is a network or a
+  it), `cidr:NET=WAY` or `cidr:@FILE=WAY` (one prefix on each line of FILE), `port:N=WAY` or `port:N-M=WAY`
+  (these ports of each host), or `tcp:HOST:PORT=WAY` (one host and one port: a name, an IPv4 address or
+  `[IPv6]`; `tcp:127.0.0.1:5432=home` sends a CONNECT to that port of the loopback to `home`, and a CONNECT
+  to another loopback port does not match). A rule of a port matches a TCP connection only; a UDP flow
+  or association has no port for the rules. `WAY` is a network or a
   group of the router, or `reject` (or `block`). The first rule that matches wins. `#` starts a comment.
   podnet reads the file again when it changes. A rule that an earlier rule shadows gives a warning; a
   shadowed `reject` rule is an error, and the file does not load unless the door has

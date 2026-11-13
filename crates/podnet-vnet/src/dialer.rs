@@ -319,8 +319,21 @@ impl Matcher for PodRule {
 
     fn matches(&self, target: &Target) -> bool {
         match target {
-            Target::Name { host, .. } => self.rule.matches(host, None),
-            Target::Addr(addr) => self.rule.matches(&addr.ip().to_string(), Some(addr.ip())),
+            Target::Name { host, port } => self.rule.matches(host, None, Some(*port)),
+            Target::Addr(addr) => {
+                self.rule
+                    .matches(&addr.ip().to_string(), Some(addr.ip()), Some(addr.port()))
+            }
+        }
+    }
+
+    /// A datagram flow has no port for the rules (T-328).
+    fn matches_datagram(&self, target: &Target) -> bool {
+        match target {
+            Target::Name { host, .. } => self.rule.matches(host, None, None),
+            Target::Addr(addr) => self
+                .rule
+                .matches(&addr.ip().to_string(), Some(addr.ip()), None),
         }
     }
 }

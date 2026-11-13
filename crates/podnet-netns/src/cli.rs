@@ -121,6 +121,11 @@ Options:
                                                        name under it)
                              cidr:10.0.0.0/8=socks5://host:port
                              cidr:10.0.0.0/8=direct   (no proxy)
+                             port:22=...  port:8000-8100=...  (these ports of
+                                                       each host; TCP only)
+                             tcp:127.0.0.1:5432=...   (one host and one port;
+                                                       a name, an IPv4 address
+                                                       or [IPv6]; TCP only)
                              domain:.ads.example=reject  (refuse; also block):
                              connect fails with ECONNREFUSED (netns: a RST),
                              a datagram with EACCES (netns: dropped),
@@ -433,8 +438,9 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let lint: Vec<crate::rules::shadow::LintItem> = rules
         .iter()
         .enumerate()
-        .map(|(n, r)| crate::rules::shadow::LintItem {
-            matcher: &r.matcher,
+        .filter_map(|(n, r)| Some((n, r, r.matcher.as_ref()?)))
+        .map(|(n, r, matcher)| crate::rules::shadow::LintItem {
+            matcher,
             action: crate::rules::shadow::action_key(
                 r.spec.split_once('=').map_or("", |(_, action)| action),
             ),

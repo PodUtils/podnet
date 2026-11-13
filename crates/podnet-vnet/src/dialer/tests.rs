@@ -266,7 +266,34 @@ fn a_pod_rule_matches_a_name_or_an_address_as_pod_r_does() {
     assert!(lan.matches(&Target::new("10.1.2.3", 443)));
     assert!(!lan.matches(&Target::new("192.0.2.1", 443)));
     assert!(!lan.matches(&Target::new("git.corp.test", 443)));
-    assert!(PodRule::parse("port:22").is_err());
+    assert!(PodRule::parse("country:NL").is_err());
+}
+
+// T-328: a pod rule of a port, and of a host and a port.
+#[test]
+fn rules_port_pod_rule_matches_the_port_of_the_target() {
+    let ssh = PodRule::parse("port:22").unwrap();
+    assert!(ssh.matches(&Target::new("git.corp.test", 22)));
+    assert!(ssh.matches(&Target::new("10.1.2.3", 22)));
+    assert!(!ssh.matches(&Target::new("10.1.2.3", 23)));
+    let range = PodRule::parse("port:8000-8010").unwrap();
+    assert!(range.matches(&Target::new("a.test", 8010)));
+    assert!(!range.matches(&Target::new("a.test", 8011)));
+    let db = PodRule::parse("tcp:127.0.0.1:5432").unwrap();
+    assert!(db.matches(&Target::new("127.0.0.1", 5432)));
+    assert!(!db.matches(&Target::new("127.0.0.1", 5433)));
+    assert!(!db.matches(&Target::new("localhost", 5432)));
+    let named = PodRule::parse("tcp:db.corp.test:5432").unwrap();
+    assert!(named.matches(&Target::new("db.corp.test", 5432)));
+    assert!(!named.matches(&Target::new("db.corp.test", 5433)));
+    assert!(PodRule::parse("tcp:127.0.0.1").is_err());
+    // A datagram flow has no port for a rule: port and tcp rules miss it.
+    let udp = Target::new("127.0.0.1", 5432);
+    assert!(!db.matches_datagram(&udp));
+    assert!(!PodRule::parse("port:5432").unwrap().matches_datagram(&udp));
+    assert!(PodRule::parse("cidr:127.0.0.0/8")
+        .unwrap()
+        .matches_datagram(&udp));
 }
 
 #[tokio::test]

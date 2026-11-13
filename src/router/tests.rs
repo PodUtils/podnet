@@ -126,6 +126,62 @@ async fn route_check_agrees_with_the_router() {
     }
 }
 
+/// T-328: `tcp:127.0.0.1:5432=home` sends a CONNECT to that port of the
+/// loopback to the way `home`; another loopback port takes `via`. A rule of
+/// a port matches a CONNECT, not a datagram flow.
+#[tokio::test]
+async fn rules_port_router_door_sends_a_loopback_port_to_its_way() {
+    crate::test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let rules = dir.path().join("r.rules");
+    std::fs::write(
+        &rules,
+        "tcp:127.0.0.1:5432=home\nport:6000-6009=reject\nport:22=home\n",
+    )
+    .unwrap();
+    let (home, mut seen_home) = recorder().await;
+    let (other, mut seen_other) = recorder().await;
+    let text = format!(
+        "networks:\n  home: {home}\n  other: {other}\ndoors:\n  - listen: unix:/tmp/x.sock\n    via: other\n    rules: {}\n",
+        rules.display()
+    );
+    let config = parse(&text).unwrap();
+    let plan = Router::plan(&config).unwrap();
+    let router = Router::up(&config).await.unwrap();
+    let cases = [
+        ("127.0.0.1:5432", Some("home"), Some("tcp:127.0.0.1:5432")),
+        ("127.0.0.1:5433", Some("other"), None),
+        ("db.example:5432", Some("other"), None),
+        ("db.example:22", Some("home"), Some("port:22")),
+        ("10.0.0.1:6005", None, Some("port:6000-6009")),
+    ];
+    for (to, way, rule) in cases {
+        let target: Target = to.parse().unwrap();
+        let decision = plan.decide(0, &target);
+        assert_eq!(decision.way.as_deref(), way, "{to}");
+        assert_eq!(decision.rule.as_deref(), rule, "{to}");
+        assert_eq!(router.decide(0, &target), decision, "{to}");
+        let rules = router.doors[0].rules.clone().unwrap();
+        let _ = rules
+            .dial(&target, Instant::now() + Duration::from_secs(5))
+            .await;
+        let got = match (seen_home.try_recv(), seen_other.try_recv()) {
+            (Ok(()), Err(_)) => Some("home"),
+            (Err(_), Ok(())) => Some("other"),
+            (Err(_), Err(_)) => None,
+            _ => panic!("{to}: both networks were dialed"),
+        };
+        assert_eq!(got, way, "{to}");
+    }
+    // A datagram flow has no port for the rules.
+    let rules = router.doors[0].rules.clone().unwrap();
+    let udp: Target = "127.0.0.1:5432".parse().unwrap();
+    assert!(matches!(
+        rules.rules().choose_datagram(&udp),
+        podnet_core::network::Choice::Way { rule: None, .. }
+    ));
+}
+
 /// The dry run of a door over a group: the pick names a member and its
 /// health; a group with no member up refuses.
 #[test]

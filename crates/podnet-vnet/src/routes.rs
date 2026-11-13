@@ -3,8 +3,9 @@
 //! wins; a target that no rule matches takes the default way of the door.
 //! The rules come from a file that is read again when it changes, with no
 //! restart. A rule is `domain:NAME=WAY`, `domain:.NAME=WAY`,
-//! `cidr:NET=WAY` or `cidr:@FILE=WAY`, with WAY a name of the router or
-//! `reject` (or `block`); `#` starts a comment.
+//! `cidr:NET=WAY`, `cidr:@FILE=WAY`, `port:N=WAY`, `port:N-M=WAY` or
+//! `tcp:HOST:PORT=WAY`, with WAY a name of the router or `reject` (or
+//! `block`); `#` starts a comment.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

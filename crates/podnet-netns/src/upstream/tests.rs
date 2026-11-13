@@ -233,9 +233,9 @@ fn ipv6_prefixes_and_prefix_files() {
     let file = dir.join("nets.txt");
     std::fs::write(&file, "# a country\n10.0.0.0/8\n\n2001:db8::/32  # v6\n").unwrap();
     let rule = RuleMatch::parse(&format!("cidr:@{}", file.display())).unwrap();
-    assert!(rule.matches("10.9.9.9", Some("10.9.9.9".parse().unwrap())));
-    assert!(rule.matches("2001:db8::1", Some("2001:db8::1".parse().unwrap())));
-    assert!(!rule.matches("1.1.1.1", Some("1.1.1.1".parse().unwrap())));
+    assert!(rule.matches("10.9.9.9", Some("10.9.9.9".parse().unwrap()), None));
+    assert!(rule.matches("2001:db8::1", Some("2001:db8::1".parse().unwrap()), None));
+    assert!(!rule.matches("1.1.1.1", Some("1.1.1.1".parse().unwrap()), None));
     std::fs::write(&file, "10.0.0.0/8\nbad\n").unwrap();
     let err = format!("{:#}", load_nets(&file).unwrap_err());
     assert!(err.contains(":2"), "{err}");
@@ -244,7 +244,7 @@ fn ipv6_prefixes_and_prefix_files() {
     std::fs::remove_dir_all(&dir).unwrap();
     assert!(RuleMatch::parse("domain:.Example.com")
         .unwrap()
-        .matches("a.example.com", None));
+        .matches("a.example.com", None, None));
     assert!(RuleMatch::parse("country:NL").is_err());
     assert!(RuleMatch::parse("domain:").is_err());
 }
