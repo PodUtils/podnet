@@ -2522,6 +2522,7 @@ name = "pod-link"
 version = "0.40.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.40.0#1335e9af7b179fcac01ca87644f9f39f47520741"
 dependencies = [
+ "base64",
  "bytes",
  "h2",
  "http",

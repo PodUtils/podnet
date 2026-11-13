@@ -273,7 +273,7 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `pad` | `on`, `off` | Pads each record to a bucket (T-300). It needs `--seal` (else exit 64). |
 | `mtu` | 64 to 65535, at most the unit of the carrier | The `udp` carrier: the largest datagram of KCP, 64 to 1200 bytes (T-276). Another stream carrier has no unit: exit 64. |
 | `maxhops` | 1 to 8 | T-287 adds it. |
-| `poll` | 1 to 60 (seconds) | T-271 adds it. |
+| `poll` | 1 to 60 (seconds) | The poll carriers: the hold of a long poll that the dialer asks for (default 25 s; T-271). Another carrier: exit 64. |
 | `window` | 16384 to 8388608 (bytes) | T-262 adds it. |
 | `name` | 1 to 32 characters of `a-z 0-9 -` | No effect in a query: give the name with `--name` (T-308). |
 | `kcp-nodelay` | `0`, `1` | The `udp` carrier: `1` turns on the nodelay of KCP with a window of 1024 segments (T-276). Another carrier: exit 64. |
@@ -298,10 +298,14 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `h2` | `KEY@https://HOST[:PORT]/PATH` to dial, `IP:PORT` to listen | One POST of HTTP/2 over TLS 1.3 and a pinned Ed25519 key (T-270). Build feature `h2`. See "The HTTP/2 carrier". |
 | `quic` | `KEY@HOST:PORT` to dial, `IP:PORT` (UDP) to listen | One stream of a QUIC connection with TLS 1.3 and a pinned Ed25519 key (T-273). Build feature `quic`. See "The QUIC carrier". |
 | `udp` | `KEY@HOST:PORT` to dial, `IP:PORT` (UDP) to listen | KCP over UDP with TLS 1.3 and a pinned Ed25519 key (T-276). Build feature `udp`. See "The UDP carrier". |
+| `poll` | `KEY@https://HOST[:PORT]/PATH` to dial, `IP:PORT` to listen | A long poll of HTTP/1.1 over TLS 1.3 and a pinned Ed25519 key (T-271). Build feature `poll`. See "The poll carriers". |
+| `sse` | as `poll` | POSTs up, one answer of server-sent events down (T-272). Build feature `poll`. |
+| `chunked` | as `poll` | POSTs up, one chunked answer down (T-272). Build feature `poll`. |
+| `httppoll` | as `poll` | POSTs up, a GET poll down: the simplex poll, the highest overhead (T-280). Build feature `poll`. |
 | `s3` | `BUCKET/PREFIX` | A simplex pair of objects in a bucket (T-279). Build feature `s3`. |
 | `icmp` | `HOST` | ICMP echo, a datagram carrier (T-282). Build feature `icmp`; it needs a privilege. |
 
-The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
+The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
 them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
@@ -427,6 +431,38 @@ Build with `--features udp` (it holds `tcp`). `pod-link` of PodUtils/podcrates d
 ```sh
 podnet link listen '0.0.0.0:7000?kcp-nodelay=1' --carrier udp --allow allowed.txt --to 127.0.0.1:22
 podnet link dial 'SERVER-FINGERPRINT@host.example:7000?kcp-nodelay=1' --carrier udp --allow servers.txt
+```
+
+## The poll carriers
+
+Build with `--features poll` (it holds `tcp`). `pod-link` of PodUtils/podcrates does the work (`pod_link::poll`); `podnet::link_poll`
+is the glue. The link goes in requests of HTTP/1.1 over TLS 1.3 with the ALPN `http/1.1`, and each end pins the key of the other end in
+the TLS handshake of each connection. No request lives as long as the link, so a proxy that ends idle connections, or a front of
+HTTP/1.1 that does not end the TLS, can carry it.
+
+| Carrier | Bytes down | Overhead | Entry |
+| --- | --- | --- | --- |
+| `poll` | A POST `PATH/down?since=N` that the listener holds up to the hold (default 25 s; the query key `poll=1..60`). | medium | T-271 |
+| `sse` | One answer of `GET PATH/push?since=N` as server-sent events: base64, 8 KiB for each event, a `: ping` comment each 15 s. | high | T-272 |
+| `chunked` | One chunked answer of `GET PATH/push?since=N`: the raw bytes. | medium | T-272 |
+| `httppoll` | A `GET PATH/out?since=N` at once (204 when the listener has nothing), again after a backoff of 100 ms to 5 s. 64 KiB for each request. | highest | T-280 |
+
+* The dialer opens a session with `POST PATH/open?s=ID` (201). The answer comes after the listener checked the key of the dialer, so
+  a refused key is an error of the dial. The bytes up go in `POST PATH/up?s=ID&seq=N&ack=M` (202 and `Pod-Ack`), one in flight, at
+  most 256 KiB (64 KiB for `httppoll`). The offsets make a request again after a lost answer give no byte twice.
+* A listener binds `IP:PORT` and serves each form, so one listener takes a dialer of each carrier name. It takes a client only when
+  its key is in the allow list (`--allow`, default deny). It holds at most 256 sessions and 64 MiB down for its sessions; past that it
+  answers 429. The third 429 in a row ends a dial. A session with no request for 60 s ends.
+* A listener that refuses a push answers 406, and a dialer of `sse` or `chunked` takes the long poll.
+* A dialer gives `KEY@https://HOST[:PORT]/PATH`; PATH has no query. The dial goes through the way out of the process (`--proxy`).
+  A lane that loses its connection connects again with a backoff of 100 ms to 5 s; a lane that fails for 60 s ends the link.
+* `podnet link carriers --json` gives the overhead class of each carrier (`overhead`: `low`, `medium`, `high` or `highest`).
+* A key that is not pinned exits 77. A host that denies the socket exits 69.
+
+```sh
+podnet link listen 0.0.0.0:7000 --carrier poll --allow allowed.txt --to 127.0.0.1:22
+podnet link dial 'SERVER-FINGERPRINT@https://host.example:7000/link?poll=50' --carrier poll --allow servers.txt
+podnet link dial SERVER-FINGERPRINT@https://host.example:7000/link --carrier sse --allow servers.txt
 ```
 
 ## A chain before the carrier
@@ -731,5 +767,5 @@ library ([build.md](build.md), "The C library"). Linux only.
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
 `podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
-listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`) and `podnet::link_udp` (feature `udp`).
+listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`) `podnet::link_udp` (feature `udp`) and `podnet::link_poll` (feature `poll`).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates. `crates/podnet-capi` is the C interface of the link (see The C library).

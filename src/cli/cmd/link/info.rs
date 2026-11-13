@@ -404,6 +404,7 @@ fn report_doc(r: &Report) -> Value {
         "ordered": r.facts.ordered,
         "mtu": r.facts.mtu,
         "cost": r.cost,
+        "overhead": r.built.then(|| r.overhead()),
         "needs_privilege": r.needs_privilege,
         "feature": r.feature,
         "built": r.built,

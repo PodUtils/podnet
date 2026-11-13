@@ -230,6 +230,7 @@ async fn a_link_crosses_udp_with_kcp_nodelay_and_a_small_mtu() {
     let tune = Tune {
         kcp_nodelay: true,
         mtu: Some(576),
+        ..Tune::default()
     };
     link_peer::a_link_crosses(&case(tune), 256 * 1024).await;
 }

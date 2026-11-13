@@ -52,6 +52,26 @@ pub const COMPONENTS: &[ComponentEntry] = &[
         meaning: "KCP over UDP (datagrams of 1200 bytes, segments of 1 KiB, the congestion window of KCP), TLS 1.3 with ALPN podlink/1 above it. Each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. The query key kcp-nodelay=1 turns on the nodelay of KCP with a window of 1024 segments: it is unfair to other flows. Duplex, ordered, cost class network, no privilege. Address: KEY@HOST:PORT to dial, IP:PORT (UDP) to listen. Build feature udp.",
     },
     ComponentEntry {
+        name: "poll",
+        kind: "carrier",
+        meaning: "Bytes up in POSTs, bytes down in a POST that the listener holds up to 25 s (the query key poll=1..60 sets the hold). Overhead class medium. TLS 1.3 with ALPN http/1.1; each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. No request lives as long as the link, so a proxy that ends idle connections or a front of HTTP/1.1 can carry it. A listener of any poll carrier serves each form. Duplex, ordered, cost class network, no privilege. Address: KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen. Build feature poll.",
+    },
+    ComponentEntry {
+        name: "sse",
+        kind: "carrier",
+        meaning: "Bytes up in POSTs, bytes down in one answer of server-sent events (base64, 8 KiB each, a ping comment each 15 s). A listener that refuses a push makes the dialer take the long poll. Overhead class high. TLS 1.3 with ALPN http/1.1; each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. No request lives as long as the link, so a proxy that ends idle connections or a front of HTTP/1.1 can carry it. A listener of any poll carrier serves each form. Duplex, ordered, cost class network, no privilege. Address: KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen. Build feature poll.",
+    },
+    ComponentEntry {
+        name: "chunked",
+        kind: "carrier",
+        meaning: "Bytes up in POSTs, bytes down in one chunked answer of raw bytes. A listener that refuses a push makes the dialer take the long poll. Overhead class medium. TLS 1.3 with ALPN http/1.1; each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. No request lives as long as the link, so a proxy that ends idle connections or a front of HTTP/1.1 can carry it. A listener of any poll carrier serves each form. Duplex, ordered, cost class network, no privilege. Address: KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen. Build feature poll.",
+    },
+    ComponentEntry {
+        name: "httppoll",
+        kind: "carrier",
+        meaning: "The simplex poll: bytes up in POSTs (202 and an ack), bytes down in a GET at once (204 when empty) again after 100 ms to 5 s; 64 KiB for each request. Overhead class highest. TLS 1.3 with ALPN http/1.1; each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. No request lives as long as the link, so a proxy that ends idle connections or a front of HTTP/1.1 can carry it. A listener of any poll carrier serves each form. Duplex, ordered, cost class network, no privilege. Address: KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen. Build feature poll.",
+    },
+    ComponentEntry {
         name: "s3",
         kind: "carrier",
         meaning: "A simplex pair of objects in a bucket of an object store. Cost class network, no privilege. Address: BUCKET/PREFIX. Build feature s3.",

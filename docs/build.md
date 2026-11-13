@@ -44,13 +44,14 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `h2` | The HTTP/2 carrier (one POST) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-270 |
 | `quic` | The QUIC carrier (one stream of a QUIC connection) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-273 |
 | `udp` | The UDP carrier (KCP) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-276 |
+| `poll` | The poll carriers `poll`, `sse`, `chunked` and `httppoll` (requests of HTTP/1.1) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-271, T-272, T-280 |
 | `s3` | The object-storage carrier. | T-279 |
 | `icmp` | The ICMP echo carrier. | T-282 |
 | `ss` | The Shadowsocks service. | T-294 |
 | `trojan` | The Trojan service. | T-295 |
 | `c-abi` | The C ABI. The code is the crate `crates/podnet-capi` (see The C library), which does not turn the feature on: the feature gates no code. | T-304 |
 | `portable` | The portable subset. It takes code away. | T-305 |
-| `full` | `tcp`, `ws`, `h2`, `quic`, `udp`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
+| `full` | `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`. It does not hold `portable`. | T-311 |
 
 ```sh
 cargo build --release --features quic,icmp   # two optional carriers

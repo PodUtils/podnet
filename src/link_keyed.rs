@@ -1,5 +1,6 @@
 //! The carriers of `pod-link` that pin the Ed25519 key of each end and came
-//! with podcrates v0.40.0: `quic` (T-273) and `udp` (T-276).
+//! with podcrates v0.40.0: `quic` (T-273), `udp` (T-276), and the poll
+//! carriers `poll`, `sse`, `chunked` and `httppoll` (T-271, T-272, T-280).
 //!
 //! `link listen`, `link dial` and `link connect` open them by name through
 //! [`dial`] and [`listen`]. Each one sits behind a build feature
@@ -18,7 +19,7 @@ use crate::link::{self, carrier_fault, Door};
 use crate::link_query::Query;
 
 /// The names of these carriers, the words of `--carrier`.
-pub const NAMES: [&str; 2] = ["quic", "udp"];
+pub const NAMES: [&str; 6] = ["quic", "udp", "poll", "sse", "chunked", "httppoll"];
 
 /// The build feature that holds the carrier `name`, when it is one of
 /// [`NAMES`].
@@ -26,6 +27,7 @@ pub fn feature_of(name: &str) -> Option<&'static str> {
     match name {
         "quic" => Some("quic"),
         "udp" => Some("udp"),
+        "poll" | "sse" | "chunked" | "httppoll" => Some("poll"),
         _ => None,
     }
 }
@@ -38,6 +40,8 @@ pub struct Tune {
     pub kcp_nodelay: bool,
     /// `mtu=N` (udp): the largest datagram of KCP, 64 to 1200 bytes.
     pub mtu: Option<usize>,
+    /// `poll=N` (the poll carriers): the hold of a long poll, 1 to 60 s.
+    pub hold: Option<u8>,
 }
 
 /// The largest `mtu` of the udp carrier: no IP fragmentation (GitHub #468).
@@ -58,6 +62,12 @@ impl Tune {
                 return Err(only("kcp-nodelay", "udp"));
             }
             tune.kcp_nodelay = nodelay;
+        }
+        if let Some(hold) = query.poll {
+            if feature_of(name) != Some("poll") {
+                return Err(only("poll", "poll, sse, chunked or httppoll"));
+            }
+            tune.hold = Some(hold);
         }
         if let (Some(mtu), "udp") = (query.mtu, name) {
             if !(UDP_MTU.0..=UDP_MTU.1).contains(&mtu) {
@@ -130,6 +140,12 @@ pub async fn dial(
             let carrier = crate::link_udp::carrier(me, allow, tune);
             crate::link_udp::dial(&carrier, allow, address, settings).await
         }
+        #[cfg(feature = "poll")]
+        "poll" | "sse" | "chunked" | "httppoll" => {
+            let form = crate::link_poll::form_of(name).expect("a poll form");
+            let carrier = crate::link_poll::carrier(me, allow, form, tune);
+            crate::link_poll::dial(&carrier, allow, address, settings).await
+        }
         _ => Err(off(name)),
     }
 }
@@ -151,6 +167,12 @@ pub async fn listen(
         "udp" => {
             let carrier = crate::link_udp::carrier(me, allow, tune);
             crate::link_udp::listen(&carrier, address).await
+        }
+        #[cfg(feature = "poll")]
+        "poll" | "sse" | "chunked" | "httppoll" => {
+            let form = crate::link_poll::form_of(name).expect("a poll form");
+            let carrier = crate::link_poll::carrier(me, allow, form, tune);
+            crate::link_poll::listen(&carrier, address).await
         }
         _ => Err(off(name)),
     }

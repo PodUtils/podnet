@@ -43,8 +43,11 @@ pub(crate) struct CarrierArgs {
     /// stream of a QUIC connection with the same pins: listen at `IP:PORT`
     /// (UDP), dial `KEY@HOST:PORT`. `udp` (feature `udp`) is KCP over UDP
     /// with the same pins and addresses; `?kcp-nodelay=1` turns on the
-    /// nodelay of KCP (unfair to other flows). A key that is refused exits
-    /// 77.
+    /// nodelay of KCP (unfair to other flows). `poll`, `sse`, `chunked` and
+    /// `httppoll` (feature `poll`) carry the link in requests of HTTP/1.1
+    /// over TLS with the same pins: listen at `IP:PORT`, dial
+    /// `KEY@https://HOST[:PORT]/PATH`; `?poll=N` sets the hold of a long
+    /// poll. A key that is refused exits 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
     /// The unix carrier accepts a peer of another uid. Each end checks the

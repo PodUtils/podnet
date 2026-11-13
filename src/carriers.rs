@@ -164,6 +164,36 @@ fn make_udp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("udp", "T-276")
 }
 
+/// The poll carriers for the registry: the facts (the cost class of each
+/// form) and the host check, no key of this install
+/// (`podnet::link_poll::carrier` is the real one).
+#[cfg(feature = "poll")]
+fn make_poll_form(name: &'static str) -> Result<Box<dyn Carrier>, CarrierError> {
+    let form = crate::link_poll::form_of(name).expect("a poll form");
+    Ok(Box::new(crate::link_poll::probe(form)))
+}
+
+#[cfg(not(feature = "poll"))]
+fn make_poll_form(name: &'static str) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending(name, "T-271")
+}
+
+fn make_poll(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    make_poll_form("poll")
+}
+
+fn make_sse(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    make_poll_form("sse")
+}
+
+fn make_chunked(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    make_poll_form("chunked")
+}
+
+fn make_httppoll(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    make_poll_form("httppoll")
+}
+
 fn make_s3(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("s3", "T-279")
 }
@@ -174,7 +204,7 @@ fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 /// The carriers of this build, in the order of the lists and of the
 /// first choice.
-pub const ROWS: [Row; 9] = [
+pub const ROWS: [Row; 13] = [
     Row {
         name: unix::NAME,
         about: "a stream over AF_UNIX, mode 0600, the uid of the peer checked",
@@ -238,6 +268,42 @@ pub const ROWS: [Row; 9] = [
         needs_privilege: false,
         feature: Some("udp"),
         make: make_udp,
+    },
+    Row {
+        name: "poll",
+        about: "a long poll of HTTP/1.1 over TLS 1.3, the Ed25519 key of each end pinned in the handshake",
+        address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("poll"),
+        make: make_poll,
+    },
+    Row {
+        name: "sse",
+        about: "POSTs up and one answer of SSE events down, HTTP/1.1 over TLS 1.3, the keys pinned",
+        address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("poll"),
+        make: make_sse,
+    },
+    Row {
+        name: "chunked",
+        about: "POSTs up and one chunked answer down, HTTP/1.1 over TLS 1.3, the keys pinned",
+        address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("poll"),
+        make: make_chunked,
+    },
+    Row {
+        name: "httppoll",
+        about: "POSTs up and a GET poll down, HTTP/1.1 over TLS 1.3, the keys pinned",
+        address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("poll"),
+        make: make_httppoll,
     },
     Row {
         name: "s3",
@@ -351,6 +417,17 @@ pub struct Report {
 }
 
 impl Report {
+    /// The overhead class of the carrier on the wire (`Facts::cost`):
+    /// `low`, `medium`, `high` or `highest`.
+    pub fn overhead(&self) -> &'static str {
+        match self.facts.cost {
+            pod_link::Cost::Low => "low",
+            pod_link::Cost::Medium => "medium",
+            pod_link::Cost::High => "high",
+            pod_link::Cost::Highest => "highest",
+        }
+    }
+
     /// `stream` for a carrier with no unit, else `datagram`.
     pub fn framing(&self) -> &'static str {
         if self.facts.mtu.is_none() {

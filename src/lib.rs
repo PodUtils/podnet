@@ -100,6 +100,8 @@ pub mod link_group;
 pub mod link_h2;
 pub mod link_http;
 pub mod link_keyed;
+#[cfg(feature = "poll")]
+pub mod link_poll;
 pub mod link_probe;
 pub mod link_query;
 #[cfg(feature = "quic")]

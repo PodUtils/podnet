@@ -267,10 +267,10 @@ impl Query {
             if matches!(key, "carrier" | "pad" | "compress") {
                 continue;
             }
-            // `mtu` and `kcp-nodelay` set the udp carrier (T-276):
-            // `podnet::link_keyed::Tune::of_query` refuses them for another
-            // carrier.
-            if matches!(key, "mtu" | "kcp-nodelay") {
+            // `mtu` and `kcp-nodelay` set the udp carrier (T-276), `poll`
+            // the poll carriers (T-271): `podnet::link_keyed::Tune::of_query`
+            // refuses them for another carrier.
+            if matches!(key, "mtu" | "kcp-nodelay" | "poll") {
                 continue;
             }
             // T-308 binds the name before the command starts: the flag gives it.

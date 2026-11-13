@@ -605,7 +605,7 @@ Not proven: a host that denies TCP loopback; a link over a proxy chain; the resu
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -642,6 +642,17 @@ T-268 is done (the secure stream).
 ## Correction
 
 2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
+
+2026-11-13, calls of the glue (the owner is away): One build feature `poll` (as the feature `poll` of `pod-link`) holds the four carrier names `poll`, `sse`, `chunked` and `httppoll`; the names are the names of `pod_link::poll::Form`. One listener serves each form. One commit does T-271, T-272 and T-280: the glue is one module (`src/link_poll.rs`). The query key `poll` (T-306) sets the hold of the dialer (1 to 60 s); with a hold of 60 s the idle time of a lane is twice the hold, since `pod-link` needs an idle time longer than the hold. The key is refused (exit 64) on the other carriers. The `429` rule, the batch of 256 KiB and the hold of the listener are those of `pod-link`.
+
+## Done
+
+2026-11-13, the commit "T-271, T-272, T-280: the poll carriers in link listen, dial and connect" (its hash follows in the next commit). Feature `poll` of podnet is `["tcp", "pod-link/poll"]` (in `full`, `OPTIONAL` and `FULL`). `src/link_poll.rs` (`podnet::link_poll`): `NAMES`, `form_of`, `carrier` (the hold of `Tune::hold`), `listen` (`IP:PORT`), `dial` (`KEY@https://HOST[:PORT]/PATH`) and `probe`. `src/link_keyed.rs`: the four names and `Tune::hold`. `src/link_query.rs`: `poll` has an effect now. The four registry rows, the inventory entries, `overhead` in `link carriers --json` (`Facts::cost`), `docs/link.md` (The poll carriers), `docs/build.md`, the map row of `README.md`.
+
+Tests (`tests/link_poll.rs`, build `--features poll`, here `--features full`; none skipped), 10 passed: `a_link_crosses_poll_and_each_end_learns_the_key_of_the_other` (512 KiB there and back), `a_link_crosses_poll_with_a_short_hold` (`poll=1`), `a_dialer_of_poll_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77_on_poll`, `link_dial_check_meets_link_listen_over_poll_and_a_stranger_exits_77`, `the_query_key_poll_sets_the_hold_of_a_long_poll`, `the_query_key_poll_is_for_the_poll_carriers_only`, `the_long_poll_has_the_overhead_class_medium`, `the_registry_row_of_poll_has_no_key_and_refuses_a_dial`, `a_dial_address_with_no_key_or_a_path_with_a_query_exits_64`. Plant: with the arms of the poll carriers in `link_keyed` off, the link tests failed (`tests/link_httppoll.rs`: 4 of 6; cargo stops at the first failed file). `sh scripts/agent/check.sh`: each step 0.
+
+Not proven here: the `429` rule and the 406 fallback (tests of `pod-link`, `poll` and `poll_lanes`); a link through a real proxy; a host that denies TCP loopback.
+
 # T-272: link: the SSE and chunked-stream carrier (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-5.
@@ -649,7 +660,7 @@ T-268 is done (the secure stream).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -685,6 +696,17 @@ T-268 and T-271 are done.
 ## Correction
 
 2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
+
+2026-11-13, calls of the glue (the owner is away): One build feature `poll` (as the feature `poll` of `pod-link`) holds the four carrier names `poll`, `sse`, `chunked` and `httppoll`; the names are the names of `pod_link::poll::Form`. One listener serves each form. One commit does T-271, T-272 and T-280: the glue is one module (`src/link_poll.rs`). The raw form is `chunked` (the issue says `streamhttp`). A listener of podnet always serves a push (`Poll::push` is true): the fallback to the long poll at a 406 is a test of `pod-link`, not of podnet. The registry row of each form has the overhead class of `pod-link` (`sse` high, `chunked` medium).
+
+## Done
+
+2026-11-13, the commit "T-271, T-272, T-280: the poll carriers in link listen, dial and connect" (its hash follows in the next commit) (the code of T-271). The carrier names `sse` and `chunked` of `--carrier`, their registry rows and inventory entries, `docs/link.md` (The poll carriers).
+
+Tests (`tests/link_sse.rs`, build `--features poll`, here `--features full`; none skipped), 11 passed: for each of `sse` and `chunked`: `a_link_crosses_NAME_and_each_end_learns_the_key_of_the_other` (512 KiB there and back), `a_dialer_of_NAME_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77_on_NAME`, `link_dial_check_meets_link_listen_over_NAME_and_a_stranger_exits_77`, `the_registry_row_of_NAME_has_no_key_and_refuses_a_dial`; and `sse_and_chunked_have_their_overhead_class`. Plant: as T-271.
+
+Not proven here: the base64 events of 8 KiB, the `: ping` comment and the 406 fallback (tests of `pod-link`).
+
 # T-273: link: the QUIC carrier (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-6.
@@ -1047,7 +1069,7 @@ T-277, T-262, T-264 and T-311 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1083,6 +1105,17 @@ T-271, T-277 and T-264 are done.
 ## Correction
 
 2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
+
+2026-11-13, calls of the glue (the owner is away): One build feature `poll` (as the feature `poll` of `pod-link`) holds the four carrier names `poll`, `sse`, `chunked` and `httppoll`; the names are the names of `pod_link::poll::Form`. One listener serves each form. One commit does T-271, T-272 and T-280: the glue is one module (`src/link_poll.rs`). The cost class `highest` is `Facts::cost` of `pod-link` (`Cost::Highest`); `link carriers --json` gives it as `overhead` (the field `cost` of a row stays `network`, its meaning of T-264). The simplex pairing with the direction split (T-302) is not in this glue: the carrier is one duplex link of two lanes.
+
+## Done
+
+2026-11-13, the commit "T-271, T-272, T-280: the poll carriers in link listen, dial and connect" (its hash follows in the next commit) (the code of T-271). The carrier name `httppoll` of `--carrier`, its registry row and inventory entry, `overhead` in `link carriers --json`, `docs/link.md` (The poll carriers).
+
+Tests (`tests/link_httppoll.rs`, build `--features poll`, here `--features full`; none skipped), 6 passed: `a_link_crosses_httppoll_and_each_end_learns_the_key_of_the_other` (512 KiB there and back), `a_dialer_of_httppoll_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77_on_httppoll`, `link_dial_check_meets_link_listen_over_httppoll_and_a_stranger_exits_77`, `the_registry_row_of_httppoll_has_no_key_and_refuses_a_dial`, `the_simplex_poll_reports_the_overhead_class_highest`. Plant: with the arms of the poll carriers in `link_keyed` off, 4 of the 6 failed.
+
+Not proven here: the 204 answer, the backoff of 100 ms to 5 s and the 4 KiB headers (tests of `pod-link`); the use of the carrier as one direction of a split (T-302).
+
 # T-281: link: the DNS stream carrier with a pipelined query window (GitHub #469)
 
 **Source:** GitHub #469 (https://github.com/PodUtils/podnet/issues/469), row E3-1.
