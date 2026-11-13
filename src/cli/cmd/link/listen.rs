@@ -13,7 +13,7 @@ use tokio::sync::Semaphore;
 
 use pod_identity::PublicKey;
 use podnet::exit::{self, Fault};
-use podnet::identity::{self, AllowList, Identity};
+use podnet::identity::{self, AllowList, Grant, Identity};
 use podnet::link::{Link, Settings};
 use podnet::link_announce::{self as announce, Guard, Mesh};
 use podnet::link_ctl::{Hub, Slot};
@@ -51,7 +51,11 @@ pub(crate) struct ListenArgs {
     /// that `podnet link status` shows, a `SHA256:` fingerprint, or a key in
     /// hex), 4096 lines at most. The list is default deny: a peer that it
     /// does not hold gets exit 77. The file must not be writable by others
-    /// (else exit 71); a missing file exits 66.
+    /// (else exit 71); a missing file exits 66. A line can end in a grant:
+    /// `services=NAME,NAME` (64 names at most, or `*`) and `forward=yes`.
+    /// A bare key has every service and forwarding. With an option, what
+    /// it does not name is denied; a refused stream is counted in `link
+    /// status` and the link stays up.
     #[arg(long, value_name = "FILE", required = true)]
     pub(crate) allow: PathBuf,
     /// Where the streams of the service `raw` go: `host:port` or
@@ -309,6 +313,7 @@ async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
         .hub
         .hold(link.clone(), peer, &held.carrier, &held.address, "listener");
     // The guard stops the announcements and ends the route of the peer.
+    let grant = held.allow.grant(&peer).unwrap_or_else(Grant::closed);
     let _guard = held
         .mesh
         .as_ref()
@@ -319,6 +324,7 @@ async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
         // `close-stream` of the control socket names the stream by its id.
         let tracked = slot.track(&stream);
         let hub = held.hub.clone();
+        let (grant, refusals) = (grant.clone(), slot.refusals());
         let announced = held
             .mesh
             .clone()
@@ -326,7 +332,7 @@ async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
         tokio::spawn(async move {
             let mut stream = stream;
             tokio::select! {
-                done = bridge(&mut stream, &services, announced, peer) => {
+                done = bridge(&mut stream, &services, announced, peer, (&grant, &refusals)) => {
                     if let Err(err) = done {
                         // Tell the opener that the stream is over.
                         let _ = tokio::io::AsyncWriteExt::shutdown(&mut stream).await;
@@ -348,6 +354,7 @@ async fn bridge(
     services: &BTreeMap<String, Service>,
     announced: Option<(Arc<Mesh>, Arc<Link>, Option<u32>)>,
     peer: PublicKey,
+    (grant, refusals): (&Grant, &podnet::link_ctl::Refusals),
 ) -> Result<()> {
     let mut name = service::accept(stream).await?;
     if let Some((mesh, link, weight)) = announced {
@@ -358,11 +365,21 @@ async fn bridge(
         // A stream for another node goes on; a stream for this node is a
         // request for its service.
         if name == podnet::link_forward::NAME {
-            match podnet::link_forward::accept(&mesh, stream).await? {
+            let counted = || refusals.forward();
+            match podnet::link_forward::accept_with(&mesh, stream, grant.may_forward(), counted)
+                .await?
+            {
                 podnet::link_forward::Arrived::Local(local) => name = local,
                 podnet::link_forward::Arrived::Done => return Ok(()),
             }
         }
+    }
+    // One decision for each OPEN: the grant of the peer, then the service.
+    if !grant.allows_service(&name) {
+        refusals.service();
+        service::reply(stream, service::FORBIDDEN).await?;
+        tracing::warn!(peer = %peer.display_fingerprint(), service = %name, "a stream is refused: no grant");
+        return Ok(());
     }
     let Some(found) = services.get(&name) else {
         service::reply(stream, service::NO_SERVICE).await?;

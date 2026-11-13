@@ -118,7 +118,8 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
     let (chain, rows) =
         super::open_chain(&egress, &args.carrier, &args.address, args.check, args.json).await?;
     let via = chain.as_ref().map(podnet::link_chain::Opened::dial);
-    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow, via).await?;
+    let (link, peer) = super::dial_peer(carrier, &args.address, &me, allow.clone(), via).await?;
+    let grant = allow.grant(&peer).unwrap_or_default();
     let (mine, theirs) = (me.fingerprint(), peer.display_fingerprint());
     if args.check {
         if args.json {
@@ -145,11 +146,12 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
         .announce
         .then(|| Mesh::new(me.clone(), Vec::new(), announce::now_ms()));
     let _guard = mesh.as_ref().map(|mesh| {
-        tokio::spawn(announce::serve_streams(
+        tokio::spawn(announce::serve_streams_with(
             mesh.clone(),
             link.clone(),
             peer,
             args.announce_weight,
+            grant,
         ));
         Guard::start(mesh, &link, peer, args.announce_weight, INTERVAL_MS)
     });

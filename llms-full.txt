@@ -7425,7 +7425,11 @@ COMMANDS
             that `podnet link status` shows, a `SHA256:` fingerprint, or a key
             in hex), 4096 lines at most. The list is default deny: a peer that
             it does not hold gets exit 77. The file must not be writable by
-            others (else exit 71); a missing file exits 66. Required.
+            others (else exit 71); a missing file exits 66. A line can end in
+            a grant: `services=NAME,NAME` (64 names at most, or `*`) and
+            `forward=yes`. A bare key has every service and forwarding. With
+            an option, what it does not name is denied; a refused stream is
+            counted in `link status` and the link stays up. Required.
 
         --to <TARGET>
             Where the streams of the service `raw` go: `host:port` or

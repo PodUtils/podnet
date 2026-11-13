@@ -11,6 +11,7 @@
 //! The seed is in the key file only. It is not in [`Identity`]'s `Debug`
 //! output, in [`Report`], in a log line or in an error.
 
+use std::collections::BTreeSet;
 use std::fmt;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -200,9 +201,65 @@ fn hide_key_file(path: &Path) {
     }
 }
 
+/// The most services in the `services=` list of one peer.
+pub const MAX_SERVICES: usize = 64;
+
+/// What one peer may do (T-290).
+///
+/// A bare key in the allow list has the open grant: every service, and
+/// forwarding. A key with the option `services=` or `forward=` has a
+/// restricted grant: only what the options name. `services=*` names every
+/// service. An option that is absent grants nothing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Grant {
+    /// `None`: every service.
+    services: Option<BTreeSet<String>>,
+    forward: bool,
+}
+
+impl Default for Grant {
+    fn default() -> Grant {
+        Grant::open()
+    }
+}
+
+impl Grant {
+    /// Every service, and forwarding: the grant of a bare key.
+    pub fn open() -> Grant {
+        Grant {
+            services: None,
+            forward: true,
+        }
+    }
+
+    /// No service and no forwarding. The peer may only hold the link.
+    pub fn closed() -> Grant {
+        Grant {
+            services: Some(BTreeSet::new()),
+            forward: false,
+        }
+    }
+
+    /// Whether the peer may open the service `name`.
+    pub fn allows_service(&self, name: &str) -> bool {
+        self.services.as_ref().is_none_or(|s| s.contains(name))
+    }
+
+    /// Whether the peer may have this node relay a stream to another node.
+    pub fn may_forward(&self) -> bool {
+        self.forward
+    }
+}
+
 /// One line of an allow list.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Entry {
+struct Entry {
+    key: Key,
+    grant: Grant,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Key {
     /// The display form: a head of the fingerprint and a checksum.
     Display(DisplayFingerprint),
     /// A fingerprint of OpenSSH, or a key in hex or base32.
@@ -211,19 +268,65 @@ enum Entry {
 
 impl Entry {
     fn admits(&self, key: &PublicKey) -> bool {
-        match self {
-            Entry::Display(d) => d.matches(key),
-            Entry::Key(k) => k.matches(key),
+        match &self.key {
+            Key::Display(d) => d.matches(key),
+            Key::Key(k) => k.matches(key),
         }
     }
+}
+
+/// The options after the key of a line: `services=a,b` and `forward=yes`.
+/// Any other word is a comment, as before T-290.
+fn grant_of(n: usize, words: &[&str]) -> anyhow::Result<Grant> {
+    let mut services = None;
+    let mut forward = None;
+    for word in words {
+        if word.starts_with('#') {
+            break;
+        }
+        if let Some(list) = word.strip_prefix("services=") {
+            let mut set = BTreeSet::new();
+            for name in list.split(',') {
+                if name == "*" {
+                    set.insert("*".to_string());
+                } else if let Err(e) = crate::link_service::check_name(name) {
+                    return Err(bad_line(n, &format!("services: {e:#}")));
+                } else {
+                    set.insert(name.to_string());
+                }
+            }
+            if set.len() > MAX_SERVICES {
+                return Err(bad_line(
+                    n,
+                    &format!("a peer has {MAX_SERVICES} services at most"),
+                ));
+            }
+            services = Some(if set.contains("*") { None } else { Some(set) });
+        } else if let Some(value) = word.strip_prefix("forward=") {
+            forward = Some(match value {
+                "yes" => true,
+                "no" => false,
+                _ => return Err(bad_line(n, "forward= takes yes or no")),
+            });
+        }
+    }
+    if services.is_none() && forward.is_none() {
+        return Ok(Grant::open());
+    }
+    Ok(Grant {
+        services: services.unwrap_or_else(|| Some(BTreeSet::new())),
+        forward: forward.unwrap_or(false),
+    })
 }
 
 /// The peers that may use this install. The list is default deny: a list
 /// with no entry admits no peer.
 ///
 /// A file holds one peer on each line: the display fingerprint, the
-/// `SHA256:` fingerprint, or the key in hex or base32. A word after the key
-/// is a comment, and a line that starts with `#` is a comment.
+/// `SHA256:` fingerprint, or the key in hex or base32. The options
+/// `services=NAME,NAME` and `forward=yes` follow the key ([`Grant`]). Any
+/// other word after the key is a comment, and a line that starts with `#`
+/// is a comment.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AllowList {
     entries: Vec<Entry>,
@@ -239,14 +342,17 @@ impl AllowList {
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            let word = line.split_whitespace().next().unwrap_or_default();
-            let entry = match DisplayFingerprint::parse(word) {
-                Ok(d) => Entry::Display(d),
+            let mut words = line.split_whitespace();
+            let word = words.next().unwrap_or_default();
+            let rest: Vec<&str> = words.collect();
+            let grant = grant_of(n + 1, &rest)?;
+            let key = match DisplayFingerprint::parse(word) {
+                Ok(d) => Key::Display(d),
                 Err(e) if word.chars().filter(|c| *c != '-').count() == 40 => {
                     return Err(bad_line(n + 1, &e.to_string()));
                 }
                 Err(_) => match KeyName::parse(word) {
-                    Some(k) => Entry::Key(k),
+                    Some(k) => Key::Key(k),
                     None => {
                         return Err(bad_line(
                             n + 1,
@@ -264,7 +370,7 @@ impl AllowList {
                     ),
                 ));
             }
-            entries.push(entry);
+            entries.push(Entry { key, grant });
         }
         Ok(AllowList { entries })
     }
@@ -289,9 +395,9 @@ impl AllowList {
     pub fn names(&self) -> Vec<KeyName> {
         self.entries
             .iter()
-            .map(|e| match e {
-                Entry::Display(d) => KeyName::Display(*d),
-                Entry::Key(k) => k.clone(),
+            .map(|e| match &e.key {
+                Key::Display(d) => KeyName::Display(*d),
+                Key::Key(k) => k.clone(),
             })
             .collect()
     }
@@ -299,6 +405,15 @@ impl AllowList {
     /// Whether `key` is in the list.
     pub fn admits(&self, key: &PublicKey) -> bool {
         self.entries.iter().any(|e| e.admits(key))
+    }
+
+    /// What `key` may do: the grant of the first entry that admits it, or
+    /// `None` for a key that is not in the list.
+    pub fn grant(&self, key: &PublicKey) -> Option<Grant> {
+        self.entries
+            .iter()
+            .find(|e| e.admits(key))
+            .map(|e| e.grant.clone())
     }
 
     /// The check of the handshake, before any service: `Ok` for a peer in

@@ -144,6 +144,8 @@ pub enum ForwardError {
     NoService,
     /// The origin of the service did not answer.
     NoOrigin,
+    /// A hop does not grant the service or the forwarding (T-290).
+    Forbidden,
     /// A hop sent an answer that is not known.
     Refused(u8),
 }
@@ -156,6 +158,7 @@ impl ForwardError {
             service::HOPS_EXCEEDED => ForwardError::HopsExceeded,
             service::RESOURCE_LIMIT => ForwardError::ResourceLimit,
             service::NO_ROUTE => ForwardError::NoRoute,
+            service::FORBIDDEN => ForwardError::Forbidden,
             other => ForwardError::Refused(other),
         }
     }
@@ -167,6 +170,7 @@ impl ForwardError {
             ForwardError::ResourceLimit => service::RESOURCE_LIMIT,
             ForwardError::NoService => service::NO_SERVICE,
             ForwardError::NoOrigin => service::NO_ORIGIN,
+            ForwardError::Forbidden => service::FORBIDDEN,
             ForwardError::NoRoute | ForwardError::Refused(_) => service::NO_ROUTE,
         }
     }
@@ -185,6 +189,7 @@ impl fmt::Display for ForwardError {
             ForwardError::NoRoute => f.write_str("no route leads to the destination"),
             ForwardError::NoService => f.write_str("the destination has no such service"),
             ForwardError::NoOrigin => f.write_str("the origin of the service did not answer"),
+            ForwardError::Forbidden => f.write_str("a hop does not grant it"),
             ForwardError::Refused(b) => write!(f, "a hop answered {b}"),
         }
     }
@@ -295,6 +300,19 @@ async fn read_line(stream: &mut Stream) -> Option<String> {
 /// Take a stream that opened the service [`NAME`] (the first line is read):
 /// read the header, then deliver the stream here or relay it.
 pub async fn accept(mesh: &Arc<Mesh>, stream: &mut Stream) -> anyhow::Result<Arrived> {
+    accept_with(mesh, stream, true, || {}).await
+}
+
+/// [`accept`] for a peer that may forward only when `may_forward` is true.
+/// A stream for another node that the peer may not have relayed is answered
+/// [`service::FORBIDDEN`], `refused` runs once, and the result is
+/// [`Arrived::Done`]. The link stays up (T-290).
+pub async fn accept_with(
+    mesh: &Arc<Mesh>,
+    stream: &mut Stream,
+    may_forward: bool,
+    refused: impl FnOnce(),
+) -> anyhow::Result<Arrived> {
     let Some(header) = read_line(stream)
         .await
         .and_then(|line| Header::parse(&line))
@@ -304,6 +322,12 @@ pub async fn accept(mesh: &Arc<Mesh>, stream: &mut Stream) -> anyhow::Result<Arr
     };
     if header.dest == mesh.public() {
         return Ok(Arrived::Local(header.service));
+    }
+    if !may_forward {
+        refused();
+        tracing::warn!("forward: a peer that may not forward is refused");
+        service::reply(stream, service::FORBIDDEN).await?;
+        return Ok(Arrived::Done);
     }
     match forward_open(mesh, &header).await {
         Ok(mut down) => {

@@ -119,7 +119,8 @@ removes both files at its stop. The token is never in the ready document, `statu
 * Verbs:
   * `status`: `fingerprint`, `pid` and `links`, a row for each held link: `id`, `carrier`, `address`, `role`
     (`listener` or `dialer`), `peer` (the fingerprint), `state` (`up` or `ended`), `streams`, `rtt_ms`, `opened` and `accepted`
-    (the streams opened here and by the peer), `since`, and `stream_ids` (the streams that a task serves, 64 at most), and at the
+    (the streams opened here and by the peer), `refused_service` and `refused_forward` (the streams that the allow list
+    refused, T-290), `since`, and `stream_ids` (the streams that a task serves, 64 at most), and at the
     top `selected` (the pinned link, or `null`). It has no seed and no token.
   * `peer` (`"peer":FINGERPRINT`): `ok` when a link that is up goes to that peer; 77 when the links go to other peers; 69 when
     the instance holds no link that is up.
@@ -294,6 +295,24 @@ podnet link dial KEY@host.example:7000 --carrier tcp --allow servers.txt \
 * An allow list is a text file: one peer on each line. A word after the peer is a comment, and a line that starts with `#` is a
   comment. The list holds 4096 entries at most (else exit 78). It is default deny: a list with no entry admits no peer. The file
   must belong to this user and must not be writable by others (else exit 71). A missing file exits 66.
+* A peer line can have a grant (per-hop access control, T-290): `KEY services=raw,echo forward=yes`. `services=` is a list
+  of 1 to 64 service names, or `*` for every service. `forward=yes` lets the peer have this node relay a stream to another
+  node (the service `fwd`); `forward=no` does not. A peer that is not in the list gets no grant at all. The first line that
+  admits a key is its grant.
+  * A bare key, with no option (it can have comment words), keeps the old behaviour: every service, and forwarding. No file
+    breaks.
+  * A key with an option is restricted: what is not named is denied. `services=raw` alone allows `raw` and no forwarding.
+    `forward=yes` alone allows forwarding and no service of this node. `services=*` with no `forward` allows every service and
+    no forwarding. A word after the key that does not start with `services=` or `forward=` is still a comment, and a word that
+    starts with `#` ends the options.
+  * A bad service name, an empty list, more than 64 services for one peer, or a `forward=` value that is not `yes` or `no`
+    exits 78.
+* One decision is made for each `OPEN`, at the listener (and at the dialer for a stream that its listener opens): the grant of
+  the peer that opened the stream on this link. A forwarded stream is a service request at each hop, so each hop decides on
+  its own neighbour: the relay checks `forward`, and the last node checks the service for the node that sent the stream. A
+  stream that is refused gets the answer byte 6 (`FORBIDDEN`), the opener exits 77 (a `--node` stream exits 69 and names the
+  grant), the refusal is counted in `refused_service` or `refused_forward` of the row of the link in `link status`, and the
+  link stays up. The streams of `--announce` are not a service: an admitted peer always sends them.
 
 ## The hello
 

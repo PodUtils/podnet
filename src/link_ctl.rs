@@ -141,6 +141,10 @@ pub struct Held {
     since: u64,
     opened: AtomicU64,
     accepted: AtomicU64,
+    /// The streams that the allow list refused (T-290): a service the peer
+    /// has no grant for, and a forwarding the peer has no grant for.
+    refused_service: AtomicU64,
+    refused_forward: AtomicU64,
     /// The streams that a task serves and a verb can end: the id, and the
     /// signal that the task waits for.
     streams: Mutex<BTreeMap<u32, Arc<Notify>>>,
@@ -208,6 +212,8 @@ impl Held {
             "rtt_ms": self.link.rtt().map(|d| d.as_millis() as u64),
             "opened": self.opened.load(Ordering::Relaxed),
             "accepted": self.accepted.load(Ordering::Relaxed),
+            "refused_service": self.refused_service.load(Ordering::Relaxed),
+            "refused_forward": self.refused_forward.load(Ordering::Relaxed),
             "since": self.since,
         })
     }
@@ -238,10 +244,31 @@ impl Slot {
         self.held.accepted.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// The counters of the streams that the allow list refuses.
+    pub fn refusals(&self) -> Refusals {
+        Refusals(self.held.clone())
+    }
+
     /// Put a stream of this link in the table that `close-stream` reads.
     /// The task that serves the stream waits on the result.
     pub fn track(&self, stream: &Stream) -> Tracked {
         self.held.track(stream.id())
+    }
+}
+
+/// A handle to count the streams of a link that its allow list refused.
+#[derive(Clone)]
+pub struct Refusals(Arc<Held>);
+
+impl Refusals {
+    /// Count a stream for a service that the peer has no grant for.
+    pub fn service(&self) {
+        self.0.refused_service.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Count a stream that the peer wanted relayed without a grant.
+    pub fn forward(&self) {
+        self.0.refused_forward.fetch_add(1, Ordering::Relaxed);
     }
 }
 
@@ -293,6 +320,8 @@ impl Hub {
             since: now(),
             opened: AtomicU64::new(0),
             accepted: AtomicU64::new(0),
+            refused_service: AtomicU64::new(0),
+            refused_forward: AtomicU64::new(0),
             streams: Mutex::new(BTreeMap::new()),
         });
         self.held

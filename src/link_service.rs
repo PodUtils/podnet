@@ -10,7 +10,8 @@
 //!                     2 the origin of the service did not answer,
 //!                     3 the hop limit of a forwarded stream is used up,
 //!                     4 the node has no stream to give (resource limit),
-//!                     5 the node has no route to the destination
+//!                     5 the node has no route to the destination,
+//!                     6 the allow list of the node does not grant it
 //! ```
 //!
 //! A name is 1 to 32 characters from `A-Z a-z 0-9 . _ -`. The default
@@ -47,6 +48,10 @@ pub const RESOURCE_LIMIT: u8 = 4;
 /// The answer: the node has no route to the destination of a forwarded
 /// stream.
 pub const NO_ROUTE: u8 = 5;
+
+/// The answer: the allow list of the node does not grant the service, or
+/// the forwarding, to the opener (T-290).
+pub const FORBIDDEN: u8 = 6;
 
 /// Check a service name. A bad name exits 64.
 pub fn check_name(name: &str) -> anyhow::Result<()> {
@@ -104,6 +109,10 @@ pub async fn request(stream: &mut Stream, name: &str) -> anyhow::Result<()> {
         NO_ROUTE => Err(exit::fault(
             Fault::Unavailable,
             anyhow!("the peer has no route for {name:?}"),
+        )),
+        FORBIDDEN => Err(exit::fault(
+            Fault::NoPermission,
+            anyhow!("the peer does not grant the service {name:?} to this install"),
         )),
         other => Err(exit::fault(
             Fault::Unavailable,

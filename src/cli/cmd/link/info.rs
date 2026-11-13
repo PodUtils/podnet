@@ -91,13 +91,15 @@ fn live_lines(live: &Value) -> Vec<String> {
         .flatten()
         .map(|l| {
             format!(
-                "          peer {}  {}  {}  streams {}  opened {}  accepted {}",
+                "          peer {}  {}  {}  streams {}  opened {}  accepted {}  refused {} service {} forward",
                 l["peer"].as_str().unwrap_or("-"),
                 l["role"].as_str().unwrap_or("-"),
                 l["state"].as_str().unwrap_or("-"),
                 l["streams"],
                 l["opened"],
-                l["accepted"]
+                l["accepted"],
+                l["refused_service"],
+                l["refused_forward"]
             )
         })
         .collect()

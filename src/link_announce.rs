@@ -543,8 +543,20 @@ impl std::ops::Drop for Guard {
 /// other service (the dialer). A stream for [`NAME`] goes to
 /// [`receive_stream`]; any other service gets the answer "no such service".
 pub async fn serve_streams(mesh: Arc<Mesh>, link: Arc<Link>, peer: PublicKey, weight: Option<u32>) {
+    serve_streams_with(mesh, link, peer, weight, crate::identity::Grant::open()).await;
+}
+
+/// [`serve_streams`] for a peer with the grant `grant` (T-290): the peer
+/// has a stream relayed only when the grant says so.
+pub async fn serve_streams_with(
+    mesh: Arc<Mesh>,
+    link: Arc<Link>,
+    peer: PublicKey,
+    weight: Option<u32>,
+    grant: crate::identity::Grant,
+) {
     while let Ok(mut stream) = link.accept().await {
-        let (mesh, link) = (mesh.clone(), link.clone());
+        let (mesh, link, grant) = (mesh.clone(), link.clone(), grant.clone());
         tokio::spawn(async move {
             match service::accept(&mut stream).await {
                 Ok(name) if name == NAME => {
@@ -553,7 +565,13 @@ pub async fn serve_streams(mesh: Arc<Mesh>, link: Arc<Link>, peer: PublicKey, we
                 Ok(name) if name == crate::link_forward::NAME => {
                     // This end has no service: it relays, or it refuses.
                     if let Ok(crate::link_forward::Arrived::Local(_)) =
-                        crate::link_forward::accept(&mesh, &mut stream).await
+                        crate::link_forward::accept_with(
+                            &mesh,
+                            &mut stream,
+                            grant.may_forward(),
+                            || {},
+                        )
+                        .await
                     {
                         let _ = service::reply(&mut stream, service::NO_SERVICE).await;
                     }
