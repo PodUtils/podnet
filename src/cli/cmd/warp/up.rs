@@ -188,12 +188,16 @@ pub(crate) async fn nc_session(
         Ok(ip) => podnet_netns::socks::ProxyHost::Ip(ip),
         Err(_) => podnet_netns::socks::ProxyHost::Domain(host.to_string()),
     };
-    let io = podnet::warp::proxy::dial(stack, target, port)
+    // T-012: the stream holds no handle of the session either; keep it
+    // until the pipe ends, as for UDP.
+    let io = podnet::warp::proxy::dial(Arc::clone(&stack), target, port)
         .await
         .fault(Fault::Unavailable)?;
-    podnet::warp::nc::pipe(Box::new(io), nc_end(idle, shutdown))
+    let done = podnet::warp::nc::pipe(Box::new(io), nc_end(idle, shutdown))
         .await
-        .fault(Fault::Unavailable)?;
+        .fault(Fault::Unavailable);
+    drop(stack);
+    done?;
     Ok(())
 }
 

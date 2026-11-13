@@ -21,6 +21,7 @@ use crate::warp::exit::Exit;
 use crate::warp::WarpStack;
 
 #[allow(dead_code)]
+#[path = "../../tests/warp_edge/mod.rs"]
 pub(crate) mod edge;
 
 use edge::{Edge, Route};

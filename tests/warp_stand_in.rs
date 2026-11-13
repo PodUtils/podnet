@@ -191,3 +191,250 @@ fn warp_stand_in_register_names_the_limit_of_new_devices() {
     assert!(err.contains("429"), "{err}");
     assert!(!world.identity().exists(), "no file for a refused device");
 }
+
+// Step 2 of T-012: `warp proxy` through the edge stand-in of
+// `tests/warp_edge` (the same edge as the tests of the network `warp`).
+#[allow(dead_code)]
+mod warp_edge;
+
+mod through_the_edge {
+    use std::io::{Read as _, Write as _};
+    use std::net::{SocketAddr, TcpStream};
+    use std::process::{Child, Stdio};
+    use std::time::{Duration, Instant};
+
+    use super::warp_edge::{echo_server, Edge, Route};
+    use super::*;
+
+    /// The port inside the tunnel that the edge carries to the echo server.
+    const ECHO_TCP: u16 = 9007;
+
+    fn free_port() -> u16 {
+        std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
+    }
+
+    /// `warp proxy` on a free port of the loopback, with the edge as the
+    /// front door. Gives the child and its port when it listens, or the
+    /// output of a child that ended.
+    fn proxy(world: &World, edge: SocketAddr) -> Result<(Child, u16), Output> {
+        let port = free_port();
+        let identity = world.identity();
+        let mut child = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args([
+                "warp",
+                "--no-proxy",
+                "--identity",
+                identity.to_str().unwrap(),
+            ])
+            .args(["--masque-endpoint", &edge.to_string()])
+            .args(["proxy", "--listen", &format!("tcp://127.0.0.1:{port}")])
+            .args(["--run-for", "60"])
+            .env("PODNET_WARP_API", format!("http://{}", world.served.addr()))
+            .env("PODNET_STATE_DIR", world.dir.path().join("state"))
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while Instant::now() < deadline {
+            if let Ok(Some(_)) = child.try_wait() {
+                return Err(child.wait_with_output().unwrap());
+            }
+            if TcpStream::connect(("127.0.0.1", port)).is_ok() {
+                return Ok((child, port));
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        let _ = child.kill();
+        Err(child.wait_with_output().unwrap())
+    }
+
+    /// A SOCKS5 CONNECT to `203.0.113.9:port` through the proxy on
+    /// `proxy`: the reply code, and the stream.
+    fn connect(proxy: u16, port: u16) -> (u8, TcpStream) {
+        let mut s = TcpStream::connect(("127.0.0.1", proxy)).unwrap();
+        s.set_read_timeout(Some(Duration::from_secs(30))).unwrap();
+        let mut request = vec![5, 1, 0, 1, 203, 0, 113, 9];
+        request.extend_from_slice(&port.to_be_bytes());
+        let mut method = [0u8; 2];
+        let mut reply = [0u8; 10];
+        // A reset or an end of the stream is a refusal: 0xff.
+        let asked = s.write_all(&[5, 1, 0]).is_ok()
+            && s.read_exact(&mut method).is_ok()
+            && method == [5, 0]
+            && s.write_all(&request).is_ok()
+            && s.read_exact(&mut reply).is_ok();
+        (if asked { reply[1] } else { 0xff }, s)
+    }
+
+    async fn world_and_edge() -> (World, Edge) {
+        let world = World::new();
+        let echo = echo_server().await;
+        let edge = Edge::start(
+            world.api.clone(),
+            vec![Route {
+                port: ECHO_TCP,
+                outside: echo,
+            }],
+        )
+        .await;
+        world.api.serve_key(&edge.pem());
+        (world, edge)
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn warp_stand_in_proxy_carries_a_socks5_connect_through_the_edge() {
+        test_host::need_loopback!();
+        let (world, edge) = world_and_edge().await;
+        let addr = edge.addr;
+        let api = world.api.clone();
+        let echoed = tokio::task::spawn_blocking(move || {
+            let (mut child, port) = match proxy(&world, addr) {
+                Ok(up) => up,
+                Err(out) => panic!("warp proxy: {}{}", text(&out.stdout), text(&out.stderr)),
+            };
+            let (code, mut s) = connect(port, ECHO_TCP);
+            let mut got = [0u8; 18];
+            let echoed = code == 0
+                && s.write_all(b"through the edge!!").is_ok()
+                && s.read_exact(&mut got).is_ok()
+                && &got == b"through the edge!!";
+            let _ = child.kill();
+            let out = child.wait_with_output().unwrap();
+            (code, echoed, text(&out.stderr))
+        })
+        .await
+        .unwrap();
+        assert_eq!(echoed.0, 0, "the SOCKS5 reply: {}", echoed.2);
+        assert!(echoed.1, "the echo through the edge: {}", echoed.2);
+        assert_eq!(api.devices(), 1, "one device");
+    }
+
+    /// The plant of T-012: the record pins a key that the edge does not
+    /// show. `warp proxy` must not carry the connection.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn warp_stand_in_proxy_refuses_an_edge_with_another_key() {
+        test_host::need_loopback!();
+        let (world, edge) = world_and_edge().await;
+        let other = Edge::start(world.api.clone(), vec![]).await;
+        world.api.serve_key(&other.pem());
+        let addr = edge.addr;
+        let result = tokio::task::spawn_blocking(move || match proxy(&world, addr) {
+            Err(out) => (None, text(&out.stderr)),
+            Ok((mut child, port)) => {
+                let (code, _s) = connect(port, ECHO_TCP);
+                let _ = child.kill();
+                let out = child.wait_with_output().unwrap();
+                (Some(code), text(&out.stderr))
+            }
+        })
+        .await
+        .unwrap();
+        assert_ne!(result.0, Some(0), "a CONNECT went through: {}", result.1);
+    }
+
+    /// `podnet warp ARGS` with the edge as the front door, `input` on stdin.
+    fn warp_through(world: &World, edge: SocketAddr, args: &[&str], input: &[u8]) -> Output {
+        let identity = world.identity();
+        let mut child = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args([
+                "warp",
+                "--no-proxy",
+                "--identity",
+                identity.to_str().unwrap(),
+            ])
+            .args(["--masque-endpoint", &edge.to_string()])
+            .args(args)
+            .env("PODNET_WARP_API", format!("http://{}", world.served.addr()))
+            .env("PODNET_STATE_DIR", world.dir.path().join("state"))
+            .env("PODNET_RUN_DIR", world.dir.path().join("run"))
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child.stdin.take().unwrap().write_all(input).unwrap();
+        child.wait_with_output().unwrap()
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn warp_stand_in_nc_pipes_tcp_and_udp_through_the_edge() {
+        test_host::need_loopback!();
+        let (world, edge) = world_and_edge().await;
+        let addr = edge.addr;
+        let port = ECHO_TCP.to_string();
+        let echo_udp = super::warp_edge::ECHO_PORT.to_string();
+        let (tcp, udp) = tokio::task::spawn_blocking(move || {
+            let tcp = warp_through(&world, addr, &["nc", "203.0.113.9", &port], b"nc over tcp");
+            let udp = warp_through(
+                &world,
+                addr,
+                &["nc", "-u", "--idle", "2", "203.0.113.9", &echo_udp],
+                b"nc over udp",
+            );
+            (tcp, udp)
+        })
+        .await
+        .unwrap();
+        assert_eq!(text(&tcp.stdout), "nc over tcp", "{}", text(&tcp.stderr));
+        assert_eq!(text(&udp.stdout), "nc over udp", "{}", text(&udp.stderr));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn warp_stand_in_forward_carries_a_local_port_through_the_edge() {
+        test_host::need_loopback!();
+        let (world, edge) = world_and_edge().await;
+        let addr = edge.addr;
+        let got = tokio::task::spawn_blocking(move || {
+            let local = free_port();
+            let identity = world.identity();
+            let mut child = Command::new(env!("CARGO_BIN_EXE_podnet"))
+                .args([
+                    "warp",
+                    "--no-proxy",
+                    "--identity",
+                    identity.to_str().unwrap(),
+                ])
+                .args(["--masque-endpoint", &addr.to_string()])
+                .args(["forward", "--run-for", "60"])
+                .args(["-L", &format!("127.0.0.1:{local}=203.0.113.9:{ECHO_TCP}")])
+                .env("PODNET_WARP_API", format!("http://{}", world.served.addr()))
+                .env("PODNET_STATE_DIR", world.dir.path().join("state"))
+                .env_remove("PODNET_ERROR_PROGRAM")
+                .stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap();
+            let deadline = Instant::now() + Duration::from_secs(30);
+            let mut echoed = false;
+            while Instant::now() < deadline && !echoed {
+                if let Ok(Some(_)) = child.try_wait() {
+                    break;
+                }
+                if let Ok(mut s) = TcpStream::connect(("127.0.0.1", local)) {
+                    s.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
+                    let mut got = [0u8; 16];
+                    echoed = s.write_all(b"forward the port").is_ok()
+                        && s.read_exact(&mut got).is_ok()
+                        && &got == b"forward the port";
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            let _ = child.kill();
+            let out = child.wait_with_output().unwrap();
+            (echoed, text(&out.stderr))
+        })
+        .await
+        .unwrap();
+        assert!(got.0, "the echo through the forward: {}", got.1);
+    }
+}

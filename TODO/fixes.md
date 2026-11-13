@@ -3250,7 +3250,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 ## Premise
 
-- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:430-442` (`warp_up_tun_args`), `:234-238` (the
+- `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:434-446` (`warp_up_tun_args`), `:238-242` (the
   proxy path pushes `--replace`).
 - `src/cli/cmd/warp/args.rs:391-435` (the flags), `:404` (`conflicts_with = "persist"` on `tun`), `:529-544` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).

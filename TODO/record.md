@@ -294,16 +294,16 @@ of the shared crate. The adaptation to smoltcp 0.12 is not necessary.
 
 2026-11-13, The start condition holds. podnet takes podcrates `v0.39.0`. `pod-testkit` has the API stand-in
 (`pod_testkit::stand::warp::Api`, feature `stand`) and the HTTP/2 part of an edge (`pod_testkit::masque`). podnet
-has an edge stand-in over them in `src/networks/warp_tests/edge.rs` (the tests of the network `warp`). The tests of the
+has an edge stand-in over them in src/networks/warp_tests/edge.rs at `397fb2e` (the tests of the network `warp`). The tests of the
 WARP commands can use these stand-ins.
 
-2026-11-13: partial. Step 1 is done (Done section). Left: step 2, the tests of `warp proxy`, `warp forward -L`, `warp nc`
-and `warp shell` over the edge stand-in, with the plant of a wrong pinned key. The edge stand-in is
-`src/networks/warp_tests/edge.rs`, a `#[cfg(test)]` module of the library, so a test of the binary cannot start it.
-Next: move it to a module that `tests/` can use (a `tests/` support module, or a feature of the library that no release
-enables, step 4), then run the commands with `--masque-endpoint 127.0.0.1:PORT` against it; the pin comes from the
-record of the API stand-in (`Api::serve_key`). Step 3 (the silenced mode): `Edge::end_sessions` covers the probe of the
-router (T-097).
+2026-11-13: step 2 without `warp shell`. The edge stand-in moved from src/networks/warp_tests/edge.rs at `397fb2e` to
+`tests/warp_edge/mod.rs`, so the tests of the binary and of the library both use it (`#[path]`; step 4: no release
+builds it). `warp shell` runs the shell under the pod of a running `warp up`; its test needs `warp up` over the edge
+stand-in, and stays with the pods (left). The test of `warp nc` found a defect: with no `warp up`, `nc_session`
+(`src/cli/cmd/warp/up.rs`) gave its only handle of the session to `podnet::warp::proxy::dial`, which drops it when it
+returns, so a TCP pipe ended with "the stack is shut down" (the UDP branch had the same defect, fixed for T-332).
+`nc_session` now keeps the session until the pipe ends.
 
 ## Done
 
@@ -315,6 +315,13 @@ second run loads), `warp_stand_in_status_reads_the_account_of_the_saved_device`,
 `warp_stand_in_rotate_enrols_a_new_key_for_the_same_device` (one PATCH, no POST),
 `warp_stand_in_delete_removes_the_device_and_the_file`, `warp_stand_in_register_names_the_limit_of_new_devices` (HTTP
 429, no file).
+
+2026-11-13, step 2 and the plant, commit WARPSTEP2. `tests/warp_stand_in.rs`, module `through_the_edge`, runs the binary with
+`--masque-endpoint` at the edge of `tests/warp_edge` and the pin from the API stand-in:
+`warp_stand_in_proxy_carries_a_socks5_connect_through_the_edge`, `warp_stand_in_forward_carries_a_local_port_through_the_edge`,
+`warp_stand_in_nc_pipes_tcp_and_udp_through_the_edge` (it failed before the fix of `nc_session`: "the stack is shut
+down"), and the plant `warp_stand_in_proxy_refuses_an_edge_with_another_key` (the record pins the key of another edge;
+no CONNECT goes through). `cargo test --test warp_stand_in`: 10 passed, three runs in a row.
 
 # T-013: A daily check that the record's list of GitHub numbers agrees with GitHub
 

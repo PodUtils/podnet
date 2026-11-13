@@ -37,8 +37,7 @@ Finish each entry, close it in place, change this page in the same commit, then 
 one. In a milestone: P1, then P2, then P3. At one priority, an S entry goes first when it does
 not wait for a larger one.
 
-1. **M0, the record and the guards:** T-012 (partial: the account commands are tested; left: the tests of `warp proxy`,
-   `forward`, `nc` and `shell` over the edge stand-in, after its move out of `#[cfg(test)]`).
+1. **M0, the record and the guards:** T-012 (partial: only the test of `warp shell` is left; it needs `warp up` over the edge stand-in).
 2. **M1, the rename:** done (the public image was measured on 2026-11-11).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
