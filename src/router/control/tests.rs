@@ -499,3 +499,34 @@ async fn two_warp_identities_keep_their_counters() {
     assert!(b >= 10_000, "b: {b}");
     assert_eq!(world.api.devices(), 2, "no new device");
 }
+
+/// T-101: when the front door of a WARP member stops answering, the probe
+/// of the member is a clean miss, so that a passed control takes the member
+/// `Down` (the tests of the tracker). A miss that is not clean would keep it
+/// in `Cooldown`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn router_probe_of_a_warp_member_with_a_stopped_door_is_a_clean_miss() {
+    crate::test_host::need_loopback!();
+    let world = crate::networks::warp_tests::world().await;
+    let dir = tempfile::tempdir().unwrap();
+    let router = warp_router(&world, &dir.path().join("state"), "");
+    router
+        .control
+        .renew_for_health("w")
+        .await
+        .expect("the first link");
+    let target: crate::network::Target = "203.0.113.9:80".parse().unwrap();
+    let up = crate::network::probe(&router.ways["w"], &target, Duration::from_secs(10)).await;
+    assert!(matches!(up, crate::network::ProbeResult::Ok(_)), "{up:?}");
+    world.edge.stop();
+    // The first probe can still meet the old session as it ends.
+    let mut last = None;
+    for _ in 0..3 {
+        last =
+            Some(crate::network::probe(&router.ways["w"], &target, Duration::from_secs(5)).await);
+    }
+    assert_eq!(
+        last,
+        Some(crate::network::ProbeResult::ConnectFailed { clean: true })
+    );
+}

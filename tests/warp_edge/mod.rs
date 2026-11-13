@@ -323,6 +323,13 @@ impl Edge {
         }
     }
 
+    /// Stop the stand-in: it accepts no new connection (a connect gets a
+    /// refusal), and each session that it serves ends.
+    pub fn stop(&self) {
+        self.task.abort();
+        self.end_sessions();
+    }
+
     /// The `PUBLIC KEY` PEM of the key that the stand-in shows last.
     pub fn pem(&self) -> String {
         pod_warp::der::pem(&self.shown.last().spki(), "PUBLIC KEY")

@@ -1153,7 +1153,7 @@ jobs:
           for door in 18301 18302 18303; do
             got=$(trace $door)
             echo "door $door: ${got:-no answer}"
-            [ -n "$got" ] || { target/release/podnet logs router 2>&1 | tail -30; exit 1; }
+            [ -n "$got" ] || { target/release/podnet logs router 2>&1 | sed -E 's/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|t\.[0-9a-f-]{8,}/<id>/g' | tail -30; exit 1; }
           done
           i=0
           until [ "$(health w)" = up ]; do
@@ -1168,7 +1168,10 @@ jobs:
           i=0
           until [ "$(health w)" = down ]; do
             i=$((i + 1))
+            echo "after $(( i * 5 )) s: w $(health w), r $(health r)"
             if [ "$i" -gt 18 ]; then
+              echo "the log of the router:"
+              target/release/podnet logs router 2>&1 | sed -E 's/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|t\.[0-9a-f-]{8,}/<id>/g' | tail -40 || true
               target/release/podnet route --status "unix:$RUNNER_TEMP/router.ctl"
               echo "the connections of the router on port 443 now:"
               sudo ss -Htunp "( dport = :443 )" | grep -F 'podnet' | awk '{print $1, $2, $6}' | sort | uniq -c || true

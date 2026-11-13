@@ -1431,6 +1431,13 @@ passes with no session. Read, not measured: the probe, the egress check and `Liv
 `pod-core` gives a refused connect the class `Unavailable` (a clean miss). Next: a test on the edge stand-in (a router
 with `w`, then the edge stops; `probe_round` must take `w` to `Down`), before a new live run.
 
+2026-11-13, measured on the edge stand-in (`router_probe_of_a_warp_member_with_a_stopped_door_is_a_clean_miss`, with a new
+`Edge::stop` in `tests/warp_edge/mod.rs`): when the door stops, the probe of `w` is a clean miss within 1 ms, and a
+renewal returns at once (1.7 ms). The stand-in does not give the live result (`w up` 90 s after the block, so no miss
+reached the tracker). A change of `LiveDial::session` (the last failure for each class) was tried and dropped: the test
+passed with and without it. The live step now prints the health of `w` and `r` after each 5 s and, on a failure, the log
+of the router (ids masked), so that the next run shows the cause.
+
 
 # T-102: Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole`
 
