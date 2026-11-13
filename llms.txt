@@ -1,6 +1,6 @@
 # podnet
 
-> Bring your own network to hosts with strong network limits: tunnels, WARP, pods, router, relays, virtual networks and file serving. Version 0.4.0-beta.8.
+> Bring your own network to hosts with strong network limits: tunnels, WARP, pods, router, relays, virtual networks and file serving. Version 0.4.0-beta.9.
 
 podnet is one static binary that brings its own network to hosts with strong network limits: no root, no TUN device, no network namespace, no UDP, no AF_INET bind, or only TCP 443 out.
 To publish a local service: Cloudflare quick and named tunnels (tunnel, expose), SSH forward relays (ssh-relay), the file server (serve), file transfer (share) and git hosting (git serve). To reach out: the Cloudflare WARP client with no root (warp, agent), the relay (relay, connect), forwards (forward) and the router with networks, groups, policies and a kernel mode (route). To contain programs: pods (pod) and virtual networks (net). To check and keep it running: doctor, bench, status, the background runs (--detach, ps, logs, stop, autostart) and update.

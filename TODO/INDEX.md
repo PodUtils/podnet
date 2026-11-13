@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**330 entries: 48 open, 21 partial, 30 blocked, 231 done.**
+**331 entries: 49 open, 21 partial, 30 blocked, 231 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
-| P2 | 19 | 8 | 11 | 129 | 167 |
+| P2 | 20 | 8 | 11 | 129 | 168 |
 | P3 | 29 | 12 | 17 | 74 | 132 |
-| **All** | 48 | 21 | 30 | 231 | 330 |
+| **All** | 49 | 21 | 30 | 231 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -376,3 +376,4 @@ M8 Overlays, M9 Later.
 | [T-328](services.md) | P3 | S | M6 | feature | blocked | Router: rules by port, also on the loopback (N-2) |
 | [T-329](services.md) | P3 | M | M6 | feature | open | `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3) |
 | [T-330](pods.md) | P3 | S | M7 | feature | done | `podnet pod --report FILE`: a JSON report of the backend and the hold (N-5) |
+| [T-331](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.9`: the dry run, the publish and the release proofs |

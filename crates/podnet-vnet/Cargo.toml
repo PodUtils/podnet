@@ -19,8 +19,8 @@ name = "podnet_vnet"
 path = "src/lib.rs"
 
 [dependencies]
-podnet-core = { path = "../podnet-core", version = "0.4.0-beta.8" }
-podnet-netns = { path = "../podnet-netns", version = "0.4.0-beta.8" }
+podnet-core = { path = "../podnet-core", version = "0.4.0-beta.9" }
+podnet-netns = { path = "../podnet-netns", version = "0.4.0-beta.9" }
 anyhow = "1"
 # The keys of a wg-quick file (T-116). The root crate has the same version.
 base64 = "0.23"

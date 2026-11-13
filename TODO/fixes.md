@@ -5433,3 +5433,45 @@ cargo deny --locked check advisories bans sources
 ## Blocker
 
 Each russh release up to 0.65.1 pins `rsa = "=0.10.0-rc.18"`. A russh release that takes `rsa` 0.10.0 ends the block.
+
+# T-331: Publish `v0.4.0-beta.9`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md` (Releases, 2026-11-09): cut the next prerelease when a batch of fixes is green;
+`docs/maintenance.md`, section "Release".
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The work after `v0.4.0-beta.8` (T-268, T-285 to T-288, T-291, T-293, T-306, T-308, T-310, T-320, T-327, T-330, and
+the takes of podcrates v0.34.0 to v0.36.0) is on `main` only.
+
+## Premise
+
+- `v0.4.0-beta.8` is the newest release (T-325). `ci`, `live` and `deny` passed on 4f79aa6.
+- The release adds a file: `pod-report.schema.json` (T-330).
+
+## Approach
+
+1. Set the version `0.4.0-beta.9` in `Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, and regenerate the llms files.
+2. Write `docs/releases/v0.4.0-beta.9.md`, with `## Breaking`.
+3. Push, and wait until `ci`, `live` and `deny` pass on that commit.
+4. Dispatch `release.yml` on `main` with `publish` empty (the dry run), then with
+   `publish=v0.4.0-beta.9`.
+5. Check the files of the release (with `pod-report.schema.json`) and `release-proofs.yml`.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next
+prerelease unattended when a batch is green.
+
+## Prove
+
+```sh
+cargo test -p podnet --test docs
+sh scripts/agent/check.sh
+```
