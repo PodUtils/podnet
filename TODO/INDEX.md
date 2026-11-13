@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 32 open, 21 partial, 41 blocked, 237 done.**
+**331 entries: 31 open, 21 partial, 41 blocked, 238 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 18 | 9 | 11 | 130 | 168 |
-| P3 | 14 | 11 | 28 | 79 | 132 |
-| **All** | 32 | 21 | 41 | 237 | 331 |
+| P3 | 13 | 11 | 28 | 80 | 132 |
+| **All** | 31 | 21 | 41 | 238 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -335,7 +335,7 @@ M8 Overlays, M9 Later.
 | [T-287](link.md) | P3 | L | M9 | feature | partial | link: multi-hop forwarding of a session stream (GitHub #470) |
 | [T-288](link.md) | P3 | M | M9 | feature | done | link: load balancing across link groups (GitHub #470) |
 | [T-289](link.md) | P3 | M | M9 | feature | done | link: the local topology and the status view of a mesh (GitHub #470) |
-| [T-290](link.md) | P3 | M | M9 | feature | open | link: per-hop access control for services and forwarding (GitHub #470) |
+| [T-290](link.md) | P3 | M | M9 | feature | done | link: per-hop access control for services and forwarding (GitHub #470) |
 | [T-291](link.md) | P3 | M | M9 | feature | partial | link: a SOCKS5 service at a peer (GitHub #471) |
 | [T-292](link.md) | P3 | M | M9 | feature | done | link: an HTTP forward proxy service at a peer (GitHub #471) |
 | [T-293](link.md) | P3 | S | M9 | feature | done | link: a raw passthrough service at a peer (GitHub #471) |

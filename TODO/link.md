@@ -1534,7 +1534,7 @@ Not proven: the carriers other than unix; a view of a node with 4096 origins (th
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1566,6 +1566,17 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-261 and T-287 are done.
+
+## Correction
+
+2026-11-13: the default of the grant. A bare key keeps the old behaviour: every service, and forwarding, so no allow-list file breaks. A key with the option `services=NAME,...` (or `*`) or `forward=yes|no` is restricted: what it does not name is denied (no `services=` means no service, no `forward=` means no forwarding). The first line that admits a key is its grant. A word after the key that is not an option stays a comment. The answer byte for a refused stream is 6 (`FORBIDDEN`); the opener exits 77.
+
+## Done
+
+2026-11-13, commit 9ddeb34. `src/identity.rs`: `Grant` (`open`, `closed`, `allows_service`, `may_forward`), the options `services=` and `forward=` in `AllowList::parse`, `AllowList::grant(&PublicKey)`, `MAX_SERVICES` (64; the limit of 4096 entries is unchanged). `src/link_service.rs`: `FORBIDDEN` (6). `src/link_forward.rs`: `accept_with(mesh, stream, may_forward, refused)` and `ForwardError::Forbidden`; `accept` is `accept_with` with forwarding allowed. `src/cli/cmd/link/listen.rs`: one decision for each `OPEN` in `bridge` (the service of the peer; the forward flag for a stream that goes to another node; the announce stream is never refused). `src/link_announce.rs`: `serve_streams_with` (the dialer checks the grant of its listener). `src/link_ctl.rs`: the counters `refused_service` and `refused_forward` in each row of `status`; `link status` prints them. `docs/link.md`, the help of `--allow`, `llms-full.txt` updated.
+`cargo test --test mesh_acl`: 3 passed: `a_peer_allowed_raw_only_cannot_open_socks5` (exit 77, counted, the link stays up, a bare key with a comment word opens socks5), `a_peer_without_forward_cannot_forward_and_the_link_stays_up` (A - B - C: refused with 6, `refused_forward` 1, the A-B link serves raw after it; a peer with `forward=yes` is relayed to C), `the_limits_and_the_old_form_of_the_file` (64 and 65 services, 4096 and 4097 entries, bad options, old forms). With `grant_of` forced to the open grant, the 3 tests failed. `sh scripts/agent/check.sh`: fmt (after `cargo fmt`), clippy, record, size, doc, layers and test 0.
+Not proven: the carriers other than unix; the view `link mesh` does not show the counters; the `dump` of T-309 (src/link_ctl/dump.rs, not edited here) has no total of the refusals; a `forward` check at the destination for a stream that a relay opened (the last hop checks the service of its neighbour, by design); a dialer refuses with the grant of `--peer` only for a stream of `--announce` relays.
+
 
 # T-291: link: a SOCKS5 service at a peer (GitHub #471)
 
