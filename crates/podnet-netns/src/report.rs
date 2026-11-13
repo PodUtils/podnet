@@ -98,6 +98,13 @@ impl Report {
                 crate::doctor::NETNS_NOT_HELD,
                 Some(NETNS_UDP_LIMIT),
             ),
+            // T-153: the namespace holds the program as in `netns`; the
+            // path has no MTU of 1500.
+            Some(BackendKind::NetnsKernel) => (
+                Hold::of(true, false).netns,
+                crate::doctor::NETNS_NOT_HELD,
+                None,
+            ),
             Some(BackendKind::Seccomp) => (
                 Hold::of(false, true).seccomp,
                 crate::doctor::SECCOMP_NOT_HELD,
@@ -107,6 +114,7 @@ impl Report {
         };
         let backend = match state.backend {
             Some(BackendKind::Netns) => Some("netns"),
+            Some(BackendKind::NetnsKernel) => Some("netns-kernel"),
             Some(BackendKind::Seccomp) => Some("seccomp"),
             _ => None,
         };

@@ -915,7 +915,7 @@ an issue there; then set this entry to done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -960,6 +960,19 @@ namespace (not a backend) fail  the uid and gid maps: Permission denied (os erro
 namespace, as it does for the netns backend. A netfilter plane thus works only where the netns backend works, and
 gives speed only (no smoltcp on the hot path), not a new host. The entry stays parked, beside the flow table of T-111.
 Revisit when a measure shows the netns backend too slow on a target host.
+
+2026-11-13, the lead: the goal of the owner (close each issue except the deferred ones) takes the parked option. The
+backend is an opt-in `--backend netns-kernel`, never in the `auto` order: the flow table of the netns backend stays the
+default, as the Decision says.
+
+## Done
+
+2026-11-13, commit 429790c (the work of the handoff, rebased on a48d3e7). `--backend netns-kernel`: in the child, the
+nfnetlink client (`crates/podnet-netns/src/nfnl.rs`, `nfrules.rs`) installs `nat OUTPUT REDIRECT` rules for TCP, UDP and
+DNS; the child makes the listeners and sends them to the parent; the parent serves each flow with `connect_upstream`
+(`kernel.rs`, `kernel_serve.rs`). `pod doctor` and the README of `podnet-netns` name the backend. `cargo test --test
+pod_netns_kernel`: 6 passed, on a host that runs the netns backend (no skip line). `cargo clippy --workspace
+--all-targets -- -D warnings`: clean.
 
 # T-165: The SSH forward-relay leg: supervise the session after `run()` returns (GitHub #362)
 

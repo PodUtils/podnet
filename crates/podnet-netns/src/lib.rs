@@ -4,12 +4,16 @@
 //! The kernel enforces the redirection, so static binaries, Go binaries and
 //! programs that do not use libc `connect(3)` get the same treatment.
 //!
-//! Two backends are available:
+//! Three backends are available:
 //!
 //! * `netns`: the child gets a new user and network namespace. A TUN device is
 //!   its only interface (a veth pair when the namespace cannot open
 //!   `/dev/net/tun`). A `smoltcp` stack on the host side sends each flow to
 //!   the upstream proxy. This backend needs unprivileged user namespaces.
+//! * `netns-kernel` (opt in; `auto` does not take it): the same namespace,
+//!   with `nat OUTPUT REDIRECT` rules of the kernel as the data plane. The
+//!   parent serves the listeners that the child made in the namespace. No
+//!   TUN and no `smoltcp`. See `kernel`.
 //! * `seccomp`: a `SECCOMP_RET_USER_NOTIF` filter stops the socket system
 //!   calls of the child. The supervisor answers them and gives the child
 //!   connected descriptors with `SECCOMP_IOCTL_NOTIF_ADDFD`. This backend needs
@@ -53,9 +57,13 @@ mod frontdoor;
 mod handoff;
 mod icmp;
 mod inbox;
+mod kernel;
+mod kernel_serve;
 mod learn;
 mod netns;
+mod nfnl;
 mod nfprobe;
+mod nfrules;
 mod outlive;
 mod recvmmsg;
 mod report;
@@ -195,7 +203,9 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
     }
     warn_unreachable(&args.proxies);
     // Inbound listeners exist on the seccomp backend only (issue 69).
-    if args.inbound_dir_given && matches!(args.backend, BackendKind::Netns) {
+    if args.inbound_dir_given
+        && matches!(args.backend, BackendKind::Netns | BackendKind::NetnsKernel)
+    {
         return report.fail(USAGE, "--inbound-dir works with --backend seccomp only");
     }
     let warn_inbound = |backend: &str| {
@@ -211,6 +221,20 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
         report.backend(BackendKind::Netns, reason);
         run(args)
     };
+    // T-153: opt in only. `auto` never takes it: the flow table of the netns
+    // backend stays the default.
+    let netns_kernel = |args: Args, reason: &str| {
+        name_the_backend(name_backend, BackendKind::NetnsKernel, reason);
+        let probe = nfprobe::probe_netfilter();
+        if !probe.ok {
+            bail!(
+                "the netns-kernel backend cannot run here ({}); use --backend netns",
+                probe.detail
+            );
+        }
+        report.backend(BackendKind::NetnsKernel, reason);
+        kernel::run(args)
+    };
     let seccomp = |args: Args, reason: &str| {
         name_the_backend(name_backend, BackendKind::Seccomp, reason);
         // T-231: with no read of the memory of the program, the pod sees no
@@ -221,6 +245,7 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
     };
     let result = match args.backend {
         BackendKind::Netns => netns(args, "--backend netns"),
+        BackendKind::NetnsKernel => netns_kernel(args, "--backend netns-kernel"),
         BackendKind::Seccomp => seccomp(args, "--backend seccomp"),
         BackendKind::Auto if args.prefer_udp && doctor::probe_seccomp_notif().ok => {
             seccomp(args, "auto with --prefer-udp takes seccomp first")
@@ -330,6 +355,7 @@ pub(crate) fn warn(text: &str) {
 fn backend_line(kind: BackendKind) -> &'static str {
     match kind {
         BackendKind::Seccomp => "seccomp backend: socket options and addresses are emulated; use --backend netns when a program fails",
+        BackendKind::NetnsKernel => "netns-kernel backend: IPv4 TCP and UDP only; the program has the loopback and no other interface, a destination on 127.0.0.0/8 stays in the pod, and a ping of another address is answered by the pod; use --backend netns when a program needs more",
         _ => "netns backend: a loopback listener of the program is not seen from outside, and a UDP datagram larger than 1500 bytes does not go through; use --backend seccomp when a program needs them",
     }
 }

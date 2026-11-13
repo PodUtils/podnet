@@ -29,7 +29,7 @@ podnet pod doctor --json
 | `--fail-on-violation FILE` | Read a file of `--learn`. The pod refuses each destination that is not in `FILE`, as a `reject` rule does (the rule name is `not-learned`). A destination of `FILE` that a rule refuses is also a violation. At the exit of the program, the pod writes each violation on stderr. When the program exits 0 and a violation occurred, the exit status is 4. A bad line in `FILE` is a usage error (exit 64). Not with `--serve`. |
 | `--flow-budget N` | Seccomp backend: the most sockets of the program that the pod tracks at one time (64 to 1048576). A `socket` call above it gets `EMFILE`. The default comes from `RLIMIT_NOFILE`: the supervisor raises its soft limit to the hard limit after the start of the program (the program keeps its limit), takes 64 descriptors as a reserve and two descriptors for each socket, and stops at 65536. `pod doctor` shows the default. A budget above the default gives a warning. The netns backend does not use it. |
 | `--map NAME=ADDR` | Resolve `NAME` to `ADDR`, with no upstream. |
-| `--backend NAME` | `auto` (default), `netns` or `seccomp`. |
+| `--backend NAME` | `auto` (default), `netns`, `netns-kernel` or `seccomp`. `auto` never takes `netns-kernel`. |
 | `--prefer-udp` | With `auto`: `seccomp` first when it works, because it carries UDP datagrams of each size (`netns` carries a datagram of 1500 bytes at most). `podnet warp run` sets it. |
 | `--host-gateway` | Netns backend: a TCP connect to the gateway of the pod (`10.66.255.254`) and a port goes to `127.0.0.1` and that port on the host, and a UDP datagram to the gateway (not port 53) goes from a UDP socket of the host. Off by default: the connect gets a RST, and the datagram is dropped. |
 | `--session DIR` | Seccomp backend: the pods of DIR share the inbound listeners (`DIR/inbound`, unless `--inbound-dir`) and the fake DNS table (`DIR/dns`, one line `ADDRESS NAME` for each fake address, under `flock`). A name thus gets the same address in each pod of DIR. The netns backend does not use it. `podnet warp exec --detach` and `--join` set it. |
@@ -52,13 +52,42 @@ backend can run. The seccomp probe runs in a child process. It sets
 `no_new_privs` before it installs its filter, as the backend does: an
 unprivileged process cannot install the filter without it.
 
-The row `netfilter in a namespace (not a backend)` is a measure (T-152). No
-backend uses it. In a child process, in a new user and network namespace,
+The row `netfilter in a namespace` is the probe of the `netns-kernel` backend
+(T-152, T-153). In a child process, in a new user and network namespace,
 the probe adds an nftables table, a `nat` chain of the output hook and the
 rule `tcp dport 80 redirect to :9999` through nfnetlink. Then it reads
 `SO_ORIGINAL_DST` of a redirected loopback connection and finds the
 conntrack entry of a UDP datagram through ctnetlink. The row names the
-first step that fails, with its error.
+first step that fails, with its error. `pod doctor` prints the verdict of the
+backend, and `--json` has `backend_netns_kernel`.
+
+## The `netns-kernel` backend
+
+`--backend netns-kernel` is the `netns` backend with the netfilter of its
+own namespace as the data plane. `auto` does not take it. The child makes
+the namespace, brings `lo` up, adds the route `local default dev lo` (each
+IPv4 address is local, so `connect` passes the route lookup), installs one
+`nat` chain of the output hook, and makes three listeners on `lo`: TCP, UDP
+and DNS. The rules (source: `src/nfrules.rs`):
+
+1. `udp dport 53 redirect to :DNS`
+2. `ip daddr != 127.0.0.0/8 tcp redirect to :TCP`
+3. `ip daddr != 127.0.0.0/8 udp redirect to :UDP`
+
+The child sends the listeners and its netfilter socket to the parent over
+the `SCM_RIGHTS` pair, then starts the program (under the reaper, as in
+`netns`). The parent serves each TCP connection (`SO_ORIGINAL_DST` gives
+the target; `connect_upstream_async` and the rules dial the upstream), each
+DNS query (the fake-IP pool of the pod) and each UDP flow (one flow for
+each client address; the conntrack entry of the client gives the original
+destination, and a reply leaves from the redirect port, which conntrack
+turns into the address that the program sent to). Limits: IPv4 only;
+a destination on `127.0.0.0/8` stays in the pod; `--host-gateway`,
+`--inbound-dir` and `--session` do not apply; a ping of another address is
+answered by the pod (ICMP cannot be redirected), and `ping_group_range` of
+the namespace is the mapped group. The backend needs the same host as
+`netns`: a user namespace and, in it, `nf_tables`, `nf_nat` and conntrack.
+Test: `cargo test --test pod_netns_kernel`.
 
 The rows `hold netns` and `hold seccomp`, and the object `hold` of
 `--json`, give the hold of each backend on this host (T-230). The object

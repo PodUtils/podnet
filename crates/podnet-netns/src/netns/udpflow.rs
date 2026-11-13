@@ -128,6 +128,17 @@ impl UdpFlows {
         }
     }
 
+    /// The next reply of a flow that is still open (the `netns-kernel`
+    /// backend, T-153): the key of the flow and the payload.
+    pub(crate) async fn next_reply(&mut self) -> Option<(UdpKey, Vec<u8>)> {
+        loop {
+            let (key, payload) = self.replies.recv().await?;
+            if self.table.touch(&key, Instant::now()).is_some() {
+                return Some((key, payload));
+            }
+        }
+    }
+
     /// True when a datagram waits for a full queue: the stack does not read
     /// the TUN.
     pub(crate) fn paused(&self) -> bool {
@@ -261,7 +272,7 @@ impl UdpFlows {
 
     /// Give `payload` to the flow of `key`; make the flow when it does not
     /// exist. `Err(payload)` when the queue of the flow is full.
-    fn give(
+    pub(crate) fn give(
         &mut self,
         key: UdpKey,
         payload: Vec<u8>,

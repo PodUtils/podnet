@@ -20,15 +20,14 @@ bring `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`.
 
 ## Unfinished work (not on `main`)
 
-Two worktree agents stopped when the session ended. Their changes are in `docs/handoff/`, each as a patch against the
+Worktree agents stopped when the session ended. Their changes are in `docs/handoff/`, each as a patch against the
 commit it started from. The code is not checked. To go on: `git apply -3 docs/handoff/wip-NAME.patch` on a new local
 branch from that commit, rebase on `main`, finish the entries, run `sh scripts/agent/check.sh`, then merge and push.
-Remove `docs/handoff/` when both are merged or dropped.
+Remove `docs/handoff/` when each patch is merged or dropped. T-153 (`wip-153.patch`) is merged.
 
 | Patch | Base | Entries | State |
 | --- | --- | --- | --- |
 | `wip-warprouter.patch` | 0ed85c6 | T-097, T-180, T-099, T-061 (the WARP parts of the router on `pod-warp`) | code in progress; the docs were next; no record commit |
-| `wip-153.patch` | ecbd88b | T-153 (`--backend netns-kernel`, netfilter in the namespace, GitHub #352) | code in progress; the record entry was next |
 
 Not started: the rest of T-287 (a test with three podnet processes) and of T-301 (RESUME inside the session resume of
 T-263). A worktree brief for them is in the record (their Corrections).

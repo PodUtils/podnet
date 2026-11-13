@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**333 entries: 28 open, 18 partial, 33 blocked, 254 done.**
+**333 entries: 27 open, 18 partial, 33 blocked, 255 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 2 | 1 | 2 | 27 | 32 |
 | P2 | 15 | 7 | 11 | 135 | 168 |
-| P3 | 11 | 10 | 20 | 91 | 132 |
-| **All** | 28 | 18 | 33 | 254 | 333 |
+| P3 | 10 | 10 | 20 | 92 | 132 |
+| **All** | 27 | 18 | 33 | 255 | 333 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -198,7 +198,7 @@ M8 Overlays, M9 Later.
 | [T-150](pods.md) | P3 | S | M7 | feature | done | seccomp: an accepted inbound connection goes to the program with no relay (GitHub #351) |
 | [T-151](pods.md) | P3 | M | M7 | measurement | done | seccomp: measure the relay throughput, then replace the copy with splice (GitHub #351) |
 | [T-152](pods.md) | P3 | S | M7 | research | done | netns: measure in-namespace netfilter on the target hosts (GitHub #352) |
-| [T-153](later.md) | P3 | L | M9 | feature | open | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
+| [T-153](later.md) | P3 | L | M9 | feature | done | netns: a backend with an in-namespace netfilter data plane (GitHub #352) |
 | [T-154](fixes.md) | P2 | M | M5 | chore | done | seccomp: fuzz targets for the notification handlers (GitHub #353) |
 | [T-155](fixes.md) | P3 | M | M5 | chore | done | seccomp: a differential check of the socket calls against the host kernel (GitHub #353) |
 | [T-156](pods.md) | P2 | M | M7 | feature | done | pod: a `reject` action in `-r`, for TCP and for datagrams (GitHub #354) |

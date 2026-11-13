@@ -7,6 +7,8 @@ use crate::prelude::*;
 pub(crate) enum BackendKind {
     Auto,
     Netns,
+    /// The netns backend with netfilter as the data plane (T-153).
+    NetnsKernel,
     Seccomp,
 }
 
@@ -171,10 +173,14 @@ Options:
       --keep-proxy-env     Keep HTTPS_PROXY, HTTP_PROXY, ALL_PROXY and NO_PROXY
                            (and the lower-case forms) for the program; by
                            default the program does not get them
-      --backend <NAME>     auto (default), netns or seccomp. With netns, a
-                           listener of the program is in the network of the
-                           pod: a loopback TCP listener is not seen from
-                           outside; use a unix socket (connect -L unix:///PATH)
+      --backend <NAME>     auto (default), netns, netns-kernel or seccomp.
+                           With netns, a listener of the program is in the
+                           network of the pod: a loopback TCP listener is not
+                           seen from outside; use a unix socket (connect -L
+                           unix:///PATH). netns-kernel is the netns backend
+                           with the netfilter of the namespace as its data
+                           plane (no TUN, no stack): IPv4 TCP and UDP, never
+                           chosen by auto; pod doctor shows if it works
       --prefer-udp         With auto: seccomp first when it works (UDP
                            datagrams of any size go through; netns carries
                            a datagram of 1500 bytes at most)
@@ -405,8 +411,11 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
                 backend = match value.as_str() {
                     "auto" => BackendKind::Auto,
                     "netns" => BackendKind::Netns,
+                    "netns-kernel" => BackendKind::NetnsKernel,
                     "seccomp" => BackendKind::Seccomp,
-                    other => bail!("unknown backend {other:?} (auto, netns, seccomp)"),
+                    other => {
+                        bail!("unknown backend {other:?} (auto, netns, netns-kernel, seccomp)")
+                    }
                 };
                 i += 2;
             }

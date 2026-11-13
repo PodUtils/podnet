@@ -2,7 +2,8 @@
 //! privilege on the host use netfilter in its own user and network
 //! namespace? This is the data plane of the issue (GitHub #352): `nat
 //! OUTPUT REDIRECT` rules, `SO_ORIGINAL_DST` for TCP and conntrack for UDP.
-//! The pod does not use it; `pod doctor` shows the row.
+//! The `netns-kernel` backend (T-153) uses it; `pod doctor` shows the row
+//! and the verdict of the backend.
 //!
 //! In a forked child: `unshare(CLONE_NEWUSER | CLONE_NEWNET)`, the uid and
 //! gid maps, `lo` up; then through nfnetlink a table, a chain `type nat hook
@@ -11,31 +12,9 @@
 //! UDP datagram to 127.0.0.1:5353 and a ctnetlink dump that finds its
 //! entry. The parent builds each message: the child does not allocate.
 
+use crate::nfnl::*;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 
-const NETLINK_NETFILTER: i32 = 12;
-const NFNL_SUBSYS_CTNETLINK: u16 = 1;
-const NFNL_SUBSYS_NFTABLES: u16 = 10;
-const NFNL_MSG_BATCH_BEGIN: u16 = 0x10;
-const NFNL_MSG_BATCH_END: u16 = 0x11;
-const NFT_MSG_NEWTABLE: u16 = 0;
-const NFT_MSG_NEWCHAIN: u16 = 3;
-const NFT_MSG_NEWRULE: u16 = 6;
-const IPCTNL_MSG_CT_GET: u16 = 1;
-const NLM_F_REQUEST: u16 = 0x1;
-const NLM_F_ACK: u16 = 0x4;
-const NLM_F_DUMP: u16 = 0x300;
-const NLM_F_CREATE: u16 = 0x400;
-const NLM_F_APPEND: u16 = 0x800;
-const NLMSG_ERROR: u16 = 2;
-const NLMSG_DONE: u16 = 3;
-const NLA_F_NESTED: u16 = 0x8000;
-const NFPROTO_IPV4: u8 = 2;
-const NF_INET_LOCAL_OUT: u32 = 3;
-const NFT_REG_1: u32 = 1;
-const NFT_META_L4PROTO: u32 = 16;
-const NFT_PAYLOAD_TRANSPORT_HEADER: u32 = 2;
-const SO_ORIGINAL_DST: i32 = 80;
 /// The ports of the probe.
 const PORT_FROM: u16 = 80;
 const PORT_TO: u16 = 9999;
@@ -46,91 +25,6 @@ const SEQ_TABLE: u32 = 1;
 const SEQ_CHAIN: u32 = 2;
 const SEQ_RULE: u32 = 3;
 const SEQ_DUMP: u32 = 10;
-
-/// The netlink messages of a probe, built before the fork.
-struct Builder {
-    buf: Vec<u8>,
-    start: usize,
-    nests: Vec<usize>,
-}
-
-impl Builder {
-    fn new() -> Self {
-        Builder {
-            buf: Vec::new(),
-            start: 0,
-            nests: Vec::new(),
-        }
-    }
-
-    /// Start a message: the header and the `nfgenmsg`.
-    fn msg(&mut self, ty: u16, flags: u16, seq: u32, family: u8, res_id: u16) {
-        self.start = self.buf.len();
-        self.buf.extend_from_slice(&0u32.to_ne_bytes());
-        self.buf.extend_from_slice(&ty.to_ne_bytes());
-        self.buf.extend_from_slice(&flags.to_ne_bytes());
-        self.buf.extend_from_slice(&seq.to_ne_bytes());
-        self.buf.extend_from_slice(&0u32.to_ne_bytes());
-        self.buf.extend_from_slice(&[family, 0]);
-        self.buf.extend_from_slice(&res_id.to_be_bytes());
-    }
-
-    fn end_msg(&mut self) {
-        let len = (self.buf.len() - self.start) as u32;
-        self.buf[self.start..self.start + 4].copy_from_slice(&len.to_ne_bytes());
-    }
-
-    fn attr(&mut self, ty: u16, data: &[u8]) {
-        self.buf
-            .extend_from_slice(&((4 + data.len()) as u16).to_ne_bytes());
-        self.buf.extend_from_slice(&ty.to_ne_bytes());
-        self.buf.extend_from_slice(data);
-        while !self.buf.len().is_multiple_of(4) {
-            self.buf.push(0);
-        }
-    }
-
-    fn text(&mut self, ty: u16, text: &str) {
-        let mut data = text.as_bytes().to_vec();
-        data.push(0);
-        self.attr(ty, &data);
-    }
-
-    fn be32(&mut self, ty: u16, value: u32) {
-        self.attr(ty, &value.to_be_bytes());
-    }
-
-    fn nest(&mut self, ty: u16) {
-        self.nests.push(self.buf.len());
-        self.buf.extend_from_slice(&0u16.to_ne_bytes());
-        self.buf
-            .extend_from_slice(&(ty | NLA_F_NESTED).to_ne_bytes());
-    }
-
-    fn end_nest(&mut self) {
-        if let Some(at) = self.nests.pop() {
-            let len = (self.buf.len() - at) as u16;
-            self.buf[at..at + 2].copy_from_slice(&len.to_ne_bytes());
-        }
-    }
-
-    /// One expression of a rule: `NFTA_LIST_ELEM { NAME, DATA { body } }`.
-    fn expr(&mut self, name: &str, body: impl FnOnce(&mut Self)) {
-        self.nest(1);
-        self.text(1, name);
-        self.nest(2);
-        body(self);
-        self.end_nest();
-        self.end_nest();
-    }
-
-    /// `NFTA_DATA_VALUE` in a nest of the type `ty`.
-    fn value(&mut self, ty: u16, value: &[u8]) {
-        self.nest(ty);
-        self.attr(1, value);
-        self.end_nest();
-    }
-}
 
 /// The batch: a table, a nat chain of the output hook, and the rule
 /// `meta l4proto tcp tcp dport 80 redirect to :9999`.
@@ -282,10 +176,6 @@ impl Step {
 /// `SO_ORIGINAL_DST`).
 type Outcome = (Step, i32, i32);
 
-fn errno() -> i32 {
-    std::io::Error::last_os_error().raw_os_error().unwrap_or(0)
-}
-
 /// Write `data` to the file `path` (a C string); false on an error.
 fn write_file(path: &std::ffi::CStr, data: &[u8]) -> bool {
     // SAFETY: open, write and close of a path and a buffer that live.
@@ -299,78 +189,6 @@ fn write_file(path: &std::ffi::CStr, data: &[u8]) -> bool {
         n == data.len() as isize
     }
 }
-
-/// Send `msg` on `fd`, then read the answers. With `acks`, wait for the
-/// acknowledgement of each sequence number: return the sequence number and
-/// the errno of the first error. Without, read a dump and count the UDP
-/// entries to `PORT_UDP`.
-fn exchange(fd: i32, msg: &[u8], acks: &[u32]) -> Result<i32, (u32, i32)> {
-    // SAFETY: send of a buffer that lives.
-    if unsafe { libc::send(fd, msg.as_ptr().cast(), msg.len(), 0) } < 0 {
-        return Err((0, errno()));
-    }
-    let mut acked = 0usize;
-    let mut found = 0;
-    let mut buf = [0u8; 16384];
-    loop {
-        // SAFETY: recv into a buffer that lives.
-        let n = unsafe { libc::recv(fd, buf.as_mut_ptr().cast(), buf.len(), 0) };
-        if n <= 0 {
-            return Err((0, if n < 0 { errno() } else { libc::EPROTO }));
-        }
-        let mut at = 0usize;
-        let n = n as usize;
-        while at + 16 <= n {
-            let len = u32::from_ne_bytes(buf[at..at + 4].try_into().unwrap_or([0; 4])) as usize;
-            let ty = u16::from_ne_bytes([buf[at + 4], buf[at + 5]]);
-            let seq = u32::from_ne_bytes(buf[at + 8..at + 12].try_into().unwrap_or([0; 4]));
-            if len < 16 || at + len > n {
-                break;
-            }
-            let body = &buf[at + 16..at + len];
-            match ty {
-                NLMSG_ERROR => {
-                    let error = i32::from_ne_bytes(body[..4].try_into().unwrap_or([0; 4]));
-                    if error != 0 {
-                        return Err((seq, -error));
-                    }
-                    if acks.contains(&seq) {
-                        acked += 1;
-                        if acked == acks.len() {
-                            return Ok(0);
-                        }
-                    }
-                }
-                NLMSG_DONE => return Ok(found),
-                _ if acks.is_empty() && body.len() > 4 && udp_entry_to(&body[4..], PORT_UDP) => {
-                    found += 1;
-                }
-                _ => {}
-            }
-            at += (len + 3) & !3;
-        }
-    }
-}
-
-/// The attributes of `data`: (type without the flags, payload).
-fn attrs(data: &[u8]) -> impl Iterator<Item = (u16, &[u8])> {
-    let mut at = 0usize;
-    std::iter::from_fn(move || {
-        if at + 4 > data.len() {
-            return None;
-        }
-        let len = u16::from_ne_bytes([data[at], data[at + 1]]) as usize;
-        let ty = u16::from_ne_bytes([data[at + 2], data[at + 3]]) & 0x3fff;
-        if len < 4 || at + len > data.len() {
-            return None;
-        }
-        let payload = &data[at + 4..at + len];
-        at += (len + 3) & !3;
-        Some((ty, payload))
-    })
-}
-
-/// True when a conntrack entry has the original tuple UDP to `port`.
 fn udp_entry_to(entry: &[u8], port: u16) -> bool {
     // CTA_TUPLE_ORIG { CTA_TUPLE_PROTO { CTA_PROTO_NUM, CTA_PROTO_DST_PORT } }
     attrs(entry)
@@ -424,7 +242,7 @@ fn child(batch: &[u8], dump: &[u8], maps: &[(&std::ffi::CStr, &[u8])]) -> Outcom
             (&limit as *const libc::timeval).cast(),
             size,
         );
-        if let Err((seq, e)) = exchange(nl, batch, &[SEQ_TABLE, SEQ_CHAIN, SEQ_RULE]) {
+        if let Err((seq, e)) = exchange(nl, batch, &[SEQ_TABLE, SEQ_CHAIN, SEQ_RULE], &mut |_| {}) {
             let step = match seq {
                 SEQ_TABLE => Step::Table,
                 SEQ_CHAIN => Step::Chain,
@@ -472,9 +290,15 @@ fn child(batch: &[u8], dump: &[u8], maps: &[(&std::ffi::CStr, &[u8])]) -> Outcom
             (&dest as *const libc::sockaddr_in).cast(),
             sa,
         );
-        match exchange(nl, dump, &[]) {
-            Ok(n) if n > 0 => (Step::Done, 0, port),
-            Ok(_) => (Step::Conntrack, libc::ENOENT, port),
+        let mut found = 0;
+        let dumped = exchange(nl, dump, &[], &mut |entry| {
+            if udp_entry_to(entry, PORT_UDP) {
+                found += 1;
+            }
+        });
+        match dumped {
+            Ok(()) if found > 0 => (Step::Done, 0, port),
+            Ok(()) => (Step::Conntrack, libc::ENOENT, port),
             Err((_, e)) => (Step::Conntrack, e, port),
         }
     }
@@ -505,7 +329,7 @@ fn describe((step, error, port): Outcome) -> (bool, String) {
 
 /// Run the probe in a forked child.
 pub(crate) fn probe_netfilter() -> crate::doctor::Probe {
-    const NAME: &str = "netfilter in a namespace (not a backend)";
+    const NAME: &str = "netfilter in a namespace";
     let batch = nft_batch();
     let dump = ct_dump();
     // SAFETY: getuid and getgid have no arguments.

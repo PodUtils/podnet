@@ -12,7 +12,7 @@ pub(crate) use backend::*;
 pub(crate) use fdpass::*;
 pub(crate) use packet::*;
 pub(crate) use tun::*;
-pub(crate) use udpflow::{UdpFlows, UdpRoute};
+pub(crate) use udpflow::{UdpFlows, UdpKey, UdpRoute};
 pub(crate) use veth::{create_veth, open_wire};
 
 // ── tunables ────────────────────────────────────────────────────────────────
@@ -247,6 +247,12 @@ pub(crate) fn child_setup(sock: RawFd, args: &Args) -> Result<()> {
         ));
     }
 
+    exec_program(sock, args)
+}
+
+/// Start the program of `args` under the reaper of the namespace, and
+/// report its status on `sock`. Return only on an error.
+pub(crate) fn exec_program(sock: RawFd, args: &Args) -> Result<()> {
     let program = &args.program;
     let path = CString::new(program[0].as_bytes())?;
     let mut argv: Vec<CString> = Vec::with_capacity(program.len() + 1);
@@ -285,7 +291,7 @@ pub(crate) fn child_setup(sock: RawFd, args: &Args) -> Result<()> {
 
 /// In a new mount namespace, put a resolv.conf with the TUN gateway over
 /// /etc/resolv.conf (a bind mount of a file that is then unlinked).
-fn private_resolv_conf() -> Result<()> {
+pub(crate) fn private_resolv_conf() -> Result<()> {
     if unsafe { libc::unshare(libc::CLONE_NEWNS) } != 0 {
         bail!("unshare(CLONE_NEWNS): {}", std::io::Error::last_os_error());
     }

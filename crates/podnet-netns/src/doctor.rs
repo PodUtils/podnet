@@ -392,7 +392,7 @@ pub(crate) fn doctor(json: bool) -> i32 {
         probe_ptrace(),
         probe_seccomp_notif(),
         probe_mem_write(),
-        // T-152: a measure for the netfilter plane; no backend uses it.
+        // T-152, T-153: the netfilter plane of the netns-kernel backend.
         crate::nfprobe::probe_netfilter(),
         probe_mem_read(),
         probe_veth(),
@@ -428,6 +428,7 @@ pub(crate) fn doctor(json: bool) -> i32 {
         );
         root.insert("backend_netns".into(), netns_available.into());
         root.insert("backend_seccomp".into(), seccomp_available.into());
+        root.insert("backend_netns_kernel".into(), probes[6].ok.into());
         root.insert("backend_available".into(), any.into());
         root.insert("flow_budget".into(), budget.json());
         root.insert("hold".into(), hold.json());
@@ -458,6 +459,11 @@ pub(crate) fn doctor(json: bool) -> i32 {
         } else {
             "ok (getsockname/getpeername: fail)"
         }
+    );
+    println!(
+        "{}: backend netns-kernel: {} (--backend netns-kernel only; auto does not take it)",
+        crate::cli::program_name(),
+        verdict(probes[6].ok)
     );
     println!("{}: {}", crate::cli::program_name(), budget.line());
     for line in hold.lines() {

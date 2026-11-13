@@ -114,7 +114,7 @@ reads the document (flags, exit codes, readiness, failure causes).
 
 * `podnet pod doctor [--json]` measures what the host permits for `podnet pod`: `unshare`, `/dev/net/tun`,
   `ptrace`, `seccomp` user notification, memory access of the program, netfilter in a namespace and a
-  veth wire. It says whether the `netns` and the `seccomp` backend can run, the flow budget of the
+  veth wire. It says whether the `netns`, the `netns-kernel` and the `seccomp` backend can run (`backend_netns_kernel` in the JSON), the flow budget of the
   `seccomp` backend, and how much each backend holds. It exits 3 when no backend can run ([pods.md](pods.md)).
 * `podnet net doctor [--json]` probes what the host permits for the virtual network: `bind` and `listen`
   for each socket family, `/dev/net/tun`, `/dev/vsock`, a C compiler for the shims, seccomp and

@@ -15,14 +15,26 @@ podnet pod -- curl https://example.com        # upstream from $ALL_PROXY or $HTT
 podnet pod doctor                             # which backend can run here
 ```
 
-Two backends are available. `--backend auto` (the default) selects one.
+Three backends are available. `--backend auto` (the default) selects `netns` or `seccomp`. `netns-kernel` is opt in.
 
 | Backend | Needs | Mechanism |
 | --- | --- | --- |
 | `netns` | unprivileged user namespaces, and `/dev/net/tun` or a veth pair | The program gets a network namespace. A TUN device (else a veth pair) is its only interface. A userspace TCP/IP stack sends each flow to the upstream. |
+| `netns-kernel` | as `netns`, and `nf_tables` and conntrack in the namespace (`pod doctor` row `netfilter in a namespace`) | The same namespace with `lo` only. `nat OUTPUT REDIRECT` rules of the kernel send each TCP connection, each UDP datagram and each DNS query to listeners that the child makes. The parent serves them. No TUN, no userspace stack. |
 | `seccomp` | seccomp with `SECCOMP_RET_USER_NOTIF` | A seccomp filter stops the socket system calls. The supervisor answers them and gives the program connected descriptors. |
 
-Both backends answer DNS from a fake-IP pool (`198.18.0.0/15`; the
+`--backend netns-kernel` (T-153) is not in the `auto` order: the flow table of the `netns` backend
+stays the default, and the netfilter plane is an option for a host where the userspace stack is too slow.
+It works only where the `netns` backend works (a refused user namespace refuses both). Its limits: IPv4
+only; a destination on `127.0.0.0/8` stays in the pod; `--host-gateway` and `--inbound-dir` do not apply;
+a ping of another address is answered by the pod itself, because an ICMP echo cannot be redirected (the
+child sets `ping_group_range` to its mapped group, so a ping socket opens). The child installs the rules
+after `unshare` and before `exec`, and sends the TCP listener, the UDP socket, the DNS socket and the
+netfilter socket to the parent over the `SCM_RIGHTS` pair. The parent dials each flow with the rules and
+`connect_upstream`, as the other backends do. It reads the original destination of a TCP connection with
+`SO_ORIGINAL_DST`, and of a UDP datagram from the conntrack entry of the client.
+
+The other backends answer DNS from a fake-IP pool (`198.18.0.0/15`; the
 `seccomp` backend answers AAAA from `fd63:6672:7300::/96` too) and send the
 name to the upstream. Thus no DNS query leaves the host. With the `netns`
 backend, `--host-gateway` lets the program reach a service on the loopback
@@ -110,7 +122,7 @@ podnet pod -x socks5://127.0.0.1:1080 \
 
 ## Other options
 
-* `--backend auto|netns|seccomp`; `--prefer-udp` (with `auto`: `seccomp` first when it works, because
+* `--backend auto|netns|netns-kernel|seccomp`; `--prefer-udp` (with `auto`: `seccomp` first when it works, because
   `netns` carries a datagram of 1500 bytes at most); `--name-backend` prints one line on stderr with the
   backend, its limits and the reason of the choice.
 * `--map NAME=ADDR` resolves NAME to ADDR locally (repeatable).

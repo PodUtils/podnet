@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 333 entries: 28 open, 18 partial, 33 blocked, 254 done.
+`TODO/INDEX.md` holds 333 entries: 27 open, 18 partial, 33 blocked, 255 done.
 
 ## State
 
@@ -90,7 +90,6 @@ These entries stay open. The condition in each entry tells when it can start.
 | Entry | Start condition |
 | --- | --- |
 | T-131 | T-137 takes `pod-session`, `pod-e2e` and `pod-identity` (the owner chose the source: a git tag) |
-| T-153 | T-152 gives a pass on the target hosts (the netfilter plane; T-111 stays) |
 | T-179 | partial: the UDP split is built (an option, off by default); the TCP split waits for a far end that joins two connections |
 
 ## Calls made without a ruling
