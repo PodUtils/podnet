@@ -440,3 +440,62 @@ async fn router_health_probes_and_renews_a_warp_member() {
     router.probe_round().await;
     assert_eq!(health("w").0, "probation");
 }
+
+/// T-095: two WARP identities in one router. Each member is a network
+/// `warp` with its own directory of the state directory, so each has its own
+/// device, and the group meters each member apart.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn two_warp_identities_keep_their_counters() {
+    crate::test_host::need_loopback!();
+    let world = crate::networks::warp_tests::world().await;
+    let dir = tempfile::tempdir().unwrap();
+    let state = dir.path().join("state");
+    let text = format!(
+        "networks:\n  a: warp\n  b: warp\ngroups:\n  g: a*1, b*1\nstate_dir: {}\ndoors:\n  - listen: unix:/tmp/r.sock\n    via: g\n",
+        state.display()
+    );
+    let router = Router::plan(&parse(&text).unwrap()).unwrap();
+    let make = world.maker();
+    router.control.set_connector(Arc::new(move |spec| {
+        assert_eq!(spec, "warp");
+        Ok(Arc::new(make()) as Arc<dyn Network>)
+    }));
+    for member in ["a", "b"] {
+        router
+            .control
+            .renew_for_health(member)
+            .await
+            .expect("the first link");
+    }
+    assert_eq!(world.api.devices(), 2, "one device for each identity");
+    let (file_a, file_b) = (state.join("a/warp.json"), state.join("b/warp.json"));
+    assert_ne!(
+        std::fs::read_to_string(&file_a).unwrap(),
+        std::fs::read_to_string(&file_b).unwrap()
+    );
+    let group = router.groups[0].1.clone();
+    for (member, len) in [("a", 1000usize), ("b", 5000)] {
+        group.pin(Some(member)).unwrap();
+        let data = vec![b'x'; len];
+        assert_eq!(
+            crate::networks::warp_tests::echo(&*group, &data).await,
+            data
+        );
+    }
+    let bytes = |m: &str| {
+        let members = router.status()["groups"][0]["members"].clone();
+        members
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|x| x["name"] == m)
+            .unwrap()["bytes"]
+            .as_u64()
+            .unwrap()
+    };
+    // Each echo counts both ways for its member only.
+    let (a, b) = (bytes("a"), bytes("b"));
+    assert!((2000..5000).contains(&a), "a: {a}");
+    assert!(b >= 10_000, "b: {b}");
+    assert_eq!(world.api.devices(), 2, "no new device");
+}

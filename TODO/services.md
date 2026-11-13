@@ -815,7 +815,7 @@ two new steps.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -844,6 +844,20 @@ The edge stand-in of T-012 serves two identities.
 ## Start condition
 
 T-057 is done.
+
+## Correction
+
+2026-11-13: the take of `pod-warp` moved the session and its counters into the crate, and the router meters each member
+(`Balance`, `crates/podnet-core/src/network/meter.rs`, T-097). The spec of item 3 is `warp:identity=FILE` (3855573), not
+`warp:PATH`. A network `warp` in a router with `state_dir` keeps its device in `state_dir/NETWORK/warp.json`.
+
+## Done
+
+2026-11-13, commit T095COMMIT. Items 1 to 3 are in 3855573 (the network `warp` and its device for each network); this
+commit adds the proof. `src/router/control/tests.rs`, `two_warp_identities_keep_their_counters`: a router with two
+members `warp` in one group, on the edge stand-in of `tests/warp_edge`: two devices, two identity files that differ, and
+the bytes of each member count only its own flows (an echo of 1000 bytes through `a`, of 5000 bytes through `b`).
+`cargo test -p podnet --lib two_warp_identities_keep_their_counters`: 1 passed.
 
 # T-096: Router: groups of networks with weights and a kill switch
 

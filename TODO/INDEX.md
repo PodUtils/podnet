@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**333 entries: 23 open, 14 partial, 32 blocked, 264 done.**
+**333 entries: 22 open, 14 partial, 32 blocked, 265 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
-| P2 | 14 | 4 | 10 | 140 | 168 |
+| P2 | 13 | 4 | 10 | 141 | 168 |
 | P3 | 9 | 9 | 20 | 94 | 132 |
-| **All** | 23 | 14 | 32 | 264 | 333 |
+| **All** | 22 | 14 | 32 | 265 | 333 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -140,7 +140,7 @@ M8 Overlays, M9 Later.
 | [T-092](services.md) | P2 | L | M6 | feature | done | Git: a CGI runner for `git http-backend`, and the smart HTTP router |
 | [T-093](services.md) | P2 | M | M6 | feature | done | Git: an SSH server for upload-pack and receive-pack |
 | [T-094](services.md) | P2 | M | M6 | feature | done | `podnet git serve`: the repository root, `git init`, `git urls`, the tunnel, the relay and the live step |
-| [T-095](services.md) | P2 | M | M6 | feature | open | Router: several WARP identities in one process, each with its own counters |
+| [T-095](services.md) | P2 | M | M6 | feature | done | Router: several WARP identities in one process, each with its own counters |
 | [T-096](services.md) | P2 | M | M6 | feature | done | Router: groups of networks with weights and a kill switch |
 | [T-097](services.md) | P2 | M | M6 | feature | done | Router: a TCP health check for each member, and `podnet route status` |
 | [T-098](services.md) | P2 | M | M6 | feature | done | Router: doors with a default network, and rules to a network, a group or a refusal |

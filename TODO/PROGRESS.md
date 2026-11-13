@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 333 entries: 23 open, 14 partial, 32 blocked, 264 done.
+`TODO/INDEX.md` holds 333 entries: 22 open, 14 partial, 32 blocked, 265 done.
 
 ## State
 
@@ -52,7 +52,7 @@ not wait for a larger one.
    `PodUtils/podcrates` (T-137): do not do it in podnet.
 6. **M4, the adapters:** done.
 7. **M6, the services:** the shared part T-087; the file
-   server and git: done; the router T-095 (its start condition holds; `warp:identity=FILE` gives one device for each network), T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
+   server and git: done; the router T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).
