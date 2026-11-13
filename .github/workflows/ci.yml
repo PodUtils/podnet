@@ -234,7 +234,12 @@ jobs:
       - name: Build the shared and the static library
         run: cargo build --locked --release -p podnet-capi --target "$CAPI_TARGET"
       - name: Tests of the library, the symbols, the C test and the ctypes test
-        run: cargo test --locked -p podnet-capi --target "$CAPI_TARGET"
+        # The tests read the libraries of the profile of the test (debug): build them first.
+        env:
+          PODNET_CAPI_REQUIRE: "1"
+        run: |
+          cargo build --locked -p podnet-capi --target "$CAPI_TARGET"
+          cargo test --locked -p podnet-capi --target "$CAPI_TARGET"
       - name: The C test under ASan, and under valgrind
         run: |
           set -eu

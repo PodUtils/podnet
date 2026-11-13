@@ -29,6 +29,24 @@ fn skip(test: &str, tool: &str) {
     eprintln!("SKIP {test}: {tool} not found");
 }
 
+/// A built library of this crate. `cargo test` builds the rlib only; the
+/// shared and the static library come from `cargo build -p podnet-capi`. With
+/// no such build the test prints a named skip line, unless
+/// `PODNET_CAPI_REQUIRE` is set (the job `c-abi` of CI sets it).
+fn library(test: &str, name: &str) -> Option<PathBuf> {
+    let path = built().join(name);
+    if path.is_file() {
+        return Some(path);
+    }
+    assert!(
+        std::env::var_os("PODNET_CAPI_REQUIRE").is_none(),
+        "{} is not built",
+        path.display()
+    );
+    eprintln!("SKIP {test}: {name} is not built (run cargo build -p podnet-capi first)");
+    None
+}
+
 /// The functions that the header declares: the names `podnet_*` followed by
 /// `(` once the comments are gone.
 fn header_functions(text: &str) -> BTreeSet<String> {
@@ -106,8 +124,12 @@ fn the_exported_symbols_of_the_shared_library_equal_the_header() {
             "nm",
         );
     }
-    let so = built().join("libpodnet_capi.so");
-    assert!(so.is_file(), "{} is not built", so.display());
+    let Some(so) = library(
+        "the_exported_symbols_of_the_shared_library_equal_the_header",
+        "libpodnet_capi.so",
+    ) else {
+        return;
+    };
     let all = Command::new("nm")
         .args(["-D", "--defined-only"])
         .arg(&so)
@@ -128,8 +150,12 @@ fn the_static_library_defines_the_functions_of_the_header() {
             "nm",
         );
     }
-    let a = built().join("libpodnet_capi.a");
-    assert!(a.is_file(), "{} is not built", a.display());
+    let Some(a) = library(
+        "the_static_library_defines_the_functions_of_the_header",
+        "libpodnet_capi.a",
+    ) else {
+        return;
+    };
     // A static library keeps the other symbols of Rust; the interface is
     // the symbols with the prefix podnet_.
     assert_eq!(nm(&["-g", "--defined-only"], &a), header());
@@ -139,6 +165,14 @@ fn run_c(test: &str, shared: bool) {
     if !have("cc", "--version") {
         return skip(test, "cc");
     }
+    let name = if shared {
+        "libpodnet_capi.so"
+    } else {
+        "libpodnet_capi.a"
+    };
+    let Some(lib) = library(test, name) else {
+        return;
+    };
     let dir = tempfile::tempdir().unwrap();
     let exe = dir.path().join("c_abi");
     let mut cc = Command::new("cc");
@@ -149,14 +183,13 @@ fn run_c(test: &str, shared: bool) {
         .arg(&exe);
     if shared {
         let so = dir.path().join("libpodnet.so");
-        std::fs::copy(built().join("libpodnet_capi.so"), &so).unwrap();
+        std::fs::copy(&lib, &so).unwrap();
         cc.arg("-L")
             .arg(dir.path())
             .arg("-lpodnet")
             .arg(format!("-Wl,-rpath,{}", dir.path().display()));
     } else {
-        cc.arg(built().join("libpodnet_capi.a"))
-            .args(["-lpthread", "-lm", "-ldl"]);
+        cc.arg(&lib).args(["-lpthread", "-lm", "-ldl"]);
     }
     cc.arg("-lpthread");
     let out = cc.output().unwrap();
@@ -191,11 +224,17 @@ fn ctypes_echoes_1_mib_over_a_memory_link() {
     if !have("python3", "--version") {
         return skip("ctypes_echoes_1_mib_over_a_memory_link", "python3");
     }
+    let Some(so) = library(
+        "ctypes_echoes_1_mib_over_a_memory_link",
+        "libpodnet_capi.so",
+    ) else {
+        return;
+    };
     let dir = tempfile::tempdir().unwrap();
     let out = Command::new("python3")
         .arg("-I")
         .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/c_abi.py"))
-        .arg(built().join("libpodnet_capi.so"))
+        .arg(&so)
         .arg(dir.path())
         .output()
         .unwrap();
