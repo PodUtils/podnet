@@ -5648,3 +5648,45 @@ HTTP 429 in `scripts/live-batch2.sh` (a48d3e7), a run directory for each `warp t
 the wait for the new name of the quick tunnel in the steps of the file server and `git serve` (098ff8d). The live run
 43459893595 on bf01ac6 passed each step, among them "Throughput through WARP, 1 to 16 MiB", "WARP run", "The commands
 of the second batch" and "An IPv6-only host". ci 43459872995, deny 43459879363 and secrets 43459886257 on bf01ac6 passed.
+
+# T-336: Publish `v0.4.0-beta.10`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md`, Releases (2026-11-09): cut the next prerelease unattended when a batch of fixes is green. The
+batch since `v0.4.0-beta.9`: ci 43521791090, deny 43521797247, secrets 43521803788 and live 43521809728 on 3061c7c passed.
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`v0.4.0-beta.9` has none of the work after it: the transfer by code, the new carriers of `podnet link`, the keys from end
+to end, WARP as a network, the resumable relay and the take of podcrates `v0.40.0`.
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release". A push of the cloud session starts no workflow run: each dispatch goes
+  to the owner as a `[gh action] requested` issue.
+
+## Approach
+
+1. Set the version `0.4.0-beta.10` in `Cargo.toml`, `crates/podnet-capi/Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, and regenerate the llms files.
+2. Write `docs/releases/v0.4.0-beta.10.md`, with `## Breaking`.
+3. Push, and ask for `ci`, `deny` and `live` on that commit.
+4. Ask for `release.yml` on `main` with `publish` empty (the dry run), then with `publish=v0.4.0-beta.10`.
+5. Check the files of the release (with `pod-report.schema.json`) and `release-proofs.yml`.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next prerelease unattended when a
+batch is green.
+
+## Prove
+
+```sh
+cargo test --test docs
+# the runs of release.yml (dry run, publish) and release-proofs.yml pass
+```
+

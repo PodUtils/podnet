@@ -2715,7 +2715,7 @@ dependencies = [
 
 [[package]]
 name = "podnet"
-version = "0.4.0-beta.9"
+version = "0.4.0-beta.10"
 dependencies = [
  "anyhow",
  "axum",
@@ -2781,7 +2781,7 @@ dependencies = [
 
 [[package]]
 name = "podnet-core"
-version = "0.4.0-beta.9"
+version = "0.4.0-beta.10"
 dependencies = [
  "anyhow",
  "futures",
@@ -2812,7 +2812,7 @@ dependencies = [
 
 [[package]]
 name = "podnet-netns"
-version = "0.4.0-beta.9"
+version = "0.4.0-beta.10"
 dependencies = [
  "anyhow",
  "base64",
@@ -2828,7 +2828,7 @@ dependencies = [
 
 [[package]]
 name = "podnet-serve"
-version = "0.4.0-beta.9"
+version = "0.4.0-beta.10"
 dependencies = [
  "anyhow",
  "axum",
@@ -2862,7 +2862,7 @@ dependencies = [
 
 [[package]]
 name = "podnet-vnet"
-version = "0.4.0-beta.9"
+version = "0.4.0-beta.10"
 dependencies = [
  "anyhow",
  "base64",

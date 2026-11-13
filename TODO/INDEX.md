@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**335 entries: 14 open, 12 partial, 26 blocked, 283 done.**
+**336 entries: 15 open, 12 partial, 26 blocked, 283 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
-| P2 | 6 | 4 | 11 | 147 | 168 |
+| P2 | 7 | 4 | 11 | 147 | 169 |
 | P3 | 8 | 7 | 13 | 106 | 134 |
-| **All** | 14 | 12 | 26 | 283 | 335 |
+| **All** | 15 | 12 | 26 | 283 | 336 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -381,3 +381,4 @@ M8 Overlays, M9 Later.
 | [T-333](fixes.md) | P1 | S | M5 | defect | done | link door: --resolve-at local tries only the first address of a name |
 | [T-334](link.md) | P3 | S | M9 | feature | open | pod: the seccomp rule of a raw ICMP socket (GitHub #469) |
 | [T-335](link.md) | P3 | S | M9 | feature | done | link: keep the routes of two next hops for one announcement (GitHub #470) |
+| [T-336](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.10`: the dry run, the publish and the release proofs |
