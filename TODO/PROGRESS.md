@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 330 entries: 52 open, 21 partial, 29 blocked, 228 done.
+`TODO/INDEX.md` holds 330 entries: 51 open, 21 partial, 30 blocked, 228 done.
 
 ## State
 
@@ -76,7 +76,7 @@ not wait for a larger one.
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
 14. **The asks of podswarm (PodUtils/podcrates#125), after podnet's own work (P3; each has a fallback in podswarm):**
-    T-328 (port rules), T-330 (the report of `pod`), T-327 (doors and networks over the control socket), T-329
+    T-328 (port rules; blocked: the rules reader is frozen for `pod-warp`, COORD-061), T-330 (the report of `pod`), T-327 (doors and networks over the control socket), T-329
     (`exit --stdio`, after T-291). N-4 (one flow over several uplinks) is answered in `docs/router.md`: per flow only;
     GitHub #495 stays deferred (the owner, 2026-11-12).
 

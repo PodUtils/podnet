@@ -2288,7 +2288,7 @@ cargo test --test router_control -- door_add_remove
 **Milestone:** M6
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -2317,6 +2317,14 @@ fallback in podswarm, and no milestone of podswarm waits for it. The owner can r
 ```sh
 cargo test --workspace -- rules_port
 ```
+
+## Blocker
+
+The one reader of the rules, `RuleMatch::parse` in `crates/podnet-netns/src/rules.rs`, is frozen for `pod-warp` of
+PodUtils/podcrates (`sh scripts/agent/podcrates.sh`; no `taken` line). The port rules are a feature, not a fix. COORD-061
+(GitHub #518) asks podcrates to add them. Podnet changes `crates/podnet-netns/src/rules/shadow.rs` (not frozen) with the
+take.
+
 
 # T-329: `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3)
 
