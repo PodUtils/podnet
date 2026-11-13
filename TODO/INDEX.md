@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**335 entries: 14 open, 13 partial, 26 blocked, 282 done.**
+**335 entries: 14 open, 12 partial, 26 blocked, 283 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
-| P2 | 6 | 5 | 11 | 146 | 168 |
+| P2 | 6 | 4 | 11 | 147 | 168 |
 | P3 | 8 | 7 | 13 | 106 | 134 |
-| **All** | 14 | 13 | 26 | 282 | 335 |
+| **All** | 14 | 12 | 26 | 283 | 335 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -146,7 +146,7 @@ M8 Overlays, M9 Later.
 | [T-098](services.md) | P2 | M | M6 | feature | done | Router: doors with a default network, and rules to a network, a group or a refusal |
 | [T-099](services.md) | P2 | M | M6 | feature | done | Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose` |
 | [T-100](services.md) | P2 | M | M6 | feature | done | Router: a config file, and `podnet route` with `--detach` and autostart |
-| [T-101](services.md) | P2 | M | M6 | measurement | partial | Router: the live step with WARP, the relay and direct, and a failover |
+| [T-101](services.md) | P2 | M | M6 | measurement | done | Router: the live step with WARP, the relay and direct, and a failover |
 | [T-102](services.md) | P2 | M | M6 | feature | done | Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole` |
 | [T-103](services.md) | P2 | L | M6 | feature | blocked | The file-transfer protocol and the transit protocol of magic-wormhole |
 | [T-104](services.md) | P2 | M | M6 | feature | done | The podnet relay as a carrier of a transfer |

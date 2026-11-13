@@ -16,7 +16,7 @@ bring `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`.
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.40.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.9` (T-331).
-* The record is `TODO/`. `cargo todo check` agrees: 333 entries, 24 open, 13 partial, 32 blocked, 264 done.
+* The record is `TODO/`. `cargo todo check` agrees: 335 entries, 14 open, 12 partial, 26 blocked, 283 done.
 
 ## Unfinished work (not on `main`)
 
@@ -32,8 +32,8 @@ A push of the cloud session starts no workflow run. Ask the owner for runs with 
 `TODO/github.txt` and `TODO/issues.md`, and close it when its results are in. Do not change the SHA of a request
 after it is sent: the owner can run it at once (GitHub #531). Put later commits into the next request.
 
-Each workflow passes on bf01ac6: ci 43459872995, deny 43459879363, secrets 43459886257, live 43459893595 (the first green
-`live` since the take of `pod-warp`; T-332 is done).
+Each workflow passes on 3061c7c: ci 43521791090, deny 43521797247, secrets 43521803788, live 43521809728 (with the
+router step of T-101 and the 200 MiB step of T-087).
 
 ## Next steps
 

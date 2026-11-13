@@ -235,9 +235,9 @@
 534 issue closed
 535 issue open
 536 issue closed
-537 issue open
+537 issue closed
 538 issue open
 539 issue closed
 540 issue open
 541 issue closed
-542 issue open
+542 issue closed

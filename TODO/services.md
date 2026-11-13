@@ -1356,7 +1356,7 @@ answered `HTTP/1.1 200 Connection Established`, and curl through the door got HT
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1445,6 +1445,13 @@ wrong. The step now starts the router with `PODNET_RELAY=http://127.0.0.1:9` (no
 relay URL (`relay:URL`, the default of `podnet relay pair --help`); checked here: `r` carries a trace with the dead
 `PODNET_RELAY`. `docs/router.md` says that a WARP member takes the relay leg.
 
+## Done
+
+2026-11-13, commits 0041e75 (the step), 5d86aee (each MASQUE door blocked), 54f0809 (the health each 5 s and the log of
+the router) and 18e6598 (no relay leg for WARP). The live run 43521809728 on 3061c7c passed the step "Router with WARP,
+the relay and a failover": each door answers; with TCP and UDP 443 to the MASQUE doors refused, `w` goes `cooldown` after
+10 s and `down` after about 25 s, `r` stays `up`, and the group carries the trace through `r`. The step registers its own
+device and deletes it. CI: ci 43521791090, deny 43521797247, secrets 43521803788 and live 43521809728 on 3061c7c passed (GitHub #542).
 
 # T-102: Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole`
 
@@ -2516,6 +2523,8 @@ key, the switch to turn it off, and a local piping-server for the test.
 `cargo test --workspace -- transit_over_piping_server`: 6 passed: the unit tests `transit_over_piping_server_the_base_path_is_hkdf_of_the_transit_key`, `transit_over_piping_server_the_server_is_the_first_of_the_sender_that_both_name`, `transit_over_piping_server_the_hint_is_its_own_kind`, and `tests/transfer_piping.rs` (new; a stand-in piping server on 127.0.0.1 that gives the body of a PUT to the one GET on its path), three runs in a row: `transit_over_piping_server_when_no_other_way_works` (no listener and no relay at the two ends: 700,001 bytes land with the SHA-256 of the sender, `via` is `piping URL` at both ends, at least 4 pieces of the sender, each piece at most 256 KiB, each path under one base of 32 hex digits, no plain mark of the file in any body), `transit_over_piping_server_waits_behind_a_direct_hint` (the receiver listens: the direct way wins and the piping server gets no request), `transit_over_piping_server_needs_a_server_that_both_ends_name` (the receiver names no server: 69 at both ends, no request). `cargo test --test transfer`: 9 passed; `cargo test --test transfer_relay`: 4 passed.
 Plants: with the dial of the piping server off in `connect::connect`, `transit_over_piping_server_when_no_other_way_works` failed; with `common` that takes the first server of the sender alone, `transit_over_piping_server_needs_a_server_that_both_ends_name` failed. `sh scripts/agent/check.sh`: each step 0.
 Not proven: a real piping-server (1.12.9) and a buffering proxy (the live step, T-253 and T-106); a transfer of more than 1 MiB through it; the loss of a piece between the answer of its PUT and the end of its GET (the transfer then stops at the bound of the transit).
+
+CI: ci 43521791090, deny 43521797247, secrets 43521803788 and live 43521809728 on 3061c7c passed (GitHub #542).
 
 # T-253: Live: probe the hosted mailboxes and relays from a proxy-only runner
 

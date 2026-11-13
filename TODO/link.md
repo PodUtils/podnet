@@ -990,6 +990,8 @@ Ask for podcrates (read, not measured): `dgram_tls` of `pod-link` keeps no `ArqH
 Plant: with no task that answers the rekey, 3 tests failed (the two wraps and the failed rekey); with a failed hook that still lets the sequence wrap, `a_failed_rekey_keeps_the_frames_at_the_wrap_and_the_link_ends` failed. `sh scripts/agent/check.sh`: each step 0.
 Not proven: a command that runs a link over this glue (the carriers of the CLI have their own reliability); the stop of `dns` and `icmp` at the wrap (the ask above, read only); the gates of row E2-1 in a release build (`pod-link`, `udp_loss`).
 
+CI: ci 43521791090, deny 43521797247, secrets 43521803788 and live 43521809728 on 3061c7c passed (GitHub #542).
+
 # T-278: link: the DNS simplex carrier (GitHub #468)
 
 **Source:** GitHub #468 (https://github.com/PodUtils/podnet/issues/468), row E2-3.
@@ -1585,6 +1587,8 @@ Left: (1) the end-to-end record layer (T-298, blocked): a middle hop sees the by
 Plant: with no announcements from `link connect` (its guard off), the 3 chain tests of `mesh_processes` failed. `sh scripts/agent/check.sh`: each step 0.
 Not proven: a diamond with two live next hops of one round (T-335); the 1 MiB in flight for each stream and hop (the credit window of `pod-link`); the carriers other than unix and tcp in a chain.
 
+CI: ci 43521791090, deny 43521797247, secrets 43521803788 and live 43521809728 on 3061c7c passed (GitHub #542).
+
 # T-335: link: keep the routes of two next hops for one announcement (GitHub #470)
 
 **Source:** GitHub #470 (https://github.com/PodUtils/podnet/issues/470), row E4-3; split from T-287.
@@ -1626,6 +1630,8 @@ sh scripts/agent/check.sh
 `cargo test --test mesh_three_hops`: 11 passed, three runs in a row. New: `a_diamond_keeps_both_next_hops_of_one_round` (one announcement of D on two paths: A holds the next hops B and C, B first; a replay through B is `SeenSeq`; B answers `RESOURCE_LIMIT` and the stream goes through C: each one asked once, the echo comes back), `an_older_seq_from_another_next_hop_is_a_second_route` (the path through B has the older `seq`: two next hops, the best through B at cost 2), `the_diamond_fails_over_when_the_first_next_hop_ends` (four nodes, unix links, an interval of 600 s, so one round only: A holds B and C, a stream goes through B, the link A to B closes, the next hop C is left and the next stream goes through C). `cargo test --test mesh_table`: 22 passed (`seq_must_rise` changed: an older `seq` from another hop is a second route; a third hop; the replay rule for each hop; three ranked routes).
 Plants: with the old drop of a seen `seq` in `Mesh::take`, `a_diamond_keeps_both_next_hops_of_one_round` and `an_older_seq_from_another_next_hop_is_a_second_route` failed; with the old table rule, `an_older_seq_from_another_next_hop_is_a_second_route` and `seq_must_rise` failed. The live test passed with the plants: there the order of arrival decides, and it is the proof of the failover only. `sh scripts/agent/check.sh`: each step 0.
 Not proven: a diamond of separate processes (the real binary); a diamond over carriers other than unix.
+
+CI: ci 43521791090, deny 43521797247, secrets 43521803788 and live 43521809728 on 3061c7c passed (GitHub #542).
 
 # T-288: link: load balancing across link groups (GitHub #470)
 
