@@ -1,19 +1,20 @@
 # Progress
 
-`TODO/INDEX.md` holds 331 entries: 45 open, 21 partial, 30 blocked, 235 done.
+`TODO/INDEX.md` holds 331 entries: 44 open, 22 partial, 30 blocked, 235 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`
-  and `pod-hold` (`PodUtils/podcrates` v0.20.0); `podnet-netns` calls `pod_proxy::udp` (T-224). Next: `pod-relay`,
-  then `pod-session` and `pod-wormhole` when podcrates writes their hand-off for podnet. A session reads the state
-  of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
-- Frozen (fixes only, each as a COORD issue): `tests/test_host/mod.rs` (in `pod-testkit`).
-- The session paused on 2026-11-10: `docs/HANDOFF.md` gives the state and the next steps.
-- The newest release is `v0.4.0-beta.3` (T-235).
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.36.0`: `pod-todo`, `pod-core`, `pod-tls`,
+  `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
+  `pod-identity`, `pod-session`, `pod-link`, `pod-turn` and `pod-devtunnel`. Next: `pod-warp` (its patch waits for
+  the COORD issue of the freeze with the next tag), then `pod-cloudflare`, `pod-e2e`, `pod-wormhole`. A session
+  reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
+- Frozen (fixes only, each as a COORD issue): `src/warp/`, `src/cloudflare/`, `src/proxy.rs`, `src/tunnel.rs`,
+  `crates/podnet-netns/src/rules.rs` (for `pod-warp`) and `tests/test_host/mod.rs` (in `pod-testkit`).
+- The newest release is `v0.4.0-beta.8`. `v0.4.0-beta.9` is in the publish step (T-331).
 - Keep this section short. Write the current state only; git keeps the history.
 
 ## Work order
@@ -48,8 +49,7 @@ not wait for a larger one.
    and `pod-cloudflare` of `PodUtils/podcrates` (T-137): do not do them in podnet. The take of
    `pod-relay` is done (v0.30.0).
 6. **M4, the adapters:** T-057, T-061 (partial: only the WARP door is left, it waits for the take of `pod-warp`, T-050).
-7. **M6, the services:** the shared parts T-086 (a take of
-   `pod-session`, `pod-e2e` and `pod-identity`), T-087; the file
+7. **M6, the services:** the shared parts T-086 (partial: `pod-session` and `pod-identity` are taken; `pod-e2e` is left), T-087; the file
    server and git: done; the router T-095, T-097,
    T-099, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The triage adds
@@ -69,7 +69,7 @@ not wait for a larger one.
     `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
 10b. **Networks over the new crates (podcrates v0.33.0):** T-321 (`turn://`, `pod-turn`).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
-    (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); T-163 is
+    (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-326 (a release of `russh` that takes `rsa` 0.10.0); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-298, T-294, T-295.
 12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** T-269 to T-309 in `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The stream carriers T-269 to T-273, T-276 (UDP with KCP) and T-277 (the ARQ) are takes of `pod-link`, blocked until podcrates releases them (PodUtils/podcrates#106, after the rest of `pod-warp`). Go on with the datagram carriers T-278 to T-280, the record layer (T-298 to T-301), the mesh (T-287 to T-290), the services (T-291 to T-297), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-298 (`pod-e2e`, T-086), T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and

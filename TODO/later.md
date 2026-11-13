@@ -735,6 +735,8 @@ The crate of this entry has a release in `PodUtils/podcrates`, with its hand-off
 (`docs/decisions.md`, Delivery of the shared crates). This entry is done by T-137, step 2. Close it
 with the commit that takes `pod-session`, `pod-e2e` and `pod-identity`. podnet has no copy to remove.
 
+2026-11-13: `pod-identity` and `pod-session` are taken (T-261, T-263, `Cargo.toml` at v0.36.0). `pod-e2e` is not taken. The entry closes with the take of `pod-e2e` (T-086).
+
 # T-132: `try_update` in place of the macro `update_atomic!`
 
 **Source:** `docs/maintenance.md`, section "Open work" (`try_update`).

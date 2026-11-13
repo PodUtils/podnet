@@ -654,6 +654,8 @@ T-053 is done.
 owner allows releases again. A `pod-*` dependency by a git tag stops `cargo publish` (the ruling
 "Git dependencies and the publish"): the release builds with the git source and the publish stays off.
 
+2026-11-13: the ruling "Releases" of 2026-11-09 allows betas (`docs/decisions.md`), and the betas up to v0.4.0-beta.8 are out. The line "no podnet release now" above is old. This entry stays open for its own work: a prerelease after the crate split, which waits for T-053.
+
 # T-137: podnet uses the shared crates of `PodUtils/podcrates`
 
 **Source:** the owner, 2026-11-05 (`docs/decisions.md`, Shared crates and Order); the proposal of
@@ -823,6 +825,8 @@ Done so far:
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
   like each other crate.
+
+2026-11-13: the line "Next: `pod-relay`" above is old: `pod-relay` is taken (v0.30.0). The next take is `pod-warp` (`adoption/podnet/pod-warp.patch` on `main` of podcrates; the trial passes). podnet applies it at the tag that follows the COORD issue of the freeze (COORD-063, GitHub #520). `pod-cloudflare` follows. Taken at v0.36.0: `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`, `pod-identity`, `pod-session`, `pod-link`, `pod-turn` and `pod-devtunnel` (`Cargo.toml`).
 
 # T-161: relay node: renew the pair before it expires (GitHub #358)
 

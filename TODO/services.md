@@ -194,7 +194,7 @@ No new dependency. CI: at the merge.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -251,6 +251,9 @@ The crate of this entry has a release in `PodUtils/podcrates`, with its hand-off
 no crate `podnet-relay`. The start condition names T-049 (the take of `pod-relay`).
 
 2026-11-12, GitHub #466 (rows E0-1 and E0-2) and #472 (row E6-1), the `link` workstream. The link needs this take for the key identity (`pod-identity`), the resume (`pod-session`) and the end-to-end channel (`pod-e2e`). The link side of each take is its own entry, blocked on this one: T-261, T-263 and T-298. `pod-session` holds a resume layer for one byte stream. It holds no multiplexer of streams with credits: that is T-262. `pod-identity` shows the OpenSSH fingerprint, and the issue asks for base32 in five groups with a checksum. Asks for podcrates: A1 (the display form of the fingerprint), A2 (the resume window and the use of the token as settings; whether a shared multiplexer crate is wanted), A3 (the handshake hash and the transport keys of `pod-e2e` as an interface). `docs/decisions.md`, 2026-11-12, The link workstream.
+
+2026-11-13: partial. Taken at v0.36.0: the key identity (`pod-identity`, T-261), the resumable layer (`pod-session`, T-263) and UDP in a stream (command 0x83 of `pod-proxy`, T-329). Left: the end-to-end channel `pod-e2e` (podcrates T-301, ask A3). T-298 waits for it.
+
 # T-087: `relay node` and `relay connect` resume a session past the limits of the relay
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.3, 3 (C5) and 5 (G2); PodUtils/podcrates#35 (cfb), ask A-N-12.

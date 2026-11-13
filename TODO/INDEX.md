@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 45 open, 21 partial, 30 blocked, 235 done.**
+**331 entries: 44 open, 22 partial, 30 blocked, 235 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
-| P2 | 20 | 8 | 11 | 129 | 168 |
+| P2 | 19 | 9 | 11 | 129 | 168 |
 | P3 | 25 | 12 | 17 | 78 | 132 |
-| **All** | 45 | 21 | 30 | 235 | 331 |
+| **All** | 44 | 22 | 30 | 235 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -131,7 +131,7 @@ M8 Overlays, M9 Later.
 | [T-083](services.md) | P2 | S | M6 | feature | done | A relay node serves a handler in the process, with no socket file |
 | [T-084](services.md) | P2 | M | M6 | feature | done | One HTTP authentication layer for the local listener, the tunnel and the relay |
 | [T-085](services.md) | P2 | M | M6 | feature | done | A ustar writer and reader, and a directory as one tar download of the file server |
-| [T-086](services.md) | P2 | L | M6 | feature | open | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
+| [T-086](services.md) | P2 | L | M6 | feature | partial | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
 | [T-087](services.md) | P2 | M | M6 | feature | open | `relay node` and `relay connect` resume a session past the limits of the relay |
 | [T-088](services.md) | P2 | S | M6 | feature | done | File server: a directory listing in HTML and JSON |
 | [T-089](services.md) | P2 | M | M6 | feature | done | File server: users with read and write roles, and a PIN, on each listener |
