@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 333 entries: 27 open, 14 partial, 32 blocked, 260 done.
+`TODO/INDEX.md` holds 333 entries: 25 open, 13 partial, 32 blocked, 263 done.
 
 ## State
 
@@ -51,10 +51,9 @@ not wait for a larger one.
    the rows left go with the takes, T-137); T-045.
 5. **M3, the crates:** T-053, then the prerelease T-054. T-052 is the take of `pod-cloudflare` of
    `PodUtils/podcrates` (T-137): do not do it in podnet.
-6. **M4, the adapters:** T-057 (its start condition holds: `pod-warp` is taken; the network `warp` of 3855573 gives a
-   dialer and datagrams over WARP: check the Approach against it).
-7. **M6, the services:** the shared parts T-086 (partial: `pod-session`, `pod-identity` and `pod-e2e` are dependencies; check steps 2 and 4 of its Approach), T-087; the file
-   server and git: done; the router T-095 (after T-057; `warp:identity=FILE` gives one device for each network), T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
+6. **M4, the adapters:** done.
+7. **M6, the services:** the shared part T-087; the file
+   server and git: done; the router T-095 (its start condition holds; `warp:identity=FILE` gives one device for each network), T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).
@@ -67,7 +66,7 @@ not wait for a larger one.
     and a proof of a real TUN stay). T-001: edit GitHub #89 into a guide
     that a new client tests from.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
-    `pod-acme` (wave 4). T-131 closes with the take of `pod-session`, `pod-e2e` and `pod-identity`.
+    `pod-acme` (wave 4).
 10b. **Networks over the new crates (podcrates v0.33.0):** T-321 (`turn://`, `pod-turn`).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-326 (a release of `russh` that takes `rsa` 0.10.0); T-163 is
@@ -89,7 +88,6 @@ These entries stay open. The condition in each entry tells when it can start.
 
 | Entry | Start condition |
 | --- | --- |
-| T-131 | The condition holds: `pod-session`, `pod-identity` and `pod-e2e` are dependencies (`pod-e2e` since T-298, ea9b6c0). It closes with T-086. |
 | T-179 | partial: the UDP split is built (an option, off by default); the TCP split waits for a far end that joins two connections |
 
 ## Calls made without a ruling

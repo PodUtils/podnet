@@ -16,7 +16,7 @@ bring `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`.
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.39.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.9` (T-331).
-* The record is `TODO/`. `cargo todo check` agrees: 333 entries, 27 open, 14 partial, 32 blocked, 260 done.
+* The record is `TODO/`. `cargo todo check` agrees: 333 entries, 25 open, 13 partial, 32 blocked, 263 done.
 
 ## Unfinished work (not on `main`)
 
@@ -43,12 +43,10 @@ run.
 2. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
    With the tag that brings the udp carrier, set `[profile.dev.package.kcp] overflow-checks = false` (T-276,
    PodUtils/podcrates#139) and answer GitHub #527.
-3. Judge T-057 against the network `warp` (3855573), and steps 2 and 4 of T-086 against the code; close T-086 and T-131
-   when they hold.
-4. Go on with the work order of `TODO/PROGRESS.md`. The disk holds one build: run one agent at a time in this checkout,
+3. Go on with the work order of `TODO/PROGRESS.md`. The disk holds one build: run one agent at a time in this checkout,
    with `CARGO_INCREMENTAL=0`. Close the GitHub issues whose entries are done, with the commits and the CI runs
    (`docs/maintenance.md`, "The issue loop"). Issues #484 to #501 are deferred by the owner: leave them open.
-5. When each non-deferred issue is closed and `live` is green: cut the final complete beta (the steps of T-331).
+4. When each non-deferred issue is closed and `live` is green: cut the final complete beta (the steps of T-331).
 
 ## Known flakes under load
 

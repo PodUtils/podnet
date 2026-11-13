@@ -171,7 +171,7 @@ of `tailscaled`). The tests of the loopback call `need_loopback!`. `sh scripts/a
 **Milestone:** M4
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -205,6 +205,18 @@ T-055 and T-012 are done.
 
 2026-11-05, There is no crate `podnet-warp`. The WARP adapter is `pod-warp` (T-050). The Dialer belongs to the
 adapter that holds the stack (`pod-warp`): do this work after the take, or as a change in PodUtils/podcrates.
+
+2026-11-13: the take of `pod-warp` (f6abdc3) and the network `warp` (3855573) do the work. The tests have the prefix
+`warp_network_`, not `warp_dialer_`.
+
+## Done
+
+2026-11-13, by the commits f6abdc3 (the take of `pod-warp`: `src/warp/quic.rs` gives the datagrams of the session to
+`pod_quic::over`, which takes any `Datagrams`, for the quic+warp leg) and 3855573 (`LiveDial` of `src/networks/warp.rs`:
+a `Dial` over a live WARP session, with TCP and `datagrams`). Tests through the edge stand-in of `pod-testkit`: `cargo
+test -p podnet --lib warp_network_` (7 passed, among them `warp_network_carries_tcp_and_a_name_inside_the_tunnel` and
+`warp_network_carries_udp_datagrams`). ci 43459872995 on bf01ac6 passed. The live run of the quic+warp leg is T-332.
+
 
 # T-058: The combinators `Chain`, `Rules`, `Race` and `Failover`
 

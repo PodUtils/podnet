@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**333 entries: 27 open, 14 partial, 32 blocked, 260 done.**
+**333 entries: 25 open, 13 partial, 32 blocked, 263 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 1 | 2 | 28 | 32 |
-| P2 | 16 | 4 | 10 | 138 | 168 |
-| P3 | 10 | 9 | 20 | 93 | 132 |
-| **All** | 27 | 14 | 32 | 260 | 333 |
+| P2 | 15 | 3 | 10 | 140 | 168 |
+| P3 | 9 | 9 | 20 | 94 | 132 |
+| **All** | 25 | 13 | 32 | 263 | 333 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -102,7 +102,7 @@ M8 Overlays, M9 Later.
 | [T-054](crates.md) | P2 | S | M3 | release | open | A prerelease after the crate split, with the static builds of each target |
 | [T-055](adapters.md) | P2 | M | M4 | feature | done | The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link |
 | [T-056](adapters.md) | P2 | M | M4 | feature | done | Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network |
-| [T-057](adapters.md) | P2 | M | M4 | feature | open | A dialer and datagrams for WARP |
+| [T-057](adapters.md) | P2 | M | M4 | feature | done | A dialer and datagrams for WARP |
 | [T-058](adapters.md) | P2 | M | M4 | feature | done | The combinators `Chain`, `Rules`, `Race` and `Failover` |
 | [T-059](adapters.md) | P2 | M | M4 | feature | done | The registry of networks, the parser of network specs, and the rows of `doctor` |
 | [T-060](adapters.md) | P2 | M | M4 | feature | done | `--via SPEC` on each command, with each old network flag as an alias |
@@ -131,7 +131,7 @@ M8 Overlays, M9 Later.
 | [T-083](services.md) | P2 | S | M6 | feature | done | A relay node serves a handler in the process, with no socket file |
 | [T-084](services.md) | P2 | M | M6 | feature | done | One HTTP authentication layer for the local listener, the tunnel and the relay |
 | [T-085](services.md) | P2 | M | M6 | feature | done | A ustar writer and reader, and a directory as one tar download of the file server |
-| [T-086](services.md) | P2 | L | M6 | feature | partial | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
+| [T-086](services.md) | P2 | L | M6 | feature | done | Take the resumable layer, the end-to-end channel, the key identity and UDP in a stream from the shared crates |
 | [T-087](services.md) | P2 | M | M6 | feature | open | `relay node` and `relay connect` resume a session past the limits of the relay |
 | [T-088](services.md) | P2 | S | M6 | feature | done | File server: a directory listing in HTML and JSON |
 | [T-089](services.md) | P2 | M | M6 | feature | done | File server: users with read and write roles, and a PIN, on each listener |
@@ -176,7 +176,7 @@ M8 Overlays, M9 Later.
 | [T-128](later.md) | P3 | L | M9 | feature | open | The DERP carrier through `pod-derp` |
 | [T-129](later.md) | P3 | M | M9 | feature | open | An ACME client for a public listener |
 | [T-130](later.md) | P3 | M | M9 | research | done | Research: the iroh road, and a relay and mailbox of podnet's own |
-| [T-131](later.md) | P3 | L | M9 | chore | open | A crate that podnet and podssh share for the layer, the channel and the identity |
+| [T-131](later.md) | P3 | L | M9 | chore | done | A crate that podnet and podssh share for the layer, the channel and the identity |
 | [T-132](later.md) | P3 | S | M9 | chore | done | `try_update` in place of the macro `update_atomic!` |
 | [T-133](later.md) | P3 | S | M9 | chore | done | Zig from the community mirrors in the release workflow |
 | [T-134](later.md) | P3 | M | M9 | chore | done | A weekly watch of the relay contract |

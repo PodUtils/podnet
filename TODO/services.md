@@ -194,7 +194,7 @@ No new dependency. CI: at the merge.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -256,6 +256,15 @@ no crate `podnet-relay`. The start condition names T-049 (the take of `pod-relay
 
 2026-11-13: `pod-e2e` is a dependency of podnet since T-298 (ea9b6c0): the link record layer uses
 `pod_e2e::record`. Next: check steps 2 and 4 of the Approach against the tree, then write the Done section.
+
+## Done
+
+2026-11-13, by the takes b33718d (`pod-identity`, T-261), 75b49ba (`pod-session`, T-263) and ea9b6c0 (`pod-e2e`, T-298).
+`cargo tree -p podnet --depth 1` names `pod-identity`, `pod-session` and `pod-e2e` (tag v0.39.0). Step 2: the three
+crates read no environment variable, so `src/manual/facts.rs` needs no row. Step 4: `tests/link_session.rs`,
+`resume_inside_the_window_carries_one_mebibyte_with_an_equal_digest`, runs a session through a middle pipe that cuts
+the carrier (the fake relay). Step 5: deny 43459879363 on bf01ac6 passed. ci 43459872995 on bf01ac6 passed. The release
+dry run of the Prove comes with the next beta (T-331).
 
 # T-087: `relay node` and `relay connect` resume a session past the limits of the relay
 

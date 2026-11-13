@@ -689,7 +689,7 @@ go with the transfer (T-102 to T-105: the mailbox client, `send` and `receive`),
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -739,6 +739,12 @@ with the commit that takes `pod-session`, `pod-e2e` and `pod-identity`. podnet h
 
 2026-11-13: `pod-e2e` is a dependency of podnet since T-298 (ea9b6c0, `Cargo.toml` at v0.39.0). The start
 condition holds. The entry closes with T-086.
+
+## Done
+
+2026-11-13, by T-137 step 2: podnet depends on `pod-identity` (b33718d), `pod-session` (75b49ba) and `pod-e2e` (ea9b6c0)
+of PodUtils/podcrates by the git tag (v0.39.0). podnet had no copy to remove. ci 43459872995 (each job, with `cargo test
+--workspace`) and deny 43459879363 on bf01ac6 passed.
 
 # T-132: `try_update` in place of the macro `update_atomic!`
 
