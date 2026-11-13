@@ -176,9 +176,9 @@
 471 issue open
 472 issue open
 473 issue open
-474 issue open
+474 issue closed
 475 issue closed
-476 issue open
+476 issue closed
 477 issue closed
 478 issue closed
 479 issue closed

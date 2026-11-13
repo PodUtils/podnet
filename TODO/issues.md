@@ -169,9 +169,9 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #471 | link: services at a peer (SOCKS5, HTTP, raw, forward, Shadowsocks, Trojan, exec, serve-at) (E5) | open | T-266, T-291, T-292, T-293, T-294, T-295, T-296, T-297 |
 | #472 | link: record layer (AEAD, compression, padding, replay and resume) (E6) | open | T-298, T-299, T-300, T-301 |
 | #473 | link: direction split and chain composition (E7) | open | T-302, T-303 |
-| #474 | link: C ABI (E8) | open | T-304 |
+| #474 | link: C ABI (E8) | closed (ci 43382314031 at 9583ea3) | T-304 |
 | #475 | link: portable build subset (E9) | closed (not planned: the owner, 2026-11-12, Linux only) | T-305 |
-| #476 | link: CLI query keys, control plane, aliases, dump, components and build features (E10) | open | T-306, T-307, T-308, T-309, T-310, T-311 |
+| #476 | link: CLI query keys, control plane, aliases, dump, components and build features (E10) | closed (ci 43382314031 at 9583ea3) | T-306, T-307, T-308, T-309, T-310, T-311 |
 | #477 | COORD-046: podnet took v0.28.0 at b08e06f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #478 | COORD-047: podnet took v0.29.0 and pod-hold syn-hold at 98d8a71 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #479 | COORD-048: asks for the link workstream of podnet (GitHub #466 to #476) (to podcrates) | closed (a COORD issue between sessions) | none |
