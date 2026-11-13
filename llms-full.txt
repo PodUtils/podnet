@@ -438,11 +438,19 @@ COMMANDS
             Read a password from the first line of stdin, print its hash for
             --users, and exit
 
-        --ingress <INGRESS>
+        --ingress <tunnel|relay|none|peer:FP/SERVICE>
             The road to the visitors: tunnel (the default with no --local),
             relay, or none (the default with --local). --ingress tunnel or
-            relay with --local serves the local listeners too. Values: tunnel,
-            relay, none.
+            relay with --local serves the local listeners too.
+            `peer:FINGERPRINT/SERVICE` serves the files on the streams that
+            the peer of a running `podnet link connect` opens for its service
+            SERVICE (the link instance is found as `forward` finds it:
+            PODNET_LINK_CONTROL, or the ready documents of the instances). The
+            peer speaks HTTP on the stream (`link dial --service SERVICE`, or
+            `forward -L PORT=peer:FP/SERVICE`). Index, range and HEAD work as
+            on any listener; --list, --spa, --tar, --users and --pin apply.
+            The `--allow` grant of the peer must name SERVICE. It makes no
+            tunnel
 
         --at <peer:FP/SERVICE>
             Serve the files to one peer of a link, on a stream of its service:
@@ -10925,7 +10933,31 @@ local listener:
   With `--ingress none`, the tunnel flags have no effect, except `--auth-user`
   (see below). The `--json` ready line has `listens`, each listener.
 
+### Serve at a peer through a running link (`--ingress peer:`)
+
+`--ingress peer:FINGERPRINT/SERVICE` serves the files on the streams that the peer of a running `podnet link connect` opens for
+the service SERVICE (T-297). The link instance is found as `forward` finds it: `PODNET_LINK_CONTROL`, else the control sockets in
+the run directory.
+
+```sh
+podnet link connect /run/hub.sock --peer HUB-FINGERPRINT --allow hub.allow --control /run/link.ctl   # hub.allow: HUB-FINGERPRINT services=files
+podnet serve ./public --ingress peer:HUB-FINGERPRINT/files                                        # at the connector
+podnet forward -L 8080=peer:CONNECTOR-FINGERPRINT/files                                           # at the hub: HTTP on 127.0.0.1:8080
+```
+
+* `serve` binds the file server (the router of `--local`) on a unix socket in a private directory (mode 0700) and asks the link
+  instance, with the verb `accept` of its control socket ([link.md](link.md)), to send each stream for SERVICE to that socket. The
+  service lasts while `serve` runs. When the instance ends, `serve` exits 69.
+* The grant of the peer in the `--allow` file of the connector must name SERVICE (a bare key has every service). A name that the
+  instance serves already (`--service`) exits 64. A link to another peer exits 77. No instance, or no link up, exits 69.
+* `--ingress peer:` is refused (64) with `--local`, `--pair` and `--check`. `--list`, `--spa`, `--tar`, `--upload`, `--users` and
+  `--pin` apply as on any listener. `--name` of the entry is not built: `--name` names the instance of `serve` (`--detach`).
+
+Proof: `tests/service_serve_ingress.rs`.
+
 ### Serve at a peer (`--at`)
+
+`--at` makes the serving process the link listener. Use it when no `link connect` runs.
 
 `--at peer:FINGERPRINT/SERVICE --at-listen ADDRESS` serves the files to one peer of a link, on a stream of the service SERVICE (T-297):
 

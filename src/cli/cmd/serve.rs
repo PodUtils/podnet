@@ -30,6 +30,24 @@ pub(crate) enum Road {
     None,
 }
 
+/// The value of `--ingress`: a road, or `peer:FINGERPRINT/SERVICE`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum IngressArg {
+    Road(Road),
+    Peer(String),
+}
+
+fn parse_ingress(text: &str) -> Result<IngressArg, String> {
+    if text.starts_with("peer:") {
+        return Ok(IngressArg::Peer(text.to_string()));
+    }
+    Road::from_str(text, true)
+        .map(IngressArg::Road)
+        .map_err(|_| {
+            format!("{text:?} is no road: use tunnel, relay, none or peer:FINGERPRINT/SERVICE")
+        })
+}
+
 #[derive(Args, Debug)]
 pub(crate) struct ServeArgs {
     #[command(flatten)]
@@ -84,9 +102,17 @@ pub(crate) struct ServeArgs {
     hash_password: bool,
     /// The road to the visitors: tunnel (the default with no --local),
     /// relay, or none (the default with --local). --ingress tunnel or relay
-    /// with --local serves the local listeners too.
-    #[arg(long, value_enum)]
-    ingress: Option<Road>,
+    /// with --local serves the local listeners too. `peer:FINGERPRINT/SERVICE`
+    /// serves the files on the streams that the peer of a running `podnet
+    /// link connect` opens for its service SERVICE (the link instance is
+    /// found as `forward` finds it: PODNET_LINK_CONTROL, or the ready
+    /// documents of the instances). The peer speaks HTTP on the stream
+    /// (`link dial --service SERVICE`, or `forward -L PORT=peer:FP/SERVICE`).
+    /// Index, range and HEAD work as on any listener; --list, --spa, --tar,
+    /// --users and --pin apply. The `--allow` grant of the peer must name
+    /// SERVICE. It makes no tunnel.
+    #[arg(long, value_name = "tunnel|relay|none|peer:FP/SERVICE", value_parser = parse_ingress)]
+    ingress: Option<IngressArg>,
     /// Serve the files to one peer of a link, on a stream of its service:
     /// peer:FINGERPRINT/SERVICE. The peer opens the stream (podnet link
     /// dial --service SERVICE, or forward -L PORT=peer:FP/SERVICE) and
@@ -148,12 +174,27 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
             "serve: give the directory to serve: podnet serve DIR",
         ));
     }
-    let ingress = args.ingress.unwrap_or(if args.local.is_empty() {
+    let peer = match &args.ingress {
+        Some(IngressArg::Peer(text)) => Some(text.as_str()),
+        _ => None,
+    };
+    if peer.is_some() && (!args.local.is_empty() || args.pair.is_some() || args.common.check) {
+        return Err(usage(
+            "serve --ingress peer:... takes no --local, --pair or --check",
+        ));
+    }
+    let ingress = match &args.ingress {
+        Some(IngressArg::Road(road)) => Some(*road),
+        _ => None,
+    };
+    let ingress = ingress.unwrap_or(if peer.is_some() {
+        Road::None
+    } else if args.local.is_empty() {
         Road::Tunnel
     } else {
         Road::None
     });
-    if ingress == Road::None && args.local.is_empty() {
+    if ingress == Road::None && args.local.is_empty() && peer.is_none() {
         return Err(usage("serve --ingress none needs --local ADDR"));
     }
     if args.pair.is_some() && ingress != Road::Relay {
@@ -175,6 +216,10 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
     }
     let router = podnet::files::router(&files)?;
     let pin = files.access.pin.as_ref().and_then(Gate::pin_display);
+    if let Some(peer) = peer {
+        return super::serve_at::serve_peer(peer, router, args.dir(), pin, args.common.run_for)
+            .await;
+    }
     if let (Some(at), Some(address)) = (&args.at, &args.at_listen) {
         return super::serve_at::serve_at(
             at,

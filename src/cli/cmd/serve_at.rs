@@ -88,6 +88,47 @@ fn write_private(path: &Path, text: &str) -> Result<()> {
     Ok(())
 }
 
+/// `serve --ingress peer:FINGERPRINT/SERVICE` (T-297): serve `router` on
+/// the streams that the peer opens for SERVICE on a link of a running
+/// instance (`link connect`, found as `forward` finds it).
+///
+/// The file server is bound on a unix socket in a private directory. The
+/// instance gets that socket with the verb `accept` of its control socket
+/// and keeps the service while this process holds the connection.
+pub(crate) async fn serve_peer(
+    at: &str,
+    router: axum::Router,
+    dir: &Path,
+    pin: Option<&str>,
+    run_for: Option<u64>,
+) -> Result<()> {
+    let (fingerprint, service) = parse_at(at)?;
+    let scratch = Scratch::new()?;
+    let sock = scratch.path("files.sock");
+    let local = bind_local(&format!("unix:{}", sock.display()), false, router).await?;
+    let (server, _file) = local.split();
+    let mut held = podnet::link_ctl::accept_peer(&fingerprint, &service, &sock).await?;
+    println!(
+        "podnet: serve  {}  at {at}  (a stream that the peer opens for the service {service})",
+        dir.display()
+    );
+    if let Some(pin) = pin {
+        println!("podnet: PIN    {pin}");
+    }
+    tokio::select! {
+        _ = held.lost() => Err(exit::fault(
+            Fault::Unavailable,
+            anyhow!("the link instance ended the service {service}"),
+        )),
+        ended = server => {
+            ended
+                .context("the file server stopped")?
+                .context("the file server stopped")
+        }
+        _ = sleep_or_signal(run_for) => Ok(()),
+    }
+}
+
 /// Serve `router` at the peer named by `at`, on the link listener `address`.
 pub(crate) async fn serve_at(
     at: &str,

@@ -139,7 +139,7 @@ podnet link dial ADDRESS --peer FP --service tool
 * When the program closes its stdout, the stream ends, and the program has 10 s to end (else it is killed). When the peer ends its side,
   the stdin of the program closes. A reset stream kills the program. A program that ends with a fault is logged.
 
-The file server serves a tree at a peer with `podnet serve DIR --at peer:FP/SERVICE --at-listen ADDRESS` (see `docs/serve.md`, "Serve at a peer").
+The file server serves a tree at a peer with `podnet serve DIR --at peer:FP/SERVICE --at-listen ADDRESS` (see `docs/serve.md`, "Serve at a peer"), or, through a running `link connect`, with `podnet serve DIR --ingress peer:FP/SERVICE`.
 
 Proof: `tests/service_exec.rs`. Not proven: `--exec-user` as root (the test runs without privilege and checks the refusal).
 
@@ -165,6 +165,10 @@ removes both files at its stop. The token is never in the ready document, `statu
     the instance holds no link that is up.
   * `open` (`"peer":FINGERPRINT,"service":NAME`): opens one stream, asks for the service, and on `ok` the connection carries the
     bytes of the stream. The network `peer:FINGERPRINT/SERVICE` uses it.
+  * `accept` (`"peer":FINGERPRINT,"service":NAME,"target":"unix:/ABS/PATH"`): serve the streams for NAME that the peer opens on the
+    unix socket at PATH, while the client keeps the connection (`podnet serve --ingress peer:FP/NAME` uses it). The instance must
+    hold a link to the peer (69 or 77 as for `open`). A name that `--service` has, or that another client holds, exits 64. The
+    grant of the peer applies to the name. No other target form is taken.
   * `close-link` (`"link":ID`): end the link with a GOAWAY after the frames that wait. A link that has ended is not an error.
   * `close-stream` (`"link":ID,"stream":ID`): reset one stream. The other streams and the link stay. The ids are the
     `stream_ids` of the row of `status` (64 ids at most for each link).

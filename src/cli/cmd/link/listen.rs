@@ -106,6 +106,7 @@ pub(crate) async fn listen(mut args: ListenArgs) -> Result<()> {
     let address = door.address();
     let mode = mode_of(&args.carrier.carrier, &address);
     let hub = Hub::new(&me.fingerprint());
+    hub.reserve(services.keys());
     let mesh = args.announce.then(|| {
         let names = services.keys().cloned().collect();
         let mesh = Mesh::new(me.clone(), names, announce::now_ms());

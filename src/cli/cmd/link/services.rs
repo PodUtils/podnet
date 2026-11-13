@@ -207,7 +207,7 @@ fn exec_of(args: &ServiceArgs, name: &str, program: &str) -> Result<podnet::link
 /// stream to the connection and back.
 pub(super) async fn bridge(
     stream: &mut link::Stream,
-    services: &BTreeMap<String, Service>,
+    (services, hub): (&BTreeMap<String, Service>, &Hub),
     announced: Option<(Arc<Mesh>, Arc<Link>, Option<u32>)>,
     peer: PublicKey,
     (grant, refusals): (&Grant, &podnet::link_ctl::Refusals),
@@ -237,7 +237,9 @@ pub(super) async fn bridge(
         tracing::warn!(peer = %peer.display_fingerprint(), service = %name, "a stream is refused: no grant");
         return Ok(());
     }
-    let Some(found) = services.get(&name) else {
+    // A service of a client of the control socket (`accept`) is a unix target.
+    let registered = hub.claimed(&name).map(|p| Service::Target(Target::Unix(p)));
+    let Some(found) = services.get(&name).or(registered.as_ref()) else {
         service::reply(stream, service::NO_SERVICE).await?;
         return Err(anyhow!(
             "the peer asked for the service {name:?}, which this listener does not have"
@@ -335,7 +337,7 @@ impl Streams {
         tokio::spawn(async move {
             let mut stream = stream;
             tokio::select! {
-                done = bridge(&mut stream, &services, mesh, peer, (&grant, &refusals)) => {
+                done = bridge(&mut stream, (&services, &hub), mesh, peer, (&grant, &refusals)) => {
                     if let Err(err) = done {
                         // Tell the opener that the stream is over.
                         let _ = tokio::io::AsyncWriteExt::shutdown(&mut stream).await;

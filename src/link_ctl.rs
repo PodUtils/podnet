@@ -30,6 +30,11 @@
 //!   into the bytes of the stream. This is how `peer:FP/SERVICE` of the
 //!   network registry reaches a link of another process.
 //!
+//! * `accept` (`"peer":FP,"service":NAME,"target":"unix:/ABS/PATH"`): serve
+//!   the streams for NAME that the peer opens on the socket at PATH, while
+//!   the client keeps the connection (`accept.rs`). This is how `podnet
+//!   serve --ingress peer:FP/SERVICE` takes a stream that the far end opens.
+//!
 //! * `close-link` (`"link":ID`), `close-stream` (`"link":ID,"stream":ID`)
 //!   and `select` (`"link":ID|null`) change a link (T-307, `verbs.rs`).
 //!   Each one answers the status document after the change. They sit
@@ -70,6 +75,7 @@ use crate::exit::{self, Fault};
 use crate::identity::AllowList;
 use crate::link::{Link, ResetCode, Stream};
 
+mod accept;
 mod dump;
 mod verbs;
 
@@ -230,6 +236,8 @@ pub struct Hub {
     errors: Mutex<dump::ErrorRing>,
     /// The route announcements, when the instance runs `--announce`.
     mesh: std::sync::OnceLock<Arc<crate::link_announce::Mesh>>,
+    /// The services that clients of the verb `accept` registered.
+    accepted: Mutex<accept::Table>,
 }
 
 /// The place of a link in a [`Hub`]. Its drop takes the link out.
@@ -293,6 +301,7 @@ impl Hub {
             selected: Mutex::new(None),
             errors: Mutex::new(Default::default()),
             mesh: std::sync::OnceLock::new(),
+            accepted: Mutex::new(Default::default()),
         })
     }
 
@@ -410,7 +419,7 @@ impl Hub {
     }
 
     /// One request that carries a good token. Add the verbs here.
-    async fn verb(&self, request: &Value) -> Result<Reply, Answer> {
+    async fn verb(self: &Arc<Hub>, request: &Value) -> Result<Reply, Answer> {
         let name = request["verb"].as_str().unwrap_or_default();
         match name {
             "status" => Ok(Reply::Json(self.status())),
@@ -431,6 +440,7 @@ impl Hub {
                     tracked,
                 ))
             }
+            "accept" => self.accept(request),
             "close-link" => self.close_link(request).await,
             "close-stream" => self.close_stream(request).await,
             "select" => self.select(request),
@@ -474,6 +484,8 @@ enum Reply {
     /// A document that may exceed [`RESPONSE_LIMIT`], up to [`DUMP_LIMIT`].
     Big(Value),
     Pipe(Stream, Value, Tracked),
+    /// A document, then the connection stays until the client ends it.
+    Hold(Value, accept::Claim),
 }
 
 /// The allow list of one fingerprint (the peer of `peer:FP/SERVICE`). A
@@ -763,6 +775,16 @@ async fn session(
                 }
                 return;
             }
+            Ok(Reply::Hold(doc, claim)) => {
+                // The service lives while the client keeps the connection.
+                drop(permit);
+                if write_line(&mut stream, &doc).await.is_err() {
+                    return;
+                }
+                accept::wait_gone(&mut stream).await;
+                drop(claim);
+                return;
+            }
             Err(answer) => {
                 let _ = write_line(&mut stream, &answer.json()).await;
                 return finish(stream).await;
@@ -772,4 +794,6 @@ async fn session(
 }
 
 mod client;
-pub use client::{discover, dump_all, open_peer, probe_peer, read_token, Client};
+pub use client::{
+    accept_peer, discover, dump_all, open_peer, probe_peer, read_token, Accepting, Client,
+};

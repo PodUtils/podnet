@@ -93,6 +93,7 @@ pub(crate) async fn connect(mut args: ConnectArgs, egress: Vec<String>) -> Resul
     }
     let link = Arc::new(link);
     let hub = Hub::new(&me.fingerprint());
+    hub.reserve(services.keys());
     let slot = hub.hold(
         link.clone(),
         peer,

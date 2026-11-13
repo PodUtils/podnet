@@ -123,6 +123,45 @@ impl Client {
     }
 }
 
+/// A service that a running instance serves for the streams that the peer
+/// opens (the verb `accept`). The drop ends it.
+pub struct Accepting {
+    stream: UnixStream,
+}
+
+impl Accepting {
+    /// Wait until the instance ends the connection (it exited, or its
+    /// link ended and it closed the registration).
+    pub async fn lost(&mut self) {
+        let mut sink = [0u8; 64];
+        while matches!(self.stream.read(&mut sink).await, Ok(n) if n > 0) {}
+    }
+}
+
+/// Ask a running instance that holds a link to `fingerprint` to send the
+/// streams of the service `service` that the peer opens to the unix
+/// socket `socket` (an absolute path).
+pub async fn accept_peer(
+    fingerprint: &str,
+    service: &str,
+    socket: &Path,
+) -> anyhow::Result<Accepting> {
+    peer_list(fingerprint)?;
+    let target = format!("unix:{}", socket.display());
+    first(fingerprint, |control, token| {
+        let target = target.clone();
+        async move {
+            let mut client = Client::connect(&control).await?;
+            let args = json!({"peer": fingerprint, "service": service, "target": target});
+            client.call(&token, "accept", args).await?;
+            Ok(Accepting {
+                stream: client.stream,
+            })
+        }
+    })
+    .await
+}
+
 /// The token in `file`. A missing file exits 66, and a file that others
 /// can read exits 71.
 pub fn read_token(file: &Path) -> anyhow::Result<String> {
