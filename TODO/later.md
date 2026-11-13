@@ -967,7 +967,7 @@ default, as the Decision says.
 
 ## Done
 
-2026-11-13, commit 429790c (the work of the handoff, rebased on a48d3e7). `--backend netns-kernel`: in the child, the
+2026-11-13, commit 085f5c8 (the work of the handoff, rebased on a48d3e7). `--backend netns-kernel`: in the child, the
 nfnetlink client (`crates/podnet-netns/src/nfnl.rs`, `nfrules.rs`) installs `nat OUTPUT REDIRECT` rules for TCP, UDP and
 DNS; the child makes the listeners and sends them to the parent; the parent serves each flow with `connect_upstream`
 (`kernel.rs`, `kernel_serve.rs`). `pod doctor` and the README of `podnet-netns` name the backend. `cargo test --test
