@@ -2325,6 +2325,12 @@ PodUtils/podcrates (`sh scripts/agent/podcrates.sh`; no `taken` line). The port 
 (GitHub #518) asks podcrates to add them. Podnet changes `crates/podnet-netns/src/rules/shadow.rs` (not frozen) with the
 take.
 
+## Correction
+
+2026-11-13: podcrates takes the ask as its entry 475 (P3, PodUtils/podcrates#126): `RuleMatch::Port(lo, hi)` and
+`RuleMatch::Tcp(host, port)` in the rules reader of `pod-warp`, with the acceptance test of podswarm. podnet changes
+`shadow.rs` with the take of the tag that has it.
+
 
 # T-329: `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3)
 
