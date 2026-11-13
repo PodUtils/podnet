@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**330 entries: 51 open, 20 partial, 30 blocked, 229 done.**
+**330 entries: 50 open, 20 partial, 30 blocked, 230 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 19 | 8 | 11 | 129 | 167 |
-| P3 | 32 | 11 | 17 | 72 | 132 |
-| **All** | 51 | 20 | 30 | 229 | 330 |
+| P3 | 31 | 11 | 17 | 73 | 132 |
+| **All** | 50 | 20 | 30 | 230 | 330 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -375,4 +375,4 @@ M8 Overlays, M9 Later.
 | [T-327](services.md) | P3 | M | M6 | feature | open | Router: add and remove a door and a network while the router runs (N-1) |
 | [T-328](services.md) | P3 | S | M6 | feature | blocked | Router: rules by port, also on the loopback (N-2) |
 | [T-329](services.md) | P3 | M | M6 | feature | open | `podnet exit --stdio`: a SOCKS5 exit on stdin and stdout (N-3) |
-| [T-330](pods.md) | P3 | S | M7 | feature | open | `podnet pod --report FILE`: a JSON report of the backend and the hold (N-5) |
+| [T-330](pods.md) | P3 | S | M7 | feature | done | `podnet pod --report FILE`: a JSON report of the backend and the hold (N-5) |

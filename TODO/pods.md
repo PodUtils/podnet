@@ -1422,7 +1422,7 @@ runs in `ci`. Not proven here: the podvm unit of podrunner (its test `held`).
 **Milestone:** M7
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1451,3 +1451,20 @@ fallback in podswarm, and no milestone of podswarm waits for it. The owner can r
 ```sh
 cargo test --test pod_report
 ```
+
+## Done
+
+2026-11-13, commit 1ae7c70 (`T-330: podnet pod --report FILE, a JSON report of the backend and the hold`).
+`--report FILE` writes one JSON object (`schema`, `version`, `backend`, `choice`, `hold`, `not_held`,
+`udp_limit`, `exit`, `reason`) when the pod starts and again at its end, by a rename of a temporary file
+in the same directory, mode 0600 (`crates/podnet-netns/src/report.rs`). `hold` has the words of
+`pod doctor --json`. The schema is `docs/schema/pod-report.schema.json`. `release.yml` copies it into the
+release files and `SHA256SUMS` lists it; `release-proofs.yml` checks its line. `docs/pods.md`,
+`docs/install.md`, the help and `llms-full.txt` are current. Tests: `cargo test --test pod_report`
+(`exit_status_of_the_program_is_in_the_report`, `report_exists_at_the_start_with_a_null_exit`,
+`a_pod_that_cannot_start_writes_a_report_with_its_reason`, `report_is_refused_with_serve`,
+`schema_file_is_json_with_the_keys_of_the_report`) and the unit tests `report::tests::*`. Before the change
+the tests failed (`unexpected argument "--report"`). `sh scripts/agent/check.sh`: each step 0. Not proven:
+a host with no backend at all (exit 3 with `backend` null) has only the unit test
+`no_backend_report_has_a_reason`; the schema is checked with a small checker in the test, not with a JSON
+Schema library; the release workflow runs at the next release.
