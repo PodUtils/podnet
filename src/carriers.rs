@@ -152,6 +152,18 @@ fn make_quic(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("quic", "T-273")
 }
 
+/// The carrier `udp` for the registry: the facts and the host check, no
+/// key of this install (`podnet::link_udp::carrier` is the real one).
+#[cfg(feature = "udp")]
+fn make_udp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_udp::probe()))
+}
+
+#[cfg(not(feature = "udp"))]
+fn make_udp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("udp", "T-276")
+}
+
 fn make_s3(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("s3", "T-279")
 }
@@ -162,7 +174,7 @@ fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 
 /// The carriers of this build, in the order of the lists and of the
 /// first choice.
-pub const ROWS: [Row; 8] = [
+pub const ROWS: [Row; 9] = [
     Row {
         name: unix::NAME,
         about: "a stream over AF_UNIX, mode 0600, the uid of the peer checked",
@@ -217,6 +229,15 @@ pub const ROWS: [Row; 8] = [
         needs_privilege: false,
         feature: Some("quic"),
         make: make_quic,
+    },
+    Row {
+        name: "udp",
+        about: "KCP over UDP, the Ed25519 key of each end pinned in the TLS 1.3 handshake above it",
+        address: "KEY@HOST:PORT to dial, IP:PORT to listen",
+        cost: "network",
+        needs_privilege: false,
+        feature: Some("udp"),
+        make: make_udp,
     },
     Row {
         name: "s3",
@@ -285,7 +306,9 @@ pub fn check_query(name: &str, query: &Query) -> anyhow::Result<()> {
 /// [`check_query`] over the rows `rows`.
 pub fn check_query_in(rows: &[Row], name: &str, query: &Query) -> anyhow::Result<()> {
     let row = find(rows, name)?;
-    if query.mtu.is_none() || row.off().is_some() {
+    // The `mtu` of the udp carrier is the largest datagram of KCP below its
+    // stream: `podnet::link_keyed::Tune::of_query` checks it (T-276).
+    if query.mtu.is_none() || row.off().is_some() || name == "udp" {
         return Ok(());
     }
     match (row.make)(&Options::default()) {

@@ -31,7 +31,7 @@ pub const MAX_URL: usize = 1024;
 pub const MAX_KEYS: usize = 16;
 
 /// The allowed keys, with the entry that gives each one its effect.
-pub const KEYS: [(&str, &str); 11] = [
+pub const KEYS: [(&str, &str); 12] = [
     ("carrier", "T-264"),
     ("tls", "T-269"),
     ("retry", "T-263"),
@@ -43,6 +43,7 @@ pub const KEYS: [(&str, &str); 11] = [
     ("poll", "T-271"),
     ("window", "T-262"),
     ("name", "T-308"),
+    ("kcp-nodelay", "T-276"),
 ];
 
 /// The keys that a query never holds, with or without a value.
@@ -83,6 +84,8 @@ pub struct Query {
     pub poll: Option<u8>,
     pub window: Option<u32>,
     pub name: Option<String>,
+    /// The "nodelay" of KCP on the udp carrier (T-276).
+    pub kcp_nodelay: Option<bool>,
 }
 
 fn usage(text: String) -> anyhow::Error {
@@ -226,6 +229,7 @@ fn set(q: &mut Query, key: &str, v: &str) -> Result<(), String> {
         "poll" => q.poll = Some(number(v, POLL)?),
         "window" => q.window = Some(number(v, WINDOW)?),
         "name" => q.name = Some(word(v, 32)?),
+        "kcp-nodelay" => q.kcp_nodelay = Some(one_of(v, &["0", "1"])? == "1"),
         _ => unreachable!("the key is allowed"),
     }
     Ok(())
@@ -246,6 +250,7 @@ impl Query {
             self.poll.is_some(),
             self.window.is_some(),
             self.name.is_some(),
+            self.kcp_nodelay.is_some(),
         ];
         KEYS.iter()
             .zip(on)
@@ -260,6 +265,12 @@ impl Query {
             // `pad` and `compress` seal the records of a stream (T-299, T-300):
             // the command checks that --seal is given.
             if matches!(key, "carrier" | "pad" | "compress") {
+                continue;
+            }
+            // `mtu` and `kcp-nodelay` set the udp carrier (T-276):
+            // `podnet::link_keyed::Tune::of_query` refuses them for another
+            // carrier.
+            if matches!(key, "mtu" | "kcp-nodelay") {
                 continue;
             }
             // T-308 binds the name before the command starts: the flag gives it.
@@ -317,9 +328,9 @@ mod tests {
     #[test]
     fn an_unknown_key_lists_the_allowed_keys_and_not_its_name() {
         let m = err("hunter2=1");
-        assert!(
-            m.contains("carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window, name")
-        );
+        assert!(m.contains(
+            "carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window, name, kcp-nodelay"
+        ));
         assert!(!m.contains("hunter2"));
     }
 
@@ -396,9 +407,13 @@ mod tests {
 
     #[test]
     fn a_key_with_no_effect_names_its_entry() {
-        let q = parse("mtu=1200").unwrap();
+        let q = parse("maxhops=2").unwrap();
         let m = format!("{:#}", q.require_wired().unwrap_err());
-        assert!(m.contains("T-276"), "{m}");
+        assert!(m.contains("T-287"), "{m}");
+        assert!(parse("mtu=1200&kcp-nodelay=1")
+            .unwrap()
+            .require_wired()
+            .is_ok());
         assert!(parse("compress=snappy&pad=on")
             .unwrap()
             .require_wired()

@@ -13,11 +13,12 @@ use podnet::exit::{self, code_of};
 use serde_json::Value;
 
 /// The carriers that sit behind a feature, with the feature of each.
-const GATED: [(&str, &str); 6] = [
+const GATED: [(&str, &str); 7] = [
     ("tcp", "tcp"),
     ("ws", "ws"),
     ("h2", "h2"),
     ("quic", "quic"),
+    ("udp", "udp"),
     ("s3", "s3"),
     ("icmp", "icmp"),
 ];
@@ -37,7 +38,7 @@ fn podnet(args: &[&str]) -> std::process::Output {
 fn the_optional_features_are_the_ones_of_the_issue() {
     assert_eq!(
         features::OPTIONAL,
-        ["tcp", "ws", "h2", "quic", "s3", "icmp", "ss", "trojan", "c-abi", "portable"]
+        ["tcp", "ws", "h2", "quic", "udp", "s3", "icmp", "ss", "trojan", "c-abi", "portable"]
     );
 }
 

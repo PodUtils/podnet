@@ -847,7 +847,7 @@ Not proven: the CI jobs `restricted-host` and `no-loopback` (not run here; the t
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -889,6 +889,17 @@ T-277 is done (or lands in the same change), and T-262 and T-264 are done.
 2026-11-13, the lead (PodUtils/podcrates#138, answered in GitHub #527): the congestion window of KCP is the default (`nodelay` off). The 5 % gate runs with the default; the 20 % gate runs with `nodelay` on, with the bound that a release build holds. `--carrier udp` takes `?kcp-nodelay=1`.
 
 2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
+
+2026-11-13, calls of the glue (the owner is away): the KCP code is the crate `kcp` 0.6.0 (MIT) through `pod-link` (the choice of podcrates, call C271): the KCP choice of the Approach is made. The ARQ of T-277 is not under this carrier: KCP is its own ARQ, so the start condition on T-277 does not hold for this glue. `kcp-nodelay=1` sets `nodelay` and `window: MAX_WINDOW` (1024), as the notes of v0.40.0 say (call C284). The query key `mtu` has its effect on `udp` (64 to 1200 bytes: no IP fragmentation; the segment shrinks to fit), and stays refused on the stream carriers. A dial sends from a UDP socket of the system: the way out of the process has no datagrams.
+
+## Done
+
+2026-11-13, the commit "T-276: the udp carrier with KCP in link listen, dial and connect" (its hash follows in the next commit). Feature `udp` of podnet is `["tcp", "pod-link/udp"]` (in `full`, `OPTIONAL` and `FULL`). The root `Cargo.toml` has `[profile.dev.package.kcp] overflow-checks = false` (PodUtils/podcrates#139). `src/link_udp.rs` (`podnet::link_udp`): `kcp` (the settings of the query), `carrier`, `listen`, `dial` (`KEY@HOST:PORT`) and `probe`. `src/link_keyed.rs`: the name `udp`, `Tune::kcp_nodelay` and `Tune::mtu`, and the refusal of a key of `udp` for another carrier (exit 64). `src/link_query.rs`: the key `kcp-nodelay` (`0`, `1`); `mtu` and `kcp-nodelay` have an effect now. The registry row, the inventory entry, `docs/link.md` (The UDP carrier, the query keys), `docs/build.md`, the map row of `README.md`.
+
+Tests (`tests/link_udp.rs`, build `--features udp`; none skipped), 11 passed: `a_link_crosses_udp_and_each_end_learns_the_key_of_the_other` (256 KiB there and back), `a_link_crosses_udp_with_kcp_nodelay_and_a_small_mtu`, `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77`, `link_dial_check_meets_link_listen_over_udp_and_a_stranger_exits_77` (with `?kcp-nodelay=1` at both ends), `the_query_keys_of_udp_are_checked_before_a_socket_opens`, `one_mib_crosses_each_way_at_five_percent_loss_with_the_defaults` and `eight_mib_cross_each_way_at_five_percent_loss_with_kcp_nodelay` (the carrier of podnet over the lossy shim of `pod-link`, 5 % drop and 1 % reorder, a debug build: 8 s for the file), `the_carrier_is_a_stream_and_kcp_has_the_settings_of_the_query`, `the_registry_row_has_no_key_and_refuses_a_dial`, `a_dial_address_with_no_key_exits_64`. Plant: with the arms of `udp` in `link_keyed` off and the window of `kcp-nodelay` at 256, 6 tests failed. `sh scripts/agent/check.sh`: each step 0.
+
+Not proven here: the gate at 20 % drop within the factor of the clean time and the 8 MiB gate with the defaults (release builds; tests of `pod-link`, `udp_loss`); exit 69 on a host that denies UDP (the CI job `no-loopback`); the profile of `kcp` (no test ends a stream at a wrap of its clock).
+
 # T-277: link: a selective-repeat ARQ for any lossy carrier (GitHub #468)
 
 **Source:** GitHub #468 (https://github.com/PodUtils/podnet/issues/468), row E2-2.

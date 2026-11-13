@@ -251,6 +251,9 @@ h2 = ["tcp", "pod-link/h2"]
 # The QUIC carrier: one bidirectional stream of a QUIC connection of
 # pod-quic, with the TLS and the pinned keys of `tcp` (T-273).
 quic = ["tcp", "pod-link/quic"]
+# The UDP carrier: KCP over UDP, with the TLS and the pinned keys of `tcp`
+# above it (T-276).
+udp = ["tcp", "pod-link/udp"]
 # The object-storage carrier (T-279).
 s3 = []
 # The ICMP echo carrier (T-282).
@@ -264,7 +267,7 @@ c-abi = []
 # The portable subset (T-305). It takes away; `full` does not hold it.
 portable = []
 # Each optional carrier and service, for CI (`cargo test --features full`).
-full = ["tcp", "ws", "h2", "quic", "s3", "icmp", "ss", "trojan", "c-abi"]
+full = ["tcp", "ws", "h2", "quic", "udp", "s3", "icmp", "ss", "trojan", "c-abi"]
 
 [dev-dependencies]
 # The responder of the tests of WireGuard (src/warp/wg/standin.rs).
@@ -277,6 +280,13 @@ pod-devtunnel = { git = "https://github.com/PodUtils/podcrates", tag = "v0.40.0"
 pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.40.0", version = "0.40.0", features = ["stand", "masque"] }
 tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
+
+# The crate kcp (the udp carrier, T-276) wraps its clock and its sequence
+# numbers by design: with overflow checks, a debug build ends a long
+# stream (PodUtils/podcrates#139). Remove this when kcp fixes its
+# arithmetic.
+[profile.dev.package.kcp]
+overflow-checks = false
 
 [profile.release]
 lto = "thin"

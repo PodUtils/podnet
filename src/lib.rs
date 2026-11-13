@@ -109,6 +109,8 @@ pub mod link_service;
 pub mod link_socks;
 #[cfg(feature = "tcp")]
 pub mod link_tcp;
+#[cfg(feature = "udp")]
+pub mod link_udp;
 #[cfg(feature = "ws")]
 pub mod link_ws;
 pub mod manual;

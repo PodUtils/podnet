@@ -41,7 +41,10 @@ pub(crate) struct CarrierArgs {
     /// over one POST of HTTP/2: dial `KEY@wss://HOST[:PORT]/PATH` and
     /// `KEY@https://HOST[:PORT]/PATH`. `quic` (feature `quic`) is one
     /// stream of a QUIC connection with the same pins: listen at `IP:PORT`
-    /// (UDP), dial `KEY@HOST:PORT`. A key that is refused exits 77.
+    /// (UDP), dial `KEY@HOST:PORT`. `udp` (feature `udp`) is KCP over UDP
+    /// with the same pins and addresses; `?kcp-nodelay=1` turns on the
+    /// nodelay of KCP (unfair to other flows). A key that is refused exits
+    /// 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
     /// The unix carrier accepts a peer of another uid. Each end checks the

@@ -47,6 +47,11 @@ pub const COMPONENTS: &[ComponentEntry] = &[
         meaning: "One stream of a QUIC connection, TLS 1.3 with ALPN podlink/1. Each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. Duplex, ordered, cost class network, no privilege. Address: KEY@HOST:PORT to dial, IP:PORT (UDP) to listen. Build feature quic.",
     },
     ComponentEntry {
+        name: "udp",
+        kind: "carrier",
+        meaning: "KCP over UDP (datagrams of 1200 bytes, segments of 1 KiB, the congestion window of KCP), TLS 1.3 with ALPN podlink/1 above it. Each end pins the Ed25519 key of the other end in the handshake; a key that is not pinned exits 77. The query key kcp-nodelay=1 turns on the nodelay of KCP with a window of 1024 segments: it is unfair to other flows. Duplex, ordered, cost class network, no privilege. Address: KEY@HOST:PORT to dial, IP:PORT (UDP) to listen. Build feature udp.",
+    },
+    ComponentEntry {
         name: "s3",
         kind: "carrier",
         meaning: "A simplex pair of objects in a bucket of an object store. Cost class network, no privilege. Address: BUCKET/PREFIX. Build feature s3.",

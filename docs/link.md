@@ -271,11 +271,12 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `lb` | `weighted`, `rr`, `minrtt`, `leastload` | T-288 adds it. |
 | `compress` | `none`, `snappy` | Compresses the payload of each record with snappy before the seal (T-299). It needs `--seal` (else exit 64). |
 | `pad` | `on`, `off` | Pads each record to a bucket (T-300). It needs `--seal` (else exit 64). |
-| `mtu` | 64 to 65535, at most the unit of the carrier | T-276 adds it. A stream carrier has no unit: exit 64. |
+| `mtu` | 64 to 65535, at most the unit of the carrier | The `udp` carrier: the largest datagram of KCP, 64 to 1200 bytes (T-276). Another stream carrier has no unit: exit 64. |
 | `maxhops` | 1 to 8 | T-287 adds it. |
 | `poll` | 1 to 60 (seconds) | T-271 adds it. |
 | `window` | 16384 to 8388608 (bytes) | T-262 adds it. |
 | `name` | 1 to 32 characters of `a-z 0-9 -` | No effect in a query: give the name with `--name` (T-308). |
+| `kcp-nodelay` | `0`, `1` | The `udp` carrier: `1` turns on the nodelay of KCP with a window of 1024 segments (T-276). Another carrier: exit 64. |
 
 * A key with no effect now is parsed and checked. Then the command exits 64 and names the entry that adds it.
 * Each key is given once. A repeated key exits 64.
@@ -296,10 +297,11 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `ws` | `KEY@wss://HOST[:PORT]/PATH` to dial, `IP:PORT` to listen | A WebSocket over TLS 1.3 and a pinned Ed25519 key (T-269). Build feature `ws`. See "The WebSocket carrier". |
 | `h2` | `KEY@https://HOST[:PORT]/PATH` to dial, `IP:PORT` to listen | One POST of HTTP/2 over TLS 1.3 and a pinned Ed25519 key (T-270). Build feature `h2`. See "The HTTP/2 carrier". |
 | `quic` | `KEY@HOST:PORT` to dial, `IP:PORT` (UDP) to listen | One stream of a QUIC connection with TLS 1.3 and a pinned Ed25519 key (T-273). Build feature `quic`. See "The QUIC carrier". |
+| `udp` | `KEY@HOST:PORT` to dial, `IP:PORT` (UDP) to listen | KCP over UDP with TLS 1.3 and a pinned Ed25519 key (T-276). Build feature `udp`. See "The UDP carrier". |
 | `s3` | `BUCKET/PREFIX` | A simplex pair of objects in a bucket (T-279). Build feature `s3`. |
 | `icmp` | `HOST` | ICMP echo, a datagram carrier (T-282). Build feature `icmp`; it needs a privilege. |
 
-The carriers `tcp`, `ws`, `h2`, `quic`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
+The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
 them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
@@ -402,6 +404,29 @@ Build with `--features quic` (it holds `tcp`). `pod-link` of PodUtils/podcrates 
 ```sh
 podnet link listen 0.0.0.0:7000 --carrier quic --allow allowed.txt --to 127.0.0.1:22
 podnet link dial SERVER-FINGERPRINT@host.example:7000 --carrier quic --allow servers.txt
+```
+
+## The UDP carrier
+
+Build with `--features udp` (it holds `tcp`). `pod-link` of PodUtils/podcrates does the work (`pod_link::udp`, KCP of the crate
+`kcp`); `podnet::link_udp` is the glue.
+
+* KCP runs in stream mode over UDP: datagrams of 1200 bytes at most, segments of 1 KiB (no IP fragmentation), a window of 256
+  segments, the congestion window of KCP. TLS 1.3 with the ALPN `podlink/1` runs above KCP, and each end pins the key of the other
+  end in the handshake. TLS seals each byte, so a datagram of a stranger can end a link but not change it.
+* A listener binds `IP:PORT` on UDP and takes a client only when its key is in the allow list (`--allow`, default deny). A dialer
+  gives `KEY@HOST:PORT` and sends from a UDP socket of the system: the way out of the process (`--proxy`) carries no datagrams, and
+  `--egress` is for the `tcp` carrier only.
+* The session ends after 20 s of silence of the peer.
+* The query key `kcp-nodelay=1` turns on the nodelay of KCP (an RTO of 30 ms at least, no congestion window) with a window of 1024
+  segments. It is not the default: it is unfair to the other flows of a path. It recovers faster from a high loss. Give it at
+  both ends. The query key `mtu=N` sets the largest datagram (64 to 1200 bytes).
+* A key that is not pinned exits 77. A host that denies UDP sockets exits 69: the carrier sends no datagram, and `podnet link
+  carriers` gives the reason.
+
+```sh
+podnet link listen '0.0.0.0:7000?kcp-nodelay=1' --carrier udp --allow allowed.txt --to 127.0.0.1:22
+podnet link dial 'SERVER-FINGERPRINT@host.example:7000?kcp-nodelay=1' --carrier udp --allow servers.txt
 ```
 
 ## A chain before the carrier
@@ -706,5 +731,5 @@ library ([build.md](build.md), "The C library"). Linux only.
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
 `podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
-listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`).
+listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`) and `podnet::link_udp` (feature `udp`).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates. `crates/podnet-capi` is the C interface of the link (see The C library).

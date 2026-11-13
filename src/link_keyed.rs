@@ -1,5 +1,5 @@
 //! The carriers of `pod-link` that pin the Ed25519 key of each end and came
-//! with podcrates v0.40.0: `quic` (T-273).
+//! with podcrates v0.40.0: `quic` (T-273) and `udp` (T-276).
 //!
 //! `link listen`, `link dial` and `link connect` open them by name through
 //! [`dial`] and [`listen`]. Each one sits behind a build feature
@@ -18,13 +18,14 @@ use crate::link::{self, carrier_fault, Door};
 use crate::link_query::Query;
 
 /// The names of these carriers, the words of `--carrier`.
-pub const NAMES: [&str; 1] = ["quic"];
+pub const NAMES: [&str; 2] = ["quic", "udp"];
 
 /// The build feature that holds the carrier `name`, when it is one of
 /// [`NAMES`].
 pub fn feature_of(name: &str) -> Option<&'static str> {
     match name {
         "quic" => Some("quic"),
+        "udp" => Some("udp"),
         _ => None,
     }
 }
@@ -32,14 +33,42 @@ pub fn feature_of(name: &str) -> Option<&'static str> {
 /// What the query of an address and the flags give to a carrier of
 /// [`NAMES`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Tune {}
+pub struct Tune {
+    /// `kcp-nodelay=1` (udp): the "nodelay" of KCP with the largest window.
+    pub kcp_nodelay: bool,
+    /// `mtu=N` (udp): the largest datagram of KCP, 64 to 1200 bytes.
+    pub mtu: Option<usize>,
+}
+
+/// The largest `mtu` of the udp carrier: no IP fragmentation (GitHub #468).
+pub const UDP_MTU: (usize, usize) = (64, 1200);
 
 impl Tune {
     /// The tune of the carrier `name` from `query`. A key that is for
     /// another carrier exits 64.
     pub fn of_query(name: &str, query: &Query) -> anyhow::Result<Tune> {
-        let _ = (name, query);
-        Ok(Tune::default())
+        let only = |key: &str, carrier: &str| {
+            usage(format!(
+                "the query key {key} is for the {carrier} carrier, not for {name}"
+            ))
+        };
+        let mut tune = Tune::default();
+        if let Some(nodelay) = query.kcp_nodelay {
+            if name != "udp" {
+                return Err(only("kcp-nodelay", "udp"));
+            }
+            tune.kcp_nodelay = nodelay;
+        }
+        if let (Some(mtu), "udp") = (query.mtu, name) {
+            if !(UDP_MTU.0..=UDP_MTU.1).contains(&mtu) {
+                return Err(usage(format!(
+                    "the query key mtu: the udp carrier takes {} to {} bytes",
+                    UDP_MTU.0, UDP_MTU.1
+                )));
+            }
+            tune.mtu = Some(mtu);
+        }
+        Ok(tune)
     }
 }
 
@@ -96,6 +125,11 @@ pub async fn dial(
             let carrier = crate::link_quic::carrier(me, allow);
             crate::link_quic::dial(&carrier, allow, address, settings).await
         }
+        #[cfg(feature = "udp")]
+        "udp" => {
+            let carrier = crate::link_udp::carrier(me, allow, tune);
+            crate::link_udp::dial(&carrier, allow, address, settings).await
+        }
         _ => Err(off(name)),
     }
 }
@@ -113,6 +147,11 @@ pub async fn listen(
     match name {
         #[cfg(feature = "quic")]
         "quic" => crate::link_quic::listen(&crate::link_quic::carrier(me, allow), address).await,
+        #[cfg(feature = "udp")]
+        "udp" => {
+            let carrier = crate::link_udp::carrier(me, allow, tune);
+            crate::link_udp::listen(&carrier, address).await
+        }
         _ => Err(off(name)),
     }
 }
@@ -142,5 +181,23 @@ mod tests {
                 assert!(format!("{e:#}").contains(feature), "{e:#}");
             }
         }
+    }
+
+    #[test]
+    fn the_keys_of_udp_are_for_udp_only() {
+        let q = crate::link_query::parse("kcp-nodelay=1&mtu=576").unwrap();
+        let tune = Tune::of_query("udp", &q).unwrap();
+        assert!(tune.kcp_nodelay);
+        assert_eq!(tune.mtu, Some(576));
+        let e = Tune::of_query("quic", &q).unwrap_err();
+        assert_eq!(exit::code_of(&e), 64, "{e:#}");
+        assert!(format!("{e:#}").contains("kcp-nodelay"), "{e:#}");
+        let big = crate::link_query::parse("mtu=1500").unwrap();
+        let e = Tune::of_query("udp", &big).unwrap_err();
+        assert!(format!("{e:#}").contains("64 to 1200"), "{e:#}");
+        assert_eq!(
+            Tune::of_query("udp", &Query::default()).unwrap(),
+            Tune::default()
+        );
     }
 }
