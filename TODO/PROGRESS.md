@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 333 entries: 22 open, 14 partial, 32 blocked, 265 done.
+`TODO/INDEX.md` holds 333 entries: 21 open, 15 partial, 32 blocked, 265 done.
 
 ## State
 
@@ -51,7 +51,8 @@ not wait for a larger one.
 5. **M3, the crates:** T-053, then the prerelease T-054. T-052 is the take of `pod-cloudflare` of
    `PodUtils/podcrates` (T-137): do not do it in podnet.
 6. **M4, the adapters:** done.
-7. **M6, the services:** the shared part T-087; the file
+7. **M6, the services:** the shared part T-087 (partial: the layer is done; the end-to-end channel and the live
+   step of 200 MiB are left); the file
    server and git: done; the router T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
     The owner's rulings of 2026-11-11 add: T-179 (the

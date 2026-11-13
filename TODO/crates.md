@@ -1100,7 +1100,7 @@ are never used). A node whose primary host stops answering retries that host for
   `98d8a71` (`new` adds up to 3 alternates), lines 275-284 at `98d8a71` (`single`).
 - `src/relay_reverse.rs` line 341 at `98d8a71` (`run_node` builds `Relay::single`), lines 215-257 at `98d8a71`
   (reconnect loop).
-- `src/cli/cmd/relay.rs:82`, `:131` (validation only), `:248`.
+- `src/cli/cmd/relay.rs:93`, `:144` (validation only), `:275`.
 - Not measured: whether the relay accepts a node socket for a pair on every host of the deployment.
   `docs/protocol.md:209-215` measures the forward road only.
 

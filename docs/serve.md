@@ -215,8 +215,9 @@ podnet git urls --root ./repos          # the clone URLs and the host key
   `GIT_SSH_COMMAND="ssh -o ProxyCommand='podnet relay connect NAME'" git clone ssh://git@NAME/REPO`.
 - Limits: the quick tunnel takes at most 100 MB in one request body, so a
   larger push over HTTPS fails; a clone has no limit. A session through
-  the relay ends at 64 MiB, so a larger clone or push through the relay
-  fails.
+  the node of `--ingress relay` ends at 64 MiB, so a larger clone or push
+  through it fails. `relay node --resume` and `relay connect --resume` go
+  past this limit ([relay.md](relay.md)).
 - `podnet doctor` reports a missing `git`.
 
 ## Share files

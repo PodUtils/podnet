@@ -41,6 +41,11 @@ pub(crate) enum RelayCommand {
         /// The local service: host:port or unix:/path.
         #[arg(long, value_name = "TARGET")]
         to: String,
+        /// Run the resumable layer for each session: a session of relay
+        /// connect --resume continues past the limits of the relay and after
+        /// a lost leg. An operator with no --resume gets an error.
+        #[arg(long)]
+        resume: bool,
         #[command(flatten)]
         detach: DetachArgs,
     },
@@ -62,6 +67,12 @@ pub(crate) enum RelayCommand {
         /// one session for each, in place of stdin and stdout.
         #[arg(long, value_name = "LISTEN")]
         listen: Option<String>,
+        /// Run the resumable layer (the node needs --resume): the session
+        /// moves to a new leg before the limits of the relay (48 MiB or
+        /// 11 h; -v prints each move), and resumes after a lost leg. With a
+        /// node with no --resume, the session runs in the plain mode.
+        #[arg(long)]
+        resume: bool,
         /// With --listen: --detach, --name, --replace, --no-restart and
         /// --ready-timeout, as `connect -L`. They have no effect without
         /// --listen.
@@ -119,7 +130,9 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             }
             Ok(())
         }
-        RelayCommand::Node { pair, to, .. } => {
+        RelayCommand::Node {
+            pair, to, resume, ..
+        } => {
             let target = reverse::Target::parse(&to)
                 .map_err(|e| anyhow::anyhow!("--to {e}"))
                 .fault(Fault::Usage)?;
@@ -129,37 +142,51 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             let pair = reverse::load(&dir, pair.as_deref())?;
             podnet::report::hide(pair.node_token());
             podnet::ws_relay::Relay::single(&pair.relay, None).fault(Fault::Config)?;
-            tokio::select! {
-                result = reverse::run_node(follow, pair, &target) => result,
-                _ = shutdown_signal() => Ok(()),
+            if resume {
+                tokio::select! {
+                    result = reverse::run_node_resumable(follow, pair, &target) => result,
+                    _ = shutdown_signal() => Ok(()),
+                }
+            } else {
+                tokio::select! {
+                    result = reverse::run_node(follow, pair, &target) => result,
+                    _ = shutdown_signal() => Ok(()),
+                }
             }
         }
         RelayCommand::Connect {
             pair: name,
             token,
             listen,
+            resume,
             detach,
             ..
         } => {
-            let (token, relay) = match token {
-                Some(token) => (token, relay),
+            let (token, relay, expires) = match token {
+                Some(token) => (token, relay, None),
                 None => {
                     let pair = reverse::load(&dir, Some(&name))
                         .context("no --token and no local pair file")?;
                     let relay =
                         podnet::ws_relay::Relay::new(&pair.relay, None).fault(Fault::Config)?;
-                    (pair.connect_token().to_string(), relay)
+                    (pair.connect_token().to_string(), relay, Some(pair.expires))
                 }
             };
             podnet::report::hide(&token);
+            // T-087: the layer of --resume, else the plain mode.
+            let layer = resume.then_some(reverse::Resume {
+                expires,
+                ..reverse::Resume::default()
+            });
             match listen {
                 None => {
-                    reverse::connect(
+                    session(
                         &relay,
                         &name,
                         &token,
                         tokio::io::stdin(),
                         tokio::io::stdout(),
+                        layer,
                     )
                     .await?;
                     // stdin of tokio blocks the shutdown of the runtime.
@@ -175,7 +202,7 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                         tokio::spawn(async move {
                             let (read, write) = tokio::io::split(io);
                             if let Err(err) =
-                                reverse::connect(&relay, &name, &token, read, write).await
+                                session(&relay, &name, &token, read, write, layer).await
                             {
                                 tracing::warn!(error = %format!("{err:#}"), "a relay session failed");
                             }
@@ -267,6 +294,27 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             println!("podnet: relay    {name} stopped");
             Ok(())
         }
+    }
+}
+
+/// One session of an operator: with the layer when `layer` is set, else in
+/// the plain mode.
+async fn session<R, W>(
+    relay: &podnet::ws_relay::Relay,
+    name: &str,
+    token: &str,
+    input: R,
+    output: W,
+    layer: Option<podnet::relay_reverse::Resume>,
+) -> Result<()>
+where
+    R: tokio::io::AsyncRead + Unpin + Send + 'static,
+    W: tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
+    use podnet::relay_reverse as reverse;
+    match layer {
+        Some(layer) => reverse::connect_resumable(relay, name, token, input, output, layer).await,
+        None => reverse::connect(relay, name, token, input, output).await,
     }
 }
 

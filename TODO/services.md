@@ -273,7 +273,7 @@ dry run of the Prove comes with the next beta (T-331).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -323,6 +323,42 @@ after the take.
 2026-11-12, GitHub #466 (row E0-2). The link session (T-262, T-263) uses the same `pod-session` layer for its resume. The relay road of this entry does not change.
 
 2026-11-12, the take of `pod-relay` v0.30.0 (83e0c93). The crate holds the node end of the layer (`reverse::Layered`, over `pod-session`), and `src/relay_reverse.rs` is glue over `reverse::run` and `operator::run` in the plain mode. The work of this entry is glue over the crate: a node over `Layered::new(handler, settings, budget)` with `run_node_with`, and a link maker for `relay connect`. The start condition stays: T-086 makes `pod-session`, `pod-e2e` and `pod-identity` dependencies of podnet itself. Read, not run: `reverse/legs.rs` and `reverse/layered.rs`. Not measured: whether the relay serves a second leg of one session. The fake relay of `tests/relay_reverse/fake.rs` serves none.
+
+2026-11-13, the work (calls of the session; the owner can rule otherwise). (1) The layer is opt-in: `relay node --resume`
+and `relay connect --resume` (`docs/decisions.md`, 2026-11-13). A node of the layer greets first, so an operator with no
+layer gets bytes of the layer. A podnet operator with no `--resume` reads the `GREETING` in the first frame of the node
+(`src/relay_reverse/flush_each.rs`, `LayerGuard`) and exits 78. An operator with `--resume` and a plain node keeps the
+plain mode, as `pod-session` finds no `GREETING` (a target that waits for the client gets its first bytes after 30 s).
+(2) The first leg keeps the wait of the plain mode after the end of its input (`eof_idle`); each later leg is a leg of
+the layer, and the node ends it (`node_ends`, 35 s, as podssh). (3) The client asks for the end of one direction
+(`end.v1`): the answer of the target comes after the end of the input, as in the plain mode (issue 109). (4) Moves print
+at `-v` (debug); a loss and a resume print at the default level. (5) The operator warns before the end of the pair only
+when it reads the local pair file; with `--token`, the end of the pair is not known. (6) `serve --ingress relay`,
+`git serve --ingress relay` and `expose --via relay` keep the plain mode. (7) The fake relay (`tests/relay_reverse/fake.rs`)
+serves each leg as a new relay session, and closes a session at a cap with 1009, as the relay does at 64 MiB. Measured:
+with a cap of 1 MiB and moves at 256 KiB, one run opened 39 legs, and 25 of them met the cap before the move: the window
+of the pair (768 KiB each way) is near the cap of the test, so a loss and a resume carry the session at the cap too. At
+the relay, the margin is 16 MiB. (8) The 12 h test runs on the paused clock of tokio, over the far end of `Layered` in
+memory: the crate reads the clock of tokio (`tokio::time::Instant`) for `move_age`, so no other hook is necessary.
+
+Left: the end-to-end channel (`--key`, `--allow`, approach item 4), for later; the live step of 200 MiB through the real
+relay (`gh workflow run live.yml`), for later: `.github/workflows/` does not change in this work.
+
+## Done
+
+2026-11-13, commit (see the next commit). `src/relay_reverse/resume.rs`: `run_node_resumable` (the node over
+`Layered::new(handler, settings, NODE_BUDGET)` with `run_node_with`), `connect_resumable` (the client of the layer, a
+leg maker that opens `/v1/connect/NAME` again for each new leg), `carry` and `Resume` (48 MiB, 11 h). The CLI flags
+`relay node --resume` and `relay connect --resume` (also with `--listen`). Docs: `docs/relay.md` (Sessions past the
+limits of the relay), `docs/serve.md`, the README map, the llms files.
+`cargo test --test relay_reverse -- relay_session_moves_past_the_cap`: 1 passed (8 MiB each way through a fake relay
+with a cap of 1 MiB, equal SHA-256). The plant `resumes: false` in `Resume::settings` (the layer carries the session on
+its first leg alone): the test fails ("8 MiB back: early eof"). Tests added: `resume::relay_session_moves_past_the_cap`,
+`resume::relay_session_lasts_12_h_on_a_fake_clock` (13 h on the paused clock, legs that end at 12 h: a move, no loss,
+26 echoes), `resume::a_plain_operator_learns_that_the_node_resumes` (exit 78),
+`resume::a_resume_operator_keeps_the_plain_mode_with_a_plain_node`; the unit tests
+`the_guard_stops_only_a_greeting_of_the_layer` and `the_settings_move_under_the_limits_of_the_relay`: each passed.
+
 # T-088: File server: a directory listing in HTML and JSON
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 3.1 to 3.5.

@@ -52,7 +52,49 @@ podnet relay stop NAME
   over a channel that you trust. Check the host key of SSH as usual.
 * The relay sets its own limits; podnet does not enforce them. Measured on
   `tcp.ssh.relay.ajam.dev`: 64 MiB and 12 h for each session, and it can end
-  a session after 180 s with no payload. Open a new session after a limit.
+  a session after 180 s with no payload. In the plain mode, open a new
+  session after a limit. With `--resume` on both sides, the session goes on
+  past the limits (next section).
+
+## Sessions past the limits of the relay: `--resume`
+
+`relay node --resume` and `relay connect --resume` run the resumable layer
+(`pod-session` of PodUtils/podcrates) in each session. A session then goes
+on past the byte and time limits of the relay, and after the loss of a leg.
+
+```sh
+podnet relay node --to 127.0.0.1:22 --resume --detach
+ssh -o ProxyCommand='podnet relay connect NAME --resume' USER@NAME
+```
+
+* A leg is one relay session: one operator socket to `/v1/connect/NAME`.
+  The first leg starts the session of the layer. Before a leg carries 48 MiB
+  (both ways) or becomes 11 h old, `relay connect` opens `/v1/connect/NAME`
+  again, and the session moves to the new leg. The old leg stops at a record
+  boundary. With `-v`, podnet prints each move.
+* After the loss of a leg (a close of the relay, a lost link), `relay connect`
+  opens a new leg with a backoff. Each side sends again from the offset that
+  the other side received. The node keeps a session with no leg for 10
+  minutes, and the connection to the target stays open. The replay memory of
+  a node is at most 64 MiB for all its sessions.
+* The end of the input of `relay connect` ends one direction only: the answer
+  of the target still comes.
+* A session cannot go past the end of its pair. When `relay connect` reads
+  the pair from the local pair file, it warns 24 h, 6 h and 1 h before the
+  expiry. When the relay refuses the connect token for a new leg (the pair
+  expired or was stopped), the session ends with exit 78.
+* Both sides must use `--resume`:
+  * A node with `--resume` and an operator with no `--resume`: the operator
+    exits 78, with the words "the node NAME runs the resumable layer". An
+    operator of podnet before T-087, and other clients of the reverse road,
+    get the bytes of the layer and fail. Give `--resume` to the node only
+    when each operator uses it.
+  * An operator with `--resume` and a node with no `--resume`: the session
+    runs in the plain mode, with a warning, and it ends at the limits of the
+    relay. A target that sends first (sshd) starts at once. A target that
+    waits for the client (HTTP) gets the first bytes after 30 s.
+* `serve --ingress relay`, `git serve --ingress relay` and `expose --via relay`
+  run their nodes in the plain mode.
 
 ## Hosts and limits
 

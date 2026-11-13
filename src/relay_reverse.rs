@@ -32,7 +32,11 @@ use pod_ws::ConnectError;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod flush_each;
-pub use flush_each::FlushEach;
+pub use flush_each::{FlushEach, LayerGuard};
+mod resume;
+pub use resume::{
+    carry, connect_resumable, layered, node_settings, run_node_resumable, CarryError, Resume,
+};
 
 use crate::exit::{fault, Fault};
 use crate::ws_relay::Relay;
@@ -45,7 +49,7 @@ pub use pod_relay::reverse::{Handler, SessionId, EOF_IDLE, HALF_CLOSE_IDLE};
 /// The environment variable with the connect token of the operator.
 pub const CONNECT_TOKEN_VARIABLE: &str = crate::instances::CONNECT_TOKEN_VARIABLE;
 /// The time for a WebSocket handshake and for a call of the relay.
-const TIMEOUT: Duration = Duration::from_secs(20);
+pub(crate) const TIMEOUT: Duration = Duration::from_secs(20);
 /// The time for a local connect (the relay reaps a session with no `ready`
 /// after 15 s).
 const LOCAL_CONNECT: Duration = Duration::from_secs(10);
@@ -208,6 +212,12 @@ fn expiry_words(name: &str, expires: u64, left: Duration, follow: bool) -> Strin
 /// Warn for the pair `name` at each part of [`WARN_BEFORE`] once; the first
 /// at once when the node starts within it. Ends at the expiry.
 async fn warn_expiry(name: String, expires: u64, follow: bool) {
+    warn_expiry_with(expires, |left| expiry_words(&name, expires, left, follow)).await
+}
+
+/// Warn `words` of the time that is left at each part of [`WARN_BEFORE`]
+/// once, before `expires`; the first at once within a part.
+pub(crate) async fn warn_expiry_with(expires: u64, words: impl Fn(Duration) -> String) {
     let mut said: Option<usize> = None;
     loop {
         let left = left_of(expires);
@@ -216,7 +226,7 @@ async fn warn_expiry(name: String, expires: u64, follow: bool) {
         }
         if let Some(part) = band(left) {
             if said.is_none_or(|before| part > before) {
-                tracing::warn!("{}", expiry_words(&name, expires, left, follow));
+                tracing::warn!("{}", words(left));
                 said = Some(part);
             }
         }
@@ -239,12 +249,17 @@ async fn warn_expiry(name: String, expires: u64, follow: bool) {
 /// directory, when no pair name was given), the node takes the next stored
 /// pair at the expiry, with no new start.
 pub async fn run_node(follow: Option<&Path>, pair: Pair, target: &Target) -> Result<()> {
-    let handler = Arc::new(road::LocalHandler {
+    let handler = Arc::new(local_handler(target));
+    run_node_with(follow, pair, handler, &target.to_string()).await
+}
+
+/// The handler of a node that connects each session to `target`.
+pub(crate) fn local_handler(target: &Target) -> road::LocalHandler {
+    road::LocalHandler {
         target: target.clone(),
         timeout: LOCAL_CONNECT,
         dialer: Arc::new(direct_dialer()),
-    });
-    run_node_with(follow, pair, handler, &target.to_string()).await
+    }
 }
 
 /// [`run_node`] with a `handler` of the process in place of a target: each
@@ -421,12 +436,33 @@ where
         },
         wire: relay.wire(),
     };
-    let unavailable = |why: String| Err(fault(Fault::Unavailable, anyhow::anyhow!(why)));
-    // Each frame of the node reaches the reader at once (T-315).
-    let output = FlushEach::new(output);
-    match road::operator::run(&config, tokio::io::join(input, output)).await {
-        Ok(outcome) if outcome.is_success() => Ok(()),
-        Ok(Outcome::NeverReady { code, reason }) => match (reason.is_empty(), code) {
+    let seen = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    // Each frame of the node reaches the reader at once (T-315). A node of
+    // the resumable layer greets first: the guard stops the session.
+    let output = FlushEach::new(LayerGuard::new(output, seen.clone()));
+    let outcome = road::operator::run(&config, tokio::io::join(input, output)).await;
+    if seen.load(std::sync::atomic::Ordering::SeqCst) {
+        return Err(fault(
+            Fault::Config,
+            anyhow::anyhow!("the node {name} runs the resumable layer (relay node --resume): use relay connect --resume"),
+        ));
+    }
+    match outcome {
+        Ok(outcome) => match outcome_error(name, outcome) {
+            Some(err) => Err(err),
+            None => Ok(()),
+        },
+        Err(err) => Err(connect_error(name, err)),
+    }
+}
+
+/// The error of an operator session that ended as `outcome`; none for a
+/// success.
+pub(crate) fn outcome_error(name: &str, outcome: Outcome) -> Option<anyhow::Error> {
+    let unavailable = |why: String| Some(fault(Fault::Unavailable, anyhow::anyhow!(why)));
+    match outcome {
+        outcome if outcome.is_success() => None,
+        Outcome::NeverReady { code, reason } => match (reason.is_empty(), code) {
             (false, _) => unavailable(format!("the node {name} refused the session: {reason}")),
             (true, Some(code)) => unavailable(format!(
                 "the relay closed the session to {name}: {code}{}",
@@ -434,24 +470,36 @@ where
             )),
             (true, None) => unavailable(format!("the relay closed the session to {name}")),
         },
-        Ok(Outcome::Ended { code, reason }) => unavailable(format!(
+        Outcome::Ended { code, reason } => unavailable(format!(
             "the session to {name} ended: {code} {reason}{}",
             close_hint(code)
         )),
-        Ok(Outcome::LocalEnd) => Ok(()),
-        Err(ConnectError::Config(why)) => Err(fault(Fault::Usage, anyhow::anyhow!(why))),
-        Err(ConnectError::Refused {
+        Outcome::LocalEnd => None,
+    }
+}
+
+/// The error of an operator socket that did not open.
+pub(crate) fn connect_error(name: &str, err: ConnectError) -> anyhow::Error {
+    match err {
+        ConnectError::Config(why) => fault(Fault::Usage, anyhow::anyhow!(why)),
+        ConnectError::Refused {
             status: status @ (401 | 403),
             ..
-        }) => Err(fault(
+        } => fault(
             Fault::Config,
             anyhow::anyhow!("the relay refused the connect token for {name} ({status})"),
-        )),
-        Err(ConnectError::Refused { status, body }) => unavailable(format!(
-            "the relay refused the session to {name}: HTTP {status}: {}",
-            body.chars().take(200).collect::<String>()
-        )),
-        Err(err) => unavailable(format!("the session to {name}: {err}")),
+        ),
+        ConnectError::Refused { status, body } => fault(
+            Fault::Unavailable,
+            anyhow::anyhow!(
+                "the relay refused the session to {name}: HTTP {status}: {}",
+                body.chars().take(200).collect::<String>()
+            ),
+        ),
+        err => fault(
+            Fault::Unavailable,
+            anyhow::anyhow!("the session to {name}: {err}"),
+        ),
     }
 }
 

@@ -23,6 +23,8 @@ const CONNECT_TOKEN: &str = "testonly-connect";
 #[path = "relay_reverse/fake.rs"]
 mod fake;
 use fake::{fake_relay, State};
+#[path = "relay_reverse/resume.rs"]
+mod resume;
 
 /// The time `ahead` from now, in milliseconds since the epoch.
 fn ms_from_now(ahead: Duration) -> u64 {

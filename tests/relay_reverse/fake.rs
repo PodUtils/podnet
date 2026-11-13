@@ -23,6 +23,37 @@ pub(crate) struct State {
     pub(crate) node_sockets: usize,
     /// Drop the first node socket after this many ms.
     pub(crate) drop_first_after: Option<u64>,
+    /// How many operator sockets came (each one a relay session).
+    pub(crate) operator_sockets: usize,
+    /// The cap of the bytes of one relay session, both ways (the relay has
+    /// 64 MiB): at the cap, the relay closes the operator socket with 1009.
+    pub(crate) cap: Option<usize>,
+    /// The bytes of each relay session, both ways, by session id.
+    pub(crate) carried: HashMap<String, usize>,
+    /// How many relay sessions met the cap.
+    pub(crate) capped: usize,
+}
+
+/// Count `bytes` of the session `id`. At the cap, the relay closes the
+/// operator socket with 1009 and forgets the session; then false.
+fn count(state: &Mutex<State>, id: &str, bytes: usize) -> bool {
+    let mut state = state.lock().unwrap();
+    let Some(cap) = state.cap else {
+        return true;
+    };
+    let carried = state.carried.entry(id.to_string()).or_default();
+    *carried += bytes;
+    if *carried <= cap {
+        return true;
+    }
+    if let Some(operator) = state.operators.remove(id) {
+        state.capped += 1;
+        let _ = operator.send(Message::Close(Some(CloseFrame {
+            code: CloseCode::from(1009),
+            reason: "session byte limit".into(),
+        })));
+    }
+    false
 }
 
 /// A relay on loopback with the reverse protocol of tcp.ssh.relay.ajam.dev:
@@ -140,6 +171,9 @@ async fn serve(socket: tokio::net::TcpStream, state: Arc<Mutex<State>>, id: Stri
                     assert!(data.len() > 32, "a node frame has the id first");
                     let id = std::str::from_utf8(&data[..32]).unwrap().to_string();
                     let operator = state.lock().unwrap().operators.get(&id).cloned();
+                    if !count(&state, &id, data.len() - 32) {
+                        continue;
+                    }
                     if let Some(operator) = operator {
                         let _ = operator.send(Message::binary(data[32..].to_vec()));
                     }
@@ -148,11 +182,11 @@ async fn serve(socket: tokio::net::TcpStream, state: Arc<Mutex<State>>, id: Stri
             }
         }
     } else {
-        state
-            .lock()
-            .unwrap()
-            .operators
-            .insert(id.clone(), tx.clone());
+        {
+            let mut state = state.lock().unwrap();
+            state.operators.insert(id.clone(), tx.clone());
+            state.operator_sockets += 1;
+        }
         let node = state.lock().unwrap().node.clone();
         let Some(node) = node else {
             let _ = tx.send(Message::Close(Some(CloseFrame {
@@ -165,6 +199,9 @@ async fn serve(socket: tokio::net::TcpStream, state: Arc<Mutex<State>>, id: Stri
         while let Some(Ok(message)) = stream.next().await {
             match message {
                 Message::Binary(data) => {
+                    if !count(&state, &id, data.len()) {
+                        continue;
+                    }
                     let mut frame = id.as_bytes().to_vec();
                     frame.extend_from_slice(&data);
                     let _ = node.send(Message::binary(frame));
