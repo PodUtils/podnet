@@ -1078,6 +1078,74 @@ jobs:
           if BOX_PLANT=exit3 sh scripts/test_in_box.sh target/release/podnet; then
             echo "the box passed a planted binary"; exit 1
           fi
+      # T-101: the router with a WARP member, a relay member and a group.
+      # WARP answers warp=on, the relay warp=off. With TCP 443 to the MASQUE
+      # front door refused, the group fails over to the relay. The step
+      # registers its own device (owner, 2026-11-05) and deletes it.
+      - name: Router with WARP, the relay and a failover
+        timeout-minutes: 10
+        run: |
+          set -eu
+          export PODNET_RUN_DIR="$RUNNER_TEMP/router-run"
+          umask 077
+          id="$RUNNER_TEMP/router-warp.json"
+          rule="OUTPUT -d 162.159.198.0/24 -p tcp --dport 443 -j REJECT --reject-with tcp-reset"
+          cleanup() {
+            sudo iptables -D $rule 2> /dev/null || true
+            target/release/podnet stop router > /dev/null 2>&1 || true
+            target/release/podnet warp --identity "$id" delete > /dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          # Register the device first; honour a 429 of the service once.
+          if ! target/release/podnet warp --identity "$id" register > /dev/null 2> reg.err; then
+            pause=$(grep -o 'wait [0-9]* s' reg.err | head -1 | tr -dc 0-9)
+            grep -q 'HTTP 429' reg.err || { cat reg.err; exit 1; }
+            echo "HTTP 429: wait $(( ${pause:-60} + 5 )) s, then register again"
+            sleep $(( ${pause:-60} + 5 ))
+            target/release/podnet warp --identity "$id" register > /dev/null
+          fi
+          cat > router.yml <<EOF
+          networks:
+            w: warp:identity=$id
+            r: relay
+          groups:
+            g: w*1, r*1
+          policies:
+            g: protect
+          health:
+            target: 1.1.1.1:443
+            interval: 5
+            down_after: 3
+            up_after: 2
+            cooldown: 10
+            timeout: 5
+          control: unix:$RUNNER_TEMP/router.ctl
+          doors:
+            - listen: tcp://127.0.0.1:18301
+              via: w
+            - listen: tcp://127.0.0.1:18302
+              via: r
+            - listen: tcp://127.0.0.1:18303
+              via: g
+          EOF
+          target/release/podnet route --config router.yml --detach --name router > /dev/null
+          trace() { curl -fsS --max-time 30 -x "socks5h://127.0.0.1:$1" https://one.one.one.one/cdn-cgi/trace | grep '^warp=' || true; }
+          test "$(trace 18301)" = warp=on
+          test "$(trace 18302)" = warp=off
+          target/release/podnet route --status "unix:$RUNNER_TEMP/router.ctl" | sed -E 's/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/<ip>/g'
+          # The front door refuses: the group takes the relay.
+          sudo iptables -I $rule
+          i=0
+          until [ "$(trace 18303)" = warp=off ]; do
+            i=$((i + 1))
+            if [ "$i" -gt 18 ]; then
+              target/release/podnet route --status "unix:$RUNNER_TEMP/router.ctl"
+              echo "the group did not fail over to the relay in 90 s"; exit 1
+            fi
+            sleep 5
+          done
+          echo "the group failed over to the relay after about $(( i * 5 )) s"
+          sudo iptables -D $rule
       - name: Remove the WARP device
         if: always()
         timeout-minutes: 2

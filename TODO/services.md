@@ -1348,7 +1348,7 @@ answered `HTTP/1.1 200 Connection Established`, and curl through the door got HT
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1395,6 +1395,14 @@ T-100 is done.
 (`src/networks.rs` has no WARP spec), and that network is T-057 (a dialer and datagrams for WARP), which
 waits for `pod-warp` (T-050). The step with `relay` and `direct` alone proves no WARP. T-101 starts when
 T-057 is done.
+
+2026-11-13, the lead: T-057 is done (the network `warp`, 3855573), so the entry starts. `.github/workflows/live.yml` has
+the step "Router with WARP, the relay and a failover": it registers its own device (one wait for a 429), runs `podnet
+route` with `w: warp:identity=FILE`, `r: relay` and a group `g` (policy `protect`) with a door for each, checks
+`warp=on` through `w` and `warp=off` through `r`, refuses TCP 443 to the MASQUE front door (a reset rule), waits at most
+90 s for `warp=off` through `g`, restores the rule, and deletes the device. The config was checked with `direct` in
+place of `warp` (the router starts; `down_after: 3`, `up_after: 2` hold K > R > 1 and R > K/2). It waits for a run
+(GitHub #531).
 
 
 # T-102: Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole`
