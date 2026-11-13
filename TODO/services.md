@@ -1417,6 +1417,12 @@ the relay also says `warp=on` (measured from this host with `podnet forward --ne
 members apart by the state of the router (`route --status --json`): each door answers, `w` is `up`, then with the reset
 rule `w` goes `down` in 90 s at most and the group still carries a flow (c02da54). It waits for a run.
 
+2026-11-13: the live run 43499872018 on 0dd7663 got each door's answer and both members `up`, but with TCP 443 to
+162.159.198.0/24 refused, `w` stayed `up` for 90 s: the session reached the edge another way (another front door, IPv6 or
+h3 over UDP 443). The step now refuses TCP and UDP 443 to 162.159.0.0/16 and to 2606:4700:100::/40 (the relay's own
+addresses are outside both), and prints the connections of the router on port 443 before the block and on a failure
+(5d86aee). GitHub #537. It waits for a run.
+
 
 # T-102: Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole`
 

@@ -229,5 +229,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #535 | COORD-072: the asks of the transfer of podnet over pod-wormhole: the derivation of a key, a stand-in mailbox, the count of words, the TCP transit relay (to podcrates) | open (a COORD issue between sessions) | none |
 | #536 | [gh action] requested: ci, deny, secrets and live on 0dd7663 | closed: deny 43499858663 and secrets 43499865056 passed; ci 43499850487 failed (the transfer tests have no loopback guard) and live 43499872018 failed at the router step (w stayed up) | none |
 | #537 | live: two runs in a row failed (the router step, runs 43491840609 and 43499872018) | open | T-101 |
+| #538 | COORD-073: pod-hold: a seccomp rule for a raw ICMP socket (podnet T-334) (to podcrates) | open (a COORD issue between sessions) | none |
+| #539 | [gh action] requested: ci, deny, secrets and live on the head after e308509 (T-101, T-282, T-104, the loopback guards of T-105) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
