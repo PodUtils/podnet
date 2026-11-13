@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 47 open, 21 partial, 30 blocked, 233 done.**
+**331 entries: 46 open, 21 partial, 30 blocked, 234 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 20 | 8 | 11 | 129 | 168 |
-| P3 | 27 | 12 | 17 | 76 | 132 |
-| **All** | 47 | 21 | 30 | 233 | 331 |
+| P3 | 26 | 12 | 17 | 77 | 132 |
+| **All** | 46 | 21 | 30 | 234 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -348,7 +348,7 @@ M8 Overlays, M9 Later.
 | [T-300](link.md) | P3 | S | M9 | feature | open | link: padding of records to buckets (GitHub #472) |
 | [T-301](link.md) | P3 | M | M9 | feature | open | link: the replay window and the RESUME record (GitHub #472) |
 | [T-302](link.md) | P3 | L | M9 | feature | open | link: split one session across an up carrier and a down carrier (GitHub #473) |
-| [T-303](link.md) | P3 | M | M9 | feature | open | link: chain composition with a peer element and --check (GitHub #473) |
+| [T-303](link.md) | P3 | M | M9 | feature | done | link: chain composition with a peer element and --check (GitHub #473) |
 | [T-304](link.md) | P3 | L | M9 | feature | open | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
 | [T-305](link.md) | P3 | L | M9 | feature | blocked | link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475) |
 | [T-306](link.md) | P3 | M | M9 | feature | done | link: the query keys of a carrier URL (GitHub #476) |

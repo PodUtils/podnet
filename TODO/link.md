@@ -2082,7 +2082,7 @@ T-262 is done and two carriers of E1 exist (T-268, T-274, T-275).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2121,6 +2121,13 @@ sh scripts/agent/check.sh
 ## Start condition
 
 T-266 is done.
+
+## Done
+
+2026-11-13, commit 218d3f1. `podnet link dial` and `podnet link connect` take each `--egress` as one element before the `tcp` carrier (`src/cli/way.rs` keeps the elements in order; `src/link_chain.rs` is `podnet::link_chain`). The chain is the `Chain` of podnet-core: each element is a layer (`direct`, a SOCKS5 or HTTP proxy that opens its connection over the layer below, or `peer:FINGERPRINT/SERVICE`). The last element reaches the carrier address and no `direct` is added. `Plan::parse` exits 64 for more than 8 elements or a network that is not an element, and 78 for a duplicate element, two elements at one place, or an element at the carrier address. `Plan::open` resolves each element (10 s each) and brings the chain up before the carrier opens; a failure exits 69 and names the element. `Plan::check` resolves and dials each element once. `--check` is on `link dial` (already there) and now on `link connect` (no control socket, no name, no listener). `link_tcp::carrier_via` makes the carrier over a dial. `docs/link.md`, `docs/egress.md`, the help and the llms files have it.
+`cargo test --features tcp --test link_chain`: 6 passed: `two_elements_reach_a_local_proxy_then_a_local_carrier`, `a_chain_of_two_elements_dials_through_the_cli_and_check_prints_each`, `check_of_connect_prints_each_element_and_leaves_no_listener`, `a_missing_element_exits_69_names_it_and_opens_no_carrier`, `a_cycle_or_a_duplicate_exits_78_and_too_many_elements_exit_64`, `a_chain_with_a_carrier_that_opens_no_connection_exits_64`. The unit test `egress_of_link_dial_and_connect_is_a_chain_in_order` is in `src/cli/way_tests.rs`. With the change of `way.rs` undone, 5 of the 6 tests failed (a chain of more than one `--egress` is "for podnet pod only"). `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers and test all 0; clippy and the two link tcp test files also pass with `--features full`.
+Not proven: a `peer:` element in a running chain (only the missing-peer case, exit 69, is tested); an HTTP proxy as a later element and a SOCKS5 proxy with a password over a way below (the code is the same path as the SOCKS5 test, with no test of its own); the 10 s limit of an element (no test waits for it); the chain with `link listen` (it dials nothing, so it takes no chain).
+
 
 # T-304: link: a C ABI with a header, a shared library and a static library (GitHub #474)
 
