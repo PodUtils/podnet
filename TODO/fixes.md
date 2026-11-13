@@ -5500,7 +5500,7 @@ passed, the publish 43370009549 passed. The release `v0.4.0-beta.9` is a prerele
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -5538,6 +5538,13 @@ sh scripts/agent/check.sh
 address (`::1`), and the UDP socket of the service binds `0.0.0.0`. `resolve` now takes an address of the family of
 the socket when the name has one; a socket on `[::]` keeps the order of the resolver. Test:
 `door_udp_name_takes_the_family_of_the_socket`.
+
+## Done
+
+2026-11-13, commits a48d3e7 (`Way::connect` of `src/link_door.rs` tries each address of a name) and 2122bd4 (`resolve` of
+`crates/podnet-netns/src/door/udp.rs` takes the family of the socket; test `door_udp_name_takes_the_family_of_the_socket`).
+The ci run 43452891413 on 7d73ec7 passed the jobs `test` and `features` (`tests/link_door.rs`, `tests/link_socks5.rs`)
+on a runner that resolves `localhost` to `::1` first. The ci run 43459872995 on bf01ac6 passed each job.
 
 
 # T-332: QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523)

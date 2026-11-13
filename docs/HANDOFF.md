@@ -16,7 +16,7 @@ bring `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`.
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.39.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.9` (T-331).
-* The record is `TODO/`. `cargo todo check` agrees: 332 entries, 27 open, 18 partial, 33 blocked, 254 done.
+* The record is `TODO/`. `cargo todo check` agrees: 333 entries, 27 open, 14 partial, 32 blocked, 260 done.
 
 ## Unfinished work (not on `main`)
 
@@ -26,38 +26,35 @@ and T-061 (3855573).
 Not started: the rest of T-287 (a test with three podnet processes) and of T-301 (RESUME inside the session resume of
 T-263). A worktree brief for them is in the record (their Corrections).
 
-## Live CI
+## CI
 
-`live` is red since the take of `pod-warp` (GitHub #523, T-332). Each fix so far moved the failure to a later step:
+A push of the cloud session starts no workflow run. Ask the owner for runs with an issue titled `[gh action] requested`
+(a block of `gh workflow run` and `gh run watch` pinned to one commit; see GitHub #528 to #530). Map each request in
+`TODO/github.txt` and `TODO/issues.md`, and close it when its results are in.
 
-1. QUIC over WARP and `warp nc -u` (the `[::]` socket of `WarpNet`): fixed in `pod-warp` `v0.39.0` (GitHub #524).
-2. `warp nc -u` with no `warp up`: the session was dropped while the pipe ran (ef240bb).
-3. The relay line and the TUN line of `pod-warp` were hidden: the job's `RUST_LOG` and podnet's default log filter now
-   name `pod_warp` and the other `pod-*` crates (e1c5b34, 6fec3df).
-4. "WARP run": a step's `RUST_LOG=podnet=debug` hid the debug line of `pod_warp` (ecbd88b).
-
-The run on b4c8b23 holds each fix and had not finished. Check it first. When `live` passes, close GitHub #523 with the
-run. Push in batches: each push cancels the pending `live` run (`cancel-in-progress` is false, so a running one goes on).
+`ci`, `deny` and `secrets` pass on bf01ac6 (ci 43459872995). `live` is red since the take of `pod-warp` (GitHub #523,
+T-332); each fix moved the failure to a later step (the Corrections of T-332 list each one). The run on bf01ac6
+(43459893595, request #530) holds each fix so far. When `live` passes, set T-332 done and close #523 and #524 with the
+run.
 
 ## Next steps
 
-1. Read the live run of b4c8b23; fix the next step that fails, or close #523.
-2. Apply and finish the two patches above, one at a time (they share no files).
-3. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
+1. Read the results of #530; fix the next step of `live` that fails and ask for a new run, or close T-332, #523 and #524.
+2. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
    With the tag that brings the udp carrier, set `[profile.dev.package.kcp] overflow-checks = false` (T-276,
    PodUtils/podcrates#139) and answer GitHub #527.
-4. Go on with the work order of `TODO/PROGRESS.md`. Run two worktree agents at a time at most. Merge each as before:
-   rebase on `main`, take `--ours` for `TODO/INDEX.md` and `TODO/PROGRESS.md` and run `cargo todo set`, cite the rebased
-   commit, run `gen-llms.py`, run `check.sh`, push.
-5. Close the GitHub issues whose entries are done, with the commits and the CI runs (`docs/maintenance.md`, "The issue
-   loop"). Issues #484 to #501 are deferred by the owner: leave them open.
-6. When each non-deferred issue is closed and `live` is green: cut the final complete beta (the steps of T-331).
+3. Judge T-057 against the network `warp` (3855573), and steps 2 and 4 of T-086 against the code; close T-086 and T-131
+   when they hold.
+4. Go on with the work order of `TODO/PROGRESS.md`. The disk holds one build: run one agent at a time in this checkout,
+   with `CARGO_INCREMENTAL=0`. Close the GitHub issues whose entries are done, with the commits and the CI runs
+   (`docs/maintenance.md`, "The issue loop"). Issues #484 to #501 are deferred by the owner: leave them open.
+5. When each non-deferred issue is closed and `live` is green: cut the final complete beta (the steps of T-331).
 
 ## Known flakes under load
 
 `quick_tunnel_standin_serves_a_visitor_over_http2`, `service_serve_ingress::the_service_ends_with_the_serve_process`,
 `shim_direct::a_perl_accept_loop_serves_each_connection` and `ws_relay::...::a_demoted_relay_host_recovers_on_success`
-fail at times in a full run and pass alone. Run a failed test alone three times before a push.
+and `autostart::sigterm_is_a_clean_stop` fail at times in a full run and pass alone. Run a failed test alone three times before a push.
 
 ## Open COORD issues
 

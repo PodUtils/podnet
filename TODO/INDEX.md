@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**333 entries: 28 open, 14 partial, 32 blocked, 259 done.**
+**333 entries: 27 open, 14 partial, 32 blocked, 260 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 2 | 1 | 2 | 27 | 32 |
+| P1 | 1 | 1 | 2 | 28 | 32 |
 | P2 | 16 | 4 | 10 | 138 | 168 |
 | P3 | 10 | 9 | 20 | 93 | 132 |
-| **All** | 28 | 14 | 32 | 259 | 333 |
+| **All** | 27 | 14 | 32 | 260 | 333 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -378,4 +378,4 @@ M8 Overlays, M9 Later.
 | [T-330](pods.md) | P3 | S | M7 | feature | done | `podnet pod --report FILE`: a JSON report of the backend and the hold (N-5) |
 | [T-331](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.9`: the dry run, the publish and the release proofs |
 | [T-332](fixes.md) | P1 | S | M5 | defect | open | QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523) |
-| [T-333](fixes.md) | P1 | S | M5 | defect | open | link door: --resolve-at local tries only the first address of a name |
+| [T-333](fixes.md) | P1 | S | M5 | defect | done | link door: --resolve-at local tries only the first address of a name |
