@@ -47,7 +47,7 @@ say "warp tun --default-route with the IPv6 front door"
 # The files of the redirect belong to this user, not to root (SC2024 is
 # the wanted behaviour here).
 # shellcheck disable=SC2024
-sudo ip netns exec v6only env PODNET_STATE_DIR=none RUST_LOG=podnet=info \
+sudo ip netns exec v6only env PODNET_STATE_DIR=none PODNET_RUN_DIR=/tmp/v6only-run1 RUST_LOG=podnet=info \
     timeout 60 "$bin" warp --ephemeral --masque-endpoint '[2606:4700:103::2]:443' \
     tun --default-route --interface podnet1 > v6tun.out 2> v6tun.err &
 tunpid=$!

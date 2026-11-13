@@ -23,7 +23,7 @@ say "removing the namespaces"
 sudo ip netns del v6only 2> /dev/null
 sudo ip netns del v6up 2> /dev/null
 sudo ip link del vh-v6up 2> /dev/null
-sudo rm -rf /etc/netns/v6only /etc/netns/v6up
+sudo rm -rf /etc/netns/v6only /etc/netns/v6up /tmp/v6only-run /tmp/v6only-run1
 
 # Each matching rule goes: -D removes the first match only.
 say "removing the NAT44 and forward rules"

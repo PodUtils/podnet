@@ -23,6 +23,9 @@ bin=$(readlink -f "${1:?usage: up.sh BINARY}")
 up=v6up
 ns=v6only
 log=${V6ONLY_LOG:-/tmp/v6only-tun.log}
+# The run directory of the tun: --default-route keeps the record of the
+# resolver file there (PODNET_STATE_DIR=none, and sudo drops XDG_RUNTIME_DIR).
+run=${V6ONLY_RUN_DIR:-/tmp/v6only-run}
 
 say() { printf '==> %s\n' "$*"; }
 
@@ -56,7 +59,7 @@ if ! sudo ip netns exec "$up" ip -6 route | grep -q '^::/1 dev podnet0'; then
     # The log belongs to this user, not to root (SC2024 is wanted).
     # shellcheck disable=SC2024
     sudo ip netns exec "$up" env -u HTTPS_PROXY -u https_proxy -u HTTP_PROXY -u http_proxy \
-        -u ALL_PROXY -u all_proxy PODNET_STATE_DIR=none RUST_LOG=podnet=info \
+        -u ALL_PROXY -u all_proxy PODNET_STATE_DIR=none PODNET_RUN_DIR="$run" RUST_LOG=podnet=info \
         setsid "$bin" warp --ephemeral tun --default-route --interface podnet0 > "$log" 2>&1 &
     i=0
     until sudo ip netns exec "$up" ip -6 route | grep -q '^::/1 dev podnet0'; do

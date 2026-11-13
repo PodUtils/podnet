@@ -5529,6 +5529,17 @@ sh scripts/agent/check.sh
 # the ci run of the commit: the jobs test, features, no-loopback and restricted-host pass
 ```
 
+## Correction
+
+2026-11-13: the ci run 43445945197 on b1e2b80 passed `tests/link_door.rs` and the jobs `no-loopback` and
+`restricted-host`. The jobs `test` and `features` failed in `tests/link_socks5.rs`:
+`a_udp_datagram_goes_through_the_peer_to_an_echo_and_back` waited 300 s for the answer to a datagram for the name
+`localhost`. The same cause on the side of the peer: `resolve` of `crates/podnet-netns/src/door/udp.rs` took the first
+address (`::1`), and the UDP socket of the service binds `0.0.0.0`. `resolve` now takes an address of the family of
+the socket when the name has one; a socket on `[::]` keeps the order of the resolver. Test:
+`door_udp_name_takes_the_family_of_the_socket`.
+
+
 # T-332: QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523)
 
 **Source:** GitHub #523 (live: two runs in a row failed): runs 43380951617, 43382313993 and 43383091796, step
@@ -5609,3 +5620,10 @@ crate of podcrates writes, except the relay line, which the `RUST_LOG` of the jo
 of the second batch". It failed at "a nested session" of `scripts/live-batch2.sh`: the WARP service refused the new
 device of the nested session with HTTP 429 (error 1015, "wait 39 s"). The session ended and the port did not open. The
 step now waits the time that the service asks for, plus 5 s, and starts the session again, at most 3 times.
+
+2026-11-13: the live run 43445966561 on b1e2b80 passed "The commands of the second batch" (the wait for HTTP 429
+holds). It failed at "An IPv6-only host": `warp tun --default-route` in `scripts/v6only/up.sh` ended with "detached
+instances need a run directory". Since the take of `pod-warp` (f6abdc3), `--default-route` keeps the record of the
+resolver file in the state directory, else the run directory; the lab sets `PODNET_STATE_DIR=none`, and `sudo` drops
+`XDG_RUNTIME_DIR`. `scripts/v6only/up.sh` and `scripts/v6only/acceptance.sh` now give each tun a run directory
+(`PODNET_RUN_DIR`), and `scripts/v6only/down.sh` removes them.

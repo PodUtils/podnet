@@ -323,3 +323,19 @@ async fn front_door_udp_in_stream_replies_for_a_door_that_refuses() {
         assert_eq!(out[1], 0x07, "{out:?}");
     }
 }
+
+#[test]
+fn door_udp_name_takes_the_family_of_the_socket() {
+    let v6: SocketAddr = "[::1]:53".parse().unwrap();
+    let v4: SocketAddr = "127.0.0.1:53".parse().unwrap();
+    let found = [v6, v4];
+    let any4: SocketAddr = "0.0.0.0:0".parse().unwrap();
+    let any6: SocketAddr = "[::]:0".parse().unwrap();
+    let one6: SocketAddr = "[fd00::1]:0".parse().unwrap();
+    assert_eq!(super::pick(&found, Some(any4)), Some(v4));
+    assert_eq!(super::pick(&found, Some(any6)), Some(v6));
+    assert_eq!(super::pick(&[v4, v6], Some(one6)), Some(v6));
+    assert_eq!(super::pick(&[v6], Some(any4)), Some(v6));
+    assert_eq!(super::pick(&found, None), Some(v6));
+    assert_eq!(super::pick(&[], Some(any4)), None);
+}

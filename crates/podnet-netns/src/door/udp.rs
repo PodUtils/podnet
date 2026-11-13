@@ -67,7 +67,7 @@ where
                 let Some((host, port, payload)) = socks::socks5_udp_unwrap(&up[..n]) else {
                     continue;
                 };
-                let Some(to) = resolve(&host, port).await else {
+                let Some(to) = resolve(&host, port, datagrams.local_addr().ok()).await else {
                     continue;
                 };
                 if !peers.contains(&to) && peers.len() >= MAX_PEERS {
@@ -136,7 +136,7 @@ where
             let Some((host, port, payload)) = socks::socks5_udp_unwrap(&frame) else {
                 continue;
             };
-            let Some(to) = resolve(&host, port).await else {
+            let Some(to) = resolve(&host, port, datagrams.local_addr().ok()).await else {
                 continue;
             };
             if !peers.contains(&to) && peers.len() >= MAX_PEERS {
@@ -187,18 +187,32 @@ fn take_frame(held: &mut Vec<u8>) -> Option<Vec<u8>> {
 }
 
 /// The address of a datagram: a name resolves with the resolver of this host.
-async fn resolve(host: &ProxyHost, port: u16) -> Option<SocketAddr> {
+/// The address has the family of the socket when the name has one: a socket
+/// on `0.0.0.0` cannot send to `::1`, and `localhost` can give `::1` first.
+/// A socket on `[::]` takes the first address.
+async fn resolve(host: &ProxyHost, port: u16, local: Option<SocketAddr>) -> Option<SocketAddr> {
     match host {
         ProxyHost::Ip(ip) => Some(SocketAddr::new(*ip, port)),
         ProxyHost::Domain(name) => {
             let lookup = tokio::net::lookup_host((name.as_str(), port));
-            tokio::time::timeout(RESOLVE_LIMIT, lookup)
+            let found: Vec<SocketAddr> = tokio::time::timeout(RESOLVE_LIMIT, lookup)
                 .await
                 .ok()?
                 .ok()?
-                .next()
+                .collect();
+            Some(pick(&found, local)?)
         }
     }
+}
+
+/// The first address of the family of `local`, else the first address.
+fn pick(found: &[SocketAddr], local: Option<SocketAddr>) -> Option<SocketAddr> {
+    let same = |a: &&SocketAddr| match local {
+        Some(l) if l.ip().is_unspecified() && l.is_ipv6() => true,
+        Some(l) => l.is_ipv4() == a.is_ipv4(),
+        None => true,
+    };
+    found.iter().find(same).or(found.first()).copied()
 }
 
 /// The SOCKS5 datagram for an answer of `from`.
