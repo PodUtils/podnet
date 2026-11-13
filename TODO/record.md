@@ -307,7 +307,7 @@ router (T-097).
 
 ## Done
 
-2026-11-13, partial (step 1), commit WARPSTANDIN. `tests/warp_stand_in.rs` runs the binary with `PODNET_WARP_API` at the
+2026-11-13, partial (step 1), commit 4dc00bf. `tests/warp_stand_in.rs` runs the binary with `PODNET_WARP_API` at the
 API stand-in of `pod-testkit` (`pod_testkit::stand::warp::Api`, plain HTTP on the loopback). `cargo test --test
 warp_stand_in`: 6 passed: `warp_stand_in_register_saves_one_device_and_a_second_run_loads_it` (one POST, mode 0600, a
 second run loads), `warp_stand_in_status_reads_the_account_of_the_saved_device`,
