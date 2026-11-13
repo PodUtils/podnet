@@ -7205,7 +7205,7 @@ COMMANDS
             The form of the log on stderr: text, or json (one object for each
             line). Default: text. Values: text, json.
 
-        Commands of podnet link: listen, dial, connect, status, close,
+        Commands of podnet link: listen, dial, connect, status, mesh, close,
         carriers.
 
     podnet link listen [OPTIONS] --allow <FILE> <ADDRESS>
@@ -7656,6 +7656,83 @@ COMMANDS
 
         --token-file <FILE>
             The token file of --control. Default: PATH.token
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+    podnet link mesh [OPTIONS] --control <unix:PATH>
+        Show the local view of a mesh: the nodes (fingerprint, name, last seq,
+        hops, services) and the edges (peer, cost, last probe, state) that the
+        announcements of a listener with --announce taught it. Ask the control
+        socket of that listener (mode 0600; there is no network endpoint).
+        --json prints the document; --metrics prints the counters as
+        Prometheus text. The view holds 4096 nodes, 64 edges for each node and
+        256 KiB; `truncated` counts what was cut. A listener without
+        --announce exits 69; a wrong token exits 77
+
+        --control <unix:PATH>
+            The control socket of the listener: unix:/PATH. Required.
+
+        --token-file <FILE>
+            The token file of --control. Default: PATH.token
+
+        --json
+            Print one JSON document
+
+        --metrics
+            Print the counters as Prometheus text
+
+        --max-nodes <N>
+            Show at most N nodes (a lower limit than 4096)
+
+        --max-edges <N>
+            Show at most N edges for each node (a lower limit than 64)
 
         --ca-file <PATH>
             A file of TLS roots (PEM). podnet uses only these roots for each

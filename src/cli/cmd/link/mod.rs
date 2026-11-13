@@ -193,6 +193,34 @@ pub(crate) enum LinkCommand {
         #[arg(long, value_name = "FILE", requires = "control")]
         token_file: Option<PathBuf>,
     },
+    /// Show the local view of a mesh: the nodes (fingerprint, name, last
+    /// seq, hops, services) and the edges (peer, cost, last probe, state)
+    /// that the announcements of a listener with --announce taught it. Ask
+    /// the control socket of that listener (mode 0600; there is no network
+    /// endpoint). --json prints the document; --metrics prints the counters
+    /// as Prometheus text. The view holds 4096 nodes, 64 edges for each
+    /// node and 256 KiB; `truncated` counts what was cut. A listener
+    /// without --announce exits 69; a wrong token exits 77.
+    Mesh {
+        /// The control socket of the listener: unix:/PATH.
+        #[arg(long, value_name = "unix:PATH")]
+        control: String,
+        /// The token file of --control. Default: PATH.token.
+        #[arg(long, value_name = "FILE")]
+        token_file: Option<PathBuf>,
+        /// Print one JSON document.
+        #[arg(long, conflicts_with = "metrics")]
+        json: bool,
+        /// Print the counters as Prometheus text.
+        #[arg(long)]
+        metrics: bool,
+        /// Show at most N nodes (a lower limit than 4096).
+        #[arg(long, value_name = "N")]
+        max_nodes: Option<u64>,
+        /// Show at most N edges for each node (a lower limit than 64).
+        #[arg(long, value_name = "N")]
+        max_edges: Option<u64>,
+    },
     /// Stop a link instance that runs in the background. First end each
     /// link of the instance through its control socket (the verb
     /// close-link), so that the peers get a GOAWAY; then SIGTERM, and
@@ -264,6 +292,24 @@ pub(crate) async fn link(args: LinkArgs) -> Result<()> {
                 token_file: token_file.as_deref(),
             };
             info::status(ask).await
+        }
+        LinkCommand::Mesh {
+            control,
+            token_file,
+            json,
+            metrics,
+            max_nodes,
+            max_edges,
+        } => {
+            let ask = info::MeshAsk {
+                control: &control,
+                token_file: token_file.as_deref(),
+                json,
+                metrics,
+                max_nodes,
+                max_edges,
+            };
+            info::mesh(ask).await
         }
         LinkCommand::Close { name, timeout } => info::close(&name, timeout).await,
         LinkCommand::Carriers { carrier, json } => info::carriers(&carrier.options(), json),

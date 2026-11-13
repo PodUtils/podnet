@@ -21,7 +21,7 @@ use crate::exit;
 
 /// The verbs of the socket, as the error of an unknown verb lists them.
 pub(super) const LIST: &str =
-    "status, peer, open, close-link, close-stream, select, dump or routes";
+    "status, peer, open, close-link, close-stream, select, dump, routes or mesh";
 
 /// The time that `close-stream` waits for the task of the stream to take
 /// the stream out of the table.

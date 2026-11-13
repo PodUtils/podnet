@@ -210,6 +210,125 @@ pub(crate) async fn status(ask: Ask<'_>) -> Result<()> {
     Ok(())
 }
 
+/// What `podnet link mesh` was asked.
+pub(crate) struct MeshAsk<'a> {
+    pub(crate) control: &'a str,
+    pub(crate) token_file: Option<&'a Path>,
+    pub(crate) json: bool,
+    pub(crate) metrics: bool,
+    pub(crate) max_nodes: Option<u64>,
+    pub(crate) max_edges: Option<u64>,
+}
+
+fn ms_text(v: &Value) -> String {
+    v.as_u64().map_or("-".to_string(), |ms| format!("{ms} ms"))
+}
+
+/// The lines of a view: each node, then its edges.
+fn mesh_lines(view: &Value) -> Vec<String> {
+    let mut out = Vec::new();
+    for n in view["nodes"].as_array().into_iter().flatten() {
+        let name = n["name"].as_str().unwrap_or("-");
+        let services: Vec<&str> = n["services"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        out.push(format!(
+            "node  {}  {name}  {}  seq {}  hops {}  cost {}  age {}  services {}",
+            n["fingerprint"].as_str().unwrap_or("-"),
+            if n["self"] == true {
+                "self"
+            } else {
+                n["state"].as_str().unwrap_or("-")
+            },
+            n["seq"],
+            n["hops"],
+            n["cost"],
+            ms_text(&n["age_ms"]),
+            if services.is_empty() {
+                "-".to_string()
+            } else {
+                services.join(",")
+            }
+        ));
+        for e in n["edges"].as_array().into_iter().flatten() {
+            out.push(format!(
+                "  edge  {}  cost {}  probe {}  {}",
+                e["peer"].as_str().unwrap_or("-"),
+                e["cost"],
+                ms_text(&e["last_probe_ms"]),
+                e["state"].as_str().unwrap_or("-")
+            ));
+        }
+    }
+    let t = &view["truncated"];
+    if t["nodes"] != 0 || t["edges"] != 0 || t["bytes"] != 0 {
+        out.push(format!(
+            "cut   nodes {}  edges {}  by size {}",
+            t["nodes"], t["edges"], t["bytes"]
+        ));
+    }
+    out
+}
+
+/// `podnet link mesh`: the view of the mesh from a control socket.
+pub(crate) async fn mesh(ask: MeshAsk<'_>) -> Result<()> {
+    let MeshAsk {
+        control,
+        token_file,
+        json,
+        metrics,
+        max_nodes,
+        max_edges,
+    } = ask;
+    let Some(path) = control.strip_prefix("unix:").filter(|p| !p.is_empty()) else {
+        return Err(exit::fault(
+            Fault::Usage,
+            anyhow!("--control {control:?}: give unix:/PATH"),
+        ));
+    };
+    let socket = Path::new(path);
+    let token = match token_file {
+        Some(file) => link_ctl::read_token(file)?,
+        None => link_ctl::read_token(&link_ctl::token_path(socket))?,
+    };
+    let mut args = serde_json::Map::new();
+    if let Some(n) = max_nodes {
+        args.insert("max_nodes".into(), n.into());
+    }
+    if let Some(n) = max_edges {
+        args.insert("max_edges".into(), n.into());
+    }
+    let exchange = async {
+        link_ctl::Client::connect(socket)
+            .await?
+            .call(&token, "mesh", Value::Object(args))
+            .await
+    };
+    let view = match tokio::time::timeout(LIVE_LIMIT, exchange).await {
+        Ok(view) => view?,
+        Err(_) => {
+            return Err(exit::fault(
+                Fault::Timeout,
+                anyhow!("the control socket {} did not answer", socket.display()),
+            ))
+        }
+    };
+    if metrics {
+        print!("{}", podnet::link_announce::metrics_text(&view));
+    } else if json {
+        println!("{}", podnet::status::stamped(view));
+    } else {
+        println!("mesh      {}", view["node"].as_str().unwrap_or(""));
+        for line in mesh_lines(&view) {
+            println!("{line}");
+        }
+    }
+    Ok(())
+}
+
 /// The time that `close` gives to the control socket to end the links.
 const CLOSE_LIMIT: Duration = Duration::from_secs(15);
 

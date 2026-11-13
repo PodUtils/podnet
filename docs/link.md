@@ -334,6 +334,32 @@ nothing.
   `expires_ms`, `direct`). Without `--announce` the verb exits 69. The dialer has no control socket and shows no routes.
   `link connect` has no `--announce` (T-285 left it out). `routes` also shows `forwarded`, the count of forwarded frames.
 
+## The status view of a mesh
+
+`podnet link mesh --control unix:PATH [--json | --metrics] [--token-file FILE] [--max-nodes N] [--max-edges N]` shows the local
+view of a mesh (T-289, `link_announce/status.rs`). It asks the verb `mesh` of the control socket of a listener that runs
+`--announce`. The view is local: the socket is a unix socket of mode 0600, and no network endpoint serves the view. A
+listener without `--announce` exits 69. A wrong token exits 77. `--control` without `unix:` exits 64.
+
+* The default output is one line for each node and each edge. `--json` prints the document. `--metrics` prints the counters
+  as Prometheus text (`podnet_mesh_nodes`, `podnet_mesh_edges`, `podnet_mesh_neighbours`,
+  `podnet_mesh_announcements_received_total`, `podnet_mesh_announcements_dropped_total`,
+  `podnet_mesh_announcements_forwarded_total`, `podnet_mesh_route_evictions_total`, `podnet_mesh_truncated_nodes`,
+  `podnet_mesh_truncated_edges`, `podnet_mesh_truncated_bytes_nodes`).
+* A node has `fingerprint`, `name`, `self`, `seq`, `hops`, `cost`, `next_hop`, `state`, `services`, `age_ms` and `edges`.
+  This node is first (`self` true, hops 0); the other nodes follow in the order of their fingerprints. `seq`, `hops` and
+  `cost` are those of the best route. `state` is `up`, `held` (the announcement expired and the route is held) or `down`
+  (the session of the next hop closed). `age_ms` is the time since the last accepted announcement of the node. `name` is a
+  local name (`Mesh::set_name`), else `null`: the announcement carries no name.
+* An edge has `peer`, `cost`, `last_probe_ms` and `state`. The edges of this node are its links (`up`; `last_probe_ms` is the
+  time since the last announcement of the peer, `null` if none came). The edges of another node are the neighbours that it
+  signed in its last announcement (`claimed`). A claim is no proof of adjacency.
+* The limits are 4096 nodes, 64 edges for each node and a document of 256 KiB (262143 bytes). `max_nodes` and `max_edges` of the
+  request, or `--max-nodes` and `--max-edges`, can only lower them. A cut keeps the first nodes and the first edges. `truncated`
+  has the count of what was cut: `nodes`, `edges` (the edges of cut nodes too) and `bytes` (nodes cut to fit the size).
+* `counters` has the totals before the cut: `nodes`, `edges`, `neighbours`, `announcements_received`,
+  `announcements_dropped`, `announcements_forwarded`, `route_evictions` and the three `truncated_*` counts.
+
 ## Forwarding a stream
 
 A stream for a node that is not a neighbour goes through the mesh (T-287, `podnet::link_forward`). `link dial --announce --node

@@ -40,6 +40,11 @@
 //! * `routes`: the best route of each origin that the announcements
 //!   (`--announce`, T-285) taught this instance; 69 without `--announce`;
 //!
+//! * `mesh`: the nodes and the edges of the mesh and its counters
+//!   (T-289, `link_announce/status.rs`). The request may hold `max_nodes`
+//!   and `max_edges` (lower limits). The answer may be 256 KiB; 69 without
+//!   `--announce`.
+//!
 //! * `dump`: the state of the instance for a bug report (T-309,
 //!   `dump.rs`). Its answer may be 256 KiB; the other answers are 64 KiB at
 //!   most.
@@ -406,6 +411,17 @@ impl Hub {
                 None => Err(Answer::new(
                     exit::UNAVAILABLE,
                     "routes: this instance runs without --announce",
+                )),
+            },
+            "mesh" => match self.mesh.get() {
+                Some(mesh) => {
+                    let limits = crate::link_announce::ViewLimits::from_request(request)
+                        .map_err(|e| Answer::new(exit::USAGE, format!("mesh: {e}")))?;
+                    Ok(Reply::Big(mesh.view(crate::link_announce::now_ms(), limits)))
+                }
+                None => Err(Answer::new(
+                    exit::UNAVAILABLE,
+                    "mesh: this instance runs without --announce",
                 )),
             },
             "rotate" | "reconnect" => Err(Answer::new(

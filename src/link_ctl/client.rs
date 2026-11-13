@@ -60,7 +60,7 @@ impl Client {
             )
         };
         // The dump may be longer than the answer of any other verb.
-        let limit = if verb == "dump" {
+        let limit = if verb == "dump" || verb == "mesh" {
             DUMP_LIMIT
         } else {
             RESPONSE_LIMIT

@@ -46,6 +46,9 @@ use crate::link_service as service;
 use crate::mesh_announce::{self as announce, Body, Drop as Rule, Neighbour, Receiver};
 use crate::mesh_table::{Learned, Limits, Refused, RouteTable};
 
+mod status;
+pub use status::{metrics_text, ViewLimits};
+
 /// The service name of the stream of announcements.
 pub const NAME: &str = "announce";
 
@@ -124,6 +127,15 @@ struct State {
     neighbours: HashMap<PublicKey, u32>,
     received: u64,
     dropped: u64,
+    seen: HashMap<PublicKey, Seen>,
+    names: HashMap<PublicKey, String>,
+}
+
+/// What the last accepted announcement of an origin said (T-289).
+struct Seen {
+    at_ms: u64,
+    services: Vec<String>,
+    neighbours: Vec<(PublicKey, u32)>,
 }
 
 /// The state of the announcements of one node: its neighbours, its `seq`,
@@ -157,6 +169,8 @@ impl Mesh {
                 neighbours: HashMap::new(),
                 received: 0,
                 dropped: 0,
+                seen: HashMap::new(),
+                names: HashMap::new(),
             }),
         })
     }
@@ -299,8 +313,38 @@ impl Mesh {
             .table
             .learn(*from, cost, &v.route(), now)
             .map_err(Dropped::Table)?;
+        Self::note_seen(st, &v, now);
         Self::forward(&self.me, st, wire, &v.path, cost);
         Ok(learned)
+    }
+
+    /// Keep what an accepted announcement said, for the status view. The
+    /// map holds the origins of the route table only: a full map drops the
+    /// entries of origins that the table does not hold.
+    fn note_seen(st: &mut State, v: &announce::Verified, now: u64) {
+        if st.seen.len() >= 2 * crate::mesh_table::MAX_ORIGINS {
+            let State { seen, table, .. } = st;
+            let held: std::collections::HashSet<PublicKey> = table.origins().copied().collect();
+            seen.retain(|k, _| held.contains(k));
+        }
+        st.seen.insert(
+            v.body.origin,
+            Seen {
+                at_ms: now,
+                services: v.body.services.clone(),
+                neighbours: v.body.neighbours.iter().map(|n| (n.key, n.cost)).collect(),
+            },
+        );
+    }
+
+    /// Give a node a local name for the status view (1 to 64 characters, no
+    /// control character; a bad name is not set).
+    pub fn set_name(&self, node: PublicKey, name: &str) -> bool {
+        let ok = !name.is_empty() && name.len() <= 64 && !name.chars().any(char::is_control);
+        if ok {
+            self.lock().names.insert(node, name.to_string());
+        }
+        ok
     }
 
     /// Send the announcement on with the hop of this node, to each neighbour
