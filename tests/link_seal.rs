@@ -189,3 +189,103 @@ fn a_dialer_that_seals_does_not_talk_to_a_listener_that_does_not() {
     assert!(!out.status.success());
     assert!(out.stdout.is_empty());
 }
+
+/// A sealed client of the service `echo` of the connector, through the
+/// `forward` of the listener: the keys of the listener's install.
+async fn sealed_echo(socket: &std::path::Path, server: &Host, cfp: &str, data: &[u8]) {
+    use podnet::link_record::{self as record, Options};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let me = podnet::identity::create(&server.path("state")).unwrap();
+    let stream = tokio::net::UnixStream::connect(socket).await.unwrap();
+    let mut sealed = record::dial(stream, &me, None, Options::default())
+        .await
+        .unwrap();
+    assert_eq!(sealed.peer().display_fingerprint(), cfp);
+    sealed.write_all(data).await.unwrap();
+    let mut got = vec![0u8; data.len()];
+    sealed.read_exact(&mut got).await.unwrap();
+    assert_eq!(got, data);
+}
+
+#[tokio::test]
+async fn reconnect_of_a_sealed_link_connect_gives_a_sealed_new_link() {
+    let (server, client) = (Host::new(), Host::new());
+    let (sfp, cfp) = (server.fingerprint(), client.fingerprint());
+    let origin = client.path("origin.sock");
+    let echo = UnixListener::bind(&origin).unwrap();
+    std::thread::spawn(move || {
+        for conn in echo.incoming().flatten() {
+            std::thread::spawn(move || {
+                let (mut r, mut w) = (&conn, &conn);
+                let _ = std::io::copy(&mut r, &mut w);
+            });
+        }
+    });
+    let allow = server.path("allow");
+    std::fs::write(&allow, &cfp).unwrap();
+    let sock = server.path("l.sock");
+    let control = server.path("ctl.sock");
+    let _listener = start(&mut server.command(&[
+        "link",
+        "listen",
+        sock.to_str().unwrap(),
+        "--allow",
+        allow.to_str().unwrap(),
+        "--control",
+        control.to_str().unwrap(),
+        "--json",
+    ]));
+    let service = format!("echo=unix:{}", origin.display());
+    let out = client
+        .command(&[
+            "link",
+            "connect",
+            sock.to_str().unwrap(),
+            "--peer",
+            &sfp,
+            "--seal",
+            "--service",
+            &service,
+            "--detach",
+            "--name",
+            "cn",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let rule = format!("unix:{}=peer:{cfp}/echo", server.path("f.sock").display());
+    let mut forward = server.command(&["forward", "-L", &rule, "--run-for", "60"]);
+    forward.env("PODNET_LINK_CONTROL", &control);
+    let _forward = start(&mut forward);
+    let socket = server.path("f.sock");
+    sealed_echo(&socket, &server, &cfp, b"before the reconnect").await;
+    // A plain stream to the sealed service gets no echo.
+    {
+        use std::io::{Read, Write};
+        let mut s = std::os::unix::net::UnixStream::connect(&socket).unwrap();
+        s.set_read_timeout(Some(std::time::Duration::from_secs(3)))
+            .unwrap();
+        let _ = s.write_all(b"plain bytes");
+        let mut buf = [0u8; 11];
+        assert!(s.read_exact(&mut buf).is_err() || &buf != b"plain bytes");
+    }
+    let out = client
+        .command(&["link", "reconnect", "cn"])
+        .output()
+        .unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(String::from_utf8_lossy(&out.stdout).contains("reconnect link 1 -> 2"));
+    // The new link serves the sealed service again, and still seals only.
+    sealed_echo(&socket, &server, &cfp, b"after the reconnect").await;
+    let _ = client.command(&["stop", "cn"]).output();
+}
