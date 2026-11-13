@@ -211,6 +211,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #517 | COORD-060: the answer to the asks N-1 to N-5 of podswarm (PodUtils/podcrates#125) (to all) | open (a COORD issue between sessions) | none |
 | #518 | COORD-061: port rules in the rules reader of pod-warp: port:N=WAY and tcp:HOST:PORT=WAY (podnet T-328; ask N-2 of podswarm) (to podcrates) | open (a COORD issue between sessions) | none |
 | #519 | COORD-062: podnet took v0.35.0 at 5562f21 (to podcrates) | closed (a COORD issue between sessions) | none |
-| #520 | COORD-063: podnet took v0.36.0 at 775486f (to podcrates) | open (a COORD issue between sessions) | none |
+| #520 | COORD-063: podnet took v0.36.0 at 775486f (to podcrates) | closed (a COORD issue between sessions) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
