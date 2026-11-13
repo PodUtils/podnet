@@ -316,7 +316,7 @@ second run loads), `warp_stand_in_status_reads_the_account_of_the_saved_device`,
 `warp_stand_in_delete_removes_the_device_and_the_file`, `warp_stand_in_register_names_the_limit_of_new_devices` (HTTP
 429, no file).
 
-2026-11-13, step 2 and the plant, commit WARPSTEP2. `tests/warp_stand_in.rs`, module `through_the_edge`, runs the binary with
+2026-11-13, step 2 and the plant, commit e3c5d11. `tests/warp_stand_in.rs`, module `through_the_edge`, runs the binary with
 `--masque-endpoint` at the edge of `tests/warp_edge` and the pin from the API stand-in:
 `warp_stand_in_proxy_carries_a_socks5_connect_through_the_edge`, `warp_stand_in_forward_carries_a_local_port_through_the_edge`,
 `warp_stand_in_nc_pipes_tcp_and_udp_through_the_edge` (it failed before the fix of `nc_session`: "the stack is shut
