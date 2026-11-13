@@ -6,6 +6,7 @@ mod door;
 mod info;
 pub(crate) mod listen;
 mod services;
+mod swap;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -325,7 +326,9 @@ pub(crate) enum LinkCommand {
     /// check, print and exit 0, and start no control socket. Other programs open
     /// streams of the link through its control socket: `peer:FINGERPRINT/
     /// SERVICE` as a network (podnet forward -L LISTEN=peer:FINGERPRINT/
-    /// SERVICE). The command ends when the link ends (exit 69) or at a stop
+    /// SERVICE). The control verbs reconnect and rotate (podnet link reconnect,
+    /// rotate) make a new link to the same peer. The command ends when no
+    /// link is left (exit 69) or at a stop
     /// signal. --name is 1 to 32 characters from a-z 0-9 -, unique among
     /// the live links (a duplicate exits 64), and bound to the fingerprint
     /// of the peer: another key under the same name exits 77.
@@ -392,6 +395,28 @@ pub(crate) enum LinkCommand {
         /// Seconds to wait before SIGKILL.
         #[arg(long, default_value_t = 10)]
         timeout: u64,
+    },
+    /// Make a new link to the peer of a link instance that dialed
+    /// (`link connect`), through its control socket. Each reconnect makes a
+    /// new session: it resets the open streams (each is named in the verb
+    /// answer), ends the link, and dials again with the same key. A listener
+    /// exits 69. The new link must prove the key of the old one.
+    Reconnect {
+        /// The name of the link instance (podnet link status).
+        name: String,
+        /// The id of one link. Default: each link that is up.
+        #[arg(long, value_name = "ID")]
+        link: Option<u64>,
+    },
+    /// Move a link instance that dialed to a new link, with no stream lost:
+    /// dial a new link first, send the streams that open from now on to it,
+    /// and end the old link when its streams end. A listener exits 69.
+    Rotate {
+        /// The name of the link instance (podnet link status).
+        name: String,
+        /// The id of one link. Default: each link that is up.
+        #[arg(long, value_name = "ID")]
+        link: Option<u64>,
     },
     /// List the carriers of this build, with the flags of each and whether
     /// this host can use it. A carrier that this host cannot use gives its
@@ -473,6 +498,8 @@ pub(crate) async fn link(args: LinkArgs, egress: Vec<String>) -> Result<()> {
             info::mesh(ask).await
         }
         LinkCommand::Close { name, timeout } => info::close(&name, timeout).await,
+        LinkCommand::Reconnect { name, link } => swap::swap("reconnect", &name, link).await,
+        LinkCommand::Rotate { name, link } => swap::swap("rotate", &name, link).await,
         LinkCommand::Carriers { carrier, json } => info::carriers(&carrier.options(), json),
     }
 }

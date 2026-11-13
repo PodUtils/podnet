@@ -204,8 +204,18 @@ removes both files at its stop. The token is never in the ready document, `statu
   * Each of the three answers the document of `status` after the change, with `verb` set to its name. An id that is missing,
     is no number or names no link or stream gets 64. They need the token and the user check, like every verb: a refused
     request changes nothing.
-  * `rotate` and `reconnect` need a carrier that the instance dials again. An instance holds links and not the way to make
-    them, so both get 69 (`not built`).
+  * `reconnect` (`"link":ID`): reset the streams of the link (the ids are in `reset_streams`), end the link, and dial again
+    with the same key, carrier, address, allow list and settings. A reconnect always makes a new session (the resume of
+    `session` is not used by `link connect`), so the streams that ran end with a reset. The dial must reach the peer that the
+    old link proved; another key exits 77, and a name keeps its fingerprint (`--name`). When the dial fails, no link is left
+    and the instance exits 69.
+  * `rotate` (`"link":ID`): dial a new link first (make before break), pin it for the streams that open from now on (a pin on
+    another link stays), and end the old link when its streams end. No stream fails. The old link stays up while a stream
+    runs on it. The same key check as `reconnect` applies, and a failed dial leaves the old link as it was.
+  * `reconnect` and `rotate` answer the document of `status` after the change, with `link` (the id of the new link) and
+    `replaced` (the id of the old link). An instance that listens (`link listen`) does not dial: both verbs exit 69 with
+    `a listener does not dial`. `link reconnect NAME [--link ID]` and `link rotate NAME [--link ID]` call the verbs for each
+    link that is up, and print one line `VERB link OLD -> NEW  PEER`.
   * `dump`: the state of the instance for a bug report. It has `build` (`version`, the optional `features` that this binary
     holds, and the `carriers` with `feature` and `built`), `fingerprint`, `pid`, `settings` (`selected` and the `limits`),
     `totals` (`links`, `up`, `streams`, `opened`, `accepted`), `links` (the row of `status`, and `stream_table`: one

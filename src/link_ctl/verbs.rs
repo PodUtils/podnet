@@ -7,9 +7,7 @@
 //! a second call. A bad or missing id exits 64; a link that cannot take the
 //! change exits 69.
 //!
-//! `rotate` and `reconnect` need a carrier that the instance dials again.
-//! An instance holds links, not the way to make them, so both answer 69
-//! (`Hub::verb`).
+//! `reconnect` and `rotate` are in `redial.rs`.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -21,7 +19,7 @@ use crate::exit;
 
 /// The verbs of the socket, as the error of an unknown verb lists them.
 pub(super) const LIST: &str =
-    "status, peer, open, accept, close-link, close-stream, select, dump, routes or mesh";
+    "status, peer, open, accept, close-link, close-stream, select, reconnect, rotate, dump, routes or mesh";
 
 /// The time that `close-stream` waits for the task of the stream to take
 /// the stream out of the table.
@@ -29,7 +27,7 @@ const SETTLE: Duration = Duration::from_secs(1);
 
 /// The number under `key` in `request`. A missing key or a value that is
 /// no whole number exits 64.
-fn number(request: &Value, key: &str) -> Result<u64, Answer> {
+pub(super) fn number(request: &Value, key: &str) -> Result<u64, Answer> {
     request[key].as_u64().ok_or_else(|| {
         Answer::new(
             exit::USAGE,
@@ -48,7 +46,7 @@ fn noun(key: &str) -> &'static str {
 
 impl Hub {
     /// The link with this id. An id that no link holds exits 64.
-    fn link_of(&self, id: u64) -> Result<Arc<Held>, Answer> {
+    pub(super) fn link_of(&self, id: u64) -> Result<Arc<Held>, Answer> {
         self.rows().into_iter().find(|h| h.id == id).ok_or_else(|| {
             Answer::new(
                 exit::USAGE,
@@ -58,7 +56,7 @@ impl Hub {
     }
 
     /// The status document after a change by `verb`.
-    fn after(&self, verb: &str) -> Reply {
+    pub(super) fn after(&self, verb: &str) -> Reply {
         let mut doc = self.status();
         doc["verb"] = verb.into();
         Reply::Json(doc)

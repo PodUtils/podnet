@@ -221,22 +221,39 @@ async fn a_bad_link_or_stream_id_exits_64() {
 }
 
 #[tokio::test]
-async fn rotate_and_reconnect_exit_69_and_an_unknown_verb_exits_64() {
+async fn an_unknown_verb_exits_64_and_lists_the_verbs() {
     let rig = Rig::new(1, None).await;
-    for verb in ["rotate", "reconnect"] {
-        let err = rig.call(verb, json!({"link": 1})).await.unwrap_err();
-        assert_eq!(code_of(&err), 69, "{verb}: {err:#}");
-        assert!(format!("{err:#}").contains("not built"), "{err:#}");
-    }
     let err = rig.call("format-disk", json!({})).await.unwrap_err();
     assert_eq!(code_of(&err), 64);
     let text = format!("{err:#}");
-    for verb in ["close-stream", "close-link", "select", "dump"] {
+    for verb in [
+        "close-stream",
+        "close-link",
+        "select",
+        "reconnect",
+        "rotate",
+        "dump",
+    ] {
         assert!(
             text.contains(verb),
             "the list of verbs names {verb}: {text}"
         );
     }
+}
+
+#[tokio::test]
+async fn a_listener_refuses_rotate_and_reconnect() {
+    let rig = Rig::new(1, None).await;
+    for verb in ["rotate", "reconnect"] {
+        let err = rig.call(verb, json!({"link": 1})).await.unwrap_err();
+        assert_eq!(code_of(&err), 69, "{verb}: {err:#}");
+        assert!(
+            format!("{err:#}").contains("a listener does not dial"),
+            "{err:#}"
+        );
+    }
+    let doc = rig.call("status", json!({})).await.unwrap();
+    assert_eq!(row(&doc, 1)["state"], "up", "the refusal changed nothing");
 }
 
 #[tokio::test]
@@ -543,4 +560,94 @@ fn link_close_uses_the_close_link_verb_when_the_socket_answers() {
     );
     assert!(!control.exists(), "the instance stopped");
     drop(dial);
+}
+
+/// A detached `link connect` of `client` to the listener at `sock`.
+fn connector(client: &Host, peers: &[&str], name: &str, sock: &Path) {
+    let mut args = vec!["link", "connect", sock.to_str().unwrap()];
+    for peer in peers {
+        args.extend(["--peer", peer]);
+    }
+    args.extend(["--detach", "--name", name]);
+    let out = client.run(&args);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+}
+
+/// The first link row of the live status of the instance `name`.
+fn live_row(host: &Host, name: &str) -> Value {
+    let out = host.run(&["link", "status", name, "--json"]);
+    let doc: Value = serde_json::from_slice(&out.stdout).unwrap();
+    doc["links"][0]["live"]["links"][0].clone()
+}
+
+#[test]
+fn reconnect_and_rotate_of_a_connect_process_keep_the_name_and_a_peer_that_changed_exits_77() {
+    let (server, client, other) = (Host::new(), Host::new(), Host::new());
+    let (sfp, cfp, ofp) = (
+        server.fingerprint(),
+        client.fingerprint(),
+        other.fingerprint(),
+    );
+    let sock = server.path("c.sock");
+    listener(&server, &[&cfp], "ls", &sock);
+    // --peer holds both listener keys: the name and the key of the old link
+    // are what stop the second one.
+    connector(&client, &[&sfp, &ofp], "cn", &sock);
+    let first = live_row(&client, "cn");
+    assert_eq!(first["id"], 1, "{first}");
+    assert_eq!(first["peer"], sfp.as_str(), "{first}");
+
+    let out = client.run(&["link", "reconnect", "cn"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).contains("reconnect link 1 -> 2"),
+        "{}",
+        text(&out.stdout)
+    );
+    let row = live_row(&client, "cn");
+    assert_eq!(row["id"], 2, "{row}");
+    assert_eq!(
+        row["peer"],
+        sfp.as_str(),
+        "the name keeps its fingerprint: {row}"
+    );
+
+    let out = client.run(&["link", "rotate", "cn"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).contains("rotate link 2 -> 3"),
+        "{}",
+        text(&out.stdout)
+    );
+    let end = Instant::now() + Duration::from_secs(5);
+    let row = loop {
+        let row = live_row(&client, "cn");
+        if row["id"] == 3 || Instant::now() > end {
+            break row;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    };
+    assert_eq!(row["id"], 3, "the old link left after its streams: {row}");
+
+    // Another listener, with another key, takes the address. The dial passes
+    // the allow list, and the check of the old key refuses it. The old link
+    // stays up.
+    std::fs::rename(&sock, server.path("moved.sock")).unwrap();
+    listener(&other, &[&cfp], "lo", &sock);
+    let out = client.run(&["link", "rotate", "cn"]);
+    assert_eq!(out.status.code(), Some(77), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stderr).contains("not the key"),
+        "{}",
+        text(&out.stderr)
+    );
+    let row = live_row(&client, "cn");
+    assert_eq!(
+        (&row["id"], &row["peer"]),
+        (&json!(3), &json!(sfp)),
+        "{row}"
+    );
+    let _ = server.run(&["link", "close", "ls"]);
+    let _ = other.run(&["link", "close", "lo"]);
+    let _ = client.run(&["link", "close", "cn"]);
 }

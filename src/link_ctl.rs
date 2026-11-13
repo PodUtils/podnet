@@ -29,22 +29,17 @@
 //!   that peer, ask it for the service, and on `ok` turn the connection
 //!   into the bytes of the stream. This is how `peer:FP/SERVICE` of the
 //!   network registry reaches a link of another process.
-//!
 //! * `accept` (`"peer":FP,"service":NAME,"target":"unix:/ABS/PATH"`): serve
 //!   the streams for NAME that the peer opens on the socket at PATH, while
 //!   the client keeps the connection (`accept.rs`). This is how `podnet
 //!   serve --ingress peer:FP/SERVICE` takes a stream that the far end opens.
-//!
 //! * `close-link` (`"link":ID`), `close-stream` (`"link":ID,"stream":ID`)
 //!   and `select` (`"link":ID|null`) change a link (T-307, `verbs.rs`).
-//!   Each one answers the status document after the change. They sit
-//!   behind the token and the uid check like every verb. `rotate` and
-//!   `reconnect` need a carrier that the instance dials again; they
-//!   answer 69.
-//!
+//!   Each one answers the status document after the change. `reconnect`
+//!   and `rotate` (`"link":ID`) make a new link to the same peer; a listener
+//!   answers 69 (`redial.rs`).
 //! * `routes`: the best route of each origin that the announcements
 //!   (`--announce`, T-285) taught this instance; 69 without `--announce`;
-//!
 //! * `mesh`: the nodes and the edges of the mesh and its counters
 //!   (T-289, `link_announce/status.rs`). The request may hold `max_nodes`
 //!   and `max_edges` (lower limits). The answer may be 256 KiB; 69 without
@@ -77,7 +72,9 @@ use crate::link::{Link, ResetCode, Stream};
 
 mod accept;
 mod dump;
+mod redial;
 mod verbs;
+pub use redial::{Dialing, Redial};
 
 /// The most bytes of a request line.
 pub const REQUEST_LIMIT: usize = 4096;
@@ -238,6 +235,8 @@ pub struct Hub {
     mesh: std::sync::OnceLock<Arc<crate::link_announce::Mesh>>,
     /// The services that clients of the verb `accept` registered.
     accepted: Mutex<accept::Table>,
+    /// The way to dial again, for `reconnect` and `rotate` (T-307).
+    redial: redial::State,
 }
 
 /// The place of a link in a [`Hub`]. Its drop takes the link out.
@@ -302,6 +301,7 @@ impl Hub {
             errors: Mutex::new(Default::default()),
             mesh: std::sync::OnceLock::new(),
             accepted: Mutex::new(Default::default()),
+            redial: Default::default(),
         })
     }
 
@@ -456,22 +456,23 @@ impl Hub {
                 Some(mesh) => {
                     let limits = crate::link_announce::ViewLimits::from_request(request)
                         .map_err(|e| Answer::new(exit::USAGE, format!("mesh: {e}")))?;
-                    Ok(Reply::Big(mesh.view(crate::link_announce::now_ms(), limits)))
+                    Ok(Reply::Big(
+                        mesh.view(crate::link_announce::now_ms(), limits),
+                    ))
                 }
                 None => Err(Answer::new(
                     exit::UNAVAILABLE,
                     "mesh: this instance runs without --announce",
                 )),
             },
-            "rotate" | "reconnect" => Err(Answer::new(
-                exit::UNAVAILABLE,
-                format!(
-                    "{name}: not built: the instance does not dial a carrier again, so it can make no new link"
-                ),
-            )),
+            "reconnect" => self.reconnect(request).await,
+            "rotate" => self.rotate(request).await,
             other => Err(Answer::new(
                 exit::USAGE,
-                format!("{other:?} is no verb of the control socket: use {}", verbs::LIST),
+                format!(
+                    "{other:?} is no verb of the control socket: use {}",
+                    verbs::LIST
+                ),
             )),
         }
     }

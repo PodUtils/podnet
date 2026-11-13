@@ -7433,7 +7433,7 @@ COMMANDS
             line). Default: text. Values: text, json.
 
         Commands of podnet link: listen, dial, connect, status, mesh, close,
-        carriers.
+        reconnect, rotate, carriers.
 
     podnet link listen [OPTIONS] --allow <FILE> <ADDRESS>
         Listen at an address of a carrier. A peer must prove its key, and the
@@ -7792,11 +7792,12 @@ COMMANDS
         check, print and exit 0, and start no control socket. Other programs
         open streams of the link through its control socket:
         `peer:FINGERPRINT/ SERVICE` as a network (podnet forward -L
-        LISTEN=peer:FINGERPRINT/ SERVICE). The command ends when the link ends
-        (exit 69) or at a stop signal. --name is 1 to 32 characters from a-z
-        0-9 -, unique among the live links (a duplicate exits 64), and bound
-        to the fingerprint of the peer: another key under the same name exits
-        77
+        LISTEN=peer:FINGERPRINT/ SERVICE). The control verbs reconnect and
+        rotate (podnet link reconnect, rotate) make a new link to the same
+        peer. The command ends when no link is left (exit 69) or at a stop
+        signal. --name is 1 to 32 characters from a-z 0-9 -, unique among the
+        live links (a duplicate exits 64), and bound to the fingerprint of the
+        peer: another key under the same name exits 77
 
         <ADDRESS>
             The address of the listener, in the form of the carrier (for
@@ -8140,6 +8141,134 @@ COMMANDS
 
         --timeout <TIMEOUT>
             Seconds to wait before SIGKILL. Default: 10.
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route. With podnet link dial and podnet link connect, each
+            --egress is one element of the chain before the tcp carrier
+            (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
+            element reaches the carrier address
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+    podnet link reconnect [OPTIONS] <NAME>
+        Make a new link to the peer of a link instance that dialed (`link
+        connect`), through its control socket. Each reconnect makes a new
+        session: it resets the open streams (each is named in the verb
+        answer), ends the link, and dials again with the same key. A listener
+        exits 69. The new link must prove the key of the old one
+
+        <NAME>
+            The name of the link instance (podnet link status). Required.
+
+        --link <ID>
+            The id of one link. Default: each link that is up
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route. With podnet link dial and podnet link connect, each
+            --egress is one element of the chain before the tcp carrier
+            (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
+            element reaches the carrier address
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+    podnet link rotate [OPTIONS] <NAME>
+        Move a link instance that dialed to a new link, with no stream lost:
+        dial a new link first, send the streams that open from now on to it,
+        and end the old link when its streams end. A listener exits 69
+
+        <NAME>
+            The name of the link instance (podnet link status). Required.
+
+        --link <ID>
+            The id of one link. Default: each link that is up
 
         --ca-file <PATH>
             A file of TLS roots (PEM). podnet uses only these roots for each
