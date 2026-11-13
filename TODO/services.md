@@ -254,6 +254,9 @@ no crate `podnet-relay`. The start condition names T-049 (the take of `pod-relay
 
 2026-11-13: partial. Taken at v0.36.0: the key identity (`pod-identity`, T-261), the resumable layer (`pod-session`, T-263) and UDP in a stream (command 0x83 of `pod-proxy`, T-329). Left: the end-to-end channel `pod-e2e` (podcrates T-301, ask A3). T-298 waits for it.
 
+2026-11-13: `pod-e2e` is a dependency of podnet since T-298 (ea9b6c0): the link record layer uses
+`pod_e2e::record`. Next: check steps 2 and 4 of the Approach against the tree, then write the Done section.
+
 # T-087: `relay node` and `relay connect` resume a session past the limits of the relay
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.3, 3 (C5) and 5 (G2); PodUtils/podcrates#35 (cfb), ask A-N-12.

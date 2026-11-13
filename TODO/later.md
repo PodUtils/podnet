@@ -737,6 +737,9 @@ with the commit that takes `pod-session`, `pod-e2e` and `pod-identity`. podnet h
 
 2026-11-13: `pod-identity` and `pod-session` are taken (T-261, T-263, `Cargo.toml` at v0.36.0). `pod-e2e` is not taken. The entry closes with the take of `pod-e2e` (T-086).
 
+2026-11-13: `pod-e2e` is a dependency of podnet since T-298 (ea9b6c0, `Cargo.toml` at v0.39.0). The start
+condition holds. The entry closes with T-086.
+
 # T-132: `try_update` in place of the macro `update_atomic!`
 
 **Source:** `docs/maintenance.md`, section "Open work" (`try_update`).

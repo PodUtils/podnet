@@ -1,19 +1,20 @@
 # Progress
 
-`TODO/INDEX.md` holds 333 entries: 27 open, 14 partial, 33 blocked, 259 done.
+`TODO/INDEX.md` holds 333 entries: 28 open, 14 partial, 32 blocked, 259 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.36.0`: `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.39.0`: `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
-  `pod-identity`, `pod-session`, `pod-link`, `pod-turn` and `pod-devtunnel`. Next: `pod-warp` (its patch waits for
-  the COORD issue of the freeze with the next tag), then `pod-cloudflare`, `pod-e2e`, `pod-wormhole`. A session
+  `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp` and `pod-testkit`.
+  Next (PodUtils/podcrates#133): `v0.40.0` (the rest of the carriers, TURN over TCP, `pod-wormhole`), then
+  `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session
   reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
-- Frozen (fixes only, each as a COORD issue): `src/warp/`, `src/cloudflare/`, `src/proxy.rs`, `src/tunnel.rs`,
-  `crates/podnet-netns/src/rules.rs` (for `pod-warp`) and `tests/test_host/mod.rs` (in `pod-testkit`).
+- Frozen (fixes only, each as a COORD issue): `src/warp/` (glue over `pod-warp`), `src/cloudflare/`, `src/proxy.rs`,
+  `src/tunnel.rs`, `crates/podnet-netns/src/rules.rs` and `tests/test_host/mod.rs` (in `pod-testkit`).
 - The newest release is `v0.4.0-beta.9` (T-331).
 - The goal (the owner, 2026-11-13): close each issue except the deferred ones, then a final complete beta. The takes
   follow the plan of podcrates (PodUtils/podcrates#133; `docs/decisions.md`, 2026-11-13).
@@ -36,22 +37,24 @@ Finish each entry, close it in place, change this page in the same commit, then 
 one. In a milestone: P1, then P2, then P3. At one priority, an S entry goes first when it does
 not wait for a larger one.
 
-1. **M0, the record and the guards:** T-012 (blocked: the WARP stand-ins of `pod-warp`, T-137).
+1. **M0, the record and the guards:** T-012 (open: its start condition holds; the stand-ins of `pod-testkit` are taken
+   at v0.39.0, and `src/networks/warp_tests/edge.rs` uses them).
 2. **M1, the rename:** done (the public image was measured on 2026-11-11).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
-   - CI: T-316 (a local stand-in of the quick tunnel and the edge).
-   - WARP: T-210.
-   - the donor review (GitHub #429 to #434): done, except #433 and #435: T-242 is partial (its WARP half waits for the take of `pod-warp`), and T-244 is blocked on `pod-cloudflare`.
+   - CI: T-316 (partial: a local stand-in of the quick tunnel and the edge).
+   - WARP: T-210 (blocked: a device with a paid licence).
+   - the donor review (GitHub #429 to #434): done, except #433 and #435: T-242 is partial (its WARP half is an ask to
+     podcrates: `pod-warp` is taken), and T-244 is blocked on `pod-cloudflare`.
 4. **M2, the splits:** T-039 (moved files: podcrates); T-044 (blocked:
    the rows left go with the takes, T-137); T-045.
 5. **M3, the crates:** T-053, then the prerelease T-054. T-052 is the take of `pod-cloudflare` of
-   `PodUtils/podcrates` (T-137): do not do it in podnet. The takes of `pod-relay` (v0.30.0) and `pod-warp`
-   (v0.37.0) are done.
-6. **M4, the adapters:** T-057.
-7. **M6, the services:** the shared parts T-086 (partial: `pod-session` and `pod-identity` are taken; `pod-e2e` is left), T-087; the file
-   server and git: done; the router T-095, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
+   `PodUtils/podcrates` (T-137): do not do it in podnet.
+6. **M4, the adapters:** T-057 (its start condition holds: `pod-warp` is taken; the network `warp` of 3855573 gives a
+   dialer and datagrams over WARP: check the Approach against it).
+7. **M6, the services:** the shared parts T-086 (partial: `pod-session`, `pod-identity` and `pod-e2e` are dependencies; check steps 2 and 4 of its Approach), T-087; the file
+   server and git: done; the router T-095 (after T-057; `warp:identity=FILE` gives one device for each network), T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).
@@ -86,7 +89,7 @@ These entries stay open. The condition in each entry tells when it can start.
 
 | Entry | Start condition |
 | --- | --- |
-| T-131 | T-137 takes `pod-session`, `pod-e2e` and `pod-identity` (the owner chose the source: a git tag) |
+| T-131 | The condition holds: `pod-session`, `pod-identity` and `pod-e2e` are dependencies (`pod-e2e` since T-298, ea9b6c0). It closes with T-086. |
 | T-179 | partial: the UDP split is built (an option, off by default); the TCP split waits for a far end that joins two connections |
 
 ## Calls made without a ruling

@@ -231,7 +231,7 @@ passed. Plant: `return Ok(())` at the start of each of the five arms in `src/mai
 **Milestone:** M0
 **Priority:** P2
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -280,13 +280,6 @@ cargo test --workspace -- warp_stand_in_
 Each new test name starts with `warp_stand_in_`. Plant: a wrong pinned key in the edge stand-in.
 The test of `warp proxy` must fail on the pin.
 
-## Blocker
-
-The WARP stand-ins (the registration API and the MASQUE edge) come through PodUtils/podcrates (the
-Correction). podcrates v0.10.0 has none: `pod-testkit` holds `host.rs` and `screen.rs` only, and
-podcrates T-028 (`pod-warp`) names the stand-in of `PodUtils/podssh:crates/podssh-warp` as its source.
-This entry starts when podnet takes a tag of podcrates with the stand-ins (T-137).
-
 ## Start condition
 
 The shared crate that this entry reads has a release in `PodUtils/podcrates` (T-137; `sh scripts/agent/podcrates.sh`).
@@ -298,6 +291,11 @@ API stand-in come through PodUtils/podcrates (`pod-warp` in wave 3, or `pod-test
 those crates. When they have no stand-in, open an issue in PodUtils/podcrates. The tests of the WARP
 commands (`warp register`, `warp status`, `warp proxy` and the others) stay in podnet and use the stand-in
 of the shared crate. The adaptation to smoltcp 0.12 is not necessary.
+
+2026-11-13, The start condition holds. podnet takes podcrates `v0.39.0`. `pod-testkit` has the API stand-in
+(`pod_testkit::stand::warp::Api`, feature `stand`) and the HTTP/2 part of an edge (`pod_testkit::masque`). podnet
+has an edge stand-in over them in `src/networks/warp_tests/edge.rs` (the tests of the network `warp`). The tests of the
+WARP commands can use these stand-ins.
 
 # T-013: A daily check that the record's list of GitHub numbers agrees with GitHub
 
