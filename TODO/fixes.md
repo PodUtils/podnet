@@ -5482,4 +5482,4 @@ sh scripts/agent/check.sh
 and T-329). On f566e3b: `ci` 43363112482, `deny` 43363112416 and `secrets` 43363112643 passed; `live` 43363112516
 failed once at the WARP door scan (an external flake) and passed on its rerun. `release.yml`: the dry run 43368235597
 passed, the publish 43370009549 passed. The release `v0.4.0-beta.9` is a prerelease with 16 files, with
-`pod-report.schema.json` (T-330). `release-proofs.yml`: run 43371748745.
+`pod-report.schema.json` (T-330). `release-proofs.yml`: run 43371748745 passed.
