@@ -1423,6 +1423,14 @@ h3 over UDP 443). The step now refuses TCP and UDP 443 to 162.159.0.0/16 and to 
 addresses are outside both), and prints the connections of the router on port 443 before the block and on a failure
 (5d86aee). GitHub #537. It waits for a run.
 
+2026-11-13: the live run 43506586024 on c8a9510: the block holds (before it, the router has one connection to
+162.159.198.2:443 and one to the relay; after it, none to 162.159.0.0/16), but after 90 s the status still says `w up`
+(rtt 167 ms). Each miss takes a member from `Up` to `Cooldown` (`crates/podnet-core/src/network/health.rs`), so no miss
+reached the tracker: the probe round of the router seems to stop while the session of `w` is down, or the probe of `w`
+passes with no session. Read, not measured: the probe, the egress check and `LiveDial::session` each have a time limit;
+`pod-core` gives a refused connect the class `Unavailable` (a clean miss). Next: a test on the edge stand-in (a router
+with `w`, then the edge stops; `probe_round` must take `w` to `Down`), before a new live run.
+
 
 # T-102: Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole`
 
