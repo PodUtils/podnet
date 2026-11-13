@@ -844,6 +844,12 @@ Done so far:
   drops src/warp/one_family.rs at `ca53a72` (T-332) and takes `pod_core::Dial::datagrams` of the session again for QUIC and nc; the
   fix of podnet's own `nc_session` (the session lives until the pipe ends) stays. The `ws` carrier takes the subprotocol
   `podnet/1` (`ws::Ws::with_protocol`). `pod_link::arq` is the ARQ of T-277. `cargo deny --locked check bans sources`: ok.
+- v0.40.0 (PodUtils/podcrates#140): each `pod-*` dependency names `tag = "v0.40.0"`; nothing breaks in podnet (no struct
+  literal of `pod_link::Facts` or of the reports of `pod-job`). The tag has no hand-off for podnet. New in the tag: the
+  carriers `poll`, `quic`, `udp` (KCP), `dns` and `icmp` of `pod-link`, each behind its own feature (T-271 to T-273,
+  T-276, T-278, T-280), and `pod_dns::txt::question` and `txt::answer`. The profile `[profile.dev.package.kcp]
+  overflow-checks = false` (PodUtils/podcrates#139) comes with the feature `udp` of podnet (T-276): before it, `kcp` is not
+  in the build. `sh scripts/agent/check.sh`: each step 0.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
