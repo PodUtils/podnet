@@ -76,6 +76,7 @@ pub struct Door {
     flow_limit: Option<Duration>,
     connect_only: bool,
     extension: Option<Arc<dyn Extension>>,
+    udp_in_stream: bool,
     early: Option<Admit>,
     on_error: Option<ErrorHook>,
 }
@@ -96,6 +97,7 @@ impl Door {
             flow_limit: None,
             connect_only: false,
             extension: None,
+            udp_in_stream: false,
             early: None,
             on_error: None,
         }
@@ -131,6 +133,15 @@ impl Door {
     /// `extension`.
     pub fn with_extension(mut self, extension: Arc<dyn Extension>) -> Door {
         self.extension = Some(extension);
+        self
+    }
+
+    /// Take the command 0x83 of `pod-proxy`, UDP in the stream (T-329): after
+    /// the reply, each datagram in each direction is a frame on the control
+    /// stream (see `door::udp::in_stream`). An extension that serves 0x83
+    /// has priority.
+    pub fn with_udp_in_stream(mut self) -> Door {
+        self.udp_in_stream = true;
         self
     }
 
@@ -270,6 +281,8 @@ impl Door {
                 if !served {
                     if command == 3 {
                         udp::associate(self, &mut stream).await?;
+                    } else if command == udp::CMD_UDP_IN_STREAM && self.udp_in_stream {
+                        udp::in_stream(self, &mut stream).await?;
                     } else {
                         // BIND, or a command that nobody serves.
                         socks::socks5_reply(&mut stream, 0x07, None).await?;

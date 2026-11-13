@@ -221,3 +221,105 @@ async fn front_door_udp_associate_replies_for_a_way_with_no_datagrams() {
         assert_eq!(out[1], code, "{class:?}: {out:?}");
     }
 }
+
+/// The greeting and the command 0x83 (UDP in the stream); the reply.
+async fn in_stream_open<S>(client: &mut S) -> Vec<u8>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    client.write_all(&[5, 1, 0]).await.unwrap();
+    let mut method = [0u8; 2];
+    client.read_exact(&mut method).await.unwrap();
+    client
+        .write_all(&[5, 0x83, 0, 1, 0, 0, 0, 0, 0, 0])
+        .await
+        .unwrap();
+    let mut reply = [0u8; 10];
+    client.read_exact(&mut reply).await.unwrap();
+    reply.to_vec()
+}
+
+async fn put_frame<S: tokio::io::AsyncWrite + Unpin>(client: &mut S, datagram: &[u8]) {
+    let len = u16::try_from(datagram.len()).unwrap();
+    client.write_all(&len.to_be_bytes()).await.unwrap();
+    client.write_all(datagram).await.unwrap();
+}
+
+async fn get_frame<S: tokio::io::AsyncRead + Unpin>(client: &mut S) -> Option<Vec<u8>> {
+    let read = async {
+        let mut len = [0u8; 2];
+        client.read_exact(&mut len).await.ok()?;
+        let mut datagram = vec![0u8; usize::from(u16::from_be_bytes(len))];
+        client.read_exact(&mut datagram).await.ok()?;
+        Some(datagram)
+    };
+    tokio::time::timeout(Duration::from_secs(5), read)
+        .await
+        .ok()
+        .flatten()
+}
+
+/// T-329: UDP in the stream carries the datagrams as frames on the control
+/// stream; a fragment is dropped; an unasked answer is not relayed; two
+/// frames in one write are both served; the end of the stream ends it.
+#[tokio::test]
+async fn front_door_udp_in_stream_carries_frames() {
+    pod_testkit::need_loopback!();
+    let (server, count) = echo().await;
+    let udp = Udp::new(None);
+    let door = Arc::new(Door::new(udp.clone()).with_udp_in_stream());
+    let (mut client, stream) = tokio::io::duplex(8192);
+    door.clone().spawn(stream);
+    assert_eq!(
+        in_stream_open(&mut client).await,
+        [5, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+    );
+    put_frame(&mut client, &wrap(server, b"one")).await;
+    assert_eq!(get_frame(&mut client).await, Some(wrap(server, b"re:one")));
+    // A fragment is dropped, and a frame in two writes is joined.
+    let mut fragment = wrap(server, b"frag");
+    fragment[2] = 1;
+    put_frame(&mut client, &fragment).await;
+    let whole = wrap(server, b"split");
+    let len = u16::try_from(whole.len()).unwrap().to_be_bytes();
+    client.write_all(&len[..1]).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    client.write_all(&len[1..]).await.unwrap();
+    client.write_all(&whole[..3]).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    client.write_all(&whole[3..]).await.unwrap();
+    assert_eq!(
+        get_frame(&mut client).await,
+        Some(wrap(server, b"re:split"))
+    );
+    // An answer of a host that the client sent nothing to is dropped.
+    let local = udp.local.lock().unwrap().expect("the socket of the way");
+    let other = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    other.send_to(b"unasked", local).await.unwrap();
+    put_frame(&mut client, &wrap(server, b"two")).await;
+    assert_eq!(get_frame(&mut client).await, Some(wrap(server, b"re:two")));
+    assert_eq!(count.load(Ordering::Relaxed), 3, "the fragment never left");
+    drop(client);
+}
+
+/// T-329: a door with no switch refuses 0x83; a way with no datagrams gives
+/// 0x07.
+#[tokio::test]
+async fn front_door_udp_in_stream_replies_for_a_door_that_refuses() {
+    let plain = Arc::new(Door::new(Udp::new(None)));
+    let none = Arc::new(Door::new(Udp::new(Some(Class::Unavailable))).with_udp_in_stream());
+    for door in [plain, none] {
+        let (mut client, server) = tokio::io::duplex(4096);
+        door.clone().spawn(server);
+        client.write_all(&[5, 1, 0]).await.unwrap();
+        let mut method = [0u8; 2];
+        client.read_exact(&mut method).await.unwrap();
+        client
+            .write_all(&[5, 0x83, 0, 1, 0, 0, 0, 0, 0, 0])
+            .await
+            .unwrap();
+        let mut out = Vec::new();
+        client.read_to_end(&mut out).await.unwrap();
+        assert_eq!(out[1], 0x07, "{out:?}");
+    }
+}

@@ -131,6 +131,12 @@ pub(crate) enum Command {
     /// Send GET requests to a URL through the way out (--egress, --proxy) and
     /// measure the latency (p50, p95, p99), the rate and the errors.
     Bench(BenchArgs),
+    /// A SOCKS5 exit on stdin and stdout, with no listener: one session
+    /// for a pipe (ssh, `exec:`). CONNECT is the stream. UDP uses the
+    /// command 0x83 of pod-proxy, UDP in the stream: a pipe has no UDP
+    /// socket, so each datagram is a frame (2 bytes of length, then a SOCKS5
+    /// UDP datagram) on the same stream. See docs/proxies.md.
+    Exit(cmd::exit::ExitArgs),
     /// List local TCP ports that are listening.
     Ports(PortsArgs),
     /// List the carriers and services of this build: kind, framing, duplex,
@@ -281,6 +287,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Forward(args) => cmd::forward::forward(args).await,
         Command::Route(args) => cmd::route::route(args).await,
         Command::Bench(args) => bench(args).await,
+        Command::Exit(args) => cmd::exit::exit(args).await,
         Command::Ports(args) => cmd::host::ports(args).await,
         Command::Components(args) => components(args),
         Command::Qr(args) => cmd::host::qr(args),

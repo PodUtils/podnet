@@ -80,6 +80,7 @@ pub mod doctor;
 pub mod edge_discovery;
 pub mod edge_h2;
 pub mod egress;
+pub mod exit_stdio;
 pub mod fetch;
 #[doc(hidden)]
 pub mod forwards;

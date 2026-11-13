@@ -147,3 +147,53 @@ prints the same text.
 The option does not apply to UDP, to `podssh -D` (an SSH channel cannot carry data before its open is
 confirmed), to TLS early data, to `net proxy`, to `net tailscale`, to `podnet route` and to
 `podnet warp proxy`.
+
+## Exit on stdio
+
+`podnet exit --stdio` serves one SOCKS5 session on stdin and stdout. It has no listener. Use it as the far end of
+a byte channel (`ssh HOST podnet exit --stdio`, an `exec:` road): the machine of the far end is the exit. The
+server side is the door of `podnet pod --serve` (`crates/podnet-netns/src/door.rs`). The run ends when the
+client closes stdin.
+
+The way out is the way of the process: `--proxy`, `--no-proxy`, `--egress` and the proxy variables, as for
+the other commands. The log goes to stderr; stdout carries the session only.
+
+* CONNECT: the stream is the session. The client sends the greeting and the request, and gets the reply. The
+  bytes of the flow follow on the same stream.
+* UDP ASSOCIATE (command 3) gets the reply `0x07`: its UDP socket would be on the exit, and the client
+  cannot reach it through a pipe.
+* UDP in the stream (command `0x83` of `pod-proxy`): the datagrams travel as frames on the same stream.
+* BIND gets the reply `0x07`.
+* UDP leaves from the exit host (an IPv4 socket of the system) when the process has no proxy. With a proxy
+  (`--proxy`, or a proxy variable) the command `0x83` gets the reply `0x07`: a SOCKS5 or HTTP proxy
+  of the process carries no UDP here.
+
+### UDP in the stream
+
+The client does this on the stream, after the greeting (`05 01 00`, method reply `05 00`):
+
+1. The client sends the request `05 83 00 01 00 00 00 00 00 00`: version 5, command `0x83`, reserved 0,
+   address type 1, address 0.0.0.0, port 0. The address and the port are ignored.
+2. The exit answers `05 00 00 01 00 00 00 00 00 00` (10 bytes: success, address 0.0.0.0, port 0). A reply code
+   other than 0 (`0x07`: no datagrams or the command is not known, `0x02`: refused by a policy) ends
+   the stream.
+3. From now on, each datagram in each direction is one frame. A frame is a length of 2 bytes (big endian, 0 to
+   65535), then that many bytes: a SOCKS5 UDP datagram of RFC 1928, section 7. The datagram is RSV (2 bytes,
+   `00 00`), FRAG (1 byte, `00`), the address type (`01` IPv4, `03` a name with a length byte, `04` IPv6),
+   the address, the port (2 bytes, big endian), then the payload. A frame may be split over many writes
+   and many frames may be in one write: the reader counts bytes.
+4. The client frame has the destination. A name resolves on the exit host. The exit sends the payload from one
+   UDP socket of the exit host. An answer comes back as a frame whose address is the source of the answer.
+
+Limits and drops:
+
+* A datagram with FRAG other than 0 is dropped. A datagram that does not parse is dropped.
+* The exit relays an answer only from an address that the client sent to. The exit keeps at most 1024 such
+  addresses; a datagram to a new address above this is dropped.
+* An answer that does not fit in a frame (the datagram with its header is more than 65535 bytes) is dropped.
+* The association ends when the client closes the stream, or after 300 s with no datagram in either direction.
+* One session is one association: open a new `podnet exit --stdio` for another client. A session does not
+  carry CONNECT after the command `0x83`.
+
+`pod-proxy` (`pod_proxy::socks5::udp`) has the same frames: `open_in_stream`, `write_frame`, `read_frame`,
+`wrap`.

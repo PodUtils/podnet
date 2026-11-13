@@ -597,7 +597,7 @@ connection, not the bandwidth.
   `crates/podnet-netns/src/upstream.rs:380-413` (`socks5_connect`: the request, then `read_exact` of the
   reply head). A hop with `proxy.user` offers the methods `[0x00, 0x02]`, a hop without it `[0x00]`
   (`crates/podnet-netns/src/upstream.rs:309-313`).
-- `crates/podnet-netns/src/door.rs:233` and `:259` replies after the dial too.
+- `crates/podnet-netns/src/door.rs:244` and `:270` replies after the dial too.
 - The door of podnet reads a pipelined client: `crates/podnet-netns/src/socks.rs:61` (`socks5_read_request`)
   reads the greeting, the methods and the request with sequential `read_exact`.
 - `src/warp/proxy.rs` has its own dial (the replies at `src/warp/proxy.rs:657-733`). That door is frozen

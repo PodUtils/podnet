@@ -15,7 +15,7 @@ use crate::socks::{self, ProxyHost};
 use anyhow::{Context as _, Result};
 use pod_core::datagrams::{recv_from, send_to};
 use pod_core::Class;
-use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 use tokio::net::UdpSocket;
 use tokio::time::Instant;
 
@@ -98,6 +98,92 @@ where
             _ = tokio::time::sleep_until(idle_at) => return Ok(()),
         }
     }
+}
+
+/// The command 0x83 of `pod-proxy`: UDP in the stream.
+pub const CMD_UDP_IN_STREAM: u8 = 0x83;
+
+/// Serve UDP in the stream (T-329, the command 0x83 of `pod-proxy`) on
+/// `stream`. The reply is the one of a UDP ASSOCIATE with the address
+/// 0.0.0.0:0. Then each datagram in each direction is a frame: a length of
+/// 2 bytes (big endian, at most 65535), then a SOCKS5 UDP datagram (RFC 1928,
+/// section 7: RSV 2 bytes, FRAG 0, the address type, the address, the port,
+/// the payload). No UDP socket is open for the client: a pipe carries the
+/// frames. The rules of [`associate`] hold: no fragment, an answer only from
+/// an address that the client sent to, at most [`MAX_PEERS`] peers, the end
+/// when the client closes the stream or is idle for [`IDLE`]. An answer
+/// that does not fit in a frame is dropped.
+pub(super) async fn in_stream<S>(door: &Door, stream: &mut S) -> Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send,
+{
+    let datagrams = match door.dial.datagrams().await {
+        Ok(datagrams) => datagrams,
+        Err(e) => {
+            let code = if e.class == Class::Policy { 0x02 } else { 0x07 };
+            socks::socks5_reply(stream, code, None).await?;
+            return Ok(());
+        }
+    };
+    socks::socks5_reply(stream, 0, None).await?;
+    let mut peers: HashSet<SocketAddr> = HashSet::new();
+    let mut down = vec![0u8; MAX_DATAGRAM];
+    // A read into a buffer is safe to cancel; a frame is cut out of it.
+    let mut held: Vec<u8> = Vec::new();
+    let mut idle_at = Instant::now() + IDLE;
+    loop {
+        while let Some(frame) = take_frame(&mut held) {
+            let Some((host, port, payload)) = socks::socks5_udp_unwrap(&frame) else {
+                continue;
+            };
+            let Some(to) = resolve(&host, port).await else {
+                continue;
+            };
+            if !peers.contains(&to) && peers.len() >= MAX_PEERS {
+                continue;
+            }
+            peers.insert(to);
+            idle_at = Instant::now() + IDLE;
+            if let Err(e) = send_to(&*datagrams, payload, to).await {
+                tracing::debug!("a datagram of the door to {to}: {e}");
+            }
+        }
+        tokio::select! {
+            read = stream.read_buf(&mut held) => {
+                if matches!(read, Ok(0) | Err(_)) {
+                    return Ok(());
+                }
+            }
+            back = recv_from(&*datagrams, &mut down) => {
+                let (n, from) = back.context("the datagrams of the door")?;
+                if !peers.contains(&from) {
+                    continue;
+                }
+                let datagram = wrap(from, &down[..n]);
+                let Ok(len) = u16::try_from(datagram.len()) else {
+                    continue;
+                };
+                idle_at = Instant::now() + IDLE;
+                let mut frame = Vec::with_capacity(2 + datagram.len());
+                frame.extend_from_slice(&len.to_be_bytes());
+                frame.extend_from_slice(&datagram);
+                stream.write_all(&frame).await?;
+                stream.flush().await?;
+            }
+            _ = tokio::time::sleep_until(idle_at) => return Ok(()),
+        }
+    }
+}
+
+/// Cut the first whole frame off `held`: the length, then the datagram.
+fn take_frame(held: &mut Vec<u8>) -> Option<Vec<u8>> {
+    let len = usize::from(u16::from_be_bytes([*held.first()?, *held.get(1)?]));
+    if held.len() < 2 + len {
+        return None;
+    }
+    let frame = held[2..2 + len].to_vec();
+    held.drain(..2 + len);
+    Some(frame)
 }
 
 /// The address of a datagram: a name resolves with the resolver of this host.

@@ -35,7 +35,7 @@ pub(crate) async fn run(remote: &str, auth: Option<&str>) -> Result<()> {
 /// keep the runtime from its end while stdin stays open. A shutdown of the
 /// write side (the remote closed) also ends the read side, so the run does
 /// not wait for stdin.
-struct StdioIo {
+pub(super) struct StdioIo {
     rx: mpsc::Receiver<Vec<u8>>,
     chunk: Vec<u8>,
     at: usize,
@@ -45,7 +45,7 @@ struct StdioIo {
 }
 
 impl StdioIo {
-    fn new() -> std::io::Result<Self> {
+    pub(super) fn new() -> std::io::Result<Self> {
         // A copy of descriptor 1 with no buffer: the Stdout of std holds
         // bytes until a new line.
         let stdout = std::fs::File::from(std::io::stdout().as_fd().try_clone_to_owned()?);

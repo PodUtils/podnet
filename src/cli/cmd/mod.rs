@@ -6,6 +6,7 @@ pub(crate) mod bench;
 pub(crate) mod components;
 pub(crate) mod connect;
 mod connect_stdio;
+pub(crate) mod exit;
 pub(crate) mod expose;
 pub(crate) mod forward;
 pub(crate) mod git;
