@@ -13,10 +13,15 @@
 //! then with the seen-`seq` rule, then it gives it to the route table
 //! ([`crate::mesh_table`]):
 //!
-//! * The path must be `[origin]` and the origin must be the peer of the
-//!   link. A multi-hop announcement is dropped until the forwarding exists
-//!   (T-287). This stops a peer from sending the announcement of a node that
-//!   it does not speak for.
+//! * The last node of the path must be the peer of the link. This stops a
+//!   peer from sending the announcement of a node that it does not speak
+//!   for. [`crate::mesh_announce::verify`] has checked the chain of hop
+//!   signatures.
+//! * A new announcement (it reached the route table) is forwarded: this node
+//!   adds its hop ([`announce::append_hop`], with the cost of the link to the
+//!   peer) and sends it to each other neighbour that is not in the path. The
+//!   path of the sent announcement has at most [`crate::link_forward::DEFAULT_HOPS`]
+//!   nodes.
 //! * A dropped announcement changes nothing and the link stays up.
 //!
 //! The cost of the link to a peer is the configured weight, else the RTT of
@@ -33,6 +38,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use pod_identity::PublicKey;
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::sync::mpsc;
 
 use crate::identity::Identity;
 use crate::link::{Link, Stream};
@@ -86,7 +92,7 @@ fn random_u64() -> u64 {
 pub enum Dropped {
     /// A rule of [`crate::mesh_announce`].
     Announcement(Rule),
-    /// The path is not `[origin]`, or the origin is not the peer.
+    /// The last node of the path is not the peer.
     NotDirect,
     /// The route table refused it.
     Table(Refused),
@@ -102,8 +108,16 @@ impl std::fmt::Display for Dropped {
     }
 }
 
+/// The frames that wait to go to a peer: the announcements of other nodes
+/// that this node forwards.
+pub const OUTBOX: usize = 64;
+
 struct State {
     me_key: PublicKey,
+    outbox: HashMap<PublicKey, mpsc::Sender<Vec<u8>>>,
+    links: HashMap<PublicKey, Arc<Link>>,
+    hop_limit: usize,
+    forwarded: u64,
     receiver: Receiver,
     table: RouteTable,
     seq: u64,
@@ -133,6 +147,10 @@ impl Mesh {
             services,
             state: Mutex::new(State {
                 me_key: key,
+                outbox: HashMap::new(),
+                links: HashMap::new(),
+                hop_limit: usize::from(crate::link_forward::DEFAULT_HOPS),
+                forwarded: 0,
                 receiver: Receiver::new(key),
                 table: RouteTable::new(key, Limits::default()),
                 seq: now,
@@ -159,10 +177,62 @@ impl Mesh {
         }
     }
 
+    /// Keep the link to `peer`: streams for other nodes go over it, and the
+    /// forwarded announcements go to the channel `outbox`.
+    pub fn attach_link(&self, peer: PublicKey, link: Arc<Link>, outbox: mpsc::Sender<Vec<u8>>) {
+        let mut st = self.lock();
+        st.links.insert(peer, link);
+        st.outbox.insert(peer, outbox);
+    }
+
+    /// The most nodes of a path that this node forwards and of a route that
+    /// it uses for a stream (1 to 16, default 8).
+    pub fn set_hop_limit(&self, limit: u8) {
+        self.lock().hop_limit = usize::from(limit.clamp(1, crate::link_forward::MAX_HOPS));
+    }
+
+    /// The key of this node.
+    pub fn public(&self) -> PublicKey {
+        self.me.public()
+    }
+
+    /// The origin whose fingerprint is `text` (as `routes` shows it), if the
+    /// table holds a route to it.
+    pub fn origin_named(&self, text: &str) -> Option<PublicKey> {
+        let st = self.lock();
+        let found = st
+            .table
+            .origins()
+            .find(|k| k.display_fingerprint() == text)
+            .copied();
+        found
+    }
+
+    /// The links that lead to `dest`, best route first: for each usable
+    /// route whose next hop is not in `skip`, has a link here and keeps the
+    /// hop limit, the next hop and its link. The route table ranks them.
+    pub fn ways(
+        &self,
+        dest: &PublicKey,
+        skip: &[PublicKey],
+        now: u64,
+    ) -> Vec<(PublicKey, Arc<Link>)> {
+        let st = self.lock();
+        st.table
+            .ranked(dest, now)
+            .into_iter()
+            .filter(|r| r.down_since_ms.is_none() && r.hops <= st.hop_limit)
+            .filter(|r| !skip.contains(&r.next_hop))
+            .filter_map(|r| Some((r.next_hop, st.links.get(&r.next_hop)?.clone())))
+            .collect()
+    }
+
     /// The link to `peer` is down: end its direct route at once.
     pub fn neighbour_down(&self, peer: &PublicKey, now: u64) {
         let mut st = self.lock();
         st.neighbours.remove(peer);
+        st.links.remove(peer);
+        st.outbox.remove(peer);
         st.table.session_closed(peer, now);
     }
 
@@ -204,7 +274,7 @@ impl Mesh {
         now: u64,
     ) -> Result<Learned, Dropped> {
         let mut st = self.lock();
-        let done = Self::take(&mut st, from, cost, wire, now);
+        let done = self.take(&mut st, from, cost, wire, now);
         match &done {
             Ok(_) => st.received += 1,
             Err(_) => st.dropped += 1,
@@ -213,6 +283,7 @@ impl Mesh {
     }
 
     fn take(
+        &self,
         st: &mut State,
         from: &PublicKey,
         cost: u32,
@@ -220,13 +291,33 @@ impl Mesh {
         now: u64,
     ) -> Result<Learned, Dropped> {
         let v = announce::verify(wire, &st.me_key, now).map_err(Dropped::Announcement)?;
-        if v.path.as_slice() != [*from] || v.body.origin != *from {
+        if v.path.last() != Some(from) {
             return Err(Dropped::NotDirect);
         }
         let v = st.receiver.note(v, now).map_err(Dropped::Announcement)?;
-        st.table
+        let learned = st
+            .table
             .learn(*from, cost, &v.route(), now)
-            .map_err(Dropped::Table)
+            .map_err(Dropped::Table)?;
+        Self::forward(&self.me, st, wire, &v.path, cost);
+        Ok(learned)
+    }
+
+    /// Send the announcement on with the hop of this node, to each neighbour
+    /// that is not in the path. A full outbox drops the frame: the origin
+    /// sends again.
+    fn forward(me: &Identity, st: &mut State, wire: &[u8], path: &[PublicKey], cost: u32) {
+        if path.len() + 1 > st.hop_limit {
+            return;
+        }
+        let Ok(out) = announce::append_hop(wire, me.key(), cost) else {
+            return;
+        };
+        for (peer, tx) in &st.outbox {
+            if !path.contains(peer) && tx.try_send(out.clone()).is_ok() {
+                st.forwarded += 1;
+            }
+        }
     }
 
     /// The best route of each origin as a JSON document (the verb `routes`).
@@ -257,6 +348,7 @@ impl Mesh {
             "received": st.received,
             "dropped": st.dropped,
             "evictions": st.table.evictions(),
+            "forwarded": st.forwarded,
             "routes": rows,
         })
     }
@@ -272,6 +364,7 @@ pub async fn run_sender(
     peer: PublicKey,
     weight: Option<u32>,
     interval_ms: u64,
+    mut forwards: mpsc::Receiver<Vec<u8>>,
 ) {
     let mut stream = match link.open() {
         Ok(stream) => stream,
@@ -284,23 +377,35 @@ pub async fn run_sender(
         tracing::warn!(error = %format!("{err:#}"), "announce: the peer takes no announcements");
         return;
     }
+    // The own announcement goes at once, then at each interval. A forwarded
+    // announcement goes when it comes.
+    let mut wait = Duration::ZERO;
     loop {
-        mesh.set_cost(&peer, link_cost(weight, link.rtt()));
-        let wire = match mesh.make(now_ms()) {
-            Ok(wire) => wire,
-            Err(err) => {
-                tracing::warn!(error = %err, "announce: no announcement");
-                return;
+        let wire = tokio::select! {
+            _ = tokio::time::sleep(wait) => {
+                wait = next_delay(interval_ms, random_u64());
+                mesh.set_cost(&peer, link_cost(weight, link.rtt()));
+                match mesh.make(now_ms()) {
+                    Ok(wire) => wire,
+                    Err(err) => {
+                        tracing::warn!(error = %err, "announce: no announcement");
+                        return;
+                    }
+                }
             }
+            Some(wire) = forwards.recv() => wire,
         };
-        let mut frame = Vec::with_capacity(wire.len() + 2);
-        frame.extend_from_slice(&(wire.len() as u16).to_be_bytes());
-        frame.extend_from_slice(&wire);
-        if stream.write_all(&frame).await.is_err() {
+        if write_frame(&mut stream, &wire).await.is_err() {
             return;
         }
-        tokio::time::sleep(next_delay(interval_ms, random_u64())).await;
     }
+}
+
+async fn write_frame(stream: &mut Stream, wire: &[u8]) -> std::io::Result<()> {
+    let mut frame = Vec::with_capacity(wire.len() + 2);
+    frame.extend_from_slice(&(wire.len() as u16).to_be_bytes());
+    frame.extend_from_slice(wire);
+    stream.write_all(&frame).await
 }
 
 /// Answer and read the frames of a stream that the peer opened for the
@@ -355,12 +460,15 @@ impl Guard {
         interval_ms: u64,
     ) -> Guard {
         mesh.neighbour_up(peer, link_cost(weight, link.rtt()));
+        let (tx, rx) = mpsc::channel(OUTBOX);
+        mesh.attach_link(peer, link.clone(), tx);
         let sender = tokio::spawn(run_sender(
             mesh.clone(),
             link.clone(),
             peer,
             weight,
             interval_ms,
+            rx,
         ));
         // The end of the link ends the direct route of the peer at once.
         let watch = {
@@ -397,6 +505,14 @@ pub async fn serve_streams(mesh: Arc<Mesh>, link: Arc<Link>, peer: PublicKey, we
             match service::accept(&mut stream).await {
                 Ok(name) if name == NAME => {
                     receive_stream(mesh, link, peer, weight, &mut stream).await;
+                }
+                Ok(name) if name == crate::link_forward::NAME => {
+                    // This end has no service: it relays, or it refuses.
+                    if let Ok(crate::link_forward::Arrived::Local(_)) =
+                        crate::link_forward::accept(&mesh, &mut stream).await
+                    {
+                        let _ = service::reply(&mut stream, service::NO_SERVICE).await;
+                    }
                 }
                 Ok(_) => {
                     let _ = service::reply(&mut stream, service::NO_SERVICE).await;

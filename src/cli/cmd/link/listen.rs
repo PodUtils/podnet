@@ -80,7 +80,10 @@ pub(crate) struct ListenArgs {
     /// `announce`, each 10 s): this end tells its peer its neighbours and
     /// its services, and learns the routes of the peer. The control socket
     /// shows the routes with the verb `routes`. The name `announce` cannot
-    /// be a --service with this flag. The peer must run it too.
+    /// be a --service with this flag. The peer must run it too. A node
+    /// forwards the announcements of others, and a stream that a peer sends
+    /// for another node goes to the next hop of the best route (`link dial
+    /// --node`). The name `fwd` cannot be a --service with this flag.
     #[arg(long)]
     pub(crate) announce: bool,
     /// With --announce: the cost of each link, 1 to 4294967295. Without it,
@@ -163,6 +166,12 @@ fn services_of(args: &ListenArgs) -> Result<BTreeMap<String, Service>> {
         return Err(usage(format!(
             "--service {}: this name is the stream of --announce",
             announce::NAME
+        )));
+    }
+    if args.announce && out.contains_key(podnet::link_forward::NAME) {
+        return Err(usage(format!(
+            "--service {}: this name is the stream of a forwarded stream (--announce)",
+            podnet::link_forward::NAME
         )));
     }
     if out.len() > MAX_SERVICES {
@@ -328,10 +337,20 @@ async fn bridge(
     announced: Option<(Arc<Mesh>, Arc<Link>, Option<u32>)>,
     peer: PublicKey,
 ) -> Result<()> {
-    let name = service::accept(stream).await?;
-    if let (Some((mesh, link, weight)), true) = (announced, name == announce::NAME) {
-        announce::receive_stream(mesh, link, peer, weight, stream).await;
-        return Ok(());
+    let mut name = service::accept(stream).await?;
+    if let Some((mesh, link, weight)) = announced {
+        if name == announce::NAME {
+            announce::receive_stream(mesh, link, peer, weight, stream).await;
+            return Ok(());
+        }
+        // A stream for another node goes on; a stream for this node is a
+        // request for its service.
+        if name == podnet::link_forward::NAME {
+            match podnet::link_forward::accept(&mesh, stream).await? {
+                podnet::link_forward::Arrived::Local(local) => name = local,
+                podnet::link_forward::Arrived::Done => return Ok(()),
+            }
+        }
     }
     let Some(found) = services.get(&name) else {
         service::reply(stream, service::NO_SERVICE).await?;

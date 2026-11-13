@@ -7208,7 +7208,10 @@ COMMANDS
             its services, and learns the routes of the peer. The control
             socket shows the routes with the verb `routes`. The name
             `announce` cannot be a --service with this flag. The peer must run
-            it too
+            it too. A node forwards the announcements of others, and a stream
+            that a peer sends for another node goes to the next hop of the
+            best route (`link dial --node`). The name `fwd` cannot be a
+            --service with this flag
 
         --announce-weight <COST>
             With --announce: the cost of each link, 1 to 4294967295. Without
@@ -7352,6 +7355,18 @@ COMMANDS
         --announce-weight <COST>
             With --announce: the cost of the link (1 or more). Default: the
             RTT
+
+        --node <FINGERPRINT>
+            With --announce: reach the service of the node with this
+            fingerprint (as `routes` shows it), which may be many links away.
+            The stream goes to the next hop of the best route and is opened
+            again at each hop. The dialer waits up to 20 s for a route. A node
+            with no route, a service that the node does not have, or a path
+            longer than --hops exits 69
+
+        --hops <N>
+            With --node: the most links that the stream may cross, 1 to 16.
+            Default: 8.
 
         --check
             Connect and check the peer, print its fingerprint, and exit 0. It

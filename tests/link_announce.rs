@@ -331,3 +331,100 @@ fn announce_flags_are_checked() {
     );
     assert_eq!(out.status.code(), Some(64), "{out:?}");
 }
+
+#[test]
+fn dial_node_reaches_the_service_of_the_listener_by_its_fingerprint() {
+    use std::io::{Read, Write};
+    let (server, client) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let (sfp, cfp) = (fingerprint(server.path()), fingerprint(client.path()));
+    let allow = server.path().join("allow");
+    std::fs::write(&allow, &cfp).unwrap();
+    // The service of the listener: an echo on a unix socket.
+    let echo: PathBuf = server.path().join("echo.sock");
+    let echo_listener = std::os::unix::net::UnixListener::bind(&echo).unwrap();
+    std::thread::spawn(move || {
+        for conn in echo_listener.incoming().flatten() {
+            std::thread::spawn(move || {
+                let (mut r, mut w) = (conn.try_clone().unwrap(), conn);
+                let _ = std::io::copy(&mut r, &mut w);
+            });
+        }
+    });
+    let sock: PathBuf = server.path().join("l.sock");
+    let target = format!("unix:{}", echo.display());
+    let mut listen = host_command(
+        server.path(),
+        &[
+            "link",
+            "listen",
+            sock.to_str().unwrap(),
+            "--allow",
+            allow.to_str().unwrap(),
+            "--service",
+            &format!("echo={target}"),
+            "--announce",
+            "--json",
+        ],
+    )
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .unwrap();
+    let mut line = String::new();
+    BufReader::new(listen.stdout.as_mut().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let _listen = Proc(listen);
+    let dial = |service: &str| {
+        host_command(
+            client.path(),
+            &[
+                "link",
+                "dial",
+                sock.to_str().unwrap(),
+                "--peer",
+                &sfp,
+                "--announce",
+                "--node",
+                &sfp,
+                "--service",
+                service,
+            ],
+        )
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap()
+    };
+    let mut child = dial("echo");
+    let mut stdin = child.stdin.take().unwrap();
+    stdin.write_all(b"hello\n").unwrap();
+    let mut out = child.stdout.take().unwrap();
+    let mut got = [0u8; 6];
+    out.read_exact(&mut got).unwrap();
+    assert_eq!(&got, b"hello\n");
+    drop(stdin);
+    let _child = Proc(child);
+    // A service that the node does not have: exit 69.
+    let bad = dial("nope").wait_with_output().unwrap();
+    assert_eq!(bad.status.code(), Some(69), "{bad:?}");
+    assert!(
+        String::from_utf8_lossy(&bad.stderr).contains("no such service")
+            || String::from_utf8_lossy(&bad.stderr).contains("has no service")
+    );
+    // --node needs --announce.
+    let out = run(
+        client.path(),
+        &[
+            "link",
+            "dial",
+            sock.to_str().unwrap(),
+            "--peer",
+            &sfp,
+            "--node",
+            &sfp,
+        ],
+    );
+    assert_eq!(out.status.code(), Some(64), "{out:?}");
+}

@@ -51,6 +51,16 @@ pub(crate) struct DialArgs {
     /// With --announce: the cost of the link (1 or more). Default: the RTT.
     #[arg(long, value_name = "COST", requires = "announce", value_parser = clap::value_parser!(u32).range(1..))]
     pub(crate) announce_weight: Option<u32>,
+    /// With --announce: reach the service of the node with this fingerprint
+    /// (as `routes` shows it), which may be many links away. The stream goes
+    /// to the next hop of the best route and is opened again at each hop. The
+    /// dialer waits up to 20 s for a route. A node with no route, a service
+    /// that the node does not have, or a path longer than --hops exits 69.
+    #[arg(long, value_name = "FINGERPRINT", requires = "announce")]
+    pub(crate) node: Option<String>,
+    /// With --node: the most links that the stream may cross, 1 to 16.
+    #[arg(long, value_name = "N", requires = "node", default_value_t = podnet::link_forward::DEFAULT_HOPS, value_parser = clap::value_parser!(u8).range(1..=16))]
+    pub(crate) hops: u8,
     /// Connect and check the peer, print its fingerprint, and exit 0. It
     /// opens no stream.
     #[arg(long)]
@@ -72,6 +82,30 @@ pub(super) fn trusted(allow: &Option<PathBuf>, peer: &[String]) -> Result<AllowL
         )),
         None => AllowList::parse(&peer.join("\n")).map_err(|e| e.context("--peer")),
     }
+}
+
+/// The time that the dialer waits for a route to the node of --node.
+const ROUTE_WAIT: std::time::Duration = std::time::Duration::from_secs(20);
+
+/// Open a stream to the service of the node with the fingerprint `node`.
+async fn open_node(mesh: &Arc<Mesh>, node: &str, service: &str, hops: u8) -> Result<link::Stream> {
+    let unavailable = |e: anyhow::Error| exit::fault(Fault::Unavailable, e);
+    let end = std::time::Instant::now() + ROUTE_WAIT;
+    let dest = loop {
+        if let Some(dest) = mesh.origin_named(node) {
+            break dest;
+        }
+        if std::time::Instant::now() >= end {
+            return Err(unavailable(anyhow!(
+                "no route to the node {node} in {} s",
+                ROUTE_WAIT.as_secs()
+            )));
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    };
+    podnet::link_forward::open(mesh, &dest, service, hops)
+        .await
+        .map_err(|e| unavailable(anyhow!("the stream to the node {node}: {e}")))
 }
 
 pub(crate) async fn dial(mut args: DialArgs) -> Result<()> {
@@ -101,18 +135,26 @@ pub(crate) async fn dial(mut args: DialArgs) -> Result<()> {
     eprintln!("podnet: peer {theirs}, this install {mine}");
     let link = Arc::new(link);
     // The guard stops the announcements and ends the route at the exit.
-    let _guard = args.announce.then(|| {
-        let mesh = Mesh::new(me.clone(), Vec::new(), announce::now_ms());
+    let mesh = args
+        .announce
+        .then(|| Mesh::new(me.clone(), Vec::new(), announce::now_ms()));
+    let _guard = mesh.as_ref().map(|mesh| {
         tokio::spawn(announce::serve_streams(
             mesh.clone(),
             link.clone(),
             peer,
             args.announce_weight,
         ));
-        Guard::start(&mesh, &link, peer, args.announce_weight, INTERVAL_MS)
+        Guard::start(mesh, &link, peer, args.announce_weight, INTERVAL_MS)
     });
-    let mut stream = link.open().map_err(link::fault)?;
-    podnet::link_service::request(&mut stream, &args.service).await?;
+    let stream = match (&args.node, &mesh) {
+        (Some(node), Some(mesh)) => open_node(mesh, node, &args.service, args.hops).await?,
+        _ => {
+            let mut stream = link.open().map_err(link::fault)?;
+            podnet::link_service::request(&mut stream, &args.service).await?;
+            stream
+        }
+    };
     let (mut down, mut up) = tokio::io::split(stream);
     let send = tokio::spawn(async move {
         let mut stdin = tokio::io::stdin();

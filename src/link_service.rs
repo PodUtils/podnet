@@ -7,7 +7,10 @@
 //! ```text
 //! opener -> PNSVC1 NAME\n
 //! other  -> one byte: 0 the stream is open, 1 no such service,
-//!                     2 the origin of the service did not answer
+//!                     2 the origin of the service did not answer,
+//!                     3 the hop limit of a forwarded stream is used up,
+//!                     4 the node has no stream to give (resource limit),
+//!                     5 the node has no route to the destination
 //! ```
 //!
 //! A name is 1 to 32 characters from `A-Z a-z 0-9 . _ -`. The default
@@ -21,7 +24,7 @@ use crate::exit::{self, Fault};
 use crate::link::Stream;
 
 /// The tag at the start of the first line of a stream.
-const TAG: &str = "PNSVC1 ";
+pub(crate) const TAG: &str = "PNSVC1 ";
 
 /// The most characters of a service name.
 pub const NAME_LIMIT: usize = 32;
@@ -35,6 +38,15 @@ pub const OPEN: u8 = 0;
 pub const NO_SERVICE: u8 = 1;
 /// The answer: the origin of the service did not answer.
 pub const NO_ORIGIN: u8 = 2;
+
+/// The answer: the hop limit of a forwarded stream is used up.
+pub const HOPS_EXCEEDED: u8 = 3;
+/// The answer: the node cannot allocate a stream. The opener may try the
+/// next route.
+pub const RESOURCE_LIMIT: u8 = 4;
+/// The answer: the node has no route to the destination of a forwarded
+/// stream.
+pub const NO_ROUTE: u8 = 5;
 
 /// Check a service name. A bad name exits 64.
 pub fn check_name(name: &str) -> anyhow::Result<()> {
@@ -80,6 +92,18 @@ pub async fn request(stream: &mut Stream, name: &str) -> anyhow::Result<()> {
         NO_ORIGIN => Err(exit::fault(
             Fault::Unavailable,
             anyhow!("the origin of the service {name:?} did not answer"),
+        )),
+        HOPS_EXCEEDED => Err(exit::fault(
+            Fault::Unavailable,
+            anyhow!("the hop limit of the stream for {name:?} is used up"),
+        )),
+        RESOURCE_LIMIT => Err(exit::fault(
+            Fault::Unavailable,
+            anyhow!("the peer has no stream to give for {name:?}"),
+        )),
+        NO_ROUTE => Err(exit::fault(
+            Fault::Unavailable,
+            anyhow!("the peer has no route for {name:?}"),
         )),
         other => Err(exit::fault(
             Fault::Unavailable,

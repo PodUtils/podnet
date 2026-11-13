@@ -314,10 +314,17 @@ nothing.
   cost of its link) and the services of this end (the listener: the names of `--service` and `--to`; the dialer: none).
 * A frame is a big-endian `u16` length and the wire bytes of the announcement. A length above 9789 ends the announce stream.
   The link stays up.
-* The receiver takes only an announcement whose path is `[origin]` and whose origin is the peer of the link. Any other
-  announcement is dropped (`not from the peer itself`) until the forwarding exists (T-287). Then it runs the rules of the
-  announcement and the seen-`seq` rule, and gives the announcement to the route table. A dropped announcement changes no route,
+* The receiver takes an announcement whose path ends at the peer of the link (T-287; a path `[origin]` is a direct
+  announcement). Any other announcement is dropped (`not from the peer itself`): this stops a peer from sending the
+  announcement of a node that it does not speak for. Then it runs the rules of the announcement (the chain of hop signatures
+  included) and the seen-`seq` rule, and gives the announcement to the route table. A dropped announcement changes no route,
   keeps no `seq`, and the link stays up. The listener and the dialer log it.
+* A new announcement is forwarded: the node adds its hop (its key, the cost of its link to the peer, its signature over the
+  signature before it) and sends it on the `announce` stream of each other neighbour that is not in the path. It forwards only
+  a path that stays within the hop limit (8 nodes; `Mesh::set_hop_limit`, 16 at most). The forward queue of a link holds 64
+  frames: a full queue drops the frame, and the origin sends again. The route table keeps one `seq` for each origin: the
+  first announcement of a `seq` that arrives sets the route of that round, a longer path of the same `seq` is dropped.
+  The cost of a route is the cost of the link to the sender plus the signed costs of the hops.
 * The first `seq` of a run is the time in ms, so a restart does not use a `seq` again.
 * The cost of a link is `--announce-weight COST` (1 or more), else the RTT of the link in ms (at least 1), else 10.
 * The end of a link ends the direct route of its peer at once.
@@ -325,11 +332,34 @@ nothing.
 * The control socket of a listener has the verb `routes`: `{"verb":"routes","token":...}` gives `node`, `neighbours`,
   `received`, `dropped`, `evictions` and `routes`, the best route of each origin (`origin`, `next_hop`, `cost`, `hops`, `seq`,
   `expires_ms`, `direct`). Without `--announce` the verb exits 69. The dialer has no control socket and shows no routes.
-  `link connect` has no `--announce` (T-285 left it out).
+  `link connect` has no `--announce` (T-285 left it out). `routes` also shows `forwarded`, the count of forwarded frames.
+
+## Forwarding a stream
+
+A stream for a node that is not a neighbour goes through the mesh (T-287, `podnet::link_forward`). `link dial --announce --node
+FINGERPRINT [--hops N] --service NAME` opens the stream: the dialer waits up to 20 s for a route to the node (the fingerprint
+as `routes` shows it), then sends the stream to the next hop of the best route. A stream to a direct neighbour is the plain
+request. Exit 69 when no route comes, the node has no such service, or the path is longer than `--hops`.
+
+* The opener sends `PNSVC1 fwd`, then the header line `PNFWD1 DEST HOPS SERVICE VISITED`: the key of the destination in hex, the
+  links that the stream may still cross, the service, and the keys of the nodes passed (hex, with commas).
+* A node that gets it: is the destination (it serves the service as if the request came direct), or has `HOPS` 0 (answer 3, hop
+  limit), or is in `VISITED` (answer 5, no route: the loop rule), or tries the usable routes to `DEST`, best first, skipping a
+  next hop that is in `VISITED`. For each route it opens a stream to the next hop with `HOPS - 1` and itself in `VISITED`, and
+  waits 30 s for the answer. A stream that cannot be opened, the answer 4 (the hop has no stream to give), the answer 5 and the
+  timeout make it try the next route. Any other answer goes back to the previous hop. With the answer 0 it answers 0 and
+  copies the bytes both ways. The credit windows of the links give back-pressure hop by hop.
+* The answers of a service request: 0 open, 1 no such service, 2 the origin did not answer, 3 hop limit used up, 4 no stream to
+  give (resource limit), 5 no route.
+* 8 links by default, 16 at most (`--hops`). A route longer than the hop limit of a node is not used.
+* The listener runs this when it has `--announce`. The name `fwd` cannot be a `--service` then (exit 64). A dialer with
+  `--announce` relays a stream that its peer sends, but it has no service of its own.
+* Not done: the bytes are not encrypted end to end (T-298), so each hop sees them. The CLI has no node that both listens and
+  dials, so a chain of three podnet processes needs a library caller (`link_forward::open`).
 
 ## The route table
 
-`podnet::mesh_table` is the path-vector route table of the mesh (T-286). `--announce` fills it from the announcements of the direct peers (verb `routes`). The forwarding (T-287) and the status view
+`podnet::mesh_table` is the path-vector route table of the mesh (T-286). `--announce` fills it from the announcements of the direct peers (verb `routes`). The forwarding (T-287) uses it; the status view
 (T-289) will use it.
 
 * The table does no I/O. The caller gives the time in milliseconds to each call, and checks the signature of an announcement
@@ -365,6 +395,6 @@ nothing.
 
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
-`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
+`podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`),
 listens (`listen`) and dials (`dial`, which gives the key that the listener proved).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates.
