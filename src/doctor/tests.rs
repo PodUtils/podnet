@@ -572,3 +572,20 @@ fn the_report_lists_the_carriers_of_the_registry() {
     let names: Vec<&str> = carriers.0.iter().map(|c| c.name).collect();
     assert_eq!(names, crate::carriers::names());
 }
+
+// T-282: the row of the icmp carrier says whether a raw ICMP socket opens
+// here, and names --allow-raw icmp when it does.
+#[cfg(feature = "icmp")]
+#[test]
+fn the_icmp_row_says_whether_a_raw_socket_opens() {
+    let carriers = carrier_check::carriers();
+    let row = carriers.0.iter().find(|c| c.name == "icmp").unwrap();
+    match row.verdict {
+        Verdict::Ok => assert!(row.detail.contains("--allow-raw icmp"), "{}", row.detail),
+        _ => {
+            assert_eq!(row.verdict, Verdict::Refused, "{}", row.detail);
+            assert!(row.detail.contains("CAP_NET_RAW"), "{}", row.detail);
+        }
+    }
+    assert!(carriers.text().contains("icmp"));
+}

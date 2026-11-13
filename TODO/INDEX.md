@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**333 entries: 17 open, 15 partial, 26 blocked, 275 done.**
+**334 entries: 17 open, 15 partial, 26 blocked, 276 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 7 | 6 | 11 | 144 | 168 |
-| P3 | 10 | 8 | 13 | 101 | 132 |
-| **All** | 17 | 15 | 26 | 275 | 333 |
+| P3 | 10 | 8 | 13 | 102 | 133 |
+| **All** | 17 | 15 | 26 | 276 | 334 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -327,7 +327,7 @@ M8 Overlays, M9 Later.
 | [T-279](link.md) | P3 | L | M9 | feature | blocked | link: the object-storage simplex carrier (GitHub #468) |
 | [T-280](link.md) | P3 | M | M9 | feature | done | link: the HTTP poll simplex carrier (GitHub #468) |
 | [T-281](link.md) | P3 | L | M9 | feature | blocked | link: the DNS stream carrier with a pipelined query window (GitHub #469) |
-| [T-282](link.md) | P3 | L | M9 | feature | open | link: the ICMP echo carrier (GitHub #469) |
+| [T-282](link.md) | P3 | L | M9 | feature | done | link: the ICMP echo carrier (GitHub #469) |
 | [T-283](link.md) | P3 | M | M9 | feature | blocked | link: a WireGuard peer as a carrier (GitHub #469) |
 | [T-284](link.md) | P3 | L | M9 | feature | blocked | link: NAT traversal with a relay fallback (GitHub #469) |
 | [T-285](link.md) | P3 | L | M9 | feature | done | link: signed route announcements (GitHub #470) |
@@ -379,3 +379,4 @@ M8 Overlays, M9 Later.
 | [T-331](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.9`: the dry run, the publish and the release proofs |
 | [T-332](fixes.md) | P1 | S | M5 | defect | done | QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523) |
 | [T-333](fixes.md) | P1 | S | M5 | defect | done | link door: --resolve-at local tries only the first address of a name |
+| [T-334](link.md) | P3 | S | M9 | feature | open | pod: the seccomp rule of a raw ICMP socket (GitHub #469) |

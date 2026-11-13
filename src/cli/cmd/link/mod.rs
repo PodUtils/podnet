@@ -48,8 +48,10 @@ pub(crate) struct CarrierArgs {
     /// over TLS with the same pins: listen at `IP:PORT`, dial
     /// `KEY@https://HOST[:PORT]/PATH`; `?poll=N` sets the hold of a long
     /// poll. `dns` (feature `dns`) carries the link in query names and TXT
-    /// answers: listen at `IP:PORT` with --dns-zone, dial `KEY@ZONE`. A key
-    /// that is refused exits 77.
+    /// answers: listen at `IP:PORT` with --dns-zone, dial `KEY@ZONE`. `icmp`
+    /// (feature `icmp`) carries the link in the data of ICMP echo messages
+    /// on a raw socket (CAP_NET_RAW, --allow-raw icmp): listen at an IPv4
+    /// address, dial `KEY@HOST`. A key that is refused exits 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
     /// The unix carrier accepts a peer of another uid. Each end checks the
@@ -84,6 +86,11 @@ pub(crate) struct CarrierArgs {
     /// server (the dialer gives it in KEY@ZONE).
     #[arg(long, value_name = "ZONE")]
     pub(crate) dns_zone: Option<String>,
+    /// Allow a carrier that opens a raw socket: `icmp` needs
+    /// `--allow-raw icmp` (else exit 64), and CAP_NET_RAW or uid 0 (else
+    /// exit 69).
+    #[arg(long, value_name = "CARRIER", value_parser = ["icmp"])]
+    pub(crate) allow_raw: Vec<String>,
     /// What the query of the address gives to a carrier of
     /// `podnet::link_keyed`.
     #[arg(skip)]
@@ -125,6 +132,7 @@ pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Chosen> {
     if let Some(name) = keyed.iter().find(|n| **n == args.carrier) {
         let feature = podnet::link_keyed::feature_of(name).unwrap_or(name);
         podnet::build_features::require(feature)?;
+        podnet::link_keyed::allow_raw(name, &args.allow_raw)?;
         return Ok(Chosen::Peer(name, args.tune.clone()));
     }
     Ok(Chosen::Plain(carriers::open(
@@ -588,6 +596,7 @@ mod tests {
             record: None,
             dns_server: None,
             dns_zone: None,
+            allow_raw: Vec::new(),
             tune: Default::default(),
         }
     }

@@ -7683,7 +7683,10 @@ COMMANDS
             `IP:PORT`, dial `KEY@https://HOST[:PORT]/PATH`; `?poll=N` sets the
             hold of a long poll. `dns` (feature `dns`) carries the link in
             query names and TXT answers: listen at `IP:PORT` with --dns-zone,
-            dial `KEY@ZONE`. A key that is refused exits 77. Default: unix.
+            dial `KEY@ZONE`. `icmp` (feature `icmp`) carries the link in the
+            data of ICMP echo messages on a raw socket (CAP_NET_RAW,
+            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`. A
+            key that is refused exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -7713,6 +7716,11 @@ COMMANDS
         --dns-zone <ZONE>
             The dns carrier: the zone that a listener serves as an
             authoritative server (the dialer gives it in KEY@ZONE)
+
+        --allow-raw <CARRIER>
+            Allow a carrier that opens a raw socket: `icmp` needs `--allow-raw
+            icmp` (else exit 64), and CAP_NET_RAW or uid 0 (else exit 69).
+            Values: icmp.
 
         --allow <FILE>
             The allow list: a file with one peer on each line (the fingerprint
@@ -7910,7 +7918,10 @@ COMMANDS
             `IP:PORT`, dial `KEY@https://HOST[:PORT]/PATH`; `?poll=N` sets the
             hold of a long poll. `dns` (feature `dns`) carries the link in
             query names and TXT answers: listen at `IP:PORT` with --dns-zone,
-            dial `KEY@ZONE`. A key that is refused exits 77. Default: unix.
+            dial `KEY@ZONE`. `icmp` (feature `icmp`) carries the link in the
+            data of ICMP echo messages on a raw socket (CAP_NET_RAW,
+            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`. A
+            key that is refused exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -7940,6 +7951,11 @@ COMMANDS
         --dns-zone <ZONE>
             The dns carrier: the zone that a listener serves as an
             authoritative server (the dialer gives it in KEY@ZONE)
+
+        --allow-raw <CARRIER>
+            Allow a carrier that opens a raw socket: `icmp` needs `--allow-raw
+            icmp` (else exit 64), and CAP_NET_RAW or uid 0 (else exit 69).
+            Values: icmp.
 
         --peer <FINGERPRINT>
             The fingerprint that the listener must prove (the line that its
@@ -8098,7 +8114,10 @@ COMMANDS
             `IP:PORT`, dial `KEY@https://HOST[:PORT]/PATH`; `?poll=N` sets the
             hold of a long poll. `dns` (feature `dns`) carries the link in
             query names and TXT answers: listen at `IP:PORT` with --dns-zone,
-            dial `KEY@ZONE`. A key that is refused exits 77. Default: unix.
+            dial `KEY@ZONE`. `icmp` (feature `icmp`) carries the link in the
+            data of ICMP echo messages on a raw socket (CAP_NET_RAW,
+            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`. A
+            key that is refused exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -8128,6 +8147,11 @@ COMMANDS
         --dns-zone <ZONE>
             The dns carrier: the zone that a listener serves as an
             authoritative server (the dialer gives it in KEY@ZONE)
+
+        --allow-raw <CARRIER>
+            Allow a carrier that opens a raw socket: `icmp` needs `--allow-raw
+            icmp` (else exit 64), and CAP_NET_RAW or uid 0 (else exit 69).
+            Values: icmp.
 
         --peer <FINGERPRINT>
             The fingerprint that the listener must prove (the line that its
@@ -8646,7 +8670,10 @@ COMMANDS
             `IP:PORT`, dial `KEY@https://HOST[:PORT]/PATH`; `?poll=N` sets the
             hold of a long poll. `dns` (feature `dns`) carries the link in
             query names and TXT answers: listen at `IP:PORT` with --dns-zone,
-            dial `KEY@ZONE`. A key that is refused exits 77. Default: unix.
+            dial `KEY@ZONE`. `icmp` (feature `icmp`) carries the link in the
+            data of ICMP echo messages on a raw socket (CAP_NET_RAW,
+            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`. A
+            key that is refused exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -8676,6 +8703,11 @@ COMMANDS
         --dns-zone <ZONE>
             The dns carrier: the zone that a listener serves as an
             authoritative server (the dialer gives it in KEY@ZONE)
+
+        --allow-raw <CARRIER>
+            Allow a carrier that opens a raw socket: `icmp` needs `--allow-raw
+            icmp` (else exit 64), and CAP_NET_RAW or uid 0 (else exit 69).
+            Values: icmp.
 
         --json
             Print one JSON document: {"carriers": [...]}
@@ -10589,9 +10621,15 @@ INVENTORY
         A simplex pair of objects in a bucket of an object store. Cost class
         network, no privilege. Address: BUCKET/PREFIX. Build feature s3.
     icmp (carrier)
-        ICMP echo requests and replies, a datagram carrier. Cost class
-        network. It needs a privilege of the process. Address: HOST. Build
-        feature icmp.
+        The ICMP echo carrier: the frames ride in the data of ICMP echo
+        messages (1400 bytes of payload) on a raw ICMPv4 socket, with a
+        session id that tells one link from another. The ARQ of pod-link runs
+        over the echoes and TLS 1.3 with ALPN podlink/1 over the ARQ; each end
+        pins the Ed25519 key of the other end; a key that is not pinned exits
+        77. It needs CAP_NET_RAW (or uid 0) and the flag --allow-raw icmp; a
+        host that refuses the raw socket exits 69. Duplex, ordered, cost class
+        network, overhead high, privilege needed. Address: KEY@HOST to dial
+        (IPv4), an IPv4 address with no port to listen. Build feature icmp.
     ss (service)
         The Shadowsocks service over a stream of the link. Cost class network,
         no privilege. Build feature ss.
@@ -13815,7 +13853,7 @@ removed or renamed. A consumer ignores a key that it does not know. The tests pi
 | `legs` | `quic`, `http2`, `quic+warp` and `http2+relay`, each with `verdict`, `status` and `reason`. |
 | `paths` | One object for each TCP path: `id`, `target`, `via`, `verdict`, `detail`, `samples` (loss, best, median, p95, jitter), `tls` and `dns`. |
 | `clock`, `git`, `ssh_relay`, `proxy`, `udp` | The clock, the installed git, the SSH relay, the proxy of the run and the UDP 7844 probe. |
-| `carriers` | One object for each carrier of `podnet link` ([link.md](link.md)): `carrier`, `verdict`, `status` and `detail` (the reason when the host cannot use the carrier). |
+| `carriers` | One object for each carrier of `podnet link` ([link.md](link.md)): `carrier`, `verdict`, `status` and `detail` (the reason when the host cannot use the carrier). The row `icmp` says whether a raw ICMP socket opens here: `ok` names `--allow-raw icmp`; `fail` gives `a raw ICMP socket needs CAP_NET_RAW or uid 0`. A carrier row does not change `ok`. |
 
 `docs/protocol.md` section 9 gives each key and its type. Section 10 is the profile for a program that
 reads the document (flags, exit codes, readiness, failure causes).
@@ -14101,7 +14139,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `poll` | The poll carriers `poll`, `sse`, `chunked` and `httppoll` (requests of HTTP/1.1) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-271, T-272, T-280 |
 | `dns` | The DNS simplex carrier (query names and TXT answers) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-278 |
 | `s3` | The object-storage carrier. | T-279 |
-| `icmp` | The ICMP echo carrier. | T-282 |
+| `icmp` | The ICMP echo carrier (the data of echo messages on a raw socket, `CAP_NET_RAW`) with an ARQ, TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-282 |
 | `ss` | The Shadowsocks service. | T-294 |
 | `trojan` | The Trojan service. | T-295 |
 | `c-abi` | The C ABI. The code is the crate `crates/podnet-capi` (see The C library), which does not turn the feature on: the feature gates no code. | T-304 |
@@ -14120,7 +14158,7 @@ cargo test --workspace --features full       # what the CI job features runs
   --features NAME)`, `podnet doctor` shows it as `unknown`, and a command
   that names it (`--carrier NAME`) exits 69 with the same reason. In a
   `--features` build, a carrier whose code is not in the tree says so and
-  names its entry (T-279 or T-282).
+  names its entry (T-279).
 * The static musl build of the release set uses the default features. Build
   a feature on every target of the release set before it joins that set.
 * `podnet::build_features` is the list (`OPTIONAL`, `FULL`), `built(NAME)`,

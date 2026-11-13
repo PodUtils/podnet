@@ -84,7 +84,7 @@ pub const COMPONENTS: &[ComponentEntry] = &[
     ComponentEntry {
         name: "icmp",
         kind: "carrier",
-        meaning: "ICMP echo requests and replies, a datagram carrier. Cost class network. It needs a privilege of the process. Address: HOST. Build feature icmp.",
+        meaning: "The ICMP echo carrier: the frames ride in the data of ICMP echo messages (1400 bytes of payload) on a raw ICMPv4 socket, with a session id that tells one link from another. The ARQ of pod-link runs over the echoes and TLS 1.3 with ALPN podlink/1 over the ARQ; each end pins the Ed25519 key of the other end; a key that is not pinned exits 77. It needs CAP_NET_RAW (or uid 0) and the flag --allow-raw icmp; a host that refuses the raw socket exits 69. Duplex, ordered, cost class network, overhead high, privilege needed. Address: KEY@HOST to dial (IPv4), an IPv4 address with no port to listen. Build feature icmp.",
     },
     ComponentEntry {
         name: "ss",

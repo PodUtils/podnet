@@ -257,6 +257,8 @@ one in code with `podnet::link_group::LinkGroup`.
   `SO_PEERCRED`, so give the flag at both ends. Without it, a peer of another uid exits 69.
 * `--dns-server IP:PORT` and `--dns-zone ZONE` (dns carrier): the server of the queries of a dial, and the zone of a listener. With
   another carrier they exit 64.
+* `--allow-raw icmp` allows a carrier that opens a raw socket. The `icmp` carrier without it exits 64 and names the flag.
+  Another value exits 64.
 * `--ring BYTES` (memory carrier) sets the ring of each direction: 65536 to 67108864 (64 KiB to 64 MiB). Default 1048576. A
   value out of the limits exits 64.
 
@@ -306,13 +308,13 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `httppoll` | as `poll` | POSTs up, a GET poll down: the simplex poll, the highest overhead (T-280). Build feature `poll`. |
 | `dns` | `KEY@ZONE` to dial (`--dns-server`), `IP:PORT` (UDP) to listen (`--dns-zone`) | Query names up and TXT answers down, an ARQ and TLS 1.3 with a pinned Ed25519 key above (T-278). Build feature `dns`. See "The DNS carrier". |
 | `s3` | `BUCKET/PREFIX` | A simplex pair of objects in a bucket (T-279). Build feature `s3`. |
-| `icmp` | `HOST` | ICMP echo, a datagram carrier (T-282). Build feature `icmp`; it needs a privilege. |
+| `icmp` | `KEY@HOST` (IPv4) to dial, an IPv4 address with no port to listen | The data of ICMP echo messages on a raw socket, an ARQ and TLS 1.3 with a pinned Ed25519 key above (T-282). Build feature `icmp`; it needs `CAP_NET_RAW` and `--allow-raw icmp`. See "The ICMP carrier". |
 
 The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `dns`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
 them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
-carrier exits 69 with that reason. In a build with the feature on, the row says that the code of the carrier is not in this
-build, and names its entry (T-279 or T-282).
+carrier exits 69 with that reason. In a build with the feature `s3` on, the row says that the code of the carrier is not in
+this build, and names its entry (T-279).
 
 `podnet components [--json]` lists each carrier and each service of this build (T-310). A row has the fields `name`, `kind`
 (`carrier` or `service`), `framing`, `duplex`, `needs_privilege`, `available`, `reason`, `cost`, `feature`, `built`, `about` and
@@ -489,6 +491,33 @@ Build with `--features dns` (it holds `tcp`). `pod-link` of PodUtils/podcrates d
 ```sh
 podnet link listen 0.0.0.0:53 --carrier dns --dns-zone t.example.com --allow allowed.txt --to 127.0.0.1:22
 podnet link dial SERVER-FINGERPRINT@t.example.com --carrier dns --allow servers.txt
+```
+
+## The ICMP carrier
+
+Build with `--features icmp` (it holds `tcp`). `pod-link` of PodUtils/podcrates does the work (`pod_link::icmp`);
+`podnet::link_icmp` is the glue. It is a carrier for a host whose only way out is ICMP echo.
+
+* Each datagram rides in the data of one ICMP echo message: the dialer sends echo requests, the listener sends echo replies. The
+  payload is 1400 bytes. A session id in the data tells one link from another on one socket, and a mark tells the bytes of the
+  dialer from the bytes of the listener. A message of another session, and the reply of the kernel to a request, are dropped.
+* The echoes lose, reorder and repeat datagrams, so the selective-repeat ARQ of `pod-link` runs over them, and TLS 1.3 with the
+  ALPN `podlink/1` over the ARQ. Each end pins the key of the other end in the TLS handshake; an echo of a stranger can end a link
+  but not change it. The overhead class is `high`.
+* The socket is a raw ICMPv4 socket (`SOCK_RAW`). It needs `CAP_NET_RAW` or uid 0; the binary is not setuid. A datagram ICMP
+  socket (`ping_group_range`) cannot send an echo reply, so the carrier does not use one. IPv4 only.
+* Give `--allow-raw icmp` at each end. Without it the command exits 64 before a socket opens.
+* The checks come in this order: the build feature (exit 69), `--allow-raw icmp` (exit 64), the address (exit 64), the raw socket
+  (exit 69, with the reason `a raw ICMP socket needs CAP_NET_RAW or uid 0`), the key (exit 77).
+* A listener takes an IPv4 address with no port (`0.0.0.0`, `127.0.0.1`); a port exits 64. Each listener on one address takes
+  each echo request to that address: run one listener for each address. A dialer gives `KEY@HOST`.
+* The kernel of the listener host answers each echo request too. Set `net.ipv4.icmp_echo_ignore_all=1` there to stop the second
+  reply; the dialer drops it in each case.
+* `podnet doctor` (the `carriers` rows) and `podnet link carriers` say whether a raw ICMP socket opens on this host.
+
+```sh
+podnet link listen 0.0.0.0 --carrier icmp --allow-raw icmp --allow allowed.txt --to 127.0.0.1:22
+podnet link dial SERVER-FINGERPRINT@203.0.113.7 --carrier icmp --allow-raw icmp --allow servers.txt
 ```
 
 ## A chain before the carrier
@@ -780,9 +809,9 @@ library ([build.md](build.md), "The C library"). Linux only.
 
 | Code | Case |
 | --- | --- |
-| 64 | A bad flag or value: an unknown carrier, a ring out of its limits, a regular file at the address, no `--peer` or `--allow`; a chain of more than 8 elements, a network that is not an element, a chain with a carrier that is not `tcp`. |
+| 64 | A bad flag or value: an unknown carrier, a ring out of its limits, the `icmp` carrier with no `--allow-raw icmp`, a regular file at the address, no `--peer` or `--allow`; a chain of more than 8 elements, a network that is not an element, a chain with a carrier that is not `tcp`. |
 | 66 | The allow list file is missing. |
-| 69 | The address is held by a live listener, no listener answers, the host refuses the carrier, or a peer has another uid; an element of a chain that cannot be built or dialed; with `--seal`, `ResumeExpired` (three failed RESUME records). |
+| 69 | The address is held by a live listener, no listener answers, the host refuses the carrier (the `icmp` carrier with no `CAP_NET_RAW`), or a peer has another uid; an element of a chain that cannot be built or dialed; with `--seal`, `ResumeExpired` (three failed RESUME records). |
 | 71 | The key file or the allow list file has a mode that others can use. |
 | 77 | A peer is not in the allow list, or it did not prove its key. On `tcp`: a key that the handshake refused. With `--seal`: the end of a stream is not the expected key, or its key is not in the allow list. |
 | 78 | The allow list has a line that is no peer, or more than 4096 entries; a duplicate element or a cycle in a chain; with `--seal`, a suite that the two ends do not share. |
@@ -793,5 +822,5 @@ library ([build.md](build.md), "The C library"). Linux only.
 `podnet::link` opens a link over a carrier (`dial`, `listen`, `Door::accept`, `Door::accept_peer`, `unix_pair`, `memory_pair`). `podnet::session` runs
 a link over a session that resumes after the loss of its carrier, in 10 minutes. `podnet::carriers` is the registry.
 `podnet::identity` is the key and the allow list. `podnet::hello` is the hello. `podnet::mesh_announce` is the signed announcement. `podnet::mesh_table` is the route table of the mesh. `podnet::link_announce` sends and takes the announcements on a link. `podnet::link_forward` forwards a stream through the mesh. `podnet::link_chain` checks and brings up a chain of `--egress` elements (`Plan::parse`, `open`, `check`). `podnet::link_tcp` (feature `tcp`) makes the TCP carrier from the key and the allow list (`carrier`, `carrier_via` over a chain),
-listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`) `podnet::link_udp` (feature `udp`) `podnet::link_poll` (feature `poll`) and `podnet::link_dns` (feature `dns`).
+listens (`listen`) and dials (`dial`, which gives the key that the listener proved). `podnet::link_ws` (feature `ws`) and `podnet::link_h2` (feature `h2`) have the same calls for the WebSocket and the HTTP/2 carrier. `podnet::link_keyed` opens the other carriers that pin the keys by name (`dial`, `listen`, `Tune`): `podnet::link_quic` (feature `quic`) `podnet::link_udp` (feature `udp`) `podnet::link_poll` (feature `poll`), `podnet::link_dns` (feature `dns`) and `podnet::link_icmp` (feature `icmp`).
 The streams, the windows and the keepalive are the work of `pod-link` of PodUtils/podcrates. `crates/podnet-capi` is the C interface of the link (see The C library).

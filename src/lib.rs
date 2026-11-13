@@ -101,6 +101,8 @@ pub mod link_group;
 #[cfg(feature = "h2")]
 pub mod link_h2;
 pub mod link_http;
+#[cfg(feature = "icmp")]
+pub mod link_icmp;
 pub mod link_keyed;
 #[cfg(feature = "poll")]
 pub mod link_poll;

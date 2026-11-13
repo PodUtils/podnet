@@ -277,8 +277,10 @@ poll = ["tcp", "pod-link/poll"]
 dns = ["tcp", "pod-link/dns"]
 # The object-storage carrier (T-279).
 s3 = []
-# The ICMP echo carrier (T-282).
-icmp = []
+# The ICMP echo carrier: the frames in the data of echo messages over a
+# raw socket (CAP_NET_RAW), the ARQ of pod-link and the TLS and the pinned
+# keys of `tcp` above (T-282).
+icmp = ["tcp", "pod-link/icmp"]
 # The Shadowsocks service (T-294).
 ss = []
 # The Trojan service (T-295).

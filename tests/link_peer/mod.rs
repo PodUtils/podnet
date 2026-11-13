@@ -1,5 +1,5 @@
 //! The shared part of the tests of the carriers of `podnet::link_keyed`
-//! (quic, udp, poll, sse, chunked, httppoll, dns). Each test file of a
+//! (quic, udp, poll, sse, chunked, httppoll, dns, icmp). Each test file of a
 //! carrier includes this module and gives the name of its carrier and the
 //! form of its dial address. The tests go through `podnet::link_keyed`, the
 //! glue that `link listen`, `link dial` and `link connect` use, so a test
@@ -50,9 +50,19 @@ pub struct Case {
     pub address_of: AddressOf,
 }
 
+/// The listen address of the carrier `name` on the loopback: the icmp
+/// carrier takes an IPv4 address with no port.
+pub fn loopback_of(name: &str) -> &'static str {
+    if name == "icmp" {
+        "127.0.0.1"
+    } else {
+        "127.0.0.1:0"
+    }
+}
+
 impl Case {
     pub async fn listen(&self, me: &Identity, allow: &AllowList) -> link::Door {
-        link_keyed::listen(self.name, &self.tune, me, allow, "127.0.0.1:0")
+        link_keyed::listen(self.name, &self.tune, me, allow, loopback_of(self.name))
             .await
             .unwrap()
     }

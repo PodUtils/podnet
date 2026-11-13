@@ -47,7 +47,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `poll` | The poll carriers `poll`, `sse`, `chunked` and `httppoll` (requests of HTTP/1.1) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-271, T-272, T-280 |
 | `dns` | The DNS simplex carrier (query names and TXT answers) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-278 |
 | `s3` | The object-storage carrier. | T-279 |
-| `icmp` | The ICMP echo carrier. | T-282 |
+| `icmp` | The ICMP echo carrier (the data of echo messages on a raw socket, `CAP_NET_RAW`) with an ARQ, TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-282 |
 | `ss` | The Shadowsocks service. | T-294 |
 | `trojan` | The Trojan service. | T-295 |
 | `c-abi` | The C ABI. The code is the crate `crates/podnet-capi` (see The C library), which does not turn the feature on: the feature gates no code. | T-304 |
@@ -66,7 +66,7 @@ cargo test --workspace --features full       # what the CI job features runs
   --features NAME)`, `podnet doctor` shows it as `unknown`, and a command
   that names it (`--carrier NAME`) exits 69 with the same reason. In a
   `--features` build, a carrier whose code is not in the tree says so and
-  names its entry (T-279 or T-282).
+  names its entry (T-279).
 * The static musl build of the release set uses the default features. Build
   a feature on every target of the release set before it joins that set.
 * `podnet::build_features` is the list (`OPTIONAL`, `FULL`), `built(NAME)`,

@@ -1,13 +1,14 @@
 //! The carriers of `pod-link` that pin the Ed25519 key of each end and came
 //! with podcrates v0.40.0: `quic` (T-273), `udp` (T-276), and the poll
 //! carriers `poll`, `sse`, `chunked` and `httppoll` (T-271, T-272, T-280),
-//! and `dns` (T-278).
+//! `dns` (T-278) and `icmp` (T-282).
 //!
 //! `link listen`, `link dial` and `link connect` open them by name through
 //! [`dial`] and [`listen`]. Each one sits behind a build feature
 //! ([`feature_of`]); a name whose feature is off exits 69 and names the
 //! feature. [`Tune`] holds what the query of the address and the flags give
-//! to a carrier.
+//! to a carrier. A carrier that opens a raw socket ([`RAW`]) needs the
+//! word of the operator first ([`allow_raw`]).
 
 use anyhow::anyhow;
 use pod_identity::PublicKey;
@@ -20,7 +21,13 @@ use crate::link::{self, carrier_fault, Door};
 use crate::link_query::Query;
 
 /// The names of these carriers, the words of `--carrier`.
-pub const NAMES: [&str; 7] = ["quic", "udp", "poll", "sse", "chunked", "httppoll", "dns"];
+pub const NAMES: [&str; 8] = [
+    "quic", "udp", "poll", "sse", "chunked", "httppoll", "dns", "icmp",
+];
+
+/// The carriers of [`NAMES`] that open a raw socket: `--allow-raw NAME`
+/// must name each one that a command opens.
+pub const RAW: [&str; 1] = ["icmp"];
 
 /// The build feature that holds the carrier `name`, when it is one of
 /// [`NAMES`].
@@ -30,6 +37,7 @@ pub fn feature_of(name: &str) -> Option<&'static str> {
         "udp" => Some("udp"),
         "poll" | "sse" | "chunked" | "httppoll" => Some("poll"),
         "dns" => Some("dns"),
+        "icmp" => Some("icmp"),
         _ => None,
     }
 }
@@ -86,6 +94,17 @@ impl Tune {
         }
         Ok(tune)
     }
+}
+
+/// The gate of a carrier of [`RAW`]: `allowed` (the values of
+/// `--allow-raw`) must name it, else exit 64. Another carrier passes.
+pub fn allow_raw(name: &str, allowed: &[String]) -> anyhow::Result<()> {
+    if !RAW.contains(&name) || allowed.iter().any(|a| a == name) {
+        return Ok(());
+    }
+    Err(usage(format!(
+        "the {name} carrier opens a raw socket (CAP_NET_RAW): give --allow-raw {name}"
+    )))
 }
 
 fn usage(text: String) -> anyhow::Error {
@@ -157,6 +176,11 @@ pub async fn dial(
             let carrier = crate::link_dns::carrier(me, allow, tune);
             crate::link_dns::dial(&carrier, allow, address, settings).await
         }
+        #[cfg(feature = "icmp")]
+        "icmp" => {
+            let carrier = crate::link_icmp::carrier(me, allow);
+            crate::link_icmp::dial(&carrier, allow, address, settings).await
+        }
         _ => Err(off(name)),
     }
 }
@@ -187,6 +211,8 @@ pub async fn listen(
         }
         #[cfg(feature = "dns")]
         "dns" => crate::link_dns::listen(&crate::link_dns::carrier(me, allow, tune), address).await,
+        #[cfg(feature = "icmp")]
+        "icmp" => crate::link_icmp::listen(&crate::link_icmp::carrier(me, allow), address).await,
         _ => Err(off(name)),
     }
 }
@@ -215,6 +241,19 @@ mod tests {
                 assert_eq!(exit::code_of(&e), 69, "{e:#}");
                 assert!(format!("{e:#}").contains(feature), "{e:#}");
             }
+        }
+    }
+
+    #[test]
+    fn a_raw_carrier_needs_its_word_in_allow_raw() {
+        let none: Vec<String> = Vec::new();
+        let e = allow_raw("icmp", &none).unwrap_err();
+        assert_eq!(exit::code_of(&e), 64, "{e:#}");
+        assert!(format!("{e:#}").contains("--allow-raw icmp"), "{e:#}");
+        assert!(allow_raw("icmp", &["icmp".to_string()]).is_ok());
+        assert!(allow_raw("quic", &none).is_ok());
+        for name in RAW {
+            assert!(NAMES.contains(&name), "{name}");
         }
     }
 

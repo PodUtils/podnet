@@ -211,6 +211,15 @@ fn make_s3(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("s3", "T-279")
 }
 
+/// The carrier `icmp` for the registry: the facts and the host check (a
+/// raw ICMP socket opens), no key of this install
+/// (`podnet::link_icmp::carrier` is the real one).
+#[cfg(feature = "icmp")]
+fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_icmp::probe()))
+}
+
+#[cfg(not(feature = "icmp"))]
 fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("icmp", "T-282")
 }
@@ -338,8 +347,8 @@ pub const ROWS: [Row; 14] = [
     },
     Row {
         name: "icmp",
-        about: "echo requests and replies, a datagram carrier",
-        address: "HOST",
+        about: "the data of ICMP echo messages on a raw socket (CAP_NET_RAW, --allow-raw icmp), an ARQ and TLS 1.3 above, the keys pinned",
+        address: "KEY@HOST to dial, an IPv4 address to listen",
         cost: "network",
         needs_privilege: true,
         feature: Some("icmp"),

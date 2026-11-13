@@ -1192,7 +1192,7 @@ T-277 and T-278 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1233,6 +1233,61 @@ T-277, T-264 and T-311 are done.
 ## Correction
 
 2026-11-13: the carrier `icmp` of `pod-link` is in podcrates v0.40.0 (taken, 1c88531; feature `icmp` of `pod-link`): the ARQ in the data of ICMP echo messages, TLS 1.3 above, `KEY@HOST`, a raw socket (`CAP_NET_RAW`) on unix, and `EchoFrames` over any carrier of ICMP messages. The block is gone. The work is the glue, as for the carriers of T-273 to T-280 (`podnet::link_keyed`): the feature `icmp` of podnet to `pod-link/icmp`, `--carrier icmp`, `--allow-raw icmp`, the order of `available()`, the `doctor` row and the seccomp test. The glue of the other carriers did not do it (2026-11-13): it needs the privilege and the seccomp rule, which are more than glue.
+
+2026-11-13, calls of the glue (the owner is away):
+
+- Exit codes. A host that refuses the raw socket exits 69 (`Fault::Unavailable`, the class of the `Unavailable` kind of `pod-link`), as a host that denies UDP for `quic` and `udp`. Exit 77 stays for a key that a peer refused. A binary built without the feature exits 69 and names the feature, as each carrier of `podnet::link_keyed` (T-311).
+- `--allow-raw icmp` is a flag of `link listen`, `link dial` and `link connect` (one value now: `icmp`). Without it the `icmp` carrier exits 64 and names the flag. The order of the checks: the feature (69), `--allow-raw` (64), the address (64), the raw socket (69), the key (77).
+- `available()` is the check of `pod-link` v0.40.0: the TLS provider, the settings and one open of a raw ICMPv4 socket (`CAP_NET_RAW` or uid 0). The one echo with a 2 s timeout of the issue is not in it: the registry and the doctor have no peer to echo to, and the handshake of a dial (20 s) is the check of the path.
+- The socket is raw only. A datagram ICMP socket (`ping_group_range`) of Linux sends echo requests only, so a listener cannot answer on it; the crate does not take one, and the doctor row does not read `ping_group_range`.
+- The doctor row is the `carriers` row `icmp` of `podnet doctor` (the registry of T-264): `ok` with the text `--allow-raw icmp`, or `fail` with the reason of the crate (`a raw ICMP socket needs CAP_NET_RAW or uid 0`). `podnet pod doctor` and `podnet net doctor` do not list the carriers.
+- A listener takes an IPv4 address with no port. Two listeners on one address both answer each echo request to it: the tests with a raw socket run one at a time.
+- The seccomp rule of the issue: the seccomp backend of `podnet pod` passes a `SOCK_RAW` socket to the kernel unchanged (`crates/podnet-netns/src/socket.rs`, `handle_socket`); no rule of the filter denies it, so the row `seccomp denies AF_INET/SOCK_RAW` has no case and the test of the rule has no rule to test. T-334 holds the rule and its test (frozen `pod-hold` code: a COORD issue to podcrates).
+
+## Done
+
+2026-11-13, commit COMMIT. Feature `icmp` of podnet is `["tcp", "pod-link/icmp"]` (in `full`, `OPTIONAL` and `FULL`). `src/link_icmp.rs` (`podnet::link_icmp`): `carrier`, `listen` (an IPv4 address; a port exits 64 before the socket), `dial` (`KEY@HOST`) and `probe`. `src/link_keyed.rs`: the name `icmp`, `RAW` and `allow_raw`. `--allow-raw` of `link listen|dial|connect` (`src/cli/cmd/link/mod.rs`). The registry row (the address, the text `--allow-raw icmp`) and the inventory entry, `docs/link.md` (The ICMP carrier, the flag, the exit codes), `docs/doctor.md` (the row `icmp`), `docs/build.md`.
+
+Tests (`tests/link_icmp.rs`, build `--features icmp`), 10 passed, 3 runs: `the_carrier_is_a_stream_of_high_overhead_with_the_alpn_of_tcp`, `the_registry_row_has_no_key_and_refuses_a_dial`, `a_dial_address_with_no_key_exits_64`, `a_listen_address_with_a_port_exits_64_before_the_socket`, `without_allow_raw_the_icmp_carrier_exits_64_and_names_the_flag`, `without_cap_net_raw_the_carrier_exits_69_and_the_row_says_why` (on a root host the commands run as uid 65534: `link listen` and `link dial --check` exit 69 with `CAP_NET_RAW`, and the row of `link carriers --json` has `available: false`), and with a raw socket: `a_link_crosses_icmp_and_each_end_learns_the_key_of_the_other` (64 KiB there and back), `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77`, `link_dial_check_meets_link_listen_over_icmp_and_a_stranger_exits_77`. This container runs as root with `CAP_NET_RAW`: the echo tests ran here, none skipped. A host with no `CAP_NET_RAW` prints `skipping, this host refuses a raw ICMP socket: ...` for the four echo tests. The unit tests `link_keyed::tests::a_raw_carrier_needs_its_word_in_allow_raw` and `doctor::tests::the_icmp_row_says_whether_a_raw_socket_opens` passed. Plant: with the arms of `icmp` in `link_keyed` off and the call of `allow_raw` out, 7 of the 10 failed. `sh scripts/agent/check.sh` (with `CARGO_PROFILE_DEV_DEBUG=0`: the debug information of the test binaries filled the disk): each step 0, the tests 1899 passed, 0 failed (115 targets). With `--features full`: `link_features`, `link_icmp`, `link_quic` and `link_udp` passed (10, 10, 8, 11), and clippy 0.
+
+The rows of the issue: a named skip without `CAP_NET_RAW` (here), 64 KiB with it (here), a wrong session id dropped (the test `an_echo_of_the_wrong_session_or_mark_is_dropped` of PodUtils/podcrates:crates/pod-link/tests/icmp.rs), the seccomp rule test (T-334).
+
+Not proven here: a link across hosts or through a firewall that limits ICMP; the loss gates (tests of `pod-link`, `icmp`).
+
+# T-334: pod: the seccomp rule of a raw ICMP socket (GitHub #469)
+
+**Source:** GitHub #469 (https://github.com/PodUtils/podnet/issues/469), row E3-2; split from T-282.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Row E3-2 of GitHub #469 (the ICMP carrier) has these rules for a pod: "The seccomp profile of `podnet pod` must allow the ICMP socket family. Otherwise the row says `seccomp denies AF_INET/SOCK_RAW`." "A new socket family needs a row in the seccomp profile and in the guidance of GitHub #89 (T-001)." The row is done when "the seccomp rule test fails when the rule is missing".
+
+## Premise
+
+- Read on 2026-11-13. The seccomp backend stops `socket` (`pod_hold::filter::Calls::sockets`, `crates/podnet-netns/src/seccomp/filter.rs`). `handle_socket` (`crates/podnet-netns/src/socket.rs`) emulates `AF_INET` and `AF_INET6` sockets of the kinds stream and datagram, and an ICMP datagram socket; a `SOCK_RAW` socket goes to the kernel unchanged (`notif_continue`). Thus a program in a pod with `CAP_NET_RAW` gets a raw socket of the network of the host, and one with no privilege gets `EPERM`. No rule names `SOCK_RAW`.
+- The carrier `icmp` of `podnet link` (T-282) opens a raw ICMPv4 socket. Nothing was measured in a pod.
+
+## Approach
+
+1. Decide what a pod does with `AF_INET`/`SOCK_RAW`/`IPPROTO_ICMP`: allow it (the network of the host) or refuse it with an errno. Record the call in `docs/decisions.md`.
+2. Write the rule and the row `seccomp denies AF_INET/SOCK_RAW` of `pod doctor` when the rule refuses it. The filter is `pod-hold` (frozen, fixes only): the change goes to podcrates as a COORD issue (`docs/maintenance.md`, Shared crates).
+3. A test that fails when the rule is missing, and the row in the guidance of GitHub #89 (T-001).
+
+## Prove
+
+```sh
+cargo test -p podnet-netns
+cargo test --test pod_seccomp_rules
+```
+
+## Start condition
+
+T-282 is done.
 
 # T-283: link: a WireGuard peer as a carrier (GitHub #469)
 
