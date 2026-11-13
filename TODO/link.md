@@ -647,7 +647,7 @@ T-268 is done (the secure stream).
 
 ## Done
 
-2026-11-13, the commit "T-271, T-272, T-280: the poll carriers in link listen, dial and connect" (its hash follows in the next commit). Feature `poll` of podnet is `["tcp", "pod-link/poll"]` (in `full`, `OPTIONAL` and `FULL`). `src/link_poll.rs` (`podnet::link_poll`): `NAMES`, `form_of`, `carrier` (the hold of `Tune::hold`), `listen` (`IP:PORT`), `dial` (`KEY@https://HOST[:PORT]/PATH`) and `probe`. `src/link_keyed.rs`: the four names and `Tune::hold`. `src/link_query.rs`: `poll` has an effect now. The four registry rows, the inventory entries, `overhead` in `link carriers --json` (`Facts::cost`), `docs/link.md` (The poll carriers), `docs/build.md`, the map row of `README.md`.
+2026-11-13, commit 89d5765. Feature `poll` of podnet is `["tcp", "pod-link/poll"]` (in `full`, `OPTIONAL` and `FULL`). `src/link_poll.rs` (`podnet::link_poll`): `NAMES`, `form_of`, `carrier` (the hold of `Tune::hold`), `listen` (`IP:PORT`), `dial` (`KEY@https://HOST[:PORT]/PATH`) and `probe`. `src/link_keyed.rs`: the four names and `Tune::hold`. `src/link_query.rs`: `poll` has an effect now. The four registry rows, the inventory entries, `overhead` in `link carriers --json` (`Facts::cost`), `docs/link.md` (The poll carriers), `docs/build.md`, the map row of `README.md`.
 
 Tests (`tests/link_poll.rs`, build `--features poll`, here `--features full`; none skipped), 10 passed: `a_link_crosses_poll_and_each_end_learns_the_key_of_the_other` (512 KiB there and back), `a_link_crosses_poll_with_a_short_hold` (`poll=1`), `a_dialer_of_poll_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77_on_poll`, `link_dial_check_meets_link_listen_over_poll_and_a_stranger_exits_77`, `the_query_key_poll_sets_the_hold_of_a_long_poll`, `the_query_key_poll_is_for_the_poll_carriers_only`, `the_long_poll_has_the_overhead_class_medium`, `the_registry_row_of_poll_has_no_key_and_refuses_a_dial`, `a_dial_address_with_no_key_or_a_path_with_a_query_exits_64`. Plant: with the arms of the poll carriers in `link_keyed` off, the link tests failed (`tests/link_httppoll.rs`: 4 of 6; cargo stops at the first failed file). `sh scripts/agent/check.sh`: each step 0.
 
@@ -701,7 +701,7 @@ T-268 and T-271 are done.
 
 ## Done
 
-2026-11-13, the commit "T-271, T-272, T-280: the poll carriers in link listen, dial and connect" (its hash follows in the next commit) (the code of T-271). The carrier names `sse` and `chunked` of `--carrier`, their registry rows and inventory entries, `docs/link.md` (The poll carriers).
+2026-11-13, commit 89d5765 (the code of T-271). The carrier names `sse` and `chunked` of `--carrier`, their registry rows and inventory entries, `docs/link.md` (The poll carriers).
 
 Tests (`tests/link_sse.rs`, build `--features poll`, here `--features full`; none skipped), 11 passed: for each of `sse` and `chunked`: `a_link_crosses_NAME_and_each_end_learns_the_key_of_the_other` (512 KiB there and back), `a_dialer_of_NAME_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77_on_NAME`, `link_dial_check_meets_link_listen_over_NAME_and_a_stranger_exits_77`, `the_registry_row_of_NAME_has_no_key_and_refuses_a_dial`; and `sse_and_chunked_have_their_overhead_class`. Plant: as T-271.
 
@@ -1110,7 +1110,7 @@ T-271, T-277 and T-264 are done.
 
 ## Done
 
-2026-11-13, the commit "T-271, T-272, T-280: the poll carriers in link listen, dial and connect" (its hash follows in the next commit) (the code of T-271). The carrier name `httppoll` of `--carrier`, its registry row and inventory entry, `overhead` in `link carriers --json`, `docs/link.md` (The poll carriers).
+2026-11-13, commit 89d5765 (the code of T-271). The carrier name `httppoll` of `--carrier`, its registry row and inventory entry, `overhead` in `link carriers --json`, `docs/link.md` (The poll carriers).
 
 Tests (`tests/link_httppoll.rs`, build `--features poll`, here `--features full`; none skipped), 6 passed: `a_link_crosses_httppoll_and_each_end_learns_the_key_of_the_other` (512 KiB there and back), `a_dialer_of_httppoll_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77_on_httppoll`, `link_dial_check_meets_link_listen_over_httppoll_and_a_stranger_exits_77`, `the_registry_row_of_httppoll_has_no_key_and_refuses_a_dial`, `the_simplex_poll_reports_the_overhead_class_highest`. Plant: with the arms of the poll carriers in `link_keyed` off, 4 of the 6 failed.
 
