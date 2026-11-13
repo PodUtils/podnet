@@ -2352,7 +2352,7 @@ take.
 **Milestone:** M6
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2383,3 +2383,18 @@ fallback in podswarm, and no milestone of podswarm waits for it. The owner can r
 ```sh
 cargo test --test exit_stdio
 ```
+
+## Done
+
+2026-11-13, commit 5df0bb2. `podnet exit --stdio` serves one SOCKS5 session on stdin and stdout with no listener
+(`src/exit_stdio.rs`, `src/cli/cmd/exit.rs`). It reuses the door (`Door::with_udp_in_stream`,
+`door::udp::in_stream`): CONNECT is the stream; UDP uses the command 0x83 of `pod-proxy` with a frame (2 bytes of
+length, a SOCKS5 UDP datagram) on the same stream; UDP ASSOCIATE (3) gets 0x07. The frame is in
+`docs/proxies.md`, "Exit on stdio". Choice of the Approach: step 1 (the frames of `pod-proxy`), because T-291 has no
+UDP yet. UDP leaves from the host when the process has no proxy; with a proxy it gets 0x07. Tests:
+`cargo test --test exit_stdio` (`exit_stdio_connects_tcp`, `exit_stdio_carries_udp_in_frames`,
+`exit_stdio_refuses_udp_associate`, `exit_stdio_ends_with_stdin`), `exit_stdio_serves_connect_and_refuses_associate`,
+`front_door_udp_in_stream_carries_frames`, `front_door_udp_in_stream_replies_for_a_door_that_refuses`. Without
+`with_udp_in_stream` the UDP test fails (the reply is 0x07). `sh scripts/agent/check.sh`: exit 0. Not proven: UDP to
+IPv6 (the socket is IPv4), a client of podswarm.
+

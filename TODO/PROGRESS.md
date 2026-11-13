@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 331 entries: 49 open, 21 partial, 30 blocked, 231 done.
+`TODO/INDEX.md` holds 331 entries: 48 open, 21 partial, 30 blocked, 232 done.
 
 ## State
 
@@ -76,8 +76,7 @@ not wait for a larger one.
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
 14. **The asks of podswarm (PodUtils/podcrates#125), after podnet's own work (P3; each has a fallback in podswarm):**
-    T-328 (port rules; blocked: the rules reader is frozen for `pod-warp`, COORD-061), T-329
-    (`exit --stdio`, after T-291). N-4 (one flow over several uplinks) is answered in `docs/router.md`: per flow only;
+    T-328 (port rules; blocked: the rules reader is frozen for `pod-warp`, COORD-061). N-4 (one flow over several uplinks) is answered in `docs/router.md`: per flow only;
     GitHub #495 stays deferred (the owner, 2026-11-12).
 
 Releases (2026-11-09: betas, no crates.io): cut the next prerelease (`v0.4.0-beta.N`) unattended when
