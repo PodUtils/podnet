@@ -926,7 +926,7 @@ T-262 and T-264 are done. The rekey part waits for T-298.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -956,6 +956,11 @@ cargo test --test link_dns
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 493 in the record of podcrates (PodUtils/podcrates#133,
+2026-11-13; estimate: tag `v0.39.0`).
+
 ## Start condition
 
 T-277, T-262 and T-264 are done. Ask A10 is answered.
@@ -967,7 +972,7 @@ T-277, T-262 and T-264 are done. Ask A10 is answered.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1000,6 +1005,11 @@ cargo test --test link_s3 --features s3
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 494 in the record of podcrates (PodUtils/podcrates#133,
+2026-11-13; estimate: tag `v0.39.0`).
+
 ## Start condition
 
 T-277, T-262, T-264 and T-311 are done.
@@ -1011,7 +1021,7 @@ T-277, T-262, T-264 and T-311 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1040,6 +1050,11 @@ cargo test --test link_httppoll
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 495 in the record of podcrates (PodUtils/podcrates#133,
+2026-11-13; estimate: tag `v0.39.0`).
+
 ## Start condition
 
 T-271, T-277 and T-264 are done.
@@ -1051,7 +1066,7 @@ T-271, T-277 and T-264 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1081,6 +1096,11 @@ cargo test --test link_dnsstream
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 496 in the record of podcrates (PodUtils/podcrates#133,
+2026-11-13; estimate: tag `v0.40.0`).
+
 ## Start condition
 
 T-277 and T-278 are done.
@@ -1092,7 +1112,7 @@ T-277 and T-278 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1126,6 +1146,11 @@ cargo test --test link_icmp --features icmp
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 497 in the record of podcrates (PodUtils/podcrates#133,
+2026-11-13; estimate: tag `v0.39.0`).
+
 ## Start condition
 
 T-277, T-264 and T-311 are done.
@@ -1137,7 +1162,7 @@ T-277, T-264 and T-311 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1168,6 +1193,11 @@ cargo test --test link_wg
 sh scripts/agent/check.sh
 ```
 
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 498 in the record of podcrates (PodUtils/podcrates#133,
+2026-11-13; estimate: tag `v0.40.0`).
+
 ## Start condition
 
 T-117 has its network (steps 1 and 3 done). The listen half waits for T-125.
@@ -1179,7 +1209,7 @@ T-117 has its network (steps 1 and 3 done). The listen half waits for T-125.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1215,6 +1245,11 @@ The relay half is the work of `pod-relay`. This entry waits for the take (T-049)
 cargo test --test link_p2p
 sh scripts/agent/check.sh
 ```
+
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 499 in the record of podcrates (PodUtils/podcrates#133,
+2026-11-13; estimate: tag `v0.40.0`).
 
 ## Start condition
 
@@ -1959,7 +1994,8 @@ sh scripts/agent/check.sh
 ## Blocker
 
 The entry adds a feature to the records of the AEAD record layer, T-298, which is blocked on `pod-e2e` of
-PodUtils/podcrates (ask A3). COORD-064 (GitHub #521) asks podcrates for its order.
+PodUtils/podcrates (ask A3; its entry 301, estimate: tag `v0.38.0`, PodUtils/podcrates#133). The compression stays
+podnet's code (call C246 of podcrates): it runs before the seal of `pod-e2e`.
 
 ## Start condition
 
@@ -2002,8 +2038,8 @@ sh scripts/agent/check.sh
 
 ## Blocker
 
-The entry adds a feature to the records of the AEAD record layer, T-298, which is blocked on `pod-e2e` of
-PodUtils/podcrates (ask A3). COORD-064 (GitHub #521) asks podcrates for its order.
+`pod-e2e` of PodUtils/podcrates holds this part (its entry 301, call C246, estimate: tag `v0.38.0`,
+PodUtils/podcrates#133): no raw transport key leaves the crate. The entry is a take of that tag.
 
 ## Start condition
 
@@ -2046,8 +2082,8 @@ sh scripts/agent/check.sh
 
 ## Blocker
 
-The entry adds a feature to the records of the AEAD record layer, T-298, which is blocked on `pod-e2e` of
-PodUtils/podcrates (ask A3). COORD-064 (GitHub #521) asks podcrates for its order.
+`pod-e2e` of PodUtils/podcrates holds this part (its entry 301, call C246, estimate: tag `v0.38.0`,
+PodUtils/podcrates#133): no raw transport key leaves the crate. The entry is a take of that tag.
 
 ## Start condition
 
@@ -2060,7 +2096,7 @@ T-298 and T-263 are done.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -2092,6 +2128,11 @@ cargo test --test link_split
 cargo test -p podnet-core network::split
 sh scripts/agent/check.sh
 ```
+
+## Blocker
+
+The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 500 in the record of podcrates (PodUtils/podcrates#133,
+2026-11-13; estimate: tag `v0.39.0`).
 
 ## Start condition
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**331 entries: 40 open, 22 partial, 33 blocked, 236 done.**
+**331 entries: 32 open, 22 partial, 41 blocked, 236 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 27 | 30 |
 | P2 | 18 | 9 | 11 | 130 | 168 |
-| P3 | 22 | 12 | 20 | 78 | 132 |
-| **All** | 40 | 22 | 33 | 236 | 331 |
+| P3 | 14 | 12 | 28 | 78 | 132 |
+| **All** | 32 | 22 | 41 | 236 | 331 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -323,13 +323,13 @@ M8 Overlays, M9 Later.
 | [T-275](link.md) | P3 | S | M9 | feature | done | link: the in-process memory carrier (GitHub #467) |
 | [T-276](link.md) | P3 | L | M9 | feature | blocked | link: the UDP carrier with KCP (GitHub #468) |
 | [T-277](link.md) | P3 | L | M9 | feature | blocked | link: a selective-repeat ARQ for any lossy carrier (GitHub #468) |
-| [T-278](link.md) | P3 | L | M9 | feature | open | link: the DNS simplex carrier (GitHub #468) |
-| [T-279](link.md) | P3 | L | M9 | feature | open | link: the object-storage simplex carrier (GitHub #468) |
-| [T-280](link.md) | P3 | M | M9 | feature | open | link: the HTTP poll simplex carrier (GitHub #468) |
-| [T-281](link.md) | P3 | L | M9 | feature | open | link: the DNS stream carrier with a pipelined query window (GitHub #469) |
-| [T-282](link.md) | P3 | L | M9 | feature | open | link: the ICMP echo carrier (GitHub #469) |
-| [T-283](link.md) | P3 | M | M9 | feature | open | link: a WireGuard peer as a carrier (GitHub #469) |
-| [T-284](link.md) | P3 | L | M9 | feature | open | link: NAT traversal with a relay fallback (GitHub #469) |
+| [T-278](link.md) | P3 | L | M9 | feature | blocked | link: the DNS simplex carrier (GitHub #468) |
+| [T-279](link.md) | P3 | L | M9 | feature | blocked | link: the object-storage simplex carrier (GitHub #468) |
+| [T-280](link.md) | P3 | M | M9 | feature | blocked | link: the HTTP poll simplex carrier (GitHub #468) |
+| [T-281](link.md) | P3 | L | M9 | feature | blocked | link: the DNS stream carrier with a pipelined query window (GitHub #469) |
+| [T-282](link.md) | P3 | L | M9 | feature | blocked | link: the ICMP echo carrier (GitHub #469) |
+| [T-283](link.md) | P3 | M | M9 | feature | blocked | link: a WireGuard peer as a carrier (GitHub #469) |
+| [T-284](link.md) | P3 | L | M9 | feature | blocked | link: NAT traversal with a relay fallback (GitHub #469) |
 | [T-285](link.md) | P3 | L | M9 | feature | done | link: signed route announcements (GitHub #470) |
 | [T-286](link.md) | P3 | M | M9 | feature | done | link: the path-vector route table (GitHub #470) |
 | [T-287](link.md) | P3 | L | M9 | feature | partial | link: multi-hop forwarding of a session stream (GitHub #470) |
@@ -347,7 +347,7 @@ M8 Overlays, M9 Later.
 | [T-299](link.md) | P3 | S | M9 | feature | blocked | link: snappy compression of records (GitHub #472) |
 | [T-300](link.md) | P3 | S | M9 | feature | blocked | link: padding of records to buckets (GitHub #472) |
 | [T-301](link.md) | P3 | M | M9 | feature | blocked | link: the replay window and the RESUME record (GitHub #472) |
-| [T-302](link.md) | P3 | L | M9 | feature | open | link: split one session across an up carrier and a down carrier (GitHub #473) |
+| [T-302](link.md) | P3 | L | M9 | feature | blocked | link: split one session across an up carrier and a down carrier (GitHub #473) |
 | [T-303](link.md) | P3 | M | M9 | feature | done | link: chain composition with a peer element and --check (GitHub #473) |
 | [T-304](link.md) | P3 | L | M9 | feature | open | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
 | [T-305](link.md) | P3 | L | M9 | feature | blocked | link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475) |

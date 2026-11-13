@@ -1682,7 +1682,7 @@ the datagrams of the peer.
 
 - Read: `Inbox::deliver` (`inbox.rs:79`) sends into the pair with no check of the source. Both relay
   reader tasks call it (`seccomp.rs:1226`, `:1246`). `Inbox::new` has no `dest`.
-- Read: the ruling of 2026-11-04 (`docs/decisions.md:37`): a read of a connected socket stays direct,
+- Read: the ruling of 2026-11-04 (`docs/decisions.md:38`): a read of a connected socket stays direct,
   so the filter must act at delivery.
 - Open: the form of the filter key. The relay source is a `WireSource` (name or address), the `dest` is
   a fake or real address. Compare after `name_for_ip` mapping.
@@ -4330,7 +4330,7 @@ create call makes the next run send `PATCH` for the same device id and no second
 - `src/warp/register.rs:67-95` (`send_api_to`): a status of 500 or more, or a transport error, goes to the
   next API host for each request, the registration POST included (`src/warp/register.rs:77`).
 - `instances::lock` and `try_lock` exist in `crates/podnet-core/src/instances.rs`; `delete_device` exists
-  in `src/warp/register.rs`. `docs/decisions.md:35` has the rule of the registration.
+  in `src/warp/register.rs`. `docs/decisions.md:36` has the rule of the registration.
 - T-173 (done, GitHub #368) changed the refusal for a file of another uid in the same function and keeps
   "a refused file never leads to a registration". It does not add a lock. GitHub #368 is open on GitHub
   while T-173 is done. A close of #368 may be due. Closed issues #50, #187, #141 and #150 do not cover a

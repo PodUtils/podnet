@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 331 entries: 40 open, 22 partial, 33 blocked, 236 done.
+`TODO/INDEX.md` holds 331 entries: 32 open, 22 partial, 41 blocked, 236 done.
 
 ## State
 
@@ -15,6 +15,8 @@
 - Frozen (fixes only, each as a COORD issue): `src/warp/`, `src/cloudflare/`, `src/proxy.rs`, `src/tunnel.rs`,
   `crates/podnet-netns/src/rules.rs` (for `pod-warp`) and `tests/test_host/mod.rs` (in `pod-testkit`).
 - The newest release is `v0.4.0-beta.9` (T-331).
+- The goal (the owner, 2026-11-13): close each issue except the deferred ones, then a final complete beta. The takes
+  follow the plan of podcrates (PodUtils/podcrates#133; `docs/decisions.md`, 2026-11-13).
 - Keep this section short. Write the current state only; git keeps the history.
 
 ## Work order
