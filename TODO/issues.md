@@ -224,5 +224,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #530 | [gh action] requested: ci, deny, secrets and live on bf01ac6 | closed: each run passed (ci 43459872995, deny 43459879363, secrets 43459886257, live 43459893595) | none |
 | #531 | [gh action] requested: ci, deny, secrets and live on 6f8e69e (T-012, T-095, T-087) | closed: each run passed (ci 43471936738, deny 43471944208, secrets 43471952954, live 43471960138) | none |
 | #532 | COORD-070: podnet took v0.40.0 at 1c88531 (to podcrates) | open (a COORD issue between sessions) | none |
+| #533 | COORD-071: two asks of the carriers of pod-link: a typed refusal of the key, and the TC rule of the dns carrier (to podcrates) | open (a COORD issue between sessions) | none |
+| #534 | [gh action] requested: ci, deny, secrets and live on the head after 4b34830 (T-101, T-301, T-137 v0.40.0, the carriers) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
