@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**333 entries: 27 open, 18 partial, 33 blocked, 255 done.**
+**333 entries: 27 open, 14 partial, 33 blocked, 259 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 2 | 1 | 2 | 27 | 32 |
-| P2 | 15 | 7 | 11 | 135 | 168 |
-| P3 | 10 | 10 | 20 | 92 | 132 |
-| **All** | 27 | 18 | 33 | 255 | 333 |
+| P2 | 15 | 4 | 11 | 138 | 168 |
+| P3 | 10 | 9 | 20 | 93 | 132 |
+| **All** | 27 | 14 | 33 | 259 | 333 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -106,7 +106,7 @@ M8 Overlays, M9 Later.
 | [T-058](adapters.md) | P2 | M | M4 | feature | done | The combinators `Chain`, `Rules`, `Race` and `Failover` |
 | [T-059](adapters.md) | P2 | M | M4 | feature | done | The registry of networks, the parser of network specs, and the rows of `doctor` |
 | [T-060](adapters.md) | P2 | M | M4 | feature | done | `--via SPEC` on each command, with each old network flag as an alias |
-| [T-061](adapters.md) | P2 | M | M4 | feature | partial | One front door over a dialer for `warp proxy`, `pod --serve`, `net proxy` and `net tailscale` |
+| [T-061](adapters.md) | P2 | M | M4 | feature | done | One front door over a dialer for `warp proxy`, `pod --serve`, `net proxy` and `net tailscale` |
 | [T-062](adapters.md) | P2 | M | M4 | feature | done | The service and ingress traits, with wrappers of the Cloudflare tunnel, the local listener, the relay node and the virtual network |
 | [T-063](fixes.md) | P1 | M | M5 | defect | done | seccomp: a TCP socket stays tracked after its connect, and its options and addresses come from its entry |
 | [T-064](fixes.md) | P1 | M | M5 | defect | done | seccomp: one entry for each socket of each process, and copies of a descriptor are tracked |
@@ -142,9 +142,9 @@ M8 Overlays, M9 Later.
 | [T-094](services.md) | P2 | M | M6 | feature | done | `podnet git serve`: the repository root, `git init`, `git urls`, the tunnel, the relay and the live step |
 | [T-095](services.md) | P2 | M | M6 | feature | open | Router: several WARP identities in one process, each with its own counters |
 | [T-096](services.md) | P2 | M | M6 | feature | done | Router: groups of networks with weights and a kill switch |
-| [T-097](services.md) | P2 | M | M6 | feature | partial | Router: a TCP health check for each member, and `podnet route status` |
+| [T-097](services.md) | P2 | M | M6 | feature | done | Router: a TCP health check for each member, and `podnet route status` |
 | [T-098](services.md) | P2 | M | M6 | feature | done | Router: doors with a default network, and rules to a network, a group or a refusal |
-| [T-099](services.md) | P2 | M | M6 | feature | partial | Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose` |
+| [T-099](services.md) | P2 | M | M6 | feature | done | Router: `podnet forward` for each network, UDP forwards, a DNS door, and `podnet expose` |
 | [T-100](services.md) | P2 | M | M6 | feature | done | Router: a config file, and `podnet route` with `--detach` and autostart |
 | [T-101](services.md) | P2 | M | M6 | measurement | open | Router: the live step with WARP, the relay and direct, and a failover |
 | [T-102](services.md) | P2 | M | M6 | feature | open | Take the mailbox client, the code words and the SPAKE2 phases from `pod-wormhole` |
@@ -225,7 +225,7 @@ M8 Overlays, M9 Later.
 | [T-177](services.md) | P3 | S | M6 | feature | done | Router: `podnet route check`, a dry run of the rules (GitHub #375) |
 | [T-178](later.md) | P3 | M | M9 | feature | done | Router: named group policies (`rr`, `minrtt`, `leastload`, `protect`) (GitHub #375) |
 | [T-179](later.md) | P3 | S | M9 | research | partial | Research: a direction split for asymmetric uplinks (GitHub #375) |
-| [T-180](services.md) | P3 | M | M6 | feature | partial | Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376) |
+| [T-180](services.md) | P3 | M | M6 | feature | done | Router: write-side control of the members (select, rotate, reconnect, interval) (GitHub #376) |
 | [T-181](pods.md) | P3 | M | M7 | feature | done | seccomp: a budget of tracked flows with counters, a documented ceiling and a doctor row (GitHub #376) |
 | [T-182](fixes.md) | P2 | M | M5 | defect | done | `doctor --agent`: a row is `ok` only when the index host and the file host answer (GitHub #378) |
 | [T-183](fixes.md) | P2 | S | M5 | defect | done | One port for an `http://` proxy URL with no port in podnet and podssh (GitHub #379) |

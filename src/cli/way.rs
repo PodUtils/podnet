@@ -157,6 +157,15 @@ fn devtunnel_refusal(label: &str) -> String {
     )
 }
 
+/// The line for `--egress warp`: WARP is a network that gives TCP and UDP
+/// from a session of its own, and no command takes it as a proxy of the
+/// process.
+fn warp_refusal(label: &str) -> String {
+    format!(
+        "--egress {label}: WARP is a network of the registry and is not a proxy of the process; use podnet forward -L LISTEN=HOST:PORT --network {label}, a networks: entry of podnet route, podnet warp proxy, or tunnel --transport warp"
+    )
+}
+
 /// `podnet --egress A --egress B pod ...`: `-x A -x B` after the word pod.
 fn pod_hops(
     mut kept: Vec<String>,
@@ -180,6 +189,9 @@ fn pod_hops(
         }
         if network.devtunnel().is_some() {
             return Err(devtunnel_refusal(&network.label()));
+        }
+        if network.is_warp() {
+            return Err(warp_refusal(&network.label()));
         }
         if let Some(port) = network.netbird_port() {
             // The listener of NetBird netstack mode is a SOCKS5 hop.
@@ -231,6 +243,9 @@ fn process_way(
     }
     if network.devtunnel().is_some() {
         return Err(devtunnel_refusal(&network.label()));
+    }
+    if network.is_warp() {
+        return Err(warp_refusal(&network.label()));
     }
     let flags: Vec<String> = match (network.scheme(), network.relay_url()) {
         ("direct", _) => vec!["--no-proxy".into()],

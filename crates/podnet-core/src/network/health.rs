@@ -118,10 +118,20 @@ pub async fn probe(way: &Way, target: &Target, timeout: Duration) -> ProbeResult
             drop(conn);
             ProbeResult::Ok(start.elapsed())
         }
-        Ok(Err(e)) => ProbeResult::ConnectFailed {
-            clean: !matches!(e.class, Class::Timeout | Class::TempFail),
-        },
+        Ok(Err(e)) => failed(&e),
         Err(_) => ProbeResult::ConnectFailed { clean: false },
+    }
+}
+
+/// The probe result of a failure of a dial. A refusal of the credential
+/// (`Refused`) or its loss (`Revoked`) is `AuthExpired`: a WARP member renews
+/// its link for it (T-097, item 10). A time out or a temporary failure is a
+/// miss that is not clean; each other class is a clean miss.
+pub fn failed(failure: &Failure) -> ProbeResult {
+    match failure.class {
+        Class::Refused | Class::Revoked => ProbeResult::AuthExpired,
+        Class::Timeout | Class::TempFail => ProbeResult::ConnectFailed { clean: false },
+        _ => ProbeResult::ConnectFailed { clean: true },
     }
 }
 
@@ -145,11 +155,7 @@ pub async fn probe_egress(
     let deadline = start + timeout;
     let mut conn = match tokio::time::timeout_at(deadline, way.dial.dial(echo, deadline)).await {
         Ok(Ok(conn)) => conn,
-        Ok(Err(e)) => {
-            return ProbeResult::ConnectFailed {
-                clean: !matches!(e.class, Class::Timeout | Class::TempFail),
-            }
-        }
+        Ok(Err(e)) => return failed(&e),
         Err(_) => return ProbeResult::ConnectFailed { clean: false },
     };
     let mut answer = Vec::new();

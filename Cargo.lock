@@ -2625,8 +2625,12 @@ name = "pod-testkit"
 version = "0.39.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.39.0#4c2d17c7ee1d26cca9f341d92023226b28164329"
 dependencies = [
+ "bytes",
+ "h2",
+ "http",
  "libc",
  "pod-hostprobe",
+ "tokio",
 ]
 
 [[package]]
@@ -2764,6 +2768,7 @@ dependencies = [
  "pod-relay",
  "pod-services",
  "pod-session",
+ "pod-testkit",
  "pod-tls",
  "pod-turn",
  "pod-warp",

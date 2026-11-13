@@ -28,8 +28,11 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
   file. `--egress` is a way for TCP: `--egress turn://...` gives one line that says so.
 * `devtunnel://` opens streams to ports of the tunnel host and is not a proxy. Use it with `podnet forward -L ... --network SPEC`.
   `--egress devtunnel://...` gives one line that says so.
-* `warp` is not a network of the registry. Use `podnet warp proxy` ([warp.md](warp.md)) or
-  `tunnel --transport warp`.
+* `warp` and `warp:identity=FILE` are networks of the registry: TCP and UDP through a WARP session, with names
+  resolved inside the tunnel ([router.md](router.md), "WARP as a member"). Use them with
+  `podnet forward --network warp` or in a `networks:` entry of a router file. `--egress warp` gives one line
+  that says that WARP is not a proxy of the process: use `podnet warp proxy` ([warp.md](warp.md)) or
+  `tunnel --transport warp` for that.
 
 ## `--egress`
 

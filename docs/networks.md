@@ -134,8 +134,9 @@ UDP from the `Address` of the file.
 * `wg:FILE` is a network of `podnet forward --network` and of a `networks:` entry of a router file
   ([router.md](router.md)). It is not a hop of `podnet pod` (T-117): run `podnet route` with the network and
   give its door to `-x`.
-* The WARP datagram path (MASQUE CONNECT-IP) is not a carrier of the registry (T-117), because `warp` is not a
-  network of the registry ([egress.md](egress.md)).
+* The WARP datagram path (MASQUE CONNECT-IP) is a carrier of the registry as the network `warp`
+  ([router.md](router.md), "WARP as a member"). A chain that puts `warp` below `wg:FILE` is not supported:
+  `warp` takes no way below it (`Ctx::below`).
 
 ## TURN: `turn://HOST[:PORT]` and `turns://HOST[:PORT]`
 

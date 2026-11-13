@@ -245,8 +245,14 @@ fn egress_alias_a_spec_that_the_command_cannot_take_is_one_usage_line() {
         assert!(text.contains("is not a proxy"), "{text}");
         assert!(text.contains("podnet forward"), "{text}");
     }
-    assert!(err(&["podnet", "--egress", "warp", "status"])
-        .contains("not a network of the registry yet"));
+    for words in [
+        &["podnet", "--egress", "warp", "status"][..],
+        &["podnet", "--egress", "warp", "pod", "--", "true"],
+    ] {
+        let text = err(words);
+        assert!(text.contains("is not a proxy of the process"), "{text}");
+        assert!(text.contains("--network warp"), "{text}");
+    }
     assert!(err(&["podnet", "status", "--egress"]).contains("--egress needs a value"));
     let secret = err(&["podnet", "--egress", "gopher://u:secret@p:70", "status"]);
     assert!(!secret.contains("secret"), "{secret}");

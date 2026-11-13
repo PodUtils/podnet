@@ -910,7 +910,7 @@ and no flow to either after the kill switch).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1028,6 +1028,19 @@ metrics rows). Tests: `group_meter_counts_udp_bytes_in_both_directions`, `group_
 '--metrics'". Not proven: the echo protocol against a real echo service; `WrongEgress` from a real WARP member;
 the metrics in a scrape by a Prometheus server (the text is checked by string).
 
+2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit WARPCOMMIT. `warp` and `warp:identity=FILE` are networks of the registry
+(`src/networks/warp.rs`, over `pod-warp` `Live`). Items 3 and 10: the probe of the router renews a WARP member on `Down`,
+`WrongEgress` and `AuthExpired`, make-before-break, from the stored identity file, with a gap of 30 s; a refused key
+enrols a new key for the same device once (`src/router/probe.rs`). Item 7: the session of a WARP member runs with the
+probe of `Live` off, so the control of the router gates the renewal; an outage of each member renews nothing. Item 9: the
+egress check of a WARP member is the exit trace (`warp=on` or `warp=plus`); an entry of `health.egress` goes first.
+Tests: `router_health_renews_a_member_that_goes_down`, `router_health_outage_of_each_member_renews_nothing`,
+`router_health_auth_expired_renews_at_once_and_keeps_a_gap`, `router_health_does_not_renew_a_network_that_does_not_renew`,
+`router_health_runs_the_egress_check_of_the_network`, `router_health_egress_of_the_operator_goes_before_the_network`,
+`router_health_probes_and_renews_a_warp_member`, `warp_network_egress_check_reads_the_trace`,
+`router_probe_result_of_a_failure_names_the_credential` (on the WARP edge stand-in of `pod-warp`). Not proven: a renewal
+against the real WARP edge.
+
 # T-098: Router: doors with a default network, and rules to a network, a group or a refusal
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 2.1 to 2.3; GitHub #372 and #374.
@@ -1122,7 +1135,7 @@ protocol by hand); a member resolver against a real DNS server of a tunnel; `--d
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1200,6 +1213,12 @@ expose` (3 passed: `expose_via_relay_is_a_relay_node`, `expose_via_tunnel_picks_
 `podnet forward --network direct -L udp:45353=127.0.0.1:P --dns 127.0.0.1:45354` answered an echo on both
 doors. Not proven: UDP through a real WARP, relay or tailnet network (the tests use `direct`); `expose` runs
 the other commands as they are (it starts no tunnel in a test). `sh scripts/agent/check.sh`: exit 0.
+
+2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit WARPCOMMIT. `podnet forward --network warp` takes the network `warp` of the
+registry: TCP, `-L udp:...` and `--dns` through the session; `warp forward` stays the alias of `podnet forward` with the
+options of `podnet warp` (`docs/forward.md`). Tests: `network_spec_warp_is_in_the_registry`,
+`network_spec_warp_forms_are_checked`, `warp_network_carries_tcp_and_a_name_inside_the_tunnel`,
+`warp_network_carries_udp_datagrams`.
 
 # T-100: Router: a config file, and `podnet route` with `--detach` and autostart
 
@@ -1756,7 +1775,7 @@ exited 1 for a domain of a `reject` rule, and exited 64 for `--door 5` of a file
 **Milestone:** M6
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1823,6 +1842,11 @@ With the state directory and the gate disabled, `route_control_rotate_reuses_the
 `route_control_needs_the_gate` fail; with the code, they pass. `sh scripts/agent/check.sh`: exit 0. CI: at the
 merge. Not proven: the rotate of a real WARP device (see Left), and a flow that lasts past the 30 s drain of
 the old link.
+
+2026-11-13, done, the work of the handoff (the patch wip-warprouter), rebased on b1e2b80, commit WARPCOMMIT. The WARP network implements `Network::rotate` over `Ctx.state_dir`:
+it loads `state_dir/NETWORK/warp.json`, enrols a new MASQUE key for the stored device, saves the file and opens a session
+with the new key. Tests: `route_control_rotate_of_a_warp_member_registers_no_new_device` (two rotates, one registration
+on the edge stand-in), `warp_network_rotate_reuses_the_stored_device`. Not proven: a rotate against the real WARP edge.
 
 # T-219: `podnet service install`: a hardened system unit (PodUtils/podcrates#35, A-N-11)
 

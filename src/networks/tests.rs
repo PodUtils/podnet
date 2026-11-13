@@ -78,13 +78,30 @@ fn network_spec_a_bad_spec_is_one_usage_line_with_no_password() {
 }
 
 #[test]
-fn network_spec_warp_is_named_and_not_in_the_registry_yet() {
-    for spec in ["warp", "warp:identity=/tmp/id.json"] {
-        let err = parse(spec).expect_err("no warp yet");
-        assert_eq!(err.class, Class::Unsupported);
-        assert!(err.text().contains("podnet warp proxy"), "{err}");
+fn network_spec_warp_is_in_the_registry() {
+    let network = parse("warp").expect("warp is a network");
+    assert_eq!(network.scheme(), "warp");
+    assert_eq!(network.label(), "warp");
+    assert!(network.caps().contains(Caps::EGRESS_TCP));
+    assert!(network.caps().contains(Caps::EGRESS_UDP));
+    assert!(network.renews());
+    assert!(network.egress_check().is_some());
+    let named = parse("warp:identity=/tmp/id.json").expect("a file");
+    assert_eq!(named.label(), "warp:identity=/tmp/id.json");
+    assert!(networks().iter().any(|r| r.scheme == "warp"));
+    // Another network is renewed by nothing and has no check of its own.
+    let direct = parse("direct").unwrap();
+    assert!(!direct.renews());
+    assert!(direct.egress_check().is_none());
+}
+
+#[test]
+fn network_spec_warp_forms_are_checked() {
+    for spec in ["warp:", "warp:identity=", "warp:h3", "warp:identity"] {
+        let err = parse(spec).expect_err(spec);
+        assert_eq!(err.class, Class::Usage, "{spec}");
+        assert!(err.text().starts_with(spec), "{err}");
     }
-    assert!(networks().iter().all(|r| r.scheme != "warp"));
 }
 
 #[test]
@@ -117,6 +134,7 @@ fn network_spec_the_table_has_one_row_for_each_scheme() {
             "wg",
             "turn",
             "devtunnel",
+            "warp",
             "peer"
         ]
     );

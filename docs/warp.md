@@ -90,6 +90,17 @@ podnet warp down                    # stop it
   A listener on an address that is not loopback, with no credentials, gets
   a warning. `--max-connections N` limits the clients; `--dns ADDR`
   answers DNS through WARP.
+## WARP as a network of the registry
+
+`warp` and `warp:identity=FILE` are specs of the registry of networks ([egress.md](egress.md)): TCP and UDP
+through a WARP session, with names resolved inside the tunnel. `podnet forward --network warp` and a
+`networks:` entry of a router file take them ([router.md](router.md), "WARP as a member": health, the egress
+check by the exit trace, the renewal of a member, `--rotate` and `--reconnect`). The device is kept in `FILE`,
+else in the default identity file of `podnet warp`, else (in a router with `state_dir`) in
+`state_dir/NETWORK/warp.json`. The network has none of the flags of `podnet warp` (`--cc`, `--masque-endpoint`, `--session-max-age` and the
+others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WARP_TCP_BURST` and
+`PODNET_WARP_NO_CHECK`.
+
 ## Transports and carriers
 
 * `--fragment-client-hello [off|record|sni]` (default `off`; a flag of `podnet warp`, before or after the subcommand; `PODNET_WARP_FRAGMENT`):

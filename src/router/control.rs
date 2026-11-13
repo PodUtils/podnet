@@ -39,12 +39,18 @@ const CONTROL_LIMIT: Duration = Duration::from_secs(5);
 const BODY_LIMIT: usize = 4096;
 /// The least time between two rotations of one network.
 pub const ROTATE_GAP: Duration = Duration::from_secs(60);
+/// The least time between two renewals of one network that the health of
+/// the router asks for (T-097, items 3 and 10).
+pub const RENEW_GAP: Duration = Duration::from_secs(30);
 /// The time that the old link of a network lives after a swap, so that the
 /// flows on it can end.
 pub const DRAIN: Duration = Duration::from_secs(30);
 
 /// The network of a spec. The default is the registry.
 pub type Connector = Arc<dyn Fn(&str) -> Result<Arc<dyn Network>, Failure> + Send + Sync>;
+
+/// A network of a spec, kept: the spec and the network that it made.
+type Kept = (String, Arc<dyn Network>);
 
 /// The state that the write side of the control socket needs.
 pub struct ControlState {
@@ -54,6 +60,9 @@ pub struct ControlState {
     links: tokio::sync::Mutex<HashMap<String, Link>>,
     busy: tokio::sync::Mutex<()>,
     last_rotate: Mutex<HashMap<String, Instant>>,
+    last_renew: Mutex<HashMap<String, Instant>>,
+    renew_gap: Mutex<Duration>,
+    kinds: Mutex<HashMap<String, Kept>>,
     rotate_gap: Mutex<Duration>,
     drain: Mutex<Duration>,
     connector: Mutex<Connector>,
@@ -75,6 +84,9 @@ impl ControlState {
             links: Default::default(),
             busy: Default::default(),
             last_rotate: Default::default(),
+            last_renew: Default::default(),
+            renew_gap: Mutex::new(RENEW_GAP),
+            kinds: Default::default(),
             rotate_gap: Mutex::new(ROTATE_GAP),
             drain: Mutex::new(DRAIN),
             connector: Mutex::new(Arc::new(|spec| {
@@ -118,6 +130,8 @@ impl ControlState {
         lock(&self.swaps).remove(name);
         lock(&self.specs).remove(name);
         lock(&self.last_rotate).remove(name);
+        lock(&self.last_renew).remove(name);
+        lock(&self.kinds).remove(name);
         let old = self.links.lock().await.remove(name);
         if let Some(old) = old {
             let drain = *lock(&self.drain);
@@ -156,6 +170,45 @@ impl ControlState {
     /// Replace the function that makes a network of a spec (the tests).
     pub fn set_connector(&self, connector: Connector) {
         *self.connector.lock().unwrap_or_else(|e| e.into_inner()) = connector;
+    }
+
+    /// Set the least time between two renewals that the health asks for.
+    pub fn set_renew_gap(&self, gap: Duration) {
+        *lock(&self.renew_gap) = gap;
+    }
+
+    /// The network `name`, made from its spec (kept while the spec is the
+    /// same): the router asks it for its egress check and whether the health
+    /// renews it.
+    pub(super) fn network_of(&self, name: &str) -> Option<Arc<dyn Network>> {
+        let spec = lock(&self.specs).get(name).cloned()?;
+        let kinds = lock(&self.kinds);
+        if let Some((kept, network)) = kinds.get(name) {
+            if *kept == spec {
+                return Some(network.clone());
+            }
+        }
+        drop(kinds);
+        let network = self.connect(&spec).ok()?;
+        lock(&self.kinds).insert(name.to_string(), (spec, network.clone()));
+        Some(network)
+    }
+
+    /// Renew the network `name` because its health asks for it: a new link,
+    /// with the same state directory (make before break). The false answer:
+    /// the network was renewed less than the gap ago, so nothing was done.
+    pub(super) async fn renew_for_health(&self, name: &str) -> Result<bool, Answer> {
+        {
+            let gap = *lock(&self.renew_gap);
+            let mut last = lock(&self.last_renew);
+            if last.get(name).is_some_and(|at| at.elapsed() < gap) {
+                return Ok(false);
+            }
+            last.insert(name.to_string(), Instant::now());
+        }
+        eprintln!("podnet: route  renew {name} (its probe asks for it)");
+        self.renew(name, false).await?;
+        Ok(true)
     }
 
     /// Set the least time between two rotations of one network.

@@ -326,3 +326,117 @@ async fn route_control_select_and_interval() {
         .unwrap_err();
     assert_eq!(err.code, 409);
 }
+
+/// A router over the WARP network of the stand-in edge and `direct`: the
+/// member `w` is WARP and has a state directory. The probe target is the
+/// echo route inside the tunnel.
+fn warp_router(
+    world: &crate::networks::warp_tests::World,
+    state: &Path,
+    extra: &str,
+) -> Arc<Router> {
+    let text = format!(
+        "networks:\n  w: warp\n  d: direct\ngroups:\n  g: w*1, d*1\nhealth:\n  target: 203.0.113.9:80\n  interval: 5\n  timeout: 10\n{extra}state_dir: {}\ndoors:\n  - listen: unix:/tmp/r.sock\n    via: g\n",
+        state.display()
+    );
+    let router = Router::plan(&parse(&text).unwrap()).unwrap();
+    let make = world.maker();
+    router.control.set_connector(Arc::new(move |spec| {
+        if spec == "warp" {
+            Ok(Arc::new(make()) as Arc<dyn Network>)
+        } else {
+            Ok(Arc::new(crate::networks::parse(spec)?) as Arc<dyn Network>)
+        }
+    }));
+    router.control.set_drain(Duration::from_millis(50));
+    router.control.set_rotate_gap(Duration::ZERO);
+    router.control.set_renew_gap(Duration::ZERO);
+    Arc::new(router)
+}
+
+/// T-180, the Prove with a real WARP device (on the stand-in edge): the
+/// first reconnect registers the device in `DIR/w`, and each later reconnect
+/// and each rotate reuses that directory, so the service sees one device and
+/// one registration. The new link carries data, and the flows of the old
+/// link go on during the drain.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn route_control_rotate_of_a_warp_member_registers_no_new_device() {
+    crate::test_host::need_loopback!();
+    let world = crate::networks::warp_tests::world().await;
+    let dir = tempfile::tempdir().unwrap();
+    let state = dir.path().join("state");
+    let router = warp_router(&world, &state, "");
+    let path = serve(&router, dir.path()).await;
+    let body = serde_json::json!({"member": "w"});
+    request(&path, "POST", "/route/reconnect", Some(&body))
+        .await
+        .unwrap();
+    assert_eq!(world.api.devices(), 1);
+    let posts = world.api.asked("POST");
+    let file = state.join("w").join("warp.json");
+    let stored = std::fs::read_to_string(&file).unwrap();
+    assert_eq!(way_of(&router, "w"), "WARP");
+    let flow = router.ways["w"].dial.clone();
+    assert_eq!(
+        crate::networks::warp_tests::echo(&*flow, b"first").await,
+        b"first"
+    );
+    for what in ["rotate", "rotate", "reconnect"] {
+        request(&path, "POST", &format!("/route/{what}"), Some(&body))
+            .await
+            .unwrap();
+        assert_eq!(
+            crate::networks::warp_tests::echo(&*flow, what.as_bytes()).await,
+            what.as_bytes()
+        );
+    }
+    assert_eq!(world.api.devices(), 1, "no new device");
+    assert_eq!(world.api.asked("POST"), posts, "no new registration");
+    assert_ne!(std::fs::read_to_string(&file).unwrap(), stored, "a new key");
+}
+
+/// T-097, items 3 and 9 and 10, with a real WARP session on the stand-in
+/// edge: the probe goes through the session of the member and passes; the
+/// trace that says WARP is off takes the member down at once and renews its
+/// link (the same device); a trace that says on again brings it back through
+/// probation.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn router_health_probes_and_renews_a_warp_member() {
+    crate::test_host::need_loopback!();
+    let world = crate::networks::warp_tests::world().await;
+    let dir = tempfile::tempdir().unwrap();
+    let router = warp_router(&world, &dir.path().join("state"), "");
+    router
+        .control
+        .renew_for_health("w")
+        .await
+        .expect("the first link");
+    let posts = world.api.asked("POST");
+    let health = |m: &str| {
+        let members = router.status()["groups"][0]["members"].clone();
+        let m = members
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|x| x["name"] == m)
+            .unwrap()
+            .clone();
+        (
+            m["health"].as_str().unwrap().to_string(),
+            m["rtt_ms"].is_number(),
+        )
+    };
+    router.probe_round().await;
+    assert_eq!(health("w"), ("up".into(), true), "the probe passed");
+    let tunnels = world.edge.tunnels();
+    *world.trace.lock().unwrap() = crate::networks::warp_tests::TRACE_OFF;
+    router.probe_round().await;
+    assert_eq!(health("w").0, "down", "WARP is off: the wrong egress");
+    // The renew made a new session on the same device.
+    assert_eq!(world.edge.tunnels(), tunnels + 1);
+    assert_eq!(world.api.devices(), 1);
+    assert_eq!(world.api.asked("POST"), posts);
+    *world.trace.lock().unwrap() = crate::networks::warp_tests::TRACE_OK;
+    router.probe_round().await;
+    assert_eq!(health("w").0, "probation");
+}

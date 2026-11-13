@@ -72,7 +72,10 @@ A door of the router has the same function with the keys `dns` and `dns_upstream
 
 `podnet warp forward -L LISTEN=HOST:PORT` forwards through WARP ([warp.md](warp.md)).
 `podnet warp forward --list` lists the forwards of the detached instances. `podnet warp forward` is not
-an alias of `podnet forward`: it has the options of `podnet warp`.
+an alias of `podnet forward`: it has the options of `podnet warp`. `podnet forward --network warp -L ...`
+does the same work with the network `warp` of the registry (TCP, `-L udp:...` and `--dns` through the
+session; the device is kept as `podnet warp` keeps it, or in `warp:identity=FILE`). Both use the session and the
+dial of `pod-warp`.
 
 ## `podnet connect`
 

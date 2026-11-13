@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 333 entries: 27 open, 18 partial, 33 blocked, 255 done.
+`TODO/INDEX.md` holds 333 entries: 27 open, 14 partial, 33 blocked, 259 done.
 
 ## State
 
@@ -49,12 +49,9 @@ not wait for a larger one.
 5. **M3, the crates:** T-053, then the prerelease T-054. T-052 is the take of `pod-cloudflare` of
    `PodUtils/podcrates` (T-137): do not do it in podnet. The takes of `pod-relay` (v0.30.0) and `pod-warp`
    (v0.37.0) are done.
-6. **M4, the adapters:** T-057, T-061 (partial: only the WARP door is left; `pod-warp` is taken at v0.37.0).
+6. **M4, the adapters:** T-057.
 7. **M6, the services:** the shared parts T-086 (partial: `pod-session` and `pod-identity` are taken; `pod-e2e` is left), T-087; the file
-   server and git: done; the router T-095, T-097,
-   T-099, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
-    The triage adds
-    T-180 (the router control; partial: the rotate of a real WARP device; `pod-warp` is taken at v0.37.0); the router additions are in T-097 to T-099 (GitHub #372 to #374).
+   server and git: done; the router T-095, T-101; the transfer T-102 and T-103 (takes of `pod-wormhole` and `pod-transit`), T-104, T-105, T-106.
     The donor review adds T-242 (the lint of shadowed rules) and a correction of T-105 (GitHub #436).
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).

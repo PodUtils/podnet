@@ -99,3 +99,19 @@ async fn router_health_wrong_egress_leaves_the_pick_at_once() {
     let step = group.observe(0, OK, true, now, &t).unwrap();
     assert_eq!(step.health, Health::Probation);
 }
+
+/// T-097 item 10: a refused or revoked credential is `AuthExpired` (a WARP
+/// member renews its link); a time out and a temporary failure are misses
+/// that are not clean; each other class is a clean miss.
+#[test]
+fn router_probe_result_of_a_failure_names_the_credential() {
+    let of = |class| failed(&Failure::new(Stage::Connect, class, "x"));
+    assert_eq!(of(Class::Refused), ProbeResult::AuthExpired);
+    assert_eq!(of(Class::Revoked), ProbeResult::AuthExpired);
+    for class in [Class::Timeout, Class::TempFail] {
+        assert_eq!(of(class), ProbeResult::ConnectFailed { clean: false });
+    }
+    for class in [Class::Unavailable, Class::Protocol, Class::NotFound] {
+        assert_eq!(of(class), ProbeResult::ConnectFailed { clean: true });
+    }
+}

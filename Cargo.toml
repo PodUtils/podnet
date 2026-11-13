@@ -271,6 +271,9 @@ pod-wg = { git = "https://github.com/PodUtils/podcrates", tag = "v0.39.0", versi
 # The stand-in of the management API and of the relay on the loopback
 # (tests/devtunnel_network.rs, src/networks/devtunnel_tests.rs).
 pod-devtunnel = { git = "https://github.com/PodUtils/podcrates", tag = "v0.39.0", version = "0.39.0", features = ["standin"] }
+# The stand-in API and the HTTP/2 part of the stand-in edge of WARP
+# (src/networks/warp_tests/).
+pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.39.0", version = "0.39.0", features = ["stand", "masque"] }
 tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
 

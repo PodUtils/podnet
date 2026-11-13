@@ -197,8 +197,26 @@ service of another party: give one that you run or trust.
 * An answer that is no address, or a read that fails: a miss that is not clean (as a time out), so it
   alone never takes the member down.
 
-A WARP member has its own check (the trace request of the WARP session). It waits for `pod-warp`
-(T-050).
+A WARP member has its own check, on by default: the trace request of the WARP session (`/cdn-cgi/trace` of
+the trace endpoint of `cloudflare-dns`, over HTTPS through the session). The answer must say `warp=on` or
+`warp=plus`. Another answer is `WrongEgress`, with the steps above. A trace that fails is a miss. An entry of
+`egress` for the same network goes first: the router runs the entry and not the trace.
+
+### Renewal of a WARP member
+
+A member whose network is `warp` (see "WARP as a member") gets a new link when its probe asks for it:
+
+* The step to `Down` (K clean misses, with a control that passed), `WrongEgress`, and `AuthExpired` ask for it.
+  `AuthExpired` is a failure of class `Refused` or `Revoked` when the member opens a session: the edge refused
+  the key of the device (the answer 403, or the TLS alert `access_denied`).
+* The router makes the link as `--reconnect` does: the new link first, then the new flows, then the old link
+  ends after 30 s. The link reads the identity file again, so it registers no new device. If the edge refuses
+  the stored key, the link enrols a new key for the same device once and tries again.
+* Two renewals of one network keep a gap of 30 s. Each renewal is logged on stderr.
+* The control gates the renewal. When each member of a group fails, the host is out, no member goes `Down`,
+  and nothing is renewed. The session of a WARP member of a router has no probe of its own
+  (`pod-warp` `Live` with `probe` off): the probe of the router decides.
+* A network that is not WARP is not renewed by its probe.
 
 A policy chooses the member of a new flow:
 
@@ -214,6 +232,21 @@ A policy chooses the member of a new flow:
 `NAME: up=MEMBER down=MEMBER`. It is off by default. TCP is not split. The byte meter of a member counts
 TCP flows and UDP datagrams, in both directions. With a split, `up` counts the datagrams that it sends
 and `down` counts the datagrams that it receives.
+
+### WARP as a member
+
+`warp` and `warp:identity=FILE` are networks of the registry (`podnet networks`). A `networks:` entry
+`w: warp` gives TCP and UDP through a WARP session. A name is resolved inside the tunnel. The session is
+`pod-warp` `Live`: a session that the edge ends is replaced, and a dial waits for the new one (20 s at most).
+
+The device is kept in the identity file: `FILE`, else `warp.json` in `state_dir/NETWORK`, else the default
+file of `podnet warp` ([warp.md](warp.md)). A file that is new is registered, and the registration is logged
+on stderr. A network of the router with a `state_dir` has a device of its own. `warp` cannot go over another
+way (`Ctx::below`): that gives `cannot go over another way`.
+
+A door over a WARP member carries SOCKS5 CONNECT, HTTP CONNECT and UDP ASSOCIATE through the session; the
+datagrams use `Dial::datagrams` of the session. `podnet forward --network warp` takes the same network: TCP,
+`-L udp:...` and the DNS door go through the session.
 
 ## Dry run: `--check --to`
 
@@ -272,7 +305,7 @@ these flags. Each prints the new state (`--json` for the JSON document).
 | --- | --- |
 | `--select GROUP=MEMBER` | Pins the group to one member. Each new flow takes it, whatever the policy says. A pinned member that is down refuses the flows: the group does not fall back to another member or to direct. |
 | `--select GROUP=auto` | Gives the choice back to the policy. |
-| `--rotate MEMBER` | Makes a new identity of the network. The router brings up the new link first, gives it to the new flows, and ends the old link after 30 s (a flow on it can end before). The network keeps its state directory (`state_dir/NETWORK`), so it registers no new device. One rotate for each network and minute: a second one gets exit 75. Each rotate is logged on stderr. |
+| `--rotate MEMBER` | Makes a new identity of the network (WARP: a new MASQUE key for the stored device). The router brings up the new link first, gives it to the new flows, and ends the old link after 30 s (a flow on it can end before). The network keeps its state directory (`state_dir/NETWORK`), so it registers no new device. One rotate for each network and minute: a second one gets exit 75. Each rotate is logged on stderr. |
 | `--reconnect MEMBER` | Makes a new link of the network with the same identity, make before break. |
 | `--interval SECONDS` | Sets the seconds between two probes (1 to 86400). The wait of the probe ends at once. The file needs a `health` section. |
 | `--add-door DOOR` | Adds a door. The value has the keys of a door of the file (`listen`, `via`, `rules`, `allow_shadowed_rules`, `dns`, `dns_upstream`) as a JSON object or as YAML text. The door listens at once. A `via` is a network or a group of the file, or a network that `--add-network` added. With port 0 the router picks a port; `--status` shows it. |
@@ -282,8 +315,10 @@ these flags. Each prints the new state (`--json` for the JSON document).
 
 A `MEMBER` is a network of the file. A rotate or a reconnect reaches each group, rule and door that
 uses the network. The networks of the registry (`direct`, a proxy, the relay) have no identity, so a
-rotate makes a new link as a reconnect does. A network with an identity takes the rotate; WARP
-becomes a network of the registry with the take of `pod-warp` (T-050).
+rotate makes a new link as a reconnect does. A network with an identity takes the rotate. A WARP network
+loads its device from `state_dir/NETWORK/warp.json`, enrols a new MASQUE key for it (the old key stops
+working), saves the file, and opens a session with the new key. It registers no new device, so the service
+sees one device however many rotates run. The old link keeps its session for the 30 s of the drain.
 
 The socket answers an HTTP/1.0 request with JSON. The gate is the mode 0600 of the socket and the user
 of the peer: the user of the router, or root. A peer that is not allowed gets 403 and nothing changes.

@@ -34,6 +34,7 @@ pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
 mod tailscale;
 mod turn;
 mod turn_socket;
+mod warp;
 mod wg;
 pub use tailscale::{rows as tailscale_rows, state as tailscale_state};
 
@@ -50,7 +51,7 @@ pub struct Row {
     pub caps: Caps,
 }
 
-const ROWS: [Row; 9] = [
+const ROWS: [Row; 10] = [
     Row {
         scheme: "direct",
         forms: &["direct"],
@@ -109,6 +110,12 @@ const ROWS: [Row; 9] = [
         caps: Caps::EGRESS_TCP,
     },
     Row {
+        scheme: "warp",
+        forms: &["warp", "warp:identity=FILE"],
+        about: "TCP and UDP through a WARP session (MASQUE), with names resolved inside the tunnel; the device is kept in the identity file, else in warp.json of the state directory of the network",
+        caps: Caps::EGRESS_TCP.with(Caps::EGRESS_UDP),
+    },
+    Row {
         scheme: "peer",
         forms: &["peer:FINGERPRINT/SERVICE"],
         about: "one stream to a service of a peer, over a link that a running podnet link instance holds (a peer way: it meets a peer, it dials no destination)",
@@ -142,6 +149,8 @@ enum Kind {
     Turn(turn::Spec),
     /// The Dev Tunnels tunnel of this spec (T-320).
     Devtunnel(devtunnel::Spec),
+    /// A WARP session (T-097, T-180).
+    Warp(warp::Spec),
     /// A service of the peer with this fingerprint (T-266).
     Peer {
         fingerprint: String,
@@ -220,12 +229,8 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
         wg::check(&path)?;
         return Ok(Kind::Wg(path));
     }
-    if spec == "warp" || spec.starts_with("warp:") {
-        return Err(Failure::new(
-            Stage::Connect,
-            Class::Unsupported,
-            format!("{spec}: WARP is not a network of the registry yet; use podnet warp proxy or tunnel --transport warp"),
-        ));
+    if warp::is_warp(spec) {
+        return warp::parse(spec).map(Kind::Warp);
     }
     let hop = |spec: &str| podnet_netns::upstream::Proxy::parse(spec);
     if spec.starts_with("tailscale:") {
@@ -267,6 +272,7 @@ impl SpecNetwork {
             Kind::Wg(path) => format!("wg:{}", path.display()),
             Kind::Turn(spec) => spec.label(),
             Kind::Devtunnel(spec) => spec.label(),
+            Kind::Warp(spec) => spec.label(),
             _ => redacted(&self.spec),
         }
     }
@@ -304,6 +310,11 @@ impl SpecNetwork {
             Kind::Devtunnel(spec) => Some(spec.locator.to_string()),
             _ => None,
         }
+    }
+
+    /// True for `warp` and `warp:identity=FILE`.
+    pub fn is_warp(&self) -> bool {
+        matches!(self.kind, Kind::Warp(_))
     }
 
     /// The wg-quick file, for `wg:FILE`.
@@ -349,6 +360,14 @@ impl SpecNetwork {
             .expect("each kind has a row")
     }
 
+    /// The WARP network of a `warp` spec.
+    fn warp(&self) -> Option<warp::WarpNetwork> {
+        match &self.kind {
+            Kind::Warp(spec) => Some(warp::WarpNetwork::new(spec.clone())),
+            _ => None,
+        }
+    }
+
     fn dial(&self) -> Result<Arc<dyn Dial>, Failure> {
         Ok(match &self.kind {
             Kind::Direct => Arc::new(Direct),
@@ -357,8 +376,8 @@ impl SpecNetwork {
                 UpstreamChain::parse(&[self.spec.as_str()])
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
             ),
-            Kind::Wg(_) | Kind::Turn(_) | Kind::Devtunnel(_) => {
-                unreachable!("wg:FILE, turn:// and devtunnel:// come up in `up`")
+            Kind::Wg(_) | Kind::Turn(_) | Kind::Devtunnel(_) | Kind::Warp(_) => {
+                unreachable!("wg:FILE, turn://, devtunnel:// and warp come up in `up`")
             }
             Kind::Peer {
                 fingerprint,
@@ -388,6 +407,7 @@ impl Network for SpecNetwork {
             Kind::Wg(_) => "wg",
             Kind::Turn(_) => "turn",
             Kind::Devtunnel(_) => "devtunnel",
+            Kind::Warp(_) => "warp",
             Kind::Peer { .. } => "peer",
         }
     }
@@ -402,6 +422,9 @@ impl Network for SpecNetwork {
     /// opens its TCP connection over it).
     fn up<'a>(&'a self, ctx: &'a Ctx) -> BoxFuture<'a, anyhow::Result<Link>> {
         Box::pin(async move {
+            if let Some(network) = self.warp() {
+                return network.up(ctx).await;
+            }
             if let Kind::Wg(path) = &self.kind {
                 let (_, link) = wg::up(path, self.label(), ctx.below.as_ref()).await?;
                 return Ok(link);
@@ -458,6 +481,25 @@ impl Network for SpecNetwork {
         })
     }
 
+    /// A WARP network makes a new MASQUE key for its stored device; each
+    /// other network makes a new link.
+    fn rotate<'a>(&'a self, ctx: &'a Ctx) -> BoxFuture<'a, anyhow::Result<Link>> {
+        Box::pin(async move {
+            match self.warp() {
+                Some(network) => network.rotate(ctx).await,
+                None => self.up(ctx).await,
+            }
+        })
+    }
+
+    fn renews(&self) -> bool {
+        self.warp().is_some_and(|network| network.renews())
+    }
+
+    fn egress_check(&self) -> Option<crate::network::EgressCheck> {
+        self.warp().and_then(|network| network.egress_check())
+    }
+
     /// The proxy on TCP, and the relay: the host that the network must
     /// reach first.
     fn checks(&self) -> Vec<Check> {
@@ -504,6 +546,8 @@ mod tests;
 mod turn_mock;
 #[cfg(test)]
 mod turn_tests;
+#[cfg(test)]
+pub(crate) mod warp_tests;
 #[cfg(test)]
 mod wg_tests;
 

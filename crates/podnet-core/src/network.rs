@@ -46,7 +46,7 @@ pub mod swap;
 pub use balance::{parse_group, Balance, Health, Member, Selection};
 pub use chain::Chain;
 pub use failover::Failover;
-pub use health::{probe, probe_egress, ProbeResult, Step, Thresholds, Tracker};
+pub use health::{failed, probe, probe_egress, ProbeResult, Step, Thresholds, Tracker};
 pub use meter::OpenGuard;
 pub use policy::Policy;
 pub use race::Race;
@@ -326,6 +326,13 @@ impl fmt::Debug for Link {
     }
 }
 
+/// The egress check of a member (T-097, item 9): given the way of the member
+/// and the time limit, it says whether the flows of the way leave by the
+/// egress of the network. A network that knows its own check gives it with
+/// [`Network::egress_check`]; the operator gives another with `health.egress`.
+pub type EgressCheck =
+    Arc<dyn Fn(Way, std::time::Duration) -> BoxFuture<'static, ProbeResult> + Send + Sync>;
+
 /// An adapter: a network that a spec names (`direct`, `socks5h://...`,
 /// `relay:HOST`, `warp`).
 pub trait Network: Send + Sync {
@@ -345,6 +352,19 @@ pub trait Network: Send + Sync {
     /// identity (a WARP device) replaces it.
     fn rotate<'a>(&'a self, ctx: &'a Ctx) -> BoxFuture<'a, anyhow::Result<Link>> {
         self.up(ctx)
+    }
+
+    /// True when a member of this network gets a new link, with its stored
+    /// identity, when its probe gives `AuthExpired` or takes it to `Down`
+    /// (T-097, items 3 and 10: a WARP member). The default: false.
+    fn renews(&self) -> bool {
+        false
+    }
+
+    /// The egress check of a member of this network (T-097, item 9), or
+    /// `None`. The default: none.
+    fn egress_check(&self) -> Option<EgressCheck> {
+        None
     }
 
     /// The rows of `podnet doctor` for this network. The default: no row.

@@ -57,13 +57,14 @@ pub mod guest;
 pub mod kernel;
 pub mod live;
 pub mod metrics;
+mod probe;
 pub mod resolving;
 
 pub use control::{read_metrics, read_status};
 
 use crate::network::{
-    parse_group, probe, probe_egress, Balance, Choice, Ctx, Dial, Member, Network as _, Policy,
-    Selection, Target, Thresholds, Way,
+    parse_group, Balance, Choice, Ctx, Dial, Member, Network as _, Policy, Selection, Target,
+    Thresholds, Way,
 };
 
 /// The config file.
@@ -714,51 +715,12 @@ impl Router {
             "interval": self.control.interval().map(|d| d.as_secs()),
         })
     }
-
-    /// Probe each member of each group, each interval, until the end.
-    pub async fn probe_forever(&self) {
-        if self.health.is_none() {
-            return std::future::pending().await;
-        }
-        loop {
-            self.probe_round().await;
-            self.control.pause().await;
-        }
-    }
-
-    /// One round: probe each member of each group. The control of a group
-    /// passes when one member or more reached the target: a failure of each
-    /// member is an outage of the host. A member with an egress check
-    /// (`health.egress`) also asks the echo endpoint for its address.
-    pub async fn probe_round(&self) {
-        let Some((target, thresholds)) = self.health.clone() else {
-            return;
-        };
-        for (_, group) in &self.groups {
-            let mut results = Vec::new();
-            for member in group.members() {
-                let mut result = probe(&member.way, &target, thresholds.timeout).await;
-                if let (crate::network::ProbeResult::Ok(_), Some((echo, expect))) =
-                    (result, self.egress.get(&member.name))
-                {
-                    result = probe_egress(&member.way, echo, *expect, thresholds.timeout).await;
-                }
-                results.push(result);
-            }
-            let control = results
-                .iter()
-                .any(|r| matches!(r, crate::network::ProbeResult::Ok(_)));
-            let now = Instant::now();
-            for (i, result) in results.into_iter().enumerate() {
-                group.observe(i, result, control, now, &thresholds);
-            }
-            group.end_round();
-        }
-    }
 }
 
 #[cfg(test)]
 mod health_tests;
+#[cfg(test)]
+mod renew_tests;
 #[cfg(test)]
 mod resolver_tests;
 #[cfg(test)]

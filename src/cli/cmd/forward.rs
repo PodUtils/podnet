@@ -39,7 +39,10 @@ pub(crate) struct ForwardArgs {
     /// come from PODNET_TURN_USER and PODNET_TURN_PASSWORD_FILE; a TCP
     /// forward is refused), or devtunnel://TUNNEL (TCP to a port of the host
     /// of a Dev Tunnels tunnel through its relay; the target host is
-    /// 127.0.0.1; the token comes from PODNET_DEVTUNNEL_TOKEN_FILE). A SOCKS5 or HTTP proxy carries no UDP. Default:
+    /// 127.0.0.1; the token comes from PODNET_DEVTUNNEL_TOKEN_FILE), or
+    /// warp or warp:identity=FILE (TCP and UDP through a WARP session; names
+    /// resolve inside the tunnel; the device is kept in FILE, else in the
+    /// default identity file of podnet warp). A SOCKS5 or HTTP proxy carries no UDP. Default:
     /// the way out of the process (--proxy, the variables, else direct).
     #[arg(long, value_name = "SPEC")]
     network: Option<String>,
