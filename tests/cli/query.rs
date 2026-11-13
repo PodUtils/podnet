@@ -91,14 +91,18 @@ fn the_limits_exit_64() {
 #[test]
 fn a_key_with_no_effect_names_its_entry() {
     for (q, entry) in [
-        ("compress=snappy", "T-299"),
-        ("pad=on", "T-300"),
         ("lb=rr", "T-288"),
         ("maxhops=3", "T-287"),
         ("name=ab-1", "--name"),
     ] {
         refused(q, entry);
     }
+}
+
+#[test]
+fn compress_and_pad_need_seal() {
+    refused("compress=snappy", "--seal");
+    refused("pad=on", "--seal");
 }
 
 #[test]

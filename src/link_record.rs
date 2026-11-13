@@ -16,7 +16,7 @@
 //!   the allow list does not hold, fails with exit 77.
 //! * [`Options::pad`] pads each record to a bucket (T-300).
 //!   [`Options::compress`] compresses the payload with snappy before the
-//!   seal (T-299, [`pack`]).
+//!   seal (T-299).
 //! * A record that comes again inside the replay window is dropped and
 //!   counted ([`Stats::replayed`], T-301). A record that fails its check
 //!   ends the stream.
