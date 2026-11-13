@@ -1345,6 +1345,10 @@ sh scripts/agent/check.sh
 
 T-262, T-268, T-285, T-286 and T-298 are done. The claim of end-to-end secrecy needs T-298.
 
+## Correction
+
+2026-11-13, the lead (from T-285): the path and the cost of a hop in an announcement are not signed. This entry adds a signature for each hop: a forwarder signs its key, the cost of its link and the signature of the hop before it, and `verify` of `src/mesh_announce.rs` checks the chain.
+
 # T-288: link: load balancing across link groups (GitHub #470)
 
 **Source:** GitHub #470 (https://github.com/PodUtils/podnet/issues/470), row E4-4.
