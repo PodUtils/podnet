@@ -212,6 +212,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #518 | COORD-061: port rules in the rules reader of pod-warp: port:N=WAY and tcp:HOST:PORT=WAY (podnet T-328; ask N-2 of podswarm) (to podcrates) | open (a COORD issue between sessions) | none |
 | #519 | COORD-062: podnet took v0.35.0 at 5562f21 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #520 | COORD-063: podnet took v0.36.0 at 775486f (to podcrates) | closed (a COORD issue between sessions) | none |
-| #521 | COORD-064: what podnet waits for to close its issues: the datagram carriers of pod-link, pod-e2e, pod-wormhole, pod-warp's freeze and the others (to podcrates) | open (a COORD issue between sessions) | none |
+| #521 | COORD-064: what podnet waits for to close its issues: the datagram carriers of pod-link, pod-e2e, pod-wormhole, pod-warp's freeze and the others (to podcrates) | closed (answered by PodUtils/podcrates#133) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
