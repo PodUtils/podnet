@@ -864,7 +864,9 @@ Done so far:
   `webpki-roots` stays at 1.0.11 in `Cargo.lock` (`cargo update -p webpki-roots --precise 1.0.11`;
   `the_roots_version_is_the_one_of_cargo_lock`). `cargo test --workspace --no-fail-fast`: 1943 passed, 3 failed (the
   three above); with the call, `cargo test --test pod_seccomp_dgram`: 17 passed, `cargo test -p podnet-netns`: 145
-  passed.
+  passed. What the tag unblocked: T-103 (the transit key, f23031f), T-338 (`send --words N`, 6034277), the
+  stand-in mailbox and the TCP transit relay (df08245, T-106 and T-251), T-334 (780a005), exit 77 from `KeyRefused`
+  (d0ff66b, T-273 and T-278). After them, `cargo test --workspace --no-fail-fast`: 1954 passed, 0 failed (120 targets).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

@@ -1063,7 +1063,7 @@ podcrates): the dns listener answers within the size of the query (512 bytes wit
 whole records of an answer with TC set; and the ARQ of the dns and icmp carriers wraps its sequence with no rekey
 (the entry 541 of podcrates, PodUtils/podnet#540). The tests are in `pod-link`; podnet adds none. Still not proven
 here: a link through a real recursive resolver. The listener of dns, icmp, udp and ws gets no `KeyRefused` when the
-dialer refuses its key (the entry 557 of podcrates, open): `link listen` there logs the failed accept and goes on.
+dialer refuses its key (the entry 557 of podcrates, open).
 
 ## Done
 
