@@ -6306,3 +6306,48 @@ each test (the fix off) failed it.
 tree of 9090a0c: each target passed. `CC_i686_unknown_linux_musl=clang cargo check --workspace --target
 i686-unknown-linux-musl`: no error.
 
+
+# T-348: capnp: a list in a segment that does not exist panics the reader of a message of the edge
+
+**Source:** the fuzz run 43590953876 of `fuzz.yml` on 9610316, target `capnp_message` (2026-11-14); GitHub #554
+and #555 (COORD-079, item 2).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The fuzz run 43590953876 stopped the target `capnp_message` with a panic: `index out of bounds: the len is 1 but
+the index is 10`. The crash input (base64):
+`AAAAAAsAAAAAAAAAAQAHAAMIAAAAAABdAgAAAAAAAAA2AAAAAAAAAAA/ACAAAAIAAAAAAAAABZECAAAACgAAAAUAAAACAAAAAAAAADYAAAAAAAAAAD8AIAAAAgAAAAAAAAAAAAAAAAA=`.
+The input comes from the Cloudflare edge (the RPC of the tunnel), so a peer can stop the process.
+`src/cloudflare/capnp.rs` is frozen for `pod-cloudflare` of PodUtils/podcrates; a fix is allowed.
+
+## Premise
+
+- Read at 7f22571: `check_range` of `src/cloudflare/capnp.rs` gave a length of 0 to a segment that does not exist,
+  so a list of 0 words in segment 10 passed the check. `Reader::bytes` then indexed `self.msg.segments[segment]`
+  with no check: the segment index 10 in a message of 1 segment panics. A double-far pointer names the segment of
+  the content.
+- `data_word` indexed the segment with no check too; the struct pointers pass `check_range` first.
+- Measured: the crash input panics `fuzzing::capnp_message` at 7f22571.
+
+## Approach
+
+- `check_range` refuses a segment that does not exist, also for 0 words.
+- `bytes` reads its words with `get` over the range of the list, and `data_word` with `get`: no reader of a list
+  indexes a segment.
+- The test `fuzz_a_list_in_a_missing_segment_is_an_error` of `src/fuzzing.rs`: the crash input, and a double-far
+  pointer to each kind of list in segment 10. The file `capnp.rs` is at its count of the size allowlist, so the
+  test is in `src/fuzzing.rs`.
+- Give the commit to podcrates (PodUtils/podcrates#156), so that `pod-cloudflare` takes it (their T-029).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib fuzzing
+cargo test -p podnet --lib cloudflare
+cd fuzz && cargo +nightly-2026-10-15 fuzz run capnp_message corpus/capnp_message -- -max_total_time=120
+```

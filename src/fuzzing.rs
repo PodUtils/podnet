@@ -337,6 +337,43 @@ pub fn seeds(target: &str) -> Vec<Vec<u8>> {
 mod tests {
     use super::*;
 
+    /// T-348: the crash input of `capnp_message` of the fuzz run 43590953876, and the same
+    /// shape by hand: a double-far pointer to a list in segment 10 of a message of 1 segment.
+    /// Each reader of a list gives an error, and nothing panics.
+    #[test]
+    fn fuzz_a_list_in_a_missing_segment_is_an_error() {
+        use base64::Engine as _;
+        let crash = base64::engine::general_purpose::STANDARD
+            .decode("AAAAAAsAAAAAAAAAAQAHAAMIAAAAAABdAgAAAAAAAAA2AAAAAAAAAAA/ACAAAAIAAAAAAAAABZECAAAACgAAAAUAAAACAAAAAAAAADYAAAAAAAAAAD8AIAAAAgAAAAAAAAAAAAAAAAA=")
+            .unwrap();
+        capnp_message(&crash);
+        for (elem, count) in [(2u64, 0u64), (2, 9), (6, 0), (7, 0)] {
+            let mut bytes = 0u32.to_le_bytes().to_vec();
+            bytes.extend_from_slice(&4u32.to_le_bytes());
+            // The root struct (0 data, 1 pointer) at word 1; its pointer is a double far
+            // pointer to the pad at word 2: a far pointer to segment 10, then the list tag.
+            let words = [
+                1u64 << 48,
+                2 | 4 | (2 << 3),
+                2 | (10 << 32),
+                1 | (elem << 32) | (count << 35),
+            ];
+            for w in words {
+                bytes.extend_from_slice(&w.to_le_bytes());
+            }
+            let (message, _) = Message::parse(&bytes).unwrap().unwrap();
+            let root = message.root().unwrap();
+            assert!(root.get_data(0).is_err(), "data {elem} {count}");
+            assert!(root.get_text(0).is_err(), "text {elem} {count}");
+            assert!(root.get_text_list(0).is_err(), "text list {elem} {count}");
+            assert!(
+                root.get_struct_list(0).is_err(),
+                "struct list {elem} {count}"
+            );
+            assert!(root.get_struct(0).is_err(), "struct {elem} {count}");
+        }
+    }
+
     /// Each target on its seeds and on 2000 mutations of them (100 for
     /// mesh_announce; a fixed xorshift sequence): no panic. This is the stable part of `fuzz/`.
     #[test]

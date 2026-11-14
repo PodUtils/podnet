@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**347 entries: 11 open, 9 partial, 25 blocked, 302 done.**
+**348 entries: 12 open, 9 partial, 25 blocked, 302 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 1 | 2 | 31 | 34 |
+| P1 | 1 | 1 | 2 | 31 | 35 |
 | P2 | 5 | 4 | 10 | 156 | 175 |
 | P3 | 6 | 4 | 13 | 114 | 137 |
-| **All** | 11 | 9 | 25 | 302 | 347 |
+| **All** | 12 | 9 | 25 | 302 | 348 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -393,3 +393,4 @@ M8 Overlays, M9 Later.
 | [T-345](fixes.md) | P2 | M | M5 | defect | done | wg serve: one peer can take each flow of the server from the other peers |
 | [T-346](fixes.md) | P2 | M | M8 | defect | done | link mesh: a neighbour can claim a direct link to each origin that it hears, and attract its routes |
 | [T-347](fixes.md) | P3 | M | M5 | defect | done | Hardening: the low findings of the security review of 2026-11-14 |
+| [T-348](fixes.md) | P1 | S | M5 | defect | open | capnp: a list in a segment that does not exist panics the reader of a message of the edge |

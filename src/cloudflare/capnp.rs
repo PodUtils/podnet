@@ -434,7 +434,7 @@ impl Message {
     }
 
     fn check_range(&self, segment: usize, start: usize, words: u64) -> Result<()> {
-        let len = self.segments.get(segment).map_or(0, Vec::len) as u64;
+        let len = self.segments.get(segment).context("no such segment")?.len() as u64;
         if start as u64 + words > len {
             bail!("an object is outside its segment");
         }
@@ -533,7 +533,8 @@ impl<'a> StructReader<'a> {
         if byte >= usize::from(self.data_words) * 8 {
             return None;
         }
-        let word = self.msg.segments[self.segment][self.data + byte / 8];
+        let segment = self.msg.segments.get(self.segment)?;
+        let word = *segment.get(self.data + byte / 8)?;
         Some((word, ((byte % 8) * 8) as u32))
     }
 
@@ -631,12 +632,11 @@ impl<'a> StructReader<'a> {
                 count,
                 ..
             } => {
-                let words = &self.msg.segments[segment][start..];
-                let mut out = Vec::with_capacity(count as usize);
-                for i in 0..count as usize {
-                    out.push((words[i / 8] >> ((i % 8) * 8)) as u8);
-                }
-                Ok(Some(out))
+                let end = start.saturating_add(count.div_ceil(8) as usize);
+                let segment = self.msg.segments.get(segment).context("no such segment")?;
+                let words = segment.get(start..end).context("a list past its segment")?;
+                let bytes = words.iter().flat_map(|w| w.to_le_bytes());
+                Ok(Some(bytes.take(count as usize).collect()))
             }
             _ => bail!("pointer {index} is not a byte list"),
         }
