@@ -273,7 +273,7 @@ dry run of the Prove comes with the next beta (T-331).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -385,6 +385,27 @@ its first leg alone): the test fails ("8 MiB back: early eof"). Tests added: `re
 cloud session starts none).
 
 CI: ci 43471936738, deny 43471944208, secrets 43471952954 and live 43471960138 on 6f8e69e passed (GitHub #531).
+
+2026-11-14, commit b961540: the end-to-end channel (`--seal`). `src/relay_reverse/seal.rs` (`Seal`, `sealed`,
+`layered_sealed`, `carry_sealed`, `e2e_fault`), `run_node_sealed` and `connect_sealed` in
+`src/relay_reverse/resume.rs`, the flags `relay node --seal --allow` and `relay connect --seal --peer|--allow`,
+`docs/relay.md` (Sealed sessions: `--seal`), the README map, `docs/decisions.md` (2026-11-14 and Q1), the llms files.
+`cargo test --test relay_reverse -- seal::`: 6 passed:
+`seal::a_sealed_session_moves_past_the_cap_and_the_relay_sees_no_plain_byte` (a fake relay with a cap of 1 MiB,
+moves at 256 KiB; 8 MiB each way with equal SHA-256; 31 legs; the relay carried 20,701,973 bytes, and none of them
+holds the marker that the payload holds at each 4 KiB), its control `seal::without_the_channel_the_relay_sees_the_payload`
+(the tap holds the marker), `seal::an_operator_key_that_the_node_does_not_allow_exits_77` (and the target gets no
+connection), `seal::a_node_key_that_the_operator_does_not_trust_exits_77` (and no connection),
+`seal::a_sealed_operator_and_a_node_with_no_seal_fail` (exit 69, "the channel's handshake failed") and
+`seal::a_plain_operator_and_a_sealed_node_get_nothing` (no echo in plain, no connection to the target). The usage
+rows of `--seal` in `tests/cli/exit_codes.rs` (64 each) passed. Plant: with the admission of the node and the check of
+the operator set to allow each key (`src/relay_reverse/seal.rs`), the two tests of 77 failed (no error within 60 s).
+`cargo test --test link_record --test link_record_mesh --test link_seal`: 15 passed (the moved `e2e_fault`).
+`CC_i686_unknown_linux_musl=clang cargo check -p podnet --target i686-unknown-linux-musl`: 0.
+`sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace`: 1943 passed, 0 failed, 119 targets).
+The live step of 200 MiB (the Prove) passed on 3061c7c (live 43521809728) without `--seal`.
+Not proven: a sealed session through the real relay; a podssh operator against a podnet node with `--seal` (the
+channel is the one of podssh T-088, not run here). CI: no run (a push of the cloud session starts none).
 
 # T-088: File server: a directory listing in HTML and JSON
 

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 337 entries: 13 open, 9 partial, 28 blocked, 287 done.
+`TODO/INDEX.md` holds 337 entries: 13 open, 8 partial, 28 blocked, 288 done.
 
 ## State
 
@@ -51,7 +51,7 @@ not wait for a larger one.
 5. **M3, the crates:** T-053, then the prerelease T-054. T-052 is the take of `pod-cloudflare` of
    `PodUtils/podcrates` (T-137): do not do it in podnet.
 6. **M4, the adapters:** done.
-7. **M6, the services:** the shared part T-087 (done: the layer, `--seal` and the live step of 200 MiB); the file
+7. **M6, the services:** the shared part (the resumable layer and `--seal` of the reverse road) is done; the file
    server and git: done; the router: done; the transfer by code: `podnet send` and `podnet receive` are done
    over `pod-wormhole` v0.40.0 (`docs/transfer.md`; `docs/decisions.md`, 2026-11-13, The transfer layer).
    T-103 is blocked: `pod-wormhole` derives no key of a wormhole, so a file goes from podnet to podnet only
