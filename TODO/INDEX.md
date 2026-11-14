@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**337 entries: 13 open, 11 partial, 28 blocked, 285 done.**
+**337 entries: 13 open, 10 partial, 28 blocked, 286 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 6 | 4 | 11 | 148 | 169 |
-| P3 | 7 | 6 | 15 | 107 | 135 |
-| **All** | 13 | 11 | 28 | 285 | 337 |
+| P3 | 7 | 5 | 15 | 108 | 135 |
+| **All** | 13 | 10 | 28 | 286 | 337 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -165,7 +165,7 @@ M8 Overlays, M9 Later.
 | [T-117](overlays.md) | P3 | M | M8 | feature | done | WireGuard: `wg:FILE` as a network over UDP or over a carrier |
 | [T-118](overlays.md) | P3 | M | M8 | research | done | Research: NetBird, Firezone and ZeroTier as networks |
 | [T-119](later.md) | P3 | M | M9 | feature | done | Router kernel mode: tables, rules and multipath routes through rtnetlink |
-| [T-120](later.md) | P3 | M | M9 | feature | partial | Router kernel mode: masquerade, an MSS clamp, an unreachable kill switch and `rp_filter` |
+| [T-120](later.md) | P3 | M | M9 | feature | done | Router kernel mode: masquerade, an MSS clamp, an unreachable kill switch and `rp_filter` |
 | [T-121](later.md) | P3 | S | M9 | feature | done | Router: export the groups as a JSON file of the mwan form |
 | [T-122](later.md) | P3 | M | M9 | research | done | Research: a native git server with no installed `git` |
 | [T-123](later.md) | P3 | M | M9 | feature | open | Tailscale in the process: take the fork of tailscale-rs through `pod-ts` |

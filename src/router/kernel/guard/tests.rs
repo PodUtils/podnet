@@ -137,7 +137,16 @@ fn view(chain: &str, dev: &str, exprs: &[&str]) -> RuleView {
 
 const MASQ: &[&str] = &["meta", "cmp", "masq"];
 const MSS: &[&str] = &[
-    "meta", "cmp", "meta", "cmp", "payload", "bitwise", "cmp", "rt", "exthdr",
+    "meta",
+    "cmp",
+    "meta",
+    "cmp",
+    "payload",
+    "bitwise",
+    "cmp",
+    "rt",
+    "byteorder",
+    "exthdr",
 ];
 
 fn set_rp(dev: &str, value: &str) {

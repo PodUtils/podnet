@@ -42,6 +42,7 @@ use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 
 pub mod guard;
+pub mod watch;
 pub use guard::Guard;
 
 /// The kernel section of the config file.
@@ -721,4 +722,8 @@ pub fn index_of(dev: &str) -> Result<u32> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod netkit;
+#[cfg(test)]
+pub(crate) mod tests;
+#[cfg(test)]
+mod wire_tests;

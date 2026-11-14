@@ -382,6 +382,26 @@ A change is made before the old state is broken: podnet writes the new routes wi
 the new rules, and then deletes the old rules that the new plan does not hold. There is no moment with no rule. With `kill_switch`, the aggregate table has an unreachable default route, so the traffic fails
 when each WAN is down.
 
+The guards on the wire (measured in network namespaces, T-120): a forwarded TCP SYN leaves a WAN with the
+address of that WAN (`masquerade`), and its MSS is the route MTU of the WAN less 40 (`mss_clamp`: 1240 on a WAN
+with the MTU 1280). podnet does not set `net.ipv4.ip_forward`; the host sets it.
+
+### The probe of the WANs
+
+With a `health` section, podnet probes each WAN each `interval`: one TCP connect to `health.target` with the
+fwmark of the WAN, so the probe uses the table of that WAN, not the aggregate route. A WAN whose link is up but
+whose session gives no answer (a TUN of `warp tun` with a dead session) fails its probe. The steps are the
+steps of a member of a group: `down_after` misses in a row take a WAN out of the aggregate route, and one pass
+puts it back in `probation`. A probe that times out is a miss. When each WAN fails in the same round, the fault
+is the host or the target, and no WAN goes out. When no WAN takes flows, the route holds each WAN, and the
+link state and the kill switch decide. A line names each change:
+
+```text
+podnet: route  kernel  WANs: a up, b down; the aggregate route holds a
+```
+
+The kernel mode probes IPv4 only. A host name in `health.target` is resolved one time at the start.
+
 `podnet route --config FILE --export mwan-json` prints the WANs of the kernel section in the JSON form
 of the mwan director (`wans` and `clients`) and runs nothing. It exits 64 when the file has no kernel
 section.

@@ -146,7 +146,7 @@ fn kernel_requests_encode_rules_and_a_multipath_route() {
 
 // ── the namespace ───────────────────────────────────────────────────────────
 
-pub(super) const INNER: &str = "PODNET_T119_INNER";
+pub(crate) const INNER: &str = "PODNET_T119_INNER";
 const RTM_NEWLINK: u16 = 16;
 const RTM_NEWADDR: u16 = 20;
 
@@ -259,7 +259,7 @@ fn route_kernel_tables_and_rules_in_a_namespace() {
 /// Run the test `name` of the module `module` again in `unshare -rn` with
 /// [`INNER`] set. The test passes with a message when the host does not
 /// allow the namespace.
-pub(super) fn rerun_in_namespace(module: &str, name: &str) {
+pub(crate) fn rerun_in_namespace(module: &str, name: &str) {
     let me = std::env::current_exe().unwrap();
     let path = module.split_once("::").unwrap().1;
     let run = std::process::Command::new("unshare")

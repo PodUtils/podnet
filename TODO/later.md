@@ -89,7 +89,7 @@ is not part of this entry.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -131,6 +131,29 @@ stays in the multipath route. Continue it when the take of `pod-warp` (T-050) gi
 The kernel gives EHOSTUNREACH ("No route to host"), not ENETUNREACH, for an `unreachable` route;
 ENETUNREACH is the error for no route at all. The Prove checks EHOSTUNREACH.
 
+2026-11-14: the take of `pod-warp` (v0.41.0) gives no probe API to the router, and the router does not run the
+session of a WAN. Call: part 4 is a probe of the WAN, not of the session object. Each interval, one TCP connect
+to `health.target` leaves with the fwmark of the WAN, so it uses the table of that WAN and crosses its device
+(for a TUN of `warp tun`, its session). The steps are those of `Tracker` (T-097). Calls made here:
+- A probe that times out is a clean miss: a dead session gives no answer. The control of a round is "one WAN or
+  more passed", so an outage of the host or of the target takes no WAN down.
+- When no WAN takes flows, the aggregate route holds each WAN (the link state and the kill switch decide). The
+  route is not removed for a fault of the probe.
+- The probe is IPv4 only; a host name in `health.target` is resolved one time at the start.
+- The guards keep their own nf_tables writer in `src/router/kernel/guard.rs`. `crates/podnet-netns/src/nfnl.rs`
+  has a second builder with the same shape (`pub(crate)` in the pod backends crate). Joining them is a move of
+  code between crates; it is not needed for this entry.
+The measure on the wire found two defects of the MSS clamp of 84320e4: the key of `rt` was 2 (`nexthop6`), not 3
+(`tcpmss`), and the rule had no `byteorder` (hton) before `exthdr`. The kernel accepted the rule, and the dump
+showed the right names, but the MSS on the wire did not change. The rule now has the expressions of
+`nft --debug=netlink` for the same rule.
+
+The Prove of the work of 2026-11-14:
+
+```sh
+cargo test -p podnet --lib -- router::kernel
+```
+
 ## Done
 
 2026-11-11, commit 84320e4 (parts 1 to 3). `src/router/kernel/guard.rs` is new; the keys
@@ -154,6 +177,25 @@ check.sh: exit 0.
 Not proven: no packet crossed a WAN, so the masquerade and the MSS value on the wire are not
 measured (the kernel accepts the rules and the dump shows them). The host sets `ip_forward` itself.
 Part 4 is left (Correction).
+
+2026-11-14, commit WORK (part 4, the measure on the wire, two fixes of the MSS clamp).
+- `src/router/kernel/watch.rs` is new: the probe of each WAN by its fwmark, and the aggregate route of the WANs
+  that take flows. `podnet route` runs it when the file has `kernel` and `health`.
+- `src/router/kernel/netkit.rs` (tests only): namespaces held by a descriptor, veth pairs across two of them,
+  addresses and routes by rtnetlink, and a capture of TCP SYNs with an `AF_PACKET` socket.
+- `route_kernel_masquerade_and_mss_clamp_on_the_wire`: a client namespace, the router namespace and a far
+  namespace behind two veth WANs (MTU 1280). Guards off: the far end sees the SYN from 10.9.0.2 with MSS 1460.
+  Guards on: the source is the address of the WAN that carried it, the MSS is 1240, and the flow gets its
+  answer. Without the fix it fails at "the MSS clamp" (1460, also with only one of the two fixes).
+- `route_kernel_probe_takes_a_dead_wan_out_of_the_route`: the far end of WAN b loses its address (the link
+  stays up); after 3 misses b is down and the aggregate route holds a only (`read_default`), and 8 flows of the
+  router pass; one pass puts b back (probation), the next gives up; when each WAN fails, no WAN goes down. With
+  the write of the route disabled it fails at the route of table 200.
+- `cargo test -p podnet --lib -- router::kernel`: 12 passed, run here as root in `unshare -rn`. Where the host
+  refuses a user and network namespace (GitHub runners, AppArmor) the namespace tests print a `skip:` line.
+- `CC_i686_unknown_linux_musl=clang cargo check --workspace --target i686-unknown-linux-musl`: exit 0.
+Not proven: a WAN that is a TUN of `warp tun` (the WANs of the tests are veth pairs). IPv6 is not routed by the
+kernel mode.
 
 # T-121: Router: export the groups as a JSON file of the mwan form
 

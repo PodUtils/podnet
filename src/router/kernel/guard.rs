@@ -193,11 +193,13 @@ const NFT_REG_1: u32 = 1;
 const NFT_META_OIFNAME: u32 = 7;
 const NFT_META_L4PROTO: u32 = 16;
 const NFT_PAYLOAD_TRANSPORT_HEADER: u32 = 2;
-const NFT_RT_TCPMSS: u32 = 2;
+// enum nft_rt_keys: CLASSID 0, NEXTHOP4 1, NEXTHOP6 2, TCPMSS 3.
+const NFT_RT_TCPMSS: u32 = 3;
 const NFT_EXTHDR_OP_TCPOPT: u32 = 1;
 const TCP_SYN_RST: u8 = 0x06;
 const TCP_SYN: u8 = 0x02;
 const TCPOPT_MAXSEG: u8 = 2;
+const NFT_BYTEORDER_HTON: u32 = 1;
 const IFNAMSIZ: usize = 16;
 
 /// The messages of a batch of nf_tables.
@@ -392,7 +394,8 @@ pub fn nft_batch(plan: &Plan) -> Vec<u8> {
     b.finish()
 }
 
-/// `oifname DEV tcp flags & (syn|rst) == syn tcp option maxseg size set rt mtu`.
+/// `oifname DEV tcp flags & (syn|rst) == syn tcp option maxseg size set rt mtu`:
+/// the expressions that `nft --debug=netlink` gives for it.
 fn mss_rule(b: &mut Builder, dev: &str) {
     b.oifname(dev);
     b.expr("meta", |b| {
@@ -417,6 +420,16 @@ fn mss_rule(b: &mut Builder, dev: &str) {
     b.expr("rt", |b| {
         b.be32(1, NFT_REG_1); // NFTA_RT_DREG
         b.be32(2, NFT_RT_TCPMSS); // NFTA_RT_KEY
+    });
+    // `rt` gives the MSS in host order; the option takes network order. With
+    // no swap, a little-endian host writes 1240 as 55300, and the kernel
+    // keeps the old MSS because the new one is larger (as `nft` writes it).
+    b.expr("byteorder", |b| {
+        b.be32(1, NFT_REG_1); // NFTA_BYTEORDER_SREG
+        b.be32(2, NFT_REG_1); // NFTA_BYTEORDER_DREG
+        b.be32(3, NFT_BYTEORDER_HTON); // NFTA_BYTEORDER_OP
+        b.be32(4, 2); // NFTA_BYTEORDER_LEN
+        b.be32(5, 2); // NFTA_BYTEORDER_SIZE
     });
     b.expr("exthdr", |b| {
         b.attr(2, &[TCPOPT_MAXSEG]); // NFTA_EXTHDR_TYPE

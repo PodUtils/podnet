@@ -180,11 +180,13 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
         servers.spawn(router.clone().serve_control(listener));
     }
     let kernel = apply_kernel(&config)?;
+    let watch = watch_kernel(&config, kernel.as_ref()).await?;
     podnet::detach::ready(router.status());
     let probing = router.clone();
     let ended = tokio::select! {
         _ = sleep_or_signal(args.run_for) => Ok(()),
         _ = probing.probe_forever() => Ok(()),
+        failed = watch => failed.context("kernel probe"),
         Some(ended) = servers.join_next() => ended.context("a server stopped")?,
         failed = router.door_failure() => Err(failed),
     };
@@ -219,6 +221,38 @@ fn apply_kernel(config: &podnet::router::Config) -> Result<Option<podnet::router
         on(g.rp_filter)
     );
     Ok(Some(plan))
+}
+
+/// The probe of the WANs of the kernel mode (T-120): with a `health`
+/// section, each WAN that fails its probe leaves the aggregate route. With
+/// no `health` section, or no kernel section, it never ends.
+async fn watch_kernel(
+    config: &podnet::router::Config,
+    plan: Option<&podnet::router::kernel::Plan>,
+) -> Result<impl std::future::Future<Output = Result<()>>> {
+    use podnet::router::kernel::watch;
+    let start = match (plan, &config.health) {
+        (Some(plan), Some(health)) => {
+            let target = watch::resolve_target(&health.target)
+                .await
+                .fault(Fault::Config)?;
+            let thresholds = health.thresholds().fault(Fault::Config)?;
+            let probe =
+                watch::Watch::new(plan.clone(), target, thresholds).fault(Fault::Unavailable)?;
+            println!(
+                "podnet: route  kernel  probe {target} through each WAN, each {} s",
+                thresholds.interval.as_secs()
+            );
+            Some(probe)
+        }
+        _ => None,
+    };
+    Ok(async move {
+        match start {
+            Some(probe) => probe.run().await,
+            None => std::future::pending().await,
+        }
+    })
 }
 
 /// `route --check --to HOST:PORT` (T-177): the choice of each door, with the
