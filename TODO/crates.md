@@ -888,6 +888,17 @@ Done so far:
   `pod_tls::ROOTS_VERSION` is 1.0.11, so it stays at 1.0.11 (also in `fuzz/Cargo.lock`). `sh scripts/agent/check.sh`:
   each step 0 (`cargo test --workspace`: 1991 passed, 0 failed, 120 targets). `CC_i686_unknown_linux_musl=clang cargo
   check --workspace --target i686-unknown-linux-musl`: exit 0. Commit 6e9e9ee.
+- v0.45.0 (PodUtils/podcrates#157): each `pod-*` dependency names `tag = "v0.45.0"` (and `pod-todo` of
+  `crates/podnet-todo/Cargo.toml`). No new hand-off for podnet (`adoption/podnet/` holds the hand-off of `pod-warp` of
+  v0.37.0 only). Breaking for podnet: none that needs a change of code. podnet has no struct literal of
+  `pod_relay::Road` (no use of `dial_alpn`). `pod-proxy` refuses a Unix path that starts with `//HOST` or holds `@`;
+  `SCHEME+unix:///PATH` (an empty host) stays valid in the crate, so the form of the pod hops that T-349 keeps is not a
+  breaking change. The other breaking changes (`pod-guest`, `pod-enter`, `pod-oci`, `pod-actions-workflow`,
+  `pod-actions-results`, `pod-extract`) are of crates or items that podnet does not use. `cargo update` moves
+  `webpki-roots` to 1.0.12; `pod_tls::ROOTS_VERSION` is 1.0.11, so it stays at 1.0.11 (also in `fuzz/Cargo.lock`).
+  `sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace`: 1991 passed, 0 failed, 120 targets). What the
+  tag carries for podnet: their entry 612 (T-349), 589 (`bind_udp` with port 0: T-117) and 557 (`KeyRefused` on the
+  listener of dns, icmp, udp and ws: T-273, T-278).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

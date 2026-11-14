@@ -25,24 +25,24 @@ anyhow = "1"
 base64 = "0.23"
 libc = "0.2"
 # The dialer and the datagrams of the front door (door.rs).
-pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.44.0", version = "0.44.0" }
+pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.45.0", version = "0.45.0" }
 # The SOCKS5 datagram path (UDP ASSOCIATE, the command 0x83, the frames and
 # the datagram header) of PodUtils/podcrates, at the git tag of the root.
-pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.44.0", version = "0.44.0" }
+pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.45.0", version = "0.45.0" }
 # The generic core of the hold of PodUtils/podcrates: the seccomp filter,
 # the receive of a notification, the memory of the child, the reply, the
 # table of the sockets with the flow budget, the dial state of a connect,
 # the netns entry, the TUN, the veth wire, the SYN packets and (syn-hold)
 # the hold of each SYN of the router on the stack of pod-netstack.
-pod-hold = { git = "https://github.com/PodUtils/podcrates", tag = "v0.44.0", version = "0.44.0", features = ["syn-hold"] }
+pod-hold = { git = "https://github.com/PodUtils/podcrates", tag = "v0.45.0", version = "0.45.0", features = ["syn-hold"] }
 # The reader of the rules (the matcher of a rule: domain, cidr, port, tcp) of
 # PodUtils/podcrates: one reader for the doors, the pods and WARP.
-pod-warp = { git = "https://github.com/PodUtils/podcrates", tag = "v0.44.0", version = "0.44.0" }
+pod-warp = { git = "https://github.com/PodUtils/podcrates", tag = "v0.45.0", version = "0.45.0" }
 serde_json = "1"
 # The userspace stack of the router (its config, its streams): the TUN or
 # the veth wire, under the hold of pod-hold. A build needs
 # SMOLTCP_IFACE_MAX_ADDR_COUNT = "8" (`.cargo/config.toml` of the workspace).
-pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.44.0", version = "0.44.0" }
+pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.45.0", version = "0.45.0" }
 tokio = { version = "1", features = [
     "macros",
     "rt-multi-thread",
@@ -57,6 +57,6 @@ tracing = "0.1"
 
 [dev-dependencies]
 # need_loopback! of the tests of the door.
-pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.44.0", version = "0.44.0" }
+pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.45.0", version = "0.45.0" }
 tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
