@@ -14,7 +14,7 @@ use sha2::{Digest, Sha256};
 use super::messages::{self, Answer, Hint, Message, Offer, Transit};
 use super::podnet_relay;
 use super::transit::{Role, CHUNK};
-use super::{connect, failed, podnet_peer, unavailable, versions, Settings, NOT_PODNET};
+use super::{connect, failed, old_podnet, unavailable, versions, Settings, OLD_PODNET};
 
 /// What a sender sends.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,10 +90,10 @@ impl Opened {
         match (what, payload) {
             (What::Text(text), _) => send_text(&mut hole, settings, text).await,
             (What::Path(_), Some(payload)) => {
-                if !podnet_peer(&theirs) {
-                    let _ = hole.send(&messages::error(NOT_PODNET)).await;
+                if old_podnet(&theirs) {
+                    let _ = hole.send(&messages::error(OLD_PODNET)).await;
                     hole.close(Mood::Errory).await;
-                    return Err(anyhow::anyhow!(NOT_PODNET));
+                    return Err(anyhow::anyhow!(OLD_PODNET));
                 }
                 send_payload(hole, settings, payload).await
             }
@@ -133,8 +133,10 @@ async fn send_payload(
     settings: &Settings,
     mut payload: Payload,
 ) -> Result<Sent> {
-    let mut key = [0u8; 32];
-    getrandom::fill(&mut key).map_err(|_| failed(Failed::NoRandom))?;
+    let key = match super::transit_key(&hole) {
+        Ok(key) => key,
+        Err(why) => return Err(failed(hole.fail(Mood::Errory, why).await)),
+    };
     let mut ours =
         match connect::prepare(&settings.listen, &settings.relays, &settings.piping).await {
             Ok(ours) => ours,
@@ -168,7 +170,6 @@ async fn send_payload(
     let transit = Transit {
         abilities,
         hints: ours.hints.clone(),
-        key: Some(key),
         relay_token: node.as_ref().map(|n| n.token.clone()),
     };
     let sent = hole.send(&transit.encode()).await;

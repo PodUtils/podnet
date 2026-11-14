@@ -12100,20 +12100,24 @@ entry of 4 GiB or more, or more than 65535 entries, is refused.
 
 ## With magic-wormhole
 
-A text goes to and from each client of magic-wormhole. A file or a
-directory goes from podnet to podnet only for now: magic-wormhole derives
-the transit key from the key of the wormhole, and `pod-wormhole` 0.40.0
-gives no derivation of its key. A podnet sender draws a random transit key
-and sends it in its sealed `transit` message. A podnet end that meets a
-client of magic-wormhole for a file says so and stops.
+A text, a file and a directory go to and from each client of
+magic-wormhole. The transit key is the key of magic-wormhole:
+`derive_key` of the key of the wormhole (`pod-wormhole`) for the purpose
+`lothar.com/wormhole/text-or-file-xfer/transit-key`, 32 bytes. Each podnet
+end says `{"podnet": {"transit-key": 2}}` in its `version`. podnet
+0.4.0-beta.10 and older (`"transit-key": 1`) drew a random transit key:
+a file between such a podnet and this one stops with a line that says
+"update podnet". A text works.
 
-The test `tests/wormhole_interop.rs` (T-106) runs a text both ways with the
-Python magic-wormhole 0.24.0: `podnet send --text` to `wormhole receive`,
-and `wormhole send --text` to `podnet receive`, at the mailbox server of
-magic-wormhole (`twist wormhole-mailbox`, 0.8.0) on the loopback. A wrong
-code exits 77 at podnet, and `wormhole send` fails too. With no `wormhole`
-program on the PATH, each test prints a skip line. With `wormhole` and no
-`twist`, the tests use the stand-in mailbox of the tests. CI (`ci.yml`, job
+The test `tests/wormhole_interop.rs` (T-106, T-103) runs a text, a file
+and a directory both ways with the Python magic-wormhole 0.24.0 at the
+mailbox server of magic-wormhole (`twist wormhole-mailbox`, 0.8.0) on the
+loopback. For a file and a directory, the two ends have the stand-in TCP
+transit relay of the tests (`--transit-relay`, `--transit-helper`), and
+the Python end listens for a direct connection too. A wrong code exits 77
+at podnet, and `wormhole send` fails too. With no `wormhole` program on
+the PATH, each test prints a skip line. With `wormhole` and no `twist`,
+the tests use the stand-in mailbox of the tests. CI (`ci.yml`, job
 `test`) installs the two packages in a venv and runs the test.
 
 ```sh

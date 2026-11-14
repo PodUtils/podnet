@@ -26,9 +26,6 @@ pub const PIPING: &str = "piping-v1";
 /// The mode of a directory, as magic-wormhole names it. A zip with stored
 /// entries is a valid zip of this mode.
 pub const ZIP_MODE: &str = "zipfile/deflated";
-/// The key of podnet's transit key in its `transit` message, until
-/// `pod-wormhole` derives keys (`docs/transfer.md`, The transit key).
-pub const PODNET_KEY: &str = "podnet-transit-key-v1";
 
 /// What a sender offers.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -78,8 +75,6 @@ pub enum Hint {
 pub struct Transit {
     pub abilities: Vec<String>,
     pub hints: Vec<Hint>,
-    /// podnet's transit key, from a podnet sender.
-    pub key: Option<[u8; 32]>,
     /// The connect token of the node of a [`Hint::PodnetRelay`], from a
     /// podnet sender.
     pub relay_token: Option<String>,
@@ -163,9 +158,6 @@ impl Transit {
         let mut body = Map::new();
         body.insert("abilities-v1".into(), Value::Array(abilities));
         body.insert("hints-v1".into(), Value::Array(hints));
-        if let Some(key) = &self.key {
-            body.insert(PODNET_KEY.into(), Value::String(pod_wormhole::hex(key)));
-        }
         if let Some(token) = &self.relay_token {
             body.insert(PODNET_RELAY_TOKEN.into(), Value::String(token.clone()));
         }
@@ -187,11 +179,6 @@ impl Transit {
             .iter()
             .filter_map(Hint::from_json)
             .collect();
-        let key = value
-            .get(PODNET_KEY)
-            .and_then(Value::as_str)
-            .and_then(pod_wormhole::unhex);
-        let key = key.and_then(|k| <[u8; 32]>::try_from(k.as_slice()).ok());
         let relay_token = value
             .get(PODNET_RELAY_TOKEN)
             .and_then(Value::as_str)
@@ -199,7 +186,6 @@ impl Transit {
         Transit {
             abilities: abilities.collect(),
             hints,
-            key,
             relay_token,
         }
     }
@@ -410,9 +396,8 @@ mod tests {
             panic!("a relay")
         };
         assert_eq!(ends.len(), 2);
-        assert_eq!(transit.key, None);
+        assert_eq!(transit.relay_token, None);
         let mine = Transit {
-            key: Some([7; 32]),
             relay_token: Some("t".into()),
             ..transit
         };
@@ -430,7 +415,6 @@ mod tests {
                 url: "https://relay.example".into(),
                 name: "abc".into(),
             }],
-            key: Some([1; 32]),
             relay_token: Some("secret".into()),
         };
         let bytes = mine.encode();
@@ -462,7 +446,6 @@ mod tests {
             hints: vec![Hint::Piping {
                 url: "https://piping.example".into(),
             }],
-            key: Some([1; 32]),
             relay_token: None,
         };
         let bytes = mine.encode();

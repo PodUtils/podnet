@@ -15,7 +15,7 @@ use sha2::{Digest, Sha256};
 use super::land::{self, Caps, Landing};
 use super::messages::{self, Answer, Message, Offer, Transit};
 use super::transit::{Records, Role};
-use super::{connect, failed, refused, unavailable, versions, Settings, NOT_PODNET};
+use super::{connect, failed, refused, unavailable, versions, Settings};
 
 /// How a receiver writes.
 #[derive(Debug, Clone)]
@@ -91,9 +91,12 @@ pub async fn receive(
             Ok(offered) => offered,
             Err(err) => return Err(decline(&mut hole, err).await),
         };
-        let key = match transit.as_ref().and_then(|t| t.key) {
-            Some(key) if super::podnet_peer(&theirs) => key,
-            _ => return Err(decline(&mut hole, anyhow::anyhow!(NOT_PODNET)).await),
+        if super::old_podnet(&theirs) {
+            return Err(decline(&mut hole, anyhow::anyhow!(super::OLD_PODNET)).await);
+        }
+        let key = match super::transit_key(&hole) {
+            Ok(key) => key,
+            Err(why) => return Err(failed(hole.fail(Mood::Errory, why).await)),
         };
         match ask(&offered) {
             Ok(true) => {}
@@ -194,7 +197,6 @@ async fn land_offer(
     let mine = Transit {
         abilities,
         hints: ours.hints.clone(),
-        key: None,
         relay_token: None,
     };
     let sent = hole.send(&mine.encode()).await;

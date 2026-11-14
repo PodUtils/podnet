@@ -1,6 +1,6 @@
-//! T-106, the text half: `podnet send --text` and `podnet receive` with the
-//! Python magic-wormhole (`wormhole send --text`, `wormhole receive`) at a
-//! local mailbox, in both directions.
+//! T-106 and T-103: `podnet send` and `podnet receive` with the Python
+//! magic-wormhole (`wormhole send`, `wormhole receive`) at a local mailbox,
+//! in both directions: a text, a file and a directory.
 //!
 //! The mailbox is the server of magic-wormhole (`twist wormhole-mailbox`,
 //! the package `magic-wormhole-mailbox-server`) when `twist` is on the
@@ -8,8 +8,12 @@
 //! host with no `wormhole` program on the PATH skips each test with a line
 //! `skipping, ...`.
 //!
-//! A file or a directory between podnet and Python is not tested: the
-//! transit key waits for `derive_key` of `pod-wormhole` (T-103).
+//! A file and a directory go over the transit: each end has the stand-in
+//! TCP transit relay of `tests/transfer_harness/mod.rs` (podnet
+//! `--transit-relay`, Python `--transit-helper`), and the Python end also
+//! listens for a direct connection. The two ends must derive one transit
+//! key (`derive_key` of `pod-wormhole`), else no handshake of the transit
+//! passes.
 
 #[path = "transfer_harness/mod.rs"]
 mod harness;
@@ -389,4 +393,289 @@ fn wormhole_interop_a_wrong_code_fails_at_both_ends() {
         "{}",
         text(&sent)
     );
+}
+
+/// A stand-in transit relay of magic-wormhole on the loopback.
+struct TransitRelay {
+    relay: harness::Relay,
+    _rt: tokio::runtime::Runtime,
+}
+
+impl TransitRelay {
+    fn start() -> TransitRelay {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let relay = rt.block_on(harness::Relay::start());
+        TransitRelay { relay, _rt: rt }
+    }
+
+    fn url(&self) -> &str {
+        &self.relay.url
+    }
+}
+
+/// The bytes of a file of `len` bytes that differ from file to file.
+fn data(len: usize, seed: u8) -> Vec<u8> {
+    (0..len)
+        .map(|i| (i as u32).wrapping_mul(2_654_435_761).to_le_bytes()[3] ^ seed)
+        .collect()
+}
+
+/// A directory with files at two levels, under `root/NAME`.
+fn tree(root: &std::path::Path, name: &str) -> PathBuf {
+    let top = root.join(name);
+    std::fs::create_dir_all(top.join("inner/deep")).unwrap();
+    std::fs::write(top.join("a.txt"), b"the first file\n").unwrap();
+    std::fs::write(top.join("inner/b.bin"), data(150_000, 3)).unwrap();
+    std::fs::write(top.join("inner/deep/c.bin"), data(4_096, 9)).unwrap();
+    std::fs::write(top.join("inner/empty"), b"").unwrap();
+    top
+}
+
+/// Each file under `dir`: its path from `dir`, and its bytes.
+fn files(dir: &std::path::Path) -> std::collections::BTreeMap<String, Vec<u8>> {
+    let mut out = std::collections::BTreeMap::new();
+    let mut todo = vec![dir.to_path_buf()];
+    while let Some(at) = todo.pop() {
+        for entry in std::fs::read_dir(&at).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                todo.push(path);
+            } else {
+                let name = path
+                    .strip_prefix(dir)
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned();
+                out.insert(name, std::fs::read(&path).unwrap());
+            }
+        }
+    }
+    out
+}
+
+/// A podnet sender of the file or the directory `path`, with the relay,
+/// and the code that it printed.
+fn podnet_path_sender(mailbox: &str, relay: &str, path: &std::path::Path) -> (Started, String) {
+    let path = path.to_str().unwrap();
+    let args = [
+        "send",
+        path,
+        "--mailbox",
+        mailbox,
+        "--transit-relay",
+        relay,
+        "--no-listen",
+        "--json",
+    ];
+    let mut child = podnet(&args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut out = BufReader::new(child.stdout.take().unwrap());
+    let mut line = String::new();
+    out.read_line(&mut line).unwrap();
+    let event: serde_json::Value =
+        serde_json::from_str(&line).unwrap_or_else(|_| panic!("a JSON line: {line:?}"));
+    let code = event["code"].as_str().expect("the code").to_string();
+    let err: Pipe = Box::new(child.stderr.take().unwrap());
+    let started = Started {
+        child,
+        out: Box::new(out),
+        err,
+    };
+    (started, code)
+}
+
+/// `wormhole receive` of `code` into `out`, with the relay: it accepts the
+/// file or the directory with no question.
+fn python_receive(
+    wormhole: &std::path::Path,
+    mailbox: &str,
+    relay: &str,
+    code: &str,
+    out: &std::path::Path,
+) -> Output {
+    let child = command(
+        wormhole,
+        // The code in argv: a test host has no other user to see it.
+        &[
+            "--relay-url",
+            mailbox,
+            "--transit-helper",
+            relay,
+            "receive",
+            "--accept-file",
+            "--hide-progress",
+            "-o",
+            out.to_str().unwrap(),
+            code,
+        ],
+    )
+    .stdin(Stdio::null())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .expect("wormhole starts");
+    wait(child, "wormhole receive")
+}
+
+/// A Python sender of the file or the directory `path`, with the relay,
+/// and the code that it printed.
+fn python_path_sender(
+    wormhole: &std::path::Path,
+    mailbox: &str,
+    relay: &str,
+    path: &std::path::Path,
+) -> (Started, String) {
+    let mut child = command(
+        wormhole,
+        &[
+            "--relay-url",
+            mailbox,
+            "--transit-helper",
+            relay,
+            "send",
+            "--hide-progress",
+            path.to_str().unwrap(),
+        ],
+    )
+    .stdin(Stdio::null())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .expect("wormhole starts");
+    let mut err = BufReader::new(child.stderr.take().unwrap());
+    let end = Instant::now() + WAIT;
+    let code = loop {
+        let mut line = String::new();
+        let n = err.read_line(&mut line).unwrap();
+        assert!(n > 0, "wormhole send ended with no code");
+        if let Some(code) = line.trim().strip_prefix("Wormhole code is:") {
+            break code.trim().to_string();
+        }
+        assert!(Instant::now() < end, "no code from wormhole send");
+    };
+    let out: Pipe = Box::new(child.stdout.take().unwrap());
+    let started = Started {
+        child,
+        out,
+        err: Box::new(err),
+    };
+    (started, code)
+}
+
+/// `podnet receive --yes` of `code` into the directory `out`, with the
+/// relay.
+fn podnet_receive(mailbox: &str, relay: &str, code: &str, out: &std::path::Path) -> Output {
+    let args = [
+        "receive",
+        "--yes",
+        "--out",
+        out.to_str().unwrap(),
+        "--mailbox",
+        mailbox,
+        "--transit-relay",
+        relay,
+        "--no-listen",
+        "--json",
+    ];
+    let mut child = podnet(&args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    writeln!(child.stdin.take().unwrap(), "{code}").unwrap();
+    wait(child, "podnet receive")
+}
+
+// T-103: podnet sends a file, and `wormhole receive` of Python takes it.
+#[test]
+fn wormhole_interop_podnet_sends_a_file_to_python() {
+    let Some(wormhole) = wormhole() else { return };
+    test_host::need_loopback!();
+    let (mailbox, relay) = (Mailbox::start(), TransitRelay::start());
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("from-podnet.bin");
+    let bytes = data(300_000, 1);
+    std::fs::write(&file, &bytes).unwrap();
+    let (sender, code) = podnet_path_sender(mailbox.url(), relay.url(), &file);
+    let got = dir.path().join("got.bin");
+    let received = python_receive(&wormhole, mailbox.url(), relay.url(), &code, &got);
+    assert_eq!(received.status.code(), Some(0), "{}", text(&received));
+    assert!(std::fs::read(&got).unwrap() == bytes, "the bytes differ");
+    let sent = sender.wait("podnet send");
+    assert_eq!(sent.status.code(), Some(0), "{}", text(&sent));
+    assert!(text(&sent).contains(r#""event":"sent""#), "{}", text(&sent));
+}
+
+// T-103: `wormhole send` of Python sends a file, and podnet receives it.
+#[test]
+fn wormhole_interop_python_sends_a_file_to_podnet() {
+    let Some(wormhole) = wormhole() else { return };
+    test_host::need_loopback!();
+    let (mailbox, relay) = (Mailbox::start(), TransitRelay::start());
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("from-python.bin");
+    let bytes = data(300_000, 2);
+    std::fs::write(&file, &bytes).unwrap();
+    let (sender, code) = python_path_sender(&wormhole, mailbox.url(), relay.url(), &file);
+    let out = dir.path().join("out");
+    std::fs::create_dir(&out).unwrap();
+    let got = podnet_receive(mailbox.url(), relay.url(), &code, &out);
+    assert_eq!(got.status.code(), Some(0), "{}", text(&got));
+    assert!(
+        std::fs::read(out.join("from-python.bin")).unwrap() == bytes,
+        "the bytes differ"
+    );
+    let sent = sender.wait("wormhole send");
+    assert_eq!(sent.status.code(), Some(0), "{}", text(&sent));
+}
+
+// T-103: podnet sends a directory (a zip), and Python unpacks it.
+#[test]
+fn wormhole_interop_podnet_sends_a_directory_to_python() {
+    let Some(wormhole) = wormhole() else { return };
+    test_host::need_loopback!();
+    let (mailbox, relay) = (Mailbox::start(), TransitRelay::start());
+    let dir = tempfile::tempdir().unwrap();
+    let top = tree(dir.path(), "from-podnet");
+    let (sender, code) = podnet_path_sender(mailbox.url(), relay.url(), &top);
+    let got = dir.path().join("got");
+    let received = python_receive(&wormhole, mailbox.url(), relay.url(), &code, &got);
+    assert_eq!(received.status.code(), Some(0), "{}", text(&received));
+    assert!(
+        files(&got) == files(&top),
+        "the trees differ: {:?}",
+        files(&got).keys()
+    );
+    let sent = sender.wait("podnet send");
+    assert_eq!(sent.status.code(), Some(0), "{}", text(&sent));
+}
+
+// T-103: Python sends a directory (a deflated zip), and podnet lands it.
+#[test]
+fn wormhole_interop_python_sends_a_directory_to_podnet() {
+    let Some(wormhole) = wormhole() else { return };
+    test_host::need_loopback!();
+    let (mailbox, relay) = (Mailbox::start(), TransitRelay::start());
+    let dir = tempfile::tempdir().unwrap();
+    let top = tree(dir.path(), "from-python");
+    let (sender, code) = python_path_sender(&wormhole, mailbox.url(), relay.url(), &top);
+    let out = dir.path().join("out");
+    std::fs::create_dir(&out).unwrap();
+    let got = podnet_receive(mailbox.url(), relay.url(), &code, &out);
+    assert_eq!(got.status.code(), Some(0), "{}", text(&got));
+    let landed = files(&out.join("from-python"));
+    assert!(
+        landed == files(&top),
+        "the trees differ: {:?}",
+        landed.keys()
+    );
+    let sent = sender.wait("wormhole send");
+    assert_eq!(sent.status.code(), Some(0), "{}", text(&sent));
 }

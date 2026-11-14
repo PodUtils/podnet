@@ -16,13 +16,9 @@
 //! * A directory goes as a zip ([`zip`]); the receiver checks each name
 //!   before it writes one ([`land`]).
 //!
-//! The transit key: magic-wormhole derives it from the key of the wormhole
-//! (`derive_key("lothar.com/wormhole/text-or-file-xfer/transit-key")`).
-//! `pod-wormhole` 0.40.0 gives no derivation of its key, so a podnet sender
-//! draws a random transit key and sends it in its sealed `transit` message
-//! ([`messages::PODNET_KEY`]). A text goes to and from each client of
-//! magic-wormhole; a file or a directory goes from podnet to podnet only,
-//! until the crate derives keys (T-103, Blocker).
+//! The transit key is magic-wormhole's: `derive_key` of the key of the
+//! wormhole for the purpose `APPID/transit-key` ([`transit_key`]). A text,
+//! a file and a directory go to and from each client of magic-wormhole.
 
 pub mod connect;
 pub mod land;
@@ -204,19 +200,35 @@ pub fn mailboxes(flags: &[String], variable: Option<&str>) -> Result<Vec<WsUrl>,
         .collect()
 }
 
-/// What this end says in its `version`: podnet, and its transit key.
+/// What this end says in its `version`: podnet, and the form of its
+/// transit key (2: the key of magic-wormhole).
 pub fn versions() -> Value {
-    json!({ "podnet": { "version": env!("CARGO_PKG_VERSION"), "transit-key": 1 } })
+    json!({ "podnet": { "version": env!("CARGO_PKG_VERSION"), "transit-key": 2 } })
 }
 
-/// True when the other end's `app_versions` names podnet's transit key.
-fn podnet_peer(theirs: &Value) -> bool {
+/// True when the other end is a podnet of the form 1 of the transit key
+/// (podnet 0.4.0-beta.10 and older: a random key in the `transit`
+/// message), which cannot move a file with this end.
+fn old_podnet(theirs: &Value) -> bool {
     theirs["podnet"]["transit-key"].as_u64() == Some(1)
 }
 
-/// The words of a file transfer with a client that is not podnet.
-const NOT_PODNET: &str = "the other end is a client of magic-wormhole that is not podnet: \
-     podnet moves a file or a directory to and from podnet only for now (pod-wormhole 0.40.0 derives no transit key); a text works";
+/// The words of a file transfer with an older podnet.
+const OLD_PODNET: &str =
+    "the other end is an older podnet (0.4.0-beta.10 or before) with its own transit key: \
+     update podnet at both ends to move a file or a directory; a text works";
+
+/// The purpose of the transit key, as magic-wormhole's file transfer names it.
+pub const TRANSIT_PURPOSE: &str = "lothar.com/wormhole/text-or-file-xfer/transit-key";
+
+/// The transit key of magic-wormhole: `derive_key` of the key of the
+/// wormhole for [`TRANSIT_PURPOSE`], 32 bytes.
+pub fn transit_key(hole: &pod_wormhole::Wormhole) -> Result<[u8; 32], Failed> {
+    let key = hole.derive_key(TRANSIT_PURPOSE, 32)?;
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&key);
+    Ok(out)
+}
 
 /// A failure of the wormhole with its exit class.
 pub fn failed(failed: Failed) -> anyhow::Error {
@@ -289,7 +301,11 @@ mod tests {
         );
         assert_eq!(code(Failed::Peer("x".into())), exit::FAILURE);
         assert_eq!(exit::code_of(&refused("x")), exit::DATA_ERROR);
-        assert!(podnet_peer(&versions()));
-        assert!(!podnet_peer(&json!({})));
+        assert!(!old_podnet(&versions()));
+        assert!(!old_podnet(&json!({})));
+        assert!(old_podnet(
+            &json!({ "podnet": { "version": "0.4.0-beta.10", "transit-key": 1 } })
+        ));
+        assert_eq!(TRANSIT_PURPOSE, format!("{APPID}/transit-key"));
     }
 }
