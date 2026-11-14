@@ -2513,7 +2513,7 @@ CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -2546,14 +2546,44 @@ cargo test -p podnet-core network::split
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 500 in the record of podcrates (PodUtils/podcrates#133,
-2026-11-13; estimate: tag `v0.39.0`).
-
 ## Start condition
 
 T-262 is done and two carriers of E1 exist (T-268, T-274, T-275).
+
+## Correction
+
+2026-11-14, the take and the ruling. The Blocker (their entry 500, PodUtils/podcrates#133) is gone with the tag v0.46.0, so the
+section is removed. The session is `pod_link::split::Split` of podcrates (calls C492, C493), not a change of the session of
+T-262: the dialer dials both halves and writes a hello on each, the listener joins the halves of one session, and the link runs
+over the joined byte stream. The credits of a direction ride on the other half, so each direction counts its own credits. The
+owner (2026-11-14, `docs/decisions.md`, "The split session: a lost half ends the session") accepts the call C493 of podcrates
+in place of two rules of the issue: the control frames have no upstream fallback, and at the loss of a half the session ends
+at each end and reports `up-carrier lost` or `down-carrier lost`, with no promotion of the other half. A session that must
+outlive the loss of a carrier runs over the resumable layer (`pod-session`, `podnet::session`). The hello of `podnet::hello`
+proves the keys on the joined session, whatever the halves are (a keyed half pins its key too). Approach step 3 names "the
+existing split tests of the router": they are `network::split` of `podnet-core` (T-179).
+
+## Done
+
+2026-11-14, commit 3623ec5. `src/link_split.rs` (`podnet::link_split`) is the glue: `half` (the carrier of one half by its name:
+a carrier of the registry, `tcp`, `ws`, `h2`, or a carrier of `podnet::link_keyed`, with `link_keyed::carrier`), `dial` (the
+join at `UP|DOWN`, then the hello), `listen` (a door that gives no key, so the listener runs the hello), `lost` and `ended` (a
+lost half exits 69 and keeps the text of the loss). `link listen`, `dial` and `connect` take `--up-carrier NAME
+--down-carrier NAME` (each needs the other; an address with no `|` exits 64). `link dial` exits 69 at the loss of a half;
+`link listen` prints `peer gone FINGERPRINT: up-carrier lost: ...`; `link connect` prints the loss. `docs/link.md` ("A split
+session") and `docs/decisions.md` have the ruling.
+`cargo test --test link_split`: 8 passed: `a_fast_down_half_and_a_slow_up_half_move_data_both_ways` (1 MiB down a fast half
+and 64 KiB up a half that moves 1 KiB each 2 ms, on one stream, both whole), `a_closed_up_half_ends_the_session_with_up_carrier_lost`,
+`a_closed_down_half_ends_the_session_with_down_carrier_lost`, `a_silent_up_half_ends_the_session_after_the_wait`,
+`a_silent_down_half_ends_the_session_after_the_wait` (each: `up-carrier lost` or `down-carrier lost` in the end of the link at
+the dialer and at the listener, and a read of a stream exits 69 with the text), `a_stranger_is_refused_with_77`,
+`link_listen_and_dial_check_meet_over_two_unix_sockets` (`link listen` and `link dial --check` as processes with
+`--up-carrier unix --down-carrier unix`: 0, and 77 for a stranger), `the_halves_take_both_flags_and_an_address_of_two_parts`.
+`cargo test --lib link_split`: 3 passed. The router split tests, unchanged: `cargo test -p podnet-core network::split`: 5 passed.
+`sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace --no-fail-fast`: 2004 passed, 0 failed, 122 targets; with `--features full`, `link_s3`, `link_split`, `link_dns` and `link_poll` pass). `cargo clippy --features full`: exit 0.
+Not proven: the detector at its default times (30 s, 10 s beats; the tests set 600 ms and 50 ms); a split of two network
+carriers in a process test (the crate proves a lossy half under the ARQ); the loss of a half seen by `link dial` as a process.
+
 
 # T-303: link: chain composition with a peer element and --check (GitHub #473)
 

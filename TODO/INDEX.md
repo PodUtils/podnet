@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**351 entries: 11 open, 9 partial, 24 blocked, 307 done.**
+**351 entries: 11 open, 9 partial, 23 blocked, 308 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 33 | 36 |
 | P2 | 5 | 4 | 10 | 158 | 177 |
-| P3 | 6 | 4 | 12 | 115 | 137 |
-| **All** | 11 | 9 | 24 | 307 | 351 |
+| P3 | 6 | 4 | 11 | 116 | 137 |
+| **All** | 11 | 9 | 23 | 308 | 351 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -347,7 +347,7 @@ M8 Overlays, M9 Later.
 | [T-299](link.md) | P3 | S | M9 | feature | done | link: snappy compression of records (GitHub #472) |
 | [T-300](link.md) | P3 | S | M9 | feature | done | link: padding of records to buckets (GitHub #472) |
 | [T-301](link.md) | P3 | M | M9 | feature | done | link: the replay window and the RESUME record (GitHub #472) |
-| [T-302](link.md) | P3 | L | M9 | feature | blocked | link: split one session across an up carrier and a down carrier (GitHub #473) |
+| [T-302](link.md) | P3 | L | M9 | feature | done | link: split one session across an up carrier and a down carrier (GitHub #473) |
 | [T-303](link.md) | P3 | M | M9 | feature | done | link: chain composition with a peer element and --check (GitHub #473) |
 | [T-304](link.md) | P3 | L | M9 | feature | done | link: a C ABI with a header, a shared library and a static library (GitHub #474) |
 | [T-305](link.md) | P3 | L | M9 | feature | blocked | link: a portable build subset for Windows, macOS and FreeBSD (GitHub #475) |
