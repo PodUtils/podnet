@@ -5031,6 +5031,7 @@ run: podnet has no change. Not proven: the QUIC leg, the verify of the public UR
 legs, and a change of the real edge. Open: the QUIC leg; the move of the steps of `live.yml` into `ci`
 (the lead); one real quick tunnel for each leg stays in `live`.
 
+CI: ci 43590942248, deny 43590945244, secrets 43590947996 and live 43590951009 on 9610316 passed (GitHub #554): the two stand-in tests of 3654b05 passed in `ci`.
 
 # T-322: doctor: resolve the ssh-relay probe through the configured proxy (GitHub #504)
 
@@ -5809,6 +5810,7 @@ seeds (`-malloc_limit_mb=64 -rss_limit_mb=2048 -timeout=10`), no crash, no timeo
 found by reading, before the runs: the targets keep them fixed. CI: `fuzz.yml` runs the 26 targets each week; no run
 yet.
 
+CI: ci 43590942248, deny 43590945244, secrets 43590947996 and live 43590951009 on 9610316 passed (GitHub #554). `fuzz.yml` 43590953876 on 9610316 ran the 26 targets (120 s each) and failed with two crashes: `capnp_message` (T-348, 54637d9) and `proxy_url` (T-349, 243eb48). After the fixes each of the two targets ran 120 s here with its crash input in the corpus, no crash.
 
 # T-340: The parity checklist after the take of pod-warp, the router, the transfer and the carriers
 
@@ -5859,6 +5861,7 @@ the code (`POD_NETNS_QUIET` is `PODNET_NETNS_QUIET` since the rename); the WARP 
 section 12 (three are replaced by tests of the stand-in in ci: a6d4428 and 3654b05) and the fuzz targets (`doh_json`
 is in `pod-dns`) hold. `cargo test --workspace` on ce6352c: 0 failed. No item failed: no defect entry.
 
+CI: ci 43590942248, deny 43590945244, secrets 43590947996 and live 43590951009 on 9610316 passed (GitHub #554).
 
 # T-341: podnet receive: a directory can land more bytes and entries than the offer that the person accepted
 

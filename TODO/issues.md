@@ -245,6 +245,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #551 | [gh action] requested: ci, deny, secrets and live on eddaa22 | closed: each run passed on c72c604 (ci 43560703081, deny 43560707016, secrets 43560710399, live 43560713372) | none |
 | #552 | COORD-078: podnet took v0.43.0 at c8ccc40; pod-netstack: bind_udp with port 0 (to podcrates) | open (a COORD issue between sessions) | none |
 | #553 | [gh action] requested: ci, deny, secrets and live on b3eaba6 (v0.43.0, T-337, T-125) | closed: each run passed on b92c100 (ci 43567820518, deny 43567823619, secrets 43567826340, live 43567829232) | none |
-| #554 | [gh action] requested: ci, deny, secrets, live and fuzz on fbe4235 (T-339, T-340, T-316, T-106) | open (a request of runs to the owner) | none |
+| #554 | [gh action] requested: ci, deny, secrets, live and fuzz on fbe4235 (T-339, T-340, T-316, T-106) | closed: the runs are on 9610316 (`main` moved before the block ran): ci 43590942248, deny 43590945244, secrets 43590947996 and live 43590951009 passed; fuzz 43590953876 failed with two crashes, fixed in 54637d9 (T-348) and 243eb48 (T-349) | T-348, T-349 |
+| #555 | COORD-079: two crashes of podnet's fuzz run: a credential in the label of a unix proxy (pod-proxy), and a list past its segment (capnp of pod-cloudflare) (to podcrates) | open (a COORD issue between sessions; PodUtils/podcrates#156 answers) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.

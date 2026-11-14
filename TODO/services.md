@@ -1996,6 +1996,8 @@ in 60 s); `wormhole_interop_podnet_sends_a_text_to_python` passed. `sh scripts/a
 
 CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 passed, none skipped), deny 43560707016, secrets 43560710399 and live 43560713372 on c72c604 passed (GitHub #551).
 
+CI: ci 43590942248, deny 43590945244, secrets 43590947996 and live 43590951009 on 9610316 passed (GitHub #554). The live step "100 MiB by code through the mailbox, a transit relay and the podnet relay" took 19 s: "transit: 100 MiB in 13.8 s (7.2 MiB/s), via relay tcp:transit.magic-wormhole.io:4001" and "podnet-relay: 100 MiB in 4.6 s (21.7 MiB/s), via podnet relay"; the SHA-256 of the received file and of the sender agreed with the source in both (the step checks both and passed).
+
 # T-167: `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364)
 
 **Source:** GitHub #364 (https://github.com/PodUtils/podnet/issues/364)
