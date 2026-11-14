@@ -231,7 +231,7 @@ fn in_namespace() {
 }
 
 /// True when the namespace can make a bridge link (CAP_NET_ADMIN).
-pub(super) fn can_make_links() -> bool {
+pub(crate) fn can_make_links() -> bool {
     let Ok(sock) = Socket::open() else {
         return false;
     };

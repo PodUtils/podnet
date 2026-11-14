@@ -91,6 +91,12 @@ impl Pump {
                 self.session(Arc::new(PacketFd::new(fd)?), None).await?;
                 bail!("the wire {} closed", self.guest.wire)
             }
+            Opened::Frames(fd) => {
+                let frames = super::veth::Frames::new(self.guest.net);
+                let io = PacketFd::with_frames(fd, frames)?;
+                self.session(Arc::new(io), None).await?;
+                bail!("the wire {} closed", self.guest.wire)
+            }
             Opened::Listener(fd) => {
                 let listener = Listener::new(fd)?;
                 let mut io = listener.accept().await?;

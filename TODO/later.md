@@ -1696,7 +1696,7 @@ Podnet holds `pod-cloudflare`, and the crate holds `forward_http`.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1762,6 +1762,25 @@ feature, and a build of `podnet-vnet` alone has it too. The test that main held 
 uses `max_datagram` and the counters of the stack (`stack_udp_*` in its status). It keeps a queue for each flow,
 because one socket of the stack serves every flow of a port.
 
+2026-11-14, the veth wire and a real TUN. Calls made here:
+- The veth wire is `veth:NAME`: an end of a veth pair in the namespace of the router, with no address. The
+  router reads it with an `AF_PACKET` socket and uses the frames of `pod-hold` (`take_frame`, `frame_for`): it
+  answers ARP for the gateway with `GATEWAY_MAC`, and it learns the MAC address of each guest address from its
+  frames (at most 4096; at the limit the table starts again). A packet to a guest address with no MAC address
+  is dropped: the guest opens each flow, so its address is known first. The router makes no veth pair: the
+  operator makes it and moves one end into the guest.
+- The wire takes frames up to 64 KiB. Measured: a guest kernel with the offloads of veth on sends TCP frames
+  larger than the MTU; with a limit of 1500 the 1 MiB flow of the test took 39 s (losses and retransmits)
+  against 2 s. The router does not change the offloads of the guest end.
+- Left, not in the Approach: IPv6, ICMP and names (the Done of 2026-11-12), and a test of the idle end of a UDP
+  flow (60 s). The entry closes with them as known limits in `docs/router.md`.
+
+The Prove of the work of 2026-11-14:
+
+```sh
+cargo test -p podnet --lib -- router::guest
+```
+
 ## Done
 
 2026-11-12, partial; commits 9249037 (the code), 266fe0e (the record) and 6775594 (the take of v0.28.0). The router file has a `guests` list (`src/router/guest.rs`, `src/router/guest/`).
@@ -1786,6 +1805,20 @@ because one socket of the stack serves every flow of a port.
   proven (the socket pair uses the same `PacketFd`). A veth wire on an existing interface is not done. IPv6, ICMP
   and names (the guest resolves names itself; `domain:` rules do not match) are not routed. The idle end of a UDP
   flow (60 s) has no test. A Linux guest kernel is not tested.
+
+2026-11-14, commit WORK (the veth wire, the proof of a real TUN and of a Linux guest kernel).
+* `src/router/guest/veth.rs` is new (`veth:NAME`, the frames, the ARP answer, the MAC addresses);
+  `PacketFd::with_frames` reads and writes frames; `Opened::Frames` is the open veth wire.
+* `guest_wire_veth_carries_tcp_and_udp_of_a_linux_guest`: a guest namespace on a veth pair (offloads on),
+  default route to the router. A TCP flow through way `a` carries 1 MiB each way and ends both ways; UDP
+  datagrams of 4 and 3000 bytes (fragmented by the guest kernel) come back; the counters give 2 up and 2 down.
+* `guest_wire_tun_carries_tcp_and_udp_of_a_linux_guest`: the router opens a real TUN (`open_tun`); the kernel of
+  the namespace is the guest, with its address on the TUN and its default route to the router. The same flows
+  pass. This proves the data path of a real TUN.
+* `cargo test -p podnet --lib -- router::guest`: 14 passed, run here as root in `unshare -rn`. Where the host
+  refuses a user and network namespace (GitHub runners) the two tests print `skip:`; with no TUN device the TUN
+  test prints `skip: the namespace has no TUN device`.
+* The test kit of the namespaces is `src/router/kernel/netkit.rs` (T-120).
 
 
 

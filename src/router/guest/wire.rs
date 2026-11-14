@@ -1,7 +1,9 @@
 //! The wire of a guest (T-248): a source and a sink of IP packets, one
 //! packet for each read and each write. The wire is a TUN device
-//! (`tun:NAME`) or a unix socket of type `SOCK_SEQPACKET` (`unix:/PATH`),
-//! where each message is one IPv4 packet.
+//! (`tun:NAME`), a unix socket of type `SOCK_SEQPACKET` (`unix:/PATH`),
+//! where each message is one IPv4 packet, or one end of a veth pair
+//! (`veth:NAME`), where each read and write is one Ethernet frame
+//! ([`super::veth`]).
 
 use std::fmt;
 use std::io;
@@ -11,6 +13,8 @@ use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
 use tokio::io::unix::AsyncFd;
+
+use super::veth::{Frames, Take};
 
 /// The longest packet that a read takes.
 pub const PACKET_MAX: usize = 65536;
@@ -24,6 +28,9 @@ pub enum WireSpec {
     /// `tun:NAME`: the router opens the TUN device `NAME`. The operator
     /// sets its address and its routes.
     Tun(String),
+    /// `veth:NAME`: the router reads the frames of the interface `NAME` (one
+    /// end of a veth pair, with no address) with a packet socket.
+    Veth(String),
 }
 
 impl FromStr for WireSpec {
@@ -42,7 +49,13 @@ impl FromStr for WireSpec {
             }
             return Ok(WireSpec::Tun(name.to_string()));
         }
-        bail!("{text:?}: give unix:/PATH or tun:NAME")
+        if let Some(name) = text.strip_prefix("veth:") {
+            if name.is_empty() || name.len() >= libc::IF_NAMESIZE || name.contains(['\0', '/']) {
+                bail!("give veth:NAME (1 to 15 bytes, no /)");
+            }
+            return Ok(WireSpec::Veth(name.to_string()));
+        }
+        bail!("{text:?}: give unix:/PATH, tun:NAME or veth:NAME")
     }
 }
 
@@ -51,6 +64,7 @@ impl fmt::Display for WireSpec {
         match self {
             WireSpec::Unix(path) => write!(f, "unix:{}", path.display()),
             WireSpec::Tun(name) => write!(f, "tun:{name}"),
+            WireSpec::Veth(name) => write!(f, "veth:{name}"),
         }
     }
 }
@@ -61,6 +75,8 @@ pub enum Opened {
     Packets(OwnedFd),
     /// The listener of a `unix:` wire.
     Listener(OwnedFd),
+    /// A packet socket of Ethernet frames: the `veth:` wire.
+    Frames(OwnedFd),
 }
 
 impl WireSpec {
@@ -77,6 +93,9 @@ impl WireSpec {
             WireSpec::Tun(name) => open_tun(name)
                 .map(Opened::Packets)
                 .with_context(|| format!("tun:{name}")),
+            WireSpec::Veth(name) => super::veth::open_veth(name)
+                .map(Opened::Frames)
+                .with_context(|| format!("veth:{name}")),
         }
     }
 }
@@ -208,6 +227,8 @@ pub struct PacketFd {
     fd: AsyncFd<OwnedFd>,
     /// A socket: a write uses `send` with `MSG_NOSIGNAL`.
     socket: bool,
+    /// The frames of a `veth:` wire; `None` for a wire of IP packets.
+    frames: Option<Frames>,
 }
 
 impl PacketFd {
@@ -238,30 +259,82 @@ impl PacketFd {
             // it drops.
             fd: unsafe { AsyncFd::register(fd) }.map_err(io::Error::from)?,
             socket,
+            frames: None,
         })
+    }
+
+    /// Take the packet socket `fd` of a `veth:` wire, with the frames of the
+    /// guest net.
+    pub fn with_frames(fd: OwnedFd, frames: Frames) -> io::Result<Self> {
+        let mut this = Self::new(fd)?;
+        this.frames = Some(frames);
+        Ok(this)
     }
 
     /// Read one packet into `buf`; its length. 0: the peer closed.
     pub async fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         loop {
             let mut ready = self.fd.readable().await?;
-            // SAFETY: `buf` is a valid buffer of its length.
-            let n = unsafe { libc::read(self.fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
-            if n >= 0 {
-                return Ok(n as usize);
-            }
-            let e = io::Error::last_os_error();
-            match e.kind() {
-                io::ErrorKind::WouldBlock => ready.clear_ready(),
-                io::ErrorKind::Interrupted => {}
-                _ => return Err(e),
+            match self.read_now(buf) {
+                Ok(Some(n)) => return Ok(n),
+                Ok(None) => {}
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => ready.clear_ready(),
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
             }
         }
     }
 
+    fn read_raw(&self, buf: &mut [u8]) -> io::Result<usize> {
+        // SAFETY: `buf` is a valid buffer of its length.
+        let n = unsafe { libc::read(self.fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
+        match n {
+            0.. => Ok(n as usize),
+            _ => Err(io::Error::last_os_error()),
+        }
+    }
+
+    /// One read: a packet, or `None` for a frame that gives no packet.
+    fn read_now(&self, buf: &mut [u8]) -> io::Result<Option<usize>> {
+        let Some(frames) = &self.frames else {
+            return self.read_raw(buf).map(Some);
+        };
+        let mut frame = frames.frame.lock().unwrap_or_else(|e| e.into_inner());
+        let n = self.read_raw(&mut frame)?;
+        match frames.take(&frame[..n], buf) {
+            Take::Packet(len) => Ok(Some(len)),
+            Take::Reply(reply) => {
+                // One try: the guest asks again for a reply that is lost.
+                // SAFETY: `reply` is a valid buffer of its length.
+                unsafe {
+                    libc::send(
+                        self.fd.as_raw_fd(),
+                        reply.as_ptr().cast(),
+                        reply.len(),
+                        libc::MSG_NOSIGNAL,
+                    )
+                };
+                Ok(None)
+            }
+            Take::Drop => Ok(None),
+        }
+    }
+
     /// Write one packet. A packet that the peer's queue cannot hold waits for
-    /// room.
+    /// room. On a `veth:` wire, a packet to a guest address with no MAC
+    /// address goes nowhere.
     pub async fn send(&self, packet: &[u8]) -> io::Result<()> {
+        let framed;
+        let packet = match &self.frames {
+            None => packet,
+            Some(frames) => match frames.frame(packet) {
+                Some(frame) => {
+                    framed = frame;
+                    &framed[..]
+                }
+                None => return Ok(()),
+            },
+        };
         loop {
             let mut ready = self.fd.writable().await?;
             let fd = self.fd.as_raw_fd();

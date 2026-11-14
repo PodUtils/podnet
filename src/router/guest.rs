@@ -6,7 +6,7 @@
 //!
 //! ```yaml
 //! guests:
-//!   - wire: unix:/run/g.sock    # unix:/PATH (SOCK_SEQPACKET) or tun:NAME
+//!   - wire: unix:/run/g.sock    # unix:/PATH (SOCK_SEQPACKET), tun:NAME or veth:NAME
 //!     net: 10.66.0.0/24         # the guest net; the router is its first host
 //!     via: egress               # a network or a group of the file
 //!     rules: /etc/r.rules       # optional: rules that go before `via`
@@ -36,6 +36,7 @@ use crate::network::{Choice, Class, Dial, Failure, Stage, Target, Way};
 pub mod pump;
 pub mod tcp;
 pub mod udp;
+pub mod veth;
 pub mod wire;
 
 #[cfg(test)]
@@ -44,6 +45,8 @@ mod kit;
 mod tests;
 #[cfg(test)]
 mod udp_tests;
+#[cfg(test)]
+mod veth_tests;
 
 pub use wire::{Opened, WireSpec};
 
@@ -59,7 +62,7 @@ pub const DEFAULT_MTU: usize = 1500;
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GuestConfig {
-    /// `unix:/PATH` or `tun:NAME`.
+    /// `unix:/PATH`, `tun:NAME` or `veth:NAME`.
     pub wire: String,
     /// The guest net, `A.B.C.D/N` (8 to 30). The router has the first host
     /// address; a source address outside the net is dropped.

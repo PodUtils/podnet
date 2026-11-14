@@ -12954,7 +12954,7 @@ or a group, as it does for a door.
 
 ```yaml
 guests:
-  - wire: unix:/run/g.sock    # unix:/PATH or tun:NAME
+  - wire: unix:/run/g.sock    # unix:/PATH, tun:NAME or veth:NAME
     net: 10.66.0.0/24         # the guest net
     via: egress               # a network or a group of the file
     rules: /etc/r.rules       # optional: rules that go before `via`
@@ -12964,7 +12964,7 @@ guests:
 
 | Key | Meaning |
 | --- | --- |
-| `wire` | `unix:/PATH`: the router listens on a `SOCK_SEQPACKET` socket (mode 0600). Each message is one IPv4 packet. One guest is connected at a time; a new connection replaces the old one. `tun:NAME`: the router opens the TUN device `NAME`, which must exist or be allowed (`CAP_NET_ADMIN`). The operator sets its address and routes. |
+| `wire` | `unix:/PATH`: the router listens on a `SOCK_SEQPACKET` socket (mode 0600). Each message is one IPv4 packet. One guest is connected at a time; a new connection replaces the old one. `tun:NAME`: the router opens the TUN device `NAME`, which must exist or be allowed (`CAP_NET_ADMIN`). The operator sets its address and routes. `veth:NAME`: the router reads the Ethernet frames of the interface `NAME` (needs `CAP_NET_RAW` and `CAP_NET_ADMIN`). See below. |
 | `net` | `A.B.C.D/N`, N from 8 to 30. The router is the first host of the net (the gateway of the guest). |
 | `via`, `rules`, `allow_shadowed_rules` | As for a door. |
 | `mtu` | The MTU of the wire. Default 1500. Set it to the MTU of the guest. |
@@ -12986,6 +12986,20 @@ guests:
   `udp_down`, `udp_queue_dropped`, `udp_oversize`, `udp_refused` and `dropped`. The counters of the stack are
   `stack_udp_rx_dropped` (the backlog of a port was full), `stack_udp_tx_dropped` and `stack_udp_oversize`.
 * `--check` prints a line for each guest.
+
+### The veth wire
+
+Make a veth pair, put one end in the guest (a container or a namespace), and leave the end `NAME` in the
+namespace of the router with no address. The router sets `NAME` up and reads its frames with a packet socket.
+It answers ARP for its address in the guest net (the first host), and it learns the MAC address of each guest
+address from the frames of the guest. The guest gives the router address as its default gateway:
+
+```text
+the guest end, in the guest namespace: address 10.66.0.4/24, up, default via 10.66.0.1
+```
+
+A guest kernel with segmentation offloads on (the default of veth) sends one frame of up to 64 KiB for many TCP
+segments. The wire takes these frames. The router does not change the offloads of the guest end.
 
 ## Groups, health and policies
 
