@@ -226,12 +226,12 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #532 | COORD-070: podnet took v0.40.0 at 1c88531 (to podcrates) | open (a COORD issue between sessions) | none |
 | #533 | COORD-071: two asks of the carriers of pod-link: a typed refusal of the key, and the TC rule of the dns carrier (to podcrates) | open (a COORD issue between sessions) | none |
 | #534 | [gh action] requested: ci, deny, secrets and live on d53df25 | closed: ci 43491819082, deny 43491826156 and secrets 43491833085 passed; live 43491840609 failed at the new router step (fixed in c02da54) | none |
-| #535 | COORD-072: the asks of the transfer of podnet over pod-wormhole: the derivation of a key, a stand-in mailbox, the count of words, the TCP transit relay (to podcrates) | open (a COORD issue between sessions) | none |
+| #535 | COORD-072: the asks of the transfer of podnet over pod-wormhole: the derivation of a key, a stand-in mailbox, the count of words, the TCP transit relay (to podcrates) | closed: v0.42.0 carries asks 1 to 4; ask 5 rides on their T-214 | none |
 | #536 | [gh action] requested: ci, deny, secrets and live on 0dd7663 | closed: deny 43499858663 and secrets 43499865056 passed; ci 43499850487 failed (the transfer tests have no loopback guard) and live 43499872018 failed at the router step (w stayed up) | none |
 | #537 | live: two runs in a row failed (the router step, runs 43491840609 and 43499872018) | closed: live 43521809728 on 3061c7c passed | T-101 |
-| #538 | COORD-073: pod-hold: a seccomp rule for a raw ICMP socket (podnet T-334) (to podcrates) | open (a COORD issue between sessions) | none |
+| #538 | COORD-073: pod-hold: a seccomp rule for a raw ICMP socket (podnet T-334) (to podcrates) | closed: v0.42.0 and v0.44.0 carry it (T-334, T-350) | none |
 | #539 | [gh action] requested: ci, deny, secrets and live on c8a9510 | closed: ci 43506563209, deny 43506569632 and secrets 43506579272 passed; live 43506586024 failed at the router step (w stays up) | none |
-| #540 | COORD-074: pod-link: dgram_tls does not call rekeyed, so a dns or icmp link stops at the wrap of the ARQ (podnet T-277) (to podcrates) | open (a COORD issue between sessions) | none |
+| #540 | COORD-074: pod-link: dgram_tls does not call rekeyed, so a dns or icmp link stops at the wrap of the ARQ (podnet T-277) (to podcrates) | closed: v0.42.0 carries T-541 | none |
 | #541 | [gh action] requested: ci, deny, secrets and live on 54f0809 | closed: ci 43515459301, deny 43515464237 and secrets 43515470028 passed; live 43515475108 failed at the router step (the WARP session took the relay leg) | none |
 | #542 | [gh action] requested: ci, deny, secrets and live on 3061c7c | closed: each run passed (ci 43521791090, deny 43521797247, secrets 43521803788, live 43521809728) | none |
 | #543 | [gh action] requested: the release of v0.4.0-beta.10 at 43c53a6 | closed: stopped at ci 43535662399 (restricted-host, a race in a test); deny, secrets and live passed; nothing published | T-336 |
