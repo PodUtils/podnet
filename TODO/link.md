@@ -1350,6 +1350,11 @@ into the filter of the kernel. No row of `pod doctor`: the rule is the same on e
 `docs/pods.md` and `crates/podnet-netns/README.md` state it. The Prove's `cargo test --test pod_seccomp_rules` holds
 no test of this rule; the tests are in `tests/pod_seccomp_dgram.rs`, beside the ping socket of T-066.
 
+2026-11-14, the take of podcrates v0.44.0 (T-350, 6e9e9ee): the ask is answered (their entries 574 and 558). The
+filter of the pod is `Calls::sockets().allow_ping()`, so by default the kernel refuses a raw socket with `EPERM`;
+`--allow-raw icmp` adds `.allow_raw()`. The supervisor keeps `raw_refused`: under `--allow-raw icmp` it refuses each
+packet socket, and by default it is a second check. Each test of this entry and of T-066 passes.
+
 ## Done
 
 2026-11-14, commit 780a005 (and 654c0f1 for the filter). `cargo test --test pod_seccomp_dgram`: 20 passed, among them

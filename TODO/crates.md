@@ -887,7 +887,7 @@ Done so far:
   tcp:transit.magic-wormhole.io:4001"), so nothing changes. `cargo update` moves `webpki-roots` to 1.0.12;
   `pod_tls::ROOTS_VERSION` is 1.0.11, so it stays at 1.0.11 (also in `fuzz/Cargo.lock`). `sh scripts/agent/check.sh`:
   each step 0 (`cargo test --workspace`: 1991 passed, 0 failed, 120 targets). `CC_i686_unknown_linux_musl=clang cargo
-  check --workspace --target i686-unknown-linux-musl`: exit 0.
+  check --workspace --target i686-unknown-linux-musl`: exit 0. Commit 6e9e9ee.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

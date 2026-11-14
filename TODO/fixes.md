@@ -6449,7 +6449,7 @@ note 1 of GitHub #550) (2026-11-14).
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6493,3 +6493,18 @@ cargo test -p podnet-netns
 cargo test --test pod_seccomp_dgram
 cargo test --test pod_seccomp_rules
 ```
+
+## Done
+
+2026-11-14, commit 6e9e9ee (the take of v0.44.0, T-137). `calls(allow_raw)` of
+`crates/podnet-netns/src/seccomp/filter.rs` and `raw_refused` of `crates/podnet-netns/src/socket.rs`. Tests, as root
+here (no skip line): `cargo test --test pod_seccomp_dgram`: 20 passed, among them `seccomp_raw_socket_gets_eperm_by_default`
+(raw ICMP of each family, `AF_PACKET` raw and datagram, `AF_XDP` and `SOCK_PACKET` get `EPERM`; the ping socket
+opens), `seccomp_raw_socket_opens_with_allow_raw_icmp` (the raw ICMP socket opens; each packet socket gets `EPERM`)
+and `seccomp_icmp_echo_to_the_gateway`. `cargo test -p podnet-netns`: 147 passed, among them
+`the_raw_part_is_refused_in_the_kernel_unless_allow_raw` and `packet_sockets_are_refused_with_allow_raw_too`. Plants:
+the old `raw_refused`: `seccomp_raw_socket_opens_with_allow_raw_icmp` failed (each packet socket opened), and
+`seccomp_raw_socket_gets_eperm_by_default` passed, as the kernel filter refuses the raw part first; the filter
+`Calls::sockets()` with no `allow_ping`: 5 tests failed (the echo to the gateway among them). `sh scripts/agent/check.sh`:
+each step 0 (`cargo test --workspace`: 1991 passed, 0 failed, 120 targets). The 32-bit check: exit 0.
+

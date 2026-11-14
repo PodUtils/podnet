@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**350 entries: 12 open, 9 partial, 25 blocked, 304 done.**
+**350 entries: 11 open, 9 partial, 25 blocked, 305 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 33 | 36 |
-| P2 | 6 | 4 | 10 | 156 | 176 |
+| P2 | 5 | 4 | 10 | 157 | 176 |
 | P3 | 6 | 4 | 13 | 114 | 137 |
-| **All** | 12 | 9 | 25 | 304 | 350 |
+| **All** | 11 | 9 | 25 | 305 | 350 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -395,4 +395,4 @@ M8 Overlays, M9 Later.
 | [T-347](fixes.md) | P3 | M | M5 | defect | done | Hardening: the low findings of the security review of 2026-11-14 |
 | [T-348](fixes.md) | P1 | S | M5 | defect | done | capnp: a list in a segment that does not exist panics the reader of a message of the edge |
 | [T-349](fixes.md) | P1 | S | M5 | defect | done | proxy: a password in the URL form of a Unix proxy shows in each line that names the proxy |
-| [T-350](fixes.md) | P2 | S | M5 | defect | open | pod: a packet socket opens in a seccomp pod, and the raw rule of T-334 is in the supervisor |
+| [T-350](fixes.md) | P2 | S | M5 | defect | done | pod: a packet socket opens in a seccomp pod, and the raw rule of T-334 is in the supervisor |
