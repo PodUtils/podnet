@@ -769,7 +769,7 @@ and `link_dial_check_meets_link_listen_over_quic_and_a_stranger_exits_77`).
 
 ## Done
 
-2026-11-14, the take of podcrates v0.45.0 (T-137, e84ebdf; their entry 557): the listener of dns, icmp, udp and ws
+2026-11-14, commit bfdc2ff (the take of podcrates v0.45.0: T-137, e84ebdf; their entry 557): the listener of dns, icmp, udp and ws
 gets `KeyRefused` when the dialer refuses the key of the listener, so `Door::accept_peer` exits 77 on each carrier.
 `src/link.rs` needs no change of code (the doc of `key_refused`). The CLI (`link listen`) writes a refused accept as
 one warning and keeps the door open; the exit 77 is of the library (`Door::accept_peer`). New assertions:
@@ -1082,7 +1082,7 @@ dialer refuses its key (the entry 557 of podcrates, open).
 
 ## Done
 
-2026-11-14, the take of podcrates v0.45.0 (T-137, e84ebdf; their entry 557): the listener of dns, icmp, udp and ws
+2026-11-14, commit bfdc2ff (the take of podcrates v0.45.0: T-137, e84ebdf; their entry 557): the listener of dns, icmp, udp and ws
 gets `KeyRefused` when the dialer refuses the key of the listener, so `Door::accept_peer` exits 77 on each carrier.
 `src/link.rs` needs no change of code (the doc of `key_refused`). The CLI (`link listen`) writes a refused accept as
 one warning and keeps the door open; the exit 77 is of the library (`Door::accept_peer`). New assertions:

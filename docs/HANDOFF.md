@@ -12,7 +12,7 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 ## Where the code is
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.44.0` (T-137), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.45.0` (T-137, e84ebdf), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.10` (T-336).
 * The record is `TODO/`. `cargo todo check` agrees: 350 entries, 11 open, 9 partial, 25 blocked, 305 done.
@@ -38,6 +38,8 @@ A release request (`docs/maintenance.md`, "Release") chains: the checks, the dry
 Each workflow passes on 9610316: ci 43590942248, deny 43590945244, secrets 43590947996, live 43590951009. The fuzz run
 43590953876 found two crashes; 54637d9 (T-348) and 243eb48 (T-349) fix them. GitHub #559 asks for ci, deny, secrets, live
 and fuzz on 79dfa13 (T-341 to T-350, v0.44.0).
+The take of v0.45.0 (e84ebdf) and its three uses (T-349 aded9d1, T-117 2f8180c, T-273 and T-278 bfdc2ff) have no
+run (2026-11-14): put them into the next request.
 
 ## Next steps
 
@@ -60,7 +62,7 @@ and fuzz on 79dfa13 (T-341 to T-350, v0.44.0).
 | Issue | Waits for |
 | --- | --- |
 | #517 (COORD-060, to podswarm) | Each ask is answered; close it at the next beta. |
-| #522, #526, #532, #552 (takes of v0.37.0, v0.39.0, v0.40.0 and v0.43.0) | podcrates records the take. |
+| #522, #526, #532, #552 (takes of v0.37.0, v0.39.0, v0.40.0 and v0.43.0) | podcrates records the take. v0.45.0 carries the ask of #552 (`bind_udp` with port 0, T-117). |
 | #533, #535, #538, #540 (COORD-071 to COORD-074) | The asks to podcrates; see `TODO/issues.md`. |
-| #555 (COORD-079) | The fuzz crashes in `pod-proxy` and `pod-cloudflare` (PodUtils/podcrates#156). |
+| #555 (COORD-079) | The fuzz crash of `pod-proxy` is fixed in v0.45.0 (T-349); the crash of `pod-cloudflare` waits (PodUtils/podcrates#156). |
 | #413, #425, #437, #439, #440, #448, #460 | Older proposals and asks; see `TODO/issues.md`. |

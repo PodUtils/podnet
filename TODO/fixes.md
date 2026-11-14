@@ -6438,7 +6438,7 @@ cd fuzz && cargo +nightly-2026-10-15 fuzz run proxy_url corpus/proxy_url -- -max
 
 ## Done
 
-2026-11-14, the take of v0.45.0 (T-137, e84ebdf). `without_unix_user_info` of `src/egress.rs` is gone; `check_unix_path`
+2026-11-14, commit aded9d1 (the take of v0.45.0: T-137, e84ebdf). `without_unix_user_info` of `src/egress.rs` is gone; `check_unix_path`
 stays (the Decision). New tests: `pod_proxy_refuses_a_unix_path_with_user_info` (`src/egress.rs`: four specs refused by
 `Proxy::parse` with no secret in the text, `socks5+unix:///run/x.sock` parsed as a Unix proxy, and a `~/.gitconfig`
 with `socks5h+unix://user:hunter2@x` gives no proxy and one skipped entry with no password) and

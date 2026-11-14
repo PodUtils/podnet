@@ -283,7 +283,7 @@ cargo test --workspace -- wg_network_reaches_a_service_behind_the_peer wg_networ
 
 ## Done
 
-2026-11-14, the take of podcrates v0.45.0 (T-137, e84ebdf; their entry 589, PodUtils/podnet#552). `NetStack::bind_udp`
+2026-11-14, commit 2f8180c (the take of podcrates v0.45.0: T-137, e84ebdf; their entry 589, PodUtils/podnet#552). `NetStack::bind_udp`
 of `pod-netstack` with port 0 takes a free port of the dynamic range (49152 to 65535; a port that a socket holds moves
 the choice to the next port). `WgDialer::datagrams` (`src/networks/wg.rs`) and `VnetDialer::datagrams`
 (`crates/podnet-vnet/src/dialer.rs`) bind port 0; podnet's own picker (`FIRST_UDP_PORT`, `UDP_PORT_TRIES`,
