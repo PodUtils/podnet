@@ -850,6 +850,9 @@ Done so far:
   T-276, T-278, T-280), and `pod_dns::txt::question` and `txt::answer`. The profile `[profile.dev.package.kcp]
   overflow-checks = false` (PodUtils/podcrates#139) comes with the feature `udp` of podnet (T-276): before it, `kcp` is not
   in the build. `sh scripts/agent/check.sh`: each step 0.
+- v0.41.0 (PodUtils/podcrates#143): each `pod-*` dependency names `tag = "v0.41.0"`; nothing breaks in podnet (podnet reads
+  no `tox-tcp-relay` service; `pod_term::termios` is new and podnet does not use it). The tag has no hand-off for podnet.
+  `sh scripts/agent/check.sh`: each step 0.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
