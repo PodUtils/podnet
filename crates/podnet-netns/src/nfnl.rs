@@ -187,8 +187,16 @@ pub(crate) fn open_socket(seconds: i64) -> std::io::Result<std::os::fd::OwnedFd>
     }
     // SAFETY: `fd` is open and owned here.
     let owned = unsafe { std::os::fd::OwnedFd::from_raw_fd(fd) };
+    // `time_t` is 32 bits on some targets (i686, ARMv7 and ARMv6 musl).
+    #[allow(
+        clippy::useless_conversion,
+        reason = "the conversion is needed where time_t has 32 bits"
+    )]
     let limit = libc::timeval {
-        tv_sec: seconds,
+        tv_sec: seconds
+            .clamp(0, i64::from(i32::MAX))
+            .try_into()
+            .unwrap_or_default(),
         tv_usec: 0,
     };
     // SAFETY: setsockopt with a timeval that lives.

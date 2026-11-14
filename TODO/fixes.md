@@ -5699,3 +5699,9 @@ of its request: the refused stream can close before the write. The helper `get` 
 takes a failed write as an empty answer (the test still asks for an empty answer). The test passed three runs in a row;
 `sh scripts/agent/check.sh` passed. A new request follows (GitHub #544).
 
+2026-11-14: the request GitHub #544 on 59cf78c passed ci 43539190755, deny 43539195145, secrets 43539199370 and live
+43539203095, and stopped at the dry run 43541138625: the jobs `i686-unknown-linux-musl`, `armv7-unknown-linux-musleabihf`
+and `arm-unknown-linux-musleabihf` did not compile `crates/podnet-netns/src/nfnl.rs` (T-153): `tv_sec` of `libc::timeval` is
+an `i32` there, and the code gave an `i64`. The value is now clamped to `i32::MAX` and converted to the type of the field.
+`cargo check -p podnet-netns` passes for the three targets here (clang as CC); CI checks x86-64 only, so the dry run of
+`release.yml` is the first build of these targets. A new request follows (GitHub #545).

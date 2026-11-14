@@ -974,6 +974,10 @@ Revisit when a measure shows the netns backend too slow on a target host.
 backend is an opt-in `--backend netns-kernel`, never in the `auto` order: the flow table of the netns backend stays the
 default, as the Decision says.
 
+2026-11-14: `nfnl.rs` gave an `i64` to `timeval.tv_sec`, an `i32` on the 32-bit musl targets: the release dry run
+43541138625 did not compile there (T-336). Fixed: the value is clamped to `i32::MAX` and converted to the type of the
+field.
+
 ## Done
 
 2026-11-13, commit 085f5c8 (the work of the handoff, rebased on a48d3e7). `--backend netns-kernel`: in the child, the

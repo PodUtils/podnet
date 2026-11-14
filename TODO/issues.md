@@ -235,6 +235,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #541 | [gh action] requested: ci, deny, secrets and live on 54f0809 | closed: ci 43515459301, deny 43515464237 and secrets 43515470028 passed; live 43515475108 failed at the router step (the WARP session took the relay leg) | none |
 | #542 | [gh action] requested: ci, deny, secrets and live on 3061c7c | closed: each run passed (ci 43521791090, deny 43521797247, secrets 43521803788, live 43521809728) | none |
 | #543 | [gh action] requested: the release of v0.4.0-beta.10 at 43c53a6 | closed: stopped at ci 43535662399 (restricted-host, a race in a test); deny, secrets and live passed; nothing published | T-336 |
-| #544 | [gh action] requested: the release of v0.4.0-beta.10 at the head after 43c53a6 | open | T-336 |
+| #544 | [gh action] requested: the release of v0.4.0-beta.10 at 59cf78c | closed: ci, deny, secrets and live passed; the dry run 43541138625 failed on the 32-bit targets (nfnl.rs); nothing published | T-336 |
+| #545 | [gh action] requested: the release of v0.4.0-beta.10 at the head after 095955c | open | T-336 |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
