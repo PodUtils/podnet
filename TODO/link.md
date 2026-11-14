@@ -2555,8 +2555,8 @@ T-262 is done and two carriers of E1 exist (T-268, T-274, T-275).
 2026-11-14, the take and the ruling. The Blocker (their entry 500, PodUtils/podcrates#133) is gone with the tag v0.46.0, so the
 section is removed. The session is `pod_link::split::Split` of podcrates (calls C492, C493), not a change of the session of
 T-262: the dialer dials both halves and writes a hello on each, the listener joins the halves of one session, and the link runs
-over the joined byte stream. The credits of a direction ride on the other half, so each direction counts its own credits. The
-owner (2026-11-14, `docs/decisions.md`, "The split session: a lost half ends the session") accepts the call C493 of podcrates
+over the joined byte stream. The credits of a direction ride on the other half, so each direction counts its own credits. A call of the lead
+(2026-11-14, `docs/decisions.md`, "The split session: a lost half ends the session") accepts the call C493 of podcrates
 in place of two rules of the issue: the control frames have no upstream fallback, and at the loss of a half the session ends
 at each end and reports `up-carrier lost` or `down-carrier lost`, with no promotion of the other half. A session that must
 outlive the loss of a carrier runs over the resumable layer (`pod-session`, `podnet::session`). The hello of `podnet::hello`

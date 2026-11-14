@@ -253,5 +253,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #561 | [gh action] requested: ci, deny, secrets, live and fuzz on 7860081 (ce14ac4, v0.45.0) | closed: deny 43610669298, live 43610676971 and fuzz 43610680236 passed on 7860081; ci 43610665702 (clippy `err_expect` under `--features full`) and secrets 43610673639 (the test vector of T-349 in the allow line and in TODO/fixes.md) failed, fixed in 42943fa | T-273, T-278, T-349 |
 | #562 | [gh action] requested: ci and secrets on the fix of #561 | closed: ci 43617081662 and secrets 43617085112 passed on 3b3b9be | none |
 | #563 | [gh action] requested: the release of v0.4.0-beta.11 (checks, dry run, publish, release proofs) | closed: `v0.4.0-beta.11` is out on 6491f9d (release-proofs 43623174074) | T-351 |
+| #564 | COORD-082: podnet took v0.46.0 at 27cdf19; E7-1: podnet confirms the call C493 (to podcrates) | open (a COORD issue between sessions) | none |
+| #565 | [gh action] requested: ci, deny, secrets, live and fuzz on the take of v0.46.0 (T-137, T-279, T-302) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
