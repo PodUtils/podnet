@@ -125,6 +125,14 @@ fn wg_refusal(label: &str) -> String {
     )
 }
 
+/// The line for `--egress 'TOP over BELOW'`: a chain of networks comes up
+/// in a command that holds its links.
+fn chain_refusal(label: &str) -> String {
+    format!(
+        "--egress '{label}': a chain of networks is not a proxy of the process or a hop of podnet pod; use podnet forward --network '{label}', or a networks: entry of podnet route"
+    )
+}
+
 /// The count of the words of `--egress` before `at`.
 fn removed_before(words: &[String], at: usize) -> usize {
     let mut n = 0;
@@ -175,6 +183,9 @@ fn pod_hops(
 ) -> Result<Vec<String>, String> {
     let mut hops = Vec::new();
     for (spec, network) in specs.iter().zip(networks) {
+        if network.is_chain() {
+            return Err(chain_refusal(&network.label()));
+        }
         if network.relay_url().is_some() {
             return Err(format!(
                 "--egress {}: the relay is not a hop of podnet pod; give a proxy, direct or tailscale:/PATH",
@@ -235,6 +246,9 @@ fn process_way(
         return Err(format!("--egress and {old} name one way: give one of them"));
     }
     let (spec, network) = (&specs[0], &networks[0]);
+    if network.is_chain() {
+        return Err(chain_refusal(&network.label()));
+    }
     if network.wg_file().is_some() {
         return Err(wg_refusal(&network.label()));
     }

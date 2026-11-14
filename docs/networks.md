@@ -124,7 +124,9 @@ The spec `wg:FILE` makes a WireGuard peer a network. `FILE` is a wg-quick file w
 runs a userspace stack over the tunnel. It makes no TUN device and needs no capability. The spec gives TCP and
 UDP from the `Address` of the file.
 
-* The target must be an IP address. The network does not resolve names.
+* A target name resolves at the first address of the `DNS` line of the file, with DNS over TCP (RFC 7766)
+  through the tunnel. The resolver of this host is not used. With no address in `DNS`, the target must be an
+  IP address, and a name gives one line that says so. The status of the link names the server in `dns`.
 * A file with a `PresharedKey` is refused with one line.
 * `up` does the handshake. A path with no UDP gives no answer in 15 s, and the error says that the UDP path
   may be closed.
@@ -134,9 +136,30 @@ UDP from the `Address` of the file.
 * `wg:FILE` is a network of `podnet forward --network` and of a `networks:` entry of a router file
   ([router.md](router.md)). It is not a hop of `podnet pod` (T-117): run `podnet route` with the network and
   give its door to `-x`.
-* The WARP datagram path (MASQUE CONNECT-IP) is a carrier of the registry as the network `warp`
-  ([router.md](router.md), "WARP as a member"). A chain that puts `warp` below `wg:FILE` is not supported:
-  `warp` takes no way below it (`Ctx::below`).
+* A host with no UDP sends the UDP of the tunnel through a WARP session (MASQUE CONNECT-IP): give the chain
+  `wg:FILE over warp`. The `Endpoint` of the file is reached from the far end of WARP.
+
+```sh
+podnet forward --network 'wg:/etc/wireguard/wg0.conf over warp' -L 127.0.0.1:8080=10.9.0.1:80
+```
+
+## A chain of networks: `TOP over BELOW`
+
+A spec with the word `over` between two specs is a chain. The first spec is the top layer. Each layer comes up
+over the way of the layer below it (`Ctx::below`), and the chain carries what its top layer carries.
+
+* `wg:FILE over warp`: the UDP of the WireGuard peer goes through the datagrams of a WARP session.
+* `wg:FILE over direct`: the same as `wg:FILE`.
+* `turns://HOST over socks5h://PROXY`: the TLS connection to the TURN server goes through the proxy.
+* A chain has at most 8 layers. An empty layer and a bad layer are usage errors (exit 64), and the error names
+  the layer by its number.
+* A layer that cannot go over another way (`warp`, a proxy, the relay) is refused when the chain comes up: the
+  error names the layer and says `cannot go over another way`. A layer below another must give a way that dials
+  a destination. A layer below `wg:FILE` or `turn://` must carry UDP (`Dial::datagrams`).
+* A spec with `+exec:` is one layer, because a command can hold the word `over`.
+* A chain is a network of `podnet forward --network`, of a `networks:` entry of a router file and of
+  `podnet net doctor --network`. It is not a hop of a pod, and `--egress` of another command refuses it with
+  one line. In a shell, put the spec in quotes.
 
 ## TURN: `turn://HOST[:PORT]` and `turns://HOST[:PORT]`
 

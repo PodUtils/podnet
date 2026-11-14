@@ -153,6 +153,22 @@ fn network_spec_wg_is_refused_by_the_pod_and_by_a_process_command_with_one_line(
     }
 }
 
+// T-117: a chain of networks comes up in forward and route only.
+#[test]
+fn network_spec_a_chain_is_refused_by_the_pod_and_by_a_process_command_with_one_line() {
+    let spec = "socks5h://u:pw@p.example:1080 over direct";
+    for args in [
+        words(&["podnet", "--egress", spec, "pod", "--", "true"]),
+        words(&["podnet", "--egress", spec, "status"]),
+    ] {
+        let refused = rewrite(&args).unwrap_err();
+        assert!(refused.contains("forward --network"), "{refused}");
+        assert!(refused.contains("podnet route"), "{refused}");
+        assert!(!refused.contains('\n'), "{refused}");
+        assert!(!refused.contains("pw"), "{refused}");
+    }
+}
+
 #[test]
 fn egress_alias_pod_takes_each_via_as_an_x_hop_in_order() {
     let rewritten = rewrite(&words(&[

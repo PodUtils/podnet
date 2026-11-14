@@ -6,8 +6,9 @@
 //! (`unix:/PATH`, `HOST:PORT`, `socks://`, `https://`), `tailscale:/PATH`,
 //! `netbird:[PORT]`, `wg:FILE` (WireGuard), `devtunnel://TUNNEL` (TCP through
 //! a Dev Tunnels relay), `turn://HOST[:PORT]` and
-//! `turns://HOST[:PORT]` (UDP through a TURN server), or the relay (`relay`,
-//! `relay:URL`). [`networks`] is the table of the
+//! `turns://HOST[:PORT]` (UDP through a TURN server), the relay (`relay`,
+//! `relay:URL`), or a chain of these (`TOP over BELOW`, [`chain`]).
+//! [`networks`] is the table of the
 //! networks of this build: a static table in the binary, with no
 //! dependency (`docs/research/podnet/architecture.md`, section 4.3).
 //!
@@ -27,6 +28,7 @@ use crate::network::{
 };
 use crate::ws_relay::Relay;
 
+pub mod chain;
 mod devtunnel;
 mod netbird;
 mod peer;
@@ -51,7 +53,7 @@ pub struct Row {
     pub caps: Caps,
 }
 
-const ROWS: [Row; 10] = [
+const ROWS: [Row; 11] = [
     Row {
         scheme: "direct",
         forms: &["direct"],
@@ -121,6 +123,12 @@ const ROWS: [Row; 10] = [
         about: "one stream to a service of a peer, over a link that a running podnet link instance holds (a peer way: it meets a peer, it dials no destination)",
         caps: Caps::EGRESS_TCP,
     },
+    Row {
+        scheme: "chain",
+        forms: &["SPEC over SPEC"],
+        about: "a network over the way of the network below it (wg:FILE over warp: the UDP of WireGuard through a WARP session); the top layer comes first, and it gives what the top layer gives",
+        caps: Caps::EGRESS_TCP.with(Caps::EGRESS_UDP),
+    },
 ];
 
 /// The networks of this build, in the order of their parse.
@@ -156,6 +164,9 @@ enum Kind {
         fingerprint: String,
         service: String,
     },
+    /// Layers, the lowest first: each one over the way of the one below
+    /// (T-117).
+    Chain(Vec<SpecNetwork>),
 }
 
 /// A network that a spec names.
@@ -182,6 +193,9 @@ pub fn parse(spec: &str) -> Result<SpecNetwork, Failure> {
 fn kind(spec: &str) -> Result<Kind, Failure> {
     if spec.is_empty() {
         return Err(usage("the network spec is empty".into()));
+    }
+    if chain::is_chain(spec) {
+        return chain::parse_layers(spec).map(Kind::Chain);
     }
     if spec == "direct" {
         return Ok(Kind::Direct);
@@ -273,6 +287,7 @@ impl SpecNetwork {
             Kind::Turn(spec) => spec.label(),
             Kind::Devtunnel(spec) => spec.label(),
             Kind::Warp(spec) => spec.label(),
+            Kind::Chain(layers) => chain::label(layers),
             _ => redacted(&self.spec),
         }
     }
@@ -315,6 +330,11 @@ impl SpecNetwork {
     /// True for `warp` and `warp:identity=FILE`.
     pub fn is_warp(&self) -> bool {
         matches!(self.kind, Kind::Warp(_))
+    }
+
+    /// True for a chain (`TOP over BELOW`).
+    pub fn is_chain(&self) -> bool {
+        matches!(self.kind, Kind::Chain(_))
     }
 
     /// The wg-quick file, for `wg:FILE`.
@@ -376,8 +396,8 @@ impl SpecNetwork {
                 UpstreamChain::parse(&[self.spec.as_str()])
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
             ),
-            Kind::Wg(_) | Kind::Turn(_) | Kind::Devtunnel(_) | Kind::Warp(_) => {
-                unreachable!("wg:FILE, turn://, devtunnel:// and warp come up in `up`")
+            Kind::Wg(_) | Kind::Turn(_) | Kind::Devtunnel(_) | Kind::Warp(_) | Kind::Chain(_) => {
+                unreachable!("wg:FILE, turn://, devtunnel://, warp and a chain come up in `up`")
             }
             Kind::Peer {
                 fingerprint,
@@ -409,11 +429,15 @@ impl Network for SpecNetwork {
             Kind::Devtunnel(_) => "devtunnel",
             Kind::Warp(_) => "warp",
             Kind::Peer { .. } => "peer",
+            Kind::Chain(_) => "chain",
         }
     }
 
     fn caps(&self) -> Caps {
-        self.row().caps
+        match &self.kind {
+            Kind::Chain(layers) => chain::caps(layers),
+            _ => self.row().caps,
+        }
     }
 
     /// The way of the spec. These networks dial from this host: a way
@@ -424,6 +448,9 @@ impl Network for SpecNetwork {
         Box::pin(async move {
             if let Some(network) = self.warp() {
                 return network.up(ctx).await;
+            }
+            if let Kind::Chain(layers) = &self.kind {
+                return chain::of(layers)?.up(ctx).await;
             }
             if let Kind::Wg(path) = &self.kind {
                 let (_, link) = wg::up(path, self.label(), ctx.below.as_ref()).await?;
@@ -518,6 +545,7 @@ impl Network for SpecNetwork {
                 tls: true,
             }],
             Kind::Devtunnel(_) => devtunnel::checks(),
+            Kind::Chain(layers) => layers.iter().flat_map(|l| l.checks()).collect(),
             Kind::Netbird(port) => vec![Check {
                 name: "netbird".into(),
                 target: Target::new("127.0.0.1", *port),

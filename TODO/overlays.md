@@ -254,6 +254,33 @@ datagrams of any way below the network (`Ctx::below`); the WARP chain is not don
 
 2026-11-12, GitHub #469 (row E3-3). The `wg:` network of this entry is the base of the WireGuard carrier of the link (T-283).
 
+2026-11-14, read in the tree: the WARP carrier needs no new code of `pod-warp`. `warp` is a network of the registry
+(`src/networks/warp.rs`), and its way gives `Dial::datagrams` (the datagrams of the session of `pod-warp`'s `Live`).
+What was missing is a spec that puts `warp` below `wg:FILE`. The calls of the session (the owner is away):
+
+- `--via` is gone (`docs/decisions.md`, 2026-11-11, Way out and way in). The chain is a spec of the registry:
+  `TOP over BELOW` (`src/networks/chain.rs`), in the order of `Chain::label` of `podnet-core`. One spec works in
+  each place that takes a spec (`forward --network`, a `networks:` entry of a router file, the control socket of
+  the router, `net doctor --network`), with no new flag. At most 8 layers. A spec with `+exec:` is one layer (a
+  command can hold the word `over`). `--egress` of a process command and of `pod` refuse a chain with one line
+  (the pod runs before the async runtime exists).
+- The registry has a row `chain` (form `SPEC over SPEC`); a chain gives the caps of its top layer.
+- Names: the network resolves a target name at the first address of the `DNS` line of the file, with DNS over
+  TCP through the tunnel (`crate::router::resolving::Resolving`, the resolver of a member of the router). With no
+  `DNS` address, a name is one line that names the fix (`DNS = ADDRESS`).
+- `podnet pod -x wg:FILE` and `--egress wg:FILE` stay refused with one line that names `forward --network` and
+  `podnet route` (the pod runs before the runtime: a design call, not left work).
+- `PresharedKey` stays refused: the preshared key is in the handshake of `pod-wg` (protocol code of the crate).
+  It is an ask for podcrates (the lead opens the COORD issue): `Keys` takes an optional preshared key, and
+  `Initiation::finish` mixes it in (Noise IKpsk2, the WireGuard paper, section 5.4.3). T-337 takes it.
+
+The Prove adds the WARP chain on the loopback: the stand-in of `pod-warp`'s edge (`tests/warp_edge/mod.rs`) with a
+UDP route to the WireGuard peer of the test.
+
+```sh
+cargo test --workspace -- wg_network_reaches_a_service_behind_the_peer wg_network_over_warp_reaches_a_service_behind_the_peer network_spec_a_chain wg_network_resolves_a_name_at_the_dns_of_the_file
+```
+
 ## Done
 
 2026-11-12, commit 9f3b0a8 (partial). `wg:FILE` is a row of the registry (`src/networks.rs`,
@@ -536,3 +563,43 @@ No NetBird account or setup key exists for the tests. The owner gives one, or th
 ## Start condition
 
 T-246 is done, and a NetBird setup key is a secret of the live job.
+
+# T-337: WireGuard: take the preshared key of `pod-wg`
+
+**Source:** T-117 (its Correction of 2026-11-14).
+**Category:** feature
+**Milestone:** M8
+**Priority:** P3
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+`wg:FILE` refuses a wg-quick file with a `PresharedKey` with one line. A peer that has a preshared key cannot
+be a network of podnet.
+
+## Premise
+
+- `pod-wg` v0.41.0 makes the handshake with a zero preshared key (`Initiation::finish`, the README of the crate:
+  "Noise IKpsk2 with no pre-shared key"). `Keys` has no field for a preshared key.
+- The reader of the file keeps the key (`crates/podnet-vnet/src/wg_quick.rs`, `preshared_key`).
+- The mix of the key is protocol code of the crate. podnet does not write it.
+
+## Approach
+
+1. Ask podcrates (a COORD issue, the lead): `Keys` takes an optional preshared key, and the initiation and its
+   `finish` mix it in (Noise IKpsk2, the WireGuard paper, section 5.4.3).
+2. Take the release that has it (T-137). Give the key of the file to `Keys` in `src/networks/wg.rs`, and remove
+   the refusal.
+3. Test: the peer of `src/networks/wg_tests.rs` with a preshared key on both ends.
+
+## Prove
+
+```sh
+cargo test --workspace -- wg_network_takes_a_preshared_key
+```
+
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-wg`): a preshared key in `Keys` and in the handshake. The
+entry is unblocked when a tag of podcrates has it.

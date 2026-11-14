@@ -135,7 +135,8 @@ fn network_spec_the_table_has_one_row_for_each_scheme() {
             "turn",
             "devtunnel",
             "warp",
-            "peer"
+            "peer",
+            "chain"
         ]
     );
     for spec in ["direct", "http://p.example:3128", "relay", "tailscale:/s"] {

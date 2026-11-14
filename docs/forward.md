@@ -24,7 +24,7 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
   for its service (see "A service of a peer" below). It carries TCP only.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
   `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `devtunnel://TUNNEL` (TCP only), `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
-  only), `unix:/PATH`. The default is the way out of the process: `--proxy`, the
+  only), `unix:/PATH`, or a chain `TOP over BELOW` (`'wg:FILE over warp'`). The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
 * `devtunnel://TUNNEL` carries a TCP forward through a Microsoft Dev Tunnels relay to a port of the tunnel host:
   `-L 127.0.0.1:5432=127.0.0.1:5432 --network devtunnel://lab`. The target host is the local address of the tunnel

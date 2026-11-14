@@ -3,7 +3,10 @@
 //! `FILE` is a wg-quick file with one peer ([`podnet_vnet::wg_quick`]). The
 //! network does the handshake with `pod-wg`, puts the tunnel on a stack of
 //! `pod-netstack`, and dials TCP and UDP from the address of the file. It
-//! makes no TUN device and needs no capability.
+//! makes no TUN device and needs no capability. A target name resolves
+//! with DNS over TCP through the tunnel, at the first address of the `DNS`
+//! line of the file; with no such address, the network takes IP addresses
+//! only.
 //!
 //! The UDP of the tunnel goes out as datagrams of a carrier: the UDP of
 //! this host, or the datagrams of the way below the network (`Ctx::below`,
@@ -43,6 +46,8 @@ struct Config {
     v4: Option<std::net::Ipv4Addr>,
     v6: Option<std::net::Ipv6Addr>,
     mtu: usize,
+    /// The DNS server inside the tunnel: the first address of `DNS`.
+    dns: Option<IpAddr>,
 }
 
 /// Read and check the file. A fault is one line that names the file.
@@ -79,6 +84,7 @@ fn read(path: &Path) -> Result<Config, Failure> {
         v4,
         v6,
         mtu: conf.interface.mtu.map_or(MTU, usize::from).clamp(576, 9000),
+        dns: conf.interface.dns.first().copied(),
     })
 }
 
@@ -210,7 +216,7 @@ impl Dial for WgDialer {
                     return Err(Failure::new(
                         Stage::Dns,
                         Class::Unsupported,
-                        format!("{host}: the WireGuard network takes the IP address of a target, and it does not resolve names"),
+                        format!("{host}: the WireGuard network resolves a name only with a DNS line in its file; give the IP address of the target, or add DNS = ADDRESS"),
                     ))
                 }
             };
@@ -341,8 +347,17 @@ pub(super) async fn up(
         "peer": peer.to_string(),
         "carrier": below.map_or("udp".to_string(), |b| b.label()),
         "address": local.to_string(),
+        "dns": config.dns.map(|ip| ip.to_string()),
     });
-    let link = Link::new(Some(crate::network::Way::destination(dialer.clone())))
+    // A name resolves at the DNS server of the file, through the tunnel.
+    let way: Arc<dyn Dial> = match config.dns {
+        Some(ip) => Arc::new(crate::router::resolving::Resolving::new(
+            dialer.clone(),
+            Target::Addr(SocketAddr::new(ip, 53)),
+        )),
+        None => dialer.clone(),
+    };
+    let link = Link::new(Some(crate::network::Way::destination(way)))
         .with_status(status)
         .on_close(Box::new(move || {
             Box::pin(async move {

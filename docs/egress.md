@@ -13,9 +13,10 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `relay` | `relay`, `relay:URL`, `relay:HOST` | The WebSocket relay (`PODNET_RELAY`, default `https://tcp.ssh.relay.ajam.dev`). IPv4 TCP only. | TCP |
 | `tailscale` | `tailscale:/PATH/tailscaled.sock` | A tailnet, through the LocalAPI of `tailscaled` ([networks.md](networks.md)). | TCP |
 | `netbird` | `netbird`, `netbird:[PORT]` | The SOCKS5 listener of NetBird in netstack mode on `127.0.0.1:PORT` (default 1080). The target must be an IP address ([networks.md](networks.md)). | TCP |
-| `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. The target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
+| `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. A name resolves at the `DNS` of the file, through the tunnel; with no `DNS` line, the target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
 | `turn` | `turn://HOST[:PORT]`, `turns://HOST[:PORT]` | An allocation on a TURN server (RFC 8656), over UDP (`turn`, port 3478) or over TLS on TCP (`turns`, port 5349). The user and the password come from `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE`, never from the spec ([networks.md](networks.md)). | UDP |
 | `devtunnel` | `devtunnel://NAME`, `devtunnel://ID.CLUSTER` | A stream to a port of the host of a Microsoft Dev Tunnels tunnel, through its relay. The target host is `127.0.0.1`. The token comes from `PODNET_DEVTUNNEL_TOKEN_FILE`, never from the spec ([networks.md](networks.md)). | TCP |
+| chain | `SPEC over SPEC` | A network over the way of the network below it: `wg:FILE over warp` sends the UDP of WireGuard through a WARP session. The top layer comes first. The chain carries what its top layer carries ([networks.md](networks.md), "A chain of networks"). | as the top layer |
 | `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
 * A spec with no scheme (`HOST:PORT`) is a SOCKS5 proxy, as in `podnet pod -x`.
@@ -55,6 +56,8 @@ and it replaces the older flags:
   `peer:` (`peer:1080`) is still the SOCKS5 hop of a host named `peer`.
 * `wg:FILE` is not a hop of a pod, and no process command takes it in `--egress`: each gives one line.
   Use `podnet forward --network wg:FILE` or a `networks:` entry of a router file.
+* A chain (`TOP over BELOW`) is not a hop of a pod, and no process command takes it in `--egress`: each gives
+  one line. Use `podnet forward --network 'wg:FILE over warp'` or a `networks:` entry of a router file.
 * `tailscale:/PATH` is a hop of a pod and the only hop of its chain. A command that is not `pod` refuses
   `--egress tailscale:/PATH` with one line: use `podnet pod`, `podnet forward --network` or a router file.
 * `podnet link dial` and `podnet link connect` take each `--egress` as one element of a chain before the `tcp` carrier, in

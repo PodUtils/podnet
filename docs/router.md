@@ -68,7 +68,8 @@ doors:
   error names the key or the line.
 * A name is letters, digits, `-` and `_`. A group and a network cannot have the same name.
 * `networks` maps a name to a network spec (see [egress.md](egress.md)): `direct`, a proxy URL, `relay`,
-  `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` (UDP only) or `unix:/PATH`. A `tailscale:/PATH` network is a member of a group
+  `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` (UDP only), `unix:/PATH` or a chain
+  `TOP over BELOW` (`wg:/etc/wg0.conf over warp`). A `tailscale:/PATH` network is a member of a group
   and the `via` of a door, as each other network. When `tailscaled` is not `Running` at the start, the
   router prints one warning and goes on: each dial through that network fails until the daemon is logged
   in.
@@ -245,7 +246,8 @@ whose WARP member must go `down` when its front door refuses, and give a relay m
 The device is kept in the identity file: `FILE`, else `warp.json` in `state_dir/NETWORK`, else the default
 file of `podnet warp` ([warp.md](warp.md)). A file that is new is registered, and the registration is logged
 on stderr. A network of the router with a `state_dir` has a device of its own. `warp` cannot go over another
-way (`Ctx::below`): that gives `cannot go over another way`.
+way (`Ctx::below`): that gives `cannot go over another way`. `warp` can be below another network: the chain
+`wg:FILE over warp` sends the UDP of a WireGuard peer through the session ([networks.md](networks.md)).
 
 A door over a WARP member carries SOCKS5 CONNECT, HTTP CONNECT and UDP ASSOCIATE through the session; the
 datagrams use `Dial::datagrams` of the session. `podnet forward --network warp` takes the same network: TCP,

@@ -106,9 +106,54 @@ async fn serve(mut listener: TcpListener) {
 
 /// A peer on the loopback; the wg-quick file of its client is in `dir`.
 async fn start(dir: &std::path::Path) -> std::path::PathBuf {
+    start_at(dir, None, "").await.0
+}
+
+/// The DNS server behind the peer, on TCP (RFC 7766): each A question gets
+/// the address of the service, each other question no answer.
+async fn serve_dns(mut listener: TcpListener) {
+    while let Ok(mut stream) = listener.accept().await {
+        tokio::spawn(async move {
+            loop {
+                let mut len = [0u8; 2];
+                if stream.read_exact(&mut len).await.is_err() {
+                    return;
+                }
+                let mut query = vec![0u8; usize::from(u16::from_be_bytes(len))];
+                if stream.read_exact(&mut query).await.is_err() || query.len() < 12 {
+                    return;
+                }
+                let kind = query[query.len() - 4..query.len() - 2].to_vec();
+                let mut answer = query.clone();
+                answer[2] = 0x81;
+                answer[3] = 0x80;
+                if kind == [0, 1] {
+                    answer[7] = 1;
+                    answer.extend_from_slice(&[0xc0, 12, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4]);
+                    answer.extend_from_slice(&[10, 9, 0, 1]);
+                }
+                let mut framed = (answer.len() as u16).to_be_bytes().to_vec();
+                framed.extend_from_slice(&answer);
+                if stream.write_all(&framed).await.is_err() {
+                    return;
+                }
+            }
+        });
+    }
+}
+
+/// [`start`] with `shown` as the `Endpoint` of the file, else the address of
+/// the peer, and `interface` as more lines of `[Interface]`. It gives the
+/// file and the address of the peer.
+async fn start_at(
+    dir: &std::path::Path,
+    shown: Option<SocketAddr>,
+    interface: &str,
+) -> (std::path::PathBuf, SocketAddr) {
     let (keys, private) = standin::keys([0; 3]);
     let sock = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
-    let endpoint = sock.local_addr().unwrap();
+    let outside = sock.local_addr().unwrap();
+    let endpoint = shown.unwrap_or(outside);
     let stack = NetStack::over_link(StackConfig {
         subnet: Subnet {
             v4: "10.9.0.0".parse().unwrap(),
@@ -123,25 +168,41 @@ async fn start(dir: &std::path::Path) -> std::path::PathBuf {
         .await
         .unwrap();
     tokio::spawn(serve(listener));
+    let dns = stack
+        .listen("10.9.0.1:53".parse::<SocketAddr>().unwrap())
+        .await
+        .unwrap();
+    tokio::spawn(serve_dns(dns));
     tokio::spawn(peer(sock, private, keys.public(), stack));
     let b64 = base64::engine::general_purpose::STANDARD;
     let file = dir.join("wg0.conf");
     std::fs::write(
         &file,
         format!(
-            "[Interface]\nPrivateKey = {}\nAddress = 10.9.0.2/32\n\n[Peer]\nPublicKey = {}\nEndpoint = {endpoint}\nAllowedIPs = 10.9.0.0/24\n",
+            "[Interface]\nPrivateKey = {}\nAddress = 10.9.0.2/32\n{interface}\n[Peer]\nPublicKey = {}\nEndpoint = {endpoint}\nAllowedIPs = 10.9.0.0/24\n",
             b64.encode(keys.private),
             b64.encode(keys.peer_public),
         ),
     )
     .unwrap();
-    file
+    (file, outside)
 }
 
-async fn get(network: &SpecNetwork, ctx: &Ctx) -> String {
+async fn get(network: &dyn Network, ctx: &Ctx) -> String {
+    get_with_status(network, ctx).await.0
+}
+
+/// The answer of the service through `network`, and the status of the link.
+async fn get_with_status(network: &dyn Network, ctx: &Ctx) -> (String, serde_json::Value) {
+    fetch(network, ctx, Target::Addr(SERVICE.parse().unwrap())).await
+}
+
+/// The answer of the service at `target` through `network`, and the status
+/// of the link.
+async fn fetch(network: &dyn Network, ctx: &Ctx, target: Target) -> (String, serde_json::Value) {
     let link = network.up(ctx).await.unwrap();
+    let status = link.status.clone();
     let way = link.way.as_ref().expect("a way out");
-    let target = Target::Addr(SERVICE.parse().unwrap());
     let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
     let mut io = way.dial.dial(&target, deadline).await.unwrap().io;
     io.write_all(b"GET / HTTP/1.1\r\nHost: peer\r\nConnection: close\r\n\r\n")
@@ -153,7 +214,7 @@ async fn get(network: &SpecNetwork, ctx: &Ctx) -> String {
         .expect("the answer comes in 20 s")
         .unwrap();
     link.close().await;
-    text
+    (text, status)
 }
 
 #[tokio::test]
@@ -227,4 +288,116 @@ fn wg_network_spec_a_bad_file_is_one_usage_line() {
         "{}",
         err.text()
     );
+}
+
+// T-117: the WARP chain. The UDP of the tunnel goes through the datagrams of
+// a WARP session (the stand-in edge); the peer is a UDP route of the far end.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn wg_network_over_warp_reaches_a_service_behind_the_peer() {
+    crate::test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    // The endpoint is an address inside WARP; the edge carries its port to
+    // the peer on the loopback.
+    let inside: SocketAddr = "203.0.113.20:51820".parse().unwrap();
+    let (file, outside) = start_at(dir.path(), Some(inside), "").await;
+    let route = super::warp_tests::edge::Route {
+        port: inside.port(),
+        outside,
+    };
+    let world = super::warp_tests::world_with_udp(vec![route]).await;
+    let wg = parse(&format!("wg:{}", file.display())).unwrap();
+    let layers: Vec<std::sync::Arc<dyn Network>> = vec![
+        std::sync::Arc::new(world.network()),
+        std::sync::Arc::new(wg),
+    ];
+    let chain = crate::network::Chain::new(layers).unwrap();
+    assert_eq!(chain.label(), "wg over warp");
+    let state = tempfile::tempdir().unwrap();
+    let (text, status) = get_with_status(&chain, &super::warp_tests::ctx_of(state.path())).await;
+    assert!(text.ends_with("behind the peer"), "{text}");
+    assert_eq!(status[1]["status"]["carrier"], "WARP", "{status}");
+    // The far end of WARP saw the UDP of the tunnel to the endpoint.
+    let seen = world.edge.watch.udp.lock().unwrap().clone();
+    assert!(seen.iter().any(|(_, to)| *to == inside), "{seen:?}");
+}
+
+// T-117: a spec `TOP over BELOW` is a chain of the registry.
+#[tokio::test]
+async fn network_spec_a_chain_comes_up_layer_over_layer() {
+    crate::test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let file = start(dir.path()).await;
+    let spec = format!("wg:{} over direct", file.display());
+    let network = parse(&spec).unwrap();
+    assert!(network.is_chain());
+    assert_eq!(network.scheme(), "chain");
+    assert_eq!(network.label(), spec);
+    assert_eq!(network.caps().names(), ["egress-tcp", "egress-udp"]);
+    let (text, status) = get_with_status(&network, &Ctx::default()).await;
+    assert!(text.ends_with("behind the peer"), "{text}");
+    assert_eq!(status[0]["scheme"], "direct", "{status}");
+    assert_eq!(status[1]["status"]["carrier"], "direct", "{status}");
+    // A layer that takes no way below it is refused, and the error names it.
+    let err = parse("warp over direct")
+        .unwrap()
+        .up(&Ctx::default())
+        .await
+        .unwrap_err();
+    let text = format!("{err:#}");
+    assert!(text.contains("layer 2 of 2 (warp)"), "{text}");
+    assert!(text.contains("cannot go over another way"), "{text}");
+}
+
+#[test]
+fn network_spec_a_chain_is_checked_layer_by_layer() {
+    for (spec, part) in [
+        (" over warp", "on each side"),
+        ("warp over ", "on each side"),
+        ("warp over relay:", "layer 2"),
+        ("wg: over direct", "layer 1"),
+    ] {
+        let err = parse(spec).expect_err(spec);
+        assert_eq!(err.class, Class::Usage, "{spec}");
+        assert!(err.text().contains(part), "{spec}: {}", err.text());
+        assert!(!err.text().contains('\n'), "{}", err.text());
+    }
+    let nine = ["direct"; 9].join(" over ");
+    let err = parse(&nine).unwrap_err();
+    assert!(err.text().contains("at most 8 layers"), "{}", err.text());
+    // A layer keeps no credential in a label or an error.
+    let chain = parse("socks5h://u:pw@p.example:1080 over direct").unwrap();
+    assert_eq!(chain.label(), "socks5h://p.example:1080 over direct");
+    let err = parse("http://u:pw@p.example:1 over bad://u:pw@x").unwrap_err();
+    assert!(!err.text().contains("pw"), "{}", err.text());
+    // A command can hold the word over: a spec with +exec: is one layer.
+    let one = parse("socks5h+exec:echo go over there").unwrap();
+    assert!(!one.is_chain());
+}
+
+// T-117: a name resolves at the DNS server of the file, through the tunnel.
+#[tokio::test]
+async fn wg_network_resolves_a_name_at_the_dns_of_the_file() {
+    crate::test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let (file, _) = start_at(dir.path(), None, "DNS = 10.9.0.1, corp.example\n").await;
+    let network = parse(&format!("wg:{}", file.display())).unwrap();
+    let target = Target::new("service.corp.example", 8080);
+    let (text, status) = fetch(&network, &Ctx::default(), target).await;
+    assert!(text.ends_with("behind the peer"), "{text}");
+    assert_eq!(status["dns"], "10.9.0.1", "{status}");
+    // With no DNS line, a name is one line that names the fix.
+    let (plain, _) = start_at(dir.path(), None, "").await;
+    let network = parse(&format!("wg:{}", plain.display())).unwrap();
+    let link = network.up(&Ctx::default()).await.unwrap();
+    let way = link.way.clone().unwrap();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    let dialed = way
+        .dial
+        .dial(&Target::new("service.corp.example", 8080), deadline)
+        .await;
+    let Err(err) = dialed else {
+        panic!("no DNS line: no name")
+    };
+    assert!(err.text().contains("DNS = ADDRESS"), "{}", err.text());
+    link.close().await;
 }

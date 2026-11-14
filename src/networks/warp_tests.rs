@@ -212,6 +212,11 @@ impl Source for Standin {
 }
 
 pub(crate) async fn world() -> World {
+    world_with_udp(Vec::new()).await
+}
+
+/// [`world`] with the UDP routes `udp` inside the tunnel (T-117).
+pub(crate) async fn world_with_udp(udp: Vec<Route>) -> World {
     let echo = edge::echo_server().await;
     let (trace_addr, tls, trace) = trace_server().await;
     let api = stand::warp::Api::new("", "192.0.2.1", "2001:db8::1");
@@ -225,7 +230,7 @@ pub(crate) async fn world() -> World {
             outside: trace_addr,
         },
     ];
-    let edge = Edge::start(api.clone(), routes).await;
+    let edge = Edge::start_with_udp(api.clone(), routes, udp).await;
     api.serve_key(&edge.pem());
     let served = stand::http(api.handler()).unwrap();
     let dial = Arc::new(Moved(vec![
