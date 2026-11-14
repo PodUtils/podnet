@@ -6582,3 +6582,46 @@ cargo test --test docs
 2026-11-14, 6491f9d (the tag `v0.4.0-beta.11`). GitHub #563 on 6491f9d: the dry run 43619124468, ci 43619108933, deny
 43619113053, secrets 43619116496 and live 43619120794 passed; the publish 43621310830 passed (the same run is the run on
 the tag: `--branch v0.4.0-beta.11` finds it); release-proofs 43623174074 passed.
+
+# T-352: Publish `v0.4.0-beta.12`: the dry run, the publish and the release proofs
+
+**Source:** `CLAUDE.md`, Releases (2026-11-09): cut the next prerelease unattended when a batch of fixes is green. The
+batch since `v0.4.0-beta.11`: ci 43632069484, deny 43632072542, secrets 43632076272 and fuzz 43632083716 on b7c3e90
+(GitHub #565), live 43638808808 on 5db015c (GitHub #566) passed. The request of the release is GitHub #567.
+**Category:** release
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`v0.4.0-beta.11` has none of the work after it: the take of podcrates `v0.46.0`, the `s3` carrier of the link (T-279)
+and the split session (T-302).
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release". A push of the cloud session starts no workflow run: each dispatch goes
+  to the owner as a `[gh action] requested` issue.
+- The run of `release.yml` on the tag is a `workflow_dispatch` run on the branch of the tag (`--branch TAG`).
+
+## Approach
+
+1. Set the version `0.4.0-beta.12` in `Cargo.toml`, `crates/podnet-capi/Cargo.toml`, `crates/podnet-serve/Cargo.toml`,
+   `crates/podnet-vnet/Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, and regenerate the llms files.
+2. Write `docs/releases/v0.4.0-beta.12.md`, with `## Breaking`.
+3. Push, and ask in one request for `ci`, `deny`, `secrets` and `live` on that commit, the dry run of `release.yml`, the
+   publish with `publish=v0.4.0-beta.12`, and `release-proofs.yml`.
+4. Push nothing between the request and the tag.
+
+## Decision
+
+The owner (`CLAUDE.md`, Releases, 2026-11-09): betas are allowed, no crates.io; cut the next prerelease unattended when a
+batch is green.
+
+## Prove
+
+```sh
+cargo test --test docs
+# the runs of release.yml (dry run, publish) and release-proofs.yml pass
+```
