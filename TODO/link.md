@@ -777,6 +777,8 @@ Not proven: a host that denies UDP (the row of `link carriers` says why; the CI 
 
 CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (GitHub #534).
 
+CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 passed, none skipped), deny 43560707016, secrets 43560710399 and live 43560713372 on c72c604 passed (GitHub #551).
+
 # T-274: link: the unix-socket carrier and its socketpair half (GitHub #467)
 
 **Source:** GitHub #467 (https://github.com/PodUtils/podnet/issues/467), row E1-7.
@@ -1075,6 +1077,8 @@ Not proven here: a link through a real recursive resolver; the token bucket, the
 
 CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (GitHub #534).
 
+CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 passed, none skipped), deny 43560707016, secrets 43560710399 and live 43560713372 on c72c604 passed (GitHub #551).
+
 # T-279: link: the object-storage simplex carrier (GitHub #468)
 
 **Source:** GitHub #468 (https://github.com/PodUtils/podnet/issues/468), row E2-4.
@@ -1357,6 +1361,7 @@ failed. `cargo test -p podnet-netns`: 145 passed; `cargo test --test pod_seccomp
 `CC_i686_unknown_linux_musl=clang cargo check --workspace --target i686-unknown-linux-musl`: ok.
 `sh scripts/agent/check.sh notest`: each step 0.
 
+CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 passed, none skipped), deny 43560707016, secrets 43560710399 and live 43560713372 on c72c604 passed (GitHub #551).
 
 # T-283: link: a WireGuard peer as a carrier (GitHub #469)
 

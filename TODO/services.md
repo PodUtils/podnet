@@ -407,6 +407,8 @@ The live step of 200 MiB (the Prove) passed on 3061c7c (live 43521809728) withou
 Not proven: a sealed session through the real relay; a podssh operator against a podnet node with `--seal` (the
 channel is the one of podssh T-088, not run here). CI: no run (a push of the cloud session starts none).
 
+CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 passed, none skipped), deny 43560707016, secrets 43560710399 and live 43560713372 on c72c604 passed (GitHub #551).
+
 # T-088: File server: a directory listing in HTML and JSON
 
 **Source:** `docs/research/podnet/capabilities.md`, sections 3.1 to 3.5.
@@ -1684,6 +1686,8 @@ three text tests passed. podnet to podnet: `cargo test --test transfer --test tr
 --lib -- transfer`: 16 passed (`wormhole_rendezvous_a_failure_has_the_exit_code_of_podnet` checks `old_podnet` and the
 purpose). `sh scripts/agent/check.sh notest`: each step 0.
 
+CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 passed, none skipped), deny 43560707016, secrets 43560710399 and live 43560713372 on c72c604 passed (GitHub #551).
+
 # T-104: The podnet relay as a carrier of a transfer
 
 **Source:** the owner's ruling of 2026-11-05 (`docs/decisions.md`, File transfer);
@@ -1974,6 +1978,8 @@ step of `ci.yml`, run by hand with bash `-eo pipefail`: 0 with the venv, 1 with 
 `wormhole_interop_python_sends_a_text_to_podnet` and `wormhole_interop_a_wrong_code_fails_at_both_ends` failed (no end
 in 60 s); `wormhole_interop_podnet_sends_a_text_to_python` passed. `sh scripts/agent/check.sh`: each step 0
 (`cargo test --workspace`: 1946 passed, 0 failed, 120 targets). CI: no run; the step waits for a run of `ci.yml`.
+
+CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 passed, none skipped), deny 43560707016, secrets 43560710399 and live 43560713372 on c72c604 passed (GitHub #551).
 
 # T-167: `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364)
 
@@ -2911,3 +2917,4 @@ words, each with its text at the receiver; `--words 0`, `1` and `9` exit 64 with
 that sets `Config::words` replaced by `let _ = args.words;`, the test failed (`tests/cli/transfer.rs:270`, a code of 3
 words). `cargo test --test cli -- transfer::`: 6 passed. `sh scripts/agent/check.sh notest`: each step 0.
 
+CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 passed, none skipped), deny 43560707016, secrets 43560710399 and live 43560713372 on c72c604 passed (GitHub #551).
