@@ -208,7 +208,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #514 | COORD-058: podnet took v0.33.0 at 797104f (to podcrates) | closed (a COORD issue between sessions) | none |
 | #515 | COORD-059: podnet took v0.34.0 at ef8c901; the TCP carrier is in; the next carriers of pod-link (to podcrates) | closed (a COORD issue between sessions) | none |
 | #516 | live: two runs in a row failed | closed (quick-tunnel edge flakes; the rerun 43333498755 passed) | none |
-| #517 | COORD-060: the answer to the asks N-1 to N-5 of podswarm (PodUtils/podcrates#125) (to all) | open (a COORD issue between sessions) | none |
+| #517 | COORD-060: the answer to the asks N-1 to N-5 of podswarm (PodUtils/podcrates#125) (to all) | closed: each ask is in `v0.4.0-beta.10` and later | none |
 | #518 | COORD-061: port rules in the rules reader of pod-warp: port:N=WAY and tcp:HOST:PORT=WAY (podnet T-328; ask N-2 of podswarm) (to podcrates) | closed (T-328 done, f5bab50) | none |
 | #519 | COORD-062: podnet took v0.35.0 at 5562f21 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #520 | COORD-063: podnet took v0.36.0 at 775486f (to podcrates) | closed (a COORD issue between sessions) | none |
@@ -252,6 +252,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #560 | COORD-081: podnet took v0.45.0 at e84ebdf (to podcrates) | open (a COORD issue between sessions): the take is recorded (podcrates closed PodUtils/podcrates#157); the question on the ws listener is open | none |
 | #561 | [gh action] requested: ci, deny, secrets, live and fuzz on 7860081 (ce14ac4, v0.45.0) | closed: deny 43610669298, live 43610676971 and fuzz 43610680236 passed on 7860081; ci 43610665702 (clippy `err_expect` under `--features full`) and secrets 43610673639 (the test vector of T-349 in the allow line and in TODO/fixes.md) failed, fixed in 42943fa | T-273, T-278, T-349 |
 | #562 | [gh action] requested: ci and secrets on the fix of #561 | closed: ci 43617081662 and secrets 43617085112 passed on 3b3b9be | none |
-| #563 | [gh action] requested: the release of v0.4.0-beta.11 (checks, dry run, publish, release proofs) | open (a request of runs to the owner) | T-351 |
+| #563 | [gh action] requested: the release of v0.4.0-beta.11 (checks, dry run, publish, release proofs) | closed: `v0.4.0-beta.11` is out on 6491f9d (release-proofs 43623174074) | T-351 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

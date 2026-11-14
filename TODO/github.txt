@@ -215,7 +215,7 @@
 514 issue closed
 515 issue closed
 516 issue closed
-517 issue open
+517 issue closed
 518 issue closed
 519 issue closed
 520 issue closed
@@ -261,4 +261,4 @@
 560 issue open
 561 issue closed
 562 issue closed
-563 issue open
+563 issue closed

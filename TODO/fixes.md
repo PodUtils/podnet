@@ -6542,7 +6542,7 @@ ci 43617081662 and secrets 43617085112 on 3b3b9be passed (GitHub #562). The requ
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6576,3 +6576,9 @@ batch is green.
 cargo test --test docs
 # the runs of release.yml (dry run, publish) and release-proofs.yml pass
 ```
+
+## Done
+
+2026-11-14, 6491f9d (the tag `v0.4.0-beta.11`). GitHub #563 on 6491f9d: the dry run 43619124468, ci 43619108933, deny
+43619113053, secrets 43619116496 and live 43619120794 passed; the publish 43621310830 passed (the same run is the run on
+the tag: `--branch v0.4.0-beta.11` finds it); release-proofs 43623174074 passed.
