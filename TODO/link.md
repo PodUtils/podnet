@@ -769,6 +769,19 @@ and `link_dial_check_meets_link_listen_over_quic_and_a_stranger_exits_77`).
 
 ## Done
 
+2026-11-14, the take of podcrates v0.45.0 (T-137, e84ebdf; their entry 557): the listener of dns, icmp, udp and ws
+gets `KeyRefused` when the dialer refuses the key of the listener, so `Door::accept_peer` exits 77 on each carrier.
+`src/link.rs` needs no change of code (the doc of `key_refused`). The CLI (`link listen`) writes a refused accept as
+one warning and keeps the door open; the exit 77 is of the library (`Door::accept_peer`). New assertions:
+`another_key_exits_77` of `tests/link_peer/mod.rs` (udp, icmp, quic, poll, httppoll, sse, chunked) and
+`a_listener_with_another_key_than_the_pinned_one_exits_77` of `tests/link_dns.rs` and `tests/link_ws.rs` check the
+exit 77 of the accept; `a_stranger_exits_77` and the stranger test of `tests/link_dns.rs` check the exit 77 of the
+accept when the pin of the listener refuses the dialer (`Refused`). The call: the ws listener skips a client that its
+own pin refuses (call C390 of podcrates), so the stranger test of `tests/link_ws.rs` keeps `expect_err` (no peer in
+3 s). Plant: with `KeyRefused => false` in `key_refused`, the four tests of another key of dns, ws, udp and icmp
+failed at the assertion of the accept. `cargo test -p podnet --features full` of `tests/link_dns.rs`, `link_ws.rs`,
+`link_udp.rs`, `link_quic.rs`, `link_poll.rs`, `link_httppoll.rs`, `link_sse.rs` and `link_icmp.rs`: 77 passed.
+
 2026-11-13, commit 95cbf6a. Feature `quic` of podnet is `["tcp", "pod-link/quic"]` (in `full`; `quic` was already in `OPTIONAL` and `FULL` of `src/build_features.rs`). `src/link_quic.rs` (`podnet::link_quic`): `carrier`, `listen` (`IP:PORT`, UDP), `dial` (`KEY@HOST:PORT`) and `probe`. `src/link_keyed.rs` (`podnet::link_keyed`): the carriers of v0.40.0 by name (`NAMES`, `feature_of`, `Tune`, `dial`, `listen`); a name whose feature is off exits 69 and names the feature. `src/link_probe.rs`: the generic registry probe (no key of this install). `link listen|dial|connect --carrier quic` (`Chosen::Peer` in `src/cli/cmd/link/mod.rs`), the registry row and the inventory entry, `docs/link.md` (The QUIC carrier), `docs/build.md`.
 
 Tests (`tests/link_quic.rs`, build `--features quic`; UDP loopback allowed here, none skipped), 8 passed: `a_link_crosses_quic_and_each_end_learns_the_key_of_the_other` (256 KiB there and back on one stream), `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`, `a_listener_with_another_key_than_the_pinned_one_exits_77`, `link_dial_check_meets_link_listen_over_quic_and_a_stranger_exits_77`, `a_dial_address_with_no_key_exits_64`, `a_query_key_of_another_carrier_exits_64`, `the_registry_row_has_no_key_and_refuses_a_dial`, `the_carrier_is_a_stream_with_the_alpn_of_tcp`. `tests/link_peer/mod.rs` is the shared part of the tests of the carriers of `link_keyed`. Plant: with the arms of `quic` in `link_keyed` off, 4 tests failed (the link, the stranger, the other key, the command); with the read of `ConnectionClosed` in `key_refused` off, the stranger tests got 69 for 77. `sh scripts/agent/check.sh`: each step 0.
@@ -1068,6 +1081,19 @@ here: a link through a real recursive resolver. The listener of dns, icmp, udp a
 dialer refuses its key (the entry 557 of podcrates, open).
 
 ## Done
+
+2026-11-14, the take of podcrates v0.45.0 (T-137, e84ebdf; their entry 557): the listener of dns, icmp, udp and ws
+gets `KeyRefused` when the dialer refuses the key of the listener, so `Door::accept_peer` exits 77 on each carrier.
+`src/link.rs` needs no change of code (the doc of `key_refused`). The CLI (`link listen`) writes a refused accept as
+one warning and keeps the door open; the exit 77 is of the library (`Door::accept_peer`). New assertions:
+`another_key_exits_77` of `tests/link_peer/mod.rs` (udp, icmp, quic, poll, httppoll, sse, chunked) and
+`a_listener_with_another_key_than_the_pinned_one_exits_77` of `tests/link_dns.rs` and `tests/link_ws.rs` check the
+exit 77 of the accept; `a_stranger_exits_77` and the stranger test of `tests/link_dns.rs` check the exit 77 of the
+accept when the pin of the listener refuses the dialer (`Refused`). The call: the ws listener skips a client that its
+own pin refuses (call C390 of podcrates), so the stranger test of `tests/link_ws.rs` keeps `expect_err` (no peer in
+3 s). Plant: with `KeyRefused => false` in `key_refused`, the four tests of another key of dns, ws, udp and icmp
+failed at the assertion of the accept. `cargo test -p podnet --features full` of `tests/link_dns.rs`, `link_ws.rs`,
+`link_udp.rs`, `link_quic.rs`, `link_poll.rs`, `link_httppoll.rs`, `link_sse.rs` and `link_icmp.rs`: 77 passed.
 
 2026-11-13, commit c55c3c5. Feature `dns` of podnet is `["tcp", "pod-link/dns"]` (in `full`, `OPTIONAL` and `FULL`). `src/link_dns.rs` (`podnet::link_dns`): `first_nameserver`, `carrier` (the zone and the server of `Tune`), `listen` (`IP:PORT`, an authoritative server), `dial` (`KEY@ZONE`) and `probe`. `src/link_keyed.rs`: the name `dns`, `Tune::dns_server` and `Tune::dns_zone`. `--dns-server` and `--dns-zone` of `link listen|dial|connect`. The registry row, the inventory entry, `docs/link.md` (The DNS carrier, the flags), `docs/build.md`, the map row of `README.md`.
 
@@ -2520,7 +2546,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- The chain exists: `--egress` and `UpstreamChain` (`crates/podnet-vnet/src/dialer.rs:172`, `docs/egress.md`).
+- The chain exists: `--egress` and `UpstreamChain` (`crates/podnet-vnet/src/dialer.rs:151`, `docs/egress.md`).
 - A flaw in the issue: it says "`--via` is an alias for the existing `--egress`". The flag `--via` is gone (`src/cli/help.rs:193`), by the ruling "Way out and way in" of 2026-11-11.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 

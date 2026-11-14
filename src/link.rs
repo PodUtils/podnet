@@ -46,8 +46,8 @@ pub fn fault(error: Error) -> anyhow::Error {
 
 /// True when a handshake refused a key: the pin of this end refused the
 /// key of the peer (`Refused` with a `pod_tls::peer::Refusal`), or the peer
-/// refused the key of this end (`KeyRefused` of `pod-link`, on the dial of
-/// each carrier and on the accept of tcp, h2, quic and poll). A refusal of
+/// refused the key of this end (`KeyRefused` of `pod-link`, on the dial and
+/// on the accept of each carrier since v0.45.0). A refusal of
 /// the host (a bind that `EACCES` denies) is not one.
 fn key_refused(error: &CarrierError) -> bool {
     match error.kind {

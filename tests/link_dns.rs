@@ -168,7 +168,9 @@ async fn a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_o
     let (dialed, accepted) = case(&door).meet(&c, list_of(&[&b]), &to, &mut door).await;
     let refused = dialed.expect_err("the dial is refused");
     assert_eq!(code_of(&refused), 77, "{refused:#}");
-    accepted.expect_err("the listener takes no peer");
+    // T-557: the listener gets the refusal too, with the exit 77.
+    let accepted = accepted.expect_err("the listener takes no peer");
+    assert_eq!(code_of(&accepted), 77, "{accepted:#}");
     let (dialed, accepted) = case(&door).meet(&a, list_of(&[&b]), &to, &mut door).await;
     dialed.unwrap();
     assert_eq!(accepted.unwrap().1, Some(a.public()));
@@ -185,10 +187,13 @@ async fn a_listener_with_another_key_than_the_pinned_one_exits_77() {
     );
     let mut door = listen(&b, &list_of(&[&a])).await;
     let to = address_of(&c.fingerprint(), "");
-    let (dialed, _) = case(&door)
+    let (dialed, accepted) = case(&door)
         .meet(&a, list_of(&[&b, &c]), &to, &mut door)
         .await;
     let e = dialed.err().unwrap();
+    assert_eq!(code_of(&e), 77, "{e:#}");
+    // T-557: the listener gets `KeyRefused`, with the exit 77.
+    let e = accepted.err().expect("the listener takes no peer");
     assert_eq!(code_of(&e), 77, "{e:#}");
 }
 

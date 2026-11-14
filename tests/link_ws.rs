@@ -275,6 +275,9 @@ async fn a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_o
     let (dialed, accepted) = meet(&dialing, list_of(&[&b]), &to, &mut door).await;
     let refused = dialed.expect_err("the dial is refused");
     assert_eq!(code_of(&refused), 77, "{refused:#}");
+    // The ws listener skips a client that its own pin refuses (call C390 of
+    // podcrates): the accept gives no peer and no error. Only `KeyRefused`
+    // (the client refused the key of the listener) ends one accept.
     accepted.expect_err("the listener takes no peer");
     // The door is still open for a peer that the list holds.
     let ok = link_ws::carrier(&a, &AllowList::default());
@@ -293,15 +296,16 @@ async fn a_listener_with_another_key_than_the_pinned_one_exits_77() {
         install(dir.path(), "c"),
     );
     let listening = link_ws::carrier(&b, &list_of(&[&a]));
-    let door = link_ws::listen(&listening, "127.0.0.1:0").await.unwrap();
+    let mut door = link_ws::listen(&listening, "127.0.0.1:0").await.unwrap();
     // The dialer pins the key of c, but b answers.
     let to = address(&c, &door);
     let dialing = link_ws::carrier(&a, &AllowList::default());
-    let e = link_ws::dial(&dialing, &list_of(&[&b, &c]), &to, Settings::default())
-        .await
-        .err()
-        .unwrap();
+    let (dialed, accepted) = meet(&dialing, list_of(&[&b, &c]), &to, &mut door).await;
+    let e = dialed.err().unwrap();
     assert_eq!(code_of(&e), 77, "{e:#}");
+    // T-557: the listener gets `KeyRefused`, with the exit 77.
+    let refused = accepted.err().expect("the listener takes no peer");
+    assert_eq!(code_of(&refused), 77, "{refused:#}");
     assert!(
         format!("{e:#}").contains(&b.public().fingerprint()),
         "{e:#}"
