@@ -193,7 +193,9 @@ async fn a_listener_with_another_key_than_the_pinned_one_exits_77() {
     let e = dialed.err().unwrap();
     assert_eq!(code_of(&e), 77, "{e:#}");
     // T-557: the listener gets `KeyRefused`, with the exit 77.
-    let e = accepted.err().expect("the listener takes no peer");
+    let Err(e) = accepted else {
+        panic!("the listener takes no peer")
+    };
     assert_eq!(code_of(&e), 77, "{e:#}");
 }
 

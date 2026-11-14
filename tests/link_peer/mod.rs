@@ -185,7 +185,9 @@ pub async fn another_key_exits_77(case: &Case) {
     assert_eq!(code_of(&e), 77, "{e:#}");
     // T-557: the dialer refused the key of the listener; the listener gets
     // `KeyRefused`, with the exit 77.
-    let e = accepted.err().expect("the listener takes no peer");
+    let Err(e) = accepted else {
+        panic!("the listener takes no peer")
+    };
     assert_eq!(code_of(&e), 77, "{e:#}");
 }
 
