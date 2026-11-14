@@ -272,6 +272,11 @@ pub(super) async fn receive<R: AsyncRead + Unpin + Send>(
     }
 }
 
+/// The most bytes of a body that the buffer of a record holds before they
+/// come: the buffer grows with the bytes, so a header that says 16 MiB
+/// with no bytes after it does not take 16 MiB (T-343).
+const BODY_STEP: usize = 64 * 1024;
+
 /// One whole record, or `None` when the stream ended.
 async fn read_record<R: AsyncRead + Unpin>(io: &mut R) -> io::Result<Option<Vec<u8>>> {
     let mut record = vec![0u8; HEADER];
@@ -279,8 +284,10 @@ async fn read_record<R: AsyncRead + Unpin>(io: &mut R) -> io::Result<Option<Vec<
         return Ok(None);
     }
     let len = record_len(&record).map_err(bad)?;
-    record.resize(len, 0);
-    if io.read_exact(&mut record[HEADER..]).await.is_err() {
+    let body = len - HEADER;
+    record.reserve_exact(body.min(BODY_STEP));
+    let read = (&mut *io).take(body as u64).read_to_end(&mut record).await;
+    if read.is_err() || record.len() != len {
         return Ok(None);
     }
     Ok(Some(record))
@@ -414,5 +421,63 @@ async fn run_receive<R: AsyncRead + Unpin>(
             }
             Err(fault) => return Err(bad(fault)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use pod_e2e::record::{Header, MAX_LENGTH, VERSION};
+
+    use super::*;
+
+    /// A middle node: a header that says [`MAX_LENGTH`], then no byte. It
+    /// keeps the largest buffer that a read offered it.
+    struct Hostile {
+        header: Option<Vec<u8>>,
+        offered: Arc<AtomicUsize>,
+    }
+
+    impl AsyncRead for Hostile {
+        fn poll_read(
+            mut self: Pin<&mut Self>,
+            _cx: &mut Context<'_>,
+            buf: &mut ReadBuf<'_>,
+        ) -> Poll<io::Result<()>> {
+            if let Some(header) = self.header.take() {
+                buf.put_slice(&header);
+                return Poll::Ready(Ok(()));
+            }
+            self.offered.fetch_max(buf.remaining(), Ordering::SeqCst);
+            Poll::Pending
+        }
+    }
+
+    #[tokio::test]
+    async fn link_record_a_long_header_with_no_body_takes_no_buffer_of_its_length() {
+        let header = Header {
+            version: VERSION,
+            kind: DATA,
+            flags: 0,
+            stream: 0,
+            counter: 0,
+            length: MAX_LENGTH as u32,
+            pad: 0,
+            reserved: 0,
+        };
+        let offered = Arc::new(AtomicUsize::new(0));
+        let mut io = Hostile {
+            header: Some(header.encode().to_vec()),
+            offered: offered.clone(),
+        };
+        let read =
+            tokio::time::timeout(std::time::Duration::from_millis(100), read_record(&mut io)).await;
+        assert!(read.is_err(), "a record with no body came: {read:?}");
+        let most = offered.load(Ordering::SeqCst);
+        assert!(
+            most > 0 && most <= BODY_STEP,
+            "a read offered {most} bytes for a body that did not come"
+        );
     }
 }

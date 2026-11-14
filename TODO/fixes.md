@@ -5921,7 +5921,7 @@ the flags only (the code before the fix) it failed at the first `unwrap_err`. `c
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -5948,6 +5948,51 @@ flows of peer B, and send answers to peer B that it did not ask for.
 
 ```sh
 cargo test -p podnet --lib wg_serve
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-14, commit 9c98cce. `incoming` of `src/networks/wg_serve.rs` admits a packet only when `route` of its source
+gives its own peer. `cargo test -p podnet --lib wg_serve`: 7 passed. With the old admit rule,
+`wg_serve_drops_a_source_that_routes_to_another_peer` failed: the server dialed for the source of the other peer.
+
+
+# T-343: link record: a middle node makes an end take 16 MiB for each record header that it sends
+
+**Source:** the security review of the code of 2026-11-13 and 2026-11-14 that takes peer input (2026-11-14).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A sealed stream of the link passes a middle node (a mesh hop, T-287). The middle node sends a record header of 24
+bytes that says a body of 16 MiB (`MAX_LENGTH` of `pod-e2e`), and then no byte. The end that reads the stream takes
+a buffer of 16 MiB at once, before a byte of the body comes and before the check of the record. One header for each
+stream: 16 MiB of memory for 24 bytes of input.
+
+## Premise
+
+- `read_record` of `src/link_record/pump.rs` called `record.resize(len, 0)` with the length of the header, then
+  `read_exact`.
+- `record_len` of `pod-e2e` refuses a length above 16 MiB only.
+- The transit of the transfer (`src/transfer/transit.rs`) already grows its buffer with the bytes that come.
+
+## Approach
+
+1. `read_record`: reserve at most 64 KiB (`BODY_STEP`) for the body, and read the body with `take` and
+   `read_to_end`: the buffer grows with the bytes that come. A stream that ends in a record is still a cut.
+2. A test of the lib: a reader that gives a header of 16 MiB and then no byte is offered a buffer of at most
+   `BODY_STEP`.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib link_record
+cargo test -p podnet --test link_record --test link_seal --test link_pad --test link_compress --test link_replay --test link_record_mesh
 sh scripts/agent/check.sh
 ```
 
