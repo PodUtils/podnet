@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**337 entries: 13 open, 8 partial, 28 blocked, 288 done.**
+**337 entries: 12 open, 9 partial, 28 blocked, 288 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
-| P2 | 6 | 3 | 11 | 149 | 169 |
+| P2 | 5 | 4 | 11 | 149 | 169 |
 | P3 | 7 | 4 | 15 | 109 | 135 |
-| **All** | 13 | 8 | 28 | 288 | 337 |
+| **All** | 12 | 9 | 28 | 288 | 337 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -151,7 +151,7 @@ M8 Overlays, M9 Later.
 | [T-103](services.md) | P2 | L | M6 | feature | blocked | The file-transfer protocol and the transit protocol of magic-wormhole |
 | [T-104](services.md) | P2 | M | M6 | feature | done | The podnet relay as a carrier of a transfer |
 | [T-105](services.md) | P2 | M | M6 | feature | done | `podnet send` and `podnet receive` |
-| [T-106](services.md) | P2 | M | M6 | measurement | open | An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB |
+| [T-106](services.md) | P2 | M | M6 | measurement | partial | An interop test with the Python magic-wormhole, and the live step of a transfer of 100 MiB |
 | [T-107](pods.md) | P2 | M | M7 | feature | done | seccomp: the pod lives past its first program |
 | [T-108](pods.md) | P2 | S | M7 | feature | done | netns: the pod lives past its first program |
 | [T-109](pods.md) | P2 | M | M7 | feature | done | `warp exec --detach --name N` keeps a pod under the supervisor |

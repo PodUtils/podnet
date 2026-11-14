@@ -50,6 +50,20 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --locked --workspace
+      # T-106: the text of podnet send and podnet receive with the Python
+      # magic-wormhole (pinned versions), at the mailbox server of
+      # magic-wormhole on the loopback, both ways. A skip line fails the
+      # step.
+      - name: Interop with the Python magic-wormhole (text)
+        shell: bash
+        run: |
+          python3 -m venv "$RUNNER_TEMP/wormhole"
+          sh scripts/retry.sh "$RUNNER_TEMP/wormhole/bin/pip" install --quiet \
+            magic-wormhole==0.24.0 magic-wormhole-mailbox-server==0.8.0
+          PATH="$RUNNER_TEMP/wormhole/bin:$PATH" cargo test --locked --test wormhole_interop -- --nocapture 2>&1 \
+            | tee "$RUNNER_TEMP/interop.log"
+          ! grep -q '^skipping,' "$RUNNER_TEMP/interop.log"
+          grep -q 'the mailbox server of magic-wormhole' "$RUNNER_TEMP/interop.log"
       # T-152: the row of the netfilter probe on the runner (a measure; it
       # does not fail the job).
       - name: Netfilter in a namespace (pod doctor)

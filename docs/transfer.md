@@ -209,6 +209,21 @@ gives no derivation of its key. A podnet sender draws a random transit key
 and sends it in its sealed `transit` message. A podnet end that meets a
 client of magic-wormhole for a file says so and stops.
 
+The test `tests/wormhole_interop.rs` (T-106) runs a text both ways with the
+Python magic-wormhole 0.24.0: `podnet send --text` to `wormhole receive`,
+and `wormhole send --text` to `podnet receive`, at the mailbox server of
+magic-wormhole (`twist wormhole-mailbox`, 0.8.0) on the loopback. A wrong
+code exits 77 at podnet, and `wormhole send` fails too. With no `wormhole`
+program on the PATH, each test prints a skip line. With `wormhole` and no
+`twist`, the tests use the stand-in mailbox of the tests. CI (`ci.yml`, job
+`test`) installs the two packages in a venv and runs the test.
+
+```sh
+python3 -m venv /tmp/wormhole
+/tmp/wormhole/bin/pip install magic-wormhole==0.24.0 magic-wormhole-mailbox-server==0.8.0
+PATH=/tmp/wormhole/bin:$PATH cargo test --test wormhole_interop
+```
+
 ## Exit codes
 
 | Code | When |

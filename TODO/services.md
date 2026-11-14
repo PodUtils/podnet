@@ -1863,7 +1863,7 @@ public mailbox and relay (T-106); `--into` (not added, item 5 above).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1905,6 +1905,33 @@ install it from the network. A text between podnet and `wormhole send` can go no
 the derivation of the key of `pod-wormhole` (T-103, Blocker). The stand-ins of `tests/transfer_harness/mod.rs` (a
 mailbox and a TCP transit relay) serve the loopback tests; the workflow of this entry runs the server and the
 relay of magic-wormhole in place of them.
+
+2026-11-14, the text half (calls of the session, the owner is away). The Prove of the text half replaces the workflow
+`wormhole-interop.yml` of the Approach: the test target `tests/wormhole_interop.rs`, and a step of the job `test` of
+`.github/workflows/ci.yml` (a venv with `magic-wormhole==0.24.0` and `magic-wormhole-mailbox-server==0.8.0`; a skip line
+fails the step). A new workflow would need its own runs; the job `test` already builds the binary.
+
+```sh
+python3 -m venv /tmp/wormhole
+/tmp/wormhole/bin/pip install magic-wormhole==0.24.0 magic-wormhole-mailbox-server==0.8.0
+PATH=/tmp/wormhole/bin:$PATH cargo test --test wormhole_interop
+```
+
+(1) The mailbox is the server of magic-wormhole (`twist wormhole-mailbox` on a free port of the loopback) when
+`twist` is on the PATH, else the stand-in of `tests/transfer_harness/mod.rs`: the Python client takes its URL, and the
+three tests pass with it too. (2) With no `wormhole` on the PATH, each test prints `skipping, no wormhole program on
+the PATH` and passes, as the skip lines of `test_host`. (3) The text needs no transit: both ends run with no transit
+relay and no listener. (4) The Python receiver gets the code in argv (a test host has no other user). (5) The packages
+are pinned by version, not by hash: pip `--require-hashes` needs a hash for each package of the tree (Twisted,
+autobahn and more), and a change of one of them would break the step with no change of podnet.
+Measured: the version phase is sent inside `pod-wormhole` (`Wormhole::agree`), not in podnet. The plant of the
+Prove ("a podnet that does not send the `version` phase") is a copy of `pod-wormhole` v0.41.0 with that send removed,
+given with `cargo test --config "patch.'https://github.com/PodUtils/podcrates'.pod-wormhole.path='COPY'"`.
+`wormhole receive` of Python takes the text of such a podnet sender (it does not wait for the version of the sender);
+`wormhole send` of Python waits for the version of podnet, so the other two tests fail.
+Left: a file and a directory between podnet and Python (T-103, Blocker: the transit key waits for `derive_key` of
+`pod-wormhole`, PodUtils/podnet#535); the live step of 100 MiB through the public mailbox, transit and relay
+(Approach 2).
 
 # T-167: `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364)
 
