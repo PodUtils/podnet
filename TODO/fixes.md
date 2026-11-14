@@ -5850,7 +5850,7 @@ python3 scripts/check-workflows.py
 
 ## Done
 
-2026-11-14, the commit that changes the checklist (cited in the next commit). Ticked: 41 before, 232 after (of 620).
+2026-11-14, commit 5046de6. Ticked: 41 before, 232 after (of 620).
 Each of the 116 items of the 21 sections `podnet warp ...` agrees with `podnet man --json` of ce6352c; one difference:
 `warp forward -L` is required unless `--list` (a new flag); `podnet warp forward` with neither exits 64. Each section
 has a line `checked 2026-11-14` with its tests and live steps; `warp shell` has no test, and a run with no `warp up`
