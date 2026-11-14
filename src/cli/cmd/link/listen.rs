@@ -238,5 +238,9 @@ async fn serve(link: Link, proved: Option<PublicKey>, held: Held) {
     while let Ok(stream) = link.accept().await {
         streams.spawn(stream, &slot);
     }
-    println!("podnet: peer gone       {shown}");
+    // A split session names the half whose loss ended it (T-302).
+    match podnet::link_split::lost(&link) {
+        Some(why) => eprintln!("podnet: peer gone       {shown}: {why}"),
+        None => println!("podnet: peer gone       {shown}"),
+    }
 }

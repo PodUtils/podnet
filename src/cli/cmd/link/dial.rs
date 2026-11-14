@@ -248,6 +248,12 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
                 link.close().await;
                 return Err(podnet::link_record::ended(e));
             }
+            // A lost half of a split session: exit 69 (T-302).
+            Err(e) if podnet::link_split::is_lost(&e) => {
+                send.abort();
+                link.close().await;
+                return Err(podnet::link_split::ended(e));
+            }
             Err(_) => 0,
         };
         if n == 0 {

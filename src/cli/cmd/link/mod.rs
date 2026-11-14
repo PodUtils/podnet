@@ -57,6 +57,24 @@ pub(crate) struct CarrierArgs {
     /// with --s3-endpoint. A key that is refused exits 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
+    /// One session over two carriers: the bytes of the dialer go up on
+    /// this carrier, the bytes of the listener come down on
+    /// --down-carrier. The address is `UP|DOWN`, the address of each half
+    /// in the form of its carrier. The hello proves the keys on the
+    /// session. A half that fails, or is silent for 30 s, ends the session
+    /// at each end with `up-carrier lost` or `down-carrier lost` (exit 69);
+    /// no half takes over the bytes of the other.
+    #[arg(
+        long,
+        value_name = "NAME",
+        requires = "down_carrier",
+        conflicts_with = "carrier"
+    )]
+    pub(crate) up_carrier: Option<String>,
+    /// The carrier of the bytes of the listener of a split session (see
+    /// --up-carrier).
+    #[arg(long, value_name = "NAME", requires = "up_carrier")]
+    pub(crate) down_carrier: Option<String>,
     /// The unix carrier accepts a peer of another uid. Each end checks the
     /// uid of the other end (SO_PEERCRED), so give the flag at both ends.
     /// Without it, a peer of another uid is refused (exit 69).
@@ -141,11 +159,67 @@ pub(super) enum Chosen {
     Keyed(&'static str),
     /// A carrier of `podnet::link_keyed`, with its tune.
     Peer(&'static str, podnet::link_keyed::Tune),
+    /// A split session (`--up-carrier`, `--down-carrier`): the names of
+    /// the two halves, the tune and the options.
+    Split(Box<Halves>),
+}
+
+/// The two halves of a split session.
+pub(super) struct Halves {
+    up: String,
+    down: String,
+    tune: podnet::link_keyed::Tune,
+    options: Options,
+}
+
+impl Halves {
+    fn split(&self, me: &Identity, allow: &AllowList) -> Result<pod_link::split::Split> {
+        let half =
+            |name: &str| podnet::link_split::half(name, &self.tune, me, allow, &self.options);
+        Ok(pod_link::split::Split::new(
+            half(&self.up)?,
+            half(&self.down)?,
+        ))
+    }
+}
+
+/// The names of the carriers that `args` opens: one, or the two halves of
+/// a split session.
+fn names_of(args: &CarrierArgs) -> Vec<String> {
+    match (&args.up_carrier, &args.down_carrier) {
+        (Some(up), Some(down)) => vec![up.clone(), down.clone()],
+        _ => vec![args.carrier.clone()],
+    }
+}
+
+/// Check the name of one half: the build has its feature (else exit 69),
+/// a raw carrier has its word (else exit 64), the name is known (else
+/// exit 64).
+fn check_half(name: &str, args: &CarrierArgs) -> Result<()> {
+    if KEYED.contains(&name) {
+        return podnet::build_features::require(name);
+    }
+    if podnet::link_keyed::NAMES.contains(&name) {
+        let feature = podnet::link_keyed::feature_of(name).unwrap_or(name);
+        podnet::build_features::require(feature)?;
+        return podnet::link_keyed::allow_raw(name, &args.allow_raw);
+    }
+    carriers::open(name, &args.options()).map(drop)
 }
 
 /// The carrier `args` names. A name that is unknown exits 64; a carrier
 /// that this build leaves out exits 69.
 pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Chosen> {
+    if let (Some(up), Some(down)) = (&args.up_carrier, &args.down_carrier) {
+        check_half(up, args)?;
+        check_half(down, args)?;
+        return Ok(Chosen::Split(Box::new(Halves {
+            up: up.clone(),
+            down: down.clone(),
+            tune: args.tune.clone(),
+            options: args.options(),
+        })));
+    }
     if let Some(name) = KEYED.iter().find(|n| **n == args.carrier) {
         podnet::build_features::require(name)?;
         return Ok(Chosen::Keyed(name));
@@ -173,7 +247,17 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
     if let Some(name) = &query.carrier {
         carrier.carrier.clone_from(name);
     }
-    carriers::check_query(&carrier.carrier, &query)?;
+    if carrier.up_carrier.is_some() {
+        carrier.carrier = podnet::link_split::NAME.to_string();
+        if !base.contains('|') {
+            return Err(podnet::exit::fault(
+                podnet::exit::Fault::Usage,
+                anyhow::anyhow!("--up-carrier and --down-carrier: give the address UP|DOWN, the address of each half"),
+            ));
+        }
+    } else {
+        carriers::check_query(&carrier.carrier, &query)?;
+    }
     query.require_wired()?;
     if !carrier.seal && (query.pad.is_some() || query.compress.is_some()) {
         return Err(podnet::exit::fault(
@@ -185,7 +269,10 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
         .seal
         .then(|| podnet::link_record::Options::of_query(&query));
     carrier.tune = podnet::link_keyed::Tune::of_query(&carrier.carrier, &query)?;
-    if carrier.carrier != "dns" && (carrier.dns_server.is_some() || carrier.dns_zone.is_some()) {
+    let names = names_of(carrier);
+    if !names.iter().any(|n| n == "dns")
+        && (carrier.dns_server.is_some() || carrier.dns_zone.is_some())
+    {
         return Err(podnet::exit::fault(
             podnet::exit::Fault::Usage,
             anyhow::anyhow!("--dns-server and --dns-zone are for the dns carrier"),
@@ -197,7 +284,7 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
         || carrier.s3_region.is_some()
         || carrier.s3_credentials.is_some()
         || carrier.s3_prune;
-    if carrier.carrier != "s3" && s3 {
+    if !names.iter().any(|n| n == "s3") && s3 {
         return Err(podnet::exit::fault(
             podnet::exit::Fault::Usage,
             anyhow::anyhow!("--s3-endpoint, --s3-region, --s3-credentials and --s3-prune are for the s3 carrier"),
@@ -231,6 +318,10 @@ pub(super) async fn dial_peer(
         }
         Chosen::Peer(name, tune) => {
             podnet::link_keyed::dial(name, &tune, me, &allow, address, Settings::default()).await
+        }
+        Chosen::Split(halves) => {
+            let split = halves.split(me, &allow)?;
+            podnet::link_split::dial(&split, me, allow, address, Settings::default()).await
         }
         Chosen::Keyed("ws") => ws::dial(me, allow, address, via).await,
         Chosen::Keyed("h2") => h2::dial(me, allow, address, via).await,
@@ -293,6 +384,9 @@ pub(super) async fn listen_door(
         Chosen::Plain(carrier) => podnet::link::listen(&*carrier, address).await,
         Chosen::Peer(name, tune) => {
             podnet::link_keyed::listen(name, &tune, me, allow, address).await
+        }
+        Chosen::Split(halves) => {
+            podnet::link_split::listen(&halves.split(me, allow)?, address).await
         }
         Chosen::Keyed("ws") => ws::listen(me, allow, address).await,
         Chosen::Keyed("h2") => h2::listen(me, allow, address).await,
@@ -629,6 +723,8 @@ mod tests {
     fn args(allow_other_uid: bool, ring: Option<usize>) -> CarrierArgs {
         CarrierArgs {
             carrier: "unix".into(),
+            up_carrier: None,
+            down_carrier: None,
             allow_other_uid,
             ring,
             seal: false,

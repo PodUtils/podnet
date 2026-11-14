@@ -8083,6 +8083,19 @@ COMMANDS
             `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both with
             --s3-endpoint. A key that is refused exits 77. Default: unix.
 
+        --up-carrier <NAME>
+            One session over two carriers: the bytes of the dialer go up on
+            this carrier, the bytes of the listener come down on
+            --down-carrier. The address is `UP|DOWN`, the address of each half
+            in the form of its carrier. The hello proves the keys on the
+            session. A half that fails, or is silent for 30 s, ends the
+            session at each end with `up-carrier lost` or `down-carrier lost`
+            (exit 69); no half takes over the bytes of the other
+
+        --down-carrier <NAME>
+            The carrier of the bytes of the listener of a split session (see
+            --up-carrier)
+
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
             the uid of the other end (SO_PEERCRED), so give the flag at both
@@ -8344,6 +8357,19 @@ COMMANDS
             `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both with
             --s3-endpoint. A key that is refused exits 77. Default: unix.
 
+        --up-carrier <NAME>
+            One session over two carriers: the bytes of the dialer go up on
+            this carrier, the bytes of the listener come down on
+            --down-carrier. The address is `UP|DOWN`, the address of each half
+            in the form of its carrier. The hello proves the keys on the
+            session. A half that fails, or is silent for 30 s, ends the
+            session at each end with `up-carrier lost` or `down-carrier lost`
+            (exit 69); no half takes over the bytes of the other
+
+        --down-carrier <NAME>
+            The carrier of the bytes of the listener of a split session (see
+            --up-carrier)
+
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
             the uid of the other end (SO_PEERCRED), so give the flag at both
@@ -8566,6 +8592,19 @@ COMMANDS
             S3 API, TLS 1.3 above them with the same pins: listen at
             `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both with
             --s3-endpoint. A key that is refused exits 77. Default: unix.
+
+        --up-carrier <NAME>
+            One session over two carriers: the bytes of the dialer go up on
+            this carrier, the bytes of the listener come down on
+            --down-carrier. The address is `UP|DOWN`, the address of each half
+            in the form of its carrier. The hello proves the keys on the
+            session. A half that fails, or is silent for 30 s, ends the
+            session at each end with `up-carrier lost` or `down-carrier lost`
+            (exit 69); no half takes over the bytes of the other
+
+        --down-carrier <NAME>
+            The carrier of the bytes of the listener of a split session (see
+            --up-carrier)
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -9176,6 +9215,19 @@ COMMANDS
             S3 API, TLS 1.3 above them with the same pins: listen at
             `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both with
             --s3-endpoint. A key that is refused exits 77. Default: unix.
+
+        --up-carrier <NAME>
+            One session over two carriers: the bytes of the dialer go up on
+            this carrier, the bytes of the listener come down on
+            --down-carrier. The address is `UP|DOWN`, the address of each half
+            in the form of its carrier. The hello proves the keys on the
+            session. A half that fails, or is silent for 30 s, ends the
+            session at each end with `up-carrier lost` or `down-carrier lost`
+            (exit 69); no half takes over the bytes of the other
+
+        --down-carrier <NAME>
+            The carrier of the bytes of the listener of a split session (see
+            --up-carrier)
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks

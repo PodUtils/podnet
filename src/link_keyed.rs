@@ -200,6 +200,54 @@ pub async fn dial(
     }
 }
 
+/// The carrier `name` as a carrier of `pod-link`, for a half of a split
+/// session ([`crate::link_split`]): it presents the key of `me` and a
+/// listener takes the clients of `allow`. A dial of the dns carrier with
+/// no `--dns-server` sends its queries to the first `nameserver` of
+/// `/etc/resolv.conf`.
+pub fn carrier(
+    name: &str,
+    tune: &Tune,
+    me: &Identity,
+    allow: &AllowList,
+) -> anyhow::Result<std::sync::Arc<dyn Carrier>> {
+    let _ = (&tune, &me, &allow);
+    match name {
+        #[cfg(feature = "quic")]
+        "quic" => Ok(std::sync::Arc::new(crate::link_quic::carrier(me, allow))),
+        #[cfg(feature = "udp")]
+        "udp" => Ok(std::sync::Arc::new(crate::link_udp::carrier(
+            me, allow, tune,
+        ))),
+        #[cfg(feature = "poll")]
+        "poll" | "sse" | "chunked" | "httppoll" => {
+            let form = crate::link_poll::form_of(name).expect("a poll form");
+            Ok(std::sync::Arc::new(crate::link_poll::carrier(
+                me, allow, form, tune,
+            )))
+        }
+        #[cfg(feature = "dns")]
+        "dns" => {
+            let mut tune = tune.clone();
+            if tune.dns_server.is_none() {
+                let text =
+                    std::fs::read_to_string(crate::link_dns::RESOLV_CONF).unwrap_or_default();
+                tune.dns_server = crate::link_dns::first_nameserver(&text);
+            }
+            Ok(std::sync::Arc::new(crate::link_dns::carrier(
+                me, allow, &tune,
+            )))
+        }
+        #[cfg(feature = "icmp")]
+        "icmp" => Ok(std::sync::Arc::new(crate::link_icmp::carrier(me, allow))),
+        #[cfg(feature = "s3")]
+        "s3" => Ok(std::sync::Arc::new(crate::link_s3::carrier(
+            me, allow, tune,
+        )?)),
+        _ => Err(off(name)),
+    }
+}
+
 /// Listen at `address` through the carrier `name`. A client must prove a
 /// key of `allow`.
 pub async fn listen(

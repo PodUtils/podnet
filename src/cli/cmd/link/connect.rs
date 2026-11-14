@@ -240,6 +240,10 @@ async fn accept_streams(link: Arc<Link>, slot: Slot, streams: Streams, _guard: O
     while let Ok(stream) = link.accept().await {
         streams.spawn(stream, &slot);
     }
+    // A split session names the half whose loss ended it (T-302).
+    if let Some(why) = podnet::link_split::lost(&link) {
+        eprintln!("podnet: {why}");
+    }
 }
 
 impl Redial for Dialer {

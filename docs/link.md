@@ -253,6 +253,8 @@ one in code with `podnet::link_group::LinkGroup`.
 ## Flags of the carriers
 
 * `--carrier NAME` selects the carrier (default `unix`). An unknown name exits 64 and lists the names.
+* `--up-carrier NAME` and `--down-carrier NAME` join one session over two carriers, in place of `--carrier`: see "A split
+  session".
 * `--allow-other-uid` (unix carrier) accepts a peer of another uid. Each end checks the uid of the other end with
   `SO_PEERCRED`, so give the flag at both ends. Without it, a peer of another uid exits 69.
 * `--dns-server IP:PORT` and `--dns-zone ZONE` (dns carrier): the server of the queries of a dial, and the zone of a listener. With
@@ -556,6 +558,39 @@ Build with `--features s3` (it holds `tcp` and `poll`). `pod-link` of PodUtils/p
 export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...
 podnet link listen links/office --carrier s3 --s3-endpoint https://s3.example.net --allow allowed.txt --to 127.0.0.1:22
 podnet link dial SERVER-FINGERPRINT@links/office --carrier s3 --s3-endpoint https://s3.example.net --allow servers.txt
+```
+
+## A split session
+
+`--up-carrier NAME --down-carrier NAME` join one session over two carriers (T-302). `pod-link` of PodUtils/podcrates does the
+work (`pod_link::split`); `podnet::link_split` is the glue. The bytes of the dialer go up on the up carrier, the bytes of the
+listener come down on the down carrier, and the link above sees one byte stream: for example a fast down carrier and a slow up
+carrier, or a carrier that only one way of a firewall lets through.
+
+* The address is `UP|DOWN`: the address of each half in the form of its carrier (a path of `unix`, `KEY@HOST:PORT` of `tcp`,
+  `KEY@ZONE` of `dns`). An address with no `|` exits 64. Each half takes the flags of its carrier (`--dns-zone`, `--s3-endpoint`
+  and the others); a half of `dns` with no `--dns-server` sends its queries to the first `nameserver` of `/etc/resolv.conf`.
+* `--up-carrier` needs `--down-carrier`, and the reverse (exit 64). They take the place of `--carrier`. An unknown half exits 64; a
+  half whose feature is off exits 69.
+* The dialer dials both halves and the listener joins them into one session. The hello of the link ("The hello") proves the key
+  of each end on the session, whatever the halves are: a half that pins keys pins them too.
+* The credits and the acknowledgements of the bytes of one direction ride on the other half. Flow control counts each direction
+  apart, and the slower half sets the throughput of its direction.
+* Each direction sends a beat after 10 s of silence. A half that is silent for 30 s, fails, or ends before the bytes of its peer
+  ended, ends the session at each end with `up-carrier lost` or `down-carrier lost`. `link dial` then exits 69 with that text;
+  `link listen` prints `peer gone FINGERPRINT: up-carrier lost: ...` and takes the next peer; `link connect` prints the loss and
+  exits 69 when no link is left.
+* No half takes over the bytes or the control of the other half: there is no fallback and no silent promotion (the ruling of
+  2026-11-14, [decisions.md](decisions.md), "The split session: a lost half ends the session"). A session that must outlive the
+  loss of a carrier runs over the resumable layer (`pod-session`, `podnet::session`).
+* A chain of `--egress` elements is for the `tcp` carrier only: a split session with `--egress` exits 64.
+* The direction split of the router (`splits:` of a group, [router.md](router.md)) is another feature: it puts the two directions
+  of a UDP flow on two uplinks.
+
+```sh
+podnet link listen '/run/up.sock|/run/down.sock' --up-carrier unix --down-carrier unix --allow allowed.txt --to 127.0.0.1:22
+podnet link dial 'SERVER-FINGERPRINT@t.example.com|SERVER-FINGERPRINT@203.0.113.7:443' --up-carrier dns --down-carrier tcp \
+    --dns-server 10.0.0.2:53 --allow servers.txt
 ```
 
 ## The ARQ under a link
@@ -909,7 +944,7 @@ library ([build.md](build.md), "The C library"). Linux only.
 | --- | --- |
 | 64 | A bad flag or value: an unknown carrier, a ring out of its limits, the `icmp` carrier with no `--allow-raw icmp`, a regular file at the address, no `--peer` or `--allow`; a chain of more than 8 elements, a network that is not an element, a chain with a carrier that is not `tcp`. |
 | 66 | The allow list file is missing. |
-| 69 | The address is held by a live listener, no listener answers, the host refuses the carrier (the `icmp` carrier with no `CAP_NET_RAW`), or a peer has another uid; an element of a chain that cannot be built or dialed; with `--seal`, `ResumeExpired` (three failed RESUME records). |
+| 69 | The address is held by a live listener, no listener answers, the host refuses the carrier (the `icmp` carrier with no `CAP_NET_RAW`), or a peer has another uid; an element of a chain that cannot be built or dialed; with `--seal`, `ResumeExpired` (three failed RESUME records); a split session that lost a half (`up-carrier lost`, `down-carrier lost`). |
 | 71 | The key file or the allow list file has a mode that others can use. |
 | 77 | A peer is not in the allow list, or it did not prove its key. On `tcp`: a key that the handshake refused. On `s3`: no key of the bucket, or a key that the bucket refused (403). With `--seal`: the end of a stream is not the expected key, or its key is not in the allow list. |
 | 78 | The allow list has a line that is no peer, or more than 4096 entries; a duplicate element or a cycle in a chain; with `--seal`, a suite that the two ends do not share. |
