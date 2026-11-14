@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**351 entries: 11 open, 9 partial, 25 blocked, 306 done.**
+**351 entries: 11 open, 9 partial, 24 blocked, 307 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 33 | 36 |
 | P2 | 5 | 4 | 10 | 158 | 177 |
-| P3 | 6 | 4 | 13 | 114 | 137 |
-| **All** | 11 | 9 | 25 | 306 | 351 |
+| P3 | 6 | 4 | 12 | 115 | 137 |
+| **All** | 11 | 9 | 24 | 307 | 351 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -324,7 +324,7 @@ M8 Overlays, M9 Later.
 | [T-276](link.md) | P3 | L | M9 | feature | done | link: the UDP carrier with KCP (GitHub #468) |
 | [T-277](link.md) | P3 | L | M9 | feature | done | link: a selective-repeat ARQ for any lossy carrier (GitHub #468) |
 | [T-278](link.md) | P3 | L | M9 | feature | done | link: the DNS simplex carrier (GitHub #468) |
-| [T-279](link.md) | P3 | L | M9 | feature | blocked | link: the object-storage simplex carrier (GitHub #468) |
+| [T-279](link.md) | P3 | L | M9 | feature | done | link: the object-storage simplex carrier (GitHub #468) |
 | [T-280](link.md) | P3 | M | M9 | feature | done | link: the HTTP poll simplex carrier (GitHub #468) |
 | [T-281](link.md) | P3 | L | M9 | feature | blocked | link: the DNS stream carrier with a pipelined query window (GitHub #469) |
 | [T-282](link.md) | P3 | L | M9 | feature | done | link: the ICMP echo carrier (GitHub #469) |

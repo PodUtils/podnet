@@ -1112,7 +1112,7 @@ CI: ci 43560703081 (with the step "Interop with the Python magic-wormhole": 7 pa
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -1145,14 +1145,45 @@ cargo test --test link_s3 --features s3
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 494 in the record of podcrates (PodUtils/podcrates#133,
-2026-11-13; estimate: tag `v0.39.0`).
-
 ## Start condition
 
 T-277, T-262, T-264 and T-311 are done.
+
+## Correction
+
+2026-11-14, the take: the Blocker (their entry 494, PodUtils/podcrates#133) is gone with the tag v0.46.0, so the section is
+removed. The carrier is `pod_link::s3::S3` of podcrates v0.46.0 (their entry 494, calls C489 to C491). The S3
+client (SigV4 with `sha2` and `hmac`, `PUT`, `GET`, `LIST`, `DELETE` over HTTP/1.1) is in the crate, so step 1 of the Approach
+writes no client in podnet and adds no crate to podnet. The keys of a session are `PREFIX/open/SESSION`, `PREFIX/up/SESSION/SEQ`
+and `PREFIX/down/SESSION/SEQ` (call C489), in place of `<prefix>/<direction>/<seq>-<nonce>` of the issue: the session id is the
+nonce. TLS 1.3 with the pinned Ed25519 keys runs over the objects, as on the other carriers. The dial address is
+`KEY@BUCKET[/PREFIX]`, the listen address `BUCKET[/PREFIX]`. The endpoint is `--s3-endpoint` (no default host,
+`docs/decisions.md`, Services crate). The profile file of the key can also come from `--s3-credentials FILE` (a path, not a
+key). A key that the bucket refuses (403, `CarrierErrorKind::Refused`) exits 77, as a missing key. The Prove names
+`tests/link_s3.rs` against a local S3-compatible server: the test server is a stand-in of the S3 API on the loopback
+(`tests/link_s3_standin/mod.rs`, a port of the stand-in of the tests of `pod-link`); it checks the SigV4 of each request.
+
+## Done
+
+2026-11-14, commit bcfae9e. `Cargo.toml`: the feature `s3` is `["tcp", "poll", "pod-link/s3"]` (in `full`). `src/link_s3.rs`
+(`podnet::link_s3`) is the glue: `carrier` (the endpoint, the region, the prune and the key of `Tune`; the key from
+`--s3-credentials FILE`, else `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, else the profile file of
+`AWS_SHARED_CREDENTIALS_FILE` or `$HOME/.aws/credentials`), `listen`, `dial`, `fault` (403 exits 77) and `probe` (the row of
+the registry). `podnet::link_keyed` opens `s3` by name; `link listen`, `dial` and `connect` take `--s3-endpoint`,
+`--s3-region`, `--s3-credentials` and `--s3-prune` (with another carrier: exit 64). The manual has the variables and the row
+of the inventory; `docs/link.md` ("The S3 carrier") and `docs/build.md` have the carrier.
+`cargo test --features s3 --test link_s3`: 7 passed: `a_link_crosses_s3_and_each_end_learns_the_key_of_the_other` (100000
+bytes there and back on objects of 16 KiB), `the_glue_of_link_keyed_carries_a_link_and_refuses_strangers` (another pinned key
+exits 77, no key in the address exits 64), `a_key_that_the_bucket_refuses_exits_77_and_a_missing_bucket_69`,
+`link_listen_and_dial_check_meet_over_s3` (`link listen` and `link dial --check` as processes: 0, and 77 for a stranger),
+`the_cli_refuses_no_endpoint_no_key_and_the_flags_for_another_carrier` (64, 77 with no value shown, 64),
+`the_carrier_is_a_stream_of_the_highest_overhead_and_takes_the_flags`, `the_registry_row_has_no_key_and_refuses_a_dial`.
+`cargo test --features s3 --lib link_s3`: 3 passed (the profile file, the order of the sources of the key, the exit codes).
+`sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace --no-fail-fast`: 1992 passed and `llms_files_are_current`, which passed after `scripts/gen-llms.py`; 121 targets). `cargo clippy --features full`: exit 0.
+Not proven: a real provider of the S3 API (no test calls one; their entry 623 is open for the same reason); `--s3-prune` at the
+podnet level (the crate proves it; podnet proves that the flag reaches the carrier); a virtual-host style bucket (podnet sends
+the path style only).
+
 
 # T-280: link: the HTTP poll simplex carrier (GitHub #468)
 
