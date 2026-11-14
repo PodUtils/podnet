@@ -120,14 +120,17 @@ podnet forward --network wg:/etc/wireguard/wg0.conf -L 127.0.0.1:8080=10.9.0.1:8
 ```
 
 The spec `wg:FILE` makes a WireGuard peer a network. `FILE` is a wg-quick file with one peer
-(`PrivateKey`, `Address`, `MTU`; `PublicKey`, `Endpoint`, `Reserved`). podnet does the handshake itself and
+(`PrivateKey`, `Address`, `MTU`; `PublicKey`, `PresharedKey`, `Endpoint`, `Reserved`). podnet does the handshake itself and
 runs a userspace stack over the tunnel. It makes no TUN device and needs no capability. The spec gives TCP and
 UDP from the `Address` of the file.
 
 * A target name resolves at the first address of the `DNS` line of the file, with DNS over TCP (RFC 7766)
   through the tunnel. The resolver of this host is not used. With no address in `DNS`, the target must be an
   IP address, and a name gives one line that says so. The status of the link names the server in `dns`.
-* A file with a `PresharedKey` is refused with one line.
+* A `PresharedKey` of the `[Peer]` goes into the handshake (Noise IKpsk2). A value that is not 32 bytes in
+  base64 is a usage line (exit 64), as each other key of the file. When the peer has another preshared key, or
+  only one end has one, the handshake response does not authenticate: `up` fails at once with one line that
+  names `PresharedKey`, and `podnet forward --network` exits 77.
 * `up` does the handshake. A path with no UDP gives no answer in 15 s, and the error says that the UDP path
   may be closed.
 * The UDP of the tunnel goes out from this host. A way below the network (`Ctx::below`, a layer of a chain)

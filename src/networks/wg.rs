@@ -1,7 +1,8 @@
 //! WireGuard as a network: `wg:FILE` (T-117).
 //!
 //! `FILE` is a wg-quick file with one peer ([`podnet_vnet::wg_quick`]). The
-//! network does the handshake with `pod-wg`, puts the tunnel on a stack of
+//! network does the handshake with `pod-wg` (with the `PresharedKey` of the
+//! peer, if the file has one), puts the tunnel on a stack of
 //! `pod-netstack`, and dials TCP and UDP from the address of the file. It
 //! makes no TUN device and needs no capability. A target name resolves
 //! with DNS over TCP through the tunnel, at the first address of the `DNS`
@@ -55,11 +56,6 @@ fn read(path: &Path) -> Result<Config, Failure> {
     let usage = |e: String| fail(Class::Usage, format!("wg:{}: {e}", path.display()));
     let conf = wg_quick::read_file(path).map_err(|e| usage(format!("{e:#}")))?;
     let peer = conf.single_peer().map_err(|e| usage(format!("{e:#}")))?;
-    if peer.preshared_key.is_some() {
-        return Err(usage(
-            "the peer has a PresharedKey, and podnet does not take it yet: remove it from both ends".into(),
-        ));
-    }
     let endpoint = peer
         .endpoint
         .as_ref()
@@ -79,7 +75,7 @@ fn read(path: &Path) -> Result<Config, Failure> {
             private: conf.interface.private_key.0,
             peer_public: peer.public_key,
             reserved: peer.reserved,
-            preshared: None,
+            preshared: peer.preshared_key.as_ref().map(|k| k.0),
         },
         endpoint: (endpoint.host.clone(), endpoint.port),
         v4,
@@ -148,6 +144,11 @@ async fn handshake(keys: &Keys, sock: &Sock) -> Result<Tunnel, Failure> {
                 Some(&pod_wg::MSG_RESPONSE) => match init.finish(keys, &buf[..n], Instant::now()) {
                     Ok(session) => {
                         return Ok(Tunnel::new(keys.clone(), session, stamps, Instant::now()))
+                    }
+                    // The peer took the initiation, so it has the key of the
+                    // file; the psk step failed. No later try can pass (T-337).
+                    Err(e @ pod_wg::Error::ResponseNotAuthentic) => {
+                        return Err(fail(Class::Refused, format!("{e}: the PresharedKey of the two ends is not the same, or one end has none")))
                     }
                     Err(e) => last = Some(format!("the response does not verify: {e}")),
                 },

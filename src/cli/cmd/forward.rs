@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use clap::Args;
 use podnet::exit::{Fault, ResultExt};
-use podnet::network::{Addressing, Class, Ctx, Dial, Failure, Network as _, Target};
+use podnet::network::{Addressing, Ctx, Dial, Network as _, Target};
 use podnet_netns::listen::ProxyListen;
 
 use crate::cli::signals::sleep_or_signal;
@@ -79,13 +79,11 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
             let network = podnet::networks::parse(spec)
                 .map_err(anyhow::Error::from)
                 .fault(Fault::Usage)?;
-            // A usage fault of the network (a missing TURN account) is exit 64.
-            let link = network.up(&Ctx::default()).await.map_err(|e| {
-                match e.downcast_ref::<Failure>() {
-                    Some(f) if f.class == Class::Usage => podnet::exit::fault(Fault::Usage, e),
-                    _ => e,
-                }
-            })?;
+            // A usage fault of the network is exit 64, a refused key 77.
+            let link = network
+                .up(&Ctx::default())
+                .await
+                .map_err(podnet::networks::up_fault)?;
             let way = link.way.context("the network gives no way out")?;
             // A peer way meets a peer: it takes no HOST:PORT.
             Addressing::Destination

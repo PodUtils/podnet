@@ -596,7 +596,7 @@ T-246 is done, and a NetBird setup key is a secret of the live job.
 **Milestone:** M8
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** partial
 
 ## Problem
 
@@ -621,10 +621,20 @@ be a network of podnet.
 ## Prove
 
 ```sh
-cargo test --workspace -- wg_network_takes_a_preshared_key
+cargo test --workspace -- wg_network_takes_a_preshared_key wg_network_refuses_a_preshared_key_that_differs wg_network_spec_a_bad_file_is_one_usage_line
 ```
 
-## Blocker
+## Correction
 
-The session of `PodUtils/podcrates` (the crate `pod-wg`): a preshared key in `Keys` and in the handshake. The
-entry is unblocked when a tag of podcrates has it.
+2026-11-14, podcrates v0.43.0 (PodUtils/podcrates#149) has `Keys::preshared` (the entry 561 of podcrates) and the
+stand-in `standin::respond_preshared`. podnet takes it (T-137). The calls of the session (the owner is away):
+
+- A response that fails the psk step (`pod_wg::Error::ResponseNotAuthentic`) ends the handshake at once, with no
+  more tries. The peer took the initiation, so it has the key of the file: only the preshared key (or a forged
+  response from a host on the path) gives that error, and a later try gets the same answer.
+- Its class is `Refused`, and `podnet forward --network` exits 77 (`EX_NOPERM`, as a key that a link refuses,
+  T-273), not 76 (the class `Protocol` of the crate): the two ends have another credential. The text is the text
+  of the crate, then "the PresharedKey of the two ends is not the same, or one end has none".
+  `podnet::networks::up_fault` maps the class of a failure of `Network::up` (64 for `Usage`, 77 for `Refused`).
+- A bad value (not 32 bytes in base64) is a usage line, exit 64, as each other key of the file (the reader
+  `crates/podnet-vnet/src/wg_quick.rs` refuses it).

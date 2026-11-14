@@ -90,7 +90,8 @@ exists), 66 when a file
 that must exist is missing (the key or the allow list of the link), 69 when a
 service or a network path is not available (no edge leg worked), 71 when a
 file of the host cannot be used (a key file with a mode that is not 0600), 77
-when a peer is not in the allow list of the link, 78 for a bad configuration
+when a peer is not in the allow list of the link or a peer refused a key (a `PresharedKey` of `wg:FILE`
+that differs), 78 for a bad configuration
 (for example `PODNET_EDGE`). 68 is for an address of a peer that does not
 resolve. `podnet man exit-status` gives all of them.
 The exit codes of `podnet link` are in [link.md](link.md).

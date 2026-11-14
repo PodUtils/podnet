@@ -40,12 +40,14 @@ fn cut(mut packet: Vec<u8>) -> Vec<u8> {
 /// the counter of the messages out.
 type Session = ([u8; 32], [u8; 32], [u8; 4], SocketAddr, u64);
 
-/// The WireGuard peer: it answers the handshake of `client_public`, puts
-/// each packet of the client in `stack`, and seals each packet of `stack`.
+/// The WireGuard peer: it answers the handshake of `client_public` with the
+/// preshared key `psk` (`None`: the zero key), puts each packet of the
+/// client in `stack`, and seals each packet of `stack`.
 async fn peer(
     sock: tokio::net::UdpSocket,
     private: [u8; 32],
     client_public: [u8; 32],
+    psk: Option<[u8; 32]>,
     stack: NetStack,
 ) {
     let mut buf = vec![0u8; 2048];
@@ -57,7 +59,10 @@ async fn peer(
                 let Ok((n, from)) = got else { return };
                 let m = &buf[..n];
                 if m.first() == Some(&pod_wg::MSG_INITIATION) && n == pod_wg::INITIATION_LEN {
-                    let (response, send, recv, _) = standin::respond(&private, &client_public, m);
+                    let mut e_priv = [0u8; 32];
+                    ring::rand::SecureRandom::fill(&ring::rand::SystemRandom::new(), &mut e_priv).unwrap();
+                    let (response, send, recv, _) =
+                        standin::respond_preshared(&private, &client_public, psk.as_ref(), m, &e_priv, 77);
                     session = Some((send, recv, m[4..8].try_into().unwrap(), from, 0));
                     let _ = sock.send_to(&response, from).await;
                 } else if m.first() == Some(&pod_wg::MSG_DATA) && n >= 32 {
@@ -150,6 +155,18 @@ async fn start_at(
     shown: Option<SocketAddr>,
     interface: &str,
 ) -> (std::path::PathBuf, SocketAddr) {
+    start_psk(dir, shown, interface, None, None).await
+}
+
+/// [`start_at`] with the preshared key `file_psk` in the `[Peer]` of the
+/// file, and `peer_psk` at the peer.
+async fn start_psk(
+    dir: &std::path::Path,
+    shown: Option<SocketAddr>,
+    interface: &str,
+    file_psk: Option<[u8; 32]>,
+    peer_psk: Option<[u8; 32]>,
+) -> (std::path::PathBuf, SocketAddr) {
     let (keys, private) = standin::keys([0; 3]);
     let sock = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let outside = sock.local_addr().unwrap();
@@ -173,13 +190,16 @@ async fn start_at(
         .await
         .unwrap();
     tokio::spawn(serve_dns(dns));
-    tokio::spawn(peer(sock, private, keys.public(), stack));
+    tokio::spawn(peer(sock, private, keys.public(), peer_psk, stack));
     let b64 = base64::engine::general_purpose::STANDARD;
+    let psk_line = file_psk.map_or(String::new(), |k| {
+        format!("PresharedKey = {}\n", b64.encode(k))
+    });
     let file = dir.join("wg0.conf");
     std::fs::write(
         &file,
         format!(
-            "[Interface]\nPrivateKey = {}\nAddress = 10.9.0.2/32\n{interface}\n[Peer]\nPublicKey = {}\nEndpoint = {endpoint}\nAllowedIPs = 10.9.0.0/24\n",
+            "[Interface]\nPrivateKey = {}\nAddress = 10.9.0.2/32\n{interface}\n[Peer]\nPublicKey = {}\nEndpoint = {endpoint}\nAllowedIPs = 10.9.0.0/24\n{psk_line}",
             b64.encode(keys.private),
             b64.encode(keys.peer_public),
         ),
@@ -275,9 +295,13 @@ fn wg_network_spec_a_bad_file_is_one_usage_line() {
         format!("wg:{}", path.display())
     };
     assert!(parse(&file("", true)).is_ok());
-    let err = parse(&file(&format!("PresharedKey = {key}\n"), true)).unwrap_err();
-    assert!(err.text().contains("PresharedKey"), "{}", err.text());
+    // T-337: a good PresharedKey is taken; a bad one is a usage line (exit 64),
+    // as each other key of the file.
+    assert!(parse(&file(&format!("PresharedKey = {key}\n"), true)).is_ok());
+    let err = parse(&file("PresharedKey = c2hvcnQ=\n", true)).unwrap_err();
+    assert!(err.text().contains("32 bytes in base64"), "{}", err.text());
     assert_eq!(err.class, Class::Usage);
+    assert_eq!(err.class.exit_code(), 64);
     let err = parse(&file("", false)).unwrap_err();
     assert!(err.text().contains("no Endpoint"), "{}", err.text());
     let err = parse("wg:").unwrap_err();
@@ -400,4 +424,41 @@ async fn wg_network_resolves_a_name_at_the_dns_of_the_file() {
     };
     assert!(err.text().contains("DNS = ADDRESS"), "{}", err.text());
     link.close().await;
+}
+
+// T-337: the PresharedKey of the file goes into the handshake.
+#[tokio::test]
+async fn wg_network_takes_a_preshared_key() {
+    crate::test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let psk = Some([0x5a; 32]);
+    let (file, _) = start_psk(dir.path(), None, "", psk, psk).await;
+    let network = parse(&format!("wg:{}", file.display())).unwrap();
+    let text = get(&network, &Ctx::default()).await;
+    assert!(text.ends_with("behind the peer"), "{text}");
+}
+
+// T-337: another key, or a key at one end only, is refused at once (exit
+// 77), with the text of the crate and the name of the line.
+#[tokio::test]
+async fn wg_network_refuses_a_preshared_key_that_differs() {
+    crate::test_host::need_loopback!();
+    let (a, b) = (Some([0x5a; 32]), Some([0xa5; 32]));
+    for (file_psk, peer_psk) in [(a, b), (a, None), (None, b)] {
+        let dir = tempfile::tempdir().unwrap();
+        let (file, _) = start_psk(dir.path(), None, "", file_psk, peer_psk).await;
+        let network = parse(&format!("wg:{}", file.display())).unwrap();
+        let started = std::time::Instant::now();
+        let err = network.up(&Ctx::default()).await.unwrap_err();
+        let failure = err.downcast_ref::<Failure>().expect("a Failure");
+        let text = failure.text().to_string();
+        assert_eq!(failure.class, Class::Refused, "{text}");
+        assert_eq!(crate::exit::code_of(&super::up_fault(err)), 77, "{text}");
+        assert!(
+            text.contains(&pod_wg::Error::ResponseNotAuthentic.to_string()),
+            "{text}"
+        );
+        assert!(text.contains("PresharedKey"), "{text}");
+        assert!(started.elapsed() < Duration::from_secs(5), "{text}");
+    }
 }

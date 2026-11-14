@@ -180,6 +180,18 @@ fn usage(text: String) -> Failure {
     Failure::new(Stage::Connect, Class::Usage, text)
 }
 
+/// The exit class of a failure of `Network::up`: a usage fault (a missing
+/// TURN account) is 64, a key that the peer refused (a `PresharedKey` of
+/// `wg:FILE` that differs, T-337) is 77. Other failures keep their error.
+pub fn up_fault(e: anyhow::Error) -> anyhow::Error {
+    use crate::exit::{fault, Fault};
+    match e.downcast_ref::<Failure>().map(|f| f.class) {
+        Some(Class::Usage) => fault(Fault::Usage, e),
+        Some(Class::Refused) => fault(Fault::NoPermission, e),
+        _ => e,
+    }
+}
+
 /// Parse `spec`. The error is one line that names the spec.
 pub fn parse(spec: &str) -> Result<SpecNetwork, Failure> {
     let spec = spec.trim();
