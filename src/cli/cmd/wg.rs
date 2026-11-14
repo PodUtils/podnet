@@ -42,6 +42,21 @@ pub(crate) struct ServeArgs {
     /// Stop after this many seconds.
     #[arg(long, value_name = "SECONDS")]
     run_for: Option<u64>,
+    /// The TCP flows of the server at one time (held SYNs and open flows).
+    #[arg(long, value_name = "N", default_value_t = podnet::router::guest::MAX_FLOWS)]
+    flows: usize,
+    /// The UDP flows of the server at one time.
+    #[arg(long, value_name = "N", default_value_t = podnet::router::guest::udp::MAX_FLOWS)]
+    udp_flows: usize,
+    /// The TCP flows of one peer at one time. Default: --flows divided by
+    /// the peers, at least 64. A new flow over the share is refused, so
+    /// that one peer cannot take the flows of the others.
+    #[arg(long, value_name = "N")]
+    peer_flows: Option<usize>,
+    /// The UDP flows of one peer at one time. Default: --udp-flows divided
+    /// by the peers, at least 16.
+    #[arg(long, value_name = "N")]
+    peer_udp_flows: Option<usize>,
 }
 
 pub(crate) async fn wg(args: WgArgs, egress: Vec<String>) -> Result<()> {
@@ -52,9 +67,17 @@ pub(crate) async fn wg(args: WgArgs, egress: Vec<String>) -> Result<()> {
 
 /// Run the responder until a signal or --run-for.
 async fn serve(args: ServeArgs, egress: Vec<String>) -> Result<()> {
-    let file = podnet::networks::wg_serve::read(&args.config)
+    let mut file = podnet::networks::wg_serve::read(&args.config)
         .map_err(anyhow::Error::from)
         .fault(Fault::Usage)?;
+    file.set_flows(
+        Some(args.flows),
+        Some(args.udp_flows),
+        args.peer_flows,
+        args.peer_udp_flows,
+    )
+    .map_err(|e| anyhow::anyhow!("--flows, --udp-flows, --peer-flows, --peer-udp-flows: {e}"))
+    .fault(Fault::Usage)?;
     // The link of the way stays open while the server runs.
     let (way, _link) = match egress.as_slice() {
         [] => (Way::destination(podnet::dialers::process()), None),
@@ -81,10 +104,12 @@ async fn serve(args: ServeArgs, egress: Vec<String>) -> Result<()> {
     let mut server = podnet::networks::wg_serve::serve(file, &label, way).await?;
     let status = server.status();
     println!(
-        "podnet: wg serve  udp:{}  {peers} peers  net {}  via {}",
+        "podnet: wg serve  udp:{}  {peers} peers  net {}  via {}  flows {}/{} for each peer",
         server.local_addr(),
         status["net"].as_str().unwrap_or("?"),
         status["via"].as_str().unwrap_or("?"),
+        status["flows"]["tcp_share"],
+        status["flows"]["udp_share"],
     );
     tokio::select! {
         _ = sleep_or_signal(args.run_for) => Ok(()),

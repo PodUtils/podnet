@@ -31,7 +31,9 @@ use podnet_vnet::wg_quick;
 
 use crate::network::{Class, Failure, Stage, Way};
 use crate::router::guest::wire::{seqpacket_pair, PacketFd, PACKET_MAX};
-use crate::router::guest::{GuestNet, GuestStats, Opened, RouterGuest, WireSpec};
+use crate::router::guest::{
+    FlowLimits, Groups, GuestNet, GuestStats, Opened, RouterGuest, Shares, WireSpec,
+};
 
 /// The MTU of the tunnel when the file gives none.
 const MTU: usize = 1420;
@@ -52,9 +54,30 @@ pub struct ServeFile {
     net: GuestNet,
     mtu: usize,
     peers: Vec<FilePeer>,
+    limits: FlowLimits,
 }
 
 impl ServeFile {
+    /// Set the limits of the flows: the TCP and the UDP flows of the server,
+    /// and the TCP and the UDP flows of one peer (T-345). A value that is
+    /// `None` takes its default: 2048 and 512 flows, and a share of the
+    /// flows divided by the peers (at least 64 and 16).
+    pub fn set_flows(
+        &mut self,
+        tcp: Option<usize>,
+        udp: Option<usize>,
+        peer_tcp: Option<usize>,
+        peer_udp: Option<usize>,
+    ) -> Result<(), String> {
+        self.limits = FlowLimits::with(tcp, udp, peer_tcp, peer_udp, self.peers.len())?;
+        Ok(())
+    }
+
+    /// The limits of the flows.
+    pub fn limits(&self) -> FlowLimits {
+        self.limits
+    }
+
     /// The number of peers.
     pub fn peers(&self) -> usize {
         self.peers.len()
@@ -132,12 +155,14 @@ pub fn check(conf: &wg_quick::WgQuick) -> Result<ServeFile, String> {
         };
         peers.push(FilePeer { keys, allowed });
     }
+    let limits = FlowLimits::with(None, None, None, None, peers.len())?;
     Ok(ServeFile {
         private: iface.private_key.0,
         port,
         net,
         mtu: iface.mtu.map_or(MTU, usize::from).clamp(576, 9000),
         peers,
+        limits,
     })
 }
 
@@ -198,6 +223,22 @@ fn route(peers: &[Vec<(Ipv4Addr, u8)>], dst: Ipv4Addr) -> Option<usize> {
         }
     }
     best.map(|(i, _)| i)
+}
+
+/// The groups of the flows of the server: the sources of one peer are one
+/// group (T-345). A source that routes to no peer does not come in.
+struct PeerGroups {
+    allowed: Arc<Vec<Vec<(Ipv4Addr, u8)>>>,
+}
+
+impl Groups for PeerGroups {
+    fn group(&self, src: Ipv4Addr) -> u32 {
+        route(&self.allowed, src).map_or(u32::MAX, |peer| peer as u32)
+    }
+
+    fn name(&self, group: u32) -> String {
+        format!("[Peer] {}", u64::from(group) + 1)
+    }
 }
 
 /// The IPv4 source and destination of `packet`.
@@ -263,6 +304,12 @@ pub async fn serve_on(
         dial: way.dial.clone(),
         default: way,
         stats: Arc::new(GuestStats::default()),
+        shares: Shares::new(
+            Arc::new(PeerGroups {
+                allowed: allowed.clone(),
+            }),
+            file.limits,
+        ),
     });
     let (ours, theirs) = seqpacket_pair()?;
     let wire = Arc::new(PacketFd::new(ours)?);

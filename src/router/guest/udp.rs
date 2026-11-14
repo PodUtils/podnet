@@ -31,6 +31,7 @@ use pod_netstack::UdpSocket;
 use tokio::sync::mpsc;
 
 use super::pump::Pump;
+use super::share::{Held, Kind};
 use super::RouterGuest;
 use crate::network::{recv_from, send_to, Datagrams, Failure, Target};
 
@@ -38,7 +39,8 @@ use crate::network::{recv_from, send_to, Datagrams, Failure, Target};
 pub const QUEUE: usize = 32;
 /// The datagrams of one port that wait for the stack.
 pub const REPLY_QUEUE: usize = 64;
-/// The UDP flows of a guest at one time.
+/// The UDP flows of a guest at one time by default
+/// ([`super::FlowLimits`]).
 pub const MAX_FLOWS: usize = 512;
 /// The ports of a guest with a socket at one time.
 pub const MAX_PORTS: usize = 256;
@@ -232,15 +234,23 @@ fn deliver_new(
     data: Vec<u8>,
 ) {
     let stats = &ctx.guest.stats;
-    if flows.len() >= MAX_FLOWS {
+    if flows.len() >= ctx.guest.shares.limits().udp {
         stats.add(&stats.udp_refused);
         return;
     }
+    let IpAddr::V4(src) = key.0.ip() else {
+        stats.add(&stats.dropped);
+        return;
+    };
+    // One source group cannot take the flows of the others (T-345).
+    let Some(place) = ctx.guest.shares.take(src, Kind::Udp, stats) else {
+        return;
+    };
     let (queue, inbox) = mpsc::channel(QUEUE);
     let _ = queue.try_send(data);
     flows.insert(key, queue);
     stats.add(&stats.udp_flows);
-    tokio::spawn(flow(ctx.clone(), key, inbox));
+    tokio::spawn(flow(ctx.clone(), key, inbox, place));
 }
 
 /// The way and the socket of a flow to `dst`.
@@ -249,7 +259,7 @@ async fn open(guest: &RouterGuest, dst: SocketAddr) -> Result<Arc<dyn Datagrams>
 }
 
 /// One flow: send its datagrams out, and bring the answers of `dst` back.
-async fn flow(ctx: Ctx, key: Key, mut inbox: mpsc::Receiver<Vec<u8>>) {
+async fn flow(ctx: Ctx, key: Key, mut inbox: mpsc::Receiver<Vec<u8>>, place: Held) {
     let (guest, dst) = key;
     let stats = ctx.guest.stats.clone();
     match open(&ctx.guest, dst).await {
@@ -293,6 +303,7 @@ async fn flow(ctx: Ctx, key: Key, mut inbox: mpsc::Receiver<Vec<u8>>) {
     if let Ok(mut flows) = ctx.flows.lock() {
         flows.remove(&key);
     }
+    drop(place);
 }
 
 /// The datagrams that come back from `dst`, for the guest. An answer from

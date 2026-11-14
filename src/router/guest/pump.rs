@@ -15,7 +15,7 @@ use pod_netstack::{NetStack, PacketQueue, StackConfig, Subnet};
 use tokio::time::MissedTickBehavior;
 
 use super::wire::{Listener, Opened, PacketFd, PACKET_MAX};
-use super::{tcp, udp, RouterGuest, MAX_FLOWS};
+use super::{tcp, udp, RouterGuest};
 
 /// The addresses of a TCP connection of the guest: (source, source port,
 /// destination, destination port).
@@ -69,7 +69,7 @@ impl Pump {
             mtu: guest.mtu,
             random_seed: seed(),
             any_ip: true,
-            max_connections: MAX_FLOWS + 64,
+            max_connections: guest.shares.limits().tcp + 64,
             checksum,
             ..StackConfig::default()
         };

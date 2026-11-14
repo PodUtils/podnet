@@ -139,3 +139,58 @@ async fn guest_wire_udp_carries_a_datagram_over_the_mtu() {
     let none = tokio::time::timeout(Duration::from_millis(500), socket.recv_from(&mut buf)).await;
     assert!(none.is_err(), "an oversized datagram reached the guest");
 }
+
+/// A source of the guest has at most its share of the UDP flows: a new
+/// flow over the share is refused and counted (T-345).
+#[tokio::test]
+async fn guest_wire_udp_a_source_has_at_most_its_share_of_flows() {
+    let (_dir, text) = rules_file();
+    let text = format!("{text}    udp_flows: 8\n    source_udp_flows: 2\n");
+    let rig = Rig::new(&text, Fake::new("A"), Fake::new("B")).await;
+    let status = rig.router.guests[0].status();
+    assert_eq!(status["flows"]["udp"], 8, "{status}");
+    assert_eq!(status["flows"]["udp_share"], 2, "{status}");
+    assert_eq!(status["flows"]["tcp_share"], 2048, "{status}");
+    let mut socket = rig.guest.bind_udp(at(GUEST, 40000)).await.unwrap();
+    let mut buf = vec![0u8; 2048];
+    for dst in [at(DST, 1), at(DST, 2)] {
+        socket.send_to(b"query", dst).await.unwrap();
+        within(5, "answer", socket.recv_from(&mut buf))
+            .await
+            .unwrap();
+    }
+    socket.send_to(b"query", at(DST, 3)).await.unwrap();
+    count("share", &rig.stats().share_refused, 1).await;
+    let none = tokio::time::timeout(Duration::from_millis(300), socket.recv_from(&mut buf)).await;
+    assert!(none.is_err(), "a flow over the share got an answer");
+    assert_eq!(rig.stats().udp_flows.load(Ordering::Relaxed), 2);
+}
+
+/// The log gets one line for each group in each interval, not one line for
+/// each refused flow (T-345).
+#[test]
+fn guest_wire_share_logs_one_line_for_each_group_in_each_interval() {
+    use super::share::{BySource, FlowLimits, Kind, Shares, LOG_EVERY};
+    let shares = Shares::new(std::sync::Arc::new(BySource), FlowLimits::default());
+    let start = std::time::Instant::now();
+    let lines = (0..1000)
+        .filter(|_| shares.refused(7, Kind::Tcp, start))
+        .count();
+    assert_eq!(lines, 1);
+    assert!(shares.refused(8, Kind::Udp, start), "another group");
+    assert!(!shares.refused(7, Kind::Tcp, start + LOG_EVERY / 2));
+    assert!(shares.refused(7, Kind::Tcp, start + LOG_EVERY));
+    // The defaults and the checks of the limits.
+    let two = FlowLimits::with(None, None, None, None, 2).unwrap();
+    assert_eq!(
+        (two.tcp, two.udp, two.tcp_share, two.udp_share),
+        (2048, 512, 1024, 256)
+    );
+    let many = FlowLimits::with(None, None, None, None, 1000).unwrap();
+    assert_eq!((many.tcp_share, many.udp_share), (64, 16));
+    let small = FlowLimits::with(Some(10), Some(4), None, None, 3).unwrap();
+    assert_eq!((small.tcp_share, small.udp_share), (10, 4));
+    assert!(FlowLimits::with(Some(0), None, None, None, 1).is_err());
+    assert!(FlowLimits::with(Some(100_000), None, None, None, 1).is_err());
+    assert!(FlowLimits::with(Some(10), None, Some(11), None, 1).is_err());
+}

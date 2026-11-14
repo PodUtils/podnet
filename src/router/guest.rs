@@ -34,6 +34,7 @@ use serde::Deserialize;
 use crate::network::{Choice, Class, Dial, Failure, Stage, Target, Way};
 
 pub mod pump;
+pub mod share;
 pub mod tcp;
 pub mod udp;
 pub mod veth;
@@ -48,9 +49,11 @@ mod udp_tests;
 #[cfg(test)]
 mod veth_tests;
 
+pub use share::{FlowLimits, Groups, Shares};
 pub use wire::{Opened, WireSpec};
 
-/// The flows of a guest at one time: the held SYNs and the open TCP flows.
+/// The flows of a guest at one time by default: the held SYNs and the open
+/// TCP flows ([`FlowLimits`]).
 pub const MAX_FLOWS: usize = 2048;
 /// The time that a dial for a held SYN may take. A Linux guest gives up
 /// its connect after about 127 s.
@@ -78,6 +81,18 @@ pub struct GuestConfig {
     /// The MTU of the wire (576 to 9000; default 1500).
     #[serde(default)]
     pub mtu: Option<usize>,
+    /// The TCP flows of the guest at one time (default 2048).
+    #[serde(default)]
+    pub flows: Option<usize>,
+    /// The UDP flows of the guest at one time (default 512).
+    #[serde(default)]
+    pub udp_flows: Option<usize>,
+    /// The TCP flows of one source address (default: `flows`).
+    #[serde(default)]
+    pub source_flows: Option<usize>,
+    /// The UDP flows of one source address (default: `udp_flows`).
+    #[serde(default)]
+    pub source_udp_flows: Option<usize>,
 }
 
 /// The net of a guest: its network address and its prefix.
@@ -131,7 +146,7 @@ pub struct GuestStats {
     pub tcp_dialed: AtomicU64,
     /// SYNs answered with a RST: the dial failed or a rule refused it.
     pub tcp_refused: AtomicU64,
-    /// SYNs dropped at `MAX_FLOWS` (the guest sends them again).
+    /// SYNs dropped at the limit of TCP flows (the guest sends them again).
     pub tcp_syn_dropped: AtomicU64,
     /// TCP flows open now.
     pub tcp_open: AtomicU64,
@@ -146,6 +161,8 @@ pub struct GuestStats {
     pub udp_oversize: AtomicU64,
     /// Datagrams refused: a rule, a way with no UDP, or the limit of flows.
     pub udp_refused: AtomicU64,
+    /// New TCP and UDP flows refused at the share of their source (T-345).
+    pub share_refused: AtomicU64,
     /// Packets dropped by the screen of the wire: a source outside the net,
     /// a destination that the router does not route, a protocol other than
     /// TCP and UDP, or IPv6.
@@ -160,7 +177,7 @@ pub struct GuestStats {
 
 /// The counters that the status document and the metrics give: the key of
 /// the status, the name of the metric, the type and the help.
-pub const COUNTERS: [(&str, &str, &str, &str); 14] = [
+pub const COUNTERS: [(&str, &str, &str, &str); 15] = [
     (
         "tcp_dialed",
         "podnet_route_guest_tcp_dialed_total",
@@ -222,6 +239,12 @@ pub const COUNTERS: [(&str, &str, &str, &str); 14] = [
         "Datagrams refused by a rule, a way with no UDP or the limit of flows.",
     ),
     (
+        "share_refused",
+        "podnet_route_guest_share_refused_total",
+        "counter",
+        "New flows refused at the share of their source.",
+    ),
+    (
         "dropped",
         "podnet_route_guest_dropped_total",
         "counter",
@@ -260,6 +283,7 @@ impl GuestStats {
             "udp_queue_dropped" => &self.udp_queue_dropped,
             "udp_oversize" => &self.udp_oversize,
             "udp_refused" => &self.udp_refused,
+            "share_refused" => &self.share_refused,
             "stack_udp_rx_dropped" => &self.stack_udp_rx_dropped,
             "stack_udp_tx_dropped" => &self.stack_udp_tx_dropped,
             "stack_udp_oversize" => &self.stack_udp_oversize,
@@ -295,6 +319,8 @@ pub struct RouterGuest {
     /// The way of a target that no rule matches.
     pub default: Way,
     pub stats: Arc<GuestStats>,
+    /// The limits of the flows, and the flows of each group of sources.
+    pub shares: Arc<Shares>,
 }
 
 impl RouterGuest {
@@ -316,6 +342,14 @@ impl RouterGuest {
         if !(576..=9000).contains(&mtu) {
             bail!("guests[{i}].mtu: give 576 to 9000");
         }
+        let limits = FlowLimits::with(
+            config.flows,
+            config.udp_flows,
+            config.source_flows,
+            config.source_udp_flows,
+            1,
+        )
+        .map_err(|e| anyhow::anyhow!("guests[{i}]: {e}"))?;
         let default = ways
             .get(&config.via)
             .with_context(|| {
@@ -350,6 +384,7 @@ impl RouterGuest {
             dial,
             default,
             stats: Arc::new(GuestStats::default()),
+            shares: Shares::new(Arc::new(share::BySource), limits),
         })
     }
 
@@ -380,10 +415,17 @@ impl RouterGuest {
 
     /// The status document of the guest.
     pub fn status(&self) -> serde_json::Value {
+        let limits = self.shares.limits();
         serde_json::json!({
             "wire": self.wire.to_string(),
             "net": format!("{}/{}", self.net.network, self.net.prefix),
             "via": self.label(),
+            "flows": {
+                "tcp": limits.tcp,
+                "udp": limits.udp,
+                "tcp_share": limits.tcp_share,
+                "udp_share": limits.udp_share,
+            },
             "counters": self.stats.json(),
         })
     }

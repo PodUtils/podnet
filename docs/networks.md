@@ -187,6 +187,12 @@ AllowedIPs = 10.9.0.8/29
   packet of a peer must have a source that routes back to that peer by the same rule, else it is dropped: a peer
   cannot send with the address of another peer, also when their `AllowedIPs` overlap (T-342). The net of `Address`, the loopback and
   the link-local addresses are not targets: a peer does not reach another peer or the loopback of the server.
+* Each peer has a share of the flows, so that one peer cannot take the flows of the others (T-345).
+  `--flows N` is the TCP flows of the server (held SYNs and open flows; default 2048), `--udp-flows N` its UDP
+  flows (default 512). `--peer-flows N` and `--peer-udp-flows N` are the share of one peer. The default share is
+  the total divided by the peers, at least 64 TCP flows and 16 UDP flows. A new flow over the share is refused
+  (a SYN is dropped, a datagram is dropped) and counted in `share_refused`. The log gets one line for each peer
+  in each 10 s, not one line for each refused flow. The first line on stdout gives the shares.
 * IPv4 only inside the tunnel. A client of the server can be podnet itself: `wg:FILE` with the public key of the
   server and its address as the `Endpoint`.
 

@@ -17,6 +17,9 @@ use crate::network::{BoxFuture, Connected, Ctx, Target};
 
 /// A target inside the tunnel: the dialer of the test sends it to the echo.
 const FAR: &str = "192.0.2.7:7";
+/// The address of a target that never answers: its dial runs until the
+/// dial timeout.
+const SILENT: &str = "192.0.2.99:";
 
 fn b64(key: &[u8; 32]) -> String {
     base64::engine::general_purpose::STANDARD.encode(key)
@@ -47,6 +50,10 @@ impl Dial for Recording {
     ) -> BoxFuture<'a, Result<Connected, Failure>> {
         Box::pin(async move {
             self.seen.lock().unwrap().push(target.to_string());
+            if target.to_string().starts_with(SILENT) {
+                // A target that does not answer: the SYN stays held.
+                std::future::pending::<()>().await;
+            }
             let stream = tokio::net::TcpStream::connect(self.to)
                 .await
                 .map_err(|e| Failure::io(Stage::Connect, e))?;
@@ -491,5 +498,106 @@ async fn wg_serve_carries_the_udp_of_a_peer() {
     let (back, from) = got.expect("the echo of the datagram");
     assert_eq!(back, b"a datagram");
     assert_eq!(from, to);
+    link.close().await;
+}
+
+/// Peer A holds its share of the TCP flows with SYNs to a target that does
+/// not answer, and sends more. The server refuses each SYN over the share,
+/// and peer B still opens a flow (T-345). The total is 16 flows and the
+/// share is 4: with no share, the SYNs of peer A take the 16 flows.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn wg_serve_one_peer_cannot_take_the_flows_of_another() {
+    crate::test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let (server_private, server_public) = keypair();
+    let (a_private, a_public) = keypair();
+    let (b_private, b_public) = keypair();
+    let peers = [
+        FilePeer {
+            public: a_public,
+            allowed: "10.9.0.0/29",
+            psk: None,
+        },
+        FilePeer {
+            public: b_public,
+            allowed: "10.9.0.8/29",
+            psk: None,
+        },
+    ];
+    let path = server_file(dir.path(), &server_private, &peers);
+    let mut file = read(&path).unwrap();
+    // The default share of 2 peers: the total divided by 2, at least 64.
+    assert_eq!(file.limits().tcp_share, 1024);
+    assert_eq!(file.limits().udp_share, 256);
+    file.set_flows(Some(16), None, Some(4), None).unwrap();
+    assert!(file.set_flows(Some(16), None, Some(17), None).is_err());
+    file.set_flows(Some(16), None, Some(4), None).unwrap();
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let way = Way::destination(Arc::new(Recording {
+        to: echo().await,
+        seen: seen.clone(),
+    }));
+    let bind: SocketAddr = "127.0.0.1:0".parse().unwrap();
+    let server = serve_on(file, bind, "server.conf", way).await.unwrap();
+    let at = server.local_addr();
+    let a = client(
+        dir.path(),
+        "a",
+        &a_private,
+        "10.9.0.2",
+        &server_public,
+        at,
+        None,
+    );
+    let b = client(
+        dir.path(),
+        "b",
+        &b_private,
+        "10.9.0.9",
+        &server_public,
+        at,
+        None,
+    );
+    let link = a.up(&Ctx::default()).await.unwrap();
+    let way_a = link.way.clone().unwrap();
+    let mut dials = Vec::new();
+    for port in 1..=16u16 {
+        let way = way_a.clone();
+        dials.push(tokio::spawn(async move {
+            let target = Target::Addr(format!("{SILENT}{port}").parse().unwrap());
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
+            let _ = way.dial.dial(&target, deadline).await;
+        }));
+    }
+    let silent = || {
+        seen.lock()
+            .unwrap()
+            .iter()
+            .filter(|t| t.starts_with(SILENT))
+            .count()
+    };
+    let refused = || {
+        server.status()["counters"]["share_refused"]
+            .as_u64()
+            .unwrap()
+    };
+    let mut waited = 0;
+    while (silent() < 4 || refused() < 12) && waited < 100 {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        waited += 1;
+    }
+    // Peer B still gets a flow.
+    assert_eq!(
+        round_trip(&b, "the other peer").await.unwrap(),
+        "the other peer"
+    );
+    assert_eq!(silent(), 4, "peer A has more flows than its share");
+    assert!(refused() >= 12, "{}", server.status());
+    let status = server.status();
+    assert_eq!(status["flows"]["tcp"], 16, "{status}");
+    assert_eq!(status["flows"]["tcp_share"], 4, "{status}");
+    for dial in dials {
+        dial.abort();
+    }
     link.close().await;
 }

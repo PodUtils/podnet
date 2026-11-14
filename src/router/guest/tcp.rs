@@ -23,6 +23,7 @@ use tokio::sync::mpsc;
 use tokio::time::Instant;
 
 use super::pump::{Pump, SynKey};
+use super::share::{Held, Kind};
 use super::{RouterGuest, DIAL_TIMEOUT};
 use crate::network::{Class, Connected, Failure, Stage, Target};
 
@@ -34,10 +35,11 @@ const PORT_IDLE: Duration = Duration::from_secs(5);
 type Dialed = (SynKey, Result<Connected, Failure>);
 
 pub struct State {
-    /// The SYNs that wait for their dial.
-    pub(super) held: HashMap<SynKey, Vec<u8>>,
+    /// The SYNs that wait for their dial, with their place in the share of
+    /// their source.
+    pub(super) held: HashMap<SynKey, (Vec<u8>, Held)>,
     /// The upstreams of released SYNs, until their stream is accepted.
-    predialed: HashMap<SynKey, (Connected, Instant)>,
+    predialed: HashMap<SynKey, (Connected, Instant, Held)>,
     /// The flows of the guest, until they end.
     open: Arc<Mutex<HashSet<SynKey>>>,
     /// The destination ports with a listener, and the task that takes the
@@ -96,13 +98,17 @@ impl Pump {
             // A retransmit while the dial runs: the first SYN is held.
             return;
         }
-        if self.tcp_flows() >= super::MAX_FLOWS {
+        if self.tcp_flows() >= self.guest.shares.limits().tcp {
             // The stack drops a SYN past its limit the same way: the guest
             // sends it again.
             stats.add(&stats.tcp_syn_dropped);
             return;
         }
-        self.tcp.held.insert(key, packet);
+        // One source group cannot take the flows of the others (T-345).
+        let Some(place) = self.guest.shares.take(key.0, Kind::Tcp, &stats) else {
+            return;
+        };
+        self.tcp.held.insert(key, (packet, place));
         stats.add(&stats.tcp_dialed);
         let guest = self.guest.clone();
         let done = self.tcp.dials_tx.clone();
@@ -115,7 +121,7 @@ impl Pump {
 
     /// A dial ended: give the SYN to the stack, or answer it with a RST.
     pub(super) async fn dial_done(&mut self, (key, result): Dialed) {
-        let Some(packet) = self.tcp.held.remove(&key) else {
+        let Some((packet, place)) = self.tcp.held.remove(&key) else {
             return;
         };
         let stats = self.guest.stats.clone();
@@ -133,7 +139,9 @@ impl Pump {
         };
         match result {
             Ok(upstream) => {
-                self.tcp.predialed.insert(key, (upstream, Instant::now()));
+                self.tcp
+                    .predialed
+                    .insert(key, (upstream, Instant::now(), place));
                 self.link_in.push(packet);
             }
             Err(e) => {
@@ -188,11 +196,11 @@ impl Pump {
             dst,
             stream.local_addr().port(),
         );
-        let upstream = self
-            .tcp
-            .predialed
-            .remove(&key)
-            .map(|(upstream, _)| upstream);
+        let (upstream, place) = match self.tcp.predialed.remove(&key) {
+            Some((upstream, _, place)) => (Some(upstream), place),
+            // The stack took the flow: count it, also over the share.
+            None => (None, self.guest.shares.force(src, Kind::Tcp)),
+        };
         if let Ok(mut open) = self.tcp.open.lock() {
             open.insert(key);
         }
@@ -202,6 +210,7 @@ impl Pump {
         let open = self.tcp.open.clone();
         tokio::spawn(async move {
             flow(&guest, stream, upstream, key).await;
+            drop(place);
             if let Ok(mut open) = open.lock() {
                 open.remove(&key);
             }
@@ -212,7 +221,7 @@ impl Pump {
     pub(super) fn tcp_housekeeping(&mut self) {
         self.tcp
             .predialed
-            .retain(|_, (_, at)| at.elapsed() < RELEASED_TTL);
+            .retain(|_, (_, at, _)| at.elapsed() < RELEASED_TTL);
         // Close the listener of each port with no held SYN, no released SYN
         // and no flow, so that the table of the stack does not grow with the
         // ports that the guest used.

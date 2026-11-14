@@ -128,6 +128,10 @@ guests:
     rules: /etc/r.rules       # optional: rules that go before `via`
     allow_shadowed_rules: false
     mtu: 1500                 # optional, 576 to 9000
+    flows: 2048               # optional: the TCP flows of the guest
+    udp_flows: 512            # optional: the UDP flows of the guest
+    source_flows: 2048        # optional: the TCP flows of one source address
+    source_udp_flows: 512     # optional: the UDP flows of one source address
 ```
 
 | Key | Meaning |
@@ -136,22 +140,24 @@ guests:
 | `net` | `A.B.C.D/N`, N from 8 to 30. The router is the first host of the net (the gateway of the guest). |
 | `via`, `rules`, `allow_shadowed_rules` | As for a door. |
 | `mtu` | The MTU of the wire. Default 1500. Set it to the MTU of the guest. |
+| `flows`, `udp_flows` | The TCP flows (held SYNs and open flows) and the UDP flows of the guest at one time, 1 to 65536. Default 2048 and 512. |
+| `source_flows`, `source_udp_flows` | The share of one source address of the net (T-345): its TCP flows and its UDP flows at one time. Default: `flows` and `udp_flows`. A new flow over the share is refused and counted (`share_refused`). The log gets one line for each address in each 10 s. |
 
 * The router drops a packet whose source is outside `net`, whose destination is in `net`, a multicast,
   broadcast, loopback or link-local address, or whose protocol is not TCP or UDP. IPv6 is dropped.
 * TCP: the router holds the first SYN of a flow and dials the target (30 s limit) before the handshake. A dial
   that fails, or a rule that rejects, answers the SYN with a RST: `connect` of the guest fails at once. A copy of
-  the SYN waits. At 2048 flows a new SYN is dropped, and the guest sends it again.
+  the SYN waits. At `flows` a new SYN is dropped, and the guest sends it again.
 * UDP: each flow (guest address and target) has one socket from `Dial::datagrams` of the way that the rules
   choose, and takes one member of a group. A flow has a queue of 32 datagrams; a datagram for a full queue is
-  dropped and counted. A flow ends after 60 s with no datagram. At most 512 flows and 256 ports. IPv4
+  dropped and counted. A flow ends after 60 s with no datagram. At most `udp_flows` flows and 256 ports. IPv4
   fragmentation (the feature `ipv4-fragmentation` of `pod-netstack`) carries a datagram over the MTU, up to
   65507 bytes.
 * The guest resolves names itself (a flow to its resolver is a UDP or TCP flow), so a `domain:` rule does not
   match a flow of a guest. Use `cidr:` rules.
 * `--status` shows each guest with its counters. The metrics have `podnet_route_guest_*` rows with the label
   `guest` (the wire): `tcp_dialed`, `tcp_refused`, `tcp_syn_dropped`, `tcp_open`, `udp_flows`, `udp_up`,
-  `udp_down`, `udp_queue_dropped`, `udp_oversize`, `udp_refused` and `dropped`. The counters of the stack are
+  `udp_down`, `udp_queue_dropped`, `udp_oversize`, `udp_refused`, `share_refused` and `dropped`. The counters of the stack are
   `stack_udp_rx_dropped` (the backlog of a port was full), `stack_udp_tx_dropped` and `stack_udp_oversize`.
 * `--check` prints a line for each guest.
 
