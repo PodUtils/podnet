@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**347 entries: 14 open, 9 partial, 25 blocked, 299 done.**
+**347 entries: 13 open, 9 partial, 25 blocked, 300 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 31 | 34 |
-| P2 | 7 | 4 | 10 | 154 | 175 |
+| P2 | 6 | 4 | 10 | 155 | 175 |
 | P3 | 7 | 4 | 13 | 113 | 137 |
-| **All** | 14 | 9 | 25 | 299 | 347 |
+| **All** | 13 | 9 | 25 | 300 | 347 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -390,6 +390,6 @@ M8 Overlays, M9 Later.
 | [T-342](fixes.md) | P1 | S | M5 | defect | done | wg serve: a peer can send with the address of another peer when their AllowedIPs overlap |
 | [T-343](fixes.md) | P2 | S | M5 | defect | done | link record: a middle node makes an end take 16 MiB for each record header that it sends |
 | [T-344](fixes.md) | P2 | S | M5 | defect | done | podnet receive and send: the other end of a transfer can make this end dial thousands of hosts |
-| [T-345](fixes.md) | P2 | M | M5 | defect | open | wg serve: one peer can take each flow of the server from the other peers |
+| [T-345](fixes.md) | P2 | M | M5 | defect | done | wg serve: one peer can take each flow of the server from the other peers |
 | [T-346](fixes.md) | P2 | M | M8 | defect | open | link mesh: a neighbour can claim a direct link to each origin that it hears, and attract its routes |
 | [T-347](fixes.md) | P3 | M | M5 | defect | open | Hardening: the low findings of the security review of 2026-11-14 |

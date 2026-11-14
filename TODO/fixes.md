@@ -6059,7 +6059,7 @@ sh scripts/agent/check.sh
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6084,6 +6084,20 @@ peers is then dropped. The cap keeps the host up; the other peers lose the servi
 3. A test on the loopback: peer A holds its share of SYNs to a target that does not answer; peer B still opens a
    flow.
 
+## Decision
+
+2026-11-14, the calls of the work:
+
+- The shares and the totals are settings. `podnet wg serve`: `--flows` (2048), `--udp-flows` (512), `--peer-flows`
+  and `--peer-udp-flows` (the total divided by the peers, at least 64 TCP and 16 UDP flows). A guest of the
+  router: `flows`, `udp_flows`, `source_flows` and `source_udp_flows`; the share of a source is the total by
+  default, so a guest with one host keeps the behaviour of before.
+- A released SYN (the dial succeeded, the stack has not accepted the stream) keeps its place in the share until
+  its flow ends. A stream that the stack accepts with no released SYN is counted, also over the share: the
+  handshake has ended.
+- One counter, `share_refused`, for TCP and UDP. The log gets one line for each group in each 10 s
+  (`LOG_EVERY`); the line gives the count of the flows refused since the last line.
+
 ## Prove
 
 ```sh
@@ -6091,6 +6105,20 @@ cargo test -p podnet --lib wg_serve
 cargo test -p podnet --lib router::guest
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-14, commit f7ba889. `src/router/guest/share.rs` counts the flows of each group of sources;
+`syn` of `src/router/guest/tcp.rs` and `deliver_new` of `src/router/guest/udp.rs` refuse a new flow over the
+share. `podnet wg serve` groups the sources of each peer (`PeerGroups` of `src/networks/wg_serve.rs`).
+`cargo test -p podnet --lib wg_serve`: 8 passed; `wg_serve_one_peer_cannot_take_the_flows_of_another` (total 16,
+share 4: peer A holds 16 SYNs to a target that does not answer, peer B still gets an echo). `cargo test -p podnet
+--lib router::guest`: 16 passed, with `guest_wire_udp_a_source_has_at_most_its_share_of_flows` and
+`guest_wire_share_logs_one_line_for_each_group_in_each_interval`. The plant: with the share check of `take`
+off (one group takes the total, the behaviour before the fix), the wg test failed ("no answer" for peer B), and
+the UDP test failed ("share: 0 of 1"). `cargo test --workspace --no-fail-fast`: each target passed, except
+`llms_files_are_current` (fixed by `scripts/gen-llms.py`, then 2 passed). `CC_i686_unknown_linux_musl=clang cargo
+check --workspace --target i686-unknown-linux-musl`: no error.
 
 
 # T-346: link mesh: a neighbour can claim a direct link to each origin that it hears, and attract its routes
