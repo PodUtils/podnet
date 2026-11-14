@@ -2856,7 +2856,7 @@ IPv6 (the socket is IPv4), a client of podswarm.
 **Milestone:** M6
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2885,4 +2885,12 @@ cargo test --test cli -- transfer::send_words_sets_the_length_of_the_code
 
 A code of 2 words and one of 8 words go from a sender to a receiver at the stand-in mailbox; `--words 0`, `1` and
 `9` exit 64 and make no nameplate. With the line that sets `Config::words` removed, the test fails.
+
+## Done
+
+2026-11-14, commit 6034277. `src/cli/cmd/transfer.rs` (`--words N`, default 3), `docs/transfer.md`, the llms files.
+`cargo test --test cli -- transfer::send_words_sets_the_length_of_the_code`: passed (a code of 2 words and one of 8
+words, each with its text at the receiver; `--words 0`, `1` and `9` exit 64 with no nameplate). Plant: with the line
+that sets `Config::words` replaced by `let _ = args.words;`, the test failed (`tests/cli/transfer.rs:270`, a code of 3
+words). `cargo test --test cli -- transfer::`: 6 passed. `sh scripts/agent/check.sh notest`: each step 0.
 

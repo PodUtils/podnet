@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**338 entries: 13 open, 9 partial, 27 blocked, 289 done.**
+**338 entries: 12 open, 9 partial, 27 blocked, 290 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 5 | 4 | 10 | 150 | 169 |
-| P3 | 8 | 4 | 15 | 109 | 136 |
-| **All** | 13 | 9 | 27 | 289 | 338 |
+| P3 | 7 | 4 | 15 | 110 | 136 |
+| **All** | 12 | 9 | 27 | 290 | 338 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -383,4 +383,4 @@ M8 Overlays, M9 Later.
 | [T-335](link.md) | P3 | S | M9 | feature | done | link: keep the routes of two next hops for one announcement (GitHub #470) |
 | [T-336](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.10`: the dry run, the publish and the release proofs |
 | [T-337](overlays.md) | P3 | S | M8 | feature | blocked | WireGuard: take the preshared key of `pod-wg` |
-| [T-338](services.md) | P3 | S | M6 | feature | open | `podnet send --words N`: the count of words of a code |
+| [T-338](services.md) | P3 | S | M6 | feature | done | `podnet send --words N`: the count of words of a code |
