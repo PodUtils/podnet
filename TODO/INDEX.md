@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**337 entries: 15 open, 12 partial, 27 blocked, 283 done.**
+**337 entries: 15 open, 11 partial, 27 blocked, 284 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 7 | 4 | 11 | 147 | 169 |
-| P3 | 8 | 7 | 14 | 106 | 135 |
-| **All** | 15 | 12 | 27 | 283 | 337 |
+| P3 | 8 | 6 | 14 | 107 | 135 |
+| **All** | 15 | 11 | 27 | 284 | 337 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -162,7 +162,7 @@ M8 Overlays, M9 Later.
 | [T-114](overlays.md) | P2 | M | M8 | chore | open | A headscale harness in CI for the `tailscaled` sidecar |
 | [T-115](overlays.md) | P3 | S | M8 | feature | partial | The tailnet as a network of the registry and of the router |
 | [T-116](overlays.md) | P3 | S | M8 | feature | done | WireGuard: read a wg-quick file into a peer, with optional reserved bytes |
-| [T-117](overlays.md) | P3 | M | M8 | feature | partial | WireGuard: `wg:FILE` as a network over UDP or over a carrier |
+| [T-117](overlays.md) | P3 | M | M8 | feature | done | WireGuard: `wg:FILE` as a network over UDP or over a carrier |
 | [T-118](overlays.md) | P3 | M | M8 | research | done | Research: NetBird, Firezone and ZeroTier as networks |
 | [T-119](later.md) | P3 | M | M9 | feature | done | Router kernel mode: tables, rules and multipath routes through rtnetlink |
 | [T-120](later.md) | P3 | M | M9 | feature | partial | Router kernel mode: masquerade, an MSS clamp, an unreachable kill switch and `rp_filter` |

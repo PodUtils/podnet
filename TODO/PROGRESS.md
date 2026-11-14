@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 337 entries: 15 open, 12 partial, 27 blocked, 283 done.
+`TODO/INDEX.md` holds 337 entries: 15 open, 11 partial, 27 blocked, 284 done.
 
 ## State
 
@@ -63,7 +63,7 @@ not wait for a larger one.
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).
 8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.
-9. **M8, the overlays:** T-114, T-115, T-117, T-247 (blocked: a NetBird account).
+9. **M8, the overlays:** T-114, T-115, T-247 (blocked: a NetBird account).
 10. **M9, later:** T-120 to T-129, each when its start condition holds; T-248 (the
     guest-wire router, the owner's ruling of 2026-11-11; partial: the TCP and UDP paths are there; the veth wire
     and a proof of a real TUN stay). T-001: edit GitHub #89 into a guide

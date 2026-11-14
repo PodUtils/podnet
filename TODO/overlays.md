@@ -206,7 +206,7 @@ stays for T-117.
 **Milestone:** M8
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -282,6 +282,29 @@ cargo test --workspace -- wg_network_reaches_a_service_behind_the_peer wg_networ
 ```
 
 ## Done
+
+2026-11-14, commit 81ad10f. The WARP chain: `wg:FILE over warp` (a chain spec of the registry,
+`src/networks/chain.rs`) sends the UDP of the tunnel through the datagrams of a WARP session. A target name resolves
+at the `DNS` of the file through the tunnel. Each call is in the Correction of 2026-11-14.
+
+- The Prove of the Correction (`cargo test --workspace -- wg_network_reaches_a_service_behind_the_peer
+  wg_network_over_warp_reaches_a_service_behind_the_peer network_spec_a_chain
+  wg_network_resolves_a_name_at_the_dns_of_the_file`): 6 passed.
+- New tests (5): `wg_network_over_warp_reaches_a_service_behind_the_peer` (the stand-in edge of `pod-warp` with a
+  UDP route to the WireGuard peer of the test; the far end of WARP saw the UDP to the `Endpoint`; the status names
+  the carrier `WARP`), `network_spec_a_chain_comes_up_layer_over_layer`,
+  `network_spec_a_chain_is_checked_layer_by_layer`, `wg_network_resolves_a_name_at_the_dns_of_the_file`
+  (`src/networks/wg_tests.rs`), `network_spec_a_chain_is_refused_by_the_pod_and_by_a_process_command_with_one_line`
+  (`src/cli/way_tests.rs`).
+- Plant: `wg::carrier` with the way below ignored. `wg_network_over_warp_reaches_a_service_behind_the_peer` failed
+  (no handshake answer in 15 s); the chain over `direct` passed, as the plant does not change it. The plant is gone.
+- `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc and layers 0. The tests: one failure,
+  `router::guest::tests::guest_wire_unix_socket_serves_a_guest_and_the_next` (it passed alone 3 times: a load
+  flake). `cargo test --workspace --no-fail-fast`: `llms_files_are_current` failed before
+  `scripts/gen-llms.py` (done in the commit) and passed after; `quick_tunnel_standin_serves_a_visitor_over_http2`
+  failed once and passed alone 3 times (a known flake). `cargo check --workspace --target i686-unknown-linux-musl`:
+  exit 0.
+- Not proven: a live WARP session, a real UDP-blocked host, `PresharedKey` (T-337).
 
 2026-11-12, commit 9f3b0a8 (partial). `wg:FILE` is a row of the registry (`src/networks.rs`,
 `src/networks/wg.rs`): the handshake with `pod-wg`, a stack of `pod-netstack` over the tunnel (TCP and UDP
