@@ -403,7 +403,7 @@ the toolchain is Rust 1.99 and `rust-version` is 1.99. A dependency by a git tag
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -427,6 +427,12 @@ podnet can dial a WireGuard peer, but cannot be one. A WireGuard endpoint with n
 cargo test --workspace -- wg_serve_accepts_a_peer_and_dials_its_flows
 ```
 
+## Blocker
+
+The session of `PodUtils/podcrates` (the crate `pod-wg`): a responder sans I/O for production use (the ask of the
+Correction of 2026-11-14). The entry is unblocked when a tag of podcrates has it; then podnet takes the tag (T-137)
+and does steps 2 and 3.
+
 ## Start condition
 
 T-117 is done.
@@ -437,6 +443,38 @@ T-117 is done.
 `pod-wg` in PodUtils/podcrates; podnet takes it and adds `podnet wg serve` (T-137).
 
 2026-11-12, GitHub #469 (row E3-3). The listen half of the WireGuard carrier (T-283) needs the responder of `pod-wg` that this entry takes.
+
+2026-11-14, blocked. T-117 is done, so the start condition holds. Read in the tree (`pod-wg` v0.41.0, the tag of
+podnet): the crate is "the WireGuard initiator of WARP, sans I/O". Its only responder is the module `standin`
+(feature `standin`, "for the tests of a consumer; no binary needs it"): `standin::respond` panics when an initiation
+fails a check, it takes one client key and no list of peers, it keeps no last timestamp of a peer (no replay
+check), it has one fixed cookie (`start_under_load`) and no secret that changes, and it has no timers of a
+responder session. Step 1 (cookie replies, several peers, the timers) is protocol code of WireGuard, and the
+Correction of 2026-11-05 puts it in `pod-wg`. podnet does not write it (`CLAUDE.md`, Decisions, Order). Steps 2 and
+3 have nothing to run without it: they wait. The call of the session: no part of `podnet wg serve` lands before the
+responder (a command with no responder is dead code).
+
+The ask for podcrates (the lead opens the COORD issue): in `pod-wg`, a responder sans I/O, beside the initiator:
+
+- a responder with its private key and a list of peer public keys (an optional preshared key each, as T-337 asks
+  for the initiator);
+- the read of an initiation: mac1 for the own key; the static key of the initiator, decrypted and found in the
+  list (an unknown key gives no answer); the TAI64N timestamp of the peer must be past its last one (no replay);
+  the response and a session for that peer;
+- under load (a flag of the caller): an initiation with no valid mac2 gets a cookie reply, with a cookie from a
+  secret that changes each 120 s and the address of the sender (the WireGuard paper, section 5.4.7);
+- the transport: the session of a message by its receiver index, for several peers at once, with the window of the
+  counters;
+- the timers of the responder side: a session ends after `REJECT_AFTER_TIME` (180 s); a keepalive; no rekey
+  initiation from the responder;
+- a `Debug` that shows no key, and a fuzz target for the read of an initiation.
+
+podnet's part after the take: `podnet wg serve FILE` with a wg-quick file (`[Interface]` `PrivateKey` and
+`ListenPort`, one `[Peer]` for each peer with `PublicKey` and `AllowedIPs`; the reader
+`crates/podnet-vnet/src/wg_quick.rs` keeps several peers, and it skips `ListenPort` today), a UDP socket, a
+userspace stack of `pod-netstack` for the inner packets, each inner TCP flow to a dialer of the registry
+(`--egress SPEC`, default the way out of the process). Tests on the loopback: a `pod-wg` initiator reaches a TCP
+echo through `podnet wg serve`; a peer with an unknown key gets no answer; a plant.
 # T-126: Egress through an `https://` proxy and through wstunnel
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.4 and 3 (C16).

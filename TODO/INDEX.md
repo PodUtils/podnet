@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**337 entries: 15 open, 11 partial, 27 blocked, 284 done.**
+**337 entries: 14 open, 11 partial, 28 blocked, 284 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 7 | 4 | 11 | 147 | 169 |
-| P3 | 8 | 6 | 14 | 107 | 135 |
-| **All** | 15 | 11 | 27 | 284 | 337 |
+| P3 | 7 | 6 | 15 | 107 | 135 |
+| **All** | 14 | 11 | 28 | 284 | 337 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -170,7 +170,7 @@ M8 Overlays, M9 Later.
 | [T-122](later.md) | P3 | M | M9 | research | done | Research: a native git server with no installed `git` |
 | [T-123](later.md) | P3 | M | M9 | feature | open | Tailscale in the process: take the fork of tailscale-rs through `pod-ts` |
 | [T-124](later.md) | P3 | L | M9 | feature | open | Tailscale in the process: an adapter crate behind a feature that is off by default, with the static build proven |
-| [T-125](later.md) | P3 | L | M9 | feature | open | A userspace WireGuard responder: `podnet wg serve` |
+| [T-125](later.md) | P3 | L | M9 | feature | blocked | A userspace WireGuard responder: `podnet wg serve` |
 | [T-126](later.md) | P3 | M | M9 | feature | open | Egress through an `https://` proxy and through wstunnel |
 | [T-127](later.md) | P3 | L | M9 | feature | open | Egress through VLESS, Shadowsocks and Wisp |
 | [T-128](later.md) | P3 | L | M9 | feature | open | The DERP carrier through `pod-derp` |

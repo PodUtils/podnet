@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 337 entries: 15 open, 11 partial, 27 blocked, 284 done.
+`TODO/INDEX.md` holds 337 entries: 14 open, 11 partial, 28 blocked, 284 done.
 
 ## State
 
@@ -64,14 +64,15 @@ not wait for a larger one.
     direction split, an option, off by default).
 8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.
 9. **M8, the overlays:** T-114, T-115, T-247 (blocked: a NetBird account).
-10. **M9, later:** T-120 to T-129, each when its start condition holds; T-248 (the
+10. **M9, later:** T-120 to T-129, each when its start condition holds (T-125 is blocked, see 11); T-248 (the
     guest-wire router, the owner's ruling of 2026-11-11; partial: the TCP and UDP paths are there; the veth wire
     and a proof of a real TUN stay). T-001: edit GitHub #89 into a guide
     that a new client tests from.
     T-123, T-124, T-126, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and
     `pod-acme` (wave 4).
 10b. **Networks over the new crates (podcrates v0.33.0):** T-321 (`turn://`, `pod-turn`).
-11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
+11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-125 (`pod-wg`: a responder for
+    `podnet wg serve`), T-337 (`pod-wg`: a preshared key), T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`), T-326 (a release of `russh` that takes `rsa` 0.10.0); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-294, T-295.
 12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws, h2, quic, udp, dns, icmp and the poll carriers are done (the glue of `pod-link` v0.40.0), and the record layer of E6; T-334 (the seccomp rule of a raw ICMP socket in a pod) is open; the ARQ is done (`podnet::link_arq`). The mesh keeps the two next hops of one round in a diamond. Go on with the carrier T-279 (it waits for an object store), T-334, the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127), T-305 (the owner: Linux only, 2026-11-12). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
