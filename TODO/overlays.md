@@ -657,3 +657,5 @@ stand-in `standin::respond_preshared`. podnet takes it (T-137). The calls of the
   0 after the status `partial`. `cargo check --workspace --target i686-unknown-linux-musl`: exit 0.
 - Not proven: a peer of another code base with a preshared key (the stand-in shares the crypto of `pod-wg`; the
   vector of the crate is from an independent program).
+
+CI: ci 43567820518, deny 43567823619, secrets 43567826340 and live 43567829232 on b92c100 passed (GitHub #553).

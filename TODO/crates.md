@@ -874,7 +874,7 @@ Done so far:
   the line that the adoption trial of podcrates sets too). The nine new variants of `pod_wg::Error` need no change
   (`Error` is `non_exhaustive`, and podnet has no `match` of it). `cargo update` moves `webpki-roots` to 1.0.12;
   `pod_tls::ROOTS_VERSION` is 1.0.11, so it stays at 1.0.11 (`cargo update -p webpki-roots --precise 1.0.11`).
-  `sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace`: 1954 passed, 120 targets).
+  `sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace`: 1954 passed, 120 targets). ci 43567820518 on b92c100 passed (GitHub #553).
   `cargo check --workspace --target i686-unknown-linux-musl`: exit 0. What the tag unblocks: T-337 (`PresharedKey`)
   and T-125 (`podnet wg serve` on `pod_wg::Responder`).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).

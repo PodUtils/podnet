@@ -564,6 +564,7 @@ call is in the Correction of 2026-11-14.
   `pod-wg`), the cookie reply under load and the keepalive over the network (the unit tests of `pod-wg` have them),
   a rekey of a long session, a real UDP-blocked host.
 
+CI: ci 43567820518, deny 43567823619, secrets 43567826340 and live 43567829232 on b92c100 passed (GitHub #553).
 
 # T-126: Egress through an `https://` proxy and through wstunnel
 

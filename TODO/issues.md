@@ -244,6 +244,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #550 | COORD-077: podnet took v0.42.0 at 654c0f1; two notes on pod-hold and pod-services (to podcrates) | open (a COORD issue between sessions) | none |
 | #551 | [gh action] requested: ci, deny, secrets and live on eddaa22 | closed: each run passed on c72c604 (ci 43560703081, deny 43560707016, secrets 43560710399, live 43560713372) | none |
 | #552 | COORD-078: podnet took v0.43.0 at c8ccc40; pod-netstack: bind_udp with port 0 (to podcrates) | open (a COORD issue between sessions) | none |
-| #553 | [gh action] requested: ci, deny, secrets and live on b3eaba6 (v0.43.0, T-337, T-125) | open (a request of runs to the owner) | none |
+| #553 | [gh action] requested: ci, deny, secrets and live on b3eaba6 (v0.43.0, T-337, T-125) | closed: each run passed on b92c100 (ci 43567820518, deny 43567823619, secrets 43567826340, live 43567829232) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.

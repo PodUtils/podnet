@@ -251,4 +251,4 @@
 550 issue open
 551 issue closed
 552 issue open
-553 issue open
+553 issue closed
