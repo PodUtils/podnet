@@ -30,6 +30,7 @@ fn peer_of(conf: &wg_quick::WgQuick) -> wg::Peer {
             private: conf.interface.private_key.0,
             peer_public: peer.public_key,
             reserved: peer.reserved,
+            preshared: None,
         },
         endpoint: peer.endpoint.as_ref().unwrap().socket_addr().unwrap(),
         v4,

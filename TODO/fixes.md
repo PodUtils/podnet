@@ -3454,7 +3454,7 @@ A record with only `host` exports and does not connect. A record with only `v6` 
 ## Premise
 
 - src/warp/register.rs:185-194 at `9c1fc4b` (`Endpoint`; frozen file: no edit). src/warp/export.rs:245-263 at `9c1fc4b`, `:30` (`WG_PORT`).
-- `src/warp/wg.rs:61-68` (v4 only; the message `:64-66`).
+- `src/warp/wg.rs:62-69` (v4 only; the message `:65-67`).
 - MASQUE reads `v4` and `v6`: src/warp/register.rs:558-597 at `9c1fc4b`.
 - `grep -rn "\.ports" src/warp` finds no reader.
 - Test to extend: src/warp/export.rs:402-437 at `9c1fc4b`.

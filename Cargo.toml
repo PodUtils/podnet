@@ -71,67 +71,67 @@ podnet-serve = { path = "crates/podnet-serve", version = "0.4.0-beta.10" }
 podnet-vnet = { path = "crates/podnet-vnet", version = "0.4.0-beta.10" }
 # TLS of PodUtils/podcrates: the roots, the client configurations and the
 # split of the ClientHello, with podnet's settings (src/trust.rs), on ring.
-pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The HTTP date of a time (the log of detach, the tests of the clock); the
 # dial, the resolver and the failures of pod-proxy.
-pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The way out of each TCP connection (src/egress.rs: the proxies, Digest, the
 # race of addresses, the proxy of a tool's file), the HTTP client
 # (src/fetch.rs) and the credentials of a served proxy, of PodUtils/podcrates,
 # with podnet's settings.
-pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The resolver of each direct dial (src/resolve.rs): an IP address, the pins
 # of --resolve, the system and DNS over HTTPS, with podnet's settings.
-pod-dns = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-dns = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The services of other parties: the relay, the edge of Cloudflare's tunnels
 # and its roots, the quick tunnels, WARP, 1.1.1.1 and Pinggy, as data with
 # their sources.
-pod-services = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-services = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The WebSocket of `connect`, of the forward endpoint and their bridge
 # (src/ws.rs), of PodUtils/podcrates, with podnet's dial, TLS context and
 # user agent, and the limits of tokio-tungstenite.
-pod-ws = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-ws = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # QUIC (the edge, QUIC over WARP, MASQUE over HTTP/3) on noq, of
 # PodUtils/podcrates: the endpoints and their keys in pure Rust, and the
 # endpoint over the datagrams of a WARP session (src/warp/quic.rs).
-pod-quic = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-quic = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The ioctl number of TUNSETIFF for the target and the packets of a held SYN
 # (src/router/guest/), of the hold of PodUtils/podcrates (podnet-netns has
 # its core).
-pod-hold = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-hold = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The WireGuard initiator, sans I/O, of PodUtils/podcrates: the network
 # wg:// (src/networks/wg.rs), on ring.
-pod-wg = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-wg = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # WARP of PodUtils/podcrates: the registration, the identity and its file,
 # the doors, MASQUE over HTTP/2 and HTTP/3, WireGuard and the carried device,
 # the relay leg, the stack and its settings, the proxy, the resolvers, the
 # forward, nc, the session replaced when it closes, the exit, the socket of a
 # running proxy, the TUN and its routes. The glue is src/warp/.
-pod-warp = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-warp = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The client of the WebSocket-to-TCP relay of PodUtils/podcrates
 # (src/ws_relay.rs, src/relay_reverse.rs): the hosts, their pool and their
 # failover, the tokens, the pairs, the node and the operator of the reverse
 # road. plain-ws: http:// and ws:// to a relay on the loopback, as podnet
 # took them before (a stand-in relay of the tests); a host off the loopback
 # stays refused before any connection.
-pod-relay = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0", features = ["pair", "plain-ws"] }
+pod-relay = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0", features = ["pair", "plain-ws"] }
 # The link of the link workstream, of PodUtils/podcrates (call C120 to C124):
 # many streams over one carrier byte stream with credit windows and a
 # keepalive, and the carriers (unix, memory) behind one trait. The glue is
 # src/link.rs, the registry of the carriers src/carriers.rs.
-pod-link = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-link = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The key of an install (call C118): the Ed25519 seed in a key file, the
 # fingerprints, the allow list. The glue is src/identity.rs.
-pod-identity = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-identity = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The resumable layer (T-263): offsets that never reset, a 256-bit secret
 # and the 10-minute window. The glue is src/session.rs.
-pod-session = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-session = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The client of a magic-wormhole mailbox (T-102): the code, SPAKE2 and the
 # sealed phases of `podnet send` and `podnet receive`. The glue is
 # src/transfer/.
-pod-wormhole = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-wormhole = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The lexical check of each name that `podnet receive` writes (T-105).
-pod-extract = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-extract = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The inflate of a zip of magic-wormhole (`zipfile/deflated`, T-103): the
 # Rust backend, as pod-extract takes it. No C.
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
@@ -142,17 +142,17 @@ sha2 = { version = "0.11", default-features = false }
 crypto_secretbox = { version = "0.1", default-features = false, features = ["alloc", "salsa20"] }
 # The end-to-end channel and its record layer (T-298): the AEAD records of a
 # stream, end to end between its two ends. The glue is src/link_record.rs.
-pod-e2e = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-e2e = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # Snappy of the records (T-299): the format of the compression of a record.
 snap = "1"
 # The TURN client (RFC 8656) over UDP and TLS of PodUtils/podcrates: the
 # network turn://HOST:PORT (src/networks/turn.rs) allocates with it.
-pod-turn = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-turn = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 # The Dev Tunnels client (management read, relay WebSocket, SSH with no user
 # authentication, direct-tcpip streams, bounded reconnect) of
 # PodUtils/podcrates: the network devtunnel://TUNNEL (src/networks/devtunnel.rs)
 # opens streams with it.
-pod-devtunnel = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-devtunnel = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0" }
 anyhow = "1"
 axum ={ version = "0.8", features = ["multipart"] }
 base64 = "0.23"
@@ -200,7 +200,7 @@ serde_json = "1"
 # 65507 bytes in both directions over each MTU (a guest wire). Each interface
 # of smoltcp in the binary holds a buffer of 64 KiB for the fragments that it
 # sends, and smoltcp puts together one datagram at a time.
-pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0", features = ["ipv4-fragmentation"] }
+pod-netstack = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0", features = ["ipv4-fragmentation"] }
 # The version of pod-netstack of PodUtils/podcrates, with the features of
 # the stacks of the binary: the stack of WARP (pod-warp) takes the
 # congestion controllers of --cc.
@@ -294,16 +294,16 @@ full = ["tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "tr
 
 [dev-dependencies]
 # The responder of the tests of WireGuard (src/warp/wg/standin.rs).
-pod-wg = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0", features = ["standin"] }
+pod-wg = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0", features = ["standin"] }
 # The stand-in of the management API and of the relay on the loopback
 # (tests/devtunnel_network.rs, src/networks/devtunnel_tests.rs).
-pod-devtunnel = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0", features = ["standin"] }
+pod-devtunnel = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0", features = ["standin"] }
 # The stand-in API and the HTTP/2 part of the stand-in edge of WARP
 # (src/networks/warp_tests.rs, tests/warp_edge, tests/warp_stand_in.rs).
-pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0", features = ["stand", "masque"] }
+pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0", features = ["stand", "masque"] }
 # The stand-in mailbox of magic-wormhole of the transfer tests
 # (tests/transfer_harness/mod.rs).
-pod-wormhole = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0", features = ["standin"] }
+pod-wormhole = { git = "https://github.com/PodUtils/podcrates", tag = "v0.43.0", version = "0.43.0", features = ["standin"] }
 tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
 

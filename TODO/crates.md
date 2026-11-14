@@ -867,6 +867,16 @@ Done so far:
   passed. What the tag unblocked: T-103 (the transit key, f23031f), T-338 (`send --words N`, 6034277), the
   stand-in mailbox and the TCP transit relay (df08245, T-106 and T-251), T-334 (780a005), exit 77 from `KeyRefused`
   (d0ff66b, T-273 and T-278). After them, `cargo test --workspace --no-fail-fast`: 1954 passed, 0 failed (120 targets).
+- v0.43.0 (PodUtils/podcrates#149): each `pod-*` dependency names `tag = "v0.43.0"` (and `pod-todo` of
+  `crates/podnet-todo/Cargo.toml`). The tag has no new hand-off for podnet (`adoption/podnet/` holds the hand-off of
+  `pod-warp` of v0.37.0 only). Breaking for podnet: `pod_wg::Keys` has the field `preshared`; each literal sets
+  `preshared: None` (`src/networks/wg.rs`, `src/wg_quick_tests.rs`, and `src/warp/wg.rs`: a compile fix of frozen code,
+  the line that the adoption trial of podcrates sets too). The nine new variants of `pod_wg::Error` need no change
+  (`Error` is `non_exhaustive`, and podnet has no `match` of it). `cargo update` moves `webpki-roots` to 1.0.12;
+  `pod_tls::ROOTS_VERSION` is 1.0.11, so it stays at 1.0.11 (`cargo update -p webpki-roots --precise 1.0.11`).
+  `sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace`: 1954 passed, 120 targets).
+  `cargo check --workspace --target i686-unknown-linux-musl`: exit 0. What the tag unblocks: T-337 (`PresharedKey`)
+  and T-125 (`podnet wg serve` on `pod_wg::Responder`).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

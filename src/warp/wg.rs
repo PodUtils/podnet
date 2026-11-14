@@ -42,6 +42,7 @@ pub fn from_exported(
             private,
             peer_public,
             reserved: device.reserved().unwrap_or([0; 3]),
+            preshared: None,
         },
         endpoint,
         v4: device.config.interface.addresses.v4.parse().ok(),

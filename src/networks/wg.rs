@@ -79,6 +79,7 @@ fn read(path: &Path) -> Result<Config, Failure> {
             private: conf.interface.private_key.0,
             peer_public: peer.public_key,
             reserved: peer.reserved,
+            preshared: None,
         },
         endpoint: (endpoint.host.clone(), endpoint.port),
         v4,
