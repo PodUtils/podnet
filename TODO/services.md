@@ -1964,6 +1964,18 @@ podnet keeps its stand-in relay in the same file. With the crate's stand-in: `ca
 transfer_relay --test transfer_piping`: 9, 4 and 3 passed; `cargo test --test cli -- transfer::`: 6 passed;
 `cargo test --test wormhole_interop` with `wormhole` and no `twist` on the PATH: 7 passed at the stand-in.
 
+2026-11-14, the live step (Approach 2; calls of a session, the owner is away). `.github/workflows/live.yml` has the
+step "100 MiB by code through the mailbox, a transit relay and the podnet relay". A random file of 100 MiB goes from
+podnet to podnet two times: (1) through the default mailbox of pod-services and a transit relay of pod-services, with
+`--no-listen --piping none` at both ends (no direct hint and no piping server); (2) through the podnet relay with a
+pair of the job (`podnet relay pair`, `podnet send --relay-pair NAME`), with `--transit-relay none` at both ends. The
+receiver takes the mailbox of the sender's event `code` (`--mailbox`), against magic-wormhole issue #754. Each run
+checks the SHA-256 of the received file and of the event `sent` against the SHA-256 of the file, and prints the time,
+the rate and `via`. The code, the pair and its token get `::add-mask::`, and each log goes through `scrub` (each
+secret replaced) before it is printed. The job `live` gets 60 minutes (it had 45). Checked here: `bash -n` of the
+step and a YAML parse (`python3 scripts/check-workflows.py`: 0 faults). Not run here: the step runs only in a run of
+`live` that the owner starts. The entry stays partial until that run passes.
+
 ## Done
 
 2026-11-14, commit 061b172, the text half (the entry stays partial). `tests/wormhole_interop.rs`, the step

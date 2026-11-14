@@ -373,3 +373,105 @@ fn quick_tunnel_standin_edge_certificate_needs_its_ca() {
         "the edge got a registration"
     );
 }
+
+/// UDP 7844 dropped with no answer (the step "Quick tunnel with UDP 7844
+/// dropped" of `live.yml`, T-316): a UDP socket on the port of the edge
+/// takes each QUIC packet and answers none. `--protocol auto` registers
+/// over HTTP/2 after the stagger, and the log names the leg that won.
+#[test]
+fn quick_tunnel_standin_falls_back_to_http2_when_udp_is_dropped() {
+    test_host::need_loopback!();
+    let standin = Standin::start();
+    let silent =
+        std::net::UdpSocket::bind(standin.edge_addr).expect("a UDP socket on the edge port");
+    let mut command = standin.podnet(&[
+        "tunnel",
+        "--service-url",
+        &standin.api_url,
+        "--transport",
+        "direct",
+        "--no-verify",
+        "--hello-world",
+        "--json",
+    ]);
+    command.env("PODNET_UDP", "on");
+    let mut tunnel = Process::spawn(command);
+    let ready = tunnel.ready();
+    assert_eq!(ready["leg"], "http2", "{}", tunnel.stderr());
+    let until = Instant::now() + Duration::from_secs(10);
+    while !tunnel.stderr().contains("the leg won the race") && Instant::now() < until {
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    let err = tunnel.stderr();
+    assert!(err.contains("the leg won the race"), "{err}");
+    assert!(err.contains("leg=http2"), "{err}");
+    // The QUIC leg sent its packets to the silent socket.
+    silent
+        .set_read_timeout(Some(Duration::from_millis(100)))
+        .unwrap();
+    let mut buf = [0u8; 2048];
+    assert!(silent.recv_from(&mut buf).is_ok(), "no QUIC packet came");
+    tunnel.signal(libc::SIGTERM);
+    tunnel.wait(LONG).expect("podnet stops");
+}
+
+/// A proxy at the standard input and output of a command (issue 129; the
+/// step "Quick tunnel through a local CONNECT proxy" of `live.yml`, T-316):
+/// `--proxy 'http+exec:COMMAND'` with one command for each connection. The
+/// command is a pipe in Python from its standard streams to the CONNECT
+/// proxy of the stand-in. The service and the edge go through it.
+#[test]
+fn quick_tunnel_standin_goes_through_an_exec_proxy() {
+    test_host::need_loopback!();
+    let standin = Standin::start();
+    let (proxy, log) = standin.proxy();
+    let pipe = standin.dir.path().join("pipe.py");
+    std::fs::write(
+        &pipe,
+        "import socket, sys, threading\n\
+         s = socket.create_connection((sys.argv[1], int(sys.argv[2])))\n\
+         def up():\n\
+         \x20   while True:\n\
+         \x20       b = sys.stdin.buffer.raw.read(65536)\n\
+         \x20       if not b:\n\
+         \x20           s.shutdown(socket.SHUT_WR)\n\
+         \x20           return\n\
+         \x20       s.sendall(b)\n\
+         threading.Thread(target=up, daemon=True).start()\n\
+         while True:\n\
+         \x20   b = s.recv(65536)\n\
+         \x20   if not b:\n\
+         \x20       break\n\
+         \x20   sys.stdout.buffer.write(b)\n\
+         \x20   sys.stdout.buffer.flush()\n",
+    )
+    .unwrap();
+    let spec = format!(
+        "http+exec:python3 -I {} {} {}",
+        pipe.display(),
+        proxy.ip(),
+        proxy.port()
+    );
+    let mut command = standin.podnet(&[
+        "--proxy",
+        &spec,
+        "tunnel",
+        "--service-url",
+        &standin.api_url,
+        "--transport",
+        "direct",
+        "--no-verify",
+        "--hello-world",
+        "--json",
+    ]);
+    command.env("PODNET_UDP", "on");
+    let mut tunnel = Process::spawn(command);
+    let host = hostname_of(&tunnel.ready());
+    assert!(standin.block_on(standin.edge.wait_registered(&host, Duration::from_secs(20))));
+    let seen = log.lock().unwrap().clone();
+    let api = standin.api_url.trim_start_matches("http://").to_string();
+    assert!(seen.contains(&api), "{seen:?}");
+    assert!(seen.contains(&standin.edge_addr.to_string()), "{seen:?}");
+    tunnel.signal(libc::SIGTERM);
+    tunnel.wait(LONG).expect("podnet stops");
+}

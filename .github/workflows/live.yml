@@ -43,7 +43,7 @@ env:
 jobs:
   live:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: A planted failure
         if: inputs.plant == 'fail'
@@ -193,20 +193,10 @@ jobs:
           test "$(git -C "$RUNNER_TEMP/gitclone" log -1 --format=%s)" = one
           target/release/podnet git urls --root "$repos" --json | jq -e '.running' > /dev/null
           target/release/podnet stop gitserve
-      # UDP 7844 dropped: --protocol auto registers over HTTP/2 after the
-      # stagger, and the log names the leg that won.
-      - name: Quick tunnel with UDP 7844 dropped (HTTP/2 fallback)
-        timeout-minutes: 4
-        run: |
-          set -eu
-          sudo iptables -I OUTPUT -p udp --dport 7844 -j DROP
-          sh scripts/live-run.sh udpdrop target/release/podnet demo --exit-on-verify
-          grep 'the leg won the race' udpdrop.err
-          grep -q 'leg=http2' udpdrop.err
-      - name: Remove the UDP rule
-        if: always()
-        timeout-minutes: 1
-        run: sudo iptables -D OUTPUT -p udp --dport 7844 -j DROP || true
+      # UDP 7844 dropped (HTTP/2 after the stagger, the log names the leg that
+      # won) runs in ci against the stand-in, with a UDP socket on the port of
+      # the edge that answers no packet (T-316,
+      # quick_tunnel_standin_falls_back_to_http2_when_udp_is_dropped).
       # The UDP probe (issue 12): the edge answers it; a REJECT rule makes it
       # refused, and then --protocol auto does not try QUIC on UDP 7844.
       - name: UDP probe, answered and refused
@@ -235,12 +225,9 @@ jobs:
           grep -q '^api.trycloudflare.com:443$' "$RUNNER_TEMP/connect.log"
           grep -q ':7844$' "$RUNNER_TEMP/connect.log"
           grep -q '\.trycloudflare\.com:443$' "$RUNNER_TEMP/connect.log"
-          # Issue 129: the same proxy at the stdin and the stdout of a
-          # command (one nc for each connection).
-          : > "$RUNNER_TEMP/connect.log"
-          sh scripts/live-run.sh viaexec target/release/podnet --proxy 'http+exec:nc 127.0.0.1 18080' demo --exit-on-verify
-          grep -q '^api.trycloudflare.com:443$' "$RUNNER_TEMP/connect.log"
-          grep -c ':7844$' "$RUNNER_TEMP/connect.log" | sed 's/^/edge connections through the command: /'
+          # Issue 129 (the same proxy at the stdin and the stdout of a
+          # command) runs in ci against the stand-in (T-316,
+          # quick_tunnel_standin_goes_through_an_exec_proxy).
       # T-253: the hosted mailboxes and relays of other parties, as test
       # targets of a study (docs/research/podnet/hosted-relays.md), through a
       # local CONNECT proxy that allows only TCP 443. A failed service gives
@@ -576,6 +563,81 @@ jobs:
           # 200 MiB pass the limit of one relay session (64 MiB) only by moves.
           [ "${moves:-0}" -ge 1 ] || { echo "no move to a new leg"; sed "s/$name/<pair>/g" resume.err | cut -c1-300 | tail -20; exit 1; }
           target/release/podnet stop resumenode
+          target/release/podnet relay stop "$name" > /dev/null
+      # T-106: a file of 100 MiB from podnet to podnet by code: through the
+      # public mailbox and a transit relay of pod-services (no listener and no
+      # piping server at either end), then through the podnet relay
+      # (--relay-pair, no transit relay). The SHA-256 is equal and the time is
+      # printed. The code, the pair and its token are masked, and each log
+      # goes through scrub before it is printed: no code goes to the log.
+      - name: 100 MiB by code through the mailbox, a transit relay and the podnet relay
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PODNET_RUN_DIR="$RUNNER_TEMP/transfer-run"
+          umask 077
+          dir="$RUNNER_TEMP/transfer"
+          mkdir -p "$dir/in"
+          head -c 104857600 /dev/urandom > "$dir/in/big.bin"
+          want=$(sha256sum "$dir/in/big.bin" | cut -d' ' -f1)
+          secrets=()
+          scrub() {
+            local text
+            text=$(cat)
+            for s in "${secrets[@]}"; do text=${text//"$s"/<secret>}; done
+            printf '%s\n' "$text" | cut -c1-300
+          }
+          # transfer NAME "SENDER FLAGS" "RECEIVER FLAGS"
+          transfer() {
+            local name=$1 sflags=$2 rflags=$3 out="$dir/out-$1" code="" mailbox="" i=0 pid start rc=0
+            mkdir -p "$out"
+            start=$(date +%s.%N)
+            # shellcheck disable=SC2086
+            target/release/podnet send --json --timeout 600 $sflags "$dir/in/big.bin" > "$dir/$name-send.out" 2> "$dir/$name-send.err" &
+            pid=$!
+            until code=$(jq -r 'select(.event == "code") | .code' "$dir/$name-send.out" 2> /dev/null) && [ -n "$code" ]; do
+              i=$((i + 1))
+              if [ "$i" -ge 600 ] || ! kill -0 "$pid" 2> /dev/null; then
+                echo "$name: no code from the sender"; kill "$pid" 2> /dev/null || true
+                scrub < "$dir/$name-send.err" | tail -40; return 1
+              fi
+              sleep 0.1
+            done
+            echo "::add-mask::$code"
+            secrets+=("$code")
+            mailbox=$(jq -r 'select(.event == "code") | .mailbox' "$dir/$name-send.out")
+            # shellcheck disable=SC2086
+            printf '%s\n' "$code" | timeout 900 target/release/podnet receive --yes --json --out "$out" --mailbox "$mailbox" $rflags \
+              > "$dir/$name-receive.out" 2> "$dir/$name-receive.err" || rc=$?
+            wait "$pid" || rc=$((rc + 1000 * $?))
+            local took
+            took=$(awk -v a="$start" -v b="$(date +%s.%N)" 'BEGIN { printf "%.1f", b - a }')
+            if [ "$rc" != 0 ]; then
+              echo "$name: exit $rc (receive + 1000 * send)"
+              echo "== send"; scrub < "$dir/$name-send.err" | tail -40
+              echo "== receive"; scrub < "$dir/$name-receive.err" | tail -40
+              return 1
+            fi
+            local got sent via
+            got=$(sha256sum "$out/big.bin" | cut -d' ' -f1)
+            sent=$(jq -r 'select(.event == "sent") | .sha256' "$dir/$name-send.out")
+            via=$(jq -r 'select(.event == "received") | .via' "$dir/$name-receive.out" | scrub)
+            echo "$name: 100 MiB in $took s ($(awk -v t="$took" 'BEGIN { printf "%.1f", 100 / t }') MiB/s), via $via, mailbox $mailbox"
+            [ "$got" = "$want" ] || { echo "$name: the SHA-256 of the received file differs"; return 1; }
+            [ "$sent" = "$want" ] || { echo "$name: the SHA-256 of the sender differs"; return 1; }
+          }
+          transfer transit "--no-listen --piping none" "--no-listen --piping none"
+          # The podnet relay: a pair of this job, no transit relay and no
+          # piping server, so the node of the pair carries the transit.
+          target/release/podnet relay pair --json > "$dir/pair.json"
+          name=$(jq -r .name "$dir/pair.json")
+          token=$(jq -r .connect_token "$dir/pair.json")
+          echo "::add-mask::$name"
+          echo "::add-mask::$token"
+          secrets+=("$name" "$token")
+          transfer podnet-relay "--no-listen --piping none --transit-relay none --relay-pair $name" "--no-listen --piping none --transit-relay none"
+          grep -q 'podnet relay' "$dir/podnet-relay-receive.out" || { echo "the transfer did not go through the podnet relay"; exit 1; }
           target/release/podnet relay stop "$name" > /dev/null
       # T-094: git over SSH through the reverse relay: git serve --ingress
       # relay, and ssh with podnet relay connect as the ProxyCommand.
