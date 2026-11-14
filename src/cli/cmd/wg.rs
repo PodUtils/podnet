@@ -26,8 +26,9 @@ pub(crate) enum WgCommand {
     /// URL, wg:FILE, warp, a chain; default: the way out of the process).
     /// The file is a wg-quick file: [Interface] with PrivateKey, ListenPort,
     /// Address (A.B.C.D/N: the net of the peers; the server has its first
-    /// address) and MTU; one [Peer] for each peer with PublicKey, AllowedIPs
-    /// (inside the net) and PresharedKey. A key that the file does not list
+    /// address) and MTU (576 to 9000, default 1420); one [Peer] for each
+    /// peer with PublicKey, AllowedIPs (inside the net) and PresharedKey
+    /// (optional). A key that the file does not list
     /// gets no answer. A packet with a source outside the AllowedIPs of its
     /// peer is dropped. IPv4 only inside the tunnel.
     Serve(ServeArgs),

@@ -694,7 +694,8 @@ nothing.
 * The control socket of a listener has the verb `routes`: `{"verb":"routes","token":...}` gives `node`, `neighbours`,
   `received`, `dropped`, `evictions` and `routes`, the best route of each origin (`origin`, `next_hop`, `cost`, `hops`, `seq`,
   `expires_ms`, `direct`). Without `--announce` the verb exits 69. The dialer has no control socket and shows no routes.
-  `link connect` has no `--announce` (T-285 left it out). `routes` also shows `forwarded`, the count of forwarded frames,
+  The control socket of `link connect --announce` has the verb `routes` too. `routes` also shows `forwarded`, the count of
+  forwarded frames,
   and `limited`, the count of the frames that the bucket of a stream dropped.
 
 ## The status view of a mesh

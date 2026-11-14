@@ -131,6 +131,8 @@ UDP from the `Address` of the file.
   base64 is a usage line (exit 64), as each other key of the file. When the peer has another preshared key, or
   only one end has one, the handshake response does not authenticate: `up` fails at once with one line that
   names `PresharedKey`, and `podnet forward --network` exits 77.
+* The file is 1 MiB at most (a larger file is a usage line, exit 64). When other users can read the file, podnet
+  writes a warning: it holds the private key, so set its mode to 0600.
 * `up` does the handshake. A path with no UDP gives no answer in 15 s, and the error says that the UDP path
   may be closed.
 * The UDP of the tunnel goes out from this host. A way below the network (`Ctx::below`, a layer of a chain)
@@ -174,11 +176,13 @@ AllowedIPs = 10.9.0.8/29
 
 * `ListenPort` is the UDP port on each IPv4 address of the host (0: a port of the system; the first line on
   stdout gives it). `Address` is the IPv4 net of the peers. The server has the first address of the net.
-  `MTU` is optional (default 1420).
+  `MTU` is optional (576 to 9000; default 1420). The file is 1 MiB at most, as for `wg:FILE`, and holds the
+  private key: set its mode to 0600.
 * Each `[Peer]` has `PublicKey` and `AllowedIPs` inside the net of `Address`, and an optional `PresharedKey`. Two
   peers with one `PublicKey`, an `AllowedIPs` outside the net, or no `ListenPort` is a usage line (exit 64).
   `Endpoint` is not necessary: the server answers the address of the last authenticated message of the peer.
-* The handshakes, the cookies under load and the sessions are `Responder` of `pod-wg`. A key that the file does
+* The handshakes, the cookies under load and the sessions are `Responder` of `pod-wg`. Above 64 initiations in one
+  second, the server is under load: each initiation then needs the `mac2` of a cookie. A key that the file does
   not list gets no answer. The server sends no initiation: each rekey comes from the peer.
 * A userspace stack ends each TCP and UDP flow of a peer. The server dials each target through the way of
   `--egress SPEC` (each spec of `podnet forward --network`, also a chain; default: the way out of the process).
@@ -189,8 +193,9 @@ AllowedIPs = 10.9.0.8/29
   the link-local addresses are not targets: a peer does not reach another peer or the loopback of the server.
 * Each peer has a share of the flows, so that one peer cannot take the flows of the others (T-345).
   `--flows N` is the TCP flows of the server (held SYNs and open flows; default 2048), `--udp-flows N` its UDP
-  flows (default 512). `--peer-flows N` and `--peer-udp-flows N` are the share of one peer. The default share is
-  the total divided by the peers, at least 64 TCP flows and 16 UDP flows. A new flow over the share is refused
+  flows (default 512), each 1 to 65536. `--peer-flows N` and `--peer-udp-flows N` are the share of one peer (1 to
+  the total; another value exits 64). The default share is
+  the total divided by the peers, at least 64 TCP flows and 16 UDP flows, and not more than the total. A new flow over the share is refused
   (a SYN is dropped, a datagram is dropped) and counted in `share_refused`. The log gets one line for each peer
   in each 10 s, not one line for each refused flow. The first line on stdout gives the shares.
 * IPv4 only inside the tunnel. A client of the server can be podnet itself: `wg:FILE` with the public key of the
@@ -210,8 +215,8 @@ over the way of the layer below it (`Ctx::below`), and the chain carries what it
   error names the layer and says `cannot go over another way`. A layer below another must give a way that dials
   a destination. A layer below `wg:FILE` or `turn://` must carry UDP (`Dial::datagrams`).
 * A spec with `+exec:` is one layer, because a command can hold the word `over`.
-* A chain is a network of `podnet forward --network`, of a `networks:` entry of a router file and of
-  `podnet net doctor --network`. It is not a hop of a pod, and `--egress` of another command refuses it with
+* A chain is a network of `podnet forward --network`, of a `networks:` entry of a router file, of
+  `podnet net doctor --network` and of `podnet wg serve --egress`. It is not a hop of a pod, and `--egress` of another command refuses it with
   one line. In a shell, put the spec in quotes.
 
 ## TURN: `turn://HOST[:PORT]` and `turns://HOST[:PORT]`

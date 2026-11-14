@@ -63,7 +63,7 @@ pub(crate) struct CarrierArgs {
     /// (64 KiB to 64 MiB). Default 1048576.
     #[arg(long, value_name = "BYTES")]
     pub(crate) ring: Option<usize>,
-    /// Seal each stream end to end (T-298): the two ends of a stream run
+    /// Seal each stream end to end: the two ends of a stream run
     /// the handshake of `pod-e2e` with their keys and send AEAD records
     /// (chacha20-poly1305 or aes-256-gcm, agreed), so a hop between them
     /// (a mesh node that forwards the stream) sees ciphertext only. Give it
@@ -403,9 +403,9 @@ pub(crate) enum LinkCommand {
     /// Connect to a listener, prove this key, check the key of the listener
     /// against --peer or --allow, and hold the link. With --check: connect,
     /// check, print and exit 0, and start no control socket. Other programs open
-    /// streams of the link through its control socket: `peer:FINGERPRINT/
-    /// SERVICE` as a network (podnet forward -L LISTEN=peer:FINGERPRINT/
-    /// SERVICE). The control verbs reconnect and rotate (podnet link reconnect,
+    /// streams of the link through its control socket:
+    /// `peer:FINGERPRINT/SERVICE` as a network (podnet forward -L
+    /// LISTEN=peer:FINGERPRINT/SERVICE). The control verbs reconnect and rotate (podnet link reconnect,
     /// rotate) make a new link to the same peer. The command ends when no
     /// link is left (exit 69) or at a stop
     /// signal. --name is 1 to 32 characters from a-z 0-9 -, unique among

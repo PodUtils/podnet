@@ -152,7 +152,7 @@ pub const TABLE: &[ExitCode] = &[
     ExitCode {
         code: NO_PERM,
         name: "no-permission",
-        meaning: "A peer is not in the allow list of the link (default deny). Nothing of a service was offered to it.",
+        meaning: "A peer is not in the allow list of the link or of a sealed relay session (default deny), or a peer refused the key of this end (the link, relay --seal, a PresharedKey of wg:FILE). Nothing of a service was offered to it. podnet send and receive: the code did not match at the other end (the code is spent).",
     },
     ExitCode {
         code: CONFIG,
@@ -162,7 +162,7 @@ pub const TABLE: &[ExitCode] = &[
     ExitCode {
         code: TIMEOUT,
         name: "timeout",
-        meaning: "--detach: the instance was not ready in --ready-timeout seconds (it is stopped), as timeout(1) exits.",
+        meaning: "A time limit ended, as timeout(1) exits. --detach: the instance was not ready in --ready-timeout seconds (it is stopped). podnet send: no receiver took the code in --timeout seconds. podnet link: the hello did not end in 10 s.",
     },
 ];
 

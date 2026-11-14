@@ -43,7 +43,7 @@ echo 7-crossover-clockwork-adroitness | podnet receive --yes   # a script
   keeps its line feeds and tabs. A pipe (stdout is not a terminal) and
   `--json` get the text as it came.
 * `podnet send --timeout SECS` is the wait for a receiver and for its
-  answer (default 1800).
+  answer (1 to 86400, default 1800).
 
 ## The meeting: mailboxes
 
@@ -118,7 +118,8 @@ podnet receive
 ```
 
 * `podnet send --relay-pair NAME` runs the node of the stored pair `NAME`
-  (`podnet relay pair`) for the time of the transfer. Do not run another
+  (`podnet relay pair`) for the time of the transfer. It sends a file or a
+  directory: `--relay-pair` with `--text` exits 64. Do not run another
   node of the pair at the same time: the relay gives the name to one node.
   A pair that is not stored stops the sender before its offer, with the
   error of `podnet relay node`, and the receiver gets the error.
@@ -128,8 +129,8 @@ podnet receive
   wormhole seals this message, so only the receiver of the code reads the
   token.
 * A client of magic-wormhole ignores a hint of a kind that it does not know,
-  and a key of the `transit` message that it does not know. podnet sends a
-  file or a directory to podnet only, so the hint goes to podnet only.
+  and a key of the `transit` message that it does not know. Thus only a
+  podnet receiver uses this way.
 * The receiver dials the node as an operator of the reverse road. It is the
   last way: it starts 4 s after the other hints when a direct hint or a
   transit relay exists, else at once. A node that is not online is

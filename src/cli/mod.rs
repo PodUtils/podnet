@@ -69,8 +69,9 @@ pub(crate) struct Cli {
     /// The way out, as a network spec: direct (as --no-proxy), a proxy URL
     /// (as --proxy), relay or relay:URL (as --transport relay and --relay).
     /// With podnet pod, each --egress is one -x hop of the chain, in its order
-    /// (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE is for
-    /// podnet forward --network and podnet route. With podnet link dial and
+    /// (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+    /// chain (TOP over BELOW) are for podnet forward --network, podnet route
+    /// and podnet wg serve. With podnet link dial and
     /// podnet link connect, each --egress is one element of the chain before
     /// the tcp carrier (direct, a proxy, peer:FINGERPRINT/SERVICE), in order:
     /// the last element reaches the carrier address. With podnet wg serve,

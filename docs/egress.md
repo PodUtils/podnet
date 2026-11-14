@@ -54,10 +54,10 @@ and it replaces the older flags:
 * `peer:FINGERPRINT/SERVICE` is a peer way. A consumer that dials a destination (`--egress` of the other commands, `podnet forward --network`, `pod -x`)
   refuses it with exit 64. Use `podnet forward -L LISTEN=peer:FINGERPRINT/SERVICE` ([forward.md](forward.md)). A `PORT` after
   `peer:` (`peer:1080`) is still the SOCKS5 hop of a host named `peer`.
-* `wg:FILE` is not a hop of a pod, and no process command takes it in `--egress`: each gives one line.
-  Use `podnet forward --network wg:FILE` or a `networks:` entry of a router file.
-* A chain (`TOP over BELOW`) is not a hop of a pod, and no process command takes it in `--egress`: each gives
-  one line. Use `podnet forward --network 'wg:FILE over warp'` or a `networks:` entry of a router file.
+* `wg:FILE` is not a hop of a pod. Of the process commands, only `podnet wg serve` takes it in `--egress`; each other
+  gives one line. Use `podnet forward --network wg:FILE` or a `networks:` entry of a router file.
+* A chain (`TOP over BELOW`) is not a hop of a pod. Of the process commands, only `podnet wg serve` takes it in
+  `--egress`; each other gives one line. Use `podnet forward --network 'wg:FILE over warp'` or a `networks:` entry of a router file.
 * `tailscale:/PATH` is a hop of a pod and the only hop of its chain. A command that is not `pod` refuses
   `--egress tailscale:/PATH` with one line: use `podnet pod`, `podnet forward --network` or a router file.
 * `podnet link dial` and `podnet link connect` take each `--egress` as one element of a chain before the `tcp` carrier, in

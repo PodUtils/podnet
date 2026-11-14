@@ -14,7 +14,7 @@ use crate::cli::signals::sleep_or_signal;
 #[command(group = clap::ArgGroup::new("change").args(["select", "rotate", "reconnect", "interval", "add_door", "remove_door", "add_network", "remove_network"]))]
 pub(crate) struct RouteArgs {
     /// The config file of the router: networks, groups, health, doors and
-    /// guest wires (YAML; podnet man route names the keys).
+    /// guest wires (YAML; docs/router.md names the keys).
     #[arg(long, value_name = "FILE", required_unless_present_any = ["status", "control"])]
     pub(crate) config: Option<std::path::PathBuf>,
     /// Print the state of a running router: each group and member (health,
