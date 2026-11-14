@@ -6444,6 +6444,10 @@ notest`: each step 0. The 32-bit check: 0. Fuzz (as T-348): `proxy_url` 1355113 
 the corpus, no crash. Left: the guard stays until a tag of podcrates carries their entry 612; then the take removes it
 or keeps it as a second check.
 
+CI: secrets 43603461673 on 3ad5315 failed: TruffleHog marked the test vector `http://user:hunter2@proxy:3128` of the tests
+of `check_unix_path` (src/egress.rs:582 at 243eb48) as `unknown` (it tried the host `proxy`). It is no credential:
+`.github/secrets-allow.txt` names it.
+
 # T-350: pod: a packet socket opens in a seccomp pod, and the raw rule of T-334 is in the supervisor
 
 **Source:** the take of podcrates `v0.44.0` (T-137; PodUtils/podcrates#154, their entries 574 and 558, the answer to

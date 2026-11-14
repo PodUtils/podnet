@@ -29,6 +29,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# The listeners of this script use the fixed ports 40010 to 40017, inside
+# the range of the kernel's ephemeral ports (32768 to 60999): an outgoing
+# connection of another step can hold one (live run 43603465996: port 40014
+# "Address already in use"). Reserve them for this job.
+sudo -n sysctl -q -w net.ipv4.ip_local_reserved_ports=40010-40020 2> /dev/null || true
+
 # Wait for a TCP port, at most 90 s.
 wait_port() {
     i=0
