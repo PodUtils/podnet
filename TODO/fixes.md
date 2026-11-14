@@ -6198,7 +6198,7 @@ check --workspace --target i686-unknown-linux-musl`: no error.
 **Milestone:** M5
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6239,12 +6239,70 @@ The review found these items of low severity. Each one is checked against the co
    say it in `docs/router.md`.
 8. Measure the cost of a flood of frames; add a token bucket for each stream when one core is busy.
 
+## Decision
+
+2026-11-14, the calls of the work:
+
+- Item 2: the text of a sender is escaped when stdout is a terminal; a pipe and `--json` get it as it came, so a
+  script keeps the exact text. A text keeps its line feeds and tabs; a name escapes them too.
+- Item 3: the bound is 64 handshakes at one time, not 64 connections in all: a slot that ends takes a new
+  connection.
+- Item 5: the MAC address is learned from each frame, as before (a guest with a static neighbour entry for the
+  gateway sends no ARP), but an address in use keeps its first MAC address until it is idle for 60 s (`MAC_IDLE`).
+  A full table drops its idle addresses; with none idle, a new address waits (its frames are dropped). A guest that
+  changes its MAC address waits 60 s.
+- Item 7: a warning line and `docs/router.md`, not an IPv6 rule: a drop of the forwarded IPv6 of the host would
+  change IPv6 forwarding that the router does not own.
+- Item 8: the bucket counts signature checks, not frames: 2048 each second and 8192 at most for each stream (the
+  announcements of 4096 origins with paths of 5 nodes in each 10 s). The checks also moved out of the lock of the
+  route table.
+
 ## Prove
 
 ```sh
 cargo test -p podnet --lib transfer
 cargo test -p podnet --lib router::guest
 cargo test -p podnet --test transfer_land --test link_announce
+cargo test -p podnet --lib kernel_guard
 sh scripts/agent/check.sh
 ```
+
+## Correction
+
+2026-11-14: item 7 holds by the code: `src/router/kernel.rs` and `src/router/kernel/guard.rs` write rules, routes
+and a table of nf_tables of the family IPv4 only (no `AF_INET6`), and the kernel keeps the rules of IPv6 apart, so an
+IPv6 packet of a client takes the IPv6 routes of the host. Not measured on a host with IPv6 forwarding: the container
+has no `ip` program. Item 8 holds by a measurement: a replay of a valid announcement of 16 nodes (5582 bytes) took
+885 µs of one core in a release build (`Receiver::accept`, 2000 rounds, a test that is not kept): 1129 frames each
+second, 6.3 MB/s, fill one core. `Mesh::receive` ran the checks under the lock of the route table.
+
+## Done
+
+2026-11-14, commits f6b765c (items 1 to 4 and 6) and 9090a0c (items 5, 7 and 8). Each item has a test; the plant of
+each test (the fix off) failed it.
+
+1. `entries` of `src/transfer/zip.rs` takes the cap of entries and refuses a central directory over `ROW_MOST` bytes
+   for each entry before it reads it. `transfer_land_a_central_directory_over_its_bound_is_refused`: a directory of
+   64 MiB for 1 entry is refused; the plant read it ("a bad row of the central directory").
+2. `for_terminal` of `src/transfer/mod.rs`; `receive` of `src/cli/cmd/transfer.rs` prints a text and a path with it.
+   `transfer_for_terminal_escapes_each_control_character`.
+3. `accept_direct` of `src/transfer/connect.rs` runs `LISTEN_MOST` (64) handshakes at one time.
+   `wormhole_transfer_the_listener_holds_at_most_its_bound_of_handshakes`: with a bound of 4 the fifth connection is
+   closed with no byte; the plant sent it the handshake.
+4. `Landing::undo` of `src/transfer/land.rs` removes with `unlinkat` under the descriptor of `--out`.
+   `transfer_land_the_undo_does_not_follow_a_swapped_directory`: the plant (a removal by path) removed the file at the
+   end of the link.
+5. `learn_at` of `src/router/guest/veth.rs`. `guest_wire_veth_a_guest_cannot_take_the_address_of_another`: the plant
+   (a new MAC address replaces the old one) failed it.
+6. `expect` of `src/transfer/transit.rs` reads the whole handshake and compares with `same`.
+   `transfer_transit_the_handshake_is_compared_in_constant_time`: the plant (the early return) read 1 byte of 29.
+7. `ipv6_warning` of `src/router/kernel/guard.rs`; the first apply logs it. `kernel_guard_warns_when_the_host_forwards_ipv6`.
+8. `src/link_announce/limit.rs`, `signature_checks` of `src/mesh_announce.rs`; `receive_stream` drops a frame over
+   the bucket and `Mesh::receive` verifies before the lock. `a_flood_of_frames_is_bounded_by_the_checks_of_the_stream`:
+   20 frames with a bucket of 17 checks: 1 taken, 12 limited; the plant limited none.
+
+`cargo test -p podnet --lib transfer`: 21 passed. `cargo test -p podnet --lib router::guest`: 17 passed. `cargo test
+-p podnet --test transfer_land --test link_announce`: 10 and 9 passed. `cargo test --workspace --no-fail-fast` on the
+tree of 9090a0c: each target passed. `CC_i686_unknown_linux_musl=clang cargo check --workspace --target
+i686-unknown-linux-musl`: no error.
 
