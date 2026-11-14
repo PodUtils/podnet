@@ -899,6 +899,14 @@ Done so far:
   `sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace`: 1991 passed, 0 failed, 120 targets). What the
   tag carries for podnet: their entry 612 (T-349), 589 (`bind_udp` with port 0: T-117) and 557 (`KeyRefused` on the
   listener of dns, icmp, udp and ws: T-273, T-278).
+- v0.46.0 (PodUtils/podcrates#159): each `pod-*` dependency names `tag = "v0.46.0"` (and `pod-todo` of
+  `crates/podnet-todo/Cargo.toml`). No new hand-off for podnet (`adoption/podnet/` holds the hand-off of `pod-warp` of
+  v0.37.0 only). Breaking for podnet: none that needs a change of code. podnet makes each `pod_link::poll::Poll` with
+  `Poll::new` (no struct literal), so the field `max_connections` (1024 by default) needs no change. podnet uses
+  `pod_extract::safety::components` only; the limit `MAX_DEPTH` (4096, `TooDeep`) is of `open_tree`. `cargo update`
+  keeps `webpki-roots` at 1.0.11, the value of `pod_tls::ROOTS_VERSION` (also in `fuzz/Cargo.lock`). What the tag
+  carries for podnet: their entry 494 (`s3::S3`: T-279), 500 (`split::Split`: T-302) and 525 (a poll listener keeps no
+  whole body and caps its connections).
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it
