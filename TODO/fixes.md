@@ -5690,3 +5690,12 @@ cargo test --test docs
 # the runs of release.yml (dry run, publish) and release-proofs.yml pass
 ```
 
+## Correction
+
+2026-11-14: the request GitHub #543 stopped at `ci` on 43c53a6 (ci 43535662399 failed in the job `restricted-host`; deny
+43535667510, secrets 43535672932 and live 43535679488 passed); nothing was published. The failure:
+`service_serve_ingress::a_grant_that_does_not_name_the_service_refuses_the_stream` panicked with `BrokenPipe` at the write
+of its request: the refused stream can close before the write. The helper `get` of `tests/service_serve_ingress.rs` now
+takes a failed write as an empty answer (the test still asks for an empty answer). The test passed three runs in a row;
+`sh scripts/agent/check.sh` passed. A new request follows (GitHub #544).
+

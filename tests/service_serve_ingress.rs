@@ -201,7 +201,9 @@ fn get(socket: &Path, line: &str, header: &str) -> String {
     let mut s = UnixStream::connect(socket).unwrap();
     s.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
     let request = format!("{line} HTTP/1.1\r\nHost: f\r\nConnection: close\r\n{header}\r\n");
-    s.write_all(request.as_bytes()).unwrap();
+    // A refused stream can close before the request is written (BrokenPipe):
+    // the answer is then empty.
+    let _ = s.write_all(request.as_bytes());
     let mut got = Vec::new();
     let _ = s.read_to_end(&mut got);
     text(&got)
