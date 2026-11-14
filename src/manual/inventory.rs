@@ -79,7 +79,7 @@ pub const COMPONENTS: &[ComponentEntry] = &[
     ComponentEntry {
         name: "s3",
         kind: "carrier",
-        meaning: "A simplex pair of objects in a bucket of an object store. Cost class network, no privilege. Address: BUCKET/PREFIX. Build feature s3.",
+        meaning: "The object-storage carrier: each end writes its bytes as objects of a bucket of the S3 API (256 KiB each, 8 in flight, a PUT with If-None-Match, a GET with If-Match) and polls the objects of the other end (100 ms to 5 s). TLS 1.3 with ALPN podlink/1 runs over the objects; each end pins the Ed25519 key of the other end; a key that is not pinned exits 77. --s3-endpoint URL is necessary (no default host); --s3-region (default us-east-1); the key of the bucket comes from --s3-credentials FILE, else AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, else a profile file, never from argv; no key, or a key that the bucket refuses, exits 77. --s3-prune removes each object read. Duplex, ordered, cost class network, overhead highest, no privilege. Address: KEY@BUCKET[/PREFIX] to dial, BUCKET[/PREFIX] to listen. Build feature s3.",
     },
     ComponentEntry {
         name: "icmp",

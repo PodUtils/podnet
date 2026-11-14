@@ -257,6 +257,8 @@ one in code with `podnet::link_group::LinkGroup`.
   `SO_PEERCRED`, so give the flag at both ends. Without it, a peer of another uid exits 69.
 * `--dns-server IP:PORT` and `--dns-zone ZONE` (dns carrier): the server of the queries of a dial, and the zone of a listener. With
   another carrier they exit 64.
+* `--s3-endpoint URL`, `--s3-region REGION`, `--s3-credentials FILE` and `--s3-prune` (s3 carrier): see "The S3 carrier". With
+  another carrier they exit 64.
 * `--allow-raw icmp` allows a carrier that opens a raw socket. The `icmp` carrier without it exits 64 and names the flag.
   Another value exits 64.
 * `--ring BYTES` (memory carrier) sets the ring of each direction: 65536 to 67108864 (64 KiB to 64 MiB). Default 1048576. A
@@ -307,14 +309,13 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `chunked` | as `poll` | POSTs up, one chunked answer down (T-272). Build feature `poll`. |
 | `httppoll` | as `poll` | POSTs up, a GET poll down: the simplex poll, the highest overhead (T-280). Build feature `poll`. |
 | `dns` | `KEY@ZONE` to dial (`--dns-server`), `IP:PORT` (UDP) to listen (`--dns-zone`) | Query names up and TXT answers down, an ARQ and TLS 1.3 with a pinned Ed25519 key above (T-278). Build feature `dns`. See "The DNS carrier". |
-| `s3` | `BUCKET/PREFIX` | A simplex pair of objects in a bucket (T-279). Build feature `s3`. |
+| `s3` | `KEY@BUCKET[/PREFIX]` to dial, `BUCKET[/PREFIX]` to listen (`--s3-endpoint`) | Objects of a bucket of the S3 API each way, TLS 1.3 with a pinned Ed25519 key above (T-279). Build feature `s3`. See "The S3 carrier". |
 | `icmp` | `KEY@HOST` (IPv4) to dial, an IPv4 address with no port to listen | The data of ICMP echo messages on a raw socket, an ARQ and TLS 1.3 with a pinned Ed25519 key above (T-282). Build feature `icmp`; it needs `CAP_NET_RAW` and `--allow-raw icmp`. See "The ICMP carrier". |
 
 The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `dns`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
 them. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
-carrier exits 69 with that reason. In a build with the feature `s3` on, the row says that the code of the carrier is not in
-this build, and names its entry (T-279).
+carrier exits 69 with that reason.
 
 `podnet components [--json]` lists each carrier and each service of this build (T-310). A row has the fields `name`, `kind`
 (`carrier` or `service`), `framing`, `duplex`, `needs_privilege`, `available`, `reason`, `cost`, `feature`, `built`, `about` and
@@ -518,6 +519,43 @@ Build with `--features icmp` (it holds `tcp`). `pod-link` of PodUtils/podcrates 
 ```sh
 podnet link listen 0.0.0.0 --carrier icmp --allow-raw icmp --allow allowed.txt --to 127.0.0.1:22
 podnet link dial SERVER-FINGERPRINT@203.0.113.7 --carrier icmp --allow-raw icmp --allow servers.txt
+```
+
+## The S3 carrier
+
+Build with `--features s3` (it holds `tcp` and `poll`). `pod-link` of PodUtils/podcrates does the work (`pod_link::s3`);
+`podnet::link_s3` is the glue. It is a carrier for a host whose only way out is an object store of the S3 API.
+
+* Each end writes its bytes as objects of one bucket that both ends reach, and reads the objects of the other end. Under the
+  prefix of a link: `open/SESSION` (an empty object: the dialer opens a session), `up/SESSION/SEQ` (the bytes of the dialer) and
+  `down/SESSION/SEQ` (the bytes of the listener). An empty object ends the bytes of its direction.
+* TLS 1.3 with the ALPN `podlink/1` runs over the objects. Each end pins the key of the other end in the TLS handshake, and TLS
+  seals each byte: a reader of the bucket learns nothing, and a writer of the bucket can end a link but not change it.
+* Each `PUT` has `If-None-Match: *`, and each `GET` has `If-Match` with the ETag of the listing. An object holds 256 KiB at most,
+  8 requests are in flight on each side, and a reader with no new object polls again after 100 ms, doubled up to 5 s. A page of a
+  listing has 1000 keys. The objects of one end of a session hold 1 GiB at most (a warning at 80 %). The overhead class is
+  `highest`.
+* A listener takes the sessions that open after its bind. It takes a client only when its key is in the allow list.
+* `--s3-endpoint http[s]://HOST[:PORT][/PATH]` gives the endpoint of the S3 API. There is no default: podnet knows no host of a
+  provider. With no endpoint, the command exits 64. An endpoint of `https` uses the roots of podnet (`--ca-file`,
+  `SSL_CERT_FILE`, `podnet-ca.pem` beside the binary, the system bundle). The requests go through the way out of the process
+  (`HTTPS_PROXY`, `--egress`). The bucket is in the path of each request (path style).
+* `--s3-region REGION` gives the region of the signature (SigV4). Default `us-east-1`.
+* The key of the bucket never comes from `argv`. `--s3-credentials FILE` names a profile file (an INI file with
+  `aws_access_key_id`, `aws_secret_access_key` and `aws_session_token`; the section `AWS_PROFILE`, else `default`), and podnet
+  reads that file only. Without the flag: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (and `AWS_SESSION_TOKEN`), else the
+  profile file of `AWS_SHARED_CREDENTIALS_FILE`, else `$HOME/.aws/credentials`. No key exits 77, and the message shows no value.
+* `--s3-prune` removes each object after its read, and the open object of each session that a listener takes. It is off by
+  default, because the bucket can be shared.
+* The flags `--s3-*` with another carrier exit 64.
+* A key that the bucket refuses (403) exits 77. A bucket that does not exist (404) exits 69. A key of a peer that is not pinned
+  exits 77.
+* The carrier is proven against a stand-in of the S3 API on the loopback only (`tests/link_s3.rs`), not against a provider.
+
+```sh
+export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...
+podnet link listen links/office --carrier s3 --s3-endpoint https://s3.example.net --allow allowed.txt --to 127.0.0.1:22
+podnet link dial SERVER-FINGERPRINT@links/office --carrier s3 --s3-endpoint https://s3.example.net --allow servers.txt
 ```
 
 ## The ARQ under a link
@@ -873,7 +911,7 @@ library ([build.md](build.md), "The C library"). Linux only.
 | 66 | The allow list file is missing. |
 | 69 | The address is held by a live listener, no listener answers, the host refuses the carrier (the `icmp` carrier with no `CAP_NET_RAW`), or a peer has another uid; an element of a chain that cannot be built or dialed; with `--seal`, `ResumeExpired` (three failed RESUME records). |
 | 71 | The key file or the allow list file has a mode that others can use. |
-| 77 | A peer is not in the allow list, or it did not prove its key. On `tcp`: a key that the handshake refused. With `--seal`: the end of a stream is not the expected key, or its key is not in the allow list. |
+| 77 | A peer is not in the allow list, or it did not prove its key. On `tcp`: a key that the handshake refused. On `s3`: no key of the bucket, or a key that the bucket refused (403). With `--seal`: the end of a stream is not the expected key, or its key is not in the allow list. |
 | 78 | The allow list has a line that is no peer, or more than 4096 entries; a duplicate element or a cycle in a chain; with `--seal`, a suite that the two ends do not share. |
 | 124 | The hello did not end in 10 s. |
 

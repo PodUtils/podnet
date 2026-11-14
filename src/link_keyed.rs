@@ -1,7 +1,7 @@
 //! The carriers of `pod-link` that pin the Ed25519 key of each end and came
 //! with podcrates v0.40.0: `quic` (T-273), `udp` (T-276), and the poll
 //! carriers `poll`, `sse`, `chunked` and `httppoll` (T-271, T-272, T-280),
-//! `dns` (T-278) and `icmp` (T-282).
+//! `dns` (T-278) and `icmp` (T-282); with podcrates v0.46.0, `s3` (T-279).
 //!
 //! `link listen`, `link dial` and `link connect` open them by name through
 //! [`dial`] and [`listen`]. Each one sits behind a build feature
@@ -21,8 +21,8 @@ use crate::link::{self, carrier_fault, Door};
 use crate::link_query::Query;
 
 /// The names of these carriers, the words of `--carrier`.
-pub const NAMES: [&str; 8] = [
-    "quic", "udp", "poll", "sse", "chunked", "httppoll", "dns", "icmp",
+pub const NAMES: [&str; 9] = [
+    "quic", "udp", "poll", "sse", "chunked", "httppoll", "dns", "icmp", "s3",
 ];
 
 /// The carriers of [`NAMES`] that open a raw socket: `--allow-raw NAME`
@@ -38,6 +38,7 @@ pub fn feature_of(name: &str) -> Option<&'static str> {
         "poll" | "sse" | "chunked" | "httppoll" => Some("poll"),
         "dns" => Some("dns"),
         "icmp" => Some("icmp"),
+        "s3" => Some("s3"),
         _ => None,
     }
 }
@@ -56,6 +57,15 @@ pub struct Tune {
     pub dns_server: Option<std::net::SocketAddr>,
     /// `--dns-zone ZONE` (dns): the zone of a listener.
     pub dns_zone: Option<String>,
+    /// `--s3-endpoint URL` (s3): the endpoint of the S3 API.
+    pub s3_endpoint: Option<String>,
+    /// `--s3-region REGION` (s3): the region of the signature.
+    pub s3_region: Option<String>,
+    /// `--s3-credentials FILE` (s3): the profile file of the key of the
+    /// bucket, in place of the environment.
+    pub s3_credentials: Option<std::path::PathBuf>,
+    /// `--s3-prune` (s3): the reader removes each object it read.
+    pub s3_prune: bool,
 }
 
 /// The largest `mtu` of the udp carrier: no IP fragmentation (GitHub #468).
@@ -181,6 +191,11 @@ pub async fn dial(
             let carrier = crate::link_icmp::carrier(me, allow);
             crate::link_icmp::dial(&carrier, allow, address, settings).await
         }
+        #[cfg(feature = "s3")]
+        "s3" => {
+            let carrier = crate::link_s3::carrier(me, allow, tune)?;
+            crate::link_s3::dial(&carrier, allow, address, settings).await
+        }
         _ => Err(off(name)),
     }
 }
@@ -213,6 +228,8 @@ pub async fn listen(
         "dns" => crate::link_dns::listen(&crate::link_dns::carrier(me, allow, tune), address).await,
         #[cfg(feature = "icmp")]
         "icmp" => crate::link_icmp::listen(&crate::link_icmp::carrier(me, allow), address).await,
+        #[cfg(feature = "s3")]
+        "s3" => crate::link_s3::listen(&crate::link_s3::carrier(me, allow, tune)?, address).await,
         _ => Err(off(name)),
     }
 }

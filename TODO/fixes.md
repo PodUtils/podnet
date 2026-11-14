@@ -2223,7 +2223,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 - src/warp/mod.rs:885-892 at `9c1fc4b` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
   `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:415-417`) refuses and does not write over the file.
-- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:146` lists `PODNET_FOREIGN_HOME`.
+- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:151` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 

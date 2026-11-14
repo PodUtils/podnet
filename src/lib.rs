@@ -112,6 +112,8 @@ pub mod link_query;
 #[cfg(feature = "quic")]
 pub mod link_quic;
 pub mod link_record;
+#[cfg(feature = "s3")]
+pub mod link_s3;
 pub mod link_service;
 pub mod link_socks;
 #[cfg(feature = "tcp")]

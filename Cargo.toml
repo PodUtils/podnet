@@ -275,8 +275,9 @@ poll = ["tcp", "pod-link/poll"]
 # The DNS simplex carrier: the frames in query names and TXT answers, the
 # ARQ of pod-link and the TLS and the pinned keys of `tcp` above (T-278).
 dns = ["tcp", "pod-link/dns"]
-# The object-storage carrier (T-279).
-s3 = []
+# The object-storage carrier: the TLS and the pinned keys of `tcp` over
+# the objects of a bucket of the S3 API, with SigV4 (T-279).
+s3 = ["tcp", "poll", "pod-link/s3"]
 # The ICMP echo carrier: the frames in the data of echo messages over a
 # raw socket (CAP_NET_RAW), the ARQ of pod-link and the TLS and the pinned
 # keys of `tcp` above (T-282).

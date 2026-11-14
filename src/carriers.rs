@@ -93,7 +93,19 @@ fn make_memory(options: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
 }
 
 /// A carrier whose feature is on but whose code is not in the tree. The
-/// entry that adds the carrier replaces the maker.
+/// entry that adds the carrier replaces the maker. A build with each
+/// carrier feature on has no such maker.
+#[cfg(not(all(
+    feature = "tcp",
+    feature = "ws",
+    feature = "h2",
+    feature = "quic",
+    feature = "udp",
+    feature = "poll",
+    feature = "dns",
+    feature = "s3",
+    feature = "icmp"
+)))]
 fn pending(name: &'static str, entry: &str) -> Result<Box<dyn Carrier>, CarrierError> {
     Err(CarrierError::new(
         name,
@@ -207,6 +219,15 @@ fn make_dns(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("dns", "T-278")
 }
 
+/// The carrier `s3` for the registry: the facts (the cost class
+/// `highest`) and the host check, no key of this install and no endpoint
+/// (`podnet::link_s3::carrier` is the real one).
+#[cfg(feature = "s3")]
+fn make_s3(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_s3::probe()))
+}
+
+#[cfg(not(feature = "s3"))]
 fn make_s3(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("s3", "T-279")
 }
@@ -338,8 +359,8 @@ pub const ROWS: [Row; 14] = [
     },
     Row {
         name: "s3",
-        about: "a simplex pair of objects in a bucket",
-        address: "BUCKET/PREFIX",
+        about: "objects of a bucket of the S3 API each way, TLS 1.3 above, the Ed25519 key of each end pinned",
+        address: "KEY@BUCKET[/PREFIX] to dial, BUCKET[/PREFIX] to listen (--s3-endpoint)",
         cost: "network",
         needs_privilege: false,
         feature: Some("s3"),

@@ -906,7 +906,9 @@ Done so far:
   `pod_extract::safety::components` only; the limit `MAX_DEPTH` (4096, `TooDeep`) is of `open_tree`. `cargo update`
   keeps `webpki-roots` at 1.0.11, the value of `pod_tls::ROOTS_VERSION` (also in `fuzz/Cargo.lock`). What the tag
   carries for podnet: their entry 494 (`s3::S3`: T-279), 500 (`split::Split`: T-302) and 525 (a poll listener keeps no
-  whole body and caps its connections).
+  whole body and caps its connections). `sh scripts/agent/check.sh`: each step 0, and `cargo test --workspace
+  --no-fail-fast`: 1993 passed, 0 failed, 120 targets (`relay_reverse::resume::relay_session_moves_past_the_cap` failed once
+  under load in the first run and passed alone three times). `cargo clippy --features full`: exit 0. Commit 27cdf19.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

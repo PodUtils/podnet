@@ -68,6 +68,11 @@ pub const ENVIRONMENT: &[EnvVar] = &[
         meaning: "The only file of TLS roots (PEM), when --ca-file is not given. Without both, podnet trusts podnet-ca.pem beside the binary, the first system bundle that it can read, and the roots compiled into podnet.",
     },
     EnvVar {
+        names: &["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_PROFILE", "AWS_SHARED_CREDENTIALS_FILE"],
+        used_by: "link listen, dial, connect --carrier s3",
+        meaning: "The key of the bucket of the s3 carrier, when --s3-credentials FILE is not given: the id and the secret (and the token of a temporary key), else the profile file of AWS_SHARED_CREDENTIALS_FILE or $HOME/.aws/credentials, section AWS_PROFILE (default: default). With --s3-credentials, the file alone (AWS_PROFILE names its section). No key exits 77; no message shows a value.",
+    },
+    EnvVar {
         names: &["PODNET_STATE_DIR"],
         used_by: "warp, tunnel --transport warp",
         meaning: "The state directory (the WARP identity). The value none keeps no file. Without it, podnet takes the first directory that it can write of $XDG_STATE_HOME/podnet, $HOME/.local/state/podnet, $XDG_RUNTIME_DIR/podnet and podnet-<uid> in the temporary directory. On a host whose home is on a shared disk, set it to a directory of this host, so that two hosts do not share one WARP device.",

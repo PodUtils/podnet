@@ -8077,8 +8077,11 @@ COMMANDS
             query names and TXT answers: listen at `IP:PORT` with --dns-zone,
             dial `KEY@ZONE`. `icmp` (feature `icmp`) carries the link in the
             data of ICMP echo messages on a raw socket (CAP_NET_RAW,
-            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`. A
-            key that is refused exits 77. Default: unix.
+            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`.
+            `s3` (feature `s3`) carries the link in objects of a bucket of the
+            S3 API, TLS 1.3 above them with the same pins: listen at
+            `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both with
+            --s3-endpoint. A key that is refused exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -8108,6 +8111,26 @@ COMMANDS
         --dns-zone <ZONE>
             The dns carrier: the zone that a listener serves as an
             authoritative server (the dialer gives it in KEY@ZONE)
+
+        --s3-endpoint <URL>
+            The s3 carrier: the endpoint of the S3 API,
+            `http[s]://HOST[:PORT][/PATH]`. There is no default
+
+        --s3-region <REGION>
+            The s3 carrier: the region of the signature. Default `us-east-1`
+
+        --s3-credentials <FILE>
+            The s3 carrier: a profile file with the key of the bucket (section
+            AWS_PROFILE, else `default`). Without it, the key comes from
+            AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (and
+            AWS_SESSION_TOKEN), else from AWS_SHARED_CREDENTIALS_FILE or
+            ~/.aws/credentials. No key exits 77; a key that the bucket refuses
+            exits 77
+
+        --s3-prune
+            The s3 carrier: the reader removes each object that it read, and a
+            listener the open object of each session. Off by default, as the
+            bucket can be shared
 
         --allow-raw <CARRIER>
             Allow a carrier that opens a raw socket: `icmp` needs `--allow-raw
@@ -8315,8 +8338,11 @@ COMMANDS
             query names and TXT answers: listen at `IP:PORT` with --dns-zone,
             dial `KEY@ZONE`. `icmp` (feature `icmp`) carries the link in the
             data of ICMP echo messages on a raw socket (CAP_NET_RAW,
-            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`. A
-            key that is refused exits 77. Default: unix.
+            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`.
+            `s3` (feature `s3`) carries the link in objects of a bucket of the
+            S3 API, TLS 1.3 above them with the same pins: listen at
+            `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both with
+            --s3-endpoint. A key that is refused exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -8346,6 +8372,26 @@ COMMANDS
         --dns-zone <ZONE>
             The dns carrier: the zone that a listener serves as an
             authoritative server (the dialer gives it in KEY@ZONE)
+
+        --s3-endpoint <URL>
+            The s3 carrier: the endpoint of the S3 API,
+            `http[s]://HOST[:PORT][/PATH]`. There is no default
+
+        --s3-region <REGION>
+            The s3 carrier: the region of the signature. Default `us-east-1`
+
+        --s3-credentials <FILE>
+            The s3 carrier: a profile file with the key of the bucket (section
+            AWS_PROFILE, else `default`). Without it, the key comes from
+            AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (and
+            AWS_SESSION_TOKEN), else from AWS_SHARED_CREDENTIALS_FILE or
+            ~/.aws/credentials. No key exits 77; a key that the bucket refuses
+            exits 77
+
+        --s3-prune
+            The s3 carrier: the reader removes each object that it read, and a
+            listener the open object of each session. Off by default, as the
+            bucket can be shared
 
         --allow-raw <CARRIER>
             Allow a carrier that opens a raw socket: `icmp` needs `--allow-raw
@@ -8515,8 +8561,11 @@ COMMANDS
             query names and TXT answers: listen at `IP:PORT` with --dns-zone,
             dial `KEY@ZONE`. `icmp` (feature `icmp`) carries the link in the
             data of ICMP echo messages on a raw socket (CAP_NET_RAW,
-            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`. A
-            key that is refused exits 77. Default: unix.
+            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`.
+            `s3` (feature `s3`) carries the link in objects of a bucket of the
+            S3 API, TLS 1.3 above them with the same pins: listen at
+            `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both with
+            --s3-endpoint. A key that is refused exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -8546,6 +8595,26 @@ COMMANDS
         --dns-zone <ZONE>
             The dns carrier: the zone that a listener serves as an
             authoritative server (the dialer gives it in KEY@ZONE)
+
+        --s3-endpoint <URL>
+            The s3 carrier: the endpoint of the S3 API,
+            `http[s]://HOST[:PORT][/PATH]`. There is no default
+
+        --s3-region <REGION>
+            The s3 carrier: the region of the signature. Default `us-east-1`
+
+        --s3-credentials <FILE>
+            The s3 carrier: a profile file with the key of the bucket (section
+            AWS_PROFILE, else `default`). Without it, the key comes from
+            AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (and
+            AWS_SESSION_TOKEN), else from AWS_SHARED_CREDENTIALS_FILE or
+            ~/.aws/credentials. No key exits 77; a key that the bucket refuses
+            exits 77
+
+        --s3-prune
+            The s3 carrier: the reader removes each object that it read, and a
+            listener the open object of each session. Off by default, as the
+            bucket can be shared
 
         --allow-raw <CARRIER>
             Allow a carrier that opens a raw socket: `icmp` needs `--allow-raw
@@ -9102,8 +9171,11 @@ COMMANDS
             query names and TXT answers: listen at `IP:PORT` with --dns-zone,
             dial `KEY@ZONE`. `icmp` (feature `icmp`) carries the link in the
             data of ICMP echo messages on a raw socket (CAP_NET_RAW,
-            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`. A
-            key that is refused exits 77. Default: unix.
+            --allow-raw icmp): listen at an IPv4 address, dial `KEY@HOST`.
+            `s3` (feature `s3`) carries the link in objects of a bucket of the
+            S3 API, TLS 1.3 above them with the same pins: listen at
+            `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both with
+            --s3-endpoint. A key that is refused exits 77. Default: unix.
 
         --allow-other-uid
             The unix carrier accepts a peer of another uid. Each end checks
@@ -9133,6 +9205,26 @@ COMMANDS
         --dns-zone <ZONE>
             The dns carrier: the zone that a listener serves as an
             authoritative server (the dialer gives it in KEY@ZONE)
+
+        --s3-endpoint <URL>
+            The s3 carrier: the endpoint of the S3 API,
+            `http[s]://HOST[:PORT][/PATH]`. There is no default
+
+        --s3-region <REGION>
+            The s3 carrier: the region of the signature. Default `us-east-1`
+
+        --s3-credentials <FILE>
+            The s3 carrier: a profile file with the key of the bucket (section
+            AWS_PROFILE, else `default`). Without it, the key comes from
+            AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (and
+            AWS_SESSION_TOKEN), else from AWS_SHARED_CREDENTIALS_FILE or
+            ~/.aws/credentials. No key exits 77; a key that the bucket refuses
+            exits 77
+
+        --s3-prune
+            The s3 carrier: the reader removes each object that it read, and a
+            listener the open object of each session. Off by default, as the
+            bucket can be shared
 
         --allow-raw <CARRIER>
             Allow a carrier that opens a raw socket: `icmp` needs `--allow-raw
@@ -10617,6 +10709,15 @@ ENVIRONMENT
         both, podnet trusts podnet-ca.pem beside the binary, the first system
         bundle that it can read, and the roots compiled into podnet. (all
         commands)
+    AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN, AWS_PROFILE,
+    AWS_SHARED_CREDENTIALS_FILE
+        The key of the bucket of the s3 carrier, when --s3-credentials FILE is
+        not given: the id and the secret (and the token of a temporary key),
+        else the profile file of AWS_SHARED_CREDENTIALS_FILE or
+        $HOME/.aws/credentials, section AWS_PROFILE (default: default). With
+        --s3-credentials, the file alone (AWS_PROFILE names its section). No
+        key exits 77; no message shows a value. (link listen, dial, connect
+        --carrier s3)
     PODNET_STATE_DIR
         The state directory (the WARP identity). The value none keeps no file.
         Without it, podnet takes the first directory that it can write of
@@ -11119,8 +11220,19 @@ INVENTORY
         the first nameserver of /etc/resolv.conf), IP:PORT (UDP) to listen as
         the authoritative server of --dns-zone ZONE. Build feature dns.
     s3 (carrier)
-        A simplex pair of objects in a bucket of an object store. Cost class
-        network, no privilege. Address: BUCKET/PREFIX. Build feature s3.
+        The object-storage carrier: each end writes its bytes as objects of a
+        bucket of the S3 API (256 KiB each, 8 in flight, a PUT with
+        If-None-Match, a GET with If-Match) and polls the objects of the other
+        end (100 ms to 5 s). TLS 1.3 with ALPN podlink/1 runs over the
+        objects; each end pins the Ed25519 key of the other end; a key that is
+        not pinned exits 77. --s3-endpoint URL is necessary (no default host);
+        --s3-region (default us-east-1); the key of the bucket comes from
+        --s3-credentials FILE, else AWS_ACCESS_KEY_ID and
+        AWS_SECRET_ACCESS_KEY, else a profile file, never from argv; no key,
+        or a key that the bucket refuses, exits 77. --s3-prune removes each
+        object read. Duplex, ordered, cost class network, overhead highest, no
+        privilege. Address: KEY@BUCKET[/PREFIX] to dial, BUCKET[/PREFIX] to
+        listen. Build feature s3.
     icmp (carrier)
         The ICMP echo carrier: the frames ride in the data of ICMP echo
         messages (1400 bytes of payload) on a raw ICMPv4 socket, with a
@@ -14986,7 +15098,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `udp` | The UDP carrier (KCP) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-276 |
 | `poll` | The poll carriers `poll`, `sse`, `chunked` and `httppoll` (requests of HTTP/1.1) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-271, T-272, T-280 |
 | `dns` | The DNS simplex carrier (query names and TXT answers) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-278 |
-| `s3` | The object-storage carrier. | T-279 |
+| `s3` | The object-storage carrier (objects of a bucket of the S3 API, SigV4) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp` and `poll`. | T-279 |
 | `icmp` | The ICMP echo carrier (the data of echo messages on a raw socket, `CAP_NET_RAW`) with an ARQ, TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-282 |
 | `ss` | The Shadowsocks service. | T-294 |
 | `trojan` | The Trojan service. | T-295 |

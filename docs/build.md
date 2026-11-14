@@ -46,7 +46,7 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `udp` | The UDP carrier (KCP) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-276 |
 | `poll` | The poll carriers `poll`, `sse`, `chunked` and `httppoll` (requests of HTTP/1.1) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-271, T-272, T-280 |
 | `dns` | The DNS simplex carrier (query names and TXT answers) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-278 |
-| `s3` | The object-storage carrier. | T-279 |
+| `s3` | The object-storage carrier (objects of a bucket of the S3 API, SigV4) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp` and `poll`. | T-279 |
 | `icmp` | The ICMP echo carrier (the data of echo messages on a raw socket, `CAP_NET_RAW`) with an ARQ, TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-282 |
 | `ss` | The Shadowsocks service. | T-294 |
 | `trojan` | The Trojan service. | T-295 |

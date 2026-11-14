@@ -51,7 +51,10 @@ pub(crate) struct CarrierArgs {
     /// answers: listen at `IP:PORT` with --dns-zone, dial `KEY@ZONE`. `icmp`
     /// (feature `icmp`) carries the link in the data of ICMP echo messages
     /// on a raw socket (CAP_NET_RAW, --allow-raw icmp): listen at an IPv4
-    /// address, dial `KEY@HOST`. A key that is refused exits 77.
+    /// address, dial `KEY@HOST`. `s3` (feature `s3`) carries the link in
+    /// objects of a bucket of the S3 API, TLS 1.3 above them with the same
+    /// pins: listen at `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both
+    /// with --s3-endpoint. A key that is refused exits 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
     /// The unix carrier accepts a peer of another uid. Each end checks the
@@ -86,6 +89,25 @@ pub(crate) struct CarrierArgs {
     /// server (the dialer gives it in KEY@ZONE).
     #[arg(long, value_name = "ZONE")]
     pub(crate) dns_zone: Option<String>,
+    /// The s3 carrier: the endpoint of the S3 API,
+    /// `http[s]://HOST[:PORT][/PATH]`. There is no default.
+    #[arg(long, value_name = "URL")]
+    pub(crate) s3_endpoint: Option<String>,
+    /// The s3 carrier: the region of the signature. Default `us-east-1`.
+    #[arg(long, value_name = "REGION")]
+    pub(crate) s3_region: Option<String>,
+    /// The s3 carrier: a profile file with the key of the bucket (section
+    /// AWS_PROFILE, else `default`). Without it, the key comes from
+    /// AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (and AWS_SESSION_TOKEN),
+    /// else from AWS_SHARED_CREDENTIALS_FILE or ~/.aws/credentials. No key
+    /// exits 77; a key that the bucket refuses exits 77.
+    #[arg(long, value_name = "FILE")]
+    pub(crate) s3_credentials: Option<PathBuf>,
+    /// The s3 carrier: the reader removes each object that it read, and a
+    /// listener the open object of each session. Off by default, as the
+    /// bucket can be shared.
+    #[arg(long)]
+    pub(crate) s3_prune: bool,
     /// Allow a carrier that opens a raw socket: `icmp` needs
     /// `--allow-raw icmp` (else exit 64), and CAP_NET_RAW or uid 0 (else
     /// exit 69).
@@ -171,6 +193,23 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
     }
     carrier.tune.dns_server = carrier.dns_server;
     carrier.tune.dns_zone.clone_from(&carrier.dns_zone);
+    let s3 = carrier.s3_endpoint.is_some()
+        || carrier.s3_region.is_some()
+        || carrier.s3_credentials.is_some()
+        || carrier.s3_prune;
+    if carrier.carrier != "s3" && s3 {
+        return Err(podnet::exit::fault(
+            podnet::exit::Fault::Usage,
+            anyhow::anyhow!("--s3-endpoint, --s3-region, --s3-credentials and --s3-prune are for the s3 carrier"),
+        ));
+    }
+    carrier.tune.s3_endpoint.clone_from(&carrier.s3_endpoint);
+    carrier.tune.s3_region.clone_from(&carrier.s3_region);
+    carrier
+        .tune
+        .s3_credentials
+        .clone_from(&carrier.s3_credentials);
+    carrier.tune.s3_prune = carrier.s3_prune;
     Ok(base.to_string())
 }
 
@@ -596,6 +635,10 @@ mod tests {
             record: None,
             dns_server: None,
             dns_zone: None,
+            s3_endpoint: None,
+            s3_region: None,
+            s3_credentials: None,
+            s3_prune: false,
             allow_raw: Vec::new(),
             tune: Default::default(),
         }
