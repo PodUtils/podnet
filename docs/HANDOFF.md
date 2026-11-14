@@ -12,10 +12,10 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 ## Where the code is
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.45.0` (T-137, e84ebdf), with `pod-warp`: `src/warp/` is glue
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.46.0` (T-137, 27cdf19), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
 * The newest release is `v0.4.0-beta.11` (T-351, 6491f9d).
-* The record is `TODO/`. `cargo todo check` agrees: 351 entries, 11 open, 9 partial, 25 blocked, 306 done.
+* The record is `TODO/`. `cargo todo check` agrees: 351 entries, 11 open, 9 partial, 23 blocked, 308 done.
 
 ## Unfinished work (not on `main`)
 
@@ -38,6 +38,10 @@ For `v0.4.0-beta.11` (GitHub #563) that lookup gave the run of the publish itsel
 
 Each workflow passes on 6491f9d, the tag `v0.4.0-beta.11` (GitHub #563): ci 43619108933, deny 43619113053, secrets
 43619116496, live 43619120794; fuzz 43610680236 passed on 7860081 (GitHub #561).
+
+No CI run covers the commits after 6491f9d: the take of `v0.46.0` (27cdf19), the S3 carrier (bcfae9e, 57683dc), the split session
+(3623ec5, d7daf5c) and this update. Put them into the next `[gh action] requested` issue (ci with `--features full`
+runs `tests/link_s3.rs` and `tests/link_split.rs`; secrets checks the made-up key of `tests/link_s3_standin/mod.rs`).
 
 ## Next steps
 
