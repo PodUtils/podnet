@@ -83,6 +83,12 @@ pub(crate) struct SendArgs {
     /// magic-wormhole ignores it.
     #[arg(long, value_name = "NAME", conflicts_with = "text")]
     relay_pair: Option<String>,
+    /// The count of words of the code after its number, 2 to 8 (as
+    /// magic-wormhole's --code-length). Each word adds 8 bits: 2 words give
+    /// a guesser one chance in 65536.
+    #[arg(long, value_name = "N", default_value_t = pod_wormhole::WORDS as u8,
+          value_parser = clap::value_parser!(u8).range(pod_wormhole::WORDS_LEAST as i64..=pod_wormhole::WORDS_MOST as i64))]
+    words: u8,
     /// Seconds to wait for a receiver to take the code, and for its answer.
     #[arg(long, default_value_t = 1800, value_parser = clap::value_parser!(u64).range(1..=86_400))]
     timeout: u64,
@@ -148,6 +154,7 @@ fn say(json: bool, event: serde_json::Value, text: &str) {
 pub(crate) async fn send(args: SendArgs) -> Result<()> {
     let mut settings = settings(&args.way)?;
     settings.wait = Duration::from_secs(args.timeout);
+    settings.ends.config.words = usize::from(args.words);
     if let Some(name) = &args.relay_pair {
         settings.relay_pair = Some(transfer::RelayPair {
             dir: podnet::relay_reverse::pairs_dir()?,

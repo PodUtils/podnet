@@ -255,3 +255,41 @@ fn receive_refuses_a_name_that_exists_with_65() {
     assert_eq!(finish(child, rest).0, Some(1));
     assert_eq!(std::fs::read(out.path().join("f")).unwrap(), b"old");
 }
+
+// T-338: `--words N` gives a code of N words after its number; a count out
+// of 2 to 8 exits 64 before any mailbox.
+#[test]
+fn send_words_sets_the_length_of_the_code() {
+    test_host::need_loopback!();
+    let rt = runtime();
+    let mailbox = rt.block_on(harness::Mailbox::start());
+    let out = tempfile::tempdir().unwrap();
+    for words in [2usize, 8] {
+        let n = words.to_string();
+        let (child, code, rest) = sender(&mailbox.url, &["--text", "short or long", "--words", &n]);
+        assert_eq!(code.split('-').count(), words + 1, "{code}");
+        let got = receiver(
+            &mailbox.url,
+            &code,
+            &["--out", out.path().to_str().unwrap()],
+        );
+        assert_eq!(got.status.code(), Some(0), "{}", text(&got));
+        assert!(text(&got).contains("short or long"), "{}", text(&got));
+        assert_eq!(finish(child, rest).0, Some(0));
+    }
+    for bad in ["1", "9", "0"] {
+        let got = podnet(&[
+            "send",
+            "--text",
+            "x",
+            "--words",
+            bad,
+            "--mailbox",
+            &mailbox.url,
+        ])
+        .output()
+        .unwrap();
+        assert_eq!(got.status.code(), Some(64), "--words {bad}: {}", text(&got));
+    }
+    assert_eq!(mailbox.nameplates(), 0, "no code was made");
+}

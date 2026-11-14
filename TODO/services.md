@@ -2848,3 +2848,41 @@ UDP yet. UDP leaves from the host when the process has no proxy; with a proxy it
 `with_udp_in_stream` the UDP test fails (the reply is 0x07). `sh scripts/agent/check.sh`: exit 0. Not proven: UDP to
 IPv6 (the socket is IPv4), a client of podswarm.
 
+# T-338: `podnet send --words N`: the count of words of a code
+
+**Source:** the Correction of T-105 (2026-11-13, item 3: no `--words N`, an ask for podcrates); podcrates v0.42.0
+(PodUtils/podcrates#145): `Config::words` of `pod-wormhole`, 2 to 8 words.
+**Category:** feature
+**Milestone:** M6
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The Approach of T-105 names `podnet send --words N`. The command has no such flag: `pod-wormhole` before v0.42.0
+made each code with 3 words (`pod_wormhole::WORDS`). magic-wormhole gives `--code-length N`.
+
+## Premise
+
+- Read in podcrates v0.42.0: `pod_wormhole::Config::words` is the count of words of a new code;
+  `phrase::check_words` takes `WORDS_LEAST` (2) to `WORDS_MOST` (8), else `Failed::Mine`. A taker reads the count from
+  the code.
+- `src/cli/cmd/transfer.rs` makes the settings with `pod_wormhole::Config::new` (3 words).
+
+## Approach
+
+1. Add `--words N` to `podnet send`: a clap range of `WORDS_LEAST` to `WORDS_MOST`, so that a count out of range is a
+   usage error (64) before any mailbox. Default `pod_wormhole::WORDS`.
+2. Set `Config::words` of the settings. `podnet receive` needs no flag.
+3. Write the flag in `docs/transfer.md`.
+
+## Prove
+
+```sh
+cargo test --test cli -- transfer::send_words_sets_the_length_of_the_code
+```
+
+A code of 2 words and one of 8 words go from a sender to a receiver at the stand-in mailbox; `--words 0`, `1` and
+`9` exit 64 and make no nameplate. With the line that sets `Config::words` removed, the test fails.
+

@@ -24,7 +24,10 @@ echo 7-crossover-clockwork-adroitness | podnet receive --yes   # a script
 * `podnet receive` reads the code from the terminal, or one line of stdin.
   It takes no code on the command line: each user of the host sees the
   command line of each process.
-* The code is a number and three words of the PGP word list. A code is good
+* The code is a number and three words of the PGP word list.
+  `podnet send --words N` gives N words (2 to 8, as magic-wormhole's
+  `--code-length`; another count exits 64). Each word adds 8 bits: with 2
+  words, a guess has one chance in 65536. A code is good
   for one exchange: a wrong code, a guess or a success spends it. A wrong
   code fails at the two ends (exit 77): send again for a new code.
 * `--yes` accepts a file or a directory with no question. When stdin is
