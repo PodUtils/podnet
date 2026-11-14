@@ -248,9 +248,13 @@
 547 issue closed
 548 issue closed
 549 issue closed
-550 issue open
+550 issue closed
 551 issue closed
 552 issue open
 553 issue closed
 554 issue closed
 555 issue open
+556 pull closed
+557 pull closed
+558 issue open
+559 issue open
