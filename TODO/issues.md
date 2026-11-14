@@ -241,5 +241,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #547 | COORD-076: pod-wg: a responder sans I/O, and the preshared key (podnet T-125, T-337) (to podcrates) | open (a COORD issue between sessions; answered by PodUtils/podcrates#144) | none |
 | #548 | [gh action] requested: ci, deny, secrets and live on 3d54f76 (T-117) | closed: each run passed on 036d23c (ci 43551002812, deny 43551006710, secrets 43551010275, live 43551013239) | none |
 | #549 | [gh action] requested: ci, deny, secrets and live on 64b0c8b (T-120, T-248) | closed: each run passed on a93a37a (ci 43553742871, deny 43553746054, secrets 43553749542, live 43553752592) | none |
+| #550 | COORD-077: podnet took v0.42.0 at 654c0f1; two notes on pod-hold and pod-services (to podcrates) | open (a COORD issue between sessions) | none |
+| #551 | [gh action] requested: ci, deny, secrets and live on eddaa22 (T-087, T-106, the take of v0.42.0, T-103, T-338, T-334) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
