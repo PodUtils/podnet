@@ -1933,6 +1933,21 @@ Left: a file and a directory between podnet and Python (T-103, Blocker: the tran
 `pod-wormhole`, PodUtils/podnet#535); the live step of 100 MiB through the public mailbox, transit and relay
 (Approach 2).
 
+## Done
+
+2026-11-14, commit 061b172, the text half (the entry stays partial). `tests/wormhole_interop.rs`, the step
+"Interop with the Python magic-wormhole (text)" of the job `test` of `.github/workflows/ci.yml`, `docs/transfer.md`
+(With magic-wormhole), the llms files. With magic-wormhole 0.24.0 and magic-wormhole-mailbox-server 0.8.0 in a venv
+of the scratchpad: `PATH=VENV/bin:$PATH cargo test --test wormhole_interop`: 3 passed, at the mailbox server of
+magic-wormhole: `wormhole_interop_podnet_sends_a_text_to_python`, `wormhole_interop_python_sends_a_text_to_podnet`,
+`wormhole_interop_a_wrong_code_fails_at_both_ends` (podnet exits 77, `wormhole send` fails). With `wormhole` alone on
+the PATH (no `twist`): 3 passed at the stand-in mailbox. With no `wormhole`: 3 passed, each with the skip line. The
+step of `ci.yml`, run by hand with bash `-eo pipefail`: 0 with the venv, 1 with no `wormhole` (the skip line).
+`python3 -I scripts/check-workflows.py`: 0 faults. Plant (the version phase, see the Correction): the tests
+`wormhole_interop_python_sends_a_text_to_podnet` and `wormhole_interop_a_wrong_code_fails_at_both_ends` failed (no end
+in 60 s); `wormhole_interop_podnet_sends_a_text_to_python` passed. `sh scripts/agent/check.sh`: each step 0
+(`cargo test --workspace`: 1946 passed, 0 failed, 120 targets). CI: no run; the step waits for a run of `ci.yml`.
+
 # T-167: `net socksify`: route chosen destinations, not only the tailnet or all (GitHub #364)
 
 **Source:** GitHub #364 (https://github.com/PodUtils/podnet/issues/364)
