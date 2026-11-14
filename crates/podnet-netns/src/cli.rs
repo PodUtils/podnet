@@ -31,6 +31,9 @@ pub(crate) struct Args {
     pub(crate) host_gateway: bool,
     /// `--keep-proxy-env`: the program keeps the proxy variables.
     pub(crate) keep_proxy_env: bool,
+    /// `--allow-raw icmp` (T-334): the seccomp backend lets a raw socket of
+    /// `AF_INET` and `AF_INET6` go to the kernel; else it gets `EPERM`.
+    pub(crate) allow_raw: bool,
     pub(crate) serve: Option<crate::listen::ProxyListen>,
     pub(crate) backend: BackendKind,
     /// `--prefer-udp`: `auto` takes the seccomp backend first (it carries
@@ -173,6 +176,11 @@ Options:
       --keep-proxy-env     Keep HTTPS_PROXY, HTTP_PROXY, ALL_PROXY and NO_PROXY
                            (and the lower-case forms) for the program; by
                            default the program does not get them
+      --allow-raw icmp     Seccomp backend: a raw socket of AF_INET or AF_INET6
+                           goes to the kernel (CAP_NET_RAW sends from the
+                           host, past the upstream). Off by default: the
+                           socket gets EPERM. A ping socket (SOCK_DGRAM,
+                           IPPROTO_ICMP) is emulated in each case
       --backend <NAME>     auto (default), netns, netns-kernel or seccomp.
                            With netns, a listener of the program is in the
                            network of the pod: a loopback TCP listener is not
@@ -246,6 +254,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
     let mut session: Option<std::path::PathBuf> = None;
     let mut host_gateway = false;
     let mut keep_proxy_env = false;
+    let mut allow_raw = false;
     let mut serve: Option<crate::listen::ProxyListen> = None;
     let mut default_reject = false;
     let mut allow_shadowed = false;
@@ -285,6 +294,14 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
             "--keep-proxy-env" => {
                 keep_proxy_env = true;
                 i += 1;
+            }
+            "--allow-raw" => {
+                let value = argv.get(i + 1).context("--allow-raw needs a value")?;
+                if value != "icmp" {
+                    bail!("--allow-raw takes icmp, not {value:?}");
+                }
+                allow_raw = true;
+                i += 2;
             }
             "--prefer-udp" => {
                 prefer_udp = true;
@@ -499,6 +516,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         dns_state,
         host_gateway,
         keep_proxy_env,
+        allow_raw,
         serve,
         backend,
         prefer_udp,

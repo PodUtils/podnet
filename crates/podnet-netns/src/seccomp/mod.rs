@@ -97,6 +97,7 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
     }
     crate::fdtable::set_ceiling(budget);
     crate::connect::set_loopback_rules(args.loopback_rules);
+    crate::socket::set_allow_raw(args.allow_raw);
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

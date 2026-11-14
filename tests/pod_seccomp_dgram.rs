@@ -1,7 +1,8 @@
 //! T-066: three datagram calls under the seccomp backend. An ICMP datagram
 //! socket gets an echo answer from the gateway of the pod, and `EACCES` for
 //! another destination. `recvmmsg` gives the real source of each message.
-//! A UDP name over 255 bytes gets `EINVAL`. The module `dgram` (`tests/dgram/`)
+//! A UDP name over 255 bytes gets `EINVAL`. A raw socket gets `EPERM`
+//! unless `--allow-raw icmp` (T-334). The module `dgram` (`tests/dgram/`)
 //! holds the UDP tests of T-142 to T-149.
 
 use std::io::{Read, Write};
@@ -50,6 +51,11 @@ fn socks5(listener: UnixListener) {
 /// Compile `source` and run it in the pod with the SOCKS5 stand-in. `None`
 /// when the host has no C compiler or no seccomp user notification.
 fn run_in_pod(source: &str) -> Option<Output> {
+    run_in_pod_with(source, &[])
+}
+
+/// [`run_in_pod`] with more flags of the pod.
+fn run_in_pod_with(source: &str, flags: &[&str]) -> Option<Output> {
     let Some(cc) = compiler() else {
         eprintln!("skipping: no C compiler");
         return None;
@@ -65,6 +71,7 @@ fn run_in_pod(source: &str) -> Option<Output> {
     let program = build(dir.path(), &cc, source);
     let out = pod()
         .args(["--backend", "seccomp"])
+        .args(flags)
         .arg("-x")
         .arg(format!("unix:{}", sock.display()))
         .arg("--")
@@ -305,5 +312,80 @@ fn seccomp_long_udp_name_is_refused() {
     assert!(
         stderr.lines().any(|l| l.contains("over 255 bytes")),
         "a log line in:\n{stderr}"
+    );
+}
+
+/// A raw ICMP socket of each family, then a ping socket.
+const RAW: &str = r#"
+#include <errno.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+
+static void try(const char *what, int domain, int type, int protocol) {
+    int fd = socket(domain, type, protocol);
+    printf("%s: %s\n", what, fd >= 0 ? "open" : errno == EPERM ? "EPERM" : strerror(errno));
+}
+
+int main(void) {
+    try("raw4", AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    try("raw6", AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
+    try("ping", AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+    return 0;
+}
+"#;
+
+// T-334: a raw ICMP socket in a seccomp pod gets EPERM by default; the ping
+// socket of T-066 opens.
+#[test]
+fn seccomp_raw_socket_gets_eperm_by_default() {
+    let Some(out) = run_in_pod(RAW) else {
+        return;
+    };
+    expect_lines(&out, &["raw4: EPERM", "raw6: EPERM", "ping: open"]);
+}
+
+// T-334: with --allow-raw icmp the raw socket goes to the kernel: it opens
+// where the user has CAP_NET_RAW (root), else the kernel refuses it.
+#[test]
+fn seccomp_raw_socket_opens_with_allow_raw_icmp() {
+    // SAFETY: geteuid has no precondition.
+    if unsafe { libc::geteuid() } != 0 {
+        eprintln!("skipping, a raw socket needs root (CAP_NET_RAW): not root here");
+        return;
+    }
+    let Some(out) = run_in_pod_with(RAW, &["--allow-raw", "icmp"]) else {
+        return;
+    };
+    let said = String::from_utf8_lossy(&out.stdout);
+    if said.contains("raw4: EPERM") {
+        eprintln!("skipping, the kernel refuses a raw socket to root here (no CAP_NET_RAW)");
+        return;
+    }
+    expect_lines(&out, &["raw4: open", "ping: open"]);
+}
+
+// T-334: --allow-raw takes icmp only.
+#[test]
+fn seccomp_allow_raw_takes_icmp_only() {
+    let out = pod()
+        .args([
+            "--backend",
+            "seccomp",
+            "--allow-raw",
+            "tcp",
+            "-x",
+            "unix:/nowhere",
+            "--",
+            "true",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(64),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
     );
 }

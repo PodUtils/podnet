@@ -3,10 +3,28 @@
 //! an `AF_UNIX` socket pair; the supervisor keeps the other end. An ICMP
 //! datagram socket (a ping socket) gets its own kind (T-066,
 //! `src/icmp.rs`). With `-v`, the pod logs each socket that it makes so
-//! (T-071).
+//! (T-071). A raw socket of `AF_INET` or `AF_INET6` gets `EPERM`: its
+//! packets would go out of the host past the upstream of the pod. With
+//! `--allow-raw icmp` it goes to the kernel (T-334).
 
 use crate::prelude::*;
 use crate::seccomp::{notif_addfd_send, notif_continue, notif_respond, set_nonblocking, Sock};
+
+/// `--allow-raw icmp` of the process (T-334).
+static ALLOW_RAW: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Set `--allow-raw icmp` for the process.
+pub(crate) fn set_allow_raw(on: bool) {
+    ALLOW_RAW.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// True when the pod refuses a `socket` call of `domain` and `kind` with
+/// `EPERM`: a raw socket of `AF_INET` or `AF_INET6`, unless `allow_raw`.
+/// A ping socket (`SOCK_DGRAM`) is not raw: the pod emulates it (T-066).
+pub(crate) fn raw_refused(domain: i32, kind: i32, allow_raw: bool) -> bool {
+    let inet = domain == libc::AF_INET || domain == libc::AF_INET6;
+    inet && kind == libc::SOCK_RAW && !allow_raw
+}
 
 /// The `socket` call: a socket pair in place of an `AF_INET` socket.
 pub(crate) fn handle_socket(
@@ -29,6 +47,16 @@ pub(crate) fn handle_socket(
     let icmp = kind == libc::SOCK_DGRAM
         && ((domain == libc::AF_INET && protocol == libc::IPPROTO_ICMP)
             || (domain == libc::AF_INET6 && protocol == libc::IPPROTO_ICMPV6));
+    if raw_refused(
+        domain,
+        kind,
+        ALLOW_RAW.load(std::sync::atomic::Ordering::Relaxed),
+    ) {
+        if verbose {
+            eprintln!("podnet pod: a raw socket gets EPERM (--allow-raw icmp lets it through)");
+        }
+        return notif_respond(lfd, id, -1, libc::EPERM);
+    }
     if !inet || (kind != libc::SOCK_STREAM && kind != libc::SOCK_DGRAM) {
         return notif_continue(lfd, id);
     }
