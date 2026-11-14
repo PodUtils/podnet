@@ -42,6 +42,20 @@ fn node(dir: &Path, name: &str) -> Node {
     }
 }
 
+/// The announcement of `origin` with the `seq` of a round, for the
+/// neighbour `to`: a round that a node sends to two neighbours has one `seq`.
+fn round_for(origin: &Node, seq: u64, now: u64, to: &PublicKey) -> Vec<u8> {
+    let body = wire::Body {
+        origin: origin.id.public(),
+        seq,
+        issued_ms: now,
+        expires_ms: now + wire::LIFETIME_MS,
+        neighbours: Vec::new(),
+        services: vec!["echo".into()],
+    };
+    wire::encode(origin.id.key(), &body, to).unwrap()
+}
+
 async fn until(what: &str, mut ok: impl FnMut() -> bool) {
     let end = Instant::now() + Duration::from_secs(10);
     while !ok() {
@@ -367,8 +381,11 @@ async fn a_hop_without_a_stream_makes_the_sender_try_the_next_route() {
     a.mesh
         .attach_link(b.id.public(), Arc::new(la_b), tx.clone());
     a.mesh.attach_link(c.id.public(), Arc::new(la_c), tx);
-    let via_c = wire::append_hop(&d.mesh.make(now).unwrap(), c.id.key(), 1).unwrap();
-    let via_b = wire::append_hop(&d.mesh.make(now).unwrap(), b.id.key(), 1).unwrap();
+    let me = a.id.public();
+    let for_c = d.mesh.make(now, &c.id.public()).unwrap();
+    let for_b = d.mesh.make(now, &b.id.public()).unwrap();
+    let via_c = wire::append_hop(&for_c, c.id.key(), 1, &me).unwrap();
+    let via_b = wire::append_hop(&for_b, b.id.key(), 1, &me).unwrap();
     a.mesh.receive(&c.id.public(), 10, &via_c, now).unwrap();
     a.mesh.receive(&b.id.public(), 1, &via_b, now).unwrap();
     let stream = forward::open(&a.mesh, &d.id.public(), "echo", 8)
@@ -389,22 +406,34 @@ fn a_multi_hop_announcement_needs_a_valid_chain() {
     );
     let now = announce::now_ms();
     // C announces; B forwards with its hop (cost 5); A takes it from B.
-    let from_c = c.mesh.make(now).unwrap();
-    let via_b = wire::append_hop(&from_c, b.id.key(), 5).unwrap();
+    let me = a.id.public();
+    let from_c = c.mesh.make(now, &b.id.public()).unwrap();
+    let via_b = wire::append_hop(&from_c, b.id.key(), 5, &me).unwrap();
     assert!(a.mesh.receive(&b.id.public(), 3, &via_b, now).is_ok());
     let row = route(&a.mesh, &c).unwrap();
     assert_eq!(row["cost"], 8);
     assert_eq!(row["hops"], 2);
     // The last node of the path must be the sender.
-    let from_c = c.mesh.make(now).unwrap();
-    let via_b = wire::append_hop(&from_c, b.id.key(), 5).unwrap();
+    let from_c = c.mesh.make(now, &b.id.public()).unwrap();
+    let via_b = wire::append_hop(&from_c, b.id.key(), 5, &me).unwrap();
     assert_eq!(
         a.mesh.receive(&c.id.public(), 3, &via_b, now).unwrap_err(),
         Dropped::NotDirect
     );
+    // C sends its announcement for B to A itself: the hop of C names B.
+    let for_b = c.mesh.make(now, &b.id.public()).unwrap();
+    assert_eq!(
+        a.mesh.receive(&c.id.public(), 3, &for_b, now).unwrap_err(),
+        Dropped::Announcement(Rule::NotForMe)
+    );
+    // B sends it on with no hop of its own: the hop of C names B, not A.
+    assert_eq!(
+        a.mesh.receive(&b.id.public(), 3, &for_b, now).unwrap_err(),
+        Dropped::Announcement(Rule::NotForMe)
+    );
     // A lowered cost of the hop fails the chain.
     let mut low = via_b.clone();
-    let at = low.len() - 68;
+    let at = low.len() - 64 - 32 - 4;
     low[at..at + 4].copy_from_slice(&1u32.to_be_bytes());
     assert_eq!(
         a.mesh.receive(&b.id.public(), 3, &low, now).unwrap_err(),
@@ -476,9 +505,10 @@ async fn a_diamond_keeps_both_next_hops_of_one_round() {
         .attach_link(b.id.public(), Arc::new(la_b), tx.clone());
     a.mesh.attach_link(c.id.public(), Arc::new(la_c), tx);
     // One round of D: one `seq` on two paths. C comes first.
-    let round = d.mesh.make(now).unwrap();
-    let via_c = wire::append_hop(&round, c.id.key(), 1).unwrap();
-    let via_b = wire::append_hop(&round, b.id.key(), 1).unwrap();
+    let me = a.id.public();
+    let via_c = wire::append_hop(&round_for(&d, 7, now, &c.id.public()), c.id.key(), 1, &me);
+    let via_b = wire::append_hop(&round_for(&d, 7, now, &b.id.public()), b.id.key(), 1, &me);
+    let (via_c, via_b) = (via_c.unwrap(), via_b.unwrap());
     a.mesh.receive(&c.id.public(), 10, &via_c, now).unwrap();
     a.mesh.receive(&b.id.public(), 1, &via_b, now).unwrap();
     assert_eq!(next_hops(&a, &d), vec![b.id.public(), c.id.public()]);
@@ -516,10 +546,11 @@ async fn an_older_seq_from_another_next_hop_is_a_second_route() {
             .attach_link(hop.id.public(), Arc::new(la), tx.clone());
     }
     let now = announce::now_ms();
-    let for_b = d.mesh.make(now).unwrap();
-    let for_c = d.mesh.make(now).unwrap();
-    let via_b = wire::append_hop(&for_b, b.id.key(), 1).unwrap();
-    let via_c = wire::append_hop(&for_c, c.id.key(), 1).unwrap();
+    let me = a.id.public();
+    let for_b = d.mesh.make(now, &b.id.public()).unwrap();
+    let for_c = d.mesh.make(now, &c.id.public()).unwrap();
+    let via_b = wire::append_hop(&for_b, b.id.key(), 1, &me).unwrap();
+    let via_c = wire::append_hop(&for_c, c.id.key(), 1, &me).unwrap();
     a.mesh.receive(&c.id.public(), 5, &via_c, now).unwrap();
     a.mesh.receive(&b.id.public(), 1, &via_b, now).unwrap();
     assert_eq!(next_hops(&a, &d), vec![b.id.public(), c.id.public()]);

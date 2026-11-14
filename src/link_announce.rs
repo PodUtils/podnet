@@ -16,7 +16,10 @@
 //! * The last node of the path must be the peer of the link. This stops a
 //!   peer from sending the announcement of a node that it does not speak
 //!   for. [`crate::mesh_announce::verify`] has checked the chain of hop
-//!   signatures.
+//!   signatures, and that each hop names the next node of the path and the
+//!   last hop names this node (T-346).
+//! * An announcement of another version of the wire is dropped; the log
+//!   gets one line for each stream that names the version.
 //! * A new announcement (it reached the route table) is forwarded: this node
 //!   adds its hop ([`announce::append_hop`], with the cost of the link to the
 //!   peer) and sends it to each other neighbour that is not in the path. The
@@ -250,9 +253,10 @@ impl Mesh {
         st.table.session_closed(peer, now);
     }
 
-    /// The signed announcement of this node at time `now`: the neighbours
-    /// that are up (the first 64 by key), the services, the next `seq`.
-    pub fn make(&self, now: u64) -> Result<Vec<u8>, announce::EncodeError> {
+    /// The signed announcement of this node at time `now` for the neighbour
+    /// `to`: the neighbours that are up (the first 64 by key), the services,
+    /// the next `seq`. The hop of this node names `to` (T-346).
+    pub fn make(&self, now: u64, to: &PublicKey) -> Result<Vec<u8>, announce::EncodeError> {
         let mut st = self.lock();
         st.seq = st.seq.saturating_add(1);
         let mut neighbours: Vec<Neighbour> = st
@@ -274,7 +278,7 @@ impl Mesh {
             neighbours,
             services: self.services.clone(),
         };
-        announce::encode(self.me.key(), &body)
+        announce::encode(self.me.key(), &body, to)
     }
 
     /// Take an announcement that the peer `from` sent over a link of cost
@@ -376,17 +380,20 @@ impl Mesh {
     }
 
     /// Send the announcement on with the hop of this node, to each neighbour
-    /// that is not in the path. A full outbox drops the frame: the origin
-    /// sends again.
+    /// that is not in the path. Each neighbour gets a hop that names it
+    /// (T-346). A full outbox drops the frame: the origin sends again.
     fn forward(me: &Identity, st: &mut State, wire: &[u8], path: &[PublicKey], cost: u32) {
         if path.len() + 1 > st.hop_limit {
             return;
         }
-        let Ok(out) = announce::append_hop(wire, me.key(), cost) else {
-            return;
-        };
         for (peer, tx) in &st.outbox {
-            if !path.contains(peer) && tx.try_send(out.clone()).is_ok() {
+            if path.contains(peer) {
+                continue;
+            }
+            let Ok(out) = announce::append_hop(wire, me.key(), cost, peer) else {
+                return;
+            };
+            if tx.try_send(out).is_ok() {
                 st.forwarded += 1;
             }
         }
@@ -457,7 +464,7 @@ pub async fn run_sender(
             _ = tokio::time::sleep(wait) => {
                 wait = next_delay(interval_ms, random_u64());
                 mesh.set_cost(&peer, link_cost(weight, link.rtt()));
-                match mesh.make(now_ms()) {
+                match mesh.make(now_ms(), &peer) {
                     Ok(wire) => wire,
                     Err(err) => {
                         tracing::warn!(error = %err, "announce: no announcement");
@@ -495,6 +502,8 @@ pub async fn receive_stream(
         return;
     }
     let mut len = [0u8; 2];
+    // A peer of another version gets one line for each stream (T-346).
+    let mut version_told = false;
     while stream.read_exact(&mut len).await.is_ok() {
         let n = usize::from(u16::from_be_bytes(len));
         if n > MAX_FRAME {
@@ -506,8 +515,20 @@ pub async fn receive_stream(
             return;
         }
         let cost = link_cost(weight, link.rtt());
-        if let Err(why) = mesh.receive(&peer, cost, &wire, now_ms()) {
-            tracing::warn!(peer = %peer.display_fingerprint(), "announce: dropped: {why}");
+        match mesh.receive(&peer, cost, &wire, now_ms()) {
+            Ok(_) => {}
+            Err(why @ Dropped::Announcement(Rule::BadVersion(_))) => {
+                if !version_told {
+                    version_told = true;
+                    tracing::warn!(
+                        peer = %peer.display_fingerprint(),
+                        "announce: dropped: {why}; each announcement of this peer is dropped"
+                    );
+                }
+            }
+            Err(why) => {
+                tracing::warn!(peer = %peer.display_fingerprint(), "announce: dropped: {why}");
+            }
         }
     }
 }

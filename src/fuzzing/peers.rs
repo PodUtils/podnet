@@ -415,9 +415,12 @@ pub fn seeds(target: &str) -> Vec<Vec<u8>> {
                 }],
                 services: vec!["files".into(), "git".into()],
             };
-            let wire = crate::mesh_announce::encode(&origin, &body).expect("a seed");
             let hop = pod_identity::Identity::from_seed(&[8u8; 32]);
-            let forwarded = crate::mesh_announce::append_hop(&wire, &hop, 5).expect("a seed");
+            let wire =
+                crate::mesh_announce::encode(&origin, &body, &hop.public()).expect("a seed");
+            let to = PublicKey([3u8; 32]);
+            let forwarded =
+                crate::mesh_announce::append_hop(&wire, &hop, 5, &to).expect("a seed");
             vec![wire, forwarded]
         }
         "mesh_table" => vec![

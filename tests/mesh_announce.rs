@@ -1,6 +1,7 @@
 //! The signed route announcement (T-285): the encoding, the signature, each
 //! drop rule, the skew both ways, each bound, a tampered byte and the feed of
-//! a verified announcement to the route table.
+//! a verified announcement to the route table. Version 2 (T-346): each hop
+//! names its next node, so a node cannot cut the hops before its own.
 
 use pod_identity::{Identity, PublicKey};
 use podnet::mesh_announce::*;
@@ -38,13 +39,22 @@ fn body(who: &Identity, seq: u64, issued: u64) -> Body {
     }
 }
 
-fn wire(who: &Identity, seq: u64, issued: u64) -> Vec<u8> {
-    encode(who, &body(who, seq, issued)).unwrap()
-}
-
 fn me() -> PublicKey {
     id(99).public()
 }
+
+/// The announcement of `who` for this node.
+fn wire(who: &Identity, seq: u64, issued: u64) -> Vec<u8> {
+    wire_to(who, seq, issued, &me())
+}
+
+/// The announcement of `who` for the neighbour `to`.
+fn wire_to(who: &Identity, seq: u64, issued: u64, to: &PublicKey) -> Vec<u8> {
+    encode(who, &body(who, seq, issued), to).unwrap()
+}
+
+/// The bytes of one hop: the key, the cost, the next key and the signature.
+const HOP: usize = 32 + 4 + 32 + 64;
 
 #[test]
 fn round_trip_and_canonical_order() {
@@ -61,7 +71,7 @@ fn round_trip_and_canonical_order() {
     let mut b = body(&a, 5, NOW);
     b.neighbours.reverse();
     b.services.reverse();
-    assert_eq!(encode(&a, &b).unwrap(), w);
+    assert_eq!(encode(&a, &b, &me()).unwrap(), w);
 }
 
 #[test]
@@ -78,16 +88,17 @@ fn fixed_field_order() {
 
 #[test]
 fn every_flipped_byte_is_dropped() {
+    // Version 2 signs each byte of the path too: the hop of the origin
+    // covers its key, its cost and its next key.
     let a = id(1);
-    let w = wire(&a, 5, NOW);
-    for i in 0..w.len() {
-        let mut t = w.clone();
-        t[i] ^= 0x01;
-        // The path bytes are not signed: a change there is a path rule.
-        let path_start = w.len() - 33;
-        let r = verify(&t, &me(), NOW);
-        if i < path_start {
-            assert!(r.is_err(), "byte {i} changed and was accepted");
+    for w in [wire(&a, 5, NOW), chain3()] {
+        for i in 0..w.len() {
+            let mut t = w.clone();
+            t[i] ^= 0x01;
+            assert!(
+                verify(&t, &me(), NOW).is_err(),
+                "byte {i} changed and was accepted"
+            );
         }
     }
 }
@@ -106,9 +117,15 @@ fn signature_of_another_key_is_dropped() {
     let a = id(1);
     let mut b = body(&a, 5, NOW);
     b.origin = id(2).public();
-    // `a` signs a body that names `b` as origin.
-    let w = encode(&a, &b).unwrap();
-    assert_eq!(verify(&w, &me(), NOW), Err(Drop::BadSignature));
+    // `a` signs a body that names `b` as origin. The hop of the origin has
+    // the key of `a`.
+    let w = encode(&a, &b, &me()).unwrap();
+    assert_eq!(verify(&w, &me(), NOW), Err(Drop::PathNotFromOrigin));
+    // With the hop key of `b`, the signature of the body fails.
+    let mut t = w.clone();
+    let at = t.len() - HOP;
+    t[at..at + 32].copy_from_slice(&b.origin.0);
+    assert_eq!(verify(&t, &me(), NOW), Err(Drop::BadSignature));
 }
 
 #[test]
@@ -127,7 +144,7 @@ fn skew_behind_boundary() {
     // whose clock is just inside the window of an unexpired announcement.
     let mut b = body(&a, 1, NOW);
     b.expires_ms = NOW + LIFETIME_MS;
-    let w = encode(&a, &b).unwrap();
+    let w = encode(&a, &b, &me()).unwrap();
     assert!(verify(&w, &me(), NOW + LIFETIME_MS - 1).is_ok());
     // Past the skew window the drop is TooOld, before the expiry check.
     assert_eq!(verify(&w, &me(), NOW + SKEW_MS + 1), Err(Drop::TooOld));
@@ -141,10 +158,10 @@ fn lifetime_rules() {
     let a = id(1);
     let mut b = body(&a, 1, NOW);
     b.expires_ms = NOW;
-    let w = encode(&a, &b).unwrap();
+    let w = encode(&a, &b, &me()).unwrap();
     assert_eq!(verify(&w, &me(), NOW), Err(Drop::BadLifetime));
     b.expires_ms = NOW + LIFETIME_MS + 1;
-    let w = encode(&a, &b).unwrap();
+    let w = encode(&a, &b, &me()).unwrap();
     assert_eq!(verify(&w, &me(), NOW), Err(Drop::BadLifetime));
 }
 
@@ -152,7 +169,7 @@ fn lifetime_rules() {
 fn path_with_self_is_dropped() {
     let a = id(1);
     let m = id(99);
-    let w = append_hop(&wire(&a, 1, NOW), &m, 4).unwrap();
+    let w = append_hop(&wire(&a, 1, NOW), &m, 4, &key(7)).unwrap();
     assert_eq!(verify(&w, &m.public(), NOW), Err(Drop::PathHasSelf));
 }
 
@@ -161,16 +178,17 @@ fn path_must_start_at_origin_and_not_repeat() {
     let a = id(1);
     // The encoder refuses a bad path, so build the wire by hand.
     let good = wire(&a, 1, NOW);
-    let mut w = good[..good.len() - 33].to_vec();
+    let body_end = good.len() - 1 - HOP;
+    let mut w = good[..body_end].to_vec();
     w.push(1);
     w.extend_from_slice(&key(5).0);
+    w.extend_from_slice(&[0u8; HOP - 32]);
     assert_eq!(verify(&w, &me(), NOW), Err(Drop::PathNotFromOrigin));
-    let mut w = good[..good.len() - 33].to_vec();
+    let mut w = good[..body_end].to_vec();
     w.push(3);
-    w.extend_from_slice(&a.public().0);
-    for k in [key(5), key(5)] {
+    for k in [a.public(), key(5), key(5)] {
         w.extend_from_slice(&k.0);
-        w.extend_from_slice(&[0u8; 68]);
+        w.extend_from_slice(&[0u8; HOP - 32]);
     }
     assert_eq!(verify(&w, &me(), NOW), Err(Drop::PathRepeats));
 }
@@ -185,20 +203,21 @@ fn own_origin_is_dropped() {
 #[test]
 fn path_bounds() {
     let a = id(1);
-    let mut w = wire(&a, 1, NOW);
+    let mut w = wire_to(&a, 1, NOW, &id(10).public());
     for n in 10..25 {
-        w = append_hop(&w, &id(n), 1).unwrap();
+        let to = if n < 24 { id(n + 1).public() } else { me() };
+        w = append_hop(&w, &id(n), 1, &to).unwrap();
     }
     // 16 nodes: the origin and 15 forwarders.
     assert!(verify(&w, &me(), NOW).is_ok());
     assert!(w.len() <= MAX_WIRE);
-    assert_eq!(append_hop(&w, &id(100), 1), Err(Drop::BadPathLength));
+    assert_eq!(append_hop(&w, &id(100), 1, &me()), Err(Drop::BadPathLength));
     // A wire with 17 nodes is dropped.
     let good = wire(&a, 1, NOW);
-    let mut w = good[..good.len() - 33].to_vec();
+    let mut w = good[..good.len() - 1 - HOP].to_vec();
     w.push(17);
     w.extend_from_slice(&a.public().0);
-    w.extend_from_slice(&[0u8; 16 * 100]);
+    w.extend_from_slice(&[0u8; 17 * HOP - 32]);
     assert_eq!(verify(&w, &me(), NOW), Err(Drop::BadPathLength));
 }
 
@@ -212,13 +231,13 @@ fn neighbour_bound() {
             cost: n,
         })
         .collect();
-    let w = encode(&a, &b).unwrap();
+    let w = encode(&a, &b, &me()).unwrap();
     assert_eq!(verify(&w, &me(), NOW).unwrap().body.neighbours.len(), 64);
     b.neighbours.push(Neighbour {
         key: key(64),
         cost: 0,
     });
-    assert_eq!(encode(&a, &b), Err(EncodeError::TooManyNeighbours));
+    assert_eq!(encode(&a, &b, &me()), Err(EncodeError::TooManyNeighbours));
     // A wire with a count of 65 is dropped before it reads the entries.
     let mut w = wire(&a, 1, NOW);
     w[57..59].copy_from_slice(&65u16.to_be_bytes());
@@ -230,20 +249,20 @@ fn service_bounds() {
     let a = id(1);
     let mut b = body(&a, 1, NOW);
     b.services = (0..16).map(|n| format!("s{n}")).collect();
-    let w = encode(&a, &b).unwrap();
+    let w = encode(&a, &b, &me()).unwrap();
     assert_eq!(verify(&w, &me(), NOW).unwrap().body.services.len(), 16);
     b.services.push("s16".into());
-    assert_eq!(encode(&a, &b), Err(EncodeError::TooManyServices));
+    assert_eq!(encode(&a, &b, &me()), Err(EncodeError::TooManyServices));
     b.services = vec!["x".repeat(64)];
-    assert!(encode(&a, &b).is_ok());
+    assert!(encode(&a, &b, &me()).is_ok());
     b.services = vec!["x".repeat(65)];
-    assert_eq!(encode(&a, &b), Err(EncodeError::BadServiceName));
+    assert_eq!(encode(&a, &b, &me()), Err(EncodeError::BadServiceName));
     b.services = vec![String::new()];
-    assert_eq!(encode(&a, &b), Err(EncodeError::BadServiceName));
+    assert_eq!(encode(&a, &b, &me()), Err(EncodeError::BadServiceName));
     b.services = vec!["a\nb".into()];
-    assert_eq!(encode(&a, &b), Err(EncodeError::BadServiceName));
+    assert_eq!(encode(&a, &b, &me()), Err(EncodeError::BadServiceName));
     b.services = vec!["a".into(), "a".into()];
-    assert_eq!(encode(&a, &b), Err(EncodeError::Repeat));
+    assert_eq!(encode(&a, &b, &me()), Err(EncodeError::Repeat));
 }
 
 #[test]
@@ -252,7 +271,7 @@ fn service_count_on_the_wire_is_bounded() {
     let mut b = body(&a, 1, NOW);
     b.neighbours.clear();
     b.services.clear();
-    let mut w = encode(&a, &b).unwrap();
+    let mut w = encode(&a, &b, &me()).unwrap();
     // The service count follows the neighbour count at 57..59.
     w[59..61].copy_from_slice(&17u16.to_be_bytes());
     assert_eq!(verify(&w, &me(), NOW), Err(Drop::TooManyServices));
@@ -308,8 +327,95 @@ fn unsorted_neighbours_are_not_canonical() {
 fn bad_version() {
     let a = id(1);
     let mut w = wire(&a, 1, NOW);
-    w[0] = 2;
-    assert_eq!(verify(&w, &me(), NOW), Err(Drop::BadVersion));
+    w[0] = 3;
+    assert_eq!(verify(&w, &me(), NOW), Err(Drop::BadVersion(3)));
+    assert!(Drop::BadVersion(3).to_string().contains("version 3"));
+}
+
+/// An announcement of version 1, signed as a node of version 1 signs it: the
+/// body with the version 1, the label of version 1 and the path `[origin]`.
+fn version_1(who: &Identity, seq: u64, issued: u64) -> Vec<u8> {
+    let mut body = encode_body(&body(who, seq, issued)).unwrap();
+    body[0] = 1;
+    let signature = who.sign(&[&b"podnet-mesh-announce-v1\0"[..], &body].concat());
+    let mut out = body;
+    out.extend_from_slice(&signature);
+    out.push(1);
+    out.extend_from_slice(&who.public().0);
+    out
+}
+
+/// A replay of a valid announcement of version 1 is refused, and the reason
+/// names the version (T-346).
+#[test]
+fn version_1_is_refused_and_named() {
+    let a = id(1);
+    let old = version_1(&a, 1, NOW);
+    assert_eq!(verify(&old, &me(), NOW), Err(Drop::BadVersion(1)));
+    let mut r = Receiver::new(me());
+    assert_eq!(r.accept(&old, NOW), Err(Drop::BadVersion(1)));
+    assert_eq!(r.seq_of(&a.public()), None);
+    let text = Drop::BadVersion(1).to_string();
+    assert!(
+        text.contains("version 1") && text.contains("version 2"),
+        "{text}"
+    );
+}
+
+/// The attack of T-346: X gets the path `[O, A]` from A, removes the hop of
+/// A, and sends `[O, X]` to Y. The hop of O names A, not X: Y refuses it. X
+/// cannot sign a hop of O that names X.
+#[test]
+fn a_neighbour_cannot_strip_hops_and_claim_the_origin() {
+    let (o, a, x) = (id(1), id(5), id(6));
+    let y = me();
+    let for_a = wire_to(&o, 1, NOW, &a.public());
+    let for_x = append_hop(&for_a, &a, 4, &x.public()).unwrap();
+    // The honest path through X is good.
+    let honest = append_hop(&for_x, &x, 9, &y).unwrap();
+    assert_eq!(verify(&honest, &y, NOW).unwrap().path.len(), 3);
+    // X strips the hop of A and adds its own hop over the hop of O.
+    assert_eq!(
+        append_hop(&for_a, &x, 0, &y),
+        Err(Drop::NotForMe),
+        "the hop of O names A"
+    );
+    let at = for_a.len() - HOP - 1;
+    assert_eq!(for_a[at], 1);
+    let origin_sig: [u8; 64] = for_a[for_a.len() - 64..].try_into().unwrap();
+    let mut forged = for_a.clone();
+    forged[at] = 2;
+    // The hop of X, signed by X over the hop of O, for Y.
+    let mut hop_bytes = b"podnet-mesh-hop-v2\0".to_vec();
+    hop_bytes.extend_from_slice(&origin_sig);
+    hop_bytes.extend_from_slice(&x.public().0);
+    hop_bytes.extend_from_slice(&0u32.to_be_bytes());
+    hop_bytes.extend_from_slice(&y.0);
+    forged.extend_from_slice(&x.public().0);
+    forged.extend_from_slice(&0u32.to_be_bytes());
+    forged.extend_from_slice(&y.0);
+    forged.extend_from_slice(&x.sign(&hop_bytes));
+    assert_eq!(verify(&forged, &y, NOW), Err(Drop::BadNextHop));
+    // X also writes its own key as the next node of O: the signature of O
+    // does not cover it.
+    let next_at = at + 1 + 32 + 4;
+    forged[next_at..next_at + 32].copy_from_slice(&x.public().0);
+    assert_eq!(verify(&forged, &y, NOW), Err(Drop::BadHopSignature));
+}
+
+/// An announcement for another node is refused: a neighbour cannot send on
+/// a copy that it saw for another node.
+#[test]
+fn an_announcement_for_another_node_is_refused() {
+    let a = id(1);
+    let w = wire_to(&a, 1, NOW, &key(7));
+    assert_eq!(verify(&w, &me(), NOW), Err(Drop::NotForMe));
+    assert!(verify(&w, &key(7), NOW).is_ok());
+    // The hop of the origin has no cost.
+    let mut t = wire(&a, 1, NOW);
+    let cost_at = t.len() - HOP + 32;
+    t[cost_at + 3] = 1;
+    assert_eq!(verify(&t, &me(), NOW), Err(Drop::BadNextHop));
 }
 
 #[test]
@@ -368,7 +474,7 @@ fn direct_announcement_is_a_neighbour_claim_multi_hop_is_not() {
     let a = id(1);
     let direct = verify(&wire(&a, 1, NOW), &me(), NOW).unwrap();
     assert_eq!(direct.neighbour_claims().unwrap().len(), 2);
-    let w = append_hop(&wire(&a, 1, NOW), &id(5), 3).unwrap();
+    let w = append_hop(&wire_to(&a, 1, NOW, &id(5).public()), &id(5), 3, &me()).unwrap();
     let multi = verify(&w, &me(), NOW).unwrap();
     assert!(multi.neighbour_claims().is_none());
 }
@@ -376,43 +482,62 @@ fn direct_announcement_is_a_neighbour_claim_multi_hop_is_not() {
 #[test]
 fn append_hop_signs_the_hop_and_the_chain_verifies() {
     let (a, b, c) = (id(1), id(5), id(6));
-    let w = wire(&a, 1, NOW);
-    let w2 = append_hop(&w, &b, 4).unwrap();
+    let w = wire_to(&a, 1, NOW, &b.public());
+    let w2 = append_hop(&w, &b, 4, &me()).unwrap();
     let v = verify(&w2, &me(), NOW).unwrap();
     assert_eq!(v.path, vec![a.public(), b.public()]);
     assert_eq!(v.costs, vec![0, 4]);
     assert_eq!(v.path_cost(), 4);
-    let w3 = append_hop(&w2, &c, 9).unwrap();
+    // A forwarder that the last hop does not name cannot add its hop.
+    assert_eq!(append_hop(&w2, &c, 9, &me()), Err(Drop::NotForMe));
+    let w2c = append_hop(&w, &b, 4, &c.public()).unwrap();
+    assert_eq!(verify(&w2c, &me(), NOW), Err(Drop::NotForMe));
+    let w3 = append_hop(&w2c, &c, 9, &me()).unwrap();
     let v = verify(&w3, &me(), NOW).unwrap();
     assert_eq!(v.path, vec![a.public(), b.public(), c.public()]);
     assert_eq!(v.path_cost(), 13);
     // A forwarder that is in the path cannot add itself again.
-    assert_eq!(append_hop(&w3, &b, 1), Err(Drop::PathRepeats));
+    assert_eq!(append_hop(&w3, &b, 1, &me()), Err(Drop::PathRepeats));
 }
 
-/// The offset of the hop `i` (1 or more) of a wire that has `n` nodes.
+/// The offset of the hop `i` (0 is the origin) of a wire that has `n`
+/// nodes.
 fn hop_at(wire: &[u8], i: usize, n: usize) -> usize {
-    wire.len() - (n - i) * 100
+    wire.len() - (n - i) * HOP
 }
 
+/// The path `[a, b, c]` for this node: a valid path of 3 hops.
 fn chain3() -> Vec<u8> {
-    let w = append_hop(&wire(&id(1), 1, NOW), &id(5), 4).unwrap();
-    append_hop(&w, &id(6), 9).unwrap()
+    let w = wire_to(&id(1), 1, NOW, &id(5).public());
+    let w = append_hop(&w, &id(5), 4, &id(6).public()).unwrap();
+    append_hop(&w, &id(6), 9, &me()).unwrap()
+}
+
+#[test]
+fn a_valid_path_of_3_hops_is_taken() {
+    let v = verify(&chain3(), &me(), NOW).unwrap();
+    assert_eq!(v.path, vec![id(1).public(), id(5).public(), id(6).public()]);
+    assert_eq!(v.costs, vec![0, 4, 9]);
+    let mut r = Receiver::new(me());
+    assert!(r.accept(&chain3(), NOW).is_ok());
 }
 
 #[test]
 fn tampered_hop_is_dropped() {
     let w = chain3();
-    for i in 1..3 {
+    for i in 0..3 {
         let at = hop_at(&w, i, 3);
-        // The key, the cost and the signature of the hop.
-        for off in [0, 31, 32, 35, 36, 99] {
+        // The key, the cost, the next key and the signature of the hop.
+        for off in [0, 31, 32, 35, 36, 67, 68, HOP - 1] {
             let mut t = w.clone();
             t[at + off] ^= 0x01;
             assert!(
                 matches!(
                     verify(&t, &me(), NOW),
-                    Err(Drop::BadHopSignature | Drop::PathNotFromOrigin)
+                    Err(Drop::BadHopSignature
+                        | Drop::PathNotFromOrigin
+                        | Drop::BadNextHop
+                        | Drop::NotForMe)
                 ),
                 "hop {i} offset {off}"
             );
@@ -421,16 +546,17 @@ fn tampered_hop_is_dropped() {
 }
 
 #[test]
-fn dropped_hop_is_a_bad_hop_signature() {
-    // Remove the middle hop (b) of the path [a, b, c]: c signed over b.
+fn dropped_hop_is_refused() {
+    // Remove the middle hop (b) of the path [a, b, c]: the hop of a names
+    // b, and c signed over b.
     let w = chain3();
     let at = hop_at(&w, 1, 3);
     let mut t = w[..at].to_vec();
-    t.extend_from_slice(&w[at + 100..]);
-    let len_at = at - 32 - 1;
+    t.extend_from_slice(&w[at + HOP..]);
+    let len_at = at - HOP - 1;
     assert_eq!(t[len_at], 3);
     t[len_at] = 2;
-    assert_eq!(verify(&t, &me(), NOW), Err(Drop::BadHopSignature));
+    assert_eq!(verify(&t, &me(), NOW), Err(Drop::BadNextHop));
     // The same wire with the hop left in is good.
     assert!(verify(&w, &me(), NOW).is_ok());
 }
@@ -453,11 +579,16 @@ fn lowered_cost_is_a_bad_hop_signature() {
 
 #[test]
 fn hop_signature_of_another_key_is_dropped() {
-    // The forwarder b names the key of c: b signed, c did not.
-    let w = append_hop(&wire(&id(1), 1, NOW), &id(5), 4).unwrap();
+    // The forwarder b names the key of c: b signed, c did not. The hop of
+    // the origin names b, so the path does not agree.
+    let w = append_hop(&wire_to(&id(1), 1, NOW, &id(5).public()), &id(5), 4, &me()).unwrap();
     let mut t = w.clone();
     let at = hop_at(&t, 1, 2);
     t[at..at + 32].copy_from_slice(&id(6).public().0);
+    assert_eq!(verify(&t, &me(), NOW), Err(Drop::BadNextHop));
+    // The next key of the origin changed too: the origin did not sign it.
+    let next_at = hop_at(&t, 0, 2) + 36;
+    t[next_at..next_at + 32].copy_from_slice(&id(6).public().0);
     assert_eq!(verify(&t, &me(), NOW), Err(Drop::BadHopSignature));
 }
 
@@ -477,7 +608,7 @@ fn verified_announcement_feeds_the_route_table() {
     assert_eq!(rx.accept(&wire(&a, 3, NOW), NOW), Err(Drop::SeenSeq));
     // A multi-hop announcement through the neighbour b.
     let b = id(2);
-    let w = append_hop(&wire(&a, 4, NOW), &b, 2).unwrap();
+    let w = append_hop(&wire_to(&a, 4, NOW, &b.public()), &b, 2, &me()).unwrap();
     let v = rx.accept(&w, NOW).unwrap();
     table.learn(b.public(), 4, &v.route(), NOW).unwrap();
     assert_eq!(

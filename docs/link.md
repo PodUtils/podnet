@@ -623,24 +623,28 @@ handshake of `pod-e2e` (T-298, see "Sealed streams").
 sends it over a link (`podnet::link_announce`, see "Announcements on a link" below).
 
 * The functions do no I/O. The caller gives the time in milliseconds.
-* The signed body has a fixed field order, all integers big-endian: version (1), origin key (32), `seq` (8), time of issue
+* The signed body has a fixed field order, all integers big-endian: version (2), origin key (32), `seq` (8), time of issue
   (8), expiry (8), neighbour count (2) and each neighbour (key 32, cost 4), service count (2) and each service (length 1,
-  UTF-8 name). Then the signature (64). Then the path: a length n (1 to 16), the origin key (32), and for each of the n - 1
-  forwarders its key (32), the cost of its link (4) and the signature of its hop (64).
+  UTF-8 name). Then the signature (64). Then the path: a length n (1 to 16), and one hop for each node of the path, the
+  origin first: its key (32), the cost of its link to the node before it (4; 0 for the origin), the key of the next node (32:
+  the node that it sent the announcement to) and the signature of its hop (64).
 * The encoding is canonical. The neighbours are in strictly ascending key order. The services are in strictly ascending byte
   order. The decoder refuses any other order and any byte after the end.
-* The origin signs the label `podnet-mesh-announce-v1\0` and the body with its identity key. A forwarder adds its hop
-  (`append_hop(wire, identity, cost)`): it signs the label `podnet-mesh-hop-v1\0`, the signature before it (the origin
-  signature for the first hop), its key and the cost of its link to the node that sent it the announcement. The signatures
-  form a chain. A hop cannot be dropped from the middle, a key cannot be changed and a cost cannot be lowered: the next
-  signature covers the one before it, and `verify` checks the whole chain (`BadHopSignature`). A forwarder vouches only for
-  itself: it can cut the chain at its own hop and claim to be next to the origin. The session with the sender authenticates
-  the last node of the path.
+* The origin signs the label `podnet-mesh-announce-v2\0` and the body with its identity key, then the hop of the origin
+  for one neighbour (`encode(identity, body, to)`). A forwarder adds its hop (`append_hop(wire, identity, cost, to)`): it
+  signs the label `podnet-mesh-hop-v2\0`, the signature before it (the signature of the body for the hop of the origin), its
+  key, the cost of its link to the node that sent it the announcement and the key of `to`. Each neighbour gets its own copy.
+  The signatures form a chain. A hop cannot be dropped from the middle, a key cannot be changed and a cost cannot be lowered:
+  the next signature covers the one before it, and `verify` checks the whole chain (`BadHopSignature`). Each hop names the
+  next node of the path, and the last hop names the receiver (`BadNextHop`, `NotForMe`). Thus a node cannot cut the hops
+  before its own and claim to be next to the origin: the hop of the origin names the first neighbour (T-346). The session
+  with the sender authenticates the last node of the path.
 * Bounds: 64 neighbours, 16 services, a service name of 1 to 64 bytes, 16 nodes in the path, 8 KiB for the body. An interval
   is 10 s, the life is at most 3 intervals (30 s), the clock skew is 120 s in each direction.
-* `verify` drops an announcement for the first failed rule: shape and bounds, path (not from the origin, a node two times,
-  this node), a time of issue more than 120 s ahead or behind, a bad lifetime, an expired announcement, a bad signature, a
-  bad hop signature.
+* `verify` drops an announcement for the first failed rule: shape and bounds (a version other than 2 is `BadVersion`),
+  path (not from the origin, a node two times, this node), a hop that names another next node or a cost of the origin
+  (`BadNextHop`), a last hop that names another node than this node (`NotForMe`), a time of issue more than 120 s ahead or
+  behind, a bad lifetime, an expired announcement, a bad signature, a bad hop signature.
 * `Receiver::accept` is `verify` and the seen-`seq` rule. It keeps the newest `seq` of each origin for 4096 origins. An entry
   is removed when its time of issue is more than 120 s old (a replay then fails the skew rule). At the limit, the entry with
   the oldest time of issue is removed.
@@ -659,15 +663,17 @@ nothing.
   with a jitter of 10% either way. The announcement lists the peers of the links that are up (direct neighbours, each with the
   cost of its link) and the services of this end (the listener: the names of `--service` and `--to`; `link connect`: the names
   of `--service`; `link dial`: none). `link connect --announce-weight COST` sets the cost of its link, as on the other commands.
-* A frame is a big-endian `u16` length and the wire bytes of the announcement. A length above 9789 ends the announce stream.
+* A frame is a big-endian `u16` length and the wire bytes of the announcement. A length above 10369 ends the announce stream.
   The link stays up.
 * The receiver takes an announcement whose path ends at the peer of the link (T-287; a path `[origin]` is a direct
   announcement). Any other announcement is dropped (`not from the peer itself`): this stops a peer from sending the
   announcement of a node that it does not speak for. Then it runs the rules of the announcement (the chain of hop signatures
   included) and the seen-`seq` rule, and gives the announcement to the route table. A dropped announcement changes no route,
-  keeps no `seq`, and the link stays up. The listener and the dialer log it.
-* A new announcement is forwarded: the node adds its hop (its key, the cost of its link to the peer, its signature over the
-  signature before it) and sends it on the `announce` stream of each other neighbour that is not in the path. It forwards only
+  keeps no `seq`, and the link stays up. The listener and the dialer log it. An announcement of another version of the wire
+  gets one log line for each stream, which names the version; the next ones are dropped with no line.
+* A new announcement is forwarded: the node adds its hop (its key, the cost of its link to the peer, the key of the
+  neighbour, its signature over the signature before it) and sends it on the `announce` stream of each other neighbour that
+  is not in the path. Each neighbour gets a hop that names it. It forwards only
   a path that stays within the hop limit (8 nodes; `Mesh::set_hop_limit`, 16 at most). The forward queue of a link holds 64
   frames: a full queue drops the frame, and the origin sends again. Only the newest `seq` of an origin is forwarded.
 * Each link of an origin gets its own `seq`, so one round of the origin comes on two paths with two `seq` (T-335). An
@@ -732,8 +738,9 @@ request. Exit 69 when no route comes, the node has no such service, or the path 
 * The listener runs this when it has `--announce`. The name `fwd` cannot be a `--service` then (exit 64). A dialer with
   `--announce` relays a stream that its peer sends, but it has no service of its own.
 * With `--seal` at both ends, the hops see sealed records only (see "Sealed streams").
-* A neighbour can claim a direct link to each origin that it hears, and so draw the routes to it (T-346). Use `--seal`
-  through hops: a sealed stream is safe from a hop that reads it.
+* A neighbour cannot cut the hops before its own and claim a direct link to an origin (T-346): each hop names its next
+  node. A hop of the path still sees and can drop the streams that cross it: use `--seal` through hops, so that a hop sees
+  sealed records only.
 * `link connect --announce` is a node that dials and serves: it announces its `--service` names, and a stream that its peer
   forwards for it reaches them. So three processes make a chain: B runs `link listen --announce`, C runs `link connect --announce`
   to B with a service, and A runs `link dial --announce --node C` to B. The names `announce` and `fwd` cannot be a `--service` of
@@ -842,6 +849,14 @@ library ([build.md](build.md), "The C library"). Linux only.
   has no C function in this version.
 * The tests are `crates/podnet-capi/tests/c_abi.rs`, `c_abi.c` and `c_abi.py`: a memory link, a service `echo`, 1 MiB, the
   digest of the bytes that came back.
+
+## Breaking
+
+* 2026-11-14, T-346: the route announcement is version 2. Each hop names its next node, and the origin signs one hop for
+  each neighbour. A node of version 2 refuses an announcement of version 1 (podnet 0.4.0-beta.10 and older) and logs one line
+  for each stream that names the version: a mesh of mixed versions learns no route across the change. Update each node of a
+  mesh. The library calls changed: `mesh_announce::encode` and `append_hop` take the key of the next node, and
+  `link_announce::Mesh::make` takes the key of the neighbour.
 
 ## Exit codes
 

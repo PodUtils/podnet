@@ -109,8 +109,8 @@ async fn a_tampered_announcement_is_dropped_and_the_link_stays_up() {
         f.extend_from_slice(wire);
         f
     };
-    let good = mb.make(announce::now_ms()).unwrap();
-    let mut bad = mb.make(announce::now_ms()).unwrap();
+    let good = mb.make(announce::now_ms(), &a.public()).unwrap();
+    let mut bad = mb.make(announce::now_ms(), &a.public()).unwrap();
     // A byte in the cost of the neighbour: the signature fails.
     let at = 1 + 32 + 8 + 8 + 8 + 2 + 32 + 3;
     bad[at] ^= 0x01;
@@ -148,9 +148,10 @@ fn an_announcement_of_another_origin_is_not_direct() {
         install(dir.path(), "b"),
         install(dir.path(), "c"),
     );
+    let a_key = a.public();
     let ma = Mesh::new(a, Vec::new(), 1_000);
     let mc = Mesh::new(c.clone(), Vec::new(), 1_000);
-    let wire = mc.make(1_000).unwrap();
+    let wire = mc.make(1_000, &a_key).unwrap();
     // The peer b sends the announcement that c signed.
     assert_eq!(
         ma.receive(&b.public(), 1, &wire, 1_000).unwrap_err(),
@@ -427,4 +428,96 @@ fn dial_node_reaches_the_service_of_the_listener_by_its_fingerprint() {
         ],
     );
     assert_eq!(out.status.code(), Some(64), "{out:?}");
+}
+
+/// The log lines of a test, in memory.
+#[derive(Clone, Default)]
+struct Lines(Arc<std::sync::Mutex<Vec<u8>>>);
+
+impl std::io::Write for Lines {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(buf);
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for Lines {
+    type Writer = Lines;
+    fn make_writer(&'a self) -> Lines {
+        self.clone()
+    }
+}
+
+/// An announcement of version 1 (before T-346), as a node of version 1
+/// signs it: the version 1, the label of version 1 and the path `[origin]`.
+fn version_1(who: &Identity, seq: u64, now: u64) -> Vec<u8> {
+    use podnet::mesh_announce as wire;
+    let body = wire::Body {
+        origin: who.public(),
+        seq,
+        issued_ms: now,
+        expires_ms: now + wire::LIFETIME_MS,
+        neighbours: Vec::new(),
+        services: Vec::new(),
+    };
+    let mut bytes = wire::encode_body(&body).unwrap();
+    bytes[0] = 1;
+    let signature = who
+        .key()
+        .sign(&[&b"podnet-mesh-announce-v1\0"[..], &bytes].concat());
+    bytes.extend_from_slice(&signature);
+    bytes.push(1);
+    bytes.extend_from_slice(&who.public().0);
+    bytes
+}
+
+/// A peer of version 1 sends its announcements: each one is dropped, the
+/// log gets one line that names the version, and the link stays up (T-346).
+#[tokio::test]
+async fn a_peer_of_version_1_is_refused_with_one_line() {
+    let lines = Lines::default();
+    let subscriber = tracing_subscriber::fmt()
+        .with_writer(lines.clone())
+        .with_ansi(false)
+        .finish();
+    let _log = tracing::subscriber::set_default(subscriber);
+    let dir = tempfile::tempdir().unwrap();
+    let (a, b) = (install(dir.path(), "a"), install(dir.path(), "b"));
+    let (la, lb) = link::unix_pair(Settings::default()).unwrap();
+    let (la, lb) = (Arc::new(la), Arc::new(lb));
+    let ma = Mesh::new(a.clone(), Vec::new(), announce::now_ms());
+    tokio::spawn(announce::serve_streams(
+        ma.clone(),
+        la.clone(),
+        b.public(),
+        None,
+    ));
+    let mut stream = lb.open().unwrap();
+    service::request(&mut stream, announce::NAME).await.unwrap();
+    for seq in 1..=3 {
+        let wire = version_1(&b, seq, announce::now_ms());
+        let mut frame = (wire.len() as u16).to_be_bytes().to_vec();
+        frame.extend_from_slice(&wire);
+        stream.write_all(&frame).await.unwrap();
+    }
+    until("three drops", || {
+        ma.routes(announce::now_ms())["dropped"] == 3
+    })
+    .await;
+    assert!(direct(&ma, &b).is_none());
+    assert!(la.ended().is_none() && lb.ended().is_none());
+    let text = String::from_utf8(lines.0.lock().unwrap().clone()).unwrap();
+    let told: Vec<&str> = text.lines().filter(|l| l.contains("version 1")).collect();
+    assert_eq!(told.len(), 1, "{text}");
+    assert!(told[0].contains("version 2"), "{text}");
+    // A peer of version 2 on the same stream is taken.
+    let mb = Mesh::new(b.clone(), Vec::new(), announce::now_ms());
+    let wire = mb.make(announce::now_ms(), &a.public()).unwrap();
+    let mut frame = (wire.len() as u16).to_be_bytes().to_vec();
+    frame.extend_from_slice(&wire);
+    stream.write_all(&frame).await.unwrap();
+    until("the good one", || direct(&ma, &b).is_some()).await;
 }

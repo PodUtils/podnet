@@ -11,7 +11,7 @@
 //!
 //! ```text
 //! body (signed):
-//!   u8        version (1)
+//!   u8        version (2)
 //!   [u8; 32]  origin: the Ed25519 key of the announcing node
 //!   u64       seq: it rises strictly for one origin
 //!   u64       issued_ms: the time of the origin when it signed
@@ -23,21 +23,28 @@
 //! [u8; 64]    signature of the label and the body
 //! path (the hop chain):
 //!   u8        path length n (1 to 16)
-//!   [u8; 32]  key of the origin
-//!   n - 1 times, one for each forwarder (the sender is the last):
-//!     [u8; 32] key of the forwarder
-//!     u32      cost of the link of the forwarder to the node before it
+//!   n times, one for each node (the origin first, the sender last):
+//!     [u8; 32] key of the node
+//!     u32      cost of the link of the node to the node before it (0 for
+//!              the origin)
+//!     [u8; 32] key of the next node: the node that this node sent to
 //!     [u8; 64] signature of the hop
 //! ```
 //!
 //! The origin signature covers the label [`LABEL`] and the body. The
 //! signature of a hop covers the label [`HOP_LABEL`], the signature before
-//! it (the origin signature for the first hop), the key of the forwarder and
-//! its cost. The signatures form a chain: a hop cannot be dropped from the
-//! middle, a key cannot be changed and a cost cannot be lowered, because the
-//! next signature covers the one before it. A forwarder vouches only for
-//! itself: it can cut the chain at its own hop. The session with the sender
+//! it (the origin signature for the hop of the origin), the key of the node,
+//! its cost and the key of the next node. The signatures form a chain: a hop
+//! cannot be dropped from the middle, a key cannot be changed and a cost
+//! cannot be lowered, because the next signature covers the one before it.
+//! Each hop names the node that it sent to, and the next node of the last
+//! hop is the receiver (T-346). Thus a node cannot cut the chain before its
+//! own hop and start a shorter path: the hop of the origin names the first
+//! neighbour of the path, not this node. The session with the sender
 //! authenticates the last node of the path.
+//!
+//! Version 1 (before 2026-11-14) had no next node in a hop. A node refuses
+//! it ([`Drop::BadVersion`]): the hops of version 1 can be cut.
 //!
 //! # Receive rules
 //!
@@ -59,14 +66,18 @@ use pod_identity::{Identity, PublicKey};
 use crate::mesh_table;
 
 /// The version of the encoding.
-pub const VERSION: u8 = 1;
+pub const VERSION: u8 = 2;
 
 /// The label that starts the signed bytes. No other signature of the key
 /// uses it.
-pub const LABEL: &[u8] = b"podnet-mesh-announce-v1\0";
+pub const LABEL: &[u8] = b"podnet-mesh-announce-v2\0";
 
 /// The label that starts the signed bytes of a hop.
-pub const HOP_LABEL: &[u8] = b"podnet-mesh-hop-v1\0";
+pub const HOP_LABEL: &[u8] = b"podnet-mesh-hop-v2\0";
+
+/// The bytes of one hop of the path: the key, the cost, the next key and
+/// the signature.
+const HOP_LEN: usize = 32 + 4 + 32 + 64;
 
 /// The most neighbours of one announcement.
 pub const MAX_NEIGHBOURS: usize = 64;
@@ -78,7 +89,7 @@ pub const MAX_SERVICE_NAME: usize = 64;
 pub const MAX_PATH: usize = 16;
 /// The most bytes of a wire announcement: the body, the signature and a
 /// path of [`MAX_PATH`] nodes.
-pub const MAX_WIRE: usize = MAX_BODY + 64 + 1 + 32 + (MAX_PATH - 1) * (32 + 4 + 64);
+pub const MAX_WIRE: usize = MAX_BODY + 64 + 1 + MAX_PATH * HOP_LEN;
 /// The most bytes of the body (before the signature).
 pub const MAX_BODY: usize = 8 * 1024;
 /// The interval of announcements in milliseconds. The sender adds jitter.
@@ -135,8 +146,8 @@ pub enum Drop {
     Truncated,
     /// Bytes remain after the announcement.
     Trailing,
-    /// The version is not 1.
-    BadVersion,
+    /// The version is not 2 (the version of the wire is the value).
+    BadVersion(u8),
     /// The body is longer than 8 KiB.
     BodyTooLarge,
     /// More than 64 neighbours.
@@ -168,9 +179,15 @@ pub enum Drop {
     Expired,
     /// The signature does not match the origin and the body.
     BadSignature,
-    /// The signature of a hop does not match its key, its cost and the
-    /// signature before it.
+    /// The signature of a hop does not match its key, its cost, its next
+    /// key and the signature before it.
     BadHopSignature,
+    /// A hop names a next node that is not the next node of the path, or
+    /// the hop of the origin has a cost.
+    BadNextHop,
+    /// The last hop names another node than this node: the announcement
+    /// was sent to another node.
+    NotForMe,
     /// The `seq` is not above the newest `seq` of the origin.
     SeenSeq,
 }
@@ -180,7 +197,18 @@ impl fmt::Display for Drop {
         f.write_str(match self {
             Drop::Truncated => "the announcement is cut short",
             Drop::Trailing => "bytes remain after the announcement",
-            Drop::BadVersion => "the version is not known",
+            Drop::BadVersion(1) => {
+                return write!(
+                    f,
+                    "the version 1 is old: its hops can be cut (this node takes version {VERSION})"
+                )
+            }
+            Drop::BadVersion(v) => {
+                return write!(
+                    f,
+                    "the version {v} is not known (this node takes version {VERSION})"
+                )
+            }
             Drop::BodyTooLarge => "the body is larger than 8 KiB",
             Drop::TooManyNeighbours => "more than 64 neighbours",
             Drop::TooManyServices => "more than 16 services",
@@ -196,6 +224,8 @@ impl fmt::Display for Drop {
             Drop::Expired => "the announcement has expired",
             Drop::BadSignature => "the signature is not valid",
             Drop::BadHopSignature => "the signature of a hop is not valid",
+            Drop::BadNextHop => "a hop names another next node than the path",
+            Drop::NotForMe => "the last hop names another node than this node",
             Drop::SeenSeq => "the seq is not new",
         })
     }
@@ -279,36 +309,58 @@ pub fn encode_body(body: &Body) -> Result<Vec<u8>, EncodeError> {
 }
 
 /// The signed bytes of a hop: the label, the signature before it, the key
-/// of the forwarder and its cost.
-fn hop_bytes(prev: &[u8; 64], key: &PublicKey, cost: u32) -> Vec<u8> {
+/// of the node, its cost and the key of the next node.
+fn hop_bytes(prev: &[u8; 64], key: &PublicKey, cost: u32, next: &PublicKey) -> Vec<u8> {
     let mut out = HOP_LABEL.to_vec();
     out.extend_from_slice(prev);
     out.extend_from_slice(&key.0);
     out.extend_from_slice(&cost.to_be_bytes());
+    out.extend_from_slice(&next.0);
+    out
+}
+
+/// One hop of the wire: the key, the cost, the next key and the signature
+/// of `identity` over them and `prev`.
+fn hop(identity: &Identity, prev: &[u8; 64], cost: u32, to: &PublicKey) -> Vec<u8> {
+    let key = identity.public();
+    let signature = identity.sign(&hop_bytes(prev, &key, cost, to));
+    let mut out = Vec::with_capacity(HOP_LEN);
+    out.extend_from_slice(&key.0);
+    out.extend_from_slice(&cost.to_be_bytes());
+    out.extend_from_slice(&to.0);
+    out.extend_from_slice(&signature);
     out
 }
 
 /// Sign `body` with `identity` and write the wire bytes of an announcement
-/// that has not passed a forwarder: the path is `[origin]`. The origin of the
-/// body should be the key of `identity` (else [`verify`] drops it with
-/// [`Drop::BadSignature`]).
-pub fn encode(identity: &Identity, body: &Body) -> Result<Vec<u8>, EncodeError> {
+/// for the neighbour `to` that has not passed a forwarder: the path is
+/// `[origin]`, and the hop of the origin names `to`. The origin of the body
+/// should be the key of `identity` (else [`verify`] drops it with
+/// [`Drop::PathNotFromOrigin`]). Each neighbour gets its own wire bytes.
+pub fn encode(identity: &Identity, body: &Body, to: &PublicKey) -> Result<Vec<u8>, EncodeError> {
     let bytes = encode_body(body)?;
     let signature = identity.sign(&signed_bytes(&bytes));
     let mut out = bytes;
     out.extend_from_slice(&signature);
     out.push(1);
-    out.extend_from_slice(&body.origin.0);
+    out.extend_from_slice(&hop(identity, &signature, 0, to));
     Ok(out)
 }
 
 /// Add the forwarder `identity` to the end of the path of an encoded
-/// announcement. `cost` is the cost of the link of the forwarder to the
-/// node that sent the announcement to it. The hop signs the key, the cost
-/// and the signature before it. The caller has verified the announcement
-/// first. A path of 16 nodes is full ([`Drop::BadPathLength`]); a forwarder
-/// that is in the path already gets [`Drop::PathRepeats`].
-pub fn append_hop(wire: &[u8], identity: &Identity, cost: u32) -> Result<Vec<u8>, Drop> {
+/// announcement, for the neighbour `to`. `cost` is the cost of the link of
+/// the forwarder to the node that sent the announcement to it. The hop signs
+/// the key, the cost, the key of `to` and the signature before it. The
+/// caller has verified the announcement first: the last hop must name the
+/// forwarder ([`Drop::NotForMe`]). A path of 16 nodes is full
+/// ([`Drop::BadPathLength`]); a forwarder that is in the path already gets
+/// [`Drop::PathRepeats`].
+pub fn append_hop(
+    wire: &[u8],
+    identity: &Identity,
+    cost: u32,
+    to: &PublicKey,
+) -> Result<Vec<u8>, Drop> {
     let parsed = parse(wire)?;
     if parsed.path.len() >= MAX_PATH {
         return Err(Drop::BadPathLength);
@@ -317,14 +369,14 @@ pub fn append_hop(wire: &[u8], identity: &Identity, cost: u32) -> Result<Vec<u8>
     if parsed.path.contains(&key) {
         return Err(Drop::PathRepeats);
     }
-    let prev = parsed.hops.last().map_or(&parsed.signature, |h| &h.2);
-    let signature = identity.sign(&hop_bytes(prev, &key, cost));
+    let last = parsed.hops.last().ok_or(Drop::BadPathLength)?;
+    if last.2 != key {
+        return Err(Drop::NotForMe);
+    }
     let mut out = wire[..parsed.path_at].to_vec();
     out.push((parsed.path.len() + 1) as u8);
     out.extend_from_slice(&wire[parsed.path_at + 1..]);
-    out.extend_from_slice(&key.0);
-    out.extend_from_slice(&cost.to_be_bytes());
-    out.extend_from_slice(&signature);
+    out.extend_from_slice(&hop(identity, &last.3, cost, to));
     Ok(out)
 }
 
@@ -365,14 +417,15 @@ struct Parsed {
     /// The offset of the path length byte.
     path_at: usize,
     path: Vec<PublicKey>,
-    /// The forwarders: key, cost, signature.
-    hops: Vec<(PublicKey, u32, [u8; 64])>,
+    /// The hops, the origin first: key, cost, next key, signature.
+    hops: Vec<(PublicKey, u32, PublicKey, [u8; 64])>,
 }
 
 fn parse(wire: &[u8]) -> Result<Parsed, Drop> {
     let mut r = Reader { data: wire, at: 0 };
-    if r.u8()? != VERSION {
-        return Err(Drop::BadVersion);
+    let version = r.u8()?;
+    if version != VERSION {
+        return Err(Drop::BadVersion(version));
     }
     let origin = r.key()?;
     let seq = r.u64()?;
@@ -419,14 +472,14 @@ fn parse(wire: &[u8]) -> Result<Parsed, Drop> {
         return Err(Drop::BadPathLength);
     }
     let mut path = Vec::with_capacity(n);
-    let mut hops = Vec::with_capacity(n - 1);
-    path.push(r.key()?);
-    for _ in 1..n {
+    let mut hops = Vec::with_capacity(n);
+    for _ in 0..n {
         let key = r.key()?;
         let cost = r.u32()?;
+        let next = r.key()?;
         let sig: [u8; 64] = r.take(64)?.try_into().unwrap();
         path.push(key);
-        hops.push((key, cost, sig));
+        hops.push((key, cost, next, sig));
     }
     if r.at != wire.len() {
         return Err(Drop::Trailing);
@@ -469,6 +522,20 @@ pub fn verify(wire: &[u8], me: &PublicKey, now: u64) -> Result<Verified, Drop> {
     if p.path.contains(me) {
         return Err(Drop::PathHasSelf);
     }
+    // Each hop names the node after it; the last one names this node.
+    if p.hops[0].1 != 0 {
+        return Err(Drop::BadNextHop);
+    }
+    for (i, h) in p.hops.iter().enumerate() {
+        let want = p.path.get(i + 1).unwrap_or(me);
+        if h.2 != *want {
+            return Err(if i + 1 == p.path.len() {
+                Drop::NotForMe
+            } else {
+                Drop::BadNextHop
+            });
+        }
+    }
     if p.body.issued_ms > now.saturating_add(SKEW_MS) {
         return Err(Drop::FromFuture);
     }
@@ -485,9 +552,9 @@ pub fn verify(wire: &[u8], me: &PublicKey, now: u64) -> Result<Verified, Drop> {
         return Err(Drop::BadSignature);
     }
     let mut prev = p.signature;
-    let mut costs = vec![0];
-    for (key, cost, sig) in &p.hops {
-        if !key.verifies(&hop_bytes(&prev, key, *cost), sig) {
+    let mut costs = Vec::with_capacity(p.hops.len());
+    for (key, cost, next, sig) in &p.hops {
+        if !key.verifies(&hop_bytes(&prev, key, *cost, next), sig) {
             return Err(Drop::BadHopSignature);
         }
         prev = *sig;
@@ -607,26 +674,29 @@ impl Receiver {
 /// * [`verify`] and [`append_hop`] never panic.
 /// * A wire that parses has one encoding: [`encode_body`] of its body gives
 ///   its body bytes again.
-/// * The body of a wire that parses, signed again by an own origin, passes
-///   [`verify`] at its time of issue when its lifetime is valid, also after
-///   one hop. The path of the hop is the origin and the forwarder.
+/// * The body of a wire that parses, signed again by an own origin for this
+///   node, passes [`verify`] at its time of issue when its lifetime is
+///   valid. Signed for the forwarder and passed on with one hop, it passes
+///   too: the path is the origin and the forwarder. The wire for the
+///   forwarder does not pass at this node ([`Drop::NotForMe`]).
 pub(crate) fn fuzz(wire: &[u8]) {
     let origin = Identity::from_seed(&[1u8; 32]);
     let forwarder = Identity::from_seed(&[2u8; 32]);
     let me = PublicKey([3u8; 32]);
     let Ok(parsed) = parse(wire) else {
         let _ = verify(wire, &me, 0);
-        let _ = append_hop(wire, &forwarder, 1);
+        let _ = append_hop(wire, &forwarder, 1, &me);
         return;
     };
-    assert_eq!(parsed.path.len(), parsed.hops.len() + 1);
+    assert_eq!(parsed.path.len(), parsed.hops.len());
     let body = encode_body(&parsed.body).expect("a parsed body encodes");
     assert_eq!(body, wire[..parsed.body_len], "one value, one encoding");
     let now = parsed.body.issued_ms;
     let _ = verify(wire, &me, now);
+    let _ = append_hop(wire, &forwarder, 1, &me);
     let mut own = parsed.body;
     own.origin = origin.public();
-    let signed = encode(&origin, &own).expect("a parsed body encodes");
+    let signed = encode(&origin, &own, &me).expect("a parsed body encodes");
     let lifetime = own.expires_ms > own.issued_ms && own.expires_ms - own.issued_ms <= LIFETIME_MS;
     match verify(&signed, &me, now) {
         Ok(v) => {
@@ -636,8 +706,10 @@ pub(crate) fn fuzz(wire: &[u8]) {
         }
         Err(e) => assert!(!lifetime, "{e}"),
     }
-    let hop = append_hop(&signed, &forwarder, 7).expect("one hop");
+    let for_forwarder = encode(&origin, &own, &forwarder.public()).expect("a parsed body encodes");
+    let hop = append_hop(&for_forwarder, &forwarder, 7, &me).expect("one hop");
     if lifetime {
+        assert_eq!(verify(&for_forwarder, &me, now), Err(Drop::NotForMe));
         let v = verify(&hop, &me, now).expect("a signed hop verifies");
         assert_eq!(v.path, vec![own.origin, forwarder.public()]);
         assert_eq!(v.path_cost(), 7);

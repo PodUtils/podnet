@@ -367,7 +367,7 @@ fn learned_mesh(dir: &Path, name: &str) -> (Arc<podnet::link_announce::Mesh>, Id
     let mb = Mesh::new(b.clone(), vec!["raw".into()], now_ms());
     mb.neighbour_up(a.public(), 3);
     ma.neighbour_up(b.public(), 3);
-    let wire = mb.make(now_ms()).unwrap();
+    let wire = mb.make(now_ms(), &a.public()).unwrap();
     ma.receive(&b.public(), 3, &wire, now_ms()).unwrap();
     assert!(ma.set_name(b.public(), name));
     (ma, identity::open(&dir.join("mesh-b")).unwrap())
