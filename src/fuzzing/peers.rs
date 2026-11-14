@@ -158,12 +158,12 @@ fn memory_file(data: &[u8]) -> std::fs::File {
 /// before a write), and the data of each entry, under small caps.
 pub fn transfer_zip(data: &[u8]) {
     let mut file = memory_file(data);
-    let Ok(entries) = zip::entries(&mut file) else {
-        return;
-    };
     let caps = land::Caps {
         max_files: 64,
         max_bytes: 1 << 20,
+    };
+    let Ok(entries) = zip::entries(&mut file, caps.max_files) else {
+        return;
     };
     let Ok(plan) = land::plan(&entries, &caps) else {
         return;

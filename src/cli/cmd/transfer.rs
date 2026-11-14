@@ -247,6 +247,10 @@ pub(crate) async fn receive(args: ReceiveArgs) -> Result<()> {
         Received::Text(text) => {
             if args.way.json {
                 println!("{}", json!({ "event": "received", "text": text }));
+            } else if std::io::stdout().is_terminal() {
+                // A control sequence of the sender does not reach the
+                // terminal; a pipe gets the text as it came (T-347).
+                println!("{}", transfer::for_terminal(&text, true));
             } else {
                 println!("{text}");
             }
@@ -262,7 +266,7 @@ pub(crate) async fn receive(args: ReceiveArgs) -> Result<()> {
             json!({ "event": "received", "path": path, "bytes": bytes, "sha256": sha256, "files": files, "via": via }),
             &format!(
                 "Received {} ({bytes} bytes, {files} entries, {via}), SHA-256 {sha256}",
-                path.display()
+                transfer::for_terminal(&path.display().to_string(), false)
             ),
         ),
     }

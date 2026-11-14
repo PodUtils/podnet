@@ -37,6 +37,11 @@ echo 7-crossover-clockwork-adroitness | podnet receive --yes   # a script
   prints `{"event": "code", "code", "mailbox"}` first, then
   `{"event": "sent", "bytes", "sha256", "via"}`; the receiver prints
   `{"event": "received", ...}`.
+* The receiver prints a text and the name of a file or a directory with
+  each control character escaped (`\u{1b}`, `\r`) on a terminal: the
+  other end cannot send a control sequence to the terminal (T-347). A text
+  keeps its line feeds and tabs. A pipe (stdout is not a terminal) and
+  `--json` get the text as it came.
 * `podnet send --timeout SECS` is the wait for a receiver and for its
   answer (default 1800).
 
@@ -72,7 +77,9 @@ After the offer and its answer, the two ends connect for the bytes:
   loopback), and sends these addresses as hints. `--listen ADDR` listens on
   one address only, and sends that address (also a loopback address).
   `--no-listen` does not listen. A host that refuses a bind of `AF_INET`
-  has no listener: the other end or a relay carries the transfer.
+  has no listener: the other end or a relay carries the transfer. The
+  listener runs the handshake on 64 connections at one time at most; a
+  connection over that bound is closed at once (T-347).
 * Each end dials each hint of the other end through the way out of podnet
   (`--proxy`, `--egress`, `NO_PROXY`). An end takes the first 64 hints of
   the other end, and the first 16 ends of each relay hint, and ignores the
@@ -86,6 +93,8 @@ After the offer and its answer, the two ends connect for the bytes:
   `wss://...`; `none` for no relay of this end).
 * The sender takes the first connection that passes the handshake, and the
   bytes go in records sealed with NaCl's SecretBox under the transit key.
+  An end reads the whole handshake of the other end and compares it in a
+  time that does not depend on where it differs (T-347).
 * The receiver sends the SHA-256 of the bytes at the end. The sender
   compares it with its own.
 
@@ -201,9 +210,16 @@ The receiver checks each name before it writes a byte:
   lie.
 * The offer that the person accepts is a cap too: a zip with more bytes
   or more entries than its offer said is refused (T-341).
+* The receiver reads the central directory of the zip with a bound: a zip
+  with more entries than the cap, or a central directory larger than 5166
+  bytes for each entry (a row, a path of 4096 bytes and 1024 bytes of extra
+  fields and comment), is refused before the directory is read (T-347).
 * A refusal ends the whole transfer with exit 65, and no file of it stays
   on the disk. When a write fails, the receiver removes each file and
-  directory that it made, and no other.
+  directory that it made, and no other. The removal goes under the open
+  descriptor of `--out`, and each directory on the way is opened with
+  `O_NOFOLLOW`: a directory of the transfer that a local user changes into
+  a symbolic link is not followed (T-347).
 
 A directory goes as a zip with stored entries. The receiver reads stored
 and deflated entries, as `wormhole send` makes them. There is no zip64: an

@@ -226,8 +226,15 @@ impl Entry {
     }
 }
 
-/// The directory of the zip in `file`: each entry, in order.
-pub fn entries(file: &mut File) -> io::Result<Vec<Entry>> {
+/// The most bytes of one row of the central directory: the fixed part, a
+/// path of `PATH_MOST` bytes, and 1024 bytes of extra fields and comment.
+pub const ROW_MOST: u64 = 46 + super::land::PATH_MOST as u64 + 1024;
+
+/// The directory of the zip in `file`: each entry, in order. A zip with more
+/// than `most` entries is refused, and a central directory that is larger
+/// than its entries need (`ROW_MOST` for each one) is refused before it is
+/// read (T-347).
+pub fn entries(file: &mut File, most: u64) -> io::Result<Vec<Entry>> {
     let length = file.seek(SeekFrom::End(0))?;
     let back = length.min(22 + 0xffff);
     let mut tail = vec![0u8; back as usize];
@@ -245,6 +252,16 @@ pub fn entries(file: &mut File) -> io::Result<Vec<Entry>> {
     }
     if start + size > length {
         return Err(refused("the central directory is outside the zip".into()));
+    }
+    if u64::from(count) > most {
+        return Err(refused(format!(
+            "{count} entries: the cap is {most} (--max-files)"
+        )));
+    }
+    if size > u64::from(count) * ROW_MOST {
+        return Err(refused(format!(
+            "the central directory of {size} bytes is larger than its {count} entries need"
+        )));
     }
     let mut dir = vec![0u8; size as usize];
     file.seek(SeekFrom::Start(start))?;

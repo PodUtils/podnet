@@ -360,3 +360,79 @@ fn transfer_land_python_reads_the_zip_of_podnet() {
     let said = String::from_utf8(run.stdout).unwrap();
     assert!(said.starts_with("d/,d/e/,d/e/f.txt,g eff 0o100"), "{said}");
 }
+
+/// The central directory is read with a bound (T-347): a zip whose central
+/// directory is larger than its entries need, or that has more entries than
+/// the cap, is refused before the directory is read.
+#[test]
+fn transfer_land_a_central_directory_over_its_bound_is_refused() {
+    use podnet::transfer::zip::{entries, ROW_MOST};
+    // One entry, and a central directory of 64 MiB that the end record
+    // names: the bytes before the row are padding.
+    let mut file = tempfile::tempfile().unwrap();
+    let pad = 64u64 << 20;
+    file.set_len(pad).unwrap();
+    file.seek(std::io::SeekFrom::End(0)).unwrap();
+    let mut end = Vec::new();
+    end.extend_from_slice(&0x0605_4b50u32.to_le_bytes());
+    end.extend_from_slice(&[0; 4]);
+    end.extend_from_slice(&1u16.to_le_bytes());
+    end.extend_from_slice(&1u16.to_le_bytes());
+    end.extend_from_slice(&(pad as u32).to_le_bytes());
+    end.extend_from_slice(&0u32.to_le_bytes());
+    end.extend_from_slice(&[0, 0]);
+    file.write_all(&end).unwrap();
+    let err = entries(&mut file, 100).unwrap_err().to_string();
+    assert!(err.contains("larger than its 1 entries need"), "{err}");
+    assert!(pad > ROW_MOST);
+    // More entries than the cap.
+    let three = zip(&[raw("a", b"1"), raw("b", b"2"), raw("c", b"3")]);
+    let (err, clean) = refused_cleanly(
+        three,
+        &Caps {
+            max_files: 2,
+            ..Caps::default()
+        },
+    );
+    assert!(
+        format!("{err:#}").contains("3 entries: the cap is 2"),
+        "{err:#}"
+    );
+    assert!(clean);
+    // A good zip is read.
+    let mut good = zip(&[raw("a", b"1"), raw("b", b"2")]);
+    assert_eq!(entries(&mut good, 2).unwrap().len(), 2);
+}
+
+/// The undo of a failed receive removes under the held descriptor of the
+/// output directory (T-347): a directory of the transfer that a local user
+/// changes into a symbolic link before the undo is not followed, and the
+/// file at the end of the link stays.
+#[test]
+fn transfer_land_the_undo_does_not_follow_a_swapped_directory() {
+    let parent = tempfile::tempdir().unwrap();
+    let out = parent.path().join("out");
+    let elsewhere = parent.path().join("elsewhere");
+    std::fs::create_dir(&out).unwrap();
+    std::fs::create_dir(&elsewhere).unwrap();
+    std::fs::write(elsewhere.join("f"), b"keep").unwrap();
+    let mut landing = Landing::open(&out).unwrap();
+    let parts: Vec<String> = ["top", "a", "f"].iter().map(|s| s.to_string()).collect();
+    landing.file(&parts).unwrap().write_all(b"new").unwrap();
+    // The swap: top/a goes away, and a link to the other directory takes
+    // its name.
+    std::fs::rename(out.join("top/a"), parent.path().join("moved")).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, out.join("top/a")).unwrap();
+    landing.undo();
+    assert_eq!(std::fs::read(elsewhere.join("f")).unwrap(), b"keep");
+    // The link and its directory stay; the undo removed nothing through it.
+    assert!(std::fs::symlink_metadata(out.join("top/a"))
+        .unwrap()
+        .is_symlink());
+    // With no swap, the undo removes each name that the run made.
+    let mut landing = Landing::open(&out).unwrap();
+    let parts: Vec<String> = ["two", "b", "g"].iter().map(|s| s.to_string()).collect();
+    landing.file(&parts).unwrap();
+    landing.undo();
+    assert!(!out.join("two").exists());
+}

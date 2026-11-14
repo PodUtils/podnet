@@ -32,6 +32,9 @@ use crate::relay_reverse::Resume;
 pub const RELAY_DELAY: Duration = Duration::from_secs(2);
 /// The bound of each dial and each handshake.
 pub const STEP: Duration = Duration::from_secs(20);
+/// The handshakes that the listener of a direct connection runs at one
+/// time. A connection over the bound is closed at once (T-347).
+pub const LISTEN_MOST: usize = 64;
 
 /// A transit relay of this end.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -245,20 +248,7 @@ pub async fn connect(
     let key = *key;
     if let Some(listener) = ours.listener {
         let (tx, won) = (tx.clone(), won.clone());
-        tasks.spawn(async move {
-            let mut each = JoinSet::new();
-            while let Ok((tcp, from)) = listener.accept().await {
-                let (tx, won) = (tx.clone(), won.clone());
-                each.spawn(negotiate(
-                    Box::new(tcp),
-                    format!("direct from {from}"),
-                    role,
-                    key,
-                    won,
-                    tx,
-                ));
-            }
-        });
+        tasks.spawn(accept_direct(listener, role, key, won, tx, LISTEN_MOST));
     }
     let node = ours.node.is_some();
     if let Some((name, mut sessions)) = ours.node {
@@ -371,6 +361,38 @@ pub async fn connect(
             "no way to the other end worked within {} s",
             wait.as_secs()
         )),
+    }
+}
+
+/// Take the direct connections of `listener`, and run the handshake on at
+/// most `most` of them at one time. A connection over the bound is closed
+/// at once: a host of the network cannot hold many descriptors of this end
+/// for the time of the transit wait (T-347).
+async fn accept_direct(
+    listener: TcpListener,
+    role: Role,
+    key: [u8; 32],
+    won: Arc<Mutex<bool>>,
+    tx: mpsc::Sender<(BoxedIo, String)>,
+    most: usize,
+) {
+    let slots = Arc::new(tokio::sync::Semaphore::new(most));
+    let mut each = JoinSet::new();
+    while let Ok((tcp, from)) = listener.accept().await {
+        while each.try_join_next().is_some() {}
+        let Ok(slot) = slots.clone().try_acquire_owned() else {
+            tracing::debug!(
+                "transfer: a direct connection from {from} is closed: {most} handshakes run"
+            );
+            drop(tcp);
+            continue;
+        };
+        let (tx, won) = (tx.clone(), won.clone());
+        let what = format!("direct from {from}");
+        each.spawn(async move {
+            negotiate(Box::new(tcp), what, role, key, won, tx).await;
+            drop(slot);
+        });
     }
 }
 
@@ -491,6 +513,54 @@ mod tests {
         assert!(Relay::parse("transit.example:4001").is_err());
         assert!(Relay::parse("tcp:transit.example").is_err());
         assert!(Relay::parse("tcp::4001").is_err());
+    }
+
+    /// The listener runs at most `most` handshakes at one time: the next
+    /// connection is closed with no byte, and a slot that ends takes a new
+    /// connection again (T-347).
+    #[tokio::test]
+    async fn wormhole_transfer_the_listener_holds_at_most_its_bound_of_handshakes() {
+        crate::test_host::need_loopback!();
+        use tokio::net::TcpStream;
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let at = listener.local_addr().unwrap();
+        let (tx, _rx) = mpsc::channel(4);
+        let key = [7u8; 32];
+        let task = tokio::spawn(accept_direct(
+            listener,
+            Role::Receiver,
+            key,
+            Arc::new(Mutex::new(false)),
+            tx,
+            4,
+        ));
+        let hello = transit::handshake(&key, Role::Receiver);
+        let mut held = Vec::new();
+        for _ in 0..4 {
+            let mut io = TcpStream::connect(at).await.unwrap();
+            let mut got = vec![0u8; hello.len()];
+            io.read_exact(&mut got).await.unwrap();
+            assert_eq!(got, hello);
+            held.push(io);
+        }
+        let mut over = TcpStream::connect(at).await.unwrap();
+        let mut rest = Vec::new();
+        let read = tokio::time::timeout(Duration::from_secs(5), over.read_to_end(&mut rest));
+        assert!(
+            read.await.is_ok(),
+            "the connection over the bound stays open"
+        );
+        assert!(rest.is_empty(), "a handshake over the bound");
+        // A held connection that closes ends its slot.
+        drop(held.remove(0));
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        let mut next = TcpStream::connect(at).await.unwrap();
+        let mut got = vec![0u8; hello.len()];
+        tokio::time::timeout(Duration::from_secs(5), next.read_exact(&mut got))
+            .await
+            .expect("a free slot takes a connection")
+            .unwrap();
+        task.abort();
     }
 
     #[test]

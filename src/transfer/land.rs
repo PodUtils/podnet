@@ -29,7 +29,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::{self, Write};
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, OwnedFd};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::zip::Entry;
 
@@ -143,7 +143,6 @@ pub fn plan(entries: &[Entry], caps: &Caps) -> Result<Vec<Vec<String>>, Refused>
 /// The writes of one receive under one output directory, with what they
 /// made, so that a failure removes it.
 pub struct Landing {
-    out: PathBuf,
     dir: OwnedFd,
     /// Each file and directory made, relative to the output directory, in
     /// the order made.
@@ -172,7 +171,6 @@ impl Landing {
         // SAFETY: `fd` is a new descriptor that nothing else owns.
         let dir = unsafe { OwnedFd::from_raw_fd(fd) };
         Ok(Landing {
-            out: out.to_path_buf(),
             dir,
             made: Vec::new(),
             dirs: HashSet::new(),
@@ -236,14 +234,14 @@ impl Landing {
     }
 
     /// Remove each file and directory that this run made, the last first.
+    /// The removal goes under the held descriptor of the output directory:
+    /// each directory above a name is opened with `O_NOFOLLOW`, and the name
+    /// is removed with `unlinkat` (T-347). A directory that became a
+    /// symbolic link after the write is not followed: what is under it
+    /// stays.
     pub fn undo(&mut self) {
         for (name, is_dir) in self.made.drain(..).rev() {
-            let path = self.out.join(&name);
-            let _ = if is_dir {
-                std::fs::remove_dir(&path)
-            } else {
-                std::fs::remove_file(&path)
-            };
+            let _ = unlink_under(self.dir.as_fd(), &name, is_dir);
         }
         self.dirs.clear();
     }
@@ -260,7 +258,7 @@ impl Landing {
 pub fn unzip(zip: &mut File, out: &Path, top: &str, caps: &Caps) -> anyhow::Result<u64> {
     use super::refused;
     let top = vec![self::top(top).map_err(refused)?];
-    let entries = super::zip::entries(zip).map_err(refused)?;
+    let entries = super::zip::entries(zip, caps.max_files).map_err(refused)?;
     let plan = plan(&entries, caps).map_err(refused)?;
     let mut landing = Landing::open(out).map_err(refused)?;
     landing.dir(&top).map_err(refused)?;
@@ -305,6 +303,29 @@ impl Write for Capped<'_> {
     fn flush(&mut self) -> io::Result<()> {
         self.out.flush()
     }
+}
+
+/// Remove `name` (components joined by `/`) under `root`: each directory
+/// above it is opened with `O_NOFOLLOW`, and the last component is removed
+/// with `unlinkat` in the directory that holds it.
+fn unlink_under(root: BorrowedFd<'_>, name: &str, is_dir: bool) -> io::Result<()> {
+    let parts: Vec<&str> = name.split('/').collect();
+    let (last, above) = parts
+        .split_last()
+        .ok_or_else(|| io::Error::other("an empty name"))?;
+    let mut at: Option<OwnedFd> = None;
+    for part in above {
+        let base = at.as_ref().map_or(root, |fd| fd.as_fd());
+        at = Some(open_dir_at(base, &cstring(part.as_bytes())?)?);
+    }
+    let base = at.as_ref().map_or(root, |fd| fd.as_fd());
+    let last = cstring(last.as_bytes())?;
+    let flags = if is_dir { libc::AT_REMOVEDIR } else { 0 };
+    // SAFETY: a valid directory descriptor and C string.
+    if unsafe { libc::unlinkat(base.as_raw_fd(), last.as_ptr(), flags) } < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
 }
 
 fn mkdir_at(base: BorrowedFd<'_>, name: &CString) -> io::Result<()> {

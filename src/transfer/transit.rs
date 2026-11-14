@@ -64,19 +64,31 @@ pub fn relay_handshake(key: &[u8; 32], side: &str) -> Vec<u8> {
     format!("please relay {token} for side {side}\n").into_bytes()
 }
 
-/// Read exactly `expected` from `io`; false at the first byte that differs
-/// or at the end of the stream.
+/// Read `expected.len()` bytes from `io`, and compare them with `expected`
+/// in a time that does not depend on where they differ (T-347): the
+/// handshake holds a value of the transit key. False at the end of the
+/// stream or when a byte differs.
 pub async fn expect<S: AsyncRead + Unpin>(io: &mut S, expected: &[u8]) -> io::Result<bool> {
     let mut got = vec![0u8; expected.len()];
     let mut have = 0;
     while have < got.len() {
         let n = io.read(&mut got[have..]).await?;
-        if n == 0 || got[have..have + n] != expected[have..have + n] {
+        if n == 0 {
             return Ok(false);
         }
         have += n;
     }
-    Ok(true)
+    Ok(same(&got, expected))
+}
+
+/// True when `a` and `b` are equal, in a time that depends on their length
+/// only.
+pub fn same(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let diff = a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y));
+    std::hint::black_box(diff) == 0
 }
 
 /// The records of one transit connection, after its handshake.
@@ -202,6 +214,51 @@ mod tests {
     use super::*;
 
     const KEY: [u8; 32] = [0x11; 32];
+
+    /// A reader that gives one byte at each read, and counts them.
+    struct OneByte {
+        data: Vec<u8>,
+        at: usize,
+    }
+
+    impl tokio::io::AsyncRead for OneByte {
+        fn poll_read(
+            mut self: std::pin::Pin<&mut Self>,
+            _: &mut std::task::Context<'_>,
+            buf: &mut tokio::io::ReadBuf<'_>,
+        ) -> std::task::Poll<io::Result<()>> {
+            if self.at < self.data.len() && buf.remaining() > 0 {
+                let byte = self.data[self.at];
+                buf.put_slice(&[byte]);
+                self.at += 1;
+            }
+            std::task::Poll::Ready(Ok(()))
+        }
+    }
+
+    /// The handshake of the other end is read whole and compared in one
+    /// pass: a byte that differs early does not end the read early (T-347).
+    #[tokio::test]
+    async fn transfer_transit_the_handshake_is_compared_in_constant_time() {
+        let expected = b"transit receiver 0123 ready\n\n";
+        for (data, want) in [
+            (b"Xransit receiver 0123 ready\n\n".to_vec(), false),
+            (b"transit receiver 0123 readX\n\n".to_vec(), false),
+            (expected.to_vec(), true),
+        ] {
+            let mut reader = OneByte { data, at: 0 };
+            assert_eq!(expect(&mut reader, expected).await.unwrap(), want);
+            assert_eq!(reader.at, expected.len(), "the read ended early");
+        }
+        let mut short = OneByte {
+            data: b"transit".to_vec(),
+            at: 0,
+        };
+        assert!(!expect(&mut short, expected).await.unwrap());
+        assert!(same(b"abc", b"abc"));
+        assert!(!same(b"abc", b"abd"));
+        assert!(!same(b"abc", b"abcd"));
+    }
 
     // Computed with the hmac and hashlib of Python (HKDF of RFC 5869 written
     // out, with no salt), software that podnet did not write.

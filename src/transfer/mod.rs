@@ -256,9 +256,44 @@ fn unavailable(why: impl std::fmt::Display) -> anyhow::Error {
     exit::fault(Fault::Unavailable, anyhow::anyhow!("{why}"))
 }
 
+/// `text` for a terminal (T-347): each control character as its escape
+/// (`\u{1b}`, `\r`), so that a text or a name of the other end cannot send
+/// a control sequence to the terminal. With `lines`, a line feed and a tab
+/// stay.
+pub fn for_terminal(text: &str, lines: bool) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        if c.is_control() && !(lines && (c == '\n' || c == '\t')) {
+            out.extend(c.escape_default());
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn transfer_for_terminal_escapes_each_control_character() {
+        let text = "ok\x1b]0;title\x07\x1b[2Jline\r\nnext\tcol\u{9b}31m\x7f";
+        let shown = for_terminal(text, true);
+        assert_eq!(
+            shown,
+            "ok\\u{1b}]0;title\\u{7}\\u{1b}[2Jline\\r\nnext\tcol\\u{9b}31m\\u{7f}"
+        );
+        assert!(!shown
+            .chars()
+            .any(|c| c.is_control() && c != '\n' && c != '\t'));
+        let name = for_terminal("a\nb\tc", false);
+        assert_eq!(name, "a\\nb\\tc");
+        assert_eq!(
+            for_terminal("plain text, ünïcode", true),
+            "plain text, ünïcode"
+        );
+    }
 
     #[test]
     fn wormhole_rendezvous_the_mailboxes_come_from_the_flags_the_variable_or_pod_services() {
