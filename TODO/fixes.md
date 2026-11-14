@@ -6128,7 +6128,7 @@ check --workspace --target i686-unknown-linux-musl`: no error.
 **Milestone:** M8
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6162,12 +6162,33 @@ with no `--seal` is plain text at X; a sealed stream can still be dropped or del
 change), and an effort of some days. Until it is done, a mesh that carries plain streams trusts each neighbour with
 the routes; `docs/link.md` says to use `--seal` through hops.
 
+2026-11-14, the fix: the hop of the origin is one more hop of the path (key, cost 0, next key, signature over the
+signature of the body), so each hop has one form. A node refuses version 1 with no fallback (a fallback keeps the attack
+open); the log gets one line for each stream. The breaking change is in `docs/link.md` (Breaking) and in
+`docs/decisions.md` (2026-11-14). The cost: one signature for each neighbour that a node sends or forwards to.
+
 ## Prove
 
 ```sh
 cargo test -p podnet --test mesh_announce --test mesh_table --test mesh_three_hops
+cargo test -p podnet --test link_announce --test mesh_processes --test mesh_acl --test mesh_status --test link_dump
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-14, commit 637921e. `src/mesh_announce.rs` is version 2: each hop names its next node, and `verify` refuses a
+hop that names another node (`BadNextHop`) and a last hop that does not name this node (`NotForMe`). `Mesh::make` and the
+forward of `src/link_announce.rs` sign one hop for each neighbour; `receive_stream` logs a version once for each stream.
+`cargo test -p podnet --test mesh_announce`: 33 passed, with `a_neighbour_cannot_strip_hops_and_claim_the_origin` (the
+stripped path `[O, X]` is `BadNextHop`; with the next key of O changed to X it is `BadHopSignature`),
+`dropped_hop_is_refused`, `a_valid_path_of_3_hops_is_taken`, `version_1_is_refused_and_named` and
+`an_announcement_for_another_node_is_refused`. `cargo test -p podnet --test link_announce`: 8 passed, with
+`a_peer_of_version_1_is_refused_with_one_line` (3 frames of version 1, one log line). `mesh_table` 22, `mesh_three_hops`
+11, `mesh_processes` 4, `mesh_acl` 3, `mesh_status` 4, `link_dump` 11 passed. The plants: with the next-key check of
+`verify` off, 5 tests of `mesh_announce` failed (the stripped path was taken); with one line for each frame, the log test
+failed (3 lines). `cargo test --workspace --no-fail-fast`: each target passed. `CC_i686_unknown_linux_musl=clang cargo
+check --workspace --target i686-unknown-linux-musl`: no error.
 
 
 # T-347: Hardening: the low findings of the security review of 2026-11-14
