@@ -224,7 +224,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #530 | [gh action] requested: ci, deny, secrets and live on bf01ac6 | closed: each run passed (ci 43459872995, deny 43459879363, secrets 43459886257, live 43459893595) | none |
 | #531 | [gh action] requested: ci, deny, secrets and live on 6f8e69e (T-012, T-095, T-087) | closed: each run passed (ci 43471936738, deny 43471944208, secrets 43471952954, live 43471960138) | none |
 | #532 | COORD-070: podnet took v0.40.0 at 1c88531 (to podcrates) | open (a COORD issue between sessions) | none |
-| #533 | COORD-071: two asks of the carriers of pod-link: a typed refusal of the key, and the TC rule of the dns carrier (to podcrates) | open (a COORD issue between sessions) | none |
+| #533 | COORD-071: two asks of the carriers of pod-link: a typed refusal of the key, and the TC rule of the dns carrier (to podcrates) | closed: v0.45.0 carries both asks; the exit 77 at each listener is tested in bfdc2ff (T-273, T-278) | none |
 | #534 | [gh action] requested: ci, deny, secrets and live on d53df25 | closed: ci 43491819082, deny 43491826156 and secrets 43491833085 passed; live 43491840609 failed at the new router step (fixed in c02da54) | none |
 | #535 | COORD-072: the asks of the transfer of podnet over pod-wormhole: the derivation of a key, a stand-in mailbox, the count of words, the TCP transit relay (to podcrates) | closed: v0.42.0 carries asks 1 to 4; ask 5 rides on their entry 214 | none |
 | #536 | [gh action] requested: ci, deny, secrets and live on 0dd7663 | closed: deny 43499858663 and secrets 43499865056 passed; ci 43499850487 failed (the transfer tests have no loopback guard) and live 43499872018 failed at the router step (w stayed up) | none |
@@ -243,11 +243,13 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #549 | [gh action] requested: ci, deny, secrets and live on 64b0c8b (T-120, T-248) | closed: each run passed on a93a37a (ci 43553742871, deny 43553746054, secrets 43553749542, live 43553752592) | none |
 | #550 | COORD-077: podnet took v0.42.0 at 654c0f1; two notes on pod-hold and pod-services (to podcrates) | closed: v0.44.0 carries note 1 and note 2; podnet takes it at 6e9e9ee (T-350) | none |
 | #551 | [gh action] requested: ci, deny, secrets and live on eddaa22 | closed: each run passed on c72c604 (ci 43560703081, deny 43560707016, secrets 43560710399, live 43560713372) | none |
-| #552 | COORD-078: podnet took v0.43.0 at c8ccc40; pod-netstack: bind_udp with port 0 (to podcrates) | open (a COORD issue between sessions) | none |
+| #552 | COORD-078: podnet took v0.43.0 at c8ccc40; pod-netstack: bind_udp with port 0 (to podcrates) | closed: v0.45.0 carries the ask; podnet binds port 0 in 2f8180c (T-117) | none |
 | #553 | [gh action] requested: ci, deny, secrets and live on b3eaba6 (v0.43.0, T-337, T-125) | closed: each run passed on b92c100 (ci 43567820518, deny 43567823619, secrets 43567826340, live 43567829232) | none |
 | #554 | [gh action] requested: ci, deny, secrets, live and fuzz on fbe4235 (T-339, T-340, T-316, T-106) | closed: the runs are on 9610316 (`main` moved before the block ran): ci 43590942248, deny 43590945244, secrets 43590947996 and live 43590951009 passed; fuzz 43590953876 failed with two crashes, fixed in 54637d9 (T-348) and 243eb48 (T-349) | T-348, T-349 |
-| #555 | COORD-079: two crashes of podnet's fuzz run: a credential in the label of a unix proxy (pod-proxy), and a list past its segment (capnp of pod-cloudflare) (to podcrates) | open (a COORD issue between sessions; PodUtils/podcrates#156 answers) | none |
+| #555 | COORD-079: two crashes of podnet's fuzz run: a credential in the label of a unix proxy (pod-proxy), and a list past its segment (capnp of pod-cloudflare) (to podcrates) | open (a COORD issue between sessions): part 1 is done (v0.45.0, aded9d1, T-349); part 2 waits for `pod-cloudflare` (their entry 029) | none |
 | #558 | COORD-080: podnet took v0.44.0 at 6e9e9ee (to podcrates) | closed (podcrates closed PodUtils/podcrates#154) | none |
-| #559 | [gh action] requested: ci, deny, secrets, live and fuzz on 79dfa13 (T-341 to T-350, v0.44.0) | open (a request of runs to the owner) | none |
+| #559 | [gh action] requested: ci, deny, secrets, live and fuzz on 79dfa13 (T-341 to T-350, v0.44.0) | closed: the runs are on 3ad5315 (`main` moved before the block ran): ci 43603454896, deny 43603458277 and fuzz 43603470175 passed; secrets 43603461673 and live 43603465996 failed, fixed in ce14ac4 | T-349 |
+| #560 | COORD-081: podnet took v0.45.0 at e84ebdf (to podcrates) | open (a COORD issue between sessions) | none |
+| #561 | [gh action] requested: ci, deny, secrets, live and fuzz on 7860081 (ce14ac4, v0.45.0) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

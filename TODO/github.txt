@@ -231,7 +231,7 @@
 530 issue closed
 531 issue closed
 532 issue open
-533 issue open
+533 issue closed
 534 issue closed
 535 issue closed
 536 issue closed
@@ -250,11 +250,13 @@
 549 issue closed
 550 issue closed
 551 issue closed
-552 issue open
+552 issue closed
 553 issue closed
 554 issue closed
 555 issue open
 556 pull closed
 557 pull closed
 558 issue closed
-559 issue open
+559 issue closed
+560 issue open
+561 issue open
