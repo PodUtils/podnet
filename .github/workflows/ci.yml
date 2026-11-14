@@ -50,11 +50,11 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --locked --workspace
-      # T-106: the text of podnet send and podnet receive with the Python
-      # magic-wormhole (pinned versions), at the mailbox server of
-      # magic-wormhole on the loopback, both ways. A skip line fails the
-      # step.
-      - name: Interop with the Python magic-wormhole (text)
+      # T-106, T-103: a text, a file and a directory of podnet send and
+      # podnet receive with the Python magic-wormhole (pinned versions), at
+      # the mailbox server of magic-wormhole on the loopback, both ways. A
+      # skip line fails the step.
+      - name: Interop with the Python magic-wormhole (text, file, directory)
         shell: bash
         run: |
           python3 -m venv "$RUNNER_TEMP/wormhole"

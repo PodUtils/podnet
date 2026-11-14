@@ -1584,7 +1584,7 @@ ruling of 2026-11-05 (`docs/decisions.md`, File transfer).
 **Milestone:** M6
 **Priority:** P2
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -1618,14 +1618,6 @@ cargo test --workspace -- wormhole_transfer_
 
 Each phase is checked against messages captured from the Python magic-wormhole. A changed record
 fails.
-
-## Blocker
-
-PodUtils/podcrates must act: `pod_wormhole::Wormhole` gives no derivation of its key (magic-wormhole's
-`derive_key(purpose, length)`, HKDF-SHA256 of the key of the wormhole). magic-wormhole's transit key is
-`derive_key("lothar.com/wormhole/text-or-file-xfer/transit-key", 32)`. Without it, a file or a directory goes
-from podnet to podnet only. The lead opens the COORD issue (to podcrates). PodUtils/podcrates T-214 (the
-file transfer in `pod-wormhole` and `pod-transit`) is open too.
 
 ## Start condition
 
@@ -1667,6 +1659,30 @@ them `wormhole_transfer_the_keys_are_hkdf_of_the_transit_key`,
 `wormhole_transfer_with_no_way_fails_with_69`, `wormhole_transfer_a_refused_offer_writes_nothing`. Plant: with the
 check of the nonce of a record removed (`src/transfer/transit.rs`), `wormhole_transfer_a_record_out_of_order_fails`
 failed.
+
+2026-11-14, the transit key (calls of the session, the owner is away). podcrates v0.42.0 (T-137, 654c0f1) gives
+`Wormhole::derive_key(purpose, len)`. The transit key is `derive_key("lothar.com/wormhole/text-or-file-xfer/transit-key",
+32)` (`src/transfer/mod.rs`, `transit_key`, `TRANSIT_PURPOSE`) at both ends, after `confirm`. The random key of the
+sender and its key `podnet-transit-key-v1` of the `transit` message are gone. The `version` of podnet says
+`"transit-key": 2`. A podnet of the form 1 (0.4.0-beta.10 and older) and this podnet cannot move a file: the new end
+stops with "update podnet at both ends" (breaking, beta; `docs/decisions.md`, 2026-11-14). The Blocker is gone. The Prove
+"each phase is checked against messages captured from the Python magic-wormhole" is met with live Python peers in place
+of captured messages: `tests/wormhole_interop.rs` runs the Python client 0.24.0 at its mailbox server 0.8.0.
+
+## Done
+
+2026-11-14, commit f23031f. `src/transfer/` (`transit_key`, `old_podnet`; no key in `Transit`), `docs/transfer.md`
+(With magic-wormhole), `docs/decisions.md`, the llms files, the step of `.github/workflows/ci.yml` (renamed: text, file,
+directory). With magic-wormhole 0.24.0 and magic-wormhole-mailbox-server 0.8.0 in a venv of the scratchpad:
+`PATH=VENV/bin:$PATH cargo test --test wormhole_interop`: 7 passed at the mailbox server of magic-wormhole, among them the
+four new tests `wormhole_interop_podnet_sends_a_file_to_python` (300,000 bytes), `wormhole_interop_python_sends_a_file_to_podnet`,
+`wormhole_interop_podnet_sends_a_directory_to_python` (4 files at three levels, an empty file among them) and
+`wormhole_interop_python_sends_a_directory_to_podnet` (a deflated zip of Python), each with the bytes of the sender.
+Plant: with the purpose `.../transit-kex`, the four tests failed (no handshake of the transit; no end in 60 s) and the
+three text tests passed. podnet to podnet: `cargo test --test transfer --test transfer_relay --test transfer_piping
+--test transfer_land`: 9, 7, 3 and 4 passed; `cargo test --test cli -- transfer::`: 5 passed; `cargo test -p podnet
+--lib -- transfer`: 16 passed (`wormhole_rendezvous_a_failure_has_the_exit_code_of_podnet` checks `old_podnet` and the
+purpose). `sh scripts/agent/check.sh notest`: each step 0.
 
 # T-104: The podnet relay as a carrier of a transfer
 
@@ -1932,6 +1948,10 @@ given with `cargo test --config "patch.'https://github.com/PodUtils/podcrates'.p
 Left: a file and a directory between podnet and Python (T-103, Blocker: the transit key waits for `derive_key` of
 `pod-wormhole`, PodUtils/podnet#535); the live step of 100 MiB through the public mailbox, transit and relay
 (Approach 2).
+
+2026-11-14, the file half (T-103, f23031f): a file and a directory go both ways between podnet and the Python
+magic-wormhole: four new tests of `tests/wormhole_interop.rs` (see T-103, Done). The CI step runs them. Left: the live
+step of 100 MiB through the public mailbox, transit and relay (Approach 2): the entry stays partial for it only.
 
 ## Done
 

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 337 entries: 12 open, 9 partial, 28 blocked, 288 done.
+`TODO/INDEX.md` holds 337 entries: 12 open, 9 partial, 27 blocked, 289 done.
 
 ## State
 
@@ -54,10 +54,10 @@ not wait for a larger one.
 7. **M6, the services:** the shared part (the resumable layer and `--seal` of the reverse road) is done; the file
    server and git: done; the router: done; the transfer by code: `podnet send` and `podnet receive` are done
    over `pod-wormhole` v0.40.0 (`docs/transfer.md`; `docs/decisions.md`, 2026-11-13, The transfer layer).
-   T-103 is blocked: `pod-wormhole` derives no key of a wormhole, so a file goes from podnet to podnet only
-   (an ask for podcrates). The podnet relay is the last way of the transit from podnet to podnet (done:
+   The transit key is magic-wormhole's (`Wormhole::derive_key` of `pod-wormhole` v0.42.0): a file and a
+   directory go to and from each client of magic-wormhole. The podnet relay is the last way of the transit from podnet to podnet (done:
    `podnet send --relay-pair NAME`); a piping server is the last way of all (`--piping`). Open:
-   T-106 (partial: the text both ways with the Python magic-wormhole is done; a file waits for T-103; the live
+   T-106 (partial: a text, a file and a directory both ways with the Python magic-wormhole are done; the live
    step of 100 MiB is open).
     The donor review adds T-242 (the lint of shadowed rules).
     The owner's rulings of 2026-11-11 add: T-179 (the
