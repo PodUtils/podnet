@@ -14,8 +14,8 @@ issue except the deferred ones, then cut a final complete beta. The takes of Pod
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.46.0` (T-137, 27cdf19), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
-* The newest release is `v0.4.0-beta.11` (T-351, 6491f9d).
-* The record is `TODO/`. `cargo todo check` agrees: 351 entries, 11 open, 9 partial, 23 blocked, 308 done.
+* The newest release is `v0.4.0-beta.12` (T-352, b6e7959).
+* The record is `TODO/`. `cargo todo check` agrees: 352 entries, 11 open, 9 partial, 23 blocked, 309 done.
 
 ## Unfinished work (not on `main`)
 
@@ -36,12 +36,8 @@ A release request (`docs/maintenance.md`, "Release") chains: the checks, the dry
 For `v0.4.0-beta.11` (GitHub #563) that lookup gave the run of the publish itself (43621310830): one run tags and publishes.
 `release.yml` tags the head of `main` at the publish: push nothing to `main` from the request to the tag.
 
-Each workflow passes on 6491f9d, the tag `v0.4.0-beta.11` (GitHub #563): ci 43619108933, deny 43619113053, secrets
-43619116496, live 43619120794; fuzz 43610680236 passed on 7860081 (GitHub #561).
-
-No CI run covers the commits after 6491f9d: the take of `v0.46.0` (27cdf19), the S3 carrier (bcfae9e, 57683dc), the split session
-(3623ec5, d7daf5c) and this update. Put them into the next `[gh action] requested` issue (ci with `--features full`
-runs `tests/link_s3.rs` and `tests/link_split.rs`; secrets checks the made-up key of `tests/link_s3_standin/mod.rs`).
+Each workflow passes on b6e7959, the tag `v0.4.0-beta.12` (GitHub #567): ci 43641661040, deny 43641664659, secrets
+43641667797, live 43641671768; fuzz 43632083716 passed on b7c3e90 (GitHub #565).
 
 ## Next steps
 
@@ -64,6 +60,7 @@ runs `tests/link_s3.rs` and `tests/link_split.rs`; secrets checks the made-up ke
 | Issue | Waits for |
 | --- | --- |
 | #522, #526, #532 (takes of v0.37.0, v0.39.0 and v0.40.0) | podcrates records the take. |
+| #564 (COORD-082, the take of v0.46.0) | podcrates records the take; the ask of a public stand-in of the S3 API. |
 | #560 (COORD-081, the take of v0.45.0) | The answer of podcrates on the ws listener (a refused pin: `Refused` or no peer). |
 | #555 (COORD-079) | The fuzz crash of `pod-proxy` is fixed in v0.45.0 (T-349); the crash of `pod-cloudflare` waits for its take (their entry 029). |
 | #413, #425, #437, #439, #440, #448, #460 | Older proposals and asks; see `TODO/issues.md`. |

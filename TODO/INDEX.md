@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**352 entries: 12 open, 9 partial, 23 blocked, 308 done.**
+**352 entries: 11 open, 9 partial, 23 blocked, 309 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 33 | 36 |
-| P2 | 6 | 4 | 10 | 158 | 178 |
+| P2 | 5 | 4 | 10 | 159 | 178 |
 | P3 | 6 | 4 | 11 | 116 | 137 |
-| **All** | 12 | 9 | 23 | 308 | 352 |
+| **All** | 11 | 9 | 23 | 309 | 352 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -397,4 +397,4 @@ M8 Overlays, M9 Later.
 | [T-349](fixes.md) | P1 | S | M5 | defect | done | proxy: a password in the URL form of a Unix proxy shows in each line that names the proxy |
 | [T-350](fixes.md) | P2 | S | M5 | defect | done | pod: a packet socket opens in a seccomp pod, and the raw rule of T-334 is in the supervisor |
 | [T-351](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.11`: the dry run, the publish and the release proofs |
-| [T-352](fixes.md) | P2 | S | M5 | release | open | Publish `v0.4.0-beta.12`: the dry run, the publish and the release proofs |
+| [T-352](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.12`: the dry run, the publish and the release proofs |

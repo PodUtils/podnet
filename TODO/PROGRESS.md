@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 352 entries: 12 open, 9 partial, 23 blocked, 308 done.
+`TODO/INDEX.md` holds 352 entries: 11 open, 9 partial, 23 blocked, 309 done.
 
 ## State
 
@@ -15,9 +15,8 @@
   reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `src/warp/` (glue over `pod-warp`), `src/cloudflare/`, `src/proxy.rs`,
   `src/tunnel.rs`, `crates/podnet-netns/src/rules.rs` and `tests/test_host/mod.rs` (in `pod-testkit`).
-- The newest release is `v0.4.0-beta.11` (T-351).
-- The tag `v0.46.0` brings the S3 carrier (bcfae9e) and the split session (3623ec5). No CI run covers the commits from
-  27cdf19 on: they go into the next run request.
+- The newest release is `v0.4.0-beta.12` (T-352).
+- The tag `v0.46.0` brings the S3 carrier (bcfae9e) and the split session (3623ec5); both are in `v0.4.0-beta.12`.
 - The goal (the owner, 2026-11-13): close each issue except the deferred ones, then a final complete beta. The takes
   follow the plan of podcrates (PodUtils/podcrates#133; `docs/decisions.md`, 2026-11-13).
 - Keep this section short. Write the current state only; git keeps the history.
@@ -31,7 +30,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). The newest is `v0.4.0-beta.11`.
+3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09). The newest is `v0.4.0-beta.12`.
 
 ### The order of podnet's own work
 

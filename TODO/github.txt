@@ -265,4 +265,4 @@
 564 issue open
 565 issue closed
 566 issue closed
-567 issue open
+567 issue closed
