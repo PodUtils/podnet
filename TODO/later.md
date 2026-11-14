@@ -447,7 +447,7 @@ the toolchain is Rust 1.99 and `rust-version` is 1.99. A dependency by a git tag
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -534,6 +534,36 @@ away):
   it (`unaddressable`). `src/networks/wg.rs` now takes the next free port from 49152, as the dialer of
   `crates/podnet-vnet/src/dialer.rs`. The ask for podcrates (the lead): `NetStack::bind_udp` with the port 0 takes
   an ephemeral port, as `connect` does.
+
+## Done
+
+2026-11-14, commit d7c0938 (the take of v0.43.0: c8ccc40, T-137). `podnet wg serve --config FILE [--egress SPEC]
+[--run-for N]` (`src/cli/cmd/wg.rs`, `src/networks/wg_serve.rs`): `pod_wg::Responder` for the peers of a wg-quick
+file, a guest of the router as the stack, and each TCP and UDP flow of a peer through the way of `--egress`. Each
+call is in the Correction of 2026-11-14.
+
+- The Prove (`cargo test --workspace -- wg_serve_`): 6 passed, and 6 passed in each of three more runs.
+- New tests (6, `src/networks/wg_serve_tests.rs`; the client of each peer is podnet's own `wg:FILE`):
+  `wg_serve_accepts_a_peer_and_dials_its_flows` (an echo through the server; the way of the server, a dialer of
+  the test, saw the target `192.0.2.7:7`), `wg_serve_gives_no_answer_to_an_unknown_key` (a listed key gets a
+  response; an initiation of another key gets nothing in 2 s), `wg_serve_serves_two_peers_at_once` (two peers at
+  one time, the second with a `PresharedKey` and a `/29`; each gets its own echo of 6 KB),
+  `wg_serve_drops_a_source_outside_the_allowed_ips_of_its_peer`, `wg_serve_file_faults_are_one_usage_line`,
+  `wg_serve_carries_the_udp_of_a_peer` (UDP to an echo on the address of this host, way `direct`; it skips on a
+  host with no default route). The reader test `wg_quick_file_parses` reads `ListenPort`.
+- Plants: the route of each packet out to the first peer: `wg_serve_serves_two_peers_at_once` failed. No check
+  of the source of a packet: `wg_serve_drops_a_source_outside_the_allowed_ips_of_its_peer` failed. Both plants
+  are gone.
+- The command by hand: `podnet wg serve --config FILE --run-for 1` prints `udp:0.0.0.0:PORT  1 peers  net
+  10.9.0.0/24  via ...` and exits 0; two `--egress`, a bad spec, a missing file, a TURN spec with no user, and
+  `--egress` with `--proxy` exit 64.
+- `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc and layers 0; `cargo test --workspace
+  --no-fail-fast`: 1962 passed, 0 failed (with the help group of `wg`). `cargo check --workspace --target
+  i686-unknown-linux-musl`: exit 0.
+- Not proven: a WireGuard peer of another code base (the client is podnet's `wg:FILE` on the crypto of
+  `pod-wg`), the cookie reply under load and the keepalive over the network (the unit tests of `pod-wg` have them),
+  a rekey of a long session, a real UDP-blocked host.
+
 
 # T-126: Egress through an `https://` proxy and through wstunnel
 
