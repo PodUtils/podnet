@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**338 entries: 12 open, 9 partial, 27 blocked, 290 done.**
+**338 entries: 11 open, 9 partial, 27 blocked, 291 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 5 | 4 | 10 | 150 | 169 |
-| P3 | 7 | 4 | 15 | 110 | 136 |
-| **All** | 12 | 9 | 27 | 290 | 338 |
+| P3 | 6 | 4 | 15 | 111 | 136 |
+| **All** | 11 | 9 | 27 | 291 | 338 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -379,7 +379,7 @@ M8 Overlays, M9 Later.
 | [T-331](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.9`: the dry run, the publish and the release proofs |
 | [T-332](fixes.md) | P1 | S | M5 | defect | done | QUIC over WARP after the take of pod-warp: the socket binds one address family (GitHub #523) |
 | [T-333](fixes.md) | P1 | S | M5 | defect | done | link door: --resolve-at local tries only the first address of a name |
-| [T-334](link.md) | P3 | S | M9 | feature | open | pod: the seccomp rule of a raw ICMP socket (GitHub #469) |
+| [T-334](link.md) | P3 | S | M9 | feature | done | pod: the seccomp rule of a raw ICMP socket (GitHub #469) |
 | [T-335](link.md) | P3 | S | M9 | feature | done | link: keep the routes of two next hops for one announcement (GitHub #470) |
 | [T-336](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.10`: the dry run, the publish and the release proofs |
 | [T-337](overlays.md) | P3 | S | M8 | feature | blocked | WireGuard: take the preshared key of `pod-wg` |

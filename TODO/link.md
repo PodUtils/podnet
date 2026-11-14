@@ -1276,7 +1276,7 @@ Not proven here: a link across hosts or through a firewall that limits ICMP; the
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1303,6 +1303,34 @@ cargo test --test pod_seccomp_rules
 ## Start condition
 
 T-282 is done.
+
+## Correction
+
+2026-11-14, calls of the session (the owner is away; `docs/decisions.md`, 2026-11-14, A raw socket in a seccomp pod).
+podcrates v0.42.0 (T-137, 654c0f1) gives `Calls::sockets()` of `pod-hold`, which refuses a raw socket and a ping
+socket of `AF_INET` and `AF_INET6` with `EPERM` in the filter, and `Calls::allow_raw()`, the opt-in (the answer to
+GitHub #538). The take broke the ping socket of T-066 (`seccomp_icmp_echo_to_the_gateway`): the pod emulates a ping
+socket in the supervisor, and its echo never leaves the host. The parity rule keeps T-066 by default, so: (1) the
+filter of the pod is `Calls::sockets().allow_raw()` (`crates/podnet-netns/src/seccomp/filter.rs`, `calls`); (2) the
+supervisor refuses `socket(AF_INET or AF_INET6, SOCK_RAW, any)` with `EPERM` (`crates/podnet-netns/src/socket.rs`,
+`raw_refused`); (3) `pod --allow-raw icmp` lets the raw socket go to the kernel (`notif_continue`), as before; another
+value of `--allow-raw` exits 64. The lead asked for `EPERM` on a ping socket too: not done, as it would end the echo
+to the gateway by default. An ask for podcrates: a form of `Calls` that refuses `SOCK_RAW` only, so that the rule moves
+into the filter of the kernel. No row of `pod doctor`: the rule is the same on each host, and `pod --help`,
+`docs/pods.md` and `crates/podnet-netns/README.md` state it. The Prove's `cargo test --test pod_seccomp_rules` holds
+no test of this rule; the tests are in `tests/pod_seccomp_dgram.rs`, beside the ping socket of T-066.
+
+## Done
+
+2026-11-14, commit 780a005 (and 654c0f1 for the filter). `cargo test --test pod_seccomp_dgram`: 20 passed, among them
+`seccomp_raw_socket_gets_eperm_by_default` (a raw ICMP socket of `AF_INET` and one of `AF_INET6` get `EPERM`, the ping
+socket opens), `seccomp_raw_socket_opens_with_allow_raw_icmp` (as root here: the raw socket opens; it skips with a
+named line for a user that is not root, or where the kernel refuses root), `seccomp_allow_raw_takes_icmp_only` (64) and
+`seccomp_icmp_echo_to_the_gateway`. Plant: with `raw_refused` always false, `seccomp_raw_socket_gets_eperm_by_default`
+failed. `cargo test -p podnet-netns`: 145 passed; `cargo test --test pod_seccomp_rules`: 10 passed;
+`CC_i686_unknown_linux_musl=clang cargo check --workspace --target i686-unknown-linux-musl`: ok.
+`sh scripts/agent/check.sh notest`: each step 0.
+
 
 # T-283: link: a WireGuard peer as a carrier (GitHub #469)
 
