@@ -7,10 +7,10 @@
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.41.0`: `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.44.0`: `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
-  `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp` and `pod-testkit`.
-  The tag also holds `pod-wormhole` (the transfer, T-102 to T-106; podnet does not use it yet). Next
+  `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
+  (the transfer), `pod-extract` and `pod-testkit`. Next
   (PodUtils/podcrates#133): `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session
   reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `src/warp/` (glue over `pod-warp`), `src/cloudflare/`, `src/proxy.rs`,
@@ -53,7 +53,7 @@ not wait for a larger one.
 6. **M4, the adapters:** done.
 7. **M6, the services:** the shared part (the resumable layer and `--seal` of the reverse road) is done; the file
    server and git: done; the router: done; the transfer by code: `podnet send` and `podnet receive` are done
-   over `pod-wormhole` v0.40.0 (`docs/transfer.md`; `docs/decisions.md`, 2026-11-13, The transfer layer).
+   over `pod-wormhole` (`docs/transfer.md`; `docs/decisions.md`, 2026-11-13, The transfer layer).
    The transit key is magic-wormhole's (`Wormhole::derive_key` of `pod-wormhole` v0.42.0): a file and a
    directory go to and from each client of magic-wormhole. The podnet relay is the last way of the transit from podnet to podnet (done:
    `podnet send --relay-pair NAME`); a piping server is the last way of all (`--piping`). Open:
