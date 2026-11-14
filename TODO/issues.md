@@ -249,7 +249,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #555 | COORD-079: two crashes of podnet's fuzz run: a credential in the label of a unix proxy (pod-proxy), and a list past its segment (capnp of pod-cloudflare) (to podcrates) | open (a COORD issue between sessions): part 1 is done (v0.45.0, aded9d1, T-349); part 2 waits for `pod-cloudflare` (their entry 029) | none |
 | #558 | COORD-080: podnet took v0.44.0 at 6e9e9ee (to podcrates) | closed (podcrates closed PodUtils/podcrates#154) | none |
 | #559 | [gh action] requested: ci, deny, secrets, live and fuzz on 79dfa13 (T-341 to T-350, v0.44.0) | closed: the runs are on 3ad5315 (`main` moved before the block ran): ci 43603454896, deny 43603458277 and fuzz 43603470175 passed; secrets 43603461673 and live 43603465996 failed, fixed in ce14ac4 | T-349 |
-| #560 | COORD-081: podnet took v0.45.0 at e84ebdf (to podcrates) | open (a COORD issue between sessions) | none |
+| #560 | COORD-081: podnet took v0.45.0 at e84ebdf (to podcrates) | open (a COORD issue between sessions): the take is recorded (podcrates closed PodUtils/podcrates#157); the question on the ws listener is open | none |
 | #561 | [gh action] requested: ci, deny, secrets, live and fuzz on 7860081 (ce14ac4, v0.45.0) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
