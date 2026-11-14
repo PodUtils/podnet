@@ -1071,15 +1071,21 @@ jobs:
               i=$((i + 1)); [ "$i" -lt 60 ] || break
               sleep 1
             done
-            rate=$(curl -sS --max-time 45 -o /dev/null -w '%{speed_download} %{size_download}' -x "socks5h://127.0.0.1:$port" \
+            rate=$(curl -sS --max-time 45 -o "body-$port.bin" -w '%{speed_download} %{size_download} %{http_code}' -x "socks5h://127.0.0.1:$port" \
               'https://speed.cloudflare.com/__down?bytes=20000000' || true)
             leg=direct
             if grep -q 'MASQUE goes through the relay' "burst-$port.log"; then leg=relay; fi
-            echo "warp proxy download, TCP window ${burst}, leg ${leg}: ${rate:-none} (bytes/s, bytes)"
+            echo "warp proxy download, TCP window ${burst}, leg ${leg}: ${rate:-none} (bytes/s, bytes, HTTP status)"
+            # Run 43632080404: each download gave 1 byte and no warning. The
+            # HTTP status and the start of a short body show what answered.
             case "$rate" in
-              *" 20000000") ;;
-              *) grep -E 'WARN|ERROR|closed|dead|stall|capacity' "burst-$port.log" | sed -E 's/[0-9a-f]{8}-[0-9a-f-]{27}/<id>/g' | tail -8 ;;
+              *" 20000000 200") ;;
+              *)
+                grep -E 'WARN|ERROR|closed|dead|stall|capacity' "burst-$port.log" | sed -E 's/[0-9a-f]{8}-[0-9a-f-]{27}/<id>/g' | tail -8
+                head -c 200 "body-$port.bin" | od -An -c | head -4
+                ;;
             esac
+            rm -f "body-$port.bin"
             kill "$bp" 2> /dev/null || true
             wait "$bp" 2> /dev/null || true
             if [ "$burst" = default ]; then

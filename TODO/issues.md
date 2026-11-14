@@ -254,6 +254,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #562 | [gh action] requested: ci and secrets on the fix of #561 | closed: ci 43617081662 and secrets 43617085112 passed on 3b3b9be | none |
 | #563 | [gh action] requested: the release of v0.4.0-beta.11 (checks, dry run, publish, release proofs) | closed: `v0.4.0-beta.11` is out on 6491f9d (release-proofs 43623174074) | T-351 |
 | #564 | COORD-082: podnet took v0.46.0 at 27cdf19; E7-1: podnet confirms the call C493 (to podcrates) | open (a COORD issue between sessions) | none |
-| #565 | [gh action] requested: ci, deny, secrets, live and fuzz on the take of v0.46.0 (T-137, T-279, T-302) | open (a request of runs to the owner) | none |
+| #565 | [gh action] requested: ci, deny, secrets, live and fuzz on the take of v0.46.0 (T-137, T-279, T-302) | closed: ci 43632069484, deny 43632072542, secrets 43632076272 and fuzz 43632083716 passed on b7c3e90; live 43632080404 failed: each WARP proxy download of speed.cloudflare.com gave 1 byte and no warning (no code of the WARP path changed since the pass of 43619120794); the step now prints the HTTP status and the start of a short body | none |
+| #566 | [gh action] requested: live again (the WARP proxy download of #565) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
