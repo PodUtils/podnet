@@ -4998,6 +4998,22 @@ cargo test --workspace -- quick_tunnel_standin
 podcrates is needed. The QUIC leg is not built (step 1, "QUIC after HTTP/2"). The move of the steps of
 `live.yml` (step 3) is not done in this pass.
 
+2026-11-14, step 3, the part that is open and not frozen (calls of a session, the owner is away). Read: `live.yml`
+has no step of the stand-in. The stand-in runs in ci on each push already: `tests/quick_tunnel_standin.rs` is a test
+target of `cargo test --locked --workspace` in the job `test` of `.github/workflows/ci.yml`; a6d4428 moved the steps of
+`--detach`, `ps`, `logs`, `stop` and `--auth-user` out of `live.yml`. Each stand-in test runs with no call to
+Cloudflare and no secret, and with `--no-verify`: the verify of the public URL is not in the stand-in. The calls:
+(1) The step "Quick tunnel with UDP 7844 dropped (HTTP/2 fallback)" and its cleanup leave `live.yml`. The new test
+`quick_tunnel_standin_falls_back_to_http2_when_udp_is_dropped` holds a UDP socket on the port of the edge that takes
+each QUIC packet and answers none, as the `DROP` rule of the step. (2) The part of issue 129 of the step "Quick tunnel
+through a local CONNECT proxy" (`--proxy 'http+exec:nc ...'`) leaves `live.yml`. The new test
+`quick_tunnel_standin_goes_through_an_exec_proxy` gives a pipe in Python as the command. The rest of the step stays: it
+checks the verify of the public URL through the proxy. (3) These steps stay in `live.yml`: they need the real edge,
+the real service or the verify of the public URL: the QUIC, HTTP/2, QUIC through WARP and relay legs (one real quick
+tunnel for each leg), `--json` (the event `verified` and its resolver), SIGTERM during the verify, the UDP probe, no
+system DNS, the wrong `--resolve` pin and the staggered legs with WARP. (4) The QUIC leg of the stand-in stays out:
+it needs `src/cloudflare/` (frozen). No frozen file changed.
+
 ## Done
 
 2026-11-12, commit 8f7b1d4 (`T-316: a stand-in of the quick-tunnel service and of the HTTP/2 edge for
@@ -5726,7 +5742,7 @@ eight binaries, `podnet.1`, `llms.txt`, `llms-full.txt`, `pod-report.schema.json
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -5776,3 +5792,18 @@ cargo test -p podnet --lib -- kernel_config_errors_name_the_key
 
 Then, in `fuzz/` with a nightly toolchain, `cargo +nightly-2026-10-15 fuzz run TARGET corpus/TARGET --
 -max_total_time=60 -malloc_limit_mb=64 -rss_limit_mb=2048 -timeout=10` for each new target.
+
+## Done
+
+2026-11-14, commit ce6352c. `src/fuzzing/peers.rs`, eight files of `fuzz/fuzz_targets/`, `fuzz/Cargo.toml`, the hooks
+`wg_serve::check`, `wg_serve::fuzz_packet` and `mesh_announce::fuzz`, the guard of `wg:` in `proxy_url`, the bound of
+1 MiB of `wg_quick::read_file`, the buffer of `Records::receive`, the u64 sum of `Plan::new`, `fuzz.yml` (the step
+of the targets: 80 minutes; the job: 120), `docs/build.md`. `cargo test -p podnet --lib -- fuzzing`: 1 passed (each
+of the 26 targets on its seeds and on 2000 mutations, 100 for `mesh_announce`); `wg_quick_file_read_has_a_bound` and
+`kernel_config_errors_name_the_key` passed; `cargo test --workspace --no-fail-fast`: 0 failed; the 32-bit check
+(`i686-unknown-linux-musl`): 0. With nightly-2026-10-15 and cargo-fuzz 0.13.1, each new target for 60 s from its
+seeds (`-malloc_limit_mb=64 -rss_limit_mb=2048 -timeout=10`), no crash, no timeout, no large allocation:
+`wg_quick` 1855804 runs, `network_spec` 785725, `router_config` 367505, `transfer_message` 801393, `transfer_zip`
+1189058, `transit_record` 1130339, `mesh_announce` 88883, `mesh_table` 380834. The three defects of the Premise were
+found by reading, before the runs: the targets keep them fixed. CI: `fuzz.yml` runs the 26 targets each week; no run
+yet.

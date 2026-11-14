@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 339 entries: 11 open, 10 partial, 25 blocked, 293 done.
+`TODO/INDEX.md` holds 339 entries: 11 open, 9 partial, 25 blocked, 294 done.
 
 ## State
 
@@ -42,7 +42,7 @@ not wait for a larger one.
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
-   - CI: T-316 (partial: a local stand-in of the quick tunnel and the edge).
+   - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #433 and #435: T-242 is partial (its WARP half is an ask to
      podcrates: `pod-warp` is taken), and T-244 is blocked on `pod-cloudflare`.
@@ -58,7 +58,7 @@ not wait for a larger one.
    directory go to and from each client of magic-wormhole. The podnet relay is the last way of the transit from podnet to podnet (done:
    `podnet send --relay-pair NAME`); a piping server is the last way of all (`--piping`). Open:
    T-106 (partial: a text, a file and a directory both ways with the Python magic-wormhole are done; the live
-   step of 100 MiB is open).
+   step of 100 MiB is written and waits for a run of `live`).
     The donor review adds T-242 (the lint of shadowed rules).
     The owner's rulings of 2026-11-11 add: T-179 (the
     direction split, an option, off by default).
