@@ -596,7 +596,7 @@ T-246 is done, and a NetBird setup key is a secret of the live job.
 **Milestone:** M8
 **Priority:** P3
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -638,3 +638,22 @@ stand-in `standin::respond_preshared`. podnet takes it (T-137). The calls of the
   `podnet::networks::up_fault` maps the class of a failure of `Network::up` (64 for `Usage`, 77 for `Refused`).
 - A bad value (not 32 bytes in base64) is a usage line, exit 64, as each other key of the file (the reader
   `crates/podnet-vnet/src/wg_quick.rs` refuses it).
+
+## Done
+
+2026-11-14, commit 71b2e32 (the take of v0.43.0: c8ccc40, T-137). The `PresharedKey` of a `wg:FILE` goes to
+`Keys::preshared` (`src/networks/wg.rs`); the refusal of the file is gone. Each call is in the Correction of
+2026-11-14.
+
+- The Prove: 3 passed.
+- New tests (2): `wg_network_takes_a_preshared_key` (the same key at both ends: the service behind the peer
+  answers), `wg_network_refuses_a_preshared_key_that_differs` (another key, a key in the file only, a key at the
+  peer only: each fails in less than 5 s with the class `Refused`, the text of
+  `pod_wg::Error::ResponseNotAuthentic` and the word `PresharedKey`, and `exit::code_of` gives 77).
+  `wg_network_spec_a_bad_file_is_one_usage_line` now takes a good key and refuses a short one (exit 64). The
+  peer of the tests is `standin::respond_preshared` of `pod-wg`.
+- Plant: `Keys::preshared` set to `None` in `read`. Both new tests failed; the plant is gone.
+- `sh scripts/agent/check.sh`: fmt, clippy, size, doc, layers and the tests 0 (1956 passed, 0 failed); the record
+  0 after the status `partial`. `cargo check --workspace --target i686-unknown-linux-musl`: exit 0.
+- Not proven: a peer of another code base with a preshared key (the stand-in shares the crypto of `pod-wg`; the
+  vector of the crate is from an independent program).

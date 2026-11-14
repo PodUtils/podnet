@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**338 entries: 11 open, 10 partial, 26 blocked, 291 done.**
+**338 entries: 11 open, 9 partial, 26 blocked, 292 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
 | P2 | 5 | 4 | 10 | 150 | 169 |
-| P3 | 6 | 5 | 14 | 111 | 136 |
-| **All** | 11 | 10 | 26 | 291 | 338 |
+| P3 | 6 | 4 | 14 | 112 | 136 |
+| **All** | 11 | 9 | 26 | 292 | 338 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -382,5 +382,5 @@ M8 Overlays, M9 Later.
 | [T-334](link.md) | P3 | S | M9 | feature | done | pod: the seccomp rule of a raw ICMP socket (GitHub #469) |
 | [T-335](link.md) | P3 | S | M9 | feature | done | link: keep the routes of two next hops for one announcement (GitHub #470) |
 | [T-336](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.10`: the dry run, the publish and the release proofs |
-| [T-337](overlays.md) | P3 | S | M8 | feature | partial | WireGuard: take the preshared key of `pod-wg` |
+| [T-337](overlays.md) | P3 | S | M8 | feature | done | WireGuard: take the preshared key of `pod-wg` |
 | [T-338](services.md) | P3 | S | M6 | feature | done | `podnet send --words N`: the count of words of a code |
