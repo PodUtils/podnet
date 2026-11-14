@@ -38,6 +38,7 @@ mod turn;
 mod turn_socket;
 mod warp;
 mod wg;
+pub mod wg_serve;
 pub use tailscale::{rows as tailscale_rows, state as tailscale_state};
 
 /// One row of the registry: a scheme, its forms and what it gives.
@@ -588,6 +589,8 @@ mod turn_mock;
 mod turn_tests;
 #[cfg(test)]
 pub(crate) mod warp_tests;
+#[cfg(test)]
+mod wg_serve_tests;
 #[cfg(test)]
 mod wg_tests;
 

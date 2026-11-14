@@ -83,7 +83,10 @@ pub(crate) fn rewrite(words: &[String]) -> Result<Vec<String>, String> {
         .iter()
         .map(|s| networks::parse(s).map_err(|e| format!("--egress: {}", e.text())))
         .collect::<Result<Vec<_>, _>>()?;
-    if matches!(command.as_deref(), Some("link dial" | "link connect")) {
+    if matches!(
+        command.as_deref(),
+        Some("link dial" | "link connect" | "wg serve")
+    ) {
         return link_chain(kept, &specs);
     }
     match pod_at {
@@ -99,7 +102,8 @@ pub(crate) fn rewrite(words: &[String]) -> Result<Vec<String>, String> {
 }
 
 /// `link dial` and `link connect` (T-303): each `--egress` is one element of
-/// the chain before the carrier, in the order of the command line. The
+/// the chain before the carrier, in the order of the command line.
+/// `wg serve` (T-125) takes its one `--egress` the same way. The
 /// command reads them from its own options. They go together at the end of
 /// the arguments, because a global option that is given before and after the
 /// command keeps the values of the last place only. The old flags name

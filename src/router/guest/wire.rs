@@ -31,6 +31,9 @@ pub enum WireSpec {
     /// `veth:NAME`: the router reads the frames of the interface `NAME` (one
     /// end of a veth pair, with no address) with a packet socket.
     Veth(String),
+    /// A socket pair that a command of podnet holds (`podnet wg serve`): the
+    /// command gives [`Opened::Packets`] itself. The text is its label.
+    Held(String),
 }
 
 impl FromStr for WireSpec {
@@ -65,6 +68,7 @@ impl fmt::Display for WireSpec {
             WireSpec::Unix(path) => write!(f, "unix:{}", path.display()),
             WireSpec::Tun(name) => write!(f, "tun:{name}"),
             WireSpec::Veth(name) => write!(f, "veth:{name}"),
+            WireSpec::Held(label) => f.write_str(label),
         }
     }
 }
@@ -96,6 +100,7 @@ impl WireSpec {
             WireSpec::Veth(name) => super::veth::open_veth(name)
                 .map(Opened::Frames)
                 .with_context(|| format!("veth:{name}")),
+            WireSpec::Held(label) => bail!("{label}: the wire is held by its command"),
         }
     }
 }

@@ -447,7 +447,7 @@ the toolchain is Rust 1.99 and `rust-version` is 1.99. A dependency by a git tag
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** partial
 
 ## Problem
 
@@ -468,14 +468,8 @@ podnet can dial a WireGuard peer, but cannot be one. A WireGuard endpoint with n
 ## Prove
 
 ```sh
-cargo test --workspace -- wg_serve_accepts_a_peer_and_dials_its_flows
+cargo test --workspace -- wg_serve_
 ```
-
-## Blocker
-
-The session of `PodUtils/podcrates` (the crate `pod-wg`): a responder sans I/O for production use (the ask of the
-Correction of 2026-11-14). The entry is unblocked when a tag of podcrates has it; then podnet takes the tag (T-137)
-and does steps 2 and 3.
 
 ## Start condition
 
@@ -519,6 +513,28 @@ podnet's part after the take: `podnet wg serve FILE` with a wg-quick file (`[Int
 userspace stack of `pod-netstack` for the inner packets, each inner TCP flow to a dialer of the registry
 (`--egress SPEC`, default the way out of the process). Tests on the loopback: a `pod-wg` initiator reaches a TCP
 echo through `podnet wg serve`; a peer with an unknown key gets no answer; a plant.
+
+2026-11-14, unblocked. podcrates v0.43.0 (PodUtils/podcrates#149) has `pod_wg::Responder`, `Peer` and
+`Incoming` (the entry 562 of podcrates); podnet takes it (T-137, c8ccc40). The calls of the session (the owner is
+away):
+
+- The inner stack is a guest of the router (`src/router/guest.rs`) over a socket pair (`seqpacket_pair`), not a new
+  pump: it has the hold of each SYN while the dial runs (a failed dial is a RST to the peer), the UDP flows, the
+  limit of flows and the counters. `WireSpec::Held` names a wire that its command holds. UDP inner flows are done
+  with it.
+- The default way is the way out of the process (as `podnet forward`, and as the ask above), not `direct`: with no
+  proxy it is direct.
+- `--egress` of `wg serve` is one spec of the registry (`src/cli/way.rs`, as `link dial`); a chain is one spec.
+- Under load: more than 64 initiations in one second; then each initiation needs the mac2 of a cookie.
+- The `Endpoint` of a peer is the source of its last authenticated message.
+- A fault of the file is a usage line (exit 64), as for `wg:FILE`.
+- Left: IPv6 inside the tunnel (an IPv6 `AllowedIPs` is skipped), the UDP socket on IPv6, a peer to a peer, and a
+  target on the loopback of the server (the screen of the guest drops them).
+- A defect of T-117 that the UDP test found: `WgDialer::datagrams` bound the UDP port 0, and `pod-netstack` refuses
+  it (`unaddressable`). `src/networks/wg.rs` now takes the next free port from 49152, as the dialer of
+  `crates/podnet-vnet/src/dialer.rs`. The ask for podcrates (the lead): `NetStack::bind_udp` with the port 0 takes
+  an ephemeral port, as `connect` does.
+
 # T-126: Egress through an `https://` proxy and through wstunnel
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.4 and 3 (C16).

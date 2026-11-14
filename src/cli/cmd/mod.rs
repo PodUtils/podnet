@@ -27,6 +27,7 @@ pub(crate) mod ssh_relay;
 pub(crate) mod transfer;
 pub(crate) mod tunnel;
 pub(crate) mod warp;
+pub(crate) mod wg;
 
 #[cfg(test)]
 mod agent_tests;

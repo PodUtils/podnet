@@ -146,6 +146,49 @@ UDP from the `Address` of the file.
 podnet forward --network 'wg:/etc/wireguard/wg0.conf over warp' -L 127.0.0.1:8080=10.9.0.1:80
 ```
 
+## WireGuard server: `podnet wg serve`
+
+```sh
+podnet wg serve --config /etc/podnet/wg-server.conf
+podnet wg serve --config wg-server.conf --egress socks5h://127.0.0.1:1080 --run-for 600
+```
+
+`podnet wg serve` is a WireGuard peer for a list of peers. It makes no TUN device and needs no capability.
+The file is a wg-quick file:
+
+```ini
+[Interface]
+PrivateKey = ...
+ListenPort = 51820
+Address = 10.9.0.1/24
+
+[Peer]
+PublicKey = ...
+AllowedIPs = 10.9.0.2/32
+
+[Peer]
+PublicKey = ...
+PresharedKey = ...
+AllowedIPs = 10.9.0.8/29
+```
+
+* `ListenPort` is the UDP port on each IPv4 address of the host (0: a port of the system; the first line on
+  stdout gives it). `Address` is the IPv4 net of the peers. The server has the first address of the net.
+  `MTU` is optional (default 1420).
+* Each `[Peer]` has `PublicKey` and `AllowedIPs` inside the net of `Address`, and an optional `PresharedKey`. Two
+  peers with one `PublicKey`, an `AllowedIPs` outside the net, or no `ListenPort` is a usage line (exit 64).
+  `Endpoint` is not necessary: the server answers the address of the last authenticated message of the peer.
+* The handshakes, the cookies under load and the sessions are `Responder` of `pod-wg`. A key that the file does
+  not list gets no answer. The server sends no initiation: each rekey comes from the peer.
+* A userspace stack ends each TCP and UDP flow of a peer. The server dials each target through the way of
+  `--egress SPEC` (each spec of `podnet forward --network`, also a chain; default: the way out of the process).
+  A TCP dial that fails answers the SYN of the peer with a RST.
+* A packet with a source outside the `AllowedIPs` of its peer is dropped. A packet to a peer goes to the peer
+  whose `AllowedIPs` has the longest prefix that holds its destination. The net of `Address`, the loopback and
+  the link-local addresses are not targets: a peer does not reach another peer or the loopback of the server.
+* IPv4 only inside the tunnel. A client of the server can be podnet itself: `wg:FILE` with the public key of the
+  server and its address as the `Endpoint`.
+
 ## A chain of networks: `TOP over BELOW`
 
 A spec with the word `over` between two specs is a chain. The first spec is the top layer. Each layer comes up

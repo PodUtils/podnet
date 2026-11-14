@@ -17,7 +17,7 @@
 
 use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime};
 
@@ -35,6 +35,10 @@ use crate::network::{
 const MTU: usize = 1420;
 /// The handshake tries, [`REKEY_TIMEOUT`] apart.
 const TRIES: u32 = 3;
+/// The first UDP port of a socket of the stack (the port after 65535 is 0:
+/// it starts here again), and the ports that one bind tries.
+const FIRST_UDP_PORT: u16 = 49152;
+const UDP_PORT_TRIES: usize = 64;
 
 fn fail(class: Class, text: String) -> Failure {
     Failure::new(Stage::Connect, class, text)
@@ -183,6 +187,8 @@ pub struct WgDialer {
     stack: NetStack,
     local: IpAddr,
     dead: Arc<AtomicBool>,
+    /// The next UDP port to try.
+    next_port: AtomicU16,
 }
 
 impl WgDialer {
@@ -244,16 +250,25 @@ impl Dial for WgDialer {
         })
     }
 
-    /// A UDP socket of the stack, on the address of the file.
+    /// A UDP socket of the stack, on the address of the file and the next
+    /// free port from 49152: the stack takes no port 0 for UDP (T-125).
     fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn Datagrams>, Failure>> {
         Box::pin(async move {
             self.alive()?;
-            let socket = self
-                .stack
-                .bind_udp(SocketAddr::new(self.local, 0))
-                .await
-                .map_err(|e| Failure::io(Stage::Connect, e))?;
-            Ok(Arc::new(socket.into_datagrams()) as Arc<dyn Datagrams>)
+            let mut last = None;
+            for _ in 0..UDP_PORT_TRIES {
+                let port = self.next_port.fetch_add(1, Ordering::Relaxed);
+                let port = port.max(FIRST_UDP_PORT);
+                match self.stack.bind_udp(SocketAddr::new(self.local, port)).await {
+                    Ok(socket) => {
+                        return Ok(Arc::new(socket.into_datagrams()) as Arc<dyn Datagrams>)
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => last = Some(e),
+                    Err(e) => return Err(Failure::io(Stage::Connect, e)),
+                }
+            }
+            let e = last.unwrap_or_else(|| std::io::ErrorKind::AddrInUse.into());
+            Err(Failure::io(Stage::Connect, e))
         })
     }
 }
@@ -342,6 +357,7 @@ pub(super) async fn up(
         stack,
         local,
         dead,
+        next_port: AtomicU16::new(FIRST_UDP_PORT),
     });
     let status = serde_json::json!({
         "scheme": "wg",

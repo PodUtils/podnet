@@ -73,7 +73,9 @@ pub(crate) struct Cli {
     /// podnet forward --network and podnet route. With podnet link dial and
     /// podnet link connect, each --egress is one element of the chain before
     /// the tcp carrier (direct, a proxy, peer:FINGERPRINT/SERVICE), in order:
-    /// the last element reaches the carrier address.
+    /// the last element reaches the carrier address. With podnet wg serve,
+    /// one --egress is the way of the flows of the peers (each spec of
+    /// podnet forward --network that carries TCP).
     #[arg(long, global = true, value_name = "SPEC")]
     pub(crate) egress: Vec<String>,
     /// Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
@@ -192,6 +194,9 @@ pub(crate) enum Command {
     Net(NetArgs),
     /// Cloudflare WARP client: registration, account, proxy, run.
     Warp(Box<WarpArgs>),
+    /// WireGuard: serve, a userspace WireGuard peer for a list of peers
+    /// (a wg-quick file), whose flows go out through --egress.
+    Wg(cmd::wg::WgArgs),
     /// Inbound access to this host through the WebSocket relay (--relay):
     /// pair, run a node for a local port, connect as the operator.
     Relay(RelayArgs),
@@ -307,6 +312,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Demo(args) => demo(args).await,
         Command::Net(args) => net(args).await,
         Command::Warp(args) => warp(*args).await,
+        Command::Wg(args) => cmd::wg::wg(args, egress).await,
         Command::Relay(args) => relay(args).await,
         Command::Link(args) => link(args, egress).await,
         Command::SshRelay(args) => ssh_relay(args).await,

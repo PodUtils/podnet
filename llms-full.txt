@@ -234,7 +234,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -518,7 +520,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -743,7 +747,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -805,7 +811,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1035,7 +1043,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1108,7 +1118,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1178,7 +1190,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1296,7 +1310,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1408,7 +1424,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1529,7 +1547,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1608,7 +1628,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1705,7 +1727,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -1884,7 +1908,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2022,7 +2048,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2110,7 +2138,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2181,7 +2211,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2243,7 +2275,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2306,7 +2340,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2372,7 +2408,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2440,7 +2478,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2507,7 +2547,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2571,7 +2613,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2750,7 +2794,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2809,7 +2855,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2867,7 +2915,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -2934,7 +2984,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3017,7 +3069,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3075,7 +3129,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3221,7 +3277,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3324,7 +3382,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3409,7 +3469,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3485,7 +3547,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3564,7 +3628,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3641,7 +3707,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3787,7 +3855,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -3937,7 +4007,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4086,7 +4158,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4240,7 +4314,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4386,7 +4462,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4532,7 +4610,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4682,7 +4762,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -4838,7 +4920,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5022,7 +5106,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5181,7 +5267,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5377,7 +5465,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5620,7 +5710,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5814,7 +5906,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -5961,7 +6055,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6109,7 +6205,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6314,7 +6412,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6475,7 +6575,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6654,7 +6756,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -6821,7 +6925,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7010,7 +7116,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7180,7 +7288,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7205,6 +7315,140 @@ COMMANDS
         Examples:
         Run a program with its traffic through WARP.
             $ podnet warp run -- curl https://www.cloudflare.com/cdn-cgi/trace
+
+    podnet wg [OPTIONS] <COMMAND>
+        WireGuard: serve, a userspace WireGuard peer for a list of peers (a
+        wg-quick file), whose flows go out through --egress
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route. With podnet link dial and podnet link connect, each
+            --egress is one element of the chain before the tcp carrier
+            (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
+
+        Commands of podnet wg: serve.
+
+    podnet wg serve [OPTIONS] --config <FILE>
+        Be a WireGuard peer for a list of peers, with no TUN device and no
+        capability. The UDP port is ListenPort of the file. A userspace stack
+        ends the TCP and UDP flows of each peer, and dials each target through
+        the way of --egress SPEC (a network spec: direct, a proxy URL,
+        wg:FILE, warp, a chain; default: the way out of the process). The file
+        is a wg-quick file: [Interface] with PrivateKey, ListenPort, Address
+        (A.B.C.D/N: the net of the peers; the server has its first address)
+        and MTU; one [Peer] for each peer with PublicKey, AllowedIPs (inside
+        the net) and PresharedKey. A key that the file does not list gets no
+        answer. A packet with a source outside the AllowedIPs of its peer is
+        dropped. IPv4 only inside the tunnel
+
+        --config <FILE>
+            The wg-quick file of the server. It holds the private key: keep it
+            at mode 0600. Required.
+
+        --run-for <SECONDS>
+            Stop after this many seconds
+
+        --ca-file <PATH>
+            A file of TLS roots (PEM). podnet uses only these roots for each
+            connection that it opens as a client. Without it, podnet reads
+            SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system
+            bundle and the compiled-in roots
+
+        --proxy <URL>
+            The proxy for each connection: http://, socks5:// or socks5h://
+            [user:password@]host[:port]. A proxy on a unix socket:
+            socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin
+            and stdout of a command, one for each connection (as ProxyCommand
+            of SSH): http+exec:COMMAND or socks5h+exec:COMMAND. Without it,
+            podnet reads HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY
+            names the targets that do not use a proxy. PODNET_PROXY gives the
+            same value, and keeps a password out of the command line.
+            Percent-encode / ? # @ : in the user and the password. Variable:
+            PODNET_PROXY.
+
+        --no-proxy
+            Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set
+
+        --egress <SPEC>
+            The way out, as a network spec: direct (as --no-proxy), a proxy
+            URL (as --proxy), relay or relay:URL (as --transport relay and
+            --relay). With podnet pod, each --egress is one -x hop of the
+            chain, in its order (also tailscale:/PATH, netbird:[PORT] and
+            unix:/PATH). wg:FILE is for podnet forward --network and podnet
+            route. With podnet link dial and podnet link connect, each
+            --egress is one element of the chain before the tcp carrier
+            (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
+
+        --resolve <HOST=IP>
+            Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
+            PODNET_RESOLVE adds to it. TLS still checks the name of the
+            certificate
+
+        -q, --quiet
+            Log warnings and errors only
+
+        -v, --verbose
+            Log more: -v for debug, -vv for trace. RUST_LOG takes priority
+
+        --color <COLOR>
+            Colours in the log: auto (only on a terminal, and not with
+            NO_COLOR), always or never. Default: auto. Values: auto, always,
+            never.
+
+        --log-format <LOG_FORMAT>
+            The form of the log on stderr: text, or json (one object for each
+            line). Default: text. Values: text, json.
 
     podnet relay [OPTIONS] <COMMAND>
         Inbound access to this host through the WebSocket relay (--relay):
@@ -7244,7 +7488,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7311,7 +7557,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7429,7 +7677,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7559,7 +7809,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7622,7 +7874,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7680,7 +7934,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -7915,7 +8171,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8105,7 +8363,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8342,7 +8602,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8424,7 +8686,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8504,7 +8768,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8568,7 +8834,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8633,7 +8901,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8696,7 +8966,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -8811,7 +9083,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9084,7 +9358,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9158,7 +9434,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9220,7 +9498,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9322,7 +9602,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9384,7 +9666,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9455,7 +9739,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9514,7 +9800,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9569,7 +9857,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9631,7 +9921,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9688,7 +9980,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9759,7 +10053,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9819,7 +10115,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9878,7 +10176,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -9936,7 +10236,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -10004,7 +10306,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -10068,7 +10372,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -10129,7 +10435,9 @@ COMMANDS
             route. With podnet link dial and podnet link connect, each
             --egress is one element of the chain before the tcp carrier
             (direct, a proxy, peer:FINGERPRINT/SERVICE), in order: the last
-            element reaches the carrier address
+            element reaches the carrier address. With podnet wg serve, one
+            --egress is the way of the flows of the peers (each spec of podnet
+            forward --network that carries TCP)
 
         --resolve <HOST=IP>
             Addresses for names, in place of DNS: HOST=IP[,HOST=IP].
@@ -11016,7 +11324,7 @@ podnet man                                      # the manual
 | WARP | `warp register`, `proxy`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan` | The Cloudflare WARP client on TCP 443, with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
 | Pods | `pod`, `pod doctor`, `pod --report`, `pod --backend netns\|netns-kernel\|seccomp` | Run a program with all its traffic sent through a proxy chain, with rules, audit and a JSON report. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
 | Virtual networks | `net proxy`, `switch`, `shim`, `doctor`, `doctor --network` | IP addresses for programs on a host that refuses `AF_INET` binds. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
-| Overlays | `net tailscale`, `net socksify`, `netbird:`, `wg:` | Tailscale, NetBird and WireGuard on a host with no TUN. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
+| Overlays | `net tailscale`, `net socksify`, `netbird:`, `wg:`, `wg serve` | Tailscale, NetBird and WireGuard on a host with no TUN; a userspace WireGuard server for a list of peers. | [networks](https://github.com/PodUtils/podnet/blob/main/docs/networks.md) |
 | Router | `route --config`, `--check --to`, `--status`, `--control`, `--export` | Networks, groups, policies, health, doors, DNS door, kernel mode, WARP members (the egress check, renewal), and changes of a running router (`--control`: select, rotate, add or remove a door or a network). | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
 | Forwards | `forward -L`, `forward --dns`, `forward --network warp` | TCP and UDP forwards and a DNS door through a network. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Exit on stdio | `exit --stdio` | One SOCKS5 session (CONNECT, and UDP in frames) on stdin and stdout, with no listener, for a pipe such as ssh. | [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
@@ -12777,6 +13085,49 @@ UDP from the `Address` of the file.
 podnet forward --network 'wg:/etc/wireguard/wg0.conf over warp' -L 127.0.0.1:8080=10.9.0.1:80
 ```
 
+## WireGuard server: `podnet wg serve`
+
+```sh
+podnet wg serve --config /etc/podnet/wg-server.conf
+podnet wg serve --config wg-server.conf --egress socks5h://127.0.0.1:1080 --run-for 600
+```
+
+`podnet wg serve` is a WireGuard peer for a list of peers. It makes no TUN device and needs no capability.
+The file is a wg-quick file:
+
+```ini
+[Interface]
+PrivateKey = ...
+ListenPort = 51820
+Address = 10.9.0.1/24
+
+[Peer]
+PublicKey = ...
+AllowedIPs = 10.9.0.2/32
+
+[Peer]
+PublicKey = ...
+PresharedKey = ...
+AllowedIPs = 10.9.0.8/29
+```
+
+* `ListenPort` is the UDP port on each IPv4 address of the host (0: a port of the system; the first line on
+  stdout gives it). `Address` is the IPv4 net of the peers. The server has the first address of the net.
+  `MTU` is optional (default 1420).
+* Each `[Peer]` has `PublicKey` and `AllowedIPs` inside the net of `Address`, and an optional `PresharedKey`. Two
+  peers with one `PublicKey`, an `AllowedIPs` outside the net, or no `ListenPort` is a usage line (exit 64).
+  `Endpoint` is not necessary: the server answers the address of the last authenticated message of the peer.
+* The handshakes, the cookies under load and the sessions are `Responder` of `pod-wg`. A key that the file does
+  not list gets no answer. The server sends no initiation: each rekey comes from the peer.
+* A userspace stack ends each TCP and UDP flow of a peer. The server dials each target through the way of
+  `--egress SPEC` (each spec of `podnet forward --network`, also a chain; default: the way out of the process).
+  A TCP dial that fails answers the SYN of the peer with a RST.
+* A packet with a source outside the `AllowedIPs` of its peer is dropped. A packet to a peer goes to the peer
+  whose `AllowedIPs` has the longest prefix that holds its destination. The net of `Address`, the loopback and
+  the link-local addresses are not targets: a peer does not reach another peer or the loopback of the server.
+* IPv4 only inside the tunnel. A client of the server can be podnet itself: `wg:FILE` with the public key of the
+  server and its address as the `Endpoint`.
+
 ## A chain of networks: `TOP over BELOW`
 
 A spec with the word `over` between two specs is a chain. The first spec is the top layer. Each layer comes up
@@ -13734,6 +14085,9 @@ and it replaces the older flags:
   order: the last element reaches the carrier address, and no `direct` is added. The elements are `direct`, a proxy and
   `peer:FINGERPRINT/SERVICE`; at most 8; a duplicate or a cycle exits 78; an element that cannot be built exits 69 and is named.
   `--check` dials each element once ([link.md](link.md), "A chain before the carrier").
+* `podnet wg serve` takes one `--egress SPEC`: the way of the TCP and UDP flows of its peers. Each spec of
+  `podnet forward --network` is good (a chain too). Its default is the way out of the process
+  ([networks.md](networks.md), "WireGuard server").
 * A spec that the command cannot use is a usage error with one line that names the spec.
 * `podnet forward --network SPEC` selects the network of the forwards ([forward.md](forward.md)). Its default
   is the way out of the process.

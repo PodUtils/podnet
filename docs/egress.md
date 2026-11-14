@@ -64,6 +64,9 @@ and it replaces the older flags:
   order: the last element reaches the carrier address, and no `direct` is added. The elements are `direct`, a proxy and
   `peer:FINGERPRINT/SERVICE`; at most 8; a duplicate or a cycle exits 78; an element that cannot be built exits 69 and is named.
   `--check` dials each element once ([link.md](link.md), "A chain before the carrier").
+* `podnet wg serve` takes one `--egress SPEC`: the way of the TCP and UDP flows of its peers. Each spec of
+  `podnet forward --network` is good (a chain too). Its default is the way out of the process
+  ([networks.md](networks.md), "WireGuard server").
 * A spec that the command cannot use is a usage error with one line that names the spec.
 * `podnet forward --network SPEC` selects the network of the forwards ([forward.md](forward.md)). Its default
   is the way out of the process.

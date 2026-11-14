@@ -1,9 +1,10 @@
 //! A reader of the wg-quick format (T-116): the file of `wg-quick`, of a
 //! self-hosted WireGuard peer or of the export of a VPN.
 //!
-//! * `[Interface]`: `PrivateKey`, `Address`, `DNS`, `MTU`. The keys that
-//!   only `wg-quick` uses on the host (`ListenPort`, `FwMark`, `Table`,
-//!   `SaveConfig`, `PreUp`, `PostUp`, `PreDown`, `PostDown`) are ignored.
+//! * `[Interface]`: `PrivateKey`, `Address`, `DNS`, `MTU`, `ListenPort`
+//!   (the UDP port of `podnet wg serve`). The keys that only `wg-quick`
+//!   uses on the host (`FwMark`, `Table`, `SaveConfig`, `PreUp`, `PostUp`,
+//!   `PreDown`, `PostDown`) are ignored.
 //! * `[Peer]`: `PublicKey`, `PresharedKey`, `Endpoint`, `AllowedIPs`,
 //!   `PersistentKeepalive`, and `Reserved` (bytes 1 to 3 of each message:
 //!   three numbers, or the base64 of three bytes). The reserved bytes are
@@ -121,6 +122,8 @@ pub struct Interface {
     /// The search domains of `DNS` (each value that is not an address).
     pub dns_search: Vec<String>,
     pub mtu: Option<u16>,
+    /// The UDP port of `ListenPort` (0: a port of the system).
+    pub listen_port: Option<u16>,
 }
 
 /// A section `[Peer]`.
@@ -175,6 +178,7 @@ struct PartialInterface {
     dns: Vec<IpAddr>,
     dns_search: Vec<String>,
     mtu: Option<u16>,
+    listen_port: Option<u16>,
 }
 
 #[derive(Default)]
@@ -252,6 +256,7 @@ pub fn parse(text: &str) -> Result<WgQuick> {
         dns: iface.dns,
         dns_search: iface.dns_search,
         mtu: iface.mtu,
+        listen_port: iface.listen_port,
     };
     let peers = peers
         .into_iter()
@@ -300,8 +305,14 @@ fn interface_value(iface: &mut PartialInterface, name: &str, value: &str) -> Res
                     .ok_or_else(|| anyhow!("MTU {value:?} is not a number from 576 to 65535"))?,
             )
         }
-        "listenport" | "fwmark" | "table" | "saveconfig" | "preup" | "postup" | "predown"
-        | "postdown" => {}
+        "listenport" => {
+            iface.listen_port = Some(
+                value
+                    .parse::<u16>()
+                    .map_err(|_| anyhow!("ListenPort {value:?} is not a number from 0 to 65535"))?,
+            )
+        }
+        "fwmark" | "table" | "saveconfig" | "preup" | "postup" | "predown" | "postdown" => {}
         _ => bail!("[Interface] has no field {name:?}"),
     }
     Ok(())
@@ -377,6 +388,7 @@ mod tests {
              Address = 10.0.0.2/32, fd00::2\n\
              dns = 1.1.1.1, 2606:4700:4700::1111, corp.example\n\
              MTU = 1280\n\
+             ListenPort = 51820\n\
              PostUp = iptables -A x # a hook of wg-quick\n\
              \n\
              [Peer]\n\
@@ -404,6 +416,7 @@ mod tests {
         assert_eq!(iface.dns.len(), 2);
         assert_eq!(iface.dns_search, vec!["corp.example".to_string()]);
         assert_eq!(iface.mtu, Some(1280));
+        assert_eq!(iface.listen_port, Some(51820));
         assert_eq!(conf.peers.len(), 2);
         let peer = &conf.peers[0];
         assert_eq!(peer.public_key, key(PUBLIC).unwrap());
@@ -438,6 +451,7 @@ mod tests {
         assert_eq!(peer.reserved, [0, 0, 0]);
         assert_eq!(peer.persistent_keepalive, None);
         assert_eq!(peer.preshared_key, None);
+        assert_eq!(conf.interface.listen_port, None);
     }
 
     #[test]
@@ -462,6 +476,7 @@ mod tests {
             ("[Peer]\n".to_string(), "no [Interface]"),
             (format!("Address = 10.0.0.1\n{base}"), "line 1"),
             ("[Interface]\nAddress = 10.0.0.1/33\n".to_string(), "line 2"),
+            (format!("{base}ListenPort = 70000\n"), "line 3"),
         ] {
             let err = format!("{:#}", parse(&text).unwrap_err());
             assert!(err.contains(word), "{text:?}: {err}");
