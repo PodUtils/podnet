@@ -245,8 +245,10 @@
 544 issue closed
 545 issue closed
 546 issue closed
-547 issue open
+547 issue closed
 548 issue closed
 549 issue closed
 550 issue open
 551 issue closed
+552 issue open
+553 issue open

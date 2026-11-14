@@ -238,10 +238,12 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #544 | [gh action] requested: the release of v0.4.0-beta.10 at 59cf78c | closed: ci, deny, secrets and live passed; the dry run 43541138625 failed on the 32-bit targets (nfnl.rs); nothing published | T-336 |
 | #545 | [gh action] requested: the release of v0.4.0-beta.10 at e99eba6 | closed: each run passed; the release v0.4.0-beta.10 is out (release-proofs 43549615088) | T-336 |
 | #546 | COORD-075: podnet took v0.41.0 at 095955c (to podcrates) | closed (podcrates closed PodUtils/podcrates#143) | none |
-| #547 | COORD-076: pod-wg: a responder sans I/O, and the preshared key (podnet T-125, T-337) (to podcrates) | open (a COORD issue between sessions; answered by PodUtils/podcrates#144) | none |
+| #547 | COORD-076: pod-wg: a responder sans I/O, and the preshared key (podnet T-125, T-337) (to podcrates) | closed: podcrates v0.43.0 carries both asks; T-125 and T-337 are done | none |
 | #548 | [gh action] requested: ci, deny, secrets and live on 3d54f76 (T-117) | closed: each run passed on 036d23c (ci 43551002812, deny 43551006710, secrets 43551010275, live 43551013239) | none |
 | #549 | [gh action] requested: ci, deny, secrets and live on 64b0c8b (T-120, T-248) | closed: each run passed on a93a37a (ci 43553742871, deny 43553746054, secrets 43553749542, live 43553752592) | none |
 | #550 | COORD-077: podnet took v0.42.0 at 654c0f1; two notes on pod-hold and pod-services (to podcrates) | open (a COORD issue between sessions) | none |
 | #551 | [gh action] requested: ci, deny, secrets and live on eddaa22 | closed: each run passed on c72c604 (ci 43560703081, deny 43560707016, secrets 43560710399, live 43560713372) | none |
+| #552 | COORD-078: podnet took v0.43.0 at c8ccc40; pod-netstack: bind_udp with port 0 (to podcrates) | open (a COORD issue between sessions) | none |
+| #553 | [gh action] requested: ci, deny, secrets and live on b3eaba6 (v0.43.0, T-337, T-125) | open (a request of runs to the owner) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
