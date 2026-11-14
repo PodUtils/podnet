@@ -178,7 +178,7 @@ Not proven: no packet crossed a WAN, so the masquerade and the MSS value on the 
 measured (the kernel accepts the rules and the dump shows them). The host sets `ip_forward` itself.
 Part 4 is left (Correction).
 
-2026-11-14, commit WORK (part 4, the measure on the wire, two fixes of the MSS clamp).
+2026-11-14, commit 16c7d1a (part 4, the measure on the wire, two fixes of the MSS clamp).
 - `src/router/kernel/watch.rs` is new: the probe of each WAN by its fwmark, and the aggregate route of the WANs
   that take flows. `podnet route` runs it when the file has `kernel` and `health`.
 - `src/router/kernel/netkit.rs` (tests only): namespaces held by a descriptor, veth pairs across two of them,
