@@ -1806,7 +1806,7 @@ cargo test -p podnet --lib -- router::guest
   and names (the guest resolves names itself; `domain:` rules do not match) are not routed. The idle end of a UDP
   flow (60 s) has no test. A Linux guest kernel is not tested.
 
-2026-11-14, commit WORK (the veth wire, the proof of a real TUN and of a Linux guest kernel).
+2026-11-14, commit dc8be13 (the veth wire, the proof of a real TUN and of a Linux guest kernel).
 * `src/router/guest/veth.rs` is new (`veth:NAME`, the frames, the ARP answer, the MAC addresses);
   `PacketFd::with_frames` reads and writes frames; `Opened::Frames` is the open veth wire.
 * `guest_wire_veth_carries_tcp_and_udp_of_a_linux_guest`: a guest namespace on a veth pair (offloads on),
