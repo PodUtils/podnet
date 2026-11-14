@@ -22,11 +22,11 @@ path = "src/lib.rs"
 podnet-core = { path = "../podnet-core", version = "0.4.0-beta.10" }
 # The TLS client of an origin, and the credentials of a served proxy, of
 # PodUtils/podcrates at the git tag of the root.
-pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.41.0", version = "0.41.0" }
-pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.41.0", version = "0.41.0" }
+pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
+pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
 # The check of the owner and the mode of the users file of the file
 # server (T-089); a crate of the workspace, at the git tag of the root.
-pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.41.0", version = "0.41.0" }
+pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
 anyhow = "1"
 axum = { version = "0.8", features = ["multipart"] }
 # The Basic credentials of the users of the file server (T-089).
@@ -79,6 +79,6 @@ uuid = { version = "1", features = ["v4", "serde"] }
 
 [dev-dependencies]
 # need_loopback! of the tests; a crate of the workspace.
-pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.41.0", version = "0.41.0" }
+pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.42.0", version = "0.42.0" }
 tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }

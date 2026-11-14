@@ -853,6 +853,18 @@ Done so far:
 - v0.41.0 (PodUtils/podcrates#143): each `pod-*` dependency names `tag = "v0.41.0"`; nothing breaks in podnet (podnet reads
   no `tox-tcp-relay` service; `pod_term::termios` is new and podnet does not use it). The tag has no hand-off for podnet.
   `sh scripts/agent/check.sh`: each step 0.
+- v0.42.0 (PodUtils/podcrates#145): each `pod-*` dependency names `tag = "v0.42.0"`. The tag has no new hand-off for
+  podnet. Breaking for podnet: `Calls::sockets()` of `pod-hold` refuses a raw socket and a ping socket with `EPERM` in the
+  filter (the entry 544 of podcrates). The pod emulates each ping socket in the supervisor (T-066), so the take broke
+  `seccomp_icmp_echo_to_the_gateway`, `seccomp_icmp_socket_keeps_its_options` and `seccomp_udp_errqueue_read_is_eagain`.
+  The call (the owner is away): the filter of the pod is `Calls::sockets().allow_raw()`
+  (`crates/podnet-netns/src/seccomp/filter.rs`, `calls`), the behaviour of v0.41.0; the rule of a raw socket is T-334.
+  `CarrierErrorKind::KeyRefused`, `Code::make` with a count, `Dial::proxy_label` and `Route::One` need no change in
+  podnet (no `match` of `CarrierErrorKind` with no wildcard, no call of `Code::make`). `pod_tls::ROOTS_VERSION` is 1.0.11:
+  `webpki-roots` stays at 1.0.11 in `Cargo.lock` (`cargo update -p webpki-roots --precise 1.0.11`;
+  `the_roots_version_is_the_one_of_cargo_lock`). `cargo test --workspace --no-fail-fast`: 1943 passed, 3 failed (the
+  three above); with the call, `cargo test --test pod_seccomp_dgram`: 17 passed, `cargo test -p podnet-netns`: 145
+  passed.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

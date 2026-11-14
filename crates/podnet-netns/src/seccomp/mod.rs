@@ -80,7 +80,7 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
     let mut env = crate::child_env(args.keep_proxy_env);
     crate::with_single_request(&mut env);
     let program = pod_hold::spawn::Program::with_env(&resolved, &program, env)?;
-    let started = pod_hold::spawn::start(program, &pod_hold::filter::Calls::sockets())?;
+    let started = pod_hold::spawn::start(program, &crate::seccomp::calls())?;
     let (lfd, pid) = (
         std::os::fd::IntoRawFd::into_raw_fd(started.listener),
         started.pid,
