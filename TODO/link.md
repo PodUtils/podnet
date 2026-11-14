@@ -757,6 +757,16 @@ T-268 is done (the verifier) and T-311 is done (the feature).
 
 2026-11-13, calls of the glue (the owner is away): the ALPN stays `podlink/1`, the default of `pod-link` and the ALPN of the `tcp` carrier of podnet, not the `podnet/1` of the issue; the two carriers of one install keep one ALPN. A dial sends from a UDP socket of the system: the way out of the process (`crate::egress`) has no datagrams, and `--egress` stays for `tcp`. The close of a QUIC connection by the peer in the handshake (the peer refused the key of this end) comes as `noq::ConnectionError::ConnectionClosed` in a `Refused` error, with no rustls alert: `src/link.rs` (`key_refused`) reads it, so it exits 77, not 69. Ask for podcrates: one typed mark for "the peer refused the key of this end" on each carrier, so a consumer does not read the errors of `noq`.
 
+2026-11-14, exit 77 (commit d0ff66b): `src/link.rs` (`key_refused`) reads `CarrierErrorKind::KeyRefused` of `pod-link` v0.42.0 (the entry 542 of podcrates):
+the dialer gets it on each carrier, the listener on tcp, h2, quic and poll. The read of the rustls alert and of the
+close of a noq connection is gone. A `Refused` error with a `pod_tls::peer::Refusal` (the pin of this end refused the
+key of the peer) stays 77; a `Refused` error of the host (a bind that `EACCES` denies) stays 69. The tests
+`a_refused_key_maps_to_77_and_a_denied_socket_does_not` of `tests/link_tcp.rs`, `tests/link_h2.rs` and
+`tests/link_ws.rs` build a `KeyRefused` error. `cargo test --features full` of each `tests/link_*.rs` (39 targets):
+303 passed, 0 failed. Plant: with `KeyRefused => false` in `key_refused`, the tests of 77 of tcp, h2, ws, quic, poll,
+udp and dns failed (20 tests, among them `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`
+and `link_dial_check_meets_link_listen_over_quic_and_a_stranger_exits_77`).
+
 ## Done
 
 2026-11-13, commit 95cbf6a. Feature `quic` of podnet is `["tcp", "pod-link/quic"]` (in `full`; `quic` was already in `OPTIONAL` and `FULL` of `src/build_features.rs`). `src/link_quic.rs` (`podnet::link_quic`): `carrier`, `listen` (`IP:PORT`, UDP), `dial` (`KEY@HOST:PORT`) and `probe`. `src/link_keyed.rs` (`podnet::link_keyed`): the carriers of v0.40.0 by name (`NAMES`, `feature_of`, `Tune`, `dial`, `listen`); a name whose feature is off exits 69 and names the feature. `src/link_probe.rs`: the generic registry probe (no key of this install). `link listen|dial|connect --carrier quic` (`Chosen::Peer` in `src/cli/cmd/link/mod.rs`), the registry row and the inventory entry, `docs/link.md` (The QUIC carrier), `docs/build.md`.
@@ -1038,6 +1048,22 @@ T-277, T-262 and T-264 are done. Ask A10 is answered.
 2026-11-13: podnet takes podcrates v0.40.0 (1c88531, T-137): the carrier is in `pod-link` behind its own feature (PodUtils/podcrates#140). The block is gone. The work is the glue: a podnet feature, the carrier in `link listen`, `link connect` and `link dial`, the docs and the tests.
 
 2026-11-13, calls of the glue (the owner is away): the codec is in `pod-link` with the TXT halves of `pod-dns` (`pod_dns::txt`, podcrates v0.40.0): ask A10 is answered by podcrates. The ARQ under TLS is `pod_link::arq` (T-277 stays open for its own gates). The server of a dial is `--dns-server IP:PORT`, else the first `nameserver` of `/etc/resolv.conf` at port 53 (the code of the reader is in `src/link_dns.rs`); with neither, exit 64. The zone of a listener is `--dns-zone ZONE` (a listener with none exits 64). The two flags with another carrier exit 64. The rate (20 a second), the 8 in flight, the backoff of 0 to 2 s and the EDNS0 size are the defaults of `pod-link`; podnet gives no flag for them. The `TC` rule (a retry over TCP/53) is not in `pod-link` v0.40.0: the answers are built to fit 1232 bytes; ask for podcrates if a resolver truncates.
+
+2026-11-14, exit 77 (commit d0ff66b): `src/link.rs` (`key_refused`) reads `CarrierErrorKind::KeyRefused` of `pod-link` v0.42.0 (the entry 542 of podcrates):
+the dialer gets it on each carrier, the listener on tcp, h2, quic and poll. The read of the rustls alert and of the
+close of a noq connection is gone. A `Refused` error with a `pod_tls::peer::Refusal` (the pin of this end refused the
+key of the peer) stays 77; a `Refused` error of the host (a bind that `EACCES` denies) stays 69. The tests
+`a_refused_key_maps_to_77_and_a_denied_socket_does_not` of `tests/link_tcp.rs`, `tests/link_h2.rs` and
+`tests/link_ws.rs` build a `KeyRefused` error. `cargo test --features full` of each `tests/link_*.rs` (39 targets):
+303 passed, 0 failed. Plant: with `KeyRefused => false` in `key_refused`, the tests of 77 of tcp, h2, ws, quic, poll,
+udp and dns failed (20 tests, among them `a_dialer_that_the_listener_does_not_allow_exits_77_and_the_door_stays_open`
+and `link_dial_check_meets_link_listen_over_quic_and_a_stranger_exits_77`).
+The take of v0.42.0 (T-137, 654c0f1) also brings the TC rule of the Premise into `pod-link` (the entry 543 of
+podcrates): the dns listener answers within the size of the query (512 bytes with no EDNS0), and the dialer takes the
+whole records of an answer with TC set; and the ARQ of the dns and icmp carriers wraps its sequence with no rekey
+(the entry 541 of podcrates, PodUtils/podnet#540). The tests are in `pod-link`; podnet adds none. Still not proven
+here: a link through a real recursive resolver. The listener of dns, icmp, udp and ws gets no `KeyRefused` when the
+dialer refuses its key (the entry 557 of podcrates, open): `link listen` there logs the failed accept and goes on.
 
 ## Done
 
