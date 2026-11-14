@@ -601,3 +601,45 @@ impl Receiver {
         Ok(v)
     }
 }
+
+/// The fuzz target `mesh_announce` (`crate::fuzzing`): untrusted wire bytes.
+///
+/// * [`verify`] and [`append_hop`] never panic.
+/// * A wire that parses has one encoding: [`encode_body`] of its body gives
+///   its body bytes again.
+/// * The body of a wire that parses, signed again by an own origin, passes
+///   [`verify`] at its time of issue when its lifetime is valid, also after
+///   one hop. The path of the hop is the origin and the forwarder.
+pub(crate) fn fuzz(wire: &[u8]) {
+    let origin = Identity::from_seed(&[1u8; 32]);
+    let forwarder = Identity::from_seed(&[2u8; 32]);
+    let me = PublicKey([3u8; 32]);
+    let Ok(parsed) = parse(wire) else {
+        let _ = verify(wire, &me, 0);
+        let _ = append_hop(wire, &forwarder, 1);
+        return;
+    };
+    assert_eq!(parsed.path.len(), parsed.hops.len() + 1);
+    let body = encode_body(&parsed.body).expect("a parsed body encodes");
+    assert_eq!(body, wire[..parsed.body_len], "one value, one encoding");
+    let now = parsed.body.issued_ms;
+    let _ = verify(wire, &me, now);
+    let mut own = parsed.body;
+    own.origin = origin.public();
+    let signed = encode(&origin, &own).expect("a parsed body encodes");
+    let lifetime = own.expires_ms > own.issued_ms && own.expires_ms - own.issued_ms <= LIFETIME_MS;
+    match verify(&signed, &me, now) {
+        Ok(v) => {
+            assert!(lifetime);
+            assert_eq!(v.body, own);
+            assert_eq!(v.path, vec![own.origin]);
+        }
+        Err(e) => assert!(!lifetime, "{e}"),
+    }
+    let hop = append_hop(&signed, &forwarder, 7).expect("one hop");
+    if lifetime {
+        let v = verify(&hop, &me, now).expect("a signed hop verifies");
+        assert_eq!(v.path, vec![own.origin, forwarder.public()]);
+        assert_eq!(v.path_cost(), 7);
+    }
+}

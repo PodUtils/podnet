@@ -85,51 +85,45 @@ fn holds((net, prefix): (Ipv4Addr, u8), ip: Ipv4Addr) -> bool {
 /// Read and check the file. A fault is one line that names the file.
 pub fn read(path: &Path) -> Result<ServeFile, Failure> {
     let conf = wg_quick::read_file(path).map_err(|e| usage(path, format!("{e:#}")))?;
+    check(&conf).map_err(|text| usage(path, text))
+}
+
+/// Check a parsed file. A fault is one line.
+pub fn check(conf: &wg_quick::WgQuick) -> Result<ServeFile, String> {
     let iface = &conf.interface;
     let port = iface
         .listen_port
-        .ok_or_else(|| usage(path, "the [Interface] has no ListenPort".into()))?;
+        .ok_or("the [Interface] has no ListenPort")?;
     let address = iface
         .addresses
         .iter()
         .find(|c| c.addr.is_ipv4())
-        .ok_or_else(|| {
-            usage(
-                path,
-                "the [Interface] has no IPv4 Address (A.B.C.D/N)".into(),
-            )
-        })?;
+        .ok_or("the [Interface] has no IPv4 Address (A.B.C.D/N)")?;
     let net: GuestNet = format!("{}/{}", address.addr, address.prefix)
         .parse()
-        .map_err(|e| usage(path, format!("Address: {e:#}")))?;
+        .map_err(|e| format!("Address: {e:#}"))?;
     if conf.peers.is_empty() {
-        return Err(usage(path, "the file has no [Peer]".into()));
+        return Err("the file has no [Peer]".into());
     }
     let mut peers: Vec<FilePeer> = Vec::new();
     for (i, p) in conf.peers.iter().enumerate() {
         let n = i + 1;
         if peers.iter().any(|q| q.keys.public == p.public_key) {
-            return Err(usage(
-                path,
-                format!("[Peer] {n}: the PublicKey of an earlier [Peer]"),
-            ));
+            return Err(format!("[Peer] {n}: the PublicKey of an earlier [Peer]"));
         }
         let mut allowed = Vec::new();
         for cidr in &p.allowed_ips {
             let IpAddr::V4(ip) = cidr.addr else { continue };
             if cidr.prefix < net.prefix || !net.contains(ip) {
-                return Err(usage(
-                    path,
-                    format!(
-                        "[Peer] {n}: AllowedIPs {ip}/{} is not inside the net {}/{} of Address",
-                        cidr.prefix, net.network, net.prefix
-                    ),
+                return Err(format!(
+                    "[Peer] {n}: AllowedIPs {ip}/{} is not inside the net {}/{} of Address",
+                    cidr.prefix, net.network, net.prefix
                 ));
             }
             allowed.push((ip, cidr.prefix));
         }
         if allowed.is_empty() {
-            return Err(usage(path, format!("[Peer] {n}: no IPv4 AllowedIPs")));
+            return Err(format!("[Peer] {n}: no IPv4 AllowedIPs"));
         }
         let keys = Peer {
             public: p.public_key,
@@ -212,6 +206,22 @@ fn addresses(packet: &[u8]) -> Option<(Ipv4Addr, Ipv4Addr)> {
     }
     let ip = |at: usize| Ipv4Addr::new(packet[at], packet[at + 1], packet[at + 2], packet[at + 3]);
     Some((ip(12), ip(16)))
+}
+
+/// The checks of a packet of a peer and of a packet to a peer, for the fuzz
+/// target `wg_quick` (`crate::fuzzing`): the admit rule of [`incoming`] and
+/// the route of [`outgoing`]. The peer of a route is a peer of `file`.
+pub(crate) fn fuzz_packet(file: &ServeFile, packet: &[u8]) {
+    let allowed: Vec<Vec<(Ipv4Addr, u8)>> = file.peers.iter().map(|p| p.allowed.clone()).collect();
+    if let Some((src, dst)) = addresses(packet) {
+        for peer in &allowed {
+            let _ = peer.iter().any(|&a| holds(a, src));
+        }
+        if let Some(peer) = route(&allowed, dst) {
+            assert!(peer < allowed.len());
+            assert!(allowed[peer].iter().any(|&a| holds(a, dst)));
+        }
+    }
 }
 
 /// Serve `file` on its `ListenPort` of each IPv4 address; each inner flow

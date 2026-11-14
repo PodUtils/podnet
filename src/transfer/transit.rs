@@ -138,8 +138,19 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Records<S> {
                 self.most
             )));
         }
-        let mut body = vec![0u8; length];
-        self.io.read_exact(&mut body).await?;
+        // The buffer grows with the bytes that come: a length of 64 MiB
+        // with no bytes after it does not take 64 MiB.
+        let mut body = Vec::with_capacity(length.min(CHUNK + OVERHEAD));
+        (&mut self.io)
+            .take(length as u64)
+            .read_to_end(&mut body)
+            .await?;
+        if body.len() != length {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "the transit ended in a record",
+            ));
+        }
         let (got, sealed) = body.split_at(NONCE);
         if got != nonce(self.read) {
             return Err(broken("a record came out of order: the transit changed it"));
@@ -148,6 +159,11 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Records<S> {
         self.open
             .decrypt(Nonce::from_slice(got), sealed)
             .map_err(|_| broken("a record did not open: the transit changed it"))
+    }
+
+    /// The stream under the records.
+    pub fn into_inner(self) -> S {
+        self.io
     }
 
     /// Close the stream of this end.

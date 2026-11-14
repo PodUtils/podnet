@@ -86,6 +86,10 @@ fn kernel_config_errors_name_the_key() {
     let mut k = section(vec![wan("a", "x")]);
     k.priority = Some(32765);
     cases.push((k, "kernel.priority"));
+    // The sum must not wrap on a 32-bit target.
+    let mut k = section(vec![wan("a", "x")]);
+    k.priority = Some(u32::MAX);
+    cases.push((k, "kernel.priority"));
     for (config, key) in cases {
         let err = Plan::new(&config).unwrap_err().to_string();
         assert!(err.contains(key), "{key}: {err}");

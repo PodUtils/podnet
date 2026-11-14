@@ -5716,3 +5716,63 @@ tag 43547356755 passed, `publish.yml` 43547358531 passed. The release `v0.4.0-be
 eight binaries, `podnet.1`, `llms.txt`, `llms-full.txt`, `pod-report.schema.json`, `SHA256SUMS`,
 `SHA256SUMS.sigstore.json`, `provenance.sigstore.json` and `THIRD-PARTY-LICENSES.md`. `release-proofs.yml`: run
 43549615088 passed.
+
+
+# T-339: Fuzz targets for the parsers of peer and file input that came after 2026-11-12
+
+**Source:** the lead session, 2026-11-14 (the 18 targets of `fuzz/fuzz_targets/` cover no parser that came after
+2026-11-12).
+**Category:** chore
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+`docs/build.md` says that `fuzz/` has a libFuzzer target for each parser of bytes from the network. The 18 targets
+are older than the wg-quick file (`wg:FILE`, `podnet wg serve`), the chains of networks (`TOP over BELOW`), the router
+file, the transfer (the messages and hints of magic-wormhole, `podnet-relay-v1`, `piping-v1`, the zip of a directory,
+the records of the transit) and the route announcements of the link mesh.
+
+## Premise
+
+- Read: `src/fuzzing.rs`, `fuzz/Cargo.toml`, `.github/workflows/fuzz.yml` (it runs each target of
+  `cargo fuzz list`: no list to change), `crates/podnet-vnet/src/wg_quick.rs`, `src/networks/wg_serve.rs`,
+  `src/networks.rs`, `src/networks/chain.rs`, `src/router.rs`, `src/transfer/messages.rs`, `src/transfer/zip.rs`,
+  `src/transfer/land.rs`, `src/transfer/transit.rs`, `src/transfer/piping.rs`, `src/mesh_announce.rs`,
+  `src/mesh_table.rs`, `src/link_query.rs`.
+- Skipped: the query keys of a link carrier address (`src/link_query.rs`). Only the command line gives an address
+  (`link listen`, `link dial`, `link connect`); no peer and no file gives one.
+- The network specs come from the router file and from the control socket of the router, and the target
+  `proxy_url` parses a spec already, with seeds of proxy URLs only.
+- A `wg:` spec reads a file. `wg_quick::read_file` read the whole file, with no bound: `wg:/dev/zero` filled the
+  memory.
+- `Records::receive` of the transit made a buffer of the length of a record (at most 64 MiB) before the bytes came: a
+  peer that sends 4 bytes made this end allocate 64 MiB.
+- `Plan::new` of the kernel mode of the router added the priority (u32) to a `usize`: on a 32-bit target a priority
+  near `u32::MAX` wraps and passes the check.
+- Not measured before the change: a run of the new targets under libFuzzer.
+
+## Approach
+
+1. Add the targets `wg_quick`, `network_spec`, `router_config`, `transfer_message`, `transfer_zip`,
+   `transit_record`, `mesh_announce` and `mesh_table` (`src/fuzzing/peers.rs`, `fuzz/fuzz_targets/`,
+   `fuzz/Cargo.toml`), with seeds. No target opens a file of the input: a spec with `wg:` is not parsed (also in
+   `proxy_url`). The hooks of crate-private code: `wg_serve::check` and `wg_serve::fuzz_packet`,
+   `mesh_announce::fuzz`.
+2. Bound the read of a wg-quick file to 1 MiB. Grow the buffer of a record with the bytes that come. Add the
+   priority of the kernel mode in u64.
+3. Give the step of the targets of `fuzz.yml` 80 minutes (26 targets).
+4. Run each new target for 60 s under libFuzzer; fix each crash in podnet's code.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib -- fuzzing::tests::each_target_survives_mutations
+cargo test -p podnet-vnet -- wg_quick_file_read_has_a_bound
+cargo test -p podnet --lib -- kernel_config_errors_name_the_key
+```
+
+Then, in `fuzz/` with a nightly toolchain, `cargo +nightly-2026-10-15 fuzz run TARGET corpus/TARGET --
+-max_total_time=60 -malloc_limit_mb=64 -rss_limit_mb=2048 -timeout=10` for each new target.

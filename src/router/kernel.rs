@@ -142,7 +142,8 @@ impl Plan {
         if bad_table(aggregate) {
             bail!("kernel.table: {aggregate} is a table of the kernel");
         }
-        if priority == 0 || priority as usize + n + 2 >= 32766 {
+        // u64: on a 32-bit target, a priority near u32::MAX must not wrap.
+        if priority == 0 || u64::from(priority) + n as u64 + 2 >= 32766 {
             bail!("kernel.priority: give a number from 1 to {}", 32766 - n - 3);
         }
         let mut wans = Vec::new();

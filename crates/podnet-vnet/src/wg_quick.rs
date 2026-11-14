@@ -157,12 +157,26 @@ impl WgQuick {
     }
 }
 
+/// The most bytes of a wg-quick file. A read stops after this count: a
+/// path such as `/dev/zero` does not fill the memory.
+pub const MAX_FILE: u64 = 1 << 20;
+
 /// Read the wg-quick file at `path`. A file that other users can read
-/// gives a warning: it holds a private key.
+/// gives a warning: it holds a private key. A file over [`MAX_FILE`] bytes
+/// is an error.
 pub fn read_file(path: &Path) -> Result<WgQuick> {
+    use std::io::Read as _;
     use std::os::unix::fs::PermissionsExt as _;
-    let text = std::fs::read_to_string(path)
+    let mut text = String::new();
+    std::fs::File::open(path)
+        .and_then(|file| file.take(MAX_FILE + 1).read_to_string(&mut text))
         .with_context(|| format!("reading the WireGuard file {}", path.display()))?;
+    if text.len() as u64 > MAX_FILE {
+        bail!(
+            "the WireGuard file {} is over {MAX_FILE} bytes",
+            path.display()
+        );
+    }
     if let Ok(meta) = std::fs::metadata(path) {
         if meta.permissions().mode() & 0o077 != 0 {
             tracing::warn!(file = %path.display(), "the WireGuard file holds a private key, and other users can read it (chmod 600)");
@@ -499,5 +513,19 @@ mod tests {
             read_file(&dir.path().join("none.conf")).unwrap_err()
         );
         assert!(err.contains("none.conf"), "{err}");
+    }
+
+    /// A read stops after MAX_FILE bytes: a device of endless bytes is an
+    /// error, not a full memory.
+    #[test]
+    fn wg_quick_file_read_has_a_bound() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.conf");
+        let line = format!("# {}\n", "x".repeat(1000));
+        std::fs::write(&path, line.repeat((MAX_FILE as usize / 1000) + 2)).unwrap();
+        let err = format!("{:#}", read_file(&path).unwrap_err());
+        assert!(err.contains("over 1048576 bytes"), "{err}");
+        let err = format!("{:#}", read_file(Path::new("/dev/zero")).unwrap_err());
+        assert!(err.contains("over 1048576 bytes"), "{err}");
     }
 }

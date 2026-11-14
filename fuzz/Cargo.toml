@@ -156,3 +156,59 @@ path = "fuzz_targets/seccomp_sockopt.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "wg_quick"
+path = "fuzz_targets/wg_quick.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "network_spec"
+path = "fuzz_targets/network_spec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "router_config"
+path = "fuzz_targets/router_config.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "transfer_message"
+path = "fuzz_targets/transfer_message.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "transfer_zip"
+path = "fuzz_targets/transfer_zip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "transit_record"
+path = "fuzz_targets/transit_record.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "mesh_announce"
+path = "fuzz_targets/mesh_announce.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "mesh_table"
+path = "fuzz_targets/mesh_table.rs"
+test = false
+doc = false
+bench = false

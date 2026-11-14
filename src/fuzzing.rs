@@ -10,6 +10,12 @@
 
 use crate::cloudflare::capnp::{Message, StructReader};
 
+mod peers;
+pub use peers::{
+    mesh_announce, mesh_table, network_spec, router_config, transfer_message, transfer_zip,
+    transit_record, wg_quick,
+};
+
 /// The targets of the seccomp handlers of the pod (`podnet_netns::fuzzing`).
 pub use podnet_netns::fuzzing::{seccomp_sendmsg, seccomp_sendto, seccomp_sockopt};
 
@@ -36,6 +42,14 @@ pub const TARGETS: &[(&str, Target)] = &[
     ("seccomp_sendto", seccomp_sendto),
     ("seccomp_sendmsg", seccomp_sendmsg),
     ("seccomp_sockopt", seccomp_sockopt),
+    ("wg_quick", wg_quick),
+    ("network_spec", network_spec),
+    ("router_config", router_config),
+    ("transfer_message", transfer_message),
+    ("transfer_zip", transfer_zip),
+    ("transit_record", transit_record),
+    ("mesh_announce", mesh_announce),
+    ("mesh_table", mesh_table),
 ];
 
 /// Visit each pointer of a struct, to the depth `depth`.
@@ -129,7 +143,11 @@ pub fn proxy_url(data: &[u8]) {
         assert!(!shown.contains('@'), "{shown}");
     }
     // The same text as a network spec (T-059): the parse and the label
-    // never panic, and an error is one line.
+    // never panic, and an error is one line. A `wg:` spec reads a file: the
+    // target opens no file of the input.
+    if spec.contains("wg:") {
+        return;
+    }
     match crate::networks::parse(spec) {
         Ok(network) => {
             let _ = network.label();
@@ -311,7 +329,7 @@ pub fn seeds(target: &str) -> Vec<Vec<u8>> {
         "seccomp_sendto" | "seccomp_sendmsg" | "seccomp_sockopt" => {
             podnet_netns::fuzzing::seeds(target)
         }
-        _ => Vec::new(),
+        _ => peers::seeds(target),
     }
 }
 
@@ -319,8 +337,8 @@ pub fn seeds(target: &str) -> Vec<Vec<u8>> {
 mod tests {
     use super::*;
 
-    /// Each target on its seeds and on 2000 mutations of them (a fixed
-    /// xorshift sequence): no panic. This is the stable part of `fuzz/`.
+    /// Each target on its seeds and on 2000 mutations of them (100 for
+    /// mesh_announce; a fixed xorshift sequence): no panic. This is the stable part of `fuzz/`.
     #[test]
     fn each_target_survives_mutations() {
         let mut state = 0x9e37_79b9_7f4a_7c15u64;
@@ -336,7 +354,10 @@ mod tests {
             for seed in &seeds {
                 target(seed);
             }
-            for _ in 0..2000 {
+            // Each input of mesh_announce that parses signs and verifies
+            // three times: a debug build does that slowly.
+            let rounds = if *name == "mesh_announce" { 100 } else { 2000 };
+            for _ in 0..rounds {
                 let mut input = seeds[(next() % seeds.len() as u64) as usize].clone();
                 for _ in 0..(1 + next() % 4) {
                     let r = next();
