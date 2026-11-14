@@ -482,6 +482,10 @@ async fn wg_serve_carries_the_udp_of_a_peer() {
     );
     let link = a.up(&Ctx::default()).await.unwrap();
     let datagrams = link.way.clone().unwrap().dial.datagrams().await.unwrap();
+    // T-589: port 0 of the stack of `wg:FILE` is a free port of the dynamic
+    // range.
+    let local = datagrams.local_addr().unwrap();
+    assert!(local.port() >= 49152, "{local}");
     let to = SocketAddr::from((host, port));
     let mut buf = [0u8; 2048];
     let mut got = None;

@@ -102,8 +102,11 @@ async fn dialer_vnet_carries_tcp_and_udp_between_two_stacks() {
         .unwrap();
     assert_eq!(&buf[..n], b"answer");
     assert_eq!(from, SocketAddr::new(server_ip, 5353));
-    // A second socket takes the next port.
+    // Port 0 of the stack: a free port of the dynamic range. A second
+    // socket takes another port.
+    assert!(local.port() >= 49152, "{local}");
     let other = dialer.datagrams().await.unwrap();
+    assert!(other.local_addr().unwrap().port() >= 49152);
     assert_ne!(other.local_addr().unwrap().port(), local.port());
     switch.abort();
 }

@@ -17,7 +17,6 @@ use std::future::Future;
 use std::io;
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::Arc;
 
 use podnet_core::network::{
@@ -49,19 +48,12 @@ async fn before<T>(
     }
 }
 
-/// The first port of the UDP sockets of [`VnetDialer::datagrams`].
-const FIRST_UDP_PORT: u16 = 49152;
-
-/// The ports that [`VnetDialer::datagrams`] tries before it stops.
-const UDP_PORT_TRIES: usize = 64;
-
 /// A way out through a userspace [`NetStack`]: TCP and UDP to the
 /// addresses of the virtual network.
 pub struct VnetDialer {
     stack: Arc<NetStack>,
     local: IpAddr,
     names: Option<Arc<Resolver>>,
-    next_port: AtomicU16,
 }
 
 impl VnetDialer {
@@ -73,7 +65,6 @@ impl VnetDialer {
             stack,
             local,
             names: None,
-            next_port: AtomicU16::new(FIRST_UDP_PORT),
         }
     }
 
@@ -137,29 +128,17 @@ impl Dial for VnetDialer {
         self.names.is_some()
     }
 
-    /// A UDP socket on the address of the stack, on the next free port
-    /// from 49152.
+    /// A UDP socket on the address of the stack, on a free port of the
+    /// dynamic range: `pod-netstack` takes port 0 (podcrates v0.45.0, their
+    /// entry 589).
     fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn Datagrams>, Failure>> {
         Box::pin(async move {
-            let mut last = None;
-            for _ in 0..UDP_PORT_TRIES {
-                let port = self.next_port.fetch_add(1, Ordering::Relaxed);
-                let port = if port < FIRST_UDP_PORT {
-                    self.next_port.store(FIRST_UDP_PORT + 1, Ordering::Relaxed);
-                    FIRST_UDP_PORT
-                } else {
-                    port
-                };
-                match self.stack.bind_udp(VirtAddr::new(self.local, port)).await {
-                    Ok(socket) => {
-                        return Ok(Arc::new(socket.into_datagrams()) as Arc<dyn Datagrams>)
-                    }
-                    Err(e) if e.kind() == io::ErrorKind::AddrInUse => last = Some(e),
-                    Err(e) => return Err(Failure::io(Stage::Connect, e)),
-                }
-            }
-            let e = last.unwrap_or_else(|| io::Error::from(io::ErrorKind::AddrInUse));
-            Err(Failure::io(Stage::Connect, e))
+            let socket = self
+                .stack
+                .bind_udp(VirtAddr::new(self.local, 0))
+                .await
+                .map_err(|e| Failure::io(Stage::Connect, e))?;
+            Ok(Arc::new(socket.into_datagrams()) as Arc<dyn Datagrams>)
         })
     }
 }

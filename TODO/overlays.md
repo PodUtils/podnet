@@ -283,6 +283,15 @@ cargo test --workspace -- wg_network_reaches_a_service_behind_the_peer wg_networ
 
 ## Done
 
+2026-11-14, the take of podcrates v0.45.0 (T-137, e84ebdf; their entry 589, PodUtils/podnet#552). `NetStack::bind_udp`
+of `pod-netstack` with port 0 takes a free port of the dynamic range (49152 to 65535; a port that a socket holds moves
+the choice to the next port). `WgDialer::datagrams` (`src/networks/wg.rs`) and `VnetDialer::datagrams`
+(`crates/podnet-vnet/src/dialer.rs`) bind port 0; podnet's own picker (`FIRST_UDP_PORT`, `UDP_PORT_TRIES`,
+`next_port`) is gone. `podnet wg serve` (T-125) had no picker: its host socket is the `ListenPort` of the file, and the
+UDP of a peer goes out through the way. Tests: `wg_serve_carries_the_udp_of_a_peer` (the UDP socket of `wg:FILE`
+has a port of 49152 or more; a plant with `< 49152` failed), `dialer_vnet_carries_tcp_and_udp_between_two_stacks` of `podnet-vnet` (two sockets,
+two ports of the range), `wg_network_sends_its_udp_over_the_datagrams_of_the_way_below`: passed.
+
 2026-11-14, commit 81ad10f. The WARP chain: `wg:FILE over warp` (a chain spec of the registry,
 `src/networks/chain.rs`) sends the UDP of the tunnel through the datagrams of a WARP session. A target name resolves
 at the `DNS` of the file through the tunnel. Each call is in the Correction of 2026-11-14.
