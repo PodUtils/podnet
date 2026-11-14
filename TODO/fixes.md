@@ -2476,7 +2476,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:257-275`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`crates/podnet-core/src/net.rs:94-98`).
+- `connect_origin` (`crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:243-261`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`crates/podnet-core/src/net.rs:94-98`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`crates/podnet-vnet/src/proxy.rs:185-189`).
 
@@ -6419,6 +6419,14 @@ tag carries it.
 2026-11-14: `///PATH` (an empty authority) stays valid: `socks5+unix:///run/proxy.sock` is a form of the pod hops that
 a test of `src/networks/tests.rs` holds. Only `//HOST` and `@` are refused.
 
+2026-11-14, the take of podcrates v0.45.0 (their entry 612; the owner is away): `pod-proxy` refuses a Unix
+path that starts with `//HOST` or holds `@`, and its text names the form, not the path. `SCHEME+unix:///PATH` stays
+valid in the crate. The call: `check_unix_path` stays as a second check. It gives the exit 64 of a usage fault (the
+error of `Proxy::parse` has no exit class), and it refuses `unix:PATH` of the pod hops, which `pod-proxy` does not
+parse. `guarded_var` stays with it. `without_unix_user_info` goes: the proxy of a tool's file with such a path is now
+an `Err` of the crate, so `or_detected` writes the warning "a tool's file names a proxy that cannot be used" with no
+path, and no longer the info line with the label. This closes the gap of the Premise.
+
 ## Prove
 
 ```sh
@@ -6429,6 +6437,15 @@ cd fuzz && cargo +nightly-2026-10-15 fuzz run proxy_url corpus/proxy_url -- -max
 ```
 
 ## Done
+
+2026-11-14, the take of v0.45.0 (T-137, e84ebdf). `without_unix_user_info` of `src/egress.rs` is gone; `check_unix_path`
+stays (the Decision). New tests: `pod_proxy_refuses_a_unix_path_with_user_info` (`src/egress.rs`: four specs refused by
+`Proxy::parse` with no secret in the text, `socks5+unix:///run/x.sock` parsed as a Unix proxy, and a `~/.gitconfig`
+with `socks5h+unix://user:hunter2@x` gives no proxy and one skipped entry with no password) and
+`a_tool_file_with_a_unix_proxy_password_shows_no_password` (`tests/doctor.rs`: `podnet status --json` with that
+`~/.gitconfig` and `RUST_LOG=info`; no line holds `hunter2`, and the warning names `.gitconfig`). The tests of T-349
+stay green: `a_unix_proxy_with_user_info_is_refused`, `fuzz_a_unix_proxy_label_holds_no_user_info`,
+`doctor_a_unix_proxy_with_user_info_shows_no_password`.
 
 2026-11-14, commit 243eb48. `check_unix_path`, `guarded_var` and `without_unix_user_info` of `src/egress.rs`; the
 check in `parse` of `src/networks.rs`; `proxy_url` of `src/fuzzing.rs` takes `egress::parse`; `docs/proxies.md`.

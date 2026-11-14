@@ -67,10 +67,11 @@ pub fn parse(spec: &str) -> Result<Proxy> {
 
 /// T-349: refuse a proxy on a Unix socket whose path starts with `//HOST` or
 /// holds `@` (exit 64). The URL form `socks5h+unix://USER:PASS@HOST` has no
-/// authority: `pod-proxy` takes the rest as the path and prints it in each
-/// label and error. The error names the form of the spec, never its path.
-/// The forms are those of `pod-proxy`: `SCHEME+unix:PATH`,
-/// `SCHEME://unix:/PATH`, and `unix:PATH` of the pod hops.
+/// authority. Since v0.45.0, `pod-proxy` refuses these paths too (their
+/// entry 612); this check stays for the exit 64 of a usage fault and for
+/// `unix:PATH` of the pod hops, which `pod-proxy` does not parse. The error
+/// names the form of the spec, never its path. The forms are
+/// `SCHEME+unix:PATH`, `SCHEME://unix:/PATH` and `unix:PATH`.
 pub fn check_unix_path(spec: &str) -> Result<()> {
     let spec = spec.trim();
     let scheme_only = |s: &str| !s.is_empty() && !s.contains(['/', ':', '@']);
@@ -105,22 +106,6 @@ pub fn check_unix_path(spec: &str) -> Result<()> {
 /// empty authority, as `socks5+unix:///run/proxy.sock` of the pod hops.
 fn has_authority(path: &str) -> bool {
     path.contains('@') || (path.starts_with("//") && !path.starts_with("///"))
-}
-
-/// `env` with no proxy whose Unix path [`check_unix_path`] refuses: the
-/// proxy of a tool's file does not pass through [`guarded_var`].
-fn without_unix_user_info(mut env: Environment) -> Environment {
-    for slot in [&mut env.proxy, &mut env.http_proxy] {
-        let bad = |p: &Proxy| match p.carrier() {
-            Carrier::Unix(path) => has_authority(&path.to_string_lossy()),
-            _ => false,
-        };
-        if let Some(given) = slot.as_ref().filter(|g| g.value.as_ref().is_ok_and(bad)) {
-            tracing::warn!(from = %given.origin, "a proxy on a Unix socket with a user or a host in its path is passed over");
-            *slot = None;
-        }
-    }
-    env
 }
 
 /// A variable of the environment for the proxy settings. A proxy URL that
@@ -165,9 +150,10 @@ static WAY: OnceLock<Way> = OnceLock::new();
 /// of a tool's file, read at the first use.
 fn way() -> &'static Way {
     WAY.get_or_init(|| {
+        // `pod-proxy` (v0.45.0, their entry 612) refuses the Unix path of a
+        // tool's file with `//HOST` or `@`: its warning names no path.
         let env = Environment::read_with(&guarded_var, rules())
             .or_detected(&guarded_var, &pod_proxy::detect::read_file);
-        let env = without_unix_user_info(env);
         let (dialer, resolver) = dialer_and_resolver(pod_proxy::ProxyChoice::FromEnvironment(env));
         Way {
             choice: ProxyChoice::FromEnvironment,
@@ -587,5 +573,39 @@ mod tests {
         let proxy = parse("socks5h+unix:/run/x.sock").unwrap();
         assert_eq!(proxy.label(), "socks5h+unix:/run/x.sock");
         assert!(crate::networks::parse("socks5h+unix:/run/x.sock").is_ok());
+    }
+
+    /// T-349 with podcrates v0.45.0 (their entry 612): `pod-proxy` itself
+    /// refuses a Unix path with `//HOST` or `@`, and its text holds no
+    /// path; `///PATH` stays valid. A tool's file with such a proxy gives no
+    /// proxy, and the skipped entry holds no password.
+    #[test]
+    fn pod_proxy_refuses_a_unix_path_with_user_info() {
+        for spec in [
+            "socks5h+unix://user:hunter2@x",
+            "socks5+unix://ss@proxy:2]:/",
+            "http+unix:/run/hunter2@x.sock",
+            "socks5h://unix://user:hunter2@x",
+        ] {
+            let why = Proxy::parse(spec).unwrap_err();
+            for secret in ["hunter2", "ss@", "@x", "proxy:2"] {
+                assert!(!why.contains(secret), "{spec}: {why}");
+            }
+        }
+        let proxy = Proxy::parse("socks5+unix:///run/x.sock").unwrap();
+        assert!(matches!(proxy.carrier(), Carrier::Unix(_)));
+        let home = |name: &str| (name == "HOME").then(|| "/home/podnet-test".into());
+        let read = |path: &std::path::Path| {
+            (path == std::path::Path::new("/home/podnet-test/.gitconfig"))
+                .then(|| "[http]\n\tproxy = socks5h+unix://user:hunter2@x\n".to_string())
+        };
+        let env = Environment::read_with(&home, rules()).or_detected(&home, &read);
+        assert!(env.proxy.is_none());
+        assert_eq!(env.skipped.len(), 1);
+        assert!(
+            !env.skipped[0].value.contains("hunter2"),
+            "{}",
+            env.skipped[0].value
+        );
     }
 }

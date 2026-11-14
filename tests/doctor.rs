@@ -462,6 +462,26 @@ fn doctor_json_has_the_seven_lanes() {
     assert_eq!(lanes["ws_upgrade"]["verdict"], "fail", "{all}");
 }
 
+/// T-349 with podcrates v0.45.0: a tool's file (`~/.gitconfig`) with a
+/// proxy on a Unix socket with a password is passed over. No line of
+/// `podnet status` or of its log at the info level holds the password.
+#[test]
+fn a_tool_file_with_a_unix_proxy_password_shows_no_password() {
+    let home = tempfile::tempdir().unwrap();
+    std::fs::write(
+        home.path().join(".gitconfig"),
+        "[http]\n\tproxy = socks5h+unix://user:hunter2@x\n",
+    )
+    .unwrap();
+    let home = home.path().to_str().unwrap();
+    let (_, all) = podnet_with(
+        &["status", "--json"],
+        &[("HOME", home), ("RUST_LOG", "info")],
+    );
+    assert!(!all.contains("hunter2"), "{all}");
+    assert!(all.contains(".gitconfig"), "{all}");
+}
+
 /// T-349: `podnet` with the arguments `args` and the variables `env`, with
 /// no proxy variable of the host. Gives the exit code and stdout with stderr.
 fn podnet_with(args: &[&str], env: &[(&str, &str)]) -> (Option<i32>, String) {
