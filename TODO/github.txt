@@ -247,4 +247,4 @@
 546 issue closed
 547 issue open
 548 issue closed
-549 issue open
+549 issue closed

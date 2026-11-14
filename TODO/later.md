@@ -197,6 +197,8 @@ Part 4 is left (Correction).
 Not proven: a WAN that is a TUN of `warp tun` (the WANs of the tests are veth pairs). IPv6 is not routed by the
 kernel mode.
 
+CI: ci 43553742871, deny 43553746054, secrets 43553749542 and live 43553752592 on a93a37a passed (GitHub #549); the tests that need a network namespace skip there.
+
 # T-121: Router: export the groups as a JSON file of the mwan form
 
 **Source:** `docs/research/podnet/mwan-field.md`, sections 2.2 (R4) and 5 (question 5).
@@ -1820,7 +1822,7 @@ cargo test -p podnet --lib -- router::guest
   test prints `skip: the namespace has no TUN device`.
 * The test kit of the namespaces is `src/router/kernel/netkit.rs` (T-120).
 
-
+CI: ci 43553742871, deny 43553746054, secrets 43553749542 and live 43553752592 on a93a37a passed (GitHub #549); the tests that need a network namespace skip there.
 
 # T-320: net: a Dev Tunnels network for TCP streams (GitHub #503)
 
