@@ -26,7 +26,10 @@ podnet --no-proxy tunnel --url http://127.0.0.1:8080
   `socks5h://` gives the name to the proxy. podnet refuses `socks4://` and
   `https://`.
 * A proxy on a unix socket: `socks5h+unix:/PATH` (also
-  `socks5h://unix:/PATH`), or `http+unix:/PATH`.
+  `socks5h://unix:/PATH`), or `http+unix:/PATH`. The path has no user, no
+  password and no host: podnet refuses `socks5h+unix://USER:PASS@HOST` and
+  a path with `@` with exit 64, and passes over such a variable with a
+  warning (T-349).
 * A proxy at the stdin and the stdout of a command, when the only way out
   is a byte channel (issue 129): `--proxy 'http+exec:ssh gw nc 127.0.0.1
   3128'`. Each connection starts the command once, with `sh -c`, as the

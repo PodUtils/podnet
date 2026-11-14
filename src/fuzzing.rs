@@ -134,11 +134,11 @@ fn text(data: &[u8]) -> Option<&str> {
     std::str::from_utf8(data).ok()
 }
 
-/// A proxy URL (`--proxy`, `HTTPS_PROXY`). A parsed proxy prints with no
-/// password.
+/// A proxy URL (`--proxy`, `HTTPS_PROXY`) by podnet's parse (T-349: with the
+/// check of a Unix path). A parsed proxy prints with no password.
 pub fn proxy_url(data: &[u8]) {
     let Some(spec) = text(data) else { return };
-    if let Ok(proxy) = crate::egress::Proxy::parse(spec) {
+    if let Ok(proxy) = crate::egress::parse(spec) {
         let shown = proxy.label();
         assert!(!shown.contains('@'), "{shown}");
     }
@@ -372,6 +372,14 @@ mod tests {
             );
             assert!(root.get_struct(0).is_err(), "struct {elem} {count}");
         }
+    }
+
+    /// T-349: the crash input of `proxy_url` of the fuzz run 43590953876: the
+    /// unix path held the user info, and the label showed it.
+    #[test]
+    fn fuzz_a_unix_proxy_label_holds_no_user_info() {
+        proxy_url(b"socks5+unix://ss@proxy:2]:/");
+        proxy_url(b"socks5h+unix://user:hunter2@x");
     }
 
     /// Each target on its seeds and on 2000 mutations of them (100 for

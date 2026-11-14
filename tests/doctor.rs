@@ -461,3 +461,64 @@ fn doctor_json_has_the_seven_lanes() {
     // The upgrade goes through the proxy, which refuses 7844.
     assert_eq!(lanes["ws_upgrade"]["verdict"], "fail", "{all}");
 }
+
+/// T-349: `podnet` with the arguments `args` and the variables `env`, with
+/// no proxy variable of the host. Gives the exit code and stdout with stderr.
+fn podnet_with(args: &[&str], env: &[(&str, &str)]) -> (Option<i32>, String) {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_podnet"));
+    for key in [
+        "HTTPS_PROXY",
+        "https_proxy",
+        "ALL_PROXY",
+        "all_proxy",
+        "HTTP_PROXY",
+        "http_proxy",
+        "NO_PROXY",
+        "no_proxy",
+        "PODNET_PROXY",
+        "PODNET_ERROR_PROGRAM",
+    ] {
+        cmd.env_remove(key);
+    }
+    let out = cmd
+        .args(args)
+        .envs(env.iter().copied())
+        .env("PODNET_RUN_DIR", "/nonexistent/podnet-run")
+        .env("PODNET_EDGE", "192.0.2.1:7844")
+        .output()
+        .unwrap();
+    let all = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (out.status.code(), all)
+}
+
+/// T-349 (fuzz run 43590953876): a proxy on a Unix socket with a user and a
+/// password in its path is refused with exit 64 as `--proxy`, and passed
+/// over as a variable. No line of `podnet doctor` holds the password. A
+/// normal Unix path still works.
+#[test]
+fn doctor_a_unix_proxy_with_user_info_shows_no_password() {
+    let doctor = ["doctor", "--json", "--samples", "1", "--timeout", "1"];
+    let spec = "socks5h+unix://user:hunter2@x";
+    let mut args = vec!["--proxy", spec];
+    args.extend(doctor);
+    let (code, all) = podnet_with(&args, &[]);
+    assert_eq!(code, Some(64), "{all}");
+    assert!(!all.contains("hunter2"), "{all}");
+    for var in ["HTTPS_PROXY", "ALL_PROXY"] {
+        let (_, all) = podnet_with(&doctor, &[(var, spec)]);
+        assert!(!all.contains("hunter2"), "{var}: {all}");
+        let (_, all) = podnet_with(&["status", "--json"], &[(var, spec)]);
+        assert!(!all.contains("hunter2"), "{var}: {all}");
+    }
+    let mut args = vec!["--proxy", "socks5h+unix:/run/podnet-test-none.sock"];
+    args.extend(doctor);
+    let (_, all) = podnet_with(&args, &[]);
+    assert!(
+        all.contains("socks5h+unix:/run/podnet-test-none.sock"),
+        "{all}"
+    );
+}

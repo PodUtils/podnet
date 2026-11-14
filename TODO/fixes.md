@@ -1595,7 +1595,7 @@ scripts/agent/check.sh` exits 0. CI: at the merge.
    name already holds a pool address keeps the pool address. State it in the README.
 2. `address_for` returns `Option<Ipv4Addr>`. At `next >= FAKE_IP_COUNT` it returns `None`, with no
    insert. Add `RCODE_SERVFAIL = 2`. `answer` returns SERVFAIL on `None`.
-3. Update `docs/proxies.md:55-60`: the pool bound, case-insensitivity, SERVFAIL at the end.
+3. Update `docs/proxies.md:58-63`: the pool bound, case-insensitivity, SERVFAIL at the end.
 
 ## Prove
 
@@ -2317,7 +2317,7 @@ A unit test gives a row with a passing index and a failing file host and expects
 
 ## Premise
 
-- `src/egress.rs:45-46` sets 8080 and `rules()` passes it as `http_port` (`src/egress.rs:50-61`); `parse()` uses it (`:66`).
+- `src/egress.rs:45-46` sets 8080 and `rules()` passes it as `http_port` (`src/egress.rs:50-61`); `parse()` uses it (`:67`).
 - `pod-proxy` `HTTP_PORT = 80` (`proxy/parse.rs:21`) is the default of `Rules` (`env.rs:141`). A consumer can set another value (`env.rs:124`).
 - The tests assert the constant, not a number (`src/egress.rs:461,475`).
 - `docs/decisions.md` has no ruling on this value. Not measured: curl behaviour (read from the issue).
@@ -2476,7 +2476,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:181-199`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`crates/podnet-core/src/net.rs:94-98`).
+- `connect_origin` (`crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:257-275`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`crates/podnet-core/src/net.rs:94-98`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`crates/podnet-vnet/src/proxy.rs:185-189`).
 
@@ -3170,7 +3170,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:245-255` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:61-67`.
+- `src/cli/cmd/host.rs:245-255` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:64-70`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -6350,4 +6350,63 @@ The input comes from the Cloudflare edge (the RPC of the tunnel), so a peer can 
 cargo test -p podnet --lib fuzzing
 cargo test -p podnet --lib cloudflare
 cd fuzz && cargo +nightly-2026-10-15 fuzz run capnp_message corpus/capnp_message -- -max_total_time=120
+```
+
+# T-349: proxy: a password in the URL form of a Unix proxy shows in each line that names the proxy
+
+**Source:** the fuzz run 43590953876 of `fuzz.yml` on 9610316, target `proxy_url` (2026-11-14); GitHub #554 and
+#555 (COORD-079, item 1).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The fuzz target `proxy_url` asserts that the label of a parsed proxy holds no `@`. Its crash input is
+`socks5+unix://ss@proxy:2]:/`. `Proxy::parse("socks5h+unix://user:hunter2@x")` of `pod-proxy` succeeds with the Unix
+path `//user:hunter2@x`, and `Proxy::label()` prints the path whole. Measured with podnet `0.4.0-beta.10`:
+
+```
+$ podnet --proxy 'socks5h+unix://user:hunter2@x' doctor
+proxy  socks5h+unix://user:hunter2@x (credentials: none)
+    api.trycloudflare.com:443 through the proxy socks5h+unix://user:hunter2@x: could not reach the proxy unix://user:hunter2@x: ...
+```
+
+The fix of the crate is entry 612 of PodUtils/podcrates (PodUtils/podcrates#156). podnet guards its own parse until a
+tag carries it.
+
+## Premise
+
+- Read at 54637d9: podnet hands a proxy spec to `pod-proxy` in `parse` and `set_proxy` of `src/egress.rs` (also the
+  variables and the files of tools that `way` reads), and in `parse` of `src/networks.rs` (`parse_trusted`).
+  `podnet doctor`, `podnet status` and each dial take the proxy from these.
+- Measured: `doctor_a_unix_proxy_with_user_info_shows_no_password` failed at 54637d9: exit 1, and the JSON of the
+  doctor held `hunter2` in each lane.
+- Not measured: the info line of `pod-proxy` for the proxy of a tool's file (`or_detected`) prints the label before
+  podnet can see it.
+
+## Approach
+
+- `check_unix_path` of `src/egress.rs`: the forms of a Unix proxy of `pod-proxy` (`SCHEME+unix:PATH`,
+  `SCHEME://unix:/PATH`) and `unix:PATH` of the pod hops. A path that starts with `//HOST` or holds `@` is a usage
+  error (exit 64). The text names the form, never the path.
+- `parse` and `set_proxy` call it first. `way` and `set_proxy` read the variables through `guarded_var`, which passes
+  over a refused value with a warning. `without_unix_user_info` drops such a proxy from a tool's file.
+- `parse` of `src/networks.rs` calls it before each proxy form (`--egress`, `link --via`, the pod hops).
+- The fuzz target `proxy_url` takes podnet's `egress::parse`.
+
+## Decision
+
+2026-11-14: `///PATH` (an empty authority) stays valid: `socks5+unix:///run/proxy.sock` is a form of the pod hops that
+a test of `src/networks/tests.rs` holds. Only `//HOST` and `@` are refused.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib egress
+cargo test -p podnet --lib fuzzing
+cargo test -p podnet --test doctor
+cd fuzz && cargo +nightly-2026-10-15 fuzz run proxy_url corpus/proxy_url -- -max_total_time=120
 ```

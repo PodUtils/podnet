@@ -259,6 +259,8 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
     if warp::is_warp(spec) {
         return warp::parse(spec).map(Kind::Warp);
     }
+    // T-349: no user info in the path of a Unix proxy, for a hop of the pod too.
+    crate::egress::check_unix_path(spec).map_err(|e| usage(format!("{e:#}")))?;
     let hop = |spec: &str| podnet_netns::upstream::Proxy::parse(spec);
     if spec.starts_with("tailscale:") {
         hop(spec).map_err(|e| usage(format!("{spec}: {e:#}")))?;

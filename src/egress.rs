@@ -61,7 +61,83 @@ pub fn rules() -> Rules {
 
 /// The proxy of a URL by podnet's rules, as a variable gives it: no command.
 pub fn parse(spec: &str) -> Result<Proxy> {
+    check_unix_path(spec)?;
     Proxy::parse(spec).map_err(anyhow::Error::msg)
+}
+
+/// T-349: refuse a proxy on a Unix socket whose path starts with `//HOST` or
+/// holds `@` (exit 64). The URL form `socks5h+unix://USER:PASS@HOST` has no
+/// authority: `pod-proxy` takes the rest as the path and prints it in each
+/// label and error. The error names the form of the spec, never its path.
+/// The forms are those of `pod-proxy`: `SCHEME+unix:PATH`,
+/// `SCHEME://unix:/PATH`, and `unix:PATH` of the pod hops.
+pub fn check_unix_path(spec: &str) -> Result<()> {
+    let spec = spec.trim();
+    let scheme_only = |s: &str| !s.is_empty() && !s.contains(['/', ':', '@']);
+    if spec
+        .split_once("+exec:")
+        .is_some_and(|(s, _)| scheme_only(s))
+    {
+        return Ok(());
+    }
+    let unix = (spec.split_once("+unix:").filter(|(s, _)| scheme_only(s)))
+        .map(|(s, path)| (format!("{s}+unix:"), path))
+        .or_else(|| {
+            let (s, path) = spec.split_once("://unix:")?;
+            (scheme_only(s) && path.starts_with('/')).then(|| (format!("{s}://unix:"), path))
+        })
+        .or_else(|| Some(("unix:".to_string(), spec.strip_prefix("unix:")?)));
+    match unix {
+        Some((form, path)) if has_authority(path) => {
+            Err(crate::exit::fault(
+                crate::exit::Fault::Usage,
+                anyhow::anyhow!(
+                    "a proxy on a Unix socket ({form}) takes an absolute path with no user, password or host: \
+                     give {form}/PATH"
+                ),
+            ))
+        }
+        _ => Ok(()),
+    }
+}
+
+/// A Unix path with an authority (`//HOST`) or with `@`. `///PATH` has an
+/// empty authority, as `socks5+unix:///run/proxy.sock` of the pod hops.
+fn has_authority(path: &str) -> bool {
+    path.contains('@') || (path.starts_with("//") && !path.starts_with("///"))
+}
+
+/// `env` with no proxy whose Unix path [`check_unix_path`] refuses: the
+/// proxy of a tool's file does not pass through [`guarded_var`].
+fn without_unix_user_info(mut env: Environment) -> Environment {
+    for slot in [&mut env.proxy, &mut env.http_proxy] {
+        let bad = |p: &Proxy| match p.carrier() {
+            Carrier::Unix(path) => has_authority(&path.to_string_lossy()),
+            _ => false,
+        };
+        if let Some(given) = slot.as_ref().filter(|g| g.value.as_ref().is_ok_and(bad)) {
+            tracing::warn!(from = %given.origin, "a proxy on a Unix socket with a user or a host in its path is passed over");
+            *slot = None;
+        }
+    }
+    env
+}
+
+/// A variable of the environment for the proxy settings. A proxy URL that
+/// [`check_unix_path`] refuses is passed over with a warning that does not
+/// show it.
+fn guarded_var(name: &str) -> Option<std::ffi::OsString> {
+    let value = std::env::var_os(name)?;
+    if NO_PROXY_VARIABLES.contains(&name) {
+        return Some(value);
+    }
+    match check_unix_path(&value.to_string_lossy()) {
+        Ok(()) => Some(value),
+        Err(e) => {
+            tracing::warn!("{name} is passed over: {e:#}");
+            None
+        }
+    }
 }
 
 /// How podnet reaches the network, as `podnet status` names it.
@@ -89,9 +165,9 @@ static WAY: OnceLock<Way> = OnceLock::new();
 /// of a tool's file, read at the first use.
 fn way() -> &'static Way {
     WAY.get_or_init(|| {
-        let var = |name: &str| std::env::var_os(name);
-        let env =
-            Environment::read_with(&var, rules()).or_detected(&var, &pod_proxy::detect::read_file);
+        let env = Environment::read_with(&guarded_var, rules())
+            .or_detected(&guarded_var, &pod_proxy::detect::read_file);
+        let env = without_unix_user_info(env);
         let (dialer, resolver) = dialer_and_resolver(pod_proxy::ProxyChoice::FromEnvironment(env));
         Way {
             choice: ProxyChoice::FromEnvironment,
@@ -106,9 +182,9 @@ fn way() -> &'static Way {
 /// connection; a later call has no effect. The proxy, or why `spec` cannot
 /// be used.
 pub fn set_proxy(spec: &str) -> Result<Proxy> {
-    let var = |name: &str| std::env::var_os(name);
-    let env =
-        Environment::read_with(&var, rules()).with_proxy(spec, Origin::User("--proxy".into()));
+    check_unix_path(spec)?;
+    let env = Environment::read_with(&guarded_var, rules())
+        .with_proxy(spec, Origin::User("--proxy".into()));
     let proxy = match env.proxy.as_ref().map(|given| &given.value) {
         Some(Ok(proxy)) => proxy.clone(),
         Some(Err(why)) => anyhow::bail!("{why}"),
@@ -472,5 +548,44 @@ mod tests {
         );
         assert_eq!(parse("http://127.0.0.1").unwrap().port, 80);
         assert_eq!(parse("socks5://127.0.0.1").unwrap().port, 1080);
+    }
+
+    /// T-349: a proxy on a Unix socket with a user, a password or a host in
+    /// its path is a usage error (exit 64), and no text of the refusal
+    /// shows the path. A normal path still works.
+    #[test]
+    fn a_unix_proxy_with_user_info_is_refused() {
+        for spec in [
+            "socks5h+unix://user:hunter2@x",
+            "socks5+unix://ss@proxy:2]:/",
+            "http+unix:/run/hunter2@x.sock",
+            "socks5h://unix://user:hunter2@x",
+            "unix://user:hunter2@x",
+            " socks5h+unix://hunter2",
+        ] {
+            let err = parse(spec).unwrap_err();
+            assert_eq!(crate::exit::code_of(&err), crate::exit::USAGE, "{spec}");
+            let err = set_proxy(spec).unwrap_err();
+            assert_eq!(crate::exit::code_of(&err), crate::exit::USAGE, "{spec}");
+            let network = crate::networks::parse(spec).unwrap_err();
+            for text in [format!("{err:#}"), network.to_string()] {
+                for secret in ["hunter2", "ss@", "@x", "proxy:2"] {
+                    assert!(!text.contains(secret), "{spec}: {text}");
+                }
+            }
+        }
+        for spec in [
+            "socks5h+unix:/run/x.sock",
+            "http://unix:/run/x.sock",
+            "unix:/run/x.sock",
+            "socks5h+exec:ssh -W %h:%p user@host",
+            "http://user:hunter2@proxy:3128",
+            "socks5+unix:///run/x.sock",
+        ] {
+            check_unix_path(spec).unwrap();
+        }
+        let proxy = parse("socks5h+unix:/run/x.sock").unwrap();
+        assert_eq!(proxy.label(), "socks5h+unix:/run/x.sock");
+        assert!(crate::networks::parse("socks5h+unix:/run/x.sock").is_ok());
     }
 }

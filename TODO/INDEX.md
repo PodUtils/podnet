@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**348 entries: 12 open, 9 partial, 25 blocked, 302 done.**
+**349 entries: 13 open, 9 partial, 25 blocked, 302 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 1 | 2 | 31 | 35 |
+| P1 | 2 | 1 | 2 | 31 | 36 |
 | P2 | 5 | 4 | 10 | 156 | 175 |
 | P3 | 6 | 4 | 13 | 114 | 137 |
-| **All** | 12 | 9 | 25 | 302 | 348 |
+| **All** | 13 | 9 | 25 | 302 | 349 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -394,3 +394,4 @@ M8 Overlays, M9 Later.
 | [T-346](fixes.md) | P2 | M | M8 | defect | done | link mesh: a neighbour can claim a direct link to each origin that it hears, and attract its routes |
 | [T-347](fixes.md) | P3 | M | M5 | defect | done | Hardening: the low findings of the security review of 2026-11-14 |
 | [T-348](fixes.md) | P1 | S | M5 | defect | open | capnp: a list in a segment that does not exist panics the reader of a message of the edge |
+| [T-349](fixes.md) | P1 | S | M5 | defect | open | proxy: a password in the URL form of a Unix proxy shows in each line that names the proxy |
