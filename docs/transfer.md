@@ -74,7 +74,9 @@ After the offer and its answer, the two ends connect for the bytes:
   `--no-listen` does not listen. A host that refuses a bind of `AF_INET`
   has no listener: the other end or a relay carries the transfer.
 * Each end dials each hint of the other end through the way out of podnet
-  (`--proxy`, `--egress`, `NO_PROXY`).
+  (`--proxy`, `--egress`, `NO_PROXY`). An end takes the first 64 hints of
+  the other end, and the first 16 ends of each relay hint, and ignores the
+  rest (T-344).
 * After 2 s (at once when no end has a direct hint) each end also dials
   each transit relay of the two ends. The relays of this end are the
   services of the kind `transit` of `pod-services`, in their order (Least

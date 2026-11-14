@@ -5965,7 +5965,7 @@ gives its own peer. `cargo test -p podnet --lib wg_serve`: 7 passed. With the ol
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -5993,6 +5993,55 @@ stream: 16 MiB of memory for 24 bytes of input.
 ```sh
 cargo test -p podnet --lib link_record
 cargo test -p podnet --test link_record --test link_seal --test link_pad --test link_compress --test link_replay --test link_record_mesh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-14, commit b8c1d24. `read_record` of `src/link_record/pump.rs` reserves at most `BODY_STEP` (64 KiB) and
+reads the body with `take` and `read_to_end`. `cargo test -p podnet --lib link_record`: 7 passed. Before the fix,
+`link_record_a_long_header_with_no_body_takes_no_buffer_of_its_length` failed: "a read offered 16777232 bytes for a
+body that did not come". The six test targets of the Prove passed (3, 2, 8, 2, 8, 5). `cargo test --workspace
+--no-fail-fast` on cbb8579: each target passed.
+
+
+# T-344: podnet receive and send: the other end of a transfer can make this end dial thousands of hosts
+
+**Source:** the security review of the code of 2026-11-13 and 2026-11-14 that takes peer input (2026-11-14).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The `transit` message of the other end holds a list of hints. A hostile end (it has the code) sends a message with
+thousands of `direct-tcp-v1` hints, or a `relay-v1` hint with thousands of ends, with the addresses of hosts of the
+network of the receiver. This end dials each one at once, and writes the handshake of the transit to each that
+answers, for the time of the transit wait (120 s): a scan of ports and a flood of connections from the host of this
+end, and many tasks and descriptors.
+
+## Premise
+
+- `Transit::parse` of `src/transfer/messages.rs` kept each hint of a known kind, with no bound.
+- `connect` of `src/transfer/connect.rs` spawns one dial for each direct hint and for each relay end, and one dial
+  loop (again each 1 s) for each podnet relay hint.
+- A Python end sends one direct hint for each address of its host, and its relay hints. Not measured: the most
+  addresses of a real host; 64 holds each host that the tests and the lab kit use.
+
+## Approach
+
+1. `Transit::parse`: keep the first `MAX_HINTS` (64) hints of a known kind, and the first `MAX_RELAY_ENDS` (16)
+   ends of each relay hint.
+2. A test of the lib: a message with 1001 hints and a relay hint of 1000 ends gives 64 hints and 16 ends.
+3. `docs/transfer.md`: the caps.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib transfer_hints_a_long_list_of_hints_is_cut_at_its_cap
+cargo test -p podnet --lib transfer
 sh scripts/agent/check.sh
 ```
 

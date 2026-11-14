@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**343 entries: 12 open, 9 partial, 25 blocked, 297 done.**
+**344 entries: 12 open, 9 partial, 25 blocked, 298 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 31 | 34 |
-| P2 | 6 | 4 | 10 | 152 | 172 |
+| P2 | 6 | 4 | 10 | 153 | 173 |
 | P3 | 6 | 4 | 13 | 113 | 136 |
-| **All** | 12 | 9 | 25 | 297 | 343 |
+| **All** | 12 | 9 | 25 | 298 | 344 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -388,4 +388,5 @@ M8 Overlays, M9 Later.
 | [T-340](fixes.md) | P2 | S | M5 | chore | done | The parity checklist after the take of pod-warp, the router, the transfer and the carriers |
 | [T-341](fixes.md) | P1 | S | M5 | defect | done | podnet receive: a directory can land more bytes and entries than the offer that the person accepted |
 | [T-342](fixes.md) | P1 | S | M5 | defect | done | wg serve: a peer can send with the address of another peer when their AllowedIPs overlap |
-| [T-343](fixes.md) | P2 | S | M5 | defect | open | link record: a middle node makes an end take 16 MiB for each record header that it sends |
+| [T-343](fixes.md) | P2 | S | M5 | defect | done | link record: a middle node makes an end take 16 MiB for each record header that it sends |
+| [T-344](fixes.md) | P2 | S | M5 | defect | open | podnet receive and send: the other end of a transfer can make this end dial thousands of hosts |

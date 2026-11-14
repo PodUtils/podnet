@@ -27,6 +27,12 @@ pub const PIPING: &str = "piping-v1";
 /// entries is a valid zip of this mode.
 pub const ZIP_MODE: &str = "zipfile/deflated";
 
+/// The most hints of the other end that this end takes, and the most ends
+/// of one relay hint: each one is a dial, so a peer with a long list could
+/// make this end dial thousands of hosts (T-344). The rest is ignored.
+pub const MAX_HINTS: usize = 64;
+pub const MAX_RELAY_ENDS: usize = 16;
+
 /// What a sender offers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Offer {
@@ -178,6 +184,7 @@ impl Transit {
         let hints = list("hints-v1")
             .iter()
             .filter_map(Hint::from_json)
+            .take(MAX_HINTS)
             .collect();
         let relay_token = value
             .get(PODNET_RELAY_TOKEN)
@@ -225,6 +232,7 @@ impl Hint {
                     .as_array()?
                     .iter()
                     .filter_map(RelayEnd::from_json)
+                    .take(MAX_RELAY_ENDS)
                     .collect();
                 let name = value["name"].as_str().map(str::to_string);
                 Some(Hint::Relay { name, ends })
@@ -353,6 +361,25 @@ fn host_port(value: &Value) -> Option<(String, u16)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn transfer_hints_a_long_list_of_hints_is_cut_at_its_cap() {
+        let direct = |i: usize| json!({"type": DIRECT, "hostname": format!("10.0.{}.{}", i / 250, i % 250), "port": 4000});
+        let ends: Vec<Value> = (0..1000).map(direct).collect();
+        let mut hints: Vec<Value> = (0..1000).map(direct).collect();
+        hints.insert(0, json!({"type": RELAY, "hints": ends}));
+        let bytes =
+            serde_json::to_vec(&json!({"transit": {"abilities-v1": [], "hints-v1": hints}}))
+                .unwrap();
+        let Ok(Message::Transit(transit)) = parse(&bytes) else {
+            panic!("not a transit message");
+        };
+        assert_eq!(transit.hints.len(), MAX_HINTS);
+        let Hint::Relay { ends, .. } = &transit.hints[0] else {
+            panic!("the relay hint is not first");
+        };
+        assert_eq!(ends.len(), MAX_RELAY_ENDS);
+    }
 
     #[test]
     fn wormhole_transfer_an_offer_of_magic_wormhole_reads_back() {
