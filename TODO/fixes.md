@@ -6315,7 +6315,7 @@ and #555 (COORD-079, item 2).
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6352,6 +6352,20 @@ cargo test -p podnet --lib cloudflare
 cd fuzz && cargo +nightly-2026-10-15 fuzz run capnp_message corpus/capnp_message -- -max_total_time=120
 ```
 
+## Done
+
+2026-11-14, commit 54637d9. `check_range` of `src/cloudflare/capnp.rs` refuses a segment that does not exist (also
+for 0 words); `bytes` and `data_word` read their words with `get`. The file keeps its count of the size allowlist
+(944 lines). `fuzz_a_list_in_a_missing_segment_is_an_error` of `src/fuzzing.rs`: the crash input, and a double-far
+pointer to a list of each kind in segment 10; at 7f22571 it panicked ("the len is 1 but the index is 10").
+`cargo test -p podnet --lib -- fuzzing capnp cloudflare`: 71 passed. `cargo test --workspace --no-fail-fast` on the
+tree of 54637d9: 1986 passed, 0 failed (120 targets). `CC_i686_unknown_linux_musl=clang cargo check --workspace
+--target i686-unknown-linux-musl`: 0. Fuzz, nightly-2026-10-15 and cargo-fuzz 0.13.1, on the tree of 243eb48, with
+the seeds and the crash input in the corpus (`-max_total_time=120 -malloc_limit_mb=64 -rss_limit_mb=2048
+-timeout=10`): `capnp_message` 172099 runs in 121 s, no crash. The fuzz corpus is not in the repository
+(`fuzz/.gitignore`), so the crash input is in the test only. The commit goes to PodUtils/podcrates#156 for
+`pod-cloudflare` (their T-029).
+
 # T-349: proxy: a password in the URL form of a Unix proxy shows in each line that names the proxy
 
 **Source:** the fuzz run 43590953876 of `fuzz.yml` on 9610316, target `proxy_url` (2026-11-14); GitHub #554 and
@@ -6360,7 +6374,7 @@ cd fuzz && cargo +nightly-2026-10-15 fuzz run capnp_message corpus/capnp_message
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6410,3 +6424,19 @@ cargo test -p podnet --lib fuzzing
 cargo test -p podnet --test doctor
 cd fuzz && cargo +nightly-2026-10-15 fuzz run proxy_url corpus/proxy_url -- -max_total_time=120
 ```
+
+## Done
+
+2026-11-14, commit 243eb48. `check_unix_path`, `guarded_var` and `without_unix_user_info` of `src/egress.rs`; the
+check in `parse` of `src/networks.rs`; `proxy_url` of `src/fuzzing.rs` takes `egress::parse`; `docs/proxies.md`.
+Tests: `a_unix_proxy_with_user_info_is_refused` (six specs, the crash input among them: exit 64 from `parse` and
+`set_proxy`, a usage error from `networks::parse`, and no text holds the secret; `socks5h+unix:/run/x.sock`,
+`socks5+unix:///run/x.sock` and `unix:/run/x.sock` pass), `fuzz_a_unix_proxy_label_holds_no_user_info`, and
+`doctor_a_unix_proxy_with_user_info_shows_no_password` of `tests/doctor.rs` (`--proxy` exits 64; `HTTPS_PROXY` and
+`ALL_PROXY` with the spec: no line of `podnet doctor --json` and of `podnet status --json` holds the password; a normal
+Unix path is in the output). At 54637d9 the doctor test failed: exit 1, and each lane held `hunter2`.
+`cargo test --workspace --no-fail-fast`: 1988 passed, 1 failed (`llms_files_are_current`: `llms-full.txt` after the
+change of `docs/proxies.md`; `scripts/gen-llms.py` wrote it, and the test then passed). `sh scripts/agent/check.sh
+notest`: each step 0. The 32-bit check: 0. Fuzz (as T-348): `proxy_url` 1355113 runs in 121 s with the crash input in
+the corpus, no crash. Left: the guard stays until a tag of podcrates carries their entry 612; then the take removes it
+or keeps it as a second check.
