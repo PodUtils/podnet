@@ -1953,6 +1953,13 @@ Left: a file and a directory between podnet and Python (T-103, Blocker: the tran
 magic-wormhole: four new tests of `tests/wormhole_interop.rs` (see T-103, Done). The CI step runs them. Left: the live
 step of 100 MiB through the public mailbox, transit and relay (Approach 2): the entry stays partial for it only.
 
+2026-11-14, the stand-in mailbox (commit df08245): `pod_wormhole::standin` (the feature `standin`, a dev-dependency)
+replaces podnet's copy of the mailbox in `tests/transfer_harness/mod.rs`; `Mailbox` there is a wrapper (its URL, the
+moods of the closes, the nameplates of the AppID of the file transfer). The crate has no TCP transit relay, so
+podnet keeps its stand-in relay in the same file. With the crate's stand-in: `cargo test --test transfer --test
+transfer_relay --test transfer_piping`: 9, 4 and 3 passed; `cargo test --test cli -- transfer::`: 6 passed;
+`cargo test --test wormhole_interop` with `wormhole` and no `twist` on the PATH: 7 passed at the stand-in.
+
 ## Done
 
 2026-11-14, commit 061b172, the text half (the entry stays partial). `tests/wormhole_interop.rs`, the step
@@ -2550,6 +2557,16 @@ that lists none the receiver waits 10 s for the giver). The Prove's `transfer_ma
 open, no comment): two clients of the public mailbox can reach two instances that do not share their mailboxes;
 then the receiver finds nobody (69). `docs/transfer.md` says so, and gives `--mailbox` as the way out. podnet's own
 mailbox server waits for PodUtils/podcrates T-215.
+
+2026-11-14, the transit relays (calls of the session, the owner is away; commit df08245). podcrates v0.42.0 adds
+`magic-wormhole-transit` (TCP, port 4001) of the kind `transit` to `pod-services`. Its URL is `tcp://HOST:4001`
+(`Endpoint::url`), which `Relay::parse` refused before: the take (654c0f1) dropped the relay from
+`default_relays` with no line. `Relay::parse` now takes `tcp://HOST:PORT` as well as `tcp:HOST:PORT`, and refuses a host
+with a `/`. The default relays are the services of the kind `transit` in their order: Least Authority's WebSocket
+relay, then the TCP relay of magic-wormhole. `cargo test -p podnet --lib -- wormhole_rendezvous`: 2 passed
+(`wormhole_rendezvous_the_mailboxes_come_from_the_flags_the_variable_or_pod_services` checks one relay for each
+transit of `pod-services`, a TCP one among them, and `tcp://`). Plant: with the old `tcp:` prefix alone, the test
+failed (one relay for two transits). `docs/transfer.md` (The transit) says so.
 
 ## Done
 
