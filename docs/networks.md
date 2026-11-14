@@ -183,8 +183,9 @@ AllowedIPs = 10.9.0.8/29
 * A userspace stack ends each TCP and UDP flow of a peer. The server dials each target through the way of
   `--egress SPEC` (each spec of `podnet forward --network`, also a chain; default: the way out of the process).
   A TCP dial that fails answers the SYN of the peer with a RST.
-* A packet with a source outside the `AllowedIPs` of its peer is dropped. A packet to a peer goes to the peer
-  whose `AllowedIPs` has the longest prefix that holds its destination. The net of `Address`, the loopback and
+* A packet to a peer goes to the peer whose `AllowedIPs` has the longest prefix that holds its destination. A
+  packet of a peer must have a source that routes back to that peer by the same rule, else it is dropped: a peer
+  cannot send with the address of another peer, also when their `AllowedIPs` overlap (T-342). The net of `Address`, the loopback and
   the link-local addresses are not targets: a peer does not reach another peer or the loopback of the server.
 * IPv4 only inside the tunnel. A client of the server can be podnet itself: `wg:FILE` with the public key of the
   server and its address as the `Endpoint`.

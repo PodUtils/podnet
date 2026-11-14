@@ -331,6 +331,62 @@ async fn wg_serve_drops_a_source_outside_the_allowed_ips_of_its_peer() {
     assert!(seen.lock().unwrap().is_empty());
 }
 
+/// Two peers whose `AllowedIPs` overlap: the address 10.9.0.2 routes to the
+/// second peer (the longest prefix). The first peer sends with that source:
+/// the server drops it, as the packets to that source go to the other peer
+/// (T-342).
+#[tokio::test]
+async fn wg_serve_drops_a_source_that_routes_to_another_peer() {
+    crate::test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let (server_private, server_public) = keypair();
+    let (a_private, a_public) = keypair();
+    let (_, b_public) = keypair();
+    let peers = [
+        FilePeer {
+            public: a_public,
+            allowed: "10.9.0.0/25",
+            psk: None,
+        },
+        FilePeer {
+            public: b_public,
+            allowed: "10.9.0.2/32",
+            psk: None,
+        },
+    ];
+    let file = server_file(dir.path(), &server_private, &peers);
+    let (server, seen) = start(&file, echo().await).await;
+    let a = client(
+        dir.path(),
+        "a",
+        &a_private,
+        "10.9.0.2",
+        &server_public,
+        server.local_addr(),
+        None,
+    );
+    let err = round_trip(&a, "spoofed").await.unwrap_err();
+    assert!(
+        err.contains("no answer") || err.contains("no echo"),
+        "{err}"
+    );
+    assert!(
+        seen.lock().unwrap().is_empty(),
+        "the server dialed for a source of another peer"
+    );
+    // The first peer with an address of its own is served.
+    let a = client(
+        dir.path(),
+        "a2",
+        &a_private,
+        "10.9.0.3",
+        &server_public,
+        server.local_addr(),
+        None,
+    );
+    assert_eq!(round_trip(&a, "own").await.unwrap(), "own");
+}
+
 #[test]
 fn wg_serve_file_faults_are_one_usage_line() {
     let dir = tempfile::tempdir().unwrap();

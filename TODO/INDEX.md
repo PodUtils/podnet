@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**341 entries: 12 open, 9 partial, 25 blocked, 295 done.**
+**342 entries: 12 open, 9 partial, 25 blocked, 296 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 1 | 2 | 29 | 33 |
+| P1 | 1 | 1 | 2 | 30 | 34 |
 | P2 | 5 | 4 | 10 | 152 | 171 |
 | P3 | 6 | 4 | 13 | 113 | 136 |
-| **All** | 12 | 9 | 25 | 295 | 341 |
+| **All** | 12 | 9 | 25 | 296 | 342 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -386,4 +386,5 @@ M8 Overlays, M9 Later.
 | [T-338](services.md) | P3 | S | M6 | feature | done | `podnet send --words N`: the count of words of a code |
 | [T-339](fixes.md) | P2 | S | M5 | chore | done | Fuzz targets for the parsers of peer and file input that came after 2026-11-12 |
 | [T-340](fixes.md) | P2 | S | M5 | chore | done | The parity checklist after the take of pod-warp, the router, the transfer and the carriers |
-| [T-341](fixes.md) | P1 | S | M5 | defect | open | podnet receive: a directory can land more bytes and entries than the offer that the person accepted |
+| [T-341](fixes.md) | P1 | S | M5 | defect | done | podnet receive: a directory can land more bytes and entries than the offer that the person accepted |
+| [T-342](fixes.md) | P1 | S | M5 | defect | open | wg serve: a peer can send with the address of another peer when their AllowedIPs overlap |

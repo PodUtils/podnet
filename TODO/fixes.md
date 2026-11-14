@@ -5867,7 +5867,7 @@ is in `pod-dns`) hold. `cargo test --workspace` on ce6352c: 0 failed. No item fa
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -5905,3 +5905,49 @@ cargo test -p podnet --lib transfer_receive_a_zip_lands_no_more_than_its_accepte
 cargo test -p podnet --test transfer --test transfer_land
 sh scripts/agent/check.sh
 ```
+
+## Done
+
+2026-11-14, commit ab0cff7. `land_zip` of `src/transfer/receive.rs` narrows the caps to the accepted offer.
+`cargo test -p podnet --lib transfer_receive_a_zip_lands_no_more_than_its_accepted_offer`: 1 passed; with the caps of
+the flags only (the code before the fix) it failed at the first `unwrap_err`. `cargo test -p podnet --test transfer
+--test transfer_land`: 9 and 7 passed.
+
+
+# T-342: wg serve: a peer can send with the address of another peer when their AllowedIPs overlap
+
+**Source:** the security review of the code of 2026-11-13 and 2026-11-14 that takes peer input (2026-11-14).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The file of `podnet wg serve` has peer A with `AllowedIPs = 10.9.0.0/25` and peer B with `AllowedIPs = 10.9.0.2/32`.
+Peer A sends packets with the source 10.9.0.2. The server takes them: the stack opens flows and dials targets with
+the address of peer B, and the answers go to peer B. Peer A can open flows in the name of peer B, collide with the
+flows of peer B, and send answers to peer B that it did not ask for.
+
+## Premise
+
+- `incoming` of `src/networks/wg_serve.rs` admitted a packet when a prefix of the `AllowedIPs` of its own peer held
+  the source.
+- `outgoing` sends a packet to the peer whose `AllowedIPs` has the longest prefix that holds the destination.
+- `check` does not refuse overlapping `AllowedIPs`. The cryptokey routing of WireGuard admits a packet only when its
+  source routes back to the peer that sent it.
+
+## Approach
+
+1. `incoming`: admit a packet only when `route` of its source gives its own peer.
+2. A test on the loopback: the overlap above; the server dials nothing for the source of peer B, and serves peer A
+   with an address of its own.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib wg_serve
+sh scripts/agent/check.sh
+```
+

@@ -13,8 +13,9 @@
 //! way of `--egress`. The server makes no TUN device and needs no
 //! capability.
 //!
-//! Cryptokey routing: a packet of a peer must have a source in the
-//! `AllowedIPs` of that peer, else it is dropped. A packet to a peer goes to
+//! Cryptokey routing: a packet of a peer must have a source that routes
+//! back to that peer (the longest prefix of the `AllowedIPs` of all peers),
+//! else it is dropped. A packet to a peer goes to
 //! the peer whose `AllowedIPs` has the longest prefix that holds its
 //! destination. The net of `Address`, the loopback and the link-local
 //! addresses are not targets (the screen of the guest). IPv4 only inside the
@@ -214,8 +215,8 @@ fn addresses(packet: &[u8]) -> Option<(Ipv4Addr, Ipv4Addr)> {
 pub(crate) fn fuzz_packet(file: &ServeFile, packet: &[u8]) {
     let allowed: Vec<Vec<(Ipv4Addr, u8)>> = file.peers.iter().map(|p| p.allowed.clone()).collect();
     if let Some((src, dst)) = addresses(packet) {
-        for peer in &allowed {
-            let _ = peer.iter().any(|&a| holds(a, src));
+        if let Some(peer) = route(&allowed, src) {
+            assert!(allowed[peer].iter().any(|&a| holds(a, src)));
         }
         if let Some(peer) = route(&allowed, dst) {
             assert!(peer < allowed.len());
@@ -321,12 +322,15 @@ async fn incoming(
                 let _ = sock.send_to(&message, from).await;
             }
             Incoming::Packet { peer, packet } => {
-                let admitted = addresses(&packet)
-                    .is_some_and(|(src, _)| allowed[peer].iter().any(|&a| holds(a, src)));
+                // The source must route back to this peer: a source that
+                // the AllowedIPs of another peer hold with a longer prefix
+                // belongs to that peer (T-342).
+                let admitted =
+                    addresses(&packet).is_some_and(|(src, _)| route(&allowed, src) == Some(peer));
                 if !admitted {
                     tracing::debug!(
                         peer,
-                        "a packet with a source outside the AllowedIPs of its peer is dropped"
+                        "a packet with a source that does not route to its peer is dropped"
                     );
                     continue;
                 }
