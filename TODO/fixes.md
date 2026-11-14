@@ -5858,3 +5858,50 @@ started the shell with the line of the missing proxy (exit 0). The WARP variable
 the code (`POD_NETNS_QUIET` is `PODNET_NETNS_QUIET` since the rename); the WARP files, the WARP documents, the steps of
 section 12 (three are replaced by tests of the stand-in in ci: a6d4428 and 3654b05) and the fuzz targets (`doh_json`
 is in `pod-dns`) hold. `cargo test --workspace` on ce6352c: 0 failed. No item failed: no defect entry.
+
+
+# T-341: podnet receive: a directory can land more bytes and entries than the offer that the person accepted
+
+**Source:** the security review of the code of 2026-11-13 and 2026-11-14 that takes peer input (2026-11-14).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A hostile sender offers a directory with `numbytes` 1 KiB and `numfiles` 1. The person accepts the offer. The zip
+that comes holds deflated entries of up to 64 GiB (the default `--max-bytes`) and up to 100000 entries (the default
+`--max-files`). A deflate stream of 1 MiB can give 1 GiB. The receiver writes all of it: the disk of the host fills,
+and the person did not accept that size.
+
+## Premise
+
+- `check` of `src/transfer/receive.rs` compares `numbytes`, `zipsize` and `numfiles` of the offer with the caps.
+- `land_offer` gave `how.caps` (the flags) to `land::unzip`, not the values of the offer. `plan` and `Capped` of
+  `src/transfer/land.rs` hold the flags only.
+- `numfiles` of magic-wormhole (`cmd_send.py`) counts the files of the zip, and `numbytes` is the sum of their sizes.
+  The zip of podnet holds its directories as entries, and its `numfiles` counts them. Thus the entries of a good zip
+  are `numfiles`, and the sum of their sizes is `numbytes`.
+
+## Approach
+
+1. `land_zip` of `src/transfer/receive.rs`: the caps of the unzip are the caps of the flags, narrowed to `numbytes`
+   and `numfiles` of the accepted offer. A refusal names the offer.
+2. A test of the lib: a zip with more bytes, or more entries, than its offer is refused and writes nothing; a zip that
+   agrees with its offer lands.
+
+## Decision
+
+2026-11-14: no slack over the offer. A Python sender stats each file after it writes it into the zip; a file that
+grows in between makes the zip larger than `numbytes`, and the receiver refuses it. The person accepted the size of
+the offer, not more.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib transfer_receive_a_zip_lands_no_more_than_its_accepted_offer
+cargo test -p podnet --test transfer --test transfer_land
+sh scripts/agent/check.sh
+```

@@ -229,7 +229,7 @@ async fn land_offer(
         Offer::Directory { zipsize, .. } => {
             let mut zip = super::send::anonymous_in(&how.out)?;
             let sha256 = take(&mut records, &mut zip, zipsize, &via).await?;
-            match land::unzip(&mut zip, &how.out, &offered.name, &how.caps) {
+            match land_zip(&mut zip, how, &offered) {
                 Ok(files) => (zipsize, sha256, files),
                 Err(err) => {
                     let words =
@@ -253,6 +253,23 @@ async fn land_offer(
         sha256,
         files,
         via,
+    })
+}
+
+/// Write the zip in `zip` as the directory `offered.name` of `how.out`.
+/// The caps are those of `how`, narrowed to the offer that the person
+/// accepted: a zip with more bytes or more entries than its offer said is
+/// refused (T-341).
+fn land_zip(zip: &mut File, how: &Receive, offered: &Offered) -> Result<u64> {
+    let caps = Caps {
+        max_files: how.caps.max_files.min(offered.files),
+        max_bytes: how.caps.max_bytes.min(offered.bytes),
+    };
+    land::unzip(zip, &how.out, &offered.name, &caps).map_err(|e| {
+        refused(format!(
+            "{e:#} (the accepted offer: {} bytes in {} entries)",
+            offered.bytes, offered.files
+        ))
     })
 }
 
@@ -282,4 +299,61 @@ async fn take(
         out.write_all(&record)?;
     }
     Ok(pod_wormhole::hex(&hash.finalize()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A zip of the directory `dir` in a new file.
+    fn zip_of(dir: &std::path::Path) -> File {
+        let mut zip = tempfile::tempfile().unwrap();
+        super::super::zip::write(dir, &mut zip).unwrap();
+        zip
+    }
+
+    fn offered(bytes: u64, files: u64) -> Offered {
+        Offered {
+            kind: "directory",
+            name: "top".into(),
+            bytes,
+            files,
+        }
+    }
+
+    #[test]
+    fn transfer_receive_a_zip_lands_no_more_than_its_accepted_offer() {
+        let src = tempfile::tempdir().unwrap();
+        std::fs::write(src.path().join("a"), vec![7u8; 4096]).unwrap();
+        std::fs::write(src.path().join("b"), b"bb").unwrap();
+        let how = |out: &std::path::Path| Receive {
+            out: out.to_path_buf(),
+            caps: Caps::default(),
+        };
+
+        // The offer said 10 bytes; the zip holds 4098.
+        let out = tempfile::tempdir().unwrap();
+        let err = land_zip(&mut zip_of(src.path()), &how(out.path()), &offered(10, 2)).unwrap_err();
+        assert!(format!("{err:#}").contains("the accepted offer"), "{err:#}");
+        assert!(
+            !out.path().join("top").exists(),
+            "a refused zip wrote files"
+        );
+
+        // The offer said 1 entry; the zip holds 2.
+        let out = tempfile::tempdir().unwrap();
+        let err =
+            land_zip(&mut zip_of(src.path()), &how(out.path()), &offered(4098, 1)).unwrap_err();
+        assert!(format!("{err:#}").contains("entries"), "{err:#}");
+        assert!(
+            !out.path().join("top").exists(),
+            "a refused zip wrote files"
+        );
+
+        // The offer that the zip holds lands.
+        let out = tempfile::tempdir().unwrap();
+        let files = land_zip(&mut zip_of(src.path()), &how(out.path()), &offered(4098, 2)).unwrap();
+        assert_eq!(files, 2);
+        assert_eq!(std::fs::read(out.path().join("top/b")).unwrap(), b"bb");
+    }
 }

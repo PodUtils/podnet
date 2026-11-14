@@ -17,7 +17,8 @@
 //! 5. The top name of the transfer follows the same rules, and must not
 //!    exist.
 //! 6. The caps ([`Caps`]) are checked from the zip directory before the
-//!    write, and again while it writes, as a header can lie.
+//!    write, and again while it writes, as a header can lie. The receiver
+//!    narrows the caps to the offer that the person accepted (T-341).
 //! 7. The checks of all entries come before the first write. When a write
 //!    fails, each file and directory that this run made is removed, and no
 //!    other.

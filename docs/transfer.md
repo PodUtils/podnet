@@ -197,6 +197,8 @@ The receiver checks each name before it writes a byte:
   cap a transfer. The receiver checks them from the offer and the zip
   directory before it writes, and again while it writes, as a header can
   lie.
+* The offer that the person accepts is a cap too: a zip with more bytes
+  or more entries than its offer said is refused (T-341).
 * A refusal ends the whole transfer with exit 65, and no file of it stays
   on the disk. When a write fails, the receiver removes each file and
   directory that it made, and no other.
