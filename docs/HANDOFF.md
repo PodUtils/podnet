@@ -31,6 +31,10 @@ A push of the cloud session starts no workflow run. Ask the owner for runs with 
 (a block of `gh workflow run` and `gh run watch` pinned to one commit; see GitHub #528 to #530). Map each request in
 `TODO/github.txt` and `TODO/issues.md`, and close it when its results are in. Do not change the SHA of a request
 after it is sent: the owner can run it at once (GitHub #531). Put later commits into the next request.
+A release request (`docs/maintenance.md`, "Release") chains: the checks, the dry run of `release.yml`, the publish
+(`-f publish=vX`), the release on the tag, and `release-proofs.yml -f tag=vX`. The release on the tag is a run of the event
+`workflow_dispatch` on the branch `vX` (not `push`): find it with `gh run list --workflow release.yml --branch vX`.
+`release.yml` tags the head of `main` at the publish: push nothing to `main` from the request to the tag.
 
 Each workflow passes on 3061c7c: ci 43521791090, deny 43521797247, secrets 43521803788, live 43521809728 (with the
 router step of T-101 and the 200 MiB step of T-087).
