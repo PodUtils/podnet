@@ -6012,7 +6012,7 @@ body that did not come". The six test targets of the Prove passed (3, 2, 8, 2, 8
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -6042,6 +6042,160 @@ end, and many tasks and descriptors.
 ```sh
 cargo test -p podnet --lib transfer_hints_a_long_list_of_hints_is_cut_at_its_cap
 cargo test -p podnet --lib transfer
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-14, commit 4f7dfc5. `Transit::parse` of `src/transfer/messages.rs` keeps `MAX_HINTS` hints and
+`MAX_RELAY_ENDS` ends of each relay hint. `cargo test -p podnet --lib transfer`: 18 passed. Before the fix,
+`transfer_hints_a_long_list_of_hints_is_cut_at_its_cap` failed: 1001 hints, where 64 are expected.
+
+
+# T-345: wg serve: one peer can take each flow of the server from the other peers
+
+**Source:** the security review of the code of 2026-11-13 and 2026-11-14 that takes peer input (2026-11-14).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+Each peer of `podnet wg serve` goes to one guest of the router, and the guest has one pool of flows: `MAX_FLOWS`
+(2048) TCP flows and 512 UDP flows. A peer with a valid key opens 2048 TCP flows (or sends 2048 SYNs to targets that
+do not answer, which stay held while the dial runs), or 512 UDP flows. Each SYN and each new datagram of the other
+peers is then dropped. The cap keeps the host up; the other peers lose the service until the flows end.
+
+## Premise
+
+- `syn` of `src/router/guest/tcp.rs` drops a SYN when `tcp_flows` (the held SYNs and the open flows of all sources)
+  is at `MAX_FLOWS`. `deliver_new` of `src/router/guest/udp.rs` refuses a new flow at `MAX_FLOWS` of UDP.
+- The guest sees packets, not peers: a peer with `AllowedIPs` of a /25 has 128 sources.
+- Not measured: the time that a peer holds a flow (it depends on the target and on the timeouts of the stack).
+
+## Approach
+
+1. The guest counts the flows (held, open, UDP) of each source address, and refuses a new flow of a source at its
+   share. The share is a setting of `RouterGuest` (default: `MAX_FLOWS`, the behaviour of today).
+2. `podnet wg serve` gives each peer a share of `MAX_FLOWS / peers` (at least 64), counted over the sources of its
+   `AllowedIPs`: `RouterGuest` takes a function from a source to its group (`route` of `src/networks/wg_serve.rs`).
+3. A test on the loopback: peer A holds its share of SYNs to a target that does not answer; peer B still opens a
+   flow.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib wg_serve
+cargo test -p podnet --lib router::guest
+sh scripts/agent/check.sh
+```
+
+
+# T-346: link mesh: a neighbour can claim a direct link to each origin that it hears, and attract its routes
+
+**Source:** the security review of the code of 2026-11-13 and 2026-11-14 that takes peer input (2026-11-14).
+**Category:** defect
+**Milestone:** M8
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+Node X gets the announcement of origin O with the path `[O, A]` from its neighbour A. X removes the hop of A, signs its own hop over the signature of the origin, and sends the path `[O, X]` with the cost 0. Its neighbours
+accept it: X is now one hop from O at the lowest cost, and the routes to O go through X. When X is fast, its copy
+comes first, and the honest copy of the same `seq` is dropped (`SeenSeq`). X then sees each stream to O: a stream
+with no `--seal` is plain text at X; a sealed stream can still be dropped or delayed.
+
+## Premise
+
+- `verify` of `src/mesh_announce.rs` checks the signature of the origin over the body, and the chain of hop
+  signatures: each hop signs `hop_bytes(prev, key, cost)`. A hop names itself, not the node that it sends to.
+- The body that the origin signs names no neighbour. Thus each node that holds the signature of the origin can
+  start a new chain at the origin.
+- `receive_stream` of `src/link_announce.rs` checks only that the last node of the path is the peer of the link.
+- `Receiver::note` keeps one newest `seq` for each origin, over all neighbours.
+
+## Approach
+
+1. A new version of the wire: the origin signs one hop record for each neighbour that it sends to (its key and the
+   key of the neighbour), and each hop signs `prev`, its key, its cost and the key of the next node. `verify` checks
+   that the next key of each hop is the key of the next node of the path, and that the last one is this node.
+2. A node that is not in the signed chain cannot shorten the path: a chain that starts at the origin names the first
+   neighbour.
+3. Tests of `tests/mesh_announce.rs`: a path with a hop removed, or with a new first hop, is refused; the fuzz target
+   `mesh_announce` follows the new form.
+
+## Decision
+
+2026-11-14: recorded, not fixed in the review. The change is a new version of the wire of the mesh (both ends must
+change), and an effort of some days. Until it is done, a mesh that carries plain streams trusts each neighbour with
+the routes; `docs/link.md` says to use `--seal` through hops.
+
+## Prove
+
+```sh
+cargo test -p podnet --test mesh_announce --test mesh_table --test mesh_three_hops
+sh scripts/agent/check.sh
+```
+
+
+# T-347: Hardening: the low findings of the security review of 2026-11-14
+
+**Source:** the security review of the code of 2026-11-13 and 2026-11-14 that takes peer input (2026-11-14).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The review found these items of low severity. Each one is checked against the code; the last two are not measured.
+
+1. `entries` of `src/transfer/zip.rs` reads the whole central directory into memory: up to 4 GiB, as the zip says.
+   The zip is on the disk first, so the memory is at most the bytes that the sender sent.
+2. `receive` of `src/cli/cmd/transfer.rs` prints the text of a sender, and the path of the transfer, with no escape:
+   a control sequence of a terminal in a text or a name reaches the terminal of the receiver.
+3. The listener of a direct transit (`connect` of `src/transfer/connect.rs`) takes each connection that comes for
+   the transit wait, each one for up to 20 s: a host of the network can hold many descriptors.
+4. `Landing::undo` of `src/transfer/land.rs` removes by path from the output directory. A local user who changes a
+   directory of the transfer into a symbolic link between the write and the undo makes the undo remove a file there.
+5. `Frames::learn` of `src/router/guest/veth.rs` learns the MAC address of each source of the net from each frame. On
+   a veth wire that a bridge shares among guests, a guest takes the address of another guest, and a guest that sends
+   from 4096 addresses empties the table.
+6. The transit compares the handshake of the other end byte by byte (`expect` of `src/transfer/transit.rs`), not in
+   constant time. The records have their own key, so a match of the handshake gives no data.
+7. Not measured: the kernel mode of the router (`src/router/kernel/guard.rs`) guards IPv4 only. On a host that
+   forwards IPv6, the clients go out over IPv6 past the kill switch.
+8. Not measured: `receive_stream` of `src/link_announce.rs` has no rate limit; each frame costs up to 17 signature
+   checks.
+
+## Premise
+
+- Each item comes from a reading of the code at 4f7dfc5. Items 7 and 8 are suspicions: no host with IPv6 forwarding
+  and no load test was used.
+
+## Approach
+
+1. Bound the central directory to the cap of entries times (46 + `PATH_MOST` + 1024) bytes.
+2. Print a text and a name with the control characters escaped (as `{:?}` does for the question).
+3. Hold at most 64 handshakes of the listener at a time; close each later connection.
+4. Undo with the descriptors of `Landing` (`unlinkat` under the directory that the write opened).
+5. Learn a MAC address from the ARP of a guest only, and keep the first MAC of an address until it is idle.
+6. Compare the handshake with a constant-time compare.
+7. Measure: a host with `net.ipv6.conf.all.forwarding` 1; when the clients go out, add an IPv6 unreachable route, or
+   say it in `docs/router.md`.
+8. Measure the cost of a flood of frames; add a token bucket for each stream when one core is busy.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib transfer
+cargo test -p podnet --lib router::guest
+cargo test -p podnet --test transfer_land --test link_announce
 sh scripts/agent/check.sh
 ```
 

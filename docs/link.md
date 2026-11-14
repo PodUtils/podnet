@@ -732,6 +732,8 @@ request. Exit 69 when no route comes, the node has no such service, or the path 
 * The listener runs this when it has `--announce`. The name `fwd` cannot be a `--service` then (exit 64). A dialer with
   `--announce` relays a stream that its peer sends, but it has no service of its own.
 * With `--seal` at both ends, the hops see sealed records only (see "Sealed streams").
+* A neighbour can claim a direct link to each origin that it hears, and so draw the routes to it (T-346). Use `--seal`
+  through hops: a sealed stream is safe from a hop that reads it.
 * `link connect --announce` is a node that dials and serves: it announces its `--service` names, and a stream that its peer
   forwards for it reaches them. So three processes make a chain: B runs `link listen --announce`, C runs `link connect --announce`
   to B with a service, and A runs `link dial --announce --node C` to B. The names `announce` and `fwd` cannot be a `--service` of
