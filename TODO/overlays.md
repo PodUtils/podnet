@@ -326,6 +326,8 @@ of this host. The handshake is the UDP probe: no answer in 15 s gives one line a
   IPv6 inside the tunnel; a host name as the `Endpoint` (the system resolver); the WARP carrier; a real
   UDP-blocked host.
 
+CI: ci 43551002812, deny 43551006710, secrets 43551010275 and live 43551013239 on 036d23c passed (GitHub #548).
+
 # T-118: Research: NetBird, Firezone and ZeroTier as networks
 
 **Source:** `docs/research/podnet/podssh.md`, sections 2.1 and 2.3 (steps 5 and 6).

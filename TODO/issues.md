@@ -239,6 +239,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #545 | [gh action] requested: the release of v0.4.0-beta.10 at e99eba6 | closed: each run passed; the release v0.4.0-beta.10 is out (release-proofs 43549615088) | T-336 |
 | #546 | COORD-075: podnet took v0.41.0 at 095955c (to podcrates) | closed (podcrates closed PodUtils/podcrates#143) | none |
 | #547 | COORD-076: pod-wg: a responder sans I/O, and the preshared key (podnet T-125, T-337) (to podcrates) | open (a COORD issue between sessions; answered by PodUtils/podcrates#144) | none |
-| #548 | [gh action] requested: ci, deny, secrets and live on 3d54f76 (T-117) | open (a request of runs to the owner) | none |
+| #548 | [gh action] requested: ci, deny, secrets and live on 3d54f76 (T-117) | closed: each run passed on 036d23c (ci 43551002812, deny 43551006710, secrets 43551010275, live 43551013239) | none |
 
 #312 to #315, #318, #381 to #383 and #415 are closed; they are pull requests.
