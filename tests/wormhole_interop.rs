@@ -96,7 +96,7 @@ impl Mailbox {
         match on_path("twist") {
             Some(twist) => Mailbox::server(&twist),
             None => {
-                eprintln!("no `twist` on the PATH: the stand-in mailbox of podnet");
+                eprintln!("no `twist` on the PATH: the stand-in mailbox of pod-wormhole");
                 let rt = tokio::runtime::Builder::new_multi_thread()
                     .enable_all()
                     .build()

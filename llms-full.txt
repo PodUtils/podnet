@@ -11980,18 +11980,20 @@ After the offer and its answer, the two ends connect for the bytes:
   (`--proxy`, `--egress`, `NO_PROXY`).
 * After 2 s (at once when no end has a direct hint) each end also dials
   each transit relay of the two ends. The relays of this end are the
-  services of the kind `transit` of `pod-services` (Least Authority's
-  WebSocket relay on port 443), or `--transit-relay URL` (`tcp:HOST:PORT`,
-  `ws://...`, `wss://...`; `none` for no relay of this end).
+  services of the kind `transit` of `pod-services`, in their order (Least
+  Authority's WebSocket relay on port 443, then the public TCP relay of
+  magic-wormhole on port 4001, `magic-wormhole-transit`), or
+  `--transit-relay URL` (`tcp:HOST:PORT` or `tcp://HOST:PORT`, `ws://...`,
+  `wss://...`; `none` for no relay of this end).
 * The sender takes the first connection that passes the handshake, and the
   bytes go in records sealed with NaCl's SecretBox under the transit key.
 * The receiver sends the SHA-256 of the bytes at the end. The sender
   compares it with its own.
 
 A host whose only way out is a proxy on TCP 443 reaches the WebSocket relay
-of Least Authority. The public TCP relay of magic-wormhole
-(`tcp:transit.magic-wormhole.io:4001`) is not in `pod-services`; give it
-with `--transit-relay` when port 4001 is open.
+of Least Authority. The TCP relay on port 4001 is the default relay of the
+Python magic-wormhole: a host where port 4001 is open meets a Python end
+there.
 
 ## The podnet relay: a podnet extension
 

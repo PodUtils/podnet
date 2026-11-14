@@ -49,7 +49,11 @@ impl Relay {
             WsUrl::parse(text)?;
             return Ok(Relay::WebSocket(text.to_string()));
         }
-        let rest = text.strip_prefix("tcp:").ok_or_else(|| {
+        // `tcp://HOST:PORT` is the form of a URL of `pod-services`.
+        let rest = text
+            .strip_prefix("tcp://")
+            .or_else(|| text.strip_prefix("tcp:"));
+        let rest = rest.ok_or_else(|| {
             format!("transit relay {text:?}: give tcp:HOST:PORT, ws://HOST[:PORT]/PATH or wss://HOST[:PORT]/PATH")
         })?;
         let (host, port) = rest
@@ -59,7 +63,7 @@ impl Relay {
             .parse()
             .map_err(|_| format!("transit relay {text:?}: a bad port"))?;
         let host = host.trim_start_matches('[').trim_end_matches(']');
-        if host.is_empty() {
+        if host.is_empty() || host.contains('/') {
             return Err(format!("transit relay {text:?}: no host"));
         }
         Ok(Relay::Tcp {

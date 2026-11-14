@@ -2830,6 +2830,7 @@ dependencies = [
  "crypto_secretbox",
  "hkdf 0.13.0",
  "pod-core",
+ "pod-proxy",
  "pod-ws",
  "rand_core 0.6.4",
  "serde_json",

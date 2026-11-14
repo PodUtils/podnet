@@ -285,9 +285,27 @@ mod tests {
         );
         assert!(piping(&["ftp://x".to_string()]).is_err());
         assert!(piping(&["https://".to_string()]).is_err());
-        assert!(default_relays()
-            .iter()
-            .all(|r| matches!(r, Relay::WebSocket(_) | Relay::Tcp { .. })));
+        // T-251: each transit of pod-services is a relay, a TCP one
+        // (`tcp://HOST:PORT`) among them, with a host and no slash.
+        let relays = default_relays();
+        let transits = pod_services::of_kind(TRANSIT_KIND)
+            .filter(|s| s.endpoint("relay").is_some())
+            .count();
+        assert_eq!(relays.len(), transits);
+        assert!(relays.iter().any(|r| matches!(r, Relay::Tcp { .. })));
+        for relay in &relays {
+            if let Relay::Tcp { host, port } = relay {
+                assert!(
+                    !host.is_empty() && !host.contains('/') && *port > 0,
+                    "{host}"
+                );
+            }
+        }
+        assert!(matches!(
+            Relay::parse("tcp://127.0.0.1:4001"),
+            Ok(Relay::Tcp { port: 4001, .. })
+        ));
+        assert!(Relay::parse("tcp:///x:1").is_err());
     }
 
     #[test]
