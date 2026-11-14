@@ -148,7 +148,8 @@ fn a_refused_key_maps_to_77_and_a_denied_socket_does_not() {
     let alert = std::io::Error::other(rustls::Error::AlertReceived(
         rustls::AlertDescription::CertificateUnknown,
     ));
-    let refused = CarrierError::with_source("h2", CarrierErrorKind::Refused, "the listener", alert);
+    let refused =
+        CarrierError::with_source("h2", CarrierErrorKind::KeyRefused, "the listener", alert);
     assert_eq!(code_of(&link::carrier_fault(refused)), 77);
     let denied = CarrierError::io(
         "h2",

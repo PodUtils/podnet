@@ -45,37 +45,16 @@ pub fn fault(error: Error) -> anyhow::Error {
 }
 
 /// True when a handshake refused a key: the pin of this end refused the
-/// key of the peer (`pod_tls::peer::Refusal`), or the peer sent the alert
-/// of a refused certificate (or closed its QUIC connection in the handshake
-/// with that code). A refusal of the host (a bind that `EACCES`
-/// denies) is not one.
+/// key of the peer (`Refused` with a `pod_tls::peer::Refusal`), or the peer
+/// refused the key of this end (`KeyRefused` of `pod-link`, on the dial of
+/// each carrier and on the accept of tcp, h2, quic and poll). A refusal of
+/// the host (a bind that `EACCES` denies) is not one.
 fn key_refused(error: &CarrierError) -> bool {
-    if error.kind != CarrierErrorKind::Refused {
-        return false;
+    match error.kind {
+        CarrierErrorKind::KeyRefused => true,
+        CarrierErrorKind::Refused => pod_tls::peer::refusal(error).is_some(),
+        _ => false,
     }
-    if pod_tls::peer::refusal(error).is_some() {
-        return true;
-    }
-    let mut at: Option<&(dyn std::error::Error + 'static)> = Some(error);
-    while let Some(e) = at {
-        let inner = e
-            .downcast_ref::<std::io::Error>()
-            .and_then(std::io::Error::get_ref);
-        if let Some(rustls::Error::AlertReceived(_)) =
-            inner.and_then(|i| i.downcast_ref::<rustls::Error>())
-        {
-            return true;
-        }
-        // The quic carrier gives the close of the connection by the peer
-        // in its handshake (T-273): the peer refused the key of this end.
-        if let Some(pod_quic::noq::ConnectionError::ConnectionClosed(_)) =
-            inner.and_then(|i| i.downcast_ref::<pod_quic::noq::ConnectionError>())
-        {
-            return true;
-        }
-        at = e.source();
-    }
-    false
 }
 
 /// A failure of a carrier with the exit class of podnet: 64 for an
