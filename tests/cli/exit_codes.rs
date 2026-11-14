@@ -306,6 +306,25 @@ fn exit_codes_of_flags_and_configuration() {
             &[],
             64,
         ),
+        // T-087: --seal needs --resume, and its list of keys.
+        (&["relay", "node", "--to", "127.0.0.1:1", "--seal"], &[], 64),
+        (
+            &["relay", "node", "--to", "127.0.0.1:1", "--seal", "--resume"],
+            &[],
+            64,
+        ),
+        (
+            &[
+                "relay", "connect", "x", "--token", "t", "--seal", "--resume",
+            ],
+            &[],
+            64,
+        ),
+        (
+            &["relay", "connect", "x", "--token", "t", "--peer", "AAAA"],
+            &[],
+            64,
+        ),
         (&["update", "--version", ""], &[], 64),
         (&["update", "--version", "v1 x"], &[], 64),
     ] {

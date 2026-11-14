@@ -352,6 +352,21 @@ for a run (GitHub #531).
 counted 0 moves: the job's `RUST_LOG` (`podnet=info`) takes priority over `-v` and hid the debug line of each move. The
 step now sets `RUST_LOG=podnet=debug` for `relay connect` and fails with no move.
 
+2026-11-14, the end-to-end channel (approach item 4; calls of the session, the owner is away):
+(1) The channel is the one of the crates: the node is `pod_relay::reverse::E2e` (with a `pod_e2e::ends::Node`) under
+`Layered`, and the operator is `pod_e2e::ends::operator` above the client of the layer (`carry_sealed`). This is
+`pod-e2e`, as the link's `--seal` uses it, but its form for a relay node (podssh T-088): the node dials the target only
+after it lets the key in, and the layer charges its replay memory only for a session that the channel let in. The
+record layer of the link (`link_record`) has no admission before the target, so it is not used here.
+(2) The flags are the flags of the link, not `--key`: `relay node --resume --seal --allow FILE` and `relay connect
+--resume --seal (--peer FINGERPRINT | --allow FILE)`. The key is the key of the install (`podnet link`), which has
+one place; a second key flag would give a second place. `--seal` needs `--resume` (exit 64).
+(3) It is off by default. The question of the default goes to the owner (`TODO/PROGRESS.md`, Q1; `docs/decisions.md`,
+2026-11-14), with the recommendation to keep it opt-in.
+(4) The mapping of a `pod-e2e` failure to an exit code moves from `src/link_record.rs` to
+`relay_reverse::e2e_fault` (the layer `relay` may not use `podnet`; the link uses it from there).
+(5) The live step of 200 MiB stays without `--seal`: `.github/workflows/` does not change in this work.
+
 ## Done
 
 2026-11-13, commit 030c7ae. `src/relay_reverse/resume.rs`: `run_node_resumable` (the node over

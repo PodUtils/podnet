@@ -31,6 +31,7 @@ use pod_ws::ConnectError;
 use tokio::io::{AsyncRead, AsyncWrite, DuplexStream};
 use tokio::task::JoinHandle;
 
+use super::seal::{carry_sealed, Seal};
 use super::{
     connect_error, left_words, local_handler, outcome_error, run_node_with, FlushEach, Handler,
     Pair, Target, EOF_IDLE, TIMEOUT,
@@ -108,6 +109,23 @@ pub async fn run_node_resumable(
     run_node_with(follow, pair, handler, &target.to_string()).await
 }
 
+/// [`run_node_resumable`] with the end-to-end channel above the layer
+/// (`relay node --resume --seal`): the node dials the target only for an
+/// operator whose key is in the allow list of `seal`.
+pub async fn run_node_sealed(
+    follow: Option<&std::path::Path>,
+    pair: Pair,
+    target: &Target,
+    seal: &Seal,
+) -> Result<()> {
+    tracing::info!(
+        key = %seal.public().display_fingerprint(),
+        "the sessions of the node are sealed end to end"
+    );
+    let handler = Arc::new(super::seal::layered_sealed(local_handler(target), seal));
+    run_node_with(follow, pair, handler, &target.to_string()).await
+}
+
 /// Why [`carry`] failed.
 #[derive(Debug)]
 pub enum CarryError {
@@ -117,6 +135,8 @@ pub enum CarryError {
     Ended(String),
     /// `next` stopped the session with these words.
     Stopped(String),
+    /// The end-to-end channel above the layer failed (T-087, `--seal`).
+    Channel(pod_e2e::Error),
 }
 
 impl std::fmt::Display for CarryError {
@@ -124,6 +144,7 @@ impl std::fmt::Display for CarryError {
         match self {
             CarryError::Start(e) => write!(f, "{e}"),
             CarryError::Ended(why) | CarryError::Stopped(why) => f.write_str(why),
+            CarryError::Channel(e) => write!(f, "the end-to-end channel: {e}"),
         }
     }
 }
@@ -314,6 +335,41 @@ where
     R: AsyncRead + Unpin + Send + 'static,
     W: AsyncWrite + Unpin + Send + 'static,
 {
+    connect_layer(relay, name, token, (input, output), resume, None).await
+}
+
+/// [`connect_resumable`] with the end-to-end channel above the layer
+/// (`relay connect --resume --seal`): the key of the node must be in the
+/// allow list of `seal` (else exit 77), and the node must let in the key
+/// of this end (else exit 77).
+pub async fn connect_sealed<R, W>(
+    relay: &Relay,
+    name: &str,
+    token: &str,
+    input: R,
+    output: W,
+    resume: Resume,
+    seal: &Seal,
+) -> Result<()>
+where
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
+{
+    connect_layer(relay, name, token, (input, output), resume, Some(seal)).await
+}
+
+async fn connect_layer<R, W>(
+    relay: &Relay,
+    name: &str,
+    token: &str,
+    (input, output): (R, W),
+    resume: Resume,
+    seal: Option<&Seal>,
+) -> Result<()>
+where
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
+{
     let legs = Arc::new(Legs {
         relay: relay.clone(),
         trust: pod_ws::Trust::Default,
@@ -341,7 +397,10 @@ where
             async move { legs.next(moving).await }
         }
     };
-    let result = carry(first, app, resume.settings(), next).await;
+    let result = match seal {
+        None => carry(first, app, resume.settings(), next).await,
+        Some(seal) => carry_sealed(first, app, resume.settings(), next, seal).await,
+    };
     if let Some(warnings) = warnings {
         warnings.abort();
     }
@@ -362,6 +421,11 @@ where
         },
         Err(CarryError::Stopped(why)) if legs.refused.load(Ordering::SeqCst) => {
             Err(fault(Fault::Config, anyhow::anyhow!(why)))
+        }
+        // 77 for a key that is refused at either end, 78 for no shared
+        // suite.
+        Err(CarryError::Channel(e)) => {
+            Err(super::seal::e2e_fault(e).context(format!("the sealed session to {name}")))
         }
         Err(e) => Err(fault(
             Fault::Unavailable,

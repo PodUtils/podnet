@@ -96,6 +96,48 @@ ssh -o ProxyCommand='podnet relay connect NAME --resume' USER@NAME
 * `serve --ingress relay`, `git serve --ingress relay` and `expose --via relay`
   run their nodes in the plain mode.
 
+## Sealed sessions: `--seal`
+
+`relay node --resume --seal --allow FILE` and `relay connect --resume --seal`
+run an end-to-end channel above the resumable layer (T-087;
+`podnet::relay_reverse::Seal`, over `pod-e2e` and `pod-relay` of
+PodUtils/podcrates). The relay then sees sealed messages only. It is off by
+default.
+
+```sh
+# On the host: the fingerprint of the node key.
+podnet link status --create
+podnet relay node --to 127.0.0.1:22 --resume --seal --allow operators.allow --detach
+# On the computer of the operator:
+ssh -o ProxyCommand='podnet relay connect NAME --resume --seal --peer NODE-FINGERPRINT' USER@NAME
+```
+
+* The key of each end is the key of the install: the key of `podnet link`
+  (`<state directory>/link-identity.key`, made on first use). `podnet link
+  status` prints its fingerprint.
+* The handshake is Noise XX with the Ed25519 key of each end. The operator
+  checks the key of the node against `--peer FINGERPRINT` (repeat it for more
+  than one) or `--allow FILE` before it proves its own key. The node checks
+  the key of the operator against its `--allow FILE`. A file has the form of
+  `link listen --allow` (one key on each line, default deny).
+* A key that the other end does not allow exits 77 at the operator. The node
+  dials the target only after it lets the operator in: a refused operator
+  costs no connection to the target and no replay memory of the layer. The
+  node writes each refusal to its log.
+* The channel is above the layer. A move to a new leg and a resume after a
+  lost leg carry the same channel on.
+* `--seal` needs `--resume`. The node needs `--allow`. The operator needs
+  `--peer` or `--allow`. Else exit 64.
+* Both sides must use `--seal`:
+  * A sealed operator and a node with no `--seal`: the handshake fails, and
+    the operator exits 69 with the words "the channel's handshake failed".
+  * A node with `--seal` and an operator with no `--seal`: the operator gets
+    the bytes of the handshake of the node (not the bytes of the target), and
+    the target gets no connection. The session ends with exit 0. Give
+    `--seal` to the node only when each operator uses it.
+* The connect token still decides who reaches the node at the relay. The keys
+  decide who reaches the target.
+
 ## Hosts and limits
 
 * A list in `--relay` (comma-separated) is a preference of order. A host that

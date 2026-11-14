@@ -25,6 +25,8 @@ mod fake;
 use fake::{fake_relay, State};
 #[path = "relay_reverse/resume.rs"]
 mod resume;
+#[path = "relay_reverse/seal.rs"]
+mod seal;
 
 /// The time `ahead` from now, in milliseconds since the epoch.
 fn ms_from_now(ahead: Duration) -> u64 {

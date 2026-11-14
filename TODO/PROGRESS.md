@@ -51,8 +51,7 @@ not wait for a larger one.
 5. **M3, the crates:** T-053, then the prerelease T-054. T-052 is the take of `pod-cloudflare` of
    `PodUtils/podcrates` (T-137): do not do it in podnet.
 6. **M4, the adapters:** done.
-7. **M6, the services:** the shared part T-087 (partial: the layer is done; the end-to-end channel and the live
-   step of 200 MiB are left); the file
+7. **M6, the services:** the shared part T-087 (done: the layer, `--seal` and the live step of 200 MiB); the file
    server and git: done; the router: done; the transfer by code: `podnet send` and `podnet receive` are done
    over `pod-wormhole` v0.40.0 (`docs/transfer.md`; `docs/decisions.md`, 2026-11-13, The transfer layer).
    T-103 is blocked: `pod-wormhole` derives no key of a wormhole, so a file goes from podnet to podnet only
@@ -124,7 +123,9 @@ None now. T-025 (the public image) and the crate names of T-007 were measured do
 
 ## Questions for the owner
 
-None now.
+- **Q1.** Is `--seal` (the end-to-end channel, T-087) the default of `relay node --resume` and `relay connect
+  --resume`? It blocks nothing: T-087 is done with `--seal` off by default. The recommendation: no, keep it opt-in until
+  `relay pair` gives the node fingerprint with the connect token (`docs/decisions.md`, Questions for the owner).
 
 Write each question as `- **Qn.** QUESTION`, with the entries
 that it blocks and a recommendation. Number the questions in sequence

@@ -19,13 +19,13 @@ use super::{echo, fake_relay, ms_from_now, wait_for_node, write_pair, CONNECT_TO
 
 const MIB: usize = 1 << 20;
 
-fn sha256(bytes: &[u8]) -> Vec<u8> {
+pub(crate) fn sha256(bytes: &[u8]) -> Vec<u8> {
     ring::digest::digest(&ring::digest::SHA256, bytes)
         .as_ref()
         .to_vec()
 }
 
-fn pseudo_random(len: usize, seed: u32) -> Vec<u8> {
+pub(crate) fn pseudo_random(len: usize, seed: u32) -> Vec<u8> {
     let mut x = seed;
     (0..len)
         .map(|_| {
@@ -38,7 +38,7 @@ fn pseudo_random(len: usize, seed: u32) -> Vec<u8> {
 }
 
 /// A pair of the fake relay `url` in a new directory.
-fn pair_of(url: &str) -> (tempfile::TempDir, podnet::relay_reverse::Pair) {
+pub(crate) fn pair_of(url: &str) -> (tempfile::TempDir, podnet::relay_reverse::Pair) {
     let dir = tempfile::tempdir().unwrap();
     let expires = ms_from_now(Duration::from_secs(3600));
     write_pair(dir.path(), NAME, url, expires, "");

@@ -2438,7 +2438,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:249`, `src/cli/cmd/relay.rs:221`). The function is in the root crate (`crates/podnet-core/src/net.rs:21-46`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:249`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:21-46`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
 - `crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `crates/podnet-core/src/net.rs:174`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:70-76`).
@@ -2655,7 +2655,7 @@ cargo test -p podnet --test cli doctor_tells_listen_from_bind
 
 ## Problem
 
-`crates/podnet-core/src/exit.rs:122-139` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `crates/podnet-vnet/src/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:219`, and also `crates/podnet-vnet/src/proxy.rs:262-264` and src/warp/proxy.rs:71-73 at `9c1fc4b` (not named in the issue). `exit.rs:152` reads only `Faulted`.
+`crates/podnet-core/src/exit.rs:122-139` promises 69 for "a service or a network path is not available". A TCP bind that fails gives exit 1: `crates/podnet-vnet/src/switch.rs:413-415`, `crates/podnet-netns/src/tailscale.rs:320-321`, `src/cli/cmd/relay.rs:281`, and also `crates/podnet-vnet/src/proxy.rs:262-264` and src/warp/proxy.rs:71-73 at `9c1fc4b` (not named in the issue). `exit.rs:152` reads only `Faulted`.
 
 ## Premise
 
@@ -2732,7 +2732,7 @@ The `close` control message removes the entry of the session and drops its `Abor
 
 - The comment at `:523-524` says that dropping the sender ends the task. It does not, for a blocked write.
 - The same removal at `:573-575` (`OutKind::End`) is safe: the task has returned.
-- The test `a_local_side_that_does_not_read_stops_no_other_session` (`tests/relay_reverse.rs:324`) reaches only the binary-frame arm. The fake relay sends `close` at `tests/relay_reverse/fake.rs:213`.
+- The test `a_local_side_that_does_not_read_stops_no_other_session` (`tests/relay_reverse.rs:326`) reaches only the binary-frame arm. The fake relay sends `close` at `tests/relay_reverse/fake.rs:226`.
 - Trade: an abort drops the target connection with no FIN (reset instead of half-close).
 
 ## Approach
@@ -2763,11 +2763,11 @@ cargo test --test relay_reverse
 
 ## Problem
 
-`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:260-284`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:150-152`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:24-35`).
+`relay stop NAME` stops each local instance of the pair, then calls the relay (`src/cli/cmd/relay.rs:322-346`). `reverse::stop` refuses an empty stop token (`src/relay_reverse.rs:153-155`). The command then prints one line per stopped instance and exits 69. The pair file stays and the relay keeps the pair for up to 72 h. A pair with no stop token is a valid state (`src/relay_reverse.rs:55,111`, fixture at `tests/relay_reverse.rs:24-37`).
 
 ## Premise
 
-- The local-first order has a good reason (`src/cli/cmd/relay.rs:269-270`): a stopped node does not connect again.
+- The local-first order has a good reason (`src/cli/cmd/relay.rs:331-332`): a stopped node does not connect again.
 - Read only. No run.
 
 ## Approach
@@ -2842,7 +2842,7 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 
 ## Problem
 
-`save` opens the pair file with `.mode(0o600)` (`src/relay_reverse.rs` lines 149-154 at `ed79896`). The kernel applies the mode only to a new file. An old file of mode 0644 keeps it, and `relay pair` prints `mode 0600` (`src/cli/cmd/relay.rs:116`). `save` follows a symlink. `load` uses `read_to_string` (line 172 at `ed79896`) with no check of type, owner, mode or size. The file holds three tokens. The token cache has all four checks and a rename write (src/relay_pool.rs lines 163-195 at `ed79896`; the file went to `pod-relay` of PodUtils/podcrates).
+`save` opens the pair file with `.mode(0o600)` (`src/relay_reverse.rs` lines 149-154 at `ed79896`). The kernel applies the mode only to a new file. An old file of mode 0644 keeps it, and `relay pair` prints `mode 0600` (`src/cli/cmd/relay.rs:147`). `save` follows a symlink. `load` uses `read_to_string` (line 172 at `ed79896`) with no check of type, owner, mode or size. The file holds three tokens. The token cache has all four checks and a rename write (src/relay_pool.rs lines 163-195 at `ed79896`; the file went to `pod-relay` of PodUtils/podcrates).
 
 ## Premise
 
@@ -2923,11 +2923,11 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 
 ## Premise
 
-- `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:54-81`. `RelayCommand::Node` has it: `:49-50`.
+- `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:66-112`. `RelayCommand::Node` has it: `:61-62`.
 - `detach_of` has no arm for it: `src/cli/opts.rs:260-269`. `connect` has one: `:251`.
-- Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:215`, `:227`. `connect -L` logs and returns:
+- Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:277`, `:289`. `connect -L` logs and returns:
   `src/cli/cmd/connect.rs:208-211`.
-- The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:221`.
+- The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:283`.
   `SocketFile` is in `src/cli/cmd/connect.rs:219-239` (`pub(crate)`).
 - Message: `crates/podnet-core/src/net.rs:27-33`.
 - `src/main.rs:141` allows `--replace` without `--detach` only for `Command::Connect`.

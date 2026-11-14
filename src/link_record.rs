@@ -352,19 +352,7 @@ impl AsyncWrite for Sealed {
     }
 }
 
-/// The exit class of a failure of the channel: 78 for a suite that does
-/// not match, 77 for a refused key, 124 for a timeout, 69 for the others.
-fn fault(error: e2e::Error) -> anyhow::Error {
-    use pod_core::Class;
-    let failure: pod_core::Failure = error.into();
-    let how = match failure.class {
-        Class::Config => Fault::Config,
-        Class::Refused => Fault::NoPermission,
-        Class::Timeout => Fault::Timeout,
-        _ => Fault::Unavailable,
-    };
-    exit::fault(how, anyhow!("{failure}"))
-}
+use crate::relay_reverse::e2e_fault as fault;
 
 fn not_allowed(peer: &PublicKey) -> anyhow::Error {
     exit::fault(

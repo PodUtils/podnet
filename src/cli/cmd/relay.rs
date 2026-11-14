@@ -46,6 +46,18 @@ pub(crate) enum RelayCommand {
         /// a lost leg. An operator with no --resume gets an error.
         #[arg(long)]
         resume: bool,
+        /// Seal each session end to end (needs --resume and --allow): the
+        /// operator and the node run the handshake of `pod-e2e` with the key
+        /// of each install (the key of `podnet link`), and the relay sees
+        /// sealed messages only. The node dials the target only for an
+        /// operator whose key is in --allow (else the operator exits 77).
+        /// The operator must use --seal too.
+        #[arg(long, requires_all = ["resume", "allow"])]
+        seal: bool,
+        /// With --seal: the allow list file of the operator keys (the form
+        /// of `link listen --allow`).
+        #[arg(long, value_name = "FILE", requires = "seal")]
+        allow: Option<PathBuf>,
         #[command(flatten)]
         detach: DetachArgs,
     },
@@ -73,6 +85,25 @@ pub(crate) enum RelayCommand {
         /// node with no --resume, the session runs in the plain mode.
         #[arg(long)]
         resume: bool,
+        /// Seal the session end to end (needs --resume, and --peer or
+        /// --allow): the node must prove a key of the list (else exit 77),
+        /// and it must let in the key of this install (else exit 77). The
+        /// relay sees sealed messages only. The node must use --seal too.
+        #[arg(long, requires = "resume")]
+        seal: bool,
+        /// With --seal: the fingerprint that the node must prove (`podnet
+        /// link status` on the node prints it). Repeat it for more than one.
+        #[arg(
+            long,
+            value_name = "FINGERPRINT",
+            requires = "seal",
+            conflicts_with = "allow"
+        )]
+        peer: Vec<String>,
+        /// With --seal: an allow list file of the node keys that this
+        /// install trusts (the form of `link listen --allow`).
+        #[arg(long, value_name = "FILE", requires = "seal")]
+        allow: Option<PathBuf>,
         /// With --listen: --detach, --name, --replace, --no-restart and
         /// --ready-timeout, as `connect -L`. They have no effect without
         /// --listen.
@@ -131,7 +162,12 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             Ok(())
         }
         RelayCommand::Node {
-            pair, to, resume, ..
+            pair,
+            to,
+            resume,
+            seal,
+            allow,
+            ..
         } => {
             let target = reverse::Target::parse(&to)
                 .map_err(|e| anyhow::anyhow!("--to {e}"))
@@ -142,7 +178,16 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             let pair = reverse::load(&dir, pair.as_deref())?;
             podnet::report::hide(pair.node_token());
             podnet::ws_relay::Relay::single(&pair.relay, None).fault(Fault::Config)?;
-            if resume {
+            if seal {
+                let allow = podnet::identity::AllowList::read(
+                    allow.as_deref().context("--seal needs --allow FILE")?,
+                )?;
+                let seal = reverse::Seal::new(install_key()?.key(), move |k| allow.admits(k));
+                tokio::select! {
+                    result = reverse::run_node_sealed(follow, pair, &target, &seal) => result,
+                    _ = shutdown_signal() => Ok(()),
+                }
+            } else if resume {
                 tokio::select! {
                     result = reverse::run_node_resumable(follow, pair, &target) => result,
                     _ = shutdown_signal() => Ok(()),
@@ -159,6 +204,9 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             token,
             listen,
             resume,
+            seal,
+            peer,
+            allow,
             detach,
             ..
         } => {
@@ -178,6 +226,17 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                 expires,
                 ..reverse::Resume::default()
             });
+            let seal = match seal {
+                false => None,
+                true => {
+                    // The usage check comes before the key file.
+                    let nodes = trusted_nodes(allow.as_deref(), &peer)?;
+                    Some(Arc::new(reverse::Seal::new(
+                        install_key()?.key(),
+                        move |k| nodes.admits(k),
+                    )))
+                }
+            };
             match listen {
                 None => {
                     session(
@@ -187,6 +246,7 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                         tokio::io::stdin(),
                         tokio::io::stdout(),
                         layer,
+                        seal.as_deref(),
                     )
                     .await?;
                     // stdin of tokio blocks the shutdown of the runtime.
@@ -199,10 +259,12 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                     let (name, token) = (Arc::new(name), Arc::new(token));
                     let serve = |io: Box<dyn RelayIo>| {
                         let (relay, name, token) = (relay.clone(), name.clone(), token.clone());
+                        let seal = seal.clone();
                         tokio::spawn(async move {
                             let (read, write) = tokio::io::split(io);
                             if let Err(err) =
-                                session(&relay, &name, &token, read, write, layer).await
+                                session(&relay, &name, &token, read, write, layer, seal.as_deref())
+                                    .await
                             {
                                 tracing::warn!(error = %format!("{err:#}"), "a relay session failed");
                             }
@@ -297,8 +359,32 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
     }
 }
 
-/// One session of an operator: with the layer when `layer` is set, else in
-/// the plain mode.
+/// The key of this install: the key of `podnet link`, made when there is
+/// none.
+fn install_key() -> Result<podnet::identity::Identity> {
+    podnet::identity::create(&podnet::identity::default_dir()?)
+}
+
+/// The node keys of `relay connect --seal`: --allow FILE or --peer. Exit 64
+/// when there is none.
+fn trusted_nodes(
+    allow: Option<&std::path::Path>,
+    peer: &[String],
+) -> Result<podnet::identity::AllowList> {
+    match allow {
+        Some(path) => podnet::identity::AllowList::read(path),
+        None if peer.is_empty() => Err(anyhow::anyhow!(
+            "--seal needs --peer FINGERPRINT or --allow FILE: this end trusts no node by default"
+        ))
+        .fault(Fault::Usage),
+        None => {
+            podnet::identity::AllowList::parse(&peer.join("\n")).map_err(|e| e.context("--peer"))
+        }
+    }
+}
+
+/// One session of an operator: with the layer when `layer` is set (and the
+/// end-to-end channel above it with `seal`), else in the plain mode.
 async fn session<R, W>(
     relay: &podnet::ws_relay::Relay,
     name: &str,
@@ -306,15 +392,21 @@ async fn session<R, W>(
     input: R,
     output: W,
     layer: Option<podnet::relay_reverse::Resume>,
+    seal: Option<&podnet::relay_reverse::Seal>,
 ) -> Result<()>
 where
     R: tokio::io::AsyncRead + Unpin + Send + 'static,
     W: tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
     use podnet::relay_reverse as reverse;
-    match layer {
-        Some(layer) => reverse::connect_resumable(relay, name, token, input, output, layer).await,
-        None => reverse::connect(relay, name, token, input, output).await,
+    match (layer, seal) {
+        (Some(layer), Some(seal)) => {
+            reverse::connect_sealed(relay, name, token, input, output, layer, seal).await
+        }
+        (Some(layer), None) => {
+            reverse::connect_resumable(relay, name, token, input, output, layer).await
+        }
+        (None, _) => reverse::connect(relay, name, token, input, output).await,
     }
 }
 

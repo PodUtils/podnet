@@ -32,6 +32,17 @@ pub(crate) struct State {
     pub(crate) carried: HashMap<String, usize>,
     /// How many relay sessions met the cap.
     pub(crate) capped: usize,
+    /// With `Some`, each byte of a binary message that the relay carries,
+    /// both ways (the payload of a node frame without its id): what the
+    /// relay sees.
+    pub(crate) tap: Option<Vec<u8>>,
+}
+
+/// Keep `bytes` in the tap, when there is one.
+fn tap(state: &Mutex<State>, bytes: &[u8]) {
+    if let Some(tap) = state.lock().unwrap().tap.as_mut() {
+        tap.extend_from_slice(bytes);
+    }
 }
 
 /// Count `bytes` of the session `id`. At the cap, the relay closes the
@@ -174,6 +185,7 @@ async fn serve(socket: tokio::net::TcpStream, state: Arc<Mutex<State>>, id: Stri
                     if !count(&state, &id, data.len() - 32) {
                         continue;
                     }
+                    tap(&state, &data[32..]);
                     if let Some(operator) = operator {
                         let _ = operator.send(Message::binary(data[32..].to_vec()));
                     }
@@ -202,6 +214,7 @@ async fn serve(socket: tokio::net::TcpStream, state: Arc<Mutex<State>>, id: Stri
                     if !count(&state, &id, data.len()) {
                         continue;
                     }
+                    tap(&state, &data);
                     let mut frame = id.as_bytes().to_vec();
                     frame.extend_from_slice(&data);
                     let _ = node.send(Message::binary(frame));

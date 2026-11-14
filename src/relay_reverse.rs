@@ -35,8 +35,11 @@ mod flush_each;
 pub use flush_each::{FlushEach, LayerGuard};
 mod resume;
 pub use resume::{
-    carry, connect_resumable, layered, node_settings, run_node_resumable, CarryError, Resume,
+    carry, connect_resumable, connect_sealed, layered, node_settings, run_node_resumable,
+    run_node_sealed, CarryError, Resume,
 };
+mod seal;
+pub use seal::{carry_sealed, e2e_fault, layered_sealed, sealed, Seal};
 
 use crate::exit::{fault, Fault};
 use crate::ws_relay::Relay;
