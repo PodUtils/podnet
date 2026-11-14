@@ -521,3 +521,45 @@ async fn a_peer_of_version_1_is_refused_with_one_line() {
     stream.write_all(&frame).await.unwrap();
     until("the good one", || direct(&ma, &b).is_some()).await;
 }
+
+/// A peer that floods its stream with frames is bounded by the bucket of
+/// signature checks of the stream (T-347): the frames over the bucket are
+/// dropped before a check and counted, the link stays up.
+#[tokio::test]
+async fn a_flood_of_frames_is_bounded_by_the_checks_of_the_stream() {
+    let dir = tempfile::tempdir().unwrap();
+    let (a, b) = (install(dir.path(), "a"), install(dir.path(), "b"));
+    let (la, lb) = link::unix_pair(Settings::default()).unwrap();
+    let (la, lb) = (Arc::new(la), Arc::new(lb));
+    let ma = Mesh::new(a.clone(), Vec::new(), announce::now_ms());
+    // 17 checks at once, and 1 more each second.
+    ma.set_check_rate(1, 17);
+    tokio::spawn(announce::serve_streams(
+        ma.clone(),
+        la.clone(),
+        b.public(),
+        None,
+    ));
+    let mb = Mesh::new(b.clone(), Vec::new(), announce::now_ms());
+    let wire = mb.make(announce::now_ms(), &a.public()).unwrap();
+    // A direct announcement: 2 checks (the body and the hop of the origin).
+    assert_eq!(podnet::mesh_announce::signature_checks(&wire), 2);
+    let mut frame = (wire.len() as u16).to_be_bytes().to_vec();
+    frame.extend_from_slice(&wire);
+    let mut stream = lb.open().unwrap();
+    service::request(&mut stream, announce::NAME).await.unwrap();
+    for _ in 0..20 {
+        stream.write_all(&frame).await.unwrap();
+    }
+    until("each frame is counted", || {
+        let doc = ma.routes(announce::now_ms());
+        doc["received"].as_u64().unwrap() + doc["dropped"].as_u64().unwrap() == 20
+    })
+    .await;
+    let doc = ma.routes(announce::now_ms());
+    assert_eq!(doc["received"], 1, "{doc}");
+    let limited = doc["limited"].as_u64().unwrap();
+    assert!((11..=12).contains(&limited), "{doc}");
+    assert!(direct(&ma, &b).is_some());
+    assert!(la.ended().is_none() && lb.ended().is_none());
+}

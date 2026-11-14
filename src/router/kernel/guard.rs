@@ -21,6 +21,13 @@
 //! `kill_switch` and `rp_filter`. Each is `true` when the file has no key.
 //! The packets of the clients need `net.ipv4.ip_forward` 1; this code does
 //! not set it.
+//!
+//! The guards are IPv4 only: the rules, the routes and the table of
+//! nf_tables are of the family IPv4, and the kernel keeps the rules of IPv6
+//! apart. On a host with `net.ipv6.conf.all.forwarding` 1, the IPv6 of the
+//! clients goes out by the IPv6 routes of the host, past the WANs and the
+//! kill switch. The first apply writes a warning then ([`ipv6_warning`],
+//! T-347).
 
 use std::collections::BTreeMap;
 use std::sync::Mutex;
@@ -588,9 +595,30 @@ fn cmp_device(data: &[u8]) -> Option<String> {
 
 // ── apply and remove ────────────────────────────────────────────────────────
 
+/// The file of the IPv6 forwarding of the host.
+const IPV6_FORWARDING: &str = "/proc/sys/net/ipv6/conf/all/forwarding";
+
+/// The warning for the value `forwarding` of
+/// `net.ipv6.conf.all.forwarding`: `None` when the host does not forward
+/// IPv6 (or the value is not known).
+pub fn ipv6_warning(forwarding: Option<&str>) -> Option<String> {
+    (forwarding?.trim() == "1").then(|| {
+        "kernel: this host forwards IPv6 (net.ipv6.conf.all.forwarding is 1): the guards of \
+         the kernel mode are IPv4 only, so the IPv6 of the clients goes out past the WANs and \
+         the kill switch; set it to 0, or block the IPv6 of the clients"
+            .to_string()
+    })
+}
+
 /// Write the guards that are not routes: `rp_filter` and nf_tables. `old` is
 /// the plan that was applied before.
 pub(super) fn apply_host(new: &Plan, old: Option<&Plan>) -> Result<()> {
+    if old.is_none() {
+        let forwarding = std::fs::read_to_string(IPV6_FORWARDING).ok();
+        if let Some(line) = ipv6_warning(forwarding.as_deref()) {
+            tracing::warn!("{line}");
+        }
+    }
     if let Some(old) = old {
         for w in &old.wans {
             if !new.guard.rp_filter || !new.wans.iter().any(|n| n.dev == w.dev) {

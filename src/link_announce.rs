@@ -49,6 +49,7 @@ use crate::link_service as service;
 use crate::mesh_announce::{self as announce, Body, Drop as Rule, Neighbour, Receiver};
 use crate::mesh_table::{Learned, Limits, Refused, RouteTable};
 
+pub mod limit;
 mod status;
 pub use status::{metrics_text, ViewLimits};
 
@@ -119,11 +120,14 @@ impl std::fmt::Display for Dropped {
 pub const OUTBOX: usize = 64;
 
 struct State {
-    me_key: PublicKey,
     outbox: HashMap<PublicKey, mpsc::Sender<Vec<u8>>>,
     links: HashMap<PublicKey, Arc<Link>>,
     hop_limit: usize,
     forwarded: u64,
+    /// The frames that the bucket of a stream dropped (T-347).
+    limited: u64,
+    /// The signature checks of one stream: each second, and at most.
+    check_rate: (u32, u32),
     receiver: Receiver,
     table: RouteTable,
     seq: u64,
@@ -161,11 +165,12 @@ impl Mesh {
             me,
             services,
             state: Mutex::new(State {
-                me_key: key,
                 outbox: HashMap::new(),
                 links: HashMap::new(),
                 hop_limit: usize::from(crate::link_forward::DEFAULT_HOPS),
                 forwarded: 0,
+                limited: 0,
+                check_rate: (limit::RATE, limit::BURST),
                 receiver: Receiver::new(key),
                 table: RouteTable::new(key, Limits::default()),
                 seq: now,
@@ -206,6 +211,24 @@ impl Mesh {
     /// it uses for a stream (1 to 16, default 8).
     pub fn set_hop_limit(&self, limit: u8) {
         self.lock().hop_limit = usize::from(limit.clamp(1, crate::link_forward::MAX_HOPS));
+    }
+
+    /// The signature checks that one announce stream can take: `rate` each
+    /// second and `burst` at most (T-347; default 2048 and 8192). A stream
+    /// takes the value when it starts.
+    pub fn set_check_rate(&self, rate: u32, burst: u32) {
+        self.lock().check_rate = (rate.max(1), burst.max(announce::MAX_PATH as u32 + 1));
+    }
+
+    fn check_rate(&self) -> (u32, u32) {
+        self.lock().check_rate
+    }
+
+    /// Count a frame that the bucket of a stream dropped.
+    fn note_limited(&self) {
+        let mut st = self.lock();
+        st.limited += 1;
+        st.dropped += 1;
     }
 
     /// The key of this node.
@@ -291,8 +314,13 @@ impl Mesh {
         wire: &[u8],
         now: u64,
     ) -> Result<Learned, Dropped> {
+        // The signature checks run before the lock: a flood on one stream
+        // does not stop the other streams and the routes (T-347).
+        let verified = announce::verify(wire, &self.me.public(), now);
         let mut st = self.lock();
-        let done = self.take(&mut st, from, cost, wire, now);
+        let done = verified
+            .map_err(Dropped::Announcement)
+            .and_then(|v| self.take(&mut st, from, cost, wire, v, now));
         match &done {
             Ok(_) => st.received += 1,
             Err(_) => st.dropped += 1,
@@ -306,9 +334,9 @@ impl Mesh {
         from: &PublicKey,
         cost: u32,
         wire: &[u8],
+        v: announce::Verified,
         now: u64,
     ) -> Result<Learned, Dropped> {
-        let v = announce::verify(wire, &st.me_key, now).map_err(Dropped::Announcement)?;
         if v.path.last() != Some(from) {
             return Err(Dropped::NotDirect);
         }
@@ -428,6 +456,7 @@ impl Mesh {
             "dropped": st.dropped,
             "evictions": st.table.evictions(),
             "forwarded": st.forwarded,
+            "limited": st.limited,
             "routes": rows,
         })
     }
@@ -504,6 +533,8 @@ pub async fn receive_stream(
     let mut len = [0u8; 2];
     // A peer of another version gets one line for each stream (T-346).
     let mut version_told = false;
+    let (rate, burst) = mesh.check_rate();
+    let mut bucket = limit::Bucket::new(rate, burst, std::time::Instant::now());
     while stream.read_exact(&mut len).await.is_ok() {
         let n = usize::from(u16::from_be_bytes(len));
         if n > MAX_FRAME {
@@ -513,6 +544,18 @@ pub async fn receive_stream(
         let mut wire = vec![0u8; n];
         if stream.read_exact(&mut wire).await.is_err() {
             return;
+        }
+        let at = std::time::Instant::now();
+        if !bucket.take(announce::signature_checks(&wire), at) {
+            mesh.note_limited();
+            if bucket.tell(at) {
+                tracing::warn!(
+                    peer = %peer.display_fingerprint(),
+                    "announce: the peer sends more than {rate} signature checks each second: \
+                     frames are dropped"
+                );
+            }
+            continue;
         }
         let cost = link_cost(weight, link.rtt());
         match mesh.receive(&peer, cost, &wire, now_ms()) {

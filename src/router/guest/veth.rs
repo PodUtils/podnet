@@ -11,6 +11,13 @@
 //! guest address with no MAC address to nowhere: the guest opens each flow,
 //! so its address is known first.
 //!
+//! An address keeps the first MAC address that it came with while it is in
+//! use (T-347): a frame of a known address from another MAC address is
+//! dropped, until the address is idle for [`MAC_IDLE`]. So a guest on a
+//! shared wire cannot take the address of another guest. The table holds
+//! [`MACS_MAX`] addresses; at the limit an idle address goes out, and a new
+//! address waits when no address is idle.
+//!
 //! A guest kernel with segmentation offloads on (the default of veth) sends
 //! one frame of up to 64 KiB for many TCP segments, with a partial checksum.
 //! The wire takes frames up to [`PACKET_MAX`], and the stack does not check
@@ -21,6 +28,7 @@ use std::io;
 use std::net::Ipv4Addr;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use pod_hold::netns::{frame_for, take_frame, Frame, ETH_HEADER};
 
@@ -28,8 +36,11 @@ use super::wire::PACKET_MAX;
 use super::GuestNet;
 
 /// The most guest addresses that a wire keeps a MAC address for. At the
-/// limit, the table starts again empty.
+/// limit, an idle address goes out; a new address waits when none is idle.
 pub const MACS_MAX: usize = 4096;
+/// The time with no frame after which the MAC address of a guest address
+/// can change, and its place can go to another address.
+pub const MAC_IDLE: Duration = Duration::from_secs(60);
 /// The longest frame that a read takes.
 pub const FRAME_MAX: usize = PACKET_MAX + ETH_HEADER;
 
@@ -48,7 +59,9 @@ pub enum Take {
 /// guests.
 pub struct Frames {
     net: GuestNet,
-    macs: Mutex<HashMap<Ipv4Addr, [u8; 6]>>,
+    /// The MAC address of each guest address, and the time of its last
+    /// frame.
+    macs: Mutex<HashMap<Ipv4Addr, ([u8; 6], Instant)>>,
     /// The buffer of a read: one reader at a time.
     pub(super) frame: Mutex<Vec<u8>>,
 }
@@ -62,24 +75,48 @@ impl Frames {
         }
     }
 
-    fn learn(&self, ip: Ipv4Addr, mac: &[u8]) {
+    /// Learn the MAC address of `ip` from a frame at `now`. False when the
+    /// frame must be dropped: `ip` is in use with another MAC address, or
+    /// the table is full of addresses in use.
+    pub(super) fn learn_at(&self, ip: Ipv4Addr, mac: &[u8], now: Instant) -> bool {
         let Ok(mac) = <[u8; 6]>::try_from(mac) else {
-            return;
+            return true;
         };
         if !self.net.contains(ip) || mac[0] & 1 == 1 {
-            return;
+            return true;
         }
+        let idle = |at: &Instant| now.saturating_duration_since(*at) >= MAC_IDLE;
         let mut macs = self.macs.lock().unwrap_or_else(|e| e.into_inner());
-        if macs.len() >= MACS_MAX && !macs.contains_key(&ip) {
-            macs.clear();
+        let full = macs.len() >= MACS_MAX;
+        match macs.get_mut(&ip) {
+            Some((known, at)) if *known == mac => {
+                *at = now;
+                return true;
+            }
+            Some((_, at)) if !idle(at) => {
+                tracing::debug!(
+                    "veth: {ip} is in use by another MAC address: the frame is dropped"
+                );
+                return false;
+            }
+            Some(_) => {}
+            None if full => {
+                macs.retain(|_, (_, at)| !idle(at));
+                if macs.len() >= MACS_MAX {
+                    tracing::debug!("veth: {MACS_MAX} addresses are in use: {ip} waits");
+                    return false;
+                }
+            }
+            None => {}
         }
-        macs.insert(ip, mac);
+        macs.insert(ip, (mac, now));
+        true
     }
 
     /// The MAC address of the guest address `ip`, when the wire knows it.
     pub fn mac_of(&self, ip: Ipv4Addr) -> Option<[u8; 6]> {
         let macs = self.macs.lock().unwrap_or_else(|e| e.into_inner());
-        macs.get(&ip).copied()
+        macs.get(&ip).map(|(mac, _)| *mac)
     }
 
     /// Take one frame of the guest. An IP packet goes into `out`.
@@ -88,7 +125,9 @@ impl Frames {
             Frame::Ip(packet) => {
                 if packet[0] >> 4 == 4 && packet.len() >= 20 {
                     let src = Ipv4Addr::new(packet[12], packet[13], packet[14], packet[15]);
-                    self.learn(src, &frame[6..12]);
+                    if !self.learn_at(src, &frame[6..12], Instant::now()) {
+                        return Take::Drop;
+                    }
                 }
                 if packet.len() > out.len() {
                     return Take::Drop;
@@ -99,7 +138,9 @@ impl Frames {
             Frame::Reply(reply) => {
                 // The reply goes to the sender: its MAC and its address.
                 let ip = Ipv4Addr::new(reply[38], reply[39], reply[40], reply[41]);
-                self.learn(ip, &reply[0..6]);
+                if !self.learn_at(ip, &reply[0..6], Instant::now()) {
+                    return Take::Drop;
+                }
                 Take::Reply(reply)
             }
             Frame::Drop => Take::Drop,

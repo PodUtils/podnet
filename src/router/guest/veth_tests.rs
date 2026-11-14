@@ -162,3 +162,39 @@ fn guest_wire_tun_carries_tcp_and_udp_of_a_linux_guest() {
         "guest_wire_tun_carries_tcp_and_udp_of_a_linux_guest",
     );
 }
+
+/// The MAC table of a veth wire (T-347): an address in use keeps its MAC
+/// address, a full table drops an idle address and not one in use, and an
+/// idle address can take a new MAC address.
+#[test]
+fn guest_wire_veth_a_guest_cannot_take_the_address_of_another() {
+    use super::veth::{Frames, MACS_MAX, MAC_IDLE};
+    use std::time::Instant;
+    let frames = Frames::new("10.66.0.0/16".parse().unwrap());
+    let (a, b) = ([2, 0, 0, 0, 0, 1], [2, 0, 0, 0, 0, 2]);
+    let now = Instant::now();
+    assert!(frames.learn_at(GUEST, &a, now));
+    // Another guest with the address of the first one is refused.
+    assert!(!frames.learn_at(GUEST, &b, now + MAC_IDLE / 2));
+    assert_eq!(frames.mac_of(GUEST), Some(a));
+    // The first guest keeps its address in use.
+    assert!(frames.learn_at(GUEST, &a, now + MAC_IDLE / 2));
+    assert!(!frames.learn_at(GUEST, &b, now + MAC_IDLE));
+    // An idle address takes the new MAC address.
+    let later = now + MAC_IDLE / 2 + MAC_IDLE;
+    assert!(frames.learn_at(GUEST, &b, later));
+    assert_eq!(frames.mac_of(GUEST), Some(b));
+    // A flood of addresses does not empty the table: the address in use
+    // stays, and the address over the limit waits.
+    for i in 1..MACS_MAX as u32 {
+        let ip = Ipv4Addr::from(u32::from(Ipv4Addr::new(10, 66, 16, 0)) + i);
+        assert!(frames.learn_at(ip, &[2, 0, 0, 1, 0, 0], later), "{ip}");
+    }
+    let over = Ipv4Addr::new(10, 66, 200, 1);
+    assert!(!frames.learn_at(over, &a, later));
+    assert_eq!(frames.mac_of(GUEST), Some(b));
+    // When the flood is idle, a new address takes a place.
+    assert!(frames.learn_at(GUEST, &b, later + MAC_IDLE));
+    assert!(frames.learn_at(over, &a, later + MAC_IDLE));
+    assert_eq!(frames.mac_of(GUEST), Some(b));
+}

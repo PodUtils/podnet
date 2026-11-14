@@ -166,7 +166,10 @@ guests:
 Make a veth pair, put one end in the guest (a container or a namespace), and leave the end `NAME` in the
 namespace of the router with no address. The router sets `NAME` up and reads its frames with a packet socket.
 It answers ARP for its address in the guest net (the first host), and it learns the MAC address of each guest
-address from the frames of the guest. The guest gives the router address as its default gateway:
+address from the frames of the guest. An address keeps its first MAC address while it is in use: a frame of that
+address from another MAC address is dropped until the address has had no frame for 60 s, so a guest on a shared wire
+cannot take the address of another guest (T-347). The table holds 4096 addresses; at the limit an idle address goes
+out, and a new address waits (its frames are dropped) while no address is idle. The guest gives the router address as its default gateway:
 
 ```text
 the guest end, in the guest namespace: address 10.66.0.4/24, up, default via 10.66.0.1
@@ -405,6 +408,11 @@ when each WAN is down.
 The guards on the wire (measured in network namespaces, T-120): a forwarded TCP SYN leaves a WAN with the
 address of that WAN (`masquerade`), and its MSS is the route MTU of the WAN less 40 (`mss_clamp`: 1240 on a WAN
 with the MTU 1280). podnet does not set `net.ipv4.ip_forward`; the host sets it.
+
+The guards are IPv4 only: the rules, the routes, the kill switch and the table of nf_tables are of the family
+IPv4, and the kernel keeps the rules of IPv6 apart. On a host with `net.ipv6.conf.all.forwarding` 1, the IPv6 of the
+clients goes out by the IPv6 routes of the host, past the WANs and the kill switch. The first apply writes a
+warning line then (T-347). Set `net.ipv6.conf.all.forwarding` to 0, or block the IPv6 of the clients.
 
 ### The probe of the WANs
 

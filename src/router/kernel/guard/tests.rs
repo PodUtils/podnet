@@ -214,3 +214,14 @@ fn route_kernel_nft_masquerade_and_mss_clamp_in_a_namespace() {
         "route_kernel_nft_masquerade_and_mss_clamp_in_a_namespace",
     );
 }
+
+/// The guards are IPv4 only (T-347): a host that forwards IPv6 gets a
+/// warning that names the setting.
+#[test]
+fn kernel_guard_warns_when_the_host_forwards_ipv6() {
+    let line = ipv6_warning(Some("1\n")).unwrap();
+    assert!(line.contains("net.ipv6.conf.all.forwarding"), "{line}");
+    assert!(line.contains("kill switch"), "{line}");
+    assert_eq!(ipv6_warning(Some("0\n")), None);
+    assert_eq!(ipv6_warning(None), None);
+}

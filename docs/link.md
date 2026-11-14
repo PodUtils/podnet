@@ -665,6 +665,11 @@ nothing.
   of `--service`; `link dial`: none). `link connect --announce-weight COST` sets the cost of its link, as on the other commands.
 * A frame is a big-endian `u16` length and the wire bytes of the announcement. A length above 10369 ends the announce stream.
   The link stays up.
+* Each announce stream has a bucket of signature checks (T-347): 2048 each second, 8192 at most
+  (`Mesh::set_check_rate`). A frame costs one check for the body and one for each hop (17 for a path of 16 nodes:
+  about 0.9 ms of one core in a release build, measured on 2026-11-14). A frame over the bucket is dropped before a
+  check and counted (`limited` and `dropped` of the verb `routes`); the log gets one line for each stream in each 10 s.
+  The checks run outside the lock of the route table, so a flood on one stream does not stop the others.
 * The receiver takes an announcement whose path ends at the peer of the link (T-287; a path `[origin]` is a direct
   announcement). Any other announcement is dropped (`not from the peer itself`): this stops a peer from sending the
   announcement of a node that it does not speak for. Then it runs the rules of the announcement (the chain of hop signatures
@@ -689,7 +694,8 @@ nothing.
 * The control socket of a listener has the verb `routes`: `{"verb":"routes","token":...}` gives `node`, `neighbours`,
   `received`, `dropped`, `evictions` and `routes`, the best route of each origin (`origin`, `next_hop`, `cost`, `hops`, `seq`,
   `expires_ms`, `direct`). Without `--announce` the verb exits 69. The dialer has no control socket and shows no routes.
-  `link connect` has no `--announce` (T-285 left it out). `routes` also shows `forwarded`, the count of forwarded frames.
+  `link connect` has no `--announce` (T-285 left it out). `routes` also shows `forwarded`, the count of forwarded frames,
+  and `limited`, the count of the frames that the bucket of a stream dropped.
 
 ## The status view of a mesh
 

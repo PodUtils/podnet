@@ -501,6 +501,16 @@ fn parse(wire: &[u8]) -> Result<Parsed, Drop> {
     })
 }
 
+/// The signature checks that [`verify`] runs on `wire` at most: the body
+/// and each hop of the path. 0 for bytes that do not parse (no check runs).
+/// It runs no check itself.
+pub fn signature_checks(wire: &[u8]) -> u32 {
+    if wire.len() > MAX_WIRE {
+        return 0;
+    }
+    parse(wire).map_or(0, |p| p.hops.len() as u32 + 1)
+}
+
 /// Check an announcement received at time `now` (ms) by the node `me`.
 ///
 /// This does not check the `seq`: use [`Receiver::accept`] for that.
