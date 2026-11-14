@@ -532,7 +532,7 @@ pub const SECCOMP_NOT_HELD: &[&str] = &[
     "unix sockets",
     "netlink sockets",
     "vsock sockets",
-    "raw and packet sockets (they need CAP_NET_RAW)",
+    "raw sockets of AF_INET and AF_INET6 under --allow-raw icmp (they need CAP_NET_RAW)",
     "loopback TCP (127.0.0.0/8)",
     "descriptors that the program inherits",
 ];

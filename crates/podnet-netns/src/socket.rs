@@ -18,12 +18,26 @@ pub(crate) fn set_allow_raw(on: bool) {
     ALLOW_RAW.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// `SOCK_PACKET`: the kernel makes a packet socket of `socket(AF_INET,
+/// SOCK_PACKET, ...)`.
+const SOCK_PACKET: i32 = 10;
+/// `AF_XDP`: frames to a device, past the IP stack. Not in each libc.
+const AF_XDP: i32 = 44;
+
 /// True when the pod refuses a `socket` call of `domain` and `kind` with
-/// `EPERM`: a raw socket of `AF_INET` or `AF_INET6`, unless `allow_raw`.
-/// A ping socket (`SOCK_DGRAM`) is not raw: the pod emulates it (T-066).
+/// `EPERM`: each socket of `AF_PACKET` and `AF_XDP`, and `SOCK_PACKET` of
+/// `AF_INET` and `AF_INET6`, also with `--allow-raw icmp`; `SOCK_RAW` of
+/// `AF_INET` and `AF_INET6` unless `allow_raw`. A ping socket
+/// (`SOCK_DGRAM`) is not raw: the pod emulates it (T-066). By default the
+/// kernel filter refuses the same sockets first ([`crate::seccomp::calls`]);
+/// with `--allow-raw icmp` the filter lets the whole raw part through, so
+/// this rule refuses the packet sockets.
 pub(crate) fn raw_refused(domain: i32, kind: i32, allow_raw: bool) -> bool {
+    if domain == libc::AF_PACKET || domain == AF_XDP {
+        return true;
+    }
     let inet = domain == libc::AF_INET || domain == libc::AF_INET6;
-    inet && kind == libc::SOCK_RAW && !allow_raw
+    inet && (kind == SOCK_PACKET || (kind == libc::SOCK_RAW && !allow_raw))
 }
 
 /// The `socket` call: a socket pair in place of an `AF_INET` socket.
@@ -53,7 +67,9 @@ pub(crate) fn handle_socket(
         ALLOW_RAW.load(std::sync::atomic::Ordering::Relaxed),
     ) {
         if verbose {
-            eprintln!("podnet pod: a raw socket gets EPERM (--allow-raw icmp lets it through)");
+            eprintln!(
+                "podnet pod: a raw or packet socket gets EPERM (--allow-raw icmp lets a raw socket of AF_INET or AF_INET6 through)"
+            );
         }
         return notif_respond(lfd, id, -1, libc::EPERM);
     }
@@ -174,5 +190,23 @@ mod tests {
             emulation_line(libc::AF_INET, libc::SOCK_DGRAM, true),
             "socket emulated as a socket pair (IPv4 ICMP)"
         );
+    }
+
+    /// T-350: a packet socket gets `EPERM` also with `--allow-raw icmp`; a
+    /// raw socket of `AF_INET` or `AF_INET6` only by default; a ping socket
+    /// never.
+    #[test]
+    fn packet_sockets_are_refused_with_allow_raw_too() {
+        for allow in [false, true] {
+            assert!(raw_refused(libc::AF_PACKET, libc::SOCK_RAW, allow));
+            assert!(raw_refused(libc::AF_PACKET, libc::SOCK_DGRAM, allow));
+            assert!(raw_refused(AF_XDP, libc::SOCK_RAW, allow));
+            assert!(raw_refused(libc::AF_INET, SOCK_PACKET, allow));
+            assert!(raw_refused(libc::AF_INET6, SOCK_PACKET, allow));
+            assert_eq!(raw_refused(libc::AF_INET, libc::SOCK_RAW, allow), !allow);
+            assert_eq!(raw_refused(libc::AF_INET6, libc::SOCK_RAW, allow), !allow);
+            assert!(!raw_refused(libc::AF_INET, libc::SOCK_DGRAM, allow));
+            assert!(!raw_refused(libc::AF_UNIX, libc::SOCK_STREAM, allow));
+        }
     }
 }

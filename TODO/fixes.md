@@ -1402,7 +1402,7 @@ at the start, 311 after 100 sockets, 311 after the close. A long-lived pod runs 
 2. Give each `Sock::Datagram` a stop signal (a `tokio::sync::watch` sender or a `CancellationToken`).
    Select on it in both reader loops. Drop of the entry sends it.
 3. Send the stop from `handle_close`, `sweep` and the shutdown near `drain_relays` (`seccomp.rs:851`).
-4. Correct `crates/podnet-netns/README.md:156-158` so that it separates `read` and `write` on TCP from
+4. Correct `crates/podnet-netns/README.md:157-159` so that it separates `read` and `write` on TCP from
    the UDP path (the write part belongs to T-143).
 
 ## Prove
@@ -1446,7 +1446,7 @@ lines. `sh scripts/agent/check.sh` exits 0. CI: at the merge.
 `write(2)` on an emulated datagram socket returns success, and the datagram never leaves the pod. The
 reply never comes. `sendto`, `send`, `sendmsg` and `sendmmsg` work. Programs write datagrams with
 `write` after `connect` (C code, Python `os.write`, some Go paths). The README says that `write` works
-on the pair (`crates/podnet-netns/README.md:156-158`). That is true for TCP only.
+on the pair (`crates/podnet-netns/README.md:157-159`). That is true for TCP only.
 
 ## Premise
 
@@ -6440,3 +6440,56 @@ change of `docs/proxies.md`; `scripts/gen-llms.py` wrote it, and the test then p
 notest`: each step 0. The 32-bit check: 0. Fuzz (as T-348): `proxy_url` 1355113 runs in 121 s with the crash input in
 the corpus, no crash. Left: the guard stays until a tag of podcrates carries their entry 612; then the take removes it
 or keeps it as a second check.
+
+# T-350: pod: a packet socket opens in a seccomp pod, and the raw rule of T-334 is in the supervisor
+
+**Source:** the take of podcrates `v0.44.0` (T-137; PodUtils/podcrates#154, their entries 574 and 558, the answer to
+note 1 of GitHub #550) (2026-11-14).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The notes of podcrates `v0.44.0`: "`pod-hold`: `Calls::allow_raw()` no longer opens the ping sockets, and
+`Calls::allow_ping()` does. `AF_PACKET`, `AF_XDP` and `SOCK_PACKET` are in the raw part. Under `--allow-raw icmp`,
+podnet's handler must refuse them." The filter of the pod was `Calls::sockets().allow_raw()`
+(`crates/podnet-netns/src/seccomp/filter.rs`): with the tag it refuses each ping socket, so the ping to the gateway of
+T-066 is lost. With `allow_raw` the supervisor gets the packet sockets, and `handle_socket` gives each socket that is
+not of `AF_INET` or `AF_INET6` to the kernel (`notif_continue`): a program with `CAP_NET_RAW` opens an `AF_PACKET`
+socket and sends frames past the upstream of the pod. podnet asked to move its raw rule of T-334 into the kernel filter
+(GitHub #550, note 1).
+
+## Premise
+
+- Read at c48f2ae and in PodUtils/podcrates:crates/pod-hold/src/filter.rs at `v0.44.0`: `Calls::sockets()`
+  refuses the raw part and the ping part; `allow_raw` and `allow_ping` open one part each.
+- Measured as root in this container: with the filter of the tag and the old rule of `raw_refused`, under
+  `--allow-raw icmp` the sockets `AF_PACKET` (raw and datagram), `AF_XDP` and `SOCK_PACKET` opened. With
+  `Calls::sockets()` alone, five tests of `tests/pod_seccomp_dgram.rs` failed (the ping socket gets `EPERM`).
+
+## Approach
+
+- `calls(allow_raw)` of `crates/podnet-netns/src/seccomp/filter.rs`: `Calls::sockets().allow_ping()`, and
+  `.allow_raw()` with `--allow-raw icmp`. The raw rule of T-334 is in the kernel filter by default.
+- `raw_refused` of `crates/podnet-netns/src/socket.rs`: each socket of `AF_PACKET` and `AF_XDP` and `SOCK_PACKET` of
+  `AF_INET` and `AF_INET6` gets `EPERM`, also with `--allow-raw icmp`; `SOCK_RAW` unless `--allow-raw icmp`.
+- Tests: the C program `RAW` of `tests/pod_seccomp_dgram.rs` tries the packet sockets in both modes; unit tests of
+  `calls` and `raw_refused`.
+- `docs/pods.md`, `crates/podnet-netns/README.md`, the help of `pod`, the `not_held` list of `pod doctor`.
+
+## Decision
+
+2026-11-14 (`docs/decisions.md`, A raw and a packet socket in a seccomp pod): the default rule moves into the kernel
+filter. The supervisor keeps `raw_refused`: under `--allow-raw icmp` the filter lets the whole raw part through, so the
+supervisor is the only place that can refuse the packet sockets; by default it is a second check.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns
+cargo test --test pod_seccomp_dgram
+cargo test --test pod_seccomp_rules
+```

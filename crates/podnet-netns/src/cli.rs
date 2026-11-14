@@ -32,7 +32,8 @@ pub(crate) struct Args {
     /// `--keep-proxy-env`: the program keeps the proxy variables.
     pub(crate) keep_proxy_env: bool,
     /// `--allow-raw icmp` (T-334): the seccomp backend lets a raw socket of
-    /// `AF_INET` and `AF_INET6` go to the kernel; else it gets `EPERM`.
+    /// `AF_INET` and `AF_INET6` go to the kernel; else it gets `EPERM`. A
+    /// packet socket gets `EPERM` in each case (T-350).
     pub(crate) allow_raw: bool,
     pub(crate) serve: Option<crate::listen::ProxyListen>,
     pub(crate) backend: BackendKind,
@@ -179,8 +180,10 @@ Options:
       --allow-raw icmp     Seccomp backend: a raw socket of AF_INET or AF_INET6
                            goes to the kernel (CAP_NET_RAW sends from the
                            host, past the upstream). Off by default: the
-                           socket gets EPERM. A ping socket (SOCK_DGRAM,
-                           IPPROTO_ICMP) is emulated in each case
+                           socket gets EPERM. A packet socket (AF_PACKET,
+                           AF_XDP, SOCK_PACKET) gets EPERM in each case; a
+                           ping socket (SOCK_DGRAM, IPPROTO_ICMP) is
+                           emulated in each case
       --backend <NAME>     auto (default), netns, netns-kernel or seccomp.
                            With netns, a listener of the program is in the
                            network of the pod: a loopback TCP listener is not

@@ -9252,9 +9252,12 @@ COMMANDS
                                    the
                                    host, past the upstream). Off by default:
                                    the
-                                   socket gets EPERM. A ping socket
-                                   (SOCK_DGRAM,
-                                   IPPROTO_ICMP) is emulated in each case
+                                   socket gets EPERM. A packet socket
+                                   (AF_PACKET,
+                                   AF_XDP, SOCK_PACKET) gets EPERM in each
+                                   case; a
+                                   ping socket (SOCK_DGRAM, IPPROTO_ICMP) is
+                                   emulated in each case
               --backend <NAME> auto (default), netns, netns-kernel or seccomp.
                                    With netns, a listener of the program is in
                                    the
@@ -12955,13 +12958,15 @@ podnet pod -x socks5://127.0.0.1:1080 \
 * `--flow-budget N` (seccomp): the most sockets that the pod tracks at one time (64 to 1048576). A socket
   call above it gets `EMFILE`. The default comes from `RLIMIT_NOFILE`.
 * `--allow-raw icmp` (seccomp): a raw socket of `AF_INET` or `AF_INET6` (`SOCK_RAW`) goes to the kernel.
-  With `CAP_NET_RAW`, its packets go out of the host past the upstream of the pod. By default the socket
-  gets `EPERM`. A ping socket (`SOCK_DGRAM` with `IPPROTO_ICMP`) is emulated in each case: an echo to the
-  gateway `10.66.255.254` gets an answer, another destination gets `EACCES`.
+  With `CAP_NET_RAW`, its packets go out of the host past the upstream of the pod. By default the filter of
+  the kernel refuses the socket with `EPERM`. A packet socket (`AF_PACKET`, `AF_XDP`, or `SOCK_PACKET` of
+  `AF_INET`) gets `EPERM` also with `--allow-raw icmp`. A ping socket (`SOCK_DGRAM` with `IPPROTO_ICMP`) is
+  emulated in each case: an echo to the gateway `10.66.255.254` gets an answer, another destination gets
+  `EACCES`.
 * A pod holds the traffic of the program. The `netns` backend enforces it, except unix sockets of the file
-  system and the descriptors that the program inherits. The `seccomp` backend is advisory: unix, netlink,
-  vsock and packet sockets, loopback TCP and inherited descriptors are not held; a raw socket of
-  `AF_INET` and `AF_INET6` gets `EPERM` (see `--allow-raw icmp`).
+  system and the descriptors that the program inherits. The `seccomp` backend is advisory: unix, netlink
+  and vsock sockets, loopback TCP and inherited descriptors are not held; a raw socket of
+  `AF_INET` and `AF_INET6` and each packet socket get `EPERM` (see `--allow-raw icmp`).
 * Exit status: the exit code of the program; 64 for a usage mistake (also no upstream); 3 when no backend
   can run on this host; 4 for a violation of `--fail-on-violation` when the program exits 0.
 

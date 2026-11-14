@@ -877,6 +877,17 @@ Done so far:
   `sh scripts/agent/check.sh`: each step 0 (`cargo test --workspace`: 1954 passed, 120 targets). ci 43567820518 on b92c100 passed (GitHub #553).
   `cargo check --workspace --target i686-unknown-linux-musl`: exit 0. What the tag unblocks: T-337 (`PresharedKey`)
   and T-125 (`podnet wg serve` on `pod_wg::Responder`).
+- v0.44.0 (PodUtils/podcrates#154): each `pod-*` dependency names `tag = "v0.44.0"` (and `pod-todo` of
+  `crates/podnet-todo/Cargo.toml`). No new hand-off for podnet. Breaking for podnet: `Calls::allow_raw()` of `pod-hold`
+  no longer opens the ping sockets, and `AF_PACKET`, `AF_XDP` and `SOCK_PACKET` are in the raw part: the filter of the
+  pod is `Calls::sockets().allow_ping()`, with `.allow_raw()` under `--allow-raw icmp`, and the supervisor refuses each
+  packet socket (T-350). The other breaking changes (`pod-actions-workflow`, `pod-supervise`) are of crates that podnet
+  does not take. The scheme `tcp` of an endpoint (their entry 575) is a line of the README of `pod-services`: podnet
+  parses `tcp://HOST:PORT` of a transit relay since df08245 (`Relay::parse`; the live run 43590951009 went "via relay
+  tcp:transit.magic-wormhole.io:4001"), so nothing changes. `cargo update` moves `webpki-roots` to 1.0.12;
+  `pod_tls::ROOTS_VERSION` is 1.0.11, so it stays at 1.0.11 (also in `fuzz/Cargo.lock`). `sh scripts/agent/check.sh`:
+  each step 0 (`cargo test --workspace`: 1991 passed, 0 failed, 120 targets). `CC_i686_unknown_linux_musl=clang cargo
+  check --workspace --target i686-unknown-linux-musl`: exit 0.
 - Next: `pod-relay` (`src/relay_reverse.rs`, the bridge of `src/ws.rs`).
 - The owner, 2026-11-05 (`docs/decisions.md`, Services crate): the lists of services of other
   parties, their measurements and the watch workflows move to `pod-services`. podnet takes it

@@ -315,8 +315,10 @@ fn seccomp_long_udp_name_is_refused() {
     );
 }
 
-/// A raw ICMP socket of each family, then a ping socket.
+/// A raw ICMP socket of each family, the packet sockets (`AF_PACKET`,
+/// `AF_XDP`, `SOCK_PACKET`), then a ping socket.
 const RAW: &str = r#"
+#include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -331,10 +333,23 @@ static void try(const char *what, int domain, int type, int protocol) {
 int main(void) {
     try("raw4", AF_INET, SOCK_RAW, IPPROTO_ICMP);
     try("raw6", AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
+    try("packet", 17 /* AF_PACKET */, SOCK_RAW, htons(3) /* ETH_P_ALL */);
+    try("packet-dgram", 17 /* AF_PACKET */, SOCK_DGRAM | SOCK_NONBLOCK, htons(3));
+    try("xdp", 44 /* AF_XDP */, SOCK_RAW, 0);
+    try("sockpacket", AF_INET, 10 /* SOCK_PACKET */, htons(3));
     try("ping", AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
     return 0;
 }
 "#;
+
+/// T-350: each packet socket gets `EPERM`, by default and with `--allow-raw
+/// icmp`: its frames go out of the host past the upstream of the pod.
+const PACKET: &[&str] = &[
+    "packet: EPERM",
+    "packet-dgram: EPERM",
+    "xdp: EPERM",
+    "sockpacket: EPERM",
+];
 
 // T-334: a raw ICMP socket in a seccomp pod gets EPERM by default; the ping
 // socket of T-066 opens.
@@ -344,6 +359,7 @@ fn seccomp_raw_socket_gets_eperm_by_default() {
         return;
     };
     expect_lines(&out, &["raw4: EPERM", "raw6: EPERM", "ping: open"]);
+    expect_lines(&out, PACKET);
 }
 
 // T-334: with --allow-raw icmp the raw socket goes to the kernel: it opens
@@ -364,6 +380,7 @@ fn seccomp_raw_socket_opens_with_allow_raw_icmp() {
         return;
     }
     expect_lines(&out, &["raw4: open", "ping: open"]);
+    expect_lines(&out, PACKET);
 }
 
 // T-334: --allow-raw takes icmp only.
