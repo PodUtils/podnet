@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**339 entries: 11 open, 9 partial, 25 blocked, 294 done.**
+**340 entries: 11 open, 9 partial, 25 blocked, 295 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 1 | 2 | 29 | 32 |
-| P2 | 5 | 4 | 10 | 151 | 170 |
+| P2 | 5 | 4 | 10 | 152 | 171 |
 | P3 | 6 | 4 | 13 | 113 | 136 |
-| **All** | 11 | 9 | 25 | 294 | 339 |
+| **All** | 11 | 9 | 25 | 295 | 340 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -385,3 +385,4 @@ M8 Overlays, M9 Later.
 | [T-337](overlays.md) | P3 | S | M8 | feature | done | WireGuard: take the preshared key of `pod-wg` |
 | [T-338](services.md) | P3 | S | M6 | feature | done | `podnet send --words N`: the count of words of a code |
 | [T-339](fixes.md) | P2 | S | M5 | chore | done | Fuzz targets for the parsers of peer and file input that came after 2026-11-12 |
+| [T-340](fixes.md) | P2 | S | M5 | chore | done | The parity checklist after the take of pod-warp, the router, the transfer and the carriers |

@@ -1973,7 +1973,10 @@ receiver takes the mailbox of the sender's event `code` (`--mailbox`), against m
 checks the SHA-256 of the received file and of the event `sent` against the SHA-256 of the file, and prints the time,
 the rate and `via`. The code, the pair and its token get `::add-mask::`, and each log goes through `scrub` (each
 secret replaced) before it is printed. The job `live` gets 60 minutes (it had 45). Checked here: `bash -n` of the
-step and a YAML parse (`python3 scripts/check-workflows.py`: 0 faults). Not run here: the step runs only in a run of
+step and a YAML parse (`python3 scripts/check-workflows.py`: 0 faults). Commit 3654b05. A dry run here of the
+script of the step (the debug binary, 5 MiB in place of 100 MiB, through the proxy of this host): transit 5.2 s via
+`wss://relay.mw.leastauthority.com/`, podnet relay 3.9 s via `podnet relay <secret>`, mailbox
+`wss://relay.magic-wormhole.io/v1`, the SHA-256 equal, no code in the output. The step itself runs only in a run of
 `live` that the owner starts. The entry stays partial until that run passes.
 
 ## Done

@@ -2,6 +2,11 @@
 
 > Reading of the tree at 3bed023 (2026-11-05). Paths and counts are history. The plan is the record (`TODO/`).
 
+> Walked again on 2026-11-14 (T-340) for the areas that the take of `pod-warp`, the router, the transfer and the
+> carriers touched: the `podnet warp` commands (section 3), the WARP variables (5), the WARP files (6), the WARP
+> documents (8), the steps of `live.yml` (12) and the fuzz targets (13). 41 boxes were ticked before, 232 after (of
+> 620). The router, the transfer and the carriers are new: no item of this list names them.
+
 Tick each item when podnet has it with the same behaviour, or when a
 ruling in `docs/decisions.md` records the change. Generated from
 `podnet man --json` of the binary of 3bed023 and from a scan of the
@@ -361,225 +366,246 @@ Pinned by: `tests/cli.rs` (`log_controls`, `log_format_json_gives_json_lines_onl
 
 ### `podnet warp`
 
-- [ ] command exists: Cloudflare WARP client: registration, account, proxy, run
+- [x] command exists: Cloudflare WARP client: registration, account, proxy, run
   (the flags below are global to each `warp` subcommand)
-  - [ ] `--identity <PATH>`
-  - [ ] `--ephemeral`
-  - [ ] `--resolver <SPEC>` (repeatable; env `PODNET_WARP_RESOLVERS`)
-  - [ ] `--device-name <NAME>` (env `PODNET_WARP_DEVICE_NAME`)
-  - [ ] `--device-model <MODEL>` (env `PODNET_WARP_DEVICE_MODEL`)
-  - [ ] `--device-locale <LOCALE>` (env `PODNET_WARP_DEVICE_LOCALE`)
-  - [ ] `--fragment-client-hello <MODE>` (env `PODNET_WARP_FRAGMENT`)
-  - [ ] `--fragment-size <MIN[-MAX]>` (env `PODNET_WARP_FRAGMENT_SIZE`)
-  - [ ] `--cc <NAME>` (env `PODNET_WARP_CC`)
-  - [ ] `--session-max-age <SECS>` (env `PODNET_WARP_SESSION_MAX_AGE`)
-  - [ ] `--no-relay`
-  - [ ] `--masque-endpoint <IP:PORT>`
-  - [ ] `--masque-sni <NAME>`
-  - [ ] `--masque-transport <PROTOCOL>` (env `PODNET_WARP_MASQUE_TRANSPORT`; values `h2`, `h3`)
-  - [ ] `--transport <TRANSPORT>` (env `PODNET_WARP_TRANSPORT`; values `masque`, `wireguard`)
-  - [ ] `--wireguard-endpoint <IP:PORT>` (env `PODNET_WARP_WG_ENDPOINT`)
-  - [ ] `--carry <CARRY>` (env `PODNET_WARP_CARRY`; values `none`, `wg`)
-  - [ ] `--carry-endpoint <IP:PORT>` (env `PODNET_WARP_CARRY_ENDPOINT`)
+  - [x] `--identity <PATH>`
+  - [x] `--ephemeral`
+  - [x] `--resolver <SPEC>` (repeatable; env `PODNET_WARP_RESOLVERS`)
+  - [x] `--device-name <NAME>` (env `PODNET_WARP_DEVICE_NAME`)
+  - [x] `--device-model <MODEL>` (env `PODNET_WARP_DEVICE_MODEL`)
+  - [x] `--device-locale <LOCALE>` (env `PODNET_WARP_DEVICE_LOCALE`)
+  - [x] `--fragment-client-hello <MODE>` (env `PODNET_WARP_FRAGMENT`)
+  - [x] `--fragment-size <MIN[-MAX]>` (env `PODNET_WARP_FRAGMENT_SIZE`)
+  - [x] `--cc <NAME>` (env `PODNET_WARP_CC`)
+  - [x] `--session-max-age <SECS>` (env `PODNET_WARP_SESSION_MAX_AGE`)
+  - [x] `--no-relay`
+  - [x] `--masque-endpoint <IP:PORT>`
+  - [x] `--masque-sni <NAME>`
+  - [x] `--masque-transport <PROTOCOL>` (env `PODNET_WARP_MASQUE_TRANSPORT`; values `h2`, `h3`)
+  - [x] `--transport <TRANSPORT>` (env `PODNET_WARP_TRANSPORT`; values `masque`, `wireguard`)
+  - [x] `--wireguard-endpoint <IP:PORT>` (env `PODNET_WARP_WG_ENDPOINT`)
+  - [x] `--carry <CARRY>` (env `PODNET_WARP_CARRY`; values `none`, `wg`)
+  - [x] `--carry-endpoint <IP:PORT>` (env `PODNET_WARP_CARRY_ENDPOINT`)
 - tests: `cli.rs::bad_input_gives_usage_errors_not_panics`, `cli.rs::the_log_holds_no_secret`, `cli.rs::warp_status_registers_no_device`
 - live: -
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; the global flags are flags of each subcommand (`tests/docs.rs::the_readme_does_not_call_warp_flags_global`); `tests/cli/exit_codes.rs::bad_input_gives_usage_errors_not_panics`, `tests/cli/log.rs::the_log_holds_no_secret`, `tests/cli/warp.rs::warp_status_registers_no_device`; the code is glue over `pod-warp` (`src/warp/`).
 
 ### `podnet warp register`
 
-- [ ] command exists: Register a device (or load the saved one) and print it
+- [x] command exists: Register a device (or load the saved one) and print it
 - tests: none found
 - live: L446; L463 (second API host)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/warp_stand_in.rs::warp_stand_in_register_saves_one_device_and_a_second_run_loads_it`, `warp_stand_in_register_names_the_limit_of_new_devices`, `tests/warp_register.rs`; live "WARP account and probe", "WARP API through its second host".
 
 ### `podnet warp status`
 
-- [ ] command exists: Print the device and the account (type, WARP+ state, quota)
-  - [ ] `--json`
+- [x] command exists: Print the device and the account (type, WARP+ state, quota)
+  - [x] `--json`
 - tests: `docs.rs::the_readme_does_not_call_warp_flags_global`; `src/main.rs`: `warp_license_and_status_fields`
 - live: L446; L463
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/warp_stand_in.rs::warp_stand_in_status_reads_the_account_of_the_saved_device`, `src/cli/cmd/warp/cli_tests.rs::warp_license_and_status_fields`; live "WARP account and probe".
 
 ### `podnet warp license`
 
-- [ ] command exists: Attach a WARP+ license key to the device
-  - [ ] `<KEY>` (required)
+- [x] command exists: Attach a WARP+ license key to the device
+  - [x] `<KEY>` (required)
 - tests: none found; `src/main.rs`: `warp_license_and_status_fields`, `license_and_expose_classes`
 - live: -
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/warp_stand_in.rs::warp_stand_in_license_from_stdin_reaches_the_api`, `src/cli/cmd/warp/cli_tests.rs::warp_license_and_status_fields`.
 
 ### `podnet warp rotate`
 
-- [ ] command exists: Make a new MASQUE key and enrol it. The old key stops working
+- [x] command exists: Make a new MASQUE key and enrol it. The old key stops working
 - tests: none found
 - live: -
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/warp_stand_in.rs::warp_stand_in_rotate_enrols_a_new_key_for_the_same_device`.
 
 ### `podnet warp delete`
 
-- [ ] command exists: Remove the device from the WARP service and delete the saved file
+- [x] command exists: Remove the device from the WARP service and delete the saved file
 - tests: none found
 - live: L463; L924 (cleanup); live-batch2.sh
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/warp_stand_in.rs::warp_stand_in_delete_removes_the_device_and_the_file`; live "WARP API through its second host", "Remove the WARP device".
 
 ### `podnet warp probe`
 
-- [ ] command exists: Open the tunnel and test TCP connects through it. Exit 69 when a target fails
-  - [ ] `--target <TARGET>` (repeatable)
+- [x] command exists: Open the tunnel and test TCP connects through it. Exit 69 when a target fails
+  - [x] `--target <TARGET>` (repeatable)
 - tests: `cli.rs::the_environment_is_checked_alike`; `src/main.rs`: `probe_targets_take_a_name_or_an_address`
 - live: L446; L510 (through the relay); live-batch2.sh (--fragment-client-hello, --masque-transport h3, --transport wireguard)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/cli/startup.rs::the_environment_is_checked_alike`, `src/cli/cmd/tunnel_tests.rs::probe_targets_take_a_name_or_an_address`; live "WARP account and probe", "WARP probe through the WebSocket relay", `scripts/live-batch2.sh`.
 
 ### `podnet warp exit`
 
-- [ ] command exists: Open the tunnel and print its exit: the data center (colo), the country and the address that a destination sees (from http://1.1.1.1/cdn-cgi/trace), and the IPv6 egress address (the trace at 2606:4700:4700::1111, else the TXT of whoami.cloudflare). Exit 69 when there is no answer
-  - [ ] `--json`
-  - [ ] `--no-ipv6`
+- [x] command exists: Open the tunnel and print its exit: the data center (colo), the country and the address that a destination sees (from http://1.1.1.1/cdn-cgi/trace), and the IPv6 egress address (the trace at 2606:4700:4700::1111, else the TXT of whoami.cloudflare). Exit 69 when there is no answer
+  - [x] `--json`
+  - [x] `--no-ipv6`
 - tests: none found
 - live: live-batch2.sh (--json; --carry wg --transport)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; live `scripts/live-batch2.sh` (`warp exit --json`, `--carry wg`).
 
 ### `podnet warp export`
 
-- [ ] command exists: Print a WireGuard config of a new WARP device (wg-quick or JSON), for other clients. The device and its private key are in warp-wg.json of the state directory, not in warp.json. Its data path is WireGuard on UDP (port 2408), not MASQUE on TCP 443. The output holds the private key: a terminal is refused with no --out (--out - prints it), and a redirected file becomes mode 0600
-  - [ ] `--format <FORMAT>` (default `wg-quick`; values `wg-quick`, `json`)
-  - [ ] `--out <FILE>`
-  - [ ] `--export-identity <FILE>`
-  - [ ] `--endpoint <HOST:PORT>`
-  - [ ] `--keepalive <SECS>` (default `25`)
-  - [ ] `--new`
-  - [ ] `--delete`
+- [x] command exists: Print a WireGuard config of a new WARP device (wg-quick or JSON), for other clients. The device and its private key are in warp-wg.json of the state directory, not in warp.json. Its data path is WireGuard on UDP (port 2408), not MASQUE on TCP 443. The output holds the private key: a terminal is refused with no --out (--out - prints it), and a redirected file becomes mode 0600
+  - [x] `--format <FORMAT>` (default `wg-quick`; values `wg-quick`, `json`)
+  - [x] `--out <FILE>`
+  - [x] `--export-identity <FILE>`
+  - [x] `--endpoint <HOST:PORT>`
+  - [x] `--keepalive <SECS>` (default `25`)
+  - [x] `--new`
+  - [x] `--delete`
 - tests: none found
 - live: live-batch2.sh (--format json, --export-identity, --delete)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `src/warp/export.rs::the_wg_quick_config`, `tests/commands.rs::warp_export_check_is_a_flag`; live `scripts/live-batch2.sh` (`--format json`, `--export-identity`, `--delete`).
 
 ### `podnet warp scan`
 
-- [ ] command exists: Measure front doors of WARP: the TCP connect and the TLS handshake with the pinned key, for each --candidate and the front doors of the device record. The fastest goes first. Exit 69 when none answers
-  - [ ] `--candidate <IP[:PORT]>` (repeatable)
-  - [ ] `--timeout-ms <MS>` (default `3000`)
-  - [ ] `--json`
+- [x] command exists: Measure front doors of WARP: the TCP connect and the TLS handshake with the pinned key, for each --candidate and the front doors of the device record. The fastest goes first. Exit 69 when none answers
+  - [x] `--candidate <IP[:PORT]>` (repeatable)
+  - [x] `--timeout-ms <MS>` (default `3000`)
+  - [x] `--json`
 - tests: `cli.rs::invalid_values_are_refused`; `src/main.rs`: `the_front_doors_of_a_scan`
 - live: live-batch2.sh (--candidate --json)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/cli/exit_codes.rs::invalid_values_are_refused`, `src/cli/cmd/warp/cli_tests.rs::the_front_doors_of_a_scan`; live `scripts/live-batch2.sh`.
 
 ### `podnet warp forward`
 
-- [ ] command exists: Forward local listeners through WARP (as ssh -L): each connection to LISTEN goes through the tunnel to HOST:PORT
-  - [ ] `-L, --local <LISTEN=HOST:PORT>` (required; repeatable; env `PODNET_WARP_FORWARD`)
-  - [ ] `--strict`
-  - [ ] `--max-connections <N>` (default `32`)
-  - [ ] `--run-for <RUN_FOR>`
-  - [ ] `--detach`
-  - [ ] `--name <NAME>`
-  - [ ] `--ready-timeout <SECS>` (default `60`)
-  - [ ] `--replace`
-  - [ ] `--no-restart`
+- [x] command exists: Forward local listeners through WARP (as ssh -L): each connection to LISTEN goes through the tunnel to HOST:PORT
+  - [x] `-L, --local <LISTEN=HOST:PORT>` (required; repeatable; env `PODNET_WARP_FORWARD`)
+  - [x] `--strict`
+  - [x] `--max-connections <N>` (default `32`)
+  - [x] `--run-for <RUN_FOR>`
+  - [x] `--detach`
+  - [x] `--name <NAME>`
+  - [x] `--ready-timeout <SECS>` (default `60`)
+  - [x] `--replace`
+  - [x] `--no-restart`
 - tests: none found
 - live: live-batch2.sh (-L --run-for)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `-L` is required unless `--list` (a new flag): `podnet warp forward` with neither exits 64; `tests/commands.rs::warp_forward_list_prints_the_forwards_of_ps`; live `scripts/live-batch2.sh` (`-L`, `--run-for`).
 
 ### `podnet warp proxy`
 
-- [ ] command exists: Run a local SOCKS5 and HTTP CONNECT proxy whose traffic goes through WARP (the proxy mode of the WARP client)
-  - [ ] `--listen <LISTEN>` (repeatable; default `tcp://127.0.0.1:40000`)
-  - [ ] `--strict`
-  - [ ] `--max-connections <N>` (default `0`)
-  - [ ] `--dns <ADDR>`
-  - [ ] `--proxy-user <USER>` (env `PODNET_PROXY_USER`)
-  - [ ] `--proxy-password-file <FILE>` (env `PODNET_PROXY_PASSWORD_FILE`)
-  - [ ] `-r, --rule <KIND:VALUE=ACTION>` (repeatable; env `PODNET_WARP_RULES`)
-  - [ ] `--l4` (env `PODNET_WARP_L4`)
-  - [ ] `--l4-sni <NAME>` (default `consumer-masque-proxy.cloudflareclient.com`)
-  - [ ] `--listen-identity <LISTEN=PATH>` (repeatable)
-  - [ ] `--rules-file <FILE>` (env `PODNET_WARP_RULES_FILE`)
-  - [ ] `--rule-default <ACTION>` (default `tunnel`)
-  - [ ] `--check`
-  - [ ] `--run-for <RUN_FOR>`
-  - [ ] `--detach`
-  - [ ] `--name <NAME>`
-  - [ ] `--ready-timeout <SECS>` (default `60`)
-  - [ ] `--replace`
-  - [ ] `--no-restart`
+- [x] command exists: Run a local SOCKS5 and HTTP CONNECT proxy whose traffic goes through WARP (the proxy mode of the WARP client)
+  - [x] `--listen <LISTEN>` (repeatable; default `tcp://127.0.0.1:40000`)
+  - [x] `--strict`
+  - [x] `--max-connections <N>` (default `0`)
+  - [x] `--dns <ADDR>`
+  - [x] `--proxy-user <USER>` (env `PODNET_PROXY_USER`)
+  - [x] `--proxy-password-file <FILE>` (env `PODNET_PROXY_PASSWORD_FILE`)
+  - [x] `-r, --rule <KIND:VALUE=ACTION>` (repeatable; env `PODNET_WARP_RULES`)
+  - [x] `--l4` (env `PODNET_WARP_L4`)
+  - [x] `--l4-sni <NAME>` (default `consumer-masque-proxy.cloudflareclient.com`)
+  - [x] `--listen-identity <LISTEN=PATH>` (repeatable)
+  - [x] `--rules-file <FILE>` (env `PODNET_WARP_RULES_FILE`)
+  - [x] `--rule-default <ACTION>` (default `tunnel`)
+  - [x] `--check`
+  - [x] `--run-for <RUN_FOR>`
+  - [x] `--detach`
+  - [x] `--name <NAME>`
+  - [x] `--ready-timeout <SECS>` (default `60`)
+  - [x] `--replace`
+  - [x] `--no-restart`
 - tests: none found; `src/main.rs`: `the_pairs_of_listen_identity`
 - live: L487 (exit 69); L772 --listen --dns, SOCKS5 UDP, IPv6, TCP burst vs beta.6; live-batch2.sh (rules, nested --proxy, --cc, h3, --l4 --l4-sni, wireguard)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `src/cli/cmd/warp/cli_tests.rs::the_pairs_of_listen_identity`, `tests/rule_words.rs`, `src/networks/warp_tests.rs` (the stand-in edge); live "WARP proxy", "Exit 69 for an unavailable path", `scripts/live-batch2.sh`.
 
 ### `podnet warp up`
 
-- [ ] command exists: Start WARP for this sandbox, in the background: a detached warp proxy on 127.0.0.1:PORT and on a unix socket, and an env file with the proxy variables. Later shells join it with `eval "$(podnet warp env)"`, `podnet warp exec -- CMD`, `podnet warp shell`, or --persist
-  - [ ] `--port <PORT>` (default `40000`)
-  - [ ] `--persist`
-  - [ ] `--env-d`
-  - [ ] `--ready-timeout <READY_TIMEOUT>` (default `90`)
-  - [ ] `--tun`
-  - [ ] `--replace`
-  - [ ] `--dns <ADDR>`
-  - [ ] `--proxy-user <USER>` (env `PODNET_PROXY_USER`)
-  - [ ] `--proxy-password-file <FILE>` (env `PODNET_PROXY_PASSWORD_FILE`)
+- [x] command exists: Start WARP for this sandbox, in the background: a detached warp proxy on 127.0.0.1:PORT and on a unix socket, and an env file with the proxy variables. Later shells join it with `eval "$(podnet warp env)"`, `podnet warp exec -- CMD`, `podnet warp shell`, or --persist
+  - [x] `--port <PORT>` (default `40000`)
+  - [x] `--persist`
+  - [x] `--env-d`
+  - [x] `--ready-timeout <READY_TIMEOUT>` (default `90`)
+  - [x] `--tun`
+  - [x] `--replace`
+  - [x] `--dns <ADDR>`
+  - [x] `--proxy-user <USER>` (env `PODNET_PROXY_USER`)
+  - [x] `--proxy-password-file <FILE>` (env `PODNET_PROXY_PASSWORD_FILE`)
 - tests: none found; `src/main.rs`: `warp_up_tun_keeps_the_front_door`, `the_warp_up_summary_starts_with_what_works`, `the_warp_proxy_of_warp_up_parses`
 - live: L487 (--tun exit 69); L525 (TCP listener refused); L549 (--persist, re-up keeps pid, one-root CA)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `src/cli/cmd/warp/cli_tests.rs::warp_up_tun_keeps_the_front_door`, `the_warp_proxy_of_warp_up_parses`, `src/warp/find.rs::the_warp_up_summary_starts_with_what_works`, the tests of `src/warp/up.rs`; live "warp up with its TCP listener refused", "warp up, env, exec, --persist and down".
 
 ### `podnet warp down`
 
-- [ ] command exists: Stop what podnet warp up started, and remove its env file and its block in ~/.bashrc and ~/.profile
+- [x] command exists: Stop what podnet warp up started, and remove its env file and its block in ~/.bashrc and ~/.profile
 - tests: none found
 - live: L525; L549
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; the tests of `src/warp/up.rs`; live "warp up with its TCP listener refused", "warp up, env, exec, --persist and down".
 
 ### `podnet warp env`
 
-- [ ] command exists: Print the proxy variables of the running podnet warp up, for `eval "$(podnet warp env)"`. Exit 69 with no output when warp up has no TCP listener (no proxy variables)
+- [x] command exists: Print the proxy variables of the running podnet warp up, for `eval "$(podnet warp env)"`. Exit 69 with no output when warp up has no TCP listener (no proxy variables)
 - tests: `cli.rs::warp_env_with_no_proxy_variables_exits_69`
 - live: L525; L549
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/cli/warp.rs::warp_env_with_no_proxy_variables_exits_69`; live "warp up, env, exec, --persist and down".
 
 ### `podnet warp exec`
 
-- [ ] command exists: Run a program under the pod of the running podnet warp up: TCP, DNS and UDP go through WARP, also for static binaries
-  - [ ] `-r, --rule <SPEC>` (repeatable)
-  - [ ] `<PROGRAM>...` (required; repeatable)
+- [x] command exists: Run a program under the pod of the running podnet warp up: TCP, DNS and UDP go through WARP, also for static binaries
+  - [x] `-r, --rule <SPEC>` (repeatable)
+  - [x] `<PROGRAM>...` (required; repeatable)
 - tests: none found
 - live: L525; L549
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/detach/warp_exec.rs`, `tests/pod_backend_line.rs::warp_exec_names_its_backend_once`, `tests/commands.rs::warp_exec_names_each_socket_tried`; live "warp up, env, exec, --persist and down".
 
 ### `podnet warp shell`
 
-- [ ] command exists: Run $SHELL under the pod of the running podnet warp up. When it does not run, the shell starts as it is (with the proxy variables when the env file is there)
+- [x] command exists: Run $SHELL under the pod of the running podnet warp up. When it does not run, the shell starts as it is (with the proxy variables when the env file is there)
 - tests: none found
 - live: -
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; no test runs the command (section 14); a run here on ce6352c with no `warp up` (`SHELL=/bin/sh`, stdin `echo via-stdin`): the line "the WARP proxy is not running ... the shell starts with no pod", the shell ran the line, exit 0.
 
 ### `podnet warp nc`
 
-- [ ] command exists: A byte pipe from stdin and stdout to HOST:PORT through WARP, for `ssh -o ProxyCommand='podnet warp nc %h %p'` and git over SSH. It uses the running podnet warp up, else a WARP session of its own
-  - [ ] `<HOST>` (required)
-  - [ ] `<PORT>` (required)
-  - [ ] `--via-relay`
-  - [ ] `-u, --udp`
-  - [ ] `--idle <SECS>`
-  - [ ] `-N, --shutdown`
+- [x] command exists: A byte pipe from stdin and stdout to HOST:PORT through WARP, for `ssh -o ProxyCommand='podnet warp nc %h %p'` and git over SSH. It uses the running podnet warp up, else a WARP session of its own
+  - [x] `<HOST>` (required)
+  - [x] `<PORT>` (required)
+  - [x] `--via-relay`
+  - [x] `-u, --udp`
+  - [x] `--idle <SECS>`
+  - [x] `-N, --shutdown`
 - tests: none found
 - live: L446 (-u 1.1.1.1 53); L549
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/commands.rs::warp_nc_finds_warp_up_of_another_state_directory`; live "WARP account and probe" (`warp nc -u`), "warp up, env, exec, --persist and down" (git over `warp nc`).
 
 ### `podnet warp ssh-config`
 
-- [ ] command exists: Print an SSH config block and GIT_SSH_COMMAND that use podnet warp nc. With --write, --remove or --check: own the block in the SSH config file, between two marker lines
-  - [ ] `--host <HOST>`
-  - [ ] `--write`
-  - [ ] `--remove`
-  - [ ] `--check`
-  - [ ] `--config <FILE>` (default `~/.ssh/config`)
+- [x] command exists: Print an SSH config block and GIT_SSH_COMMAND that use podnet warp nc. With --write, --remove or --check: own the block in the SSH config file, between two marker lines
+  - [x] `--host <HOST>`
+  - [x] `--write`
+  - [x] `--remove`
+  - [x] `--check`
+  - [x] `--config <FILE>` (default `~/.ssh/config`)
 - tests: `cli.rs::root_writes_no_file_in_the_home_of_another_user`, `cli.rs::ssh_config_refuses_a_host_with_a_newline_or_a_space`, `cli.rs::warp_ssh_config_owns_its_block`
 - live: L549 (--host, --write, --check, --remove, --config)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/cli/warp.rs::warp_ssh_config_owns_its_block`, `ssh_config_refuses_a_host_with_a_newline_or_a_space`, `tests/cli/startup.rs::root_writes_no_file_in_the_home_of_another_user`; live "warp up, env, exec, --persist and down".
 
 ### `podnet warp tun`
 
-- [ ] command exists: Make a TUN interface whose packets go through WARP. Needs CAP_NET_ADMIN and /dev/net/tun. Routes are not changed
-  - [ ] `--interface <INTERFACE>` (default `podnet0`)
-  - [ ] `--default-route`
-  - [ ] `--detach`
-  - [ ] `--name <NAME>`
-  - [ ] `--ready-timeout <SECS>` (default `60`)
-  - [ ] `--replace`
-  - [ ] `--no-restart`
+- [x] command exists: Make a TUN interface whose packets go through WARP. Needs CAP_NET_ADMIN and /dev/net/tun. Routes are not changed
+  - [x] `--interface <INTERFACE>` (default `podnet0`)
+  - [x] `--default-route`
+  - [x] `--detach`
+  - [x] `--name <NAME>`
+  - [x] `--ready-timeout <SECS>` (default `60`)
+  - [x] `--replace`
+  - [x] `--no-restart`
 - tests: none found
 - live: L487 (exit 69); L684 --default-route (root); L711 no default route
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; `tests/commands.rs::warp_tun_takes_session_max_age`, `tests/warp_routes.rs`; live "Exit 69 for an unavailable path", "warp tun --default-route (root)", "warp tun --default-route with no default route".
 
 ### `podnet warp run`
 
-- [ ] command exists: Run a program with all its traffic sent through WARP. No root and no TUN device are necessary (pod-netns)
-  - [ ] `--backend <BACKEND>` (default `auto`)
-  - [ ] `-r, --rule <SPEC>` (repeatable)
-  - [ ] `--keep-proxy-env`
-  - [ ] `--inbound-dir <DIR>`
-  - [ ] `<PROGRAM>...` (required; repeatable)
+- [x] command exists: Run a program with all its traffic sent through WARP. No root and no TUN device are necessary (pod-netns)
+  - [x] `--backend <BACKEND>` (default `auto`)
+  - [x] `-r, --rule <SPEC>` (repeatable)
+  - [x] `--keep-proxy-env`
+  - [x] `--inbound-dir <DIR>`
+  - [x] `<PROGRAM>...` (required; repeatable)
 - tests: none found
 - live: L656 --backend netns-raw; L753 --backend seccomp (TCP, UDP)
+- checked 2026-11-14: `podnet man --json` of ce6352c has the command and each flag with the same default, variable and values; live "WARP run with the netns-raw backend", "WARP run" (`--backend seccomp`).
 
 ### `podnet relay`
 
@@ -794,41 +820,41 @@ split must widen the scan to each crate), and `tests/cli.rs::the_environment_is_
 - [ ] `TUNNEL_TOKEN`: tunnel, serve, share, demo
 - [ ] `TUNNEL_TOKEN_FILE`: tunnel, serve, share, demo
 - [ ] `SSL_CERT_FILE`: all commands
-- [ ] `PODNET_STATE_DIR`: warp, tunnel --transport warp
+- [x] `PODNET_STATE_DIR`: warp, tunnel --transport warp
 - [ ] `XDG_STATE_HOME` / `HOME` / `XDG_RUNTIME_DIR` / `TMPDIR`: warp, net shim, net socksify, autostart
 - [ ] `XDG_CONFIG_HOME`: autostart
 - [ ] `PODNET_LEG_FAILOVER`: tunnel, serve, share, demo
 - [ ] `NO_COLOR`: all commands
 - [ ] `PODNET_EDGE`: tunnel, serve, share, demo, doctor, net doctor
 - [ ] `PODNET_PROXY`: all commands
-- [ ] `PODNET_WARP_SHELL`: warp shell, the block of warp up --persist
-- [ ] `SHELL`: warp shell
+- [x] `PODNET_WARP_SHELL`: warp shell, the block of warp up --persist
+- [x] `SHELL`: warp shell
 - [ ] `PODNET_RUN_DIR`: --detach, ps, stop, logs, wait
 - [ ] `PODNET_DETACH_NAME` / `PODNET_DETACH_HASH` / `PODNET_DETACH_COMMAND` / `PODNET_DETACH_SUPERVISED` / `PODNET_DETACH_READY_TIMEOUT`: --detach
 - [ ] `PODNET_RELAY`: tunnel, serve, share, demo, relay
 - [ ] `PODNET_REPO`: update
-- [ ] `PODNET_FOREIGN_HOME`: the state directory, warp ssh-config --write, warp up --persist and --env-d, autostart
+- [x] `PODNET_FOREIGN_HOME`: the state directory, warp ssh-config --write, warp up --persist and --env-d, autostart
 - [ ] `PODNET_AUTH_USER` / `PODNET_AUTH_PASSWORD_FILE`: tunnel, serve, share, demo, connect
 - [ ] `PODNET_RELAY_TOKEN`: tunnel, serve, share, demo
 - [ ] `PODNET_RELAY_CONNECT_TOKEN`: relay connect
 - [ ] `POD_NETNS_TEST_MEM`: pod (tests only)
-- [ ] `PODNET_WARP_API`: warp (each command that calls the WARP API)
-- [ ] `PODNET_WARP_TCP_BURST`: warp proxy, warp run, warp up, agent up
-- [ ] `PODNET_WARP_MASQUE_TRANSPORT`: warp (each command that opens a MASQUE session), warp up (its proxy)
-- [ ] `PODNET_WARP_TRANSPORT` / `PODNET_WARP_WG_ENDPOINT`: warp (each command that opens a session), warp up (its proxy)
-- [ ] `PODNET_WARP_CARRY` / `PODNET_WARP_CARRY_ENDPOINT`: warp (each command with a userspace stack), warp up (its proxy)
-- [ ] `PODNET_WARP_L4_FORM`: warp proxy --l4
-- [ ] `PODNET_WARP_L4`: warp proxy
-- [ ] `PODNET_WARP_SESSION_MAX_AGE`: warp proxy, warp forward, warp run, warp up
-- [ ] `PODNET_WARP_CC`: warp (each command with a userspace stack), warp up (its proxy), tunnel --transport warp
-- [ ] `PODNET_WARP_NO_CHECK`: warp proxy, warp run, warp up, warp probe, warp exit, warp nc, agent up
-- [ ] `POD_NETNS_QUIET`: pod, warp exec, warp shell, warp run
-- [ ] `PODNET_PROXY_USER` / `PODNET_PROXY_PASSWORD_FILE`: warp proxy, warp up
-- [ ] `PODNET_WARP_DEVICE_NAME` / `PODNET_WARP_DEVICE_MODEL` / `PODNET_WARP_DEVICE_LOCALE`: warp (each command that registers a device), tunnel --transport warp
-- [ ] `PODNET_WARP_FRAGMENT` / `PODNET_WARP_FRAGMENT_SIZE`: warp (each command that opens a MASQUE session), warp up (its proxy)
-- [ ] `PODNET_WARP_RULES` / `PODNET_WARP_RULES_FILE`: warp proxy, warp up (its proxy reads them)
-- [ ] `PODNET_WARP_FORWARD`: warp forward
-- [ ] `PODNET_WARP_RESOLVERS`: warp proxy, warp up, warp run, warp tun, warp probe, warp nc, tunnel --transport warp
+- [x] `PODNET_WARP_API`: warp (each command that calls the WARP API)
+- [x] `PODNET_WARP_TCP_BURST`: warp proxy, warp run, warp up, agent up
+- [x] `PODNET_WARP_MASQUE_TRANSPORT`: warp (each command that opens a MASQUE session), warp up (its proxy)
+- [x] `PODNET_WARP_TRANSPORT` / `PODNET_WARP_WG_ENDPOINT`: warp (each command that opens a session), warp up (its proxy)
+- [x] `PODNET_WARP_CARRY` / `PODNET_WARP_CARRY_ENDPOINT`: warp (each command with a userspace stack), warp up (its proxy)
+- [x] `PODNET_WARP_L4_FORM`: warp proxy --l4
+- [x] `PODNET_WARP_L4`: warp proxy
+- [x] `PODNET_WARP_SESSION_MAX_AGE`: warp proxy, warp forward, warp run, warp up
+- [x] `PODNET_WARP_CC`: warp (each command with a userspace stack), warp up (its proxy), tunnel --transport warp
+- [x] `PODNET_WARP_NO_CHECK`: warp proxy, warp run, warp up, warp probe, warp exit, warp nc, agent up
+- [x] `POD_NETNS_QUIET`: pod, warp exec, warp shell, warp run (renamed `PODNET_NETNS_QUIET` by the rename, `TODO/rename.md`; `crates/podnet-netns/src/lib.rs` QUIET_VARIABLE)
+- [x] `PODNET_PROXY_USER` / `PODNET_PROXY_PASSWORD_FILE`: warp proxy, warp up
+- [x] `PODNET_WARP_DEVICE_NAME` / `PODNET_WARP_DEVICE_MODEL` / `PODNET_WARP_DEVICE_LOCALE`: warp (each command that registers a device), tunnel --transport warp
+- [x] `PODNET_WARP_FRAGMENT` / `PODNET_WARP_FRAGMENT_SIZE`: warp (each command that opens a MASQUE session), warp up (its proxy)
+- [x] `PODNET_WARP_RULES` / `PODNET_WARP_RULES_FILE`: warp proxy, warp up (its proxy reads them)
+- [x] `PODNET_WARP_FORWARD`: warp forward
+- [x] `PODNET_WARP_RESOLVERS`: warp proxy, warp up, warp run, warp tun, warp probe, warp nc, tunnel --transport warp
 - [ ] `PODNET_UDP`: tunnel, serve, share, demo, doctor
 - [ ] `PODNET_ERROR_PROGRAM`: all commands
 - [ ] `RUST_LOG`: all commands
@@ -848,7 +874,7 @@ split must widen the scan to each crate), and `tests/cli.rs::the_environment_is_
 
 ## 6. Files
 
-- [ ] `<state directory>/warp.json`
+- [x] `<state directory>/warp.json`
 - [ ] `podnet-ca.pem (beside the binary)`
 - [ ] `/etc/ssl/certs/ca-certificates.crt`
 - [ ] `config.yml (--config)`
@@ -856,14 +882,14 @@ split must widen the scan to each crate), and `tests/cli.rs::the_environment_is_
 - [ ] `/tmp/podnet-vnet.socks`
 - [ ] `/tmp/podnet-vnet.switch`
 - [ ] `/tmp/podnet-socks.sock`
-- [ ] `/tmp/podnet-warp-<pid>.sock`
+- [x] `/tmp/podnet-warp-<pid>.sock`
 - [ ] `$XDG_RUNTIME_DIR/pod-netns-inbound/<port>.sock, else $TMPDIR/pod-netns-inbound-<uid>/<port>.sock`
 - [ ] `$TMPDIR/podnet-vnet, $TMPDIR/podnet-socks, $TMPDIR/podnet-ts-shims`
-- [ ] `<state directory>/warp-carry.json`, `warp-wg.json` (export), the door cache of WARP (`{"schema":1,"door","at"}`)
+- [x] `<state directory>/warp-carry.json`, `warp-wg.json` (export), the door cache of WARP (`{"schema":1,"door","at"}`)
 - [ ] `<state directory>/relay-pool-HOST.json`, `relay-token-HOST.json`, relay pair files (mode 0600)
 - [ ] `<state directory>/autostart/*.env` (mode 0600), systemd user unit `podnet-NAME`, crontab `@reboot` line
 - [ ] run directory (`PODNET_RUN_DIR`): one record and one log for each instance (`ps`, `logs`, `stop`, `wait`)
-- [ ] marker blocks: `>>> podnet warp up >>>` in `~/.profile` and `~/.bashrc` (`warp up --persist`), the block of `warp ssh-config --write`
+- [x] marker blocks: `>>> podnet warp up >>>` in `~/.profile` and `~/.bashrc` (`warp up --persist`), the block of `warp ssh-config --write`
 - [ ] the shims built in `$TMPDIR/podnet-vnet`, `$TMPDIR/podnet-socks`, `$TMPDIR/podnet-ts-shims` (`libpodnet-vnet.so`, `libpodnet-socks.so`)
 
 The state directory is `$XDG_STATE_HOME/podnet`.
@@ -908,12 +934,12 @@ checks `ps --json`, `ports --json`, `status`).
 | [ ] | `net addresses --json` | the addresses of a subnet | `tests/cli.rs::an_empty_environment_works` |
 | [ ] | `net shim --json`, `net socksify --json`, `net ts-shims --json` | the environment as one object | `tests/shim_*.rs`, `tests/cli.rs::socksify_takes_a_socket_path` |
 | [ ] | `net proxy` / `net switch` (ready) | `{"listen": ...}` (`listen_doc`) | `tests/detach.rs`, `tests/cli.rs::a_port_0_listener_prints_the_bound_port` |
-| [ ] | `warp status --json` | the account record (pretty) | `main.rs::warp_license_and_status_fields`, live L446 |
-| [ ] | `warp exit --json` | `warp::exit::Exit::to_json` (colo, loc, ip, ipv6, warp) | live-batch2.sh |
-| [ ] | `warp scan --json` | `{"doors": [...]}` | `main.rs::the_front_doors_of_a_scan`, live-batch2.sh |
-| [ ] | `warp export --format json` | `warp::export` (WireGuard peer, keys, endpoint) | `warp/export.rs` tests, live-batch2.sh |
-| [ ] | `warp proxy`, `warp forward`, `warp tun` (ready) | ready documents (listen, default_route, ...) | live L684/L711 |
-| [ ] | `warp up` | `warp::up::start`: name, pid, port, tcp, persist, env_d, ... | `warp/up.rs` tests, live L525/L549 |
+| [x] | `warp status --json` | the account record (pretty) | `main.rs::warp_license_and_status_fields`, live L446 |
+| [x] | `warp exit --json` | `warp::exit::Exit::to_json` (colo, loc, ip, ipv6, warp) | live-batch2.sh |
+| [x] | `warp scan --json` | `{"doors": [...]}` | `main.rs::the_front_doors_of_a_scan`, live-batch2.sh |
+| [x] | `warp export --format json` | `warp::export` (WireGuard peer, keys, endpoint) | `warp/export.rs` tests, live-batch2.sh |
+| [x] | `warp proxy`, `warp forward`, `warp tun` (ready) | ready documents (listen, default_route, ...) | live L684/L711 |
+| [x] | `warp up` | `warp::up::start`: name, pid, port, tcp, persist, env_d, ... | `warp/up.rs` tests, live L525/L549 |
 | [x] | `relay pair --json` | the pair with the connect token (not the node token) | live L398 |
 | [x] | `relay node` (ready) | `relay_reverse::node_ready` (pair, target) | `tests/relay_reverse.rs`, live L398 |
 | [ ] | `man --json` | `manual::model::Manual`: name, version, commands[], pod_usage, environment, files, exit_status, examples | `manual` tests, `tests/cli.rs::the_listen_defaults_agree_with_the_manual` |
@@ -1013,60 +1039,63 @@ Integration tests (210): `tests/cli.rs` 55, `crates/pod-netns/tests/seccomp.rs` 
 
 ## 12. live.yml steps (`.github/workflows/live.yml`, 969 lines)
 
+Checked 2026-11-14 against `.github/workflows/live.yml` of 3654b05: each ticked step is there under its name, or
+the note names the test in ci that replaces it.
+
 Each step must exist in the podnet live workflow with the new binary name,
 or be replaced by a step that checks the same thing.
 
-- [ ] L48 A planted failure (`inputs.plant == 'fail'`)
-- [ ] L58 No step drops the masks (`live-run.sh` output not sent to /dev/null)
-- [ ] L65 Toolchain; L70 Build (`cargo build --locked --release --bin podnet`)
+- [x] L48 A planted failure (`inputs.plant == 'fail'`)
+- [x] L58 No step drops the masks (`live-run.sh` output not sent to /dev/null)
+- [x] L65 Toolchain; L70 Build (`cargo build --locked --release --bin podnet`)
 - [x] L74 Edge facts (`tools/edge-facts.sh`): replaced by `scripts/services/edge-facts.sh` of PodUtils/podcrates, which its `services.yml` runs each day
-- [ ] L78 `doctor`, `doctor --json`: legs quic, http2, quic+warp ok; roads direct, warp, relay ok; clock ok; api DNS addresses
-- [ ] L94 `demo --exit-on-verify --protocol quic --transport direct`
-- [ ] L97 `demo --exit-on-verify --protocol http2 --transport direct`
-- [ ] L100 `demo --exit-on-verify --json`: ready url and leg, verified url and dns
-- [ ] L113 `tunnel --hello-world --run-for 60 --json`, SIGTERM after the ready line: exit 0, `SIGTERM: stopping`
-- [ ] L132 `tunnel --hello-world --detach --name live`, `ps --json` ready, `logs live -n 5`, `stop live`, `ps --json` empty
-- [ ] L152 `tunnel --hello-world --auth-user live --auth-password-file F --detach --name auth`: curl with the password
-- [ ] L171 UDP 7844 dropped: `demo --exit-on-verify` wins with `leg=http2`
-- [ ] L179 Remove the UDP rule
-- [ ] L185 `net doctor` UDP answered, then refused; `demo` names the refused probe, `leg=http2`
-- [ ] L199 local CONNECT proxy (`scripts/connect-proxy.py`): `HTTPS_PROXY=... demo`; `--proxy 'http+exec:nc 127.0.0.1 18080' demo`; the CONNECT log has the API, 7844 and the URL
-- [ ] L219 throughput of the HTTP path and of a `--forward` WebSocket (`scripts/live-throughput.sh` quic, http2)
-- [ ] L228 large share uploads (`scripts/live-share.sh` quic, http2, 20 and 64 MB)
-- [ ] L235 WebSocket through a `--url` origin (`scripts/live-ws-url.sh` quic, http2)
-- [ ] L243 throughput through WARP, 1 to 16 MiB (`live-throughput.sh ... warp`)
-- [ ] L248 no system DNS: `demo --protocol http2` uses DoH (`step="doh"`); 1.1.1.1 blocked: the 8.8.x.x DoH server
-- [ ] L283 `--resolve api.trycloudflare.com=8.8.8.8 demo` fails at the TLS name check
-- [ ] L294 `update --check`; `update --version v0.3.0-beta.1` (version and commit checked); `update --rollback`
-- [ ] L317 `autostart add live -- tunnel --hello-world --json` (systemd user unit, ready line in the journal, URL answers); `autostart add secret -- status --proxy=...` (no secret in the unit or in ps; env file 0600); `autostart remove`
-- [ ] L356 `demo --protocol quic --transport warp`
-- [ ] L361 UDP and TCP 7844 dropped: `doctor --samples 3 --json` (only quic+warp ok); `demo` wins with `leg=quic+warp`
-- [ ] L381 7844 dropped: `demo --check --transport relay` names `http2+relay`; `demo --transport relay` registers over HTTP/2; no relay token in the output
-- [ ] L398 `relay pair --json`; `relay node NAME --to 127.0.0.1:22 --detach --name relaynode`; ssh with `ProxyCommand=podnet relay connect NAME` (one and two parallel sessions); banner; `ps --json` `.ready.pair`; `relay stop NAME`; the node instance ends
-- [ ] L446 `warp register`, `warp status`, `warp probe` (udp 1.1.1.1:53 OK), `warp nc -u 1.1.1.1 53`
-- [ ] L463 WARP API through `api.devices.cloudflare.com`: `warp --identity F register`, `status`, `delete`
-- [ ] L487 exit 69: `warp tun`, `warp proxy --listen`, `warp up --tun` (names `warp tun --default-route --detach` and the root hint)
-- [ ] L510 MASQUE TCP dropped: `warp probe` through the WebSocket relay
-- [ ] L525 `warp up --port 40097` with its TCP listener refused (`.tcp == false`); `warp env` names `warp exec`; `warp exec -- curl` (`warp=on`); `warp down`
-- [ ] L549 `warp up --port 40100 --persist` (`.name == "warp"`, `.persist`, marker blocks); `eval "$(warp env)"`; `warp exec` with no proxy variables; git over `warp nc %h %p`; `warp nc -u`; `doctor --agent --json` (`warp_up`, rows git SSH and HTTPS); `warp ssh-config --host/--write/--check/--remove/--config`; second `warp up` keeps the pid; `SSL_CERT_FILE` with one root; `warp down` removes the blocks; `warp env` fails after down
-- [ ] L623 `agent up --expose 18096 --expose 18097`: exposed[0] ready, exposed[1] origin-unreachable, mode warp, works git (SSH) via warp; `agent down`; `ps --json` empty
-- [ ] L656 `warp run --backend netns-raw -- sh raw-check.sh` (TCP, UDP, IPv6, no root)
-- [ ] L684 `sudo warp --ephemeral tun --default-route --detach --name tun` (`.default_route`), then everything as before after `stop tun` (log line)
-- [ ] L711 `warp --ephemeral --no-relay tun --default-route --detach` in a netns with no default route and a CONNECT proxy only
-- [ ] L753 `warp run --backend seccomp -- curl` and a UDP program
-- [ ] L772 `warp proxy --listen tcp://127.0.0.1:40000 --dns 127.0.0.1:15353 --run-for 150`: SOCKS5 UDP DNS (IPv6, IPv4, a name: ATYP 3), curl through socks5h (`warp=on`, IPv6-only host, IPv6 literal), TCP burst against beta.6
-- [ ] L900 `scripts/live-batch2.sh`: `warp exit --json`; `warp scan --candidate 162.159.198.1 --json`; `warp proxy` with rules; `warp forward -L 127.0.0.1:18443=1.1.1.1:443`; nested session (`--proxy socks5h://127.0.0.1:40010 warp ... proxy`); `warp export --format json`, `--delete`; `--fragment-client-hello` probe; `--cc` proxy upload; `--masque-transport h3` probe and proxy; `PODNET_WARP_TCP_BURST`; `warp proxy --l4 --l4-sni` with `PODNET_WARP_L4_FORM`; `--transport wireguard` probe and proxy; `--carry wg exit --json`
-- [ ] L907 an IPv6-only host (`scripts/v6only/up.sh`, `acceptance.sh`, `down.sh`)
-- [ ] L915 the test box (`scripts/test_in_box.sh`); L918 the test box fails with a binary that exits 3 (`BOX_PLANT=exit3`)
-- [ ] L924 remove the WARP device (`warp delete`)
-- [ ] job `report` L948: open one issue after two failed runs
+- [x] L78 `doctor`, `doctor --json`: legs quic, http2, quic+warp ok; roads direct, warp, relay ok; clock ok; api DNS addresses
+- [x] L94 `demo --exit-on-verify --protocol quic --transport direct`
+- [x] L97 `demo --exit-on-verify --protocol http2 --transport direct`
+- [x] L100 `demo --exit-on-verify --json`: ready url and leg, verified url and dns
+- [x] L113 `tunnel --hello-world --run-for 60 --json`, SIGTERM after the ready line: exit 0, `SIGTERM: stopping`
+- [x] L132 `tunnel --hello-world --detach --name live`, `ps --json` ready, `logs live -n 5`, `stop live`, `ps --json` empty (replaced: `tests/quick_tunnel_standin.rs::quick_tunnel_standin_detach_ps_logs_and_stop` in ci, a6d4428)
+- [x] L152 `tunnel --hello-world --auth-user live --auth-password-file F --detach --name auth`: curl with the password (replaced: `quick_tunnel_standin_checks_the_auth_user` in ci, a6d4428)
+- [x] L171 UDP 7844 dropped: `demo --exit-on-verify` wins with `leg=http2` (replaced: `quick_tunnel_standin_falls_back_to_http2_when_udp_is_dropped` in ci, T-316)
+- [x] L179 Remove the UDP rule (replaced with L171: the stand-in needs no rule)
+- [x] L185 `net doctor` UDP answered, then refused; `demo` names the refused probe, `leg=http2`
+- [x] L199 local CONNECT proxy (`scripts/connect-proxy.py`): `HTTPS_PROXY=... demo`; `--proxy 'http+exec:nc 127.0.0.1 18080' demo`; the CONNECT log has the API, 7844 and the URL (the exec proxy is replaced: `quick_tunnel_standin_goes_through_an_exec_proxy` in ci, T-316)
+- [x] L219 throughput of the HTTP path and of a `--forward` WebSocket (`scripts/live-throughput.sh` quic, http2)
+- [x] L228 large share uploads (`scripts/live-share.sh` quic, http2, 20 and 64 MB)
+- [x] L235 WebSocket through a `--url` origin (`scripts/live-ws-url.sh` quic, http2)
+- [x] L243 throughput through WARP, 1 to 16 MiB (`live-throughput.sh ... warp`)
+- [x] L248 no system DNS: `demo --protocol http2` uses DoH (`step="doh"`); 1.1.1.1 blocked: the 8.8.x.x DoH server (the line of pod-dns says `source="doh"`)
+- [x] L283 `--resolve api.trycloudflare.com=8.8.8.8 demo` fails at the TLS name check
+- [x] L294 `update --check`; `update --version v0.3.0-beta.1` (version and commit checked); `update --rollback` (against v0.4.0-beta.1)
+- [x] L317 `autostart add live -- tunnel --hello-world --json` (systemd user unit, ready line in the journal, URL answers); `autostart add secret -- status --proxy=...` (no secret in the unit or in ps; env file 0600); `autostart remove`
+- [x] L356 `demo --protocol quic --transport warp`
+- [x] L361 UDP and TCP 7844 dropped: `doctor --samples 3 --json` (only quic+warp ok); `demo` wins with `leg=quic+warp`
+- [x] L381 7844 dropped: `demo --check --transport relay` names `http2+relay`; `demo --transport relay` registers over HTTP/2; no relay token in the output
+- [x] L398 `relay pair --json`; `relay node NAME --to 127.0.0.1:22 --detach --name relaynode`; ssh with `ProxyCommand=podnet relay connect NAME` (one and two parallel sessions); banner; `ps --json` `.ready.pair`; `relay stop NAME`; the node instance ends
+- [x] L446 `warp register`, `warp status`, `warp probe` (udp 1.1.1.1:53 OK), `warp nc -u 1.1.1.1 53`
+- [x] L463 WARP API through `api.devices.cloudflare.com`: `warp --identity F register`, `status`, `delete`
+- [x] L487 exit 69: `warp tun`, `warp proxy --listen`, `warp up --tun` (names `warp tun --default-route --detach` and the root hint)
+- [x] L510 MASQUE TCP dropped: `warp probe` through the WebSocket relay
+- [x] L525 `warp up --port 40097` with its TCP listener refused (`.tcp == false`); `warp env` names `warp exec`; `warp exec -- curl` (`warp=on`); `warp down`
+- [x] L549 `warp up --port 40100 --persist` (`.name == "warp"`, `.persist`, marker blocks); `eval "$(warp env)"`; `warp exec` with no proxy variables; git over `warp nc %h %p`; `warp nc -u`; `doctor --agent --json` (`warp_up`, rows git SSH and HTTPS); `warp ssh-config --host/--write/--check/--remove/--config`; second `warp up` keeps the pid; `SSL_CERT_FILE` with one root; `warp down` removes the blocks; `warp env` fails after down
+- [x] L623 `agent up --expose 18096 --expose 18097`: exposed[0] ready, exposed[1] origin-unreachable, mode warp, works git (SSH) via warp; `agent down`; `ps --json` empty
+- [x] L656 `warp run --backend netns-raw -- sh raw-check.sh` (TCP, UDP, IPv6, no root)
+- [x] L684 `sudo warp --ephemeral tun --default-route --detach --name tun` (`.default_route`), then everything as before after `stop tun` (log line)
+- [x] L711 `warp --ephemeral --no-relay tun --default-route --detach` in a netns with no default route and a CONNECT proxy only
+- [x] L753 `warp run --backend seccomp -- curl` and a UDP program
+- [x] L772 `warp proxy --listen tcp://127.0.0.1:40000 --dns 127.0.0.1:15353 --run-for 150`: SOCKS5 UDP DNS (IPv6, IPv4, a name: ATYP 3), curl through socks5h (`warp=on`, IPv6-only host, IPv6 literal), TCP burst against beta.6 (the TCP burst runs compare the settings of this binary, not beta.6)
+- [x] L900 `scripts/live-batch2.sh`: `warp exit --json`; `warp scan --candidate 162.159.198.1 --json`; `warp proxy` with rules; `warp forward -L 127.0.0.1:18443=1.1.1.1:443`; nested session (`--proxy socks5h://127.0.0.1:40010 warp ... proxy`); `warp export --format json`, `--delete`; `--fragment-client-hello` probe; `--cc` proxy upload; `--masque-transport h3` probe and proxy; `PODNET_WARP_TCP_BURST`; `warp proxy --l4 --l4-sni` with `PODNET_WARP_L4_FORM`; `--transport wireguard` probe and proxy; `--carry wg exit --json`
+- [x] L907 an IPv6-only host (`scripts/v6only/up.sh`, `acceptance.sh`, `down.sh`)
+- [x] L915 the test box (`scripts/test_in_box.sh`); L918 the test box fails with a binary that exits 3 (`BOX_PLANT=exit3`)
+- [x] L924 remove the WARP device (`warp delete`)
+- [x] job `report` L948: open one issue after two failed runs
 
 ## 13. Other gates
 
 - [ ] `ci.yml`: fmt; clippy `--workspace --all-targets -D warnings`; `cargo test --workspace`; `cargo doc -D warnings`; `cargo package --list -p podnet -p pod-netns`; man page (`podnet man --roff`); MSRV 1.89 check (`-p podnet --lib`); static musl builds; `restricted-host` (`scripts/restricted-host.sh`, bind of AF_INET refused); `Cargo.lock` current; `scripts/check-workflows.py`
 - [ ] `release.yml`: cargo-zigbuild targets, armv7 in Alpine, binaries `podnet` and `pod-netns` per target, SHA256SUMS, cosign bundle, `cargo about` notes; `release-proofs.yml`
 - [ ] `podnet update`: asset names `podnet-<target>`, cosign identity `release.yml` at the tag, `PODNET_REPO`
-- [ ] `fuzz/` targets (16): acl_rule, capnp_message, capsule, config_yaml, connect_request, connect_response_head, doh_json, h2_header_block, ingress_rule, no_proxy, proxy_url, register_response, request_head, rpc_message, srv_record, vnet_frame; `seed` bin; `fuzz.yml` weekly
+- [x] `fuzz/` targets (16): acl_rule, capnp_message, capsule, config_yaml, connect_request, connect_response_head, doh_json, h2_header_block, ingress_rule, no_proxy, proxy_url, register_response, request_head, rpc_message, srv_record, vnet_frame; `seed` bin; `fuzz.yml` weekly (26 targets on 2026-11-14, T-339; `doh_json` went with the parser to `pod-dns`: `PodUtils/podcrates:fuzz/fuzz_targets/doh_json.rs`)
 - [ ] `deny.yml`, `secrets.yml` (`.github/secrets-allow.txt`), `upstream.yml` (cloudflared changes, `src/cloudflare/cloudflared-pin.txt`)
 - [ ] `tests/docs.rs`: each path in backticks in the documents exists; release notes have `## Breaking`; README rules; `crates/pod-netns/LICENSE` equals `LICENSE`; README notebook cell
 - [ ] `scripts/install.sh` (`tests/install_script.rs`, 23 tests)

@@ -5012,7 +5012,8 @@ checks the verify of the public URL through the proxy. (3) These steps stay in `
 the real service or the verify of the public URL: the QUIC, HTTP/2, QUIC through WARP and relay legs (one real quick
 tunnel for each leg), `--json` (the event `verified` and its resolver), SIGTERM during the verify, the UDP probe, no
 system DNS, the wrong `--resolve` pin and the staggered legs with WARP. (4) The QUIC leg of the stand-in stays out:
-it needs `src/cloudflare/` (frozen). No frozen file changed.
+it needs `src/cloudflare/` (frozen). No frozen file changed. Commit 3654b05. `cargo test --test quick_tunnel_standin`: 15 passed, three
+runs in a row. The entry stays partial for the QUIC leg.
 
 ## Done
 
@@ -5807,3 +5808,53 @@ seeds (`-malloc_limit_mb=64 -rss_limit_mb=2048 -timeout=10`), no crash, no timeo
 1189058, `transit_record` 1130339, `mesh_announce` 88883, `mesh_table` 380834. The three defects of the Premise were
 found by reading, before the runs: the targets keep them fixed. CI: `fuzz.yml` runs the 26 targets each week; no run
 yet.
+
+
+# T-340: The parity checklist after the take of pod-warp, the router, the transfer and the carriers
+
+**Source:** `CLAUDE.md` ("tick `docs/research/podnet/parity-checklist.md` areas after each large refactor"); the lead
+session, 2026-11-14 (the checklist was last changed on 2026-11-12).
+**Category:** chore
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The take of `pod-warp` (2026-11-13: `src/warp/` is glue over the crate), the router (T-097, T-120, T-248), the
+transfer and the carriers came after the last walk of `docs/research/podnet/parity-checklist.md`. No feature or
+capability of the code may be lost.
+
+## Premise
+
+- Read: the checklist (41 of 620 boxes ticked), `podnet man --json` of ce6352c, `.github/workflows/live.yml`,
+  `scripts/live-batch2.sh`, the tests of `tests/` and of `src/cli/cmd/warp/`, the files of `pod-warp` v0.43.0.
+- The router, the transfer and the carriers are new: the checklist (the CLI at 3bed023) names none of them.
+
+## Approach
+
+1. Compare each command and flag item of `podnet warp` with `podnet man --json` (the default, the variable, the
+   values, required and repeatable), with a script of the scratchpad.
+2. Name the test or the live step that runs each `warp` command; run a command that has neither.
+3. Check the WARP variables, files and documents, the steps of `live.yml` and the fuzz targets.
+4. Tick what holds; write an entry for each item that does not hold.
+
+## Prove
+
+```sh
+cargo test --workspace
+target/debug/podnet man --json
+python3 scripts/check-workflows.py
+```
+
+## Done
+
+2026-11-14, the commit that changes the checklist (cited in the next commit). Ticked: 41 before, 232 after (of 620).
+Each of the 116 items of the 21 sections `podnet warp ...` agrees with `podnet man --json` of ce6352c; one difference:
+`warp forward -L` is required unless `--list` (a new flag); `podnet warp forward` with neither exits 64. Each section
+has a line `checked 2026-11-14` with its tests and live steps; `warp shell` has no test, and a run with no `warp up`
+started the shell with the line of the missing proxy (exit 0). The WARP variables are in `podnet man --json` and in
+the code (`POD_NETNS_QUIET` is `PODNET_NETNS_QUIET` since the rename); the WARP files, the WARP documents, the steps of
+section 12 (three are replaced by tests of the stand-in in ci: a6d4428 and 3654b05) and the fuzz targets (`doh_json`
+is in `pod-dns`) hold. `cargo test --workspace` on ce6352c: 0 failed. No item failed: no defect entry.
