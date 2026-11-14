@@ -15,8 +15,8 @@ bring `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`.
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`).
 * podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.41.0` (T-137), with `pod-warp`: `src/warp/` is glue
   over the crate and takes fixes only (each fix goes to podcrates as a COORD issue).
-* The newest release is `v0.4.0-beta.9` (T-331).
-* The record is `TODO/`. `cargo todo check` agrees: 335 entries, 14 open, 12 partial, 26 blocked, 283 done.
+* The newest release is `v0.4.0-beta.10` (T-336).
+* The record is `TODO/`. `cargo todo check` agrees: 337 entries, 13 open, 11 partial, 28 blocked, 285 done.
 
 ## Unfinished work (not on `main`)
 

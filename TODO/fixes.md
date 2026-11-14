@@ -5657,7 +5657,7 @@ batch since `v0.4.0-beta.9`: ci 43521791090, deny 43521797247, secrets 435218037
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -5705,3 +5705,14 @@ and `arm-unknown-linux-musleabihf` did not compile `crates/podnet-netns/src/nfnl
 an `i32` there, and the code gave an `i64`. The value is now clamped to `i32::MAX` and converted to the type of the field.
 `cargo check -p podnet-netns` passes for the three targets here (clang as CC); CI checks x86-64 only, so the dry run of
 `release.yml` is the first build of these targets. A new request follows (GitHub #545).
+
+## Done
+
+2026-11-14, commits 43c53a6 (`T-336: version 0.4.0-beta.10 and its release notes`), 59cf78c (the race of
+`service_serve_ingress`) and e99eba6 (`nfnl.rs` on the 32-bit targets; the take of podcrates v0.41.0, 095955c). On
+e99eba6 (GitHub #545): ci 43544154056, deny 43544158796, secrets 43544163293 and live 43544168415 passed; `release.yml`:
+the dry run 43544173658 passed, the publish 43547344329 passed (the tag `v0.4.0-beta.10` at e99eba6), the release on the
+tag 43547356755 passed, `publish.yml` 43547358531 passed. The release `v0.4.0-beta.10` is a prerelease with 16 files:
+eight binaries, `podnet.1`, `llms.txt`, `llms-full.txt`, `pod-report.schema.json`, `SHA256SUMS`,
+`SHA256SUMS.sigstore.json`, `provenance.sigstore.json` and `THIRD-PARTY-LICENSES.md`. `release-proofs.yml`: run
+43549615088 passed.
