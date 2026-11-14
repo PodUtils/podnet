@@ -256,5 +256,5 @@
 555 issue open
 556 pull closed
 557 pull closed
-558 issue open
+558 issue closed
 559 issue open
