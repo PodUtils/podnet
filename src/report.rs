@@ -20,6 +20,13 @@ pub fn error_line(err: &anyhow::Error) -> String {
         line.push_str(&format!(
             "\npodnet: the proxy answered HTTP {status}: it could not reach the destination; check the address of the destination (--masque-endpoint, --url, the edge)"
         ));
+    } else if crate::exit::code_of(err) == crate::exit::TEMPFAIL {
+        // A refusal for now (HTTP 429 with Retry-After): a retry after the
+        // wait works, so the hint of the hop ("does not change with a
+        // retry") would be false (live 44140229441).
+        line.push_str(
+            "\npodnet: the service refuses for now; try again after the time that it asks for (exit 75)",
+        );
     } else if let Some(hop) = crate::hop::of(err) {
         line.push_str(&format!("\npodnet: the {hop} hop failed; {}", hop.hint()));
     }
@@ -47,6 +54,31 @@ pub fn chain_text(err: &anyhow::Error) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The second line of each class of failure that has its own hint: a
+    /// refusal for now says to wait, not that a retry does not help.
+    #[test]
+    fn the_hint_follows_the_class_of_the_failure() {
+        let cases = [
+            (
+                pod_core::Class::TempFail,
+                "try again after the time",
+                "does not change with a retry",
+            ),
+            (
+                pod_core::Class::Refused,
+                "does not change with a retry",
+                "try again after the time",
+            ),
+        ];
+        for (class, has, lacks) in cases {
+            let failure = pod_core::Failure::new(pod_core::Stage::EdgeRegister, class, "HTTP 429");
+            let err = anyhow::Error::new(failure);
+            let line = error_line(&err);
+            assert!(line.contains(has), "{class:?}: {line}");
+            assert!(!line.contains(lacks), "{class:?}: {line}");
+        }
+    }
 
     /// A failure of a crate that holds the text of its cause is not said
     /// twice.
