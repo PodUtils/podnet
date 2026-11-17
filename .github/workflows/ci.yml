@@ -555,10 +555,15 @@ jobs:
           git checkout -- TODO/deferred.md
 
           # An allowlisted Rust file that grew, and a new file over 800 lines.
+          # The allowlist can be empty (no file over 800 lines): then this case has no file.
           f=$(awk '!/^#/ && NF { print $2; exit }' scripts/size-allow.txt)
-          echo '// planted' >> "$f"
-          must_fail "check-size.py, an allowlisted file that grew" python3 -I scripts/check-size.py
-          git checkout -- "$f"
+          if [ -n "$f" ]; then
+            echo '// planted' >> "$f"
+            must_fail "check-size.py, an allowlisted file that grew" python3 -I scripts/check-size.py
+            git checkout -- "$f"
+          else
+            echo "skip check-size.py, an allowlisted file that grew: the allowlist is empty"
+          fi
           seq 801 | sed 's|^|// |' > src/planted_size.rs
           must_fail "check-size.py, a new file over 800 lines" python3 -I scripts/check-size.py
           rm src/planted_size.rs
