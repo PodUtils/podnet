@@ -9523,6 +9523,9 @@ python3 scripts/check-workflows.py
 the run of the race (`the edge leg quic+warp won after 38111 ms`) match the new checks. The other texts of the tunnel that
 `live.yml` reads (`no proxy carries UDP`, `registered over HTTP/2`, `the UDP probe was refused`, `moved to a new leg`,
 `lost its leg`, `NAME: stopping`) are in the source.
+2026-11-17, a sixth grep: `live` 44099840388 (617f071) failed on `registered over HTTP/2` in the relay step. The step
+now also accepts `registered with the edge at NAME (http2`. A scan of each log grep of `live.yml` against the sources
+of podnet and of podcrates v0.69.0 finds no other old text.
 
 # T-450: Rule: an issue closes only with a test that reproduces it
 
