@@ -26,7 +26,7 @@ const MAX_LINKS: usize = 64;
 
 #[derive(Args, Debug)]
 pub(crate) struct ListenArgs {
-    /// The address, in the form of the carrier: a path for `unix`, a name for
+    /// The address, in the form of the carrier: a path or `unix:PATH` for `unix`, a name for
     /// `memory`, `IP:PORT` for `tcp`. A query can follow the address:
     /// `ADDRESS?key=value&key=value` (keys: carrier, tls, retry, lb, compress,
     /// pad, mtu, maxhops, poll, window, name). Only `carrier`, `pad` and

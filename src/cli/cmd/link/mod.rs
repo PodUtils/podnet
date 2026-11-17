@@ -246,7 +246,7 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
     if let Some(name) = &query.carrier {
         carrier.carrier.clone_from(name);
     }
-    if carrier.up_carrier.is_some() {
+    let base = if carrier.up_carrier.is_some() {
         carrier.carrier = podnet::link_split::NAME.to_string();
         if !base.contains('|') {
             return Err(podnet::exit::fault(
@@ -254,10 +254,13 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
                 anyhow::anyhow!("--up-carrier and --down-carrier: give the address UP|DOWN, the address of each half"),
             ));
         }
+        base.to_string()
     } else {
         carriers::check_query(&carrier.carrier, &query)?;
-        carriers::check_address(&carrier.carrier, base)?;
-    }
+        let base = carriers::unix_path(&carrier.carrier, base);
+        carriers::check_address(&carrier.carrier, &base)?;
+        base
+    };
     query.require_wired()?;
     if !carrier.seal && (query.pad.is_some() || query.compress.is_some()) {
         return Err(podnet::exit::fault(
@@ -297,7 +300,7 @@ pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<St
         .s3_credentials
         .clone_from(&carrier.s3_credentials);
     carrier.tune.s3_prune = carrier.s3_prune;
-    Ok(base.to_string())
+    Ok(base)
 }
 
 /// Connect to `address` and prove the peer. A carrier with no key of its own

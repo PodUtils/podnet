@@ -472,6 +472,28 @@ fn is_host_port(text: &str) -> bool {
     }
 }
 
+/// The address of the carrier `name` with no `unix:` prefix (GitHub #634).
+/// The unix carrier takes `unix:PATH` and `unix://PATH` as the other unix
+/// socket options of podnet do, also after the key of a dial
+/// (`KEY@unix:PATH`). The other carriers get `address` unchanged.
+pub fn unix_path(name: &str, address: &str) -> String {
+    if name != "unix" {
+        return address.to_string();
+    }
+    let (key, target) = match address.split_once('@') {
+        Some((key, rest)) if !key.contains('/') => (Some(key), rest),
+        _ => (None, address),
+    };
+    let path = target
+        .strip_prefix("unix://")
+        .or_else(|| target.strip_prefix("unix:"))
+        .unwrap_or(target);
+    match key {
+        Some(key) => format!("{key}@{path}"),
+        None => path.to_string(),
+    }
+}
+
 /// Check that `address` has the form of the carrier `name` (GitHub #622
 /// item 8). The `unix` carrier (the default) takes a path. An address that
 /// starts with a URL scheme (`tcp://`, `wss://`, `quic://`), or that is
@@ -684,6 +706,24 @@ mod tests {
         }
         assert!(check_address("tcp", "127.0.0.1:18084").is_ok());
         assert!(check_address("memory", "tcp://x").is_ok());
+    }
+
+    /// GitHub #634: `unix:PATH` is the path on the unix carrier. No socket
+    /// gets a name that starts with `unix:`.
+    #[test]
+    fn the_unix_carrier_takes_the_unix_prefix() {
+        for (address, path) in [
+            ("unix:/tmp/l1", "/tmp/l1"),
+            ("unix:qa-literal", "qa-literal"),
+            ("unix:///tmp/l1", "/tmp/l1"),
+            ("KEY@unix:/tmp/l1", "KEY@/tmp/l1"),
+            ("/tmp/l1", "/tmp/l1"),
+            ("dir/unix:x", "dir/unix:x"),
+        ] {
+            assert_eq!(unix_path("unix", address), path, "{address}");
+            assert!(check_address("unix", &unix_path("unix", address)).is_ok());
+        }
+        assert_eq!(unix_path("tcp", "unix:/x"), "unix:/x");
     }
 
     #[test]

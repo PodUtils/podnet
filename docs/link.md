@@ -271,7 +271,8 @@ one in code with `podnet::link_group::LinkGroup`.
 ## Flags of the carriers
 
 * `--carrier NAME` selects the carrier (default `unix`). An unknown name exits 64 and lists the names. The unix carrier takes
-  a path: an address that starts with a URL scheme (`tcp://`, `wss://`, `quic://`) or that is `IP:PORT` exits 64, and the
+  a path. `unix:PATH` is the same as `PATH`, as in the other unix socket options of podnet: the socket gets no name that
+  starts with `unix:`. An address that starts with a URL scheme (`tcp://`, `wss://`, `quic://`) or that is `IP:PORT` exits 64, and the
   message names the carrier to give (`--carrier tcp`). The message does not show the address.
 * `--up-carrier NAME` and `--down-carrier NAME` join one session over two carriers, in place of `--carrier`: see "A split
   session".
@@ -319,7 +320,7 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 
 | Name | Address | What it is |
 | --- | --- | --- |
-| `unix` | a path (1 to 107 bytes) | A stream over `AF_UNIX`. The socket has the mode 0600. The uid of the peer is checked. It needs no network. |
+| `unix` | a path (1 to 107 bytes), or `unix:PATH` | A stream over `AF_UNIX`. The socket has the mode 0600. The uid of the peer is checked. It needs no network. |
 | `memory` | a name | Two ends in one process, with a ring for each direction. A full ring blocks the writer. It is for tests and for programs that embed the link. |
 | `tcp` | `KEY@HOST:PORT` to dial, `IP:PORT` to listen | TCP with TLS 1.3 and a pinned Ed25519 key (T-268). Build feature `tcp`. See "The TCP carrier". |
 | `ws` | `KEY@wss://HOST[:PORT]/PATH` to dial, `IP:PORT` to listen | A WebSocket over TLS 1.3 and a pinned Ed25519 key (T-269). Build feature `ws`. See "The WebSocket carrier". |
