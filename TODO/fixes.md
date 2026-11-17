@@ -9591,7 +9591,7 @@ cargo todo check   # a done defect with no test is a fault
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -9641,7 +9641,18 @@ keys (also tunnel, serve, share, demo, relay node); `git serve` lists its listen
 print a `ready` event. The keys are added, none is removed. Not covered with no network: tunnel, share, demo,
 ssh-relay, send, receive, relay pair, relay node, warp status, exit and scan, doctor, connect (their ready events take
 the shared stamp code that the test runs); `link mesh` (it needs a mesh node). `link listen` writes its carrier address
-in `listen` (not `unix:PATH`), as `docs/cli.md` says. Step 3 (the run on the release binary) is open.
+in `listen` (not `unix:PATH`), as `docs/cli.md` says.
+
+2026-11-17, step 3, commits e4cab496 and b2160d4f: `tests/contracts.rs` takes the binary of `PODNET_TEST_BINARY`
+(else the binary that cargo built), and `gate.yml` runs it on the static release binary at its build path (`autostart
+add` refuses a binary in a temporary directory such as `/var/tmp`). Here: the debug and the release binary pass, and
+`/bin/false` fails at once.
+
+## Done
+
+2026-11-17, commits of steps 1 to 3 (see the Correction). `gate` 44198354501 on b2160d4 passed: the lane, its plant
+and `cargo test --test contracts` on the static release binary. `ci` passed on the commits of each step.
+
 
 # T-452: Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS
 

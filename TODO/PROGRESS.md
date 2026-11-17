@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 477 entries: 18 open, 12 partial, 36 blocked, 411 done.
+`TODO/INDEX.md` holds 477 entries: 18 open, 11 partial, 36 blocked, 412 done.
 `TODO/INDEX.md` holds 422 entries: 11 open, 10 partial, 35 blocked, 366 done.
 
 ## State
@@ -28,7 +28,7 @@
 
 0. **First, the QA round of 2026-11-17** (`docs/decisions.md`, The QA round and the release freeze): the issues of
    the testers and of podrunner are done, except T-469 (GitHub #645, waits for podcrates); now the gate of correctness: T-450 (a test for
-   each issue), T-451 (the contracts of the help and of the JSON), T-452 (the error paths of the lane), T-453 (the lab of
+   each issue), T-452 (the error paths of the lane), T-453 (the lab of
    the testers' host), T-454 (a black-box QA pass), T-455 (the measure of readiness). No release and no new feature
    before T-450 to T-455 are done.
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
