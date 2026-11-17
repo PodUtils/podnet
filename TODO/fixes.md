@@ -9541,6 +9541,12 @@ the run of the race (`the edge leg quic+warp won after 38111 ms`) match the new 
 2026-11-17, a sixth grep: `live` 44099840388 (617f071) failed on `registered over HTTP/2` in the relay step. The step
 now also accepts `registered with the edge at NAME (http2`. A scan of each log grep of `live.yml` against the sources
 of podnet and of podcrates v0.69.0 finds no other old text.
+2026-11-17, a seventh grep: `live` 44130542899 (96c97c1) failed in `scripts/test_in_box.sh`, `box step warp: FAIL (demo
+passed, but not on quic+warp)`, while the log said `the edge leg quic+warp won`. The script read `leg=quic+warp`; it now
+also accepts the new line. The first scan read `live.yml` only; a second scan reads each script under `scripts/` and each
+workflow, and finds no other old text (the other hits are texts that the code builds at run time, or texts of
+`tests/`).
+
 
 # T-450: Rule: an issue closes only with a test that reproduces it
 

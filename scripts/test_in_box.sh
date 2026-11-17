@@ -141,7 +141,7 @@ fi
 rc=0
 inbox sh "$here/live-run.sh" warp timeout 240 "$home/podnet" demo --exit-on-verify || rc=$?
 if [ "$rc" = 0 ]; then
-    if grep -q 'leg=quic+warp' warp.err; then
+    if grep -q -E 'leg=quic\+warp|the edge leg quic\+warp won' warp.err; then
         verdict warp ok "quic+warp registered through the proxy, and the URL answered"
     else
         verdict warp FAIL "demo passed, but not on quic+warp"
