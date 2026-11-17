@@ -433,30 +433,32 @@ pub fn add(
         vars.retain(|(k, _)| k != key);
         vars.push((key.clone(), value.clone()));
     }
-    write_private(
-        &dir.join(format!("{name}.args")),
-        &serde_json::to_string(&kept)?,
-    )?;
-    write_private(&dir.join(format!("{name}.env")), &env_text(&vars)?)?;
     let line = run_line(&exe, name, &dir);
     let found = if manual {
         Ok(Way::Manual)
     } else {
         probe(limit)
     };
+    // GitHub #640: with no way to start at boot, the command writes no
+    // entry: exit 69 leaves nothing, and a retry is clean.
     let way = match found {
         Ok(way) => way,
         Err(why) => {
             return Err(crate::exit::fault(
                 crate::exit::Fault::Unavailable,
                 anyhow::anyhow!(
-                    "no way to start at boot: {why}. The entry {name} is kept (podnet autostart remove {name} removes it). Run this line at login (for example in ~/.profile), or add the entry with --manual:
+                    "no way to start at boot: {why}. No entry was written. Add the entry with --manual (podnet autostart add --manual {name} -- ...), and run this line at login (for example in ~/.profile):
   {}",
                     login_line(&line)
                 ),
             ))
         }
     };
+    write_private(
+        &dir.join(format!("{name}.args")),
+        &serde_json::to_string(&kept)?,
+    )?;
+    write_private(&dir.join(format!("{name}.env")), &env_text(&vars)?)?;
     let detail = match way {
         Way::Manual => format!(
             "run this line at login (for example in ~/.profile):\n  {}",
@@ -504,6 +506,10 @@ pub fn add(
                 .lines()
                 .any(|l| l.trim_end().ends_with(&marker))
             {
+                // GitHub #640: exit 69 leaves no entry.
+                for ext in ["args", "env"] {
+                    let _ = std::fs::remove_file(dir.join(format!("{name}.{ext}")));
+                }
                 return Err(crate::exit::fault(
                     crate::exit::Fault::Unavailable,
                     anyhow::anyhow!("crontab - exited 0, and crontab -l has no line for {name}: cron does not keep the entry"),

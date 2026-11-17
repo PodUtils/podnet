@@ -135,6 +135,8 @@ exit 2"#,
         "{}",
         stderr(&out)
     );
+    // GitHub #640: exit 69 leaves no entry.
+    assert!(!entry.join("web4.args").exists() && !entry.join("web4.env").exists());
 
     // No systemctl and no crontab: exit 69, and the line to run.
     let empty = dir.path().join("empty");
@@ -150,6 +152,11 @@ exit 2"#,
         stderr(&out)
     );
     assert!(!stderr(&out).contains(TOKEN));
+    // GitHub #640: exit 69 writes no entry, and list matches it.
+    assert!(stderr(&out).contains("--manual"), "{}", stderr(&out));
+    assert!(!entry.join("web.args").exists() && !entry.join("web.env").exists());
+    let out = run(&["autostart", "list"], empty.to_str().unwrap());
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "");
 }
 
 // Issue 265: autostart add --from NAME copies the secrets of the instance

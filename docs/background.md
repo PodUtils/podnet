@@ -88,7 +88,7 @@ or a container that kills each process of its run also ends it.
 `podnet autostart` starts a podnet command at boot and after a logout, with no
 root. It uses a systemd user unit when `systemctl --user` answers, else an
 `@reboot` line in the crontab. With neither, it prints the line to run at
-login and exits 69. `--manual` installs no unit and no crontab line: it writes
+login, writes no entry and exits 69. `--manual` installs no unit and no crontab line: it writes
 the entry, prints the line to run at login and exits 0.
 
 ```sh
@@ -124,5 +124,6 @@ podnet autostart remove web
   (`systemd`, `cron` or `manual`) and `line` (the run line).
 * With no systemd user manager and no cron, `add` exits 69. Its error text
   gives a `nohup` line: put it in a login script (for example
-  `~/.profile`). The entry stays. `add --manual` writes the entry, prints the
-  same line and exits 0.
+  `~/.profile`). No entry is written, so a retry is clean. `add --manual`
+  writes the entry, prints the same line and exits 0. A crontab that takes
+  the line and keeps nothing also exits 69 with no entry.
