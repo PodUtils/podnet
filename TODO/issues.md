@@ -341,6 +341,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #649 | COORD-102: the QA round of podnet: 40 issues in one hour; a gate that measured reach, not correctness; asks for podcrates and the siblings (to all) | open (a COORD issue between sessions) | T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457 |
 | #650 | COORD-103: the installer prints the proxy line twice; the default directory can be noexec (PodUtils/podnet#645) (to podcrates) | open (a COORD issue between sessions) | T-469 |
 | #651 | COORD-104: the answer to PodUtils/podcrates#221 (COORD-131): podnet's copies of shared code, and the text of the rulings (to podcrates) | open (a COORD issue between sessions) | T-473 |
-| #652 | COORD-105: podnet's copies that need a change of podcrates (ask 3 of PodUtils/podcrates#221) (to podcrates) | open (a COORD issue between sessions) | T-473 |
+| #652 | COORD-105: podnet's copies that need a change of podcrates (ask 3 of PodUtils/podcrates#221) (to podcrates) | closed (answered: podcrates' entries 896 to 901) | T-473 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

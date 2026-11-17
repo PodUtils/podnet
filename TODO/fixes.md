@@ -10367,7 +10367,15 @@ named.
      downloaders and the lookup of the newest tag of the installer core (`scripts/install.sh`); a WebSocket request
      with no token header (`src/doctor/lane_probes.rs`).
    - Keep (podnet-specific): the lock of the fake-DNS file, the reader of `resolv.conf` of `src/link_dns.rs`.
-   - Not a copy: `scripts/retry.sh` has 3 tries, the copy of podcrates 5.
+   - Not a copy: `scripts/retry.sh` had 3 tries, the copy of podcrates 5; podnet took the copy of podcrates
+     v0.69.0 (2026-11-17).
+4. Done on 2026-11-17: src/transport/ removed (commit c3fb7da6; nothing called it). The asks went to podcrates as
+   COORD-105 (GitHub #652). Their answer (PodUtils/podcrates#221, 2026-11-17): their entries 896 (the handshake of a
+   hop on a stream of the caller), 897 (the check of a user by a callback; one server for podnet and podssh), 898 (the
+   RCODE answers), 899 (the probes of the doctors; the user and net namespace row and the row of `process_vm_writev`
+   are in their next tag), 900 (the downloaders and the newest tag), 901 (the upgrade request with no token).
+   `pod_core::lock::FileLock` (their entry 877) and `pod_core::clock::Clock` (their entry 878) are on their `main`
+   for the next tag. Keep the lock of the fake-DNS file and the reader of `resolv.conf`.
 
 ## Prove
 

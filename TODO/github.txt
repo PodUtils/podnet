@@ -350,4 +350,4 @@
 649 issue open
 650 issue open
 651 issue open
-652 issue open
+652 issue closed
