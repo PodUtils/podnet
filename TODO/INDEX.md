@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**475 entries: 18 open, 11 partial, 36 blocked, 410 done.**
-**475 entries: 19 open, 11 partial, 36 blocked, 409 done.**
+**476 entries: 18 open, 11 partial, 36 blocked, 411 done.**
+**476 entries: 18 open, 11 partial, 36 blocked, 411 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 5 | 2 | 2 | 51 | 60 |
-| P2 | 6 | 6 | 10 | 214 | 236 |
+| P2 | 6 | 6 | 10 | 215 | 237 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 18 | 11 | 36 | 410 | 475 |
-| P2 | 6 | 6 | 10 | 214 | 236 |
+| **All** | 18 | 11 | 36 | 411 | 476 |
+| P2 | 6 | 6 | 10 | 215 | 237 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 18 | 11 | 36 | 410 | 475 |
+| **All** | 18 | 11 | 36 | 411 | 476 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -525,3 +525,4 @@ M8 Overlays, M9 Later.
 | [T-474](fixes.md) | P1 | S | M5 | defect | done | `ssh-relay` ignores `--proxy`, `--egress`, `--resolve` and the proxy variables |
 | [T-475](fixes.md) | P2 | S | M5 | defect | done | `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6 |
 | [T-476](fixes.md) | P2 | S | M6 | defect | open | `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move |
+| [T-477](fixes.md) | P2 | S | M5 | defect | done | A refusal for now (HTTP 429, exit 75) gets the hint "does not change with a retry" |

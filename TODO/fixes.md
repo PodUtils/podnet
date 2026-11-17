@@ -10496,3 +10496,40 @@ the close of 1009 carried it). Alone, the test passed 3 times of 3.
 ```sh
 cargo test -p podnet --test transfer_relay -- transfer_over_the_relay_crosses_the_cap
 ```
+
+# T-477: A refusal for now (HTTP 429, exit 75) gets the hint "does not change with a retry"
+
+**Source:** `live` 44140229441 (2026-11-17): the quick-tunnel service answered HTTP 429 with `Retry-After: 3600`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The error line of the refusal was right, but its second line was the hint of the hop `edge-register`: "a refused
+token or tunnel does not change with a retry; check the token, or use a quick tunnel". The tunnel was a quick tunnel,
+and a retry after the wait works. The line was not true (the ruling "Quality first": one true line).
+
+## Premise
+
+- `error_line` (`src/report.rs`) chose the hint by the hop alone, not by the class of the failure.
+
+## Approach
+
+1. A failure of the class TempFail (exit 75) gets its own second line: try again after the time that the service asks
+   for. Other classes keep the hint of their hop.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib -- the_hint_follows_the_class_of_the_failure
+```
+
+## Done
+
+2026-11-17, commit b0c1ec3a. The table test (`src/report.rs`, `the_hint_follows_the_class_of_the_failure`: TempFail and
+Refused at the stage `EdgeRegister`) passes. On the code before the fix it fails for TempFail. The lines of the job
+log that came twice are of the workflow (`scripts/live-run.sh` writes stderr to the log and to the file, and the step
+prints the tail of the file), not of podnet.
