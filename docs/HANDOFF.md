@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-17 20:00 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-17 21:50 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -18,7 +18,7 @@ change.
   in `scripts/install/` is that of `v0.69.0`. The next tag of podcrates (`v0.70.0`) brings `pod_core::lock`,
   `pod_core::clock::Clock` and rows of `pod-hostprobe` (their entries 866, 877, 878).
 * The newest release is `v0.4.0-beta.16` (T-422; its notes name the known problems).
-* The record is `TODO/`. `cargo todo check` agrees: 477 entries, 18 open, 12 partial, 36 blocked, 411 done.
+* The record is `TODO/`. `cargo todo check` agrees: 477 entries, 18 open, 12 partial, 36 blocked, 411 done (at 21:50 UTC).
 
 ## Unfinished work (not on `main`)
 
@@ -29,8 +29,8 @@ None. The head is the commit of this handoff.
 * A push to `main` starts `ci`, `deny`, `secrets`, `live` and `issue-sync`. `ci` has a concurrency group since
   2026-11-17: a new push cancels the `ci` of the commit before it. `live` keeps one running and one pending run: a new
   push replaces the pending one. Let a `ci` run end before the next push when its result matters.
-* On `b272dc2`: `ci` 44156801072 passed. On `4e23607`: `live` 44152206601 passed (the second full pass with the fixes
-  of 2026-11-17).
+* On `d147102`: `ci` 44177188362 and `live` 44177188471 passed. About one `live` run of six fails at the public relay
+  (T-406: the relay keeps a lost socket of a node; COORD-098, #604, asks podcrates who owns the fix).
 * `record-issues` (each day): green when each issue number has a line in `TODO/github.txt`.
 
 ## The work of 2026-11-17 (all on `main`)
@@ -43,16 +43,17 @@ None. The head is the commit of this handoff.
 * T-473 (the survey of copies of shared code): `src/transport/` is removed, `scripts/retry.sh` is podcrates' copy;
   T-474 (`ssh-relay` takes `--proxy` and `--egress`) and T-475 (the CA bundles of `warp up`) are done; the asks are
   podcrates' entries 896 to 901 (COORD-105, #652).
-* T-451 step 1: `src/cli/help_tests.rs::each_flag_that_a_help_names_exists` (69 false flag references fixed).
+* T-451 step 1: `src/cli/help_tests.rs::each_flag_that_a_help_names_exists` (69 false flag references fixed). Step 2:
+  `tests/contracts.rs` (the rules of the JSON documents, `docs/cli.md`; 20 faults fixed).
 * T-477: a refusal for now (exit 75) gets its own hint. T-449: each grep of the workflows and the scripts reads the log
   lines of `pod-cloudflare`. T-414: the WARP proxy step outlived its `--run-for`.
 
 ## Next steps
 
-1. T-478: when `live` fails in "SSH through the reverse relay", read the logs of the two sessions and of the node that
-   the step prints now, and fix the side that waits.
-2. T-450 to T-455, the gate of correctness, in this order: T-451 step 2 (a schema for each `--json` document, a test in
-   tests/contracts.rs), T-452 (error rows of the lane), T-453 (the lab of the testers' host), T-450, T-454, T-455.
+1. T-478 (most likely T-406): when `live` fails in "SSH through the reverse relay", read the logs of the two sessions
+   and of the node that the step prints now. Read the answer of podcrates on COORD-098 (#604).
+2. T-450 to T-455, the gate of correctness, in this order: T-451 step 3 (the tests on the release binary), T-452 (error
+   rows of the lane), T-453 (the lab of the testers' host), T-450, T-454, T-455.
 3. T-473, what remains: the doctor row of the SSH relay and `--connect-proxy` go to `pod-proxy` (a SOCKS or
    authenticated proxy then works: a change of tested behaviour); the copies of the clock, the files and the backoff go
    to `pod-core`; the rest waits for podcrates' entries 896 to 901.
