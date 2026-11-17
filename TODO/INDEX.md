@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**456 entries: 16 open, 12 partial, 35 blocked, 393 done.**
+**456 entries: 16 open, 11 partial, 35 blocked, 394 done.**
 **456 entries: 16 open, 12 partial, 35 blocked, 393 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 5 | 3 | 2 | 49 | 59 |
+| P1 | 5 | 2 | 2 | 50 | 59 |
 | P2 | 4 | 6 | 10 | 200 | 220 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 16 | 12 | 35 | 393 | 456 |
+| **All** | 16 | 11 | 35 | 394 | 456 |
 | P2 | 4 | 6 | 10 | 200 | 220 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 16 | 12 | 35 | 393 | 456 |
+| **All** | 16 | 11 | 35 | 394 | 456 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -504,5 +504,5 @@ M8 Overlays, M9 Later.
 | [T-453](fixes.md) | P1 | S | M5 | chore | open | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |
 | [T-454](fixes.md) | P1 | M | M5 | chore | open | A black-box QA pass before each beta |
 | [T-455](fixes.md) | P2 | M | M5 | chore | open | Readiness: the promises with a test, in place of the commands with a scenario |
-| [T-456](fixes.md) | P1 | S | M7 | defect | partial | `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213) |
+| [T-456](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213) |
 | [T-457](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142) |

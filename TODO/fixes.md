@@ -9737,7 +9737,7 @@ broker on the loopback.
 **Milestone:** M7
 **Priority:** P1
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -9785,6 +9785,20 @@ and no `--flow-log`, the loopback dial gives the TCP socket of the kernel (`Link
 the program's own inbound listener keeps the relay. Test: `tests/pod_seccomp/loopback_name.rs`
 (`a_loopback_connect_has_its_names_with_no_memory_write`): it passes; on the code before the fix it fails with
 `NAME-ERROR:95`. `cargo test --test pod_seccomp`: 45 passed.
+
+2026-11-17, part 2, commit 58fd0db8. On a host that refuses writes to the memory of the program, `socket` of a TCP
+socket gives the program a socket of the kernel (`Sock::Kernel`, `crates/podnet-netns/src/socket.rs`). Each call on it
+goes to the kernel (`crates/podnet-netns/src/seccomp/mod.rs`), but `connect`: a loopback target goes to the kernel; any
+other target puts the socket pair of the pod at the descriptor (`pair_in_place`, `crates/podnet-netns/src/connect.rs`)
+and the dial goes on as before. A host with no IPv6 refuses an `AF_INET6` socket of the kernel; then the pair stays.
+Proof with the reporter's kind of program: the .NET 8 `HttpClient` in `pod --backend seccomp` with
+`PODNET_NETNS_TEST_MEM=none`, to `http://127.0.0.1:PORT/`: 3 requests of 3 pass (before: `Operation not supported
+(127.0.0.1:PORT)`, the text of the report). This host has no IPv6, so that run sets `DOTNET_SYSTEM_NET_DISABLEIPV6=1`;
+a host with IPv6 gets an `AF_INET6` socket of the kernel. A target through the proxy still fails where .NET reads
+`LocalEndPoint` (the limit of `crates/podnet-netns/README.md`). Test: `tests/pod_seccomp/loopback_name.rs` now reads
+`TCP_NODELAY` before `connect`; it passes; on the code before part 2 it fails with `OPTION-ERROR:95`. Each
+`tests/pod_seccomp*` target passes.
+
 
 # T-457: `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142)
 
