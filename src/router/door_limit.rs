@@ -324,6 +324,21 @@ impl Limiter {
         self.limits.on_exhaust == Exhaust::Close && self.exhausted()
     }
 
+    /// The bytes that one read or write of an open flow may carry
+    /// (GitHub #637): with `on_exhaust: close`, at most the bytes left of
+    /// the quota, so a flow ends at the quota and not one buffer after it.
+    /// Else `want`.
+    pub fn cap(&self, want: usize) -> usize {
+        match self.limits.quota {
+            Some(quota) if self.limits.on_exhaust == Exhaust::Close => {
+                self.roll();
+                let left = quota.saturating_sub(self.used.load(Ordering::Relaxed));
+                want.min(usize::try_from(left).unwrap_or(usize::MAX))
+            }
+            _ => want,
+        }
+    }
+
     pub fn used(&self) -> u64 {
         self.used.load(Ordering::Relaxed)
     }

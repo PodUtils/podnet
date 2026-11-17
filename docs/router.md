@@ -322,7 +322,10 @@ doors:
 * `rate` is a token bucket for each direction, with a burst of a tenth of a second (at least 16 KiB). A UDP datagram
   over the rate is dropped.
 * At the quota, a new flow gets "the quota of the door is used for this period" (a policy refusal). With `close`,
-  each open flow ends at its next read or write. A UDP datagram is dropped.
+  each open flow ends at the quota: a read or a write carries at most the bytes left of the quota, and the next one
+  ends the flow. The client sees a cut stream (for HTTP, a body that is not complete), not a refusal. Flows that read
+  at the same time can each take the bytes left: the usage can pass the quota by that much. With `refuse`, the open
+  flows go on, and the usage passes the quota. A UDP datagram is dropped.
 * The usage of each door with a quota is in `router-usage.json` (mode 0600), by the `listen` of the door: in the
   `state_dir` of the router file, else in the state directory of podnet (`PODNET_STATE_DIR`, `podnet man environment`). podnet writes it each 10 s while bytes pass, and at the end. A restart in the same period keeps the usage.
 * The status of the door has `limits`: `rate`, `quota`, `period`, `on_exhaust`, `used`, `period_end` (UNIX time,

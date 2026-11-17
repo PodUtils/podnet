@@ -178,6 +178,7 @@ impl CountedIo {
                 "the quota of the door is used for this period",
             )));
         }
+        let want = limiter.cap(want);
         loop {
             if let Some(sleep) = &mut self.sleep {
                 if std::future::Future::poll(sleep.as_mut(), cx).is_pending() {
