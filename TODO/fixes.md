@@ -9730,7 +9730,7 @@ broker on the loopback.
 **Milestone:** M7
 **Priority:** P1
 **Effort:** S
-**Status:** done
+**Status:** partial
 
 ## Problem
 
@@ -9752,6 +9752,20 @@ A program in a seccomp pod cannot connect to a port of the loopback that a progr
 cargo test -p podnet --test pod_seccomp -- loopback
 ```
 
+## Correction
+
+2026-11-17: part 1 does not fix the report. Its test used a Python client; the reporter's program is .NET. With the
+.NET 8 `HttpClient` in the pod and `PODNET_NETNS_TEST_MEM=none`, a request to 127.0.0.1 still fails with
+`Operation not supported (127.0.0.1:PORT)`, the text of the report. `strace` shows the cause:
+`getsockopt(fd, SOL_IPV6, IPV6_V6ONLY)` before the `connect` gives EOPNOTSUPP. The pod cannot write the value into
+the memory of the program, so the call goes to the kernel, and the kernel answers for the AF_UNIX socket pair.
+
+Part 2 (open): where the pod cannot write the memory of the program, `socket` must give the program a TCP socket of
+the kernel. Then the kernel answers each socket option before the connect. A loopback `connect` goes to the kernel;
+any other `connect` waits for the dial (issue 610) and the pod then puts the upstream at the descriptor. Prove it with
+the .NET program of the reproduction (a test that skips when no `dotnet` is installed) and with a C program that reads
+`IPV6_V6ONLY` before `connect`; each must fail on the code before the fix.
+
 ## Done
 
 2026-11-17, commit aaf9e2c (`T-456: seccomp: a loopback TCP connect gives the kernel socket when the pod cannot write
@@ -9772,7 +9786,7 @@ the program's own inbound listener keeps the relay. Test: `tests/pod_seccomp/loo
 **Milestone:** M7
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -9795,3 +9809,18 @@ timed out after 60 s; `curl` and Node to a plain CONNECT proxy reached github.co
 ```sh
 cargo test -p podnet --test pod_seccomp -- dotnet
 ```
+
+## Done
+
+2026-11-17, commit 040f89d (`T-457: seccomp: no handoff of a nonblocking descriptor (epoll)`). Reproduction on the
+head with a .NET 8 `HttpClient` program (`SocketsHttpHandler`, no proxy of its own) in `pod --backend seccomp` with an
+HTTP CONNECT upstream on a Unix socket: request 0 passed, requests 1 and 2 timed out after 20 s. `-v` showed `the
+program holds the upstream socket (no relay)` for each connect. Cause: the handoff (T-065) replaced a nonblocking
+descriptor after the program had put it in its epoll set; the close of the old socket removes it from the set, and
+epoll never reports the new one. T-430 was not the cause. The fix: `hand_off` (`crates/podnet-netns/src/handoff.rs`)
+takes a blocking descriptor only; a nonblocking one keeps the relay. After the fix the .NET program passes 3 requests
+of 3 (45 ms, 7 ms, 4 ms). Test: `tests/pod_seccomp/epoll.rs` (`an_epoll_program_sees_its_socket_after_the_connect`, a
+C program that adds the socket to epoll before `connect`): it passes; on the code before the fix it fails with
+`EPOLL-TIMEOUT:read`. `tests/pod_seccomp_nonblock.rs` now expects the relay for a nonblocking dial.
+`cargo test --test pod_seccomp` (46), `pod_seccomp_nonblock`, `pod_seccomp_handoff`, `pod_seccomp_slow_dial`,
+`pod_seccomp_tcp`: each passes. podrunner runs its case again with the next release.
