@@ -64,6 +64,27 @@ at WARN.
 (see "Machine-readable help"). Each `--detach` start prints a JSON document with or without `--json`
 ([background.md](background.md)). `route --config FILE --detach --json` is the same as without `--json`.
 
+## JSON documents
+
+Each JSON document of podnet on stdout obeys these rules. The test `tests/contracts.rs` checks them for each
+command that runs with no network (`cargo test -p podnet --test contracts`).
+
+1. Shape: a document is one JSON object. An event stream (a server command with `--json` in the foreground) is
+   one JSON object on each line. Each line has a string `event`.
+2. Stamp: each object has `schema` (a positive integer) and `podnet` (the version line of the binary). The
+   documents of `man --json` and `COMMAND --help --json` keep the `schema` of `pod-manual`. An environment
+   document (`net shim`, `net socksify`, `net passwd-shim`, `net ts-shims`) is the exception: each key is a
+   variable name and each value is a string, so that a shell can export each key.
+3. Endpoint: each `ready` event and each `detached` document has `url` (a string or `null`), `listen` (a string
+   or `null`) and `listens` (an array of strings). `listen` is the first item of `listens`, or `null` when
+   `listens` is empty. A command with a local listener puts each listener in `listens`. A `detached` document
+   also has `name`, `pid`, `command` and `log`.
+4. Secrets: no document holds the value of a token or a password, from the environment or from the command
+   line. The keys `token`, `password`, `secret`, `passphrase`, `private_key` and `seed` have no value.
+
+`link listen --json` and `link connect --json` print a `ready` event. `link listen` puts the carrier address in
+`listen` (a path for `unix`, `IP:PORT` for `tcp`): give it to `link dial` as it is.
+
 Stop signals: from the ready line (or the `ready` event) of a server
 command on, SIGINT (Ctrl-C), SIGTERM and SIGHUP each start the clean
 shutdown, also during the verify of the public URL and with `--run-for`.

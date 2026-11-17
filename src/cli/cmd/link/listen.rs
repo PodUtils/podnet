@@ -128,7 +128,10 @@ pub(crate) async fn listen(mut args: ListenArgs) -> Result<()> {
     // A stop signal after the ready line starts the clean shutdown.
     podnet::detach::arm_stop();
     if args.json {
-        println!("{}", podnet::status::stamped(doc.clone()));
+        // T-451: the ready document in the foreground is a `ready` event.
+        let mut line = doc.clone();
+        line["event"] = "ready".into();
+        println!("{}", podnet::status::stamped(line));
     } else {
         let shown = match &mode {
             Some(mode) => format!("{address} (mode {mode})"),

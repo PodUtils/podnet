@@ -1675,7 +1675,7 @@ it to the origin and records a new exchange that names the first.
 - No capture and no request log exist in the tunnel path (a grep for `inspect`).
 - The socket: `claim_socket_path` (`crates/podnet-core/src/net.rs:20`), the check of the peer uid with
   `SO_PEERCRED` (`crates/podnet-vnet/src/switch.rs:264-270`), and `instances::lookup_dir`
-  (`crates/podnet-core/src/instances.rs:81`).
+  (`crates/podnet-core/src/instances.rs:85`).
 - `src/proxy.rs` and `src/tunnel.rs` go to `pod-cloudflare` (T-052). Podnet does not develop a new feature
   in that code (`CLAUDE.md`, Order). Pod-cloudflare is not in `PodUtils/podcrates` yet. No issue and no
   entry covers `--inspect`.

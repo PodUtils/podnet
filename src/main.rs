@@ -80,7 +80,8 @@ fn main() {
         if let Some(help) = pod_manual::help::request(&manual, &argv[1..]).filter(|h| h.json) {
             match pod_manual::help::answer(&manual, &help) {
                 Ok(text) => {
-                    print!("{text}");
+                    // T-451: the document has `podnet`, as each document.
+                    print!("{}", podnet::status::stamped_text(&text));
                     std::process::exit(podnet::exit::SUCCESS);
                 }
                 Err(err) => {

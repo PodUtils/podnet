@@ -460,6 +460,8 @@ mod tests {
             [
                 "event",
                 "leg",
+                "listen",
+                "listens",
                 "locations",
                 "podnet",
                 "schema",
@@ -476,6 +478,8 @@ mod tests {
                 "forward",
                 "forward_path",
                 "leg",
+                "listen",
+                "listens",
                 "locations",
                 "podnet",
                 "schema",

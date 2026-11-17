@@ -2361,7 +2361,7 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 ## Premise
 
 - `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:41-51`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
-- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:259-264`).
+- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:263-282`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
 ## Approach
@@ -2930,7 +2930,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:283`.
   `SocketFile` is in `src/cli/cmd/connect.rs:219-239` (`pub(crate)`).
 - Message: `crates/podnet-core/src/net.rs:26-32`.
-- `src/main.rs:141` allows `--replace` without `--detach` only for `Command::Connect`.
+- `src/main.rs:142` allows `--replace` without `--detach` only for `Command::Connect`.
 
 ## Approach
 
@@ -3170,7 +3170,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:245-255` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:64-70`.
+- `src/cli/cmd/host.rs:249-259` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:64-70`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -4226,7 +4226,7 @@ mode. Add a privileged CI test that compares `ip route get` before and after.
   marker line `# podnet warp tun --default-route: DNS through WARP`.
 - The call of `Routes::setup` is in `src/cli/cmd/warp/tun.rs:101`. The name of the instance is
   `TUN_INSTANCE` (`src/warp/up.rs:26`), and `instances::is_alive` answers from the held lock
-  (`crates/podnet-core/src/instances.rs:307`). The detached child holds the lock under that name, so the
+  (`crates/podnet-core/src/instances.rs:311`). The detached child holds the lock under that name, so the
   liveness test must be a lock on a file of its own.
 - No test touches a kernel route table: the unit tests give a closure in place of the route calls
   (`install_all`).

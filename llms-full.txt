@@ -14253,13 +14253,14 @@ Each detached document has these keys; the keys of each command follow them:
 | Key | Value |
 | --- | --- |
 | `command`, `event` (`detached`), `name`, `pid`, `log` | the instance |
+| `schema`, `podnet` | 1, and the version line ([cli.md](cli.md), "JSON documents") |
 | `url` | the URL for a client, or `null` when the command has none |
 | `listen` | the first local listener (`tcp://HOST:PORT` or `unix:PATH`), or `null` |
 | `listens` | each local listener, or `[]` |
 
 * `tunnel`, `serve`, `share` and `demo`: `url` is the public URL (or the URL of `--local`).
 * `git serve`: `url` is the tunnel URL, else the first URL of `http`, else the first URL of `ssh`. `http` and `ssh`
-  list each URL.
+  list each URL. `listens` has each local listener (`--local`, `--ssh`).
 * `route`: `listen` and `listens` are the `listen` of the doors; `doors` has their state.
 * `relay node`: `url` is `null`; `pair`, `relay` and `target` name the pair.
 * A reader of `.url` gets `null` (not a missing key) from a command that has no URL.
@@ -14603,6 +14604,27 @@ at WARN.
 `--json`, read its flags: `podnet COMMAND --help --json | jq -e '.command.flags[] | select(.long == "json")'`
 (see "Machine-readable help"). Each `--detach` start prints a JSON document with or without `--json`
 ([background.md](background.md)). `route --config FILE --detach --json` is the same as without `--json`.
+
+## JSON documents
+
+Each JSON document of podnet on stdout obeys these rules. The test `tests/contracts.rs` checks them for each
+command that runs with no network (`cargo test -p podnet --test contracts`).
+
+1. Shape: a document is one JSON object. An event stream (a server command with `--json` in the foreground) is
+   one JSON object on each line. Each line has a string `event`.
+2. Stamp: each object has `schema` (a positive integer) and `podnet` (the version line of the binary). The
+   documents of `man --json` and `COMMAND --help --json` keep the `schema` of `pod-manual`. An environment
+   document (`net shim`, `net socksify`, `net passwd-shim`, `net ts-shims`) is the exception: each key is a
+   variable name and each value is a string, so that a shell can export each key.
+3. Endpoint: each `ready` event and each `detached` document has `url` (a string or `null`), `listen` (a string
+   or `null`) and `listens` (an array of strings). `listen` is the first item of `listens`, or `null` when
+   `listens` is empty. A command with a local listener puts each listener in `listens`. A `detached` document
+   also has `name`, `pid`, `command` and `log`.
+4. Secrets: no document holds the value of a token or a password, from the environment or from the command
+   line. The keys `token`, `password`, `secret`, `passphrase`, `private_key` and `seed` have no value.
+
+`link listen --json` and `link connect --json` print a `ready` event. `link listen` puts the carrier address in
+`listen` (a path for `unix`, `IP:PORT` for `tcp`): give it to `link dial` as it is.
 
 Stop signals: from the ready line (or the `ready` event) of a server
 command on, SIGINT (Ctrl-C), SIGTERM and SIGHUP each start the clean
@@ -15444,12 +15466,15 @@ refused with exit 64). A connector reads the ready line instead. With
 the start, and the key `ready` of an instance in `ps --json`.
 
 The ready line has `event` (always `ready`), `schema` (1), `podnet` (the
-version), `url` (string or null), `tunnel_id` (string), `locations` (array of
-strings) and `leg` (string). With `--forward` it also has `forward` (string
-or null) and `forward_path` (string).
+version), `url` (string or null), `listen` (null), `listens` (`[]`),
+`tunnel_id` (string), `locations` (array of strings) and `leg` (string). With
+`--forward` it also has `forward` (string or null) and `forward_path`
+(string). [cli.md](cli.md), "JSON documents", gives the rules of each
+document.
 
-The ready document has `url` (string or null), `verified` (bool), `tunnel_id`,
-`locations` and `leg`. It has `unverified` (string) when the check of the
+The ready document has the keys of each detached document
+([background.md](background.md)), `verified` (bool), `tunnel_id`, `locations`
+and `leg`. It has `unverified` (string) when the check of the
 public URL did not finish, and `forward` and `forward_path` as the ready line
 does.
 

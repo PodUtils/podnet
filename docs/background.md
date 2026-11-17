@@ -25,13 +25,14 @@ Each detached document has these keys; the keys of each command follow them:
 | Key | Value |
 | --- | --- |
 | `command`, `event` (`detached`), `name`, `pid`, `log` | the instance |
+| `schema`, `podnet` | 1, and the version line ([cli.md](cli.md), "JSON documents") |
 | `url` | the URL for a client, or `null` when the command has none |
 | `listen` | the first local listener (`tcp://HOST:PORT` or `unix:PATH`), or `null` |
 | `listens` | each local listener, or `[]` |
 
 * `tunnel`, `serve`, `share` and `demo`: `url` is the public URL (or the URL of `--local`).
 * `git serve`: `url` is the tunnel URL, else the first URL of `http`, else the first URL of `ssh`. `http` and `ssh`
-  list each URL.
+  list each URL. `listens` has each local listener (`--local`, `--ssh`).
 * `route`: `listen` and `listens` are the `listen` of the doors; `doors` has their state.
 * `relay node`: `url` is `null`; `pair`, `relay` and `target` name the pair.
 * A reader of `.url` gets `null` (not a missing key) from a command that has no URL.

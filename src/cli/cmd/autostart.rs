@@ -186,7 +186,7 @@ fn list_json() -> Result<String> {
             "line": autostart::run_line(&exe, &name, &dir),
         }));
     }
-    Ok(serde_json::to_string(
-        &serde_json::json!({ "entries": entries }),
-    )?)
+    Ok(serde_json::to_string(&podnet::status::stamped(
+        serde_json::json!({ "entries": entries }),
+    ))?)
 }

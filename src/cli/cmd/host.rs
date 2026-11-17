@@ -200,7 +200,11 @@ pub(crate) async fn ports(args: PortsArgs) -> Result<()> {
         if args.json {
             println!(
                 "{}",
-                serde_json::json!({ "ports": ports, "probed": true, "unreachable": unreachable })
+                podnet::status::stamped(serde_json::json!({
+                    "ports": ports,
+                    "probed": true,
+                    "unreachable": unreachable
+                }))
             );
             return Ok(());
         }
@@ -258,15 +262,31 @@ pub(crate) fn man(args: ManArgs) -> Result<()> {
     };
     // pod-manual pages the text only when stdin and stdout are terminals.
     let tty = pod_manual::pager::Tty::probed();
-    pod_manual::run(
+    let fault = |e: String| podnet::exit::fault(podnet::exit::Fault::Usage, anyhow::anyhow!(e));
+    if !args.json {
+        return pod_manual::run(
+            &manual,
+            &request,
+            tty,
+            &mut std::io::stdin().lock(),
+            &mut std::io::stdout().lock(),
+            &mut std::io::stderr(),
+        )
+        .map_err(fault);
+    }
+    // T-451: the JSON of the manual has `podnet`, as each document.
+    let mut out = Vec::new();
+    let done = pod_manual::run(
         &manual,
         &request,
         tty,
         &mut std::io::stdin().lock(),
-        &mut std::io::stdout().lock(),
+        &mut out,
         &mut std::io::stderr(),
-    )
-    .map_err(|e| podnet::exit::fault(podnet::exit::Fault::Usage, anyhow::anyhow!(e)))
+    );
+    let text = podnet::status::stamped_text(&String::from_utf8_lossy(&out));
+    print!("{text}");
+    done.map_err(fault)
 }
 
 /// `podnet doctor`, and `podnet doctor --agent`.

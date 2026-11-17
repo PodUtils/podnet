@@ -36,12 +36,16 @@ pub const RUN_DIR_VARIABLE: &str = "PODNET_RUN_DIR";
 
 /// The keys of the endpoint that each ready document has (GitHub #641):
 /// `url`, `listen` and `listens`, with `null` (or `[]`) when the command
-/// has no such endpoint. A command sets the ones it has. A document that
-/// is not an object stays as it is.
-pub(crate) fn envelope(mut doc: serde_json::Value) -> serde_json::Value {
+/// has no such endpoint. A command sets the ones it has. The document also
+/// gets the stamp of each JSON document (T-451): `schema` (1, unless it has
+/// one) and `podnet` (the version line). A document that is not an object
+/// stays as it is.
+pub fn envelope(mut doc: serde_json::Value) -> serde_json::Value {
     let Some(object) = doc.as_object_mut() else {
         return doc;
     };
+    object.entry("schema").or_insert(1.into());
+    object.insert("podnet".into(), crate::build::version().into());
     let listen = object.get("listen").cloned().unwrap_or_default();
     let listens = match &listen {
         serde_json::Value::Null => serde_json::Value::Array(Vec::new()),
@@ -528,6 +532,8 @@ mod tests {
         assert_eq!(none["url"], serde_json::Value::Null);
         assert_eq!(none["listen"], serde_json::Value::Null);
         assert_eq!(none["listens"], serde_json::json!([]));
+        assert_eq!(none["schema"], 1);
+        assert_eq!(none["podnet"], crate::build::version());
         let one = doc(serde_json::json!({"listen": "tcp://127.0.0.1:1"}));
         assert_eq!(one["listens"], serde_json::json!(["tcp://127.0.0.1:1"]));
         let kept =

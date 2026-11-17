@@ -564,12 +564,15 @@ refused with exit 64). A connector reads the ready line instead. With
 the start, and the key `ready` of an instance in `ps --json`.
 
 The ready line has `event` (always `ready`), `schema` (1), `podnet` (the
-version), `url` (string or null), `tunnel_id` (string), `locations` (array of
-strings) and `leg` (string). With `--forward` it also has `forward` (string
-or null) and `forward_path` (string).
+version), `url` (string or null), `listen` (null), `listens` (`[]`),
+`tunnel_id` (string), `locations` (array of strings) and `leg` (string). With
+`--forward` it also has `forward` (string or null) and `forward_path`
+(string). [cli.md](cli.md), "JSON documents", gives the rules of each
+document.
 
-The ready document has `url` (string or null), `verified` (bool), `tunnel_id`,
-`locations` and `leg`. It has `unverified` (string) when the check of the
+The ready document has the keys of each detached document
+([background.md](background.md)), `verified` (bool), `tunnel_id`, `locations`
+and `leg`. It has `unverified` (string) when the check of the
 public URL did not finish, and `forward` and `forward_path` as the ready line
 does.
 

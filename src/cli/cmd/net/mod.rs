@@ -366,13 +366,13 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
                     .collect::<Result<_>>()?;
                 println!(
                     "{}",
-                    serde_json::json!({
+                    podnet::status::stamped(serde_json::json!({
                         "v4_subnet": subnet.v4.to_string(),
                         "v6_subnet": subnet.v6.to_string(),
                         "gateway_v4": subnet.gateway(podnet::vnet::Family::V4).to_string(),
                         "gateway_v6": subnet.gateway(podnet::vnet::Family::V6).to_string(),
                         "examples": examples,
-                    })
+                    }))
                 );
                 return Ok(());
             }

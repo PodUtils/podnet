@@ -100,6 +100,8 @@ struct Urls {
     root: PathBuf,
     http: Vec<String>,
     ssh: Vec<String>,
+    /// Each local listener: `tcp://HOST:PORT` or `unix:PATH` (T-451).
+    listens: Vec<String>,
     pair: Option<String>,
     fingerprint: Option<String>,
 }
@@ -118,6 +120,8 @@ impl Urls {
             "pid": std::process::id(),
             "http": self.http,
             "ssh": self.ssh,
+            "listen": self.listens.first(),
+            "listens": self.listens,
             "tunnel": tunnel,
             "pair": self.pair,
             "fingerprint": self.fingerprint,
@@ -228,6 +232,7 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
         if bound.url.starts_with("http://") {
             urls.http.push(bound.url.trim_end_matches('/').to_string());
         }
+        urls.listens.push(bound.listen.clone());
         announce(show, "http", &bound.url);
         let (server, file) = bound.split();
         files.push(file);
@@ -266,6 +271,7 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
             &mut servers,
         )
         .await?;
+        urls.listens.push(shown.clone());
         if let Some(addr) = shown.strip_prefix("tcp://") {
             urls.ssh.push(format!("ssh://git@{addr}"));
         }
@@ -470,10 +476,12 @@ mod tests {
             root: "/r".into(),
             http: vec!["http://127.0.0.1:1".into()],
             ssh: vec!["ssh://git@127.0.0.1:2".into()],
+            listens: vec!["tcp://127.0.0.1:1".into(), "tcp://127.0.0.1:2".into()],
             pair: None,
             fingerprint: None,
         };
         assert_eq!(urls.doc(None)["url"], "http://127.0.0.1:1");
+        assert_eq!(urls.doc(None)["listen"], "tcp://127.0.0.1:1");
         assert_eq!(
             urls.doc(Some("https://t.example"))["url"],
             "https://t.example"

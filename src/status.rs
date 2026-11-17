@@ -116,14 +116,32 @@ pub const VERSION: &str = concat!(
     ")"
 );
 
-/// `doc` with `schema` (1) and `podnet` (the version) when it is an object
-/// (E3): each JSON document of podnet has the two keys.
+/// `doc` with `schema` (1, unless it has one) and `podnet` (the version)
+/// when it is an object (E3): each JSON document of podnet has the two
+/// keys. A `ready` event also gets the keys of the endpoint (`url`,
+/// `listen`, `listens`; GitHub #641, T-451).
 pub fn stamped(mut doc: Value) -> Value {
+    if doc["event"] == "ready" {
+        doc = crate::instances::envelope(doc);
+    }
     if let Some(map) = doc.as_object_mut() {
-        map.insert("schema".into(), json!(1));
+        map.entry("schema").or_insert(json!(1));
         map.insert("podnet".into(), json!(VERSION));
     }
     doc
+}
+
+/// The JSON text `text` (a document of `pod-manual`), stamped as
+/// [`stamped`] does, in the pretty form with a newline. A text that is
+/// not JSON stays as it is.
+pub fn stamped_text(text: &str) -> String {
+    match serde_json::from_str::<Value>(text) {
+        Ok(doc) => match serde_json::to_string_pretty(&stamped(doc)) {
+            Ok(pretty) => pretty + "\n",
+            Err(_) => text.to_string(),
+        },
+        Err(_) => text.to_string(),
+    }
 }
 
 /// The status of this host.
