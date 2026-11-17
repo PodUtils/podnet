@@ -10581,3 +10581,13 @@ time through the one node: the step waited until its limit of 5 minutes, with no
 ```sh
 cargo test -p podnet --test relay_reverse
 ```
+
+## Correction
+
+2026-11-17: step 3 is written: `tests/relay_reverse.rs::two_sessions_at_the_same_time_through_one_node` (two sessions
+at the same time through one node to a TCP echo, each within 20 s). It passed 20 rounds of 20: it does not reproduce
+the hang. Each session gave its answer in 3 to 46 ms and ended after 15 s: the fake relay sends no Close when the
+node ends a session, so the operator ends at `EOF_IDLE` of `pod-relay` (15 s of no byte after the end of the input,
+by design, podnet issue 109). The real relay sends the Close: the first ssh of the live step ended in about 5 s. The
+test keeps 3 rounds. The cause of the hang waits for the logs of step 1.
+

@@ -438,3 +438,54 @@ async fn a_closed_channel_refuses_the_session() {
     assert!(format!("{err:#}").contains("gone"), "{err:#}");
     node.abort();
 }
+
+// T-478 (live 44147054834): two sessions at the same time through one node,
+// as two ssh with the node's ProxyCommand. Each ends within a limit, in each
+// round. The fake relay sends no Close when the node ends a session, so each
+// session ends at `EOF_IDLE` of pod-relay (15 s): 3 rounds, not more.
+#[tokio::test(flavor = "multi_thread")]
+async fn two_sessions_at_the_same_time_through_one_node() {
+    test_host::need_loopback!();
+    let (url, state) = fake_relay(None).await;
+    let target = Target::parse(&echo().await).unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    write_pair(
+        dir.path(),
+        NAME,
+        &url,
+        ms_from_now(Duration::from_secs(3600)),
+        "",
+    );
+    let pair = load(dir.path(), Some(NAME)).unwrap();
+    let node = tokio::spawn(async move { run_node(None, pair, &target).await });
+    wait_for_node(&state, 1).await;
+    let relay = Relay::new(&url, None).unwrap();
+    for round in 0..3 {
+        let mut sessions = Vec::new();
+        for i in 0..2 {
+            let relay = relay.clone();
+            sessions.push(tokio::spawn(async move {
+                let (ours, theirs) = tokio::io::duplex(1 << 16);
+                let session = tokio::spawn(async move {
+                    let (read, write) = tokio::io::split(theirs);
+                    connect(&relay, NAME, CONNECT_TOKEN, read, write).await
+                });
+                let (mut read, mut write) = tokio::io::split(ours);
+                let word = format!("session-{i}");
+                write.write_all(word.as_bytes()).await.unwrap();
+                let mut reply = vec![0u8; word.len()];
+                read.read_exact(&mut reply).await.unwrap();
+                assert_eq!(reply, word.as_bytes());
+                drop((read, write));
+                let _ = session.await;
+            }));
+        }
+        for (i, session) in sessions.into_iter().enumerate() {
+            tokio::time::timeout(Duration::from_secs(20), session)
+                .await
+                .unwrap_or_else(|_| panic!("round {round}: session {i} hung"))
+                .unwrap();
+        }
+    }
+    node.abort();
+}
