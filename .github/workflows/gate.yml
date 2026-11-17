@@ -85,9 +85,10 @@ jobs:
             exit 1
           fi
       # T-451 step 3: the contracts of the JSON documents (tests/contracts.rs)
-      # on the static release binary that the lane runs.
+      # on the static release binary that the lane runs, at its build path:
+      # autostart add refuses a binary in a temporary directory (/var/tmp).
       - name: The contracts on the release binary
-        run: PODNET_TEST_BINARY=/var/tmp/lane/podnet cargo test --locked --test contracts
+        run: PODNET_TEST_BINARY="$PWD/target/x86_64-unknown-linux-musl/release/podnet" cargo test --locked --test contracts
       # The rows of the lane, for the notes of a release (release.yml,
       # scripts/gate-notes.sh).
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
