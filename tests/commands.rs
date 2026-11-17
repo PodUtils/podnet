@@ -718,9 +718,31 @@ fn bench_counts_http_errors() {
     assert_eq!(doc["ok"], 0, "{doc}");
     assert_eq!(doc["first_error"], "HTTP 404", "{doc}");
     assert!(doc["latency_ms"]["p50"].is_null(), "{doc}");
+    // GitHub #639: the exit code is 1, and the help names it.
+    assert_eq!(out.status.code(), Some(1));
+    let help = text(&env.run(&["bench", "--help"]));
+    assert!(help.contains("the exit code is 1"), "{help}");
     // A URL that is not http gives a usage error.
     let out = env.run(&["bench", "ftp://x/"]);
     assert_eq!(out.status.code(), Some(64));
+}
+
+/// GitHub #638: `forward --dns` at an address in use prints no line of the
+/// door and exits 69.
+#[test]
+fn forward_dns_at_an_address_in_use_exits_69() {
+    test_host::need_loopback!();
+    let env = Env::new();
+    let busy = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+    let busy = busy.local_addr().unwrap().to_string();
+    let out = env
+        .cmd(&["--no-proxy", "forward", "--dns", &busy, "--run-for", "5"])
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(69), "{err}");
+    let shown = String::from_utf8_lossy(&out.stdout);
+    assert!(!shown.contains("DNS"), "no line of the door: {shown}");
 }
 
 /// GitHub #643: `serve --check --local` checks the directory and each
