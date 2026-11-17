@@ -2053,7 +2053,7 @@ Operators of restricted hosts need the flag: the fresh `*.trycloudflare.com` nam
 
 ## Premise
 
-- `src/cli/opts.rs:59-61` declares it (`global = true`); `src/cli/opts.rs:174` sets `config.verify`.
+- `src/cli/opts.rs:61-63` declares it (`global = true`); `src/cli/opts.rs:177` sets `config.verify`.
 - `src/cli/cmd/run.rs:23,69` read `config.verify` and gate `verify_accepting`; `PodUtils/podnet@7fe60e0:src/tunnel.rs:1182`
   runs the fetch. `crates/podnet-core/src/net.rs` takes `no_tls_verify` from the ingress rule. The two flags share no state.
 - `grep -n -e '--no-verify' README.md docs/*.md` finds nothing. `wants_verify` (`PodUtils/podnet@7fe60e0:src/tunnel.rs:1172`) has no caller.
@@ -2095,7 +2095,7 @@ has `--masque-endpoint`; `tunnel` has none.
 ## Premise
 
 - `warp_targets` builds the client with no `with_masque` (`PodUtils/podnet@7fe60e0:src/tunnel.rs:827-838`). Neither
-  `TunnelOpts` (`src/cli/opts.rs:21-106`) nor `TunnelArgs` has the flag. `with_masque` exists
+  `TunnelOpts` (`src/cli/opts.rs:21-109`) nor `TunnelArgs` has the flag. `with_masque` exists
   (src/warp/mod.rs:264 at `9c1fc4b`); `warp` uses it (`src/cli/cmd/warp/client.rs:67-74`).
 - `open_on` (src/warp/mod.rs:762-791 at `9c1fc4b`) uses `endpoint_order` (`:103-124`): the record order, IPv4 first.
   `has_default_route(true)` (v6) only decides whether the IPv6 door is included.
@@ -2106,7 +2106,7 @@ has `--masque-endpoint`; `tunnel` has none.
 1. Fix: in the `endpoint == None` branch, with no IPv4 default route (`has_default_route(false)`) and no
    won door, put the IPv6 door first. Dual-stack keeps the order. Log the family of a failed door.
 2. Flag: `--masque-endpoint IP:PORT` in `TunnelOpts`, through `Config`, to `warp_targets`
-   (as `--warp-identity`, `src/cli/opts.rs:173`, `src/tunnel.rs:157,262`).
+   (as `--warp-identity`, `src/cli/opts.rs:176`, `src/tunnel.rs:157,262`).
 
 ## Decision
 
@@ -2360,7 +2360,7 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 
 ## Premise
 
-- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:39-49`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
+- `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:41-51`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
 - `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:259-264`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
@@ -2924,7 +2924,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 ## Premise
 
 - `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:66-112`. `RelayCommand::Node` has it: `:61-62`.
-- `detach_of` has no arm for it: `src/cli/opts.rs:262-271`. `connect` has one: `:253`.
+- `detach_of` has no arm for it: `src/cli/opts.rs:265-274`. `connect` has one: `:256`.
 - Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:277`, `:289`. `connect -L` logs and returns:
   `src/cli/cmd/connect.rs:208-211`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:283`.
@@ -3010,7 +3010,7 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 
 ## Premise
 
-- `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:115` (field), `:125` (`root_404: false`),
+- `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:118` (field), `:128` (`root_404: false`),
   `src/cli/cmd/run.rs:43` (read).
 - `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:225`.
 - The warn branch: `PodUtils/podnet@7fe60e0:src/tunnel.rs:1218-1222`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
@@ -9586,7 +9586,7 @@ cargo todo check   # a done defect with no test is a fault
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -9611,6 +9611,19 @@ promises of the help.
 ```sh
 cargo test -p podnet --test contracts
 ```
+
+## Correction
+
+2026-11-17: step 1 is a unit test of the binary, not tests/contracts.rs: the integration tests cannot build the
+command tree. `src/cli/help_tests.rs::each_flag_that_a_help_names_exists` walks the tree. Each `--flag` of a long help
+must be a flag of the command, of a command above it (a global flag) or below it, or of a command that the same
+sentence names before the flag; a flag of another program ("magic-wormhole's --code-length") is allowed. The examples
+of the manual parse already (`each_example_of_the_manual_parses`). Commit 43e53c0b: the test found 69 false references
+(the global `--egress` named `--transport` and `--relay` on about 50 commands; the shared edge flags named `--config`;
+`--no-restart` named `--stop-after` and `--idle-secs`; 6 small texts). Each text now names the command that owns the
+flag, or names no flag; the test passes. Steps 2 and 3 (the schemas of the JSON documents, the run on the release
+binary) are open; the Prove names tests/contracts.rs for step 2.
+
 
 # T-452: Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS
 
