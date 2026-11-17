@@ -67,7 +67,7 @@ pub(crate) struct Cli {
     #[arg(long, global = true)]
     pub(crate) no_proxy: bool,
     /// The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-    /// --proxy), relay or relay:URL (as --transport relay and --relay). With
+    /// --proxy), relay or relay:URL (as tunnel --transport relay --relay URL). With
     /// podnet pod, each --egress is one -x hop of the chain, in its order (also
     /// tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a chain
     /// (TOP over BELOW) are for podnet forward --network, podnet route and
@@ -243,7 +243,7 @@ pub(crate) enum Command {
         #[command(subcommand)]
         command: AgentCommand,
     },
-    /// List the instances that run in the background (--detach).
+    /// List the instances that run in the background (for example tunnel --detach).
     Ps {
         /// Print one JSON document: {"instances": [...]}.
         #[arg(long)]

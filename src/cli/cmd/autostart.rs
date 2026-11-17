@@ -30,7 +30,7 @@ pub(crate) enum AutostartCommand {
         #[arg(last = true, required_unless_present = "from")]
         args: Vec<String>,
         /// Take the command and its arguments from the detached instance
-        /// INSTANCE (podnet ps), with no --detach options.
+        /// INSTANCE (podnet ps), with no options of the detach.
         #[arg(long, value_name = "INSTANCE", conflicts_with = "args")]
         from: Option<String>,
         /// Install no unit and no crontab line: write the entry, print the

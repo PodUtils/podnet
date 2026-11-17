@@ -91,7 +91,7 @@ pub(crate) struct CarrierArgs {
     /// --seal serves sealed streams only, and a dialer with --seal opens sealed
     /// streams only. A suite that does not match exits 78; a key that is
     /// refused exits 77. The query keys `pad=on` and `compress=snappy` need it.
-    /// The local door (`dial --listen`) and the control socket do not seal yet.
+    /// The local door (`link dial --listen`) and the control socket do not seal yet.
     #[arg(long)]
     pub(crate) seal: bool,
     /// The options of the sealed records, from the query of the address.
@@ -574,11 +574,11 @@ pub(crate) enum LinkCommand {
     },
     /// Show the local view of a mesh: the nodes (fingerprint, name, last seq,
     /// hops, services) and the edges (peer, cost, last probe, state). The
-    /// announcements of a listener with --announce taught them. Ask the control
+    /// announcements of a listener (link listen --announce) taught them. Ask the control
     /// socket of that listener (mode 0600; there is no network endpoint).
     /// --json prints the document; --metrics prints the counters as Prometheus
     /// text. The view holds 4096 nodes, 64 edges for each node and 256 KiB;
-    /// `truncated` counts what was cut. A listener without --announce exits 69;
+    /// `truncated` counts what was cut. A listener (link listen) without --announce exits 69;
     /// a wrong token exits 77.
     Mesh {
         /// The control socket of the listener: unix:/PATH.

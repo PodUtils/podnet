@@ -310,3 +310,104 @@ fn a_command_with_no_scenario_is_experimental_in_its_help() {
     assert!(!help(tested).contains("Experimental: "), "{}", help(tested));
     assert!(EXPERIMENTAL.starts_with("Experimental: "));
 }
+
+/// T-451 (GitHub #612, #647): each `--flag` that a long help names is a flag
+/// of the command, of a command above it (a global flag) or below it, or of
+/// a command that the same line names before the flag ("as share --password
+/// does", "podnet doctor --agent"). A help that names a flag that the
+/// command refuses is a false promise.
+#[test]
+fn each_flag_that_a_help_names_exists() {
+    use std::collections::{BTreeMap, BTreeSet};
+    fn flags(cmd: &clap::Command) -> BTreeSet<String> {
+        cmd.get_arguments()
+            .flat_map(|a| {
+                a.get_long()
+                    .into_iter()
+                    .chain(a.get_all_aliases().unwrap_or_default())
+                    .map(str::to_string)
+            })
+            .collect()
+    }
+    // Each command by its path ("warp tun"), and its flags with those of
+    // each command below it.
+    fn index(
+        cmd: &clap::Command,
+        path: &str,
+        out: &mut BTreeMap<String, BTreeSet<String>>,
+    ) -> BTreeSet<String> {
+        let mut all = flags(cmd);
+        for sub in cmd.get_subcommands().filter(|s| s.get_name() != "help") {
+            let p = format!("{path} {}", sub.get_name()).trim().to_string();
+            all.extend(index(sub, &p, out));
+        }
+        out.insert(path.to_string(), all.clone());
+        all
+    }
+    let mut root = Cli::command();
+    root.build();
+    let mut commands = BTreeMap::new();
+    index(&root, "", &mut commands);
+    let flag = regex::Regex::new(r"--([a-z][a-z0-9]*(?:-[a-z0-9]+)*)").unwrap();
+    fn walk(
+        cmd: &clap::Command,
+        path: &str,
+        above: &BTreeSet<String>,
+        commands: &BTreeMap<String, BTreeSet<String>>,
+        flag: &regex::Regex,
+        faults: &mut Vec<String>,
+    ) {
+        let mut own = commands[path].clone();
+        own.extend(above.iter().cloned());
+        let help = cmd.clone().render_long_help().to_string();
+        // One text for each paragraph: clap wraps the lines of a help.
+        for para in help.split("\n\n") {
+            let line = para.split_whitespace().collect::<Vec<_>>().join(" ");
+            for m in flag.captures_iter(&line) {
+                let name = &m[1];
+                if own.contains(name) || name == "help" || name == "version" {
+                    continue;
+                }
+                // The sentence before the flag.
+                let at = m.get(0).unwrap().start();
+                let sentence = &line[line[..at].rfind(". ").map_or(0, |i| i + 2)..at];
+                // A flag of another program: "magic-wormhole's --code-length".
+                if sentence.ends_with("'s ") {
+                    continue;
+                }
+                // A command that the sentence names, as whole words.
+                let named = commands.iter().any(|(p, f)| {
+                    !p.is_empty()
+                        && f.contains(name)
+                        && regex::Regex::new(&format!(
+                            r"(^|[^a-z-]){}([^a-z-]|$)",
+                            regex::escape(p)
+                        ))
+                        .unwrap()
+                        .is_match(sentence)
+                });
+                if !named {
+                    faults.push(format!("podnet {path}: --{name}: {line}"));
+                }
+            }
+        }
+        let globals: BTreeSet<String> = cmd
+            .get_arguments()
+            .filter(|a| a.is_global_set())
+            .filter_map(|a| a.get_long().map(str::to_string))
+            .chain(above.iter().cloned())
+            .collect();
+        for sub in cmd.get_subcommands().filter(|s| s.get_name() != "help") {
+            let p = format!("{path} {}", sub.get_name()).trim().to_string();
+            walk(sub, &p, &globals, commands, flag, faults);
+        }
+    }
+    let mut faults = Vec::new();
+    walk(&root, "", &BTreeSet::new(), &commands, &flag, &mut faults);
+    assert!(
+        faults.is_empty(),
+        "{} flags that the command does not have:\n{}",
+        faults.len(),
+        faults.join("\n")
+    );
+}

@@ -117,7 +117,7 @@ pub(crate) struct ServeArgs {
     /// the instances. The peer speaks HTTP on the stream (`link dial --service
     /// SERVICE`, or `forward -L PORT=peer:FP/SERVICE`). Index, range and HEAD
     /// work as on any listener; --list, --spa, --tar, --users and --pin apply.
-    /// The `--allow` grant of the peer must name SERVICE. It makes no tunnel.
+    /// The grant of the peer in the allow list of link listen --allow must name SERVICE. It makes no tunnel.
     #[arg(long, value_name = "ROAD", value_parser = parse_ingress)]
     ingress: Option<IngressArg>,
     /// Serve the files to one peer of a link, on a stream of its service:

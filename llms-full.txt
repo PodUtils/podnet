@@ -90,7 +90,8 @@ SYNOPSIS
     agent        One command for a sandbox with basic networking: test what
                  works, start WARP when it is needed, expose ports, and print
                  what works now and the commands to use
-    ps           List the instances that run in the background (--detach)
+    ps           List the instances that run in the background (for example
+                 tunnel --detach)
     stop         Stop a detached instance: SIGTERM, then SIGKILL after
                  --timeout
     logs         Print the log of a detached instance
@@ -117,8 +118,8 @@ SYNOPSIS
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -206,10 +207,10 @@ podnet tunnel
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -219,11 +220,12 @@ podnet tunnel
         Edge connections (1-8), for redundancy: when one is lost, the others
         carry the visitors. The edge chooses the connection of each request,
         and one request uses one connection, so more connections do not make
-        one transfer faster. Default: ha-connections of --config, else 2.
+        one transfer faster. Default: ha-connections of the file of tunnel
+        --config, else 2.
     --protocol PROTOCOL
         Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto (quic,
-        then http2). Default: protocol of --config, else auto. Values: auto,
-        quic, http2, h2.
+        then http2). Default: protocol of the file of tunnel --config, else
+        auto. Values: auto, quic, http2, h2.
     --transport TRANSPORT
         How to reach the edge: auto (try 7844, fall back to WARP on 443),
         direct (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2
@@ -262,8 +264,8 @@ podnet tunnel
         Each visitor must give this user (HTTP Basic), with the password of
         --auth-password-file. A visitor with no right credential gets 401 and
         reaches no origin; the origin does not get the header. For HTTP origins
-        and --forward (podnet connect --auth-user); not for --tcp. Variable:
-        PODNET_AUTH_USER.
+        and tunnel --forward (podnet connect --auth-user); not for tunnel
+        --tcp. Variable: PODNET_AUTH_USER.
     --auth-password-file FILE
         The file with the password of --auth-user on its first line (mode
         0600). Variable: PODNET_AUTH_PASSWORD_FILE.
@@ -326,8 +328,8 @@ podnet tunnel
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -418,10 +420,10 @@ podnet serve
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -431,11 +433,12 @@ podnet serve
         Edge connections (1-8), for redundancy: when one is lost, the others
         carry the visitors. The edge chooses the connection of each request,
         and one request uses one connection, so more connections do not make
-        one transfer faster. Default: ha-connections of --config, else 2.
+        one transfer faster. Default: ha-connections of the file of tunnel
+        --config, else 2.
     --protocol PROTOCOL
         Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto (quic,
-        then http2). Default: protocol of --config, else auto. Values: auto,
-        quic, http2, h2.
+        then http2). Default: protocol of the file of tunnel --config, else
+        auto. Values: auto, quic, http2, h2.
     --transport TRANSPORT
         How to reach the edge: auto (try 7844, fall back to WARP on 443),
         direct (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2
@@ -474,8 +477,8 @@ podnet serve
         Each visitor must give this user (HTTP Basic), with the password of
         --auth-password-file. A visitor with no right credential gets 401 and
         reaches no origin; the origin does not get the header. For HTTP origins
-        and --forward (podnet connect --auth-user); not for --tcp. Variable:
-        PODNET_AUTH_USER.
+        and tunnel --forward (podnet connect --auth-user); not for tunnel
+        --tcp. Variable: PODNET_AUTH_USER.
     --auth-password-file FILE
         The file with the password of --auth-user on its first line (mode
         0600). Variable: PODNET_AUTH_PASSWORD_FILE.
@@ -539,7 +542,8 @@ podnet serve
         the instances. The peer speaks HTTP on the stream (`link dial --service
         SERVICE`, or `forward -L PORT=peer:FP/SERVICE`). Index, range and HEAD
         work as on any listener; --list, --spa, --tar, --users and --pin apply.
-        The `--allow` grant of the peer must name SERVICE. It makes no tunnel.
+        The grant of the peer in the allow list of link listen --allow must
+        name SERVICE. It makes no tunnel.
     --at peer:FP/SERVICE
         Serve the files to one peer of a link, on a stream of its service:
         peer:FINGERPRINT/SERVICE. The peer opens the stream (podnet link dial
@@ -589,8 +593,8 @@ podnet serve
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -709,10 +713,10 @@ podnet share
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -722,11 +726,12 @@ podnet share
         Edge connections (1-8), for redundancy: when one is lost, the others
         carry the visitors. The edge chooses the connection of each request,
         and one request uses one connection, so more connections do not make
-        one transfer faster. Default: ha-connections of --config, else 2.
+        one transfer faster. Default: ha-connections of the file of tunnel
+        --config, else 2.
     --protocol PROTOCOL
         Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto (quic,
-        then http2). Default: protocol of --config, else auto. Values: auto,
-        quic, http2, h2.
+        then http2). Default: protocol of the file of tunnel --config, else
+        auto. Values: auto, quic, http2, h2.
     --transport TRANSPORT
         How to reach the edge: auto (try 7844, fall back to WARP on 443),
         direct (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2
@@ -765,8 +770,8 @@ podnet share
         Each visitor must give this user (HTTP Basic), with the password of
         --auth-password-file. A visitor with no right credential gets 401 and
         reaches no origin; the origin does not get the header. For HTTP origins
-        and --forward (podnet connect --auth-user); not for --tcp. Variable:
-        PODNET_AUTH_USER.
+        and tunnel --forward (podnet connect --auth-user); not for tunnel
+        --tcp. Variable: PODNET_AUTH_USER.
     --auth-password-file FILE
         The file with the password of --auth-user on its first line (mode
         0600). Variable: PODNET_AUTH_PASSWORD_FILE.
@@ -835,8 +840,8 @@ podnet share
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -916,8 +921,8 @@ podnet git
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -982,10 +987,10 @@ podnet git serve
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -995,11 +1000,12 @@ podnet git serve
         Edge connections (1-8), for redundancy: when one is lost, the others
         carry the visitors. The edge chooses the connection of each request,
         and one request uses one connection, so more connections do not make
-        one transfer faster. Default: ha-connections of --config, else 2.
+        one transfer faster. Default: ha-connections of the file of tunnel
+        --config, else 2.
     --protocol PROTOCOL
         Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto (quic,
-        then http2). Default: protocol of --config, else auto. Values: auto,
-        quic, http2, h2.
+        then http2). Default: protocol of the file of tunnel --config, else
+        auto. Values: auto, quic, http2, h2.
     --transport TRANSPORT
         How to reach the edge: auto (try 7844, fall back to WARP on 443),
         direct (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2
@@ -1038,8 +1044,8 @@ podnet git serve
         Each visitor must give this user (HTTP Basic), with the password of
         --auth-password-file. A visitor with no right credential gets 401 and
         reaches no origin; the origin does not get the header. For HTTP origins
-        and --forward (podnet connect --auth-user); not for --tcp. Variable:
-        PODNET_AUTH_USER.
+        and tunnel --forward (podnet connect --auth-user); not for tunnel
+        --tcp. Variable: PODNET_AUTH_USER.
     --auth-password-file FILE
         The file with the password of --auth-user on its first line (mode
         0600). Variable: PODNET_AUTH_PASSWORD_FILE.
@@ -1108,8 +1114,8 @@ podnet git serve
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -1187,8 +1193,8 @@ podnet git init
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -1253,8 +1259,8 @@ podnet git urls
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -1359,8 +1365,8 @@ podnet send
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -1464,8 +1470,8 @@ podnet receive
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -1555,10 +1561,10 @@ podnet connect
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -1578,8 +1584,8 @@ podnet connect
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -1636,8 +1642,8 @@ podnet expose
         tcp://host:port or unix:/path; a URL exits 64 and names the HOST:PORT
         to give.
     [ARGS]...
-        More arguments for the command that runs (after --): for example
-        --detach, a pair name or a --switch.
+        More arguments for the command that runs (after --): for example tunnel
+        --detach, the pair name of relay node, or net proxy --switch.
 
   Options:
     --via VIA
@@ -1664,8 +1670,8 @@ podnet expose
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -1764,8 +1770,8 @@ podnet forward
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -1898,10 +1904,10 @@ podnet route
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -1921,8 +1927,8 @@ podnet route
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2078,10 +2084,10 @@ podnet ssh-relay
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -2101,8 +2107,8 @@ podnet ssh-relay
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2184,8 +2190,8 @@ podnet bench
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2253,8 +2259,8 @@ podnet exit
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2312,8 +2318,8 @@ podnet ports
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2373,8 +2379,8 @@ podnet components
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2436,8 +2442,8 @@ podnet bug-report
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2503,8 +2509,8 @@ podnet completions
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2569,8 +2575,8 @@ podnet update
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2638,8 +2644,8 @@ podnet qr
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2696,10 +2702,10 @@ podnet demo
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -2709,11 +2715,12 @@ podnet demo
         Edge connections (1-8), for redundancy: when one is lost, the others
         carry the visitors. The edge chooses the connection of each request,
         and one request uses one connection, so more connections do not make
-        one transfer faster. Default: ha-connections of --config, else 2.
+        one transfer faster. Default: ha-connections of the file of tunnel
+        --config, else 2.
     --protocol PROTOCOL
         Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto (quic,
-        then http2). Default: protocol of --config, else auto. Values: auto,
-        quic, http2, h2.
+        then http2). Default: protocol of the file of tunnel --config, else
+        auto. Values: auto, quic, http2, h2.
     --transport TRANSPORT
         How to reach the edge: auto (try 7844, fall back to WARP on 443),
         direct (port 7844), warp (carried on TCP 443) or relay. relay is HTTP/2
@@ -2752,8 +2759,8 @@ podnet demo
         Each visitor must give this user (HTTP Basic), with the password of
         --auth-password-file. A visitor with no right credential gets 401 and
         reaches no origin; the origin does not get the header. For HTTP origins
-        and --forward (podnet connect --auth-user); not for --tcp. Variable:
-        PODNET_AUTH_USER.
+        and tunnel --forward (podnet connect --auth-user); not for tunnel
+        --tcp. Variable: PODNET_AUTH_USER.
     --auth-password-file FILE
         The file with the password of --auth-user on its first line (mode
         0600). Variable: PODNET_AUTH_PASSWORD_FILE.
@@ -2794,8 +2801,8 @@ podnet demo
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2875,8 +2882,8 @@ podnet net
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2929,8 +2936,8 @@ podnet net demo
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -2991,8 +2998,8 @@ podnet net doctor
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3069,8 +3076,8 @@ podnet net shim
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3127,8 +3134,8 @@ podnet net addresses
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3185,10 +3192,10 @@ podnet net proxy
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --listen LISTEN
         Where to accept proxy clients: unix:/path or tcp://[bind:]port.
         Default: unix:/tmp/podnet-vnet.socks.
@@ -3252,8 +3259,8 @@ podnet net proxy
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3335,10 +3342,10 @@ podnet net switch
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -3358,8 +3365,8 @@ podnet net switch
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3436,8 +3443,8 @@ podnet net tailscale
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3506,8 +3513,8 @@ podnet net socksify
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3578,8 +3585,8 @@ podnet net passwd-shim
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3648,8 +3655,8 @@ podnet net ts-shims
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3834,8 +3841,8 @@ podnet warp
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -3961,8 +3968,8 @@ podnet warp register
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -4090,8 +4097,8 @@ podnet warp status
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -4226,8 +4233,8 @@ podnet warp license
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -4353,8 +4360,8 @@ podnet warp rotate
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -4480,8 +4487,8 @@ podnet warp delete
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -4610,8 +4617,8 @@ podnet warp probe
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -4744,8 +4751,8 @@ podnet warp exit
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -4899,8 +4906,8 @@ podnet warp export
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -5042,8 +5049,8 @@ podnet warp scan
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -5116,10 +5123,10 @@ podnet warp forward
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --identity PATH
         The file that keeps the device and its MASQUE key, so that each run
         uses the same device. Default: warp.json in the state directory (see
@@ -5210,8 +5217,8 @@ podnet warp forward
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -5325,10 +5332,10 @@ podnet warp proxy
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --identity PATH
         The file that keeps the device and its MASQUE key, so that each run
         uses the same device. Default: warp.json in the state directory (see
@@ -5419,8 +5426,8 @@ podnet warp proxy
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -5594,8 +5601,8 @@ podnet warp up
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -5736,8 +5743,8 @@ podnet warp down
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -5870,8 +5877,8 @@ podnet warp env
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -5949,10 +5956,10 @@ podnet warp exec
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --join NAME
         Run the program in the pod of the instance NAME (warp exec with
         --detach or --name): it reaches the loopback listeners and the names of
@@ -6049,8 +6056,8 @@ podnet warp exec
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -6198,8 +6205,8 @@ podnet warp shell
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -6349,8 +6356,8 @@ podnet warp nc
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -6496,8 +6503,8 @@ podnet warp ssh-config
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -6572,10 +6579,10 @@ podnet warp tun
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --identity PATH
         The file that keeps the device and its MASQUE key, so that each run
         uses the same device. Default: warp.json in the state directory (see
@@ -6666,8 +6673,8 @@ podnet warp tun
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -6813,8 +6820,8 @@ podnet warp run
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -6888,8 +6895,8 @@ podnet wg
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -6969,8 +6976,8 @@ podnet wg serve
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -7038,8 +7045,8 @@ podnet relay
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -7099,8 +7106,8 @@ podnet relay pair
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -7189,10 +7196,10 @@ podnet relay node
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --relay URL
         The relay for a new pair. A pair keeps the relay that made it. Default:
         https://tcp.ssh.relay.ajam.dev. Variable: PODNET_RELAY.
@@ -7215,8 +7222,8 @@ podnet relay node
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -7312,10 +7319,10 @@ podnet relay connect
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --relay URL
         The relay for a new pair. A pair keeps the relay that made it. Default:
         https://tcp.ssh.relay.ajam.dev. Variable: PODNET_RELAY.
@@ -7338,8 +7345,8 @@ podnet relay connect
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -7408,8 +7415,8 @@ podnet relay stop
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -7476,13 +7483,13 @@ podnet link
                answer, status shows the record
     mesh       Show the local view of a mesh: the nodes (fingerprint, name,
                last seq, hops, services) and the edges (peer, cost, last probe,
-               state). The announcements of a listener with --announce taught
-               them. Ask the control socket of that listener (mode 0600; there
-               is no network endpoint). --json prints the document; --metrics
-               prints the counters as Prometheus text. The view holds 4096
-               nodes, 64 edges for each node and 256 KiB; `truncated` counts
-               what was cut. A listener without --announce exits 69; a wrong
-               token exits 77
+               state). The announcements of a listener (link listen --announce)
+               taught them. Ask the control socket of that listener (mode 0600;
+               there is no network endpoint). --json prints the document;
+               --metrics prints the counters as Prometheus text. The view holds
+               4096 nodes, 64 edges for each node and 256 KiB; `truncated`
+               counts what was cut. A listener (link listen) without --announce
+               exits 69; a wrong token exits 77
     close      Stop a link instance that runs in the background. First end each
                link of the instance through its control socket (the verb
                close-link), so that the peers get a GOAWAY; then SIGTERM, and
@@ -7521,8 +7528,8 @@ podnet link
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -7619,8 +7626,8 @@ podnet link listen
         --seal serves sealed streams only, and a dialer with --seal opens
         sealed streams only. A suite that does not match exits 78; a key that
         is refused exits 77. The query keys `pad=on` and `compress=snappy` need
-        it. The local door (`dial --listen`) and the control socket do not seal
-        yet.
+        it. The local door (`link dial --listen`) and the control socket do not
+        seal yet.
     --dns-server IP:PORT
         The dns carrier: the UDP address of the server (a resolver or the
         authoritative server of the zone) that a dial sends its queries to.
@@ -7664,16 +7671,17 @@ podnet link listen
         refuses each stream (the opener exits 69).
     --service NAME=TARGET
         A service of this listener: NAME=TARGET, with a NAME of 1 to 32
-        characters from A-Z a-z 0-9 . _ - and a TARGET as in --to. A peer
-        reaches it with `link dial --service NAME` or `peer:FINGERPRINT/NAME`.
-        The service `socks5` takes no target: `--service socks5` makes this end
-        the server side of SOCKS5 (CONNECT, and UDP as frames on the stream
-        with the command 0x83; a name resolves here; BIND listens here on the
-        loopback or --socks-bind-ip; command 3 gets reply 7). The service
-        `http` takes no target either: `--service http` makes this end an HTTP
-        proxy (`CONNECT` and absolute form, one request for each stream, 8 KiB
-        of head at most). A target is the name of another service of this
-        listener; there is no DNS lookup. Repeat it: 16 services at most.
+        characters from A-Z a-z 0-9 . _ - and a TARGET as in link listen --to.
+        A peer reaches it with `link dial --service NAME` or
+        `peer:FINGERPRINT/NAME`. The service `socks5` takes no target:
+        `--service socks5` makes this end the server side of SOCKS5 (CONNECT,
+        and UDP as frames on the stream with the command 0x83; a name resolves
+        here; BIND listens here on the loopback or --socks-bind-ip; command 3
+        gets reply 7). The service `http` takes no target either: `--service
+        http` makes this end an HTTP proxy (`CONNECT` and absolute form, one
+        request for each stream, 8 KiB of head at most). A target is the name
+        of another service of this listener; there is no DNS lookup. Repeat it:
+        16 services at most.
         A TARGET `exec:/ABS/PATH` runs a program for each stream (no shell):
         its stdin and stdout are the stream and its stderr goes to the log.
         Give its arguments with --exec-arg, its environment with --exec-env
@@ -7735,10 +7743,10 @@ podnet link listen
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -7758,8 +7766,8 @@ podnet link listen
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -7866,8 +7874,8 @@ podnet link dial
         --seal serves sealed streams only, and a dialer with --seal opens
         sealed streams only. A suite that does not match exits 78; a key that
         is refused exits 77. The query keys `pad=on` and `compress=snappy` need
-        it. The local door (`dial --listen`) and the control socket do not seal
-        yet.
+        it. The local door (`link dial --listen`) and the control socket do not
+        seal yet.
     --dns-server IP:PORT
         The dns carrier: the UDP address of the server (a resolver or the
         authoritative server of the zone) that a dial sends its queries to.
@@ -7964,8 +7972,8 @@ podnet link dial
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -8098,8 +8106,8 @@ podnet link connect
         --seal serves sealed streams only, and a dialer with --seal opens
         sealed streams only. A suite that does not match exits 78; a key that
         is refused exits 77. The query keys `pad=on` and `compress=snappy` need
-        it. The local door (`dial --listen`) and the control socket do not seal
-        yet.
+        it. The local door (`link dial --listen`) and the control socket do not
+        seal yet.
     --dns-server IP:PORT
         The dns carrier: the UDP address of the server (a resolver or the
         authoritative server of the zone) that a dial sends its queries to.
@@ -8135,16 +8143,17 @@ podnet link connect
         that the list does not hold exits 77.
     --service NAME=TARGET
         A service of this listener: NAME=TARGET, with a NAME of 1 to 32
-        characters from A-Z a-z 0-9 . _ - and a TARGET as in --to. A peer
-        reaches it with `link dial --service NAME` or `peer:FINGERPRINT/NAME`.
-        The service `socks5` takes no target: `--service socks5` makes this end
-        the server side of SOCKS5 (CONNECT, and UDP as frames on the stream
-        with the command 0x83; a name resolves here; BIND listens here on the
-        loopback or --socks-bind-ip; command 3 gets reply 7). The service
-        `http` takes no target either: `--service http` makes this end an HTTP
-        proxy (`CONNECT` and absolute form, one request for each stream, 8 KiB
-        of head at most). A target is the name of another service of this
-        listener; there is no DNS lookup. Repeat it: 16 services at most.
+        characters from A-Z a-z 0-9 . _ - and a TARGET as in link listen --to.
+        A peer reaches it with `link dial --service NAME` or
+        `peer:FINGERPRINT/NAME`. The service `socks5` takes no target:
+        `--service socks5` makes this end the server side of SOCKS5 (CONNECT,
+        and UDP as frames on the stream with the command 0x83; a name resolves
+        here; BIND listens here on the loopback or --socks-bind-ip; command 3
+        gets reply 7). The service `http` takes no target either: `--service
+        http` makes this end an HTTP proxy (`CONNECT` and absolute form, one
+        request for each stream, 8 KiB of head at most). A target is the name
+        of another service of this listener; there is no DNS lookup. Repeat it:
+        16 services at most.
         A TARGET `exec:/ABS/PATH` runs a program for each stream (no shell):
         its stdin and stdout are the stream and its stderr goes to the log.
         Give its arguments with --exec-arg, its environment with --exec-env
@@ -8208,10 +8217,10 @@ podnet link connect
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end of the command (--run-for,
-        and --stop-after or --idle-secs of share). A quick tunnel gets a new
-        URL; podnet ps shows it. With --name and no --detach, there is no
-        supervisor.
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -8231,8 +8240,8 @@ podnet link connect
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -8324,8 +8333,8 @@ podnet link status
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -8358,11 +8367,12 @@ podnet link status
 podnet link mesh
   Show the local view of a mesh: the nodes (fingerprint, name, last seq, hops,
   services) and the edges (peer, cost, last probe, state). The announcements of
-  a listener with --announce taught them. Ask the control socket of that
-  listener (mode 0600; there is no network endpoint). --json prints the
+  a listener (link listen --announce) taught them. Ask the control socket of
+  that listener (mode 0600; there is no network endpoint). --json prints the
   document; --metrics prints the counters as Prometheus text. The view holds
   4096 nodes, 64 edges for each node and 256 KiB; `truncated` counts what was
-  cut. A listener without --announce exits 69; a wrong token exits 77.
+  cut. A listener (link listen) without --announce exits 69; a wrong token
+  exits 77.
 
   Usage: podnet link mesh [OPTIONS]
 
@@ -8398,8 +8408,8 @@ podnet link mesh
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -8463,8 +8473,8 @@ podnet link close
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -8527,8 +8537,8 @@ podnet link reconnect
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -8589,8 +8599,8 @@ podnet link rotate
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -8673,8 +8683,8 @@ podnet link carriers
         --seal serves sealed streams only, and a dialer with --seal opens
         sealed streams only. A suite that does not match exits 78; a key that
         is refused exits 77. The query keys `pad=on` and `compress=snappy` need
-        it. The local door (`dial --listen`) and the control socket do not seal
-        yet.
+        it. The local door (`link dial --listen`) and the control socket do not
+        seal yet.
     --dns-server IP:PORT
         The dns carrier: the UDP address of the server (a resolver or the
         authoritative server of the zone) that a dial sends its queries to.
@@ -8722,8 +8732,8 @@ podnet link carriers
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -8927,8 +8937,8 @@ podnet pod
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -8997,8 +9007,8 @@ podnet man
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9059,8 +9069,8 @@ podnet status
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9148,8 +9158,8 @@ podnet doctor
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9235,8 +9245,8 @@ podnet autostart
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9282,7 +9292,7 @@ podnet autostart add
   Options:
     --from INSTANCE
         Take the command and its arguments from the detached instance INSTANCE
-        (podnet ps), with no --detach options.
+        (podnet ps), with no options of the detach.
     --manual
         Install no unit and no crontab line: write the entry, print the line to
         run at login (for example in ~/.profile) and exit 0.
@@ -9305,8 +9315,8 @@ podnet autostart add
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9366,8 +9376,8 @@ podnet autostart remove
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9424,8 +9434,8 @@ podnet autostart list
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9486,8 +9496,8 @@ podnet autostart run
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9549,8 +9559,8 @@ podnet agent
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9613,8 +9623,8 @@ podnet agent up
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9672,8 +9682,8 @@ podnet agent down
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9729,8 +9739,8 @@ podnet agent status
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9759,7 +9769,7 @@ podnet agent status
     Give only one of --quiet, --verbose.
 
 podnet ps
-  List the instances that run in the background (--detach).
+  List the instances that run in the background (for example tunnel --detach).
 
   Usage: podnet ps [OPTIONS]
 
@@ -9785,8 +9795,8 @@ podnet ps
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9851,8 +9861,8 @@ podnet stop
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9917,8 +9927,8 @@ podnet logs
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,
@@ -9977,8 +9987,8 @@ podnet wait
         Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
     --egress SPEC
         The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as --transport relay and --relay). With
-        podnet pod, each --egress is one -x hop of the chain, in its order
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
         (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
         chain (TOP over BELOW) are for podnet forward --network, podnet route
         and podnet wg serve. With podnet link dial and podnet link connect,

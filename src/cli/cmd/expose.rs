@@ -34,7 +34,7 @@ pub(crate) struct ExposeArgs {
     #[arg(long = "as", value_name = "VIRT")]
     virt: Option<String>,
     /// More arguments for the command that runs (after --): for example
-    /// --detach, a pair name or a --switch.
+    /// tunnel --detach, the pair name of relay node, or net proxy --switch.
     #[arg(last = true, value_name = "ARGS")]
     rest: Vec<String>,
 }

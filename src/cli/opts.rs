@@ -30,11 +30,13 @@ pub(crate) struct TunnelOpts {
     /// Edge connections (1-8), for redundancy: when one is lost, the others
     /// carry the visitors. The edge chooses the connection of each request,
     /// and one request uses one connection, so more connections do not make
-    /// one transfer faster. Default: ha-connections of --config, else 2.
+    /// one transfer faster. Default: ha-connections of the file of
+    /// tunnel --config, else 2.
     #[arg(long, global = true, value_parser = clap::value_parser!(u8).range(1..=8))]
     pub(crate) ha_connections: Option<u8>,
     /// Edge protocol: quic (UDP 7844), http2 or h2 (TCP 7844), or auto
-    /// (quic, then http2). Default: protocol of --config, else auto.
+    /// (quic, then http2). Default: protocol of the file of tunnel --config,
+    /// else auto.
     #[arg(long, global = true, value_parser = ["auto", "quic", "http2", "h2"])]
     pub(crate) protocol: Option<String>,
     /// How to reach the edge: auto (try 7844, fall back to WARP on 443), direct
@@ -81,7 +83,8 @@ pub(crate) struct TunnelOpts {
     /// Each visitor must give this user (HTTP Basic), with the password of
     /// --auth-password-file. A visitor with no right credential gets 401
     /// and reaches no origin; the origin does not get the header. For HTTP
-    /// origins and --forward (podnet connect --auth-user); not for --tcp.
+    /// origins and tunnel --forward (podnet connect --auth-user); not for
+    /// tunnel --tcp.
     #[arg(
         long,
         value_name = "USER",
@@ -216,8 +219,8 @@ pub(crate) struct DetachArgs {
     pub(crate) replace: bool,
     /// Do not start the instance again when it ends. Without it, a supervisor
     /// starts it again with a backoff (1 s to 30 s). It does not start it after
-    /// exit 64 or 78, or after a planned end of the command (--run-for, and
-    /// --stop-after or --idle-secs of share). A quick tunnel gets a
+    /// exit 64 or 78. It does not start it after a planned end either (the
+    /// limit of the run time of the command, where it has one). A quick tunnel gets a
     /// new URL; podnet ps shows it. With --name and no --detach, there is no
     /// supervisor.
     #[arg(long)]

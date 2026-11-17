@@ -32,7 +32,7 @@ const CONNECT_LIMIT: Duration = Duration::from_secs(10);
 #[derive(Args, Debug, Default)]
 pub(crate) struct ServiceArgs {
     /// A service of this listener: NAME=TARGET, with a NAME of 1 to 32
-    /// characters from A-Z a-z 0-9 . _ - and a TARGET as in --to. A peer
+    /// characters from A-Z a-z 0-9 . _ - and a TARGET as in link listen --to. A peer
     /// reaches it with `link dial --service NAME` or `peer:FINGERPRINT/NAME`.
     /// The service `socks5` takes no target: `--service socks5` makes this
     /// end the server side of SOCKS5 (CONNECT, and UDP as frames on the stream with the
