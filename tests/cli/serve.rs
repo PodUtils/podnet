@@ -118,7 +118,8 @@ fn serve_local_serves_files_on_tcp() {
     // A bad address is a usage error.
     let out = podnet(&["serve", "--dir", dir_arg, "--local", "nowhere"]);
     assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));
-    // --check has no meaning with --local.
+    // GitHub #643: --check with --local checks the listener and starts
+    // nothing (exit 0).
     let out = podnet(&[
         "serve",
         "--dir",
@@ -127,7 +128,7 @@ fn serve_local_serves_files_on_tcp() {
         "127.0.0.1:0",
         "--check",
     ]);
-    assert_eq!(out.status.code(), Some(64), "{}", stderr(&out));
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
 }
 
 /// Issue 307: `serve --local unix:PATH` serves the files on a unix socket,
