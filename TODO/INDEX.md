@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**456 entries: 16 open, 11 partial, 35 blocked, 394 done.**
-**456 entries: 16 open, 12 partial, 35 blocked, 393 done.**
+**471 entries: 16 open, 11 partial, 36 blocked, 408 done.**
+**471 entries: 16 open, 11 partial, 36 blocked, 408 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 5 | 2 | 2 | 50 | 59 |
-| P2 | 4 | 6 | 10 | 200 | 220 |
-| P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 16 | 11 | 35 | 394 | 456 |
-| P2 | 4 | 6 | 10 | 200 | 220 |
-| P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 16 | 11 | 35 | 394 | 456 |
+| P2 | 4 | 6 | 10 | 213 | 233 |
+| P3 | 7 | 3 | 24 | 144 | 178 |
+| **All** | 16 | 11 | 36 | 408 | 471 |
+| P2 | 4 | 6 | 10 | 213 | 233 |
+| P3 | 7 | 3 | 24 | 144 | 178 |
+| **All** | 16 | 11 | 36 | 408 | 471 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -506,3 +506,18 @@ M8 Overlays, M9 Later.
 | [T-455](fixes.md) | P2 | M | M5 | chore | open | Readiness: the promises with a test, in place of the commands with a scenario |
 | [T-456](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213) |
 | [T-457](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142) |
+| [T-458](fixes.md) | P2 | S | M5 | defect | done | `link`: the address scheme does not select the carrier; a `unix:` prefix is taken as a file name (GitHub #634) |
+| [T-459](fixes.md) | P2 | S | M5 | defect | done | Error messages repeat the cause twice (GitHub #635) |
+| [T-460](fixes.md) | P2 | S | M5 | defect | done | `serve --local --pin`: a plain-HTTP listener sets a Secure cookie, so the PIN unlock does not persist (GitHub #636) |
+| [T-461](fixes.md) | P2 | S | M5 | defect | done | `route`: a door quota can be overshot by a full 64 KiB buffer per flow (GitHub #637) |
+| [T-462](fixes.md) | P2 | S | M5 | defect | done | `forward --dns`: the DNS door is printed as up before it binds; a bind failure exits 1 after the success line (GitHub #638) |
+| [T-463](fixes.md) | P2 | S | M5 | defect | done | `bench` exits 0 when each request fails (GitHub #639) |
+| [T-464](fixes.md) | P2 | S | M5 | defect | done | `autostart add` exits 69 but still creates the entry (GitHub #640) |
+| [T-465](fixes.md) | P2 | S | M5 | defect | done | Detached `--json` documents do not share a schema (`url` and `http`, `doors`, `forward`) (GitHub #641) |
+| [T-466](fixes.md) | P2 | S | M5 | defect | done | `--json` is accepted by some commands and refused by others (GitHub #642) |
+| [T-467](fixes.md) | P2 | S | M5 | defect | done | `serve --check` refuses `--local`, so a plan of a local file server cannot be checked (GitHub #643) |
+| [T-468](fixes.md) | P2 | S | M5 | defect | done | The default log level prints an INFO line on stderr for `status` (GitHub #644) |
+| [T-469](fixes.md) | P3 | S | M5 | defect | blocked | `podnet-install.sh --dry-run` prints the proxy line twice; the default directory can be noexec (GitHub #645) |
+| [T-470](fixes.md) | P2 | S | M5 | defect | done | `expose --via switch` refuses the `http://` target that `expose` documents (GitHub #646) |
+| [T-471](fixes.md) | P2 | S | M5 | defect | done | `ssh-relay --no-restart`: the help names `--stop-after`, `--idle-secs` and `--run-for`, which the command refuses (GitHub #647) |
+| [T-472](fixes.md) | P3 | S | M5 | defect | done | `serve --list`: the HTML listing omits the modified time and the upload limit (GitHub #648) |

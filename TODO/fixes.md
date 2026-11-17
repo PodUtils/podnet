@@ -9845,3 +9845,474 @@ C program that adds the socket to epoll before `connect`): it passes; on the cod
 `EPOLL-TIMEOUT:read`. `tests/pod_seccomp_nonblock.rs` now expects the relay for a nonblocking dial.
 `cargo test --test pod_seccomp` (46), `pod_seccomp_nonblock`, `pod_seccomp_handoff`, `pod_seccomp_slow_dial`,
 `pod_seccomp_tcp`: each passes. podrunner runs its case again with the next release.
+
+# T-458: `link`: the address scheme does not select the carrier; a `unix:` prefix is taken as a file name (GitHub #634)
+
+**Source:** GitHub #634 (https://github.com/PodUtils/podnet/issues/634), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet link` took `unix:/path` as a file name `unix:/path`, and the scheme of the address did not select the carrier.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. The scheme of the address (`unix:`) selects the carrier, and the path is the part after the scheme.
+
+## Prove
+
+```sh
+cargo test -p podnet --test cli -- the_unix_carrier_takes_unix_path
+```
+
+## Done
+
+2026-11-17, commit 12f81ef0 and 31656579 (test). Reproduced on the code before the fix. The test `tests/cli/link.rs::the_unix_carrier_takes_unix_path` passes; on the code with `src/cli/cmd/link/mod.rs` and `src/carriers.rs` of before the fix (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-459: Error messages repeat the cause twice (GitHub #635)
+
+**Source:** GitHub #635 (https://github.com/PodUtils/podnet/issues/635), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+An error line named its cause twice (for example `link` and `connect`).
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. Each cause is named once in an error line.
+
+## Prove
+
+```sh
+cargo test -p podnet-core -- text_names_each_cause_once
+```
+
+## Done
+
+2026-11-17, fixed before this issue by commit bb8a1209 (T-429, GitHub #622). On the head, the commands of the issue (`link`, `connect`) name each cause once. The test `crates/podnet-core/src/exit.rs::text_names_each_cause_once` passes; it failed on the code before bb8a1209 (T-429).
+
+# T-460: `serve --local --pin`: a plain-HTTP listener sets a Secure cookie, so the PIN unlock does not persist (GitHub #636)
+
+**Source:** GitHub #636 (https://github.com/PodUtils/podnet/issues/636), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+On a plain HTTP listener, the PIN cookie had the attribute `Secure`; a browser does not keep it, so each request asked for the PIN again.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. The cookie of a plain TCP listener has no `Secure` attribute; a TLS or tunnel listener keeps it.
+
+## Prove
+
+```sh
+cargo test -p podnet-serve -- the_pin_cookie_of_a_plain_tcp_listener_is_not_secure
+```
+
+## Done
+
+2026-11-17, commit fd90c4e8. Reproduced on the code before the fix. The test `crates/podnet-serve/src/road/tests.rs::the_pin_cookie_of_a_plain_tcp_listener_is_not_secure` passes; on the code with the serve and road files of before the fix (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-461: `route`: a door quota can be overshot by a full 64 KiB buffer per flow (GitHub #637)
+
+**Source:** GitHub #637 (https://github.com/PodUtils/podnet/issues/637), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+A door of `podnet route` with a byte quota let each flow pass a full buffer of 64 KiB after the quota.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. A read stops at the quota: no byte passes after it.
+
+## Prove
+
+```sh
+cargo test -p podnet -- a_read_stops_at_the_quota
+```
+
+## Done
+
+2026-11-17, commit ce428588. Reproduced on the code before the fix. The test `src/router/door_limit_tests.rs::a_read_stops_at_the_quota` passes; on the code with `door_limit.rs` and `door_stats.rs` of before the fix (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-462: `forward --dns`: the DNS door is printed as up before it binds; a bind failure exits 1 after the success line (GitHub #638)
+
+**Source:** GitHub #638 (https://github.com/PodUtils/podnet/issues/638), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet forward --dns` printed the DNS door as up before the bind; a bind failure then exited 1 after the line of success.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. The line comes after the bind; an address in use exits 69 with no line of success; an upstream that cannot be reached gives SERVFAIL.
+
+## Prove
+
+```sh
+cargo test -p podnet --test commands -- forward_dns_at_an_address_in_use_exits_69
+```
+
+## Done
+
+2026-11-17, commit 80e482c7 and 31656579 (test). Reproduced on the code before the fix. The test `tests/commands.rs::forward_dns_at_an_address_in_use_exits_69` and `dns_door_answers_servfail_when_the_upstream_cannot_be_reached` passes; on the code with the forward and udp files of before the fix (exit 1, not 69; with SERVFAIL off, the SERVFAIL test fails) (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-463: `bench` exits 0 when each request fails (GitHub #639)
+
+**Source:** GitHub #639 (https://github.com/PodUtils/podnet/issues/639), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet bench` exited 0 when each request failed.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `bench` counts the HTTP errors and exits 1 when no request passes; the help says it.
+
+## Prove
+
+```sh
+cargo test -p podnet --test commands -- bench_counts_http_errors
+```
+
+## Done
+
+2026-11-17, commit 34bbe792 and 31656579 (test). Reproduced on the code before the fix. The test `tests/commands.rs::bench_counts_http_errors` passes; on the code with the help and code of before the fix (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-464: `autostart add` exits 69 but still creates the entry (GitHub #640)
+
+**Source:** GitHub #640 (https://github.com/PodUtils/podnet/issues/640), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet autostart add` on a host with no manager exited 69 and kept the files of the entry.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. An `add` that exits 69 leaves no entry; `--manual` (T-445) writes the entry and exits 0.
+
+## Prove
+
+```sh
+cargo test -p podnet --test cli -- autostart_with_cron_and_with_nothing
+```
+
+## Done
+
+2026-11-17, commit f695188b and 84cfd9c0. Reproduced on the code before the fix. The test `tests/cli/autostart.rs::autostart_with_cron_and_with_nothing` passes; on the code with `autostart.rs` of before the fix (the files of the entry stay after exit 69) (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-465: Detached `--json` documents do not share a schema (`url` and `http`, `doors`, `forward`) (GitHub #641)
+
+**Source:** GitHub #641 (https://github.com/PodUtils/podnet/issues/641), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The ready documents of detached commands had keys of their own for one thing (`url`, `http`, `doors`, `forward`).
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. Each ready document has one envelope with the keys of the endpoint.
+
+## Prove
+
+```sh
+cargo test -p podnet-core -- the_envelope_has_the_keys_of_the_endpoint
+```
+
+## Done
+
+2026-11-17, commit 3d8d827c and 045aeb04. Reproduced on the code before the fix. The test `crates/podnet-core/src/instances.rs::the_envelope_has_the_keys_of_the_endpoint` passes; on the code with the envelope as a no-op (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-466: `--json` is accepted by some commands and refused by others (GitHub #642)
+
+**Source:** GitHub #642 (https://github.com/PodUtils/podnet/issues/642), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`--json` worked with some commands that print a document and was refused by others (`route --detach`).
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `route --detach --json` prints the ready document.
+
+## Prove
+
+```sh
+cargo test -p podnet --test router_control -- route_detach_json_prints_the_document
+```
+
+## Done
+
+2026-11-17, commit da3abf2c. Reproduced on the code before the fix. The test `tests/router_control.rs::route_detach_json_prints_the_document` passes; on the code with `route.rs` of before the fix (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-467: `serve --check` refuses `--local`, so a plan of a local file server cannot be checked (GitHub #643)
+
+**Source:** GitHub #643 (https://github.com/PodUtils/podnet/issues/643), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet serve --check --local ADDR` exited 64.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `serve --check` takes `--local`.
+
+## Prove
+
+```sh
+cargo test -p podnet --test commands -- serve_check_takes_local
+```
+
+## Done
+
+2026-11-17, commit 704e79b8 and 50bb9fa9. Reproduced on the code before the fix. The test `tests/commands.rs::serve_check_takes_local` passes; on the code with `conflicts_with = "check"` put back (exit 64) (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-468: The default log level prints an INFO line on stderr for `status` (GitHub #644)
+
+**Source:** GitHub #644 (https://github.com/PodUtils/podnet/issues/644), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet status` (documented to open no connection) printed an INFO line on stderr with a proxy set. `update --check` also named the step of its error twice.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. `status` is quiet; the error of `update` names its step once.
+
+## Prove
+
+```sh
+cargo test -p podnet --test cli -- status_is_quiet_with_a_proxy update_error_names_its_step_once
+```
+
+## Done
+
+2026-11-17, commit be6673bd and b1176e32. Reproduced on the code before the fix. The test `tests/cli/log.rs::status_is_quiet_with_a_proxy` and `update_error_names_its_step_once` passes; on the code with the log line at INFO again, and `update.rs` of before the fix (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-469: `podnet-install.sh --dry-run` prints the proxy line twice; the default directory can be noexec (GitHub #645)
+
+**Source:** GitHub #645 (https://github.com/PodUtils/podnet/issues/645), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+`podnet-install.sh --dry-run` printed the proxy line twice when `https_proxy` and `http_proxy` are the same, and the
+default install directory can be on a noexec mount.
+
+## Premise
+
+- Verified on the head: `inst_proxy` of `scripts/install/core-net.sh` prints each variable. The noexec text names
+  `--prefix DIR` already.
+- `scripts/install/core-net.sh` and `scripts/install/core.sh` are copies of PodUtils/podcrates v0.69.0, pinned by
+  SHA-256 (`scripts/install/SOURCES`): frozen in podnet.
+
+## Approach
+
+1. podcrates prints one proxy line when the two variables are the same, and checks that the default directory allows
+   exec (a fallback directory, or a clear text). podnet takes the new copy at the next take.
+
+## Prove
+
+```sh
+sh scripts/install/podnet-install.sh --dry-run
+```
+
+## Blocker
+
+PodUtils/podcrates must change its installer (COORD-103, GitHub #650). The entry is unblocked when a
+tag of podcrates has the fix; podnet then takes the copy.
+
+# T-470: `expose --via switch` refuses the `http://` target that `expose` documents (GitHub #646)
+
+**Source:** GitHub #646 (https://github.com/PodUtils/podnet/issues/646), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet expose --via switch` refused a target `http://HOST:PORT`, the syntax of the help of `expose`.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. A URL target on a TCP road gives its host and port.
+
+## Prove
+
+```sh
+cargo test -p podnet -- a_url_on_a_tcp_road_names_the_host_and_port
+```
+
+## Done
+
+2026-11-17, commit 485052ab. Reproduced on the code before the fix. The test `src/cli/cmd/expose.rs::a_url_on_a_tcp_road_names_the_host_and_port` passes; on the code with the check of the URL removed (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-471: `ssh-relay --no-restart`: the help names `--stop-after`, `--idle-secs` and `--run-for`, which the command refuses (GitHub #647)
+
+**Source:** GitHub #647 (https://github.com/PodUtils/podnet/issues/647), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+A hint of the help of `ssh-relay` named flags that the command refused.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. Each server command takes the flags that its hints name.
+
+## Prove
+
+```sh
+cargo test -p podnet -- each_server_command_takes_the_flags_of_its_hints
+```
+
+## Done
+
+2026-11-17, commit dc278d7c. Reproduced on the code before the fix. The test `src/cli/argv_tests.rs::each_server_command_takes_the_flags_of_its_hints` passes; on the code with `relay.rs` and `opts.rs` of before the fix (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-472: `serve --list`: the HTML listing omits the modified time and the upload limit (GitHub #648)
+
+**Source:** GitHub #648 (https://github.com/PodUtils/podnet/issues/648), Nemo-010 (outside: verified, labelled `confirmed`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The HTML listing of `podnet serve --list` had no time of change and did not say the upload limit.
+
+## Premise
+
+- Verified on the head before the change (the command of the issue, its code and its help); the issue is right.
+
+## Approach
+
+1. The listing shows the time of change; the upload form names the limit.
+
+## Prove
+
+```sh
+cargo test -p podnet-serve -- a_listing_shows_the_modified_time a_form_uploads_into_a_directory
+```
+
+## Done
+
+2026-11-17, commit 003d92a9. Reproduced on the code before the fix. The test `crates/podnet-serve/src/files/tests.rs::a_listing_shows_the_modified_time` and `a_form_uploads_into_a_directory` passes; on the code with the time column and the upload limit removed (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.

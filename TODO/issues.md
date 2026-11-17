@@ -323,6 +323,22 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #631 | podnet relay node: add --json, or say that --detach prints the document | closed (outside the team: verified, labelled `confirmed`; T-446) | T-446 |
 | #632 | podnet ssh-relay: add --run-for, and make -q quiet | closed (outside the team: verified, labelled `confirmed`; T-447) | T-447 |
 | #633 | podnet serve: add a way to append a user to the users file | closed (outside the team: verified, labelled `confirmed`; T-448) | T-448 |
+| #634 | podnet link: the address scheme does not select the carrier, and a unix: prefix is taken as a filename | closed (outside the team: verified, labelled `confirmed`; T-458) | T-458 |
+| #635 | Error messages repeat the cause twice | closed (outside the team: verified, labelled `confirmed`; T-459) | T-459 |
+| #636 | podnet serve --local --pin: a plain-HTTP listener sets a Secure cookie, so browser PIN unlock cannot persist | closed (outside the team: verified, labelled `confirmed`; T-460) | T-460 |
+| #637 | podnet route: a door quota can be overshot by a full 64 KiB buffer per flow | closed (outside the team: verified, labelled `confirmed`; T-461) | T-461 |
+| #638 | podnet forward --dns: the DNS door is printed as up before it binds, and a bind failure exits 1 after the success line | closed (outside the team: verified, labelled `confirmed`; T-462) | T-462 |
+| #639 | podnet bench exits 0 when every request fails | closed (outside the team: verified, labelled `confirmed`; T-463) | T-463 |
+| #640 | podnet autostart add exits 69 but still creates the entry | closed (outside the team: verified, labelled `confirmed`; T-464) | T-464 |
+| #641 | Detached --json documents do not share a schema (url vs http / doors / forward) | closed (outside the team: verified, labelled `confirmed`; T-465) | T-465 |
+| #642 | podnet --json is accepted by some commands and rejected by others | closed (outside the team: verified, labelled `confirmed`; T-466) | T-466 |
+| #643 | podnet serve --check refuses --local, so a local-only file server plan cannot be validated | closed (outside the team: verified, labelled `confirmed`; T-467) | T-467 |
+| #644 | Default log level prints an INFO line on stderr for status, which is documented to open no connection | closed (outside the team: verified, labelled `confirmed`; T-468) | T-468 |
+| #645 | podnet-install.sh --dry-run prints the proxy line twice, and the default install directory can be noexec | open (outside the team: verified, labelled `confirmed`; waits for podcrates) | T-469 |
+| #646 | podnet expose --via switch rejects the http:// target syntax that expose itself documents | closed (outside the team: verified, labelled `confirmed`; T-470) | T-470 |
+| #647 | podnet ssh-relay --no-restart help names --stop-after, --idle-secs and --run-for, which the command rejects | closed (outside the team: verified, labelled `confirmed`; T-471) | T-471 |
+| #648 | podnet serve --list: the HTML listing omits the modified time and the upload limit | closed (outside the team: verified, labelled `confirmed`; T-472) | T-472 |
 | #649 | COORD-102: the QA round of podnet: 40 issues in one hour; a gate that measured reach, not correctness; asks for podcrates and the siblings (to all) | open (a COORD issue between sessions) | T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457 |
+| #650 | COORD-103: the installer prints the proxy line twice; the default directory can be noexec (PodUtils/podnet#645) (to podcrates) | open (a COORD issue between sessions) | T-469 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
