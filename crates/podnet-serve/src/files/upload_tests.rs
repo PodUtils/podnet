@@ -175,7 +175,10 @@ async fn a_form_uploads_into_a_directory() {
             .unwrap()
     };
     let (_, _, body) = send(&files, listing("w")).await;
-    assert!(String::from_utf8_lossy(&body).contains("multipart/form-data"));
+    let page = String::from_utf8_lossy(&body);
+    assert!(page.contains("multipart/form-data"), "{page}");
+    // GitHub #648: the form names the limit of one upload.
+    assert!(page.contains("Max 1000 B per upload"), "{page}");
     let (_, _, body) = send(&files, listing("r")).await;
     assert!(!String::from_utf8_lossy(&body).contains("multipart/form-data"));
 

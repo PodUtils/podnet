@@ -334,3 +334,29 @@ async fn a_listing_with_tar_links_to_the_tar() {
     let (_, body) = get(&listed(&root), "/sub%20dir/").await;
     assert!(!body.contains("?tar"), "{body}");
 }
+
+/// GitHub #648: the HTML listing shows the time of the last change of each
+/// entry (UTC), as the JSON listing has it.
+#[tokio::test]
+async fn a_listing_shows_the_modified_time() {
+    assert_eq!(
+        listing::utc(0),
+        ("1970-01-01 00:00".into(), "1970-01-01T00:00:00Z".into())
+    );
+    assert_eq!(listing::utc(1_700_000_000).1, "2023-11-14T22:13:20Z");
+    assert_eq!(listing::utc(951_782_400).1, "2000-02-29T00:00:00Z");
+    let (_base, root) = listing_tree();
+    let file = std::fs::File::options()
+        .write(true)
+        .open(root.join("a&b \"q\".txt"))
+        .unwrap();
+    let when = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+    file.set_modified(when).unwrap();
+    let (status, body) = get(&listed(&root), "/").await;
+    assert_eq!(status, 200, "{body}");
+    assert!(body.contains("Modified (UTC)"), "{body}");
+    assert!(
+        body.contains("<time datetime=\"2023-11-14T22:13:20Z\">2023-11-14 22:13</time>"),
+        "{body}"
+    );
+}

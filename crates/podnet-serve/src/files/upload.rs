@@ -307,11 +307,16 @@ async fn form(root: &Path, path: &Path, max: u64, request: axum::extract::Reques
         .into_response()
 }
 
-/// The form of a listing for a write user.
-pub(crate) fn form_html() -> &'static str {
-    "<form method=\"post\" enctype=\"multipart/form-data\">\
-     <input type=\"file\" name=\"files\" multiple required> \
-     <button type=\"submit\">Upload</button></form>"
+/// The form of a listing for a write user, with the most bytes of one
+/// upload request (GitHub #648).
+pub(crate) fn form_html(max: u64) -> String {
+    format!(
+        "<form method=\"post\" enctype=\"multipart/form-data\">\
+         <input type=\"file\" name=\"files\" multiple required> \
+         <button type=\"submit\">Upload</button> \
+         <small>Max {} per upload</small></form>",
+        podnet_core::util::human_bytes(max)
+    )
 }
 
 #[cfg(test)]
