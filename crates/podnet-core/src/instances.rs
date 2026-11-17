@@ -36,8 +36,12 @@ pub const RUN_DIR_VARIABLE: &str = "PODNET_RUN_DIR";
 
 /// The keys of the endpoint that each ready document has (GitHub #641):
 /// `url`, `listen` and `listens`, with `null` (or `[]`) when the command
-/// has no such endpoint. A command sets the ones it has.
-pub(crate) fn envelope(object: &mut serde_json::Map<String, serde_json::Value>) {
+/// has no such endpoint. A command sets the ones it has. A document that
+/// is not an object stays as it is.
+pub(crate) fn envelope(mut doc: serde_json::Value) -> serde_json::Value {
+    let Some(object) = doc.as_object_mut() else {
+        return doc;
+    };
     let listen = object.get("listen").cloned().unwrap_or_default();
     let listens = match &listen {
         serde_json::Value::Null => serde_json::Value::Array(Vec::new()),
@@ -46,6 +50,7 @@ pub(crate) fn envelope(object: &mut serde_json::Map<String, serde_json::Value>) 
     object.entry("url").or_insert(serde_json::Value::Null);
     object.entry("listen").or_insert(listen);
     object.entry("listens").or_insert(listens);
+    doc
 }
 
 /// The run directory: `PODNET_RUN_DIR`, else `$XDG_RUNTIME_DIR/podnet/run`
@@ -518,11 +523,7 @@ mod tests {
     // that the command gave stays.
     #[test]
     fn the_envelope_has_the_keys_of_the_endpoint() {
-        let doc = |v: serde_json::Value| {
-            let mut object = v.as_object().unwrap().clone();
-            envelope(&mut object);
-            serde_json::Value::Object(object)
-        };
+        let doc = envelope;
         let none = doc(serde_json::json!({"pair": "p"}));
         assert_eq!(none["url"], serde_json::Value::Null);
         assert_eq!(none["listen"], serde_json::Value::Null);

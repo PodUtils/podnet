@@ -354,7 +354,7 @@ fn ready_doc(doc: serde_json::Value) -> serde_json::Value {
 /// process that is not a detached child, does nothing.
 pub fn ready(doc: serde_json::Value) {
     arm_stop();
-    let mut doc = ready_doc(doc);
+    let mut doc = instances::envelope(ready_doc(doc));
     foreground::send(&doc);
     if REGISTERED.load(Ordering::SeqCst) && !is_child() {
         // Issue 209: a registered process records its ready document; its
@@ -365,7 +365,6 @@ pub fn ready(doc: serde_json::Value) {
         let mut guard = STATE.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(state) = guard.as_mut() {
             if let Some(object) = doc.as_object_mut() {
-                instances::envelope(object);
                 object.insert("name".into(), state.record.name.clone().into());
                 object.insert("pid".into(), state.record.pid.into());
                 object.insert("command".into(), state.record.command.clone().into());
@@ -390,7 +389,6 @@ pub fn ready(doc: serde_json::Value) {
     let log_path = PathBuf::from(&state.record.log);
     let log = open_private(&log_path).ok();
     if let Some(object) = doc.as_object_mut() {
-        instances::envelope(object);
         object.insert("event".into(), "detached".into());
         object.insert("name".into(), state.record.name.clone().into());
         object.insert("pid".into(), state.record.pid.into());
