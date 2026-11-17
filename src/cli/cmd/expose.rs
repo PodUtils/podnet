@@ -19,8 +19,11 @@ pub(crate) enum Via {
 
 #[derive(Args, Debug)]
 pub(crate) struct ExposeArgs {
-    /// The local service: an http:// or https:// URL, a port, host:port,
-    /// tcp://host:port, or unix:/path.
+    /// The local service. --via tunnel: an http:// or https:// URL (an
+    /// HTTP origin), a port, host:port (raw TCP), tcp://host:port or
+    /// unix:/path. --via relay and --via switch carry TCP: a port,
+    /// host:port, tcp://host:port or unix:/path; a URL exits 64 and names
+    /// the HOST:PORT to give.
     #[arg(value_name = "TARGET")]
     target: String,
     /// The way to publish it.
@@ -58,8 +61,8 @@ pub(crate) fn plan(
             vec!["tunnel".into(), flag.into(), value.into()]
         }
         Via::Relay => {
-            if target.starts_with("http://") || target.starts_with("https://") {
-                anyhow::bail!("--via relay takes host:port or unix:/path, not a URL");
+            if is_url(target) {
+                return Err(no_url("relay", target));
             }
             let to = match target.parse::<u16>() {
                 Ok(_) => format!("127.0.0.1:{target}"),
@@ -71,6 +74,9 @@ pub(crate) fn plan(
             let virt = virt.ok_or_else(|| {
                 anyhow::anyhow!("--via switch needs --as VIRT, the virtual address of the service")
             })?;
+            if is_url(target) {
+                return Err(no_url("switch", target));
+            }
             let real = match target.parse::<u16>() {
                 Ok(_) => format!("127.0.0.1:{target}"),
                 Err(_) => tcp.unwrap_or(target).to_string(),
@@ -85,6 +91,36 @@ pub(crate) fn plan(
     };
     words.extend(rest.iter().cloned());
     Ok(words)
+}
+
+fn is_url(target: &str) -> bool {
+    target.starts_with("http://") || target.starts_with("https://")
+}
+
+/// The refusal of a URL on a road that carries TCP (GitHub #646). It names
+/// the HOST:PORT of the URL (port 80 or 443 when the URL has none).
+fn no_url(via: &str, target: &str) -> anyhow::Error {
+    let hint = url_host_port(target)
+        .map(|a| format!(": give {a}"))
+        .unwrap_or_default();
+    anyhow::anyhow!(
+        "--via {via} carries TCP: give HOST:PORT, tcp://HOST:PORT or unix:/PATH, not a URL{hint}"
+    )
+}
+
+fn url_host_port(url: &str) -> Option<String> {
+    let (scheme, rest) = url.split_once("://")?;
+    let authority = rest.split(['/', '?', '#']).next()?;
+    let host = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+    let has_port = host.rsplit_once(':').is_some_and(|(h, p)| {
+        !h.ends_with(':') && !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit())
+    });
+    match (host.is_empty(), has_port, scheme) {
+        (true, _, _) => None,
+        (false, true, _) => Some(host.to_string()),
+        (false, false, "https") => Some(format!("{host}:443")),
+        (false, false, _) => Some(format!("{host}:80")),
+    }
 }
 
 /// The command line and the parse of the command that `cli` (an `expose`)
@@ -276,6 +312,28 @@ mod tests {
         let err = resolve(&argv, cli).unwrap_err();
         assert!(err.to_string().contains("--as VIRT"), "{err}");
         assert!(err.render().to_string().contains("podnet expose"), "{err}");
+    }
+
+    /// GitHub #646: a URL on a road that carries TCP exits 64 and names the
+    /// HOST:PORT to give.
+    #[test]
+    fn a_url_on_a_tcp_road_names_the_host_and_port() {
+        for (via, name) in [(Via::Switch, "switch"), (Via::Relay, "relay")] {
+            for (url, want) in [
+                ("http://127.0.0.1:8081", "give 127.0.0.1:8081"),
+                ("http://127.0.0.1:8081/app", "give 127.0.0.1:8081"),
+                ("https://app.internal", "give app.internal:443"),
+                ("http://[::1]/", "give [::1]:80"),
+            ] {
+                let err = plan(via, url, Some("10.66.0.2:8080"), &[]).unwrap_err();
+                let text = format!("{err:#}");
+                assert!(
+                    text.contains(&format!("--via {name} carries TCP")),
+                    "{text}"
+                );
+                assert!(text.contains(want), "{url}: {text}");
+            }
+        }
     }
 
     #[test]

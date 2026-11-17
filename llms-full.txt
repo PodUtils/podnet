@@ -1625,8 +1625,11 @@ podnet expose
 
   Arguments:
     TARGET
-        The local service: an http:// or https:// URL, a port, host:port,
-        tcp://host:port, or unix:/path.
+        The local service. --via tunnel: an http:// or https:// URL (an HTTP
+        origin), a port, host:port (raw TCP), tcp://host:port or unix:/path.
+        --via relay and --via switch carry TCP: a port, host:port,
+        tcp://host:port or unix:/path; a URL exits 64 and names the HOST:PORT
+        to give.
     [ARGS]...
         More arguments for the command that runs (after --): for example
         --detach, a pair name or a --switch.
@@ -13630,7 +13633,14 @@ dial of `pod-warp`.
 | `relay` | `podnet relay node` | A node of the reverse relay: operators connect with `podnet relay connect` ([relay.md](relay.md)). |
 | `switch` | `podnet net proxy --forward` | A virtual address on a switch of the virtual network ([networks.md](networks.md)). |
 
-* `TARGET` is an `http://` or `https://` URL, a port, `host:port`, `tcp://host:port` or `unix:/path`.
+* `TARGET` with `--via tunnel` is an `http://` or `https://` URL, a port, `host:port`, `tcp://host:port` or
+  `unix:/path`. A URL is an HTTP origin (`tunnel --url`). A port is the HTTP origin `127.0.0.1:PORT`
+  (`tunnel --port`). A bare `host:port` is a raw TCP origin (`tunnel --tcp`, for a named tunnel: a quick tunnel
+  answers an HTTP request to it with 501; see [tunnels.md](tunnels.md)). Give `http://host:port` for an HTTP
+  origin. `tcp://` and `unix:` go to `tunnel --forward` (a client uses `podnet connect`).
+* `TARGET` with `--via relay` and `--via switch` is a port, `host:port`, `tcp://host:port` or `unix:/path`: these
+  roads carry TCP. A URL exits 64, and the message names the `HOST:PORT` to give (`http://127.0.0.1:8081/` gives
+  `127.0.0.1:8081`).
 * `--as VIRT` (with `--via switch`) gives the virtual address of the service, as `VIRT` in
   `podnet net proxy --forward VIRT=REAL`, for example `10.66.0.2:8080`.
 * The arguments after `--` go to the command that runs: for example `--detach`, a pair name or a
