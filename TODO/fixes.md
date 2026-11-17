@@ -9719,7 +9719,7 @@ broker on the loopback.
 **Milestone:** M7
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -9740,6 +9740,19 @@ A program in a seccomp pod cannot connect to a port of the loopback that a progr
 ```sh
 cargo test -p podnet --test pod_seccomp -- loopback
 ```
+
+## Done
+
+2026-11-17, commit aaf9e2c (`T-456: seccomp: a loopback TCP connect gives the kernel socket when the pod cannot write
+the memory`). Reproduction: a Python client in `pod --backend seccomp` to a TCP listener on 127.0.0.1 of the host. With
+`PODNET_NETNS_TEST_MEM=none`, `getsockname` failed with errno 95 (EOPNOTSUPP); the .NET runner reads `LocalEndPoint`
+and `RemoteEndPoint`, so it failed as in the report. The connect itself worked. The fix: with no write to the memory
+and no `--flow-log`, the loopback dial gives the TCP socket of the kernel (`Link::Kernel`,
+`crates/podnet-netns/src/handoff.rs`); the handoff puts it at the descriptor of the program, and the entry is marked
+`kernel` (`crates/podnet-netns/src/sockopt.rs`). The kernel then answers `getsockname` and `getpeername`. A dial to
+the program's own inbound listener keeps the relay. Test: `tests/pod_seccomp/loopback_name.rs`
+(`a_loopback_connect_has_its_names_with_no_memory_write`): it passes; on the code before the fix it fails with
+`NAME-ERROR:95`. `cargo test --test pod_seccomp`: 45 passed.
 
 # T-457: `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142)
 
