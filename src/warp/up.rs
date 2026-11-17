@@ -268,13 +268,10 @@ pub const CA_VARIABLES: [&str; 4] = [
 /// A bundle with fewer certificates than this is taken as the roots of a
 /// proxy that terminates TLS, not a public bundle.
 pub const SMALL_BUNDLE: usize = 10;
-/// The system bundles, the first that exists is used.
-pub const SYSTEM_BUNDLES: [&str; 4] = [
-    "/etc/ssl/certs/ca-certificates.crt",
-    "/etc/pki/tls/certs/ca-bundle.crt",
-    "/etc/ssl/cert.pem",
-    "/etc/ssl/ca-bundle.pem",
-];
+/// The system bundles, in their order: the first that exists is used. They
+/// are the bundles of `pod_tls`, as the manual names them (T-475: an own list
+/// of 4 paths missed 2 of them).
+pub use pod_tls::SYSTEM_BUNDLES;
 
 fn certificates_in(pem: &str) -> usize {
     pem.matches("-----BEGIN CERTIFICATE-----").count()

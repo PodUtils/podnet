@@ -240,3 +240,20 @@ fn other_failures_get_no_recovery_lines() {
         "podnet warp proxy --detach exited 1"
     );
 }
+
+// T-475: `warp up` reads each system bundle that the manual names, in the
+// order of the manual.
+#[test]
+fn the_system_bundles_are_the_bundles_of_the_manual() {
+    let (first, text) = crate::manual::facts::FILES
+        .iter()
+        .find(|(name, _)| *name == "/etc/ssl/certs/ca-certificates.crt")
+        .expect("the manual names the system bundle");
+    let mut named = vec![first.to_string()];
+    named.extend(
+        text.split_whitespace()
+            .filter(|w| w.starts_with('/'))
+            .map(|w| w.trim_end_matches('.').to_string()),
+    );
+    assert_eq!(named, SYSTEM_BUNDLES);
+}
