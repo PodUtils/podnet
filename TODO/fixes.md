@@ -8598,7 +8598,7 @@ of `v0.4.0-beta.15` fails `way-relay-refused` with `UnknownIssuer` (exit 69, the
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -8620,6 +8620,14 @@ beta.15 cannot reach the relay from a host behind a proxy that re-signs TLS (T-4
 ```sh
 gh release view v0.4.0-beta.16 -R PodUtils/podnet
 ```
+
+## Done
+
+2026-11-17, the release `v0.4.0-beta.16` (commit 3ab4831): a prerelease with 17 assets, published at 14:07 UTC. The
+publish run passed; the run of `release.yml` 44091086685 passed; `release-proofs.yml` 44100847097 passed.
+`docs/releases/v0.4.0-beta.16.md` has a section `Known problems` for the QA round (GitHub #610 to #648) and for
+PodUtils/podrunner#213 and #142. No release follows until T-450 to T-455 are done (`docs/decisions.md`, 2026-11-17).
+
 
 # T-424: `git init` of an existing bare repository fails (GitHub #614)
 

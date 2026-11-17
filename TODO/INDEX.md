@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**456 entries: 18 open, 11 partial, 35 blocked, 392 done.**
+**456 entries: 17 open, 11 partial, 35 blocked, 393 done.**
 **456 entries: 18 open, 11 partial, 35 blocked, 392 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 7 | 2 | 2 | 48 | 59 |
+| P1 | 6 | 2 | 2 | 49 | 59 |
 | P2 | 4 | 6 | 10 | 200 | 220 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 18 | 11 | 35 | 392 | 456 |
+| **All** | 17 | 11 | 35 | 393 | 456 |
 | P2 | 4 | 6 | 10 | 200 | 220 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 18 | 11 | 35 | 392 | 456 |
+| **All** | 17 | 11 | 35 | 393 | 456 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -470,7 +470,7 @@ M8 Overlays, M9 Later.
 | [T-419](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.15`: the gate, the dry run, the publish and the release proofs |
 | [T-420](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.68.0 |
 | [T-421](fixes.md) | P1 | S | M5 | defect | done | The WebSocket and relay connections ignore `--ca-file`, and a proxy's refusal of the upgrade reads as a bad token |
-| [T-422](fixes.md) | P1 | S | M5 | release | open | Publish `v0.4.0-beta.16`: the gate, the dry run, the publish and the release proofs |
+| [T-422](fixes.md) | P1 | S | M5 | release | done | Publish `v0.4.0-beta.16`: the gate, the dry run, the publish and the release proofs |
 | [T-423](crates.md) | P1 | M | M3 | chore | done | Take podcrates v0.69.0 with `pod-cloudflare` |
 | [T-424](fixes.md) | P2 | S | M6 | defect | done | `git init` of an existing bare repository fails (GitHub #614) |
 | [T-425](fixes.md) | P3 | S | M6 | chore | done | `warp ssh-config` prints a `GIT_SSH_COMMAND` line with three layers of quotes (GitHub #615) |
