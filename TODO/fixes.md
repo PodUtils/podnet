@@ -8414,6 +8414,13 @@ python3 scripts/check-workflows.py
 
 2026-11-17, steps 1 and 2 in `.github/workflows/live.yml`, the step "WARP proxy". Step 3 waits for the next warning.
 
+2026-11-17, a second cause, in commit 5c1eb22: `live` 44105534873 (2d66915) failed with `no new WARP session after 120
+s`, and `curl` to 127.0.0.1:40000 got `Couldn't connect`. The proxy had ended at its `--run-for 150`: three downloads
+got HTTP 429 and each waited 60 s, so the kill came after the end. The log of the proxy said nothing of the end. Now the
+proxy runs for 600 s, the step stops it at its end, and a planned end of `--run-for` logs `--run-for N s ended: the
+command stops` (checked with `podnet serve` and `podnet warp proxy` and `--run-for 2`).
+
+
 # T-415: live: the first request through the WARP proxy gets a reset 5 s after the start
 
 **Source:** live 44019959524 on ba6cce4 (2026-11-17), the step "WARP proxy", failed.
