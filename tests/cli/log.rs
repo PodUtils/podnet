@@ -149,6 +149,28 @@ fn status_is_quiet_with_a_proxy() {
     assert!(run(&["-v"]).contains("the egress resolves names"));
 }
 
+/// The error line of `update --check` with no way to GitHub names the
+/// step "reading the list of releases" once.
+#[test]
+fn update_error_names_its_step_once() {
+    test_host::need_loopback!();
+    let out = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["-q", "update", "--check"])
+        .env("HTTPS_PROXY", "http://127.0.0.1:9")
+        .env_remove("RUST_LOG")
+        .env_remove("PODNET_ERROR_PROGRAM")
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(!out.status.success(), "{err}");
+    assert_eq!(
+        err.matches("reading the list of releases").count(),
+        1,
+        "{err}"
+    );
+    assert!(err.contains("releases.atom"), "{err}");
+}
+
 /// Issue 181: with --log-format json, each line of stderr is JSON, also
 /// the last error line and a usage error.
 #[test]
