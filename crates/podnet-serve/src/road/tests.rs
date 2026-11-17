@@ -242,3 +242,72 @@ fn auth_layer_leaves_an_open_service_as_it_is() {
     assert!(open.is_open());
     let _ = guard(axum::Router::new(), open);
 }
+
+/// The `Set-Cookie` of a correct PIN on `road`, over a stream of `connect`.
+async fn unlock_cookie<S>(road: Local, connect: impl std::future::Future<Output = S>) -> String
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    let gate = crate::gate::Gate::pin();
+    let pin = gate.pin_display().unwrap().to_string();
+    let access = Access {
+        users: None,
+        pin: Some(gate),
+        anon_read: false,
+    };
+    let published = road.publish(guard(text("x"), access)).await.unwrap();
+    let server = tokio::spawn(published.run());
+    let mut stream = connect.await;
+    let body = format!("password={pin}&next=/");
+    let head = format!(
+        "POST {} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\
+         Content-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r\n\r\n{body}",
+        crate::gate::UNLOCK_PATH,
+        body.len()
+    );
+    stream.write_all(head.as_bytes()).await.unwrap();
+    let mut answer = String::new();
+    tokio::time::timeout(Duration::from_secs(10), stream.read_to_string(&mut answer))
+        .await
+        .unwrap()
+        .unwrap();
+    server.abort();
+    assert!(answer.starts_with("HTTP/1.1 303"), "{answer}");
+    answer
+        .lines()
+        .find(|l| l.to_ascii_lowercase().starts_with("set-cookie:"))
+        .unwrap_or_else(|| panic!("no cookie: {answer}"))
+        .to_string()
+}
+
+/// GitHub #636: the PIN cookie of a plain-HTTP TCP listener has no
+/// `Secure` (a browser keeps it); on a unix socket it keeps `Secure`.
+#[tokio::test]
+async fn the_pin_cookie_of_a_plain_tcp_listener_is_not_secure() {
+    pod_testkit::need_loopback!();
+    let probe = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = probe.local_addr().unwrap();
+    drop(probe);
+    let road = Local {
+        listen: format!("tcp://{addr}"),
+        replace: false,
+    };
+    let cookie = unlock_cookie(road, async {
+        tokio::net::TcpStream::connect(addr).await.unwrap()
+    })
+    .await;
+    assert!(!cookie.contains("Secure"), "{cookie}");
+    assert!(cookie.contains("HttpOnly"), "{cookie}");
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("pin.sock");
+    let road = Local {
+        listen: format!("unix:{}", path.display()),
+        replace: false,
+    };
+    let cookie = unlock_cookie(road, async {
+        tokio::net::UnixStream::connect(&path).await.unwrap()
+    })
+    .await;
+    assert!(cookie.contains("; Secure;"), "{cookie}");
+}

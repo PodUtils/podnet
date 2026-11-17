@@ -11854,9 +11854,16 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   curl -b jar -T file.txt "$URL/file.txt"              # an upload (--upload)
   ```
 
-* The unlock cookie has `HttpOnly`, `Secure` and `SameSite=Lax`: open the
-  session with `https://` (a browser does not keep a `Secure` cookie of
-  plain http). An unlock POST from another site (`Sec-Fetch-Site`, or an
+* The unlock cookie has `HttpOnly`, `Secure` and `SameSite=Lax` on the
+  tunnel, the relay, the virtual network and a unix socket. On a plain-HTTP
+  TCP listener (`--local HOST:PORT`) the cookie has no `Secure`: a browser
+  does not keep a `Secure` cookie of a plain-HTTP origin that is not the
+  loopback, so the PIN could not open the gate from the LAN. On that
+  listener the PIN and the cookie go over plain HTTP in each request, and
+  `Secure` protects nothing. A request with `X-Forwarded-Proto: https` or
+  `Forwarded: proto=https` (a proxy of TLS in front of the listener) keeps
+  `Secure`. Use the tunnel, or a proxy of TLS, when the network is not
+  trusted. An unlock POST from another site (`Sec-Fetch-Site`, or an
   `Origin` that is not the host) gets 403 and uses no try. A client that
   knows the URL can still use the 10 tries: the edge does not give podnet
   the address of the visitor, so the limit is for the session, not for

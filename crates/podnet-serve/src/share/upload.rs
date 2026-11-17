@@ -55,11 +55,19 @@ pub(super) fn upload_router(config: &ShareConfig, control: Arc<ShareControl>) ->
 
 pub(super) async fn unlock_upload(
     State(state): State<Arc<UploadState>>,
+    extensions: http::Extensions,
     headers: HeaderMap,
     uri: Uri,
     Form(form): Form<UnlockForm>,
 ) -> Response {
-    unlock_response(&state.gate, &headers, &uri, &form.password, &form.next)
+    unlock_response(
+        &state.gate,
+        &extensions,
+        &headers,
+        &uri,
+        &form.password,
+        &form.next,
+    )
 }
 
 pub(super) async fn upload_landing(

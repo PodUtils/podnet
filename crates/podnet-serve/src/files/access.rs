@@ -443,12 +443,18 @@ async fn unlock(gate: &Gate, request: axum::extract::Request) -> Response {
         return (http::StatusCode::PAYLOAD_TOO_LARGE, "the form is too large").into_response();
     };
     let headers = parts.headers.clone();
+    let extensions = parts.extensions.clone();
     let uri = parts.uri.clone();
     let request = axum::extract::Request::from_parts(parts, Body::from(bytes));
     match axum::Form::<crate::share::UnlockForm>::from_request(request, &()).await {
-        Ok(axum::Form(form)) => {
-            crate::share::unlock_response(gate, &headers, &uri, &form.password, &form.next)
-        }
+        Ok(axum::Form(form)) => crate::share::unlock_response(
+            gate,
+            &extensions,
+            &headers,
+            &uri,
+            &form.password,
+            &form.next,
+        ),
         Err(rejection) => rejection.into_response(),
     }
 }
