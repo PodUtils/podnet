@@ -91,6 +91,7 @@ pub(crate) fn hand_off(
     waiting: &[u64],
     (upstream, pair): (&OwnedFd, &tokio::net::UnixStream),
     (map, key): (&mut Table, Key),
+    kernel: bool,
 ) -> Option<Key> {
     if waiting != [caller.id]
         || unread(pair.as_raw_fd()) != 0
@@ -99,14 +100,22 @@ pub(crate) fn hand_off(
     {
         return None;
     }
-    // The upstream gets the flags of the descriptor of the program.
+    // T-457 (PodUtils/podrunner#142): a nonblocking descriptor is not
+    // replaced. A program that waits with epoll (.NET, libuv, Go) added the
+    // socket to its epoll set before the connect. The replacement closes
+    // that socket, so epoll removes it and never reports the new one: the
+    // program waits forever. A blocking descriptor is replaced. Exception:
+    // a kernel socket (T-456), only where the pod cannot write the memory of
+    // the program. There the connect call itself waits for the dial (issue
+    // 610), so a program that registers the socket after `connect` (.NET)
+    // sees the new socket; without the handoff `getsockname` cannot work.
     let flags = child_fd_flags(caller.pid, caller.fd)?;
-    set_flag(
-        upstream.as_raw_fd(),
-        libc::O_NONBLOCK,
-        flags & libc::O_NONBLOCK != 0,
-    )
-    .ok()?;
+    let nonblocking = flags & libc::O_NONBLOCK != 0;
+    if nonblocking && !kernel {
+        return None;
+    }
+    // The upstream gets the mode of the descriptor of the program.
+    set_flag(upstream.as_raw_fd(), libc::O_NONBLOCK, nonblocking).ok()?;
     let cloexec = (flags & libc::O_CLOEXEC) as u32;
     let new_key = crate::fdtable::inode_of(upstream.as_raw_fd()).ok()?;
     notif_addfd_setfd(lfd, caller.id, upstream.as_raw_fd(), caller.fd, cloexec).ok()?;

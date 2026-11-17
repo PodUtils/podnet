@@ -442,7 +442,7 @@ jobs:
           sh scripts/live-run.sh relay timeout 240 target/release/podnet demo --exit-on-verify --transport relay ||
             { tail -40 relay.err; exit 1; }
           grep -q -E 'leg=http2\+relay|the edge leg http2\+relay won' relay.err
-          grep -q 'registered over HTTP/2' relay.err
+          grep -q -E 'registered over HTTP/2|registered with the edge at [a-z0-9]+ \(http2' relay.err
           ! grep -E 'ephm1\.' relay.out relay.err
       # Issue 88: SSH into this runner through the reverse relay: a pair, a
       # detached node for 127.0.0.1:22, and ssh with a ProxyCommand of podnet

@@ -345,9 +345,13 @@ pub(crate) fn finish(
                 // T-063: the entry stays, for the options and the addresses.
                 let mut entry = crate::sockopt::Connected::new(caller.fd, peer, bound, options);
                 let handed = match &link {
-                    Link::Plain(up) | Link::Kernel(up) => {
+                    Link::Plain(up) => {
                         let ends = (up, &pair);
-                        crate::handoff::hand_off(lfd, taker, &ids, ends, (map, key))
+                        crate::handoff::hand_off(lfd, taker, &ids, ends, (map, key), false)
+                    }
+                    Link::Kernel(up) => {
+                        let ends = (up, &pair);
+                        crate::handoff::hand_off(lfd, taker, &ids, ends, (map, key), true)
                     }
                     Link::Relay(_) => None,
                 };

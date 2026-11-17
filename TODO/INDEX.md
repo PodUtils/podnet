@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**456 entries: 19 open, 11 partial, 35 blocked, 391 done.**
-**456 entries: 19 open, 11 partial, 35 blocked, 391 done.**
+**456 entries: 16 open, 12 partial, 35 blocked, 393 done.**
+**456 entries: 16 open, 12 partial, 35 blocked, 393 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 8 | 2 | 2 | 47 | 59 |
+| P1 | 5 | 3 | 2 | 49 | 59 |
 | P2 | 4 | 6 | 10 | 200 | 220 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 19 | 11 | 35 | 391 | 456 |
+| **All** | 16 | 12 | 35 | 393 | 456 |
 | P2 | 4 | 6 | 10 | 200 | 220 |
 | P3 | 7 | 3 | 23 | 143 | 176 |
-| **All** | 19 | 11 | 35 | 391 | 456 |
+| **All** | 16 | 12 | 35 | 393 | 456 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -470,7 +470,7 @@ M8 Overlays, M9 Later.
 | [T-419](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.15`: the gate, the dry run, the publish and the release proofs |
 | [T-420](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.68.0 |
 | [T-421](fixes.md) | P1 | S | M5 | defect | done | The WebSocket and relay connections ignore `--ca-file`, and a proxy's refusal of the upgrade reads as a bad token |
-| [T-422](fixes.md) | P1 | S | M5 | release | open | Publish `v0.4.0-beta.16`: the gate, the dry run, the publish and the release proofs |
+| [T-422](fixes.md) | P1 | S | M5 | release | done | Publish `v0.4.0-beta.16`: the gate, the dry run, the publish and the release proofs |
 | [T-423](crates.md) | P1 | M | M3 | chore | done | Take podcrates v0.69.0 with `pod-cloudflare` |
 | [T-424](fixes.md) | P2 | S | M6 | defect | done | `git init` of an existing bare repository fails (GitHub #614) |
 | [T-425](fixes.md) | P3 | S | M6 | chore | done | `warp ssh-config` prints a `GIT_SSH_COMMAND` line with three layers of quotes (GitHub #615) |
@@ -504,5 +504,5 @@ M8 Overlays, M9 Later.
 | [T-453](fixes.md) | P1 | S | M5 | chore | open | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |
 | [T-454](fixes.md) | P1 | M | M5 | chore | open | A black-box QA pass before each beta |
 | [T-455](fixes.md) | P2 | M | M5 | chore | open | Readiness: the promises with a test, in place of the commands with a scenario |
-| [T-456](fixes.md) | P1 | S | M7 | defect | open | `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213) |
-| [T-457](fixes.md) | P1 | S | M7 | defect | open | `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142) |
+| [T-456](fixes.md) | P1 | S | M7 | defect | partial | `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213) |
+| [T-457](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142) |

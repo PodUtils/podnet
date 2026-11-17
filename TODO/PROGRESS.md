@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 456 entries: 19 open, 11 partial, 35 blocked, 391 done.
+`TODO/INDEX.md` holds 456 entries: 16 open, 12 partial, 35 blocked, 393 done.
 `TODO/INDEX.md` holds 422 entries: 11 open, 10 partial, 35 blocked, 366 done.
 
 ## State
@@ -27,7 +27,7 @@
 ## Work order
 
 0. **First, the QA round of 2026-11-17** (`docs/decisions.md`, The QA round and the release freeze): the open issues
-   of the testers (GitHub #634 to #648) and of podrunner (T-456, T-457); then the gate of correctness: T-450 (a test for
+   of the testers (GitHub #634 to #648) and of podrunner (T-456, part 2); then the gate of correctness: T-450 (a test for
    each issue), T-451 (the contracts of the help and of the JSON), T-452 (the error paths of the lane), T-453 (the lab of
    the testers' host), T-454 (a black-box QA pass), T-455 (the measure of readiness). No release and no new feature
    before T-450 to T-455 are done.
@@ -38,7 +38,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** cut a beta when a batch of fixes is green (betas, 2026-11-09) and the release gate passes (T-358, 2026-11-15): no beta after `v0.4.0-beta.13` until the gate runs. The newest is `v0.4.0-beta.13`.
+3. **Releases:** no release and no new feature until T-450 to T-455 are done (`docs/decisions.md`, 2026-11-17, The QA round and the release freeze). The newest is `v0.4.0-beta.16`.
 
 ### The order of podnet's own work
 

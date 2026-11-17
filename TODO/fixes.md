@@ -8598,7 +8598,7 @@ of `v0.4.0-beta.15` fails `way-relay-refused` with `UnknownIssuer` (exit 69, the
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -8620,6 +8620,14 @@ beta.15 cannot reach the relay from a host behind a proxy that re-signs TLS (T-4
 ```sh
 gh release view v0.4.0-beta.16 -R PodUtils/podnet
 ```
+
+## Done
+
+2026-11-17, the release `v0.4.0-beta.16` (commit 3ab4831): a prerelease with 17 assets, published at 14:07 UTC. The
+publish run passed; the run of `release.yml` 44091086685 passed; `release-proofs.yml` 44100847097 passed.
+`docs/releases/v0.4.0-beta.16.md` has a section `Known problems` for the QA round (GitHub #610 to #648) and for
+PodUtils/podrunner#213 and #142. No release follows until T-450 to T-455 are done (`docs/decisions.md`, 2026-11-17).
+
 
 # T-424: `git init` of an existing bare repository fails (GitHub #614)
 
@@ -9523,6 +9531,9 @@ python3 scripts/check-workflows.py
 the run of the race (`the edge leg quic+warp won after 38111 ms`) match the new checks. The other texts of the tunnel that
 `live.yml` reads (`no proxy carries UDP`, `registered over HTTP/2`, `the UDP probe was refused`, `moved to a new leg`,
 `lost its leg`, `NAME: stopping`) are in the source.
+2026-11-17, a sixth grep: `live` 44099840388 (617f071) failed on `registered over HTTP/2` in the relay step. The step
+now also accepts `registered with the edge at NAME (http2`. A scan of each log grep of `live.yml` against the sources
+of podnet and of podcrates v0.69.0 finds no other old text.
 
 # T-450: Rule: an issue closes only with a test that reproduces it
 
@@ -9719,7 +9730,7 @@ broker on the loopback.
 **Milestone:** M7
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -9741,6 +9752,33 @@ A program in a seccomp pod cannot connect to a port of the loopback that a progr
 cargo test -p podnet --test pod_seccomp -- loopback
 ```
 
+## Correction
+
+2026-11-17: part 1 does not fix the report. Its test used a Python client; the reporter's program is .NET. With the
+.NET 8 `HttpClient` in the pod and `PODNET_NETNS_TEST_MEM=none`, a request to 127.0.0.1 still fails with
+`Operation not supported (127.0.0.1:PORT)`, the text of the report. `strace` shows the cause:
+`getsockopt(fd, SOL_IPV6, IPV6_V6ONLY)` before the `connect` gives EOPNOTSUPP. The pod cannot write the value into
+the memory of the program, so the call goes to the kernel, and the kernel answers for the AF_UNIX socket pair.
+
+Part 2 (open): where the pod cannot write the memory of the program, `socket` must give the program a TCP socket of
+the kernel. Then the kernel answers each socket option before the connect. A loopback `connect` goes to the kernel;
+any other `connect` waits for the dial (issue 610) and the pod then puts the upstream at the descriptor. Prove it with
+the .NET program of the reproduction (a test that skips when no `dotnet` is installed) and with a C program that reads
+`IPV6_V6ONLY` before `connect`; each must fail on the code before the fix.
+
+## Done
+
+2026-11-17, commit aaf9e2c (`T-456: seccomp: a loopback TCP connect gives the kernel socket when the pod cannot write
+the memory`). Reproduction: a Python client in `pod --backend seccomp` to a TCP listener on 127.0.0.1 of the host. With
+`PODNET_NETNS_TEST_MEM=none`, `getsockname` failed with errno 95 (EOPNOTSUPP); the .NET runner reads `LocalEndPoint`
+and `RemoteEndPoint`, so it failed as in the report. The connect itself worked. The fix: with no write to the memory
+and no `--flow-log`, the loopback dial gives the TCP socket of the kernel (`Link::Kernel`,
+`crates/podnet-netns/src/handoff.rs`); the handoff puts it at the descriptor of the program, and the entry is marked
+`kernel` (`crates/podnet-netns/src/sockopt.rs`). The kernel then answers `getsockname` and `getpeername`. A dial to
+the program's own inbound listener keeps the relay. Test: `tests/pod_seccomp/loopback_name.rs`
+(`a_loopback_connect_has_its_names_with_no_memory_write`): it passes; on the code before the fix it fails with
+`NAME-ERROR:95`. `cargo test --test pod_seccomp`: 45 passed.
+
 # T-457: `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142)
 
 **Source:** PodUtils/podrunner#142 (2026-11-15, a member of the team), podnet `0.4.0-beta.8`.
@@ -9748,7 +9786,7 @@ cargo test -p podnet --test pod_seccomp -- loopback
 **Milestone:** M7
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -9771,3 +9809,18 @@ timed out after 60 s; `curl` and Node to a plain CONNECT proxy reached github.co
 ```sh
 cargo test -p podnet --test pod_seccomp -- dotnet
 ```
+
+## Done
+
+2026-11-17, commit 040f89d (`T-457: seccomp: no handoff of a nonblocking descriptor (epoll)`). Reproduction on the
+head with a .NET 8 `HttpClient` program (`SocketsHttpHandler`, no proxy of its own) in `pod --backend seccomp` with an
+HTTP CONNECT upstream on a Unix socket: request 0 passed, requests 1 and 2 timed out after 20 s. `-v` showed `the
+program holds the upstream socket (no relay)` for each connect. Cause: the handoff (T-065) replaced a nonblocking
+descriptor after the program had put it in its epoll set; the close of the old socket removes it from the set, and
+epoll never reports the new one. T-430 was not the cause. The fix: `hand_off` (`crates/podnet-netns/src/handoff.rs`)
+takes a blocking descriptor only; a nonblocking one keeps the relay. After the fix the .NET program passes 3 requests
+of 3 (45 ms, 7 ms, 4 ms). Test: `tests/pod_seccomp/epoll.rs` (`an_epoll_program_sees_its_socket_after_the_connect`, a
+C program that adds the socket to epoll before `connect`): it passes; on the code before the fix it fails with
+`EPOLL-TIMEOUT:read`. `tests/pod_seccomp_nonblock.rs` now expects the relay for a nonblocking dial.
+`cargo test --test pod_seccomp` (46), `pod_seccomp_nonblock`, `pod_seccomp_handoff`, `pod_seccomp_slow_dial`,
+`pod_seccomp_tcp`: each passes. podrunner runs its case again with the next release.

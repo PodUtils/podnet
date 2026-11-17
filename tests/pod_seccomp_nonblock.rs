@@ -235,9 +235,10 @@ fn seccomp_a_nonblocking_connect_gives_einprogress() {
         "{all}"
     );
     assert_eq!(line(&stdout, "slow_data"), ["HELLO", "8001|PING|"], "{all}");
-    // T-065: the one SO_ERROR call takes the plain upstream.
+    // T-457: a nonblocking descriptor keeps the relay (a program can have it
+    // in an epoll set); T-065 hands off a blocking descriptor only.
     assert!(
-        stderr.contains("the program holds the upstream socket"),
+        !stderr.contains("the program holds the upstream socket"),
         "{all}"
     );
     // No call waits for the fast dial: the connection stays, with a relay.

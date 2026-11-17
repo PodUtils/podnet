@@ -15,7 +15,8 @@ only become smaller:
 * An allowlist line of a file that does not exist is a fault.
 
 The scan reads each `.rs` file under the root of the repository, but not in
-a directory named `target` or with a name that starts with `.`. A scan that
+a directory named `target`, or with a name that starts with `target-` (a
+private build directory of an agent) or with `.`. A scan that
 reads fewer than MIN_FILES files is a fault: a scan of nothing proves
 nothing.
 
@@ -53,7 +54,8 @@ def rust_files(root: Path) -> list[str]:
         here = stack.pop()
         for entry in here.iterdir():
             if entry.is_dir() and not entry.is_symlink():
-                if entry.name != "target" and not entry.name.startswith("."):
+                skip = entry.name == "target" or entry.name.startswith(("target-", "."))
+                if not skip:
                     stack.append(entry)
             elif entry.suffix == ".rs" and entry.is_file():
                 out.append(entry.relative_to(root).as_posix())
@@ -135,6 +137,7 @@ def self_test() -> int:
         plant(root, "src/small.rs", 10)
         plant(root, "crates/a/src/lib.rs", 800)
         plant(root, "target/debug/build/out.rs", 2000)
+        plant(root, "target-qa/debug/build/out.rs", 2000)
         plant(root, ".claude/worktrees/x/src/big.rs", 2000)
         return {"src/big.rs": 900}
 

@@ -78,6 +78,7 @@ int main(void) {
 "#;
 
 mod dns;
+mod epoll;
 mod host_gateway;
 mod listen;
 mod loopback_name;
