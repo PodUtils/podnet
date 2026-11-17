@@ -1,23 +1,24 @@
 # Handoff
 
-The state at 2026-11-17 12:00 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-17 20:00 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
 
-The owner (2026-11-13, `docs/decisions.md`, The complete beta): the beta test round is cancelled. Close each GitHub
-issue except the deferred ones, then cut a final complete beta. The takes of PodUtils/podcrates follow its plan
-(PodUtils/podcrates#133): the next tags bring `pod-cloudflare`, `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`.
+The owner's review of the QA round (2026-11-17, `docs/decisions.md`, The QA round and the release freeze): no release
+and no new feature until T-450 to T-455 are done; an issue closes only with a test that reproduces it and fails on the
+code before the fix. The rulings "Shared code first" and "Quality first" (2026-11-17, in `CLAUDE.md`) hold for each
+change.
 
 ## Where the code is
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.68.0` (T-420), with `pod-warp`: `src/warp/` is glue
-  over the crate and takes fixes only (each fix goes to podcrates as a COORD issue). The installer core in
-  `scripts/install/` is that of `v0.68.0` (`core.sh`, `core-net.sh`, `pins.py`; `scripts/install/SOURCES`).
-* The newest release is `v0.4.0-beta.15` (T-419, tag at `4a8c52a`).
-* The record is `TODO/`. `cargo todo check` agrees: 421 entries, 12 open, 11 partial, 36 blocked, 362 done.
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.69.0` (with `pod-cloudflare`). The installer core
+  in `scripts/install/` is that of `v0.69.0`. The next tag of podcrates (`v0.70.0`) brings `pod_core::lock`,
+  `pod_core::clock::Clock` and rows of `pod-hostprobe` (their entries 866, 877, 878).
+* The newest release is `v0.4.0-beta.16` (T-422; its notes name the known problems).
+* The record is `TODO/`. `cargo todo check` agrees: 477 entries, 18 open, 12 partial, 36 blocked, 411 done.
 
 ## Unfinished work (not on `main`)
 
@@ -25,38 +26,42 @@ None. The head is the commit of this handoff.
 
 ## CI
 
-* A push to `main` starts `ci`, `deny`, `secrets`, `live` and `issue-sync`. The session starts and cancels runs with the
-  MCP tool `actions_run_trigger` (`docs/maintenance.md`, Runs from the session). Push in batches; cancel the `ci` of a
-  head that a newer push replaces. `live` has one concurrency group: a newer push replaces a pending `live`, so let a
-  running `live` end before the next push when its result matters.
-* Read each run when the watcher reports its end (`CLAUDE.md` step 1).
-* On `17fa8e6`: `live` 43996999160 passed. On `060147b` (T-412): read `ci`, `live`, `deny` and `secrets` when they end.
-* `record-issues` (each day) no longer fails on #475: the owner removed the entry 305 (T-396).
+* A push to `main` starts `ci`, `deny`, `secrets`, `live` and `issue-sync`. `ci` has a concurrency group since
+  2026-11-17: a new push cancels the `ci` of the commit before it. `live` keeps one running and one pending run: a new
+  push replaces the pending one. Let a `ci` run end before the next push when its result matters.
+* On `b272dc2`: `ci` 44156801072 passed. On `4e23607`: `live` 44152206601 passed (the second full pass with the fixes
+  of 2026-11-17).
+* `record-issues` (each day): green when each issue number has a line in `TODO/github.txt`.
 
 ## The work of 2026-11-17 (all on `main`)
 
-* `v0.4.0-beta.14` is out (T-400). Issues #599 to #602 are closed through the record; COORD-097 (#603) and COORD-099 (#605) are closed.
-* Takes of podcrates: v0.64.0 (T-409), v0.65.0 (T-410: a node that the relay holds by its lost socket takes the next
-  stored pair) and v0.66.0 (T-412). COORD-096 (#597) lists each take.
-* #606 (live failures): T-407, T-408 and T-411 are done; T-406 is blocked on the relay role of podssh (COORD-098, #604).
+* The QA round: GitHub #609 to #648 (40 issues of outside testers). Each is closed through the record except #645 (T-469,
+  the installer of podcrates: COORD-103, #650). podrunner#213 (T-456) and #142 (T-457) are fixed and proven with a
+  .NET 8 `HttpClient`.
+* COORD-102 (#649) is to all: the lesson of the QA round; podrunner, podssh and podvm answered; podcrates answered asks
+  1 to 3 in COORD-131 (PodUtils/podcrates#221).
+* T-473 (the survey of copies of shared code): `src/transport/` is removed, `scripts/retry.sh` is podcrates' copy;
+  T-474 (`ssh-relay` takes `--proxy` and `--egress`) and T-475 (the CA bundles of `warp up`) are done; the asks are
+  podcrates' entries 896 to 901 (COORD-105, #652).
+* T-451 step 1: `src/cli/help_tests.rs::each_flag_that_a_help_names_exists` (69 false flag references fixed).
+* T-477: a refusal for now (exit 75) gets its own hint. T-449: each grep of the workflows and the scripts reads the log
+  lines of `pod-cloudflare`. T-414: the WARP proxy step outlived its `--run-for`.
 
 ## Next steps
 
-0. T-422: `v0.4.0-beta.16` is set (T-421 is its main fix). When `ci` and `live` pass on its commit: the dry run of
-   `release.yml`, then `publish=v0.4.0-beta.16`, then `release-proofs.yml`; then set T-422 to done with its runs.
-1. Read the runs of "CI" above. Fix each failure first (a new lane case that fails on the GitHub runner is a defect of
-   the case or of podnet).
-2. T-406: wait for the answer of podssh on COORD-098 (#604).
-   T-414 and T-415: when live gives the warning "T-414" or "T-415", write the evidence as a COORD issue to podcrates (`pod-warp`).
-3. T-398: `net tailscale` stays experimental until the headscale harness of podcrates (their entry 502; podnet T-114).
-4. T-358, what remains: the row `way-out` (a quick tunnel in `podlab run --way-out proxy-only`) is a default row now; the lane rows with `podlab run --way-out PROFILE` and `--serve PORT`, WebSocket through the
-   proxy, `ipv6-only` on a host with IPv6, the `icmp` rows; the relay and the tunnel as podssh and podrunner call them.
+1. T-478: when `live` fails in "SSH through the reverse relay", read the logs of the two sessions and of the node that
+   the step prints now, and fix the side that waits.
+2. T-450 to T-455, the gate of correctness, in this order: T-451 step 2 (a schema for each `--json` document, a test in
+   tests/contracts.rs), T-452 (error rows of the lane), T-453 (the lab of the testers' host), T-450, T-454, T-455.
+3. T-473, what remains: the doctor row of the SSH relay and `--connect-proxy` go to `pod-proxy` (a SOCKS or
+   authenticated proxy then works: a change of tested behaviour); the copies of the clock, the files and the backoff go
+   to `pod-core`; the rest waits for podcrates' entries 896 to 901.
+4. T-476: the cap test of the relay transfer fails under load; measure the bytes of the old leg during a move.
 5. At each tag of podcrates: `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is at the tag (T-137).
-   Write the take into COORD-096 (#597).
-6. Go on with the work order of `TODO/PROGRESS.md`. Most open entries wait for crates of podcrates. The disk allowance
-   holds about one debug build: build with `CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0`.
-   After a change of a document, run `cargo test --bin podnet write_the_llms_files -- --ignored`. Issues #484 to #501
-   are deferred by the owner: leave them open and unlabelled.
+6. The disk allowance holds about one debug build: build with `CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
+   CARGO_PROFILE_TEST_DEBUG=0`. After a change of a document or a help text, run
+   `cargo test --bin podnet write_the_llms_files -- --ignored`. Issues #484 to #501 are deferred by the owner: leave
+   them open and unlabelled.
 
 Run the lane here: `sh scripts/get-podlab.sh v0.68.0 .work/podlab-v0.68.0`; build podnet; copy the binary and the
 podlab asset to a directory that uid 65534 can read (for example `/var/tmp/lane/`, not in `/tmp` or HOME); then as
@@ -67,7 +72,7 @@ scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.
 
 `quick_tunnel_standin_serves_a_visitor_over_http2`, `service_serve_ingress::the_service_ends_with_the_serve_process`,
 `shim_direct::a_perl_accept_loop_serves_each_connection` and `ws_relay::...::a_demoted_relay_host_recovers_on_success`
-`autostart::sigterm_is_a_clean_stop`, `doctor_ssh_relay_row_dials_through_the_proxy` and
+`autostart::sigterm_is_a_clean_stop`, `doctor_ssh_relay_row_dials_through_the_proxy`, `transfer_over_the_relay_crosses_the_cap` (T-476) and
 `guest_wire_unix_socket_serves_a_guest_and_the_next` (keep the default `TMPDIR`) fail at times in a full run and pass alone. Run a failed test alone three times before a push.
 
 ## Open COORD issues
