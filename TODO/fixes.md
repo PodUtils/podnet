@@ -10546,3 +10546,38 @@ cargo test -p podnet --lib -- the_hint_follows_the_class_of_the_failure
 Refused at the stage `EdgeRegister`) passes. On the code before the fix it fails for TempFail. The lines of the job
 log that came twice are of the workflow (`scripts/live-run.sh` writes stderr to the log and to the file, and the step
 prints the tail of the file), not of podnet.
+
+# T-478: Two parallel SSH sessions through one relay node: one hung with no line
+
+**Source:** `live` 44147054834 (76f7031, 2026-11-17), the step "SSH through the reverse relay".
+**Category:** defect
+**Milestone:** M6
+**Priority:** P1
+**Effort:** M
+**Status:** open
+
+## Problem
+
+The first SSH session through `relay node` and `relay connect` worked (`relay-ssh-ok`). Then two sessions at the same
+time through the one node: the step waited until its limit of 5 minutes, with no line. The same step passed in
+`live` of da53b1a 20 minutes before. A wait with no limit and no line breaks the ruling "Quality first".
+
+## Premise
+
+- The two sessions had no `timeout` and no log of their own, so the run shows neither which session hung nor where.
+- The node serves each session of an operator on its own stream of the relay.
+
+## Approach
+
+1. The step gives each parallel session a limit (60 s) and a debug log of `relay connect`, and prints the logs of the
+   sessions and of the node when one fails (commit of this entry).
+2. On the next failure: read which side waits (the node, the connect, the relay) and fix it there; each wait of the
+   node and of the connect has a limit and a line.
+3. A test with the fake relay (`tests/relay_reverse/fake.rs`): two sessions at the same time through one node, each
+   ends within a limit, 20 times.
+
+## Prove
+
+```sh
+cargo test -p podnet --test relay_reverse
+```

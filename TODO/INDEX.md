@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**476 entries: 17 open, 12 partial, 36 blocked, 411 done.**
-**476 entries: 18 open, 11 partial, 36 blocked, 411 done.**
+**477 entries: 18 open, 12 partial, 36 blocked, 411 done.**
+**477 entries: 18 open, 12 partial, 36 blocked, 411 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 4 | 3 | 2 | 51 | 60 |
+| P1 | 5 | 3 | 2 | 51 | 61 |
 | P2 | 6 | 6 | 10 | 215 | 237 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 17 | 12 | 36 | 411 | 476 |
+| **All** | 18 | 12 | 36 | 411 | 477 |
 | P2 | 6 | 6 | 10 | 215 | 237 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 17 | 12 | 36 | 411 | 476 |
+| **All** | 18 | 12 | 36 | 411 | 477 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -526,3 +526,4 @@ M8 Overlays, M9 Later.
 | [T-475](fixes.md) | P2 | S | M5 | defect | done | `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6 |
 | [T-476](fixes.md) | P2 | S | M6 | defect | open | `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move |
 | [T-477](fixes.md) | P2 | S | M5 | defect | done | A refusal for now (HTTP 429, exit 75) gets the hint "does not change with a retry" |
+| [T-478](fixes.md) | P1 | M | M6 | defect | open | Two parallel SSH sessions through one relay node: one hung with no line |

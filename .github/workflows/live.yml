@@ -483,17 +483,28 @@ jobs:
           fi
           cat relayssh.out
           grep -qx relay-ssh-ok relayssh.out
-          # Two sessions at the same time through the one node.
+          # Two sessions at the same time through the one node. Each has a
+          # limit and its own log (live 44147054834: one hung with no line).
           for i in 1 2; do
+            RUST_LOG=podnet=debug,pod_relay=debug,pod_ws=debug timeout 60 \
             ssh -i "$RUNNER_TEMP/relay_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
               -o UserKnownHostsFile="$RUNNER_TEMP/relay_known" -o HostKeyAlias="$name" \
               -o HostKeyAlgorithms=ssh-ed25519 \
-              -o ProxyCommand="$PWD/target/release/podnet relay connect $name" \
-              "$USER@$name" "echo parallel-$i" > "relay-$i.out" &
+              -o ProxyCommand="$PWD/target/release/podnet relay connect $name 2>>$PWD/proxy-$i.err" \
+              "$USER@$name" "echo parallel-$i" > "relay-$i.out" 2> "ssh-$i.err" &
           done
-          wait
-          grep -qx parallel-1 relay-1.out
-          grep -qx parallel-2 relay-2.out
+          parallel=0
+          wait || parallel=1
+          if ! grep -qx parallel-1 relay-1.out || ! grep -qx parallel-2 relay-2.out; then parallel=1; fi
+          if [ "$parallel" != 0 ]; then
+            for i in 1 2; do
+              echo "== session $i: $(cat "relay-$i.out" 2>/dev/null | tr '\n' ' ')"
+              sed "s/$name/<pair>/g" "ssh-$i.err" | tail -10
+              sed "s/$name/<pair>/g" "proxy-$i.err" | cut -c1-300 | tail -40
+            done
+            echo "== node"; sed "s/$name/<pair>/g" "$PODNET_RUN_DIR/relaynode.log" | cut -c1-300 | tail -60
+            exit 1
+          fi
           # Issue 109: an input that ends at once still gets the answer
           # (the SSH banner of the target).
           printf 'SSH-2.0-podnet-live\r\n' | timeout 30 target/release/podnet relay connect "$name" > banner.out || true
