@@ -9624,6 +9624,19 @@ of the manual parse already (`each_example_of_the_manual_parses`). Commit 43e53c
 flag, or names no flag; the test passes. Steps 2 and 3 (the schemas of the JSON documents, the run on the release
 binary) are open; the Prove names tests/contracts.rs for step 2.
 
+2026-11-17, step 2, commit 256b424d (an agent; merged on `main`). `tests/contracts.rs` (one table test,
+`each_json_document_keeps_the_contract`, over 40 command lines with `--json` or `--detach` that run with no network)
+checks four rules, written in `docs/cli.md`, "JSON documents": one JSON object on stdout (an event stream: one object
+for each line, with a string `event`); a stamp (`schema`, `podnet`) on each object but the documents of the
+environment; the endpoint keys (`url`, `listen`, `listens`) on each `ready` event and `detached` document; no secret
+value. On `main` before the merge the test gives 20 faults (run by the lead with the new test on the old code); after
+it, it passes. The fixes: the envelope of `crates/podnet-core/src/instances.rs` stamps each detached document; `ports`,
+`autostart list`, `net addresses`, `man --json` and `--help --json` are stamped; each `ready` event has the endpoint
+keys (also tunnel, serve, share, demo, relay node); `git serve` lists its listeners; `link listen` and `link connect`
+print a `ready` event. The keys are added, none is removed. Not covered with no network: tunnel, share, demo,
+ssh-relay, send, receive, relay pair, relay node, warp status, exit and scan, doctor, connect (their ready events take
+the shared stamp code that the test runs); `link mesh` (it needs a mesh node). `link listen` writes its carrier address
+in `listen` (not `unix:PATH`), as `docs/cli.md` says. Step 3 (the run on the release binary) is open.
 
 # T-452: Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS
 
