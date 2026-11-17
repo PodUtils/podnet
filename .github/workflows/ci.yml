@@ -29,6 +29,13 @@ on:
 permissions:
   contents: read
 
+# A new push to a branch cancels the run of the commit before it: the new run
+# tests the same code and more, and the runs of each push waited for hours in
+# the queue (2026-11-17: ten runs of ci queued). A dispatch is not cancelled.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
 env:
   # The toolchain of each job but msrv. Change it here only.
   RUST_TOOLCHAIN: "1.99.1"

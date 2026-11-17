@@ -218,7 +218,7 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 
 | Workflow | When | What |
 | --- | --- | --- |
-| `ci.yml` | each push | fmt, clippy, tests, static musl builds |
+| `ci.yml` | each push (a new push to the branch cancels the run before it) | fmt, clippy, tests, static musl builds |
 | `live.yml` | each push to `main`, each day, by hand | podnet against the real edge and WARP, on a GitHub runner |
 | `deny.yml`, `secrets.yml` | each push | licences and advisories; secret scan (`.github/secrets-allow.txt`) |
 | `gate.yml` | by hand; a job of `release.yml` (`publish` needs it) | the release gate (T-358): `scripts/lab-lane.sh` in the labs of `pod-lab`, as the runner user, and its plant |
