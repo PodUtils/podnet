@@ -32,6 +32,9 @@ pub(crate) struct Connected {
     /// of the family of the peer with an ephemeral port.
     pub(crate) local: (IpAddr, u16),
     pub(crate) options: Options,
+    /// T-456: the program holds a TCP socket of the kernel (a handed loopback
+    /// dial). The kernel then answers `getsockname` and `getpeername`.
+    pub(crate) kernel: bool,
 }
 
 impl Connected {
@@ -48,6 +51,7 @@ impl Connected {
             peer,
             local,
             options,
+            kernel: false,
         }
     }
 }
@@ -217,6 +221,12 @@ pub(crate) fn handle_sockname(
     let Some(entry) = map.get(&key) else {
         return notif_continue(lfd, id);
     };
+    if let Sock::Connected(Connected { kernel: true, .. }) = entry {
+        // T-456 (PodUtils/podrunner#213): the socket of the program is a TCP
+        // socket of the kernel. Its answer is true and needs no write of
+        // the pod to the memory of the program.
+        return notif_continue(lfd, id);
+    }
     if !writable {
         // Issue 98: the caller's sockaddr cannot be written. The kernel answer
         // would be the AF_UNIX socketpair (family 1), which programs take as

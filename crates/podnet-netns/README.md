@@ -367,7 +367,10 @@ see it. Use a unix socket for it (`-L unix:///path`).
   to HTTP/2. A program that reads its own address can crash: for example a
   Go program with a type assertion on `LocalAddr()`. Use `--backend netns`
   where the host permits it. No other way gives the address to the program
-  without a write to its memory.
+  without a write to its memory. Exception (T-456): a TCP connect to a
+  loopback address that goes to a listener of the host. Then the program
+  holds the TCP socket of the kernel (no relay), and the kernel answers the
+  two calls.
 * An errno of the supervisor is a failure of the system call (-1 and the
   errno), for example `EPERM` for `io_uring_setup`.
 * After the child exits, the supervisor waits up to 3 seconds for the relays

@@ -28,6 +28,9 @@ pub(crate) enum Link {
     Relay(Upstream),
     /// A plain Unix stream that the program can hold.
     Plain(OwnedFd),
+    /// A TCP socket of the kernel that the program can hold (T-456: a
+    /// loopback dial when the pod cannot write the memory of the program).
+    Kernel(OwnedFd),
 }
 
 impl Link {
@@ -39,6 +42,11 @@ impl Link {
                 let stream = std::os::unix::net::UnixStream::from(fd);
                 stream.set_nonblocking(true)?;
                 Ok(Box::new(tokio::net::UnixStream::from_std(stream)?))
+            }
+            Link::Kernel(fd) => {
+                let stream = std::net::TcpStream::from(fd);
+                stream.set_nonblocking(true)?;
+                Ok(Box::new(tokio::net::TcpStream::from_std(stream)?))
             }
         }
     }

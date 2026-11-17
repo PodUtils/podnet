@@ -224,11 +224,13 @@ pub(crate) fn handle_connect(
             );
         }
         let inbound_dir = route.inbound_dir.to_path_buf();
+        // T-456: with no write to the memory of the program, the pod cannot
+        // answer `getsockname`. The program then holds the TCP socket of
+        // the kernel, and the kernel answers.
+        let hand = !mem_writable && !crate::flowlog::on();
         tokio::spawn(async move {
-            let dial = connect_loopback(&inbound_dir, ip, port);
-            done.result = within_timeout("loopback connect", dial)
-                .await
-                .map(Link::Relay);
+            let dial = connect_loopback(&inbound_dir, ip, port, hand);
+            done.result = within_timeout("loopback connect", dial).await;
             let _ = tx.send(done);
         });
     } else {
@@ -341,14 +343,15 @@ pub(crate) fn finish(
                 ..
             }) => {
                 // T-063: the entry stays, for the options and the addresses.
-                let entry = crate::sockopt::Connected::new(caller.fd, peer, bound, options);
+                let mut entry = crate::sockopt::Connected::new(caller.fd, peer, bound, options);
                 let handed = match &link {
-                    Link::Plain(up) => {
+                    Link::Plain(up) | Link::Kernel(up) => {
                         let ends = (up, &pair);
                         crate::handoff::hand_off(lfd, taker, &ids, ends, (map, key))
                     }
                     Link::Relay(_) => None,
                 };
+                entry.kernel = handed.is_some() && matches!(link, Link::Kernel(_));
                 if let Some(new_key) = handed {
                     // T-065: the program holds the upstream; no relay.
                     if verbose {
@@ -397,19 +400,27 @@ pub(crate) fn finish(
 }
 
 /// A loopback connect of the program: its own inbound listener on `port`
-/// when there is one, else TCP to `ip:port` on this host.
+/// when there is one, else TCP to `ip:port` on this host. With `hand`, the
+/// TCP socket is a [`Link::Kernel`] for the program to hold (T-456).
 async fn connect_loopback(
     inbound_dir: &std::path::Path,
     ip: IpAddr,
     port: u16,
-) -> Result<crate::upstream::Upstream> {
+    hand: bool,
+) -> Result<Link> {
     let own = inbound_dir.join(format!("{port}.sock"));
     if let Ok(stream) = tokio::net::UnixStream::connect(&own).await {
-        return Ok(Box::new(stream));
+        return Ok(Link::Relay(Box::new(stream)));
     }
-    let stream =
-        crate::upstream::connect_direct(&std::net::SocketAddr::new(ip, port).to_string()).await?;
-    Ok(Box::new(stream))
+    let addr = std::net::SocketAddr::new(ip, port);
+    if hand {
+        let stream = tokio::net::TcpStream::connect(addr)
+            .await
+            .with_context(|| format!("connect {addr}"))?;
+        return Ok(Link::Kernel(stream.into_std()?.into()));
+    }
+    let stream = crate::upstream::connect_direct(&addr.to_string()).await?;
+    Ok(Link::Relay(Box::new(stream)))
 }
 
 /// The address of a direct loopback dial for a connect to `ip`, else

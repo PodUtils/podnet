@@ -80,6 +80,7 @@ int main(void) {
 mod dns;
 mod host_gateway;
 mod listen;
+mod loopback_name;
 mod netns_tcp;
 mod netns_udp;
 mod outlive;
