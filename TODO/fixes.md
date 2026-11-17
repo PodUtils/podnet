@@ -10350,9 +10350,95 @@ named.
 1. Read each module of podnet against the design document and the `README.md` of each crate of podcrates, and against the
    crates of podssh, podvm and podrunner.
 2. For each copy: remove it where a crate of podcrates covers it; else name it in one COORD issue `(to podcrates)`.
+3. The survey of 2026-11-17 (an agent; each claim to check against the code before the change) found 23 places:
+   - Remove now (podcrates covers it): `src/transport/` (1380 lines, no caller; checked: nothing uses it and no
+     document promises it); the CONNECT client of `crates/podnet-core/src/connect.rs` (its last caller is the
+     `--connect-proxy` path of `ssh-relay`); the HTTP head reader of `crates/podnet-netns/src/tailscale.rs` and of
+     `src/router/control.rs` (`pod_proxy::http`); the retry waits of `src/cli/cmd/warp/run.rs`, `warp/tun.rs` and
+     `crates/podnet-serve/src/relay/supervise.rs` (`pod_core::backoff`, with jitter); the date code of
+     `src/doctor/clock_check.rs`, `crates/podnet-serve/src/files/listing.rs` and `src/router/door_limit.rs`
+     (`pod_core::clock`); the CA list of `src/warp/up.rs` (T-475); the file writes of
+     `crates/podnet-netns/src/report.rs`, `src/warp/ssh_config.rs` and `src/cli/cmd/serve_at.rs` (`pod_core::files`);
+     the groups and the lead of the help (`pod-manual`); the request parser of `crates/podnet-core/src/util/http.rs`.
+   - Ask podcrates (a part is missing): the SOCKS5 and CONNECT handshake on a stream that the caller holds (the hops
+     of `crates/podnet-netns/src/upstream.rs` and `src/link_chain.rs`); the check of a user by a callback in the
+     SOCKS5 and HTTP server of `pod-proxy` (`crates/podnet-netns/src/socks.rs`; podssh has a server too); a DNS answer
+     with an RCODE (`crates/podnet-netns/src/dns.rs`); rows of `pod-hostprobe` for the probes of the pod backends; the
+     downloaders and the lookup of the newest tag of the installer core (`scripts/install.sh`); a WebSocket request
+     with no token header (`src/doctor/lane_probes.rs`).
+   - Keep (podnet-specific): the lock of the fake-DNS file, the reader of `resolv.conf` of `src/link_dns.rs`.
+   - Not a copy: `scripts/retry.sh` has 3 tries, the copy of podcrates 5.
 
 ## Prove
 
 ```sh
 sh scripts/agent/podcrates.sh
+```
+
+# T-474: `ssh-relay` ignores `--proxy`, `--egress`, `--resolve` and the proxy variables
+
+**Source:** the survey of T-473 (2026-11-17), finding 2: `connect_address` of `crates/podnet-serve/src/relay.rs`
+connected directly when `--connect-proxy` was not given.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`docs/relay.md` says that `--proxy`, `--egress` and `--resolve` apply to `podnet ssh-relay` as to the other commands.
+With no `--connect-proxy`, the relay connected with `TcpStream::connect` and ignored each of them. On a host whose only
+way out is a proxy, `ssh-relay` could not reach the relay.
+
+## Premise
+
+- `podnet::egress::egress(None)` is the dial of the process: the proxy, the egress and the resolver of the flags and
+  of the environment.
+
+## Approach
+
+1. `RelayConfig::dial` (`crates/podnet-serve/src/relay.rs`) takes the dial of the process; `ssh-relay` and the doctor
+   row give it. `--connect-proxy` keeps its path. `PrefixedStream` holds any stream.
+
+## Prove
+
+```sh
+cargo test -p podnet --test ssh_relay -- ssh_relay_takes_the_proxy_of_the_process
+```
+
+## Done
+
+2026-11-17, commit 6f54eca9. The test runs `ssh-relay --proxy http://127.0.0.1:PORT --server relay.invalid:443`
+against a recording CONNECT proxy that joins a fake relay: it passes, and the proxy saw `CONNECT relay.invalid:443
+HTTP/1.1`. On the code before the fix it fails (the direct connect to `relay.invalid`). `cargo test --test ssh_relay`
+(4), `cargo test --test doctor_ssh_relay` (8) and `cargo test -p podnet-serve relay` (37) pass.
+
+# T-475: `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6
+
+**Source:** the survey of T-473 (2026-11-17), finding 12.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`SYSTEM_BUNDLES` of `src/warp/up.rs` has 4 paths in its own order. The manual (`src/manual/facts.rs`) documents the 6
+paths of `pod_tls::SYSTEM_BUNDLES`. On a host whose bundle is only at one of the 2 other paths, `warp up` finds none.
+
+## Premise
+
+- `pod_tls` (`trust.rs`) has the list of 6 and a count of the PEM certificates (`bundle.rs`).
+
+## Approach
+
+1. `warp up` takes `pod_tls::SYSTEM_BUNDLES` and the count of `pod_tls`; `ca_fix` (the merged bundle for WARP) stays.
+2. A test checks that each path that the manual names is a path that `warp up` reads.
+
+## Prove
+
+```sh
+cargo test -p podnet -- warp::up
 ```

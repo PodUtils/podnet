@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**472 entries: 17 open, 11 partial, 36 blocked, 408 done.**
-**472 entries: 17 open, 11 partial, 36 blocked, 408 done.**
+**474 entries: 18 open, 11 partial, 36 blocked, 409 done.**
+**474 entries: 18 open, 11 partial, 36 blocked, 409 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 5 | 2 | 2 | 50 | 59 |
-| P2 | 5 | 6 | 10 | 213 | 234 |
+| P1 | 5 | 2 | 2 | 51 | 60 |
+| P2 | 6 | 6 | 10 | 213 | 235 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 17 | 11 | 36 | 408 | 472 |
-| P2 | 5 | 6 | 10 | 213 | 234 |
+| **All** | 18 | 11 | 36 | 409 | 474 |
+| P2 | 6 | 6 | 10 | 213 | 235 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 17 | 11 | 36 | 408 | 472 |
+| **All** | 18 | 11 | 36 | 409 | 474 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -522,3 +522,5 @@ M8 Overlays, M9 Later.
 | [T-471](fixes.md) | P2 | S | M5 | defect | done | `ssh-relay --no-restart`: the help names `--stop-after`, `--idle-secs` and `--run-for`, which the command refuses (GitHub #647) |
 | [T-472](fixes.md) | P3 | S | M5 | defect | done | `serve --list`: the HTML listing omits the modified time and the upload limit (GitHub #648) |
 | [T-473](fixes.md) | P2 | M | M3 | chore | open | A survey of podnet's copies of shared code against podcrates and the siblings (PodUtils/podcrates#221) |
+| [T-474](fixes.md) | P1 | S | M5 | defect | done | `ssh-relay` ignores `--proxy`, `--egress`, `--resolve` and the proxy variables |
+| [T-475](fixes.md) | P2 | S | M5 | defect | open | `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6 |
