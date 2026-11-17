@@ -222,7 +222,7 @@ async fn static_guard(
                         && is_read(request.method())
                         && !real.join("index.html").is_file() =>
                 {
-                    listing::answer(root, &real, &request, state.upload.is_some(), state.tar)
+                    listing::answer(root, &real, &request, state.upload, state.tar)
                 }
                 Ok(meta) if meta.is_file() || meta.is_dir() => next.run(request).await,
                 _ => not_found(),

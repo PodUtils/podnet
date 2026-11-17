@@ -84,6 +84,13 @@ podnet forward -L unix:/run/db.sock=peer:FINGERPRINT/db       # a unix listener
 network to the resolver `--dns-upstream HOST:PORT` (default `1.1.1.1:53`), which is an address at the far
 end of the network. A program that uses the door as its resolver sends no query from this host.
 
+* podnet binds the door first. The line `podnet: dns door ADDR:PORT -> UPSTREAM via NETWORK` comes after the bind,
+  with the bound port (`--dns 127.0.0.1:0` shows the port that the system gave). An address in use prints no line and
+  exits 69.
+* A query that the door cannot send to the upstream (the network carries no UDP, or the dial fails) gets the answer
+  SERVFAIL, not a timeout. The log has the cause (a line of the level WARN). A query that goes out, and that gets no
+  answer, still times out at the client.
+
 A door of the router has the same function with the keys `dns` and `dns_upstream` ([router.md](router.md)).
 
 ### `warp forward`
@@ -110,7 +117,14 @@ dial of `pod-warp`.
 | `relay` | `podnet relay node` | A node of the reverse relay: operators connect with `podnet relay connect` ([relay.md](relay.md)). |
 | `switch` | `podnet net proxy --forward` | A virtual address on a switch of the virtual network ([networks.md](networks.md)). |
 
-* `TARGET` is an `http://` or `https://` URL, a port, `host:port`, `tcp://host:port` or `unix:/path`.
+* `TARGET` with `--via tunnel` is an `http://` or `https://` URL, a port, `host:port`, `tcp://host:port` or
+  `unix:/path`. A URL is an HTTP origin (`tunnel --url`). A port is the HTTP origin `127.0.0.1:PORT`
+  (`tunnel --port`). A bare `host:port` is a raw TCP origin (`tunnel --tcp`, for a named tunnel: a quick tunnel
+  answers an HTTP request to it with 501; see [tunnels.md](tunnels.md)). Give `http://host:port` for an HTTP
+  origin. `tcp://` and `unix:` go to `tunnel --forward` (a client uses `podnet connect`).
+* `TARGET` with `--via relay` and `--via switch` is a port, `host:port`, `tcp://host:port` or `unix:/path`: these
+  roads carry TCP. A URL exits 64, and the message names the `HOST:PORT` to give (`http://127.0.0.1:8081/` gives
+  `127.0.0.1:8081`).
 * `--as VIRT` (with `--via switch`) gives the virtual address of the service, as `VIRT` in
   `podnet net proxy --forward VIRT=REAL`, for example `10.66.0.2:8080`.
 * The arguments after `--` go to the command that runs: for example `--detach`, a pair name or a

@@ -48,6 +48,9 @@ podnet relay stop NAME
   connected to the relay: `event` (`ready`), `pair`, `relay`, `target`,
   `expires` and `expires_in`. The node stays in the foreground. `--detach`
   prints the same document and returns.
+* `podnet relay node --run-for SECONDS` stops the node after that time, with
+  exit 0 (a planned end: the supervisor of `--detach` does not start it
+  again).
 * `podnet relay connect NAME` waits for `ready`, then copies stdin and stdout.
   A name that is not a valid pair name exits 64.
   A refused session exits 69 with the cause from the node. A refused token

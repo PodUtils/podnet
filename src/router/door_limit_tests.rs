@@ -132,6 +132,43 @@ async fn a_door_keeps_its_rate_and_its_quota() {
     assert_eq!(stats.json()["limits"]["exhausted"], true);
 }
 
+/// GitHub #637: with `close`, an open flow ends at the quota. A read does
+/// not carry a full buffer past it.
+#[tokio::test]
+async fn a_read_stops_at_the_quota() {
+    use crate::network::{Dial as _, Target};
+    use crate::router::door_stats::{Counting, DoorStats};
+    use std::sync::Arc;
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+    crate::test_host::need_loopback!();
+    // A source that sends 135 091 bytes.
+    let source = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let far = source.local_addr().unwrap();
+    tokio::spawn(async move {
+        let (mut c, _) = source.accept().await.unwrap();
+        let _ = c.write_all(&vec![7u8; 135_091]).await;
+    });
+    let limits = Limits::parse(None, Some("1KB"), Some("day"), Some("close")).unwrap();
+    let stats = Arc::new(DoorStats::limited(Arc::new(Limiter::new(limits, None))));
+    let door = Counting::new(Arc::new(crate::dialers::Direct), stats.clone());
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    let mut c = door.dial(&Target::Addr(far), deadline).await.unwrap();
+    // Wait for the bytes, so that one read could take a full buffer.
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let mut got = 0;
+    let mut buf = vec![0u8; 65536];
+    let err = loop {
+        match c.io.read(&mut buf).await {
+            Ok(0) => panic!("the flow ended with no error after {got} bytes"),
+            Ok(n) => got += n,
+            Err(err) => break err,
+        }
+    };
+    assert!(err.to_string().contains("quota"), "{err}");
+    assert_eq!(got, 1000);
+    assert_eq!(stats.json()["limits"]["used"], 1000);
+}
+
 // GitHub #619: the usage file is in the `state_dir` of the router file when
 // the file has one, so two routers with two state directories do not share
 // one count.

@@ -56,6 +56,47 @@ pub fn locked_status(method: &str) -> u16 {
     }
 }
 
+/// A mark of each request of a plain-HTTP TCP listener of the local road
+/// (`--local HOST:PORT`, GitHub #636). The tunnel, the relay, the virtual
+/// network and a unix socket do not set it.
+#[derive(Clone, Copy, Debug)]
+pub struct PlainHttp;
+
+/// `router` with the mark [`PlainHttp`] on each request.
+pub fn plain_http(router: axum::Router) -> axum::Router {
+    router.layer(axum::Extension(PlainHttp))
+}
+
+/// True when the cookie of an unlock gets the attribute `Secure` (GitHub
+/// #636). A request of a plain-HTTP TCP listener gets no `Secure`: the
+/// browser does not keep a `Secure` cookie of a plain-HTTP origin that is
+/// not the loopback, so the PIN cannot open the gate. This is safe: on that
+/// listener the PIN and the cookie go over plain HTTP in each request, and
+/// `Secure` protects nothing there. A request that a proxy of TLS sends
+/// (`X-Forwarded-Proto: https` or `Forwarded: proto=https`) keeps `Secure`,
+/// and so does each other road: the tunnel and the relay serve HTTPS, and
+/// the front of a unix socket is not known.
+pub fn secure_cookie(extensions: &axum::http::Extensions, headers: &HeaderMap) -> bool {
+    if extensions.get::<PlainHttp>().is_none() {
+        return true;
+    }
+    let text = |name: &str| {
+        headers
+            .get_all(name)
+            .iter()
+            .filter_map(|v| v.to_str().ok())
+            .collect::<Vec<_>>()
+            .join(",")
+            .to_ascii_lowercase()
+    };
+    let forwarded_proto = text("x-forwarded-proto");
+    let forwarded = text("forwarded");
+    forwarded_proto.split(',').any(|p| p.trim() == "https")
+        || forwarded
+            .split([',', ';'])
+            .any(|p| p.trim().replace(' ', "") == "proto=https")
+}
+
 /// A `next` target of an unlock: a path of this site only. A
 /// scheme-relative URL (`//host`), a backslash (`/\\host`) and a control
 /// character give `/`.
@@ -173,6 +214,12 @@ impl Gate {
     /// Issue 228: each try takes a slot of the count before the compare.
     /// Many tries at the same time get at most [`MAX_FAILURES`] compares.
     pub fn unlock(&self, password: &str) -> Option<String> {
+        self.unlock_with(password, true)
+    }
+
+    /// [`Gate::unlock`]; the cookie has `Secure` only when `secure`
+    /// ([`secure_cookie`]).
+    pub fn unlock_with(&self, password: &str, secure: bool) -> Option<String> {
         if !self.enabled() {
             return None;
         }
@@ -201,8 +248,9 @@ impl Gate {
             return None;
         }
         self.failures.store(0, Ordering::SeqCst);
+        let secure = if secure { " Secure;" } else { "" };
         Some(format!(
-            "{COOKIE_NAME}={}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400",
+            "{COOKIE_NAME}={}; Path=/; HttpOnly;{secure} SameSite=Lax; Max-Age=86400",
             self.session
         ))
     }
@@ -386,6 +434,46 @@ mod tests {
         for part in ["; Secure", "; HttpOnly", "; SameSite=Lax"] {
             assert!(cookie.contains(part), "{cookie}");
         }
+    }
+
+    // GitHub #636: a plain-HTTP TCP listener gets a cookie with no
+    // Secure; a proxy of TLS in front of it and each other road keep it.
+    #[test]
+    fn a_plain_http_listener_gets_no_secure_cookie() {
+        let mut plain = axum::http::Extensions::new();
+        plain.insert(PlainHttp);
+        let none = axum::http::Extensions::new();
+        let headers = |pairs: &[(&'static str, &str)]| {
+            let mut map = HeaderMap::new();
+            for (k, v) in pairs {
+                map.append(*k, HeaderValue::from_str(v).unwrap());
+            }
+            map
+        };
+        assert!(!secure_cookie(&plain, &HeaderMap::new()));
+        assert!(!secure_cookie(
+            &plain,
+            &headers(&[("x-forwarded-proto", "http")])
+        ));
+        assert!(secure_cookie(&none, &HeaderMap::new()));
+        assert!(secure_cookie(
+            &plain,
+            &headers(&[("x-forwarded-proto", "https")])
+        ));
+        assert!(secure_cookie(
+            &plain,
+            &headers(&[("x-forwarded-proto", "HTTPS, http")])
+        ));
+        assert!(secure_cookie(
+            &plain,
+            &headers(&[("forwarded", "for=1.2.3.4;proto=https")])
+        ));
+        let gate = Gate::pin();
+        let pin = gate.pin_display().unwrap().to_string();
+        let cookie = gate.unlock_with(&pin, false).unwrap();
+        assert!(!cookie.contains("Secure"), "{cookie}");
+        assert!(cookie.contains("; HttpOnly; SameSite=Lax"), "{cookie}");
+        assert!(gate.unlock_with(&pin, true).unwrap().contains("; Secure;"));
     }
 
     // Issue 229: an unlock from another site is refused.

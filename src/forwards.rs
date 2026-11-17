@@ -195,7 +195,7 @@ pub fn alias_table(aliases: &[Alias]) -> podnet_vnet::dns::Resolver {
 }
 
 mod udp;
-pub use udp::{serve_dns, serve_dns_with, serve_udp};
+pub use udp::{bind_dns, serve_dns, serve_dns_on, serve_dns_with, serve_udp};
 
 #[cfg(test)]
 mod tests;

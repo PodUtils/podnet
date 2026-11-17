@@ -245,8 +245,9 @@ async fn newest(current: &str) -> Result<Release> {
         crate::fetch::MAX_BODY,
     )
     .await
-    .map_err(|atom| anyhow::anyhow!("{api:#}; releases.atom: {atom:#}"))
-    .context("reading the list of releases")?;
+    // The error of the API starts with "reading the list of releases": the
+    // line names it once.
+    .map_err(|atom| anyhow::anyhow!("{api:#}; releases.atom: {atom:#}"))?;
     let tag = newest_in_atom(&String::from_utf8_lossy(&feed), current)
         .context("releases.atom has no release")?;
     Ok(Release::pinned(&tag))

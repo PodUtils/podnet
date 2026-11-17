@@ -260,3 +260,78 @@ async fn dns_door_answers_its_names() {
         .unwrap();
     assert_eq!(net.2.load(SeqCst), 1, "the other name used the network");
 }
+
+/// A network that carries no UDP and refuses each TCP dial.
+struct NoWay;
+
+impl Dial for NoWay {
+    fn label(&self) -> String {
+        "noway".into()
+    }
+
+    fn dial<'a>(
+        &'a self,
+        _target: &'a Target,
+        _deadline: tokio::time::Instant,
+    ) -> BoxFuture<'a, Result<Connected, Failure>> {
+        Box::pin(async { Err(no_way("TCP")) })
+    }
+
+    fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn Datagrams>, Failure>> {
+        Box::pin(async { Err(no_way("UDP")) })
+    }
+}
+
+fn no_way(what: &str) -> Failure {
+    use crate::network::{Class, Stage};
+    Failure::new(
+        Stage::Connect,
+        Class::Unavailable,
+        format!("noway carries no {what}"),
+    )
+}
+
+/// GitHub #638: a DNS door whose upstream cannot be reached answers
+/// SERVFAIL on UDP and on TCP, not a silent timeout. A second door on the
+/// same address exits 69 at the bind.
+#[tokio::test]
+async fn dns_door_answers_servfail_when_the_upstream_cannot_be_reached() {
+    crate::test_host::need_loopback!();
+    let (udp, tcp) = bind_dns("127.0.0.1:0".parse().unwrap()).await.unwrap();
+    let door = udp.local_addr().unwrap();
+    let err = bind_dns(door).await.unwrap_err();
+    assert_eq!(
+        crate::exit::code_of(&err),
+        crate::exit::UNAVAILABLE,
+        "{err:#}"
+    );
+    let names = super::super::aliases(&["svc.internal=10.0.0.5:22".to_string()]).unwrap();
+    let table = Arc::new(super::super::alias_table(&names));
+    let upstream = Target::Addr("192.0.2.1:53".parse().unwrap());
+    tokio::spawn(serve_dns_on(
+        udp,
+        tcp,
+        Arc::new(NoWay),
+        upstream,
+        Some(table),
+    ));
+    let query = [
+        0x12u8, 0x34, 0x01, 0x00, 0, 1, 0, 0, 0, 0, 0, 0, 1, b'a', 0, 0, 1, 0, 1,
+    ];
+    let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    client.connect(door).await.unwrap();
+    let answer = ask(&client, &query).await;
+    assert_eq!(&answer[..2], &query[..2]);
+    assert_eq!(answer[2] & 0x80, 0x80, "the response bit");
+    assert_eq!(answer[3] & 0x0f, 2, "SERVFAIL");
+    let mut tcp = tokio::net::TcpStream::connect(door).await.unwrap();
+    tcp.write_u16(query.len() as u16).await.unwrap();
+    tcp.write_all(&query).await.unwrap();
+    let len = tokio::time::timeout(Duration::from_secs(10), tcp.read_u16())
+        .await
+        .unwrap()
+        .unwrap() as usize;
+    let mut back = vec![0u8; len];
+    tcp.read_exact(&mut back).await.unwrap();
+    assert_eq!(back[3] & 0x0f, 2, "SERVFAIL on TCP");
+}

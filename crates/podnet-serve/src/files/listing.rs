@@ -84,12 +84,13 @@ pub(crate) const TAR_LINK: &str =
 /// The answer for a GET or HEAD of the directory `real`. A path with no
 /// `/` at its end is sent to the path with the `/` (308), so each relative
 /// link of the listing names an entry of this directory. With `tar`, the
-/// HTML listing has a link to `?tar`.
+/// HTML listing has a link to `?tar`. `upload` is the most bytes of one
+/// upload request, with uploads on.
 pub(crate) fn answer(
     root: &Path,
     real: &Path,
     request: &axum::extract::Request,
-    upload: bool,
+    upload: Option<u64>,
     tar: bool,
 ) -> Response {
     let path = request.uri().path();
@@ -120,8 +121,8 @@ pub(crate) fn answer(
         if tar {
             tools.push_str(TAR_LINK);
         }
-        if upload && writer {
-            tools.push_str(super::upload::form_html());
+        if let (Some(max), true) = (upload, writer) {
+            tools.push_str(&super::upload::form_html(max));
         }
         Html(html(&shown, &list, &tools)).into_response()
     };
@@ -153,13 +154,35 @@ pub(crate) fn json(path: &str, list: &[Entry]) -> Response {
         .into_response()
 }
 
-/// The HTML listing. Each name is escaped, and each link is the name with
-/// each byte that is not unreserved as `%XX`.
+/// The time `secs` (after the Unix epoch) as `YYYY-MM-DD HH:MM` (UTC) and
+/// as RFC 3339 (GitHub #648).
+pub(crate) fn utc(secs: u64) -> (String, String) {
+    let days = (secs / 86_400) as i64;
+    let (hour, minute, second) = (secs % 86_400 / 3600, secs % 3600 / 60, secs % 60);
+    // The civil date of a day number (H. Hinnant, days_from_civil inverse).
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    (
+        format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}"),
+        format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}Z"),
+    )
+}
+
+/// The HTML listing: the name, the size and the time of the last change
+/// (UTC) of each entry. Each name is escaped, and each link is the name
+/// with each byte that is not unreserved as `%XX`.
 pub(crate) fn html(path: &str, list: &[Entry], form: &str) -> String {
     let title = escape_html(path);
     let mut rows = String::new();
     if path != "/" {
-        rows.push_str("<tr><td><a href=\"../\">../</a></td><td></td></tr>");
+        rows.push_str("<tr><td><a href=\"../\">../</a></td><td></td><td></td></tr>");
     }
     for e in list {
         let slash = if e.dir { "/" } else { "" };
@@ -169,8 +192,10 @@ pub(crate) fn html(path: &str, list: &[Entry], form: &str) -> String {
         } else {
             podnet_core::util::human_bytes(e.size)
         };
+        let (shown, stamp) = utc(e.modified);
         rows.push_str(&format!(
-            "<tr><td><a href=\"{href}{slash}\">{}{slash}</a></td><td>{size}</td></tr>",
+            "<tr><td><a href=\"{href}{slash}\">{}{slash}</a></td><td>{size}</td>\
+             <td><time datetime=\"{stamp}\">{shown}</time></td></tr>",
             escape_html(&e.name)
         ));
     }
@@ -179,8 +204,9 @@ pub(crate) fn html(path: &str, list: &[Entry], form: &str) -> String {
          <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\
          <title>Index of {title}</title><style>\
          body{{font-family:system-ui,sans-serif;margin:2rem}}\
-         td{{padding:.2rem 1rem .2rem 0}}td+td{{text-align:right;color:#666}}\
+         td,th{{padding:.2rem 1rem .2rem 0;text-align:left}}td+td{{text-align:right;color:#666}}\
          </style></head><body><h1>Index of {title}</h1>\
-         <table>{rows}</table>{form}</body></html>"
+         <table><tr><th>Name</th><th>Size</th><th>Modified (UTC)</th></tr>{rows}</table>\
+         {form}</body></html>"
     )
 }

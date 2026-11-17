@@ -154,6 +154,20 @@ fn a_unix_listener_prints_its_0600_path() {
     assert!(!sock.exists(), "the socket is removed at the stop");
 }
 
+/// GitHub #634: the unix carrier takes `unix:PATH`. The socket is at PATH,
+/// and the ready document names PATH with no `unix:` prefix.
+#[test]
+fn the_unix_carrier_takes_unix_path() {
+    let host = Install::new();
+    let allow = host.allow("allow", &[&host.fingerprint()]);
+    let sock = host.path("l.sock");
+    let address = PathBuf::from(format!("unix:{}", sock.display()));
+    let mut l = host.listener(&address, &allow, &[]);
+    assert_eq!(l.ready["address"], sock.to_str().unwrap(), "{}", l.ready);
+    assert!(sock.exists(), "the socket is at PATH");
+    assert_eq!(l.stop(), Some(0));
+}
+
 #[test]
 fn the_text_form_names_the_path_and_the_mode() {
     let host = Install::new();

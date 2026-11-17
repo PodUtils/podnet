@@ -41,7 +41,13 @@ local listener:
 * A client can half-close its connection after the request (`nc -N`,
   `printf ... | podnet link dial`). It still gets the answer.
 * An address in use is refused (exit 69).
-* `--check` is refused with `--local`, and is for `--ingress tunnel` only.
+* `--check` with `--local` checks the directory (and `--spa`), each
+  `--local` listener, and starts nothing: podnet binds a TCP address with no
+  listen and closes it at once (an address in use fails the row), and a unix
+  socket needs a directory that exists. With `--ingress tunnel`, the rows of
+  the listeners come after the rows of the tunnel. `git serve --check` with
+  `--local` or `--ssh` does the same for the root and each listener; it
+  makes no host key. `--check` is refused with `--ingress relay`.
   With `--ingress none`, the tunnel flags have no effect, except `--auth-user`
   (see below). The `--json` ready line has `listens`, each listener.
 
@@ -115,7 +121,9 @@ curl -fsS 'http://127.0.0.1:8080/docs/?tar' | tar -xf -
 ```
 
 With `--list`, a directory with no `index.html` answers a listing of its
-files. A browser gets HTML. A request with `Accept: application/json` gets
+files. A browser gets HTML: the name, the size and the time of the last
+change (UTC, `YYYY-MM-DD HH:MM`) of each entry. A request with
+`Accept: application/json` gets
 `{"path": "/docs/", "entries": [{"name", "type", "size", "modified"}]}`,
 with `type` `dir` or `file` and `modified` in seconds after the Unix epoch.
 The listing has the same rules: no dot name, no link out of `--dir`, no
@@ -179,7 +187,8 @@ With `--upload`, a write user (or a visitor with the PIN) can add files:
   409).
 * A multipart form `POST` to a directory adds each file of the form to the
   directory. A name in use gets a number (`name-1.ext`); no file is
-  replaced. The listing of `--list` shows the form to a write user.
+  replaced. The listing of `--list` shows the form to a write user, with
+  the limit of `--max-upload` (`Max 95.4 MiB per upload`).
 * A file goes to a hidden part file (mode 0600) first. A rename gives it
   its name when it is complete: a reader never sees a part of a file.
 * `--max-upload BYTES` (default 100000000) is the most bytes of one
@@ -273,9 +282,16 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   curl -b jar -T file.txt "$URL/file.txt"              # an upload (--upload)
   ```
 
-* The unlock cookie has `HttpOnly`, `Secure` and `SameSite=Lax`: open the
-  session with `https://` (a browser does not keep a `Secure` cookie of
-  plain http). An unlock POST from another site (`Sec-Fetch-Site`, or an
+* The unlock cookie has `HttpOnly`, `Secure` and `SameSite=Lax` on the
+  tunnel, the relay, the virtual network and a unix socket. On a plain-HTTP
+  TCP listener (`--local HOST:PORT`) the cookie has no `Secure`: a browser
+  does not keep a `Secure` cookie of a plain-HTTP origin that is not the
+  loopback, so the PIN could not open the gate from the LAN. On that
+  listener the PIN and the cookie go over plain HTTP in each request, and
+  `Secure` protects nothing. A request with `X-Forwarded-Proto: https` or
+  `Forwarded: proto=https` (a proxy of TLS in front of the listener) keeps
+  `Secure`. Use the tunnel, or a proxy of TLS, when the network is not
+  trusted. An unlock POST from another site (`Sec-Fetch-Site`, or an
   `Origin` that is not the host) gets 403 and uses no try. A client that
   knows the URL can still use the 10 tries: the edge does not give podnet
   the address of the visitor, so the limit is for the session, not for

@@ -107,6 +107,8 @@ pub(crate) struct TunnelOpts {
     /// a connection, and the TLS handshake for https, with no request. No
     /// Cloudflare API call, no edge connection, no file is written. Exit 0 when
     /// each check passes, 1 when a check fails. With --json, one JSON document.
+    /// serve and git serve also check each --local (and --ssh) listener: a TCP
+    /// address is bound with no listen and closed at once.
     #[arg(long, global = true)]
     pub(crate) check: bool,
 }
@@ -214,9 +216,10 @@ pub(crate) struct DetachArgs {
     pub(crate) replace: bool,
     /// Do not start the instance again when it ends. Without it, a supervisor
     /// starts it again with a backoff (1 s to 30 s). It does not start it after
-    /// exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-    /// --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-    /// --name and no --detach, there is no supervisor.
+    /// exit 64 or 78, or after a planned end of the command (--run-for, and
+    /// --stop-after or --idle-secs of share). A quick tunnel gets a
+    /// new URL; podnet ps shows it. With --name and no --detach, there is no
+    /// supervisor.
     #[arg(long)]
     pub(crate) no_restart: bool,
 }

@@ -369,3 +369,43 @@ fn route_control_flags_add_and_remove() {
     let _ = router.kill();
     let _ = router.wait();
 }
+
+/// GitHub #642 and #641: `route --config FILE --detach --json` prints the
+/// detached document, with listen and listens; --json in the foreground
+/// exits 64 and names --detach.
+#[test]
+fn route_detach_json_prints_the_document() {
+    test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("r.yml");
+    std::fs::write(&file, FILE).unwrap();
+    let bin = env!("CARGO_BIN_EXE_podnet");
+    let route = |args: &[&str]| {
+        Command::new(bin)
+            .arg("route")
+            .arg("--config")
+            .arg(&file)
+            .args(args)
+            .env("PODNET_RUN_DIR", dir.path().join("run"))
+            .env("XDG_STATE_HOME", dir.path().join("state"))
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .output()
+            .unwrap()
+    };
+    let out = route(&["--json"]);
+    assert_eq!(out.status.code(), Some(64));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("--detach"));
+    let out = route(&["--detach", "--json", "--name", "r642", "--no-restart"]);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(0), "{stderr}");
+    let doc: Value = serde_json::from_slice(&out.stdout).unwrap();
+    let _ = Command::new(bin)
+        .args(["stop", "r642"])
+        .env("PODNET_RUN_DIR", dir.path().join("run"))
+        .output();
+    assert_eq!(doc["event"], "detached");
+    assert!(doc["url"].is_null(), "{doc}");
+    let listen = doc["listen"].as_str().unwrap();
+    assert!(listen.starts_with("tcp://127.0.0.1:"), "{doc}");
+    assert_eq!(doc["listens"], json!([listen]));
+}

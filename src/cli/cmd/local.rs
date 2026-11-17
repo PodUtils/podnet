@@ -67,6 +67,8 @@ pub(crate) async fn bind_local(local: &str, replace: bool, router: axum::Router)
         }
     };
     let bound = listener.local_addr()?;
+    // GitHub #636: the PIN cookie of a plain-HTTP listener has no Secure.
+    let router = podnet::gate::plain_http(router);
     let server = tokio::spawn(podnet::road::serve(listener, router));
     Ok(Local {
         url: format!("http://{bound}/"),

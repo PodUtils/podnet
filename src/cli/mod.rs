@@ -143,7 +143,8 @@ pub(crate) enum Command {
     /// --server, --user, --url-match and --url-skip override them.
     SshRelay(SshRelayArgs),
     /// Send GET requests to a URL through the way out (--egress, --proxy) and
-    /// measure the latency (p50, p95, p99), the rate and the errors.
+    /// measure the latency (p50, p95, p99), the rate and the errors. When
+    /// no request works, the exit code is 1.
     Bench(BenchArgs),
     /// A SOCKS5 exit on stdin and stdout, with no listener: one session
     /// for a pipe (ssh, `exec:`). CONNECT is the stream. UDP uses the

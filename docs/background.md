@@ -18,8 +18,23 @@ podnet stop web                                  # or: podnet stop --all
 is ready: until the public URL answers, or until the listener is bound.
 Then it leaves the terminal (`setsid`, SIGHUP ignored, stdin to
 `/dev/null`, stdout and stderr to its log), and the start prints one JSON
-document on stdout: `name`, `pid`, `log`, and `url` or `listen`. The lines
-of the instance before the ready go to stderr.
+document on stdout. The lines of the instance before the ready go to stderr.
+
+Each detached document has these keys; the keys of each command follow them:
+
+| Key | Value |
+| --- | --- |
+| `command`, `event` (`detached`), `name`, `pid`, `log` | the instance |
+| `url` | the URL for a client, or `null` when the command has none |
+| `listen` | the first local listener (`tcp://HOST:PORT` or `unix:PATH`), or `null` |
+| `listens` | each local listener, or `[]` |
+
+* `tunnel`, `serve`, `share` and `demo`: `url` is the public URL (or the URL of `--local`).
+* `git serve`: `url` is the tunnel URL, else the first URL of `http`, else the first URL of `ssh`. `http` and `ssh`
+  list each URL.
+* `route`: `listen` and `listens` are the `listen` of the doors; `doors` has their state.
+* `relay node`: `url` is `null`; `pair`, `relay` and `target` name the pair.
+* A reader of `.url` gets `null` (not a missing key) from a command that has no URL.
 The instance keeps running when the shell or the terminal closes. A sandbox
 or a container that kills each process of its run also ends it.
 
@@ -44,9 +59,9 @@ or a container that kills each process of its run also ends it.
   The log has no colour codes.
 * A supervisor starts the instance again when it ends, with a backoff of
   1 s doubled to 30 s, but not after exit 64 or 78, and not before the first
-  ready. A planned end is not restarted: `--stop-after`, `--idle-secs` and
-  `--run-for` end the instance for good (a crash or a kill still restarts
-  it). When the quick-tunnel service refused a provision with a
+  ready. A planned end is not restarted: `--run-for` (and `--stop-after`
+  and `--idle-secs` of `share`) end the instance for good (a crash or a
+  kill still restarts it). When the quick-tunnel service refused a provision with a
   `Retry-After` (HTTP 429), the next start waits that long (at most 1 h),
   and the run is not a quick failure. After 5 quick failures in sequence it
   runs `podnet.prev` (the binary before the last `podnet update`). A quick
@@ -73,7 +88,7 @@ or a container that kills each process of its run also ends it.
 `podnet autostart` starts a podnet command at boot and after a logout, with no
 root. It uses a systemd user unit when `systemctl --user` answers, else an
 `@reboot` line in the crontab. With neither, it prints the line to run at
-login and exits 69. `--manual` installs no unit and no crontab line: it writes
+login, writes no entry and exits 69. `--manual` installs no unit and no crontab line: it writes
 the entry, prints the line to run at login and exits 0.
 
 ```sh
@@ -109,5 +124,6 @@ podnet autostart remove web
   (`systemd`, `cron` or `manual`) and `line` (the run line).
 * With no systemd user manager and no cron, `add` exits 69. Its error text
   gives a `nohup` line: put it in a login script (for example
-  `~/.profile`). The entry stays. `add --manual` writes the entry, prints the
-  same line and exits 0.
+  `~/.profile`). No entry is written, so a retry is clean. `add --manual`
+  writes the entry, prints the same line and exits 0. A crontab that takes
+  the line and keeps nothing also exits 69 with no entry.

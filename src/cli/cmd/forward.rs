@@ -37,7 +37,8 @@ pub(crate) struct ForwardArgs {
     alias_port: Option<u16>,
     /// A DNS door: answer DNS queries on ADDR:PORT (UDP and TCP) through
     /// the network, from the resolver at --dns-upstream. The names of
-    /// --name get their address from the door itself.
+    /// --name get their address from the door itself. A query that cannot
+    /// go to the upstream gets SERVFAIL. An address in use exits 69.
     #[arg(long, value_name = "ADDR:PORT")]
     dns: Option<std::net::SocketAddr>,
     /// The resolver of --dns, an address at the far end of the network.
@@ -124,14 +125,19 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
     };
     let mut servers = tokio::task::JoinSet::new();
     if let (Some(addr), Some(upstream)) = (args.dns, upstream) {
+        // GitHub #638: the line comes after the bind; a bind that fails
+        // prints no line.
+        let (udp, tcp) = podnet::forwards::bind_dns(addr).await?;
         println!(
-            "podnet: dns door  {addr}  ->  {upstream}  via {}",
+            "podnet: dns door  {}  ->  {upstream}  via {}",
+            udp.local_addr()?,
             dial.label()
         );
         let table =
             (!aliases.is_empty()).then(|| Arc::new(podnet::forwards::alias_table(&aliases)));
-        servers.spawn(podnet::forwards::serve_dns_with(
-            addr,
+        servers.spawn(podnet::forwards::serve_dns_on(
+            udp,
+            tcp,
             dial.clone(),
             upstream,
             table,

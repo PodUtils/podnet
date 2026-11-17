@@ -129,6 +129,48 @@ fn log_controls() {
     assert!(quiet.contains("HTTP 403"), "the error line stays: {quiet}");
 }
 
+/// GitHub #644: `podnet status` with a proxy writes nothing on stderr at
+/// the default level; the line of the egress is for `-v`.
+#[test]
+fn status_is_quiet_with_a_proxy() {
+    let run = |flags: &[&str]| {
+        let out = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args(flags)
+            .arg("status")
+            .env("HTTPS_PROXY", "http://127.0.0.1:9")
+            .env_remove("RUST_LOG")
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .output()
+            .unwrap();
+        assert!(out.status.success());
+        String::from_utf8_lossy(&out.stderr).into_owned()
+    };
+    assert_eq!(run(&[]), "");
+    assert!(run(&["-v"]).contains("the egress resolves names"));
+}
+
+/// The error line of `update --check` with no way to GitHub names the
+/// step "reading the list of releases" once.
+#[test]
+fn update_error_names_its_step_once() {
+    test_host::need_loopback!();
+    let out = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["-q", "update", "--check"])
+        .env("HTTPS_PROXY", "http://127.0.0.1:9")
+        .env_remove("RUST_LOG")
+        .env_remove("PODNET_ERROR_PROGRAM")
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(!out.status.success(), "{err}");
+    assert_eq!(
+        err.matches("reading the list of releases").count(),
+        1,
+        "{err}"
+    );
+    assert!(err.contains("releases.atom"), "{err}");
+}
+
 /// Issue 181: with --log-format json, each line of stderr is JSON, also
 /// the last error line and a usage error.
 #[test]

@@ -354,7 +354,7 @@ fn ready_doc(doc: serde_json::Value) -> serde_json::Value {
 /// process that is not a detached child, does nothing.
 pub fn ready(doc: serde_json::Value) {
     arm_stop();
-    let mut doc = ready_doc(doc);
+    let mut doc = instances::envelope(ready_doc(doc));
     foreground::send(&doc);
     if REGISTERED.load(Ordering::SeqCst) && !is_child() {
         // Issue 209: a registered process records its ready document; its

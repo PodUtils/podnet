@@ -155,6 +155,8 @@ podnet --egress socks5h://127.0.0.1:1080 bench https://example.com/ --connection
 * The text output has the requests, the errors, the rate and the latency (min, p50, p95, p99, max). With
   `--json`, one document: `schema` (1), `podnet`, `url`, `connections`, `duration_s`, `requests`, `ok`,
   `errors`, `first_error`, `bytes`, `rate` and `latency_ms` (`min`, `p50`, `p95`, `p99`, `max`).
+* The exit code is 0 when at least one request works (a status below 400). When no request works (`ok` is 0), the
+  output comes first, then the line `podnet: bench: no request worked: FIRST_ERROR`, and the exit code is 1.
 
 ## Agent sandbox: `podnet agent`
 

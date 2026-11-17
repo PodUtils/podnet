@@ -22,7 +22,8 @@ pub(crate) struct RouteArgs {
     /// of its file). Exit 69 when no router answers
     #[arg(long, value_name = "unix:/PATH", conflicts_with_all = ["config", "check"])]
     pub(crate) status: Option<String>,
-    /// With --status or a control flag: print the JSON document
+    /// With --status or a control flag: print the JSON document. With
+    /// --detach it changes nothing: the start prints the JSON document
     #[arg(long)]
     pub(crate) json: bool,
     /// With --status: print the metrics rows of the router (one for each
@@ -107,8 +108,12 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
     if let Some(control) = &args.control {
         return control_write(control, &args).await;
     }
-    if args.json {
-        return Err(anyhow::anyhow!("--json needs --status or --control")).fault(Fault::Usage);
+    // GitHub #642: with --detach the start prints the JSON document anyway.
+    if args.json && !args.detach.detach {
+        return Err(anyhow::anyhow!(
+            "--json needs --status, --control or --detach (the detached document is JSON)"
+        ))
+        .fault(Fault::Usage);
     }
     let Some(path) = &args.config else {
         return Err(anyhow::anyhow!("give --config FILE")).fault(Fault::Usage);
@@ -181,7 +186,7 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
     }
     let kernel = apply_kernel(&config)?;
     let watch = watch_kernel(&config, kernel.as_ref()).await?;
-    podnet::detach::ready(router.status());
+    podnet::detach::ready(with_listens(router.status()));
     let probing = router.clone();
     let ended = tokio::select! {
         _ = sleep_or_signal(args.run_for) => Ok(()),
@@ -468,5 +473,39 @@ fn split_text(split: &serde_json::Value) -> String {
             split["fallbacks"]
         ),
         _ => "off".to_string(),
+    }
+}
+
+/// The status document with `listen` (the first door) and `listens` (each
+/// door), as the other detached commands give them (GitHub #641).
+fn with_listens(mut doc: serde_json::Value) -> serde_json::Value {
+    let listens: Vec<serde_json::Value> = doc["doors"]
+        .as_array()
+        .map(|doors| doors.iter().map(|d| d["listen"].clone()).collect())
+        .unwrap_or_default();
+    if let Some(object) = doc.as_object_mut() {
+        let first = listens.first().cloned().unwrap_or_default();
+        object.insert("listen".into(), first);
+        object.insert("listens".into(), listens.into());
+    }
+    doc
+}
+
+#[cfg(test)]
+mod tests {
+    // GitHub #641: the ready document of route gives listen and listens.
+    #[test]
+    fn the_ready_document_names_the_doors() {
+        let doc = super::with_listens(serde_json::json!({
+            "doors": [{"listen": "tcp://127.0.0.1:1090"}, {"listen": "unix:/tmp/d.sock"}],
+        }));
+        assert_eq!(doc["listen"], "tcp://127.0.0.1:1090");
+        assert_eq!(
+            doc["listens"],
+            serde_json::json!(["tcp://127.0.0.1:1090", "unix:/tmp/d.sock"])
+        );
+        let none = super::with_listens(serde_json::json!({"doors": []}));
+        assert!(none["listen"].is_null());
+        assert_eq!(none["listens"], serde_json::json!([]));
     }
 }

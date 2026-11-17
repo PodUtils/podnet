@@ -34,6 +34,25 @@ pub mod text;
 /// `XDG_RUNTIME_DIR` and no state directory).
 pub const RUN_DIR_VARIABLE: &str = "PODNET_RUN_DIR";
 
+/// The keys of the endpoint that each ready document has (GitHub #641):
+/// `url`, `listen` and `listens`, with `null` (or `[]`) when the command
+/// has no such endpoint. A command sets the ones it has. A document that
+/// is not an object stays as it is.
+pub(crate) fn envelope(mut doc: serde_json::Value) -> serde_json::Value {
+    let Some(object) = doc.as_object_mut() else {
+        return doc;
+    };
+    let listen = object.get("listen").cloned().unwrap_or_default();
+    let listens = match &listen {
+        serde_json::Value::Null => serde_json::Value::Array(Vec::new()),
+        one => serde_json::Value::Array(vec![one.clone()]),
+    };
+    object.entry("url").or_insert(serde_json::Value::Null);
+    object.entry("listen").or_insert(listen);
+    object.entry("listens").or_insert(listens);
+    doc
+}
+
 /// The run directory: `PODNET_RUN_DIR`, else `$XDG_RUNTIME_DIR/podnet/run`
 /// (empty after a reboot), else `run` in the state directory. Mode 0700,
 /// owned by this user.
@@ -499,6 +518,23 @@ pub fn now() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // GitHub #641: each ready document has url, listen and listens; a key
+    // that the command gave stays.
+    #[test]
+    fn the_envelope_has_the_keys_of_the_endpoint() {
+        let doc = envelope;
+        let none = doc(serde_json::json!({"pair": "p"}));
+        assert_eq!(none["url"], serde_json::Value::Null);
+        assert_eq!(none["listen"], serde_json::Value::Null);
+        assert_eq!(none["listens"], serde_json::json!([]));
+        let one = doc(serde_json::json!({"listen": "tcp://127.0.0.1:1"}));
+        assert_eq!(one["listens"], serde_json::json!(["tcp://127.0.0.1:1"]));
+        let kept =
+            doc(serde_json::json!({"url": "http://x/", "listens": ["a", "b"], "listen": "a"}));
+        assert_eq!(kept["url"], "http://x/");
+        assert_eq!(kept["listens"], serde_json::json!(["a", "b"]));
+    }
 
     // Issue 459: one list of secret variables, for the record and for the
     // error program.

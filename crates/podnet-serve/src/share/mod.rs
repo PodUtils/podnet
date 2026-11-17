@@ -346,6 +346,7 @@ fn request_host<'a>(headers: &'a HeaderMap, uri: &'a Uri) -> Option<&'a str> {
 
 pub(crate) fn unlock_response(
     gate: &Gate,
+    extensions: &http::Extensions,
     headers: &HeaderMap,
     uri: &Uri,
     password: &str,
@@ -359,7 +360,7 @@ pub(crate) fn unlock_response(
         )
             .into_response();
     }
-    match gate.unlock(password) {
+    match gate.unlock_with(password, crate::gate::secure_cookie(extensions, headers)) {
         Some(cookie) => {
             let next = crate::gate::safe_next(next);
             let mut response = Redirect::to(next).into_response();

@@ -191,8 +191,9 @@ pub(crate) fn no_terminal() -> bool {
     !std::io::stdin().is_terminal() && !std::io::stderr().is_terminal()
 }
 
-/// The commands that serve until a stop signal.
-const SERVER_COMMANDS: &[&str] = &[
+/// The commands that serve until a stop signal. Each one takes --run-for:
+/// the hint names it (GitHub #647).
+pub(crate) const SERVER_COMMANDS: &[&str] = &[
     "tunnel",
     "serve",
     "share",

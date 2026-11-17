@@ -170,6 +170,7 @@ impl Road for Local {
             let bound = listener.local_addr()?;
             let url = format!("http://{bound}/");
             let ready = serde_json::json!({ "road": "local", "url": url });
+            let service = crate::gate::plain_http(service);
             let run = async move { Ok(serve(listener, service).await?) };
             Ok(Published::new(Some(url), ready, Box::pin(run)))
         })

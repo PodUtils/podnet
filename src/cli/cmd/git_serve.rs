@@ -106,7 +106,14 @@ struct Urls {
 
 impl Urls {
     fn doc(&self, tunnel: Option<&str>) -> serde_json::Value {
+        // GitHub #641: `url` is the first URL for a client: the tunnel,
+        // else the first HTTP URL, else the first SSH URL, else null.
+        let url = tunnel
+            .map(str::to_string)
+            .or_else(|| self.http.first().cloned())
+            .or_else(|| self.ssh.first().cloned());
         serde_json::json!({
+            "url": url,
             "root": self.root.display().to_string(),
             "pid": std::process::id(),
             "http": self.http,
@@ -162,8 +169,10 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
     if args.pair.is_some() && ingress != Road::Relay {
         return Err(usage("--pair is for --ingress relay"));
     }
-    if args.common.check && ingress != Road::Tunnel {
-        return Err(usage("--check checks a tunnel: it is for --ingress tunnel"));
+    if args.common.check && ingress == Road::Relay {
+        return Err(usage(
+            "--check checks a tunnel or --local and --ssh: it is not for --ingress relay",
+        ));
     }
     if args.common.auth_user.is_some() {
         return Err(usage("give the HTTP user with --push-user or --users"));
@@ -199,6 +208,14 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
         ..HttpOptions::new(&root)
     };
     let show = args.common.show();
+    // GitHub #643: --check with --local or --ssh checks the root and each
+    // listener, and starts nothing (it makes no host key).
+    if args.common.check && ingress == Road::None {
+        let mut report = podnet::preflight::check_local(&root, false, &args.local);
+        let ssh: Vec<String> = args.ssh.iter().cloned().collect();
+        podnet::preflight::local_rows(&mut report, "ssh", &ssh);
+        return super::tunnel::print_report(report, show);
+    }
     let mut urls = Urls {
         root: root.clone(),
         ..Urls::default()
@@ -438,5 +455,32 @@ async fn serve_relay(
     tokio::select! {
         result = reverse::run_node(follow, pair, &target) => result,
         result = run_until(args.common.run_for, servers) => result,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Urls;
+
+    // GitHub #641: the ready document of git serve gives url: the tunnel,
+    // else the first HTTP URL, else the first SSH URL.
+    #[test]
+    fn the_ready_document_has_a_url() {
+        let mut urls = Urls {
+            root: "/r".into(),
+            http: vec!["http://127.0.0.1:1".into()],
+            ssh: vec!["ssh://git@127.0.0.1:2".into()],
+            pair: None,
+            fingerprint: None,
+        };
+        assert_eq!(urls.doc(None)["url"], "http://127.0.0.1:1");
+        assert_eq!(
+            urls.doc(Some("https://t.example"))["url"],
+            "https://t.example"
+        );
+        urls.http.clear();
+        assert_eq!(urls.doc(None)["url"], "ssh://git@127.0.0.1:2");
+        urls.ssh.clear();
+        assert!(urls.doc(None)["url"].is_null());
     }
 }
