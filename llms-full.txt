@@ -14031,7 +14031,9 @@ A direct connection resolves the name with this chain: a pin of
 `--resolve HOST=IP` or `PODNET_RESOLVE`, the system resolver, then DNS over
 HTTPS by IP address at Cloudflare (1.1.1.1, 1.0.0.1) and Google (8.8.8.8,
 8.8.4.4). It tries each address of the name, and starts the next attempt
-250 ms after the one before.
+250 ms after the one before. Behind a proxy that resolves names, each DoH
+server is tried by its address, then by its name. `-v` shows a line for
+this setting; the default level does not.
 
 ## TLS roots
 

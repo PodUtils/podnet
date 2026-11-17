@@ -156,11 +156,13 @@ pub fn with_doh(dial: Arc<dyn pod_core::Dial>) -> pod_dns::Resolver {
 
 /// Write one line, once, when the egress resolves names: each DoH server is
 /// then tried by its address first, and an egress that takes names only
-/// refuses that address; the name follows (T-175).
+/// refuses that address; the name follows (T-175). The line is of the level
+/// DEBUG (`-v`): it tells a setting, not a lookup, and a command that opens
+/// no connection (`podnet status`) also makes the egress (GitHub #644).
 pub(crate) fn note_names_inside() {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
-        tracing::info!(
+        tracing::debug!(
             "the egress resolves names: each DoH server is tried by address, then by name; an egress that takes names only refuses the address"
         );
     });
