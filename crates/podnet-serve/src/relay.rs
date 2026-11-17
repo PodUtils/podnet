@@ -66,6 +66,10 @@ pub struct RelayConfig {
     pub fallbacks: Vec<String>,
     /// `host:port` of the HTTP CONNECT proxy, or `None` for a direct connect.
     pub proxy: Option<String>,
+    /// The way out of the process when `proxy` is `None` (`--proxy`,
+    /// `--egress`, `--resolve`, the proxy variables). `None`: a direct
+    /// connect. Before T-474 the relay ignored the way of the process.
+    pub dial: Option<Way>,
     /// SSH user. The free relay tier takes an anonymous login.
     pub username: String,
     /// The port that the relay is asked to open for the forward. `None`:
@@ -85,12 +89,24 @@ pub struct RelayConfig {
     pub keepalive: Option<Duration>,
 }
 
+/// The way out of the process for [`RelayConfig::dial`]; its debug form is
+/// the label of the way.
+#[derive(Clone)]
+pub struct Way(pub std::sync::Arc<dyn pod_core::Dial>);
+
+impl std::fmt::Debug for Way {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Way({})", self.0.label())
+    }
+}
+
 impl Default for RelayConfig {
     fn default() -> Self {
         Self {
             address: default_relay(),
             fallbacks: Vec::new(),
             proxy: None,
+            dial: None,
             username: "podnet".to_string(),
             remote_port: None,
             unix_socket: default_origin_socket(),
@@ -242,16 +258,16 @@ impl Handler for Client {
 pub struct PrefixedStream {
     prefix: Vec<u8>,
     offset: usize,
-    inner: tokio::net::TcpStream,
+    inner: pod_core::BoxedIo,
 }
 
 impl PrefixedStream {
     /// Wrap `inner`, replaying `prefix` before any read from it.
-    pub fn new(prefix: Vec<u8>, inner: tokio::net::TcpStream) -> Self {
+    pub fn new(prefix: Vec<u8>, inner: impl pod_core::Io + 'static) -> Self {
         Self {
             prefix,
             offset: 0,
-            inner,
+            inner: Box::new(inner),
         }
     }
 }
@@ -414,6 +430,17 @@ async fn connect_address(
 ) -> Result<PrefixedStream, RelayError> {
     let (host, port) = split_address(address)?;
 
+    if let (None, Some(dial)) = (&config.proxy, &config.dial) {
+        // T-474: the way of the process (its proxy, its egress, its names).
+        let target = pod_core::Target::new(&host, port);
+        let deadline = tokio::time::Instant::now() + config.connect_timeout;
+        let connected = dial
+            .0
+            .dial(&target, deadline)
+            .await
+            .map_err(|e| RelayError::Transport(e.to_string()))?;
+        return Ok(PrefixedStream::new(Vec::new(), connected.io));
+    }
     let Some(proxy_addr) = &config.proxy else {
         let stream = tokio::net::TcpStream::connect((host.as_str(), port))
             .await

@@ -262,3 +262,89 @@ fn ssh_relay_with_a_missing_flag_is_a_usage_error() {
         "{err}"
     );
 }
+
+/// An HTTP CONNECT proxy on loopback that joins each tunnel to `relay` and
+/// keeps the first line of each request.
+fn recording_proxy(relay: String) -> (String, Arc<std::sync::Mutex<Vec<String>>>) {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap().to_string();
+    let seen = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let log = seen.clone();
+    std::thread::spawn(move || {
+        while let Ok((mut client, _)) = listener.accept() {
+            let (relay, log) = (relay.clone(), log.clone());
+            std::thread::spawn(move || {
+                let mut head = Vec::new();
+                let mut byte = [0u8; 1];
+                while !head.ends_with(b"\r\n\r\n") {
+                    match client.read(&mut byte) {
+                        Ok(1) => head.push(byte[0]),
+                        _ => return,
+                    }
+                }
+                let line = String::from_utf8_lossy(&head);
+                log.lock()
+                    .unwrap()
+                    .push(line.lines().next().unwrap_or_default().to_string());
+                let Ok(origin) = std::net::TcpStream::connect(&relay) else {
+                    return;
+                };
+                let _ = client.write_all(b"HTTP/1.1 200 Connection established\r\n\r\n");
+                let (mut up_in, up_out) =
+                    (client.try_clone().unwrap(), origin.try_clone().unwrap());
+                let up = std::thread::spawn(move || {
+                    let _ = std::io::copy(&mut up_in, &mut &up_out);
+                });
+                let _ = std::io::copy(&mut &origin, &mut &client);
+                let _ = up.join();
+            });
+        }
+    });
+    (address, seen)
+}
+
+// T-474 (the survey of T-473): `--proxy` applies to ssh-relay as to the other
+// commands (docs/relay.md). The name of the relay does not exist: only the
+// proxy can join it. Before the fix the relay connected directly and failed.
+#[test]
+fn ssh_relay_takes_the_proxy_of_the_process() {
+    test_host::need_loopback!();
+    let (relay, _count) = fake_relay();
+    let (proxy, seen) = recording_proxy(relay);
+    let tmp = tempfile::tempdir().unwrap();
+    let run = tmp.path().join("run");
+    let socket = tmp.path().join("origin.sock").display().to_string();
+    let proxy_url = format!("http://{proxy}");
+    let out = podnet(
+        &run,
+        &[
+            "ssh-relay",
+            "--proxy",
+            &proxy_url,
+            "--server",
+            "relay.invalid:443",
+            "--user",
+            "test",
+            "--url-skip",
+            "dash.example.test",
+            "--socket",
+            &socket,
+            "--run-for",
+            "2",
+        ],
+    )
+    .output()
+    .unwrap();
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(0), "{stderr}");
+    assert!(
+        String::from_utf8_lossy(&out.stdout).contains("example.test"),
+        "{stderr}"
+    );
+    assert_eq!(
+        seen.lock().unwrap().first().map(String::as_str),
+        Some("CONNECT relay.invalid:443 HTTP/1.1"),
+        "{stderr}"
+    );
+}

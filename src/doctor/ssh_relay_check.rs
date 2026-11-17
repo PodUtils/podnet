@@ -146,6 +146,7 @@ pub(super) async fn ssh_relay(target: SshRelayTarget, limit: Duration) -> SshRel
     let config = RelayConfig {
         address: target.address.clone(),
         proxy: target.proxy.clone(),
+        dial: Some(podnet_serve::relay::Way(crate::egress::egress(None))),
         username: target.user.clone(),
         url_rule: UrlRule::default(),
         ..RelayConfig::default()

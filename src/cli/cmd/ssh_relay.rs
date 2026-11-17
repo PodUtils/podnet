@@ -158,6 +158,8 @@ impl SshRelayArgs {
             address,
             fallbacks: addresses.collect(),
             proxy: self.connect_proxy.clone(),
+            // T-474: with no --connect-proxy, the way of the process.
+            dial: Some(podnet_serve::relay::Way(podnet::egress::egress(None))),
             // The flag replaces the fact; with neither, port 0.
             remote_port: self.remote_port.or(remote_port),
             username: self
