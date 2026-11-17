@@ -85,6 +85,10 @@ failed check is a check of the configuration (`PODNET_EDGE`, the credentials
 file, the roots). A bad command line (64) or a bad config file (78) stops
 before the check. With `--json`, the output is one
 document: `{"ok", "plan", "checks": [{"name", "status", "detail"}]}`.
+`serve --check --local ADDR` and `git serve --check --local ADDR` (or
+`--ssh ADDR`) with no tunnel check the directory and each listener (rows
+`files`, `local N` and `ssh N`; see [serve.md](serve.md)). They bind each TCP
+address with no listen, and close it at once.
 
 ```sh
 podnet serve --check --dir ./site --spa

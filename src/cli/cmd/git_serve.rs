@@ -169,8 +169,10 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
     if args.pair.is_some() && ingress != Road::Relay {
         return Err(usage("--pair is for --ingress relay"));
     }
-    if args.common.check && ingress != Road::Tunnel {
-        return Err(usage("--check checks a tunnel: it is for --ingress tunnel"));
+    if args.common.check && ingress == Road::Relay {
+        return Err(usage(
+            "--check checks a tunnel or --local and --ssh: it is not for --ingress relay",
+        ));
     }
     if args.common.auth_user.is_some() {
         return Err(usage("give the HTTP user with --push-user or --users"));
@@ -206,6 +208,14 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
         ..HttpOptions::new(&root)
     };
     let show = args.common.show();
+    // GitHub #643: --check with --local or --ssh checks the root and each
+    // listener, and starts nothing (it makes no host key).
+    if args.common.check && ingress == Road::None {
+        let mut report = podnet::preflight::check_local(&root, false, &args.local);
+        let ssh: Vec<String> = args.ssh.iter().cloned().collect();
+        podnet::preflight::local_rows(&mut report, "ssh", &ssh);
+        return super::tunnel::print_report(report, show);
+    }
     let mut urls = Urls {
         root: root.clone(),
         ..Urls::default()

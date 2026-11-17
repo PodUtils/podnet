@@ -722,3 +722,36 @@ fn bench_counts_http_errors() {
     let out = env.run(&["bench", "ftp://x/"]);
     assert_eq!(out.status.code(), Some(64));
 }
+
+/// GitHub #643: `serve --check --local` checks the directory and each
+/// listener, and starts nothing; a port in use fails the check (exit 1).
+#[test]
+fn serve_check_takes_local() {
+    test_host::need_loopback!();
+    let env = Env::new();
+    let site = env.path("site");
+    std::fs::create_dir(&site).unwrap();
+    let site = site.to_str().unwrap();
+    let sock = format!("unix:{}", env.path("s.sock").display());
+    let out = env.run(&[
+        "serve",
+        "--dir",
+        site,
+        "--local",
+        "127.0.0.1:0",
+        "--local",
+        &sock,
+        "--check",
+        "--json",
+    ]);
+    let doc: serde_json::Value = serde_json::from_slice(&text(&out).into_bytes()).unwrap();
+    assert_eq!(doc["ok"], true, "{doc}");
+    assert_eq!(doc["checks"].as_array().unwrap().len(), 3, "{doc}");
+    assert!(!env.path("s.sock").exists(), "the check binds no socket");
+    let busy = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let busy = busy.local_addr().unwrap().to_string();
+    let out = env.run(&["serve", "--dir", site, "--local", &busy, "--check"]);
+    assert_eq!(out.status.code(), Some(1));
+    let shown = String::from_utf8_lossy(&out.stdout);
+    assert!(shown.contains("fail  local 1"), "{shown}");
+}

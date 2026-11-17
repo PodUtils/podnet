@@ -107,6 +107,8 @@ pub(crate) struct TunnelOpts {
     /// a connection, and the TLS handshake for https, with no request. No
     /// Cloudflare API call, no edge connection, no file is written. Exit 0 when
     /// each check passes, 1 when a check fails. With --json, one JSON document.
+    /// serve and git serve also check each --local (and --ssh) listener: a TCP
+    /// address is bound with no listen and closed at once.
     #[arg(long, global = true)]
     pub(crate) check: bool,
 }

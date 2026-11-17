@@ -41,7 +41,13 @@ local listener:
 * A client can half-close its connection after the request (`nc -N`,
   `printf ... | podnet link dial`). It still gets the answer.
 * An address in use is refused (exit 69).
-* `--check` is refused with `--local`, and is for `--ingress tunnel` only.
+* `--check` with `--local` checks the directory (and `--spa`), each
+  `--local` listener, and starts nothing: podnet binds a TCP address with no
+  listen and closes it at once (an address in use fails the row), and a unix
+  socket needs a directory that exists. With `--ingress tunnel`, the rows of
+  the listeners come after the rows of the tunnel. `git serve --check` with
+  `--local` or `--ssh` does the same for the root and each listener; it
+  makes no host key. `--check` is refused with `--ingress relay`.
   With `--ingress none`, the tunnel flags have no effect, except `--auth-user`
   (see below). The `--json` ready line has `listens`, each listener.
 

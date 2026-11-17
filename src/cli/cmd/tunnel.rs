@@ -199,7 +199,11 @@ pub(crate) async fn tunnel(args: TunnelArgs) -> Result<()> {
 
 /// `--check`: print the report of the check, and fail when a check failed.
 pub(crate) async fn preflight(config: &Config, show: Show) -> Result<()> {
-    let report = podnet::preflight::check(config).await;
+    print_report(podnet::preflight::check(config).await, show)
+}
+
+/// Print the report of a check; a failed check gives its exit code.
+pub(crate) fn print_report(report: podnet::preflight::Report, show: Show) -> Result<()> {
     if show.json {
         println!("{}", podnet::status::stamped(report.to_json()));
     } else {

@@ -1,4 +1,5 @@
-//! The preflight check (`--check`) of `tunnel`, `serve`, `share` and `demo`.
+//! The preflight check (`--check`) of `tunnel`, `serve`, `share` and `demo`,
+//! and of the local listeners of `serve --local` (GitHub #643).
 //!
 //! The check reads the plan of a tunnel and tests each local part of it:
 //! the origins, the files and the directories, the edge legs, `PODNET_EDGE`.
@@ -318,6 +319,72 @@ pub async fn check(config: &Config) -> Report {
         "files": files,
     });
     report
+}
+
+/// The check of `serve --check --local` with no tunnel (GitHub #643): the
+/// directory `root` (with `spa`), and each local listener of `locals`.
+pub fn check_local(root: &Path, spa: bool, locals: &[String]) -> Report {
+    let mut report = Report {
+        checks: Vec::new(),
+        plan: Value::Null,
+    };
+    report.result("files", static_dir(root, spa));
+    local_rows(&mut report, "local", locals);
+    report.plan = json!({
+        "road": "local",
+        "local": locals,
+        "files": [root.display().to_string()],
+    });
+    report
+}
+
+/// A row `NAME N` for each local listener of `locals` (GitHub #643). A TCP address
+/// is bound with no listen and closed at once: an address in use, an
+/// address of no interface and a port that needs a privilege fail. A unix
+/// socket needs a directory that exists. No listening socket opens.
+pub fn local_rows(report: &mut Report, name: &str, locals: &[String]) {
+    for (i, local) in locals.iter().enumerate() {
+        report.result(format!("{name} {}", i + 1), local_address(local));
+    }
+}
+
+fn local_address(local: &str) -> Result<String, String> {
+    if let Some(path) = local.strip_prefix("unix:") {
+        let path = Path::new(path);
+        if path.as_os_str().is_empty() || path.as_os_str().len() > 107 {
+            return Err(format!("--local {local}: give a path of 1 to 107 bytes"));
+        }
+        let dir = match path.parent() {
+            Some(p) if !p.as_os_str().is_empty() => p,
+            _ => Path::new("."),
+        };
+        if !dir.is_dir() {
+            return Err(format!(
+                "--local {local}: {} is not a directory",
+                dir.display()
+            ));
+        }
+        return Ok(format!("{local}: the directory {} exists", dir.display()));
+    }
+    let addr = local.strip_prefix("tcp://").unwrap_or(local);
+    let found: Vec<std::net::SocketAddr> = std::net::ToSocketAddrs::to_socket_addrs(addr)
+        .map_err(|e| format!("--local {local}: give HOST:PORT or unix:PATH ({e})"))?
+        .collect();
+    let first = found
+        .first()
+        .ok_or_else(|| format!("--local {local}: no address"))?;
+    let socket = if first.is_ipv4() {
+        tokio::net::TcpSocket::new_v4()
+    } else {
+        tokio::net::TcpSocket::new_v6()
+    };
+    socket
+        .and_then(|s| {
+            s.set_reuseaddr(true)?;
+            s.bind(*first)
+        })
+        .map_err(|e| format!("--local {local}: binding {first}: {e}"))?;
+    Ok(format!("{first}: can be bound (no listen)"))
 }
 
 /// The files and directories that a service reads or writes.

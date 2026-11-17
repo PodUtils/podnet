@@ -14,7 +14,6 @@ use podnet::ingress::Ingress;
 
 use crate::cli::cmd::local::{bind_local, Local};
 use crate::cli::cmd::run::{run_share, run_tunnel};
-use crate::cli::cmd::tunnel::preflight;
 use crate::cli::opts::{Show, TunnelOpts};
 use crate::cli::signals::sleep_or_signal;
 
@@ -144,8 +143,9 @@ pub(crate) struct ServeArgs {
     /// free port; podnet prints the bound address. A unix socket that answers
     /// is refused (exit 69; --replace takes it over). A stale socket is
     /// removed. A file that is not a socket is refused (exit 64). With no
-    /// --ingress, podnet makes no tunnel.
-    #[arg(long, value_name = "ADDR", conflicts_with = "check")]
+    /// --ingress, podnet makes no tunnel. With --check, podnet binds each
+    /// TCP address with no listen and closes it at once.
+    #[arg(long, value_name = "ADDR")]
     local: Vec<String>,
     /// Named-tunnel token. Prefer the variable TUNNEL_TOKEN or
     /// --token-file: other users of the host can read a command line.
@@ -211,9 +211,9 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
     if args.pair.is_some() && ingress != Road::Relay {
         return Err(usage("serve --pair is for --ingress relay"));
     }
-    if args.common.check && ingress != Road::Tunnel {
+    if args.common.check && ingress == Road::Relay {
         return Err(usage(
-            "serve --check checks a tunnel: it is for --ingress tunnel",
+            "serve --check checks a tunnel or --local: it is not for --ingress relay",
         ));
     }
     let mut files = files_config(&args)?;
@@ -243,8 +243,20 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
         .await;
     }
     let show = args.common.show();
+    // GitHub #643: --check with --local checks the files and each local
+    // listener, and starts nothing.
+    if args.common.check && ingress == Road::None {
+        let report = podnet::preflight::check_local(args.dir(), args.spa, &args.local);
+        return super::tunnel::print_report(report, show);
+    }
     let mut locals = Vec::new();
-    for local in &args.local {
+    // The tunnel check binds no listener: it checks them with the tunnel.
+    let binds = if args.common.check {
+        &[][..]
+    } else {
+        &args.local[..]
+    };
+    for local in binds {
         locals.push(bind_local(local, args.common.detach.replace, router.clone()).await?);
     }
     match ingress {
@@ -282,7 +294,9 @@ async fn serve_tunnel(args: &ServeArgs, files: FilesConfig) -> Result<()> {
     let mut show = serve_show(args.common.show(), args.dir(), args.spa || args.list);
     show.auth = files.access.users.is_some() && !files.access.anon_read;
     if args.common.check {
-        return preflight(&config, show).await;
+        let mut report = podnet::preflight::check(&config).await;
+        podnet::preflight::local_rows(&mut report, "local", &args.local);
+        return super::tunnel::print_report(report, show);
     }
     if let Some(pin) = files.access.pin.as_ref().and_then(Gate::pin_display) {
         let pin = Some(pin.to_string());

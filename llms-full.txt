@@ -272,7 +272,8 @@ podnet tunnel
         a connection, and the TLS handshake for https, with no request. No
         Cloudflare API call, no edge connection, no file is written. Exit 0
         when each check passes, 1 when a check fails. With --json, one JSON
-        document.
+        document. serve and git serve also check each --local (and --ssh)
+        listener: a TCP address is bound with no listen and closed at once.
     --url URL
         HTTP or HTTPS origin. Not with --config.
     --unix UNIX
@@ -482,7 +483,8 @@ podnet serve
         a connection, and the TLS handshake for https, with no request. No
         Cloudflare API call, no edge connection, no file is written. Exit 0
         when each check passes, 1 when a check fails. With --json, one JSON
-        document.
+        document. serve and git serve also check each --local (and --ssh)
+        listener: a TCP address is bound with no listen and closed at once.
     --dir DIR
         Directory to serve (the same as DIR).
     --spa
@@ -556,7 +558,8 @@ podnet serve
         a free port; podnet prints the bound address. A unix socket that
         answers is refused (exit 69; --replace takes it over). A stale socket
         is removed. A file that is not a socket is refused (exit 64). With no
-        --ingress, podnet makes no tunnel.
+        --ingress, podnet makes no tunnel. With --check, podnet binds each TCP
+        address with no listen and closes it at once.
     --token TOKEN
         Named-tunnel token. Prefer the variable TUNNEL_TOKEN or --token-file:
         other users of the host can read a command line. Variable:
@@ -646,8 +649,6 @@ podnet serve
     Give only one of --at, --local.
 
     Give only one of --at, --check.
-
-    Give only one of --check, --local.
 
     Give only one of --no-proxy, --proxy.
 
@@ -772,7 +773,8 @@ podnet share
         a connection, and the TLS handshake for https, with no request. No
         Cloudflare API call, no edge connection, no file is written. Exit 0
         when each check passes, 1 when a check fails. With --json, one JSON
-        document.
+        document. serve and git serve also check each --local (and --ssh)
+        listener: a TCP address is bound with no listen and closed at once.
     --mode MODE
         Session mode. With no --mode: download with --file, proxy with --port
         or --unix, upload with --dir. With none of these flags, podnet refuses
@@ -1043,7 +1045,8 @@ podnet git serve
         a connection, and the TLS handshake for https, with no request. No
         Cloudflare API call, no edge connection, no file is written. Exit 0
         when each check passes, 1 when a check fails. With --json, one JSON
-        document.
+        document. serve and git serve also check each --local (and --ssh)
+        listener: a TCP address is bound with no listen and closed at once.
     --root DIR
         The directory that holds the repositories. A request names a repository
         under it (NAME or NAME.git); .. and names that start with a dot are
@@ -2749,7 +2752,8 @@ podnet demo
         a connection, and the TLS handshake for https, with no request. No
         Cloudflare API call, no edge connection, no file is written. Exit 0
         when each check passes, 1 when a check fails. With --json, one JSON
-        document.
+        document. serve and git serve also check each --local (and --ssh)
+        listener: a TCP address is bound with no listen and closed at once.
     --exit-on-verify
         Exit as soon as the public URL has been fetched.
     --token TOKEN
@@ -11625,7 +11629,13 @@ local listener:
 * A client can half-close its connection after the request (`nc -N`,
   `printf ... | podnet link dial`). It still gets the answer.
 * An address in use is refused (exit 69).
-* `--check` is refused with `--local`, and is for `--ingress tunnel` only.
+* `--check` with `--local` checks the directory (and `--spa`), each
+  `--local` listener, and starts nothing: podnet binds a TCP address with no
+  listen and closes it at once (an address in use fails the row), and a unix
+  socket needs a directory that exists. With `--ingress tunnel`, the rows of
+  the listeners come after the rows of the tunnel. `git serve --check` with
+  `--local` or `--ssh` does the same for the root and each listener; it
+  makes no host key. `--check` is refused with `--ingress relay`.
   With `--ingress none`, the tunnel flags have no effect, except `--auth-user`
   (see below). The `--json` ready line has `listens`, each listener.
 
@@ -14566,6 +14576,10 @@ failed check is a check of the configuration (`PODNET_EDGE`, the credentials
 file, the roots). A bad command line (64) or a bad config file (78) stops
 before the check. With `--json`, the output is one
 document: `{"ok", "plan", "checks": [{"name", "status", "detail"}]}`.
+`serve --check --local ADDR` and `git serve --check --local ADDR` (or
+`--ssh ADDR`) with no tunnel check the directory and each listener (rows
+`files`, `local N` and `ssh N`; see [serve.md](serve.md)). They bind each TCP
+address with no listen, and close it at once.
 
 ```sh
 podnet serve --check --dir ./site --spa
