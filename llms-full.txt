@@ -206,9 +206,10 @@ podnet tunnel
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -417,9 +418,10 @@ podnet serve
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -707,9 +709,10 @@ podnet share
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -979,9 +982,10 @@ podnet git serve
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -1551,9 +1555,10 @@ podnet connect
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -1893,9 +1898,10 @@ podnet route
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -2072,9 +2078,10 @@ podnet ssh-relay
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -2689,9 +2696,10 @@ podnet demo
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --service-url SERVICE_URL
         Quick-tunnel provisioning endpoint. Default:
         https://api.trycloudflare.com.
@@ -3177,9 +3185,10 @@ podnet net proxy
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --listen LISTEN
         Where to accept proxy clients: unix:/path or tcp://[bind:]port.
         Default: unix:/tmp/podnet-vnet.socks.
@@ -3326,9 +3335,10 @@ podnet net switch
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -5106,9 +5116,10 @@ podnet warp forward
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --identity PATH
         The file that keeps the device and its MASQUE key, so that each run
         uses the same device. Default: warp.json in the state directory (see
@@ -5314,9 +5325,10 @@ podnet warp proxy
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --identity PATH
         The file that keeps the device and its MASQUE key, so that each run
         uses the same device. Default: warp.json in the state directory (see
@@ -5937,9 +5949,10 @@ podnet warp exec
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --join NAME
         Run the program in the pod of the instance NAME (warp exec with
         --detach or --name): it reaches the loopback listeners and the names of
@@ -6559,9 +6572,10 @@ podnet warp tun
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --identity PATH
         The file that keeps the device and its MASQUE key, so that each run
         uses the same device. Default: warp.json in the state directory (see
@@ -7150,6 +7164,8 @@ podnet relay node
         connected to the relay: pair, relay, target, expires and expires_in.
         The node stays in the foreground. --detach prints the same document,
         with or without --json.
+    --run-for SECONDS
+        Stop after this many seconds (a planned end: no restart).
     --detach
         Run in the background: podnet prints one JSON document when the command
         is ready (its URL or its listen address) and exits 0. The instance
@@ -7173,9 +7189,10 @@ podnet relay node
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --relay URL
         The relay for a new pair. A pair keeps the relay that made it. Default:
         https://tcp.ssh.relay.ajam.dev. Variable: PODNET_RELAY.
@@ -7295,9 +7312,10 @@ podnet relay connect
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --relay URL
         The relay for a new pair. A pair keeps the relay that made it. Default:
         https://tcp.ssh.relay.ajam.dev. Variable: PODNET_RELAY.
@@ -7717,9 +7735,10 @@ podnet link listen
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -8189,9 +8208,10 @@ podnet link connect
     --no-restart
         Do not start the instance again when it ends. Without it, a supervisor
         starts it again with a backoff (1 s to 30 s). It does not start it
-        after exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-        --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-        --name and no --detach, there is no supervisor.
+        after exit 64 or 78, or after a planned end of the command (--run-for,
+        and --stop-after or --idle-secs of share). A quick tunnel gets a new
+        URL; podnet ps shows it. With --name and no --detach, there is no
+        supervisor.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -13704,6 +13724,9 @@ podnet relay stop NAME
   connected to the relay: `event` (`ready`), `pair`, `relay`, `target`,
   `expires` and `expires_in`. The node stays in the foreground. `--detach`
   prints the same document and returns.
+* `podnet relay node --run-for SECONDS` stops the node after that time, with
+  exit 0 (a planned end: the supervisor of `--detach` does not start it
+  again).
 * `podnet relay connect NAME` waits for `ready`, then copies stdin and stdout.
   A name that is not a valid pair name exits 64.
   A refused session exits 69 with the cause from the node. A refused token
@@ -14251,9 +14274,9 @@ or a container that kills each process of its run also ends it.
   The log has no colour codes.
 * A supervisor starts the instance again when it ends, with a backoff of
   1 s doubled to 30 s, but not after exit 64 or 78, and not before the first
-  ready. A planned end is not restarted: `--stop-after`, `--idle-secs` and
-  `--run-for` end the instance for good (a crash or a kill still restarts
-  it). When the quick-tunnel service refused a provision with a
+  ready. A planned end is not restarted: `--run-for` (and `--stop-after`
+  and `--idle-secs` of `share`) end the instance for good (a crash or a
+  kill still restarts it). When the quick-tunnel service refused a provision with a
   `Retry-After` (HTTP 429), the next start waits that long (at most 1 h),
   and the run is not a quick failure. After 5 quick failures in sequence it
   runs `podnet.prev` (the binary before the last `podnet update`). A quick
@@ -15941,7 +15964,7 @@ fail that check. The steps:
 | The proxy refuses `CONNECT` to an IP address | DoH by name (`cloudflare-dns.com`, `dns.google`, `dns.google.com`) through the proxy | measured | `src/resolve.rs` `settings` (`pod_dns::Names::Last`) |
 | The proxy answers 407 | The error names each scheme of `Proxy-Authenticate`; podnet answers Basic and Digest (MD5, MD5-sess, SHA-256, SHA-256-sess), and the advice follows what it sent | measured (test) | `PodUtils/podcrates:crates/pod-proxy/src/proxy_auth.rs` `a_407_names_the_schemes`, `a_407_with_digest_does_not_say_basic_only`; `tests/egress.rs` `a_407_names_the_schemes` |
 | No `/proc` | The seccomp backend of `podnet pod` cannot read the memory of the program; `podnet pod doctor` reports it | inferred | `crates/podnet-netns/src/seccomp/mem.rs` |
-| `/proc/<pid>/mem` and `process_vm_writev` are refused | `getsockname` and `getpeername` answer `EOPNOTSUPP` under the seccomp backend; QUIC clients fail, and a program that reads its own address can crash (a Go `LocalAddr()` type assertion). A warning and the `write program memory` row of `pod doctor` say so; `--backend netns` avoids it | measured (issue 186) | `crates/podnet-netns/src/sockopt.rs` `handle_sockname`; `tests/pod_seccomp/tcp.rs` `getpeername_is_the_inet_address_or_eopnotsupp` |
+| `/proc/<pid>/mem` and `process_vm_writev` are refused | `getsockname` and `getpeername` answer `EOPNOTSUPP` under the seccomp backend (not for a TCP connect to a listener on the loopback of the host: the program holds the kernel socket, T-456); QUIC clients fail, and a program that reads its own address can crash (a Go `LocalAddr()` type assertion). A warning and the `write program memory` row of `pod doctor` say so; `--backend netns` avoids it | measured (issue 186) | `crates/podnet-netns/src/sockopt.rs` `handle_sockname`; `tests/pod_seccomp/tcp.rs` `getpeername_is_the_inet_address_or_eopnotsupp`; `tests/pod_seccomp/loopback_name.rs` |
 | The clock is wrong | A certificate error gives the clock of the host | measured (test) | `tests/tls.rs` `an_expired_certificate_names_the_host_clock` |
 | `bind` is allowed and `listen` is refused | `podnet net doctor` gives `listen(...) FAIL`; `warp proxy`, `connect -L`, `net proxy`, `net switch`, `net tailscale` and `relay connect --listen` need a listener (`net proxy`, `net switch` and `net tailscale` default to a unix path) | measured (test) | `crates/podnet-vnet/src/doctor.rs`; `tests/cli/startup.rs` `doctor_tells_listen_from_bind` |
 | Outbound UDP is refused (EPERM, ICMP) | `--protocol auto` does not try QUIC on UDP 7844 | measured (test) | `crates/podnet-core/src/udp.rs`; `tunnel::plan_with_udp` |

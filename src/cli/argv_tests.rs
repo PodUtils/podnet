@@ -1,4 +1,6 @@
-use crate::cli::argv::{cloudflared_compat, command_name, foreground_hint, pod_args_of};
+use crate::cli::argv::{
+    cloudflared_compat, command_name, foreground_hint, pod_args_of, SERVER_COMMANDS,
+};
 use crate::cli::help::{top_command, usage_hints};
 
 /// E12: a server command with no terminal names --detach.
@@ -163,4 +165,34 @@ fn the_pod_keeps_its_double_dash() {
         pod_args_of(&v("podnet pod -x u -- a"), &v("-x u -- a")),
         v("-x u -- a")
     );
+}
+
+/// GitHub #647: the foreground line names --run-for, so each server command
+/// takes it. The help of --no-restart names --stop-after and --idle-secs
+/// only as flags of share.
+#[test]
+fn each_server_command_takes_the_flags_of_its_hints() {
+    use clap::CommandFactory as _;
+    let root = crate::cli::Cli::command();
+    for path in SERVER_COMMANDS {
+        let mut cmd = &root;
+        for word in path.split(' ') {
+            cmd = cmd
+                .find_subcommand(word)
+                .unwrap_or_else(|| panic!("{path}"));
+        }
+        let has = |flag: &str| cmd.get_arguments().any(|a| a.get_long() == Some(flag));
+        assert!(has("run-for"), "{path} takes no --run-for");
+        let help = cmd
+            .get_arguments()
+            .find(|a| a.get_long() == Some("no-restart"))
+            .and_then(|a| a.get_help())
+            .map(ToString::to_string)
+            .unwrap_or_default();
+        for flag in ["stop-after", "idle-secs"] {
+            if help.contains(&format!("--{flag}")) && !has(flag) {
+                assert!(help.contains("of share)"), "{path}: {help}");
+            }
+        }
+    }
 }

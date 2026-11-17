@@ -59,9 +59,9 @@ or a container that kills each process of its run also ends it.
   The log has no colour codes.
 * A supervisor starts the instance again when it ends, with a backoff of
   1 s doubled to 30 s, but not after exit 64 or 78, and not before the first
-  ready. A planned end is not restarted: `--stop-after`, `--idle-secs` and
-  `--run-for` end the instance for good (a crash or a kill still restarts
-  it). When the quick-tunnel service refused a provision with a
+  ready. A planned end is not restarted: `--run-for` (and `--stop-after`
+  and `--idle-secs` of `share`) end the instance for good (a crash or a
+  kill still restarts it). When the quick-tunnel service refused a provision with a
   `Retry-After` (HTTP 429), the next start waits that long (at most 1 h),
   and the run is not a quick failure. After 5 quick failures in sequence it
   runs `podnet.prev` (the binary before the last `podnet update`). A quick

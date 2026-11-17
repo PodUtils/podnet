@@ -10,7 +10,7 @@ use clap::{Args, Subcommand};
 use podnet::exit::{Fault, ResultExt};
 
 use crate::cli::opts::DetachArgs;
-use crate::cli::signals::shutdown_signal;
+use crate::cli::signals::{shutdown_signal, sleep_or_signal};
 
 #[derive(Args, Debug)]
 #[command(subcommand_required = true, arg_required_else_help = false)]
@@ -64,6 +64,9 @@ pub(crate) enum RelayCommand {
         /// the same document, with or without --json.
         #[arg(long)]
         json: bool,
+        /// Stop after this many seconds (a planned end: no restart).
+        #[arg(long, value_name = "SECONDS")]
+        run_for: Option<u64>,
         #[command(flatten)]
         detach: DetachArgs,
     },
@@ -174,6 +177,7 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             seal,
             allow,
             json,
+            run_for,
             ..
         } => {
             if json {
@@ -200,17 +204,17 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
                 let seal = reverse::Seal::new(install_key()?.key(), move |k| allow.admits(k));
                 tokio::select! {
                     result = reverse::run_node_sealed(follow, pair, &target, &seal) => result,
-                    _ = shutdown_signal() => Ok(()),
+                    _ = sleep_or_signal(run_for) => Ok(()),
                 }
             } else if resume {
                 tokio::select! {
                     result = reverse::run_node_resumable(follow, pair, &target) => result,
-                    _ = shutdown_signal() => Ok(()),
+                    _ = sleep_or_signal(run_for) => Ok(()),
                 }
             } else {
                 tokio::select! {
                     result = reverse::run_node(follow, pair, &target) => result,
-                    _ = shutdown_signal() => Ok(()),
+                    _ = sleep_or_signal(run_for) => Ok(()),
                 }
             }
         }

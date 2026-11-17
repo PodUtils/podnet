@@ -216,9 +216,10 @@ pub(crate) struct DetachArgs {
     pub(crate) replace: bool,
     /// Do not start the instance again when it ends. Without it, a supervisor
     /// starts it again with a backoff (1 s to 30 s). It does not start it after
-    /// exit 64 or 78, or after a planned end (--stop-after, --idle-secs,
-    /// --run-for). A quick tunnel gets a new URL; podnet ps shows it. With
-    /// --name and no --detach, there is no supervisor.
+    /// exit 64 or 78, or after a planned end of the command (--run-for, and
+    /// --stop-after or --idle-secs of share). A quick tunnel gets a
+    /// new URL; podnet ps shows it. With --name and no --detach, there is no
+    /// supervisor.
     #[arg(long)]
     pub(crate) no_restart: bool,
 }
