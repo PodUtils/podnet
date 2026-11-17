@@ -300,6 +300,9 @@ prints the state of that router: each group, each member with its health, round-
 flows, the bytes, the pinned member and the head. `--json` prints the document. Exit 69 when no router
 answers. `--status` cannot be used with `--config`.
 
+`route --config FILE --detach` prints the detached document (JSON, with or without `--json`): the state of each
+door, with `listen` and `listens`. `--json` with `--config` and no `--detach` exits 64.
+
 Each door shows its counters: `flows` (the flows that came through the door, and the UDP associations),
 `open` (the flows that have not ended) and `bytes` (TCP and UDP, both directions, counted at the door). The
 counters of a door start at 0 when it is added and go with it when it is removed. A door that the file

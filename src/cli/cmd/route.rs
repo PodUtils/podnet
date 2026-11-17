@@ -22,7 +22,8 @@ pub(crate) struct RouteArgs {
     /// of its file). Exit 69 when no router answers
     #[arg(long, value_name = "unix:/PATH", conflicts_with_all = ["config", "check"])]
     pub(crate) status: Option<String>,
-    /// With --status or a control flag: print the JSON document
+    /// With --status or a control flag: print the JSON document. With
+    /// --detach it changes nothing: the start prints the JSON document
     #[arg(long)]
     pub(crate) json: bool,
     /// With --status: print the metrics rows of the router (one for each
@@ -107,8 +108,12 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
     if let Some(control) = &args.control {
         return control_write(control, &args).await;
     }
-    if args.json {
-        return Err(anyhow::anyhow!("--json needs --status or --control")).fault(Fault::Usage);
+    // GitHub #642: with --detach the start prints the JSON document anyway.
+    if args.json && !args.detach.detach {
+        return Err(anyhow::anyhow!(
+            "--json needs --status, --control or --detach (the detached document is JSON)"
+        ))
+        .fault(Fault::Usage);
     }
     let Some(path) = &args.config else {
         return Err(anyhow::anyhow!("give --config FILE")).fault(Fault::Usage);

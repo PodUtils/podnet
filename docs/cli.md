@@ -59,6 +59,11 @@ some seconds more), `pin` (`--resolve`) or `none`. While the fetch fails, podnet
 logs the first try and each fifth try at INFO, and each try after the tenth
 at WARN.
 
+`--json` is not a global flag. A command without JSON output refuses it (exit 64). To know if a command takes
+`--json`, read its flags: `podnet COMMAND --help --json | jq -e '.command.flags[] | select(.long == "json")'`
+(see "Machine-readable help"). Each `--detach` start prints a JSON document with or without `--json`
+([background.md](background.md)). `route --config FILE --detach --json` is the same as without `--json`.
+
 Stop signals: from the ready line (or the `ready` event) of a server
 command on, SIGINT (Ctrl-C), SIGTERM and SIGHUP each start the clean
 shutdown, also during the verify of the public URL and with `--run-for`.
