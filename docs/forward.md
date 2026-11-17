@@ -84,6 +84,13 @@ podnet forward -L unix:/run/db.sock=peer:FINGERPRINT/db       # a unix listener
 network to the resolver `--dns-upstream HOST:PORT` (default `1.1.1.1:53`), which is an address at the far
 end of the network. A program that uses the door as its resolver sends no query from this host.
 
+* podnet binds the door first. The line `podnet: dns door ADDR:PORT -> UPSTREAM via NETWORK` comes after the bind,
+  with the bound port (`--dns 127.0.0.1:0` shows the port that the system gave). An address in use prints no line and
+  exits 69.
+* A query that the door cannot send to the upstream (the network carries no UDP, or the dial fails) gets the answer
+  SERVFAIL, not a timeout. The log has the cause (a line of the level WARN). A query that goes out, and that gets no
+  answer, still times out at the client.
+
 A door of the router has the same function with the keys `dns` and `dns_upstream` ([router.md](router.md)).
 
 ### `warp forward`

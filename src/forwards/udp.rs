@@ -34,6 +34,9 @@ pub(super) struct Flows {
     open: Arc<Mutex<HashMap<SocketAddr, mpsc::Sender<Vec<u8>>>>>,
     /// The names that a DNS door answers itself (T-404).
     local: Option<Arc<Resolver>>,
+    /// A DNS door: a query that cannot go to the upstream gets SERVFAIL
+    /// (GitHub #638), not a silent timeout.
+    servfail: bool,
 }
 
 impl Flows {
@@ -43,6 +46,7 @@ impl Flows {
             cap,
             open: Arc::default(),
             local: None,
+            servfail: false,
         }
     }
 
@@ -131,21 +135,41 @@ pub async fn serve_dns_with(
     upstream: Target,
     table: Option<Arc<Resolver>>,
 ) -> Result<()> {
-    let udp = Arc::new(
-        UdpSocket::bind(addr)
-            .await
-            .with_context(|| format!("--dns {addr}"))?,
-    );
+    let (udp, tcp) = bind_dns(addr).await?;
+    serve_dns_on(udp, tcp, dial, upstream, table).await
+}
+
+/// The listeners of a DNS door on `addr` (GitHub #638): UDP, and TCP on the
+/// same port. An address in use exits 69. The caller binds them before it
+/// says that the door serves.
+pub async fn bind_dns(addr: SocketAddr) -> Result<(Arc<UdpSocket>, tokio::net::TcpListener)> {
+    let udp = UdpSocket::bind(addr)
+        .await
+        .with_context(|| format!("--dns {addr}"))
+        .map_err(crate::net::bind_fault)?;
     let tcp = tokio::net::TcpListener::bind(udp.local_addr()?)
         .await
-        .with_context(|| format!("--dns {addr}"))?;
+        .with_context(|| format!("--dns {addr}"))
+        .map_err(crate::net::bind_fault)?;
+    Ok((Arc::new(udp), tcp))
+}
+
+/// [`serve_dns_with`] on the listeners of [`bind_dns`].
+pub async fn serve_dns_on(
+    udp: Arc<UdpSocket>,
+    tcp: tokio::net::TcpListener,
+    dial: Arc<dyn Dial>,
+    upstream: Target,
+    table: Option<Arc<Resolver>>,
+) -> Result<()> {
+    let mut flows = Flows::new(IDLE, MAX_FLOWS);
+    flows.servfail = true;
     let Some(table) = table else {
         return tokio::select! {
-            r = serve_udp(udp, dial.clone(), upstream.clone()) => r,
+            r = serve_udp_with(udp, dial.clone(), upstream.clone(), flows) => r,
             r = super::serve_tcp(tcp, dial, upstream) => r,
         };
     };
-    let mut flows = Flows::new(IDLE, MAX_FLOWS);
     flows.local = Some(table.clone());
     tokio::select! {
         r = serve_udp_with(udp, dial.clone(), upstream.clone(), flows) => r,
@@ -196,7 +220,13 @@ async fn dns_tcp(
                 }
             }
             Err(e) => {
-                tracing::warn!(%upstream, way = %dial.label(), "the DNS door did not reach its upstream: {e}")
+                tracing::warn!(%upstream, way = %dial.label(), "the DNS door did not reach its upstream: {e}");
+                if let Some(reply) = servfail(&query).and_then(|r| {
+                    let n = u16::try_from(r.len()).ok()?;
+                    Some([&n.to_be_bytes()[..], &r].concat())
+                }) {
+                    let _ = stream.write_all(&reply).await;
+                }
             }
         }
         return;
@@ -211,10 +241,40 @@ async fn flow(
     mut queue: mpsc::Receiver<Vec<u8>>,
     flows: Flows,
 ) {
-    if let Err(e) = carry(&socket, &*dial, &target, client, &mut queue, flows.idle).await {
+    let mut failed = None;
+    if let Err(e) = carry(
+        &socket,
+        &*dial,
+        &target,
+        client,
+        &mut queue,
+        flows.idle,
+        &mut failed,
+    )
+    .await
+    {
         tracing::warn!(%target, way = %dial.label(), %client, "a UDP flow ended: {e:#}");
+        if flows.servfail {
+            // GitHub #638: each query that did not go out gets SERVFAIL.
+            flows.open.lock().unwrap().remove(&client);
+            queue.close();
+            while let Some(query) = failed.take().or_else(|| queue.try_recv().ok()) {
+                if let Some(reply) = servfail(&query) {
+                    let _ = socket.send_to(&reply, client).await;
+                }
+            }
+            return;
+        }
     }
     flows.open.lock().unwrap().remove(&client);
+}
+
+/// The SERVFAIL answer to the DNS query `query`; `None` when it does not
+/// parse.
+fn servfail(query: &[u8]) -> Option<Vec<u8>> {
+    use podnet_vnet::dns::{build_response, ParsedQuery, RCODE_SERVFAIL};
+    let parsed = ParsedQuery::parse(query).ok()?;
+    Some(build_response(&parsed, &[], RCODE_SERVFAIL))
 }
 
 async fn carry(
@@ -224,6 +284,7 @@ async fn carry(
     client: SocketAddr,
     queue: &mut mpsc::Receiver<Vec<u8>>,
     idle: Duration,
+    failed: &mut Option<Vec<u8>>,
 ) -> Result<()> {
     let to = resolve(target).await?;
     let datagrams = dial.datagrams().await?;
@@ -232,7 +293,13 @@ async fn carry(
         let step = async {
             tokio::select! {
                 out = queue.recv() => match out {
-                    Some(payload) => send_to(&*datagrams, &payload, to).await.map(|()| true),
+                    Some(payload) => {
+                        let sent = send_to(&*datagrams, &payload, to).await;
+                        if sent.is_err() {
+                            *failed = Some(payload);
+                        }
+                        sent.map(|()| true)
+                    }
                     None => Ok(false),
                 },
                 back = recv_from(&*datagrams, &mut buf) => {
