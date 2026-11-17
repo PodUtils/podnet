@@ -168,7 +168,8 @@ fn autostart_from_an_instance_keeps_its_secrets_and_drops_detach_options() {
     let dir = tempfile::tempdir().unwrap();
     let state = dir.path().join("state");
     let run_dir = dir.path().join("run");
-    // No systemctl and no crontab: add writes the entry, then exits 69.
+    // No systemctl and no crontab: --manual writes the entry and exits 0
+    // (GitHub #640: with no --manual, exit 69 writes no entry).
     let empty = dir.path().join("empty");
     std::fs::create_dir(&empty).unwrap();
     let listen = format!("unix:{}", dir.path().join("s.sock").display());
@@ -199,10 +200,10 @@ fn autostart_from_an_instance_keeps_its_secrets_and_drops_detach_options() {
         "src",
     ]);
     assert!(start.status.success(), "{}", stderr(&start));
-    let out = podnet(&["autostart", "add", "x", "--from", "src"]);
+    let out = podnet(&["autostart", "add", "--manual", "x", "--from", "src"]);
     let stopped = podnet(&["stop", "src", "--timeout", "5"]);
     assert!(stopped.status.success(), "{}", stderr(&stopped));
-    assert_eq!(out.status.code(), Some(69), "{}", stderr(&out));
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     let entry = state.join("autostart");
     let env = std::fs::read_to_string(entry.join("x.env")).unwrap();
     assert!(
@@ -229,6 +230,7 @@ fn autostart_from_an_instance_keeps_its_secrets_and_drops_detach_options() {
     let out = podnet(&[
         "autostart",
         "add",
+        "--manual",
         "y",
         "--",
         "net",
@@ -239,7 +241,7 @@ fn autostart_from_an_instance_keeps_its_secrets_and_drops_detach_options() {
         "--name",
         "inner",
     ]);
-    assert_eq!(out.status.code(), Some(69), "{}", stderr(&out));
+    assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
     assert!(stderr(&out).contains("are removed"), "{}", stderr(&out));
     let args = std::fs::read_to_string(entry.join("y.args")).unwrap();
     assert!(
