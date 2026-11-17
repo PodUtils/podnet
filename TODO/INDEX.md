@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**471 entries: 16 open, 11 partial, 36 blocked, 408 done.**
-**471 entries: 16 open, 11 partial, 36 blocked, 408 done.**
+**472 entries: 17 open, 11 partial, 36 blocked, 408 done.**
+**472 entries: 17 open, 11 partial, 36 blocked, 408 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 5 | 2 | 2 | 50 | 59 |
-| P2 | 4 | 6 | 10 | 213 | 233 |
+| P2 | 5 | 6 | 10 | 213 | 234 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 16 | 11 | 36 | 408 | 471 |
-| P2 | 4 | 6 | 10 | 213 | 233 |
+| **All** | 17 | 11 | 36 | 408 | 472 |
+| P2 | 5 | 6 | 10 | 213 | 234 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 16 | 11 | 36 | 408 | 471 |
+| **All** | 17 | 11 | 36 | 408 | 472 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -521,3 +521,4 @@ M8 Overlays, M9 Later.
 | [T-470](fixes.md) | P2 | S | M5 | defect | done | `expose --via switch` refuses the `http://` target that `expose` documents (GitHub #646) |
 | [T-471](fixes.md) | P2 | S | M5 | defect | done | `ssh-relay --no-restart`: the help names `--stop-after`, `--idle-secs` and `--run-for`, which the command refuses (GitHub #647) |
 | [T-472](fixes.md) | P3 | S | M5 | defect | done | `serve --list`: the HTML listing omits the modified time and the upload limit (GitHub #648) |
+| [T-473](fixes.md) | P2 | M | M3 | chore | open | A survey of podnet's copies of shared code against podcrates and the siblings (PodUtils/podcrates#221) |

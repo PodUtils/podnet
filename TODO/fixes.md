@@ -10316,3 +10316,38 @@ cargo test -p podnet-serve -- a_listing_shows_the_modified_time a_form_uploads_i
 ## Done
 
 2026-11-17, commit 003d92a9. Reproduced on the code before the fix. The test `crates/podnet-serve/src/files/tests.rs::a_listing_shows_the_modified_time` and `a_form_uploads_into_a_directory` passes; on the code with the time column and the upload limit removed (the new test kept) it fails. Branch of the QA round merged at main; `cargo test --workspace` of the branch after the merge with main: the `cli` target 113 of 113.
+
+# T-473: A survey of podnet's copies of shared code against podcrates and the siblings (PodUtils/podcrates#221)
+
+**Source:** PodUtils/podcrates#221 (COORD-131 of podcrates, 2026-11-17, a member of the team): its ask 3, to name each
+copy of shared code that podnet holds and that the survey of podcrates did not list.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+podcrates' survey names three copies in podnet: `crates/podnet-core/src/detach.rs` (their entry 879), `src/update.rs`
+with `src/update/cosign.rs` (their entry 880) and the instance lock (their entry 877). Other copies of podnet are not
+named.
+
+## Premise
+
+- The three named copies wait for crates of podcrates that do not exist yet; podnet takes each at its tag (T-137).
+- The rulings "Shared code" and "Quality first" that COORD-131 cites were not on podcrates' `main` at 18:50 UTC (the
+  last change of its `docs/decisions.md` is 9f2212a, 13:59 UTC). podnet adds their text to `CLAUDE.md` when the owner's
+  text is there.
+
+## Approach
+
+1. Read each module of podnet against the design document and the `README.md` of each crate of podcrates, and against the
+   crates of podssh, podvm and podrunner.
+2. For each copy: remove it where a crate of podcrates covers it; else name it in one COORD issue `(to podcrates)`.
+
+## Prove
+
+```sh
+sh scripts/agent/podcrates.sh
+```
