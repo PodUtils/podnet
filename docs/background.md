@@ -18,8 +18,23 @@ podnet stop web                                  # or: podnet stop --all
 is ready: until the public URL answers, or until the listener is bound.
 Then it leaves the terminal (`setsid`, SIGHUP ignored, stdin to
 `/dev/null`, stdout and stderr to its log), and the start prints one JSON
-document on stdout: `name`, `pid`, `log`, and `url` or `listen`. The lines
-of the instance before the ready go to stderr.
+document on stdout. The lines of the instance before the ready go to stderr.
+
+Each detached document has these keys; the keys of each command follow them:
+
+| Key | Value |
+| --- | --- |
+| `command`, `event` (`detached`), `name`, `pid`, `log` | the instance |
+| `url` | the URL for a client, or `null` when the command has none |
+| `listen` | the first local listener (`tcp://HOST:PORT` or `unix:PATH`), or `null` |
+| `listens` | each local listener, or `[]` |
+
+* `tunnel`, `serve`, `share` and `demo`: `url` is the public URL (or the URL of `--local`).
+* `git serve`: `url` is the tunnel URL, else the first URL of `http`, else the first URL of `ssh`. `http` and `ssh`
+  list each URL.
+* `route`: `listen` and `listens` are the `listen` of the doors; `doors` has their state.
+* `relay node`: `url` is `null`; `pair`, `relay` and `target` name the pair.
+* A reader of `.url` gets `null` (not a missing key) from a command that has no URL.
 The instance keeps running when the shell or the terminal closes. A sandbox
 or a container that kills each process of its run also ends it.
 

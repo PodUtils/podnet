@@ -33,8 +33,12 @@ pub fn table(list: &[Entry], now: u64) -> String {
         let at = r
             .ready
             .as_ref()
-            .and_then(|d| d.get("url").or_else(|| d.get("listen")))
-            .and_then(|v| v.as_str())
+            .and_then(|d| {
+                // GitHub #641: `url` can be null; then `listen` is shown.
+                d.get("url")
+                    .and_then(|v| v.as_str())
+                    .or_else(|| d.get("listen").and_then(|v| v.as_str()))
+            })
             .unwrap_or("-");
         let age = now.saturating_sub(r.started);
         let age = if age >= 3600 {
@@ -119,5 +123,15 @@ mod tests {
             "fw  tcp://127.0.0.1:1 -> a.example:22\nfw  tcp://127.0.0.1:2 -> b.example:80\n"
         );
         assert!(forward_list(&list[1..]).starts_with("podnet: no forward runs"));
+    }
+
+    /// GitHub #641: a ready document with `url: null` shows its `listen`.
+    #[test]
+    fn a_null_url_shows_the_listen() {
+        let list = [entry(
+            "r1",
+            serde_json::json!({ "url": null, "listen": "tcp://127.0.0.1:1090" }),
+        )];
+        assert!(table(&list, 0).contains("tcp://127.0.0.1:1090"));
     }
 }

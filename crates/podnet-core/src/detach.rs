@@ -365,6 +365,7 @@ pub fn ready(doc: serde_json::Value) {
         let mut guard = STATE.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(state) = guard.as_mut() {
             if let Some(object) = doc.as_object_mut() {
+                instances::envelope(object);
                 object.insert("name".into(), state.record.name.clone().into());
                 object.insert("pid".into(), state.record.pid.into());
                 object.insert("command".into(), state.record.command.clone().into());
@@ -389,6 +390,7 @@ pub fn ready(doc: serde_json::Value) {
     let log_path = PathBuf::from(&state.record.log);
     let log = open_private(&log_path).ok();
     if let Some(object) = doc.as_object_mut() {
+        instances::envelope(object);
         object.insert("event".into(), "detached".into());
         object.insert("name".into(), state.record.name.clone().into());
         object.insert("pid".into(), state.record.pid.into());
