@@ -1,16 +1,26 @@
 //! T-456 (PodUtils/podrunner#213): a loopback TCP connect under the seccomp
 //! backend on a host that refuses writes to the memory of the program. The
-//! program holds the TCP socket of the kernel, so `getsockname` and
-//! `getpeername` give the INET addresses (not EOPNOTSUPP).
+//! program holds a TCP socket of the kernel from `socket` on, so a socket
+//! option before the connect (.NET reads `IPV6_V6ONLY`), `getsockname` and
+//! `getpeername` give the answers of the kernel (not EOPNOTSUPP).
 
 use super::*;
 
 /// The client in the pod: one line from TCP 127.0.0.1:PORT. Prints
-/// `LOCAL:IP`, `PEER:IP:PORT` (or `NAME-ERROR:ERRNO`), then `LINE:TEXT`.
+/// `NODELAY:1` (or `OPTION-ERROR:ERRNO`), `LOCAL:IP`, `PEER:IP:PORT` (or
+/// `NAME-ERROR:ERRNO`), then `LINE:TEXT`.
 const CLIENT: &str = r#"
 import socket, sys
 port = int(sys.argv[1])
-c = socket.create_connection(("127.0.0.1", port), timeout=5)
+c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+c.settimeout(5)
+# Part 2: an option before the connect, as .NET reads IPV6_V6ONLY.
+try:
+    c.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    print("NODELAY:%d" % c.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY))
+except OSError as e:
+    print("OPTION-ERROR:%d" % e.errno)
+c.connect(("127.0.0.1", port))
 try:
     print("LOCAL:" + c.getsockname()[0])
     peer = c.getpeername()
@@ -75,6 +85,7 @@ fn a_loopback_connect_has_its_names_with_no_memory_write() {
     }
     let port = host_service();
     let want = [
+        "NODELAY:1".to_string(),
         "LOCAL:127.0.0.1".to_string(),
         format!("PEER:127.0.0.1:{port}"),
         "LINE:host-loopback".to_string(),
@@ -87,5 +98,6 @@ fn a_loopback_connect_has_its_names_with_no_memory_write() {
     // unspecified address of the family).
     let stdout = client_in_pod("", port);
     let lines: Vec<&str> = stdout.lines().collect();
-    assert_eq!(lines[1..], want[1..], "{stdout}");
+    assert_eq!(lines[2..], want[2..], "{stdout}");
+    assert_eq!(lines[0], want[0], "{stdout}");
 }

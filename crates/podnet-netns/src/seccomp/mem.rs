@@ -82,7 +82,7 @@ fn warn_no_mem_write() {
     ONCE.call_once(|| {
         crate::warn(
             "warning: this host refuses writes to the memory of the program; \
-             getsockname and getpeername fail with EOPNOTSUPP (a loopback TCP connect excepted): QUIC clients (curl --http3) fail, and a program \
+             getsockname and getpeername fail with EOPNOTSUPP (a TCP socket to the loopback excepted): QUIC clients (curl --http3) fail, and a program \
              that reads its own address can crash (for example a Go program); use --backend netns where it works",
         );
     });

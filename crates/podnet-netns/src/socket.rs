@@ -46,7 +46,7 @@ pub(crate) fn handle_socket(
     id: u64,
     a: [u64; 6],
     map: &mut crate::fdtable::Table,
-    writes: &crate::udp::Writes,
+    (writes, mem_writable): (&crate::udp::Writes, bool),
     verbose: bool,
 ) -> Result<()> {
     if !map.has_room() {
@@ -84,6 +84,37 @@ pub(crate) fn handle_socket(
         newfd_flags |= libc::O_CLOEXEC as u32;
     }
     let nonblocking = ty & libc::SOCK_NONBLOCK != 0;
+    if kind == libc::SOCK_STREAM && !mem_writable {
+        // T-456 (PodUtils/podrunner#213): the pod cannot write the answer of
+        // a socket option (`IPV6_V6ONLY`) or a name into the memory of the
+        // program. The program gets a TCP socket of the kernel; `connect`
+        // puts the socket pair in its place when it does not go to the
+        // loopback.
+        // A host with no IPv6 refuses an AF_INET6 socket of the kernel: then
+        // the socket pair of the pod stays, as before (an IPv6 socket in a
+        // pod on a host with no IPv6).
+        // SAFETY: socket(2) takes no pointer.
+        let fd = unsafe {
+            libc::socket(
+                domain,
+                libc::SOCK_STREAM | (ty & libc::SOCK_NONBLOCK),
+                protocol,
+            )
+        };
+        if fd >= 0 {
+            // SAFETY: `fd` is a new descriptor that nothing else owns.
+            let theirs = unsafe { OwnedFd::from_raw_fd(fd) };
+            let key = crate::fdtable::inode_of(theirs.as_raw_fd())?;
+            notif_addfd_send(lfd, id, theirs.as_raw_fd(), newfd_flags)?;
+            map.insert(
+                key,
+                Sock::Kernel {
+                    v6: domain == libc::AF_INET6,
+                },
+            );
+            return Ok(());
+        }
+    }
     if kind == libc::SOCK_STREAM {
         // A std pair is blocking on both ends; only the supervisor's end is
         // made non-blocking, so the child gets a blocking socket unless it

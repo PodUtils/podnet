@@ -49,6 +49,11 @@ pub(crate) enum Sock {
     Datagram(crate::udp::Udp),
     /// An ICMP datagram socket (T-066): the pod answers an echo to its gateway.
     Icmp(crate::icmp::Icmp),
+    /// T-456: a TCP socket of the kernel, before its `connect`, where the pod
+    /// cannot write the memory of the program. The kernel answers each call
+    /// on it (socket options, `bind`, the names); a `connect` that does not
+    /// go to the loopback gets the socket pair of the pod in its place.
+    Kernel { v6: bool },
 }
 
 pub(crate) fn run_seccomp(args: Args) -> Result<i32> {
@@ -207,6 +212,15 @@ pub(crate) async fn supervise_seccomp(
         let (mem, mem_writable) = (n.memory.raw(), n.memory.writable());
         let req_pid = n.pid;
 
+        // T-456: the kernel answers each call on a kernel socket but `connect`.
+        if nr != libc::SYS_connect as i32 && matches!(map.get(&key), Some(Sock::Kernel { .. })) {
+            if let Err(e) = notif_continue(lfd, id) {
+                if verbose {
+                    eprintln!("{}: notif {nr}: {e:#}", crate::cli::program_name());
+                }
+            }
+            continue;
+        }
         let call = (nr, a, req_pid, (mem, mem_writable));
         let tcp = crate::tcp::handle(lfd, id, call, (&mut map, key), &mut dials);
         let icmp = crate::icmp::handle(lfd, id, nr, a, (mem, mem_writable), (&mut map, key));
@@ -215,7 +229,7 @@ pub(crate) async fn supervise_seccomp(
         } else if let Some(outcome) = icmp.await {
             outcome
         } else if nr == libc::SYS_socket as i32 {
-            crate::socket::handle_socket(lfd, id, a, &mut map, &writes_tx, verbose)
+            crate::socket::handle_socket(lfd, id, a, &mut map, (&writes_tx, mem_writable), verbose)
         } else if nr == libc::SYS_connect as i32 {
             let entry = (&mut *map, key, req_pid);
             let mem = (mem, mem_writable);

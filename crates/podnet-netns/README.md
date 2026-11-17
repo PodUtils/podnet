@@ -367,10 +367,15 @@ see it. Use a unix socket for it (`-L unix:///path`).
   to HTTP/2. A program that reads its own address can crash: for example a
   Go program with a type assertion on `LocalAddr()`. Use `--backend netns`
   where the host permits it. No other way gives the address to the program
-  without a write to its memory. Exception (T-456): a TCP connect to a
-  loopback address that goes to a listener of the host. Then the program
-  holds the TCP socket of the kernel (no relay), and the kernel answers the
-  two calls.
+  without a write to its memory. Exception (T-456): a TCP socket. On such a
+  host, `socket` gives the program a TCP socket of the kernel. The kernel
+  answers each call before the `connect` (a socket option such as
+  `IPV6_V6ONLY`, which .NET reads, and `bind`). A `connect` to a loopback
+  address goes to the kernel, and the names stay true. Any other `connect`
+  puts the socket pair of the pod in place of the socket, and the names fail
+  as above. A host with no IPv6 refuses an `AF_INET6` socket of the kernel;
+  then the program gets the socket pair (for .NET, set
+  `DOTNET_SYSTEM_NET_DISABLEIPV6=1` on such a host).
 * An errno of the supervisor is a failure of the system call (-1 and the
   errno), for example `EPERM` for `io_uring_setup`.
 * After the child exits, the supervisor waits up to 3 seconds for the relays

@@ -78,6 +78,8 @@ fn options_of(entry: &mut Sock) -> Option<&mut Options> {
         // T-148: a UDP and an ICMP socket keep their options too.
         Sock::Datagram(udp) => Some(&mut udp.options),
         Sock::Icmp(icmp) => Some(&mut icmp.options),
+        // T-456: the kernel keeps the options of its own socket.
+        Sock::Kernel { .. } => None,
     }
 }
 
@@ -140,7 +142,7 @@ pub(crate) fn handle_getsockopt(
     // the caller, and puts the length that it wrote in *optlen.
     let value: Option<Vec<u8>> = if level == libc::SOL_SOCKET && optname == libc::SO_TYPE {
         let ty = match entry {
-            Sock::Stream { .. } | Sock::Connected(_) => libc::SOCK_STREAM,
+            Sock::Stream { .. } | Sock::Connected(_) | Sock::Kernel { .. } => libc::SOCK_STREAM,
             Sock::Datagram(_) | Sock::Icmp(_) => libc::SOCK_DGRAM,
         };
         Some(ty.to_ne_bytes().to_vec())
@@ -148,7 +150,7 @@ pub(crate) fn handle_getsockopt(
         // Issue 302: the error of a failed connect, once; then 0.
         let error = match entry {
             Sock::Stream { error, .. } => std::mem::take(error),
-            Sock::Connected(_) | Sock::Datagram(_) | Sock::Icmp(_) => 0,
+            Sock::Connected(_) | Sock::Datagram(_) | Sock::Icmp(_) | Sock::Kernel { .. } => 0,
         };
         Some(error.to_ne_bytes().to_vec())
     } else {
@@ -177,6 +179,8 @@ pub(crate) fn handle_bind(
 ) -> Result<()> {
     let fd = a[0] as i32;
     match map.get_mut(&key) {
+        // T-456: the kernel binds its own socket.
+        Some(Sock::Kernel { .. }) => notif_continue(lfd, id),
         Some(Sock::Stream { bound: Some(_), .. }) => notif_respond(lfd, id, -1, libc::EINVAL),
         Some(Sock::Stream { bound, .. }) => {
             if a[1] != 0 && a[2] >= 4 {
@@ -236,6 +240,8 @@ pub(crate) fn handle_sockname(
     // Answer with a plausible INET address so a program that checks it does not
     // see an AF_UNIX socketpair.
     let (ip, port) = match (entry, peer) {
+        // T-456: the kernel names its own socket.
+        (Sock::Kernel { .. }, _) => return notif_continue(lfd, id),
         (Sock::Stream { bound, v6, .. }, false) => bound.unwrap_or((unspecified(*v6), 0)),
         // A stream with no connect has no peer, as in the kernel.
         (Sock::Stream { .. }, true) => return notif_respond(lfd, id, -1, libc::ENOTCONN),

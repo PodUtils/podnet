@@ -136,7 +136,7 @@ pub(crate) fn handle_connect(
     id: u64,
     a: [u64; 6],
     (mem, mem_writable): (RawFd, bool),
-    (map, key, pid): (&mut HashMap<Key, Sock>, Key, u32),
+    (map, mut key, pid): (&mut HashMap<Key, Sock>, Key, u32),
     dns: &mut FakeDns,
     dials: &mut Dials,
     route: &Route<'_>,
@@ -174,6 +174,21 @@ pub(crate) fn handle_connect(
             udp.inbox.set_dest(Some((ip, port)));
         }
         return notif_respond(lfd, id, 0, 0);
+    }
+    if let Some(Sock::Kernel { v6 }) = map.get(&key) {
+        // T-456: a kernel socket. A loopback target goes to the kernel (the
+        // names stay true), unless the rules decide the loopback.
+        let v6 = *v6;
+        if is_loopback_target(ip) && !loopback_rules() {
+            if route.verbose {
+                eprintln!(
+                    "{}: connect {ip}:{port}: the kernel connects (loopback)",
+                    crate::cli::program_name()
+                );
+            }
+            return notif_continue(lfd, id);
+        }
+        key = pair_in_place(lfd, id, (pid, fd), map, (key, v6))?;
     }
     if port == DNS_PORT {
         // T-383: the fake DNS answers a TCP connect to port 53 (DNS over
@@ -401,6 +416,38 @@ pub(crate) fn finish(
             }
         }
     }
+}
+
+/// T-456: put the socket pair of the pod at the descriptor `fd` of the
+/// program, in place of its kernel socket, before the dial. Give the key of
+/// the new entry.
+fn pair_in_place(
+    lfd: RawFd,
+    id: u64,
+    (pid, fd): (u32, i32),
+    map: &mut HashMap<Key, Sock>,
+    (key, v6): (Key, bool),
+) -> Result<Key> {
+    let (ours, theirs) = std::os::unix::net::UnixStream::pair()?;
+    ours.set_nonblocking(true)?;
+    let flags = child_fd_flags(pid, fd).context("the flags of the descriptor")?;
+    theirs.set_nonblocking(flags & libc::O_NONBLOCK != 0)?;
+    let cloexec = (flags & libc::O_CLOEXEC) as u32;
+    let new_key = crate::fdtable::inode_of(theirs.as_raw_fd())?;
+    crate::seccomp::notif_addfd_setfd(lfd, id, theirs.as_raw_fd(), fd, cloexec)?;
+    map.remove(&key);
+    map.insert(
+        new_key,
+        Sock::Stream {
+            pair: tokio::net::UnixStream::from_std(ours)?,
+            bound: None,
+            v6,
+            inbound: None,
+            error: 0,
+            options: Default::default(),
+        },
+    );
+    Ok(new_key)
 }
 
 /// A loopback connect of the program: its own inbound listener on `port`
