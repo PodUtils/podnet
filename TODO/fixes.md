@@ -8213,6 +8213,11 @@ The relay server and `pod-relay` of PodUtils/podcrates. Ask 1 waits for the rela
 
 2026-11-17: ask 2 is done in `pod-relay` v0.65.0 (their entry 805, `lost_hold`, 60 s); podnet takes it in T-410. Ask 1
 (the relay drops a dead socket at once) is for the relay role of podssh (PodUtils/podcrates#214).
+2026-11-17, more evidence: `live` 44125425938 (3654383) and 44172865442 (27e3b7b) failed in the resume step with
+`1013 node open timeout` for each new leg for 600 s after one reset; `live` 44147054834 (76f7031) had a hung SSH
+session through the node (T-478). About one run of six fails in this class. The state line of COORD-098 (#604) asks
+podcrates who owns ask 1 now and when.
+
 
 # T-407: podnet connect resets a local connection when one WebSocket dial fails
 
@@ -10603,4 +10608,7 @@ the hang. Each session gave its answer in 3 to 46 ms and ended after 15 s: the f
 node ends a session, so the operator ends at `EOF_IDLE` of `pod-relay` (15 s of no byte after the end of the input,
 by design, podnet issue 109). The real relay sends the Close: the first ssh of the live step ended in about 5 s. The
 test keeps 3 rounds. The cause of the hang waits for the logs of step 1.
+2026-11-17, the cause is most likely T-406 (the relay keeps the lost socket of a node after a reset): in the first
+case of T-406 an SSH session through the node stopped in the key exchange, as here. Keep the logs of step 1: the next
+failure shows the 409 lines of the node, or not.
 
