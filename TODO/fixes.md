@@ -10429,7 +10429,7 @@ HTTP/1.1`. On the code before the fix it fails (the direct connect to `relay.inv
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -10450,6 +10450,15 @@ paths of `pod_tls::SYSTEM_BUNDLES`. On a host whose bundle is only at one of the
 ```sh
 cargo test -p podnet -- warp::up
 ```
+
+## Done
+
+2026-11-17, commit fa3092d3. `SYSTEM_BUNDLES` of `src/warp/up.rs` is now `pod_tls::SYSTEM_BUNDLES` (6 paths). The count of
+the certificates stays (a count of the PEM markers; the bundles of `ca_fix` need no parse). Test:
+`src/warp/up/tests.rs::the_system_bundles_are_the_bundles_of_the_manual` reads the paths of the manual
+(`src/manual/facts.rs`) and compares them with the list, in order. It passes; with the old list of 4 it fails (the
+manual has 6). `cargo test -p podnet --lib warp::up`: 17 passed.
+
 
 # T-476: `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move
 
