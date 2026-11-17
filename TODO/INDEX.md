@@ -34,19 +34,19 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**474 entries: 18 open, 11 partial, 36 blocked, 409 done.**
-**474 entries: 18 open, 11 partial, 36 blocked, 409 done.**
+**475 entries: 19 open, 11 partial, 36 blocked, 409 done.**
+**475 entries: 19 open, 11 partial, 36 blocked, 409 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 5 | 2 | 2 | 51 | 60 |
-| P2 | 6 | 6 | 10 | 213 | 235 |
+| P2 | 7 | 6 | 10 | 213 | 236 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 18 | 11 | 36 | 409 | 474 |
-| P2 | 6 | 6 | 10 | 213 | 235 |
+| **All** | 19 | 11 | 36 | 409 | 475 |
+| P2 | 7 | 6 | 10 | 213 | 236 |
 | P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 18 | 11 | 36 | 409 | 474 |
+| **All** | 19 | 11 | 36 | 409 | 475 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -524,3 +524,4 @@ M8 Overlays, M9 Later.
 | [T-473](fixes.md) | P2 | M | M3 | chore | open | A survey of podnet's copies of shared code against podcrates and the siblings (PodUtils/podcrates#221) |
 | [T-474](fixes.md) | P1 | S | M5 | defect | done | `ssh-relay` ignores `--proxy`, `--egress`, `--resolve` and the proxy variables |
 | [T-475](fixes.md) | P2 | S | M5 | defect | open | `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6 |
+| [T-476](fixes.md) | P2 | S | M6 | defect | open | `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move |

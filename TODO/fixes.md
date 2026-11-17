@@ -10442,3 +10442,40 @@ paths of `pod_tls::SYSTEM_BUNDLES`. On a host whose bundle is only at one of the
 ```sh
 cargo test -p podnet -- warp::up
 ```
+
+# T-476: `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move
+
+**Source:** `sh scripts/agent/check.sh` on 2026-11-17 (the full `cargo test --workspace`, 17:42 UTC).
+**Category:** defect
+**Milestone:** M6
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`tests/transfer_relay.rs::transfer_over_the_relay_crosses_the_cap` failed once in the full run: a relay session carried
+1049609 bytes, 1033 over the cap of 1 MiB of the fake relay. The file landed with the right SHA-256 (the resume after
+the close of 1009 carried it). Alone, the test passed 3 times of 3.
+
+## Premise
+
+- The fake relay counts the frame that crosses the cap, then closes the session with 1009
+  (`tests/relay_reverse/fake.rs`, `count`). So the failure means that the move to a new leg came after the cap.
+- In the test the receiver moves at 256 KiB (`move_bytes`), a margin of 768 KiB. The real relay: a cap of 64 MiB and
+  `MOVE_BYTES` 48 MiB, a margin of 16 MiB. When the old leg carries bytes while the new leg opens, a slow open on a
+  loaded host or a fast flow can meet the cap.
+
+## Approach
+
+1. Measure the bytes that the old leg carries between the decision of the move and the switch, under load.
+2. If the old leg carries bytes during the open of the new leg: stop the writes on the old leg at the margin, or start
+   the open of the new leg earlier (a margin in time and in bytes). Else make the test hold the property that the code
+   guarantees, and name the guarantee.
+3. The test runs 20 times under a parallel load and passes each time.
+
+## Prove
+
+```sh
+cargo test -p podnet --test transfer_relay -- transfer_over_the_relay_crosses_the_cap
+```

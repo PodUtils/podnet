@@ -203,7 +203,7 @@ issues are the channel, and each session watches them
 - Issues: a watcher polls for new issues. A Sonnet agent triages each new
   issue into record entries. Close each issue through the record, with
   evidence (commits, CI runs, test output) in the Done sections.
-- Shared code first (the owner, 2026-11-17; podcrates `docs/session-protocol.md`):
+- Shared code first (the owner, 2026-11-17; `PodUtils/podcrates:docs/session-protocol.md`):
   before you write a capability (a dialer, a proxy client, a DNS path, a
   retry, a lock of a shared file, a probe of the host, a parser of the help,
   an installer step, a stand-in for a test), search podcrates (its table of
