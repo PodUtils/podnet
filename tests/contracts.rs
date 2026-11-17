@@ -103,6 +103,14 @@ struct Host {
     dir: tempfile::TempDir,
 }
 
+/// The binary under test: `PODNET_TEST_BINARY` (the gate gives the static
+/// release binary, T-451 step 3), else the binary that cargo built.
+fn binary() -> PathBuf {
+    std::env::var_os("PODNET_TEST_BINARY")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_podnet")))
+}
+
 impl Host {
     fn path(&self, name: &str) -> PathBuf {
         self.dir.path().join(name)
@@ -113,7 +121,7 @@ impl Host {
     }
 
     fn command(&self, args: &[String]) -> Command {
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_podnet"));
+        let mut cmd = Command::new(binary());
         let root = self.dir.path();
         cmd.args(args)
             .env("HOME", root)
