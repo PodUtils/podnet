@@ -203,6 +203,22 @@ issues are the channel, and each session watches them
 - Issues: a watcher polls for new issues. A Sonnet agent triages each new
   issue into record entries. Close each issue through the record, with
   evidence (commits, CI runs, test output) in the Done sections.
+- Shared code first (the owner, 2026-11-17; podcrates `docs/session-protocol.md`):
+  before you write a capability (a dialer, a proxy client, a DNS path, a
+  retry, a lock of a shared file, a probe of the host, a parser of the help,
+  an installer step, a stand-in for a test), search podcrates (its table of
+  crates and each crate's `README.md`) and each sibling. Where a crate has
+  it, take it, or ask for the extension by a COORD issue `(to podcrates)`.
+  Where a sibling has it, do not copy it: ask podcrates, and the code moves
+  there. Write it in podnet only when it is specific to podnet.
+- Quality first (the owner, 2026-11-17): each edge (an input, a file that
+  another process shares, a peer, a proxy, a resolver, the host) has a check
+  and a second path, also where the first path works today. Each failure
+  gives one true line and a documented exit code; no panic reaches the user.
+  A test pins a class of fault: one table-driven test for a family of cases
+  with one rule, not one test for each case by reflex. "Ready" comes from a
+  run on a constrained host and an outside pass with the binary and the
+  documents only, not from your own checks.
 - Breaking changes are allowed (beta). No feature or capability of the
   code may be lost: tick `docs/research/podnet/parity-checklist.md` areas
   after each large refactor.

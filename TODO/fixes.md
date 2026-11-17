@@ -10336,9 +10336,8 @@ named.
 ## Premise
 
 - The three named copies wait for crates of podcrates that do not exist yet; podnet takes each at its tag (T-137).
-- The rulings "Shared code" and "Quality first" that COORD-131 cites were not on podcrates' `main` at 18:50 UTC (the
-  last change of its `docs/decisions.md` is 9f2212a, 13:59 UTC). podnet adds their text to `CLAUDE.md` when the owner's
-  text is there.
+- The rulings "Shared code" and "Quality first" that COORD-131 cites are on podcrates' `main` at `0fefea74c`. podnet
+  has them in `CLAUDE.md` and in `docs/decisions.md` (2026-11-17).
 
 ## Approach
 
