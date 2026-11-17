@@ -1090,7 +1090,7 @@ and `quic::transport_config`; `warp` uses `quicktunnel::parse_retry_after`; `fea
 3. Give `ShareLink` a constructor from a URL and an id. Move the conversion from a quick tunnel to
    the Cloudflare side.
 4. Move `RULE_KEYS` to `crates/podnet-serve/src/ingress.rs`. `src/config.rs` re-exports it.
-5. Make `crates/podnet-serve/src/relay.rs` and `src/transport/` use `crates/podnet-core/src/connect.rs` directly.
+5. Make `crates/podnet-serve/src/relay.rs` and src/transport/ use `crates/podnet-core/src/connect.rs` directly.
 6. Move `serve_websocket` and `forward_path` from `src/ws.rs` to the tunnel side, beside
    `src/proxy.rs`.
 7. Make one commit for each row or pair of rows.

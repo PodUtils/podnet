@@ -423,9 +423,9 @@ in the binary.
 ## Premise
 
 - The crate takes `crates/podnet-serve/src/share/mod.rs`, `crates/podnet-serve/src/gate.rs`, `crates/podnet-serve/src/service.rs`, `crates/podnet-serve/src/ingress.rs`,
-  `crates/podnet-serve/src/origin/`, `crates/podnet-serve/src/feature/`, `src/transport/`, `crates/podnet-serve/src/relay.rs` and the client of the
+  `crates/podnet-serve/src/origin/`, `crates/podnet-serve/src/feature/`, src/transport/, `crates/podnet-serve/src/relay.rs` and the client of the
   WebSocket forward.
-- `crates/podnet-serve/src/feature/`, `crates/podnet-serve/src/origin/`, `src/transport/` and `crates/podnet-serve/src/relay.rs` are a capability of the
+- `crates/podnet-serve/src/feature/`, `crates/podnet-serve/src/origin/`, src/transport/ and `crates/podnet-serve/src/relay.rs` are a capability of the
   library. The owner's ruling on regressions keeps them.
 
 ## Approach
@@ -457,7 +457,7 @@ T-047 is done.
 
 2026-11-10, the recount. The crate holds 7 modules: `share`, `gate`, `service`, `ingress`,
 `origin`, `feature` and `relay` (about 6,300 lines). The differences from the Premise:
-`src/transport/` stays in the root crate, because `src/transport/websocket.rs` dials through
+src/transport/ stays in the root crate, because src/transport/websocket.rs dials through
 `src/egress.rs` (it goes to `pod-proxy`). The client of the WebSocket forward (`src/ws.rs`) stays
 in the root crate: it goes to `pod-ws`, and it uses `cloudflare`, `proxy` and `relay_reverse`.
 `ingress` uses `pod-proxy` (the credentials of a served proxy) and `origin` uses `pod-tls`: these
@@ -476,7 +476,7 @@ are crates of PodUtils/podcrates, not modules of the root. The test
 `podnet_core::MODULE`. Three items became public with `#[doc(hidden)]`: `ingress::RawIngress`,
 `ingress::RawOriginOptions`, `ingress::ingress_from_raw` (`src/config.rs` uses them). One test moved
 to the root crate: `serve_tests::feature::a_quick_tunnel_link_is_built_from_the_provisioned_url`.
-`src/transport/` and `src/ws.rs` stay in the root crate. The layer check
+src/transport/ and `src/ws.rs` stay in the root crate. The layer check
 (`scripts/check-layers.py`: `CRATES`, the paths `podnet_serve::`, `serve_tests`, three new self-test
 cases), a plant of `.github/workflows/ci.yml`, the table "The code" and the release steps of
 `docs/maintenance.md`, the crate table of `README.md` and the record name the new paths. The package

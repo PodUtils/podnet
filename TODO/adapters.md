@@ -40,7 +40,7 @@ each command calls one of them by name. A router, a group or a new overlay needs
    The combinators `Chain`, `Rules` and `Race` (T-058) refuse a peer dialer where the consumer dials a
    destination, at startup, with one error line. Add a test with a fake peer dialer in a destination
    chain. The issue keeps the sketch `Addressing { Destination, Peer }` and a measured keepalive of 5 s
-   through a CONNECT proxy. Add no step to the old `src/transport/mod.rs`: it has no consumer, and M4
+   through a CONNECT proxy. Add no step to the old src/transport/mod.rs: it has no consumer, and M4
    replaces it.
 
 ## Decision

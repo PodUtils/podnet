@@ -144,7 +144,6 @@ pub mod status;
 #[path = "../tests/test_host/mod.rs"]
 mod test_host;
 pub mod transfer;
-pub mod transport;
 pub mod tunnel;
 pub mod update;
 pub mod warp;

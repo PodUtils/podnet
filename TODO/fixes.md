@@ -2970,11 +2970,11 @@ command builds the type (latent).
 
 ## Premise
 
-- `src/transport/websocket.rs:181-185` (direct dial, `host` and `port` dropped), `:142-150` (`rsplit_once(':')`),
+- src/transport/websocket.rs:181-185 (direct dial, `host` and `port` dropped), `:142-150` (`rsplit_once(':')`),
   `:193-197` (TLS).
 - The precedent: `PodUtils/podnet@7fe60e0:src/ws.rs:120-123`, `PodUtils/podnet@7fe60e0:src/ws.rs:155` (`crate::egress::dial`), `PodUtils/podnet@7fe60e0:src/ws.rs:161` (ALPN `http/1.1`);
   `src/ws_relay.rs` lines 605-619 at `98d8a71`; `Host::parse`, lines 137-149 at `98d8a71`.
-- `grep -rn WebSocketTunnel src` finds only the module and one test (`src/transport/mod.rs:474`).
+- `grep -rn WebSocketTunnel src` finds only the module and one test (src/transport/mod.rs:474).
 
 ## Approach
 
@@ -5437,7 +5437,7 @@ release of `v0.4.0-beta.8` waits for it.
 
 ## Premise
 
-- podnet makes Ed25519 keys (`src/transport/ssh.rs`, `crates/podnet-serve/src/relay.rs`,
+- podnet makes Ed25519 keys (src/transport/ssh.rs, `crates/podnet-serve/src/relay.rs`,
   `crates/podnet-serve/src/git/ssh.rs`).
 - An RSA private key is used only when the user gives one: the host key of the git server
   (`PrivateKey::read_openssh_file`) or a key of the SSH relay.
@@ -10351,7 +10351,7 @@ named.
    crates of podssh, podvm and podrunner.
 2. For each copy: remove it where a crate of podcrates covers it; else name it in one COORD issue `(to podcrates)`.
 3. The survey of 2026-11-17 (an agent; each claim to check against the code before the change) found 23 places:
-   - Remove now (podcrates covers it): `src/transport/` (1380 lines, no caller; checked: nothing uses it and no
+   - Remove now (podcrates covers it): src/transport/ (1380 lines, no caller; checked: nothing uses it and no
      document promises it); the CONNECT client of `crates/podnet-core/src/connect.rs` (its last caller is the
      `--connect-proxy` path of `ssh-relay`); the HTTP head reader of `crates/podnet-netns/src/tailscale.rs` and of
      `src/router/control.rs` (`pod_proxy::http`); the retry waits of `src/cli/cmd/warp/run.rs`, `warp/tun.rs` and
