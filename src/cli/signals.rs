@@ -89,7 +89,12 @@ pub(crate) async fn sleep_or_signal(run_for: Option<u64>) {
     match run_for {
         Some(secs) => {
             tokio::select! {
-                _ = tokio::time::sleep(Duration::from_secs(secs)) => podnet::detach::planned_end(),
+                _ = tokio::time::sleep(Duration::from_secs(secs)) => {
+                    // A planned end is not silent (live 44105534873: the proxy
+                    // ended at its --run-for, and its log said nothing).
+                    tracing::info!("--run-for {secs} s ended: the command stops");
+                    podnet::detach::planned_end();
+                }
                 _ = shutdown_signal() => {}
             }
         }

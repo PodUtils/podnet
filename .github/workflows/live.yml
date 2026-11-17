@@ -1039,7 +1039,8 @@ jobs:
         timeout-minutes: 14
         run: |
           set -eu
-          target/release/podnet warp proxy --listen tcp://127.0.0.1:40000 --dns 127.0.0.1:15353 --run-for 150 > warpproxy.log 2>&1 &
+          target/release/podnet warp proxy --listen tcp://127.0.0.1:40000 --dns 127.0.0.1:15353 --run-for 600 > warpproxy.log 2>&1 &
+          proxy_pid=$!
           # The proxy listens after the WARP registration: wait for it.
           i=0
           until nc -z 127.0.0.1 40000 2> /dev/null; do
@@ -1188,6 +1189,7 @@ jobs:
           done
           curl -sS --max-time 30 -x socks5h://127.0.0.1:40000 https://www.cloudflare.com/cdn-cgi/trace | grep -q '^warp=on'
           grep 'a new WARP session is open' warpproxy.log
+          kill "$proxy_pid" 2> /dev/null || true
       # Issues 132 to 159: exit, scan, the rules, forward, a nested session,
       # export, and a QUIC probe of the front door.
       - name: The commands of the second batch
