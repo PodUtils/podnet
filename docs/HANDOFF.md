@@ -66,7 +66,7 @@ None. The head is the commit of this handoff.
 ## Next steps
 
 1. Read the runs of "CI" above. Fix each failure first.
-1b. Keep the watcher running. Take each COORD issue `(to podnet)` of podrunner first (its census, T-490 and T-491).
+1b. Keep the watcher running. Take each COORD issue `(to podnet)` of podrunner first (its census, PodUtils/podrunner@T-490 and PodUtils/podrunner@T-491).
 2. T-450 to T-455, the gate of correctness (no release and no new feature before they are done), in this order:
    T-452 (error rows of the lane: a dead upstream, a refused connect, a reject rule, an unreachable target, a name with
    no answer), T-453 (a lab of the testers' host class: no AF_INET bind, no netns, no write of the memory of a
