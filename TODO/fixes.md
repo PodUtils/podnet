@@ -10640,7 +10640,7 @@ failed: Connection reset by peer".
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -10672,6 +10672,17 @@ cargo test -p podnet-serve --lib -- relay
 times of 3. The failure was not reproduced here (it needs the other test on the same port at the same time); the
 cause follows from the reset in place of the refusal. Step 2 is open.
 
+## Done
+
+2026-11-18, the commit of T-483 (podcrates `v0.71.0`, PodUtils/podcrates@T-910). Each copy of a refused address takes
+`pod_testkit::refused::refused()` (feature `refused`): `dead_port` and the port of the connect stage of
+`tests/doctor_ssh_relay.rs`, and the three cases of `crates/podnet-serve/src/relay/tests.rs`. The guard keeps the port
+bound with no listen for the life of the test. `cargo test -p podnet-serve --lib relay`: 37 passed;
+`cargo test --test doctor_ssh_relay`: 8 passed. The helpers `free_port` of `tests/commands.rs` and
+`tests/warp_stand_in.rs` give a port to listen on, not a refused address: they stay. podnet builds for Linux only, so
+the gap of PodUtils/podcrates@T-936 (macOS) does not apply.
+
+
 # T-481: Publish `v0.4.0-beta.17` for podrunner: the fixes of T-456 and T-457, and the QA round
 
 **Source:** `docs/decisions.md`, 2026-11-18, podrunner first; the coordinator's call C782 (PodUtils/podcrates#227):
@@ -10681,7 +10692,7 @@ a fix that podrunner needs may go out in a beta under the release freeze of 2026
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -10716,6 +10727,14 @@ gh release view v0.4.0-beta.17 -R PodUtils/podnet
 The line is added. The second line of that refusal is T-482. `live` on `60db06b` passed at its third attempt: attempt 1
 failed at the public WARP endpoint (T-414), attempt 2 at a POST of 1 MiB through a new quick tunnel (HTTP 530 of the
 edge, the class of T-138).
+
+## Done
+
+2026-11-18, the release `v0.4.0-beta.17` (tag at commit `cfc0924`). `ci` 44298151244, `live` 44298151291 and the dry run
+44298164375 (with the gate) passed on `cfc0924`; the publish dispatch 44302346584 made the tag; the release run
+44302556124 and `publish` 44302560923 passed; `release-proofs` 44306857480 passed (the published files, SHA256SUMS,
+provenance, the signature, `podnet update`, the rebuild of x86_64). podrunner is told in COORD-108 (PodUtils/podnet#655).
+
 
 # T-482: `pod --backend netns` prints a second, false cause after a refused network namespace
 
@@ -10755,3 +10774,38 @@ podnet pod: write uid/gid maps: the child died before it named its namespace
 ```sh
 cargo test -p podnet-netns
 ```
+
+# T-483: Take podcrates v0.71.0
+
+**Source:** PodUtils/podcrates#228 (COORD-137, 2026-11-18): the tag `v0.71.0` at `6dff7fc`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.70.0`. The tag `v0.71.0` has `pod_testkit::refused` (T-479, COORD-106), `podlab run
+--expect-exit` (T-452), and fixes of `pod-cloudflare` on a 32-bit target.
+
+## Premise
+
+- The tag has no hand-off patch for podnet. The installer core of the tag has the same SHA-256 as at `v0.70.0`.
+
+## Approach
+
+1. Each podcrates tag is `v0.71.0`: the manifests, both lock files, `scripts/install/SOURCES` and `issue-sync.yml`.
+2. T-479 step 2: the copies of a refused address take `pod_testkit::refused`.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-18, the commit of this entry. The tag `v0.71.0` (commit `6dff7fc`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
+code. `sh scripts/agent/check.sh` passes.

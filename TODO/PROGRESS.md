@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 481 entries: 20 open, 12 partial, 35 blocked, 414 done.
+`TODO/INDEX.md` holds 482 entries: 19 open, 11 partial, 35 blocked, 417 done.
 
 ## State
 
@@ -15,7 +15,7 @@
   reads the state of podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates).
 - Frozen (fixes only, each as a COORD issue): `src/warp/` (glue over `pod-warp`), `PodUtils/podnet@7fe60e0:src/cloudflare/`, `src/proxy.rs`,
   `src/tunnel.rs`, `crates/podnet-netns/src/rules.rs` and `tests/test_host/mod.rs` (in `pod-testkit`).
-- The newest release is `v0.4.0-beta.13` (T-355).
+- The newest release is `v0.4.0-beta.17`.
 - The tag `v0.46.0` brings the S3 carrier (bcfae9e) and the split session (3623ec5); both are in `v0.4.0-beta.12`.
 - The tag `v0.47.0` (1d4d7f1) needs no change of code. The tests of the S3 carrier use the stand-in of `pod-link`
   (556708a, T-279). These two commits have no CI run yet.
@@ -38,7 +38,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** no release and no new feature until T-450 to T-455 are done (`docs/decisions.md`, 2026-11-17, The QA round and the release freeze). The newest is `v0.4.0-beta.16`.
+3. **Releases:** no release and no new feature until T-450 to T-455 are done (`docs/decisions.md`, 2026-11-17, The QA round and the release freeze), except a beta of fixes that podrunner needs (2026-11-18). The newest is `v0.4.0-beta.17`.
 
 ### The order of podnet's own work
 
