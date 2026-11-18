@@ -248,7 +248,8 @@ Betas are allowed; there is no crates.io release (`docs/decisions.md`,
 
 0. The release gate of 2026-11-17 (`docs/decisions.md`, The QA round): the contract tests (T-451), the error-path
    rows of the lane (T-452) and the black-box QA pass (T-454) pass on the commit. No release before T-450 to T-455
-   are done.
+   are done, except a beta of fixes that podrunner needs (`docs/decisions.md`, 2026-11-18, A beta of fixes for
+   podrunner under the freeze).
 1. Set the version in `Cargo.toml` (the package and the `podnet-core`,
    `podnet-netns`, `podnet-serve` and `podnet-vnet` dependencies; the
    `podnet-core` dependency of `crates/podnet-serve/Cargo.toml` and of

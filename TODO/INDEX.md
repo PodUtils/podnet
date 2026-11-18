@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**479 entries: 18 open, 12 partial, 35 blocked, 414 done.**
+**480 entries: 19 open, 12 partial, 35 blocked, 414 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 5 | 2 | 2 | 53 | 62 |
+| P1 | 6 | 2 | 2 | 53 | 63 |
 | P2 | 6 | 7 | 10 | 215 | 238 |
 | P3 | 7 | 3 | 23 | 145 | 178 |
-| **All** | 18 | 12 | 35 | 414 | 479 |
+| **All** | 19 | 12 | 35 | 414 | 480 |
 | **All** | 18 | 12 | 36 | 412 | 478 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
@@ -526,3 +526,4 @@ M8 Overlays, M9 Later.
 | [T-478](fixes.md) | P1 | M | M6 | defect | open | Two parallel SSH sessions through one relay node: one hung with no line |
 | [T-479](fixes.md) | P2 | S | M5 | defect | partial | Tests free a port to get a refused address; another test can take the port |
 | [T-480](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.70.0 |
+| [T-481](fixes.md) | P1 | S | M5 | release | open | Publish `v0.4.0-beta.17` for podrunner: the fixes of T-456 and T-457, and the QA round |

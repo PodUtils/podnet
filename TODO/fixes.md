@@ -10666,3 +10666,39 @@ cargo test -p podnet-serve --lib -- relay
 2026-11-17: step 1 is done in commit b4154e4d: `cargo test -p podnet-serve --lib relay`, 37 passed; the failing test passed 3
 times of 3. The failure was not reproduced here (it needs the other test on the same port at the same time); the
 cause follows from the reset in place of the refusal. Step 2 is open.
+
+# T-481: Publish `v0.4.0-beta.17` for podrunner: the fixes of T-456 and T-457, and the QA round
+
+**Source:** `docs/decisions.md`, 2026-11-18, podrunner first; the coordinator's call C782 (PodUtils/podcrates#227):
+a fix that podrunner needs may go out in a beta under the release freeze of 2026-11-17. PodUtils/podrunner#213
+(T-456) and #142 (T-457, podrunner's own T-179 waits for the next podnet release) are fixed on `main` and in no release.
+**Category:** release
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`v0.4.0-beta.16` was tagged before the fixes of T-456 and T-457. podrunner pins a release of podnet, so the fixes do
+not reach its units.
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release". Step 0 (the gate of T-450 to T-455) does not hold; call C782 lets
+  this beta out with fixes only. The notes say what the freeze leaves open.
+- The beta carries the fixes of the QA round (GitHub #609 to #648) and the take of podcrates `v0.70.0` (T-480).
+
+## Approach
+
+1. Set the version `0.4.0-beta.17` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`), write the llms files again.
+2. Write `docs/releases/v0.4.0-beta.17.md`, with `## Breaking`.
+3. Push; wait until `ci` and `live` pass on that commit.
+4. Dispatch the dry run of `release.yml`; then `publish=v0.4.0-beta.17`; then check `release-proofs.yml`.
+5. Tell podrunner (PodUtils/podnet#654, and a state line on PodUtils/podnet#649).
+
+## Prove
+
+```sh
+gh release view v0.4.0-beta.17 -R PodUtils/podnet
+```
