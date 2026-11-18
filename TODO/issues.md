@@ -344,6 +344,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #652 | COORD-105: podnet's copies that need a change of podcrates (ask 3 of PodUtils/podcrates#221) (to podcrates) | closed (answered: podcrates' entries 896 to 901) | T-473 |
 | #653 | COORD-106: pod-testkit: a refused address that no other test can take (to podcrates) | closed (answered: `pod_testkit::refused` in podcrates `v0.71.0`; taken in T-483, T-479) | T-479 |
 | #654 | COORD-107: podnet takes the rulings of COORD-134 (podrunner first, Coordinator, schema ids) and waits for the asks of podrunner (to podcrates) | open (a COORD issue between sessions) | T-137 |
-| #655 | COORD-108: podnet v0.4.0-beta.17 has the fixes of PodUtils/podrunner#213 and #142; please pin it and run #142 again (to podrunner) | open (a COORD issue between sessions) | T-481 |
+| #655 | COORD-108: podnet v0.4.0-beta.17 has the fixes of PodUtils/podrunner#213 and #142; please pin it and run #142 again (to podrunner) | closed (answered: PodUtils/podrunner#309, COORD-099: `user-gate.yml` 44393864747 passes `hold:podvm` on each lane with beta.17) | T-481 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

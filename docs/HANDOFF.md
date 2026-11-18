@@ -113,7 +113,6 @@ scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.
 | #604 (COORD-098, the relay holds a lost socket) | The owner of ask 1 (the relay server) and a date (T-406, T-478); ask 2 is in v0.65.0 (T-410). |
 | #649 (COORD-102, the QA round, to all) | podcrates' asks 1 to 3 (their entries 866, 899); close it when T-450 to T-455 are done. |
 | #654 (COORD-107, the start report, the takes of v0.70.0 and v0.71.0, the answer to PodUtils/podcrates@T-931) | The asks of podrunner; close it when the coordinator reads it. |
-| #655 (COORD-108, beta.17 for podrunner) | podrunner pins beta.17 and runs #142 and #213 again. |
 | #651 (COORD-104, the answer to COORD-131) | podcrates' entries 877, 879, 880 (the lock, `pod-detach`, `pod-release`); T-473. |
 | #592 (COORD-095) | T-358 (the release gate; step 4 is done); T-380 and T-381 are done. |
 | #587, #589 | podcrates closes #185 and #188. |

@@ -353,4 +353,4 @@
 652 issue closed
 653 issue closed
 654 issue open
-655 issue open
+655 issue closed
