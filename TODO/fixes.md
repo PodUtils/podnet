@@ -10846,3 +10846,39 @@ cargo test -p podnet --test contracts the_version_line_keeps_its_form
 
 2026-11-18, the commit of this entry. `the_version_line_keeps_its_form` passes (version `0.4.0-beta.17`, commit
 `unknown` here); it fails for a line with no commit, a second word that is not `CARGO_PKG_VERSION`, or no newline.
+
+# T-485: Take podcrates v0.72.0
+
+**Source:** PodUtils/podcrates#229 (COORD-138, 2026-11-18): the tag `v0.72.0` at `0ea12df`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.71.0`. The tag `v0.72.0` moves podrunner's status and source wire into `pod-job`, adds
+`pod_core::http1` (one reader of an HTTP/1.1 head), and gives `pod_testkit::refused` a form for macOS.
+
+## Premise
+
+- The tag has no hand-off patch for podnet. The installer core has the same SHA-256 as at `v0.71.0`.
+- The replacement of podnet's readers of an HTTP/1.1 head by `pod_core::http1` is copy replacement: T-473. It waits
+  behind the asks of podrunner.
+
+## Approach
+
+1. Each podcrates tag is `v0.72.0`: the manifests, both lock files, `scripts/install/SOURCES` and `issue-sync.yml`.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-18, the commit of this entry. The tag `v0.72.0` (commit `0ea12df`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
+code. `sh scripts/agent/check.sh` passes.

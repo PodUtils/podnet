@@ -21,13 +21,13 @@ change.
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.71.0` (T-483, `ab3b826`). The installer core in
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.72.0` (T-485). The installer core in
   `scripts/install/` is that of `v0.70.0` and `v0.71.0` (the same file; T-469, GitHub #645, done). The replacement of podnet's copies by the new
   shared items of `v0.70.0` (`pod_proxy::hop`, `pod_dns::txt::error_answer`, `pod_ws::handshake::build_probe_request`,
   `pod_tls::env_bundle`, `pod_core::lock`, `pod_core::clock`) is T-473; it waits behind podrunner's asks.
 * The newest release is `v0.4.0-beta.17` (T-481, tag at `cfc0924`): the fixes of PodUtils/podrunner#213 and #142 and
   the QA round, under the coordinator's call C782. COORD-108 (#655) asks podrunner to pin it and run #142 again.
-* The record is `TODO/`. `cargo todo check` agrees: 482 entries, 19 open, 11 partial, 35 blocked, 417 done.
+* The record is `TODO/`. `cargo todo check` agrees: 484 entries, 19 open, 11 partial, 35 blocked, 419 done.
 
 ## Unfinished work (not on `main`)
 
@@ -80,7 +80,7 @@ None. The head is the commit of this handoff.
 5. T-476: the cap test of the relay transfer fails under load; measure the bytes of the old leg during a move.
 5b. T-482 (P3): the netns backend prints a second, false cause after a refused namespace. T-414: a third form (the WARP
    proxy ends on a failed health check); its evidence goes to podcrates.
-6. At each tag of podcrates (`v0.72.0` is next): `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is
+6. At each tag of podcrates (`v0.73.0` is next): `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is
    at the tag (T-137).
 7. The disk allowance holds about one debug build: build with `CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
    CARGO_PROFILE_TEST_DEBUG=0`. Give an agent, and a control build of an old commit, its own `CARGO_TARGET_DIR`: a
