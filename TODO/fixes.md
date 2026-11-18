@@ -10623,3 +10623,44 @@ test keeps 3 rounds. The cause of the hang waits for the logs of step 1.
 case of T-406 an SSH session through the node stopped in the key exchange, as here. Keep the logs of step 1: the next
 failure shows the 409 lines of the node, or not.
 
+
+# T-479: Tests free a port to get a refused address; another test can take the port
+
+**Source:** `ci` 44200604223 (793f55f, 2026-11-17), job `features`:
+`relay::tests::the_supervisor_tries_again_when_the_relay_is_not_there` failed with "SSH session failed: handshake
+failed: Connection reset by peer".
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+A test bound a port, read it and dropped the listener, to get an address where each connect is refused. Tests run in
+parallel: another test (a fake relay) bound the freed port. The connect then reached that stranger, and the test saw
+a reset handshake in place of a refused connect.
+
+## Premise
+
+- A socket that is bound and does not listen gives a refused connect and keeps the port: no other socket can take it.
+- `pod_testkit::listener::free_port` (PodUtils/podcrates) frees its port too; it has no helper of a refused port.
+
+## Approach
+
+1. The three cases of `crates/podnet-serve/src/relay/tests.rs` keep a socket bound with no listen (commit b4154e4d).
+2. Ask podcrates (COORD-106, GitHub #653) for a helper of a refused address in `pod-testkit` (one copy for each project, the ruling "Shared
+   code first"); then replace the `dead_port` helpers of `tests/commands.rs`, `tests/warp_stand_in.rs` and
+   `tests/doctor_ssh_relay.rs`.
+
+## Prove
+
+```sh
+cargo test -p podnet-serve --lib -- relay
+```
+
+## Correction
+
+2026-11-17: step 1 is done in commit b4154e4d: `cargo test -p podnet-serve --lib relay`, 37 passed; the failing test passed 3
+times of 3. The failure was not reproduced here (it needs the other test on the same port at the same time); the
+cause follows from the reset in place of the refusal. Step 2 is open.
