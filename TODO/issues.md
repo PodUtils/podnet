@@ -334,14 +334,15 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #642 | podnet --json is accepted by some commands and rejected by others | closed (outside the team: verified, labelled `confirmed`; T-466) | T-466 |
 | #643 | podnet serve --check refuses --local, so a local-only file server plan cannot be validated | closed (outside the team: verified, labelled `confirmed`; T-467) | T-467 |
 | #644 | Default log level prints an INFO line on stderr for status, which is documented to open no connection | closed (outside the team: verified, labelled `confirmed`; T-468) | T-468 |
-| #645 | podnet-install.sh --dry-run prints the proxy line twice, and the default install directory can be noexec | open (outside the team: verified, labelled `confirmed`; waits for podcrates) | T-469 |
+| #645 | podnet-install.sh --dry-run prints the proxy line twice, and the default install directory can be noexec | closed (outside the team: verified, labelled `confirmed`; T-469, the core of podcrates `v0.70.0`, T-480) | T-469 |
 | #646 | podnet expose --via switch rejects the http:// target syntax that expose itself documents | closed (outside the team: verified, labelled `confirmed`; T-470) | T-470 |
 | #647 | podnet ssh-relay --no-restart help names --stop-after, --idle-secs and --run-for, which the command rejects | closed (outside the team: verified, labelled `confirmed`; T-471) | T-471 |
 | #648 | podnet serve --list: the HTML listing omits the modified time and the upload limit | closed (outside the team: verified, labelled `confirmed`; T-472) | T-472 |
 | #649 | COORD-102: the QA round of podnet: 40 issues in one hour; a gate that measured reach, not correctness; asks for podcrates and the siblings (to all) | open (a COORD issue between sessions) | T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457 |
-| #650 | COORD-103: the installer prints the proxy line twice; the default directory can be noexec (PodUtils/podnet#645) (to podcrates) | open (a COORD issue between sessions) | T-469 |
+| #650 | COORD-103: the installer prints the proxy line twice; the default directory can be noexec (PodUtils/podnet#645) (to podcrates) | closed (answered: podcrates PodUtils/podcrates@T-883 in `v0.70.0`; taken in T-480) | T-469 |
 | #651 | COORD-104: the answer to PodUtils/podcrates#221 (COORD-131): podnet's copies of shared code, and the text of the rulings (to podcrates) | open (a COORD issue between sessions) | T-473 |
 | #652 | COORD-105: podnet's copies that need a change of podcrates (ask 3 of PodUtils/podcrates#221) (to podcrates) | closed (answered: podcrates' entries 896 to 901) | T-473 |
 | #653 | COORD-106: pod-testkit: a refused address that no other test can take (to podcrates) | open (a COORD issue between sessions) | T-479 |
+| #654 | COORD-107: podnet takes the rulings of COORD-134 (podrunner first, Coordinator, schema ids) and waits for the asks of podrunner (to podcrates) | open (a COORD issue between sessions) | T-137 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
