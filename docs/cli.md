@@ -64,6 +64,13 @@ at WARN.
 (see "Machine-readable help"). Each `--detach` start prints a JSON document with or without `--json`
 ([background.md](background.md)). `route --config FILE --detach --json` is the same as without `--json`.
 
+## The version line
+
+`podnet --version` prints one line: `podnet VERSION (COMMIT)`. `COMMIT` is one word (`unknown` for a local build).
+Programs read the second word as the version (podrunner does). The test `the_version_line_keeps_its_form` of
+`tests/contracts.rs` holds the form. A change of the form is a change of a contract: it needs a COORD issue
+`(to all)` (`docs/decisions.md`, 2026-11-18, Schema ids of `pod-job`).
+
 ## JSON documents
 
 Each JSON document of podnet on stdout obeys these rules. The test `tests/contracts.rs` checks them for each

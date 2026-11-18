@@ -10809,3 +10809,40 @@ sh scripts/agent/check.sh
 2026-11-18, the commit of this entry. The tag `v0.71.0` (commit `6dff7fc`) in each manifest, `Cargo.lock`,
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
 code. `sh scripts/agent/check.sh` passes.
+
+# T-484: The version line is a contract that podrunner reads
+
+**Source:** PodUtils/podrunner@T-495 (githome's G-17, done 2026-11-18): `serve` puts the second word of
+`podnet --version` in the `hello` of each source. The ruling "Schema ids" (2026-11-18): a change of an interface that
+podrunner reads needs a new id and a COORD issue `(to all)`.
+**Category:** docs
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The tests of podnet held only the start of the version line (`podnet `, `tests/pod_usage.rs`). A change of its form
+would empty the field `podnet` of podrunner's `hello` with no failure here.
+
+## Premise
+
+- Read: `PodUtils/podrunner:crates/podrunner/src/serve/host.rs` (`version_word`: the second word of `podnet X (COMMIT)`).
+- `src/main.rs` and `build.rs` print `podnet VERSION (COMMIT)`; `COMMIT` is `unknown` for a local build.
+
+## Approach
+
+1. A test of the form in `tests/contracts.rs` (the gate runs it on the release binary).
+2. `docs/cli.md`, "The version line": the form, and the rule for a change.
+
+## Prove
+
+```sh
+cargo test -p podnet --test contracts the_version_line_keeps_its_form
+```
+
+## Done
+
+2026-11-18, the commit of this entry. `the_version_line_keeps_its_form` passes (version `0.4.0-beta.17`, commit
+`unknown` here); it fails for a line with no commit, a second word that is not `CARGO_PKG_VERSION`, or no newline.

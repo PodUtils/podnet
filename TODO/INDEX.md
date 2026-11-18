@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**482 entries: 19 open, 11 partial, 35 blocked, 417 done.**
+**483 entries: 19 open, 11 partial, 35 blocked, 418 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 5 | 2 | 2 | 55 | 64 |
+| P1 | 5 | 2 | 2 | 56 | 65 |
 | P2 | 6 | 6 | 10 | 216 | 238 |
 | P3 | 8 | 3 | 23 | 145 | 179 |
-| **All** | 19 | 11 | 35 | 417 | 482 |
+| **All** | 19 | 11 | 35 | 418 | 483 |
 | **All** | 18 | 12 | 36 | 412 | 478 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
@@ -529,3 +529,4 @@ M8 Overlays, M9 Later.
 | [T-481](fixes.md) | P1 | S | M5 | release | done | Publish `v0.4.0-beta.17` for podrunner: the fixes of T-456 and T-457, and the QA round |
 | [T-482](fixes.md) | P3 | S | M5 | defect | open | `pod --backend netns` prints a second, false cause after a refused network namespace |
 | [T-483](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.71.0 |
+| [T-484](fixes.md) | P1 | S | M5 | docs | done | The version line is a contract that podrunner reads |

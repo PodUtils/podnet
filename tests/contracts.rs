@@ -579,3 +579,28 @@ fn each_json_document_keeps_the_contract() {
         faults.join("\n")
     );
 }
+
+/// The version line is a contract: podrunner reads its second word as the
+/// version of podnet (PodUtils/podrunner@T-495, the `hello` of a source).
+/// The form is `podnet VERSION (COMMIT)` and one newline; the commit is one
+/// word (`unknown` for a local build).
+#[test]
+fn the_version_line_keeps_its_form() {
+    let out = Command::new(binary()).arg("--version").output().unwrap();
+    assert!(out.status.success(), "{out:?}");
+    let line = String::from_utf8(out.stdout).unwrap();
+    let body = line
+        .strip_suffix('\n')
+        .unwrap_or_else(|| panic!("no newline: {line:?}"));
+    let rest = body
+        .strip_prefix("podnet ")
+        .unwrap_or_else(|| panic!("{line:?}"));
+    let (version, commit) = rest.split_once(' ').unwrap_or_else(|| panic!("{line:?}"));
+    assert_eq!(version, env!("CARGO_PKG_VERSION"), "{line:?}");
+    let commit = commit.strip_prefix('(').and_then(|c| c.strip_suffix(')'));
+    let commit = commit.unwrap_or_else(|| panic!("{line:?}"));
+    assert!(
+        !commit.is_empty() && commit.chars().all(|c| c.is_ascii_alphanumeric()),
+        "{line:?}"
+    );
+}
