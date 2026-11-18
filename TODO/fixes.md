@@ -4122,9 +4122,9 @@ H, not H" with the same hash twice.
 ## Premise
 
 - Implement from the description, not from the donor source (the donor is GPL-3.0-or-later).
-- `scripts/install.sh:259-283` (`resolve_tag`): the branches `v*) echo "$1"` and `*) echo "v$1"` pass the
+- `scripts/install.sh:260-291` (`resolve_tag`): the branches `v*) echo "$1"` and `*) echo "v$1"` pass the
   text through. The line `scripts/install.sh:90` builds `base` from it.
-- `scripts/install.sh:334-346` (`check_sum`): the `awk` prints each matching hash, and the compare is
+- `scripts/install.sh:371-383` (`check_sum`): the `awk` prints each matching hash, and the compare is
   against the joined text.
 - The rule that exists: `src/update.rs:167-174` (`valid_tag`: 1 to 64 characters, first `v` or a digit, no
   `..`), used by `src/update.rs:185`, `src/update.rs:271` and `src/update.rs:348`.
@@ -4132,8 +4132,8 @@ H, not H" with the same hash twice.
   of the hash. SHA256SUMS is signed, so this is a hardening gap, not a hole.
 - `tests/install_script.rs:105-115` (`Lab::curl`): the argument loop skips each word that starts with `-`,
   so no flag can change a result. `Lab::run` clears the environment and sets no `TMPDIR`; one test sets it
-  (`tests/install_script.rs:408`). The script passes `--proto` at `scripts/install.sh:1008` and
-  `scripts/install.sh:1032` (after T-360).
+  (`tests/install_script.rs:408`). The script passes `--proto` at `scripts/install.sh:1048` and
+  `scripts/install.sh:1072` (after T-360).
 - Closed issues that touch the same files and add no such rule: GitHub #227 (`valid_tag` for `update`
   only), #290 (seven defects of the script), #216, #246, #168, #169, #2, #17, #19. No entry of the record
   covers it.
@@ -10242,7 +10242,7 @@ cargo test -p podnet --test cli -- status_is_quiet_with_a_proxy update_error_nam
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -10264,13 +10264,15 @@ default install directory can be on a noexec mount.
 ## Prove
 
 ```sh
-sh scripts/install/podnet-install.sh --dry-run
+sh scripts/install-test.sh
 ```
 
-## Blocker
+## Done
 
-PodUtils/podcrates must change its installer (COORD-103, GitHub #650). The entry is unblocked when a
-tag of podcrates has the fix; podnet then takes the copy.
+2026-11-18, the commit of T-480. podcrates fixed the core in `v0.70.0` (their PodUtils/podcrates@T-883: one proxy line for one proxy; a
+default prefix on a noexec mount gives way to the next default, with podcrates' own test). podnet took the core (T-480).
+The new case 3b of `scripts/install-test.sh` ("one proxy in two variables gives one proxy line") fails on the core of
+`v0.69.0` (two lines `proxy: http://proxy.invalid:3128`) and passes on the core of `v0.70.0`.
 
 # T-470: `expose --via switch` refuses the `http://` target that `expose` documents (GitHub #646)
 

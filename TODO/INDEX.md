@@ -34,18 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**478 entries: 18 open, 12 partial, 36 blocked, 412 done.**
-**478 entries: 18 open, 12 partial, 36 blocked, 412 done.**
+**479 entries: 18 open, 12 partial, 35 blocked, 414 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 5 | 2 | 2 | 52 | 61 |
+| P1 | 5 | 2 | 2 | 53 | 62 |
 | P2 | 6 | 7 | 10 | 215 | 238 |
-| P3 | 7 | 3 | 24 | 144 | 178 |
-| **All** | 18 | 12 | 36 | 412 | 478 |
-| P2 | 6 | 7 | 10 | 215 | 238 |
-| P3 | 7 | 3 | 24 | 144 | 178 |
+| P3 | 7 | 3 | 23 | 145 | 178 |
+| **All** | 18 | 12 | 35 | 414 | 479 |
 | **All** | 18 | 12 | 36 | 412 | 478 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
@@ -517,7 +514,7 @@ M8 Overlays, M9 Later.
 | [T-466](fixes.md) | P2 | S | M5 | defect | done | `--json` is accepted by some commands and refused by others (GitHub #642) |
 | [T-467](fixes.md) | P2 | S | M5 | defect | done | `serve --check` refuses `--local`, so a plan of a local file server cannot be checked (GitHub #643) |
 | [T-468](fixes.md) | P2 | S | M5 | defect | done | The default log level prints an INFO line on stderr for `status` (GitHub #644) |
-| [T-469](fixes.md) | P3 | S | M5 | defect | blocked | `podnet-install.sh --dry-run` prints the proxy line twice; the default directory can be noexec (GitHub #645) |
+| [T-469](fixes.md) | P3 | S | M5 | defect | done | `podnet-install.sh --dry-run` prints the proxy line twice; the default directory can be noexec (GitHub #645) |
 | [T-470](fixes.md) | P2 | S | M5 | defect | done | `expose --via switch` refuses the `http://` target that `expose` documents (GitHub #646) |
 | [T-471](fixes.md) | P2 | S | M5 | defect | done | `ssh-relay --no-restart`: the help names `--stop-after`, `--idle-secs` and `--run-for`, which the command refuses (GitHub #647) |
 | [T-472](fixes.md) | P3 | S | M5 | defect | done | `serve --list`: the HTML listing omits the modified time and the upload limit (GitHub #648) |
@@ -528,3 +525,4 @@ M8 Overlays, M9 Later.
 | [T-477](fixes.md) | P2 | S | M5 | defect | done | A refusal for now (HTTP 429, exit 75) gets the hint "does not change with a retry" |
 | [T-478](fixes.md) | P1 | M | M6 | defect | open | Two parallel SSH sessions through one relay node: one hung with no line |
 | [T-479](fixes.md) | P2 | S | M5 | defect | partial | Tests free a port to get a refused address; another test can take the port |
+| [T-480](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.70.0 |

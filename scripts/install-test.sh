@@ -134,6 +134,16 @@ expect "dry run: no file was changed" "dry run"
 grep -q "/$asset\$" "$work/log" && fail "dry run: the binary was downloaded"
 ok "a dry run changes no file"
 
+# 3b. One proxy in two variables gives one proxy line (GitHub #645, T-469).
+: > "$work/log"
+# shellcheck disable=SC2086 # the shell is a list of words.
+env -i PATH="$work/fake:$PATH" HOME="$work/home" PODNET_MIRROR="$mirror" \
+    https_proxy=http://proxy.invalid:3128 http_proxy=http://proxy.invalid:3128 no_proxy=127.0.0.1 \
+    $shell "$tree" --dry-run --prefix "$work/dry" --version "v$version" > "$work/out" 2>&1 \
+    || fail "one proxy: exit $?"
+[ "$(grep -c 'proxy: http://proxy.invalid:3128' "$work/out")" = 1 ] || fail "one proxy: not one proxy line"
+ok "one proxy in two variables gives one proxy line"
+
 # 4. A planted defect: a wrong SHA-256 in SHA256SUMS fails, and the old
 # binary stays.
 cp "$rel/SHA256SUMS" "$work/sums.good"

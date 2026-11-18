@@ -2013,3 +2013,46 @@ cargo-zigbuild in this container), and `scripts/check-static.sh` passes on it. T
 v0.68.0: `way-tunnel` (a quick tunnel of `demo` from a host whose only way out is a proxy: registered, verified, HTTP 200),
 `way-relay` and `way-relay-refused` pass. The verify line of the crate is `verified URL HTTP 200 ...`; the row
 `way-tunnel` checks it. The installer core has the same SHA-256.
+
+# T-480: Take podcrates v0.70.0
+
+**Source:** PodUtils/podcrates#222 (COORD-132, 2026-11-18): the tag `v0.70.0` at `ed6d84c`; the coordinator's order
+PodUtils/podcrates#227 (COORD-136): podnet takes it after the asks of podrunner.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.69.0`. The tag `v0.70.0` has the new installer core (T-469, GitHub #645), the CA file of
+`Trust::Default` (PodUtils/podcrates@T-858, COORD-101), the shared lock and clock (PodUtils/podcrates@T-877, PodUtils/podcrates@T-878), and the handshakes, answers and bundles
+that podnet asked for in COORD-105 (PodUtils/podcrates@T-896, PodUtils/podcrates@T-898, PodUtils/podcrates@T-901, PodUtils/podcrates@T-881).
+
+## Premise
+
+- The tag has no hand-off patch for podnet: `adoption/podnet/` names only the commit of the trial (`57cfc0b`).
+- podnet's code builds against the changed APIs with no change (`cargo check --workspace --all-targets`).
+- `podnet_core::trust::ws_trust` stays: it gives the roots of `--ca-file` and of the bundle beside the binary, which a
+  `Trust::Default` of the default settings of `pod-ws` does not read. It sits in frozen files.
+
+## Approach
+
+1. Each podcrates tag is `v0.70.0`: the manifests, `Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`.
+2. Take `core.sh` and `core-net.sh` of the tag; `python3 -I scripts/check-install.py --write` puts the core inline.
+3. The replacement of podnet's copies by `pod_proxy::hop`, `pod_dns::txt::error_answer`,
+   `pod_ws::handshake::build_probe_request`, `pod_tls::env_bundle`, `pod_core::lock` and `pod_core::clock` is T-473.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+sh scripts/install-test.sh
+```
+
+## Done
+
+2026-11-18, the commit of this entry. The tag `v0.70.0` (commit `ed6d84c`) in each manifest, `Cargo.lock`,
+`scripts/install/SOURCES` and `issue-sync.yml`; the core of the installer is the file of the tag (SHA-256 in
+`SOURCES`). `sh scripts/agent/check.sh` passes; `sh scripts/install-test.sh` passes 14 cases.

@@ -234,8 +234,9 @@ inst_wait() {
 
 # The prefix: --prefix, else $XDG_BIN_HOME, else ~/.local/bin.
 inst_resolve_prefix() {
+    inst_default=1
     if [ -n "$inst_opt_prefix" ]; then
-        inst_prefix=$inst_opt_prefix
+        inst_prefix=$inst_opt_prefix inst_default=0
     elif [ -n "${XDG_BIN_HOME:-}" ]; then
         inst_prefix=$XDG_BIN_HOME
     elif [ -n "${HOME:-}" ]; then
@@ -267,22 +268,58 @@ inst_mount_opts() {
     done
 }
 
-# The prefix exists, takes a new file, and runs a program.
-inst_check_prefix() {
-    mkdir -p "$inst_prefix" 2> /dev/null || inst_die "cannot make $inst_prefix: give --prefix DIR with a directory that you can write"
-    inst_prefix=$(cd "$inst_prefix" && pwd -P) || inst_die "cannot open $inst_prefix"
+# Whether the prefix exists, takes a new file and runs a program. On a
+# refusal, inst_why holds the text and inst_kind is make, write or run. A
+# directory that this test made and that cannot be used goes again.
+inst_try_prefix() {
+    inst_new=0
+    [ -d "$inst_prefix" ] || inst_new=1
+    mkdir -p "$inst_prefix" 2> /dev/null || { inst_kind=make inst_why="cannot make $inst_prefix"; return 1; }
+    inst_prefix=$(cd "$inst_prefix" && pwd -P) || { inst_kind=make inst_why="cannot open $inst_prefix"; return 1; }
     inst_tmp=$inst_prefix/.$INST_NAME-install.$$
     inst_made=1
-    { printf '#!/bin/sh\nexit 0\n' > "$inst_tmp.probe"; } 2> /dev/null ||
-        inst_die "cannot write in $inst_prefix: give --prefix DIR with a directory that you can write"
+    if ! { printf '#!/bin/sh\nexit 0\n' > "$inst_tmp.probe"; } 2> /dev/null; then
+        [ "$inst_new" = 0 ] || rmdir "$inst_prefix" 2> /dev/null
+        inst_kind=write inst_why="cannot write in $inst_prefix"
+        return 1
+    fi
     chmod 0755 "$inst_tmp.probe"
     if ! "$inst_tmp.probe" 2> /dev/null; then
         case ,$(inst_mount_opts "$inst_prefix"), in
-            *,noexec,*) inst_v="its file system is mounted with noexec" ;;
-            *) inst_v="a test program in it does not run" ;;
+            *,noexec,*) inst_why="its file system is mounted with noexec" ;;
+            *) inst_why="a test program in it does not run" ;;
         esac
         rm -f "$inst_tmp.probe"
-        inst_die "$inst_prefix cannot run programs: $inst_v. Give --prefix DIR with a directory that can run programs"
+        [ "$inst_new" = 0 ] || rmdir "$inst_prefix" 2> /dev/null
+        inst_kind=run
+        return 1
+    fi
+    return 0
+}
+
+# The prefix exists, takes a new file, and runs a program. A default prefix
+# that cannot run programs (a noexec mount) gives way to the next default
+# (~/.local/bin, ~/bin), with a line; a prefix of --prefix never does.
+inst_check_prefix() {
+    if ! inst_try_prefix; then
+        inst_first=$inst_prefix inst_firstwhy=$inst_why inst_firstkind=$inst_kind
+        if [ "$inst_kind" = run ] && [ "${inst_default:-0}" = 1 ] && [ -n "${HOME:-}" ]; then
+            for inst_alt in "$HOME/.local/bin" "$HOME/bin"; do
+                [ "$inst_alt" != "$inst_first" ] || continue
+                inst_prefix=$inst_alt
+                if inst_try_prefix; then
+                    inst_say "$inst_first cannot run programs ($inst_firstwhy): the install goes to $inst_prefix"
+                    break
+                fi
+                inst_prefix=$inst_first
+            done
+        fi
+        if [ "$inst_prefix" = "$inst_first" ]; then
+            case $inst_firstkind in
+                run) inst_die "$inst_first cannot run programs: $inst_firstwhy. Give --prefix DIR with a directory that can run programs" ;;
+                *) inst_die "$inst_firstwhy: give --prefix DIR with a directory that you can write" ;;
+            esac
+        fi
     fi
     rm -f "$inst_tmp.probe"
     # The temporary files of a run that stopped with no cleanup (SIGKILL,
@@ -501,8 +538,11 @@ inst_path_line() {
 inst_proxy() {
     [ -n "${https_proxy:-}" ] || [ -z "${HTTPS_PROXY:-}" ] || export https_proxy="$HTTPS_PROXY"
     [ -n "${no_proxy:-}" ] || [ -z "${NO_PROXY:-}" ] || export no_proxy="$NO_PROXY"
+    # One line for each proxy: the two variables often name the same one.
+    inst_seen=''
     for inst_v in "${https_proxy:-}" "${http_proxy:-}"; do
-        [ -n "$inst_v" ] || continue
+        if [ -z "$inst_v" ] || [ "$inst_v" = "$inst_seen" ]; then continue; fi
+        inst_seen=$inst_v
         # The credential of the proxy is not shown.
         inst_say "proxy: $(printf '%s' "$inst_v" | sed 's#^\([A-Za-z0-9+.-]*://\)[^@/]*@#\1#')"
     done
