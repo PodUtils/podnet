@@ -10,13 +10,12 @@ use std::sync::Arc;
 
 const PASSWORD: &str = "doctor-secret-pw";
 
-/// A port with no listener: a proxy of the process that carries nothing.
-fn dead_port() -> u16 {
-    TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port()
+/// A port that refuses each connect: a proxy of the process that carries
+/// nothing. The guard keeps the port bound with no listen, so no other test
+/// can take it (T-479, `pod_testkit::refused`).
+fn dead_port() -> (pod_testkit::refused::Refused, u16) {
+    let (guard, at) = pod_testkit::refused::refused();
+    (guard, at.port())
 }
 
 /// `podnet doctor --json` through the process proxy `via` (`--proxy`), with
@@ -114,7 +113,7 @@ fn fake_ssh_relay() -> String {
 #[test]
 fn doctor_ssh_relay_row_is_unknown_without_a_relay() {
     test_host::need_loopback!();
-    let port = dead_port();
+    let (_held, port) = dead_port();
     let run = tempfile::tempdir().unwrap();
     let (_, doc, all) = doctor_with_env(port, &["--quick", "--timeout", "1"], run.path());
     assert_eq!(doc["ssh_relay"]["verdict"], "unknown", "{all}");
@@ -125,7 +124,7 @@ fn doctor_ssh_relay_row_is_unknown_without_a_relay() {
 #[test]
 fn doctor_ssh_relay_row_probes_the_relay_of_the_flags() {
     test_host::need_loopback!();
-    let port = dead_port();
+    let (_held, port) = dead_port();
     let run = tempfile::tempdir().unwrap();
     let address = fake_ssh_relay();
     let (_, doc, all) = doctor_via(
@@ -168,9 +167,8 @@ fn doctor_ssh_relay_row_probes_the_relay_of_the_flags() {
     );
 
     // A port with no listener: fail, at the stage connect.
-    let free = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let dead = free.local_addr().unwrap().to_string();
-    drop(free);
+    let (_dead_held, dead) = pod_testkit::refused::refused();
+    let dead = dead.to_string();
     let (_, doc, all) = doctor_via(
         &creds_proxy(port),
         &[
@@ -266,7 +264,7 @@ fn creds_proxy(port: u16) -> String {
 #[test]
 fn doctor_ssh_relay_row_dials_through_the_proxy() {
     test_host::need_loopback!();
-    let refusing = dead_port();
+    let (_held, refusing) = dead_port();
     let (proxy_address, seen) = relay_proxy(fake_ssh_relay(), None);
     let (row, all) = ssh_relay_row(
         &creds_proxy(refusing),
@@ -332,7 +330,7 @@ fn doctor_ssh_relay_row_uses_the_proxy_of_the_environment() {
 #[test]
 fn doctor_ssh_relay_row_shows_a_proxy_that_answers_407_as_a_refusal() {
     test_host::need_loopback!();
-    let refusing = dead_port();
+    let (_held, refusing) = dead_port();
     let (proxy_address, _) = relay_proxy(
         "127.0.0.1:9".into(),
         Some("HTTP/1.1 407 Proxy Authentication Required"),
@@ -362,7 +360,7 @@ fn doctor_ssh_relay_row_shows_a_proxy_that_answers_407_as_a_refusal() {
 #[test]
 fn doctor_ssh_relay_row_refuses_a_proxy_with_credentials() {
     test_host::need_loopback!();
-    let refusing = dead_port();
+    let (_held, refusing) = dead_port();
     let (row, all) = ssh_relay_row(
         &creds_proxy(refusing),
         &["--ssh-relay", "relay.invalid:443", "--ssh-user", "tester"],

@@ -304,10 +304,9 @@ fn a_relay_with_more_than_one_endpoint_gives_the_address_list_in_order() {
 #[tokio::test]
 async fn the_transport_tries_the_address_list_in_order() {
     pod_testkit::need_loopback!();
-    // Bound with no listen: refused, and no other test can take the port.
-    let dead = tokio::net::TcpSocket::new_v4().unwrap();
-    dead.bind("127.0.0.1:0".parse().unwrap()).unwrap();
-    let dead_address = dead.local_addr().unwrap().to_string();
+    // Refused, and no other test can take the port (T-479).
+    let (_held, dead) = pod_testkit::refused::refused();
+    let dead_address = dead.to_string();
     let live = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let live_address = live.local_addr().unwrap().to_string();
     let accept = tokio::spawn(async move { live.accept().await.is_ok() });
@@ -563,9 +562,8 @@ async fn the_supervisor_tries_again_when_the_relay_is_not_there() {
     // the port bound with no listen, so another test cannot take it (a
     // freed port was taken by a fake relay of another test: the handshake
     // met a stranger, ci 44200604223).
-    let reserved = tokio::net::TcpSocket::new_v4().unwrap();
-    reserved.bind("127.0.0.1:0".parse().unwrap()).unwrap();
-    let address = reserved.local_addr().unwrap().to_string();
+    let (held, at) = pod_testkit::refused::refused();
+    let address = at.to_string();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let task = tokio::spawn(supervise(test_config(address), FAST, tx));
     for _ in 0..3 {
@@ -575,7 +573,7 @@ async fn the_supervisor_tries_again_when_the_relay_is_not_there() {
         }
     }
     task.abort();
-    drop(reserved);
+    drop(held);
 }
 
 #[tokio::test]
@@ -636,10 +634,9 @@ mod probe_tests {
     #[tokio::test]
     async fn the_probe_names_the_connect_stage_when_nobody_listens() {
         pod_testkit::need_loopback!();
-        // Bound with no listen: refused, and no other test can take the port.
-        let free = tokio::net::TcpSocket::new_v4().unwrap();
-        free.bind("127.0.0.1:0".parse().unwrap()).unwrap();
-        let address = free.local_addr().unwrap().to_string();
+        // Refused, and no other test can take the port (T-479).
+        let (_held, at) = pod_testkit::refused::refused();
+        let address = at.to_string();
         let got = probe(&config(address), LIMIT).await;
         let failure = got.failure.expect("a failure");
         assert_eq!(failure.stage, Stage::Connect);
