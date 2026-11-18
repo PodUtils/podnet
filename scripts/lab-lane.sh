@@ -569,6 +569,10 @@ refusal_expected() {
         # Since T-382 the backend probes a TCP connect first.
         why="the lab refuses each TCP connect of the program (Landlock), in each namespace"
         ;;
+    pod-netns:bind-netns-vm-denied)
+        # pod-lab v0.70.0 (T-866): clone(CLONE_NEWUSER|CLONE_NEWNET) is EPERM.
+        why="the lab refuses each new network namespace"
+        ;;
     pod-netns:no-proc | pod-netns:proc-masked)
         why="no /proc for the id maps"
         ;;

@@ -8425,6 +8425,11 @@ got HTTP 429 and each waited 60 s, so the kill came after the end. The log of th
 proxy runs for 600 s, the step stops it at its end, and a planned end of `--run-for` logs `--run-for N s ended: the
 command stops` (checked with `podnet serve` and `podnet warp proxy` and `--run-for 2`).
 
+2026-11-18, a third form: `live` 44286677011 attempt 1 (`60db06b`), the step "The commands of the second batch" (`scripts/live-batch2.sh`, the
+upload of 16 MiB with `--cc cubic`): the public endpoint reset one upload (`curl: (97) Recv failure`); then the
+`warp proxy` ended with `the MASQUE session is open, and a DNS query to 1.1.1.1:53 through it got no answer`, so the
+tries 2 and 3 got `Couldn't connect`. The proxy ends on a failed health check of its session, where it could open a new
+session. The code is `pod-warp` (frozen); the evidence goes to podcrates with step 3.
 
 # T-415: live: the first request through the WARP proxy gets a reset 5 s after the start
 
@@ -10701,4 +10706,52 @@ not reach its units.
 
 ```sh
 gh release view v0.4.0-beta.17 -R PodUtils/podnet
+```
+
+## Correction
+
+2026-11-18. The dry run 44295134663 on `60db06b` failed in the gate: the gate takes podlab of the podcrates tag of
+`Cargo.toml` (`v0.70.0`), whose new profile `bind-netns-vm-denied` refuses each network namespace by design. The row
+`pod-netns` got exit 3 with the reason, and `refusal_expected` of `scripts/lab-lane.sh` had no line for the profile.
+The line is added. The second line of that refusal is T-482. `live` on `60db06b` passed at its third attempt: attempt 1
+failed at the public WARP endpoint (T-414), attempt 2 at a POST of 1 MiB through a new quick tunnel (HTTP 530 of the
+edge, the class of T-138).
+
+# T-482: `pod --backend netns` prints a second, false cause after a refused network namespace
+
+**Source:** the release gate of `v0.4.0-beta.17` (release run 44295134663, the row `pod-netns` of the profile
+`bind-netns-vm-denied` of pod-lab `v0.70.0`), 2026-11-18. The ruling "Quality first" (2026-11-17): each failure gives
+one true line.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Where `clone(CLONE_NEWUSER|CLONE_NEWNET)` is EPERM, `podnet pod --backend netns` prints the true cause and then a
+second line that is not a cause:
+
+```
+podnet pod: unshare(CLONE_NEWNET) failed (EPERM) and unshare(CLONE_NEWUSER|CLONE_NEWNET) failed (EPERM)
+podnet pod: write uid/gid maps: the child died before it named its namespace
+```
+
+## Premise
+
+- Read: `crates/podnet-netns/src/netns/mod.rs:90` and `crates/podnet-netns/src/kernel.rs:55` add the context
+  `write uid/gid maps` to the error of `pod_hold::netns::answer`, which says that the child died. The child died because
+  its `unshare` failed; that line was printed first.
+- The exit code (3) and the first line are right.
+
+## Approach
+
+1. When the child reported its `unshare` failure, end with that failure alone; do not print the error of `answer`.
+2. A table test of the refusals of the netns backend: one line for each.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns
 ```
