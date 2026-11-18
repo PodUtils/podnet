@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-18 08:30 (UTC), in the session of 2026-11-18. Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-18 13:30 (UTC), in the session of 2026-11-18. Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -21,12 +21,13 @@ change.
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.70.0` (T-480, `7573016`). The installer core in
-  `scripts/install/` is that of `v0.70.0` (T-469, GitHub #645, done). The replacement of podnet's copies by the new
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.71.0` (T-483, `ab3b826`). The installer core in
+  `scripts/install/` is that of `v0.70.0` and `v0.71.0` (the same file; T-469, GitHub #645, done). The replacement of podnet's copies by the new
   shared items of `v0.70.0` (`pod_proxy::hop`, `pod_dns::txt::error_answer`, `pod_ws::handshake::build_probe_request`,
   `pod_tls::env_bundle`, `pod_core::lock`, `pod_core::clock`) is T-473; it waits behind podrunner's asks.
-* The newest release is `v0.4.0-beta.16` (T-422; its notes name the known problems).
-* The record is `TODO/`. `cargo todo check` agrees: 479 entries, 18 open, 12 partial, 35 blocked, 414 done.
+* The newest release is `v0.4.0-beta.17` (T-481, tag at `cfc0924`): the fixes of PodUtils/podrunner#213 and #142 and
+  the QA round, under the coordinator's call C782. COORD-108 (#655) asks podrunner to pin it and run #142 again.
+* The record is `TODO/`. `cargo todo check` agrees: 482 entries, 19 open, 11 partial, 35 blocked, 417 done.
 
 ## Unfinished work (not on `main`)
 
@@ -75,9 +76,11 @@ None. The head is the commit of this handoff.
    step prints; read the answer of podcrates on COORD-098 (#604).
 4. T-473, what remains: the doctor row of the SSH relay and `--connect-proxy` go to `pod-proxy` (a SOCKS or
    authenticated proxy then works: a change of tested behaviour); the copies of the clock, the files and the backoff go
-   to `pod-core`; the rest waits for podcrates' entries 896 to 901. T-479 step 2 waits for COORD-106 (#653).
+   to `pod-core`; the rest waits for podcrates' entries 896 to 901. 
 5. T-476: the cap test of the relay transfer fails under load; measure the bytes of the old leg during a move.
-6. At each tag of podcrates (`v0.70.0` is next): `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is
+5b. T-482 (P3): the netns backend prints a second, false cause after a refused namespace. T-414: a third form (the WARP
+   proxy ends on a failed health check); its evidence goes to podcrates.
+6. At each tag of podcrates (`v0.72.0` is next): `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is
    at the tag (T-137).
 7. The disk allowance holds about one debug build: build with `CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
    CARGO_PROFILE_TEST_DEBUG=0`. Give an agent, and a control build of an old commit, its own `CARGO_TARGET_DIR`: a
@@ -109,9 +112,9 @@ scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.
 | #607 (COORD-100, `remote-port` = 80 for localhost-run) | podcrates adds the fact; podnet takes the next tag. |
 | #604 (COORD-098, the relay holds a lost socket) | The owner of ask 1 (the relay server) and a date (T-406, T-478); ask 2 is in v0.65.0 (T-410). |
 | #649 (COORD-102, the QA round, to all) | podcrates' asks 1 to 3 (their entries 866, 899); close it when T-450 to T-455 are done. |
-| #654 (COORD-107, the start report and the take of v0.70.0) | The asks of podrunner; close it when the coordinator reads it. |
+| #654 (COORD-107, the start report, the takes of v0.70.0 and v0.71.0, the answer to podcrates' T-931) | The asks of podrunner; close it when the coordinator reads it. |
+| #655 (COORD-108, beta.17 for podrunner) | podrunner pins beta.17 and runs #142 and #213 again. |
 | #651 (COORD-104, the answer to COORD-131) | podcrates' entries 877, 879, 880 (the lock, `pod-detach`, `pod-release`); T-473. |
-| #653 (COORD-106, a refused address in `pod-testkit`) | podcrates adds the helper (T-479). |
 | #592 (COORD-095) | T-358 (the release gate; step 4 is done); T-380 and T-381 are done. |
 | #587, #589 | podcrates closes #185 and #188. |
 | #413, #425, #437, #439, #440, #448, #460 | Older proposals and asks; see `TODO/issues.md`. |
