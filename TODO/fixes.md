@@ -10882,3 +10882,39 @@ sh scripts/agent/check.sh
 2026-11-18, the commit of this entry. The tag `v0.72.0` (commit `0ea12df`) in each manifest, `Cargo.lock`,
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
 code. `sh scripts/agent/check.sh` passes.
+
+# T-486: Take podcrates v0.73.0
+
+**Source:** PodUtils/podcrates#231 (COORD-140, 2026-11-18): the tag `v0.73.0` at `1f1fd3f`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.72.0`. The tag `v0.73.0` adds three optional fields of `status.v1`, `pod-fake-github` and
+`pod-fake-githome` for the CI of podrunner, and a longer `session.stall` line of the far end (PodUtils/podcrates@T-945).
+
+## Premise
+
+- The tag has no hand-off patch for podnet. The installer core has the same SHA-256 as at `v0.72.0`.
+- No test, workflow or script of podnet matches the text of `session.stall` (a search of `src`, `tests`, `crates`,
+  `scripts` and `.github`).
+
+## Approach
+
+1. Each podcrates tag is `v0.73.0`: the manifests, both lock files, `scripts/install/SOURCES` and `issue-sync.yml`.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-18, the commit of this entry. The tag `v0.73.0` (commit `1f1fd3f`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
+code. `sh scripts/agent/check.sh` passes.
