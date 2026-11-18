@@ -1,9 +1,16 @@
 # Handoff
 
-The state at 2026-11-18 01:30 (UTC), at the end of the session of 2026-11-17. Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-18 08:30 (UTC), in the session of 2026-11-18. Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
+
+**podrunner first** (the owner, 2026-11-18; `docs/decisions.md`; PodUtils/podcrates#225 COORD-134, #227 COORD-136):
+the CI work of githome and cfb is podrunner's work, and it comes first. podcrates is the coordinator; COORD issues are
+the one channel. podnet's order: a red run of its CI; each ask of podrunner (a COORD issue `(to podnet)`); the take of
+each tag of podcrates; the asks of githome and cfb (none owned by podnet for their CI; #461 asks wait on podcrates'
+`pod-unit`); then the work below. podnet's start report and take are in COORD-107 (#654). A beta with a fix for
+podrunner alone is allowed under the freeze (COORD-136, call C782).
 
 The owner's review of the QA round (2026-11-17, `docs/decisions.md`, The QA round and the release freeze): no release
 and no new feature until T-450 to T-455 are done; an issue closes only with a test that reproduces it and fails on the
@@ -14,11 +21,12 @@ change.
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.69.0` (with `pod-cloudflare`). The installer core
-  in `scripts/install/` is that of `v0.69.0`. The next tag of podcrates (`v0.70.0`) brings `pod_core::lock`,
-  `pod_core::clock::Clock` and rows of `pod-hostprobe` (their entries 866, 877, 878).
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.70.0` (T-480, `7573016`). The installer core in
+  `scripts/install/` is that of `v0.70.0` (T-469, GitHub #645, done). The replacement of podnet's copies by the new
+  shared items of `v0.70.0` (`pod_proxy::hop`, `pod_dns::txt::error_answer`, `pod_ws::handshake::build_probe_request`,
+  `pod_tls::env_bundle`, `pod_core::lock`, `pod_core::clock`) is T-473; it waits behind podrunner's asks.
 * The newest release is `v0.4.0-beta.16` (T-422; its notes name the known problems).
-* The record is `TODO/`. `cargo todo check` agrees: 478 entries, 18 open, 12 partial, 36 blocked, 412 done.
+* The record is `TODO/`. `cargo todo check` agrees: 479 entries, 18 open, 12 partial, 35 blocked, 414 done.
 
 ## Unfinished work (not on `main`)
 
@@ -58,6 +66,7 @@ None. The head is the commit of this handoff.
 ## Next steps
 
 1. Read the runs of "CI" above. Fix each failure first.
+1b. Keep the watcher running. Take each COORD issue `(to podnet)` of podrunner first (its census, T-490 and T-491).
 2. T-450 to T-455, the gate of correctness (no release and no new feature before they are done), in this order:
    T-452 (error rows of the lane: a dead upstream, a refused connect, a reject rule, an unreachable target, a name with
    no answer), T-453 (a lab of the testers' host class: no AF_INET bind, no netns, no write of the memory of a
@@ -100,7 +109,7 @@ scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.
 | #607 (COORD-100, `remote-port` = 80 for localhost-run) | podcrates adds the fact; podnet takes the next tag. |
 | #604 (COORD-098, the relay holds a lost socket) | The owner of ask 1 (the relay server) and a date (T-406, T-478); ask 2 is in v0.65.0 (T-410). |
 | #649 (COORD-102, the QA round, to all) | podcrates' asks 1 to 3 (their entries 866, 899); close it when T-450 to T-455 are done. |
-| #650 (COORD-103, the installer prints the proxy twice) | podcrates fixes `core-net.sh` (T-469, GitHub #645). |
+| #654 (COORD-107, the start report and the take of v0.70.0) | The asks of podrunner; close it when the coordinator reads it. |
 | #651 (COORD-104, the answer to COORD-131) | podcrates' entries 877, 879, 880 (the lock, `pod-detach`, `pod-release`); T-473. |
 | #653 (COORD-106, a refused address in `pod-testkit`) | podcrates adds the helper (T-479). |
 | #592 (COORD-095) | T-358 (the release gate; step 4 is done); T-380 and T-381 are done. |
