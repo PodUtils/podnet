@@ -304,9 +304,10 @@ fn a_relay_with_more_than_one_endpoint_gives_the_address_list_in_order() {
 #[tokio::test]
 async fn the_transport_tries_the_address_list_in_order() {
     pod_testkit::need_loopback!();
-    let dead = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    // Bound with no listen: refused, and no other test can take the port.
+    let dead = tokio::net::TcpSocket::new_v4().unwrap();
+    dead.bind("127.0.0.1:0".parse().unwrap()).unwrap();
     let dead_address = dead.local_addr().unwrap().to_string();
-    drop(dead);
     let live = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let live_address = live.local_addr().unwrap().to_string();
     let accept = tokio::spawn(async move { live.accept().await.is_ok() });
@@ -558,10 +559,13 @@ async fn the_supervisor_sees_a_connection_that_the_relay_ends() {
 #[tokio::test]
 async fn the_supervisor_tries_again_when_the_relay_is_not_there() {
     pod_testkit::need_loopback!();
-    // A port with no listener: each connect is refused.
-    let free = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let address = free.local_addr().unwrap().to_string();
-    drop(free);
+    // A port with no listener: each connect is refused. The socket keeps
+    // the port bound with no listen, so another test cannot take it (a
+    // freed port was taken by a fake relay of another test: the handshake
+    // met a stranger, ci 44200604223).
+    let reserved = tokio::net::TcpSocket::new_v4().unwrap();
+    reserved.bind("127.0.0.1:0".parse().unwrap()).unwrap();
+    let address = reserved.local_addr().unwrap().to_string();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let task = tokio::spawn(supervise(test_config(address), FAST, tx));
     for _ in 0..3 {
@@ -571,6 +575,7 @@ async fn the_supervisor_tries_again_when_the_relay_is_not_there() {
         }
     }
     task.abort();
+    drop(reserved);
 }
 
 #[tokio::test]
@@ -631,9 +636,10 @@ mod probe_tests {
     #[tokio::test]
     async fn the_probe_names_the_connect_stage_when_nobody_listens() {
         pod_testkit::need_loopback!();
-        let free = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        // Bound with no listen: refused, and no other test can take the port.
+        let free = tokio::net::TcpSocket::new_v4().unwrap();
+        free.bind("127.0.0.1:0".parse().unwrap()).unwrap();
         let address = free.local_addr().unwrap().to_string();
-        drop(free);
         let got = probe(&config(address), LIMIT).await;
         let failure = got.failure.expect("a failure");
         assert_eq!(failure.stage, Stage::Connect);
