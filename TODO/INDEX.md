@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**489 entries: 20 open, 11 partial, 35 blocked, 423 done.**
+**490 entries: 20 open, 11 partial, 35 blocked, 424 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 5 | 2 | 2 | 61 | 70 |
+| P1 | 5 | 2 | 2 | 62 | 71 |
 | P2 | 6 | 6 | 10 | 216 | 238 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 20 | 11 | 35 | 423 | 489 |
+| **All** | 20 | 11 | 35 | 424 | 490 |
 | **All** | 18 | 12 | 36 | 412 | 478 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
@@ -536,3 +536,4 @@ M8 Overlays, M9 Later.
 | [T-488](fixes.md) | P3 | S | M5 | research | open | A quick tunnel with two edge connections gets HTTP 530 for some requests |
 | [T-489](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.74.0 |
 | [T-490](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.75.0 |
+| [T-491](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.76.0 |

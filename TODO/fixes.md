@@ -11092,3 +11092,43 @@ sh scripts/agent/check.sh
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
 code. `cargo test --test transfer_relay`: 4 passed, three runs of three (`transfer_over_the_relay_crosses_the_cap`
 among them); `cargo test -p podnet-serve --lib relay`: 37 passed. `sh scripts/agent/check.sh` passes.
+
+# T-491: Take podcrates v0.76.0
+
+**Source:** PodUtils/podcrates#239 (COORD-144, 2026-11-19): the tag `v0.76.0` at `fee6f8a`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.75.0`. The tag `v0.76.0` changes the move of the relay layer again: a client that moves the
+layer holds the old link from the threshold on (PodUtils/podcrates@T-962). The wire does not change. The one breaking
+change of the tag (`operator_told`) is for podssh; podnet does not use it.
+
+## Premise
+
+- The tag has no hand-off patch for podnet. The installer core has the same SHA-256 as at `v0.75.0`.
+- No code of podnet names `operator_told` (a search of `src`, `crates` and `tests`).
+
+## Approach
+
+1. Each podcrates tag is `v0.76.0`: the manifests, both lock files, `scripts/install/SOURCES` and `issue-sync.yml`.
+2. Run `tests/transfer_relay.rs` three times and the relay tests of `podnet-serve`; dispatch `gate.yml` on the head.
+
+## Prove
+
+```sh
+cargo test --test transfer_relay
+cargo test -p podnet-serve --lib relay
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-19, the commit of this entry. The tag `v0.76.0` (commit `fee6f8a`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
+code. `cargo test --test transfer_relay`: 4 passed, three runs of three; `cargo test -p podnet-serve --lib relay`: 37
+passed. `sh scripts/agent/check.sh` passes.
