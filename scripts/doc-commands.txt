@@ -37,6 +37,7 @@ docs/install.md fd8fa56fb7 live needs the downloaded release assets and gh
 docs/install.md b6b25e2927 live the install script: downloads a release from GitHub
 docs/install.md ba07e9af28 skip a template: <TAG> is a placeholder; downloads the installer of a release from GitHub
 docs/install.md 282d07520a live docker and the image of ghcr.io
+docs/install.md 87ec5fb6ad skip a template: sha256:DIGEST is a placeholder; docker and gh pull the image of ghcr.io
 docs/install.md abb60731e4 live podnet update asks GitHub; <TAG> is a placeholder
 docs/install.md 944cb19562 skip a template: <TAG> is a placeholder
 
