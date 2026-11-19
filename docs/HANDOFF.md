@@ -27,7 +27,7 @@ change.
   `pod_tls::env_bundle`, `pod_core::lock`, `pod_core::clock`) is T-473; it waits behind podrunner's asks.
 * The newest release is `v0.4.0-beta.17` (T-481, tag at `cfc0924`): the fixes of PodUtils/podrunner#213 and #142 and
   the QA round, under the coordinator's call C782. COORD-108 (#655) asks podrunner to pin it and run #142 again.
-* The record is `TODO/`. `cargo todo check` agrees: 486 entries, 19 open, 11 partial, 35 blocked, 421 done.
+* The record is `TODO/`. `cargo todo check` agrees: 487 entries, 20 open, 11 partial, 35 blocked, 421 done.
 
 ## Unfinished work (not on `main`)
 
@@ -78,7 +78,8 @@ None. The head is the commit of this handoff.
    authenticated proxy then works: a change of tested behaviour); the copies of the clock, the files and the backoff go
    to `pod-core`; the rest waits for podcrates' entries 896 to 901. 
 5. T-476: the cap test of the relay transfer fails under load; measure the bytes of the old leg during a move.
-5b. T-482 (P3): the netns backend prints a second, false cause after a refused namespace. T-414: a third form (the WARP
+5b. T-488 (P3): sporadic HTTP 530 of a quick tunnel with two edge connections (the step "Throughput through WARP" of
+   `live`); measure with `--ha-connections 1`. T-482 (P3): the netns backend prints a second, false cause after a refused namespace. T-414: a third form (the WARP
    proxy ends on a failed health check); its evidence goes to podcrates.
 6. At each tag of podcrates (`v0.74.0` is next): `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is
    at the tag (T-137).

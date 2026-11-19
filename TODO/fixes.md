@@ -10962,3 +10962,40 @@ gh attestation verify oci://ghcr.io/podutils/podnet@sha256:DIGEST --repo PodUtil
 
 2026-11-19, the commit of this entry. `scripts/check-workflows.py`: 11 files, 0 faults. The new steps run only on a
 tag; the first proof is the next release. The digests of `v0.4.0-beta.17` are in COORD-109.
+
+# T-488: A quick tunnel with two edge connections gets HTTP 530 for some requests
+
+**Source:** `live` 44444118882 (`e9bf11c`, 2026-11-19) and `live` 44286677011 attempt 2 (`60db06b`, 2026-11-18), the
+step "Throughput through WARP, 1 to 16 MiB" (`scripts/live-throughput.sh`); the question of PodUtils/podcrates@T-931
+(cloudflared opens one edge connection for a quick tunnel; podnet opens two).
+**Category:** research
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A quick tunnel through WARP registers its first connection (`msp01`) and, about 0.25 s later, connection 1 (`ord11`).
+Some requests through the public URL get HTTP 530 from the edge: on 2026-11-19 the first POST of 1 MiB (1.4 s after
+the first registration), and 2 of 20 requests of the latency check after the throughput passed. On 2026-11-18 the
+first POST of 1 MiB, the same way. Each other request of the step passed.
+
+## Premise
+
+- `pod_cloudflare::Config` gives `ha_connections: 2` to each tunnel, a quick tunnel too (the answer to
+  PodUtils/podcrates@T-931 in PodUtils/podnet#654). cloudflared opens one connection for a quick tunnel.
+- Not measured: whether the edge sends a request of a quick tunnel to a connection that is not ready, or to a
+  connection whose registration it does not keep for a quick tunnel.
+
+## Approach
+
+1. Run the step with `--ha-connections 1` and with 2, 20 times each, through WARP and direct; count the 530s.
+2. If one connection gives no 530: a quick tunnel takes one connection by default, as cloudflared (a change of
+   `pod-cloudflare`: a COORD issue `(to podcrates)`); a named tunnel keeps 2.
+
+## Prove
+
+```sh
+sh scripts/live-throughput.sh target/release/podnet quic "1 4 16" warp
+```
