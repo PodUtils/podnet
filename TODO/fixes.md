@@ -10963,6 +10963,17 @@ gh attestation verify oci://ghcr.io/podutils/podnet@sha256:DIGEST --repo PodUtil
 2026-11-19, the commit of this entry. `scripts/check-workflows.py`: 11 files, 0 faults. The new steps run only on a
 tag; the first proof is the next release. The digests of `v0.4.0-beta.17` are in COORD-109.
 
+## Correction
+
+2026-11-19. The coordinator took podnet's form for each project (call C789, PodUtils/podcrates#236, COORD-142). Its
+item 4 is new for podnet: after the push, the job `image` pulls each image of one architecture back by its digest and
+compares its `/usr/local/bin/podnet` with the file of the release by SHA-256 (a manual check of
+`v0.4.0-beta.17-amd64` matched on 2026-11-19). Its item 5: the hand-off COORD issue of a release names the digest of
+the index beside the SHA-256 of each file. The digest lines of the job (`docker buildx imagetools inspect ...
+--format '{{json .Manifest}}' | jq -r .digest`) give the digests of `v0.4.0-beta.17` that the registry API gives; the
+pull and `docker cp` run first at the next release (no docker daemon here).
+
+
 # T-488: A quick tunnel with two edge connections gets HTTP 530 for some requests
 
 **Source:** `live` 44444118882 (`e9bf11c`, 2026-11-19) and `live` 44286677011 attempt 2 (`60db06b`, 2026-11-18), the

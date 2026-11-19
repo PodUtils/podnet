@@ -507,6 +507,7 @@ jobs:
           push=false
           case "$GITHUB_REF" in refs/tags/v*) push=true; tag=$GITHUB_REF_NAME ;; esac
           refs=""
+          pairs=""
           for pair in \
             x86_64-unknown-linux-musl:linux/amd64:amd64 \
             aarch64-unknown-linux-musl:linux/arm64:arm64 \
@@ -531,6 +532,7 @@ jobs:
               --label org.opencontainers.image.licenses=0BSD \
               -t "$repo:$tag-$arch" "$ctx"
             refs="$refs $repo:$tag-$arch"
+            pairs="$pairs $target:$repo:$tag-$arch"
           done
           docker run --rm "$repo:$tag-amd64" --version
           docker image ls "$repo"
@@ -540,6 +542,23 @@ jobs:
           fi
           echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           for ref in $refs; do docker push "$ref"; done
+          # T-487 (call C789 of podcrates, item 4): each pushed image, pulled
+          # back by its digest, holds the file of the release (one SHA-256).
+          for pair in $pairs; do
+            target=${pair%%:*}
+            ref=${pair#*:}
+            d=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -r .digest)
+            docker image rm "$ref" > /dev/null
+            # One image manifest (not an index): the pull takes it on any host.
+            docker pull -q "${ref%:*}@$d" > /dev/null
+            c=$(docker create "${ref%:*}@$d")
+            docker cp "$c:/usr/local/bin/podnet" "$RUNNER_TEMP/pulled-podnet"
+            docker rm "$c" > /dev/null
+            want=$(sha256sum < "dist/podnet-$target" | cut -d ' ' -f 1)
+            got=$(sha256sum < "$RUNNER_TEMP/pulled-podnet" | cut -d ' ' -f 1)
+            [ "$want" = "$got" ] || { echo "$ref@$d: the binary is not podnet-$target ($got, not $want)" >&2; exit 1; }
+            echo "$ref@$d: podnet-$target, sha256 $got"
+          done
           channel=latest
           case "$tag" in *-*) channel=beta ;; esac
           docker buildx imagetools create -t "$repo:$tag" -t "$repo:$channel" $refs
