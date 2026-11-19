@@ -10958,11 +10958,6 @@ python3 -I scripts/check-workflows.py
 gh attestation verify oci://ghcr.io/podutils/podnet@sha256:DIGEST --repo PodUtils/podnet   # at the next release
 ```
 
-## Done
-
-2026-11-19, the commit of this entry. `scripts/check-workflows.py`: 11 files, 0 faults. The new steps run only on a
-tag; the first proof is the next release. The digests of `v0.4.0-beta.17` are in COORD-109.
-
 ## Correction
 
 2026-11-19. The coordinator took podnet's form for each project (call C789, PodUtils/podcrates#236, COORD-142). Its
@@ -10973,6 +10968,10 @@ the index beside the SHA-256 of each file. The digest lines of the job (`docker 
 --format '{{json .Manifest}}' | jq -r .digest`) give the digests of `v0.4.0-beta.17` that the registry API gives; the
 pull and `docker cp` run first at the next release (no docker daemon here).
 
+## Done
+
+2026-11-19, the commit of this entry. `scripts/check-workflows.py`: 11 files, 0 faults. The new steps run only on a
+tag; the first proof is the next release. The digests of `v0.4.0-beta.17` are in COORD-109.
 
 # T-488: A quick tunnel with two edge connections gets HTTP 530 for some requests
 
