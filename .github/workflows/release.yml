@@ -474,14 +474,20 @@ jobs:
   # binaries of the release (images/podnet/Dockerfile). One image for each
   # architecture (<tag>-<arch>), and one manifest list for all (<tag>, and
   # latest or beta). A dry run builds the images, runs the amd64 one, and
-  # pushes nothing. It uses the docker CLI of the runner and no other action.
+  # pushes nothing. It uses the docker CLI of the runner.
+  # T-487 (the owner's ruling "ghcr.io", 2026-11-19, PodUtils/podrunner#312):
+  # the provenance of the manifest list is attested in the registry, and the
+  # release notes name the digest of each pushed reference, so that a
+  # consumer pins the image by digest beside the SHA-256 of the files.
   image:
     needs: publish
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
-      contents: read
+      contents: write
       packages: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -490,6 +496,7 @@ jobs:
           pattern: podnet-*
           merge-multiple: true
       - name: the images
+        id: images
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -537,7 +544,58 @@ jobs:
           case "$tag" in *-*) channel=beta ;; esac
           docker buildx imagetools create -t "$repo:$tag" -t "$repo:$channel" $refs
           docker buildx imagetools inspect "$repo:$tag"
+          digest=$(docker buildx imagetools inspect "$repo:$tag" --format '{{json .Manifest}}' | jq -r .digest)
+          case "$digest" in sha256:*) ;; *) echo "no digest of $repo:$tag: $digest" >&2; exit 1 ;; esac
+          {
+            echo "repo=$repo"
+            echo "tag=$tag"
+            echo "digest=$digest"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo ""
+            echo "## The image, by digest"
+            echo ""
+            echo "| Reference | Digest |"
+            echo "| --- | --- |"
+            echo "| \`$repo:$tag\` (each architecture) | \`$digest\` |"
+            for ref in $refs; do
+              d=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -r .digest)
+              case "$d" in sha256:*) ;; *) echo "no digest of $ref: $d" >&2; exit 1 ;; esac
+              echo "| \`$ref\` | \`$d\` |"
+            done
+            echo ""
+            echo "Pull by digest: \`docker pull $repo@$digest\`. Check its provenance:"
+            echo "\`gh attestation verify oci://$repo@$digest --repo $GITHUB_REPOSITORY\`."
+          } > "$RUNNER_TEMP/image-digests.md"
+          cat "$RUNNER_TEMP/image-digests.md"
           docker logout ghcr.io
+      - name: the provenance of the image, in the registry
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.images.outputs.repo }}
+          subject-digest: ${{ steps.images.outputs.digest }}
+          push-to-registry: true
+      - name: the provenance of the image, checked; the digests in the notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ steps.images.outputs.repo }}
+          TAG: ${{ steps.images.outputs.tag }}
+          DIGEST: ${{ steps.images.outputs.digest }}
+        run: |
+          set -eu
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          gh attestation verify "oci://$REPO@$DIGEST" --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+          docker logout ghcr.io
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > "$RUNNER_TEMP/notes.md"
+          if grep -q '^## The image, by digest$' "$RUNNER_TEMP/notes.md"; then
+            echo "the notes name the digest already"
+            exit 0
+          fi
+          cat "$RUNNER_TEMP/image-digests.md" >> "$RUNNER_TEMP/notes.md"
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/notes.md"
 
   # After a release: the proofs of release-proofs.yml, on a fresh runner. Only
   # this job may start a workflow.

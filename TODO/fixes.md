@@ -10918,3 +10918,47 @@ sh scripts/agent/check.sh
 2026-11-18, the commit of this entry. The tag `v0.73.0` (commit `1f1fd3f`) in each manifest, `Cargo.lock`,
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
 code. `sh scripts/agent/check.sh` passes.
+
+# T-487: The image on ghcr.io: an attestation of its provenance, and its digests in the release notes
+
+**Source:** the owner's ruling "ghcr.io" (2026-11-19), relayed by podrunner in PodUtils/podrunner#312 (COORD-102 of
+podrunner): each project publishes its CLIs and assets on ghcr.io, signed or attested as the release assets are, in a
+form that plain OCI tools read; the release notes name the digest of each pushed reference.
+**Category:** release
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet publishes `ghcr.io/podutils/podnet:<tag>` since issue 160 (`FROM scratch`, the static binary at
+`/usr/local/bin/podnet`, one image for each of the eight architectures under one manifest list). Two parts of the
+ruling were missing: the image had no attestation, and the release notes did not name its digests. podrunner pins
+podnet by ghcr.io digest beside the SHA-256 of the file.
+
+## Premise
+
+- Read: the job `image` of `.github/workflows/release.yml` and `images/podnet/Dockerfile`. The form is the form (2)
+  of the ruling: `docker pull`, `podvm pull` and `crane export` take it with no other tool.
+- Measured on 2026-11-19: the binary of `ghcr.io/podutils/podnet:v0.4.0-beta.17-amd64`
+  (`sha256:7ea8d5d4...`) has the SHA-256 of `podnet-x86_64-unknown-linux-musl` in `SHA256SUMS` (`d0b72b9b...`).
+
+## Approach
+
+1. The job `image` gives the digest of the manifest list, attests its provenance in the registry (`actions/attest`,
+   `push-to-registry`), checks the attestation (`gh attestation verify oci://`), and appends the section "The image,
+   by digest" (the manifest list and each image of one architecture) to the notes of the release.
+2. `docs/install.md`, "Container image": pin by digest, and check the attestation.
+
+## Prove
+
+```sh
+python3 -I scripts/check-workflows.py
+gh attestation verify oci://ghcr.io/podutils/podnet@sha256:DIGEST --repo PodUtils/podnet   # at the next release
+```
+
+## Done
+
+2026-11-19, the commit of this entry. `scripts/check-workflows.py`: 11 files, 0 faults. The new steps run only on a
+tag; the first proof is the next release. The digests of `v0.4.0-beta.17` are in COORD-109.

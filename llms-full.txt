@@ -11257,6 +11257,16 @@ docker run --rm ghcr.io/podutils/podnet:beta demo --exit-on-verify
 The proxy listens on all addresses of the container: publish the port on
 127.0.0.1 only, or give `--proxy-user` and `--proxy-password-file`.
 
+Pin the image by digest. After `v0.4.0-beta.17`, the release notes of each release have the section "The image, by
+digest": the digest of the manifest list and of each image of one architecture. The provenance of the manifest list
+is attested in the registry. The binary in each image is the file of the release (the same SHA-256 as in
+`SHA256SUMS`).
+
+```sh
+docker pull ghcr.io/podutils/podnet@sha256:DIGEST
+gh attestation verify oci://ghcr.io/podutils/podnet@sha256:DIGEST --repo PodUtils/podnet
+```
+
 ## Update
 
 ```sh

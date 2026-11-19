@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**485 entries: 19 open, 11 partial, 35 blocked, 420 done.**
+**486 entries: 19 open, 11 partial, 35 blocked, 421 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 5 | 2 | 2 | 58 | 67 |
+| P1 | 5 | 2 | 2 | 59 | 68 |
 | P2 | 6 | 6 | 10 | 216 | 238 |
 | P3 | 8 | 3 | 23 | 145 | 179 |
-| **All** | 19 | 11 | 35 | 420 | 485 |
+| **All** | 19 | 11 | 35 | 421 | 486 |
 | **All** | 18 | 12 | 36 | 412 | 478 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
@@ -532,3 +532,4 @@ M8 Overlays, M9 Later.
 | [T-484](fixes.md) | P1 | S | M5 | docs | done | The version line is a contract that podrunner reads |
 | [T-485](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.72.0 |
 | [T-486](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.73.0 |
+| [T-487](fixes.md) | P1 | S | M5 | release | done | The image on ghcr.io: an attestation of its provenance, and its digests in the release notes |

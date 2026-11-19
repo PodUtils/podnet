@@ -27,7 +27,7 @@ change.
   `pod_tls::env_bundle`, `pod_core::lock`, `pod_core::clock`) is T-473; it waits behind podrunner's asks.
 * The newest release is `v0.4.0-beta.17` (T-481, tag at `cfc0924`): the fixes of PodUtils/podrunner#213 and #142 and
   the QA round, under the coordinator's call C782. COORD-108 (#655) asks podrunner to pin it and run #142 again.
-* The record is `TODO/`. `cargo todo check` agrees: 485 entries, 19 open, 11 partial, 35 blocked, 420 done.
+* The record is `TODO/`. `cargo todo check` agrees: 486 entries, 19 open, 11 partial, 35 blocked, 421 done.
 
 ## Unfinished work (not on `main`)
 
@@ -112,6 +112,7 @@ scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.
 | #607 (COORD-100, `remote-port` = 80 for localhost-run) | podcrates adds the fact; podnet takes the next tag. |
 | #604 (COORD-098, the relay holds a lost socket) | The owner of ask 1 (the relay server) and a date (T-406, T-478); ask 2 is in v0.65.0 (T-410). |
 | #649 (COORD-102, the QA round, to all) | podcrates' asks 1 to 3 (their entries 866, 899); close it when T-450 to T-455 are done. |
+| #656 (COORD-109, the image on ghcr.io: T-487) | The coordinator confirms the form (2) for all projects; the next release proves the attestation and the digests in the notes. |
 | #654 (COORD-107, the start report, the takes of v0.70.0 and v0.71.0, the answer to PodUtils/podcrates@T-931) | The asks of podrunner; close it when the coordinator reads it. |
 | #651 (COORD-104, the answer to COORD-131) | podcrates' entries 877, 879, 880 (the lock, `pod-detach`, `pod-release`); T-473. |
 | #592 (COORD-095) | T-358 (the release gate; step 4 is done); T-380 and T-381 are done. |
