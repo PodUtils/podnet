@@ -11050,3 +11050,45 @@ sh scripts/agent/check.sh
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
 code. `cargo test --test link_split`: 8 passed, three times of three; `cargo test --features udp --test link_udp`: 11
 passed. `sh scripts/agent/check.sh` passes.
+
+# T-490: Take podcrates v0.75.0
+
+**Source:** PodUtils/podcrates#238 (COORD-143, 2026-11-19): the tag `v0.75.0` at `930255d`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.74.0`. The tag `v0.75.0` changes the move of the relay layer: a client that moves the
+layer holds the old link while the new one greets (PodUtils/podcrates@T-958). The wire does not change. That is the
+area of T-476 (the cap test of the relay transfer fails under load).
+
+## Premise
+
+- The tag has no hand-off patch for podnet. The installer core has the same SHA-256 as at `v0.74.0`.
+- The gate (`gate.yml`) takes the podlab of the podcrates tag of `Cargo.toml`: a new tag can bring new profiles of
+  the lane (T-481 found one).
+
+## Approach
+
+1. Each podcrates tag is `v0.75.0`: the manifests, both lock files, `scripts/install/SOURCES` and `issue-sync.yml`.
+2. Run `tests/transfer_relay.rs` three times and the relay tests of `podnet-serve`.
+3. Dispatch `gate.yml` on the head, so that a new profile of podlab shows before the next release.
+
+## Prove
+
+```sh
+cargo test --test transfer_relay
+cargo test -p podnet-serve --lib relay
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-19, the commit of this entry. The tag `v0.75.0` (commit `930255d`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
+code. `cargo test --test transfer_relay`: 4 passed, three runs of three (`transfer_over_the_relay_crosses_the_cap`
+among them); `cargo test -p podnet-serve --lib relay`: 37 passed. `sh scripts/agent/check.sh` passes.

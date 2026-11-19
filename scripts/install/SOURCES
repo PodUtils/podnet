@@ -2,8 +2,8 @@
 # version: get each file at the tag, write its SHA-256 here, and run
 # python3 -I scripts/check-install.py --write (it puts core.sh inline in
 # scripts/install.sh).
-tag v0.74.0
-commit dd228ef793c71337a02ad64101a28d9f5440f073
+tag v0.75.0
+commit 930255db0f7cd4535d178e47a01732b239630a63
 9238e0410d58c2eeacfdd23ad7ba4c08f848ed9e41e7fc4a6383d3319bb704b6  core.sh
 85bbaf3d4b8c4b6bee32a5b3de98e5eeb0ecc5375db30120e59cb7a824cd7f73  core-net.sh
 7a3632c60494b4aace45db37e88b277a1353e8713d60c288430b452e16ea0205  pins.py
