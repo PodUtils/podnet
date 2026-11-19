@@ -11009,3 +11009,44 @@ first POST of 1 MiB, the same way. Each other request of the step passed.
 ```sh
 sh scripts/live-throughput.sh target/release/podnet quic "1 4 16" warp
 ```
+
+# T-489: Take podcrates v0.74.0
+
+**Source:** PodUtils/podcrates#237 (COORD-141, 2026-11-19): the tag `v0.74.0` at `dd228ef`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.73.0`. The tag `v0.74.0` changes two timings of podnet's link: a split session waits up to
+500 ms for the `LOST` frame of the far end, so both ends name the same lost half (PodUtils/podcrates@T-950); the gate of
+E2-1 at 20 % drop divides the medians of five runs (PodUtils/podcrates@T-949).
+
+## Premise
+
+- The tag has no hand-off patch for podnet. The installer core has the same SHA-256 as at `v0.73.0`.
+- The tests of these behaviours in podnet: `tests/link_split.rs` (the lost half) and `tests/link_udp.rs` (feature
+  `udp`; the gate of E2-1 is a test of `pod-link`).
+
+## Approach
+
+1. Each podcrates tag is `v0.74.0`: the manifests, both lock files, `scripts/install/SOURCES` and `issue-sync.yml`.
+2. Run `tests/link_split.rs` three times and `tests/link_udp.rs` with its feature.
+
+## Prove
+
+```sh
+cargo test --test link_split
+cargo test --features udp --test link_udp
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-19, the commit of this entry. The tag `v0.74.0` (commit `dd228ef`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
+code. `cargo test --test link_split`: 8 passed, three times of three; `cargo test --features udp --test link_udp`: 11
+passed. `sh scripts/agent/check.sh` passes.
