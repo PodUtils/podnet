@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**490 entries: 20 open, 11 partial, 35 blocked, 424 done.**
+**491 entries: 20 open, 12 partial, 35 blocked, 424 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 5 | 2 | 2 | 62 | 71 |
-| P2 | 6 | 6 | 10 | 216 | 238 |
+| P2 | 6 | 7 | 10 | 216 | 239 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 20 | 11 | 35 | 424 | 490 |
+| **All** | 20 | 12 | 35 | 424 | 491 |
 | **All** | 18 | 12 | 36 | 412 | 478 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
@@ -537,3 +537,4 @@ M8 Overlays, M9 Later.
 | [T-489](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.74.0 |
 | [T-490](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.75.0 |
 | [T-491](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.76.0 |
+| [T-492](fixes.md) | P2 | S | M5 | defect | partial | Tests free a port and then bind it; another test can take the port first |

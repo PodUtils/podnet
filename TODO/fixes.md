@@ -11132,3 +11132,46 @@ sh scripts/agent/check.sh
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
 code. `cargo test --test transfer_relay`: 4 passed, three runs of three; `cargo test -p podnet-serve --lib relay`: 37
 passed. `sh scripts/agent/check.sh` passes.
+
+# T-492: Tests free a port and then bind it; another test can take the port first
+
+**Source:** `ci` 44498923514 (`a3386ee`, 2026-11-19), the job `features`:
+`road::tests::the_pin_cookie_of_a_plain_tcp_listener_is_not_secure` failed with `--local 127.0.0.1:40811: Address
+already in use (os error 98)`. The class of T-479 (a freed port is free for each other test of the run).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+A test bound `127.0.0.1:0`, read the port, dropped the socket, and then gave the port to the local road. Another test
+of the run bound the same port in that window, and the road got `EADDRINUSE`.
+
+## Premise
+
+- Read: the local road binds `tcp://HOST:PORT` and reports the bound address in `Published::url`
+  (`crates/podnet-serve/src/road.rs`), so a test can listen on port 0.
+- A search of `src`, `crates` and `tests` for a port that a test frees: `src/preflight.rs`
+  (`a_closed_port_fails_with_its_address`, a freed port as a refused address: the class of T-479), and `free_port` of
+  `tests/commands.rs` and `tests/warp_stand_in.rs` (a port for a child command to bind; `forward --name` must listen
+  on the port of its target, so port 0 does not fit there).
+
+## Approach
+
+1. The road test listens on `tcp://127.0.0.1:0` and connects to the address of `Published::url`.
+2. `a_closed_port_fails_with_its_address` takes `pod_testkit::refused`.
+3. Later (P3): the users of `free_port` take a port that the child reports, where the command can report one.
+
+## Prove
+
+```sh
+cargo test -p podnet-serve --lib the_pin_cookie
+cargo test --lib a_closed_port_fails_with_its_address
+```
+
+## Correction
+
+2026-11-19, steps 1 and 2 in the commit of this entry: `the_pin_cookie_of_a_plain_tcp_listener_is_not_secure` passes
+three runs of three; `a_closed_port_fails_with_its_address` passes. Step 3 is open.

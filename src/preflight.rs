@@ -656,9 +656,9 @@ mod tests {
     #[tokio::test]
     async fn a_closed_port_fails_with_its_address() {
         crate::test_host::need_loopback!();
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let port = listener.local_addr().unwrap().port();
-        drop(listener);
+        // A refused address that no other test can take (T-479, T-492).
+        let (_held, refused) = pod_testkit::refused::refused();
+        let port = refused.port();
         let report = check(&with(Service::Http(format!("http://127.0.0.1:{port}")))).await;
         assert!(!report.ok());
         let failed = failed(&report);

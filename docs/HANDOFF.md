@@ -27,7 +27,7 @@ change.
   `pod_tls::env_bundle`, `pod_core::lock`, `pod_core::clock`) is T-473; it waits behind podrunner's asks.
 * The newest release is `v0.4.0-beta.17` (T-481, tag at `cfc0924`): the fixes of PodUtils/podrunner#213 and #142 and
   the QA round, under the coordinator's call C782. COORD-108 (#655) asks podrunner to pin it and run #142 again.
-* The record is `TODO/`. `cargo todo check` agrees: 490 entries, 20 open, 11 partial, 35 blocked, 424 done.
+* The record is `TODO/`. `cargo todo check` agrees: 491 entries, 20 open, 12 partial, 35 blocked, 424 done.
 
 ## Unfinished work (not on `main`)
 

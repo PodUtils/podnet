@@ -243,10 +243,12 @@ fn auth_layer_leaves_an_open_service_as_it_is() {
     let _ = guard(axum::Router::new(), open);
 }
 
-/// The `Set-Cookie` of a correct PIN on `road`, over a stream of `connect`.
-async fn unlock_cookie<S>(road: Local, connect: impl std::future::Future<Output = S>) -> String
+/// The `Set-Cookie` of a correct PIN on `road`, over a stream that
+/// `connect` opens to the URL of the published road.
+async fn unlock_cookie<S, F>(road: Local, connect: impl FnOnce(String) -> F) -> String
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+    F: std::future::Future<Output = S>,
 {
     let gate = crate::gate::Gate::pin();
     let pin = gate.pin_display().unwrap().to_string();
@@ -256,8 +258,9 @@ where
         anon_read: false,
     };
     let published = road.publish(guard(text("x"), access)).await.unwrap();
+    let url = published.url.clone().expect("the URL of the road");
     let server = tokio::spawn(published.run());
-    let mut stream = connect.await;
+    let mut stream = connect(url).await;
     let body = format!("password={pin}&next=/");
     let head = format!(
         "POST {} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\
@@ -285,14 +288,17 @@ where
 #[tokio::test]
 async fn the_pin_cookie_of_a_plain_tcp_listener_is_not_secure() {
     pod_testkit::need_loopback!();
-    let probe = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let addr = probe.local_addr().unwrap();
-    drop(probe);
+    // Port 0, and the port that the road reports: a port that a test frees
+    // can be taken by another test before the road binds it (T-492).
     let road = Local {
-        listen: format!("tcp://{addr}"),
+        listen: "tcp://127.0.0.1:0".into(),
         replace: false,
     };
-    let cookie = unlock_cookie(road, async {
+    let cookie = unlock_cookie(road, |url| async move {
+        let addr = url
+            .trim_start_matches("http://")
+            .trim_end_matches('/')
+            .to_string();
         tokio::net::TcpStream::connect(addr).await.unwrap()
     })
     .await;
@@ -305,7 +311,7 @@ async fn the_pin_cookie_of_a_plain_tcp_listener_is_not_secure() {
         listen: format!("unix:{}", path.display()),
         replace: false,
     };
-    let cookie = unlock_cookie(road, async {
+    let cookie = unlock_cookie(road, |_| async {
         tokio::net::UnixStream::connect(&path).await.unwrap()
     })
     .await;
