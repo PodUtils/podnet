@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**491 entries: 20 open, 12 partial, 35 blocked, 424 done.**
+**493 entries: 21 open, 12 partial, 35 blocked, 425 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 5 | 2 | 2 | 62 | 71 |
-| P2 | 6 | 7 | 10 | 216 | 239 |
+| P1 | 5 | 2 | 2 | 63 | 72 |
+| P2 | 7 | 7 | 10 | 216 | 240 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 20 | 12 | 35 | 424 | 491 |
+| **All** | 21 | 12 | 35 | 425 | 493 |
 | **All** | 18 | 12 | 36 | 412 | 478 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
@@ -538,3 +538,5 @@ M8 Overlays, M9 Later.
 | [T-490](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.75.0 |
 | [T-491](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.76.0 |
 | [T-492](fixes.md) | P2 | S | M5 | defect | partial | Tests free a port and then bind it; another test can take the port first |
+| [T-493](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.77.0 |
+| [T-494](fixes.md) | P2 | M | M3 | chore | open | Take `pod-release` in place of podnet's own update |

@@ -11175,3 +11175,77 @@ cargo test --lib a_closed_port_fails_with_its_address
 
 2026-11-19, steps 1 and 2 in the commit of this entry: `the_pin_cookie_of_a_plain_tcp_listener_is_not_secure` passes
 three runs of three; `a_closed_port_fails_with_its_address` passes. Step 3 is open.
+
+# T-493: Take podcrates v0.77.0
+
+**Source:** PodUtils/podcrates#240 (COORD-145, 2026-11-19): the tag `v0.77.0` at `7cbe674`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.76.0`. The tag `v0.77.0` adds the crate `pod-release` (a signed release index, its
+verifier, the self-update of a binary: PodUtils/podcrates@T-880), changes two calls of `pod-extract` (for podrunner
+and podvm), and moves the second Nostr relay of the pairing to `nos.lol` (PodUtils/podcrates@T-963).
+
+## Premise
+
+- The tag has no hand-off patch for podnet. The installer core has the same SHA-256 as at `v0.76.0`.
+- podnet builds against the changed `pod-extract` with no change of code.
+- No code, test, workflow or script of podnet names `offchain.pub` (`docs/research/` names `nos.lol` already).
+- The take of `pod-release` in place of `src/update.rs` and `src/update/cosign.rs` is T-494.
+
+## Approach
+
+1. Each podcrates tag is `v0.77.0`: the manifests, both lock files, `scripts/install/SOURCES` and `issue-sync.yml`.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-19, the commit of this entry. The tag `v0.77.0` (commit `7cbe674`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
+code. `sh scripts/agent/check.sh` passes.
+
+# T-494: Take `pod-release` in place of podnet's own update
+
+**Source:** PodUtils/podcrates#240 (COORD-145): `pod-release` (PodUtils/podcrates@T-880) holds the update of a running
+binary, from podssh's `update` with podnet's strict checks; PodUtils/podcrates@T-966 holds the adoption trial and the
+take. The ruling "Shared code first" (2026-11-17).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`src/update.rs` and `src/update/cosign.rs` are podnet's own copy of the update of a binary (the check of SHA256SUMS,
+of the cosign bundle and of the certificate identity; the trial run). `pod-release` now holds the same capability for
+each project.
+
+## Premise
+
+- The Done section of PodUtils/podcrates@T-880 lists each part of podnet that goes, and each call that takes its place.
+- The rulings "podrunner first" (2026-11-18): this is podnet's own work. It waits behind the asks of podrunner.
+- The ruling on `podnet update` (`CLAUDE.md`, Decisions): SHA256SUMS, the certificate identity and the
+  signature of the cosign bundle are checked with own code; the Rekor inclusion proof is not. `pod-release` must keep
+  that, or the decision changes.
+
+## Approach
+
+1. Read the trial of PodUtils/podcrates@T-966 and the Done section of PodUtils/podcrates@T-880.
+2. Take the crate; remove the copy; the tests of `podnet update` (`tests/`, the `update` step of `live.yml`) stay green.
+
+## Prove
+
+```sh
+cargo test --workspace update
+```
