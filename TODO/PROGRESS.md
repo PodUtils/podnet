@@ -1,13 +1,13 @@
 # Progress
 
-`TODO/INDEX.md` holds 499 entries: 16 open, 14 partial, 36 blocked, 433 done.
+`TODO/INDEX.md` holds 500 entries: 16 open, 13 partial, 35 blocked, 436 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.78.1` (T-495): `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.79.0` (T-501): `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
   (the transfer), `pod-extract`, `pod-manual`, `pod-cloudflare` and `pod-testkit`. Not taken yet: `pod-release`
@@ -24,20 +24,20 @@
 
 00. **Before all: podrunner first** (`docs/decisions.md`, 2026-11-18, podrunner first and Coordinator): a red run of podnet's CI, then each ask of podrunner (a COORD issue `(to podnet)`; the coordinator is the session of podcrates), then each ask of githome and cfb, then the take of each tag of podcrates. Other work waits.
 0. **Then the QA round of 2026-11-17** (`docs/decisions.md`, The QA round and the release freeze): the issues of
-   the testers and of podrunner are done; now the gate of correctness: T-450 (a test for
-   each issue; its check waits for COORD-110), T-452 (the error paths of the lane; its rows of `connect`, `tunnel`
-   and `warp proxy` wait for COORD-111). The lab of the testers' host (the lane row `testers`), the prompt of the
-   black-box QA pass (`scripts/agent/qa-pass.md`, run before each beta) and the measure of readiness
-   (`scripts/promises.py`) are done. No release and no new feature before T-450 and T-452 are done.
+   the testers and of podrunner are done; now the gate of correctness: T-452 (the error paths of the lane; what
+   remains: `forward`, `net proxy` and `relay connect` in a lab). The rule of a test for each defect (with the check
+   `defect_tests` of `pod-todo`), the lab of the testers' host (the lane row `testers`), the prompt of the black-box
+   QA pass (`scripts/agent/qa-pass.md`, run before each beta) and the measure of readiness (`scripts/promises.py`)
+   are done. No release and no new feature before T-452 is done.
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
-   before other work. The next tag after `v0.78.1` is the next take. T-494 (`pod-release` in place of
+   before other work. The next tag after `v0.79.0` is the next take. T-494 (`pod-release` in place of
    `src/update.rs`) is open behind podrunner's asks.
 2. **podnet's own work:** the order below. Skip an entry whose Correction says that its work is
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** no release and no new feature until T-450 and T-452 are done (the gate of the QA round) (`docs/decisions.md`, 2026-11-17, The QA round and the release freeze), except a beta of fixes that podrunner needs (2026-11-18). The newest is `v0.4.0-beta.17`. The next release proves the attestation of the image (issue 656).
+3. **Releases:** no release and no new feature until T-452 is done (the gate of the QA round) (`docs/decisions.md`, 2026-11-17, The QA round and the release freeze), except a beta of fixes that podrunner needs (2026-11-18). The newest is `v0.4.0-beta.17`. The next release proves the attestation of the image (issue 656).
 
 ### The order of podnet's own work
 

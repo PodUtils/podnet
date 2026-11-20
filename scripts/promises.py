@@ -80,18 +80,11 @@ def blackbox_calls(paths):
     lane = scenarios.LANE.read_text()
     texts.append(scenarios.with_scripts(lane))
     calls = {p: [] for p in paths}
-    # The lane runs scripts/lab-errors.sh by a path beside itself, and each
-    # row calls podnet through a helper: `run NAME LIMIT ARGS...` and
-    # `pod_row NAME CAUSE FLAGS...` (pod).
-    for line in (ROOT / "scripts/lab-errors.sh").read_text().splitlines():
-        m = re.match(r"^run \S+ \d+ (.*)$", line) or re.match(r'^pod_row \S+ "[^"]*" (.*)$', line)
-        if m:
-            words = m.group(1).split()
-            if line.startswith("pod_row"):
-                words = ["pod", *words]
-            path = match_path(words, paths)
-            if path:
-                calls[path].append(words)
+    # The rows of scripts/lab-errors.sh (the case errors of the lane).
+    for words in scenarios.error_rows():
+        path = match_path(words, paths)
+        if path:
+            calls[path].append(words)
     for text in texts:
         for m in scenarios.CALL.finditer(text):
             words = [w.strip("\"'") for w in m.group(1).split()]

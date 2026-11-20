@@ -124,6 +124,36 @@ def called(text, paths):
     return found
 
 
+ERRORS = ROOT / "scripts/lab-errors.sh"
+
+
+def error_rows():
+    """The word lists of the calls of the rows of scripts/lab-errors.sh (the
+    case errors of the lane runs it by a path beside itself). A row calls
+    podnet through a helper: `run NAME LIMIT ARGS...`, or
+    `pod_row NAME CAUSE FLAGS...` for pod."""
+    out = []
+    for line in ERRORS.read_text().splitlines():
+        m = re.match(r"^run \S+ \d+ (.*)$", line) or re.match(r'^pod_row \S+ "[^"]*" (.*)$', line)
+        if m:
+            words = [w.strip("\"'") for w in m.group(1).split()]
+            out.append(["pod", *words] if line.startswith("pod_row") else words)
+    return out
+
+
+def error_calls(paths):
+    """The paths that the rows of scripts/lab-errors.sh call."""
+    tops = {p.split()[0] for p in paths}
+    found = set()
+    for words in error_rows():
+        plain = [w for w in words if not w.startswith("-")]
+        if not plain or plain[0] not in tops:
+            continue
+        two = " ".join(plain[:2])
+        found.add(two if two in paths else plain[0])
+    return found
+
+
 def lane_cases():
     """The cases of the lane, and the text of each one."""
     text = LANE.read_text()
@@ -142,7 +172,7 @@ LANE_MAP = {
     "version": [],
     "man": ["man"],
     # scripts/lab-errors.sh (T-452): the error rows.
-    "errors": ["bench", "pod"],
+    "errors": ["bench", "connect", "pod", "tunnel", "warp proxy"],
     "local": [
         "completions",
         "components",
@@ -202,7 +232,7 @@ def lane_calls(paths):
     names, text = lane_cases()
     if sorted(names) != sorted(LANE_MAP):
         raise SystemExit(f"gate-scenarios: the cases of the lane are {names}; LANE_MAP has {sorted(LANE_MAP)}")
-    calls = called(text, paths)
+    calls = called(text, paths) | error_calls(paths)
     for case, found in LANE_MAP.items():
         for p in found:
             if p not in calls:

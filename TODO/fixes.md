@@ -9577,7 +9577,7 @@ workflow, and finds no other old text (the other hits are texts that the code bu
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -9613,6 +9613,14 @@ ones name no test.
 Step 2 is a check of `pod-todo` (PodUtils/podcrates): `crates/podnet-todo` has no own code, and the rule "Shared code
 first" puts the check in the crate. The ask is COORD-110 (GitHub #657): an opt-in key `defect_tests = "DATE"` in
 `todo.toml`. When a tag of podcrates has it, take the tag, set the key in `TODO/todo.toml`, and close this entry.
+
+## Done
+
+2026-11-20, the commit of T-501. Step 2: podcrates `v0.79.0` has the key (PodUtils/podcrates@T-979, the answer to
+COORD-110, #657); `TODO/todo.toml` has `defect_tests = "2026-11-17"`. `cargo todo check` agrees, and refuses a
+planted done defect with no test name: `TODO/fixes.md:LINE: T-498: a done defect names no test in its Done section`.
+Step 1 is the rule of `TODO/RULES.md` (2026-11-20, `177336b`).
+
 
 # T-451: Contract tests from the manual: each flag of the help exists, each example parses, each JSON document has one schema
 
@@ -9741,8 +9749,10 @@ port, a name under `.invalid`, a reject rule):
   profile: pass in each lab that holds here, n.a. for the pod rows in `proc-masked` and `no-proc` (the lab refuses
   the pod, with the reason); the two pod rows failed in `no-proxy-no-dns` (T-499, done: they pass now). `arm64-tcg`, `cgroup-v1` and
   `ipv6-only` do not hold on this host.
-- Not done yet: the rows of `connect`, `tunnel` and `warp proxy` (T-497), the serve paths (`connect -L`, `forward`,
-  `net proxy` in a lab), and a run of the full lane in `gate.yml`.
+- 2026-11-20 (T-501, T-497): the rows of `connect` (`--stdio`), `tunnel` and `warp proxy` are in the case `errors`;
+  each lab passes them.
+- Not done yet: the rows of `forward`, `net proxy` and `relay connect` in a lab (each serves, and a fault shows per
+  connection), and a run of the full lane in `gate.yml`.
 
 # T-453: A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program
 
@@ -11433,7 +11443,7 @@ refuses only a second line that says "Connection refused". It passes here as it 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -11470,9 +11480,18 @@ refuses only a second line that says "Connection refused". It passes here as it 
 cargo test --test pod_error_lines
 ```
 
-## Blocker
+## Done
 
-podcrates must change `pod-cloudflare`, `pod-warp` and `pod-ws` (COORD-111, GitHub #658), and tag a release.
+2026-11-20, the commit of T-501 (podcrates `v0.79.0`, PodUtils/podcrates@T-985, PodUtils/podcrates@T-986 and PodUtils/podcrates@T-987). The lines now: `POST
+https://api.trycloudflare.com/tunnel: api.trycloudflare.com:443 through the proxy ...` (once); `the WARP API: each host
+failed: 2 hosts (...): could not reach the proxy 127.0.0.1:1: ...`; `TCP to 127.0.0.1: could not connect to
+127.0.0.1:1: Connection refused`. The rows `connect-refused`, `connect-no-name`, `connect-dead-proxy`,
+`tunnel-dead-proxy` and `warp-proxy-dead-proxy` of `scripts/lab-errors.sh` pass with the binary of `v0.79.0`.
+Control: with the binary of `v0.78.1`, `connect-no-name`, `tunnel-dead-proxy` and `warp-proxy-dead-proxy` fail (`the
+part 'POST https://api.trycloudflare.com/tunnel' comes two times`, and the like). `connect` takes `--stdio` (no
+listener: the labs `bind-denied` and `listen-denied` refuse a listener). Each lab of pod-lab `v0.68.0` that holds here,
+and the row `testers`, passes the case `errors` as uid 65534.
+
 
 # T-498: A direct dial that timed out names its step two times
 
@@ -11619,3 +11638,46 @@ rules of the global flags (`--no-proxy`, `--quiet`). The local check had passed 
 `pod` from its help, and the new test `each_flag_of_the_help_is_a_flag_of_the_parser`
 (`crates/podnet-netns/src/cli_tests.rs`) proves that the parser of pod takes each of them; the two sentences are
 split; the manual clears the rules of `pod`. A fresh check (each changed file touched) passes.
+
+# T-501: Take podcrates v0.79.0
+
+**Source:** PodUtils/podcrates#245 (COORD-149, 2026-11-20): the tag `v0.79.0` at `68fbc96`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.78.1`. The tag `v0.79.0` has the answers to COORD-110 (#657: the key `defect_tests` of
+`pod-todo`) and COORD-111 (#658: each error line of `pod-cloudflare`, `pod-warp`, `pod-ws` and `pod-proxy` names each
+cause once), Rekor v2 in `pod-release`, and the clients of a job through `pod-broker`.
+
+## Premise
+
+- The tag has no hand-off patch for podnet (`adoption/podnet` has `commit` and `repo` only). The installer core has the
+  same SHA-256 as at `v0.78.1`.
+- The breaking change of `pod_release::sigstore::Roots` does not reach podnet (podnet does not use `pod_release`; T-494).
+
+## Approach
+
+1. Each podcrates tag is `v0.79.0`: the manifests, both lock files, `scripts/install/SOURCES` (the tag and the commit)
+   and `issue-sync.yml` (the commit and `podcrates_ref`).
+2. `TODO/todo.toml`: `defect_tests = "2026-11-17"` (T-450).
+3. The rows of `connect`, `tunnel` and `warp proxy` in the case `errors` of the lane (T-497).
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+cargo todo check
+```
+
+## Done
+
+2026-11-20, the commit of this entry. The tag `v0.79.0` (commit `68fbc96`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`; the three installer files have the same SHA-256.
+podnet builds against the tag with no change of code; no test of podnet pins an old text. `sh scripts/agent/check.sh`
+passes. The key `defect_tests` holds: `cargo todo check` agrees, and refuses a planted done defect with no test name
+(`T-498: a done defect names no test in its Done section`).

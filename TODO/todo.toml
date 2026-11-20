@@ -17,3 +17,6 @@ readings = ["docs/releases/", "docs/reports/", "docs/research/"]
 # TODO/RULES.md of podcrates, section 4). .github/workflows/issue-sync.yml
 # makes GitHub agree with the record.
 issue_rules = "on"
+# The Done section of each defect done on or after this date names its test
+# (TODO/RULES.md, "A defect closes with a test that reproduces it"; T-450).
+defect_tests = "2026-11-17"

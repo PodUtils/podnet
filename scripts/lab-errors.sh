@@ -16,8 +16,8 @@
 # refuse a connect in its own words (Permission denied, Network is
 # unreachable): a cause is a pattern with these words.
 #
-# The rows of connect, tunnel and warp proxy wait for T-497 (their lines
-# name a cause two times in the code of podcrates).
+# The rows of connect, tunnel and warp proxy came with podcrates v0.79.0
+# (T-497: their lines named a cause two times before).
 
 set -u
 
@@ -105,6 +105,29 @@ row bench-no-name $?
 run bench-unreachable 60 bench --duration 2 --timeout 5 --no-proxy http://192.0.2.1/
 check bench-unreachable 1 "no request worked: GET http://192\.0\.2\.1/"
 row bench-unreachable $?
+
+# connect checks its remote at the start, tunnel asks the quick-tunnel
+# service, warp proxy asks the WARP API: each fault ends with exit 69 (a
+# service or a network path is not available).
+run connect-refused 60 connect --stdio --no-proxy wss://127.0.0.1:1/__podnet/ws
+check connect-refused 69 "does not answer.*($refused)"
+row connect-refused $?
+
+run connect-no-name 60 connect --stdio --no-proxy wss://nowhere.invalid/__podnet/ws
+check connect-no-name 69 "could not resolve nowhere\.invalid"
+row connect-no-name $?
+
+run connect-dead-proxy 60 connect --stdio --proxy http://127.0.0.1:1 wss://lab.test/__podnet/ws
+check connect-dead-proxy 69 "could not reach the proxy 127\.0\.0\.1:1"
+row connect-dead-proxy $?
+
+run tunnel-dead-proxy 60 tunnel --hello-world --proxy http://127.0.0.1:1
+check tunnel-dead-proxy 69 "could not reach the proxy 127\.0\.0\.1:1"
+row tunnel-dead-proxy $?
+
+run warp-proxy-dead-proxy 60 warp proxy --proxy http://127.0.0.1:1 --listen 127.0.0.1:0
+check warp-proxy-dead-proxy 69 "each host failed: .*could not reach the proxy 127\.0\.0\.1:1"
+row warp-proxy-dead-proxy $?
 
 # pod: the program sees ECONNREFUSED or a reset; podnet names the cause
 # in one line (T-496). A backend that the lab refuses gives exit 3 and its

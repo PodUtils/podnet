@@ -23,7 +23,7 @@ only with a test that reproduces it and fails on the code before the fix.
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.78.1` (T-495). `sh scripts/agent/podcrates.sh`
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.79.0` (T-501). `sh scripts/agent/podcrates.sh`
   shows a newer tag. The installer core in `scripts/install/` is that of `v0.70.0` (the same file at each tag since).
 * The newest release is `v0.4.0-beta.17` (T-481). It has the fixes of PodUtils/podrunner#213 and #142. podrunner's
   user-path gate passes with it on each lane (PodUtils/podrunner#309).

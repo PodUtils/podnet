@@ -14,7 +14,7 @@ bench | lane:errors; lane:net-bench
 bug-report | lane:local
 completions | lane:local
 components | lane:local
-connect | live:Throughput of the HTTP path and of a --forward WebSocket; live:Throughput through WARP, 1 to 16 MiB
+connect | live:Throughput of the HTTP path and of a --forward WebSocket; live:Throughput through WARP, 1 to 16 MiB; lane:errors
 demo | live:Quick tunnel, QUIC (UDP 7844); live:Quick tunnel, HTTP/2 (TCP 7844); live:Quick tunnel, JSON lines (--json); live:UDP probe, answered and refused; live:Quick tunnel through a local CONNECT proxy; live:Quick tunnel with no system DNS, then with 1.1.1.1 blocked; live:A wrong --resolve pin fails at the TLS name check; live:Quick tunnel, QUIC through WARP (TCP 443); live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:Quick tunnel through the WebSocket relay (7844 dropped); live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:way-tunnel
 doctor | live:podnet doctor; live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:warp up, env, exec, --persist and down; live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:doctor; lane:proxy-doctor
 exit | lane:net-exit
@@ -60,7 +60,7 @@ share | live:Large share uploads, QUIC and HTTP/2
 ssh-relay | live:A unix socket through a public SSH relay
 status | lane:local
 stop | live:File server through a quick tunnel; live:Git over HTTPS through a quick tunnel; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:Git over SSH through the reverse relay; live:warp tun --default-route (root), then everything as before; live:warp tun --default-route with no default route (proxy only); live:An IPv6-only host; live:Router with WARP, the relay and a failover
-tunnel | live:SIGTERM between the ready line and the verify; live:Throughput of the HTTP path and of a --forward WebSocket; live:WebSocket through a --url origin; live:Throughput through WARP, 1 to 16 MiB; live:The test box; live:The test box fails with a binary that exits 3
+tunnel | live:SIGTERM between the ready line and the verify; live:Throughput of the HTTP path and of a --forward WebSocket; live:WebSocket through a --url origin; live:Throughput through WARP, 1 to 16 MiB; live:The test box; live:The test box fails with a binary that exits 3; lane:errors
 update | live:podnet update to v0.4.0-beta.1
 wait | lane:link-control
 warp register | live:WARP account and probe; live:WARP API through its second host; live:Router with WARP, the relay and a failover
@@ -73,7 +73,7 @@ warp exit | live:The commands of the second batch
 warp export | live:The commands of the second batch
 warp scan | live:The commands of the second batch
 warp forward | live:The commands of the second batch
-warp proxy | live:Exit 69 for an unavailable path; live:WARP proxy; live:The commands of the second batch
+warp proxy | live:Exit 69 for an unavailable path; live:WARP proxy; live:The commands of the second batch; lane:errors
 warp up | live:Exit 69 for an unavailable path; live:warp up with its TCP listener refused; live:warp up, env, exec, --persist and down
 warp down | live:warp up with its TCP listener refused; live:warp up, env, exec, --persist and down
 warp env | live:warp up with its TCP listener refused; live:warp up, env, exec, --persist and down

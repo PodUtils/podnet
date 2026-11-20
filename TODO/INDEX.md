@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**499 entries: 16 open, 14 partial, 36 blocked, 433 done.**
+**500 entries: 16 open, 13 partial, 35 blocked, 436 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 4 | 2 | 67 | 74 |
-| P2 | 6 | 7 | 11 | 220 | 244 |
+| P1 | 1 | 3 | 2 | 69 | 75 |
+| P2 | 6 | 7 | 10 | 221 | 244 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 16 | 14 | 36 | 433 | 499 |
-| **All** | 16 | 14 | 36 | 433 | 499 |
+| **All** | 16 | 13 | 35 | 436 | 500 |
+| **All** | 16 | 13 | 35 | 436 | 500 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -495,7 +495,7 @@ M8 Overlays, M9 Later.
 | [T-447](fixes.md) | P3 | S | M6 | feature | done | `ssh-relay` has no `--run-for`, and `-q` prints the banner (GitHub #632) |
 | [T-448](fixes.md) | P3 | S | M6 | feature | done | No way to add a user to the users file of `serve` (GitHub #633) |
 | [T-449](fixes.md) | P1 | S | M5 | defect | done | live: four checks read the log lines of the tunnel before the take of `pod-cloudflare` |
-| [T-450](fixes.md) | P1 | S | M5 | chore | partial | Rule: an issue closes only with a test that reproduces it |
+| [T-450](fixes.md) | P1 | S | M5 | chore | done | Rule: an issue closes only with a test that reproduces it |
 | [T-451](fixes.md) | P1 | M | M5 | chore | done | Contract tests from the manual: each flag of the help exists, each example parses, each JSON document has one schema |
 | [T-452](fixes.md) | P1 | M | M5 | chore | partial | Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS |
 | [T-453](fixes.md) | P1 | S | M5 | chore | done | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |
@@ -542,7 +542,8 @@ M8 Overlays, M9 Later.
 | [T-494](fixes.md) | P2 | M | M3 | chore | open | Take `pod-release` in place of podnet's own update |
 | [T-495](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.78.1 |
 | [T-496](fixes.md) | P1 | S | M7 | defect | done | `pod`: a failed connect of the program gives no line at the default level |
-| [T-497](fixes.md) | P2 | S | M5 | defect | blocked | The error lines of `tunnel`, `warp proxy` and `connect` name one cause two times (code of podcrates) |
+| [T-497](fixes.md) | P2 | S | M5 | defect | done | The error lines of `tunnel`, `warp proxy` and `connect` name one cause two times (code of podcrates) |
 | [T-498](fixes.md) | P2 | S | M5 | defect | done | A direct dial that timed out names its step two times |
 | [T-499](fixes.md) | P2 | M | M7 | defect | done | `pod --backend netns`: no name resolves when `/etc/resolv.conf` is a mount of a deleted file |
 | [T-500](fixes.md) | P2 | S | M5 | defect | done | `podnet pod --help --json` prints text, and the manual of `pod` has no flag of `pod` |
+| [T-501](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.79.0 |
