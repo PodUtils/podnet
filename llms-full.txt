@@ -12606,6 +12606,12 @@ gateway is always the fake DNS. See
 The fake DNS answers a query over UDP and over TCP (the framing of RFC 7766).
 The `seccomp` backend answers each connection to port 53; the `netns` backend
 answers the gateway `10.66.255.254`, the nameserver of its `resolv.conf`.
+When the netns backend cannot put its `resolv.conf` over `/etc/resolv.conf`
+(for example, the host file is a mount of a deleted file), the program keeps
+the host file, the pod prints one warning, and it answers port 53 of the
+loopback of its namespace (UDP and TCP) and each other nameserver of that
+file. A file with no nameserver (glibc then asks `127.0.0.1`) and a
+nameserver such as `127.0.0.53` then work too.
 Where a seccomp filter of the host refuses each UDP socket (the lab
 `udp-denied` of pod-lab), the pod adds `use-vc` to `RES_OPTIONS` of the
 program, and prints one line on stderr. A glibc program then sends each query
