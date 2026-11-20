@@ -81,9 +81,12 @@ state of the open work.
 * **Helper scripts of the agent** (in `scripts/agent/`):
   * `podcrates.sh`: the state of `PodUtils/podcrates` for podnet (see
     "Shared crates").
-  * `check.sh [notest]`: the three checks of `CLAUDE.md` before each push,
-    `cargo todo check`, `scripts/check-size.py` and
-    `scripts/check-layers.py`.
+  * `check.sh [notest]`: the checks of `CLAUDE.md` before each push (fmt,
+    clippy, the tests, `cargo todo check`, `scripts/check-size.py`,
+    `scripts/check-layers.py`) and the checks that `ci` also runs (`cargo doc`,
+    `scripts/doc-commands.py --check`, `scripts/gate-scenarios.py --check`, the
+    man page, the installer core, the workflows, `shellcheck`). `notest` skips
+    the tests.
   * `parity-snapshot.sh DIR [BEFORE [MAP]]`: the parity facts in three
     sorted files of `DIR`: `commands.txt` (each command and flag of
     `podnet man --json`), `items.txt` (the public items of `cargo doc`) and
@@ -103,8 +106,8 @@ state of the open work.
   * `watch-runs.sh FULL_SHA [MIN_RUNS]`: each run of a commit when it ends,
     with the failed jobs and steps (`runs.py` reads the run list). Give the
     full SHA (`git rev-parse HEAD`): the API does not match a short SHA. A
-    push to `main` starts four runs (`ci`, `live`, `deny`, `secrets`):
-    `MIN_RUNS` 4.
+    push to `main` starts five runs (`ci`, `live`, `deny`, `secrets`,
+    `issue-sync`): `MIN_RUNS` 5. A dispatch of `gate` on the commit is a sixth.
 * **Other scripts** (in `scripts/`):
   * `v6only/up.sh BINARY`, `v6only/run.sh CMD`, `v6only/acceptance.sh
     BINARY`, `v6only/down.sh`: an IPv6-only host on a runner (issue 163).
@@ -222,7 +225,7 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 | `live.yml` | each push to `main`, each day, by hand | podnet against the real edge and WARP, on a GitHub runner |
 | `deny.yml`, `secrets.yml` | each push | licences and advisories; secret scan (`.github/secrets-allow.txt`) |
 | `gate.yml` | by hand; a job of `release.yml` (`publish` needs it) | the release gate (T-358): `scripts/lab-lane.sh` in the labs of `pod-lab`, as the runner user, and its plant |
-| `release.yml` | a tag, or by hand | the release binaries; a dry run with no input |
+| `release.yml` | a tag, or by hand | the release binaries, the job `gate`, the signed release, the image on ghcr.io (job `image`: the attestation, the pull-back check, the digests in the notes; T-487); a dry run with no input builds the images and pushes nothing |
 | `publish.yml` | a tag `v*`, or by hand | `cargo publish --workspace --dry-run`; the real publish only when `[workspace.metadata.podnet] crates-io = true` (trusted publishing, no token) |
 | `release-proofs.yml` | after a release | checks the release files, SHA256SUMS and the signatures |
 | `fuzz.yml` | on a schedule | fuzz targets |
@@ -264,12 +267,21 @@ Betas are allowed; there is no crates.io release (`docs/decisions.md`,
    `tests/docs.rs` refuse a note with no such heading (issue 126).
    A head names the binaries `podnet-<target>` only, the image
    `ghcr.io/podutils/podnet` and the identity of `PodUtils/podnet`.
-3. Commit, push, and wait until `ci` and `live` pass on that commit.
+3. Commit, push, and wait until `ci` and `live` pass on that commit. Dispatch
+   `gate.yml` on `main` for that commit (`actions_run_trigger`, `run_workflow`)
+   and wait until it passes: `publish` needs the job `gate` of `release.yml`,
+   and a fault of the lane shows earlier here.
 4. Dispatch `release.yml` on `main` with `publish` empty: the dry run.
 5. When the dry run passes, dispatch `release.yml` with `publish` set to
    `vX.Y.Z-beta.N`. The job makes the tag and starts the release run on it.
 6. Check that the release has its files, and that `release-proofs.yml`
-   passes (each file `OK`, `Verified OK`).
+   passes (each file `OK`, `Verified OK`). Check that the job `image` passed:
+   it checks the attestation of the manifest list
+   (`gh attestation verify oci://...`), pulls each image of one architecture
+   back by its digest and compares its binary with the file of the release,
+   and adds the section "The image, by digest" to the notes. Write the digest
+   of the manifest list beside the SHA-256 of each file in the hand-off COORD
+   issue of the release (call C789 of podcrates, item 5).
 
 At the first stable release (no `-beta.N`), also:
 
@@ -308,9 +320,10 @@ At the first stable release (no `-beta.N`), also:
 | `crates/podnet-core/` | the core layer (T-047): `exit`, `hop`, `state`, `report`, `decisions`, `metrics`, `rlimit`, `yaml`, `race`, `util`, `qr`, `ports`, `net`, `trust`, `udp`, `connect`, `services`, `detach`, `instances`, `autostart`, the facts of the build (`podnet_core::build`) and a copy of the print macros. It uses no other crate of the workspace. `src/lib.rs` gives each module at its old path (`podnet::exit`). `src/report.rs` keeps `error_line` (it reads the refusal of `egress`), and `src/core_tests.rs` keeps the tests that read a higher layer or a file of the repository |
 | `crates/podnet-serve/` | the services (T-051): `share`, `gate`, `service`, `ingress`, `origin`, `feature`, `relay` and a copy of the print macros. It uses `podnet-core` and no other crate of the workspace. `src/lib.rs` gives each module at its old path (`podnet::share`). `src/ws.rs` stays in the root crate, and `src/serve_tests.rs` keeps the test that reads a higher layer |
 
-Shared crates (see "Shared crates" above): `pod-todo`, `pod-core`, `pod-tls` and `pod-proxy` come from
-`PodUtils/podcrates` by the git tag `v0.3.0` (T-137). `deny.toml` allows
-that git source. Once podnet takes a crate, a change of its code goes to
+Shared crates (see "Shared crates" above): the `pod-*` crates come from
+`PodUtils/podcrates` by one git tag, the tag that `Cargo.toml` names
+(`TODO/PROGRESS.md` lists the crates; T-137). `deny.toml` allows that git
+source. Once podnet takes a crate, a change of its code goes to
 `PodUtils/podcrates` (under its `AGENTS.md`) or into an issue there, not
 into podnet. The toolchain is Rust 1.99.1 and `rust-version` is 1.99.
 

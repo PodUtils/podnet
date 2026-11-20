@@ -5,7 +5,7 @@
 #   sh scripts/agent/watch-runs.sh FULL_SHA [MIN_RUNS]
 #
 # FULL_SHA must have 40 characters: the API does not match a short SHA.
-# A push to main starts ci, live, deny and secrets: MIN_RUNS 4.
+# A push to main starts ci, live, deny, secrets and issue-sync: MIN_RUNS 5.
 set -u
 sha=$1
 min=${2:-1}
