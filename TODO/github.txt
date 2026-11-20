@@ -372,4 +372,4 @@
 671 issue closed
 672 issue closed
 673 issue closed
-674 issue open
+674 issue closed

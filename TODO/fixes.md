@@ -11851,4 +11851,5 @@ sh scripts/agent/check.sh
 
 2026-11-20, the commit of this entry. The tag `v0.80.0` (commit `62b8039`) in each manifest, `Cargo.lock`,
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`; the three installer files have the same SHA-256.
-podnet builds against the tag with no change of code. `sh scripts/agent/check.sh` passes.
+podnet builds against the tag with no change of code. `sh scripts/agent/check.sh` passes. `ci` 44803822897 on
+`058059f` passed.
