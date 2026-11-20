@@ -253,6 +253,10 @@ Betas are allowed; there is no crates.io release (`docs/decisions.md`,
    rows of the lane (T-452) and the black-box QA pass (T-454) pass on the commit. No release before T-450 to T-455
    are done, except a beta of fixes that podrunner needs (`docs/decisions.md`, 2026-11-18, A beta of fixes for
    podrunner under the freeze).
+   The black-box QA pass: give `scripts/agent/qa-pass.md` as it is to a new agent that has the binary of the
+   commit (the artifact of `ci`), `README.md` and `docs/` only (no source, no record, no issue), and PODLAB. The agent
+   writes each finding as an issue titled `[qa VERSION] ...`. Triage each finding into an entry. The release waits
+   until each finding is an entry and each P1 and P2 finding is done.
 1. Set the version in `Cargo.toml` (the package and the `podnet-core`,
    `podnet-netns`, `podnet-serve` and `podnet-vnet` dependencies; the
    `podnet-core` dependency of `crates/podnet-serve/Cargo.toml` and of

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 498 entries: 18 open, 14 partial, 36 blocked, 430 done.
+`TODO/INDEX.md` holds 498 entries: 17 open, 14 partial, 36 blocked, 431 done.
 
 ## State
 
@@ -26,8 +26,8 @@
 0. **Then the QA round of 2026-11-17** (`docs/decisions.md`, The QA round and the release freeze): the issues of
    the testers and of podrunner are done; now the gate of correctness: T-450 (a test for
    each issue; its check waits for COORD-110), T-452 (the error paths of the lane; its rows of `connect`, `tunnel`
-   and `warp proxy` wait for COORD-111), T-454 (a black-box QA pass), T-455 (the measure of readiness). The lab of the
-   testers' host is done (the lane row `testers`). No release and no new feature before T-450 to T-455 are done.
+   and `warp proxy` wait for COORD-111), T-455 (the measure of readiness). The lab of the testers' host (the lane row
+   `testers`) and the prompt of the black-box QA pass (`scripts/agent/qa-pass.md`, run before each beta) are done. No release and no new feature before T-450 to T-455 are done.
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
    before other work. The next tag after `v0.78.1` is the next take. T-494 (`pod-release` in place of

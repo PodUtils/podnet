@@ -9789,7 +9789,7 @@ each TCP connect of the program, in each namespace). `podlab run` keeps the vari
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -9812,6 +9812,16 @@ External testers found 40 issues in one hour with the documents and the help onl
 ```sh
 ls scripts/agent/ | grep -x qa-pass.md
 ```
+
+## Done
+
+2026-11-20. `scripts/agent/qa-pass.md` is the prompt of the pass: the inputs (the binary of the version, `README.md`
+and `docs/`, PODLAB), what the agent must not use (no source, no record, no issue), the host classes (the labs, as a
+user that is not root), what to check (the help, each promise of the topic documents, the five error paths of each
+command that dials, the JSON outputs and the exit codes, the background, the stop signals), and the form of a finding
+(one issue for each fault, titled `[qa VERSION] COMMAND: ...`). `docs/maintenance.md`, Release, step 0, gives the
+pass: a new agent with the binary and the documents only; the release waits until each finding is an entry and each
+P1 and P2 finding is done. The first pass runs before the next beta.
 
 # T-455: Readiness: the promises with a test, in place of the commands with a scenario
 
