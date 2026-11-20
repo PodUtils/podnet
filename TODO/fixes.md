@@ -11637,7 +11637,8 @@ rules of the global flags (`--no-proxy`, `--quiet`). The local check had passed 
 `src/manual/pod_flags.rs` out and back with `mv`, which keeps its old time). The fix: the test takes the flags of
 `pod` from its help, and the new test `each_flag_of_the_help_is_a_flag_of_the_parser`
 (`crates/podnet-netns/src/cli_tests.rs`) proves that the parser of pod takes each of them; the two sentences are
-split; the manual clears the rules of `pod`. A fresh check (each changed file touched) passes.
+split; the manual clears the rules of `pod`. A fresh check (each changed file touched) passes. `ci` 44707736066 on `4559204`
+(the commit after the fix) passed.
 
 # T-501: Take podcrates v0.79.0
 
@@ -11680,4 +11681,4 @@ cargo todo check
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`; the three installer files have the same SHA-256.
 podnet builds against the tag with no change of code; no test of podnet pins an old text. `sh scripts/agent/check.sh`
 passes. The key `defect_tests` holds: `cargo todo check` agrees, and refuses a planted done defect with no test name
-(`T-498: a done defect names no test in its Done section`).
+(`T-498: a done defect names no test in its Done section`). `ci` 44707736066 on `4559204` passed.

@@ -362,4 +362,4 @@
 661 issue closed
 662 issue closed
 663 issue closed
-664 issue open
+664 issue closed
