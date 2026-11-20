@@ -347,7 +347,7 @@
 646 issue closed
 647 issue closed
 648 issue closed
-649 issue open
+649 issue closed
 650 issue closed
 651 issue open
 652 issue closed
@@ -369,4 +369,4 @@
 668 issue closed
 669 issue open
 670 issue open
-671 issue open
+671 issue closed

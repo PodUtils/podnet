@@ -338,7 +338,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #646 | podnet expose --via switch rejects the http:// target syntax that expose itself documents | closed (outside the team: verified, labelled `confirmed`; T-470) | T-470 |
 | #647 | podnet ssh-relay --no-restart help names --stop-after, --idle-secs and --run-for, which the command rejects | closed (outside the team: verified, labelled `confirmed`; T-471) | T-471 |
 | #648 | podnet serve --list: the HTML listing omits the modified time and the upload limit | closed (outside the team: verified, labelled `confirmed`; T-472) | T-472 |
-| #649 | COORD-102: the QA round of podnet: 40 issues in one hour; a gate that measured reach, not correctness; asks for podcrates and the siblings (to all) | open (a COORD issue between sessions) | T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457 |
+| #649 | COORD-102: the QA round of podnet: 40 issues in one hour; a gate that measured reach, not correctness; asks for podcrates and the siblings (to all) | closed (its subject is done: the gate of the QA round, T-450 to T-455, done on 2026-11-20; `docs/decisions.md`, The end of the release freeze) | T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457 |
 | #650 | COORD-103: the installer prints the proxy line twice; the default directory can be noexec (PodUtils/podnet#645) (to podcrates) | closed (answered: podcrates PodUtils/podcrates@T-883 in `v0.70.0`; taken in T-480) | T-469 |
 | #651 | COORD-104: the answer to PodUtils/podcrates#221 (COORD-131): podnet's copies of shared code, and the text of the rulings (to podcrates) | open (a COORD issue between sessions) | T-473 |
 | #652 | COORD-105: podnet's copies that need a change of podcrates (ask 3 of PodUtils/podcrates#221) (to podcrates) | closed (answered: podcrates' entries 896 to 901) | T-473 |
@@ -360,6 +360,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #668 | [gh action] requested: gate (the full lane with the case `errors` and the row `testers`) before the next beta | closed: gate 44742237281 failed on c9e394a: the case `errors` in 7 labs (T-503: the loopback nameserver of the runner; the words of Rust for an unreachable network; a client limit of 10 s on an IPv6-only host); fixed in the next commit | T-503 |
 | #669 | [gh action] requested: ci on the resolver at each loopback nameserver (T-503) and the error rows | open (a request of a run) | T-503 |
 | #670 | [gh action] requested: gate again on the resolver at each loopback nameserver (T-503) and the error rows | open (a request of a run) | T-503 |
-| #671 | [gh action] requested: issue-sync (not a dry run) after `record-issues` 44752520313 found 4 differences | open (a request of a run) | none |
+| #671 | [gh action] requested: issue-sync (not a dry run) after `record-issues` 44752520313 found 4 differences | closed: issue-sync 44782981366 passed on 3836971 (GitHub agrees with the record) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

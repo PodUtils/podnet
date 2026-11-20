@@ -58,6 +58,11 @@ state of the open work.
   batches: each push starts about 12 jobs of `ci`, and the runners of the
   organization are shared. Cancel the runs of a head that a newer push
   replaces. A release (`release.yml -f publish=vX`) is also a dispatch.
+  Measured 2026-11-20: a push of the cloud session starts no workflow, and
+  the session cannot dispatch one. Then each run is a request (below).
+  `issue-sync` also starts on a push only: after a commit that closes or
+  opens an issue in the record, request `issue-sync.yml -f dry_run=false`
+  (else the daily `record-issues` fails on each difference).
 * **A run when a push starts no workflow** (the rule of the owner,
   2026-11-06; the fallback when the session cannot start a run): the local agent of the owner runs the commands, and it is a
   smaller model. For each run, open a NEW issue in `PodUtils/podnet` titled
