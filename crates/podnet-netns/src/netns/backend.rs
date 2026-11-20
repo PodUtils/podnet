@@ -70,6 +70,12 @@ pub(crate) struct Backend {
 }
 
 impl Backend {
+    /// The asker of the fake DNS of the pod (T-499: the sockets of port 53
+    /// of the namespace).
+    pub(crate) fn dns_asker(&self) -> crate::dnstcp::Asker {
+        self.dns_tcp.asker()
+    }
+
     /// The backend on `fd`. Call it inside a runtime of tokio: the stack
     /// spawns its reactor.
     pub(crate) fn new(

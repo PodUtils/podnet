@@ -176,3 +176,73 @@ fn each_failed_connect_names_its_cause_once() {
     }
     assert!(faults.is_empty(), "{}", faults.join("\n"));
 }
+
+/// T-499: `/etc/resolv.conf` is a mount of a deleted file with no
+/// nameserver (the lab `no-proxy-no-dns` of pod-lab; a container whose
+/// file was replaced). The pod cannot mount its own file there; the
+/// program still resolves each name through the pod, on each backend.
+#[test]
+fn a_resolv_conf_of_a_deleted_file_still_resolves() {
+    if !python3() {
+        eprintln!("skip: no python3 on this host");
+        return;
+    }
+    let ok = |args: &[&str]| {
+        Command::new("unshare")
+            .args(args)
+            .output()
+            .is_ok_and(|o| o.status.success())
+    };
+    if !ok(&["-rm", "true"]) {
+        eprintln!("skip: no user and mount namespace on this host");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("resolv.conf");
+    let script = format!(
+        r#"set -e
+echo "options attempts:1 timeout:1" > "{file}"
+mount --bind "{file}" /etc/resolv.conf
+rm "{file}"
+grep -q ' /etc/resolv.conf .*' /proc/self/mountinfo
+for b in "$@"; do
+  echo "backend $b"
+  timeout 60 "{podnet}" pod --backend "$b" -x direct -- python3 -I -c '
+import socket
+try:
+    print("resolved", socket.getaddrinfo("lab.test", 80)[0][4][0])
+except OSError as e:
+    print("failed", e)' || echo "exit $?"
+done
+"#,
+        file = file.display(),
+        podnet = env!("CARGO_BIN_EXE_podnet"),
+    );
+    let out = Command::new("unshare")
+        .args(["-rm", "sh", "-c", &script, "sh"])
+        .args(backends())
+        .env_remove("HTTPS_PROXY")
+        .env_remove("https_proxy")
+        .env_remove("HTTP_PROXY")
+        .env_remove("http_proxy")
+        .env_remove("ALL_PROXY")
+        .env_remove("all_proxy")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(out.status.success(), "{stdout}\n{stderr}");
+    let mut faults = Vec::new();
+    for block in stdout.split("backend ").skip(1) {
+        let backend = block.lines().next().unwrap_or("");
+        // A backend that the user namespace refuses exits 3 with its reason.
+        if block.contains("exit 3") {
+            eprintln!("{backend}: the namespace refuses the backend");
+            continue;
+        }
+        if !block.contains("resolved 198.18.") {
+            faults.push(format!("{backend}: {block}"));
+        }
+    }
+    assert!(faults.is_empty(), "{}\n{stderr}", faults.join("\n"));
+}

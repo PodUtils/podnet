@@ -81,6 +81,14 @@ impl Asker {
         tokio::spawn(serve(pod, self.tx.clone()));
         Box::new(program)
     }
+
+    /// Ask one query (a datagram of the program) and wait for its answer.
+    /// `None`: no answer (not a query, or the backend ended).
+    pub(crate) async fn ask(&self, message: Vec<u8>) -> Option<Vec<u8>> {
+        let (reply, answer) = oneshot::channel();
+        self.tx.send(Query { message, reply }).ok()?;
+        answer.await.ok().filter(|a| !a.is_empty())
+    }
 }
 
 /// Serve one connection: read each message, ask the backend, and write the

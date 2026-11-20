@@ -9739,7 +9739,7 @@ port, a name under `.invalid`, a reject rule):
   `pod` (a name with no answer, a reject rule). A row checks the end within a limit, the exit code, one line of
   podnet with the cause, and no part of a line said two times. Run as uid 65534 with pod-lab `v0.68.0` on each
   profile: pass in each lab that holds here, n.a. for the pod rows in `proc-masked` and `no-proc` (the lab refuses
-  the pod, with the reason); fail in `no-proxy-no-dns` for the two pod rows (T-499). `arm64-tcg`, `cgroup-v1` and
+  the pod, with the reason); the two pod rows failed in `no-proxy-no-dns` (T-499, done: they pass now). `arm64-tcg`, `cgroup-v1` and
   `ipv6-only` do not hold on this host.
 - Not done yet: the rows of `connect`, `tunnel` and `warp proxy` (T-497), the serve paths (`connect -L`, `forward`,
   `net proxy` in a lab), and a run of the full lane in `gate.yml`.
@@ -10813,7 +10813,7 @@ podnet pod: write uid/gid maps: the child died before it named its namespace
 
 ## Premise
 
-- Read: `crates/podnet-netns/src/netns/mod.rs:90` and `crates/podnet-netns/src/kernel.rs:55` add the context
+- Read: `crates/podnet-netns/src/netns/mod.rs:91` and `crates/podnet-netns/src/kernel.rs:55` add the context
   `write uid/gid maps` to the error of `pod_hold::netns::answer`, which says that the child died. The child died because
   its `unshare` failed; that line was printed first.
 - The exit code (3) and the first line are right.
@@ -11484,7 +11484,7 @@ egress::tests::`: 6 passed. Control: on the `src/egress.rs` of `177336b4` with t
 **Milestone:** M7
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -11519,3 +11519,15 @@ seccomp and netns-kernel backends resolve the names in the same lab.
 cargo test --test pod_error_lines
 LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET no-proxy-no-dns
 ```
+
+## Done
+
+2026-11-20. `crates/podnet-netns/src/netns/loopdns.rs`: when the bind mount fails, the child binds UDP and TCP
+`0.0.0.0:53` in the namespace and passes both sockets to the parent after the TUN (one byte `0` or `1` first); the
+parent answers them from the fake DNS (`Asker::ask` for a datagram, `Asker::connect` for a connection). The warning
+names the second path. The test `a_resolv_conf_of_a_deleted_file_still_resolves` (`tests/pod_error_lines.rs`) makes
+the state of the lab in `unshare -rm` (a deleted file with no nameserver mounted over `/etc/resolv.conf`) and resolves
+`lab.test` on each backend: it passes (netns, seccomp, netns-kernel here). Control: with `crates/podnet-netns` of the
+commit before, it fails for netns (`Temporary failure in name resolution`). The case `errors` of the lane passes in
+`no-proxy-no-dns`, `proxy-only`, `bind-denied` and `userns-off` as uid 65534 with pod-lab `v0.68.0`. `docs/pods.md`
+has the second path.

@@ -3,6 +3,7 @@ use crate::prelude::*;
 
 mod backend;
 mod fdpass;
+mod loopdns;
 mod packet;
 mod tun;
 mod udpflow;
@@ -89,6 +90,7 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
     let (uid, gid) = unsafe { (libc::getuid(), libc::getgid()) };
     pod_hold::netns::answer(parent, pid as u32, uid, gid).context("write uid/gid maps")?;
     let tun_fd = recv_fd(parent).context("receive TUN fd")?;
+    let loop_dns = loopdns::receive(parent)?;
     // The reaper writes its report on this socket later; read it with no wait.
     unsafe { libc::fcntl(parent, libc::F_SETFL, libc::O_NONBLOCK) };
 
@@ -103,6 +105,9 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
     let result = runtime.block_on(async move {
         let mut backend = Backend::new(tun_fd, proxies, rules, maps, verbose)?;
         backend.host_gateway = host_gateway;
+        if let Some(sockets) = loop_dns {
+            loopdns::serve(sockets, backend.dns_asker())?;
+        }
         if verbose && backend.device.wire == Wire::Veth {
             eprintln!(
                 "{}: the wire of the namespace is a veth pair (no TUN)",
@@ -240,12 +245,28 @@ pub(crate) fn child_setup(sock: RawFd, args: &Args) -> Result<()> {
     // The resolver of the host (often 127.0.0.53) is on the loopback of the
     // host, which this namespace does not have: give the program a
     // resolv.conf with the gateway of the TUN, where the pod answers DNS
-    // (issue 61). A failure leaves the host file, with a warning.
-    if let Err(e) = private_resolv_conf() {
-        crate::warn(&format!(
-            "warning: the program keeps the resolver of the host ({e:#})"
-        ));
-    }
+    // (issue 61). When that fails, the program keeps the host file, and the
+    // pod answers port 53 of the loopback of the namespace (T-499).
+    let sockets = match private_resolv_conf() {
+        Ok(()) => None,
+        Err(e) => match loopdns::bind() {
+            Ok(sockets) => {
+                crate::warn(&format!(
+                    "warning: the program keeps the resolver of the host ({e:#}); the pod answers DNS at port 53 \
+                     of the loopback of its namespace and at each other nameserver of that file"
+                ));
+                Some(sockets)
+            }
+            Err(bound) => {
+                crate::warn(&format!(
+                    "warning: the program keeps the resolver of the host ({e:#}), and port 53 of the loopback of \
+                     the namespace cannot be bound ({bound}): a nameserver on the loopback does not answer"
+                ));
+                None
+            }
+        },
+    };
+    loopdns::send(sock, sockets)?;
 
     // T-383: the probe of a UDP socket runs here, under the filters that
     // the program gets.

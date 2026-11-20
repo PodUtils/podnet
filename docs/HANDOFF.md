@@ -50,10 +50,10 @@ workflow for each issue. #659 asks `ci` on `0dc34d0`. Read its comment, then wat
   a name with no answer, a reject rule and an unreachable target. Found and fixed: T-496 (`pod` printed no cause at the
   default level; `tests/pod_error_lines.rs` runs the rows on each backend of the host) and T-498 (a timed-out direct
   dial named its step two times). Found in podcrates code: T-497 (blocked; COORD-111, #658: `pod-cloudflare`,
-  `pod-warp`, `pod-ws`). The lane has the case `errors` (`scripts/lab-errors.sh`). It found T-499 (P2, open): in the
-  lab `no-proxy-no-dns` the netns backend resolves no name, so the two pod rows of `errors` fail there, and
-  `gate.yml` fails until T-499 is done. Do T-499 next (its Approach). What remains of T-452: the rows of T-497 and
-  the serve paths in a lab.
+  `pod-warp`, `pod-ws`). The lane has the case `errors` (`scripts/lab-errors.sh`). It found T-499 (done): in the lab
+  `no-proxy-no-dns` the netns backend resolved no name (a deleted file mounted over `/etc/resolv.conf`); the pod now
+  answers port 53 of the loopback of its namespace. What remains of T-452: the rows of T-497 and the serve paths in a
+  lab.
 
 ## CI
 
