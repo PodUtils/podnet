@@ -351,5 +351,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #659 | [gh action] requested: ci on the error rows of `pod` (T-496), `src/egress.rs` (T-498) and the test of T-433 (T-450) | closed: ci 44664720872 failed on 0dc34d0 in `restricted-host` and `no-loopback` (the new test `tests/pod_error_lines.rs`; fixed in 8f3a20c, T-496); the other 10 jobs passed | none |
 | #660 | [gh action] requested: ci on the fix of the test of T-496 and the lane case `errors` (T-452) | closed: ci 44667637115 passed on 826475c (13 of 13 jobs, also restricted-host and no-loopback) | none |
 | #661 | [gh action] requested: ci on T-499 (the resolver of the netns backend at port 53 of its loopback) | closed: ci 44671079409 passed on 1413960 | none |
+| #662 | [gh action] requested: ci on the lane row `testers` (T-453) and the prompt of the QA pass (T-454) | open (a request of a run) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
