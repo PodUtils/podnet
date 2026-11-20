@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-20, 12:40 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-20, 15:50 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -27,7 +27,7 @@ only with a test that reproduces it and fails on the code before the fix.
   shows a newer tag. The installer core in `scripts/install/` is that of `v0.70.0` (the same file at each tag since).
 * The newest release is `v0.4.0-beta.17` (T-481). It has the fixes of PodUtils/podrunner#213 and #142. podrunner's
   user-path gate passes with it on each lane (PodUtils/podrunner#309).
-* The record is `TODO/`. `cargo todo check` agrees: 501 entries, 16 open, 12 partial, 35 blocked, 438 done.
+* The record is `TODO/`. `cargo todo check` agrees: 502 entries, 16 open, 12 partial, 35 blocked, 439 done.
 
 ## Unfinished work (not on `main`)
 
@@ -101,6 +101,15 @@ workflow for each issue. #659 asks `ci` on `0dc34d0`. Read its comment, then wat
   (`scripts/agent/qa-pass.md`) and `gate.yml` first.
 * A control that moves a source file out and back with `mv` keeps its old time, and cargo can then take a stale build
   as current: touch each changed file before the full check (this hid the failure of `ci` 44701681199).
+
+## The work of the session of 2026-11-20 (12:40 to 15:50 UTC)
+
+* `gate` 44742237281 failed on the GitHub runner in 7 labs; T-503 (the resolver of the pod at a loopback nameserver of
+  the host, such as 127.0.0.53) and two faults of the rows are fixed. `ci` 44782773504 and `gate` 44782773447 passed on
+  `3836971`. The full lane passes on the runner: the next beta needs the black-box QA pass, then the release steps.
+* A push of this session starts no workflow: request `ci`, `live`, `gate` and `issue-sync` (`dry_run=false`, after a
+  change of the state of an issue) by `[gh action] requested` issues (`docs/maintenance.md`).
+* #649 (COORD-102) is closed: the QA round is done.
 
 ## Next steps
 

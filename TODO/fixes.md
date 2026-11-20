@@ -9773,7 +9773,8 @@ part of a line said two times. Here all 20 pass. Run as uid 65534 with pod-lab `
 `arm64-tcg`, `cgroup-v1` and `ipv6-only` do not hold on this host. The rows found T-496, T-497, T-498, T-499 and T-502
 (each done). `ci` 44737373446 on `79b8331` passed. `gate` 44742237281 on `c9e394a` (the GitHub runner) failed in 7 labs: the words of Rust for an unreachable
 network (`Network unreachable`) and a client limit of 10 s on an IPv6-only host (faults of the rows, fixed), and T-503
-(the loopback nameserver of the runner, fixed). A second `gate` follows.
+(the loopback nameserver of the runner, fixed). `gate` 44782773447 on `3836971` passed: each lab on the GitHub runner,
+with the case `errors` and the row `testers`.
 
 
 # T-453: A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program
@@ -11800,4 +11801,4 @@ and each loopback nameserver of the host file); the child sends their count, the
 pass. Control: with `crates/podnet-netns` of `c9e394a` (each file touched), the row of 127.0.0.53 fails for netns. A
 deleted file of the runner's form mounted over `/etc/resolv.conf` in `unshare -rm`: `lab.test` resolves at once
 (before: `Temporary failure in name resolution`, or no answer for 40 s with `edns0`). The case `errors` passes in each
-lab here as uid 65534. `ci` 44782773504 on `3836971` passed.
+lab here as uid 65534. `ci` 44782773504 on `3836971` passed. `gate` 44782773447 on `3836971` passed (the pod rows in the 5 labs of the runner).
