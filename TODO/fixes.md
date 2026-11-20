@@ -11391,7 +11391,7 @@ kept), 6 rows fail (no line for the name with no answer and the reject rule, on 
 `pod_testkit::refused`, and that host refuses each bind of AF_INET) and `no-loopback` (with the loopback down, the
 refused row gets a true line `Network is unreachable`). The test now takes `127.0.0.1:1` (no bind), and the refused row
 refuses only a second line that says "Connection refused". It passes here as it is, under
-`scripts/restricted-host.sh`, and in `unshare -n` (the loopback down); the control still fails 6 rows.
+`scripts/restricted-host.sh`, and in `unshare -n` (the loopback down); the control still fails 6 rows. `ci` 44667637115 on `826475c` passed (13 of 13 jobs).
 
 # T-497: The error lines of `tunnel`, `warp proxy` and `connect` name one cause two times (code of podcrates)
 
