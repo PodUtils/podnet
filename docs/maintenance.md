@@ -87,6 +87,11 @@ state of the open work.
     `scripts/doc-commands.py --check`, `scripts/gate-scenarios.py --check`, the
     man page, the installer core, the workflows, `shellcheck`). `notest` skips
     the tests.
+  * `qa-pass.md`: the prompt of the black-box QA pass before each beta (T-454; Release, step 0).
+  * `../promises.py --report PODNET` (T-455): for each command, its promises (each flag and argument of
+    `podnet man --json`; the shared flags of a group once, as `GROUP (each)`), those with a test (a Rust test or a
+    scenario of the release binary) and those in a scenario; then each promise with no test. `--notes PODNET` prints
+    the section of the release notes. `ci` (job `test`) runs the report; `release.yml` prints the notes.
   * `parity-snapshot.sh DIR [BEFORE [MAP]]`: the parity facts in three
     sorted files of `DIR`: `commands.txt` (each command and flag of
     `podnet man --json`), `items.txt` (the public items of `cargo doc`) and

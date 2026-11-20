@@ -2930,7 +2930,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:283`.
   `SocketFile` is in `src/cli/cmd/connect.rs:219-239` (`pub(crate)`).
 - Message: `crates/podnet-core/src/net.rs:26-32`.
-- `src/main.rs:142` allows `--replace` without `--detach` only for `Command::Connect`.
+- `src/main.rs:147` allows `--replace` without `--detach` only for `Command::Connect`.
 
 ## Approach
 
@@ -9830,7 +9830,7 @@ P1 and P2 finding is done. The first pass runs before the next beta.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -9851,7 +9851,21 @@ measure of maturity.
 
 ```sh
 python3 -I scripts/gate-scenarios.py --check
+python3 -I scripts/promises.py --report target/debug/podnet
 ```
+
+## Done
+
+2026-11-20. `scripts/promises.py`: a promise is a flag or an argument of a command (`podnet man --json`; the global
+flags once; the flags that each subcommand of a group shares once, as `GROUP (each)`). A promise has a test when a
+scenario of the release binary (live, the job `static` of ci, the lane with `scripts/lab-errors.sh`) gives it to the
+command, or when a Rust test does (a statement with the words of the command and the flag; a helper file; a test
+target named after a command of one word; the tests of `crates/podnet-netns` for `pod`; the text after
+`#[cfg(test)]`). On the head: 384 of 651 promises have a test; `pod` 20 of 21, `bench` 5 of 5, the shared flags of
+`warp` 8 of 19. `--notes` prints the section "The promises of each command" of the notes; `release.yml` prints it
+after the scenarios, and the job `test` of `ci` runs `--report`. Step 2: the call of `docs/decisions.md` (2026-11-20,
+The measure of readiness): the help keeps the rule of the command level (no scenario: "Experimental"). The measure
+found T-500 (done).
 
 # T-456: `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213)
 
@@ -11550,3 +11564,49 @@ the state of the lab in `unshare -rm` (a deleted file with no nameserver mounted
 commit before, it fails for netns (`Temporary failure in name resolution`). The case `errors` of the lane passes in
 `no-proxy-no-dns`, `proxy-only`, `bind-denied` and `userns-off` as uid 65534 with pod-lab `v0.68.0`. `docs/pods.md`
 has the second path. `ci` 44671079409 on `1413960` passed.
+
+# T-500: `podnet pod --help --json` prints text, and the manual of `pod` has no flag of `pod`
+
+**Source:** T-455 (the measure of the promises), 2026-11-20.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+1. `podnet pod --help --json` printed the text help; each other command prints the JSON of `man --json COMMAND`
+   (`docs/cli.md`: "`podnet COMMAND --help --json` prints the JSON of `podnet man --json COMMAND` for one command, at
+   each level").
+2. `podnet man --json pod` (and the llms files) listed only the global flags of podnet for `pod`, and none of the 22
+   flags of `pod` (`--proxy`, `--rule`, `--backend`, `--report`, ...). The global flags do not apply to `pod`.
+
+## Premise
+
+- `src/main.rs` gave the line after `pod` to podnet-netns before the answer of `--help --json`.
+- `pod` has its own parser and help (podnet-netns, no clap); the command of clap in podnet is a stub that takes the
+  rest of the line, so `pod_manual::clap::read` saw no flag of `pod`.
+
+## Approach
+
+1. `--help --json` is answered before the dispatch of `pod`; for `pod`, only the words before `--` count (the words
+   after it are the program's).
+2. The manual reads the flags of `pod` from its one source, the text of `podnet_netns::usage_for`
+   (`src/manual/pod_flags.rs`).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib manual::pod_flags
+cargo test --test cli llms::
+```
+
+## Done
+
+2026-11-20. The tests `the_help_json_of_pod_has_its_flags` and `help_json_matches_man_json` (a row of `pod`) in
+`tests/cli/llms.rs`, and `the_manual_has_each_flag_of_the_help_of_pod` (`src/manual/pod_flags.rs`: each flag of the
+first column of the help is a flag of the manual, and the reverse) pass. Control: with `src/main.rs` and
+`src/manual/mod.rs` of the commit before, both CLI tests fail (`valid JSON: Error("expected value", line: 1, column:
+1)`; `["pod", "--help", "--json"] differs from ["man", "--json", "pod"]`). `podnet pod -x direct -- python3 -c ...
+--help --json` still gives `--help --json` to the program. The llms files have the flags of `pod`.

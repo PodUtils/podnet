@@ -440,6 +440,9 @@ jobs:
             printf '\n'
             # The experimental commands: no scenario runs them.
             python3 -I scripts/gate-scenarios.py --notes "$RUNNER_TEMP/gate/lane.txt"
+            printf '\n'
+            # The promises of each command, and those with a test (T-455).
+            python3 -I scripts/promises.py --notes dist/podnet-x86_64-unknown-linux-musl
             printf '\n## The commits of this release\n\n'
           } > "$RUNNER_TEMP/body.md"
           budget=$((120000 - $(wc -c < "$RUNNER_TEMP/body.md")))

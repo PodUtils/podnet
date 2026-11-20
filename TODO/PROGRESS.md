@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 498 entries: 17 open, 14 partial, 36 blocked, 431 done.
+`TODO/INDEX.md` holds 499 entries: 16 open, 14 partial, 36 blocked, 433 done.
 
 ## State
 
@@ -26,8 +26,9 @@
 0. **Then the QA round of 2026-11-17** (`docs/decisions.md`, The QA round and the release freeze): the issues of
    the testers and of podrunner are done; now the gate of correctness: T-450 (a test for
    each issue; its check waits for COORD-110), T-452 (the error paths of the lane; its rows of `connect`, `tunnel`
-   and `warp proxy` wait for COORD-111), T-455 (the measure of readiness). The lab of the testers' host (the lane row
-   `testers`) and the prompt of the black-box QA pass (`scripts/agent/qa-pass.md`, run before each beta) are done. No release and no new feature before T-450 to T-455 are done.
+   and `warp proxy` wait for COORD-111). The lab of the testers' host (the lane row `testers`), the prompt of the
+   black-box QA pass (`scripts/agent/qa-pass.md`, run before each beta) and the measure of readiness
+   (`scripts/promises.py`) are done. No release and no new feature before T-450 and T-452 are done.
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
    before other work. The next tag after `v0.78.1` is the next take. T-494 (`pod-release` in place of
@@ -36,7 +37,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** no release and no new feature until T-450 to T-455 are done (`docs/decisions.md`, 2026-11-17, The QA round and the release freeze), except a beta of fixes that podrunner needs (2026-11-18). The newest is `v0.4.0-beta.17`. The next release proves the attestation of the image (issue 656).
+3. **Releases:** no release and no new feature until T-450 and T-452 are done (the gate of the QA round) (`docs/decisions.md`, 2026-11-17, The QA round and the release freeze), except a beta of fixes that podrunner needs (2026-11-18). The newest is `v0.4.0-beta.17`. The next release proves the attestation of the image (issue 656).
 
 ### The order of podnet's own work
 

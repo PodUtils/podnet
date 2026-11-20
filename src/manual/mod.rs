@@ -15,6 +15,7 @@
 
 pub mod facts;
 pub mod inventory;
+mod pod_flags;
 
 use std::path::Path;
 
@@ -55,6 +56,9 @@ pub fn manual(cmd: clap::Command) -> Manual {
     // the command, one note for each paragraph.
     if let Some(pod) = m.commands.iter_mut().find(|c| c.path == ["pod"]) {
         let usage = podnet_netns::usage_for("podnet pod");
+        // T-455: the flags of pod are those of its help, not those of the
+        // stub of clap (the global flags of podnet do not apply to pod).
+        pod.flags = pod_flags::flags(&usage);
         pod.notes.extend(
             usage
                 .split("\n\n")

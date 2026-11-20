@@ -68,16 +68,17 @@ fn main() {
         eprintln!("podnet: {}", podnet::exit::text(&err));
         std::process::exit(podnet::exit::USAGE);
     }
-    if argv.get(1).map(String::as_str) == Some("pod") {
-        pod_names();
-        std::process::exit(podnet_netns::main_with_args(&argv[2..]));
-    }
     // T-222: `--help --json` prints the JSON of the command from the model
-    // of pod-manual, as `podnet man --json COMMAND` does.
-    if argv.iter().any(|a| a == "--json") {
+    // of pod-manual, as `podnet man --json COMMAND` does. For `pod`, only the
+    // words before `--` count: the words after it are the program's (T-455).
+    let own = match argv.get(1).map(String::as_str) {
+        Some("pod") => argv.iter().position(|a| a == "--").unwrap_or(argv.len()),
+        _ => argv.len(),
+    };
+    if argv[..own].iter().any(|a| a == "--json") {
         use clap::CommandFactory;
         let manual = podnet::manual::manual(Cli::command());
-        if let Some(help) = pod_manual::help::request(&manual, &argv[1..]).filter(|h| h.json) {
+        if let Some(help) = pod_manual::help::request(&manual, &argv[1..own]).filter(|h| h.json) {
             match pod_manual::help::answer(&manual, &help) {
                 Ok(text) => {
                     // T-451: the document has `podnet`, as each document.
@@ -90,6 +91,10 @@ fn main() {
                 }
             }
         }
+    }
+    if argv.get(1).map(String::as_str) == Some("pod") {
+        pod_names();
+        std::process::exit(podnet_netns::main_with_args(&argv[2..]));
     }
     let parsed = top_command()
         .try_get_matches_from(&args)

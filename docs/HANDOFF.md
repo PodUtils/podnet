@@ -27,7 +27,7 @@ only with a test that reproduces it and fails on the code before the fix.
   shows a newer tag. The installer core in `scripts/install/` is that of `v0.70.0` (the same file at each tag since).
 * The newest release is `v0.4.0-beta.17` (T-481). It has the fixes of PodUtils/podrunner#213 and #142. podrunner's
   user-path gate passes with it on each lane (PodUtils/podrunner#309).
-* The record is `TODO/`. `cargo todo check` agrees: 498 entries, 20 open, 14 partial, 36 blocked, 428 done.
+* The record is `TODO/`. `cargo todo check` agrees: 499 entries, 16 open, 14 partial, 36 blocked, 433 done.
 
 ## Unfinished work (not on `main`)
 
@@ -80,6 +80,17 @@ workflow for each issue. #659 asks `ci` on `0dc34d0`. Read its comment, then wat
   binary with the file of the release, and writes the section "The image, by digest" into the notes. Only the next
   release runs these steps.
 * T-492 (partial): the road test listens on port 0, and the preflight test takes `pod_testkit::refused`.
+
+## The work of the session of 2026-11-20 (04:00 to 09:00 UTC)
+
+* T-453 (done): the lane row `testers` (`bind-denied` with `PODNET_NETNS_TEST_MEM=none`).
+* T-454 (done): `scripts/agent/qa-pass.md`, the prompt of the black-box QA pass, and its place in Release, step 0. The
+  first pass runs before the next beta.
+* T-455 (done): `scripts/promises.py` (`--report PODNET`, `--notes PODNET`): 384 of 651 promises have a test. It found
+  T-500 (done): `pod --help --json` printed text, and the manual of `pod` had no flag of `pod`.
+* CI: `ci` passed on `826475c` (#660), `1413960` (#661, T-499) and `a520510` (#662). Request a run of `ci` on the
+  commit of T-455 and T-500 (it changes `src/main.rs`, the manual, the llms files and `ci.yml`).
+* The gate of the QA round now waits for T-450 (COORD-110) and T-452 (the rows of COORD-111, the serve paths).
 
 ## Next steps
 

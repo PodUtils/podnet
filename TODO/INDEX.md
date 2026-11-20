@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**498 entries: 17 open, 14 partial, 36 blocked, 431 done.**
+**499 entries: 16 open, 14 partial, 36 blocked, 433 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 4 | 2 | 67 | 74 |
-| P2 | 7 | 7 | 11 | 218 | 243 |
+| P2 | 6 | 7 | 11 | 220 | 244 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 17 | 14 | 36 | 431 | 498 |
-| **All** | 17 | 14 | 36 | 431 | 498 |
+| **All** | 16 | 14 | 36 | 433 | 499 |
+| **All** | 16 | 14 | 36 | 433 | 499 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -500,7 +500,7 @@ M8 Overlays, M9 Later.
 | [T-452](fixes.md) | P1 | M | M5 | chore | partial | Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS |
 | [T-453](fixes.md) | P1 | S | M5 | chore | done | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |
 | [T-454](fixes.md) | P1 | M | M5 | chore | done | A black-box QA pass before each beta |
-| [T-455](fixes.md) | P2 | M | M5 | chore | open | Readiness: the promises with a test, in place of the commands with a scenario |
+| [T-455](fixes.md) | P2 | M | M5 | chore | done | Readiness: the promises with a test, in place of the commands with a scenario |
 | [T-456](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213) |
 | [T-457](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: the runner times out to github.com under the hold (PodUtils/podrunner#142) |
 | [T-458](fixes.md) | P2 | S | M5 | defect | done | `link`: the address scheme does not select the carrier; a `unix:` prefix is taken as a file name (GitHub #634) |
@@ -545,3 +545,4 @@ M8 Overlays, M9 Later.
 | [T-497](fixes.md) | P2 | S | M5 | defect | blocked | The error lines of `tunnel`, `warp proxy` and `connect` name one cause two times (code of podcrates) |
 | [T-498](fixes.md) | P2 | S | M5 | defect | done | A direct dial that timed out names its step two times |
 | [T-499](fixes.md) | P2 | M | M7 | defect | done | `pod --backend netns`: no name resolves when `/etc/resolv.conf` is a mount of a deleted file |
+| [T-500](fixes.md) | P2 | S | M5 | defect | done | `podnet pod --help --json` prints text, and the manual of `pod` has no flag of `pod` |

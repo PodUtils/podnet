@@ -8918,48 +8918,111 @@ podnet pod
         The podnet-netns arguments.
 
   Options:
-    --ca-file PATH
-        A file of TLS roots (PEM). podnet uses only these roots for each
-        connection that it opens as a client. Without it, podnet reads
-        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
-        and the compiled-in roots.
-    --proxy URL
-        The proxy for each connection: http://, socks5:// or socks5h://
-        [user:password@]host[:port]. A proxy on a unix socket:
-        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
-        stdout of a command, one for each connection (as ProxyCommand of SSH):
-        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
-        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
-        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
-        password out of the command line. Percent-encode / ? # @ : in the user
-        and the password. Variable: PODNET_PROXY.
-    --no-proxy
-        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
-    --egress SPEC
-        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
-        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
-        With podnet pod, each --egress is one -x hop of the chain, in its order
-        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
-        chain (TOP over BELOW) are for podnet forward --network, podnet route
-        and podnet wg serve. With podnet link dial and podnet link connect,
-        each --egress is one element of the chain before the tcp carrier
-        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
-        the last element reaches the carrier address. With podnet wg serve, one
-        --egress is the way of the flows of the peers (each spec of podnet
-        forward --network that carries TCP).
-    --resolve HOST=IP
-        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
-        adds to it. TLS still checks the name of the certificate.
-    -q, --quiet
-        Log warnings and errors only.
+    -x, --proxy SPEC
+        Upstream proxy, repeatable; more than one chains:
+        socks5://[user:pass@]host:port http://[user:pass@]host:port
+        socks5://unix:/path (unix-socket proxy) http://unix:/path (HTTP CONNECT
+        on a unix socket) socks5h+unix:/path, http+unix:/path (the same)
+        tailscale:/path/to/tailscaled.sock Default: $ALL_PROXY, $HTTPS_PROXY or
+        $HTTP_PROXY. --egress SPEC is the same option (its name in each podnet
+        command).
+    -r, --rule SPEC
+        Per-destination route; first match wins: domain:NAME=socks5://host:port
+        domain:.example.com=... (the name and each name under it)
+        cidr:10.0.0.0/8=socks5://host:port cidr:10.0.0.0/8=direct (no proxy)
+        port:22=... port:8000-8100=... (these ports of each host; TCP only)
+        tcp:127.0.0.1:5432=... (one host and one port; a name, an IPv4 address
+        or [IPv6]; TCP only) domain:.ads.example=reject (refuse; also block):
+        connect fails with ECONNREFUSED (netns: a RST), a datagram with EACCES
+        (netns: dropped), --serve answers SOCKS5 0x02 or HTTP 403 With the
+        seccomp backend, 127.0.0.0/8 goes direct (or to a listener of the
+        program itself).
+    --allow-shadowed-rules
+        A rule that an earlier rule shadows (it can never match) gives a
+        warning. A shadowed reject rule is an error (exit 64); this option
+        makes it a warning.
+    --default-action A
+        target that no rule matches. reject refuses it as a reject rule does.
+    --loopback-rules
+        Seccomp backend: apply the rules to a TCP connect to 127.0.0.0/8 and
+        ::1 (by default it goes direct). A refused one gets ECONNREFUSED; an
+        allowed one goes direct.
+    --flow-log FILE
+        Append one JSON line to FILE for each decision (time, target, rule or
+        default, chain, verdict) and one at the close of each relayed TCP flow
+        (bytes_out, bytes_in).
+    --report FILE
+        Write one JSON object to FILE when the pod starts and again when it
+        ends: schema, version, backend, choice, hold (the words of pod doctor),
+        not_held, udp_limit (bytes, or null: no limit), exit (null until the
+        end) and reason. The JSON schema is the release file
+        pod-report.schema.json. A pod that cannot start writes the report with
+        its reason.
+    --learn FILE
+        Write each destination of the run to FILE, one PROTO TARGET line each.
+        A flow that a rule refuses goes through the -x chain.
+    --fail-on-violation FILE
+        Refuse each destination that is not in FILE (a file of --learn). A
+        learned destination that a rule refuses is also a violation. The pod
+        writes each violation on stderr and exits 4 when the program exits 0.
+    --flow-budget N
+        Seccomp backend: the most sockets of the program that the pod tracks at
+        one time (64 to 1048576). A socket call above it gets EMFILE. Default:
+        from RLIMIT_NOFILE (pod doctor shows it).
+    --map NAME=ADDR
+        Resolve NAME to ADDR locally, repeatable.
+    --keep-proxy-env
+        Keep HTTPS_PROXY, HTTP_PROXY, ALL_PROXY and NO_PROXY (and the
+        lower-case forms) for the program; by default the program does not get
+        them.
+    --allow-raw icmp
+        Seccomp backend: a raw socket of AF_INET or AF_INET6 goes to the kernel
+        (CAP_NET_RAW sends from the host, past the upstream). Off by default:
+        the socket gets EPERM. A packet socket (AF_PACKET, AF_XDP, SOCK_PACKET)
+        gets EPERM in each case; a ping socket (SOCK_DGRAM, IPPROTO_ICMP) is
+        emulated in each case.
+    --backend NAME
+        auto (default), netns, netns-kernel or seccomp. With netns, a listener
+        of the program is in the network of the pod: a loopback TCP listener is
+        not seen from outside; use a unix socket (connect -L unix:///PATH).
+        netns-kernel is the netns backend with the netfilter of the namespace
+        as its data plane (no TUN, no stack): IPv4 TCP and UDP, never chosen by
+        auto; pod doctor shows if it works.
+    --prefer-udp
+        With auto: seccomp first when it works (UDP datagrams of any size go
+        through; netns carries a datagram of 1500 bytes at most).
+    --name-backend
+        Print one line on stderr that names the backend that runs, its limits
+        and the reason of the choice (also after auto).
+    --inbound-dir DIR
+        Where a bound port is exposed as a unix socket (seccomp backend only).
+        The directory must be of this user and not writable by the group or by
+        others; a new one gets mode 0700 [default:
+        $XDG_RUNTIME_DIR/podnet-netns-inbound, else
+        $TMPDIR/podnet-netns-inbound-UID].
+    --host-gateway
+        Netns backend: a TCP connect to the gateway of the pod (10.66.255.254)
+        and a port goes to 127.0.0.1 and that port on the host; a UDP datagram
+        to the gateway (not port 53) goes from a UDP socket of the host. Off by
+        default: the connect is refused.
+    --session DIR
+        Seccomp backend: share the inbound listeners (DIR/inbound, unless
+        --inbound-dir) and the fake DNS table (DIR/dns) with each pod of DIR.
+        The directory must be of this user and not writable by the group or by
+        others. The netns backend does not use it.
+    --serve LISTEN
+        Serve SOCKS5, HTTP CONNECT and UDP ASSOCIATE on unix:/path or
+        tcp://host:port, forwarding through the -x chain. At most 1024 live
+        clients; a plain http:// request gets 405 and BIND gets 0x07.
+    --early-reply
+        With --serve: answer a CONNECT that the rules take before the dial,
+        hold the first 64 KiB of the client, and send the SOCKS5 greeting and
+        request to the upstream in one write. A failed dial then closes the
+        connection: the client gets no error code. The flow log has a refused
+        line. Off by default.
     -v, --verbose
-        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
-    --color COLOR
-        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
-        always or never. Default: auto. Values: auto, always, never.
-    --log-format LOG_FORMAT
-        The form of the log on stderr: text, or json (one object for each
-        line). Default: text. Values: text, json.
+        Log each flow; with seccomp, also each socket and each setsockopt that
+        the pod emulates.
 
   Rules:
     Give only one of --no-proxy, --proxy.
