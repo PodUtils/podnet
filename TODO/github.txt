@@ -366,4 +366,4 @@
 665 issue closed
 666 issue closed
 667 issue closed
-668 issue open
+668 issue closed

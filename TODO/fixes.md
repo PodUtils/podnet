@@ -9771,7 +9771,9 @@ backend). Each row checks the end within a limit, the documented exit code, one 
 part of a line said two times. Here all 20 pass. Run as uid 65534 with pod-lab `v0.68.0` in each profile and in the row
 `testers`: each row passes or is n.a. with the reason (the lab refuses the listener, the pod, or the loopback);
 `arm64-tcg`, `cgroup-v1` and `ipv6-only` do not hold on this host. The rows found T-496, T-497, T-498, T-499 and T-502
-(each done). `ci` 44737373446 on `79b8331` passed. The full lane runs in `gate.yml` before the next release.
+(each done). `ci` 44737373446 on `79b8331` passed. `gate` 44742237281 on `c9e394a` (the GitHub runner) failed in 7 labs: the words of Rust for an unreachable
+network (`Network unreachable`) and a client limit of 10 s on an IPv6-only host (faults of the rows, fixed), and T-503
+(the loopback nameserver of the runner, fixed). A second `gate` follows.
 
 
 # T-453: A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program
@@ -11752,3 +11754,50 @@ LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET getsockname-deni
 supported (os error 95))  ->  127.0.0.1:1  via direct`, exit 0 at the end of `--run-for`; the rows `forward-*` of the
 case `errors` pass there. Control: with the binary before the fix, the three rows `forward-*` fail in that lab (`forward
 did not start: podnet: Operation not supported (os error 95)`). `ci` 44737373446 on `79b8331` passed.
+
+# T-503: `pod --backend netns`: the second path of the resolver does not answer a loopback nameserver of the host
+
+**Source:** `gate` 44742237281 on `c9e394a` (#668), the case `errors` of the lane on the GitHub runner, 2026-11-20.
+**Category:** defect
+**Milestone:** M7
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+On the GitHub runner, in five labs (`root-unreadable`, `no-kvm`, `userns-mount-denied`, `no-tun`, `no-net-admin`), the
+netns backend could not make its mounts private (`mount --make-rprivate /: Operation not permitted`), so the second
+path of T-499 was on. No name of the program resolved for 20 s, and podnet printed no line: the rows `pod-no-name`
+and `pod-reject` failed.
+
+## Premise
+
+- The resolv.conf of the runner is that of systemd-resolved: `nameserver 127.0.0.53`, `options edns0 trust-ad`.
+- T-499 bound UDP and TCP `0.0.0.0:53`. A datagram to 127.0.0.53 reached the socket, and the answer went out from
+  127.0.0.1. glibc takes an answer only from the address that it asked: it dropped each one.
+- The test of T-499 used a file with no nameserver (glibc asks 127.0.0.1), so it did not show this.
+
+## Approach
+
+1. Bind UDP and TCP port 53 on 127.0.0.1 and on each loopback nameserver of the host file (`127.0.0.53`, `::1`); the
+   answer comes from the address that was asked.
+2. The test of T-499 runs both host files.
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib loopdns
+cargo test --test pod_error_lines a_resolv_conf_of_a_deleted_file_still_resolves
+```
+
+## Done
+
+2026-11-20. `crates/podnet-netns/src/netns/loopdns.rs`: one pair of sockets for each address of `addresses` (127.0.0.1
+and each loopback nameserver of the host file); the child sends their count, then the pairs. The unit test
+`the_pod_answers_at_each_loopback_nameserver` and the test `a_resolv_conf_of_a_deleted_file_still_resolves`
+(`tests/pod_error_lines.rs`, now a table of two host files: no nameserver, and `nameserver 127.0.0.53` with `edns0`)
+pass. Control: with `crates/podnet-netns` of `c9e394a` (each file touched), the row of 127.0.0.53 fails for netns. A
+deleted file of the runner's form mounted over `/etc/resolv.conf` in `unshare -rm`: `lab.test` resolves at once
+(before: `Temporary failure in name resolution`, or no answer for 40 s with `edns0`). The case `errors` passes in each
+lab here as uid 65534.

@@ -177,10 +177,12 @@ fn each_failed_connect_names_its_cause_once() {
     assert!(faults.is_empty(), "{}", faults.join("\n"));
 }
 
-/// T-499: `/etc/resolv.conf` is a mount of a deleted file with no
-/// nameserver (the lab `no-proxy-no-dns` of pod-lab; a container whose
-/// file was replaced). The pod cannot mount its own file there; the
-/// program still resolves each name through the pod, on each backend.
+/// T-499: `/etc/resolv.conf` is a mount of a deleted file (the lab
+/// `no-proxy-no-dns` of pod-lab; a container whose file was replaced). The
+/// pod cannot mount its own file there; the program still resolves each name
+/// through the pod, on each backend. Two host files: no nameserver (glibc
+/// asks 127.0.0.1), and the file of systemd-resolved (127.0.0.53, edns0) of
+/// the GitHub runner, where glibc takes an answer only from 127.0.0.53.
 #[test]
 fn a_resolv_conf_of_a_deleted_file_still_resolves() {
     if !python3() {
@@ -197,11 +199,20 @@ fn a_resolv_conf_of_a_deleted_file_still_resolves() {
         eprintln!("skip: no user and mount namespace on this host");
         return;
     }
+    for conf in [
+        "options attempts:1 timeout:1",
+        "nameserver 127.0.0.53\\noptions edns0 trust-ad attempts:1 timeout:1\\nsearch .",
+    ] {
+        resolves_with_a_deleted_resolv_conf(conf);
+    }
+}
+
+fn resolves_with_a_deleted_resolv_conf(conf: &str) {
     let dir = tempfile::tempdir().unwrap();
     let file = dir.path().join("resolv.conf");
     let script = format!(
         r#"set -e
-echo "options attempts:1 timeout:1" > "{file}"
+printf '{conf}\\n' > "{file}"
 mount --bind "{file}" /etc/resolv.conf
 rm "{file}"
 grep -q ' /etc/resolv.conf .*' /proc/self/mountinfo
@@ -241,7 +252,7 @@ done
             continue;
         }
         if !block.contains("resolved 198.18.") {
-            faults.push(format!("{backend}: {block}"));
+            faults.push(format!("{conf:?}, {backend}: {block}"));
         }
     }
     assert!(faults.is_empty(), "{}\n{stderr}", faults.join("\n"));

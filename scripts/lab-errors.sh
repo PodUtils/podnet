@@ -29,7 +29,7 @@ export XDG_STATE_HOME="$dir/state" XDG_RUNTIME_DIR="$dir/run" XDG_CONFIG_HOME="$
 mkdir -p "$XDG_STATE_HOME" "$XDG_RUNTIME_DIR" "$XDG_CONFIG_HOME"
 chmod 700 "$XDG_RUNTIME_DIR"
 
-refused='Connection refused|Permission denied|Network is unreachable|Operation not permitted'
+refused='Connection refused|Permission denied|Network (is )?unreachable|Operation not permitted'
 failed=0
 
 # check NAME CODE CAUSE: the row's exit code is CODE, and the lines of
@@ -147,7 +147,7 @@ check relay-dead-proxy 69 "could not reach the proxy 127\.0\.0\.1:1"
 row relay-dead-proxy $?
 
 # forward: a server. The fault shows for each connection: the client is
-# closed at once (no data), and the log has one line with the cause. A stop
+# closed within 40 s (no data), and the log has one line with the cause. A stop
 # signal ends the command with exit 0.
 forward_row() {
     name=$1
@@ -182,7 +182,7 @@ try:
 except OSError as e:
     print("noconnect", e)
     sys.exit(0)
-s.settimeout(10)
+s.settimeout(40)  # a name with no answer takes up to 20 s on an IPv6-only host
 try:
     s.sendall(b"GET / HTTP/1.0\r\n\r\n")
     data = s.recv(100)
@@ -217,7 +217,7 @@ forward_row forward-dead-proxy 17403 "could not reach the proxy 127\.0\.0\.1:1" 
 
 # net proxy --forward VIRT=REAL: the proxy answers the CONNECT to VIRT (the
 # virtual endpoint accepts, as the near side of ssh -L does), and the real
-# dial fails after it: the client is closed at once, with no data, and the
+# dial fails after it: the client is closed within 40 s, with no data, and the
 # log has one line with the cause.
 net_proxy_row() {
     name=$1
@@ -253,7 +253,7 @@ import socket, sys, time
 t = time.time()
 s = socket.socket(socket.AF_UNIX)
 s.connect(sys.argv[1])
-s.settimeout(10)
+s.settimeout(40)  # a name with no answer takes up to 20 s on an IPv6-only host
 try:
     s.sendall(b"CONNECT 10.66.0.2:8080 HTTP/1.1\r\n\r\n")
     head = s.recv(200)
