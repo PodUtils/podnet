@@ -65,6 +65,7 @@ mod netns;
 mod nfnl;
 mod nfprobe;
 mod nfrules;
+mod notice;
 mod outlive;
 mod recvmmsg;
 mod report;
@@ -202,7 +203,7 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
             "no proxy: give -x PROXY, or set ALL_PROXY, HTTPS_PROXY or HTTP_PROXY",
         );
     }
-    warn_unreachable(&args.proxies);
+    warn_unreachable(&args.proxies, args.backend == BackendKind::NetnsKernel);
     // Inbound listeners exist on the seccomp backend only (issue 69).
     if args.inbound_dir_given
         && matches!(args.backend, BackendKind::Netns | BackendKind::NetnsKernel)
@@ -501,16 +502,21 @@ fn with_res_option(env: &mut Vec<std::ffi::CString>, option: &str, same: &[&str]
 /// Warn when an upstream does not answer a connect in 2 s. The program
 /// still runs (it may open no connection), but each connection that it
 /// opens fails; before, a dead upstream gave no line at all.
-fn warn_unreachable(proxies: &[upstream::Proxy]) {
-    for line in proxies.iter().filter_map(unreachable_line) {
-        warn(&line);
+fn warn_unreachable(proxies: &[upstream::Proxy], reset: bool) {
+    for proxy in proxies {
+        if let Some(line) = unreachable_line(proxy, reset) {
+            warn(&line);
+            notice::upstream_dead(proxy.connect_context());
+        }
     }
 }
 
 /// The warning for an upstream that does not answer a connect in 2 s, else
 /// `None`. Issue 621: `direct` is no upstream to dial, so it gets no line.
-/// Issue 610: the line gives what the program sees, `ECONNREFUSED`.
-fn unreachable_line(proxy: &upstream::Proxy) -> Option<String> {
+/// Issue 610: the line gives what the program sees: `ECONNREFUSED`, or a
+/// reset on the netns-kernel backend (`reset`), which accepts the connect
+/// first (T-452).
+fn unreachable_line(proxy: &upstream::Proxy, reset: bool) -> Option<String> {
     use std::net::ToSocketAddrs;
     let limit = std::time::Duration::from_secs(2);
     if proxy.kind == upstream::ProxyKind::Direct {
@@ -535,8 +541,12 @@ fn unreachable_line(proxy: &upstream::Proxy) -> Option<String> {
         }
     };
     let err = result.err()?;
+    let seen = match reset {
+        true => "is reset",
+        false => "fails with ECONNREFUSED",
+    };
     Some(format!(
-        "warning: the upstream {shown} does not answer ({err}); each connect() of the program through it fails with ECONNREFUSED"
+        "warning: the upstream {shown} does not answer ({err}); each connection of the program through it {seen}"
     ))
 }
 
@@ -546,17 +556,20 @@ mod tests {
     use crate::prelude::*;
 
     // Issue 621: -x direct dials no upstream, so it gets no warning. Issue
-    // 610: a dead upstream gets a line that names ECONNREFUSED.
+    // 610: a dead upstream gets a line that names what the program sees:
+    // ECONNREFUSED, or a reset on the netns-kernel backend (T-452).
     #[test]
     fn only_a_dead_upstream_gets_the_warning() {
         let direct = crate::upstream::Proxy::parse("direct").unwrap();
-        assert_eq!(unreachable_line(&direct), None);
+        assert_eq!(unreachable_line(&direct, false), None);
         let dir = std::env::temp_dir().join(format!("podnet-netns-dead-{}", std::process::id()));
         let spec = format!("socks5h+unix:{}", dir.join("no-such.sock").display());
         let dead = crate::upstream::Proxy::parse(&spec).unwrap();
-        let line = unreachable_line(&dead).expect("a line for a dead upstream");
-        assert!(line.contains("does not answer"), "{line}");
-        assert!(line.contains("fails with ECONNREFUSED"), "{line}");
+        for (reset, seen) in [(false, "fails with ECONNREFUSED"), (true, "is reset")] {
+            let line = unreachable_line(&dead, reset).expect("a line for a dead upstream");
+            assert!(line.contains("does not answer"), "{line}");
+            assert!(line.ends_with(seen), "{reset}: {line}");
+        }
     }
 
     fn res_options(env: &[std::ffi::CString]) -> Vec<String> {

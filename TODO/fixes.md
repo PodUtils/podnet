@@ -9691,7 +9691,7 @@ and `cargo test --test contracts` on the static release binary. `ci` passed on t
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -9715,6 +9715,28 @@ named its cause twice (#635); `bench` exited 0 when each request failed (#639). 
 ```sh
 LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET
 ```
+
+## Correction
+
+2026-11-20, measured with `0.4.0-beta.17` (the commands of the Approach with a dead proxy `127.0.0.1:1`, a refused
+port, a name under `.invalid`, a reject rule):
+
+- `bench`: each fault ends at `--duration` with exit 1 (its help says so) and one line. No fault.
+- `pod`: a name with no answer and a reject rule gave no line at the default level; a dead upstream on netns-kernel got
+  a false line (T-496, done). The rows run on each push in `tests/pod_error_lines.rs`
+  (`each_failed_connect_names_its_cause_once`), on each backend of the host.
+- `tunnel` and `warp proxy` with a dead proxy: exit 69 at once, but a cause two or three times in the line (T-497,
+  blocked on podcrates: COORD-111, GitHub #658).
+- `relay connect` with no pair ends at once with exit 69 and one line before any dial.
+- `forward`: each fault resets the client at once (the unreachable target after the limit of 29 s) and logs one line
+  for each connection. The unreachable target named its step two times (T-498, done).
+- `connect` checks its remote at the start: each fault ends at once with exit 69, but the line repeats its step
+  (T-497, item 3, in `pod-ws`).
+- `net proxy`: the unit tests `refusals_have_a_status_and_a_body` and
+  `a_target_outside_the_subnet_fails_at_once_on_each_door` (`crates/podnet-vnet/src/proxy.rs`) hold its rows.
+- Not measured yet: the serve paths of `connect` (a fault after the start check shows per connection), and the
+  unreachable target of each command in the labs (in this container `bench` got a refusal from 192.0.2.1, `forward` a
+  time-out). The lab rows of step 2 wait for these.
 
 # T-453: A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program
 
@@ -11312,3 +11334,134 @@ sh scripts/agent/check.sh
 2026-11-20, the commit of this entry. The tag `v0.78.1` (commit `edbc86b`) in each manifest, `Cargo.lock`,
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
 code. `sh scripts/agent/check.sh` passes.
+
+# T-496: `pod`: a failed connect of the program gives no line at the default level
+
+**Source:** T-452 (the error rows), measured 2026-11-20 with `0.4.0-beta.17` at `177336b4`.
+**Category:** defect
+**Milestone:** M7
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+In a pod, each name resolves (the upstream resolves it). A name with no answer, a reject rule and a refused target all
+reach the program as `ECONNREFUSED` (or a reset on netns-kernel): `curl` says "Couldn't connect" (exit 7), not "Could
+not resolve" (exit 6). podnet printed the cause only with `-v`. On netns-kernel the warning of a dead upstream said
+"fails with ECONNREFUSED", but the program sees a reset.
+
+## Premise
+
+- `pod -x direct -- curl http://nowhere.invalid/` and `pod -x direct -r domain:lab.test=reject -- curl
+  http://lab.test/` printed only the line of curl, on seccomp, netns and netns-kernel.
+- The three upstream paths (`connect.rs`, `netns/backend.rs`, `kernel_serve.rs`) and `rules::note_refusal` printed
+  their line only with `verbose`.
+
+## Approach
+
+1. One line for the first failure of each target at the default level (at most 64 targets, then one line that names
+   `-v`); `-v` prints each connect; `podnet -q` prints none (`crates/podnet-netns/src/notice.rs`).
+2. No second line for a cause that is already named: a failure through an upstream that the warning at the start named
+   as dead, and a direct dial that the target refused (the program sees `ECONNREFUSED`, the true cause).
+3. The warning of a dead upstream says "is reset" on netns-kernel.
+
+## Prove
+
+```sh
+cargo test --test pod_error_lines
+cargo test -p podnet-netns notice
+```
+
+## Done
+
+2026-11-20. The test `each_failed_connect_names_its_cause_once` (`tests/pod_error_lines.rs`) runs four rows (a name
+with no answer, a reject rule, a dead upstream, a refused connect on the loopback) on each backend of the host
+(seccomp, netns, netns-kernel here): 12 rows pass. Control: with `crates/podnet-netns` of `177336b4` (the new test
+kept), 6 rows fail (no line for the name with no answer and the reject rule, on each backend). The unit tests
+`each_target_gets_one_line_up_to_the_limit`, `only_a_direct_refusal_is_the_cause_of_the_program` (`notice.rs`) and
+`only_a_dead_upstream_gets_the_warning` (`lib.rs`, the reset of netns-kernel) pass. `docs/pods.md` has the line.
+
+# T-497: The error lines of `tunnel`, `warp proxy` and `connect` name one cause two times (code of podcrates)
+
+**Source:** T-452 (the error rows), measured 2026-11-20 with `0.4.0-beta.17` at `177336b4`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+1. `podnet tunnel --hello-world --proxy http://127.0.0.1:1` (a dead proxy) ends with exit 69 in 0.1 s, but its line
+   names the request two times: `provisioning quick tunnel: request to the quick-tunnel service failed: POST
+   https://api.trycloudflare.com/tunnel: POST https://api.trycloudflare.com/tunnel: api.trycloudflare.com:443 through
+   the proxy ...`.
+2. `podnet warp proxy --proxy http://127.0.0.1:1` ends with exit 69, but its line names the dead proxy once for each
+   host of the WARP API (`the WARP API at https://api.devices.cloudflare.com (before: https://api.cloudflareclient.com:
+   POST ...: could not reach the proxy 127.0.0.1:1 ...): POST ...: could not reach the proxy 127.0.0.1:1 ...`), and an
+   INFO line names it a third time.
+3. `podnet connect -L tcp://127.0.0.1:0 wss://127.0.0.1:1/__podnet/ws` ends with exit 69 at once, but its line says
+   `could not connect to 127.0.0.1:1: connecting to 127.0.0.1:1: Connection refused`; a name with no answer says
+   `could not resolve nowhere.invalid: connecting to nowhere.invalid:443: could not resolve nowhere.invalid: ...`.
+
+## Premise
+
+- 1: `pod_proxy::Client::send` names the request (`PodUtils/podcrates@edbc86b:crates/pod-proxy/src/client.rs`, line 335; the tag `v0.78.1`), and
+  `pod_cloudflare::Host::send` names it again (`PodUtils/podcrates@edbc86b:crates/pod-cloudflare/src/host.rs`, `send` and `sent`).
+- 2: the fallback of the hosts of the WARP API is in `pod-warp` (`pod_warp::api`).
+- 3: `pod_ws::way::dial_error` puts the text of podnet's dial (`connecting to HOST:PORT: ...`) into a `DialError`
+  whose Display of `pod-proxy` adds `could not connect to HOST:PORT: ` in front.
+- Both crates are of podcrates; podnet takes them by the tag.
+
+## Approach
+
+1. Ask podcrates (COORD-111, GitHub #658): `Host::send` does not add the request when the failure already starts with it; the
+   fallback of `pod-warp` names a cause once when each host failed for the same cause (the proxy).
+2. Take the tag, and add the rows of `tunnel`, `warp proxy` and `connect` to the error rows of T-452.
+
+## Prove
+
+```sh
+cargo test --test pod_error_lines
+```
+
+## Blocker
+
+podcrates must change `pod-cloudflare`, `pod-warp` and `pod-ws` (COORD-111, GitHub #658), and tag a release.
+
+# T-498: A direct dial that timed out names its step two times
+
+**Source:** T-452 (the error rows), measured 2026-11-20 with `0.4.0-beta.17` at `177336b4`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet forward -L 127.0.0.1:PORT=192.0.2.1:80 --network direct` logs, after the time limit: `a forward did not reach
+its target: connecting to 192.0.2.1:80: connecting to 192.0.2.1:80 timed out after 29s`. Each direct dial of podnet
+that times out has the same words two times.
+
+## Premise
+
+- `failed` of `src/egress.rs` adds `connecting to HOST:PORT` to each direct failure. The `DialError::Timeout` of
+  `pod-proxy` already starts with the step `connecting to HOST:PORT`.
+
+## Approach
+
+1. `failed` adds the words only when the error does not start with them.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib egress::tests
+```
+
+## Done
+
+2026-11-20. The test `a_timed_out_dial_names_its_step_once` (`src/egress.rs`) passes; `cargo test -p podnet --lib
+egress::tests::`: 6 passed. Control: on the `src/egress.rs` of `177336b4` with the new test, it fails with `left:
+"connecting to h:1: connecting to h:1 timed out after 29s"`.

@@ -338,18 +338,14 @@ impl Dial for TcpRoute<'_> {
     }
 
     fn refused(&self, syn: Syn, refused: Refused, e: anyhow::Error) {
-        if !self.verbose {
-            return;
-        }
         let target = self.target_of(*syn.target.ip(), syn.target.port());
         let tail = match refused {
             Refused::Reset => "; the connect of the program is refused",
+            // The program closed its socket first: it saw no failure.
+            Refused::Aborted if !self.verbose => return,
             Refused::Aborted => "",
         };
-        eprintln!(
-            "{}: upstream for {target} failed: {e:#}{tail}",
-            crate::cli::program_name()
-        );
+        crate::notice::upstream_failed(&target, &e, tail, self.verbose);
     }
 }
 

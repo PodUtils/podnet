@@ -608,11 +608,11 @@ connection, not the bandwidth.
 - The door answers after the dial. `crates/podnet-netns/src/frontdoor.rs:121-138` dials with
   `connect_upstream_async`, then replies with `socks5_reply` at `crates/podnet-netns/src/frontdoor.rs:138`.
   The HTTP CONNECT arm does the same at `crates/podnet-netns/src/frontdoor.rs:165-175`.
-- The upstream client waits for two replies in turn: `crates/podnet-netns/src/upstream.rs:303-318`
+- The upstream client waits for two replies in turn: `crates/podnet-netns/src/upstream.rs:312-327`
   (`socks5_handshake`: the greeting, then `read_exact` of the method reply) and
-  `crates/podnet-netns/src/upstream.rs:380-413` (`socks5_connect`: the request, then `read_exact` of the
+  `crates/podnet-netns/src/upstream.rs:389-422` (`socks5_connect`: the request, then `read_exact` of the
   reply head). A hop with `proxy.user` offers the methods `[0x00, 0x02]`, a hop without it `[0x00]`
-  (`crates/podnet-netns/src/upstream.rs:309-313`).
+  (`crates/podnet-netns/src/upstream.rs:318-322`).
 - `crates/podnet-netns/src/door.rs:244` and `:270` replies after the dial too.
 - The door of podnet reads a pipelined client: `crates/podnet-netns/src/socks.rs:61` (`socks5_read_request`)
   reads the greeting, the methods and the request with sequential `read_exact`.

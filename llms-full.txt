@@ -12634,9 +12634,18 @@ makes a chain, in the order given. Without `-x`, the upstream comes from `$ALL_P
   before the dial (see [proxies.md](proxies.md), "Early reply").
 
 At the start, the pod connects to each upstream (a 2 s limit). An upstream that does not answer gives the
-line `warning: the upstream ... does not answer (...); each connect() of the program through it fails with
+line `warning: the upstream ... does not answer (...); each connection of the program through it fails with
 ECONNREFUSED`. The program still runs. Each TCP `connect` through that upstream fails with `ECONNREFUSED`;
-it does not wait for the time limit of the program. `direct` gets no line.
+it does not wait for the time limit of the program. On the netns-kernel backend the connect works and the
+connection is reset: the line then ends with `is reset`. `direct` gets no line.
+
+When a connect of the program fails at the upstream (a name with no answer, a refused target, a dead
+proxy) or at a rule (`reject`), the pod prints one line with the cause, for example `upstream for
+nowhere.invalid:80 failed: direct TCP to nowhere.invalid:80: ...; the connect of the program is refused`
+or `connect lab.test:80 refused by the rule domain:lab.test=reject (1 refused)`. The program sees only
+`ECONNREFUSED` or a reset: in the pod, each name resolves, and the upstream resolves it. The line comes
+once for each target, and at most for 64 targets; `-v` prints one line for each connect, and `podnet -q`
+prints none. A failure through an upstream that the warning at the start named gets no second line.
 
 By default the program does not get `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY` and `NO_PROXY`.
 `--keep-proxy-env` keeps them.

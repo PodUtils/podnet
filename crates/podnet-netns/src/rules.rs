@@ -150,16 +150,13 @@ fn select<'a>(rules: &'a [Rule], default: &'a [Proxy], target: &str, tcp: bool) 
 /// The count of the flows that a rule refused.
 static REFUSALS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-/// Count a refusal of `target` by `rule`. With `verbose`, print one line
-/// with the count.
+/// Count a refusal of `target` by `rule`, and print one line with the
+/// count: with `verbose` for each refusal, else for the first refusal of
+/// `target` (T-452).
 pub(crate) fn note_refusal(what: &str, target: &str, rule: &str, verbose: bool) {
     let count = REFUSALS.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-    if verbose {
-        eprintln!(
-            "{}: {what} {target} refused by the rule {rule} ({count} refused)",
-            crate::cli::program_name()
-        );
-    }
+    let line = format!("{what} {target} refused by the rule {rule} ({count} refused)");
+    crate::notice::connect_failed(target, &line, verbose);
 }
 
 #[cfg(test)]

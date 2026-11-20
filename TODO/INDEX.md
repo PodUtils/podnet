@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**494 entries: 20 open, 13 partial, 35 blocked, 426 done.**
+**497 entries: 19 open, 14 partial, 36 blocked, 428 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 4 | 3 | 2 | 64 | 73 |
-| P2 | 7 | 7 | 10 | 216 | 240 |
+| P1 | 3 | 4 | 2 | 65 | 74 |
+| P2 | 7 | 7 | 11 | 217 | 242 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 20 | 13 | 35 | 426 | 494 |
-| **All** | 20 | 13 | 35 | 426 | 494 |
+| **All** | 19 | 14 | 36 | 428 | 497 |
+| **All** | 19 | 14 | 36 | 428 | 497 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -497,7 +497,7 @@ M8 Overlays, M9 Later.
 | [T-449](fixes.md) | P1 | S | M5 | defect | done | live: four checks read the log lines of the tunnel before the take of `pod-cloudflare` |
 | [T-450](fixes.md) | P1 | S | M5 | chore | partial | Rule: an issue closes only with a test that reproduces it |
 | [T-451](fixes.md) | P1 | M | M5 | chore | done | Contract tests from the manual: each flag of the help exists, each example parses, each JSON document has one schema |
-| [T-452](fixes.md) | P1 | M | M5 | chore | open | Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS |
+| [T-452](fixes.md) | P1 | M | M5 | chore | partial | Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS |
 | [T-453](fixes.md) | P1 | S | M5 | chore | open | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |
 | [T-454](fixes.md) | P1 | M | M5 | chore | open | A black-box QA pass before each beta |
 | [T-455](fixes.md) | P2 | M | M5 | chore | open | Readiness: the promises with a test, in place of the commands with a scenario |
@@ -541,3 +541,6 @@ M8 Overlays, M9 Later.
 | [T-493](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.77.0 |
 | [T-494](fixes.md) | P2 | M | M3 | chore | open | Take `pod-release` in place of podnet's own update |
 | [T-495](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.78.1 |
+| [T-496](fixes.md) | P1 | S | M7 | defect | done | `pod`: a failed connect of the program gives no line at the default level |
+| [T-497](fixes.md) | P2 | S | M5 | defect | blocked | The error lines of `tunnel`, `warp proxy` and `connect` name one cause two times (code of podcrates) |
+| [T-498](fixes.md) | P2 | S | M5 | defect | done | A direct dial that timed out names its step two times |

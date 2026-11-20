@@ -163,12 +163,8 @@ async fn tcp_flow(shared: Arc<Shared>, stream: TcpStream) {
     match dialed {
         Ok(upstream) => crate::flowlog::relay(stream, upstream, flow, &target).await,
         Err(e) => {
-            if shared.verbose {
-                eprintln!(
-                    "{}: upstream for {target} failed: {e:#}; the connect of the program is reset",
-                    program_name()
-                );
-            }
+            let tail = "; the connect of the program is reset";
+            crate::notice::upstream_failed(&target, &e, tail, shared.verbose);
             reset(stream);
         }
     }

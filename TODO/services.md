@@ -2455,7 +2455,7 @@ rule today) when the shadowed action is `reject` and the flag that allows it is 
   (src/warp/rules.rs:100 at `9c1fc4b`) joins the flags and the file and compares nothing. `for_name`
   (src/warp/rules.rs:122-129 at `9c1fc4b`) takes `.find`.
 - The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:111-148`) is the same loop;
-  `domain_matches` (`crates/podnet-netns/src/rules.rs:199-206`): `NAME` matches the name only, `.NAME`
+  `domain_matches` (`crates/podnet-netns/src/rules.rs:196-203`): `NAME` matches the name only, `.NAME`
   matches the name and each name under it.
 - `warp proxy --check` is handled in `src/cli/cmd/warp/front.rs:25-47` (the flag `check: bool` is in the
   arguments of the command): it builds the table, prints each rule and exits 0, or 64 for a bad rule.

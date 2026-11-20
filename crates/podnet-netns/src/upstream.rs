@@ -184,6 +184,15 @@ impl Proxy {
         }
     }
 
+    /// The context of a failed connect to this proxy. The warning of a dead
+    /// upstream (T-452) finds the later failures through it by this text.
+    pub(crate) fn connect_context(&self) -> String {
+        match &self.unix_path {
+            Some(path) => format!("connect to unix proxy {path}"),
+            None => format!("connect to proxy {}", self.endpoint()),
+        }
+    }
+
     /// How the previous hop should address this one when chaining. A unix
     /// socket has no `host:port`, so it is named `unix:<path>` and the hop in
     /// front resolves it (the same convention the tests' proxy uses).
@@ -215,7 +224,7 @@ pub async fn connect_upstream(proxy: &Proxy, target: &str) -> Result<tokio::net:
     }
     let stream = tokio::net::TcpStream::connect(proxy.endpoint())
         .await
-        .with_context(|| format!("connect to proxy {}", proxy.endpoint()))?;
+        .with_context(|| proxy.connect_context())?;
     match proxy.kind {
         ProxyKind::Socks5 => socks5_connect(stream, proxy, target).await,
         ProxyKind::Http => http_connect(stream, proxy, target).await,
@@ -598,12 +607,12 @@ pub async fn dial_proxy(proxy: &Proxy) -> Result<Upstream> {
         Some(path) => Ok(Box::new(
             tokio::net::UnixStream::connect(path)
                 .await
-                .with_context(|| format!("connect to unix proxy {path}"))?,
+                .with_context(|| proxy.connect_context())?,
         )),
         None => Ok(Box::new(
             tokio::net::TcpStream::connect(proxy.endpoint())
                 .await
-                .with_context(|| format!("connect to proxy {}", proxy.endpoint()))?,
+                .with_context(|| proxy.connect_context())?,
         )),
     }
 }

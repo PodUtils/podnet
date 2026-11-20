@@ -401,12 +401,8 @@ pub(crate) fn finish(
             }
         },
         Err(e) => {
-            if verbose {
-                eprintln!(
-                    "{}: upstream for {target} failed: {e:#}",
-                    crate::cli::program_name()
-                );
-            }
+            let tail = "; the connect of the program is refused";
+            crate::notice::upstream_failed(&target, &e, tail, verbose);
             // Keep the error for SO_ERROR when no call took it (issue 302,
             // T-223): the kernel clears it when `connect` returns it.
             if !answer(libc::ECONNREFUSED) {

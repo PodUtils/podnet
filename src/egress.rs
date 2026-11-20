@@ -308,7 +308,14 @@ fn failed(e: DialError, host: &str, port: u16, proxy: Option<&Proxy>) -> anyhow:
         }
         None => {
             let stage = e.stage_and_class().0;
-            let err = error_of(&e).context(format!("connecting to {at}"));
+            // A timeout of the dial already names the step (`connecting to
+            // HOST:PORT timed out ...`): name it once (T-452).
+            let words = format!("connecting to {at}");
+            let err = error_of(&e);
+            let err = match err.to_string().starts_with(&words) {
+                true => err,
+                false => err.context(words),
+            };
             match stage {
                 Stage::Dns => hop::at(Hop::Dns, err),
                 Stage::Proxy => hop::at(Hop::Proxy, err),
@@ -512,6 +519,19 @@ mod tests {
             io.map(|e| e.kind()),
             Some(std::io::ErrorKind::HostUnreachable)
         );
+    }
+
+    /// T-452: a dial that timed out names its step once, not `connecting to
+    /// h:1: connecting to h:1 timed out ...`.
+    #[test]
+    fn a_timed_out_dial_names_its_step_once() {
+        let e = DialError::Timeout {
+            step: "connecting to h:1".into(),
+            after: std::time::Duration::from_secs(29),
+            stage: Stage::Network,
+        };
+        let err = failed(e, "h", 1, None);
+        assert_eq!(format!("{err:#}"), "connecting to h:1 timed out after 29s");
     }
 
     /// podnet's rules: the upper case first, port 8080 for `http://`, the
