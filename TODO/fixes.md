@@ -11107,6 +11107,14 @@ first POST of 1 MiB, the same way. Each other request of the step passed.
 sh scripts/live-throughput.sh target/release/podnet quic "1 4 16" warp
 ```
 
+## Correction
+
+2026-11-20: `live` 44712072334 on `ab0612d` (the take of podcrates `v0.79.0`, T-501) failed in the step "Throughput
+of the HTTP path and of a --forward WebSocket", not in the WARP step: the quick tunnel registered on QUIC (iad10, then
+connection 1 at iad23), and six GETs of its public name over 19 s each got HTTP 530. The tag changed the socket of
+`pod-quic` (PodUtils/podcrates@T-990 clears `IPV6_V6ONLY`); the QUIC leg registered at once, so the edge had the
+connection. A second run of `live` on the same code tells the flake from a fault of the take.
+
 # T-489: Take podcrates v0.74.0
 
 **Source:** PodUtils/podcrates#237 (COORD-141, 2026-11-19): the tag `v0.74.0` at `dd228ef`.

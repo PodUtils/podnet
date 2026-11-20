@@ -354,6 +354,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #662 | [gh action] requested: ci on the lane row `testers` (T-453) and the prompt of the QA pass (T-454) | closed: ci 44695405116 passed on a520510 | none |
 | #663 | [gh action] requested: ci on the measure of the promises (T-455) and the flags of `pod` in the manual (T-500) | closed: ci 44701681199 failed on 1c7df7d (`test`, `features`, `restricted-host`, `no-loopback`: two manual tests; fixed in the next commit, T-500) | none |
 | #664 | [gh action] requested: ci on the take of podcrates `v0.79.0` (T-501) and the fix of the manual tests (T-500) | closed: ci 44707736066 passed on 4559204 | none |
-| #665 | [gh action] requested: live on the take of podcrates `v0.79.0` (T-501) | open (a request of a run) | none |
+| #665 | [gh action] requested: live on the take of podcrates `v0.79.0` (T-501) | closed: live 44712072334 failed on ab0612d: HTTP 530 of a quick tunnel in the step "Throughput of the HTTP path" (T-488) | T-488 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
