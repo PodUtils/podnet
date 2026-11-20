@@ -9751,7 +9751,7 @@ port, a name under `.invalid`, a reject rule):
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -9770,8 +9770,17 @@ The lane has no lab where the seccomp backend cannot write the memory of the pro
 ## Prove
 
 ```sh
-LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET bind-denied
+LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET testers
 ```
+
+## Done
+
+2026-11-20. Option 2 of the Approach: the lane has the row `testers` (`scripts/lab-lane.sh`, TESTER_CASES): the lab
+`bind-denied` of pod-lab with `PODNET_NETNS_TEST_MEM=none` (the test hook of the seccomp backend: no write of the
+memory of the program; a lab cannot take that away). It runs `pod-seccomp`, `pod-netns` and the error rows `errors`
+(T-452). The lane runs it with each profile when no profile is given, so `gate.yml` runs it. Run as uid 65534 with
+pod-lab `v0.68.0`: `pod-seccomp` and `errors` pass; `pod-netns` is n.a. with podnet's reason (exit 3: the lab refuses
+each TCP connect of the program, in each namespace). `podlab run` keeps the variable: `hook=none` in the lab.
 
 # T-454: A black-box QA pass before each beta
 

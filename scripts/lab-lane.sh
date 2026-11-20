@@ -36,6 +36,13 @@
 # The plant LANE_PLANT=net gives podnet a proxy that does not listen; each
 # net-pod row must then fail.
 #
+# The row testers (T-453) is the host class of the external testers: the
+# lab bind-denied (no bind of AF_INET, no TCP connect but to the
+# loopback, so no netns backend), and PODNET_NETNS_TEST_MEM=none (the pod
+# cannot write the memory of the program; a lab cannot take that away,
+# so the test hook of the seccomp backend gives it). It runs the rows of
+# TESTER_CASES.
+#
 # The case errors (in CASES and NET_CASES) runs scripts/lab-errors.sh: the
 # error rows of T-452 (a refused port, a dead proxy, a name with no answer,
 # an unreachable target, a reject rule).
@@ -57,6 +64,7 @@ NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni
 NET_CASES="version errors doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
 WAYOUT_CASES="way-tunnel way-relay"
 WAYWS_CASES="way-relay-refused"
+TESTER_CASES="pod-seccomp pod-netns errors"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
 
 # The cases. Each one runs inside the lab and exits 0 (pass), 1 (fail) or
@@ -574,7 +582,7 @@ refusal_expected() {
     pod-netns:userns-off | pod-netns:nonroot-nocaps | pod-netns:seccomp-nonewprivs)
         why="no user namespace"
         ;;
-    pod-netns:bind-denied)
+    pod-netns:bind-denied | pod-netns:testers)
         # Since T-382 the backend probes a TCP connect first.
         why="the lab refuses each TCP connect of the program (Landlock), in each namespace"
         ;;
@@ -948,7 +956,7 @@ if test $# -eq 0; then
     # Each profile name is one word with no space or glob character: the
     # split of the list into the arguments is the intent.
     # shellcheck disable=SC2046
-    set -- $("$podlab" list | awk '/^[^ ]/ { print $1 }') allow-connect way-out way-ws
+    set -- $("$podlab" list | awk '/^[^ ]/ { print $1 }') allow-connect testers way-out way-ws
 fi
 
 failed=0
@@ -958,7 +966,12 @@ for profile in "$@"; do
     # only. A network lab runs the rows of NET_CASES.
     lab=$profile
     cases=$CASES
-    if test "$profile" = allow-connect; then
+    mem_hook=
+    if test "$profile" = testers; then
+        lab=bind-denied
+        cases=$TESTER_CASES
+        mem_hook=none
+    elif test "$profile" = allow-connect; then
         lab="--allow-connect $LANE_PROXY_PORT bind-denied"
         cases=$PROXY_CASES
     elif test "$profile" = way-out; then
@@ -988,7 +1001,7 @@ for profile in "$@"; do
         log="$work/$profile.$c.txt"
         : >"$work/proxy.txt"
         # shellcheck disable=SC2086
-        LANE_PROFILE=$profile "$podlab" run $lab -- /bin/sh "$self" --case "$c" "$podnet" "$work/$profile-$c" >"$log" 2>&1
+        PODNET_NETNS_TEST_MEM=$mem_hook LANE_PROFILE=$profile "$podlab" run $lab -- /bin/sh "$self" --case "$c" "$podnet" "$work/$profile-$c" >"$log" 2>&1
         code=$?
         case $code in
         0) result=pass ;;

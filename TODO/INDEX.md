@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**498 entries: 19 open, 14 partial, 36 blocked, 429 done.**
+**498 entries: 18 open, 14 partial, 36 blocked, 430 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 3 | 4 | 2 | 65 | 74 |
+| P1 | 2 | 4 | 2 | 66 | 74 |
 | P2 | 7 | 7 | 11 | 218 | 243 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 19 | 14 | 36 | 429 | 498 |
-| **All** | 19 | 14 | 36 | 429 | 498 |
+| **All** | 18 | 14 | 36 | 430 | 498 |
+| **All** | 18 | 14 | 36 | 430 | 498 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -498,7 +498,7 @@ M8 Overlays, M9 Later.
 | [T-450](fixes.md) | P1 | S | M5 | chore | partial | Rule: an issue closes only with a test that reproduces it |
 | [T-451](fixes.md) | P1 | M | M5 | chore | done | Contract tests from the manual: each flag of the help exists, each example parses, each JSON document has one schema |
 | [T-452](fixes.md) | P1 | M | M5 | chore | partial | Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS |
-| [T-453](fixes.md) | P1 | S | M5 | chore | open | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |
+| [T-453](fixes.md) | P1 | S | M5 | chore | done | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |
 | [T-454](fixes.md) | P1 | M | M5 | chore | open | A black-box QA pass before each beta |
 | [T-455](fixes.md) | P2 | M | M5 | chore | open | Readiness: the promises with a test, in place of the commands with a scenario |
 | [T-456](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: a connect to a loopback port gives EOPNOTSUPP (PodUtils/podrunner#213) |
