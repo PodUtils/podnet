@@ -9771,7 +9771,7 @@ backend). Each row checks the end within a limit, the documented exit code, one 
 part of a line said two times. Here all 20 pass. Run as uid 65534 with pod-lab `v0.68.0` in each profile and in the row
 `testers`: each row passes or is n.a. with the reason (the lab refuses the listener, the pod, or the loopback);
 `arm64-tcg`, `cgroup-v1` and `ipv6-only` do not hold on this host. The rows found T-496, T-497, T-498, T-499 and T-502
-(each done). The full lane runs in `gate.yml` before the next release.
+(each done). `ci` 44737373446 on `79b8331` passed. The full lane runs in `gate.yml` before the next release.
 
 
 # T-453: A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program
@@ -11751,4 +11751,4 @@ LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET getsockname-deni
 `getsockname-denied` as uid 65534: `podnet: forward  127.0.0.1:17411 (the host refused getsockname: Operation not
 supported (os error 95))  ->  127.0.0.1:1  via direct`, exit 0 at the end of `--run-for`; the rows `forward-*` of the
 case `errors` pass there. Control: with the binary before the fix, the three rows `forward-*` fail in that lab (`forward
-did not start: podnet: Operation not supported (os error 95)`).
+did not start: podnet: Operation not supported (os error 95)`). `ci` 44737373446 on `79b8331` passed.
