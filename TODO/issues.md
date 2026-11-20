@@ -349,6 +349,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #657 | COORD-110: pod-todo: an opt-in check that a done defect names its test (to podcrates) | open (a COORD issue between sessions) | T-450 |
 | #658 | COORD-111: pod-cloudflare, pod-warp and pod-ws: an error line names one cause two or three times (to podcrates) | open (a COORD issue between sessions) | T-497 |
 | #659 | [gh action] requested: ci on the error rows of `pod` (T-496), `src/egress.rs` (T-498) and the test of T-433 (T-450) | closed: ci 44664720872 failed on 0dc34d0 in `restricted-host` and `no-loopback` (the new test `tests/pod_error_lines.rs`; fixed in 8f3a20c, T-496); the other 10 jobs passed | none |
-| #660 | [gh action] requested: ci on the fix of the test of T-496 and the lane case `errors` (T-452) | open (a request of a run) | none |
+| #660 | [gh action] requested: ci on the fix of the test of T-496 and the lane case `errors` (T-452) | closed: ci 44667637115 passed on 826475c (13 of 13 jobs, also restricted-host and no-loopback) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
