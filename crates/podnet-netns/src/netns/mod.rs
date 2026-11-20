@@ -87,8 +87,9 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
 
     // Parent: the child reports whether it made a user namespace; if so, write
     // its id maps before it continues, then take the TUN fd.
-    let (uid, gid) = unsafe { (libc::getuid(), libc::getgid()) };
-    pod_hold::netns::answer(parent, pid as u32, uid, gid).context("write uid/gid maps")?;
+    if let Some(code) = answer_child(parent, pid)? {
+        return Ok(code);
+    }
     let tun_fd = recv_fd(parent).context("receive TUN fd")?;
     let loop_dns = loopdns::receive(parent)?;
     // The reaper writes its report on this socket later; read it with no wait.
@@ -361,6 +362,38 @@ pub(crate) fn private_resolv_conf() -> Result<()> {
         bail!("bind mount over /etc/resolv.conf: {err}");
     }
     Ok(())
+}
+
+/// The answer of the parent after the fork of the child: its id maps. A
+/// child that failed printed its cause on stderr and ended with
+/// [`EXIT_NO_BACKEND`]; then that line is the failure, and the parent adds no
+/// second one (T-482): `Ok(Some(code))`. A child that lives (the id maps
+/// failed) is not waited for: the error of the answer is the cause.
+pub(crate) fn answer_child(parent: RawFd, pid: libc::pid_t) -> Result<Option<i32>> {
+    let (uid, gid) = unsafe { (libc::getuid(), libc::getgid()) };
+    let answered = pod_hold::netns::answer(parent, pid as u32, uid, gid);
+    if answered.is_err() && child_reported(pid) {
+        return Ok(Some(EXIT_NO_BACKEND));
+    }
+    answered.context("write uid/gid maps")?;
+    Ok(None)
+}
+
+/// True when the child `pid` ended with [`EXIT_NO_BACKEND`] within 1 s. It
+/// waits with no block: a child that lives is not the cause.
+fn child_reported(pid: libc::pid_t) -> bool {
+    for _ in 0..100 {
+        let mut status = 0;
+        // SAFETY: a wait for our own child, with WNOHANG.
+        match unsafe { libc::waitpid(pid, &mut status, libc::WNOHANG) } {
+            0 => std::thread::sleep(std::time::Duration::from_millis(10)),
+            p if p == pid => {
+                return libc::WIFEXITED(status) && libc::WEXITSTATUS(status) == EXIT_NO_BACKEND;
+            }
+            _ => return false,
+        }
+    }
+    false
 }
 
 pub(crate) fn write_all_fd(fd: RawFd, buf: &[u8]) -> Result<()> {

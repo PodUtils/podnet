@@ -10865,7 +10865,7 @@ one true line.
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -10892,8 +10892,21 @@ podnet pod: write uid/gid maps: the child died before it named its namespace
 ## Prove
 
 ```sh
-cargo test -p podnet-netns
+cargo test --test pod_error_lines each_refusal_of_the_netns_backend_is_one_line
 ```
+
+## Done
+
+2026-11-20. `answer_child` (`crates/podnet-netns/src/netns/mod.rs`), for the netns backend and the netns-kernel
+backend: when the answer of the parent fails, the parent reaps the child with no blocking wait; a child that ended with
+exit 3 printed its cause, so the parent ends with 3 and no second line. A child that lives (the id maps failed) is not
+waited for, and the error of the answer stays the cause. The table test `each_refusal_of_the_netns_backend_is_one_line`
+(`tests/pod_error_lines.rs`) has three rows: the namespaces are refused (in `unshare -rU`, with
+`/proc/sys/user/max_net_namespaces` and `max_user_namespaces` at 0), a program that does not exist (exit 3), and
+`--inbound-dir` with netns (exit 64); each gives one line of podnet with its cause. It passes. Control: with the two
+files of the commit before (touched), the first row fails with the second line `write uid/gid maps: the child died
+before it named its namespace`.
+
 
 # T-483: Take podcrates v0.71.0
 

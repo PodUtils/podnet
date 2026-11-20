@@ -51,8 +51,9 @@ fn run_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
     }
     // SAFETY: `child` belongs to the child process now.
     unsafe { libc::close(child) };
-    let (uid, gid) = unsafe { (libc::getuid(), libc::getgid()) };
-    pod_hold::netns::answer(parent, pid as u32, uid, gid).context("write uid/gid maps")?;
+    if let Some(code) = crate::netns::answer_child(parent, pid)? {
+        return Ok(code);
+    }
     // The four descriptors of the plane, in this order.
     let mut fds = Vec::new();
     for what in [

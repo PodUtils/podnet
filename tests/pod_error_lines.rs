@@ -257,3 +257,109 @@ done
     }
     assert!(faults.is_empty(), "{}\n{stderr}", faults.join("\n"));
 }
+
+/// T-482: each refusal of the netns backends gives one line of podnet with
+/// its cause, and its exit code. Where the namespaces are refused, the child
+/// prints the cause; before, the parent added a false second line ("write
+/// uid/gid maps: the child died before it named its namespace").
+#[test]
+fn each_refusal_of_the_netns_backend_is_one_line() {
+    let backends = backends();
+    if !backends.contains(&"netns") {
+        eprintln!("skip: no netns backend on this host");
+        return;
+    }
+    let podnet = env!("CARGO_BIN_EXE_podnet");
+    // In a user namespace, its root may lower the limits of new namespaces.
+    let refused = format!(
+        "echo 0 > /proc/sys/user/max_net_namespaces && echo 0 > /proc/sys/user/max_user_namespaces && exec {podnet} \"$@\""
+    );
+    let ns_ok = Command::new("unshare")
+        .args(["-rU", "sh", "-c", &refused, "sh", "--version"])
+        .output()
+        .is_ok_and(|o| o.status.success());
+    let rows: [(&str, bool, &[&str], i32, &str); 3] = [
+        (
+            "the namespaces are refused",
+            true,
+            &["pod", "--backend", "netns", "-x", "direct", "--", "true"],
+            3,
+            "unshare(CLONE_NEWNET) failed",
+        ),
+        (
+            "the program does not exist",
+            false,
+            &[
+                "pod",
+                "--backend",
+                "netns",
+                "-x",
+                "direct",
+                "--",
+                "/nonexistent/prog",
+            ],
+            3,
+            "execvpe /nonexistent/prog: No such file or directory",
+        ),
+        (
+            "a flag of the seccomp backend",
+            false,
+            &[
+                "pod",
+                "--backend",
+                "netns",
+                "-x",
+                "direct",
+                "--inbound-dir",
+                "/tmp",
+                "--",
+                "true",
+            ],
+            64,
+            "--inbound-dir works with --backend seccomp only",
+        ),
+    ];
+    let mut faults = Vec::new();
+    for (name, in_userns, args, code, cause) in rows {
+        let mut cmd = if in_userns {
+            if !ns_ok {
+                eprintln!("skip {name}: no user namespace for the limits");
+                continue;
+            }
+            let mut c = Command::new("unshare");
+            c.args(["-rU", "sh", "-c", &refused, "sh"]).args(args);
+            c
+        } else {
+            let mut c = Command::new(podnet);
+            c.args(args);
+            c
+        };
+        for var in [
+            "HTTPS_PROXY",
+            "https_proxy",
+            "HTTP_PROXY",
+            "http_proxy",
+            "ALL_PROXY",
+            "all_proxy",
+            "NO_PROXY",
+            "no_proxy",
+        ] {
+            cmd.env_remove(var);
+        }
+        let out = cmd.output().unwrap();
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        let lines: Vec<&str> = stderr.lines().filter(|l| l.starts_with("podnet")).collect();
+        if out.status.code() != Some(code) {
+            faults.push(format!(
+                "{name}: exit {:?}, want {code}: {stderr}",
+                out.status.code()
+            ));
+        }
+        if lines.len() != 1 || !lines[0].contains(cause) {
+            faults.push(format!(
+                "{name}: want one line with {cause:?}; got {lines:?}"
+            ));
+        }
+    }
+    assert!(faults.is_empty(), "{}", faults.join("\n"));
+}

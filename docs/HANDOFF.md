@@ -153,7 +153,7 @@ arrive.
 8. T-476 (P2): the cap test of the relay transfer fails under load; measure the bytes of the old leg during a move.
 9. T-492 step 3 (P2): the users of `free_port` in `tests/commands.rs` and `tests/warp_stand_in.rs` take a port that the
    child reports, where the command can report one.
-10. P3: T-482 (the netns backend prints a second, false cause after a refused namespace; one table test of the
+10. P3 (T-482 is done, 2026-11-20): (the netns backend printed a second, false cause after a refused namespace; one table test of the
     refusals); T-488 (sporadic HTTP 530 of a quick tunnel with two edge connections, in the step "Throughput through
     WARP" of `live`; measure with `--ha-connections 1`; a change of the default goes to podcrates); T-414 (a third
     form: the WARP proxy ends on a failed health check; its evidence goes to podcrates).
