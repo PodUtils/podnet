@@ -361,5 +361,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #669 | [gh action] requested: ci on the resolver at each loopback nameserver (T-503) and the error rows | closed: ci 44782773504 passed on 3836971 | T-503 |
 | #670 | [gh action] requested: gate again on the resolver at each loopback nameserver (T-503) and the error rows | closed: gate 44782773447 passed on 3836971 (the full lane on the GitHub runner, with the case `errors` and the row `testers`) | T-503 |
 | #671 | [gh action] requested: issue-sync (not a dry run) after `record-issues` 44752520313 found 4 differences | closed: issue-sync 44782981366 passed on 3836971 (GitHub agrees with the record) | none |
+| #672 | [gh action] requested: issue-sync (not a dry run) after the record closed #649, #670 and #671 | closed: issue-sync 44787120939 passed on ab66048 | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
