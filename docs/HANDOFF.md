@@ -39,9 +39,9 @@ None. The head is the commit of this handoff.
   that a release needs. `ci` has a concurrency group: a new push cancels the `ci` of the commit before it. `live` keeps
   one running and one pending run: a new push replaces the pending one. Let a `ci` run end before the next push when
   its result matters.
-* On `2f1ea82` (T-495, the take of `v0.78.1`): `gate` 44644888355, `live` 44644887005, `deny`, `secrets` and
-  `issue-sync` passed. `ci` 44644887040 was still running at 00:46 (UTC), and a push of a newer commit cancels it.
-  Read the `ci` of the head first. The same code passed on `cbd52ca` (`ci` 44553319128).
+* On `2f1ea82` (T-495, the take of `v0.78.1`): `ci` 44644887040, `gate` 44644888355, `live` 44644887005, `deny`,
+  `secrets` and `issue-sync` passed. The commits after it change documents, the record and scripts only: read the
+  `ci` of the head first.
 * About one `live` run of six fails at the public relay (T-406; COORD-098, #604). GitHub #606 ("live: two runs in a
   row failed") maps to T-406, T-407, T-408 and T-411.
 * `record-issues` (each day): green when each issue number has a line in `TODO/github.txt`.
@@ -137,7 +137,6 @@ bind port 0.
 | #585 (COORD-091), #592 (COORD-095) | T-358 (the release gate; partial). T-359, T-380 and T-381 are done. |
 | #413 (COORD-006) | T-161 and T-200 (blocked on `pod-relay`). |
 | #437 (COORD-019) | The proposals of the donor review that podcrates has not taken. T-417 took one (`replace_private`). |
-| #555 (COORD-079) and #597 (COORD-096) | The subject is done: podcrates closed PodUtils/podcrates#156 and each issue from PodUtils/podcrates#200 to PodUtils/podcrates#219. Close both by hand when they are still open, and set their rows and lines to `closed`. |
 
 The other open issues (#89, #140, #149, #151, #161, #222, #358, #360, #375, #397, #407, #435, #461, #469, #471, #507,
 #606, #620 and the deferred #484 to #501) are in `TODO/issues.md`.

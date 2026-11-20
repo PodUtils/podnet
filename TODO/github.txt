@@ -253,7 +253,7 @@
 552 issue closed
 553 issue closed
 554 issue closed
-555 issue open
+555 issue closed
 556 pull closed
 557 pull closed
 558 issue closed
@@ -295,7 +295,7 @@
 594 issue closed
 595 issue closed
 596 issue closed
-597 issue open
+597 issue closed
 598 issue closed
 599 issue closed
 600 issue closed
