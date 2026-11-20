@@ -61,6 +61,10 @@ None. The head is the commit of this handoff.
 
 ## Next steps
 
+`docs/research/podnet/hard-problems.md` (2026-11-20) lists 32 hard or blocked problems (H-01 to H-32), each with its
+constraints, research questions and owner. The owner's local agent researches them; read its answers first when they
+arrive.
+
 1. Read the `ci` and `live` of the head. Fix each failure first.
 2. Start the watcher of the organization (the pinned commit and the command are in `CLAUDE.md`, "Talk with the other
    sessions of PodUtils"):
