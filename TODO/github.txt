@@ -357,4 +357,4 @@
 656 issue open
 657 issue open
 658 issue open
-659 issue open
+659 issue closed
