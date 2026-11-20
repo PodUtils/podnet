@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-20 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-20, 03:30 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -27,11 +27,31 @@ only with a test that reproduces it and fails on the code before the fix.
   shows a newer tag. The installer core in `scripts/install/` is that of `v0.70.0` (the same file at each tag since).
 * The newest release is `v0.4.0-beta.17` (T-481). It has the fixes of PodUtils/podrunner#213 and #142. podrunner's
   user-path gate passes with it on each lane (PodUtils/podrunner#309).
-* The record is `TODO/`. `cargo todo check` agrees: 494 entries, 21 open, 12 partial, 35 blocked, 426 done.
+* The record is `TODO/`. `cargo todo check` agrees: 497 entries, 19 open, 14 partial, 36 blocked, 428 done.
 
 ## Unfinished work (not on `main`)
 
 None. The head is the commit of this handoff.
+
+## Runs: a push of the session starts no workflow
+
+Since 2026-11-20 a push of the cloud session starts no run (measured: `177336b` and `0dc34d0` got none). Request
+each run by a `[gh action] requested` issue (`docs/maintenance.md`, "A run when a push starts no workflow"), one
+workflow for each issue. #659 asks `ci` on `0dc34d0`. Read its comment, then watch the run; set its row in
+`TODO/issues.md` and its line in `TODO/github.txt` to `closed` with the run and its result.
+
+## The work of the session of 2026-11-20 (02:00 to 03:30 UTC)
+
+* T-450 (partial): the rule "a defect closes with a test that reproduces it" is in `TODO/RULES.md`; the Done sections
+  of the defects from 2026-11-17 name their tests; T-433 got its test. The check in `cargo todo` waits for podcrates:
+  COORD-110 (#657) asks an opt-in key `defect_tests = "DATE"` of `pod-todo`. When a tag has it: take the tag, set the
+  key in `TODO/todo.toml`, close T-450.
+* T-452 (partial): the Correction of the entry has what each dialing command does with a dead proxy, a refused port,
+  a name with no answer, a reject rule and an unreachable target. Found and fixed: T-496 (`pod` printed no cause at the
+  default level; `tests/pod_error_lines.rs` runs the rows on each backend of the host) and T-498 (a timed-out direct
+  dial named its step two times). Found in podcrates code: T-497 (blocked; COORD-111, #658: `pod-cloudflare`,
+  `pod-warp`, `pod-ws`). What remains of T-452: the serve paths of `connect`, the unreachable target in the labs, and
+  step 2 (the rows in `scripts/lab-lane.sh`; the file has 995 lines, so put the rows in a new script).
 
 ## CI
 
@@ -86,8 +106,7 @@ arrive.
    * Then close COORD-109 (#656) by hand, and set its row in `TODO/issues.md` and its line in `TODO/github.txt` to
      `closed`.
    If a step of `image` fails, fix `release.yml` in the next commit: the first run of these steps is the release.
-4. The gate of correctness: T-452 (error rows of the lane: a dead upstream, a refused connect, a reject rule, an
-   unreachable target, a name with no answer), T-453 (a lab of the testers' host class: no AF_INET bind, no netns, no
+4. The gate of correctness: T-452 (what remains: see above), T-453 (a lab of the testers' host class: no AF_INET bind, no netns, no
    write of the memory of a program), T-450, T-454 (a black-box QA pass), T-455 (the measure). T-451 is done.
 5. T-478 and T-406: when `live` fails in "SSH through the reverse relay" or in the resume step, read the logs that the
    step prints and the answer of podcrates on COORD-098 (#604).
@@ -132,6 +151,8 @@ bind port 0.
 
 | Issue | Waits for |
 | --- | --- |
+| #657 (COORD-110, `pod-todo`: a done defect names its test) | The key in a tag of podcrates; then T-450 closes. |
+| #658 (COORD-111, repeated causes in `pod-cloudflare`, `pod-warp`, `pod-ws`) | The fixes in a tag of podcrates; then T-497 adds the rows. |
 | #656 (COORD-109, the image on ghcr.io: T-487) | The next release proves the attestation, the pull-back check and the digests in the notes (next step 3). Close it then. |
 | #654 (COORD-107, the start report and each take) | The asks of podrunner. Add a `state:` line for each take (its last take is `v0.77.0`; add `v0.78.1`). Close it when the coordinator reads it. |
 | #649 (COORD-102, the QA round, to all) | T-450 and T-452 to T-455. Close it when they are done. |
