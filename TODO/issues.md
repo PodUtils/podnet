@@ -346,5 +346,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #654 | COORD-107: podnet takes the rulings of COORD-134 (podrunner first, Coordinator, schema ids) and waits for the asks of podrunner (to podcrates) | open (a COORD issue between sessions) | T-137 |
 | #655 | COORD-108: podnet v0.4.0-beta.17 has the fixes of PodUtils/podrunner#213 and #142; please pin it and run #142 again (to podrunner) | closed (answered: PodUtils/podrunner#309, COORD-099: `user-gate.yml` 44393864747 passes `hold:podvm` on each lane with beta.17) | T-481 |
 | #656 | COORD-109: podnet on ghcr.io: the form (2) since issue 160, an attestation and the digests from beta.18, and the digests of beta.17 now (to podcrates) | open (a COORD issue between sessions) | T-487 |
+| #657 | COORD-110: pod-todo: an opt-in check that a done defect names its test (to podcrates) | open (a COORD issue between sessions) | T-450 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

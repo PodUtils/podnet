@@ -100,6 +100,20 @@ Change the entry, the index and `TODO/PROGRESS.md` in the same commit as
 the work. A commit that fixes a defect and leaves its entry open is not
 finished.
 
+### A defect closes with a test that reproduces it
+
+The owner's review of 2026-11-17 (`docs/decisions.md`, The QA round and
+the release freeze).
+
+1. The `## Done` section of a `defect` names the test that reproduces the
+   report: the name of a test function in backticks, or a path under
+   `tests/` or `scripts/`.
+2. It gives the control: the result of that test on the code before the
+   fix (it fails, and how).
+3. A report that is not a defect (the code was right) also gets a test. The
+   test pins the behaviour that the report describes.
+4. The rule applies to each defect that is `done` on or after 2026-11-17.
+
 ### A premise that a measurement disproves
 
 Do not change the premise. Add a `## Correction` section that gives the

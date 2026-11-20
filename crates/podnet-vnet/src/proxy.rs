@@ -397,6 +397,37 @@ mod tests {
         assert!(answer.contains("HTTP CONNECT only"), "{answer}");
     }
 
+    /// T-433 (GitHub #609): a target outside the subnet of the stack gets a
+    /// failure at once on each door, never a success and then an EOF. The
+    /// SOCKS5 reply is 05 01 ("general failure"); HTTP CONNECT gets 502 with
+    /// a body that names the subnet.
+    #[tokio::test]
+    async fn a_target_outside_the_subnet_fails_at_once_on_each_door() {
+        let mut socks = vec![5, 1, 0, 5, 1, 0, 1, 140, 82, 112, 6];
+        socks.extend_from_slice(&443u16.to_be_bytes());
+        let rows: [(&str, Vec<u8>, &str); 2] = [
+            ("socks5", socks, ""),
+            (
+                "http",
+                b"CONNECT 140.82.112.6:443 HTTP/1.1\r\n\r\n".to_vec(),
+                "HTTP/1.1 502 Bad Gateway\r\n",
+            ),
+        ];
+        for (door, request, start) in rows {
+            let net = Arc::new(NetStack::loopback());
+            let (answer, took) = ask(net, &request).await;
+            assert!(took < std::time::Duration::from_secs(1), "{door}: {took:?}");
+            if door == "socks5" {
+                let bytes = answer.as_bytes();
+                assert_eq!(&bytes[..2], &[5, 0], "{door}: the greeting");
+                assert_eq!(&bytes[2..4], &[5, 1], "{door}: the reply {bytes:?}");
+            } else {
+                assert!(answer.starts_with(start), "{door}: {answer}");
+                assert!(answer.contains("outside the subnet"), "{door}: {answer}");
+            }
+        }
+    }
+
     /// T-061: the proxy is the front door over the stack. A client that
     /// asks for UDP ASSOCIATE (the stack of the proxy carries no datagrams
     /// for it) gets "command not supported", not a closed connection; and

@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**494 entries: 21 open, 12 partial, 35 blocked, 426 done.**
+**494 entries: 20 open, 13 partial, 35 blocked, 426 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 5 | 2 | 2 | 64 | 73 |
+| P1 | 4 | 3 | 2 | 64 | 73 |
 | P2 | 7 | 7 | 10 | 216 | 240 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 21 | 12 | 35 | 426 | 494 |
-| **All** | 18 | 12 | 36 | 412 | 478 |
+| **All** | 20 | 13 | 35 | 426 | 494 |
+| **All** | 20 | 13 | 35 | 426 | 494 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -495,7 +495,7 @@ M8 Overlays, M9 Later.
 | [T-447](fixes.md) | P3 | S | M6 | feature | done | `ssh-relay` has no `--run-for`, and `-q` prints the banner (GitHub #632) |
 | [T-448](fixes.md) | P3 | S | M6 | feature | done | No way to add a user to the users file of `serve` (GitHub #633) |
 | [T-449](fixes.md) | P1 | S | M5 | defect | done | live: four checks read the log lines of the tunnel before the take of `pod-cloudflare` |
-| [T-450](fixes.md) | P1 | S | M5 | chore | open | Rule: an issue closes only with a test that reproduces it |
+| [T-450](fixes.md) | P1 | S | M5 | chore | partial | Rule: an issue closes only with a test that reproduces it |
 | [T-451](fixes.md) | P1 | M | M5 | chore | done | Contract tests from the manual: each flag of the help exists, each example parses, each JSON document has one schema |
 | [T-452](fixes.md) | P1 | M | M5 | chore | open | Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS |
 | [T-453](fixes.md) | P1 | S | M5 | chore | open | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |

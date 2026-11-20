@@ -8911,6 +8911,7 @@ cargo test -p podnet --test pod_seccomp -- a_dead_upstream_refuses_a_nonblocking
 2026-11-17, commit 8a0b0f19. Before: `connect_ex 0 after 0.003` and `curl -m 5` waited 5 s; after: `connect_ex 111`, and
 curl ends in 0.05 s with exit 7. The test passes; with the fix reverted it fails (`CONNECT:-1:115`, `SOERROR0:0:0`).
 `cargo test -p podnet-netns`: 151 passed; `--test pod_seccomp`: 44 passed.
+The test: `a_dead_upstream_refuses_a_nonblocking_connect_without_memory_writes` (`tests/pod_seccomp/tcp.rs`).
 
 # T-431: `pod -r 'cidr:...=reject'` does not refuse a name (GitHub #611)
 
@@ -8977,6 +8978,7 @@ cargo test -p podnet-netns --lib -- only_a_dead_upstream_gets_the_warning
 ## Done
 
 2026-11-17, commit 8a0b0f19. No warning for `-x direct`; the test passes and fails with the fix reverted.
+The test: `only_a_dead_upstream_gets_the_warning` (`crates/podnet-netns/src/lib.rs`).
 
 # T-433: `net proxy` and a target outside the virtual network (GitHub #609)
 
@@ -9005,12 +9007,17 @@ The report says that a SOCKS5 CONNECT to `140.82.112.6:443` through `podnet net 
 ## Prove
 
 ```sh
-printf '\005\001\000' # the greeting of the report, then CONNECT 140.82.112.6:443: the reply is 05 01
+cargo test -p podnet-vnet --lib -- a_target_outside_the_subnet_fails_at_once_on_each_door
 ```
 
 ## Done
 
 2026-11-17: verified with the debug build: the same reply bytes (`05 01`) and the 502 of HTTP CONNECT.
+
+2026-11-20 (T-450): the test `a_target_outside_the_subnet_fails_at_once_on_each_door`
+(`crates/podnet-vnet/src/proxy.rs`) pins the behaviour of the report: the SOCKS5 reply `05 01` and the 502 of HTTP
+CONNECT, each in less than 1 s. There was no fix, so there is no control on old code. `cargo test -p podnet-vnet --lib
+proxy::`: 8 passed.
 
 # T-434: `serve` drops a client that half-closes before the answer (GitHub #613)
 
@@ -9052,6 +9059,8 @@ cargo test -p podnet --test cli -- serve_local_answers_a_client_that_half_closes
 
 2026-11-17, commit 1bd1a99f. Both tests pass; each fails without the fix (`HTTP/1.0: ""`). `cargo test -p podnet-serve`:
 171 passed.
+The tests: `local_road_answers_a_client_that_half_closes` (`crates/podnet-serve/src/road/tests.rs`) and
+`serve_local_answers_a_client_that_half_closes` (`tests/cli/serve.rs`).
 
 # T-435: `expose ... -- --detach` stays in the foreground (GitHub #612)
 
@@ -9089,6 +9098,7 @@ cargo test -p podnet --test cli -- net::expose_detaches_with_the_arguments_after
 2026-11-17, commits dfb836e6 and 6ee419ff. `expose 127.0.0.1:9 --via switch --as 10.66.0.2:8080 -- --detach --name X612`
 prints the detached document and exits 0; `podnet ps` lists X612. The CLI test fails without the change of `src/main.rs`
 (the 60 s limit). A detached instance has the name of the inner command by default.
+The test: `expose_detaches_with_the_arguments_after_the_separator` (`tests/cli/net.rs`).
 
 # T-436: A syntax error of the command line names `podnet update --check` (GitHub #616)
 
@@ -9122,6 +9132,7 @@ cargo test -p podnet --bin podnet -- only_a_flag_that_no_command_knows_names_the
 
 2026-11-17, commit fd1c13a9. The test covers a value, an extra positional, a flag of another command, `-L`, `-5` and
 `--bogus` (which keeps the line); it fails without the check. The exit code stays 64.
+The test: `only_a_flag_that_no_command_knows_names_the_update` (`src/cli/help_tests.rs`).
 
 # T-437: A command that ends at once prints the line "runs in the foreground" (GitHub #617)
 
@@ -9155,6 +9166,7 @@ cargo test -p podnet --bin podnet -- a_mode_that_ends_alone_gets_no_foreground_l
 
 2026-11-17, commit 9e279378. The test also checks that `serve www`, `tunnel --hello-world` and `connect -L` keep the
 line; it fails with the old `src/cli/argv.rs`.
+The test: `a_mode_that_ends_alone_gets_no_foreground_line` (`src/cli/argv_tests.rs`).
 
 # T-438: `exit` needs `--stdio`, its only mode (GitHub #623)
 
@@ -9565,7 +9577,7 @@ workflow, and finds no other old text (the other hits are texts that the code bu
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -9588,6 +9600,19 @@ report and fails on the code before the fix.
 ```sh
 cargo todo check   # a done defect with no test is a fault
 ```
+
+## Correction
+
+2026-11-20: step 1 is done. `TODO/RULES.md`, section "A defect closes with a test that reproduces it", has the rule;
+it applies to each defect done on or after 2026-11-17. The Done sections of T-430, T-432 to T-437 and T-474 now name
+their tests. T-433 (GitHub #609, not a defect) got the test
+`a_target_outside_the_subnet_fails_at_once_on_each_door` (`crates/podnet-vnet/src/proxy.rs`). Measured with the form
+of COORD-110: 152 done defects; 0 of those done on or after 2026-11-17 name no test (8 before this change); 26 older
+ones name no test.
+
+Step 2 is a check of `pod-todo` (PodUtils/podcrates): `crates/podnet-todo` has no own code, and the rule "Shared code
+first" puts the check in the crate. The ask is COORD-110 (GitHub #657): an opt-in key `defect_tests = "DATE"` in
+`todo.toml`. When a tag of podcrates has it, take the tag, set the key in `TODO/todo.toml`, and close this entry.
 
 # T-451: Contract tests from the manual: each flag of the help exists, each example parses, each JSON document has one schema
 
@@ -10470,6 +10495,7 @@ cargo test -p podnet --test ssh_relay -- ssh_relay_takes_the_proxy_of_the_proces
 against a recording CONNECT proxy that joins a fake relay: it passes, and the proxy saw `CONNECT relay.invalid:443
 HTTP/1.1`. On the code before the fix it fails (the direct connect to `relay.invalid`). `cargo test --test ssh_relay`
 (4), `cargo test --test doctor_ssh_relay` (8) and `cargo test -p podnet-serve relay` (37) pass.
+The test: `ssh_relay_takes_the_proxy_of_the_process` (`tests/ssh_relay.rs`).
 
 # T-475: `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6
 
