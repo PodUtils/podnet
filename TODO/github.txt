@@ -360,4 +360,4 @@
 659 issue closed
 660 issue closed
 661 issue closed
-662 issue open
+662 issue closed
