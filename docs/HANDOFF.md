@@ -1,32 +1,32 @@
 # Handoff
 
-The state at 2026-11-18 13:30 (UTC), in the session of 2026-11-18. Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-20 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
 
-**podrunner first** (the owner, 2026-11-18; `docs/decisions.md`; PodUtils/podcrates#225 COORD-134, #227 COORD-136):
-the CI work of githome and cfb is podrunner's work, and it comes first. podcrates is the coordinator; COORD issues are
-the one channel. podnet's order: a red run of its CI; each ask of podrunner (a COORD issue `(to podnet)`); the take of
-each tag of podcrates; the asks of githome and cfb (none owned by podnet for their CI; #461 asks wait on podcrates'
-`pod-unit`); then the work below. podnet's start report and take are in COORD-107 (#654). A beta with a fix for
-podrunner alone is allowed under the freeze (COORD-136, call C782).
+**podrunner first** (the owner, 2026-11-18; `docs/decisions.md`; PodUtils/podcrates#225 COORD-134,
+PodUtils/podcrates#227 COORD-136). podcrates is the coordinator. COORD issues are the one channel. The order:
 
-The owner's review of the QA round (2026-11-17, `docs/decisions.md`, The QA round and the release freeze): no release
-and no new feature until T-450 to T-455 are done; an issue closes only with a test that reproduces it and fails on the
-code before the fix. The rulings "Shared code first" and "Quality first" (2026-11-17, in `CLAUDE.md`) hold for each
-change.
+1. A red run of podnet's CI.
+2. Each ask of podrunner (a COORD issue `(to podnet)`).
+3. The take of each tag of podcrates (T-137): `sh scripts/agent/podcrates.sh`.
+4. The gate of correctness: T-450, T-452, T-453, T-454, T-455. No release and no new feature before they are done
+   (`docs/decisions.md`, 2026-11-17, The QA round and the release freeze). A beta of fixes for podrunner is allowed
+   (2026-11-18, call C782).
+5. podnet's own work, in the order of `TODO/PROGRESS.md`.
+
+The rulings "Shared code first" and "Quality first" (2026-11-17, in `CLAUDE.md`) hold for each change. An issue closes
+only with a test that reproduces it and fails on the code before the fix.
 
 ## Where the code is
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (`rustup default 1.99.1`; add
   `rustfmt`, `clippy` and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.78.1` (T-495). The installer core in
-  `scripts/install/` is that of `v0.70.0` and `v0.71.0` (the same file; T-469, GitHub #645, done). The replacement of podnet's copies by the new
-  shared items of `v0.70.0` (`pod_proxy::hop`, `pod_dns::txt::error_answer`, `pod_ws::handshake::build_probe_request`,
-  `pod_tls::env_bundle`, `pod_core::lock`, `pod_core::clock`) is T-473; it waits behind podrunner's asks.
-* The newest release is `v0.4.0-beta.17` (T-481, tag at `cfc0924`): the fixes of PodUtils/podrunner#213 and #142 and
-  the QA round, under the coordinator's call C782. COORD-108 (#655) asks podrunner to pin it and run #142 again.
+* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.78.1` (T-495). `sh scripts/agent/podcrates.sh`
+  shows a newer tag. The installer core in `scripts/install/` is that of `v0.70.0` (the same file at each tag since).
+* The newest release is `v0.4.0-beta.17` (T-481). It has the fixes of PodUtils/podrunner#213 and #142. podrunner's
+  user-path gate passes with it on each lane (PodUtils/podrunner#309).
 * The record is `TODO/`. `cargo todo check` agrees: 494 entries, 21 open, 12 partial, 35 blocked, 426 done.
 
 ## Unfinished work (not on `main`)
@@ -35,60 +35,79 @@ None. The head is the commit of this handoff.
 
 ## CI
 
-* A push to `main` starts `ci`, `deny`, `secrets`, `live` and `issue-sync`. `ci` has a concurrency group since
-  2026-11-17: a new push cancels the `ci` of the commit before it. `live` keeps one running and one pending run: a new
-  push replaces the pending one. Let a `ci` run end before the next push when its result matters.
-* On `fb2184c` (the head before this handoff): `live` 44208545007 passed. Its `ci` was replaced by the `ci` of this handoff commit (the same code and this file): read that result first (T-479 step 1 is the change that it tests).
-* `gate` 44198354501 on `b2160d4` passed: the lane, its plant, and the contracts on the release binary.
-* About one `live` run of six fails at the public relay (T-406: the relay keeps a lost socket of a node; COORD-098, #604,
-  asks podcrates who owns the fix and when).
+* A push to `main` starts `ci`, `deny`, `secrets`, `live` and `issue-sync`. Dispatch `gate.yml` by hand on the commit
+  that a release needs. `ci` has a concurrency group: a new push cancels the `ci` of the commit before it. `live` keeps
+  one running and one pending run: a new push replaces the pending one. Let a `ci` run end before the next push when
+  its result matters.
+* On `2f1ea82` (T-495, the take of `v0.78.1`): `gate` 44644888355, `live` 44644887005, `deny`, `secrets` and
+  `issue-sync` passed. `ci` 44644887040 was still running at 00:46 (UTC), and a push of a newer commit cancels it.
+  Read the `ci` of the head first. The same code passed on `cbd52ca` (`ci` 44553319128).
+* About one `live` run of six fails at the public relay (T-406; COORD-098, #604). GitHub #606 ("live: two runs in a
+  row failed") maps to T-406, T-407, T-408 and T-411.
 * `record-issues` (each day): green when each issue number has a line in `TODO/github.txt`.
 
-## The work of 2026-11-17 (all on `main`)
+## The work of the session of 2026-11-18 to 2026-11-20 (all on `main`)
 
-* The QA round: GitHub #609 to #648 (40 issues of outside testers). Each is closed through the record except #645 (T-469,
-  the installer of podcrates: COORD-103, #650). podrunner#213 (T-456) and #142 (T-457) are fixed and proven with a
-  .NET 8 `HttpClient`.
-* COORD-102 (#649) is to all: the lesson of the QA round; podrunner, podssh and podvm answered; podcrates answered asks
-  1 to 3 in COORD-131 (PodUtils/podcrates#221).
-* T-473 (the survey of copies of shared code): `src/transport/` is removed, `scripts/retry.sh` is podcrates' copy;
-  T-474 (`ssh-relay` takes `--proxy` and `--egress`) and T-475 (the CA bundles of `warp up`) are done; the asks are
-  podcrates' entries 896 to 901 (COORD-105, #652).
-* T-451 is done: step 1, `src/cli/help_tests.rs::each_flag_that_a_help_names_exists` (69 false flag references
-  fixed); step 2, `tests/contracts.rs` (the rules of the JSON documents, `docs/cli.md`; 20 faults fixed); step 3,
-  `gate.yml` runs the contracts on the release binary (`PODNET_TEST_BINARY`).
-* T-479: the relay tests keep a refused port bound (a freed port was taken by another test); the helper for each
-  project is asked of `pod-testkit` (COORD-106, #653).
-* T-478: the live step "SSH through the reverse relay" gives each parallel session a limit and a log; the cause is most
-  likely T-406.
-* T-477: a refusal for now (exit 75) gets its own hint. T-449: each grep of the workflows and the scripts reads the log
-  lines of `pod-cloudflare`. T-414: the WARP proxy step outlived its `--run-for`.
+* The takes of podcrates `v0.70.0` to `v0.78.1`: T-480, T-483, T-485, T-486, T-489, T-490, T-491, T-493 and T-495. Each
+  take is a tag bump with no change of code, except the installer core (T-469, GitHub #645, in `v0.70.0`) and the
+  `pod_testkit::refused` helper (T-479, in `v0.71.0`).
+* The release `v0.4.0-beta.17` (T-481) for podrunner's PodUtils/podrunner#213 and #142, under call C782.
+* T-484: the version line is a contract that podrunner reads (a test of its form and its place in `docs/cli.md`).
+* T-487: the image on ghcr.io (the owner's ruling "ghcr.io", call C789 of podcrates). The job `image` of `release.yml`
+  attests the manifest list in the registry, pulls each image of one architecture back by its digest and compares its
+  binary with the file of the release, and writes the section "The image, by digest" into the notes. Only the next
+  release runs these steps.
+* T-492 (partial): the road test listens on port 0, and the preflight test takes `pod_testkit::refused`.
 
 ## Next steps
 
-1. Read the runs of "CI" above. Fix each failure first.
-1b. Keep the watcher running. Take each COORD issue `(to podnet)` of podrunner first (its census, PodUtils/podrunner@T-490 and PodUtils/podrunner@T-491).
-2. T-450 to T-455, the gate of correctness (no release and no new feature before they are done), in this order:
-   T-452 (error rows of the lane: a dead upstream, a refused connect, a reject rule, an unreachable target, a name with
-   no answer), T-453 (a lab of the testers' host class: no AF_INET bind, no netns, no write of the memory of a
-   program; ask 1 of COORD-102 to podcrates), T-450, T-454 (a black-box QA pass), T-455 (the measure).
-3. T-478 / T-406: when `live` fails in "SSH through the reverse relay" or in the resume step, read the logs that the
-   step prints; read the answer of podcrates on COORD-098 (#604).
-4. T-473, what remains: the doctor row of the SSH relay and `--connect-proxy` go to `pod-proxy` (a SOCKS or
-   authenticated proxy then works: a change of tested behaviour); the copies of the clock, the files and the backoff go
-   to `pod-core`; the rest waits for podcrates' entries 896 to 901. 
-5. T-476: the cap test of the relay transfer fails under load; measure the bytes of the old leg during a move.
-5b. T-488 (P3): sporadic HTTP 530 of a quick tunnel with two edge connections (the step "Throughput through WARP" of
-   `live`); measure with `--ha-connections 1`. T-482 (P3): the netns backend prints a second, false cause after a refused namespace. T-414: a third form (the WARP
-   proxy ends on a failed health check); its evidence goes to podcrates.
-6. At each tag of podcrates (`v0.79.0` is next): `sh scripts/agent/podcrates.sh`, and take the crates whose hand-off is
-   at the tag (T-137).
-7. The disk allowance holds about one debug build: build with `CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
-   CARGO_PROFILE_TEST_DEBUG=0`. Give an agent, and a control build of an old commit, its own `CARGO_TARGET_DIR`: a
-   build of other sources in the shared `target/` leaves old files that cargo takes as current (then `cargo clean -p`
-   each workspace package). After a change of a document or a help text, run
-   `cargo test --bin podnet write_the_llms_files -- --ignored`. Issues #484 to #501 are deferred by the owner: leave
-   them open and unlabelled.
+1. Read the `ci` and `live` of the head. Fix each failure first.
+2. Start the watcher of the organization (the pinned commit and the command are in `CLAUDE.md`, "Talk with the other
+   sessions of PodUtils"):
+
+   ```text
+   python3 -I .work/podcrates-agent/watch.py podnet --state .work/agent
+   ```
+
+   Take each COORD issue `(to podnet)` of podrunner first. Run `sh scripts/agent/podcrates.sh` at the start and at
+   each tag (the next tag after `v0.78.1`), and take each crate whose hand-off is at the tag (T-137). Write each take
+   into COORD-107 (#654) as a `state:` line with the CI runs.
+3. The next release (`v0.4.0-beta.18`, only for a fix that podrunner needs, until T-450 and T-452 to T-455 are done)
+   must prove T-487. Check, in this order:
+   * The job `image` passed: the attestation check (`gh attestation verify oci://...`) and the pull-back of each image
+     of one architecture (the SHA-256 of its binary equals the file of the release).
+   * The notes of the release have the section "The image, by digest".
+   * `release-proofs.yml` passed.
+   * The hand-off COORD issue of the release names the digest of the manifest list beside the SHA-256 of each file.
+   * Then close COORD-109 (#656) by hand, and set its row in `TODO/issues.md` and its line in `TODO/github.txt` to
+     `closed`.
+   If a step of `image` fails, fix `release.yml` in the next commit: the first run of these steps is the release.
+4. The gate of correctness: T-452 (error rows of the lane: a dead upstream, a refused connect, a reject rule, an
+   unreachable target, a name with no answer), T-453 (a lab of the testers' host class: no AF_INET bind, no netns, no
+   write of the memory of a program), T-450, T-454 (a black-box QA pass), T-455 (the measure). T-451 is done.
+5. T-478 and T-406: when `live` fails in "SSH through the reverse relay" or in the resume step, read the logs that the
+   step prints and the answer of podcrates on COORD-098 (#604).
+6. T-494 (P2): take `pod-release` in place of `src/update.rs` and `src/update/cosign.rs`. Read the Done sections of
+   PodUtils/podcrates@T-880 and PodUtils/podcrates@T-966 first. The ruling in `CLAUDE.md` (SHA256SUMS, certificate
+   identity and cosign signature checked; no Rekor proof) must hold, or the ruling changes.
+7. T-473 (P2), what remains: the replacement of podnet's copies by the shared items of `v0.70.0` (`pod_proxy::hop`,
+   `pod_dns::txt::error_answer`, `pod_ws::handshake::build_probe_request`, `pod_tls::env_bundle`, `pod_core::lock`,
+   `pod_core::clock`). The doctor row of the SSH relay and `--connect-proxy` go to `pod-proxy` (a SOCKS or
+   authenticated proxy then works: a change of tested behaviour). The copies of the clock, the files and the backoff
+   go to `pod-core`.
+8. T-476 (P2): the cap test of the relay transfer fails under load; measure the bytes of the old leg during a move.
+9. T-492 step 3 (P2): the users of `free_port` in `tests/commands.rs` and `tests/warp_stand_in.rs` take a port that the
+   child reports, where the command can report one.
+10. P3: T-482 (the netns backend prints a second, false cause after a refused namespace; one table test of the
+    refusals); T-488 (sporadic HTTP 530 of a quick tunnel with two edge connections, in the step "Throughput through
+    WARP" of `live`; measure with `--ha-connections 1`; a change of the default goes to podcrates); T-414 (a third
+    form: the WARP proxy ends on a failed health check; its evidence goes to podcrates).
+11. The disk allowance holds about one debug build: build with `CARGO_INCREMENTAL=0 CARGO_PROFILE_DEV_DEBUG=0
+    CARGO_PROFILE_TEST_DEBUG=0`. Give an agent, and a control build of an old commit, its own `CARGO_TARGET_DIR`: a
+    build of other sources in the shared `target/` leaves old files that cargo takes as current (then `cargo clean -p`
+    each workspace package). After a change of a document or a help text, run
+    `cargo test --bin podnet write_the_llms_files -- --ignored`. Issues #484 to #501 are deferred by the owner: leave
+    them open and unlabelled.
 
 Run the lane here: `sh scripts/get-podlab.sh v0.68.0 .work/podlab-v0.68.0`; build podnet; copy the binary and the
 podlab asset to a directory that uid 65534 can read (for example `/var/tmp/lane/`, not in `/tmp` or HOME); then as
@@ -98,29 +117,32 @@ scripts/lab-lane.sh PODLAB DIR/podnet [PROFILE...]`.
 ## Known flakes under load
 
 `quick_tunnel_standin_serves_a_visitor_over_http2`, `service_serve_ingress::the_service_ends_with_the_serve_process`,
-`shim_direct::a_perl_accept_loop_serves_each_connection` and `ws_relay::...::a_demoted_relay_host_recovers_on_success`
-`autostart::sigterm_is_a_clean_stop`, `doctor_ssh_relay_row_dials_through_the_proxy`, `transfer_over_the_relay_crosses_the_cap` (T-476) and
-`guest_wire_unix_socket_serves_a_guest_and_the_next` (keep the default `TMPDIR`) fail at times in a full run and pass alone. Run a failed test alone three times before a push.
+`shim_direct::a_perl_accept_loop_serves_each_connection`, `ws_relay::...::a_demoted_relay_host_recovers_on_success`,
+`autostart::sigterm_is_a_clean_stop`, `doctor_ssh_relay_row_dials_through_the_proxy`,
+`transfer_over_the_relay_crosses_the_cap` (T-476) and `guest_wire_unix_socket_serves_a_guest_and_the_next` (keep the
+default `TMPDIR`) fail at times in a full run and pass alone. Run a failed test alone three times before a push. A
+test that frees a port and binds it again is a fault of the class of T-479 and T-492: take `pod_testkit::refused`, or
+bind port 0.
 
 ## Open COORD issues
 
 | Issue | Waits for |
 | --- | --- |
-| #522, #526, #532 (takes of v0.37.0, v0.39.0 and v0.40.0) | podcrates records the take. |
-| #560 (COORD-081, the take of v0.45.0) | The answer of podcrates on the ws listener (a refused pin: `Refused` or no peer). |
-| #555 (COORD-079) | The fuzz crash of `pod-proxy` is fixed in v0.45.0 (T-349); the crash of `pod-cloudflare` waits for its take (their entry 029). |
-| #597 (COORD-096, the takes of v0.58.0 to v0.66.0) | podcrates reads it; close it when podcrates closes #200 to #216. |
-| #607 (COORD-100, `remote-port` = 80 for localhost-run) | podcrates adds the fact; podnet takes the next tag. |
-| #604 (COORD-098, the relay holds a lost socket) | The owner of ask 1 (the relay server) and a date (T-406, T-478); ask 2 is in v0.65.0 (T-410). |
-| #649 (COORD-102, the QA round, to all) | podcrates' asks 1 to 3 (their entries 866, 899); close it when T-450 to T-455 are done. |
-| #656 (COORD-109, the image on ghcr.io: T-487) | The coordinator confirms the form (2) for all projects; the next release proves the attestation and the digests in the notes. |
-| #654 (COORD-107, the start report, the takes of v0.70.0 and v0.71.0, the answer to PodUtils/podcrates@T-931) | The asks of podrunner; close it when the coordinator reads it. |
-| #651 (COORD-104, the answer to COORD-131) | podcrates' entries 877, 879, 880 (the lock, `pod-detach`, `pod-release`); T-473. |
-| #592 (COORD-095) | T-358 (the release gate; step 4 is done); T-380 and T-381 are done. |
-| #587, #589 | podcrates closes #185 and #188. |
-| #413, #425, #437, #439, #440, #448, #460 | Older proposals and asks; see `TODO/issues.md`. |
+| #656 (COORD-109, the image on ghcr.io: T-487) | The next release proves the attestation, the pull-back check and the digests in the notes (next step 3). Close it then. |
+| #654 (COORD-107, the start report and each take) | The asks of podrunner. Add a `state:` line for each take (its last take is `v0.77.0`; add `v0.78.1`). Close it when the coordinator reads it. |
+| #649 (COORD-102, the QA round, to all) | T-450 and T-452 to T-455. Close it when they are done. |
+| #651 (COORD-104, the answer to PodUtils/podcrates#221) | T-473 and podcrates' entries 877, 879 and 880 (the lock, `pod-detach`, `pod-release`: T-494). |
+| #604 (COORD-098, the relay holds a lost socket) | The owner of ask 1 (the relay server) and a date (T-406, T-478); ask 2 is in `v0.65.0` (T-410). |
+| #608 (COORD-101, `pod-tls`: `Trust::Default` ignores the CA file) | The answer of podcrates. T-421 is done in podnet (`ws_trust()`). |
+| #585 (COORD-091), #592 (COORD-095) | T-358 (the release gate; partial). T-359, T-380 and T-381 are done. |
+| #413 (COORD-006) | T-161 and T-200 (blocked on `pod-relay`). |
+| #437 (COORD-019) | The proposals of the donor review that podcrates has not taken. T-417 took one (`replace_private`). |
+| #555 (COORD-079) and #597 (COORD-096) | The subject is done: podcrates closed PodUtils/podcrates#156 and each issue from PodUtils/podcrates#200 to PodUtils/podcrates#219. Close both by hand when they are still open, and set their rows and lines to `closed`. |
+
+The other open issues (#89, #140, #149, #151, #161, #222, #358, #360, #375, #397, #407, #435, #461, #469, #471, #507,
+#606, #620 and the deferred #484 to #501) are in `TODO/issues.md`.
 
 ## Waiting on the owner
 
-None. The owner ruled on 2026-11-16: the entry 305 is removed (#475 closed, T-396), `--seal` stays opt-in (Q1), and each
-triaged issue of Nemo-010 gets the label `confirmed` (not the deferred #484 to #501).
+None. The owner ruled on 2026-11-16: the entry 305 is removed (#475 closed, T-396), `--seal` stays opt-in (Q1), and
+each triaged issue of Nemo-010 gets the label `confirmed` (not the deferred #484 to #501).
