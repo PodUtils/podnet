@@ -10905,7 +10905,7 @@ waited for, and the error of the answer stays the cause. The table test `each_re
 `/proc/sys/user/max_net_namespaces` and `max_user_namespaces` at 0), a program that does not exist (exit 3), and
 `--inbound-dir` with netns (exit 64); each gives one line of podnet with its cause. It passes. Control: with the two
 files of the commit before (touched), the first row fails with the second line `write uid/gid maps: the child died
-before it named its namespace`.
+before it named its namespace`. `ci` 44799344725 on `ac67710` passed.
 
 
 # T-483: Take podcrates v0.71.0
