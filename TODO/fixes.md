@@ -11249,3 +11249,40 @@ each project.
 ```sh
 cargo test --workspace update
 ```
+
+# T-495: Take podcrates v0.78.1
+
+**Source:** PodUtils/podcrates#241 (COORD-146, 2026-11-19): the tag `v0.78.1` at `edbc86b`. The tag `v0.78.0` has no
+GitHub release (its run stopped after the signature, PodUtils/podcrates@T-974); `v0.78.1` holds its content.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.77.0`. The tag `v0.78.1` has the TLS end of `pod-broker`, the static command `pod-release`,
+and three small breaking changes (`pod_broker::Tunnel`, `pod_release::update::plan`, `pod_release::verify`).
+
+## Premise
+
+- The tag has no hand-off patch for podnet. The installer core has the same SHA-256 as at `v0.77.0`.
+- No code of podnet uses `pod_broker` or `pod_release` (a search of `src`, `crates` and `tests`): the three breaking
+  changes do not reach podnet. The take of `pod-release` is T-494.
+
+## Approach
+
+1. Each podcrates tag is `v0.78.1`: the manifests, both lock files, `scripts/install/SOURCES` and `issue-sync.yml`.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-20, the commit of this entry. The tag `v0.78.1` (commit `edbc86b`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`. podnet builds against the tag with no change of
+code. `sh scripts/agent/check.sh` passes.
