@@ -11387,6 +11387,11 @@ with no answer, a reject rule, a dead upstream, a refused connect on the loopbac
 kept), 6 rows fail (no line for the name with no answer and the reject rule, on each backend). The unit tests
 `each_target_gets_one_line_up_to_the_limit`, `only_a_direct_refusal_is_the_cause_of_the_program` (`notice.rs`) and
 `only_a_dead_upstream_gets_the_warning` (`lib.rs`, the reset of netns-kernel) pass. `docs/pods.md` has the line.
+`ci` 44664720872 on `0dc34d0` failed in the jobs `restricted-host` (the test bound a refused port with
+`pod_testkit::refused`, and that host refuses each bind of AF_INET) and `no-loopback` (with the loopback down, the
+refused row gets a true line `Network is unreachable`). The test now takes `127.0.0.1:1` (no bind), and the refused row
+refuses only a second line that says "Connection refused". It passes here as it is, under
+`scripts/restricted-host.sh`, and in `unshare -n` (the loopback down); the control still fails 6 rows.
 
 # T-497: The error lines of `tunnel`, `warp proxy` and `connect` name one cause two times (code of podcrates)
 
