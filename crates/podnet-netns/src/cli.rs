@@ -150,9 +150,9 @@ Options:
                            refused one gets ECONNREFUSED; an allowed one goes
                            direct
       --flow-log <FILE>    Append one JSON line to FILE for each decision
-                           (time, target, rule or default, chain, verdict)
-                           and one at the close of each relayed TCP flow
-                           (bytes_out, bytes_in)
+                           (time, target, rule or default, chain, verdict).
+                           Append one more at the close of each relayed TCP
+                           flow (bytes_out, bytes_in)
       --report <FILE>      Write one JSON object to FILE when the pod starts
                            and again when it ends: schema, version, backend,
                            choice, hold (the words of pod doctor), not_held,
@@ -220,9 +220,9 @@ Options:
                            the -x chain. At most 1024 live clients; a plain
                            http:// request gets 405 and BIND gets 0x07
       --early-reply        With --serve: answer a CONNECT that the rules take
-                           before the dial, hold the first 64 KiB of the
-                           client, and send the SOCKS5 greeting and request
-                           to the upstream in one write. A failed dial then
+                           before the dial, and hold the first 64 KiB of the
+                           client. The pod sends the SOCKS5 greeting and
+                           request to the upstream in one write. A failed dial then
                            closes the connection: the client gets no error
                            code. The flow log has a refused line. Off by
                            default
@@ -532,3 +532,7 @@ pub(crate) fn parse_args(argv: &[String]) -> Result<Args> {
         report,
     })
 }
+
+#[cfg(test)]
+#[path = "cli_tests.rs"]
+mod tests;

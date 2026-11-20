@@ -11610,3 +11610,12 @@ first column of the help is a flag of the manual, and the reverse) pass. Control
 `src/manual/mod.rs` of the commit before, both CLI tests fail (`valid JSON: Error("expected value", line: 1, column:
 1)`; `["pod", "--help", "--json"] differs from ["man", "--json", "pod"]`). `podnet pod -x direct -- python3 -c ...
 --help --json` still gives `--help --json` to the program. The llms files have the flags of `pod`.
+
+`ci` 44701681199 on `1c7df7d` failed in `test`, `features`, `restricted-host` and `no-loopback`: with the flags of
+`pod` in the manual, `the_manual_agrees_with_the_parser` compared them with the stub of clap (28 findings), and
+`each_text_of_the_manual_keeps_the_rules` found two sentences of the help of `pod` with more than 25 words, and two
+rules of the global flags (`--no-proxy`, `--quiet`). The local check had passed on a stale build (a control moved
+`src/manual/pod_flags.rs` out and back with `mv`, which keeps its old time). The fix: the test takes the flags of
+`pod` from its help, and the new test `each_flag_of_the_help_is_a_flag_of_the_parser`
+(`crates/podnet-netns/src/cli_tests.rs`) proves that the parser of pod takes each of them; the two sentences are
+split; the manual clears the rules of `pod`. A fresh check (each changed file touched) passes.

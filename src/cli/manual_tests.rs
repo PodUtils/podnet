@@ -43,7 +43,27 @@ fn each_text_of_the_manual_keeps_the_rules() {
 #[test]
 fn the_manual_agrees_with_the_parser() {
     let parser = pod_manual::clap::parser(Cli::command());
-    assert_none(flags(&manual(), |path: &[String]| {
+    let model = manual();
+    assert_none(flags(&model, |path: &[String]| {
+        if path == ["pod"] {
+            // `pod` has its own parser (podnet-netns): the manual reads its
+            // flags from the help of pod, and the test
+            // `each_flag_of_the_help_is_a_flag_of_the_parser` of
+            // podnet-netns proves that its parser takes each of them (T-500).
+            let pod = model.commands.iter().find(|c| c.path == ["pod"])?;
+            let flags = pod
+                .flags
+                .iter()
+                .map(|f| pod_manual::check::ParserFlag {
+                    spellings: f.spellings(),
+                    takes_value: f.value.is_some(),
+                })
+                .collect();
+            return Some(pod_manual::check::ParserCommand {
+                flags,
+                subcommands: Vec::new(),
+            });
+        }
         let mut c = parser(path)?;
         c.flags.retain(|f| {
             let flag = pod_manual::Flag {

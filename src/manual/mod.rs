@@ -59,6 +59,9 @@ pub fn manual(cmd: clap::Command) -> Manual {
         // T-455: the flags of pod are those of its help, not those of the
         // stub of clap (the global flags of podnet do not apply to pod).
         pod.flags = pod_flags::flags(&usage);
+        // The rules of clap are those of the global flags (--quiet excludes
+        // --verbose), which pod does not have.
+        pod.rules.clear();
         pod.notes.extend(
             usage
                 .split("\n\n")
