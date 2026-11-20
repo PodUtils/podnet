@@ -8,7 +8,7 @@ name: issue-sync
 # an issue of an author outside the team that has no label `confirmed`.
 # Do not close an issue by hand: change the record (TODO/RULES.md).
 #
-# `uses:` names the commit of the tag v0.79.0 of podcrates
+# `uses:` names the commit of the tag v0.80.0 of podcrates
 # (scripts/check-workflows.py: each `uses:` names a commit);
 # `podcrates_ref` names the same tag. Move both at each take (T-137).
 # A dispatch is a dry run unless `dry_run` is false.
@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: read
       issues: write
-    uses: PodUtils/podcrates/.github/workflows/issue-sync.yml@68fbc9679344ea82e37448402a68091d4c6ae83d # v0.79.0
+    uses: PodUtils/podcrates/.github/workflows/issue-sync.yml@62b8039bd06ff412d42b211c70244d6ef53e2c63 # v0.80.0
     with:
-      podcrates_ref: v0.79.0
+      podcrates_ref: v0.80.0
       dry_run: ${{ inputs.dry_run || false }}

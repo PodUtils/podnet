@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**502 entries: 15 open, 12 partial, 35 blocked, 440 done.**
+**503 entries: 15 open, 12 partial, 35 blocked, 441 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 71 | 76 |
+| P1 | 1 | 2 | 2 | 72 | 77 |
 | P2 | 6 | 7 | 10 | 222 | 245 |
 | P3 | 8 | 3 | 23 | 146 | 180 |
-| **All** | 15 | 12 | 35 | 440 | 502 |
-| **All** | 15 | 12 | 35 | 440 | 502 |
+| **All** | 15 | 12 | 35 | 441 | 503 |
+| **All** | 15 | 12 | 35 | 441 | 503 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -549,3 +549,4 @@ M8 Overlays, M9 Later.
 | [T-501](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.79.0 |
 | [T-502](fixes.md) | P2 | S | M5 | defect | done | `forward` ends with a bare `Operation not supported` where the host refuses getsockname |
 | [T-503](fixes.md) | P1 | S | M7 | defect | done | `pod --backend netns`: the second path of the resolver does not answer a loopback nameserver of the host |
+| [T-504](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.80.0 |

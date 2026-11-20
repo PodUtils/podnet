@@ -11815,3 +11815,40 @@ pass. Control: with `crates/podnet-netns` of `c9e394a` (each file touched), the 
 deleted file of the runner's form mounted over `/etc/resolv.conf` in `unshare -rm`: `lab.test` resolves at once
 (before: `Temporary failure in name resolution`, or no answer for 40 s with `edns0`). The case `errors` passes in each
 lab here as uid 65534. `ci` 44782773504 on `3836971` passed. `gate` 44782773447 on `3836971` passed (the pod rows in the 5 labs of the runner).
+
+# T-504: Take podcrates v0.80.0
+
+**Source:** PodUtils/podcrates#250 (COORD-150, 2026-11-20): the tag `v0.80.0` at `62b8039`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.79.0`. The tag `v0.80.0` has three new crates (`pod-control`, `pod-unit`, `pod-beneath`)
+and says that podnet needs no change of code.
+
+## Premise
+
+- The tag has no hand-off patch for podnet. The installer core has the same SHA-256 as at `v0.79.0`.
+- The one breaking change (`pod_enter::Names::write_table`) does not reach podnet: no crate of podnet uses `pod-enter`.
+- `pod-unit` (for `src/cli/cmd/autostart.rs`) and `pod-control` (a status socket) are optional; they are later work.
+
+## Approach
+
+1. Each podcrates tag is `v0.80.0`: the manifests, both lock files, `scripts/install/SOURCES` (the tag and the commit)
+   and `issue-sync.yml` (the commit and `podcrates_ref`).
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-20, the commit of this entry. The tag `v0.80.0` (commit `62b8039`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`; the three installer files have the same SHA-256.
+podnet builds against the tag with no change of code. `sh scripts/agent/check.sh` passes.
