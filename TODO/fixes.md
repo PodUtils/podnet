@@ -11530,4 +11530,4 @@ the state of the lab in `unshare -rm` (a deleted file with no nameserver mounted
 `lab.test` on each backend: it passes (netns, seccomp, netns-kernel here). Control: with `crates/podnet-netns` of the
 commit before, it fails for netns (`Temporary failure in name resolution`). The case `errors` of the lane passes in
 `no-proxy-no-dns`, `proxy-only`, `bind-denied` and `userns-off` as uid 65534 with pod-lab `v0.68.0`. `docs/pods.md`
-has the second path.
+has the second path. `ci` 44671079409 on `1413960` passed.
