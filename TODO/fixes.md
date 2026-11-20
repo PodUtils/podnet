@@ -8217,6 +8217,11 @@ The relay server and `pod-relay` of PodUtils/podcrates. Ask 1 waits for the rela
 `1013 node open timeout` for each new leg for 600 s after one reset; `live` 44147054834 (76f7031) had a hung SSH
 session through the node (T-478). About one run of six fails in this class. The state line of COORD-098 (#604) asks
 podcrates who owns ask 1 now and when.
+2026-11-20: `live` 44733644822 (schedule, `3f9a8e6`) failed in the step "Throughput through WARP, 1 to 16 MiB" at
+the 16 MiB GET of `connect`: WARP's MASQUE door showed a certificate of Let's Encrypt in place of the pinned key, so the
+tunnel took the public relay for MASQUE; the MASQUE HTTP/2 connection through the relay closed with no `close_notify`
+10 s later. The edge connection reconnected (T-402), and the stream in flight was lost (`curl: (18) transfer closed`).
+The same code passed `live` 44713609259 an hour before. A fault of the public relay and of WARP's door, not of podnet.
 
 
 # T-407: podnet connect resets a local connection when one WebSocket dial fails
