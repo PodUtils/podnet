@@ -367,3 +367,6 @@
 666 issue closed
 667 issue closed
 668 issue closed
+669 issue open
+670 issue open
+671 issue open
