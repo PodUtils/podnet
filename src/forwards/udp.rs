@@ -147,7 +147,12 @@ pub async fn bind_dns(addr: SocketAddr) -> Result<(Arc<UdpSocket>, tokio::net::T
         .await
         .with_context(|| format!("--dns {addr}"))
         .map_err(crate::net::bind_fault)?;
-    let tcp = tokio::net::TcpListener::bind(udp.local_addr()?)
+    // The TCP door takes the port of the UDP one (port 0: the port that the
+    // kernel chose), so it needs the bound address.
+    let bound = udp.local_addr().with_context(|| {
+        format!("--dns {addr}: the bound address of the UDP door (getsockname)")
+    })?;
+    let tcp = tokio::net::TcpListener::bind(bound)
         .await
         .with_context(|| format!("--dns {addr}"))
         .map_err(crate::net::bind_fault)?;

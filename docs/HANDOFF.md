@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-20, 03:30 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
+The state at 2026-11-20, 12:40 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`, `docs/maintenance.md` and
 `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -27,7 +27,7 @@ only with a test that reproduces it and fails on the code before the fix.
   shows a newer tag. The installer core in `scripts/install/` is that of `v0.70.0` (the same file at each tag since).
 * The newest release is `v0.4.0-beta.17` (T-481). It has the fixes of PodUtils/podrunner#213 and #142. podrunner's
   user-path gate passes with it on each lane (PodUtils/podrunner#309).
-* The record is `TODO/`. `cargo todo check` agrees: 499 entries, 16 open, 14 partial, 36 blocked, 433 done.
+* The record is `TODO/`. `cargo todo check` agrees: 501 entries, 16 open, 12 partial, 35 blocked, 438 done.
 
 ## Unfinished work (not on `main`)
 
@@ -91,6 +91,16 @@ workflow for each issue. #659 asks `ci` on `0dc34d0`. Read its comment, then wat
 * CI: `ci` passed on `826475c` (#660), `1413960` (#661, T-499) and `a520510` (#662). Request a run of `ci` on the
   commit of T-455 and T-500 (it changes `src/main.rs`, the manual, the llms files and `ci.yml`).
 * The gate of the QA round now waits for T-450 (COORD-110) and T-452 (the rows of COORD-111, the serve paths).
+
+## The work of the session of 2026-11-20 (09:00 to 12:40 UTC)
+
+* The take of podcrates `v0.79.0` (T-501): `ci` 44707736066 passed; `live` 44712072334 failed once on the 530 of
+  T-488 (a flake: `live` 44713609259 passed on the same code). Request `gate` on the head before the next beta.
+* T-450, T-452 (20 error rows in each lab), T-497, T-500 and T-502 are done. The gate of the QA round (T-450 to T-455)
+  is done; the freeze ends (`docs/decisions.md`, 2026-11-20). The next beta runs the black-box QA pass
+  (`scripts/agent/qa-pass.md`) and `gate.yml` first.
+* A control that moves a source file out and back with `mv` keeps its old time, and cargo can then take a stale build
+  as current: touch each changed file before the full check (this hid the failure of `ci` 44701681199).
 
 ## Next steps
 

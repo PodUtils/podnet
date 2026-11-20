@@ -9699,7 +9699,7 @@ and `cargo test --test contracts` on the static release binary. `ci` passed on t
 **Milestone:** M5
 **Priority:** P1
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -9751,8 +9751,23 @@ port, a name under `.invalid`, a reject rule):
   `ipv6-only` do not hold on this host.
 - 2026-11-20 (T-501, T-497): the rows of `connect` (`--stdio`), `tunnel` and `warp proxy` are in the case `errors`;
   each lab passes them.
-- Not done yet: the rows of `forward`, `net proxy` and `relay connect` in a lab (each serves, and a fault shows per
-  connection), and a run of the full lane in `gate.yml`.
+- 2026-11-20: the rows of `relay connect` (exit 69, one line), `forward` (`forward_row`: the client is reset at once,
+  one log line with the cause) and `net proxy --forward` (`net_proxy_row`: the CONNECT is answered and the stream is
+  closed at once, as the near side of `ssh -L` does; one log line with the cause) are in the case `errors`. The rows
+  found T-502 (done).
+
+## Done
+
+2026-11-20. The case `errors` of the lane (`scripts/lab-errors.sh`) has 20 rows: `bench` (a refused port, a dead
+proxy, a name with no answer, an unreachable target), `connect --stdio`, `relay connect`, `forward` and `net proxy
+--forward` (a refused port, a name with no answer, a dead proxy), `tunnel` and `warp proxy` (a dead proxy), and `pod`
+(a name with no answer, a reject rule; `tests/pod_error_lines.rs` has the dead upstream and the refused port on each
+backend). Each row checks the end within a limit, the documented exit code, one line of podnet with the cause, and no
+part of a line said two times. Here all 20 pass. Run as uid 65534 with pod-lab `v0.68.0` in each profile and in the row
+`testers`: each row passes or is n.a. with the reason (the lab refuses the listener, the pod, or the loopback);
+`arm64-tcg`, `cgroup-v1` and `ipv6-only` do not hold on this host. The rows found T-496, T-497, T-498, T-499 and T-502
+(each done). The full lane runs in `gate.yml` before the next release.
+
 
 # T-453: A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program
 
@@ -11113,7 +11128,8 @@ sh scripts/live-throughput.sh target/release/podnet quic "1 4 16" warp
 of the HTTP path and of a --forward WebSocket", not in the WARP step: the quick tunnel registered on QUIC (iad10, then
 connection 1 at iad23), and six GETs of its public name over 19 s each got HTTP 530. The tag changed the socket of
 `pod-quic` (PodUtils/podcrates@T-990 clears `IPV6_V6ONLY`); the QUIC leg registered at once, so the edge had the
-connection. A second run of `live` on the same code tells the flake from a fault of the take.
+connection. The second run, `live` 44713609259 on `3f14a38` (the same code), passed: a flake, not a fault of the
+take.
 
 # T-489: Take podcrates v0.74.0
 
@@ -11690,3 +11706,44 @@ cargo todo check
 podnet builds against the tag with no change of code; no test of podnet pins an old text. `sh scripts/agent/check.sh`
 passes. The key `defect_tests` holds: `cargo todo check` agrees, and refuses a planted done defect with no test name
 (`T-498: a done defect names no test in its Done section`). `ci` 44707736066 on `4559204` passed.
+
+# T-502: `forward` ends with a bare `Operation not supported` where the host refuses getsockname
+
+**Source:** T-452, the case `errors` of the lane in the lab `getsockname-denied` of pod-lab `v0.68.0`, 2026-11-20.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+In the lab `getsockname-denied`, `podnet forward -L 127.0.0.1:PORT=TARGET` bound its listener and then ended at once
+with the one line `podnet: Operation not supported (os error 95)`: no step, no address, and the forward did not run.
+
+## Premise
+
+- `src/cli/cmd/forward.rs` read the bound address for the line of the listener with `local_addr()?` (getsockname(2))
+  for each TCP, UDP and DNS door, with no context and no second path. The listener works with no known address.
+- `bind_dns` (`src/forwards/udp.rs`) needs the bound address: the TCP door takes the port of the UDP door.
+
+## Approach
+
+1. The line of a listener takes the address of the command line and the reason when getsockname is refused
+   (`bound` in `src/cli/cmd/forward.rs`); the forward runs.
+2. `bind_dns` names its step when getsockname is refused.
+
+## Prove
+
+```sh
+cargo test -p podnet --bin podnet a_refused_getsockname_shows_the_asked_address
+LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET getsockname-denied
+```
+
+## Done
+
+2026-11-20. The test `a_refused_getsockname_shows_the_asked_address` (`src/cli/cmd/forward.rs`) passes. In the lab
+`getsockname-denied` as uid 65534: `podnet: forward  127.0.0.1:17411 (the host refused getsockname: Operation not
+supported (os error 95))  ->  127.0.0.1:1  via direct`, exit 0 at the end of `--run-for`; the rows `forward-*` of the
+case `errors` pass there. Control: with the binary before the fix, the three rows `forward-*` fail in that lab (`forward
+did not start: podnet: Operation not supported (os error 95)`).

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 500 entries: 16 open, 13 partial, 35 blocked, 436 done.
+`TODO/INDEX.md` holds 501 entries: 16 open, 12 partial, 35 blocked, 438 done.
 
 ## State
 
@@ -23,12 +23,10 @@
 ## Work order
 
 00. **Before all: podrunner first** (`docs/decisions.md`, 2026-11-18, podrunner first and Coordinator): a red run of podnet's CI, then each ask of podrunner (a COORD issue `(to podnet)`; the coordinator is the session of podcrates), then each ask of githome and cfb, then the take of each tag of podcrates. Other work waits.
-0. **Then the QA round of 2026-11-17** (`docs/decisions.md`, The QA round and the release freeze): the issues of
-   the testers and of podrunner are done; now the gate of correctness: T-452 (the error paths of the lane; what
-   remains: `forward`, `net proxy` and `relay connect` in a lab). The rule of a test for each defect (with the check
-   `defect_tests` of `pod-todo`), the lab of the testers' host (the lane row `testers`), the prompt of the black-box
-   QA pass (`scripts/agent/qa-pass.md`, run before each beta) and the measure of readiness (`scripts/promises.py`)
-   are done. No release and no new feature before T-452 is done.
+0. **The QA round of 2026-11-17 is done** (`docs/decisions.md`, The QA round and the release freeze): the gate of
+   correctness (the entries 450 to 455) is done (2026-11-20). The freeze of releases and features ends with it. Each next
+   beta runs the black-box QA pass first (`scripts/agent/qa-pass.md`; `docs/maintenance.md`, Release, step 0), and
+   the full lane in `gate.yml` (the case `errors`, the row `testers`).
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
    before other work. The next tag after `v0.79.0` is the next take. T-494 (`pod-release` in place of
@@ -37,7 +35,7 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** no release and no new feature until T-452 is done (the gate of the QA round) (`docs/decisions.md`, 2026-11-17, The QA round and the release freeze), except a beta of fixes that podrunner needs (2026-11-18). The newest is `v0.4.0-beta.17`. The next release proves the attestation of the image (issue 656).
+3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.17`. The next beta runs the black-box QA pass and the full lane in `gate.yml` first, and proves the attestation of the image (issue 656).
 
 ### The order of podnet's own work
 

@@ -364,4 +364,4 @@
 663 issue closed
 664 issue closed
 665 issue closed
-666 issue open
+666 issue closed

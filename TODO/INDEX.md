@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**500 entries: 16 open, 13 partial, 35 blocked, 436 done.**
+**501 entries: 16 open, 12 partial, 35 blocked, 438 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 3 | 2 | 69 | 75 |
-| P2 | 6 | 7 | 10 | 221 | 244 |
+| P1 | 1 | 2 | 2 | 70 | 75 |
+| P2 | 6 | 7 | 10 | 222 | 245 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 16 | 13 | 35 | 436 | 500 |
-| **All** | 16 | 13 | 35 | 436 | 500 |
+| **All** | 16 | 12 | 35 | 438 | 501 |
+| **All** | 16 | 12 | 35 | 438 | 501 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -497,7 +497,7 @@ M8 Overlays, M9 Later.
 | [T-449](fixes.md) | P1 | S | M5 | defect | done | live: four checks read the log lines of the tunnel before the take of `pod-cloudflare` |
 | [T-450](fixes.md) | P1 | S | M5 | chore | done | Rule: an issue closes only with a test that reproduces it |
 | [T-451](fixes.md) | P1 | M | M5 | chore | done | Contract tests from the manual: each flag of the help exists, each example parses, each JSON document has one schema |
-| [T-452](fixes.md) | P1 | M | M5 | chore | partial | Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS |
+| [T-452](fixes.md) | P1 | M | M5 | chore | done | Error-path rows of the lane: dead, refused, rejected, unreachable, no DNS |
 | [T-453](fixes.md) | P1 | S | M5 | chore | done | A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program |
 | [T-454](fixes.md) | P1 | M | M5 | chore | done | A black-box QA pass before each beta |
 | [T-455](fixes.md) | P2 | M | M5 | chore | done | Readiness: the promises with a test, in place of the commands with a scenario |
@@ -547,3 +547,4 @@ M8 Overlays, M9 Later.
 | [T-499](fixes.md) | P2 | M | M7 | defect | done | `pod --backend netns`: no name resolves when `/etc/resolv.conf` is a mount of a deleted file |
 | [T-500](fixes.md) | P2 | S | M5 | defect | done | `podnet pod --help --json` prints text, and the manual of `pod` has no flag of `pod` |
 | [T-501](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.79.0 |
+| [T-502](fixes.md) | P2 | S | M5 | defect | done | `forward` ends with a bare `Operation not supported` where the host refuses getsockname |

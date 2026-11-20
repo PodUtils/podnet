@@ -130,7 +130,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
         let (udp, tcp) = podnet::forwards::bind_dns(addr).await?;
         println!(
             "podnet: dns door  {}  ->  {upstream}  via {}",
-            udp.local_addr()?,
+            bound(udp.local_addr(), addr),
             dial.label()
         );
         let table =
@@ -167,7 +167,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
                 .map_err(podnet::net::bind_fault)?;
             println!(
                 "podnet: forward  udp:{}  ->  {shown}  via {}",
-                socket.local_addr()?,
+                bound(socket.local_addr(), addr),
                 dial.label()
             );
             servers.spawn(podnet::forwards::serve_udp(
@@ -185,7 +185,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
                     .map_err(podnet::net::bind_fault)?;
                 println!(
                     "podnet: forward  {}  ->  {shown}  via {}",
-                    listener.local_addr()?,
+                    bound(listener.local_addr(), addr),
                     dial.label()
                 );
                 servers.spawn(podnet::forwards::serve_tcp(listener, dial.clone(), target));
@@ -222,4 +222,32 @@ async fn peer_dial(spec: &str) -> Result<Arc<dyn Dial>> {
         .fault(Fault::Usage)?;
     let link = network.up(&Ctx::default()).await?;
     Ok(link.way.context("the network gives no way out")?.dial)
+}
+
+/// The address of a bound socket for the line of a listener. A host that
+/// refuses getsockname(2) (the lab `getsockname-denied` of pod-lab) gets the
+/// address of the command line and the reason, not the end of the command
+/// (T-452): the listener works with no known address.
+fn bound(addr: std::io::Result<std::net::SocketAddr>, asked: impl std::fmt::Display) -> String {
+    match addr {
+        Ok(addr) => addr.to_string(),
+        Err(e) => format!("{asked} (the host refused getsockname: {e})"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// T-502: a refused getsockname(2) gives the address of the command line
+    /// and the reason, not an error that ends the command.
+    #[test]
+    fn a_refused_getsockname_shows_the_asked_address() {
+        let ok: std::io::Result<std::net::SocketAddr> = Ok("127.0.0.1:8080".parse().unwrap());
+        assert_eq!(super::bound(ok, "127.0.0.1:0"), "127.0.0.1:8080");
+        let refused = Err(std::io::Error::from_raw_os_error(libc::EOPNOTSUPP));
+        let line = super::bound(refused, "127.0.0.1:17411");
+        assert!(
+            line.starts_with("127.0.0.1:17411 (the host refused getsockname: "),
+            "{line}"
+        );
+    }
 }
