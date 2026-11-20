@@ -358,7 +358,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #666 | [gh action] requested: live again on the take of podcrates `v0.79.0` (T-488: a flake or a fault of the take) | closed: live 44713609259 passed on 3f14a38 (the 530 of #665 was the flake of T-488, not the take) | T-488 |
 | #667 | [gh action] requested: ci on the error rows of the lane (T-452) and a refused getsockname (T-502) | closed: ci 44737373446 passed on 79b8331 | none |
 | #668 | [gh action] requested: gate (the full lane with the case `errors` and the row `testers`) before the next beta | closed: gate 44742237281 failed on c9e394a: the case `errors` in 7 labs (T-503: the loopback nameserver of the runner; the words of Rust for an unreachable network; a client limit of 10 s on an IPv6-only host); fixed in the next commit | T-503 |
-| #669 | [gh action] requested: ci on the resolver at each loopback nameserver (T-503) and the error rows | open (a request of a run) | T-503 |
+| #669 | [gh action] requested: ci on the resolver at each loopback nameserver (T-503) and the error rows | closed: ci 44782773504 passed on 3836971 | T-503 |
 | #670 | [gh action] requested: gate again on the resolver at each loopback nameserver (T-503) and the error rows | open (a request of a run) | T-503 |
 | #671 | [gh action] requested: issue-sync (not a dry run) after `record-issues` 44752520313 found 4 differences | closed: issue-sync 44782981366 passed on 3836971 (GitHub agrees with the record) | none |
 

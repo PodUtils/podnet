@@ -11800,4 +11800,4 @@ and each loopback nameserver of the host file); the child sends their count, the
 pass. Control: with `crates/podnet-netns` of `c9e394a` (each file touched), the row of 127.0.0.53 fails for netns. A
 deleted file of the runner's form mounted over `/etc/resolv.conf` in `unshare -rm`: `lab.test` resolves at once
 (before: `Temporary failure in name resolution`, or no answer for 40 s with `edns0`). The case `errors` passes in each
-lab here as uid 65534.
+lab here as uid 65534. `ci` 44782773504 on `3836971` passed.
