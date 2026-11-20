@@ -357,5 +357,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #665 | [gh action] requested: live on the take of podcrates `v0.79.0` (T-501) | closed: live 44712072334 failed on ab0612d: HTTP 530 of a quick tunnel in the step "Throughput of the HTTP path" (T-488) | T-488 |
 | #666 | [gh action] requested: live again on the take of podcrates `v0.79.0` (T-488: a flake or a fault of the take) | closed: live 44713609259 passed on 3f14a38 (the 530 of #665 was the flake of T-488, not the take) | T-488 |
 | #667 | [gh action] requested: ci on the error rows of the lane (T-452) and a refused getsockname (T-502) | closed: ci 44737373446 passed on 79b8331 | none |
+| #668 | [gh action] requested: gate (the full lane with the case `errors` and the row `testers`) before the next beta | open (a request of a run) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
