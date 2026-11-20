@@ -10,7 +10,7 @@ autostart add | live:Autostart with a systemd user unit
 autostart remove | live:Autostart with a systemd user unit
 autostart list | lane:local
 autostart run | live:Autostart with a systemd user unit
-bench | lane:net-bench
+bench | lane:errors; lane:net-bench
 bug-report | lane:local
 completions | lane:local
 components | lane:local
@@ -44,7 +44,7 @@ net tailscale |
 net socksify | lane:local
 net passwd-shim | lane:local
 net ts-shims | lane:local
-pod | lane:pod-seccomp; lane:pod-netns; lane:net-pod-auto; lane:net-pod-seccomp; lane:net-pod-netns; lane:proxy-pod-auto; lane:proxy-pod-seccomp; lane:proxy-pod-env
+pod | lane:errors; lane:pod-seccomp; lane:pod-netns; lane:net-pod-auto; lane:net-pod-seccomp; lane:net-pod-netns; lane:proxy-pod-auto; lane:proxy-pod-seccomp; lane:proxy-pod-env
 ports | lane:local
 ps | live:SSH through the reverse relay; live:agent up and down; live:An IPv6-only host
 qr | lane:local

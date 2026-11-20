@@ -36,6 +36,10 @@
 # The plant LANE_PLANT=net gives podnet a proxy that does not listen; each
 # net-pod row must then fail.
 #
+# The case errors (in CASES and NET_CASES) runs scripts/lab-errors.sh: the
+# error rows of T-452 (a refused port, a dead proxy, a name with no answer,
+# an unreachable target, a reject rule).
+#
 # The script prints one row for each profile and command: pass, fail or
 # n.a. with the reason. It exits 1 when a command fails, else 0. The logs
 # are in LANE_DIR (default: .work/lab-lane in the current directory).
@@ -48,9 +52,9 @@
 
 set -u
 
-CASES="version man local doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
+CASES="version man local errors doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
-NET_CASES="version doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
+NET_CASES="version errors doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
 WAYOUT_CASES="way-tunnel way-relay"
 WAYWS_CASES="way-relay-refused"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
@@ -395,6 +399,11 @@ case_main() {
         else
             test $code -eq 69 && grep -q 'on the way refused the WebSocket upgrade' "$dir/out.txt"
         fi
+        exit $?
+        ;;
+    errors)
+        # The error rows (T-452): scripts/lab-errors.sh, beside this file.
+        sh "$(dirname "$0")/lab-errors.sh" "$podnet" "$dir"
         exit $?
         ;;
     proxy-*)

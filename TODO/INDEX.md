@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**497 entries: 19 open, 14 partial, 36 blocked, 428 done.**
+**498 entries: 20 open, 14 partial, 36 blocked, 428 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 3 | 4 | 2 | 65 | 74 |
-| P2 | 7 | 7 | 11 | 217 | 242 |
+| P2 | 8 | 7 | 11 | 217 | 243 |
 | P3 | 9 | 3 | 23 | 145 | 180 |
-| **All** | 19 | 14 | 36 | 428 | 497 |
-| **All** | 19 | 14 | 36 | 428 | 497 |
+| **All** | 20 | 14 | 36 | 428 | 498 |
+| **All** | 20 | 14 | 36 | 428 | 498 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -544,3 +544,4 @@ M8 Overlays, M9 Later.
 | [T-496](fixes.md) | P1 | S | M7 | defect | done | `pod`: a failed connect of the program gives no line at the default level |
 | [T-497](fixes.md) | P2 | S | M5 | defect | blocked | The error lines of `tunnel`, `warp proxy` and `connect` name one cause two times (code of podcrates) |
 | [T-498](fixes.md) | P2 | S | M5 | defect | done | A direct dial that timed out names its step two times |
+| [T-499](fixes.md) | P2 | M | M7 | defect | open | `pod --backend netns`: no name resolves when `/etc/resolv.conf` is a mount of a deleted file |

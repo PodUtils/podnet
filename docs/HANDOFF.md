@@ -27,7 +27,7 @@ only with a test that reproduces it and fails on the code before the fix.
   shows a newer tag. The installer core in `scripts/install/` is that of `v0.70.0` (the same file at each tag since).
 * The newest release is `v0.4.0-beta.17` (T-481). It has the fixes of PodUtils/podrunner#213 and #142. podrunner's
   user-path gate passes with it on each lane (PodUtils/podrunner#309).
-* The record is `TODO/`. `cargo todo check` agrees: 497 entries, 19 open, 14 partial, 36 blocked, 428 done.
+* The record is `TODO/`. `cargo todo check` agrees: 498 entries, 20 open, 14 partial, 36 blocked, 428 done.
 
 ## Unfinished work (not on `main`)
 
@@ -50,8 +50,10 @@ workflow for each issue. #659 asks `ci` on `0dc34d0`. Read its comment, then wat
   a name with no answer, a reject rule and an unreachable target. Found and fixed: T-496 (`pod` printed no cause at the
   default level; `tests/pod_error_lines.rs` runs the rows on each backend of the host) and T-498 (a timed-out direct
   dial named its step two times). Found in podcrates code: T-497 (blocked; COORD-111, #658: `pod-cloudflare`,
-  `pod-warp`, `pod-ws`). What remains of T-452: the serve paths of `connect`, the unreachable target in the labs, and
-  step 2 (the rows in `scripts/lab-lane.sh`; the file has 995 lines, so put the rows in a new script).
+  `pod-warp`, `pod-ws`). The lane has the case `errors` (`scripts/lab-errors.sh`). It found T-499 (P2, open): in the
+  lab `no-proxy-no-dns` the netns backend resolves no name, so the two pod rows of `errors` fail there, and
+  `gate.yml` fails until T-499 is done. Do T-499 next (its Approach). What remains of T-452: the rows of T-497 and
+  the serve paths in a lab.
 
 ## CI
 

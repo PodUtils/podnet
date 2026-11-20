@@ -9734,9 +9734,15 @@ port, a name under `.invalid`, a reject rule):
   (T-497, item 3, in `pod-ws`).
 - `net proxy`: the unit tests `refusals_have_a_status_and_a_body` and
   `a_target_outside_the_subnet_fails_at_once_on_each_door` (`crates/podnet-vnet/src/proxy.rs`) hold its rows.
-- Not measured yet: the serve paths of `connect` (a fault after the start check shows per connection), and the
-  unreachable target of each command in the labs (in this container `bench` got a refusal from 192.0.2.1, `forward` a
-  time-out). The lab rows of step 2 wait for these.
+- Step 2 (2026-11-20): the case `errors` of the lane (`scripts/lab-errors.sh`, in CASES and NET_CASES) runs the rows
+  that podnet passes now: `bench` (a refused port, a dead proxy, a name with no answer, an unreachable target) and
+  `pod` (a name with no answer, a reject rule). A row checks the end within a limit, the exit code, one line of
+  podnet with the cause, and no part of a line said two times. Run as uid 65534 with pod-lab `v0.68.0` on each
+  profile: pass in each lab that holds here, n.a. for the pod rows in `proc-masked` and `no-proc` (the lab refuses
+  the pod, with the reason); fail in `no-proxy-no-dns` for the two pod rows (T-499). `arm64-tcg`, `cgroup-v1` and
+  `ipv6-only` do not hold on this host.
+- Not done yet: the rows of `connect`, `tunnel` and `warp proxy` (T-497), the serve paths (`connect -L`, `forward`,
+  `net proxy` in a lab), and a run of the full lane in `gate.yml`.
 
 # T-453: A lab of the host class of the testers: no AF_INET bind, no netns, no write of the memory of a program
 
@@ -11465,3 +11471,46 @@ cargo test -p podnet --lib egress::tests
 2026-11-20. The test `a_timed_out_dial_names_its_step_once` (`src/egress.rs`) passes; `cargo test -p podnet --lib
 egress::tests::`: 6 passed. Control: on the `src/egress.rs` of `177336b4` with the new test, it fails with `left:
 "connecting to h:1: connecting to h:1 timed out after 29s"`.
+
+# T-499: `pod --backend netns`: no name resolves when `/etc/resolv.conf` is a mount of a deleted file
+
+**Source:** T-452, the case `errors` of the lane in the lab `no-proxy-no-dns` of pod-lab `v0.68.0`, 2026-11-20.
+**Category:** defect
+**Milestone:** M7
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+In the lab `no-proxy-no-dns`, `podnet pod --backend netns -- PROGRAM` prints `warning: the program keeps the resolver
+of the host (bind mount over /etc/resolv.conf: No such file or directory (os error 2))`, and each name of the program
+fails with `Temporary failure in name resolution`: the pod resolves nothing, also a name that a rule refuses. The
+seccomp and netns-kernel backends resolve the names in the same lab.
+
+## Premise
+
+- In the lab, `/etc/resolv.conf` is a bind mount of a deleted file (`/proc/self/mountinfo`:
+  `/tmp/podlab-resolv.conf-PID//deleted /etc/resolv.conf`). Linux refuses a mount over a deleted mount point with
+  `ENOENT`. A container whose resolv.conf was replaced while a bind mount kept the old file has the same state.
+- The file has no `nameserver` line, so glibc asks `127.0.0.1:53`: the loopback of the namespace of the pod, where
+  nothing answers. With a `nameserver` of another address, the UDP query goes into the TUN, and the pod answers it
+  (`crates/podnet-netns/src/netns/packet.rs` checks the port 53 only); a query over TCP to that address is a flow of
+  the upstream. So the case to fix is a host file with no nameserver, and DNS over TCP to a nameserver of the host
+  file.
+- `private_resolv_conf` (`crates/podnet-netns/src/netns/mod.rs`) is the one way of the netns backend to give the
+  program its resolver. netns-kernel redirects port 53 in the kernel, so the same failure costs it nothing.
+
+## Approach
+
+1. A second path when the bind mount fails: the pod answers DNS at `127.0.0.1:53` in its namespace (a forwarder in
+   the namespace to the gateway), and DNS over TCP at each nameserver of the host file, as netns-kernel does with its
+   redirect.
+2. The warning then names the second path, or the backend refuses with the cause when neither path works.
+
+## Prove
+
+```sh
+cargo test --test pod_error_lines
+LANE_DIR=/var/tmp/lane/out sh scripts/lab-lane.sh PODLAB PODNET no-proxy-no-dns
+```

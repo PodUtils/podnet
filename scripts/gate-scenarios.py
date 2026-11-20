@@ -141,6 +141,8 @@ def lane_cases():
 LANE_MAP = {
     "version": [],
     "man": ["man"],
+    # scripts/lab-errors.sh (T-452): the error rows.
+    "errors": ["bench", "pod"],
     "local": [
         "completions",
         "components",
