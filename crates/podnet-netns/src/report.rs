@@ -5,7 +5,6 @@
 use crate::prelude::*;
 
 use std::cell::RefCell;
-use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 
 /// The version of the JSON form of the report.
@@ -135,36 +134,20 @@ impl Report {
     }
 }
 
-/// Write `text` to `path`: a temporary file of mode 0600 in the same
-/// directory, then a rename.
+/// Write `text` to `path`, atomically, with the mode 0600: the replace of
+/// `pod_core::files` (a temporary file beside it, synced, renamed, and the
+/// directory synced; T-473, COORD-112). A commit whose directory sync failed
+/// is in place: one warning, no failure.
 fn write_atomic(path: &Path, text: &str) -> std::io::Result<()> {
-    let dir = match path.parent() {
-        Some(d) if !d.as_os_str().is_empty() => d,
-        _ => Path::new("."),
-    };
-    let name = path.file_name().ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, "no file name in the path")
-    })?;
-    let temp = dir.join(format!(
-        ".{}.{}.tmp",
-        name.to_string_lossy(),
-        std::process::id()
-    ));
-    let _ = std::fs::remove_file(&temp);
-    let result = (|| {
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(0o600)
-            .open(&temp)?;
-        file.write_all(text.as_bytes())?;
-        file.sync_all()?;
-        std::fs::rename(&temp, path)
-    })();
-    if result.is_err() {
-        let _ = std::fs::remove_file(&temp);
+    use pod_core::files::{replace, Mode};
+    let commit = replace(path, text.as_bytes(), Mode::Private)?;
+    if let Some(e) = commit.unconfirmed() {
+        crate::warn(&format!(
+            "warning: --report {}: written, but its directory was not synced: {e}",
+            path.display()
+        ));
     }
-    result
+    Ok(())
 }
 
 #[cfg(test)]

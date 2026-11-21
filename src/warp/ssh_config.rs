@@ -212,40 +212,23 @@ pub fn expand(config: &str) -> Result<PathBuf> {
     Ok(PathBuf::from(home).join(rest))
 }
 
-/// Write `text` to `path` with a rename, when it differs from `old`. A new
-/// file has mode 0600 in a directory of mode 0700; a file keeps its mode.
-/// A symbolic link stays: its target is written.
+/// Write `text` to `path`, atomically, when it differs from `old`: the
+/// replace of `pod_core::files` (T-473, COORD-112). A new file has mode 0600
+/// in a directory of mode 0700; a file keeps its mode. A symbolic link stays:
+/// its target is written. A commit whose directory sync failed is in place:
+/// one warning, no failure.
 pub fn save(path: &Path, old: Option<&str>, text: &str) -> Result<bool> {
-    use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+    use pod_core::files::{Mode, Replace};
     if old == Some(text) {
         return Ok(false);
     }
-    let path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-    let dir = path.parent().context("the config file has no directory")?;
-    if !dir.exists() {
-        std::fs::DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(dir)
-            .with_context(|| format!("making {}", dir.display()))?;
+    let commit = Replace::new(Mode::Keep)
+        .follow_link(true)
+        .make_dir(true)
+        .write(path, text.as_bytes())?;
+    if let Some(e) = commit.unconfirmed() {
+        tracing::warn!(path = %path.display(), error = %e, "the ssh config is written, but its directory was not synced");
     }
-    let mode = std::fs::metadata(&path)
-        .map(|m| m.permissions().mode() & 0o7777)
-        .unwrap_or(0o600);
-    let tmp = dir.join(format!(
-        ".{}.podnet-{}",
-        path.file_name().unwrap_or_default().to_string_lossy(),
-        std::process::id()
-    ));
-    let result = (|| {
-        std::fs::write(&tmp, text)?;
-        std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(mode))?;
-        std::fs::rename(&tmp, &path)
-    })();
-    if result.is_err() {
-        let _ = std::fs::remove_file(&tmp);
-    }
-    result.with_context(|| format!("writing {}", path.display()))?;
     Ok(true)
 }
 

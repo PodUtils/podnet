@@ -10556,8 +10556,8 @@ named.
    directories and has no replace of a file at a path, so the claim of the survey does not hold. The two copies of a
    replace (`write_atomic` of `crates/podnet-netns/src/report.rs`, `save` of `src/warp/ssh_config.rs`; the second has
    no `create_new` and no `sync_all`) are an ask: COORD-112 (GitHub #677). `write_private` of
-   `src/cli/cmd/serve_at.rs` makes a new file in a private directory: not a copy. What remains: the file writes (when
-   COORD-112 is answered)
+   `src/cli/cmd/serve_at.rs` makes a new file in a private directory: not a copy. podcrates `v0.81.0` answered
+   COORD-112 (PodUtils/podcrates@T-1066): both copies take `pod_core::files` (T-505). What remains
    (`pod_core::files`), the CONNECT client of `crates/podnet-core/src/connect.rs`, the HTTP head readers, the request
    parser of `crates/podnet-core/src/util/http.rs`, and the groups and the lead of the help.
 
@@ -11869,3 +11869,45 @@ sh scripts/agent/check.sh
 `fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`; the three installer files have the same SHA-256.
 podnet builds against the tag with no change of code. `sh scripts/agent/check.sh` passes. `ci` 44803822897 on
 `058059f` passed.
+
+# T-505: Take podcrates v0.81.0
+
+**Source:** PodUtils/podcrates#254 (COORD-151, 2026-11-21): the tag `v0.81.0` at `0707cfa`.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.80.0`. The tag `v0.81.0` has the answer to COORD-112 (#677): one atomic replace of a file
+at a path (`pod_core::files::replace` and `Replace`, PodUtils/podcrates@T-1066).
+
+## Premise
+
+- The tag has no hand-off patch for podnet, and says that podnet needs no change of code. Its breaking changes reach
+  podrunner and podvm only. The installer core has the same SHA-256 as at `v0.80.0`.
+
+## Approach
+
+1. Each podcrates tag is `v0.81.0`: the manifests, both lock files, `scripts/install/SOURCES` (the tag and the commit)
+   and `issue-sync.yml` (the commit and `podcrates_ref`).
+2. The two copies of a replace take the shared one (T-473): `write_atomic` of `crates/podnet-netns/src/report.rs`
+   (`replace(path, bytes, Mode::Private)`) and `save` of `src/warp/ssh_config.rs` (`Replace::new(Mode::Keep)
+   .follow_link(true).make_dir(true)`). A commit whose directory sync failed gives one warning.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-21, the commit of this entry. The tag `v0.81.0` (commit `0707cfa`) in each manifest, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES` and `issue-sync.yml`; the three installer files have the same SHA-256.
+The two copies of a replace take `pod_core::files`: now each file is synced, its directory too, and the temporary file
+of `warp ssh-config` is new (before: no `create_new`, no sync). `cargo test --lib warp::ssh_config` (9, with
+`save_makes_a_private_file_and_keeps_a_link`), `cargo test -p podnet-netns --lib report` (6) and `cargo test --test
+pod_report` (5) pass. `sh scripts/agent/check.sh` passes.

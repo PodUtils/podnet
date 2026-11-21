@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**503 entries: 14 open, 13 partial, 35 blocked, 441 done.**
+**504 entries: 14 open, 13 partial, 35 blocked, 442 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 72 | 77 |
+| P1 | 1 | 2 | 2 | 73 | 78 |
 | P2 | 5 | 8 | 10 | 222 | 245 |
 | P3 | 8 | 3 | 23 | 146 | 180 |
-| **All** | 14 | 13 | 35 | 441 | 503 |
-| **All** | 14 | 13 | 35 | 441 | 503 |
+| **All** | 14 | 13 | 35 | 442 | 504 |
+| **All** | 14 | 13 | 35 | 442 | 504 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -550,3 +550,4 @@ M8 Overlays, M9 Later.
 | [T-502](fixes.md) | P2 | S | M5 | defect | done | `forward` ends with a bare `Operation not supported` where the host refuses getsockname |
 | [T-503](fixes.md) | P1 | S | M7 | defect | done | `pod --backend netns`: the second path of the resolver does not answer a loopback nameserver of the host |
 | [T-504](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.80.0 |
+| [T-505](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.81.0 |

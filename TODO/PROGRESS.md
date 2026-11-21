@@ -1,13 +1,13 @@
 # Progress
 
-`TODO/INDEX.md` holds 503 entries: 14 open, 13 partial, 35 blocked, 441 done.
+`TODO/INDEX.md` holds 504 entries: 14 open, 13 partial, 35 blocked, 442 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.80.0` (T-504): `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.81.0` (T-505): `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
   (the transfer), `pod-extract`, `pod-manual`, `pod-cloudflare` and `pod-testkit`. Not taken yet: `pod-release`
@@ -29,7 +29,7 @@
    the full lane in `gate.yml` (the case `errors`, the row `testers`).
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
-   before other work. The next tag after `v0.80.0` is the next take. T-494 (`pod-release` in place of
+   before other work. The next tag after `v0.81.0` is the next take. T-494 (`pod-release` in place of
    `src/update.rs`) is open behind podrunner's asks.
 2. **podnet's own work:** the order below. Skip an entry whose Correction says that its work is
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
