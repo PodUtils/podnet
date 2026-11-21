@@ -364,6 +364,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #672 | [gh action] requested: issue-sync (not a dry run) after the record closed #649, #670 and #671 | closed: issue-sync 44787120939 passed on ab66048 | none |
 | #673 | [gh action] requested: ci on one line for a refused namespace (T-482) | closed: ci 44799344725 passed on ac67710 (13 of 13 jobs) | T-482 |
 | #674 | [gh action] requested: ci on the take of podcrates `v0.80.0` (T-504) | closed: ci 44803822897 passed on 058059f | T-504 |
-| #675 | [gh action] requested: ci on the date code of `pod_core::clock` (T-473) | open (a request of a run) | T-473 |
+| #675 | [gh action] requested: ci on the date code of `pod_core::clock` (T-473) | closed: ci 44846557642 passed on 0948be4 | T-473 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

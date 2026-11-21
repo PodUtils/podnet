@@ -373,4 +373,4 @@
 672 issue closed
 673 issue closed
 674 issue closed
-675 issue open
+675 issue closed

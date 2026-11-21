@@ -10548,7 +10548,7 @@ named.
    in `src/router/door_limit.rs` and `crates/podnet-serve/src/files/listing.rs`, and `parse_http_date` behind
    `podnet::doctor::parse_imf_fixdate` (`src/doctor/clock_check.rs`; the name stays in the API). The shared parser
    refuses a day, an hour or a zone out of range, which the copy took as a date: the test `the_date_header_gives_the_skew` of
-   `src/doctor/tests.rs` has three such rows. The retry waits of `src/cli/cmd/warp/run.rs` and `warp/tun.rs` take
+   `src/doctor/tests.rs` has three such rows (`ci` 44846557642 passed on `0948be4`). The retry waits of `src/cli/cmd/warp/run.rs` and `warp/tun.rs` take
    `pod_core::backoff::backoff` (the same band of 1 s to 30 s, with jitter; the log field is `next_try_ms`). The
    `Backoff` of `crates/podnet-serve/src/relay/supervise.rs` stays: its tests give it short waits, and it starts again
    after a stable session. What remains: the file writes
