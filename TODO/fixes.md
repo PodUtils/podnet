@@ -10551,7 +10551,12 @@ named.
    `src/doctor/tests.rs` has three such rows (`ci` 44846557642 passed on `0948be4`). The retry waits of `src/cli/cmd/warp/run.rs` and `warp/tun.rs` take
    `pod_core::backoff::backoff` (the same band of 1 s to 30 s, with jitter; the log field is `next_try_ms`). The
    `Backoff` of `crates/podnet-serve/src/relay/supervise.rs` stays: its tests give it short waits, and it starts again
-   after a stable session. What remains: the file writes
+   after a stable session. The file writes: `pod_core::files` of `v0.80.0` keeps private files in a list of
+   directories and has no replace of a file at a path, so the claim of the survey does not hold. The two copies of a
+   replace (`write_atomic` of `crates/podnet-netns/src/report.rs`, `save` of `src/warp/ssh_config.rs`; the second has
+   no `create_new` and no `sync_all`) are an ask: COORD-112 (GitHub #677). `write_private` of
+   `src/cli/cmd/serve_at.rs` makes a new file in a private directory: not a copy. What remains: the file writes (when
+   COORD-112 is answered)
    (`pod_core::files`), the CONNECT client of `crates/podnet-core/src/connect.rs`, the HTTP head readers, the request
    parser of `crates/podnet-core/src/util/http.rs`, and the groups and the lead of the help.
 
