@@ -10499,7 +10499,7 @@ copy of shared code that podnet holds and that the survey of podcrates did not l
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -10544,6 +10544,13 @@ named.
    are in their next tag), 900 (the downloaders and the newest tag), 901 (the upgrade request with no token).
    `pod_core::lock::FileLock` (their entry 877) and `pod_core::clock::Clock` (their entry 878) are on their `main`
    for the next tag. Keep the lock of the fake-DNS file and the reader of `resolv.conf`.
+5. 2026-11-21: the date code takes `pod_core::clock` (podcrates `v0.80.0`): `civil_from_days` and `days_from_civil`
+   in `src/router/door_limit.rs` and `crates/podnet-serve/src/files/listing.rs`, and `parse_http_date` behind
+   `podnet::doctor::parse_imf_fixdate` (`src/doctor/clock_check.rs`; the name stays in the API). The shared parser
+   refuses a day, an hour or a zone out of range, which the copy took as a date: the test `the_date_header_gives_the_skew` of
+   `src/doctor/tests.rs` has three such rows. What remains: the retry waits (`pod_core::backoff`), the file writes
+   (`pod_core::files`), the CONNECT client of `crates/podnet-core/src/connect.rs`, the HTTP head readers, the request
+   parser of `crates/podnet-core/src/util/http.rs`, and the groups and the lead of the help.
 
 ## Prove
 

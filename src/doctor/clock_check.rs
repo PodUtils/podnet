@@ -57,31 +57,8 @@ pub(super) fn clock_of(host_time: i64, remote: i64, from: &str) -> Clock {
 }
 
 /// Unix seconds of an IMF-fixdate (RFC 9110): `Sun, 06 Nov 1994 08:49:37
-/// GMT`.
+/// GMT`. The parser of `pod_core::clock` (T-473): a day, an hour or a year
+/// out of range is no date.
 pub fn parse_imf_fixdate(text: &str) -> Option<i64> {
-    let mut parts = text.split_whitespace();
-    let _weekday = parts.next()?;
-    let day: i64 = parts.next()?.parse().ok()?;
-    let month_name = parts.next()?;
-    let month = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ]
-    .iter()
-    .position(|m| *m == month_name)? as i64
-        + 1;
-    let year: i64 = parts.next()?.parse().ok()?;
-    let mut hms = parts.next()?.split(':').map(|x| x.parse::<i64>().ok());
-    let (h, m, s) = (hms.next()??, hms.next()??, hms.next()??);
-    if parts.next()? != "GMT" {
-        return None;
-    }
-    // Days from the civil date (H. Hinnant).
-    let y = if month <= 2 { year - 1 } else { year };
-    let era = y.div_euclid(400);
-    let yoe = y - era * 400;
-    let mp = (month + 9) % 12;
-    let doy = (153 * mp + 2) / 5 + day - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    let days = era * 146_097 + doe - 719_468;
-    Some(days * 86_400 + h * 3600 + m * 60 + s)
+    pod_core::clock::parse_http_date(text)
 }

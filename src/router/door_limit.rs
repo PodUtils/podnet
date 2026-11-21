@@ -8,6 +8,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::{bail, Result};
+use pod_core::clock::{civil_from_days, days_from_civil};
 use tokio::time::Instant;
 
 /// The period of a quota (UTC).
@@ -127,29 +128,6 @@ impl Limits {
     }
 }
 
-/// The days from 1970-01-01 of a civil date (the algorithm of Howard
-/// Hinnant).
-fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
-    let y = if m <= 2 { y - 1 } else { y };
-    let era = y.div_euclid(400);
-    let yoe = y - era * 400;
-    let doy = (153 * (m + if m > 2 { -3 } else { 9 }) + 2) / 5 + d - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    era * 146097 + doe - 719468
-}
-
-/// The civil year and month of a day from 1970-01-01.
-fn civil_from_days(z: i64) -> (i64, i64) {
-    let z = z + 719468;
-    let era = z.div_euclid(146097);
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    (yoe + era * 400 + i64::from(m <= 2), m)
-}
-
 impl Period {
     /// The start and the end (UNIX seconds) of the period that holds `now`.
     /// [`Period::None`] is one period from 0 to the end of time.
@@ -164,7 +142,7 @@ impl Period {
                 (monday * 86400, (monday + 7) * 86400)
             }
             Period::Month => {
-                let (y, m) = civil_from_days(day);
+                let (y, m, _) = civil_from_days(day);
                 let first = days_from_civil(y, m, 1);
                 let next = if m == 12 {
                     days_from_civil(y + 1, 1, 1)

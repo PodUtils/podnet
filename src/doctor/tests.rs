@@ -34,6 +34,15 @@ fn the_date_header_gives_the_skew() {
         Some(unix)
     );
     assert_eq!(parse_imf_fixdate("yesterday"), None);
+    // T-473: the parser of pod_core::clock refuses a field out of range,
+    // which the copy before it took as a date.
+    for bad in [
+        "Sun, 32 Nov 1994 08:49:37 GMT",
+        "Sun, 06 Nov 1994 25:49:37 GMT",
+        "Sun, 06 Nov 1994 08:49:37 UTC",
+    ] {
+        assert_eq!(parse_imf_fixdate(bad), None, "{bad}");
+    }
     assert_eq!(clock_of(1000, 990, "api").verdict, Verdict::Ok);
     let off = clock_of(4600, 1000, "api");
     assert_eq!((off.verdict, off.skew), (Verdict::Refused, Some(3600)));
