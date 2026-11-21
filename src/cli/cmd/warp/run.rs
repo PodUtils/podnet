@@ -115,20 +115,22 @@ async fn warp_run_raw(
     let tun = podnet::warp::tun::Tun::from_fd(pod.tun, "eth0")?;
     tracing::info!(pid, "the program runs in a raw pod (netns-raw)");
     let carry = async {
-        let mut delay = std::time::Duration::from_secs(1);
+        // The waits of pod_core::backoff (1 s to 30 s, with jitter; T-473).
+        let mut retry = 0u32;
         loop {
             let current = match session.take() {
                 Some(s) => s,
                 None => match client.connect_raw().await {
                     Ok(s) => {
                         tracing::info!("a new WARP session is open");
-                        delay = std::time::Duration::from_secs(1);
+                        retry = 0;
                         s
                     }
                     Err(err) => {
-                        tracing::warn!(error = %format!("{err:#}"), "a new WARP session failed");
+                        retry += 1;
+                        let delay = pod_core::backoff::backoff(retry);
+                        tracing::warn!(error = %format!("{err:#}"), next_try_ms = delay.as_millis() as u64, "a new WARP session failed");
                         tokio::time::sleep(delay).await;
-                        delay = (delay * 2).min(std::time::Duration::from_secs(30));
                         continue;
                     }
                 },

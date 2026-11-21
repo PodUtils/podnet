@@ -136,20 +136,23 @@ pub(crate) async fn run(args: WarpArgs, client: podnet::warp::WarpClient) -> Res
             let routes_ref = &routes;
             let keep = async move {
                 let mut session = Some(session);
-                let mut delay = std::time::Duration::from_secs(1);
+                // The waits of pod_core::backoff (1 s to 30 s, with jitter;
+                // T-473).
+                let mut retry = 0u32;
                 loop {
                     let current = match session.take() {
                         Some(s) => s,
                         None => match client_ref.connect_raw().await {
                             Ok(s) => {
                                 tracing::info!("a new WARP session is open");
-                                delay = std::time::Duration::from_secs(1);
+                                retry = 0;
                                 s
                             }
                             Err(err) => {
-                                tracing::warn!(error = %format!("{err:#}"), next_try_s = delay.as_secs(), "a new WARP session failed");
+                                retry += 1;
+                                let delay = pod_core::backoff::backoff(retry);
+                                tracing::warn!(error = %format!("{err:#}"), next_try_ms = delay.as_millis() as u64, "a new WARP session failed");
                                 tokio::time::sleep(delay).await;
-                                delay = (delay * 2).min(std::time::Duration::from_secs(30));
                                 continue;
                             }
                         },
@@ -160,10 +163,11 @@ pub(crate) async fn run(args: WarpArgs, client: podnet::warp::WarpClient) -> Res
                         if let Err(err) = up {
                             // #278: no session with half of the default
                             // routes; up() removed the half that was in.
-                            tracing::error!(error = %format!("{err:#}"), next_try_s = delay.as_secs(), "no default routes on the TUN; podnet tries again");
+                            retry += 1;
+                            let delay = pod_core::backoff::backoff(retry);
+                            tracing::error!(error = %format!("{err:#}"), next_try_ms = delay.as_millis() as u64, "no default routes on the TUN; podnet tries again");
                             drop(current);
                             tokio::time::sleep(delay).await;
-                            delay = (delay * 2).min(std::time::Duration::from_secs(30));
                             continue;
                         }
                     }
