@@ -367,5 +367,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #675 | [gh action] requested: ci on the date code of `pod_core::clock` (T-473) | closed: ci 44846557642 passed on 0948be4 | T-473 |
 | #676 | [gh action] requested: ci on the retry waits of `pod_core::backoff` (T-473) | closed: ci 44850063694 passed on 00ceb2f | T-473 |
 | #677 | COORD-112: pod-core: one atomic replace of a file at a path (a temporary file, fsync, rename) (to podcrates) | closed (answered: podcrates `v0.81.0`, PodUtils/podcrates@T-1066; taken in T-505) | T-473 |
+| #678 | [gh action] requested: ci on the take of podcrates `v0.81.0` and the replace of `pod_core::files` (T-505, T-473) | open (a request of a run) | T-505 |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.
