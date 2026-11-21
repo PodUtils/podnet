@@ -11910,4 +11910,4 @@ sh scripts/agent/check.sh
 The two copies of a replace take `pod_core::files`: now each file is synced, its directory too, and the temporary file
 of `warp ssh-config` is new (before: no `create_new`, no sync). `cargo test --lib warp::ssh_config` (9, with
 `save_makes_a_private_file_and_keeps_a_link`), `cargo test -p podnet-netns --lib report` (6) and `cargo test --test
-pod_report` (5) pass. `sh scripts/agent/check.sh` passes.
+pod_report` (5) pass. `sh scripts/agent/check.sh` passes. `ci` 44871490037 on `9a9a0a9` passed.
