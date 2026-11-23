@@ -8,96 +8,99 @@ podnet 0.4.0-beta.17 - Bring your own network to hosts with strong network limit
 SYNOPSIS
   podnet COMMAND [OPTIONS]
 
-  Commands:
-    tunnel       Expose a service (cloudflared-style)
-    serve        Serve a directory over a tunnel
-    share        Share files or a local port in a session with a PIN
-    git          Git hosting with the installed git: serve the repositories of
-                 a root over smart HTTP and SSH, make a repository, print the
-                 clone URLs
-    forge        A forge without one host: clone a local seed and check its
-                 hash
-    ci           Check a pipeline's declared egress against the installed
-                 policy, before its first step
-    send         Send a file, a directory or a text with a short code, as
-                 magic-wormhole does: the code meets at a public mailbox, and
-                 the bytes go direct or through a transit relay, sealed end to
-                 end
-    receive      Receive what podnet send offers: type the code at the prompt,
-                 or give it on stdin (never on the command line)
-    connect      Bridge a local socket to a remote WebSocket forward endpoint
-    expose       Publish a local service by one word: --via tunnel (a
-                 Cloudflare tunnel), relay (a node of the reverse relay) or
-                 switch (a virtual address). It runs `tunnel`, `relay node` or
-                 `net proxy --forward`
-    forward      Forward local ports through a network: -L LISTEN=HOST:PORT
-                 (TCP, or UDP with udp:LISTEN) and a DNS door with --dns.
-                 --network SPEC is direct, a proxy, the relay, a tailnet,
-                 wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL or warp
-    route        A router of networks, groups, doors and guest wires from a
-                 config file (--config FILE), with health probes and --detach.
-                 A guest uses the router as its gateway
-    ssh-relay    Publish a unix socket through an SSH relay (a remote forward
-                 on port 443), and keep the session: when the relay ends it,
-                 podnet connects again with a backoff and prints the new URL.
-                 The relay (--service), its endpoints, its user and its URL
-                 rule are data of pod-services; --server, --user, --url-match
-                 and --url-skip override them
-    sidecar      The packet sidecar, behind the feature `sidecar`: probe,
-                 search, run, split, faketcp and bond against a local
-                 simulator. A default build exits 69 with the feature name
-    bench        Send GET requests to a URL through the way out (--egress,
-                 --proxy) and measure the latency (p50, p95, p99), the rate and
-                 the errors. When no request works, the exit code is 1
-    exit         A SOCKS5 exit on stdin and stdout, with no listener: one
-                 session for a pipe (ssh, `exec:`). CONNECT is the stream. UDP
-                 uses the command 0x83 of pod-proxy, UDP in the stream: a pipe
-                 has no UDP socket, so each datagram is a frame (2 bytes of
-                 length, then a SOCKS5 UDP datagram) on the same stream. See
-                 docs/proxies.md
-    ports        List local TCP ports that are listening
-    components   List the carriers and services of this build: kind, framing,
-                 duplex, privilege, whether this host can use each, the reason
-                 if not, the cost class and the build feature
-    bug-report   Print a text for a bug report: the version, podnet status, the
-                 detached instances and the end of their logs, and the names of
-                 the variables that are set. Device IDs, tunnel IDs, tokens and
-                 credentials are hidden. No network unless --doctor
-    completions  Print a completion script for a shell: bash, zsh, fish, elvish
-                 or powershell
-    update       Replace this binary with the binary of a release, after
-                 checking its signature (cosign, release.yml at the tag, the
-                 entry of Rekor) and its SHA-256
-    qr           Print a QR code for a URL
-    demo         Test the full path: a built-in origin, a tunnel, a fetch of
-                 the URL
-    net          Userspace virtual networking (no kernel interfaces)
-    warp         Cloudflare WARP client: registration, account, proxy, run
-    wg           WireGuard: serve, a userspace WireGuard peer for a list of
-                 peers (a wg-quick file), whose flows go out through --egress
-    relay        Inbound access to this host through the WebSocket relay
-                 (--relay): pair, run a node for a local port, connect as the
-                 operator
-    link         A link between two installs over a carrier (a unix socket,
-                 memory; TCP and more behind build features): each end proves
-                 its Ed25519 key, and an allow list (default deny) says which
-                 peers may open streams. Listen, dial, connect, status, mesh,
-                 close, carriers
-    offline      A session with no network: a store-and-forward spool on a
-                 directory, a signed mDNS announcement, and an offline bundle
-                 with a delta. One capture format with a merge, a four-word
-                 single-use pairing code, and a replication log. The carriers
-                 of a session without a network are those of `podnet link`:
-                 serial:PATH[,BAUD] and hf:PATH[,BPS]
-    cover        A TLS listener that answers as a static site until a client
-                 proves that it holds the switch key. An authenticated client
-                 gets the tunnel; every other byte goes to the site with the
-                 same certificate and no close. The cover script and its record
-                 sizes are data; with --mux one connection carries the page
-                 load and the session
-    pod          Run a program with all its traffic sent through a proxy
-                 (podnet-netns)
-    man          Show the manual, generated from this binary
+  Start here:
+    podnet doctor    test the path from this host to the edge
+    podnet tunnel --url http://localhost:8080
+                     a public URL for a local service
+    podnet agent up  a sandbox: test, start WARP if needed, expose ports
+    podnet man       the full manual
+
+  Publish a local service:
+    tunnel     Expose a service (cloudflared-style)
+    expose     Publish a local service by one word: --via tunnel (a Cloudflare
+               tunnel), relay (a node of the reverse relay) or switch (a
+               virtual address). It runs `tunnel`, `relay node` or `net proxy
+               --forward`
+    ssh-relay  Publish a unix socket through an SSH relay (a remote forward on
+               port 443), and keep the session: when the relay ends it, podnet
+               connects again with a backoff and prints the new URL. The relay
+               (--service), its endpoints, its user and its URL rule are data
+               of pod-services; --server, --user, --url-match and --url-skip
+               override them
+    serve      Serve a directory over a tunnel
+    cover      A TLS listener that answers as a static site until a client
+               proves that it holds the switch key. An authenticated client
+               gets the tunnel; every other byte goes to the site with the same
+               certificate and no close. The cover script and its record sizes
+               are data; with --mux one connection carries the page load and
+               the session
+    share      Share files or a local port in a session with a PIN
+    send       Send a file, a directory or a text with a short code, as
+               magic-wormhole does: the code meets at a public mailbox, and the
+               bytes go direct or through a transit relay, sealed end to end
+    receive    Receive what podnet send offers: type the code at the prompt, or
+               give it on stdin (never on the command line)
+    git        Git hosting with the installed git: serve the repositories of a
+               root over smart HTTP and SSH, make a repository, print the clone
+               URLs
+    demo       Test the full path: a built-in origin, a tunnel, a fetch of the
+               URL
+    qr         Print a QR code for a URL
+
+  Reach the internet from a limited host:
+    agent    One command for a sandbox with basic networking: test what works,
+             start WARP when it is needed, expose ports, and print what works
+             now and the commands to use
+    warp     Cloudflare WARP client: registration, account, proxy, run
+    pod      Run a program with all its traffic sent through a proxy
+             (podnet-netns)
+    net      Userspace virtual networking (no kernel interfaces)
+    connect  Bridge a local socket to a remote WebSocket forward endpoint
+    exit     A SOCKS5 exit on stdin and stdout, with no listener: one session
+             for a pipe (ssh, `exec:`). CONNECT is the stream. UDP uses the
+             command 0x83 of pod-proxy, UDP in the stream: a pipe has no UDP
+             socket, so each datagram is a frame (2 bytes of length, then a
+             SOCKS5 UDP datagram) on the same stream. See docs/proxies.md
+    forward  Forward local ports through a network: -L LISTEN=HOST:PORT (TCP,
+             or UDP with udp:LISTEN) and a DNS door with --dns. --network SPEC
+             is direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for
+             UDP, devtunnel://TUNNEL or warp
+    route    A router of networks, groups, doors and guest wires from a config
+             file (--config FILE), with health probes and --detach. A guest
+             uses the router as its gateway
+    relay    Inbound access to this host through the WebSocket relay (--relay):
+             pair, run a node for a local port, connect as the operator
+    link     A link between two installs over a carrier (a unix socket, memory;
+             TCP and more behind build features): each end proves its Ed25519
+             key, and an allow list (default deny) says which peers may open
+             streams. Listen, dial, connect, status, mesh, close, carriers
+    wg       WireGuard: serve, a userspace WireGuard peer for a list of peers
+             (a wg-quick file), whose flows go out through --egress
+
+  Run in the background:
+    ps         List the instances that run in the background (for example
+               tunnel --detach)
+    logs       Print the log of a detached instance
+    wait       Wait until a detached instance is ready, and print its ready
+               document
+    stop       Stop a detached instance: SIGTERM, then SIGKILL after --timeout
+    autostart  Start a podnet command at boot, with no root: a systemd user
+               unit (it stops at logout unless linger is on), else an @reboot
+               line in the crontab
+
+  Work with no network:
+    offline  A session with no network: a store-and-forward spool on a
+             directory, a signed mDNS announcement, and an offline bundle with
+             a delta. One capture format with a merge, a four-word single-use
+             pairing code, and a replication log. The carriers of a session
+             without a network are those of `podnet link`: serial:PATH[,BAUD]
+             and hf:PATH[,BPS]
+
+  Check this host and podnet:
+    doctor       Test the path from this host to the edge: the proxy, TCP and
+                 TLS to the APIs, the edge (7844) and MASQUE (443), and UDP
+                 7844. Exit 0 when at least one leg (quic, http2, quic+warp)
+                 can work, 1 when none can
     status       Print one line of JSON about this host. It opens no connection
     host         State the five properties of a file system, and the fallback
                  that the runtime uses
@@ -108,23 +111,30 @@ SYNOPSIS
     init         Generate, check or enrol a node configuration
     harness      Run the road by profile verification matrix and print the
                  table
-    doctor       Test the path from this host to the edge: the proxy, TCP and
-                 TLS to the APIs, the edge (7844) and MASQUE (443), and UDP
-                 7844. Exit 0 when at least one leg (quic, http2, quic+warp)
-                 can work, 1 when none can
-    autostart    Start a podnet command at boot, with no root: a systemd user
-                 unit (it stops at logout unless linger is on), else an @reboot
-                 line in the crontab
-    agent        One command for a sandbox with basic networking: test what
-                 works, start WARP when it is needed, expose ports, and print
-                 what works now and the commands to use
-    ps           List the instances that run in the background (for example
-                 tunnel --detach)
-    stop         Stop a detached instance: SIGTERM, then SIGKILL after
-                 --timeout
-    logs         Print the log of a detached instance
-    wait         Wait until a detached instance is ready, and print its ready
-                 document
+    ci           Check a pipeline's declared egress against the installed
+                 policy, before its first step
+    forge        A forge without one host: clone a local seed and check its
+                 hash
+    ports        List local TCP ports that are listening
+    components   List the carriers and services of this build: kind, framing,
+                 duplex, privilege, whether this host can use each, the reason
+                 if not, the cost class and the build feature
+    bench        Send GET requests to a URL through the way out (--egress,
+                 --proxy) and measure the latency (p50, p95, p99), the rate and
+                 the errors. When no request works, the exit code is 1
+    sidecar      The packet sidecar, behind the feature `sidecar`: probe,
+                 search, run, split, faketcp and bond against a local
+                 simulator. A default build exits 69 with the feature name
+    bug-report   Print a text for a bug report: the version, podnet status, the
+                 detached instances and the end of their logs, and the names of
+                 the variables that are set. Device IDs, tunnel IDs, tokens and
+                 credentials are hidden. No network unless --doctor
+    update       Replace this binary with the binary of a release, after
+                 checking its signature (cosign, release.yml at the tag, the
+                 entry of Rekor) and its SHA-256
+    man          Show the manual, generated from this binary
+    completions  Print a completion script for a shell: bash, zsh, fish, elvish
+                 or powershell
 
   Options:
     --ca-file PATH
