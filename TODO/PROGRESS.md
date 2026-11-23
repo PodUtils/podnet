@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 513 entries: 13 open, 13 partial, 24 blocked, 463 done.
+`TODO/INDEX.md` holds 531 entries: 31 open, 13 partial, 24 blocked, 463 done.
 
 ## State
 
@@ -43,7 +43,8 @@
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
 3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.17`. The next beta
    (`v0.4.0-beta.18`) runs the black-box QA pass (`scripts/agent/qa-pass.md`) and `gate.yml` on the head first, and
-   proves the attestation and digests of the image (issue 656).
+   proves the attestation and digests of the image (issue 656). The pass of 2026-11-23 found 19 issues; T-515 to T-532
+   are its entries, and the release waits for each P1 and P2 entry of them.
 
 ### The order of podnet's own work
 
@@ -56,6 +57,12 @@ not wait for a larger one.
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
+   - **First, the gate of the release of `v0.4.0-beta.18`** (the black-box QA pass of 2026-11-23, GitHub #687 and #689 to
+     #706; `docs/maintenance.md`, Release, step 0: the release waits until each P1 and P2 entry is done): P1 T-515,
+     T-516, T-517 and T-518; then P2 T-519 to T-529 and T-531 (an S entry first: T-519, T-520, T-523 to T-529, T-531;
+     then T-521 and T-522); then P3 T-530 and T-532. T-516, T-520, T-521 and T-522 have an ask for podcrates (a COORD
+     issue `(to podcrates)`); each has a step in podnet that does not wait for the tag. T-527 and T-528 have a call
+     in their Premise that the owner can change.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
@@ -114,6 +121,10 @@ Each call is in its entry, and the work goes on with it until the owner rules ot
 
 - 2026-11-10: the start conditions of T-055, T-056 (T-053) and T-092 (T-084) do not stop their work
   (`docs/decisions.md`, Start conditions); the time of pod-hold has come (T-232).
+
+- 2026-11-23, the triage of the QA pass of 0.4.0-beta.18: the `## Premise` of T-518 (a missing policy file exits 78),
+  T-525 (an explicit `--out` on a `noexec` directory exits 78), T-527 (the SOCKS5 replies of RFC 1928) and T-528 (`doctor`
+  and `bench` keep exit 1; the manual changes) name the call. The owner can rule otherwise.
 
 - T-016: the shim names `podnet-vnet` (`PODNET_VNET_*`) and `podnet-socks` (`PODNET_SOCKS_*`).
 - T-046: the test helpers go into `podnet-core` behind a feature; `pod-testkit` of
