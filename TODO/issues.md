@@ -370,4 +370,4 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #678 | [gh action] requested: ci on the take of podcrates `v0.81.0` and the replace of `pod_core::files` (T-505, T-473) | closed: ci 44871490037 passed on 9a9a0a9 | T-505 |
 | #679 | [gh action] requested: issue-sync (not a dry run) on `1a4781eb` for #672 and #677 | closed: superseded by the `v0.82.0` consolidation push | none |
 
-#312 to #315, #318, #381 to #383, #415, #556, #557, #683 are closed, and #680, #681, #682, #684 are open; they are pull requests.
+#312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.
