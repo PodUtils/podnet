@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**509 entries: 14 open, 14 partial, 24 blocked, 457 done.**
+**509 entries: 13 open, 14 partial, 24 blocked, 458 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 75 | 80 |
-| P2 | 5 | 8 | 10 | 225 | 248 |
+| P2 | 4 | 8 | 10 | 226 | 248 |
 | P3 | 8 | 4 | 12 | 156 | 180 |
-| **All** | 14 | 14 | 24 | 457 | 509 |
+| **All** | 13 | 14 | 24 | 458 | 509 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -538,7 +538,7 @@ M8 Overlays, M9 Later.
 | [T-491](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.76.0 |
 | [T-492](fixes.md) | P2 | S | M5 | defect | partial | Tests free a port and then bind it; another test can take the port first |
 | [T-493](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.77.0 |
-| [T-494](fixes.md) | P2 | M | M3 | chore | open | Take `pod-release` in place of podnet's own update |
+| [T-494](fixes.md) | P2 | M | M3 | chore | done | Take `pod-release` in place of podnet's own update |
 | [T-495](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.78.1 |
 | [T-496](fixes.md) | P1 | S | M7 | defect | done | `pod`: a failed connect of the program gives no line at the default level |
 | [T-497](fixes.md) | P2 | S | M5 | defect | done | The error lines of `tunnel`, `warp proxy` and `connect` name one cause two times (code of podcrates) |

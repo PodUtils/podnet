@@ -151,6 +151,12 @@ pod-sidecar = { git = "https://github.com/PodUtils/podcrates", tag = "v0.82.0", 
 # clap, the text, man(7), JSON and llms writers, the pager and the checks of
 # the tests. The glue and the facts of podnet are src/manual/.
 pod-manual = { git = "https://github.com/PodUtils/podcrates", tag = "v0.82.0", version = "0.82.0", features = ["clap"] }
+# The update of the running binary (`podnet update`, T-494): the check of
+# the Sigstore bundle of SHA256SUMS (with Rekor and the timestamps), the
+# versions of the tags, the trial run, the replace, the kept binary and the
+# rollback. The feature `fetch` gives the plan and the install step; podnet
+# fetches the files with its own client.
+pod-release = { git = "https://github.com/PodUtils/podcrates", tag = "v0.82.0", version = "0.82.0", features = ["fetch"] }
 # The lexical check of each name that `podnet receive` writes (T-105).
 pod-extract = { git = "https://github.com/PodUtils/podcrates", tag = "v0.82.0", version = "0.82.0" }
 # The inflate of a zip of magic-wormhole (`zipfile/deflated`, T-103): the
@@ -220,7 +226,6 @@ rustls = { version = "0.23", default-features = false, features = [
     "logging",
 ] }
 rustls-pki-types = "1"
-rustls-webpki = { version = "0.103", default-features = false, features = ["ring", "std"] }
 ring = "0.17"
 # The feature rsa verifies the RSA host key of a relay (Pinggy; T-318).
 russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }

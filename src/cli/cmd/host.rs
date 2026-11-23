@@ -127,7 +127,7 @@ pub(crate) fn parse_release_tag(value: &str) -> Result<String, String> {
     if podnet::update::valid_tag(value) {
         Ok(value.to_string())
     } else {
-        Err("not a release tag (for example v0.3.0-beta.9)".to_string())
+        Err("not a release tag: v and a version, for example v0.3.0-beta.9".to_string())
     }
 }
 
@@ -181,6 +181,9 @@ pub(crate) async fn update(args: UpdateArgs) -> Result<()> {
         .fault(Fault::Unavailable)?
     {
         Outcome::UpToDate(tag) => println!("podnet {tag} is the newest release"),
+        Outcome::Newer { current, tag } => {
+            println!("podnet {current} is newer than the newest release {tag}; nothing to do")
+        }
         Outcome::Same(tag) => {
             println!("podnet {tag} is installed; nothing to do (--force installs it again)")
         }

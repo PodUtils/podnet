@@ -2361,7 +2361,7 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 ## Premise
 
 - `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:41-51`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
-- `targets()` has no argument (`src/doctor.rs:115`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:283-302`).
+- `targets()` has no argument (`src/doctor.rs:115`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:286-305`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
 ## Approach
@@ -3170,7 +3170,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:269-279` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:64-70`.
+- `src/cli/cmd/host.rs:272-282` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:64-70`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -4040,7 +4040,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:80`, `src/cli/cmd/net/mod.rs:97` and
   `src/cli/cmd/net/mod.rs:175` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:246`).
-- `libc` is a dependency (`Cargo.toml:189`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `libc` is a dependency (`Cargo.toml:195`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.
@@ -4126,9 +4126,9 @@ H, not H" with the same hash twice.
   text through. The line `scripts/install.sh:90` builds `base` from it.
 - `scripts/install.sh:371-383` (`check_sum`): the `awk` prints each matching hash, and the compare is
   against the joined text.
-- The rule that exists: `src/update.rs:167-174` (`valid_tag`: 1 to 64 characters, first `v` or a digit, no
-  `..`), used by `src/update.rs:185`, `src/update.rs:271` and `src/update.rs:348`.
-- `src/update/cosign.rs:160-174` (`sum_of`) returns the first matching line and does not check the length
+- The rule that exists: `PodUtils/podnet@749da3d:src/update.rs:167-174` (`valid_tag`: 1 to 64 characters, first `v` or a digit, no
+  `..`), used by `PodUtils/podnet@749da3d:src/update.rs:185`, `PodUtils/podnet@749da3d:src/update.rs:271` and `PodUtils/podnet@749da3d:src/update.rs:348`.
+- `PodUtils/podnet@749da3d:src/update/cosign.rs:160-174` (`sum_of`) returns the first matching line and does not check the length
   of the hash. SHA256SUMS is signed, so this is a hardening gap, not a hole.
 - `tests/install_script.rs:105-115` (`Lab::curl`): the argument loop skips each word that starts with `-`,
   so no flag can change a result. `Lab::run` clears the environment and sets no `TMPDIR`; one test sets it
@@ -4181,7 +4181,7 @@ the asset twice fails with the same wording.
 `resolve_tag` for the `latest` result, `v*` and a bare version; it fails with "not a release tag" before
 any download. It checks `PODNET_REPO` as OWNER/NAME. `check_sum` needs exactly one two-field line with a
 64-hex hash, else "SHA256SUMS must have exactly one valid line for NAME (found N)". `sum_of` in
-`src/update/cosign.rs` does the same. Tests: `strict::curl_gets_https_only_flags`,
+`PodUtils/podnet@749da3d:src/update/cosign.rs` does the same. Tests: `strict::curl_gets_https_only_flags`,
 `strict::a_script_without_proto_fails_the_flag_test`, `strict::hostile_versions_stop_before_any_download`,
 `strict::a_bad_repo_stops_before_any_download`, `strict::sha256sums_needs_exactly_one_valid_line`
 (`tests/install_script/strict.rs`), and `update::tests::sha256sums_must_have_exactly_one_valid_line`. The fake
@@ -10504,7 +10504,7 @@ copy of shared code that podnet holds and that the survey of podcrates did not l
 ## Problem
 
 podcrates' survey names three copies in podnet: `crates/podnet-core/src/detach.rs` (their entry 879), `src/update.rs`
-with `src/update/cosign.rs` (their entry 880) and the instance lock (their entry 877). Other copies of podnet are not
+with `PodUtils/podnet@749da3d:src/update/cosign.rs` (their entry 880) and the instance lock (their entry 877). Other copies of podnet are not
 named.
 
 ## Premise
@@ -11358,7 +11358,7 @@ and podvm), and moves the second Nostr relay of the pairing to `nos.lol` (PodUti
 - The tag has no hand-off patch for podnet. The installer core has the same SHA-256 as at `v0.76.0`.
 - podnet builds against the changed `pod-extract` with no change of code.
 - No code, test, workflow or script of podnet names `offchain.pub` (`docs/research/` names `nos.lol` already).
-- The take of `pod-release` in place of `src/update.rs` and `src/update/cosign.rs` is T-494.
+- The take of `pod-release` in place of `src/update.rs` and `PodUtils/podnet@749da3d:src/update/cosign.rs` is T-494.
 
 ## Approach
 
@@ -11385,11 +11385,11 @@ take. The ruling "Shared code first" (2026-11-17).
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
-`src/update.rs` and `src/update/cosign.rs` are podnet's own copy of the update of a binary (the check of SHA256SUMS,
+`src/update.rs` and `PodUtils/podnet@749da3d:src/update/cosign.rs` are podnet's own copy of the update of a binary (the check of SHA256SUMS,
 of the cosign bundle and of the certificate identity; the trial run). `pod-release` now holds the same capability for
 each project.
 
@@ -11411,6 +11411,44 @@ each project.
 ```sh
 cargo test --workspace update
 ```
+
+## Done
+
+2026-11-23, the commit of this entry. The ruling of 2026-11-23 (`docs/decisions.md`, `podnet update`, the owner):
+podnet takes the shared verifier of `pod-release`, with the check of Rekor; podnet keeps no own verifier.
+
+- `pod-release` (tag `v0.82.0`, feature `fetch`) is a dependency of the root crate. `PodUtils/podnet@749da3d:src/update/cosign.rs` and
+  `PodUtils/podnet@749da3d:src/sigstore-fulcio.pem` are removed. Of `src/update.rs`, `verify_bundle`, `sum_of`, `atom_tags`,
+  `newest_in_atom`, `version_order`, `choose`, `Release`, `plan`, `trial`, `install`, `rollback`, `same_file`,
+  `keep`, `sync_dir` and the test hook `AFTER_TRIAL` are removed. Their places: `pod_release::verify_release` with
+  `Identity::github("PodUtils/podnet", "release.yml", TAG)` and `Roots::sigstore()`, `Verified::check`,
+  `version::{valid_tag, tags_of_api, tags_of_atom, newest, release_target, asset}`, `Version`,
+  `update::plan`, `update::install` with `trial::LIMIT`, `keep::rollback`, `keep::prev_of`, and
+  `replace::running`. `rustls-webpki` is no longer a direct dependency.
+- podnet keeps its own fetch (`crate::fetch`: its TLS roots, its proxy, its `--resolve` pins, its error lines),
+  `run`, `Outcome`, the `PODNET_REPO` warning and the lines of each step. Each flag stays: `--check`,
+  `--version TAG`, `--force`, `--rollback`. Each failure exits 69; a text that is not a tag exits 64.
+- Changes of behaviour: a bundle with no entry of Rekor, or with an entry or a timestamp that does not verify, is
+  refused. A tag is `v` and a version of semver with no build part (`0.3.0`, `v1`, `v1.0.0+b` now exit 64). A
+  binary that is newer than the newest release says so (`Outcome::Newer`). The new binary takes the mode of the
+  old binary with no write for others and no set-user-ID bit. A `podnet.prev` that cannot be written gives a
+  warning, not a failure.
+- Tests (`src/update/tests.rs`, 12): `the_entry_of_rekor_and_the_timestamps_are_checked` (a table of six changes
+  of the bundle of `v0.4.0-beta.1`: no promise and no inclusion proof, a changed promise, a changed hash and root
+  of the inclusion proof, an unknown log, a changed RFC 3161 timestamp). Each change passed the verifier before
+  this commit (measured with the removed `cosign.rs`) and is refused now. The bundle tests, the trial table (with
+  a file that another file replaces during its trial), the rollback, the plan table, the tags, the lists of the
+  API and of the feed, and `the_kept_binary_is_the_fallback_of_the_supervisor`. The real bundles of
+  `v0.4.0-beta.17` (accepted) and `v0.3.0-beta.1` (refused: the leaf names Azathothas/cfrs, so the `live.yml` grep
+  holds) were checked by hand with the new verifier.
+- `log_filter` of `crates/podnet-core/src/report.rs` names `pod_release`
+  (`report::tests::the_log_filter_names_each_pod_crate_of_podnet`).
+- `cargo test --workspace update`: passes. `sh scripts/agent/check.sh`: fmt, clippy, record, size, doc, layers,
+  claims, doc-commands, scenarios, install and workflows give 0. `cargo test --workspace --no-fail-fast` with
+  `TMPDIR=/tmp`: each target passes on this host except four that need what the host does not have: the network
+  lab and `link_p2p_namespaces` (no `ip`), `pod_seccomp::kernel_listen::seccomp_kernel_socket_refuses_listen_v6`
+  (no IPv6), and the timing test `defer::the_generator_reaches_the_cache_with_the_times_of_the_profile` (passes
+  alone three times). `cargo clippy --workspace --all-targets --features full -- -D warnings`: passes.
 
 # T-495: Take podcrates v0.78.1
 

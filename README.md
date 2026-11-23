@@ -42,8 +42,8 @@ cosign verify-blob --bundle SHA256SUMS.sigstore.json \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com SHA256SUMS
 ```
 
-Update in place. `podnet update` checks the cosign certificate and signature over `SHA256SUMS`, the
-SHA-256 of the binary, and that the new binary runs; `--rollback` puts the old binary back:
+Update in place. `podnet update` checks the cosign certificate and signature over `SHA256SUMS` and
+the entry of Rekor, the SHA-256 of the binary, and that the new binary runs; `--rollback` puts the old binary back:
 
 ```sh
 podnet update --check

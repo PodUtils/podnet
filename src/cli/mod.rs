@@ -206,7 +206,8 @@ pub(crate) enum Command {
         shell: clap_complete::Shell,
     },
     /// Replace this binary with the binary of a release, after checking its
-    /// signature (cosign, release.yml at the tag) and its SHA-256.
+    /// signature (cosign, release.yml at the tag, the entry of Rekor) and its
+    /// SHA-256.
     Update(UpdateArgs),
     /// Print a QR code for a URL.
     Qr(QrArgs),

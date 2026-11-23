@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 509 entries: 14 open, 14 partial, 24 blocked, 457 done.
+`TODO/INDEX.md` holds 509 entries: 13 open, 14 partial, 24 blocked, 458 done.
 
 ## State
 
@@ -11,9 +11,9 @@
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
   (the transfer), `pod-extract`, `pod-manual`, `pod-cloudflare`, `pod-cover`, `pod-harness`, `pod-offline`,
-  `pod-shape`, optional `pod-sidecar` (feature `sidecar`), and `pod-testkit`. Not taken yet: `pod-release`
-  (T-494), `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session reads the state of podcrates with
-  `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates). A file that a block of `crates/*/SOURCES`
+  `pod-shape`, optional `pod-sidecar` (feature `sidecar`), `pod-release` (T-494, `podnet update`), and
+  `pod-testkit`. Not taken yet: `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session reads the state of
+  podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates). A file that a block of `crates/*/SOURCES`
   names with no `taken` line is frozen: it takes fixes only, each as a COORD issue.
 - The newest release is `v0.4.0-beta.17` (T-481). The next release proves T-487 (the attestation of the image, the
   pull-back check, the digests in the notes) and then closes GitHub #656.
@@ -36,8 +36,7 @@
    the full lane in `gate.yml` (the case `errors`, the row `testers`).
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
-   before other work. The next tag after `v0.82.0` is the next take. T-494 (`pod-release` in place of
-   `src/update.rs`) is open behind podrunner's asks.
+   before other work. The next tag after `v0.82.0` is the next take.
 2. **podnet's own work:** the order below. Skip an entry whose Correction says that its work is
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
@@ -60,7 +59,7 @@ not wait for a larger one.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
-   - open and partial follow-ups (`TODO/fixes.md`): T-473 (partial: shared-code adoptions left), T-494 (`pod-release`),
+   - open and partial follow-ups (`TODO/fixes.md`): T-473 (partial: shared-code adoptions left),
      T-476 (`pod-session` `move_under`), T-478, T-406 (blocked, #604), T-488, T-492 (partial, step 3), T-414 and T-415
      (partial), T-358 and T-398 (partial), T-428 (partial).
 4. **M2, the splits:** T-044 (blocked:

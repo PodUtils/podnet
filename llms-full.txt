@@ -66,8 +66,8 @@ SYNOPSIS
     completions  Print a completion script for a shell: bash, zsh, fish, elvish
                  or powershell
     update       Replace this binary with the binary of a release, after
-                 checking its signature (cosign, release.yml at the tag) and
-                 its SHA-256
+                 checking its signature (cosign, release.yml at the tag, the
+                 entry of Rekor) and its SHA-256
     qr           Print a QR code for a URL
     demo         Test the full path: a built-in origin, a tunnel, a fetch of
                  the URL
@@ -3266,7 +3266,8 @@ podnet completions
 
 podnet update
   Replace this binary with the binary of a release, after checking its
-  signature (cosign, release.yml at the tag) and its SHA-256.
+  signature (cosign, release.yml at the tag, the entry of Rekor) and its
+  SHA-256.
 
   Usage: podnet update [OPTIONS]
 
@@ -3338,7 +3339,7 @@ podnet update
 
   Examples:
     Say whether a newer release exists. podnet update installs it after it
-    checks the cosign signature and the SHA-256.
+    checks the cosign signature, the entry of Rekor and the SHA-256.
         $ podnet update --check
 
 podnet qr
@@ -14149,7 +14150,7 @@ EXAMPLES
       $ podnet ssh-relay --server relay.example.net:443 --user podnet --url-skip dashboard.example.net --socket /run/user/1000/origin.sock --detach
 
   Say whether a newer release exists. podnet update installs it after it checks
-  the cosign signature and the SHA-256.
+  the cosign signature, the entry of Rekor and the SHA-256.
       $ podnet update --check
 
   Make a quick tunnel to the built-in origin, and fetch its public URL.
@@ -14310,8 +14311,8 @@ cosign verify-blob --bundle SHA256SUMS.sigstore.json \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com SHA256SUMS
 ```
 
-Update in place. `podnet update` checks the cosign certificate and signature over `SHA256SUMS`, the
-SHA-256 of the binary, and that the new binary runs; `--rollback` puts the old binary back:
+Update in place. `podnet update` checks the cosign certificate and signature over `SHA256SUMS` and
+the entry of Rekor, the SHA-256 of the binary, and that the new binary runs; `--rollback` puts the old binary back:
 
 ```sh
 podnet update --check
@@ -14676,31 +14677,53 @@ podnet update --version <TAG>      # install the release <TAG>
 podnet update --rollback           # put the binary before the update back
 ```
 
-`podnet update` installs a release only after these checks: the certificate
-of `SHA256SUMS.sigstore.json` chains to the Fulcio roots of Sigstore and
-names `release.yml` of this repository at the tag, the signature over
-`SHA256SUMS` is valid, the SHA-256 of the binary is its line in
-`SHA256SUMS`, and the new binary runs `--version` in 10 seconds, with no
-stdin, exits 0 and prints the version of the tag. After the run, the file
-must still be the same file (device and inode), a regular file of this
-user that other users cannot write; else podnet stops. Then the binary before
-is kept as `podnet.prev` beside it, and a rename puts the new binary (mode
-0755, also with a restrictive umask) in place. `podnet update --rollback` puts `podnet.prev` back (it must pass the
-same run first) and keeps the binary that was in place as `podnet.prev`;
-it uses no network. podnet does not check the inclusion proof of the Rekor
-log. A prerelease is
-installed only with `--version`, or when the current binary is a
-prerelease.
+`podnet update` installs a release only after these checks. The checks are
+the checks of the crate `pod-release` of PodUtils/podcrates:
+
+1. The bundle `SHA256SUMS.sigstore.json` signs `SHA256SUMS`: the digest and
+   the signature are valid with the key of the leaf certificate.
+2. The bundle has an entry of the Rekor log of Sigstore. Each proof of the
+   entry is valid: the signed entry timestamp, and the inclusion proof with
+   its signed checkpoint. Each RFC 3161 timestamp of the bundle is valid by
+   the timestamp authority of Sigstore. A bundle with no entry of Rekor is
+   refused.
+3. The leaf certificate chains to the Fulcio roots of Sigstore at each time
+   that the bundle proves, for code signing. It names `release.yml` of this
+   repository at the tag of the release, and the issuer of GitHub Actions.
+4. Exactly one valid line of `SHA256SUMS` names the binary, and the SHA-256
+   of the binary is that line.
+5. The new binary runs `--version` beside the old binary in 10 seconds, with
+   no stdin. It must exit 0 and print `podnet VERSION` of the tag. After the
+   run, the file must still be the same file (device and inode), a regular
+   file of this user that other users cannot write.
+
+The roots of Sigstore are compiled into the binary; the checks use no
+network. Then the binary before is kept as `podnet.prev` beside it, and a
+rename puts the new binary in place. The new binary gets the mode of the old
+binary, with no write permission for the group and others and no set-user-ID
+bit (0755 for a binary of mode 0755, also with a restrictive umask). When
+`podnet.prev` cannot be written, the new binary is installed and a warning
+says so.
+
+`podnet update --rollback` puts `podnet.prev` back. The kept binary must pass
+the same run first, and print `podnet VERSION`. The binary that was in place
+becomes `podnet.prev`, so a second `--rollback` goes forward again. It uses no
+network. A prerelease is installed only with `--version`, or when the current
+binary is a prerelease.
+
+Each failure prints one line and exits 69. A text that is not a tag exits 64.
 
 * `--version TAG` uses no request to the GitHub API: the URLs of the files
   follow from the tag. A tag with no release exits 69 ("no release has the
-  tag"). A text that is not a tag (a `/`, a `..`, a character other than
-  `0-9 A-Z a-z . + -`) exits 64. podnet skips such a tag in the API and in
-  `releases.atom` too.
+  tag"). A text that is not a tag exits 64: a tag is `v` and a version of
+  semver with no build part (`v0.4.0-beta.1`), with no `/`, no `..` and no
+  character other than `0-9 A-Z a-z . + -`. podnet skips such a tag in the
+  API and in `releases.atom` too.
 * With no `--version`, podnet reads the GitHub API, else `releases.atom` (the
   API answers 403 on a shared address; the feed has no quota).
 * `--version` of the installed version says so and exits 0; `--force`
-  installs it again. `--force` with no `--version` installs the newest
+  installs it again. With no `--version`, a binary that is newer than the
+  newest release says so and exits 0. `--force` with no `--version` installs the newest
   release also when it is the installed version; it does not go back to
   an older release.
 * The repository is fixed (it names the signer of the binary). podnet does

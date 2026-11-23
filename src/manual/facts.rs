@@ -150,7 +150,7 @@ pub const EXAMPLES: &[(&str, &str)] = &[
     ("podnet ssh-relay --socket /run/user/1000/origin.sock --detach", "Publish a unix socket through the default SSH relay (pinggy). The endpoint, the user and the URL rule are data of pod-services. The URL is in the ready document; podnet ps shows the URL after each reconnect."),
     ("podnet ssh-relay --service serveo --socket /run/user/1000/origin.sock --detach", "Publish a unix socket through a named SSH relay. podnet tries its plain SSH endpoints in order."),
     ("podnet ssh-relay --server relay.example.net:443 --user podnet --url-skip dashboard.example.net --socket /run/user/1000/origin.sock --detach", "Publish a unix socket through an SSH relay that pod-services does not know: give the server, the user and the URL rule."),
-    ("podnet update --check", "Say whether a newer release exists. podnet update installs it after it checks the cosign signature and the SHA-256."),
+    ("podnet update --check", "Say whether a newer release exists. podnet update installs it after it checks the cosign signature, the entry of Rekor and the SHA-256."),
     ("podnet demo --exit-on-verify", "Make a quick tunnel to the built-in origin, and fetch its public URL."),
     ("podnet tunnel --url http://127.0.0.1:8080", "A quick tunnel to a local HTTP server."),
     ("podnet tunnel --unix /run/app.sock", "A quick tunnel to an HTTP server on a unix socket."),
