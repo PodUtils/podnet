@@ -50,7 +50,7 @@ no test (`defect_tests` in `TODO/todo.toml`).
 * Prior baseline runs before today: `ci` `44871490037` passed on `9a9a0a9` (`v0.81.0`); `gate` `44782773447` passed
   on `3836971` (the full lane on the GitHub runner, with the case `errors` and the row `testers`); `live` `44713609259`
   passed on `3f14a38`. About one `live` run of six fails at the public relay or at WARP's MASQUE door (T-406, T-488,
-  GitHub `#606`).
+  GitHub `#604`).
 * Pushes on `2026-11-23` started workflows directly. In a cloud session whose push starts no workflow, request runs via
   `[gh action] requested` issues (`docs/maintenance.md`, "A run when a push starts no workflow"), respecting `ci`
   concurrency and requesting `issue-sync.yml -f dry_run=false` when the record changes GitHub states (otherwise daily
@@ -192,16 +192,15 @@ Use `pod_testkit::refused`, bind port `0`, or use `127.0.0.1:1` instead of freei
 | `#656` (COORD-109, ghcr.io image: T-487) | Next beta (`v0.4.0-beta.18`) proves attestation, pull-back, and digests. |
 | `#651` (COORD-104, shared code copies) | Remaining T-473 items and `pod-release` (T-494), `pod-detach`, `pod_core::lock`. |
 | `#604` (COORD-098, relay holds lost socket) | Relay server fix (T-406, T-478). |
-| `#608` (COORD-101, `pod-tls` CA file) | Answer from podcrates (T-421 done in podnet). |
-| `#585` (COORD-091), `#592` (COORD-095) | T-358 release gate steps 2 and 3. |
 | `#413` (COORD-006) | T-161 and T-200 (`pod-relay`). |
-| `#437` (COORD-019) | Donor proposals open in podcrates. |
 
 Closed on GitHub via `issue-sync` `45141846884` on `4df28952`: `#672`, `#677` (`COORD-112`), `#679`, `#484`, `#485`,
 `#491`, `#493` to `#496`, and `#499` to `#501`.
+The coordinator of podcrates closed `#437`, `#585`, `#592`, `#606`, and `#608` on 2026-11-23. The record agrees
+(`34015bb`).
 
 The other open issues in `TODO/issues.md` are `#89`, `#140`, `#149`, `#151`, `#161`, `#222`, `#358`, `#360`, `#375`,
-`#397`, `#407`, `#435`, `#461`, `#469`, `#471`, `#486`, `#489`, `#497`, `#498`, `#507`, `#606`, and `#620`. Open
+`#397`, `#407`, `#435`, `#461`, `#469`, `#471`, `#486`, `#489`, `#497`, `#498`, `#507`, and `#620`. Open
 Dependabot PRs are `#680`, `#681`, `#682`, and `#684`.
 
 ## Waiting on the owner
