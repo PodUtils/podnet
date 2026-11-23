@@ -8222,6 +8222,10 @@ the 16 MiB GET of `connect`: WARP's MASQUE door showed a certificate of Let's En
 tunnel took the public relay for MASQUE; the MASQUE HTTP/2 connection through the relay closed with no `close_notify`
 10 s later. The edge connection reconnected (T-402), and the stream in flight was lost (`curl: (18) transfer closed`).
 The same code passed `live` 44713609259 an hour before. A fault of the public relay and of WARP's door, not of podnet.
+2026-11-23: `live` 45162920304 (`91a53fb`) failed in "warp scan" of `scripts/live-batch2.sh`: in two scans 10 s apart,
+162.159.198.1:443 and 162.159.198.2:443 showed a certificate of Let's Encrypt (CN=YE1) in place of the pinned MASQUE key.
+The steps before it opened WARP sessions to 162.159.198.2:443 some seconds earlier. The step passed on `af42f0d`
+(`live` 45157147093), and `91a53fb` changed no code of WARP. A fault of WARP's door, not of podnet.
 
 
 # T-407: podnet connect resets a local connection when one WebSocket dial fails
