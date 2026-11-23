@@ -40,6 +40,9 @@ env:
   # The toolchain of each job but msrv. Change it here only.
   RUST_TOOLCHAIN: "1.99.1"
   CARGO_TERM_COLOR: never
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
 
 jobs:
   test:

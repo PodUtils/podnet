@@ -22,7 +22,10 @@ targets = [
 version = 2
 yanked = "deny"
 # Each ignored advisory has its reason and the date it was read.
-ignore = []
+ignore = [
+  # 2026-11-23: humantime 2.4.0 is pulled in by n0-qlog (noq qlog feature); no upstream replacement is released.
+  { id = "RUSTSEC-2026-0542", reason = "transitive via noq qlog (n0-qlog 0.2.0); no upstream replacement is released" },
+]
 
 [licenses]
 version = 2

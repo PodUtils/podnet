@@ -576,6 +576,7 @@ async fn turn_the_status_shows_the_lifetime_and_the_rate_limit() {
 /// allocation, and the relay path is skipped by name.
 #[tokio::test]
 async fn turn_a_host_that_refuses_udp_names_the_host_error() {
+    crate::test_host::need_loopback!();
     struct NoUdp;
     impl Dial for NoUdp {
         fn label(&self) -> String {
