@@ -364,3 +364,52 @@ fn each_refusal_of_the_netns_backend_is_one_line() {
     }
     assert!(faults.is_empty(), "{}", faults.join("\n"));
 }
+
+/// T-516 (GitHub #690): a program that cannot run gives exit 3 and one
+/// line that names it, on each backend. The seccomp backend exited 127
+/// with no line for a path with a `/`.
+#[test]
+fn a_program_that_cannot_run_exits_3_with_one_line() {
+    let backends = backends();
+    if backends.is_empty() {
+        eprintln!("skip: no pod backend on this host");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let plain = dir.path().join("plain");
+    std::fs::write(&plain, "#!/bin/sh\n").unwrap();
+    let rows = [
+        ("/nonexistent/prog".to_owned(), "No such file or directory"),
+        (dir.path().display().to_string(), "Permission denied"),
+        (plain.display().to_string(), "Permission denied"),
+        ("podnet-no-such-program".to_owned(), "is not in PATH"),
+    ];
+    let mut faults = Vec::new();
+    for backend in &backends {
+        for (program, cause) in &rows {
+            let out = Command::new("timeout")
+                .arg("60")
+                .arg(env!("CARGO_BIN_EXE_podnet"))
+                .args(["pod", "--backend", backend, "-x", "direct", "--", program])
+                .env_remove("PODNET_NETNS_QUIET")
+                .output()
+                .unwrap();
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            let lines: Vec<&str> = stderr
+                .lines()
+                .filter(|l| l.starts_with("podnet") && !l.contains(" backend: "))
+                .collect();
+            let named = lines
+                .iter()
+                .filter(|l| l.contains(program.as_str()) && l.contains(cause))
+                .count();
+            if out.status.code() != Some(3) || named != 1 || lines.len() != 1 {
+                faults.push(format!(
+                    "{backend}, {program}: exit {:?}, want 3 and one line with {cause:?}; got {lines:?}",
+                    out.status.code()
+                ));
+            }
+        }
+    }
+    assert!(faults.is_empty(), "{}", faults.join("\n"));
+}

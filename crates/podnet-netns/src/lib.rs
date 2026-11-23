@@ -67,6 +67,7 @@ mod nfprobe;
 mod nfrules;
 mod notice;
 mod outlive;
+mod program;
 mod recvmmsg;
 mod report;
 mod seccomp;
@@ -202,6 +203,14 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
             USAGE,
             "no proxy: give -x PROXY, or set ALL_PROXY, HTTPS_PROXY or HTTP_PROXY",
         );
+    }
+    // T-516: a program that cannot run gets one line and exit 3 on each
+    // backend (pod-hold exits 127 with no line).
+    if let Some(name) = args.program.first() {
+        let path = std::env::var_os("PATH");
+        if let Err(e) = program::can_run(name, path.as_deref()) {
+            return report.fail(EXIT_NO_BACKEND, &format!("{e:#}"));
+        }
     }
     warn_unreachable(&args.proxies, args.backend == BackendKind::NetnsKernel);
     // Inbound listeners exist on the seccomp backend only (issue 69).
