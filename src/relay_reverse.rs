@@ -543,9 +543,12 @@ pub(crate) fn connect_error(name: &str, err: ConnectError) -> anyhow::Error {
                 body.chars().take(200).collect::<String>()
             ),
         ),
+        // The failure keeps the stage of the dial (a proxy, a name): the
+        // error line gives the hint of its hop (GitHub #697, #698).
         err => fault(
             Fault::Unavailable,
-            anyhow::anyhow!("the session to {name}: {err}"),
+            anyhow::Error::new(pod_core::Failure::from(err))
+                .context(format!("the session to {name}")),
         ),
     }
 }

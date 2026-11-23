@@ -20,10 +20,8 @@ pub(crate) async fn run(remote: &str, auth: Option<&str>) -> Result<()> {
     let socket = ws::dial(remote, ws::DIAL_TIMEOUT, auth)
         .await
         .map_err(|err| {
-            podnet::exit::fault(
-                Fault::Unavailable,
-                err.context(format!("the remote {remote} does not answer")),
-            )
+            let lead = ws::remote_lead(remote, &err);
+            podnet::exit::fault(Fault::Unavailable, err.context(lead))
         })?;
     let io: BoxedIo = Box::new(StdioIo::new()?);
     ws::bridge_session(socket, io, &podnet::metrics::Metrics::new()).await

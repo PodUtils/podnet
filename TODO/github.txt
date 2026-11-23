@@ -393,7 +393,7 @@
 692 issue open
 693 issue closed
 694 issue closed
-695 issue open
+695 issue closed
 696 issue open
 697 issue open
 698 issue open

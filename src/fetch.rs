@@ -19,7 +19,7 @@ pub use pod_proxy::client::{Request, MAX_BODY};
 pub use pod_proxy::http::Response;
 
 use crate::egress::Refusal;
-use crate::hop::{self, AtHop, Hop};
+use crate::hop::{self, AtHop};
 
 /// The client of the process.
 fn client() -> &'static pod_proxy::Client {
@@ -67,13 +67,8 @@ fn failed(failure: Failure, what: &str) -> anyhow::Error {
         }
         _ => failure.chain(),
     };
-    let hop = dialed.or(match failure.stage {
-        Stage::Tls => Some(Hop::Tls),
-        Stage::Network => Some(Hop::Network),
-        Stage::Proxy => Some(Hop::Proxy),
-        Stage::Dns => Some(Hop::Dns),
-        _ => None,
-    });
+    // A refused or a silent target is the hop `connect` (GitHub #697).
+    let hop = dialed.or_else(|| hop::of_stage(failure.stage));
     let err = match refusal {
         Some(refused) => anyhow::Error::new(Refusal {
             status: refused.status,

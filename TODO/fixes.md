@@ -2153,7 +2153,7 @@ attempts repeat the same failure for about 30 s.
 ## Approach
 
 1. Retry a `Hop::Dns` failure once. Retry again only when `answering_step` of the API host changed.
-2. End with the `Hop::Dns` hint (`crates/podnet-core/src/hop.rs:45`).
+2. End with the `Hop::Dns` hint (`crates/podnet-core/src/hop.rs:49`).
 
 ## Prove
 
@@ -2183,7 +2183,7 @@ error text repeats `system resolver: no answer ... Network unreachable`. The fin
 ## Premise
 
 - The loop keeps `last = "waiting for DNS: ..."` (`PodUtils/podnet@7fe60e0:src/tunnel.rs:1228-1231`). `Verified.dns` records the
-  step on success only. `Hop::Dns` has a hint (`crates/podnet-core/src/hop.rs:45`).
+  step on success only. `Hop::Dns` has a hint (`crates/podnet-core/src/hop.rs:49`).
 - `run_tunnel`, `run_share` and `run_demo` (`src/cli/cmd/run.rs`) wait for the verify.
 - Overlap: #357 (exit 69 and teardown on an unresolved name). Do both in one pass; the verdict of the
   loop after the budget is #357's subject.
@@ -2438,7 +2438,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:249`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-45`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:247`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-45`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:60`.
 - `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:174`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:97-103`).
@@ -2926,9 +2926,9 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 - `RelayCommand::Connect` has no `DetachArgs`: `src/cli/cmd/relay.rs:66-112`. `RelayCommand::Node` has it: `:61-62`.
 - `detach_of` has no arm for it: `src/cli/opts.rs:265-274`. `connect` has one: `:256`.
 - Both accept loops use `accepted?`: `src/cli/cmd/relay.rs:277`, `:289`. `connect -L` logs and returns:
-  `src/cli/cmd/connect.rs:208-211`.
+  `src/cli/cmd/connect.rs:206-209`.
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:283`.
-  `SocketFile` is in `src/cli/cmd/connect.rs:219-239` (`pub(crate)`).
+  `SocketFile` is in `src/cli/cmd/connect.rs:217-237` (`pub(crate)`).
 - Message: `crates/podnet-core/src/net.rs:26-32`.
 - `src/main.rs:156` allows `--replace` without `--detach` only for `Command::Connect`.
 
@@ -4032,7 +4032,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
 
 - `crates/podnet-netns/src/listen.rs:127-240` (`bind_private`) calls `UnixListener::bind(path)`, then
   `set_permissions(path, 0o600)`.
-- The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:250`,
+- The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:248`,
   src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:314`, `crates/podnet-vnet/src/switch.rs:434`,
   and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:324-327`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
@@ -12460,7 +12460,7 @@ listener or relay disabled by policy, or not answering"; "1 (failure): A failure
 - Read: `crates/podnet-core/src/net.rs:47` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
   `PermissionDenied` and `AddrNotAvailable`. `forward`, `net proxy`, `serve`, `route`, `link` and `cover` call it.
 - Read: `src/cli/cmd/connect.rs:108` binds the TCP listener of `-L` and adds only a context (`:110`). It does not
-  call `bind_fault`, so the exit code is 1. `unix_listener` (`src/cli/cmd/connect.rs:245`, `:251`) has the same
+  call `bind_fault`, so the exit code is 1. `unix_listener` (`src/cli/cmd/connect.rs:243`, `:249`) has the same
   fault for a unix listener. `git serve` and other commands use `unix_listener`.
 - Read: `src/cli/cmd/e2e.rs:78` and `:81` bind the data and control listeners of `e2e` with a context only. The
   tester did not run `e2e`. It has the same fault by the same reading.
@@ -12817,7 +12817,7 @@ the pass prompt, check 3, "one error line that names each cause once and says wh
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -12863,16 +12863,16 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `connect`, `relay c
 - #695. Read: `pod-cloudflare` gives a failure of the provisioning the stage `EdgeRegister`
   (`PodUtils/podcrates:crates/pod-cloudflare/src/quicktunnel/error.rs`: `Decode`, `Service` and `MissingResult` are
   `(Stage::EdgeRegister, Class::Protocol)`). `podnet_core::hop::of` maps the stage to `Hop::EdgeRegister`
-  (`crates/podnet-core/src/hop.rs:97`). The hint of that hop is for the registration with a token or a credentials
-  file (`crates/podnet-core/src/hop.rs:48`). `src/report.rs:39` appends it for any failure of the stage. The hop is
+  (`crates/podnet-core/src/hop.rs:104`). The hint of that hop is for the registration with a token or a credentials
+  file (`crates/podnet-core/src/hop.rs:48`). `src/report.rs:46` appends it for any failure of the stage. The hop is
   too coarse: a provisioning has no token. The form of that hint ("when the edge says retry: no, ...") reads as a
   condition that the user cannot test.
-- #695, WARP. Read: `PodUtils/podcrates:crates/pod-warp/src/register.rs:89` and `:97` write "the WARP API answer does
+- #695, WARP. Read: `PodUtils/podcrates:crates/pod-warp/src/register.rs:89` and `:106` write "the WARP API answer does
   not decode (N bytes)". They keep no text of the body; `pod-cloudflare` keeps one safe line of it.
-- #697. Read: `src/ws.rs:98` turns the dial failure of `connect` into a hop when its stage is `Proxy` or `Dns`. The
-  failure of the dialer of podnet has the stage `Proxy` (`src/dialers/mod.rs:42`, `failure`). `pod-ws` then writes it as
+- #697. Read: `src/ws.rs:108` turns the dial failure of `connect` into a hop when its stage is `Proxy` or `Dns`. The
+  failure of the dialer of podnet has the stage `Proxy` (`src/dialers/mod.rs:41`, `failure`). `pod-ws` then writes it as
   `DialError::Connect` with the text only and the stage `Connect` (`PodUtils/podcrates:crates/pod-ws/src/way.rs`,
-  `dial_error`), so the stage is gone when `src/ws.rs:101` reads it. No hop, no hint.
+  `dial_error`), so the stage is gone when `src/ws.rs:111` reads it. No hop, no hint.
 - #697, #698. Read: `bench` keeps the first error of the workers as a string (`src/cli/cmd/bench.rs:77`,
   `format!("{err:#}")`) and `bail!` gives that string (`src/cli/cmd/bench.rs:176`): the hop of `src/fetch.rs` is lost.
   `src/relay_reverse/resume.rs:422` and `:435` write `anyhow!("the session to {name}: {e}")`: the hop is lost too.
@@ -12900,9 +12900,67 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `connect`, `relay c
 ## Prove
 
 ```sh
-cargo test -p podnet --test hop_hints
-cargo test -p podnet report::
+cargo test -p podnet --test error_words
+cargo test -p podnet --lib report::
+cargo test -p podnet-core hop::
 ```
+
+## Correction
+
+2026-11-23: the test of step 4 is `tests/error_words.rs` (one table with the rows of T-522), not a
+file hop_hints. A refused port, an address with no answer, `send` and `warp proxy` are rows too. A refused port
+had no second line: the stage `Connect` of `pod_core` had no hop. It is now the hop `connect`.
+
+## Done
+
+2026-11-23, the commit of this entry.
+
+- The hint of the quick-tunnel service: `podnet_core::hop::quick_service_answer` reads a `ProvisionError` `Decode`,
+  `Service` or `MissingResult` in the chain, and `src/report.rs` gives the second line "the quick-tunnel service did
+  not answer with its API: a proxy or a gateway on the way can answer with its own page; ...". The hint of the hop
+  `edge-register` has no "when the edge says retry" condition.
+- A new hop `connect` (`crates/podnet-core/src/hop.rs`) for the stage `Connect`: "check the host and the port of the
+  target, and that a service listens there; a host that reaches out only through a proxy needs --proxy".
+  `src/fetch.rs` takes the hop of each stage (`hop::of_stage`).
+- The stage of the proxy through `pod-ws`: the dialer of podnet gives a failure at the proxy its `DialError` as the
+  cause (`src/egress.rs`, `dial_failure`), and `pod_ws::way::dial_error` keeps a cause of that type as it is.
+  `connect` and `relay connect` get the hint `proxy`. The lead "the remote URL does not answer" is "the remote URL"
+  for a failure of the proxy or of a name (`podnet::ws::remote_lead`).
+- The second path for a crate that keeps only the text of a failed dial (pod-warp `EnrolError::Unreachable`,
+  pod-wormhole `Failed::Unreachable`): `hop::of` reads the words of `pod_proxy::DialError` ("could not reach the
+  proxy", "could not resolve") before the stage `Connect`. `send` and `warp proxy` get the hint `proxy` and `dns`.
+- `bench` keeps its first error with its chain and returns its hop (exit 1, as its help says). `relay connect` keeps
+  the cause of a failed connect (`src/relay_reverse.rs`, `connect_error`; `src/relay_reverse/resume.rs`).
+
+Tests: `tests/error_words.rs`, `each_error_line_names_its_cause_once_and_says_what_to_do` (13 rows: `connect`,
+`relay connect`, `bench`, `send`, `warp proxy` with a dead proxy 127.0.0.1:1; `connect`, `relay connect`, `bench`
+on a refused port and on a name under `.invalid`; `bench` on 192.0.2.1; `tunnel` with a stand-in service that
+answers 200 and a text page). Each row checks the exit code, the second line (the hint of the true hop) and the
+words of the first line. Unit tests: `an_answer_that_is_not_the_api_has_the_hint_of_the_service` (`src/report.rs`),
+`the_words_of_a_dial_give_the_hop_when_its_stage_is_lost` (`crates/podnet-core/src/hop.rs`).
+`cargo test -p podnet --test error_words`: 2 passed. `cargo test -p podnet --lib report::`: 9 passed.
+
+Control: the test binary against the binary of the code before the fix fails with 23 faults, among them:
+"connect, a dead proxy: the second line is None, not "podnet: the proxy hop failed; "", the same for
+`relay connect`, `bench`, `send` and `warp proxy`; "connect, a refused port: the second line is None"; "bench, a
+name that does not resolve: the second line is None"; "tunnel, a service page that is not its API: the second line
+is Some("podnet: the edge-register hop failed; when the edge says retry: no, check the token or the credentials
+file; ...")".
+
+COORD asks (to podcrates; the parts of #695 and #697 that are in the crates):
+
+1. `pod-ws`, `PodUtils/podcrates:crates/pod-ws/src/way.rs`, `dial_error`: keep the stage `Proxy` of a failure of a dialer whose cause is
+   not a `DialError` (a refusal of the proxy: 403, 407, 502), for example as `DialError::ProxyRefused` or with the
+   stage in `DialError::Connect`. podnet gives a `DialError` cause only for a proxy that does not answer. Test: a
+   `Dial` that fails with `Failure::caused(Stage::Proxy, Class::Refused, "...", io-error)` gives a `ConnectError`
+   whose `stage_and_class().0` is `Stage::Proxy`.
+2. `pod-warp`, `PodUtils/podcrates:crates/pod-warp/src/provider.rs:98` and `:234`: `EnrolError::Unreachable` keeps the failure of the
+   API (its stage `Proxy` or `Dns`) as the source, not its text. `PodUtils/podcrates:crates/pod-warp/src/register.rs:89` and `:97`: an
+   answer that is not JSON and does not start with `{` gets one safe line of its body (as
+   `pod_cloudflare::quicktunnel::ProvisionError::Decode`). Test: an enrol through a dead proxy gives a chain with the
+   stage `Proxy`; a 200 answer `pod-lab stand-in` gives a text with `pod-lab stand-in`.
+3. `pod-wormhole`, `PodUtils/podcrates:crates/pod-wormhole/src/failed.rs:54`: `Failed::Unreachable` keeps the failure of each meeting
+   point (its stage) as the source. Test: a meeting point behind a dead proxy gives a chain with the stage `Proxy`.
 
 
 # T-522: error lines and rows name one cause two to six times, with the Debug text of a Rust struct, and one line holds three resolvers (GitHub #696, #697, #698)
@@ -12913,7 +12971,7 @@ the pass prompt, check 3, "one error line that names each cause once and says wh
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -12954,12 +13012,12 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
 
 - Read: `src/preflight.rs:45`, `:215`, `:263`, `:287` and `:478` print an error with `{err:#}` (anyhow joins each cause
   with `: `). A failure of podcrates holds the text of its cause in its own text (`pod_core::Failure::caused`), so the
-  cause comes twice. `src/report.rs:48` has `chain_text`, which names a cause that is already in the line once. The
+  cause comes twice. `src/report.rs:57` has `chain_text`, which names a cause that is already in the line once. The
   rows of `--check` do not call it. The `origin` rows are the double text of `io_fail`
-  (`PodUtils/podcrates:crates/pod-cloudflare/src/origin.rs:155`, `:262`, `:272`).
+  (`PodUtils/podcrates:crates/pod-cloudflare/src/origin.rs:155`, `:301`, `:311`).
 - Read: the `edge` row comes from the system resolver of podnet (`system_srv`, `src/tunnel.rs:282`). hickory writes
   `no records found for Query { ... }` with the Debug form of its `Query`. The row shows the error of hickory as it is.
-- Read: `src/egress.rs:333` adds `{at} through the proxy {label}` to the error of a dial. `pod-ws` adds `could not
+- Read: `src/egress.rs:334` adds `{at} through the proxy {label}` to the error of a dial. `pod-ws` adds `could not
   connect to {at}` (`PodUtils/podcrates:crates/pod-ws/src/way.rs`, `dial_error`, which strips only
   `connecting to {target}` and `could not connect to {target}`). `pod-proxy` writes `could not reach the proxy P: could
   not connect to P`. The target and the proxy come two or three times.
@@ -12978,7 +13036,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
 2. podnet: `system_srv` (`src/tunnel.rs:282`) maps `NoRecordsFound` to one sentence: `no SRV records for NAME at the
    system resolver`. It keeps no Debug form of a struct. Before that, read `pod-dns` for a lookup of SRV records
    (shared code first).
-3. podnet: `src/egress.rs:333` names the target once. The line of a dial is
+3. podnet: `src/egress.rs:334` names the target once. The line of a dial is
    `TARGET through the proxy PROXY: could not reach the proxy PROXY: Connection refused (os error 111)`, or shorter.
 4. COORD ask (to podcrates, the lead files it): (a) `pod-ws` `dial_error` strips the target lead of a dialer that writes
    `TARGET through the proxy`, and `pod-proxy` names the proxy once in `could not reach the proxy`; (b) `pod-dns`
@@ -12995,8 +13053,70 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
 ```sh
 cargo test -p podnet --test tunnel_config
 cargo test -p podnet --test error_words
-cargo test -p podnet preflight
+cargo test -p podnet-core exit::
+cargo test -p podnet --lib tunnel::tests::a_failed_srv_lookup_has_no_debug_form
+cargo test -p podnet --lib preflight
 ```
+
+## Done
+
+2026-11-23, the commit of this entry. Partial: the part of podnet is done; the length of a line for a name that no
+resolver answers waits for `pod-dns` (ask 1 below).
+
+- One function gives the words of an error for a line and a row: `podnet_core::exit::text` (and `text_of` for an
+  error of a crate), which `podnet::report::chain_text` calls. It names a cause that the line holds once, says a
+  part that comes again at once one time (`exit::tidy`: `A: B: B` is `A: B`), and writes the Debug form of a name of
+  a certificate of webpki as the name (`DnsName("default.domain")` is `default.domain`).
+- Each row of `--check` (`src/preflight.rs`) uses it; no `{err:#}` is left there. The failures of the glue
+  (`src/tunnel.rs`, `failure`) and of the dialers (`src/egress.rs`, `dial_failure`) use it too.
+- `system_srv` (`src/tunnel.rs`) writes a failed SRV lookup in one phrase (`srv_words`: "no SRV records", "the name
+  does not exist (NXDOMAIN)", "the resolver answered CODE", "no answer in time"). `pod-dns` has no lookup of SRV
+  records by the system resolver; `pod-cloudflare` asks the consumer for it (`SystemSrv`).
+- `src/egress.rs` names the proxy once: `TARGET through the proxy URL: could not reach the proxy P: Connection
+  refused (os error 111)` (`proxy_named_once`).
+
+Measured after the fix on this host (no SRV records at the system resolver): the `edge` row is "the system resolver
+cannot find the edge (SRV lookup of _v2-origintunneld._tcp.argotunnel.com: no SRV records); the run tries DNS over
+HTTPS, then the static list" (915 bytes before); the `origin` rows name their cause once; the line of `connect`
+through a dead proxy is "podnet: the remote wss://example.com/__podnet/ws: TCP to example.com: could not reach the
+proxy 127.0.0.1:1: Connection refused (os error 111)".
+
+Tests: `tests/error_words.rs`, `each_row_of_a_check_names_its_cause_once` (`tunnel --check` with a refused origin
+and an origin name under `.invalid`, `serve --check --spa`: each row says no part two times, has no Debug form, and
+is shorter than 300 bytes) and `each_error_line_names_its_cause_once_and_says_what_to_do` (the rows of T-521: the
+first line says no part two times, says "could not connect to" and its target at most once, has no Debug form, and is
+shorter than 300 bytes except for a name under `.invalid`). Unit tests: `tidy_says_each_part_once_and_no_debug_form`
+(`crates/podnet-core/src/exit.rs`, 7 cases), `a_failed_srv_lookup_has_no_debug_form` (`src/tunnel.rs`, 4 cases).
+
+Control: on the binary of the code before the fix, `each_row_of_a_check_names_its_cause_once` fails: "tunnel --check
+--url http://127.0.0.1:1: has the Debug form "Query {"", "a row of 915 bytes", "says "Connection refused (os error
+111)" two times", "tunnel --check --url http://nowhere.invalid:80: says "failed to lookup address information: Name
+or service not known" two times", and the same `edge` faults for `serve --check`. The row test of T-521 fails with
+"connect, a dead proxy: says "example.com:443" 2 times", "says "could not connect to" 2 times", "send, a dead proxy:
+a line of 575 bytes", and "has the Debug form "DnsName("" for each row of a name under `.invalid`.
+
+COORD asks (to podcrates):
+
+1. `pod-dns`, `PodUtils/podcrates:crates/pod-dns/src/lookup.rs:62` (`fold`): one short line for a name that does not resolve, with a
+   bound of 200 bytes: one phrase for each source (the system resolver, DNS over HTTPS), the count of the resolvers,
+   and the full list at the debug level. Test: the failures of #698 (the system resolver, 4 resolvers by IPv4 with a
+   TLS failure, 4 by IPv6 with EAFNOSUPPORT) give a line shorter than 200 bytes that names each source once. The line
+   of `bench` on this host is 631 bytes after the fix of podnet (642 before).
+2. `pod-tls` (the words of a TLS failure): write the names of a certificate plain. rustls-webpki gives
+   `DnsName("x")` in `CertificateError::NotValidForNameContext`. Test: a failure with the presented name
+   `DnsName("default.domain")` gives a text with `default.domain` and no `DnsName(`. podnet's second path is
+   `podnet_core::exit::tidy`.
+3. `pod-proxy`, `PodUtils/podcrates:crates/pod-proxy/src/stream.rs:222` and `:235`: `DialError::ProxyUnreachable` holds the text of the
+   connect as its detail ("could not connect to P: ..."), and its words name the proxy again ("could not reach the
+   proxy P: could not connect to P: ..."). Strip the lead `could not connect to P`. Test: the text of a refused
+   proxy names the proxy once.
+4. `pod-ws`, `PodUtils/podcrates:crates/pod-ws/src/way.rs:218` (`dial_error`): strip the lead `TARGET through the proxy P` of a dialer
+   too, not only `connecting to TARGET` and `could not connect to TARGET`. Test: a failure with the text
+   `x:443 through the proxy http://p:1: refused` gives a text that names `x:443` once.
+5. `pod-cloudflare`, `PodUtils/podcrates:crates/pod-cloudflare/src/origin.rs:155` and `PodUtils/podcrates:crates/pod-cloudflare/src/fail.rs:90`
+   (`io_fail`): the failure holds the text of its error of I/O and the error as its source, so `{:#}` says the cause
+   two times. podnet's rows use `chain_text`. Test: `format!("{:#}", anyhow::Error::new(failure))` of a refused
+   origin says "Connection refused" once.
 
 
 # T-523: a listener that cannot bind: two lines for one cause, no next step, and the bind comes after the WARP session (GitHub #705, #706)
@@ -13546,7 +13666,7 @@ The text output shows `null` (the JSON word) for the latency of a run where no r
 
 ## Premise
 
-- Read: `text` (`src/cli/cmd/bench.rs:130`) prints the `serde_json::Value` of each latency with `{}`. A `null` of the
+- Read: `text` (`src/cli/cmd/bench.rs:139`) prints the `serde_json::Value` of each latency with `{}`. A `null` of the
   JSON document (`document`, `latency_ms`) comes out as the word `null`. The JSON document is right: `null` is its
   value for "no sample".
 - The code is podnet's own.

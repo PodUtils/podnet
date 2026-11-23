@@ -35,6 +35,13 @@ pub fn error_line(err: &anyhow::Error) -> String {
         line.push_str(
             "\npodnet: the service refuses for now; try again after the time that it asks for (exit 75)",
         );
+    } else if crate::hop::quick_service_answer(err) {
+        // GitHub #695: the service answered with a page that is not its
+        // API; no registration with the edge ran.
+        line.push_str(&format!(
+            "\npodnet: the quick-tunnel service did not answer with its API: a proxy or a gateway on the way can answer with its own page; check the proxy and its allow-list for the host of the service ({} or the host of --service-url); a named tunnel (--token) does not use this service",
+            quick_service_host()
+        ));
     } else if let Some(hop) = crate::hop::of(err) {
         line.push_str(&format!("\npodnet: the {hop} hop failed; {}", hop.hint()));
     }
@@ -45,18 +52,20 @@ pub fn error_line(err: &anyhow::Error) -> String {
 /// gives it. A cause whose text is in the line already is not named again:
 /// a failure of a crate of podcrates holds the text of its causes
 /// (`pod_core::Failure::chain`).
+/// A part that comes again at once, and the Debug form of a name of a
+/// certificate, are said once and plainly (`crate::exit::tidy`).
 pub fn chain_text(err: &anyhow::Error) -> String {
-    let mut out = String::new();
-    for cause in err.chain() {
-        let text = cause.to_string();
-        if out.is_empty() {
-            out = text;
-        } else if !out.contains(&text) {
-            out.push_str(": ");
-            out.push_str(&text);
-        }
-    }
-    out
+    crate::exit::text(err)
+}
+
+/// The host of the quick-tunnel service of `pod-services`.
+fn quick_service_host() -> String {
+    let url = pod_cloudflare::quicktunnel::default_quick_service();
+    url.split("://")
+        .nth(1)
+        .and_then(|rest| rest.split(['/', ':']).next())
+        .unwrap_or("the quick-tunnel service")
+        .to_string()
 }
 
 #[cfg(test)]
@@ -71,11 +80,11 @@ mod tests {
             (
                 pod_core::Class::TempFail,
                 "try again after the time",
-                "when the edge says retry: no",
+                "the tunnel did not register with the edge",
             ),
             (
                 pod_core::Class::Refused,
-                "when the edge says retry: no",
+                "the tunnel did not register with the edge",
                 "try again after the time",
             ),
         ];
@@ -190,7 +199,12 @@ mod tests {
                 "check that the named tunnel exists",
                 69,
             ),
-            (not_a_refusal(), Quick, "when the edge says retry: no", 69),
+            (
+                not_a_refusal(),
+                Quick,
+                "the tunnel did not register with the edge",
+                69,
+            ),
         ];
         for (err, kind, has, code) in cases {
             let err = crate::hop::read_refusal(err, kind);
@@ -240,6 +254,31 @@ mod tests {
         );
         let plain = anyhow::anyhow!("a").context("b");
         assert_eq!(chain_text(&plain), format!("{plain:#}"));
+    }
+
+    /// GitHub #695: an answer of the quick-tunnel service that is not its
+    /// API gets the hint of the service, not the hint of a registration
+    /// with a token.
+    #[test]
+    fn an_answer_that_is_not_the_api_has_the_hint_of_the_service() {
+        use pod_cloudflare::quicktunnel::ProvisionError;
+        let cases = [
+            ProvisionError::Decode("expected value at line 1 column 1".into()),
+            ProvisionError::Service(Vec::new()),
+            ProvisionError::MissingResult,
+        ];
+        for case in cases {
+            let err = anyhow::Error::new(pod_core::Failure::from(case))
+                .context("provisioning quick tunnel");
+            let line = error_line(&err);
+            let hint = line.lines().nth(1).unwrap_or_default();
+            assert!(
+                hint.starts_with("podnet: the quick-tunnel service did not answer with its API"),
+                "{line}"
+            );
+            assert!(!line.contains("edge-register"), "{line}");
+            assert!(!line.contains("credentials"), "{line}");
+        }
     }
 
     // Issue 178: a 502 of the proxy names the destination, not the proxy.

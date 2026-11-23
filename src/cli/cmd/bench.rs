@@ -36,7 +36,9 @@ struct Tally {
     good: Vec<f64>,
     errors: u64,
     bytes: u64,
-    first_error: Option<String>,
+    /// The first error, with its chain: its hop gives the second line of
+    /// the error (GitHub #697).
+    first_error: Option<anyhow::Error>,
 }
 
 /// The value at the percentile `p` (0-100) of the sorted `v`, by the
@@ -70,26 +72,33 @@ async fn worker(url: String, deadline: Instant, timeout: Duration) -> Tally {
                 tally.errors += 1;
                 tally
                     .first_error
-                    .get_or_insert_with(|| format!("HTTP {}", response.status));
+                    .get_or_insert_with(|| anyhow::anyhow!("HTTP {}", response.status));
             }
             Err(err) => {
                 tally.errors += 1;
-                tally.first_error.get_or_insert_with(|| format!("{err:#}"));
+                tally.first_error.get_or_insert(err);
             }
         }
     }
     tally
 }
 
-/// The document of a run (before the stamp).
-fn document(url: &str, connections: u32, elapsed: f64, tallies: Vec<Tally>) -> Value {
+/// The document of a run (before the stamp), with `first_error` in the
+/// words of the error line.
+fn document(
+    url: &str,
+    connections: u32,
+    elapsed: f64,
+    tallies: Vec<Tally>,
+    first_error: Option<&anyhow::Error>,
+) -> Value {
+    let first_error = first_error.map(podnet::report::chain_text);
     let mut good: Vec<f64> = Vec::new();
-    let (mut errors, mut bytes, mut first_error) = (0, 0, None);
+    let (mut errors, mut bytes) = (0, 0);
     for t in tallies {
         good.extend(t.good);
         errors += t.errors;
         bytes += t.bytes;
-        first_error = first_error.or(t.first_error);
     }
     good.sort_by(f64::total_cmp);
     let ok = good.len() as u64;
@@ -165,19 +174,39 @@ pub(crate) async fn bench(args: BenchArgs) -> Result<()> {
         tallies.push(w.await?);
     }
     let elapsed = started.elapsed().as_secs_f64();
-    let doc = document(&args.url, args.connections, elapsed, tallies);
+    let first = tallies.iter_mut().find_map(|t| t.first_error.take());
+    let doc = document(
+        &args.url,
+        args.connections,
+        elapsed,
+        tallies,
+        first.as_ref(),
+    );
     if args.json {
         println!("{}", podnet::status::stamped(doc.clone()));
     } else {
         print!("{}", text(&doc));
     }
     if doc["ok"] == 0 {
-        anyhow::bail!(
-            "bench: no request worked: {}",
-            doc["first_error"].as_str().unwrap_or("no request")
-        );
+        return Err(no_request(
+            first.unwrap_or_else(|| anyhow::anyhow!("no request")),
+        ));
     }
     Ok(())
+}
+
+/// The error of a run with no good request: the first error in the words
+/// of the error line, with its hop (GitHub #697, #698). The exit code stays
+/// 1, as the help of bench says: the error has no class.
+fn no_request(first: anyhow::Error) -> anyhow::Error {
+    let err = anyhow::anyhow!(
+        "bench: no request worked: {}",
+        podnet::report::chain_text(&first)
+    );
+    match podnet::hop::of(&first) {
+        Some(hop) => podnet::hop::at(hop, err),
+        None => err,
+    }
 }
 
 #[cfg(test)]

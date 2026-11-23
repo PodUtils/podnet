@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**531 entries: 27 open, 13 partial, 24 blocked, 467 done.**
+**531 entries: 25 open, 14 partial, 24 blocked, 468 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 5 | 2 | 2 | 77 | 86 |
-| P2 | 13 | 7 | 10 | 232 | 262 |
+| P2 | 11 | 8 | 10 | 233 | 262 |
 | P3 | 9 | 4 | 12 | 157 | 182 |
-| **All** | 27 | 13 | 24 | 467 | 531 |
+| **All** | 25 | 14 | 24 | 468 | 531 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -565,8 +565,8 @@ M8 Overlays, M9 Later.
 | [T-518](fixes.md) | P1 | S | M5 | defect | open | rules check: a policy file that cannot be read or parsed exits 1; PODNET_POLICY gives 78 (GitHub #700) |
 | [T-519](fixes.md) | P2 | S | M5 | defect | done | JSON documents without the stamp: warp status, pod doctor and rules check (GitHub #693, #694) |
 | [T-520](fixes.md) | P2 | S | M5 | defect | open | send: the timeout line gives the wrong time, "within its 1 minutes" for --timeout 5 (GitHub #687) |
-| [T-521](fixes.md) | P2 | M | M5 | defect | open | error lines: a hint of the wrong hop (quick tunnel), and no hint for a dead proxy or a name that does not resolve (GitHub #695, #697, #698) |
-| [T-522](fixes.md) | P2 | M | M5 | defect | open | error lines and rows name one cause two to six times, with the Debug text of a Rust struct, and one line holds three resolvers (GitHub #696, #697, #698) |
+| [T-521](fixes.md) | P2 | M | M5 | defect | done | error lines: a hint of the wrong hop (quick tunnel), and no hint for a dead proxy or a name that does not resolve (GitHub #695, #697, #698) |
+| [T-522](fixes.md) | P2 | M | M5 | defect | partial | error lines and rows name one cause two to six times, with the Debug text of a Rust struct, and one line holds three resolvers (GitHub #696, #697, #698) |
 | [T-523](fixes.md) | P2 | S | M5 | defect | open | a listener that cannot bind: two lines for one cause, no next step, and the bind comes after the WARP session (GitHub #705, #706) |
 | [T-524](fixes.md) | P2 | S | M5 | defect | open | net doctor: a host with no loopback gets "not needed", and a TCP loopback listener starts and cannot be reached (GitHub #692) |
 | [T-525](fixes.md) | P2 | S | M5 | defect | open | net shim: the documented `--out /tmp/podnet-vnet` example prints a working LD_PRELOAD line on a noexec /tmp (GitHub #699) |

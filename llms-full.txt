@@ -19092,8 +19092,17 @@ control characters.
 | `tls` | `UnknownIssuer`, `TLS alert from the peer: HandshakeFailure`, an expired certificate | Stops the attempt | `--ca-file` for a TLS-inspecting proxy; check the clock |
 | `edge-register` | A refusal with `should_retry = false` (bad token, deleted tunnel) | Stops the leg; does not retry | Check the token, or use a quick tunnel |
 | `edge-register` | A refusal with `retry_after` | Retries after `retry_after` (1 s to 300 s) | Nothing |
+| `edge-register` | The quick-tunnel service answers with a page that is not its API (a proxy or a gateway answered) | Stops; no registration runs | Check the proxy and its allow-list for the host of the service; a named tunnel (`--token`) does not use the service |
 | `edge-stream` | No PING answer, GOAWAY, a lost connection | Connects again at once, then with backoff and jitter, with no limit | `--transport warp` on a host with only TCP 443 |
 | `origin` | Connection refused | Answers the visitor with 502 | Start the origin; check `--url` |
+| `connect` | The target refuses the connection, has no route, or does not answer in time | Stops the attempt | Check the host and the port of the target; give `--proxy` on a host that reaches out only through a proxy |
+
+The words of one error line name each cause one time. A part that comes
+again at once is said one time, and the Debug form of a name of a
+certificate (`DnsName("x")`) is the name alone (`podnet_core::exit::tidy`).
+When a crate keeps only the text of a failed dial, the words of
+`pod_proxy::DialError` ("could not reach the proxy", "could not resolve")
+give the hop `proxy` or `dns`.
 
 `scripts/soak.sh` runs N quick tunnels end to end, keeps one log for each
 trial, and prints the failure rate.

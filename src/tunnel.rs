@@ -284,7 +284,10 @@ async fn system_srv(name: &str) -> Result<Vec<(String, u16)>> {
         .context("reading the system resolver configuration")?
         .build()
         .context("starting the system resolver")?;
-    let srv = resolver.srv_lookup(name).await?;
+    let srv = resolver
+        .srv_lookup(name)
+        .await
+        .map_err(|e| anyhow::anyhow!(srv_words(&e)))?;
     Ok(srv
         .answers()
         .iter()
@@ -293,6 +296,25 @@ async fn system_srv(name: &str) -> Result<Vec<(String, u16)>> {
             _ => None,
         })
         .collect())
+}
+
+/// The words of a failed SRV lookup of the system resolver (GitHub #696):
+/// hickory writes the Debug form of its query (`Query { name: Name(..) }`)
+/// and its cause again; the caller names the record.
+fn srv_words(err: &hickory_resolver::net::NetError) -> String {
+    use hickory_resolver::net::{DnsError, NetError};
+    use hickory_resolver::proto::op::ResponseCode;
+    match err {
+        NetError::Dns(DnsError::NoRecordsFound(none))
+            if none.response_code == ResponseCode::NXDomain =>
+        {
+            "the name does not exist (NXDOMAIN)".to_string()
+        }
+        NetError::Dns(DnsError::NoRecordsFound(_)) => "no SRV records".to_string(),
+        NetError::Dns(DnsError::ResponseCode(code)) => format!("the resolver answered {code}"),
+        NetError::Timeout => "no answer in time".to_string(),
+        other => crate::exit::tidy(&other.to_string()),
+    }
 }
 
 /// A TCP connection to the edge through the relay of `--transport relay`.
@@ -330,12 +352,45 @@ impl Dial for RelayDial {
 
 /// A failure of the glue with the text of `err` and its chain.
 fn failure(stage: Stage, class: Class, err: anyhow::Error) -> Failure {
-    Failure::caused(stage, class, format!("{err:#}"), err)
+    Failure::caused(stage, class, crate::exit::text(&err), err)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::hop::TunnelKind::{self, Named, Quick};
+
+    /// GitHub #696: the words of a failed SRV lookup of the system
+    /// resolver have no Debug form of the query of hickory, and say the
+    /// cause once.
+    #[test]
+    fn a_failed_srv_lookup_has_no_debug_form() {
+        use hickory_resolver::net::{DnsError, NetError, NoRecords};
+        use hickory_resolver::proto::op::{Query, ResponseCode};
+        use hickory_resolver::proto::rr::{Name, RecordType};
+        let name = Name::from_ascii("_v2-origintunneld._tcp.argotunnel.com.").unwrap();
+        let query = Query::query(name, RecordType::SRV);
+        let none = |code| {
+            NetError::Dns(DnsError::NoRecordsFound(NoRecords::new(
+                query.clone(),
+                code,
+            )))
+        };
+        let cases = [
+            (none(ResponseCode::NoError), "no SRV records"),
+            (
+                none(ResponseCode::NXDomain),
+                "the name does not exist (NXDOMAIN)",
+            ),
+            (
+                NetError::Dns(DnsError::ResponseCode(ResponseCode::ServFail)),
+                "the resolver answered Server Failure",
+            ),
+            (NetError::Timeout, "no answer in time"),
+        ];
+        for (err, want) in cases {
+            assert_eq!(super::srv_words(&err), want, "{err}");
+        }
+    }
 
     /// A failure as pod-cloudflare v0.82.0 gives it when the edge refused
     /// the registration of the only leg.

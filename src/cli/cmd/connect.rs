@@ -131,12 +131,10 @@ pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
         let ws = ws::dial(&args.remote, ws::DIAL_TIMEOUT, auth.as_deref())
             .await
             .map_err(|err| {
+                let lead = ws::remote_lead(&args.remote, &err);
                 podnet::exit::fault(
                     Fault::Unavailable,
-                    err.context(format!(
-                        "the remote {} does not answer (--no-check starts without this check)",
-                        args.remote
-                    )),
+                    err.context(format!("{lead} (--no-check starts without this check)")),
                 )
             })?;
         let _ = tokio::time::timeout(Duration::from_secs(2), ws.send_close(1000, "")).await;

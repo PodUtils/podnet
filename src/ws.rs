@@ -66,6 +66,16 @@ pub async fn dial(
         .map_err(|err| failed(url, err))
 }
 
+/// The lead of the error line of a failed [`dial`] of `remote`: a failure
+/// of the proxy or of a name is on the way, so the line does not say that
+/// the remote does not answer (GitHub #697).
+pub fn remote_lead(remote: &str, err: &anyhow::Error) -> String {
+    match crate::hop::of(err) {
+        Some(crate::hop::Hop::Proxy | crate::hop::Hop::Dns) => format!("the remote {remote}"),
+        _ => format!("the remote {remote} does not answer"),
+    }
+}
+
 /// A failure of [`dial`] in podnet's words, with its hop.
 fn failed(url: &str, err: ConnectError) -> anyhow::Error {
     let host = pod_ws::url::WsUrl::parse(url)

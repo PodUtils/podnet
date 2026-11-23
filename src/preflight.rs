@@ -42,7 +42,7 @@ fn edge_row(found: anyhow::Result<usize>) -> (Status, String) {
         ),
         Err(err) => (
             Status::Warn,
-            format!("the system resolver cannot find the edge ({err:#}); the run tries DNS over HTTPS, then the static list"),
+            format!("the system resolver cannot find the edge ({}); the run tries DNS over HTTPS, then the static list", crate::report::chain_text(&err)),
         ),
     }
 }
@@ -212,7 +212,7 @@ pub async fn check(config: &Config) -> Report {
             let (status, detail) = edge_row(found.map(|edges| edges.len()));
             report.push("edge", status, detail);
         }
-        Err(err) => report.config_fail("edge", format!("{err:#}")),
+        Err(err) => report.config_fail("edge", crate::report::chain_text(&err)),
     }
 
     let legs = match crate::tunnel::leg_plan(config.protocol, config.transport) {
@@ -223,9 +223,10 @@ pub async fn check(config: &Config) -> Report {
             let (plan, mut note) =
                 crate::tunnel::plan_with_proxy(plan, config.protocol, proxy.as_deref(), &words);
             // The check sends no UDP probe: only PODNET_UDP=off applies here.
-            let udp = crate::udp::choice_from_env().map_err(|e| format!("{e:#}"));
+            let udp = crate::udp::choice_from_env().map_err(|e| crate::report::chain_text(&e));
             match udp.and_then(|u| {
-                crate::tunnel::plan_with_udp(plan, u, None, &words).map_err(|e| format!("{e:#}"))
+                crate::tunnel::plan_with_udp(plan, u, None, &words)
+                    .map_err(|e| crate::exit::text_of(&e))
             }) {
                 Ok((plan, udp_note)) => {
                     note = note.or(udp_note);
@@ -260,7 +261,7 @@ pub async fn check(config: &Config) -> Report {
             }
         }
         Err(err) => {
-            report.push("legs", Status::Fail, format!("{err:#}"));
+            report.push("legs", Status::Fail, crate::report::chain_text(&err));
             Vec::new()
         }
     };
@@ -268,7 +269,7 @@ pub async fn check(config: &Config) -> Report {
     // Issue 173 row 11: the roots of --ca-file and SSL_CERT_FILE.
     match crate::trust::context().roots() {
         Ok(roots) => report.push("tls-roots", Status::Pass, roots.sources.join(", ")),
-        Err(err) => report.config_fail("tls-roots", format!("{err:#}")),
+        Err(err) => report.config_fail("tls-roots", crate::exit::text_of(&err)),
     }
 
     let mut files = Vec::new();
@@ -284,7 +285,7 @@ pub async fn check(config: &Config) -> Report {
                 Status::Pass,
                 format!("{} parses", path.display()),
             ),
-            Err(e) => report.config_fail("credentials", format!("{e:#}")),
+            Err(e) => report.config_fail("credentials", crate::exit::text_of(&e)),
         }
     }
 
@@ -475,7 +476,13 @@ async fn dial(service: &Service, origin: &OriginOptions) -> Result<(), String> {
     crate::origin::dial::dial(service, &options)
         .await
         .map(drop)
-        .map_err(|e| format!("{}: {e:#}", crate::origin::dial::origin_label(service)))
+        .map_err(|e| {
+            format!(
+                "{}: {}",
+                crate::origin::dial::origin_label(service),
+                crate::report::chain_text(&e)
+            )
+        })
 }
 
 fn static_dir(root: &Path, spa: bool) -> Result<String, String> {

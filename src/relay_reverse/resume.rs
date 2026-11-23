@@ -419,7 +419,7 @@ where
             Some(err) => Err(err),
             None => Err(fault(
                 Fault::Unavailable,
-                anyhow::anyhow!("the session to {name}: {e}"),
+                anyhow::Error::new(e).context(format!("the session to {name}")),
             )),
         },
         Err(CarryError::Stopped(why)) if legs.refused.load(Ordering::SeqCst) => {
@@ -432,7 +432,7 @@ where
         }
         Err(e) => Err(fault(
             Fault::Unavailable,
-            anyhow::anyhow!("the session to {name}: {e}"),
+            anyhow::Error::new(e).context(format!("the session to {name}")),
         )),
     }
 }

@@ -23,6 +23,9 @@ pub enum Hop {
     EdgeStream,
     /// The origin of the tunnel.
     Origin,
+    /// The connection to the target itself: a refusal, no route, or no
+    /// answer in time (GitHub #697).
+    Connect,
 }
 
 impl Hop {
@@ -35,6 +38,7 @@ impl Hop {
             Hop::EdgeRegister => "edge-register",
             Hop::EdgeStream => "edge-stream",
             Hop::Origin => "origin",
+            Hop::Connect => "connect",
         }
     }
 
@@ -45,9 +49,10 @@ impl Hop {
             Hop::Dns => "give the address with --resolve HOST=IP, or let a proxy resolve names (socks5h://)",
             Hop::Tls => "behind a proxy that inspects TLS, give its root with --ca-file; check the clock of the host",
             Hop::Network => "the network ended the connection before the TLS handshake was done: a policy of this host or of its network (an egress allow-list) may block this destination; podnet doctor shows each path",
-            Hop::EdgeRegister => "when the edge says retry: no, check the token or the credentials file; when it says retry: yes, start again after the wait that it gives",
+            Hop::EdgeRegister => "the tunnel did not register with the edge; for a named tunnel, check the token or the credentials file; start podnet again after the wait that the edge gives",
             Hop::EdgeStream => "the edge connection was lost; podnet connects again, and --leg-failover and --transport warp choose other legs",
             Hop::Origin => "check that the origin listens on the address of --url",
+            Hop::Connect => "check the host and the port of the target, and that a service listens there; a host that reaches out only through a proxy needs --proxy",
         }
     }
 }
@@ -87,31 +92,81 @@ impl std::error::Error for AtHop {
 
 /// Give `err` the hop `hop`. An error that has a hop keeps it.
 pub fn at(hop: Hop, err: anyhow::Error) -> anyhow::Error {
-    if of(&err).is_some() {
+    if of_with(&err, false).is_some() {
         return err;
     }
     anyhow::Error::new(AtHop { hop, inner: err })
 }
 
-/// The hop of `err`: the innermost one that the chain names.
+/// The hop of `err`: the innermost one that the chain names. The stage
+/// `Connect` is the last choice: a layer that keeps only the text of its
+/// cause gives it to a failure of a proxy or of a name.
 pub fn of(err: &anyhow::Error) -> Option<Hop> {
+    of_with(err, true)
+}
+
+/// [`of`]; with `words`, also [`of_words`] before the stage `Connect`.
+fn of_with(err: &anyhow::Error, words: bool) -> Option<Hop> {
     let tagged = err
         .chain()
         .filter_map(|e| e.downcast_ref::<AtHop>())
         .last()
         .map(|e| e.hop);
+    let staged = |connect: bool| {
+        err.chain()
+            .filter_map(|e| e.downcast_ref::<pod_core::Failure>())
+            .filter_map(|f| of_stage(f.stage))
+            .filter(|hop| (*hop == Hop::Connect) == connect)
+            .last()
+    };
     tagged
         .or_else(|| {
             err.chain()
                 .any(|e| e.downcast_ref::<pod_cloudflare::fail::Refused>().is_some())
                 .then_some(Hop::EdgeRegister)
         })
-        .or_else(|| {
-            err.chain()
-                .filter_map(|e| e.downcast_ref::<pod_core::Failure>())
-                .filter_map(|f| of_stage(f.stage))
-                .last()
-        })
+        .or_else(|| staged(false))
+        .or_else(|| words.then(|| of_words(err)).flatten())
+        .or_else(|| staged(true))
+}
+
+/// The words of `pod_proxy::DialError` for a proxy that does not answer
+/// and for a name that does not resolve.
+const PROXY_WORDS: [&str; 2] = ["could not reach the proxy ", "could not resolve the proxy "];
+const DNS_WORDS: &str = "could not resolve ";
+
+/// The hop of `err` by the words of `pod_proxy::DialError` in its text: the
+/// second path for a crate that keeps the text of a failed dial and not its
+/// stage (pod-warp `EnrolError::Unreachable`, pod-wormhole
+/// `Failed::Unreachable`, GitHub #697 and #698).
+fn of_words(err: &anyhow::Error) -> Option<Hop> {
+    let text: Vec<String> = err.chain().map(|e| e.to_string()).collect();
+    if text
+        .iter()
+        .any(|t| PROXY_WORDS.iter().any(|w| t.contains(w)))
+    {
+        return Some(Hop::Proxy);
+    }
+    text.iter()
+        .any(|t| t.contains(DNS_WORDS))
+        .then_some(Hop::Dns)
+}
+
+/// The quick-tunnel service answered, and its answer is not its API: a
+/// body that is not JSON, `"success": false`, or no result (GitHub #695).
+/// A proxy or a gateway on the way can answer with its own page.
+pub fn quick_service_answer(err: &anyhow::Error) -> bool {
+    use pod_cloudflare::quicktunnel::ProvisionError;
+    err.chain().any(|e| {
+        matches!(
+            e.downcast_ref::<ProvisionError>(),
+            Some(
+                ProvisionError::Decode(_)
+                    | ProvisionError::Service(_)
+                    | ProvisionError::MissingResult
+            )
+        )
+    })
 }
 
 /// The hop of a stage of a failure of a crate.
@@ -125,6 +180,7 @@ pub fn of_stage(stage: pod_core::Stage) -> Option<Hop> {
         Stage::EdgeRegister => Some(Hop::EdgeRegister),
         Stage::EdgeStream => Some(Hop::EdgeStream),
         Stage::Origin => Some(Hop::Origin),
+        Stage::Connect => Some(Hop::Connect),
         _ => None,
     }
 }
@@ -349,6 +405,50 @@ mod tests {
             "POST https://api.trycloudflare.com/tunnel: 403 not on the egress allowlist"
         );
         assert_eq!(of(&anyhow::anyhow!("plain")), None);
+    }
+
+    /// GitHub #697, #698: a crate that keeps only the text of a failed
+    /// dial (pod-warp, pod-wormhole) still gives the hop of the proxy or of
+    /// the name; the stage `connect` comes after the words, and a hop of a
+    /// type before them.
+    #[test]
+    fn the_words_of_a_dial_give_the_hop_when_its_stage_is_lost() {
+        use pod_core::{Class, Failure, Stage};
+        let failed =
+            |stage, text: &str| anyhow::Error::new(Failure::new(stage, Class::Unavailable, text));
+        let cases = [
+            (
+                failed(
+                    Stage::Warp,
+                    "the WARP API: each host failed: could not reach the proxy 127.0.0.1:1: refused",
+                ),
+                Some(Hop::Proxy),
+            ),
+            (
+                failed(
+                    Stage::Connect,
+                    "could not connect to x:443: could not reach the proxy p:1: refused",
+                ),
+                Some(Hop::Proxy),
+            ),
+            (
+                anyhow::anyhow!("no meeting point could be reached: could not resolve a.invalid"),
+                Some(Hop::Dns),
+            ),
+            (
+                failed(Stage::Connect, "could not connect to 127.0.0.1:1: refused"),
+                Some(Hop::Connect),
+            ),
+            (failed(Stage::Proxy, "could not resolve x"), Some(Hop::Proxy)),
+            (
+                at(Hop::Connect, anyhow::anyhow!("could not resolve x")),
+                Some(Hop::Connect),
+            ),
+            (anyhow::anyhow!("plain"), None),
+        ];
+        for (err, hop) in cases {
+            assert_eq!(of(&err), hop, "{err:#}");
+        }
     }
 
     #[test]

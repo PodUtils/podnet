@@ -16,7 +16,6 @@
 
 use std::sync::Arc;
 
-use crate::hop::{self, Hop};
 use crate::network::{Class, Dial, Failure, Stage};
 
 mod direct;
@@ -40,16 +39,11 @@ pub fn process() -> Arc<dyn Dial> {
 /// A failed dial of podnet as a [`Failure`]: the stage of its hop, else
 /// `stage`. The text keeps the chain of the error.
 fn failure(e: anyhow::Error, stage: Stage) -> Failure {
-    let stage = match hop::of(&e) {
-        Some(Hop::Proxy) => Stage::Proxy,
-        Some(Hop::Dns) => Stage::Dns,
-        _ => stage,
-    };
     let class = match e.chain().find_map(|c| c.downcast_ref::<std::io::Error>()) {
         Some(io) => Class::of_io(io.kind()),
         None => Class::Unavailable,
     };
-    Failure::caused(stage, class, format!("{e:#}"), e)
+    crate::egress::dial_failure(e, stage, class)
 }
 
 #[cfg(test)]

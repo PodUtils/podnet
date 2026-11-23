@@ -206,8 +206,15 @@ pub fn code_of(err: &anyhow::Error) -> i32 {
 /// (GitHub #622): a failure of a crate of podcrates holds the words of its
 /// causes, as `pod_core::Failure::chain` does.
 pub fn text(err: &anyhow::Error) -> String {
+    text_of(err.as_ref())
+}
+
+/// [`text`] of an error of another type (a failure of a crate).
+pub fn text_of(err: &(dyn std::error::Error + 'static)) -> String {
     let mut out = String::new();
-    for cause in err.chain() {
+    let mut next = Some(err);
+    while let Some(cause) = next {
+        next = cause.source();
         let more = cause.to_string();
         if more.is_empty() || out.contains(&more) {
             continue;
@@ -216,6 +223,50 @@ pub fn text(err: &anyhow::Error) -> String {
             out.push_str(": ");
         }
         out.push_str(&more);
+    }
+    tidy(&out)
+}
+
+/// `text` for one line (GitHub #696, #697): a run of `: `-joined parts that
+/// comes again at once is said once (`A: B: B` is `A: B`), and the Debug
+/// form of a name of a certificate of webpki (`DnsName("x")`,
+/// `IpAddress(x)`, `UniformResourceIdentifier("x")`) is the name alone.
+/// A layer that joins its cause into its own text and a crate that writes
+/// a Debug form give these; this is the second path of podnet for them.
+pub fn tidy(text: &str) -> String {
+    let mut parts: Vec<&str> = text.split(": ").collect();
+    let mut i = 0;
+    while i < parts.len() {
+        let again =
+            (1..=(parts.len() - i) / 2).find(|&n| parts[i..i + n] == parts[i + n..i + 2 * n]);
+        match again {
+            Some(n) => drop(parts.drain(i + n..i + 2 * n)),
+            None => i += 1,
+        }
+    }
+    plain_names(&parts.join(": "))
+}
+
+/// `text` with each `DnsName("x")`, `UniformResourceIdentifier("x")` and
+/// `IpAddress(x)` written as `x`.
+fn plain_names(text: &str) -> String {
+    const FORMS: [(&str, &str); 3] = [
+        ("DnsName(\"", "\")"),
+        ("UniformResourceIdentifier(\"", "\")"),
+        ("IpAddress(", ")"),
+    ];
+    let mut out = text.to_string();
+    for (open, close) in FORMS {
+        let mut from = 0;
+        while let Some(at) = out[from..].find(open).map(|a| a + from) {
+            let inner = at + open.len();
+            let Some(end) = out[inner..].find(close).map(|e| e + inner) else {
+                break;
+            };
+            let name = out[inner..end].to_string();
+            out.replace_range(at..end + close.len(), &name);
+            from = at + name.len();
+        }
     }
     out
 }
@@ -257,6 +308,31 @@ mod tests {
     }
 
     use anyhow::Context;
+
+    /// GitHub #696, #697: the family of the words that a line says once:
+    /// a cause that comes again at once, and the Debug form of a name of a
+    /// certificate.
+    #[test]
+    fn tidy_says_each_part_once_and_no_debug_form() {
+        let cases = [
+            (
+                "http://127.0.0.1:1: connecting to 127.0.0.1:1: Connection refused (os error 111): Connection refused (os error 111)",
+                "http://127.0.0.1:1: connecting to 127.0.0.1:1: Connection refused (os error 111)",
+            ),
+            ("a: b: c: b: c: d", "a: b: c: d"),
+            ("x: y: y: y", "x: y"),
+            (
+                "TLS: certificate not valid for name \"1.1.1.1\"; certificate is only valid for DnsName(\"default.domain\") or IpAddress(10.0.0.1)",
+                "TLS: certificate not valid for name \"1.1.1.1\"; certificate is only valid for default.domain or 10.0.0.1",
+            ),
+            ("HTTP 403: Forbidden", "HTTP 403: Forbidden"),
+            ("a: b: a", "a: b: a"),
+            ("", ""),
+        ];
+        for (text, want) in cases {
+            assert_eq!(tidy(text), want, "{text}");
+        }
+    }
 
     #[test]
     fn a_class_survives_context() {

@@ -322,6 +322,7 @@ fn failed(e: DialError, host: &str, port: u16, proxy: Option<&Proxy>) -> anyhow:
     let at = pod_proxy::authority(host, port);
     match proxy {
         Some(proxy) => {
+            let e = proxy_named_once(e);
             let err = match &e {
                 DialError::ProxyRefused { status, reason, .. } => {
                     anyhow::Error::new(Refusal::of(*status, reason))
@@ -349,6 +350,44 @@ fn failed(e: DialError, host: &str, port: u16, proxy: Option<&Proxy>) -> anyhow:
                 _ => err,
             }
         }
+    }
+}
+
+/// A failed dial `e` of podnet as the [`Failure`] of a [`Dial`]: the stage
+/// of its hop (else `stage`), and the text of its chain, each cause once.
+/// A dial that failed at the proxy has its [`DialError`] as the cause:
+/// `pod-ws` keeps a cause of that type as it is, and makes any other cause
+/// a `Connect` with no stage (GitHub #697).
+pub(crate) fn dial_failure(e: anyhow::Error, stage: Stage, class: Class) -> Failure {
+    let stage = match hop::of(&e) {
+        Some(Hop::Proxy) => Stage::Proxy,
+        Some(Hop::Dns) => Stage::Dns,
+        _ => stage,
+    };
+    let text = crate::exit::text(&e);
+    let typed = match stage {
+        Stage::Proxy => e
+            .chain()
+            .find_map(|c| c.downcast_ref::<DialError>())
+            .cloned(),
+        _ => None,
+    };
+    match typed {
+        Some(dial) => Failure::caused(stage, class, text, dial),
+        None => Failure::caused(stage, class, text, e),
+    }
+}
+
+/// `e` with the proxy named once: pod-proxy writes `could not reach the
+/// proxy P: could not connect to P: ...` (GitHub #697).
+fn proxy_named_once(e: DialError) -> DialError {
+    match e {
+        DialError::ProxyUnreachable { proxy, detail } => {
+            let lead = format!("could not connect to {proxy}");
+            let detail = pod_core::failure::strip_lead(&detail, &lead).to_string();
+            DialError::ProxyUnreachable { proxy, detail }
+        }
+        other => other,
     }
 }
 
@@ -512,19 +551,7 @@ impl Dial for Egress {
             let limit = deadline.saturating_duration_since(Instant::now());
             match dial(&target.host(), target.port(), self.via.as_ref(), limit).await {
                 Ok(io) => Ok(Connected::new(Box::new(io))),
-                Err(e) => {
-                    let stage = match hop::of(&e) {
-                        Some(Hop::Proxy) => Stage::Proxy,
-                        Some(Hop::Dns) => Stage::Dns,
-                        _ => Stage::Connect,
-                    };
-                    Err(Failure::caused(
-                        stage,
-                        Class::Unavailable,
-                        format!("{e:#}"),
-                        e,
-                    ))
-                }
+                Err(e) => Err(dial_failure(e, Stage::Connect, Class::Unavailable)),
             }
         })
     }
