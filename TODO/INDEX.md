@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**512 entries: 13 open, 13 partial, 24 blocked, 462 done.**
+**513 entries: 13 open, 13 partial, 24 blocked, 463 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 76 | 81 |
+| P1 | 1 | 2 | 2 | 77 | 82 |
 | P2 | 4 | 7 | 10 | 229 | 250 |
 | P3 | 8 | 4 | 12 | 156 | 180 |
-| **All** | 13 | 13 | 24 | 462 | 512 |
+| **All** | 13 | 13 | 24 | 463 | 513 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -558,3 +558,4 @@ M8 Overlays, M9 Later.
 | [T-511](fixes.md) | P2 | S | M5 | defect | done | ci: the test of the HTTP/3 qlog reads the QUIC trace of noq before noq flushes it |
 | [T-512](fixes.md) | P1 | S | M5 | defect | done | ci: the new loopback tests of 4df28952 fail on a host with no bind(AF_INET) and with the loopback down |
 | [T-513](fixes.md) | P2 | S | M5 | defect | done | live: the edge did not know a new quick tunnel, and the second line said that a retry does not help |
+| [T-514](fixes.md) | P1 | S | M5 | defect | done | gate: get-podlab.sh fails when the podcrates tag of Cargo.toml has no GitHub release |

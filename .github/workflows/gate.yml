@@ -48,7 +48,11 @@ jobs:
         env:
           CC_x86_64_unknown_linux_musl: clang
         run: cargo build --locked --release --target x86_64-unknown-linux-musl
+      # A tag of podcrates with no release: get-podlab.sh takes the newest
+      # release at or below the tag (T-514). GH_TOKEN reads the list.
       - name: Get podlab of the podcrates tag of Cargo.toml
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
           tag=$(sed -n 's/^pod-core = .*tag = "\(v[0-9][0-9.]*\)".*/\1/p' Cargo.toml)

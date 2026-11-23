@@ -12363,3 +12363,61 @@ its first case: podnet exits 69 with "a refused token or tunnel does not change 
 a quick tunnel", and prints no ready line. After the fix the three tests pass. The wait for the same tunnel inside
 pod-cloudflare, the class TempFail through "no edge leg worked", and a stand-in refusal with retry: yes go to
 podcrates as a COORD issue.
+
+# T-514: gate: get-podlab.sh fails when the podcrates tag of Cargo.toml has no GitHub release
+
+**Source:** gate 45212474279 on 1947a8e (2026-11-23), failed (job `lane`).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The step "Get podlab of the podcrates tag of Cargo.toml" of `.github/workflows/gate.yml` ran
+`sh scripts/get-podlab.sh v0.82.0 "$RUNNER_TEMP/podlab"`. The download of SHA256SUMS gave
+`curl: (22) ... 404`, and the script stopped with
+`get-podlab: cannot download https://github.com/PodUtils/podcrates/releases/download/v0.82.0/SHA256SUMS`.
+The tag v0.82.0 of podcrates exists, but it has no GitHub release. The job `publish` of `release.yml` needs the
+job `gate` (`gate.yml`). Thus the failure blocks the release.
+
+## Premise
+
+- Not each tag of podcrates gets a GitHub release. The newest release is v0.81.0. Each release from v0.58.0 has
+  `SHA256SUMS` and `podlab-ARCH-unknown-linux-musl`.
+- podcrates publishes `podlab-install.sh` with each release. It holds the pins of its own release only: it cannot
+  install podlab for a tag with no release. It is no second path here.
+- The rule "Quality first" (2026-11-17): each edge has a second path, and each failure gives one true line.
+
+## Approach
+
+1. `scripts/get-podlab.sh`: when the release of VERSION does not exist or does not have the asset (a download gives
+   404), read the list of releases of podcrates (GitHub REST API, `GET_PODLAB_API`, `GH_TOKEN` to api.github.com
+   only). Take the newest release at or below VERSION, not a draft or a prerelease, that has `SHA256SUMS` and the
+   asset. Write one line that names VERSION and the release that it took. The SHA-256 check does not change.
+2. A VERSION that is not vX.Y.Z is a usage fault: exit 64. When no release at or below VERSION has the asset, or a
+   download fails, write one line and exit 1. On a failure, remove DIR, so that a second run can use it.
+3. `.github/workflows/gate.yml`: the step gives `GH_TOKEN` (`github.token`) to the script.
+4. `docs/development.md`: the fallback.
+
+## Prove
+
+```sh
+sh -n scripts/get-podlab.sh
+python3 scripts/check-workflows.py
+GET_PODLAB_API=https://forge.web.pkgforge.dev/github sh scripts/get-podlab.sh v0.82.0 DIR1   # takes v0.81.0
+GET_PODLAB_API=https://forge.web.pkgforge.dev/github sh scripts/get-podlab.sh v0.81.0 DIR2   # v0.81.0 directly
+GET_PODLAB_API=https://forge.web.pkgforge.dev/github sh scripts/get-podlab.sh v0.0.1 DIR3    # exit 1, one line
+# the next run of gate.yml passes the step
+```
+
+## Done
+
+2026-11-23, the commit of this entry. The local runs (the API of the sandbox is a mirror of the GitHub REST API):
+v0.82.0 printed "get-podlab: podcrates v0.82.0 has no release with podlab-x86_64-unknown-linux-musl; took release
+v0.81.0", "podlab-x86_64-unknown-linux-musl: OK", "podlab 0.81.0", exit 0. v0.81.0 printed no fallback line, "podlab
+0.81.0", exit 0. v0.0.1 printed "get-podlab: podcrates v0.0.1 has no release with podlab-x86_64-unknown-linux-musl,
+and no release at or below v0.0.1 has it", exit 1, and left no DIR. `0.81` gave exit 64. With the API refused
+(HTTP 403), the script printed one line with "(HTTP 403)" and exit 1. `python3 scripts/check-workflows.py`: 0
+faults. The next run of `gate.yml` runs the step on the runner.

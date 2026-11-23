@@ -73,7 +73,14 @@ command in a lab of each profile with `podlab run PROFILE -- ...`.
 1. Get `podlab`. From podcrates `v0.58.0`, the release has the static
    binary: `sh scripts/get-podlab.sh v0.60.0` downloads
    `podlab-ARCH-unknown-linux-musl` and `SHA256SUMS` into the new directory
-   `.work/podlab-v0.60.0` and checks the SHA-256. The release has no
+   `.work/podlab-v0.60.0` and checks the SHA-256. Not each tag of podcrates
+   has a release: when the release of the tag does not have the asset, the
+   script takes the newest release at or below the tag that has it, and
+   writes one line with the two versions (T-514). It reads the list of
+   releases from the GitHub REST API (`GET_PODLAB_API`, default
+   `https://api.github.com`; `GH_TOKEN` when it is set). Exit codes: 1 when
+   a download or the check fails or no release has the asset, 64 for usage.
+   The release has no
    signature of its assets (their entry 717 of podcrates), so the check stops at
    `SHA256SUMS`. Give the directory as PODLAB: the lane checks the asset
    against `SHA256SUMS` again before each run. Or build `podlab` in a clone
