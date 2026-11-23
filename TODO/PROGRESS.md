@@ -59,7 +59,7 @@ not wait for a larger one.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
-   - open and partial follow-ups (`TODO/fixes.md`): T-473 (partial: shared-code adoptions left),
+   - open and partial follow-ups (`TODO/fixes.md`):
      T-476 (`pod-session` `move_under`), T-478, T-406 (blocked, #604), T-488, T-492 (partial, step 3), T-414 and T-415
      (partial), T-358 and T-398 (partial), T-428 (partial).
 4. **M2, the splits:** T-044 (blocked:

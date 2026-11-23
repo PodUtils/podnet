@@ -10499,7 +10499,7 @@ copy of shared code that podnet holds and that the survey of podcrates did not l
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -10566,6 +10566,36 @@ named.
 ```sh
 sh scripts/agent/podcrates.sh
 ```
+
+## Done
+
+2026-11-23, commits 3611d22b, ef372745, 89b075e4 and 001b0bd7 (podcrates `v0.82.0`). The last four copies take the
+shared code; `pod_core::files` was taken by T-505.
+
+- The head readers: the answer of the tailscaled local API (`crates/podnet-netns/src/tailscale.rs`) takes
+  `pod_proxy::http::read_head_exact` (64 KiB, no byte past the empty line) and `parse_head`. The control socket of the
+  router (`src/router/control.rs`) takes `pod_proxy::http::read_request` (16 KiB, was 8 KiB; the strict parser of
+  `pod_core::http1`); a refused head gets its status (400, 431 or 505, was 400). Its client takes
+  `pod_proxy::http::read_response`.
+- The request parser: `RequestHead::parse` of `crates/podnet-core/src/util/http.rs` takes `find_request` and
+  `parse_request` of `pod_core::http1`. It now takes a bare LF and empty lines first, and refuses a bare CR, a control
+  byte, a folded line, a space before a colon, a line with no colon and another version of HTTP. `HttpParseError` has
+  `TooLarge` and `Malformed { status, why }`. It has no caller in the binary.
+- The CONNECT client: `ssh-relay --connect-proxy` dials with `pod_proxy::Dialer` and the proxy of the flag
+  (`podnet_core::connect::dialer_via`): Basic, or Digest when the proxy asks; a refusal keeps its status, its reason and
+  the first line of its body. `connect_tunnel` and `connect_tunnel_with_auth` keep their API (the parity checklist) on
+  `pod_proxy::blocking`, on a thread of their own (a call from a tokio task does not panic). A refusal stays
+  `ConnectionRefused`. The head limit is 16 KiB (was 8 KiB). No byte past the head is read, so the bytes of the tunnel
+  stay in the socket (`leftover` is empty).
+- The help: the groups and the "Start here" lines are `podnet::manual::GROUPS` and `LEAD`, and the model of
+  `pod-manual` has them as `Command::groups` and `Command::lead` of the root. The man page, the JSON and
+  `llms-full.txt` show them; the top help of clap renders the same data, with the same text. `pod_manual::check::help`
+  runs in `each_text_of_the_manual_keeps_the_rules`.
+- Tests (each a table for its class): `the_head_reader_stops_at_the_blank_line_and_names_each_fault` (podnet-netns),
+  `route_control_answers_each_bad_head_with_its_status`, `the_shared_reader_takes_and_refuses_each_kind_of_head`,
+  `connect_tunnel_takes_each_answer_of_the_proxy` (podnet-core; also from a tokio runtime). `cargo test --test
+  doctor_ssh_relay` (8), `--test ssh_relay` (4), `--test router_control` (4), `cargo test -p podnet-serve relay` (37),
+  the help and manual tests of the binary (20) pass. The block "Start here" of `podnet --help` is pinned as text.
 
 # T-474: `ssh-relay` ignores `--proxy`, `--egress`, `--resolve` and the proxy variables
 
