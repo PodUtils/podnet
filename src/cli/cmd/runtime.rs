@@ -147,7 +147,7 @@ pub(crate) struct RulesArgs {
 pub(crate) enum RulesCommand {
     /// Parse the policy in FILE and name each rule that an earlier rule
     /// covers, so the later rule is unreachable. It exits 78 when it finds
-    /// one.
+    /// one, and when FILE cannot be read or parsed.
     Check {
         /// The JSON policy: {"default": ..., "rules": [...]}.
         file: PathBuf,

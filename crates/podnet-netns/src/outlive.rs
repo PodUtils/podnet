@@ -11,6 +11,8 @@
 //! When the first program exits and no other process of the pod lives, the
 //! back ends the pod as before, and then gives the code. The front then
 //! returns after the relays finish.
+//!
+//! A stop signal to the front goes to the program (T-517, `crate::stop`).
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -161,8 +163,49 @@ pub(crate) fn split(verbose: bool, body: impl FnOnce(Reporter) -> Result<i32>) -
 
 /// Wait for the report of the back. At a code, return it at once. At an
 /// error or at the end of the back, reap the back.
+///
+/// T-517: the front takes the stop signals (SIGTERM, SIGINT, SIGHUP) that a
+/// process sends, and gives each to the back. After the first, the program
+/// has [`crate::stop::GRACE`]; at its end, or at a second stop signal, each
+/// process of the pod gets SIGKILL and the front returns 128+N. After the
+/// code of a stopped program, no process of the pod stays.
 fn front(read: OwnedFd, back: libc::pid_t) -> Result<i32> {
+    // The orphans of the pod come to the front, not to init: it can stop
+    // each of them.
+    let _ = become_subreaper();
+    crate::stop::forward_to(back);
     let mut pipe = std::fs::File::from(read);
+    let mut stopping: Option<std::time::Instant> = None;
+    loop {
+        if let Some((signal, count)) = crate::stop::received() {
+            let since = *stopping.get_or_insert_with(|| {
+                eprintln!(
+                    "{}: {}: stopping the program",
+                    crate::cli::program_name(),
+                    crate::stop::name(signal)
+                );
+                std::time::Instant::now()
+            });
+            if count >= 2 || since.elapsed() >= crate::stop::GRACE {
+                eprintln!(
+                    "{}: {}: the program did not stop; each process of the pod gets SIGKILL",
+                    crate::cli::program_name(),
+                    crate::stop::name(signal)
+                );
+                crate::stop::kill_all_under_self();
+                return Ok(128 + signal);
+            }
+        }
+        let mut poll = libc::pollfd {
+            fd: pipe.as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        // A short wait: a stop signal is seen within it.
+        if unsafe { libc::poll(&mut poll, 1, 200) } > 0 {
+            break;
+        }
+    }
     let mut tag = [0u8; 1];
     let n = loop {
         match pipe.read(&mut tag) {
@@ -173,6 +216,9 @@ fn front(read: OwnedFd, back: libc::pid_t) -> Result<i32> {
     if n == 1 && tag[0] == TAG_CODE {
         let mut code = [0u8; 4];
         if pipe.read_exact(&mut code).is_ok() {
+            if stopping.is_some() {
+                end_stopped_pod(back);
+            }
             return Ok(i32::from_le_bytes(code));
         }
     }
@@ -182,10 +228,27 @@ fn front(read: OwnedFd, back: libc::pid_t) -> Result<i32> {
     }
     let mut status = 0;
     unsafe { libc::waitpid(back, &mut status, 0) };
+    if stopping.is_some() {
+        crate::stop::kill_all_under_self();
+    }
     if !text.is_empty() {
         bail!("{}", String::from_utf8_lossy(&text));
     }
     Ok(exit_code(status))
+}
+
+/// The program of a stopped pod has exited: give the back 1 s to end with
+/// the pod, then kill each process of the pod that stays (T-517).
+fn end_stopped_pod(back: libc::pid_t) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(1);
+    while std::time::Instant::now() < deadline {
+        let mut status = 0;
+        if unsafe { libc::waitpid(back, &mut status, libc::WNOHANG) } != 0 {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    crate::stop::kill_all_under_self();
 }
 
 /// True when this process has a child that is not reaped yet. Reaps

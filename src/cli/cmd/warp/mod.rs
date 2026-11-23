@@ -150,6 +150,9 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
             }
         }
     }
+    // T-523: the listeners of warp proxy and warp forward bind before the
+    // registration of a device and before the session.
+    let early = front::bind_early(&args).await?;
     let (client, path) = warp_client(&args).await?;
     if let WarpCommand::Nc {
         host,
@@ -172,7 +175,7 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
             probe::run(args, client).await
         }
         WarpCommand::Proxy { .. } | WarpCommand::Forward { .. } => {
-            front::run(args, client, path).await
+            front::run(args, client, path, early).await
         }
         WarpCommand::Tun { .. } => tun::run(args, client).await,
         WarpCommand::Run { .. } => run::run(args, client).await,

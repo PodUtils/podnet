@@ -58,11 +58,13 @@ pub(crate) async fn bind_local(local: &str, replace: bool, router: axum::Router)
                 "--local {local}: give HOST:PORT (for example 127.0.0.1:8080) or unix:PATH ({err})"
             )));
         }
-        // An address in use, or an address of no interface: exit 69.
+        // An address in use, or an address of no interface: exit 69, with
+        // the next step (T-523).
         Err(err) => {
+            let err = anyhow::Error::new(err).context(format!("--local {local}"));
             return Err(podnet::exit::fault(
                 Fault::Unavailable,
-                anyhow::anyhow!("--local {local}: binding {addr}: {err}"),
+                podnet::net::bind_fault(err),
             ));
         }
     };

@@ -310,4 +310,71 @@ pod_row pod-no-name "upstream for nowhere\.invalid:80 failed" -x direct
 target=lab.test
 pod_row pod-reject "refused by the rule domain:lab\.test=reject" -x direct -r domain:lab.test=reject
 
+# A listener that cannot bind (T-515, T-523): exit 69 and one line with the
+# address and a next step. The address is a port that a holder keeps; in a
+# lab that refuses each TCP bind (bind-denied), the bind fails with EACCES.
+python3 -I -c 'import socket, time
+s = socket.socket()
+s.bind(("127.0.0.1", 17410))
+s.listen()
+time.sleep(90)' 2>/dev/null &
+holder=$!
+sleep 0.5
+listen_row() {
+    name=$1
+    shift
+    run "$name" 30 "$@" --run-for 2
+    check "$name" 69 "127\.0\.0\.1:17410.*; give "
+    row "$name" $?
+}
+listen_row listen-connect connect wss://nowhere.invalid/__podnet/ws -L tcp://127.0.0.1:17410 --no-check
+listen_row listen-net-proxy net proxy --listen tcp://127.0.0.1:17410
+listen_row listen-forward forward -L 17410=192.0.2.1:80
+listen_row listen-serve serve "$dir" --local 127.0.0.1:17410
+listen_row listen-warp-proxy warp proxy --ephemeral --listen tcp://127.0.0.1:17410
+kill "$holder" 2>/dev/null
+
+# pod: a SIGTERM to podnet goes to the program (T-517). podnet exits 143,
+# and the program does not stay. A backend that the lab refuses: n.a.
+pod_signal_row() {
+    name=$1
+    shift
+    pidfile="$dir/$name.pid"
+    start=$(date +%s)
+    "$podnet" pod "$@" -- sh -c "echo \$\$ > $pidfile; exec sleep 37" </dev/null >"$dir/$name.out" 2>"$dir/$name.err" &
+    pid=$!
+    i=0
+    while ! test -s "$pidfile" && kill -0 "$pid" 2>/dev/null && test $i -lt 100; do
+        i=$((i + 1))
+        sleep 0.1
+    done
+    if ! test -s "$pidfile"; then
+        wait "$pid"
+        if test $? -eq 3; then
+            why="the lab refuses the pod: $(grep -m 1 '^podnet' "$dir/$name.err")"
+            row "$name" 77
+            return
+        fi
+        echo "the program did not start: $(cat "$dir/$name.err")"
+        row "$name" 1
+        return
+    fi
+    kill -TERM "$pid"
+    wait "$pid"
+    code=$?
+    took=$(($(date +%s) - start))
+    sleep 0.2
+    program=$(cat "$pidfile")
+    if kill -0 "$program" 2>/dev/null && ! grep -q '^State:.*Z' "/proc/$program/status" 2>/dev/null; then
+        echo "the program $program stays after podnet exits $code"
+        kill -KILL "$program" 2>/dev/null
+        row "$name" 1
+        return
+    fi
+    check "$name" 143 "SIGTERM: stopping the program"
+    row "$name" $?
+}
+pod_signal_row pod-sigterm-auto -x direct
+pod_signal_row pod-sigterm-seccomp --backend seccomp -x direct
+
 exit $failed

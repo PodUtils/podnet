@@ -75,12 +75,15 @@ pub(crate) async fn tunnel_e2e(args: &TunnelArgs) -> Result<()> {
             .control_listen
             .as_deref()
             .ok_or_else(|| usage("the far end needs --control-listen IP:PORT"))?;
+        // T-515: a refused bind exits 69, as each listener.
         let data = TcpListener::bind(e2e::socket_address(data)?)
             .await
-            .with_context(|| format!("--listen {data}"))?;
+            .with_context(|| format!("--listen {data}"))
+            .map_err(podnet::net::bind_fault)?;
         let control = TcpListener::bind(e2e::socket_address(control)?)
             .await
-            .with_context(|| format!("--control-listen {control}"))?;
+            .with_context(|| format!("--control-listen {control}"))
+            .map_err(podnet::net::bind_fault)?;
         let (data, control) = tokio::join!(data.accept(), control.accept());
         let (data, from) = data.context("the data stream")?;
         let (control, control_from) = control.context("the control stream")?;

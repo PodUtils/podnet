@@ -84,6 +84,11 @@ fn run_router(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
         unsafe { libc::_exit(0) };
     }
     unsafe { libc::close(child) };
+    // T-517: a stop signal to the back goes to the reaper, and from it to
+    // the program.
+    if reporter.outlives() {
+        crate::stop::forward_to(pid);
+    }
 
     // Parent: the child reports whether it made a user namespace; if so, write
     // its id maps before it continues, then take the TUN fd.
@@ -192,10 +197,11 @@ fn read_report(fd: RawFd, report: &mut Vec<u8>) -> bool {
 /// and its router (T-108).
 fn reaper(sock: RawFd, program: libc::pid_t) -> ! {
     // Ctrl-C goes to the program; the reaper stays for the other processes.
-    // The reaper lets go of the standard streams of the caller, so a pipe of
-    // the caller closes when the program and its children close it.
+    // A stop signal that a process sends to the reaper goes to the program
+    // (T-517). The reaper lets go of the standard streams of the caller, so
+    // a pipe of the caller closes when the program and its children close it.
+    crate::stop::forward_to(program);
     unsafe {
-        libc::signal(libc::SIGINT, libc::SIG_IGN);
         libc::signal(libc::SIGQUIT, libc::SIG_IGN);
         let null = libc::open(c"/dev/null".as_ptr(), libc::O_RDWR);
         if null >= 0 {
@@ -216,6 +222,7 @@ fn reaper(sock: RawFd, program: libc::pid_t) -> ! {
             break;
         }
         if r == program {
+            crate::stop::forget_child();
             first = crate::outlive::exit_code(status);
             let mut report = status.to_le_bytes().to_vec();
             report.push(u8::from(crate::outlive::has_children()));

@@ -293,6 +293,7 @@ fn bind_unix(path: &std::path::Path) -> Result<tokio::net::UnixListener> {
     podnet_core::net::claim_socket_path(path, false)?;
     podnet_netns::listen::bind_private(path)
         .with_context(|| format!("binding unix:{}", path.display()))
+        .map_err(podnet_core::net::bind_fault_unix)
 }
 
 #[cfg(test)]

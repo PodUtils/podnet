@@ -254,9 +254,13 @@ Options:
 
 Exit status: the exit code of the program; 64 for a usage mistake (also no
 proxy at all); 3 when no backend can run on this host; 4 for a violation of
---fail-on-violation when the program exits 0. The pod returns when
+--fail-on-violation when the program exits 0; 78 for a bad PODNET_RESOLVE
+or PODNET_POLICY. The pod returns when
 the program exits; a process that the program started keeps the network of
-the pod until it exits. doctor measures what
+the pod until it exits. A SIGTERM, SIGINT or SIGHUP that a process sends
+to podnet goes to the program; podnet exits with its status (128+N), and no
+process of the pod stays. After 10 s, or at a second signal, each process
+of the pod gets SIGKILL. doctor measures what
 the host permits and exits 3 when no backend can run.
 "
     )

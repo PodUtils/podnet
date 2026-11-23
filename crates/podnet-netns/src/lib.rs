@@ -73,6 +73,7 @@ mod report;
 mod seccomp;
 mod socket;
 mod sockopt;
+mod stop;
 mod tcp;
 mod udp;
 

@@ -163,7 +163,7 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
     for guest in &router.guests {
         let opened = guest
             .open(args.detach.replace)
-            .map_err(podnet::net::bind_fault)?;
+            .map_err(|e| podnet::net::bind_fault_of(podnet::net::Listener::Other, e))?;
         println!(
             "podnet: route  guest {}  net {}/{}  via {}",
             guest.wire,
@@ -180,7 +180,7 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
         podnet::net::claim_socket_path(&path, args.detach.replace)?;
         let listener = podnet_netns::listen::bind_private(&path)
             .with_context(|| format!("control unix:{}", path.display()))
-            .map_err(podnet::net::bind_fault)?;
+            .map_err(podnet::net::bind_fault_unix)?;
         println!("podnet: route  control unix:{}", path.display());
         servers.spawn(router.clone().serve_control(listener));
     }

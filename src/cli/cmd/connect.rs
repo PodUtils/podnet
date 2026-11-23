@@ -105,9 +105,11 @@ pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
     for local in &locals {
         match local {
             LocalSpec::Tcp { bind, port } => {
+                // T-515: a refused bind exits 69, as each listener.
                 let listener = tokio::net::TcpListener::bind((bind.as_str(), *port))
                     .await
-                    .with_context(|| format!("binding {bind}:{port}"))?;
+                    .with_context(|| format!("binding tcp://{bind}:{port}"))
+                    .map_err(podnet::net::bind_fault)?;
                 tcp.push((local.describe(), listener));
             }
             LocalSpec::Unix(path) => {
@@ -238,7 +240,8 @@ impl Drop for SocketFile {
 
 /// Bind a unix listener at `path` (issue 202). A socket that answers
 /// belongs to another process and is refused, unless `replace`. A stale
-/// socket file is removed. Another kind of file is never removed.
+/// socket file is removed. Another kind of file is never removed. A refused
+/// bind exits 69 with the next step (T-515).
 #[cfg(unix)]
 pub(crate) fn unix_listener(
     path: &std::path::Path,
@@ -246,7 +249,8 @@ pub(crate) fn unix_listener(
 ) -> Result<(tokio::net::UnixListener, SocketFile)> {
     podnet::net::claim_socket_path(path, replace)?;
     let listener = podnet_netns::listen::bind_private(path)
-        .with_context(|| format!("binding unix:{}", path.display()))?;
+        .with_context(|| format!("binding unix:{}", path.display()))
+        .map_err(podnet::net::bind_fault_unix)?;
     let file = SocketFile {
         path: path.to_path_buf(),
         id: file_id(path),

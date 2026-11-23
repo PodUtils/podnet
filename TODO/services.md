@@ -2024,7 +2024,7 @@ The abstract-name shim has no option to hand a chosen address to the SOCKS door.
 ## Premise
 
 - `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`crates/podnet-vnet/shim/podnet-socks.c:239-251`).
-- `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:152-161`). `ShimOptions`
+- `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:156-165`). `ShimOptions`
   (`crates/podnet-vnet/src/shim.rs:32-56`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
 - The variable list is in `src/manual/facts.rs`. `docs/virtual-network.md` has no text on socksify
   (README.md:921 only), so item 4 of the issue needs a new section.
@@ -2078,7 +2078,7 @@ Tailscale and described only for Tailscale SSH.
 ## Premise
 
 - `net ts-shims` already takes `--out --user --uid --gid --shell --json` and prints `LD_PRELOAD`
-  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:163-204`,
+  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:167-208`,
   `crates/podnet-vnet/src/tailscale_ssh.rs:160-202`). It also writes `getent`, `id` and a compiled shim: more than a client needs.
 - `docs/target-environment.md:146` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
   No doctor row names the silent `ssh-keygen`.
@@ -2183,8 +2183,8 @@ its identity, force a reconnect or change the probe interval without a restart, 
 ## Premise
 
 - T-095 keeps one state directory for each identity. `warp rotate` and `--session-max-age` exist for one session.
-- `STATS` is global (`src/warp/proxy.rs:118`). The loopback and credential gate is at
-  `src/warp/proxy.rs:410-415`; the PIN gate is `crates/podnet-serve/src/gate.rs`.
+- `STATS` is global (`src/warp/proxy.rs:119`). The loopback and credential gate is at
+  `src/warp/proxy.rs:411-416`; the PIN gate is `crates/podnet-serve/src/gate.rs`.
 - The WARP service limits new devices for each address (T-101 Premise; `docs/decisions.md`).
 
 ## Approach
@@ -2457,7 +2457,7 @@ rule today) when the shadowed action is `reject` and the flag that allows it is 
 - The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:111-148`) is the same loop;
   `domain_matches` (`crates/podnet-netns/src/rules.rs:222-229`): `NAME` matches the name only, `.NAME`
   matches the name and each name under it.
-- `warp proxy --check` is handled in `src/cli/cmd/warp/front.rs:25-47` (the flag `check: bool` is in the
+- `warp proxy --check` is handled in `src/cli/cmd/warp/front.rs:27-49` (the flag `check: bool` is in the
   arguments of the command): it builds the table, prints each rule and exits 0, or 64 for a bad rule.
 - By reading the loop, the example behaves as described. Not run: the timing of a file with 10 000 lines.
 - T-177 (open, `podnet route check`) shows the match for one query and does not lint the table. T-098

@@ -92,6 +92,10 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
         std::os::fd::IntoRawFd::into_raw_fd(started.listener),
         started.pid,
     );
+    // T-517: a stop signal to the back goes to the program.
+    if reporter.outlives() {
+        crate::stop::forward_to(pid);
+    }
     // T-181: the program has its own limit now; the supervisor takes the
     // hard limit, and the budget of tracked sockets follows it.
     crate::fdtable::raise_nofile();
@@ -342,6 +346,8 @@ async fn watch_children(
         let r = unsafe { libc::waitpid(target, &mut status, libc::WNOHANG) };
         if r == pid {
             reaped = true;
+            // T-517: the id of the program can belong to another process now.
+            crate::stop::forget_child();
             *first.lock().unwrap_or_else(|e| e.into_inner()) = Some(status);
             if !outlives || pod_hold::listen::filter_unused(lfd) {
                 shutdown.store(true, Ordering::Relaxed);

@@ -357,12 +357,12 @@ async fn listen_ssh(
     }
     let addr = listen.strip_prefix("tcp://").unwrap_or(listen);
     let listener = tokio::net::TcpListener::bind(addr).await.map_err(|err| {
-        let fault = if addr.contains(':') {
-            Fault::Unavailable
-        } else {
-            Fault::Usage
-        };
-        podnet::exit::fault(fault, anyhow::anyhow!("--ssh {listen}: {err}"))
+        if !addr.contains(':') {
+            return podnet::exit::fault(Fault::Usage, anyhow::anyhow!("--ssh {listen}: {err}"));
+        }
+        // T-523: a refused bind gives the next step.
+        let err = anyhow::Error::new(err).context(format!("--ssh {listen}"));
+        podnet::exit::fault(Fault::Unavailable, podnet::net::bind_fault(err))
     })?;
     let bound = listener.local_addr()?;
     servers.spawn(podnet::git::ssh::serve_tcp(listener, config, options));

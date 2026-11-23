@@ -297,6 +297,19 @@ pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
     }
 }
 
+/// Check the variables that each command reads, before any work: a bad
+/// value is a configuration error (exit 78). `network_options` and the
+/// branch of `podnet pod` in `main` call it (T-531: the pod skipped it).
+pub(crate) fn variable_checks() -> Result<()> {
+    if let Ok(list) = std::env::var(podnet::resolve::PINS_VARIABLE) {
+        // Issue 252: a bad PODNET_RESOLVE is an error here, not a warning at the first dial.
+        podnet::resolve::parse_pins(&list)
+            .context(podnet::resolve::PINS_VARIABLE)
+            .fault(Fault::Config)?;
+    }
+    Ok(())
+}
+
 /// Apply --proxy, --no-proxy and --resolve.
 pub(crate) fn network_options(cli: &Cli) -> Result<()> {
     use podnet::egress::Proxy;
@@ -311,11 +324,8 @@ pub(crate) fn network_options(cli: &Cli) -> Result<()> {
     // The pins first: the first dialer, of --proxy or --no-proxy, takes them.
     if let Some(list) = &cli.resolve {
         podnet::resolve::set_pins(list).context("--resolve")?;
-    } else if let Ok(list) = std::env::var(podnet::resolve::PINS_VARIABLE) {
-        // Issue 252: a bad PODNET_RESOLVE is an error here, not a warning at the first dial.
-        podnet::resolve::parse_pins(&list)
-            .context(podnet::resolve::PINS_VARIABLE)
-            .fault(Fault::Config)?;
+    } else {
+        variable_checks()?;
     }
     if let Some(spec) = &cli.proxy {
         // Issue 95: a value with no scheme (PODNET_PROXY=notaurl) became

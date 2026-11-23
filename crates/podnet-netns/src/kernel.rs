@@ -51,6 +51,11 @@ fn run_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> {
     }
     // SAFETY: `child` belongs to the child process now.
     unsafe { libc::close(child) };
+    // T-517: a stop signal to the back goes to the reaper, and from it to
+    // the program.
+    if reporter.outlives() {
+        crate::stop::forward_to(pid);
+    }
     if let Some(code) = crate::netns::answer_child(parent, pid)? {
         return Ok(code);
     }

@@ -101,11 +101,13 @@ pub(crate) async fn agent(command: AgentCommand) -> Result<()> {
                 let name = format!("expose-{p}");
                 // Issue 119: a port with no origin gets no tunnel (it gave
                 // a URL that answered 502).
-                if !podnet::ports::reachable(*p, Duration::from_secs(2)).await {
+                // T-523: the error names the cause (a refusal, or a connect
+                // that the host refuses).
+                if let Err(error) = podnet::ports::origin(*p, Duration::from_secs(2)).await {
                     exposed.push(serde_json::json!({
                         "port": p,
                         "state": "origin-unreachable",
-                        "error": format!("nothing accepts a connection on 127.0.0.1:{p}"),
+                        "error": error,
                     }));
                     continue;
                 }

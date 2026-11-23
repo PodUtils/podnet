@@ -371,11 +371,11 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #679 | [gh action] requested: issue-sync (not a dry run) on `1a4781eb` for #672 and #677 | closed: superseded by the `v0.82.0` consolidation push | none |
 | #685 | COORD-113: pod-cloudflare: a refusal with retry: yes needs a time budget, and keeps its class through "no edge leg worked" (to podcrates) | open (a COORD issue between sessions; T-513 is the second path in podnet) | none |
 | #686 | COORD-114: podnet took pod-release (T-494) and the last shared-code copies of COORD-104 (T-473) (to podcrates) | open (a COORD issue between sessions) | none |
-| #687 | [qa 0.4.0-beta.18] send: the timeout line gives the wrong time ("within its 1 minutes" for --timeout 5) | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-520, T-531, T-532 |
+| #687 | [qa 0.4.0-beta.18] send: the timeout line gives the wrong time ("within its 1 minutes" for --timeout 5) | closed: T-520, T-531 and T-532 are done; T-531 in the commit of the entry, 2026-11-23 (tests/config_input.rs; CI after the push) | T-520, T-531, T-532 |
 | #688 | live: two runs in a row failed | open (live 45186065944: HTTP 530 of a quick tunnel, T-488; live 45215638823: WARP's door and the relay, T-406) | T-406, T-488 |
-| #689 | [qa 0.4.0-beta.18] connect: a failed listener bind exits 1; net proxy and forward exit 69 | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-515 |
+| #689 | [qa 0.4.0-beta.18] connect: a failed listener bind exits 1; net proxy and forward exit 69 | closed: T-515 done in the commit of the entry, 2026-11-23 (tests/listener_bind.rs; CI after the push) | T-515 |
 | #690 | [qa 0.4.0-beta.18] pod: with the seccomp backend, a missing program path exits 127 with no line | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-516 |
-| #691 | [qa 0.4.0-beta.18] pod: SIGTERM, SIGINT or SIGHUP to podnet ends podnet and leaves the program running | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-517 |
+| #691 | [qa 0.4.0-beta.18] pod: SIGTERM, SIGINT or SIGHUP to podnet ends podnet and leaves the program running | closed: T-517 done in the commit of the entry, 2026-11-23 (tests/pod_signals.rs; CI after the push) | T-517 |
 | #692 | [qa 0.4.0-beta.18] net doctor: no-loopback host reports "not needed"; a TCP loopback listener starts and cannot be reached | closed: T-524 is done (black-box QA pass of 0.4.0-beta.18, 2026-11-23); `250110a` | T-524 |
 | #693 | [qa 0.4.0-beta.18] warp status --json: the document has no `schema` and no `podnet` key | closed: T-519 done (`2427cb7`; ci of the push of `2427cb7`) | T-519 |
 | #694 | [qa 0.4.0-beta.18] pod doctor --json: the document has no `podnet` key | closed: T-519 done (`2427cb7`; ci of the push of `2427cb7`) | T-519 |
@@ -384,13 +384,13 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #697 | [qa 0.4.0-beta.18] connect: a dead proxy gives "the remote does not answer", repeats the cause three times, no next step | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-521, T-522 |
 | #698 | [qa 0.4.0-beta.18] bench: a name that does not resolve gives one very long line and no next step | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-521, T-522, T-530 |
 | #699 | [qa 0.4.0-beta.18] net shim: the documented `--out /tmp/podnet-vnet` example prints a working LD_PRELOAD line on a noexec /tmp | closed: T-525 is done (black-box QA pass of 0.4.0-beta.18, 2026-11-23); `250110a` | T-525 |
-| #700 | [qa 0.4.0-beta.18] rules check: an unreadable or unparseable policy file exits 1; PODNET_POLICY gives 78 | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-518 |
+| #700 | [qa 0.4.0-beta.18] rules check: an unreadable or unparseable policy file exits 1; PODNET_POLICY gives 78 | closed: T-518 done in the commit of the entry, 2026-11-23 (tests/config_input.rs; CI after the push) | T-518 |
 | #701 | [qa 0.4.0-beta.18] docs/host-runtime.md: the examples `podnet fetch` and `podnet init generate --node` do not run | closed: T-526 done (`2427cb7`; ci of the push of `2427cb7`) | T-526 |
 | #702 | [qa 0.4.0-beta.18] pod --serve: a refused target gives SOCKS5 reply 0x01; docs/proxies.md says 0x04 for "refused" | closed: T-527 is done (black-box QA pass of 0.4.0-beta.18, 2026-11-23); `b2d47f3` | T-527 |
 | #703 | [qa 0.4.0-beta.18] doctor: exit 1 when no leg works; `podnet man exit-status` says 69 for "no edge leg worked" | closed: T-528 done (`2427cb7`; ci of the push of `2427cb7`) | T-528 |
 | #704 | [qa 0.4.0-beta.18] state directory: the warning names a path that does not exist, and `warp register` prints it three times | closed: T-529 is done (black-box QA pass of 0.4.0-beta.18, 2026-11-23); `250110a` | T-529 |
-| #705 | [qa 0.4.0-beta.18] warp proxy: a listener that cannot bind prints the same cause on two error lines | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-523 |
-| #706 | [qa 0.4.0-beta.18] forward, net proxy, serve --local: a TCP bind denied by the host gives no hint to use a unix socket | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-523 |
+| #705 | [qa 0.4.0-beta.18] warp proxy: a listener that cannot bind prints the same cause on two error lines | closed: T-523 done in the commit of the entry, 2026-11-23 (tests/listener_bind.rs; CI after the push) | T-523 |
+| #706 | [qa 0.4.0-beta.18] forward, net proxy, serve --local: a TCP bind denied by the host gives no hint to use a unix socket | closed: T-523 done in the commit of the entry, 2026-11-23 (tests/listener_bind.rs; CI after the push) | T-523 |
 | #707 | COORD-115: the QA pass of podnet 0.4.0-beta.18: asks for pod-hold, pod-wormhole, pod-ws, pod-proxy, pod-dns, pod-tls, pod-warp and pod-cloudflare (to podcrates) | open (a COORD issue between sessions; T-516, T-520, T-521, T-522, T-532) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

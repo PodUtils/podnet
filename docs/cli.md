@@ -101,6 +101,15 @@ A stop before the `verified` event gives no `verified` event. The exit
 code is 0. A second signal during the shutdown stops podnet at once. Before
 the ready, each signal has its default action. A detached instance ignores
 SIGHUP. When the parent ignores SIGHUP (`nohup`), podnet ignores it too.
+`podnet pod` gives a stop signal to its program and exits with the status
+of the program ([pods.md](pods.md)).
+
+A listener that cannot bind (an address in use, a TCP bind that the host
+refuses, a unix socket of another process or in a directory that does not
+exist) exits 69, in each command with a listener. The error is one line: the
+cause, the address one time, and the next step (another port, a unix
+socket, another path). `warp proxy` and `warp forward` bind before the
+registration of a device and before the session.
 
 `--check` on `tunnel`, `serve`, `share` and `demo` checks the plan and stops.
 It tests the flags and the config file, each origin (a connection, and the

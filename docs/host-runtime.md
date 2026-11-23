@@ -131,7 +131,7 @@ its reason, so a policy decision is not a timeout. The policy lives in
 
 `PODNET_POLICY` names a policy file. `PODNET_NODE_CONFIG` names a node
 configuration whose `egress` object is the policy. The process installs the
-policy before the first dial. A file that does not parse exits 78.
+policy before the first dial. A file that cannot be read or parsed exits 78.
 
 With neither variable set, no policy is installed and `policy::permit`
 allows every destination: the default is allow-all, not refuse. The broker
@@ -146,7 +146,8 @@ podnet rules check rules.json --json
 
 `podnet bench` sends its requests through the policy: a refused destination
 is an error of each request. `podnet rules check` names each rule that an
-earlier rule covers, and exits 78 when a later rule is unreachable. Its
+earlier rule covers, and exits 78 when a later rule is unreachable. A file
+that cannot be read or parsed (also a missing file) exits 78 too. Its
 `--json` document has the stamp (`schema` 1 and `podnet`) and the key
 `kind`: `podnet.rules-check/1`. `podnet init check --json` and
 `podnet ci check --json` have the same form, with the `kind`

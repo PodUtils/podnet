@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 531 entries: 18 open, 15 partial, 24 blocked, 474 done.
+`TODO/INDEX.md` holds 531 entries: 13 open, 15 partial, 24 blocked, 479 done.
 
 ## State
 
@@ -44,7 +44,7 @@
 3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.17`. The next beta
    (`v0.4.0-beta.18`) runs the black-box QA pass (`scripts/agent/qa-pass.md`) and `gate.yml` on the head first, and
    proves the attestation and digests of the image (issue 656). The pass of 2026-11-23 found 19 issues; its entries are
-   in `TODO/fixes.md` from T-515 on, and the release waits for each P1 and P2 entry of them.
+   in `TODO/fixes.md` (the list below), and the release waits for each P1 and P2 entry of them.
 
 ### The order of podnet's own work
 
@@ -58,9 +58,9 @@ not wait for a larger one.
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - **First, the gate of the release of `v0.4.0-beta.18`** (the black-box QA pass of 2026-11-23, GitHub #687 and #689 to
-     #706; `docs/maintenance.md`, Release, step 0: the release waits until each P1 and P2 entry is done): P1 T-515,
-     T-516 (partial: the rest waits for a tag of `pod-hold`), T-517 and T-518; then P2 T-523 and T-531, then T-522
-     (partial: the length of a DNS line waits for `pod-dns`). T-516 and T-522 have an ask for podcrates (a COORD issue
+     #706; `docs/maintenance.md`, Release, step 0: the release waits until each P1 and P2 entry is done): P1
+     T-516 (partial: the rest waits for a tag of `pod-hold`); then P2 T-522 (partial: the length of a DNS line waits for
+     `pod-dns`). T-516 and T-522 have an ask for podcrates (a COORD issue
      `(to podcrates)`); each has a step in podnet that does not wait for the tag.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).

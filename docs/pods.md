@@ -179,7 +179,14 @@ podnet pod -x socks5://127.0.0.1:1080 \
   and vsock sockets, loopback TCP and inherited descriptors are not held; a raw socket of
   `AF_INET` and `AF_INET6` and each packet socket get `EPERM` (see `--allow-raw icmp`).
 * Exit status: the exit code of the program; 64 for a usage mistake (also no upstream); 3 when no backend
-  can run on this host; 4 for a violation of `--fail-on-violation` when the program exits 0.
+  can run on this host; 4 for a violation of `--fail-on-violation` when the program exits 0; 78 for a bad
+  `PODNET_RESOLVE` or `PODNET_POLICY`, before the program starts.
+* Stop signals: a SIGTERM, SIGINT or SIGHUP that a process sends to `podnet pod` (`kill`, a service manager)
+  goes to the program, in each backend. podnet prints one line (`podnet pod: SIGTERM: stopping the program`),
+  waits for the program, and exits with its status (128+N when the signal ended it). Then no process of the
+  pod stays. A program that does not end in 10 s, or a second stop signal, gets SIGKILL with each process of
+  the pod, and podnet exits 128+N. A stop signal of the terminal (Ctrl-C) reaches the program directly, as
+  each process of the foreground group; podnet waits for the program.
 
 ## Check the host: `podnet pod doctor`
 

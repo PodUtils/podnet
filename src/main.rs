@@ -102,6 +102,7 @@ fn main() {
         }
     }
     if argv.get(1).map(String::as_str) == Some("pod") {
+        pod_variables(&argv[2..]);
         pod_names();
         std::process::exit(podnet_netns::main_with_args(&argv[2..]));
     }
@@ -163,8 +164,10 @@ fn main() {
             eprintln!("podnet: podnet pod does not use {option}; give the proxy to the pod with -x (podnet pod --help)");
             std::process::exit(podnet::exit::USAGE);
         }
+        let pod_args = pod_args_of(&argv, args);
+        pod_variables(&pod_args);
         pod_names();
-        std::process::exit(podnet_netns::main_with_args(&pod_args_of(&argv, args)));
+        std::process::exit(podnet_netns::main_with_args(&pod_args));
     }
     // Issue 126: a server command holds one descriptor for each connection.
     // A command that runs a program of the user leaves its limit as it is.
@@ -346,6 +349,21 @@ fn main() {
         print_error(&line, code);
         podnet::report::send(command.as_deref(), code, Some(&err));
         std::process::exit(code);
+    }
+}
+
+/// T-531: the checks of the variables that each other command runs in
+/// `network_options` (a bad PODNET_RESOLVE exits 78). The pod goes to
+/// `podnet_netns` before that parse, so it runs them here. The help and the
+/// version of the pod do not need them.
+fn pod_variables(args: &[String]) {
+    let mut own = args.iter().take_while(|a| *a != "--");
+    if own.any(|a| matches!(a.as_str(), "-h" | "--help" | "-V" | "--version")) {
+        return;
+    }
+    if let Err(err) = cli::opts::variable_checks() {
+        eprintln!("podnet pod: {}", podnet::report::chain_text(&err));
+        std::process::exit(podnet::exit::code_of(&err));
     }
 }
 

@@ -42,20 +42,95 @@ pub fn claim_socket_path(path: &std::path::Path, replace: bool) -> Result<()> {
     }
 }
 
-/// Give a refused bind (`AddrInUse`, `PermissionDenied`, `AddrNotAvailable`
-/// in the chain of `err`) the class `Fault::Unavailable`: exit 69.
+/// The kind of the address of a listener: the next step of a refused bind
+/// depends on it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Listener {
+    /// A TCP or UDP address (HOST:PORT).
+    Ip,
+    /// A unix socket (unix:PATH).
+    Unix,
+    /// A device or another kind (a TUN or veth wire): the class, no step.
+    Other,
+}
+
+/// The next step for a refused bind of a `listener` with the error `kind`.
+/// `None` for an error that is not a refused bind.
+pub fn bind_step(listener: Listener, kind: std::io::ErrorKind) -> Option<&'static str> {
+    use std::io::ErrorKind::{AddrInUse, AddrNotAvailable, NotFound, PermissionDenied};
+    Some(match (listener, kind) {
+        (Listener::Ip, AddrInUse) => {
+            "another process has this address; give another port (port 0 gives a free one), or a unix socket (unix:PATH) where the command takes one"
+        }
+        (Listener::Ip, PermissionDenied) => {
+            "this host refuses the bind (a port below 1024 needs privilege, and some hosts refuse each TCP listener); give a port above 1023, or a unix socket (unix:PATH) where the command takes one (podnet net doctor)"
+        }
+        (Listener::Ip, AddrNotAvailable) => {
+            "no interface of this host has this address; give 127.0.0.1, 0.0.0.0 or an address of this host"
+        }
+        (Listener::Unix, AddrInUse) => {
+            "another socket is at this path; stop its process, or give another path"
+        }
+        (Listener::Unix, PermissionDenied) => {
+            "the directory of the socket is not writable; give a path in a directory that you can write"
+        }
+        (Listener::Unix, AddrNotAvailable) => "give a path on a local file system",
+        (Listener::Unix, NotFound) => {
+            "the directory of the socket does not exist; create it, or give a path in a directory that exists"
+        }
+        _ => return None,
+    })
+}
+
+/// Give a refused bind of a TCP or UDP address (`AddrInUse`,
+/// `PermissionDenied`, `AddrNotAvailable` in the chain of `err`) the class
+/// `Fault::Unavailable` (exit 69), and the next step (T-515, T-523). Another
+/// error stays as it is.
 pub fn bind_fault(err: anyhow::Error) -> anyhow::Error {
+    bind_fault_of(Listener::Ip, err)
+}
+
+/// [`bind_fault`] for a unix socket. `NotFound` (a directory that does not
+/// exist) is a refused bind too.
+pub fn bind_fault_unix(err: anyhow::Error) -> anyhow::Error {
+    bind_fault_of(Listener::Unix, err)
+}
+
+/// [`bind_fault`] for the address kind `listener`. The text is one line: the
+/// chain of `err` (each cause one time), `; ` and the next step.
+pub fn bind_fault_of(listener: Listener, err: anyhow::Error) -> anyhow::Error {
     use crate::exit::{fault, Fault};
-    use std::io::ErrorKind::{AddrInUse, AddrNotAvailable, PermissionDenied};
-    let refused = err.chain().any(|e| {
+    use std::io::ErrorKind::{AddrInUse, AddrNotAvailable, NotFound, PermissionDenied};
+    let refused = |k: &std::io::ErrorKind| match k {
+        AddrInUse | PermissionDenied | AddrNotAvailable => true,
+        // A unix socket in a directory that does not exist.
+        NotFound => listener == Listener::Unix,
+        _ => false,
+    };
+    let Some(kind) = err.chain().find_map(|e| {
         e.downcast_ref::<std::io::Error>()
-            .is_some_and(|io| matches!(io.kind(), AddrInUse | PermissionDenied | AddrNotAvailable))
-    });
-    if refused {
-        fault(Fault::Unavailable, err)
-    } else {
-        err
+            .map(|io| io.kind())
+            .filter(refused)
+    }) else {
+        return err;
+    };
+    let Some(step) = bind_step(listener, kind) else {
+        return fault(Fault::Unavailable, err);
+    };
+    let mut text = String::new();
+    for cause in err.chain() {
+        let cause = cause.to_string();
+        if text.is_empty() {
+            text = cause;
+        } else if !text.contains(&cause) {
+            text.push_str(": ");
+            text.push_str(&cause);
+        }
     }
+    if text.contains(step) {
+        return fault(Fault::Unavailable, err);
+    }
+    fault(Fault::Unavailable, anyhow::anyhow!("{text}; {step}"))
 }
 
 /// Bind a TCP listener. A refused bind exits 69.
@@ -76,6 +151,72 @@ pub fn init_crypto() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// T-515, T-523: a refused bind of each kind of listener is exit 69 and
+    /// one line that names the address one time and gives a next step;
+    /// another error keeps its text and has no class.
+    #[test]
+    fn a_refused_bind_is_69_with_one_line_and_a_next_step() {
+        use crate::exit::{code_of, FAILURE, UNAVAILABLE};
+        use std::io::ErrorKind::{AddrInUse, AddrNotAvailable, NotFound, PermissionDenied};
+        let cases = [
+            (
+                Listener::Ip,
+                AddrInUse,
+                UNAVAILABLE,
+                Some("give another port"),
+            ),
+            (
+                Listener::Ip,
+                PermissionDenied,
+                UNAVAILABLE,
+                Some("unix:PATH"),
+            ),
+            (
+                Listener::Ip,
+                AddrNotAvailable,
+                UNAVAILABLE,
+                Some("give 127.0.0.1"),
+            ),
+            (
+                Listener::Unix,
+                AddrInUse,
+                UNAVAILABLE,
+                Some("give another path"),
+            ),
+            (
+                Listener::Unix,
+                PermissionDenied,
+                UNAVAILABLE,
+                Some("not writable"),
+            ),
+            (Listener::Other, PermissionDenied, UNAVAILABLE, None),
+            (
+                Listener::Unix,
+                NotFound,
+                UNAVAILABLE,
+                Some("does not exist"),
+            ),
+            (Listener::Ip, NotFound, FAILURE, None),
+            (Listener::Other, NotFound, FAILURE, None),
+        ];
+        for (listener, kind, code, step) in cases {
+            let err = anyhow::Error::new(std::io::Error::from(kind)).context("binding ADDR");
+            let err = bind_fault_of(listener, err);
+            let line = format!("{err:#}");
+            assert_eq!(code_of(&err), code, "{listener:?} {kind:?}: {line}");
+            assert_eq!(
+                line.matches("ADDR").count(),
+                1,
+                "{listener:?} {kind:?}: {line}"
+            );
+            assert!(!line.contains('\n'), "{listener:?} {kind:?}: {line}");
+            match step {
+                Some(step) => assert!(line.contains(step), "{listener:?} {kind:?}: {line}"),
+                None => assert!(!line.contains("; "), "{listener:?} {kind:?}: {line}"),
+            }
+        }
+    }
 
     #[tokio::test]
     async fn a_second_bind_on_one_port_exits_69() {

@@ -48,10 +48,33 @@ fn parse_proc_net(text: &str, ports: &mut BTreeSet<u16>) {
 /// 119: a port in the LISTEN table can refuse each connection, for example
 /// under a seccomp policy that denies connect).
 pub async fn reachable(port: u16, timeout: std::time::Duration) -> bool {
-    matches!(
-        tokio::time::timeout(timeout, tokio::net::TcpStream::connect(("127.0.0.1", port))).await,
-        Ok(Ok(_))
-    )
+    origin(port, timeout).await.is_ok()
+}
+
+/// [`reachable`] with the cause: `Err` is one line with the cause and the
+/// next step (T-523: a connect that the host refuses is not "nothing
+/// accepts a connection").
+pub async fn origin(port: u16, timeout: std::time::Duration) -> Result<(), String> {
+    let connect = tokio::net::TcpStream::connect(("127.0.0.1", port));
+    match tokio::time::timeout(timeout, connect).await {
+        Ok(Ok(_)) => Ok(()),
+        Ok(Err(err)) => Err(origin_problem(port, Some(err.kind()), &err.to_string())),
+        Err(_) => Err(origin_problem(port, None, "")),
+    }
+}
+
+/// The line of a failed connect to the origin 127.0.0.1:`port`: `kind` is
+/// the class of the error, `None` for a time limit.
+pub fn origin_problem(port: u16, kind: Option<std::io::ErrorKind>, error: &str) -> String {
+    use std::io::ErrorKind::{ConnectionRefused, PermissionDenied};
+    match kind {
+        Some(ConnectionRefused) => format!("nothing accepts a connection on 127.0.0.1:{port}"),
+        Some(PermissionDenied) => format!(
+            "the host refuses a TCP connection to 127.0.0.1:{port}: use unix sockets (podnet tunnel --unix, podnet net)"
+        ),
+        None => format!("127.0.0.1:{port} does not answer a TCP connect in time"),
+        Some(_) => format!("127.0.0.1:{port}: {error}"),
+    }
 }
 
 /// The ports of `ports` that accept a connection, and the others.
@@ -154,6 +177,31 @@ mod tests {
                 "{line}"
             ),
             Ok(addr) => panic!("the check was not called: {addr}"),
+        }
+    }
+
+    /// T-523: the line of a failed origin check names its cause. A connect
+    /// that the host refuses (EACCES) names the unix sockets; a refusal is
+    /// "nothing accepts"; a time limit and another error are not either.
+    #[test]
+    fn the_origin_line_follows_the_cause_of_the_connect() {
+        use std::io::ErrorKind::{ConnectionRefused, NetworkUnreachable, PermissionDenied};
+        let cases = [
+            (
+                Some(ConnectionRefused),
+                "nothing accepts a connection on 127.0.0.1:8080",
+            ),
+            (
+                Some(PermissionDenied),
+                "the host refuses a TCP connection to 127.0.0.1:8080: use unix sockets",
+            ),
+            (None, "127.0.0.1:8080 does not answer a TCP connect in time"),
+            (Some(NetworkUnreachable), "127.0.0.1:8080: unreachable"),
+        ];
+        for (kind, want) in cases {
+            let line = origin_problem(8080, kind, "unreachable");
+            assert!(line.starts_with(want), "{kind:?}: {line}");
+            assert!(!line.contains('\n'), "{kind:?}: {line}");
         }
     }
 

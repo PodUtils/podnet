@@ -82,6 +82,10 @@ pub(crate) async fn net_tailscale(args: TailscaleArgs) -> Result<()> {
     use podnet::vnet::tailscale::{self, Dialer};
 
     let listen = ProxyListen::parse(&args.listen)?;
+    let kind = match &listen {
+        ProxyListen::Unix(_) => podnet::net::Listener::Unix,
+        ProxyListen::Tcp(_) => podnet::net::Listener::Ip,
+    };
     // A live socket is exit 69, a file that is no socket is 64.
     if let ProxyListen::Unix(path) = &listen {
         podnet::net::claim_socket_path(path, false)?;
@@ -116,7 +120,7 @@ pub(crate) async fn net_tailscale(args: TailscaleArgs) -> Result<()> {
                 Some(tailscale::GuardError::NotReady(_)) => {
                     return Err(err).fault(Fault::Unavailable);
                 }
-                None => return Err(podnet::net::bind_fault(err)),
+                None => return Err(podnet::net::bind_fault_of(kind, err)),
             },
         };
     // Issue 300: the bound address (a TCP port 0 gives the port).

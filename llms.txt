@@ -127,7 +127,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet host probe`: State the five properties of the file system of PATH: timestamps, atomic rename, hard links, permission bits and case sensitivity, as required or as emulated. It reads a boot sector of an image and the mount, and it opens no connection
 - `podnet stat`: Measure throughput, latency and loss from a peer that timestamps each arrival, and write a capture file
 - `podnet rules`: Check an egress policy: name each rule that an earlier rule covers
-- `podnet rules check`: Parse the policy in FILE and name each rule that an earlier rule covers, so the later rule is unreachable. It exits 78 when it finds one
+- `podnet rules check`: Parse the policy in FILE and name each rule that an earlier rule covers, so the later rule is unreachable. It exits 78 when it finds one, and when FILE cannot be read or parsed
 - `podnet init`: Generate, check or enrol a node configuration
 - `podnet init generate`: Generate a configuration that listens on nothing
 - `podnet init check`: Validate a configuration against schema 1 and the policy. It exits 78 with the named part when it cannot be used

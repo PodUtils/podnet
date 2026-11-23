@@ -11475,9 +11475,13 @@ podnet pod
 
   Exit status: the exit code of the program; 64 for a usage mistake (also no
   proxy at all); 3 when no backend can run on this host; 4 for a violation of
-  --fail-on-violation when the program exits 0. The pod returns when
+  --fail-on-violation when the program exits 0; 78 for a bad PODNET_RESOLVE
+  or PODNET_POLICY. The pod returns when
   the program exits; a process that the program started keeps the network of
-  the pod until it exits. doctor measures what
+  the pod until it exits. A SIGTERM, SIGINT or SIGHUP that a process sends
+  to podnet goes to the program; podnet exits with its status (128+N), and no
+  process of the pod stays. After 10 s, or at a second signal, each process
+  of the pod gets SIGKILL. doctor measures what
   the host permits and exits 3 when no backend can run.
 
   Usage: podnet pod [OPTIONS] [ARGS]...
@@ -11950,7 +11954,7 @@ podnet rules
   Commands:
     check  Parse the policy in FILE and name each rule that an earlier rule
            covers, so the later rule is unreachable. It exits 78 when it finds
-           one
+           one, and when FILE cannot be read or parsed
 
   Options:
     --ca-file PATH
@@ -12003,7 +12007,8 @@ podnet rules
 
 podnet rules check
   Parse the policy in FILE and name each rule that an earlier rule covers, so
-  the later rule is unreachable. It exits 78 when it finds one.
+  the later rule is unreachable. It exits 78 when it finds one, and when FILE
+  cannot be read or parsed.
 
   Usage: podnet rules check [OPTIONS] FILE
 
@@ -13470,8 +13475,8 @@ ENVIRONMENT
       a family, a port and an action: direct, proxy, relay, refuse or queue.
       The default action covers a destination that no rule matches. podnet
       classifies a destination before it dials, and a refusal names its rule. A
-      file that cannot be read or parsed is a configuration error (exit 78).
-      Used by: all commands.
+      file that cannot be read or parsed is a configuration error (exit 78), as
+      for podnet rules check FILE. Used by: all commands.
   PODNET_NODE_CONFIG
       The node configuration that podnet init writes. When PODNET_POLICY is not
       set, its egress object is the policy. A file that cannot be read or
@@ -16230,7 +16235,14 @@ podnet pod -x socks5://127.0.0.1:1080 \
   and vsock sockets, loopback TCP and inherited descriptors are not held; a raw socket of
   `AF_INET` and `AF_INET6` and each packet socket get `EPERM` (see `--allow-raw icmp`).
 * Exit status: the exit code of the program; 64 for a usage mistake (also no upstream); 3 when no backend
-  can run on this host; 4 for a violation of `--fail-on-violation` when the program exits 0.
+  can run on this host; 4 for a violation of `--fail-on-violation` when the program exits 0; 78 for a bad
+  `PODNET_RESOLVE` or `PODNET_POLICY`, before the program starts.
+* Stop signals: a SIGTERM, SIGINT or SIGHUP that a process sends to `podnet pod` (`kill`, a service manager)
+  goes to the program, in each backend. podnet prints one line (`podnet pod: SIGTERM: stopping the program`),
+  waits for the program, and exits with its status (128+N when the signal ended it). Then no process of the
+  pod stays. A program that does not end in 10 s, or a second stop signal, gets SIGKILL with each process of
+  the pod, and podnet exits 128+N. A stop signal of the terminal (Ctrl-C) reaches the program directly, as
+  each process of the foreground group; podnet waits for the program.
 
 ## Check the host: `podnet pod doctor`
 
@@ -18217,6 +18229,15 @@ A stop before the `verified` event gives no `verified` event. The exit
 code is 0. A second signal during the shutdown stops podnet at once. Before
 the ready, each signal has its default action. A detached instance ignores
 SIGHUP. When the parent ignores SIGHUP (`nohup`), podnet ignores it too.
+`podnet pod` gives a stop signal to its program and exits with the status
+of the program ([pods.md](pods.md)).
+
+A listener that cannot bind (an address in use, a TCP bind that the host
+refuses, a unix socket of another process or in a directory that does not
+exist) exits 69, in each command with a listener. The error is one line: the
+cause, the address one time, and the next step (another port, a unix
+socket, another path). `warp proxy` and `warp forward` bind before the
+registration of a device and before the session.
 
 `--check` on `tunnel`, `serve`, `share` and `demo` checks the plan and stops.
 It tests the flags and the config file, each origin (a connection, and the
@@ -19861,7 +19882,7 @@ its reason, so a policy decision is not a timeout. The policy lives in
 
 `PODNET_POLICY` names a policy file. `PODNET_NODE_CONFIG` names a node
 configuration whose `egress` object is the policy. The process installs the
-policy before the first dial. A file that does not parse exits 78.
+policy before the first dial. A file that cannot be read or parsed exits 78.
 
 With neither variable set, no policy is installed and `policy::permit`
 allows every destination: the default is allow-all, not refuse. The broker
@@ -19876,7 +19897,8 @@ podnet rules check rules.json --json
 
 `podnet bench` sends its requests through the policy: a refused destination
 is an error of each request. `podnet rules check` names each rule that an
-earlier rule covers, and exits 78 when a later rule is unreachable. Its
+earlier rule covers, and exits 78 when a later rule is unreachable. A file
+that cannot be read or parsed (also a missing file) exits 78 too. Its
 `--json` document has the stamp (`schema` 1 and `podnet`) and the key
 `kind`: `podnet.rules-check/1`. `podnet init check --json` and
 `podnet ci check --json` have the same form, with the `kind`

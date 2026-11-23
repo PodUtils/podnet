@@ -310,11 +310,15 @@ impl Policy {
         Policy::from_raw(raw)
     }
 
-    /// The policy of a file.
+    /// The policy of a file. A file that cannot be read or parsed is a
+    /// configuration error (`Fault::Config`, exit 78), for each caller:
+    /// `rules check`, `PODNET_POLICY` and `PODNET_NODE_CONFIG` (T-518). A
+    /// missing file is 78 too, as `podnet man environment` says.
     pub fn load(path: &std::path::Path) -> anyhow::Result<Policy> {
-        let text = std::fs::read_to_string(path)
-            .map_err(|e| anyhow::anyhow!("{}: {e}", path.display()))?;
-        Policy::parse(&text).map_err(|e| anyhow::anyhow!("{}: {e}", path.display()))
+        use crate::exit::{fault, Fault};
+        let config = |e: String| fault(Fault::Config, anyhow::anyhow!("{}: {e}", path.display()));
+        let text = std::fs::read_to_string(path).map_err(|e| config(e.to_string()))?;
+        Policy::parse(&text).map_err(|e| config(format!("{e:#}")))
     }
 
     fn from_raw(raw: RawPolicy) -> anyhow::Result<Policy> {
@@ -491,10 +495,7 @@ pub const NODE_VARIABLE: &str = "PODNET_NODE_CONFIG";
 /// process does not start with a policy that it did not read.
 pub fn install_from_env() -> Result<(), String> {
     if let Some(path) = std::env::var_os(POLICY_VARIABLE) {
-        let path = std::path::PathBuf::from(path);
-        let text =
-            std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        let policy = Policy::parse(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+        let policy = Policy::load(std::path::Path::new(&path)).map_err(|e| format!("{e:#}"))?;
         install(policy);
         return Ok(());
     }
