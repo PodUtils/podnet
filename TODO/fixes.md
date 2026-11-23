@@ -11205,6 +11205,11 @@ connection 1 at iad23), and six GETs of its public name over 19 s each got HTTP 
 `pod-quic` (PodUtils/podcrates@T-990 clears `IPV6_V6ONLY`); the QUIC leg registered at once, so the edge had the
 connection. The second run, `live` 44713609259 on `3f14a38` (the same code), passed: a flake, not a fault of the
 take.
+2026-11-23: `live` 45186065944 (schedule, `f63b449`) failed in the step "Throughput of the HTTP path and of a --forward
+WebSocket": "latency http2+direct http: 2 of 20 requests FAILED". The capture of H-11 gave each answer: HTTP 530,
+`cf-ray` `a5f0a38f2dc5a375-SEA` and `a5f0a3929924ba48-SEA`, the page "Origin DNS error | <tunnel>.trycloudflare.com".
+The tunnel had registered at sea10 and sea09; the GETs and POSTs of 16 MiB before passed. The same code passed `live`
+45179728390 on `3448b93`. The edge did not find the new quick tunnel for 2 requests: a fault of the edge.
 
 # T-489: Take podcrates v0.74.0
 
