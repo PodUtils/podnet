@@ -371,5 +371,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #679 | [gh action] requested: issue-sync (not a dry run) on `1a4781eb` for #672 and #677 | closed: superseded by the `v0.82.0` consolidation push | none |
 | #685 | COORD-113: pod-cloudflare: a refusal with retry: yes needs a time budget, and keeps its class through "no edge leg worked" (to podcrates) | open (a COORD issue between sessions; T-513 is the second path in podnet) | none |
 | #686 | COORD-114: podnet took pod-release (T-494) and the last shared-code copies of COORD-104 (T-473) (to podcrates) | open (a COORD issue between sessions) | none |
+| #688 | live: two runs in a row failed | open (live 45186065944: HTTP 530 of a quick tunnel, T-488; live 45215638823: WARP's door and the relay, T-406) | T-406, T-488 |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

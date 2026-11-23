@@ -8226,6 +8226,10 @@ The same code passed `live` 44713609259 an hour before. A fault of the public re
 162.159.198.1:443 and 162.159.198.2:443 showed a certificate of Let's Encrypt (CN=YE1) in place of the pinned MASQUE key.
 The steps before it opened WARP sessions to 162.159.198.2:443 some seconds earlier. The step passed on `af42f0d`
 (`live` 45157147093), and `91a53fb` changed no code of WARP. A fault of WARP's door, not of podnet.
+2026-11-23: `live` 45215638823 (`9d34eb7`; GitHub #688, the second failed run in a row after 45186065944, T-488) failed in
+"Throughput through WARP, 1 to 16 MiB": the door 162.159.198.2:443 showed a certificate of Let's Encrypt; the MASQUE
+session took the public relay; its HTTP/2 connection closed with no `close_notify` 18 s later, and the WebSocket of
+`podnet connect` in flight was lost. The same class as the run of 2026-11-20. A fault of WARP's door and of the relay.
 
 
 # T-407: podnet connect resets a local connection when one WebSocket dial fails
