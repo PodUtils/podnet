@@ -237,17 +237,23 @@ mod tests {
         let rows: [(&str, Value, &str); 4] = [
             (
                 "samples",
-                document("http://a/", 1, 1.0, vec![tally(vec![0.010, 0.020], 0)]),
+                document(
+                    "http://a/",
+                    1,
+                    1.0,
+                    vec![tally(vec![0.010, 0.020], 0)],
+                    None,
+                ),
                 "min 10",
             ),
             (
                 "no sample",
-                document("http://a/", 4, 2.8, vec![tally(vec![], 50)]),
+                document("http://a/", 4, 2.8, vec![tally(vec![], 50)], None),
                 "min - p50 - p95 - p99 - max -",
             ),
             (
                 "no time",
-                document("http://a/", 1, 0.0, vec![tally(vec![], 0)]),
+                document("http://a/", 1, 0.0, vec![tally(vec![], 0)], None),
                 "rate - requests/s",
             ),
             ("empty document", json!({}), "min - p50 -"),
@@ -257,7 +263,7 @@ mod tests {
             assert!(!out.contains("null"), "{name}: {out}");
             assert!(out.contains(want), "{name}: want {want:?} in {out}");
         }
-        let none = document("http://a/", 1, 1.0, vec![tally(vec![], 1)]);
+        let none = document("http://a/", 1, 1.0, vec![tally(vec![], 1)], None);
         assert!(none["latency_ms"]["p50"].is_null(), "the JSON keeps null");
     }
 }
