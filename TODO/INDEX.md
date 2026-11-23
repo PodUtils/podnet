@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**509 entries: 13 open, 14 partial, 24 blocked, 458 done.**
+**509 entries: 13 open, 13 partial, 24 blocked, 459 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 75 | 80 |
-| P2 | 4 | 8 | 10 | 226 | 248 |
+| P2 | 4 | 7 | 10 | 227 | 248 |
 | P3 | 8 | 4 | 12 | 156 | 180 |
-| **All** | 13 | 14 | 24 | 458 | 509 |
+| **All** | 13 | 13 | 24 | 459 | 509 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -517,7 +517,7 @@ M8 Overlays, M9 Later.
 | [T-470](fixes.md) | P2 | S | M5 | defect | done | `expose --via switch` refuses the `http://` target that `expose` documents (GitHub #646) |
 | [T-471](fixes.md) | P2 | S | M5 | defect | done | `ssh-relay --no-restart`: the help names `--stop-after`, `--idle-secs` and `--run-for`, which the command refuses (GitHub #647) |
 | [T-472](fixes.md) | P3 | S | M5 | defect | done | `serve --list`: the HTML listing omits the modified time and the upload limit (GitHub #648) |
-| [T-473](fixes.md) | P2 | M | M3 | chore | partial | A survey of podnet's copies of shared code against podcrates and the siblings (PodUtils/podcrates#221) |
+| [T-473](fixes.md) | P2 | M | M3 | chore | done | A survey of podnet's copies of shared code against podcrates and the siblings (PodUtils/podcrates#221) |
 | [T-474](fixes.md) | P1 | S | M5 | defect | done | `ssh-relay` ignores `--proxy`, `--egress`, `--resolve` and the proxy variables |
 | [T-475](fixes.md) | P2 | S | M5 | defect | done | `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6 |
 | [T-476](fixes.md) | P2 | S | M6 | defect | open | `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move |
