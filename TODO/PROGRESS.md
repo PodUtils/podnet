@@ -17,6 +17,12 @@
   names with no `taken` line is frozen: it takes fixes only, each as a COORD issue.
 - The newest release is `v0.4.0-beta.17` (T-481). The next release proves T-487 (the attestation of the image, the
   pull-back check, the digests in the notes) and then closes GitHub #656.
+- Deferred feature consolidation (`4df28952`): T-365, T-366, T-369 to T-373, and T-376 to T-378 are done; T-367
+  (GitHub #486) stays partial on MASQUE `QUIC-1` to `QUIC-5`; T-368 (#489), T-374 (#497), and T-375 (#498) stay
+  blocked.
+- Hard-problems fixes (`docs/research/podnet/hard-problems-results.md`, `4df28952`): T-507 (H-02), T-508 (H-04), T-509
+  (H-05), H-10 (`docs/warp.md`), H-11 (`scripts/live-throughput.sh`), and H-19 (`tests/transfer_relay.rs` `160 KiB` cap
+  test move; T-476 stays open for `pod-session` `move_under`).
 - The goal (the owner, 2026-11-13): close each issue except the deferred ones, then a final complete beta. The takes
   follow the plan of podcrates (PodUtils/podcrates#133; `docs/decisions.md`, 2026-11-13).
 - Keep this section short. Write the current state only; git keeps the history.
@@ -36,7 +42,9 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.17`. The next beta runs the black-box QA pass and the full lane in `gate.yml` first, and proves the attestation of the image (issue 656).
+3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.17`. The next beta
+   (`v0.4.0-beta.18`) runs the black-box QA pass (`scripts/agent/qa-pass.md`) and `gate.yml` on the head first, and
+   proves the attestation and digests of the image (issue 656).
 
 ### The order of podnet's own work
 
@@ -52,6 +60,9 @@ not wait for a larger one.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
+   - open and partial follow-ups (`TODO/fixes.md`): T-473 (partial: shared-code adoptions left), T-494 (`pod-release`),
+     T-476 (`pod-session` `move_under`), T-478, T-406 (blocked, #604), T-488, T-492 (partial, step 3), T-414 and T-415
+     (partial), T-358 and T-398 (partial), T-428 (partial).
 4. **M2, the splits:** T-044 (blocked:
    the rows left go with the takes, T-137). The split of the tunnel is done by the take of `pod-cloudflare`; each file has
    at most 800 lines, and no allowlist has an entry.
