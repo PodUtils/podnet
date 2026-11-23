@@ -239,11 +239,31 @@ pub fn failed(failed: Failed) -> anyhow::Error {
         Failed::NoRandom => Some(Fault::OsError),
         Failed::Peer(_) | Failed::Mine(_) => None,
     };
-    let err = anyhow::Error::new(failed);
+    // T-520: pod-wormhole v0.82.0 rounds the life of the code up to whole
+    // minutes ("within its 1 minutes" for 5 s). podnet writes the exact time.
+    let err = match &failed {
+        Failed::Expired(life) => anyhow::anyhow!(
+            "nobody took the code within its {}; it is spent",
+            exact_time(*life)
+        ),
+        _ => anyhow::Error::new(failed),
+    };
     match class {
         Some(class) => exit::fault(class, err),
         None => err,
     }
+}
+
+/// A time as a person reads it, with no rounding: whole minutes as
+/// "N minute(s)", else "N second(s)".
+pub fn exact_time(time: Duration) -> String {
+    let secs = time.as_secs();
+    let (n, unit) = if secs >= 60 && secs.is_multiple_of(60) {
+        (secs / 60, "minute")
+    } else {
+        (secs, "second")
+    };
+    format!("{n} {unit}{}", if n == 1 { "" } else { "s" })
 }
 
 /// Input that the receiver refuses, with its exit class (65).
@@ -341,6 +361,23 @@ mod tests {
             Ok(Relay::Tcp { port: 4001, .. })
         ));
         assert!(Relay::parse("tcp:///x:1").is_err());
+    }
+
+    /// T-520: the line of an expired code gives the value of `--timeout`
+    /// exactly, with the right plural.
+    #[test]
+    fn send_timeout_line_gives_the_exact_time() {
+        for (secs, want) in [
+            (1, "within its 1 second;"),
+            (5, "within its 5 seconds;"),
+            (60, "within its 1 minute;"),
+            (90, "within its 90 seconds;"),
+            (600, "within its 10 minutes;"),
+            (1800, "within its 30 minutes;"),
+        ] {
+            let line = format!("{:#}", failed(Failed::Expired(Duration::from_secs(secs))));
+            assert!(line.contains(want), "{secs} s: {line}");
+        }
     }
 
     #[test]

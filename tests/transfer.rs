@@ -298,3 +298,22 @@ async fn wormhole_transfer_a_refused_offer_writes_nothing() {
     assert!(format!("{:#}", sent.unwrap_err()).contains("the receiver refused the transfer"));
     assert_eq!(std::fs::read(out.path().join("f")).unwrap(), b"old");
 }
+
+/// T-520 (GitHub #687): with nobody at the other end, the send ends after
+/// `--timeout` with exit 124, and its line gives that value exactly.
+#[tokio::test]
+async fn send_timeout_names_the_value_of_timeout() {
+    test_host::need_loopback!();
+    let mailbox = Mailbox::start().await;
+    for (secs, want) in [(1, "within its 1 second;"), (2, "within its 2 seconds;")] {
+        let mut sender = settings(&[&mailbox.url], &[], loopback());
+        sender.wait = Duration::from_secs(secs);
+        let opened = transfer::open(&sender).await.expect("a code");
+        let err = opened
+            .send(&sender, &What::Text("x".into()))
+            .await
+            .unwrap_err();
+        assert_eq!(exit::code_of(&err), exit::TIMEOUT, "{err:#}");
+        assert!(format!("{err:#}").contains(want), "{secs} s: {err:#}");
+    }
+}
