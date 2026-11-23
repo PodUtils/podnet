@@ -3197,6 +3197,7 @@ dependencies = [
  "libc",
  "pod-cloudflare",
  "pod-core",
+ "pod-proxy",
  "pod-services",
  "pod-testkit",
  "pod-tls",

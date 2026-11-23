@@ -448,27 +448,15 @@ async fn connect_address(
         return Ok(PrefixedStream::new(Vec::new(), stream));
     };
 
-    // `connect::connect_tunnel` is blocking by design (the provisioning path uses
-    // it synchronously too), so keep it off the async worker.
-    let proxy_addr = proxy_addr.clone();
-    let host = host.clone();
-    let timeout = config.connect_timeout;
-
-    let (stream, leftover) = tokio::task::spawn_blocking(move || {
-        connect::connect_tunnel(&proxy_addr, &host, port, timeout)
-    })
-    .await
-    .map_err(|e| RelayError::Transport(format!("proxy task failed: {e}")))?
-    .map_err(|e| RelayError::Transport(e.to_string()))?
-    .into_parts();
-
-    stream
-        .set_nonblocking(true)
+    // T-473: the CONNECT client of `pod-proxy` (Basic and Digest, the
+    // words of a refusal, no byte read past the head of the answer).
+    let proxy =
+        connect::proxy_of(proxy_addr, None).map_err(|e| RelayError::Transport(e.to_string()))?;
+    let stream = connect::dialer_via(proxy)
+        .tcp(&host, port, config.connect_timeout)
+        .await
         .map_err(|e| RelayError::Transport(e.to_string()))?;
-    let stream = tokio::net::TcpStream::from_std(stream)
-        .map_err(|e| RelayError::Transport(e.to_string()))?;
-
-    Ok(PrefixedStream::new(leftover, stream))
+    Ok(PrefixedStream::new(Vec::new(), stream))
 }
 
 /// Split `host:port`, rejecting anything else.

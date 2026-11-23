@@ -25,6 +25,9 @@ path = "src/lib.rs"
 pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.82.0", version = "0.82.0" }
 pod-services = { git = "https://github.com/PodUtils/podcrates", tag = "v0.82.0", version = "0.82.0" }
 pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.82.0", version = "0.82.0" }
+# The CONNECT client of `connect` (T-473): the dial of PodUtils/podcrates,
+# with its blocking form for `connect_tunnel`.
+pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.82.0", version = "0.82.0", features = ["blocking"] }
 # The counters of a tunnel, the race, the UDP probe and the reader of the
 # configuration file, of PodUtils/podcrates (src/metrics.rs, race.rs,
 # udp.rs, yaml.rs).
