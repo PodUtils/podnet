@@ -83,11 +83,64 @@ pub fn base_host() -> Host {
 }
 
 /// Start the tunnel of `config` on a new host of podnet. Gives the handle
-/// and the services (the controls of the shares).
+/// and the services (the controls of the shares). A refused registration
+/// that a new start can fix gets one more start ([`again`]).
 pub async fn start(config: Config) -> Result<(TunnelHandle, Arc<ServiceRuntime>)> {
+    let tunnel = match config.credentials {
+        crate::config::Credentials::Quick => crate::hop::TunnelKind::Quick,
+        _ => crate::hop::TunnelKind::Named,
+    };
+    let wait = pod_core::backoff::backoff(AGAIN_ROUND);
+    again(tunnel, wait, || start_once(config.clone())).await
+}
+
+/// The round of `pod_core::backoff` of the wait before the second start:
+/// 2 s to 6 s.
+const AGAIN_ROUND: u32 = 3;
+
+/// One start of the tunnel of `config` on a new host of podnet.
+async fn start_once(config: Config) -> Result<(TunnelHandle, Arc<ServiceRuntime>)> {
     let hosted = hosted()?;
     let handle = hosted.quick().config(config).build()?.start().await?;
     Ok((handle, hosted.services))
+}
+
+/// Run `attempt`. When the edge refuses the registration and a new start
+/// can fix it ([`crate::hop::EdgeRefusal::transient`]), wait `wait` and
+/// run `attempt` one more time (live 45169011007). pod-cloudflare already
+/// tries the registration 3 times in about 2 s. For a quick tunnel, the
+/// second start makes a new quick tunnel: a second request to the
+/// quick-tunnel service only after a failure. Each other failure ends the
+/// start at once.
+pub async fn again<T, F, Fut>(
+    tunnel: crate::hop::TunnelKind,
+    wait: Duration,
+    mut attempt: F,
+) -> Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T>>,
+{
+    let err = match attempt().await {
+        Ok(value) => return Ok(value),
+        Err(err) => crate::hop::read_refusal(err, tunnel),
+    };
+    if !crate::hop::refusal_of(&err).is_some_and(|r| r.transient()) {
+        return Err(err);
+    }
+    let what = match tunnel {
+        crate::hop::TunnelKind::Quick => "a new quick tunnel",
+        crate::hop::TunnelKind::Named => "the registration",
+    };
+    tracing::warn!(
+        kind = "tunnel.again",
+        "{err:#}; podnet tries {what} again in {} s",
+        wait.as_secs()
+    );
+    tokio::time::sleep(wait).await;
+    attempt()
+        .await
+        .map_err(|e| crate::hop::read_refusal(e, tunnel))
 }
 
 /// The settings of a tunnel from the variables of podnet.
@@ -282,6 +335,54 @@ fn failure(stage: Stage, class: Class, err: anyhow::Error) -> Failure {
 
 #[cfg(test)]
 mod tests {
+    use crate::hop::TunnelKind::{self, Named, Quick};
+
+    /// A failure as pod-cloudflare v0.82.0 gives it when the edge refused
+    /// the registration of the only leg.
+    fn refused(cause: &str, retry: bool) -> anyhow::Error {
+        let retry = if retry { "yes" } else { "no" };
+        anyhow::Error::new(pod_core::Failure::new(
+            pod_core::Stage::EdgeRegister,
+            pod_core::Class::Unavailable,
+            format!("no edge leg worked: quic: the edge refused the registration: {cause} (retry: {retry}, after 1 s; podnet speaks cloudflared 2026.11.1)"),
+        ))
+    }
+
+    /// Live 45169011007: a stand-in of the start answers with the
+    /// refusals of `answers`, then accepts. A refusal that a new start can
+    /// fix gets one more start, and only one; each other failure gets
+    /// none.
+    #[tokio::test]
+    async fn a_refusal_that_a_new_start_can_fix_gets_one_more_start() {
+        let not_found = "Unauthorized: Tunnel not found";
+        let bad_token = "Unauthorized: Invalid tunnel secret";
+        // (the kind, the refusals before the accept, the starts, the result)
+        type Case<'a> = (TunnelKind, &'a [(&'a str, bool)], usize, Result<usize, i32>);
+        let cases: [Case; 7] = [
+            (Quick, &[], 1, Ok(1)),
+            (Quick, &[(not_found, true)], 2, Ok(2)),
+            (Quick, &[(not_found, false)], 2, Ok(2)),
+            (Quick, &[(not_found, true), (not_found, true)], 2, Err(75)),
+            (Named, &[(not_found, true)], 2, Ok(2)),
+            (Named, &[(not_found, false)], 1, Err(69)),
+            (Quick, &[(bad_token, false)], 1, Err(69)),
+        ];
+        for (kind, answers, starts, want) in cases {
+            let mut calls = 0;
+            let got = super::again(kind, std::time::Duration::ZERO, || {
+                calls += 1;
+                let answer = match answers.get(calls - 1) {
+                    Some((cause, retry)) => Err(refused(cause, *retry)),
+                    None => Ok(calls),
+                };
+                async move { answer }
+            })
+            .await
+            .map_err(|e| crate::exit::code_of(&e));
+            assert_eq!((calls, got), (starts, want), "{kind:?} {answers:?}");
+        }
+    }
+
     /// The host of a tunnel speaks with the words of podnet, counts into
     /// the metrics of podnet and has podnet's configuration of noTLSVerify.
     #[test]

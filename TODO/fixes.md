@@ -12282,3 +12282,79 @@ still fail on the local host are of the host, not of CI: `tests/network_lab.rs` 
 (no `ip` program), `seccomp_kernel_socket_refuses_listen_v6` (no IPv6), and, as root, the `router::kernel` and
 `router::guest` unit tests and `a_resolv_conf_of_a_deleted_file_still_resolves` (CI skips them: its runner refuses
 the user namespace).
+
+# T-513: live: the edge did not know a new quick tunnel, and the second line said that a retry does not help
+
+**Source:** live 45169011007 on c298684 (2026-11-23), failed (job 137677158556).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The step "Large share uploads, QUIC and HTTP/2" of `.github/workflows/live.yml` ran
+`sh scripts/live-share.sh target/release/podnet quic "20 64"` (`podnet share --protocol quic --transport direct` on
+a quick tunnel). The edge answered "Unauthorized: Tunnel not found" with retry: yes to the registration of the quick
+tunnel that the service made some seconds before. pod-cloudflare tried 3 times in about 2 s. podnet exited 69 with:
+
+```text
+podnet: no edge leg worked: quic: the edge refused the registration: Unauthorized: Tunnel not found (retry: yes, after 1 s; podnet speaks cloudflared 2026.11.1)
+podnet: the edge-register hop failed; a refused token or tunnel does not change with a retry; check the token, or use a quick tunnel
+```
+
+The second line is false: the edge asked for a retry, and the tunnel was a quick tunnel. The same class failed in
+T-138 (live 42060806281, a named tunnel made some seconds before).
+
+## Premise
+
+- pod-cloudflare v0.82.0 (`PodUtils/podcrates:crates/pod-cloudflare/src/tunnel/plan.rs`, `register_retrying_with`)
+  tries a refusal with retry: yes 3 times (`REGISTER_TRIES`), with 1 s to 5 s between two tries.
+- pod-cloudflare gives the class TempFail to a refusal with retry: yes (`From<Refused> for Failure`). When each leg
+  failed, it makes a new failure "no edge leg worked: ..." with the class Unavailable and no cause
+  (`PodUtils/podcrates:crates/pod-cloudflare/src/tunnel.rs`). The typed refusal and its class are lost: podnet saw
+  the stage EdgeRegister only, and gave the one hint of that hop.
+- A quick tunnel cannot register again with the same name from podnet: `Credentials::Explicit` has no public URL.
+  A wait for the same quick tunnel belongs to pod-cloudflare. podnet can start again, with a new quick tunnel.
+- The files of podnet here are podnet's own (`sh scripts/agent/podcrates.sh`: each import of pod-cloudflare is
+  `taken`). The glue `src/tunnel.rs` calls pod-cloudflare; `crates/podnet-core/src/hop.rs` and `src/report.rs` give
+  the hint.
+- The rule "Quality first" (2026-11-17): each edge has a second path, and each failure gives one true line.
+
+## Approach
+
+1. `crates/podnet-core/src/hop.rs`: `refusals` reads each refusal of the registration: the typed
+   `pod_cloudflare::fail::Refused` first, else the text of pod-cloudflare in the chain. `read_refusal` wraps the
+   error in `EdgeRefusal` (the kind of the tunnel, retry, "Tunnel not found"). A refusal with retry: yes, or
+   "Tunnel not found" for a quick tunnel, is transient: exit 75. Each kind has its own hint.
+2. `src/report.rs`: the second line of a refused registration is the hint of its kind.
+3. `src/tunnel.rs`: `start` runs `again`: after a transient refusal, it waits 2 s to 6 s (`pod_core::backoff`,
+   round 3) and starts one more time. For a quick tunnel this makes a new quick tunnel: a second request to the
+   quick-tunnel service only after a refusal.
+4. The wait for the same tunnel, and the class of a refusal through "no edge leg worked", go to pod-cloudflare
+   (a COORD issue to podcrates). When pod-cloudflare keeps the refusal as the cause, the text path of `refusals`
+   is the second path only.
+5. `docs/tunnels.md` (A refused registration) and the fact of exit 75 (`src/manual/facts.rs`).
+
+## Prove
+
+```sh
+cargo test -p podnet --lib a_refused_registration_gives_the_hint_and_the_code_of_its_kind
+cargo test -p podnet --lib a_refusal_that_a_new_start_can_fix_gets_one_more_start
+cargo test -p podnet --test quick_tunnel_standin a_quick_tunnel_that_the_edge_does_not_know_gets_one_new_start
+```
+
+## Done
+
+2026-11-23, the commit of this entry. The tests are
+`a_refused_registration_gives_the_hint_and_the_code_of_its_kind` (`src/report.rs`: 11 kinds of refusal, each with
+its second line and its exit code), `a_refusal_that_a_new_start_can_fix_gets_one_more_start` (`src/tunnel.rs`: a
+stand-in of the start that refuses N times, then accepts), and `tests/quick_tunnel_standin.rs`,
+`a_quick_tunnel_that_the_edge_does_not_know_gets_one_new_start` (the binary against the stand-in of pod-cloudflare:
+"Tunnel not found" once, then accept: ready on the second quick tunnel, 2 provisions; "Tunnel not found" always:
+exit 75; another refusal: exit 69 and 1 provision). Control: on the code before the fix the stand-in test fails at
+its first case: podnet exits 69 with "a refused token or tunnel does not change with a retry; check the token, or use
+a quick tunnel", and prints no ready line. After the fix the three tests pass. The wait for the same tunnel inside
+pod-cloudflare, the class TempFail through "no edge leg worked", and a stand-in refusal with retry: yes go to
+podcrates as a COORD issue.

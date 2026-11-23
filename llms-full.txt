@@ -14096,8 +14096,10 @@ EXIT STATUS
       replaced.
   75 (tempfail)
       The quick-tunnel service refused a provision for now (HTTP 429): the
-      error report (PODNET_ERROR_PROGRAM) has retry_after_s. Also: --detach
-      lost the pipe to the command that started it. Try again later.
+      error report (PODNET_ERROR_PROGRAM) has retry_after_s. Also: the edge
+      refused the registration of a tunnel at two starts, and asks for a retry
+      or does not know the new quick tunnel. Also: --detach lost the pipe to
+      the command that started it. Try again later.
   77 (no-permission)
       A peer is not in the allow list of the link or of a sealed relay session
       (default deny). Or a peer refused the key of this end: the link, relay
@@ -14966,6 +14968,21 @@ warning, and writes nothing next to the file. The variable has no effect on
 the default file of the state directory. Without it, a file of another user
 exits 78 and the error names the variable.
 
+### A refused registration
+
+The edge can refuse the registration of a tunnel. Its answer has a cause,
+and "retry: yes" or "retry: no". At "retry: yes", pod-cloudflare tries the
+registration 3 times, with 1 s to 5 s between two tries. Then podnet reads
+the refusal:
+
+| Refusal | What podnet does | Exit code when it fails |
+| --- | --- | --- |
+| "retry: yes" | It starts the tunnel one more time, after 2 s to 6 s. | 75 |
+| "Tunnel not found" for a quick tunnel | It makes a new quick tunnel one time, after 2 s to 6 s. The edge can know a new quick tunnel only some seconds after the quick-tunnel service made it. The new quick tunnel has a new name. | 75 |
+| A different refusal | It stops. The second line of the error tells what to check: the named tunnel, its token or its credentials file. | 69 |
+
+The second start makes a second request to the quick-tunnel service only
+after a refusal. Exit 75 tells a script that a new start can work.
 
 ## A credential in front of a tunnel
 

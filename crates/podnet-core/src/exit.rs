@@ -181,12 +181,19 @@ impl<T, E: Into<anyhow::Error>> ResultExt<T> for Result<T, E> {
 }
 
 /// The exit code for `err`: the class of the outermost [`Faulted`] error
-/// or `pod_core::Failure` in its chain, else [`FAILURE`].
+/// or `pod_core::Failure` in its chain, else [`FAILURE`]. A refused
+/// registration that a new start can fix
+/// ([`crate::hop::EdgeRefusal::transient`]) is [`TEMPFAIL`].
 pub fn code_of(err: &anyhow::Error) -> i32 {
     err.chain()
         .find_map(|e| {
             if let Some(f) = e.downcast_ref::<Faulted>() {
                 return Some(f.fault.code());
+            }
+            if e.downcast_ref::<crate::hop::EdgeRefusal>()
+                .is_some_and(|r| r.transient())
+            {
+                return Some(TEMPFAIL);
             }
             e.downcast_ref::<pod_core::Failure>()
                 .map(|f| code_of_class(f.class))

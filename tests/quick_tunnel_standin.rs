@@ -106,3 +106,87 @@ fn quick_tunnel_standin_detach_ps_logs_and_stop() {
     let ps: serde_json::Value = serde_json::from_slice(&ps.stdout).unwrap();
     assert_eq!(ps["instances"].as_array().unwrap().len(), 0, "{ps}");
 }
+
+/// Live 45169011007: the edge refused the registration of a quick tunnel
+/// that the service made some seconds before ("Tunnel not found"). podnet
+/// makes one new quick tunnel; each other refusal ends the start at once.
+/// The stand-in refuses with retry: no; it has no refusal with retry: yes.
+#[test]
+fn a_quick_tunnel_that_the_edge_does_not_know_gets_one_new_start() {
+    test_host::need_loopback!();
+    // (the cause, the edge accepts after the first refusal, the
+    // provisions, the exit code, the second line has)
+    let cases = [
+        ("Unauthorized: Tunnel not found", true, 2, None, ""),
+        (
+            "Unauthorized: Tunnel not found",
+            false,
+            2,
+            Some(75),
+            "does not know the new quick tunnel yet",
+        ),
+        (
+            "Unauthorized: Invalid tunnel secret",
+            false,
+            1,
+            Some(69),
+            "start podnet again to get a new quick tunnel",
+        ),
+    ];
+    for (cause, accept, provisions, code, hint) in cases {
+        let standin = Standin::start();
+        standin.edge.answer(standin::Reply::Refuse(cause.into()));
+        let edge = standin.edge.clone();
+        let flip = std::thread::spawn(move || {
+            let end = std::time::Instant::now() + LONG;
+            while accept && std::time::Instant::now() < end {
+                if !edge.registrations.lock().unwrap().is_empty() {
+                    edge.answer(standin::Reply::Accept);
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        });
+        let mut tunnel = Process::spawn(standin.tunnel(&["--hello-world", "--json"]));
+        match code {
+            None => {
+                let ready = tunnel.ready();
+                let issued = standin.api.issued.lock().unwrap().clone();
+                assert_eq!(hostname_of(&ready), issued[1].hostname, "{cause}");
+                tunnel.signal(libc::SIGTERM);
+                tunnel.wait(LONG).expect("podnet stops");
+                let stderr = tunnel.stderr();
+                assert!(
+                    stderr.contains("tries a new quick tunnel again"),
+                    "{stderr}"
+                );
+            }
+            Some(code) => {
+                let status = tunnel.wait(LONG).expect("podnet exits");
+                let stderr = tunnel.stderr();
+                assert_eq!(status.code(), Some(code), "{cause}: {stderr}");
+                let line = stderr
+                    .lines()
+                    .find(|l| l.starts_with("podnet: the edge-register hop failed"))
+                    .unwrap_or_else(|| panic!("{cause}: no second line: {stderr}"));
+                assert!(line.contains(hint), "{cause}: {line}");
+                assert!(!line.contains("use a quick tunnel"), "{cause}: {line}");
+            }
+        }
+        flip.join().unwrap();
+        assert_eq!(
+            standin.api.hits(),
+            provisions,
+            "{cause}: {}",
+            tunnel.stderr()
+        );
+        // One refused registration for each refused start; after the
+        // accept, the other edge connections register too.
+        let registrations = standin.edge.registrations.lock().unwrap().clone();
+        let refused = registrations.iter().filter(|r| !r.accepted).count();
+        let refused_starts = if accept { 1 } else { provisions };
+        assert_eq!(refused, refused_starts, "{cause}: {registrations:?}");
+        let accepted = registrations.iter().any(|r| r.accepted);
+        assert_eq!(accepted, accept, "{cause}: {registrations:?}");
+    }
+}

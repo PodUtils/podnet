@@ -20,6 +20,14 @@ pub fn error_line(err: &anyhow::Error) -> String {
         line.push_str(&format!(
             "\npodnet: the proxy answered HTTP {status}: it could not reach the destination; check the address of the destination (--masque-endpoint, --url, the edge)"
         ));
+    } else if let Some(refusal) = crate::hop::refusal_of(err) {
+        // The class of a refused registration (live 45169011007): a quick
+        // tunnel that the edge does not know yet is not a bad token.
+        line.push_str(&format!(
+            "\npodnet: the {} hop failed; {}",
+            crate::hop::Hop::EdgeRegister,
+            refusal.hint()
+        ));
     } else if crate::exit::code_of(err) == crate::exit::TEMPFAIL {
         // A refusal for now (HTTP 429 with Retry-After): a retry after the
         // wait works, so the hint of the hop ("does not change with a
@@ -63,11 +71,11 @@ mod tests {
             (
                 pod_core::Class::TempFail,
                 "try again after the time",
-                "does not change with a retry",
+                "when the edge says retry: no",
             ),
             (
                 pod_core::Class::Refused,
-                "does not change with a retry",
+                "when the edge says retry: no",
                 "try again after the time",
             ),
         ];
@@ -77,6 +85,136 @@ mod tests {
             let line = error_line(&err);
             assert!(line.contains(has), "{class:?}: {line}");
             assert!(!line.contains(lacks), "{class:?}: {line}");
+        }
+    }
+
+    /// Live 45169011007: each kind of refused registration gives a true
+    /// second line and its exit code. A quick tunnel that the edge does not
+    /// know yet, and a refusal with retry: yes, are not a bad token.
+    #[test]
+    fn a_refused_registration_gives_the_hint_and_the_code_of_its_kind() {
+        use crate::hop::TunnelKind::{Named, Quick};
+        // As pod-cloudflare v0.82.0 joins the failures of the legs: the
+        // typed refusal is not in the chain.
+        let joined = |said: &[(&str, bool)]| {
+            let legs: Vec<String> = said
+                .iter()
+                .map(|(cause, retry)| {
+                    let retry = if *retry { "yes" } else { "no" };
+                    format!("quic: the edge refused the registration: {cause} (retry: {retry}, after 1 s; podnet speaks cloudflared 2026.11.1)")
+                })
+                .collect();
+            anyhow::Error::new(pod_core::Failure::new(
+                pod_core::Stage::EdgeRegister,
+                pod_core::Class::Unavailable,
+                format!("no edge leg worked: {}", legs.join("; ")),
+            ))
+        };
+        let typed = |cause: &str, retry: bool| {
+            anyhow::Error::new(pod_core::Failure::from(pod_cloudflare::fail::Refused {
+                client: "podnet".into(),
+                cause: cause.into(),
+                should_retry: retry,
+                retry_after: std::time::Duration::from_secs(1),
+            }))
+        };
+        let not_found = "Unauthorized: Tunnel not found";
+        let bad_token = "Unauthorized: Invalid tunnel secret";
+        let not_a_refusal = || {
+            anyhow::Error::new(pod_core::Failure::new(
+                pod_core::Stage::EdgeRegister,
+                pod_core::Class::Unavailable,
+                "no edge leg worked: quic: the registration did not end in 30 s",
+            ))
+        };
+        let wrong = ["a refused token or tunnel", "use a quick tunnel"];
+        // (the error, the kind of the tunnel, the hint has, the exit code)
+        let cases = [
+            (
+                joined(&[(not_found, true)]),
+                Quick,
+                "does not know the new quick tunnel yet",
+                75,
+            ),
+            (
+                joined(&[(not_found, true), (not_found, true)]),
+                Quick,
+                "does not know the new quick tunnel yet",
+                75,
+            ),
+            (
+                joined(&[(not_found, false)]),
+                Quick,
+                "does not know the new quick tunnel yet",
+                75,
+            ),
+            (
+                joined(&[(not_found, true)]),
+                Named,
+                "the edge asks for a retry",
+                75,
+            ),
+            (
+                typed(not_found, true),
+                Named,
+                "the edge asks for a retry",
+                75,
+            ),
+            (
+                joined(&[(not_found, false)]),
+                Named,
+                "check that the named tunnel exists",
+                69,
+            ),
+            (
+                typed(not_found, false),
+                Named,
+                "check that the named tunnel exists",
+                77,
+            ),
+            (
+                joined(&[(bad_token, false)]),
+                Named,
+                "check the token or the credentials file, or use a quick tunnel",
+                69,
+            ),
+            (
+                joined(&[(bad_token, false)]),
+                Quick,
+                "start podnet again to get a new quick tunnel",
+                69,
+            ),
+            (
+                joined(&[(bad_token, false), (not_found, true)]),
+                Named,
+                "check that the named tunnel exists",
+                69,
+            ),
+            (not_a_refusal(), Quick, "when the edge says retry: no", 69),
+        ];
+        for (err, kind, has, code) in cases {
+            let err = crate::hop::read_refusal(err, kind);
+            let line = error_line(&err);
+            let hint = line.lines().nth(1).unwrap_or_default();
+            assert!(
+                hint.starts_with("podnet: the edge-register hop failed; "),
+                "{kind:?}: {line}"
+            );
+            assert!(hint.contains(has), "{kind:?}: {line}");
+            assert_eq!(crate::exit::code_of(&err), code, "{kind:?}: {line}");
+            // A retry can work: no word says that it cannot. A quick
+            // tunnel is not told to use a quick tunnel.
+            if code == 75 || kind == Quick {
+                for wrong in wrong {
+                    assert!(!hint.contains(wrong), "{kind:?}: {line}");
+                }
+            }
+            if code == 75 {
+                assert!(
+                    !hint.contains("does not change with a retry"),
+                    "{kind:?}: {line}"
+                );
+            }
         }
     }
 
