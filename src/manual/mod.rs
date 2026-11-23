@@ -36,6 +36,78 @@ const SEE_ALSO: &[&str] = &[
     "https://github.com/PodUtils/podnet: README.md, the topic documents in docs/, docs/protocol.md and docs/virtual-network.md.",
 ];
 
+/// The commands under `podnet` by purpose (E1): `Command::groups` of the
+/// root in the model of `pod-manual`, and the groups of the top help. Each
+/// command of the tree is in one group; a test checks it. The top help adds
+/// `help` of clap to the last group (the model has no such command).
+pub const GROUPS: &[(&str, &[&str])] = &[
+    (
+        "Publish a local service",
+        &[
+            "tunnel",
+            "expose",
+            "ssh-relay",
+            "serve",
+            "cover",
+            "share",
+            "send",
+            "receive",
+            "git",
+            "demo",
+            "qr",
+        ],
+    ),
+    (
+        "Reach the internet from a limited host",
+        &[
+            "agent", "warp", "pod", "net", "connect", "exit", "forward", "route", "relay", "link",
+            "wg",
+        ],
+    ),
+    (
+        "Run in the background",
+        &["ps", "logs", "wait", "stop", "autostart"],
+    ),
+    ("Work with no network", &["offline"]),
+    (
+        "Check this host and podnet",
+        &[
+            "doctor",
+            "status",
+            "host",
+            "stat",
+            "rules",
+            "init",
+            "harness",
+            "ci",
+            "forge",
+            "ports",
+            "components",
+            "bench",
+            "sidecar",
+            "bug-report",
+            "update",
+            "man",
+            "completions",
+        ],
+    ),
+];
+
+/// The "Start here" lines of the top help: `Command::lead` of the root in
+/// the model of `pod-manual`. Each is a command and what it does.
+pub const LEAD: &[(&str, &str)] = &[
+    ("podnet doctor", "test the path from this host to the edge"),
+    (
+        "podnet tunnel --url http://localhost:8080",
+        "a public URL for a local service",
+    ),
+    (
+        "podnet agent up",
+        "a sandbox: test, start WARP if needed, expose ports",
+    ),
+    ("podnet man", "the full manual"),
+];
+
 /// The manual of the command tree `cmd`, the parser of the binary: the
 /// commands from the reader of clap of `pod-manual`, then the facts, the
 /// description, the examples and the usage of `podnet pod`.
@@ -52,6 +124,24 @@ pub fn manual(cmd: clap::Command) -> Manual {
     m.facts = facts::facts();
     m.examples = facts::examples();
     m.see_also = SEE_ALSO.iter().map(|l| l.to_string()).collect();
+    // The groups and the lead of the root: the help, the text, the man page
+    // and the JSON show them before the options.
+    if let Some(root) = m.commands.iter_mut().find(|c| c.path.is_empty()) {
+        root.groups = GROUPS
+            .iter()
+            .map(|(title, names)| pod_manual::Group {
+                title: title.to_string(),
+                commands: names.iter().map(|n| n.to_string()).collect(),
+            })
+            .collect();
+        root.lead = LEAD
+            .iter()
+            .map(|(command, meaning)| pod_manual::Example {
+                command: command.to_string(),
+                meaning: meaning.to_string(),
+            })
+            .collect();
+    }
     // `podnet pod` has its own parser (podnet-netns): its usage is a note of
     // the command, one note for each paragraph.
     if let Some(pod) = m.commands.iter_mut().find(|c| c.path == ["pod"]) {

@@ -1,6 +1,6 @@
 use crate::cli::help::{
-    example_path, first_sentence, scenarios, top_command, unknown_flag, usage_hints, word_hint,
-    EXPERIMENTAL, HELP_GROUPS,
+    example_path, first_sentence, help_groups, scenarios, top_command, unknown_flag, usage_hints,
+    word_hint, EXPERIMENTAL,
 };
 use crate::cli::Cli;
 use clap::{CommandFactory as _, Parser as _};
@@ -68,10 +68,7 @@ fn each_command_is_in_one_help_group() {
         .map(|c| c.get_name().to_string())
         .collect();
     names.push("help".into());
-    let listed: Vec<&str> = HELP_GROUPS
-        .iter()
-        .flat_map(|(_, n)| n.iter().copied())
-        .collect();
+    let listed: Vec<&str> = help_groups().into_iter().flat_map(|(_, n)| n).collect();
     for name in &names {
         let count = listed.iter().filter(|l| **l == name.as_str()).count();
         assert_eq!(count, 1, "{name} is in {count} groups");
@@ -80,7 +77,18 @@ fn each_command_is_in_one_help_group() {
         assert!(names.iter().any(|n| n == name), "{name} is no command");
     }
     let help = top_command().render_help().to_string();
-    assert!(help.contains("Start here:"), "{help}");
+    // The lead of the model gives the block of the top help as before.
+    assert!(
+        help.contains(
+            "\
+Start here:
+  podnet doctor                              test the path from this host to the edge
+  podnet tunnel --url http://localhost:8080  a public URL for a local service
+  podnet agent up                            a sandbox: test, start WARP if needed, expose ports
+  podnet man                                 the full manual\n\n"
+        ),
+        "{help}"
+    );
     assert!(!help.contains("(issue "), "{help}");
     assert_eq!(first_sentence("Test it: the proxy. More"), "Test it");
     assert_eq!(first_sentence("One command (issue 87): x"), "One command");

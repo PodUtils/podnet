@@ -35,6 +35,9 @@ fn each_text_of_the_manual_keeps_the_rules() {
     let m = manual();
     assert_none(texts(&m));
     assert_none(model(&m));
+    // The help of each command holds its flags, and the help of the root
+    // the titles of its groups and its "Start here" lines (T-473).
+    assert_none(pod_manual::check::help(&m));
     assert!(m.commands.len() > 50, "{} commands", m.commands.len());
 }
 

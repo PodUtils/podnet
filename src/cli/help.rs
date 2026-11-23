@@ -7,69 +7,31 @@ use clap::CommandFactory as _;
 use crate::cli::argv::{CLOUDFLARED_FLAGS, LOG_JSON};
 use crate::cli::Cli;
 
-/// The commands of the top help, by purpose (E1). Each subcommand is in
-/// one group; a test checks it.
-pub(crate) const HELP_GROUPS: &[(&str, &[&str])] = &[
-    (
-        "Publish a local service",
-        &[
-            "tunnel",
-            "expose",
-            "ssh-relay",
-            "serve",
-            "cover",
-            "share",
-            "send",
-            "receive",
-            "git",
-            "demo",
-            "qr",
-        ],
-    ),
-    (
-        "Reach the internet from a limited host",
-        &[
-            "agent", "warp", "pod", "net", "connect", "exit", "forward", "route", "relay", "link",
-            "wg",
-        ],
-    ),
-    (
-        "Run in the background",
-        &["ps", "logs", "wait", "stop", "autostart"],
-    ),
-    ("Work with no network", &["offline"]),
-    (
-        "Check this host and podnet",
-        &[
-            "doctor",
-            "status",
-            "host",
-            "stat",
-            "rules",
-            "init",
-            "harness",
-            "ci",
-            "forge",
-            "ports",
-            "components",
-            "bench",
-            "sidecar",
-            "bug-report",
-            "update",
-            "man",
-            "completions",
-            "help",
-        ],
-    ),
-];
+/// The commands of the top help, by purpose (E1): the groups of the model
+/// of the manual ([`podnet::manual::GROUPS`]), and `help` of clap in the
+/// last group.
+pub(crate) fn help_groups() -> Vec<(&'static str, Vec<&'static str>)> {
+    let mut groups: Vec<(&str, Vec<&str>)> = podnet::manual::GROUPS
+        .iter()
+        .map(|(title, names)| (*title, names.to_vec()))
+        .collect();
+    if let Some((_, last)) = groups.last_mut() {
+        last.push("help");
+    }
+    groups
+}
 
-/// The "Start here" block of the top help.
-const START_HERE: &str = "\
-Start here:
-  podnet doctor                              test the path from this host to the edge
-  podnet tunnel --url http://localhost:8080  a public URL for a local service
-  podnet agent up                            a sandbox: test, start WARP if needed, expose ports
-  podnet man                                 the full manual";
+/// The "Start here" block of the top help: the lead of the model of the
+/// manual ([`podnet::manual::LEAD`]).
+fn start_here() -> String {
+    let lead = podnet::manual::LEAD;
+    let width = lead.iter().map(|(c, _)| c.len()).max().unwrap_or(0);
+    let lines: Vec<String> = lead
+        .iter()
+        .map(|(command, meaning)| format!("  {command:width$}  {meaning}"))
+        .collect();
+    format!("Start here:\n{}", lines.join("\n"))
+}
 
 /// The first part of `text`: up to the end of the first sentence or the
 /// first colon, with no issue reference.
@@ -97,9 +59,9 @@ fn grouped_commands(cmd: &clap::Command) -> String {
         .max()
         .unwrap_or(0);
     let mut out = String::new();
-    for (title, names) in HELP_GROUPS {
+    for (title, names) in help_groups() {
         out.push_str(&format!("{title}:\n"));
-        for name in *names {
+        for name in names {
             let about = cmd
                 .find_subcommand(name)
                 .and_then(|c| c.get_about())
@@ -119,7 +81,8 @@ fn grouped_commands(cmd: &clap::Command) -> String {
 pub(crate) fn top_command() -> clap::Command {
     let cmd = Cli::command();
     let template = format!(
-        "{{about-with-newline}}\n{{usage-heading}} {{usage}}\n\n{START_HERE}\n\n{}Exit codes:\n{}Options:\n{{options}}{{after-help}}",
+        "{{about-with-newline}}\n{{usage-heading}} {{usage}}\n\n{}\n\n{}Exit codes:\n{}Options:\n{{options}}{{after-help}}",
+        start_here(),
         grouped_commands(&cmd),
         podnet::exit::contract_table()
     );
