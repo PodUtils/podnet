@@ -923,7 +923,11 @@ jobs:
           # podnet verified the URL through public DNS; the resolver of the
           # runner can still cache NXDOMAIN for the new name some seconds
           # (T-395): retry for 60 s, also when the name does not resolve.
-          curl -fsS --max-time 30 --retry 20 --retry-all-errors --retry-delay 3 "$url" | grep -q 'served by agent up'
+          # The resolver can also give an address that the runner cannot
+          # reach (T-510): then the second path resolves the name through
+          # DNS over HTTPS, as podnet did.
+          get() { curl -fsS --max-time 30 --retry-all-errors --retry-delay 3 "$@" "$url"; }
+          { get --retry 20 || get --retry 10 --doh-url https://cloudflare-dns.com/dns-query; } | grep -q 'served by agent up'
           target/release/podnet agent down
           target/release/podnet ps --json | jq -e '.instances | length == 0'
       # Issue 79: the raw IP pod. The runner limits unprivileged user

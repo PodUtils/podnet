@@ -12058,3 +12058,42 @@ cargo test -p podnet --test cli -- shim_prefixes_differ_per_run
 ## Done
 
 2026-11-23, consolidated onto `main`. Updated `crates/podnet-vnet/src/{addr,control,shim}.rs`, `crates/podnet-vnet/shim/podnet-vnet.c`, `src/cli/cmd/net/{mod,shim}.rs`, `src/manual/facts.rs`, and `docs/virtual-network.md`. Reproducing tests: `shim_prefixes_differ_per_run` in `tests/cli/net.rs` (1 passed, covering per-run unique prefix, invalid and non-UTF-8 exit 64 before build, and clean stdout exports), `a_long_prefix_and_a_full_ipv6_name_fit_sun_path` in `tests/shim_sun_path.rs` (1 passed, covering 107-byte abstract names and unconditional stderr warning without `PODNET_VNET_LOG`), and `a_prefix_that_cannot_build_a_name_is_not_exported` in `crates/podnet-vnet/src/shim.rs` (`podnet-vnet --lib`: 101 passed). Control before the fix failed `shim_prefixes_differ_per_run` (both runs printed `podnet-vnet`), exported 60-byte prefixes, returned exit 0 on non-UTF-8, and produced empty stderr on invalid prefix when quiet.
+
+# T-510: live: the check of agent up cannot connect to the address that the resolver of the runner gives
+
+**Source:** live 45144945104 on 75f69f51 (2026-11-23), failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The step "agent up and down" of `.github/workflows/live.yml` failed. podnet verified the URL of the quick tunnel
+through public DNS ("verified https://...: HTTP 200 at attempt 15, DNS step doh"). The curl of the step then got
+`curl: (6) Could not resolve host` 9 times, and `curl: (7) Failed to connect to ... port 443 after 0 ms` 12 times,
+until its retries ended. The resolver of the runner gave an address that the runner could not reach.
+
+## Premise
+
+- The same step passed on 1325d5bb (live 45146226467) with the same binary code. The fault is in the check, not in
+  podnet: podnet names the case in its own output (T-395).
+- The rule "Quality first" (2026-11-17): each edge has a second path.
+
+## Approach
+
+1. The curl of the step keeps its 60 s of retries through the resolver of the runner.
+2. When it fails, a second curl resolves the name through DNS over HTTPS (`--doh-url`), as podnet does.
+
+## Prove
+
+```sh
+python3 scripts/check-workflows.py
+# the live step "agent up and down" passes on the next push
+```
+
+## Done
+
+2026-11-23, the commit of this entry. The test is the live step "agent up and down" of `.github/workflows/live.yml`:
+its curl has a second path through DNS over HTTPS. `python3 scripts/check-workflows.py` passes. The next push runs live.

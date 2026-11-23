@@ -34,16 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**508 entries: 14 open, 14 partial, 24 blocked, 456 done.**
+**509 entries: 14 open, 14 partial, 24 blocked, 457 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 75 | 80 |
-| P2 | 5 | 8 | 10 | 224 | 247 |
+| P2 | 5 | 8 | 10 | 225 | 248 |
 | P3 | 8 | 4 | 12 | 156 | 180 |
-| **All** | 14 | 14 | 24 | 456 | 508 |
-| **All** | 14 | 14 | 24 | 456 | 508 |
+| **All** | 14 | 14 | 24 | 457 | 509 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -555,3 +554,4 @@ M8 Overlays, M9 Later.
 | [T-507](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: refuse `listen(2)` on a kernel socket with `EPERM` (H-02) |
 | [T-508](fixes.md) | P2 | M | M7 | defect | done | `pod --backend netns`: reassemble IPv4 UDP fragments up to 65,507-byte payloads (H-04) |
 | [T-509](fixes.md) | P2 | S | M5 | defect | done | `net shim`: per-run `PODNET_VNET_PREFIX`, 59-byte cap, pre-build validation, and stderr warning (H-05) |
+| [T-510](fixes.md) | P2 | S | M5 | defect | done | live: the check of agent up cannot connect to the address that the resolver of the runner gives |
