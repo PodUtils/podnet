@@ -197,9 +197,10 @@ issues are the channel, and each session watches them
 - `docs/decisions.md` has each ruling with its date, and the questions
   for the owner. When a question is not urgent, make the call, record it
   there, and continue.
-- `podnet update`: check SHA256SUMS, and the certificate identity and the
-  signature of the cosign bundle over SHA256SUMS, with own code. The Rekor
-  inclusion proof is not checked.
+- `podnet update` (the owner, 2026-11-23): check SHA256SUMS, and the
+  certificate identity and the signature of the cosign bundle over
+  SHA256SUMS, with the shared verifier of `pod-release`. It also checks the
+  entry of Rekor and the timestamps. podnet keeps no own verifier (T-494).
 - Issues: a watcher polls for new issues. A Sonnet agent triages each new
   issue into record entries. Close each issue through the record, with
   evidence (commits, CI runs, test output) in the Done sections.

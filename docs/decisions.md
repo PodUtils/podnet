@@ -13,7 +13,6 @@ form of the rulings that apply to each session.
 | 2026-11-01 | Platforms | Linux only. No Windows or macOS builds. Static Linux binaries for all major architectures, with cargo-zigbuild (zig cc). |
 | 2026-11-01 | Dependencies | No dependency for the edge protocol: it is the code of PodUtils, the crate `pod-cloudflare` of PodUtils/podcrates. |
 | 2026-11-01 | Dependabot | Apply each judged update as an own commit on `main` (checks green). Close the pull request with a link to the commit. Do not merge the Dependabot branch. |
-| 2026-11-01 | `podnet update` | Check SHA256SUMS, and the certificate identity and the signature of the cosign bundle over SHA256SUMS, with own code. The Rekor inclusion proof is not checked. |
 | 2026-11-01 | Issues | A watcher polls for new issues. An agent triages each new issue. Close each issue with evidence (commits, CI runs, test output). |
 | 2026-11-01 | Git | Work on `main` only. Push no other branch. |
 | 2026-11-04 | Git | Agents that work in parallel can use local worktree branches. Their work lands on `main` as normal commits. The local branches are not pushed. |
@@ -129,11 +128,13 @@ form of the rulings that apply to each session.
 | 2026-11-19 | ghcr.io (the owner, through PodUtils/podrunner#312) | Each project publishes its CLIs and assets on ghcr.io, under `ghcr.io/podutils/PROJECT` with the tag of the release, attested as the release assets are, in a form that plain OCI tools read (one `FROM scratch` image for each architecture under one manifest list), and names the digest of each pushed reference in the release notes. The GitHub release assets stay. podnet's image of issue 160 has that form; T-487 adds the attestation and the digests. The coordinator took that form for each project (call C789, PodUtils/podcrates#236): also a check that each pushed binary has the SHA-256 of its release file, and the digests in the hand-off COORD issue. |
 | 2026-11-20 | The measure of readiness (T-455; the lead's call) | A promise is a flag or an argument of a command (`podnet man --json`). The release notes give, for each command, its promises, those with a test (a Rust test or a scenario of the release binary) and those in a scenario (`scripts/promises.py`). The count is a measure of reach, not a proof. The help keeps the rule of the command level: a command with no scenario says "Experimental" (`scripts/gate-scenarios.py`); a word on each flag of the help would be noise. The owner can rule otherwise. |
 | 2026-11-20 | The end of the release freeze (the lead's call, under the ruling of 2026-11-17) | The ruling of 2026-11-17 froze releases and new features until T-450 to T-455 were done. They are done: the rule and the check of a test for each defect (`defect_tests`), the error rows of the lane (the case `errors`, 20 rows in each lab), the lab of the testers' host (the row `testers`), the prompt of the black-box QA pass, and the measure of readiness. The freeze ends. Each next beta runs the black-box QA pass and the full lane in `gate.yml` before its dry run. The owner can rule otherwise. |
+| 2026-11-23 | `podnet update` (the owner, in the session of 2026-11-23) | `podnet update` checks SHA256SUMS, the certificate identity and the signature of the cosign bundle over SHA256SUMS with the shared verifier of `pod-release` (PodUtils/podcrates). The verifier also checks the entry of Rekor (the signed entry timestamp or the inclusion proof) and each timestamp. This check is stronger than the check of 2026-11-01. podnet keeps no own verifier (T-494). |
 
 ## Superseded
 
 | Date | Ruling | Superseded by |
 | --- | --- | --- |
+| 2026-11-01 | `podnet update`: check SHA256SUMS, and the certificate identity and the signature of the cosign bundle over SHA256SUMS, with own code. The Rekor inclusion proof is not checked. | 2026-11-23, `podnet update` (the owner): the shared verifier of `pod-release`, which also checks Rekor. |
 | 2026-11-09 | The SSH forward-relay leg: a library with no caller (a call of the lead). | 2026-11-11, The SSH forward-relay leg (the owner): a CLI. |
 | 2026-11-09 | Direction split: research only (a call of the lead). | 2026-11-11, Direction split (the owner): an option, off by default. |
 | 2026-11-01 | Releases: cut the next prerelease unattended when a batch of fixes is green. | 2026-11-04, Releases: no release until the owner says go. |
