@@ -3295,7 +3295,7 @@ then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:
 
 - src/warp/live/instance.rs:70-76 at `9c1fc4b` (`instance_state` reads `INSTANCE`), :88-105 at `9c1fc4b` (`instance_state_in` takes a name),
   :131-158 at `9c1fc4b` (the line). `src/warp/up.rs:24-26` (two names), `:529-534` (`down` knows both).
-- `src/cli/cmd/warp/account.rs:51-88` (the arm `Status` of the account file).
+- `src/cli/cmd/warp/account.rs:51-96` (the arm `Status` of the account file).
 - `warp tun` has no `Live` and so no `data_path` (the issue notes it; not part of this entry).
 
 ## Approach
@@ -3334,7 +3334,7 @@ another type is shown as WARP+.
 
 ## Premise
 
-- src/warp/identity.rs:157-171 at `9c1fc4b`. Users: `src/cli/cmd/warp/account.rs:57`, `:97-100`, `:142-145`. Test: `src/cli/cmd/warp/cli_tests.rs:128-131`.
+- src/warp/identity.rs:157-171 at `9c1fc4b`. Users: `src/cli/cmd/warp/account.rs:57`, `:105-108`, `:150-153`. Test: `src/cli/cmd/warp/cli_tests.rs:128-131`.
 - The issue says the fixture type `limited` is a free type. This is not shown: src/warp/register.rs:627 at `9c1fc4b` is a test of
   the redaction of a licence key, and the test at `main.rs:894` uses `limited` with `premium_data` 10 as WARP+.
   The tree has no list of the types that the service sends. A closed list of paid types could hide a real paid account.
@@ -12638,7 +12638,7 @@ unknown action (`"default":"allow"`) also exits 1.
   function loads `PODNET_POLICY` in `install_from_env` (`src/policy.rs:492`), which `src/main.rs:58` turns into exit
   78. Thus one loader has two classes.
 - Read: the `--help` of `rules check` says it exits 78 when a rule is unreachable. That case is right
-  (`src/cli/cmd/runtime.rs:200` gives `Fault::Config`). The bad file is the other case.
+  (`src/cli/cmd/runtime.rs:203` gives `Fault::Config`). The bad file is the other case.
 - The code is podnet's own.
 
 ## Approach
@@ -12666,7 +12666,7 @@ cargo test -p podnet policy
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -12728,6 +12728,33 @@ cargo test -p podnet --test contracts
 cargo test -p podnet-netns doctor
 ```
 
+## Done
+
+2026-11-23, the commit of this entry.
+
+- Cause: `warp status --json`, `rules check --json`, `init check --json`, `ci check --json` and
+  `init enroll --json` printed their document with `to_string_pretty` and no call of `podnet::status::stamped`;
+  `pod doctor --json` (podnet-netns) had `schema` and no `podnet`. `offline spool --json` and `warp probe --json`
+  printed `json!` with no stamp.
+- Change: each of the seven documents has the stamp. `warp status --json` sets `schema` 1 over a key of the record.
+  `pod doctor --json` adds `podnet`, the version line that `set_version_line` gives with no first word
+  (`podnet_netns::cli::stamp_version`), as the other documents have it. It is an added optional key: its schema id
+  stays 1 (`docs/decisions.md`, 2026-11-18), and the reader of podrunner is not affected. `rules check`,
+  `init check` and `ci check`: `schema` is 1 and the string id moves to the key `kind` (`podnet.rules-check/1`,
+  `podnet.init-check/1`, `podnet.ci-check/1`). This is a breaking change (beta): a reader of the string `schema`
+  reads `kind`. `docs/cli.md` (JSON documents, rule 2) and `docs/host-runtime.md` say it; `tests/ci.rs` reads
+  `kind`.
+- Test: `each_json_document_keeps_the_contract` (`tests/contracts.rs`) has the rows `rules check --json`,
+  `init check --json`, `ci check --json`, `init enroll --offline --json`, `pod doctor --json` (exit 0 or 3) and
+  `warp status --json` (a device that `warp register` stored against the API stand-in of `pod-testkit` on the
+  loopback). A row has its own variables and exit codes (`Row::env`, `Row::codes`).
+- Control: on the code before the fix the test fails with 6 faults: `rules check`, `init check` and `ci check`:
+  `schema: {"schema":"podnet.rules-check/1",...}` (and the two others); `init enroll`: `schema: {"node":"a",...}`;
+  `pod doctor --json`: `podnet: {"schema":1,"capabilities":...}`; `warp status --json`:
+  `schema: {"account_type":"free",...}`.
+- `cargo test -p podnet --test contracts`: 2 passed. `cargo test -p podnet --test ci`: 6 passed.
+  `cargo test -p podnet-netns doctor`: 8 passed.
+- Not covered by a row: `offline spool --json` (needs a spool of a pair) and `warp probe --json` (needs WARP).
 
 # T-520: send: the timeout line gives the wrong time, "within its 1 minutes" for --timeout 5 (GitHub #687)
 
@@ -12847,7 +12874,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `connect`, `relay c
   `DialError::Connect` with the text only and the stage `Connect` (`PodUtils/podcrates:crates/pod-ws/src/way.rs`,
   `dial_error`), so the stage is gone when `src/ws.rs:101` reads it. No hop, no hint.
 - #697, #698. Read: `bench` keeps the first error of the workers as a string (`src/cli/cmd/bench.rs:77`,
-  `format!("{err:#}")`) and `bail!` gives that string (`src/cli/cmd/bench.rs:167`): the hop of `src/fetch.rs` is lost.
+  `format!("{err:#}")`) and `bail!` gives that string (`src/cli/cmd/bench.rs:176`): the hop of `src/fetch.rs` is lost.
   `src/relay_reverse/resume.rs:422` and `:435` write `anyhow!("the session to {name}: {e}")`: the hop is lost too.
 - The rule that works: `report::error_line` (`src/report.rs:9`) gives the hint of `hop::of(err)`. A command whose error
   keeps the typed chain gets the hint. Not read: `send` and the `warp proxy` path of #698 (the tester names no cause).
@@ -13189,7 +13216,7 @@ cargo test -p podnet --test shim_direct
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -13248,6 +13275,31 @@ cargo test -p podnet each_command_of_a_document_parses
 cargo test -p podnet --test claims_docs
 ```
 
+## Done
+
+2026-11-23, the commit of this entry.
+
+- Cause: the documents named a command that does not exist (`podnet fetch`) and a flag that does not exist
+  (`init generate --node`; NODE is positional). No test parsed the command lines of the documents.
+- Change: `docs/host-runtime.md` gives `podnet init generate NODE --relay URL` (the sentence and the example) and
+  `PODNET_POLICY=rules.json podnet bench --duration 1 https://example.net/file` (`bench` sends through
+  `podnet::fetch`, which asks the policy). The test found four more faults, fixed in the same commit:
+  `docs/harness.md` (a usage line with `[--json]`: now two command lines), `docs/link.md:446` (`link listen` with no
+  `--allow`), `docs/link.md:447` (`link dial` has no `--to`: now `--peer FINGERPRINT`) and `docs/serve.md:61`
+  (`link connect` with `--peer` and `--allow`, which clap refuses together: now `--allow hub.allow`).
+  `scripts/doc-commands.txt` has the new hashes of the five blocks (same classes).
+- Test: `each_command_of_a_document_parses` (`src/cli/help_tests.rs`). The extraction is the one of
+  `scripts/doc-commands.py` (new mode `--lines`: each `podnet` command of each fenced `sh` block of `README.md`
+  and `docs/*.md`; continued lines are joined, leading `VAR=value` words are dropped, a `<NAME>` placeholder is a
+  value; a pipe, a list operator, a redirection and `$(` end a command). The test parses each line with the clap
+  model; `podnet pod` has its own parser. Seven lines with a placeholder (`...`, `PORT`, `TAG`) are in a list,
+  each with its reason. The documents have 311 lines.
+- Control: on the documents before the fix the test fails with 6 lines: `docs/harness.md:8` (unexpected argument
+  `[--json]`), `docs/host-runtime.md:114` (unexpected argument `--node`), `docs/host-runtime.md:142`
+  (unrecognized subcommand `fetch`), `docs/link.md:446` (required `--allow`), `docs/link.md:447` (unexpected
+  argument `--to`), `docs/serve.md:61` (`--peer` cannot be used with `--allow`).
+- `cargo test -p podnet each_command_of_a_document_parses`: 1 passed. `cargo test -p podnet --test claims_docs`:
+  3 passed. `python3 -I scripts/doc-commands.py --check`: 135 blocks, each with a class.
 
 # T-527: pod --serve: a refused target gives SOCKS5 reply 0x01; docs/proxies.md says 0x04 for "refused" (GitHub #702)
 
@@ -13326,7 +13378,7 @@ cargo test -p podnet --test pod_early_reply
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -13384,6 +13436,25 @@ cargo test -p podnet --test exit_contract
 cargo test -p podnet --test doctor
 ```
 
+## Done
+
+2026-11-23, the commit of this entry.
+
+- Cause: the manual row of 69 (`src/manual/facts.rs`) and `docs/cli.md` named "no edge leg worked" for each
+  command; `doctor` and `bench` give 1 (the help, `docs/doctor.md` and the lane say 1). The help of `doctor` named
+  three legs; `Report::ok` counts four (the relay leg too).
+- Change (the call of `TODO/PROGRESS.md`: keep exit 1): the row of 1 names `podnet doctor` (no leg can work) and
+  `podnet bench` (no request worked). The row of 69 names `tunnel`, `warp` and the commands that start a session,
+  and says that `doctor` and `bench` give 1. `docs/cli.md` and `docs/exit-codes.md` say the same.
+  `podnet doctor --help` and `docs/doctor.md` name the four legs; the relay leg alone gives exit 0. No exit code
+  changes.
+- Test: `a_failed_check_exits_with_a_code_whose_row_names_the_command` (`tests/exit_contract.rs`): one table
+  (`doctor` and `doctor --json` through a proxy at 127.0.0.1:1 with the edge 192.0.2.1:7844, and `bench` of
+  `http://127.0.0.1:1/`). Each run exits with a code that is not 0 and whose row of `podnet man exit-status --json`
+  names the command.
+- Control: on the manual before the fix the test fails on the three rows:
+  `exit Some(1), and its row does not name podnet doctor` (two times) and `... does not name podnet bench`.
+- `cargo test -p podnet --test exit_contract`: 9 passed. `cargo test -p podnet --test doctor`: 9 passed.
 
 # T-529: state directory: the warning names a path that does not exist, and `warp register` prints it three times (GitHub #704)
 
@@ -13457,7 +13528,7 @@ no answer. The error line of the same issue is in T-521 and T-522.
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -13475,7 +13546,7 @@ The text output shows `null` (the JSON word) for the latency of a run where no r
 
 ## Premise
 
-- Read: `text` (`src/cli/cmd/bench.rs:121`) prints the `serde_json::Value` of each latency with `{}`. A `null` of the
+- Read: `text` (`src/cli/cmd/bench.rs:130`) prints the `serde_json::Value` of each latency with `{}`. A `null` of the
   JSON document (`document`, `latency_ms`) comes out as the word `null`. The JSON document is right: `null` is its
   value for "no sample".
 - The code is podnet's own.
@@ -13492,6 +13563,20 @@ The text output shows `null` (the JSON word) for the latency of a run where no r
 cargo test -p podnet bench
 ```
 
+## Done
+
+2026-11-23, the commit of this entry.
+
+- Cause: `text` (`src/cli/cmd/bench.rs`) printed each `serde_json::Value` with `{}`; a `null` (no sample) came out
+  as the word `null`.
+- Change: `shown` gives `-` for `null` (and a string with no quotes). The text of a run with no answer is
+  `latency ms: min - p50 - p95 - p99 - max -`, and a run of no time has `rate - requests/s`. The JSON document
+  keeps `null`.
+- Test: `the_text_of_bench_has_no_null` (`src/cli/cmd/bench.rs`): one table (samples, no sample, no time, an
+  empty document). No row has `null` in its text, and the JSON document keeps `null`.
+- Control: with `null` printed as before, the row `no sample` fails: `no sample: podnet bench: http://a/ ...
+  latency ms: min null p50 null ...`.
+- `cargo test -p podnet bench`: 2 passed.
 
 # T-531: pod: a bad PODNET_RESOLVE is ignored; the manual says exit 78 for each command (GitHub #687, end of the pass)
 

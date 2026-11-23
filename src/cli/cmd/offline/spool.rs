@@ -120,7 +120,10 @@ fn list(args: ListArgs) -> Result<()> {
                 })
             })
             .collect();
-        println!("{}", serde_json::json!({ "entries": rows }));
+        println!(
+            "{}",
+            podnet::status::stamped(serde_json::json!({ "entries": rows }))
+        );
     } else {
         for entry in &entries {
             println!(

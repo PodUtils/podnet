@@ -68,13 +68,15 @@ fn check(file: &std::path::Path, json: bool) -> Result<()> {
             .collect();
         println!(
             "{}",
-            serde_json::to_string_pretty(&serde_json::json!({
-                "schema": "podnet.ci-check/1",
+            // T-519: the common stamp; the old string id is `kind`.
+            serde_json::to_string_pretty(&podnet::status::stamped(serde_json::json!({
+                "schema": 1,
+                "kind": "podnet.ci-check/1",
                 "file": file,
                 "declaration": report.schema,
                 "allowed": report.allowed,
                 "refused": refused,
-            }))?
+            })))?
         );
     } else {
         println!(

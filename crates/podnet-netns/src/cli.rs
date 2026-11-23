@@ -92,6 +92,26 @@ pub(crate) fn program_name() -> &'static str {
     PROGRAM_NAME.get().copied().unwrap_or("podnet pod")
 }
 
+/// The value of the key `podnet` of a JSON document (T-519): the version
+/// line that [`set_version_line`] gives, with no first word (`podnet`), as
+/// the other documents of podnet have it. Without a line: the name and the
+/// version of this library.
+pub(crate) fn stamp_version() -> String {
+    match VERSION_LINE
+        .get()
+        .and_then(|line| line.split_once(' '))
+        .map(|(_, rest)| rest)
+    {
+        Some(rest) if !rest.is_empty() => rest.to_string(),
+        _ => format!(
+            "{} {} ({})",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION"),
+            env!("PODNET_BUILD_COMMIT")
+        ),
+    }
+}
+
 /// The help, in the layout of the other podnet commands (issue 95).
 pub fn usage() -> String {
     usage_for(program_name())

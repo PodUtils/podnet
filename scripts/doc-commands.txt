@@ -86,7 +86,7 @@ docs/relay.md c4ec711fcc live an SSH reverse tunnel service (serveo, relay.examp
 docs/router.md af8e0a4b4a skip a reference list: router.yml of the user and a running router
 
 docs/serve.md 9ab0dfc04a live serve opens a quick tunnel; ./public is the directory of the user
-docs/serve.md 8d3f097d4a skip a template: HUB-FINGERPRINT and CONNECTOR-FINGERPRINT; two hosts
+docs/serve.md 21250fc791 skip a template: HUB-FINGERPRINT and CONNECTOR-FINGERPRINT; two hosts
 docs/serve.md b37100d2e0 skip a template: CLIENT-FINGERPRINT and SERVER-FINGERPRINT; two hosts
 docs/serve.md 5e6c1ef82c skip two shells: a foreground server, then a client; ./public is the directory of the user
 docs/serve.md 5cef402f52 skip two shells: a foreground server, then a client; ./public is the directory of the user
@@ -131,16 +131,16 @@ docs/doctor.md 953525bdeb live the doctor probes the ways out of this host
 docs/e2e.md 667093fcb3 skip a template: pair and peer placeholders; two hosts
 docs/e2e.md f3503938b9 skip a template: pair and peer placeholders
 docs/e2e.md 1f6dde44b9 skip a reference: ... is a placeholder
-docs/harness.md 3df64d1137 skip a usage line: DIR and FILE are placeholders
+docs/harness.md fd5f5c9027 skip usage lines: DIR and FILE are placeholders
 docs/harness.md 3e41583a93 skip a script of the reader's own directory
 docs/host-runtime.md cb480ac148 skip needs /mnt/data or volume.img
 docs/host-runtime.md 246a96275a skip a deliberate panic; VALUE is a placeholder
 docs/host-runtime.md 929a195f8a skip a peer at 127.0.0.1:9000 and a foreground server
-docs/host-runtime.md 171d0ebc29 skip a relay URL and a state directory; the commands run in sequence
-docs/host-runtime.md a5631b97a9 live needs a policy file and the network
+docs/host-runtime.md 44878d6df7 skip a relay URL and a state directory; the commands run in sequence
+docs/host-runtime.md 8910439198 live needs a policy file and the network
 docs/host-runtime.md 6597beca32 skip needs a repository root with the status inputs
 docs/link.md 8dd8c3514a skip a JSON query of the carriers; jq is the reader's tool
-docs/link.md e748556a03 skip needs serial devices /dev/ttyUSB0 and /dev/ttyUSB1
+docs/link.md 207a7d5be5 skip needs serial devices /dev/ttyUSB0 and /dev/ttyUSB1
 docs/link.md 389fb7017f live needs a TURN server and a password file
 docs/link.md 8fbcd54085 skip needs a site, a certificate and a switch key
 docs/offline.md 958f435b4d skip a reference list: FILE, NAME and FINGERPRINT placeholders; foreground listeners

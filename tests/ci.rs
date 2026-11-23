@@ -95,7 +95,8 @@ fn the_json_document_names_each_refusal() {
     let out = run(Some(&policy), &declaration, &["--json"]);
     assert_eq!(out.status.code(), Some(69), "{}", text(&out.stderr));
     let doc: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(doc["schema"], "podnet.ci-check/1");
+    assert_eq!(doc["schema"], 1);
+    assert_eq!(doc["kind"], "podnet.ci-check/1");
     assert_eq!(doc["allowed"], 0);
     assert_eq!(doc["refused"][0]["host"], "blocked.example");
     assert_eq!(doc["refused"][0]["port"], 443);

@@ -202,3 +202,60 @@ fn the_help_holds_the_table_of_the_one_constant() {
         );
     }
 }
+
+/// T-528: a command that reports "no leg" or "no request" exits with a code
+/// whose row of `podnet man exit-status --json` names that command. Port 1
+/// of the loopback refuses each connection, and 192.0.2.1 (TEST-NET) never
+/// answers: no leg and no request can work.
+#[test]
+fn a_failed_check_exits_with_a_code_whose_row_names_the_command() {
+    let dir = tempfile::tempdir().unwrap();
+    let man = podnet(&["man", "exit-status", "--json"], dir.path(), &[]);
+    assert_eq!(man.status.code(), Some(0), "{}", stderr(&man));
+    let man: serde_json::Value = serde_json::from_slice(&man.stdout).expect("the manual is JSON");
+    let edge = [
+        ("PODNET_EDGE", "192.0.2.1:7844"),
+        ("PODNET_RUN_DIR", "/nonexistent/podnet-run"),
+    ];
+    let doctor = [
+        "--proxy",
+        "http://127.0.0.1:1",
+        "doctor",
+        "--samples",
+        "1",
+        "--timeout",
+        "1",
+    ];
+    let doctor_json = [&doctor[..], &["--json"]].concat();
+    let bench = [
+        "bench",
+        "--duration",
+        "1",
+        "--timeout",
+        "1",
+        "http://127.0.0.1:1/",
+    ];
+    let rows: [(&str, &[&str]); 3] = [
+        ("podnet doctor", &doctor),
+        ("podnet doctor", &doctor_json),
+        ("podnet bench", &bench),
+    ];
+    let mut wrong = Vec::new();
+    for (command, args) in rows {
+        let out = podnet(args, dir.path(), &edge);
+        let code = out.status.code();
+        let row = man["exits"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| e["code"]["value"].as_i64().map(|v| v as i32) == code);
+        let names = row.is_some_and(|e| e["meaning"].as_str().unwrap_or("").contains(command));
+        if code == Some(0) || !names {
+            wrong.push(format!(
+                "{args:?}: exit {code:?}, and its row does not name {command}: {row:?}\n{}",
+                stderr(&out)
+            ));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}

@@ -118,23 +118,32 @@ fn document(url: &str, connections: u32, elapsed: f64, tallies: Vec<Tally>) -> V
     })
 }
 
+/// One value of the text output: `-` when the document has no sample (`null`).
+fn shown(v: &Value) -> String {
+    match v {
+        Value::Null => "-".to_owned(),
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
+    }
+}
+
 fn text(doc: &Value) -> String {
     let l = &doc["latency_ms"];
     format!(
         "podnet bench: {}\n  requests {} (ok {}, errors {}) in {} s on {} connections\n  \
          rate {} requests/s\n  latency ms: min {} p50 {} p95 {} p99 {} max {}\n",
         doc["url"].as_str().unwrap_or_default(),
-        doc["requests"],
-        doc["ok"],
-        doc["errors"],
-        doc["duration_s"],
-        doc["connections"],
-        doc["rate"],
-        l["min"],
-        l["p50"],
-        l["p95"],
-        l["p99"],
-        l["max"],
+        shown(&doc["requests"]),
+        shown(&doc["ok"]),
+        shown(&doc["errors"]),
+        shown(&doc["duration_s"]),
+        shown(&doc["connections"]),
+        shown(&doc["rate"]),
+        shown(&l["min"]),
+        shown(&l["p50"]),
+        shown(&l["p95"]),
+        shown(&l["p99"]),
+        shown(&l["max"]),
     )
 }
 
@@ -184,5 +193,42 @@ mod tests {
         assert_eq!(percentile(&v, 100.0), Some(100.0));
         assert_eq!(percentile(&[7.0], 99.0), Some(7.0));
         assert_eq!(percentile(&[], 50.0), None);
+    }
+
+    /// The text output never shows the JSON word `null`: a value with no
+    /// sample is `-`, and the JSON document keeps `null` (T-530).
+    #[test]
+    fn the_text_of_bench_has_no_null() {
+        let tally = |good: Vec<f64>, errors: u64| Tally {
+            good,
+            errors,
+            bytes: 0,
+            first_error: None,
+        };
+        let rows: [(&str, Value, &str); 4] = [
+            (
+                "samples",
+                document("http://a/", 1, 1.0, vec![tally(vec![0.010, 0.020], 0)]),
+                "min 10",
+            ),
+            (
+                "no sample",
+                document("http://a/", 4, 2.8, vec![tally(vec![], 50)]),
+                "min - p50 - p95 - p99 - max -",
+            ),
+            (
+                "no time",
+                document("http://a/", 1, 0.0, vec![tally(vec![], 0)]),
+                "rate - requests/s",
+            ),
+            ("empty document", json!({}), "min - p50 -"),
+        ];
+        for (name, doc, want) in rows {
+            let out = text(&doc);
+            assert!(!out.contains("null"), "{name}: {out}");
+            assert!(out.contains(want), "{name}: want {want:?} in {out}");
+        }
+        let none = document("http://a/", 1, 1.0, vec![tally(vec![], 1)]);
+        assert!(none["latency_ms"]["p50"].is_null(), "the JSON keeps null");
     }
 }

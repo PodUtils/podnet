@@ -23,6 +23,12 @@ a protocol or a suite: a retry sends the same failing request. The codes in
 the first table stay distinct for that reason. `tests/exit_contract.rs`
 invokes the binary for each code and reads the status directly.
 
+`podnet doctor` and `podnet bench` give 1 (failure), not 69, when no leg
+can work or no request worked. Their job is the check, and the check
+failed. 69 is for the command that needs the service, for example
+`podnet tunnel` and `podnet warp` when no edge leg worked.
+`podnet man exit-status` gives the full list.
+
 ## How to read each code
 
 - 64: the command line is wrong. podnet did nothing.

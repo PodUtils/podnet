@@ -22,9 +22,10 @@
 //!    `private_key` or `seed` has a value.
 //!
 //! Commands that need the network (tunnel, share, demo, ssh-relay, send,
-//! receive, relay pair, relay node, warp status, warp exit, warp scan,
-//! doctor, connect, link mesh of a node with no announce) are not in the
-//! table. A row that needs TCP on the loopback is skipped, with a line,
+//! receive, relay pair, relay node, warp exit, warp scan, doctor,
+//! connect, link mesh of a node with no announce) are not in the table.
+//! `warp status --json` has a row against the API stand-in of
+//! `pod-testkit` on the loopback (T-519). A row that needs TCP on the loopback is skipped, with a line,
 //! on a host that has none.
 
 mod test_host;
@@ -71,6 +72,10 @@ struct Row {
     tcp: bool,
     /// The command has a local listener (rule 3).
     listener: bool,
+    /// The variables that the command gets in addition.
+    env: Vec<(String, String)>,
+    /// The exit codes of a good run (`One` and `Lines`).
+    codes: &'static [i32],
 }
 
 fn row(args: &[&str], form: Form) -> Row {
@@ -79,6 +84,8 @@ fn row(args: &[&str], form: Form) -> Row {
         form,
         tcp: false,
         listener: false,
+        env: Vec::new(),
+        codes: &[0],
     }
 }
 
@@ -90,6 +97,16 @@ impl Row {
 
     fn listener(mut self) -> Row {
         self.listener = true;
+        self
+    }
+
+    fn env(mut self, key: &str, value: &str) -> Row {
+        self.env.push((key.to_string(), value.to_string()));
+        self
+    }
+
+    fn codes(mut self, codes: &'static [i32]) -> Row {
+        self.codes = codes;
         self
     }
 
@@ -152,13 +169,17 @@ impl Host {
         if row.form == Form::FirstLine {
             return self.first_line(row);
         }
-        let out = self.command(&row.args).output().unwrap();
+        let out = self
+            .command(&row.args)
+            .envs(row.env.iter().map(|(k, v)| (k, v)))
+            .output()
+            .unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
-        assert_eq!(
-            out.status.code(),
-            Some(0),
-            "{}: {}{stdout}",
+        assert!(
+            out.status.code().is_some_and(|c| row.codes.contains(&c)),
+            "{}: exit {:?}: {}{stdout}",
             row.name(),
+            out.status.code(),
             String::from_utf8_lossy(&out.stderr)
         );
         stdout
@@ -348,6 +369,44 @@ fn setup(host: &Host) -> String {
     fp
 }
 
+/// The files of the rows of the documents with a named form (`kind`) and
+/// the stored WARP record (T-519). Gives the base of the WARP API stand-in,
+/// or `None` on a host with no loopback.
+fn setup_forms(host: &Host) -> Option<pod_testkit::stand::Stand> {
+    let policy = r#"{"default":"refuse","rules":[{"name":"api","host":"api.example","port":"443","action":"direct"}]}"#;
+    std::fs::write(host.path("policy.json"), policy).unwrap();
+    std::fs::write(
+        host.path("need.json"),
+        r#"{"schema":"podnet.ci-egress/1","hosts":[{"host":"api.example","port":443}]}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        host.path("node.json"),
+        r#"{"schema":1,"node":"a","listen":[],"relay":"http://relay.example","allow":[],"egress":{"default":"refuse","rules":[]}}"#,
+    )
+    .unwrap();
+    test_host::loopback().ok()?;
+    let api = pod_testkit::stand::warp::Api::new("", "192.0.2.1", "2001:db8::1");
+    let served = pod_testkit::stand::http(api.handler()).unwrap();
+    let out = host
+        .command(&warp_args(host, &["register"]))
+        .env("PODNET_WARP_API", format!("http://{}", served.addr()))
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "warp register: {out:?}");
+    Some(served)
+}
+
+fn warp_args(host: &Host, args: &[&str]) -> Vec<String> {
+    let identity = host.arg("warp.json");
+    let mut all: Vec<String> = ["warp", "--no-proxy", "--identity", identity.as_str()]
+        .iter()
+        .map(|a| a.to_string())
+        .collect();
+    all.extend(args.iter().map(|a| a.to_string()));
+    all
+}
+
 fn path_of(path: &Path) -> &str {
     path.to_str().unwrap()
 }
@@ -359,6 +418,7 @@ fn each_json_document_keeps_the_contract() {
         dir: tempfile::tempdir().unwrap(),
     };
     let fp = setup(&host);
+    let warp = setup_forms(&host);
     let (site, repos, allow) = (host.arg("site"), host.arg("repos"), host.arg("allow"));
     let (sock, sock2) = (host.path("l.sock"), host.path("f.sock"));
     let (sock, sock2) = (path_of(&sock), path_of(&sock2));
@@ -400,6 +460,27 @@ fn each_json_document_keeps_the_contract() {
         row(&["man", "--json", "tunnel"], One),
         row(&["man", "--json", "exit-status"], One),
         row(&["route", "--help", "--json"], One),
+        // T-519: the documents with a named form, and `pod doctor`.
+        row(&["rules", "check", &host.arg("policy.json"), "--json"], One),
+        row(&["init", "check", &host.arg("node.json"), "--json"], One),
+        row(&["ci", "check", &host.arg("need.json"), "--json"], One)
+            .env("PODNET_POLICY", &host.arg("policy.json")),
+        row(
+            &[
+                "init",
+                "enroll",
+                &host.arg("enrolled"),
+                "--node",
+                "a",
+                "--relay",
+                "http://relay.example",
+                "--offline",
+                "--json",
+            ],
+            One,
+        ),
+        // Exit 3: no backend can run on this host.
+        row(&["pod", "doctor", "--json"], One).codes(&[0, 3]),
         row(
             &[
                 "serve",
@@ -517,6 +598,18 @@ fn each_json_document_keeps_the_contract() {
         )
         .listener(),
     ];
+    let mut rows = rows;
+    if let Some(served) = &warp {
+        let args = warp_args(&host, &["status", "--json"]);
+        let args: Vec<&str> = args.iter().map(String::as_str).collect();
+        rows.push(
+            row(&args, One)
+                .env("PODNET_WARP_API", &format!("http://{}", served.addr()))
+                .tcp(),
+        );
+    } else {
+        test_host::skip_line("warp status --json: no loopback for the API stand-in");
+    }
     // Each fault is in the list at the end; the hook of the panic of a row
     // stays silent.
     std::panic::set_hook(Box::new(|_| {}));

@@ -99,8 +99,8 @@ SYNOPSIS
   Check this host and podnet:
     doctor       Test the path from this host to the edge: the proxy, TCP and
                  TLS to the APIs, the edge (7844) and MASQUE (443), and UDP
-                 7844. Exit 0 when at least one leg (quic, http2, quic+warp)
-                 can work, 1 when none can
+                 7844. Exit 0 when at least one leg (quic, http2, quic+warp,
+                 http2+relay) can work, 1 when none can
     status       Print one line of JSON about this host. It opens no connection
     host         State the five properties of a file system, and the fallback
                  that the runtime uses
@@ -12381,7 +12381,7 @@ podnet harness
 podnet doctor
   Test the path from this host to the edge: the proxy, TCP and TLS to the APIs,
   the edge (7844) and MASQUE (443), and UDP 7844. Exit 0 when at least one leg
-  (quic, http2, quic+warp) can work, 1 when none can.
+  (quic, http2, quic+warp, http2+relay) can work, 1 when none can.
 
   Usage: podnet doctor [OPTIONS]
 
@@ -14065,6 +14065,8 @@ EXIT STATUS
   1 (failure)
       A failure that has no other code. With --check: a check of an origin or
       of the network failed (a bad flag or configuration has its own code).
+      podnet doctor: no leg can work on this host. podnet bench: no request
+      worked.
   3 (no-backend)
       podnet pod and podnet warp run: no backend can run on this host, the
       program is not in PATH (or cannot run), or the setup of the backend
@@ -14087,8 +14089,10 @@ EXIT STATUS
   68 (no-host)
       The address of a peer does not resolve.
   69 (unavailable)
-      A service or a network path is not available: no edge leg worked, the
-      quick-tunnel service, the WARP API or the MASQUE endpoint did not answer.
+      A service or a network path is not available: no edge leg worked for
+      podnet tunnel, podnet warp or another command that starts a session. Or
+      the quick-tunnel service, the WARP API or the MASQUE endpoint did not
+      answer. podnet doctor and podnet bench give 1 in place of 69.
   71 (os-error)
       A file of the host cannot be used: a key file or an allow list with a
       mode that lets other users change it (the key: any access), a symbolic
@@ -15139,7 +15143,7 @@ the service SERVICE (T-297). The link instance is found as `forward` finds it: `
 the run directory.
 
 ```sh
-podnet link connect /run/hub.sock --peer HUB-FINGERPRINT --allow hub.allow --control /run/link.ctl   # hub.allow: HUB-FINGERPRINT services=files
+podnet link connect /run/hub.sock --allow hub.allow --control /run/link.ctl   # hub.allow: HUB-FINGERPRINT services=files
 podnet serve ./public --ingress peer:HUB-FINGERPRINT/files                                        # at the connector
 podnet forward -L 8080=peer:CONNECTOR-FINGERPRINT/files                                           # at the hub: HTTP on 127.0.0.1:8080
 ```
@@ -17935,7 +17939,10 @@ reason for each leg that cannot work, and the roads: `direct` (quic or
 http2), `warp` (quic+warp) and `relay` (http2+relay). The last line,
 `next:`, gives the step to take: the `podnet tunnel` command for the legs
 that work, the clock to set, or the report for an issue (`next` in
-`--json`). Exit 0: at least one leg can work. Exit 1: none can. `--json` gives one document; `--samples` and `--timeout`
+`--json`). Exit 0: at least one of the four legs (`quic`, `http2`,
+`quic+warp`, `http2+relay`) can work; the relay leg alone is enough. Exit
+1: none can. The exit is 1, not 69: the doctor reports the path, and its
+check failed. `--json` gives one document; `--samples` and `--timeout`
 make it shorter.
 
 ```sh
@@ -18169,7 +18176,9 @@ command that runs with no network (`cargo test -p podnet --test contracts`).
 1. Shape: a document is one JSON object. An event stream (a server command with `--json` in the foreground) is
    one JSON object on each line. Each line has a string `event`.
 2. Stamp: each object has `schema` (a positive integer) and `podnet` (the version line of the binary). The
-   documents of `man --json` and `COMMAND --help --json` keep the `schema` of `pod-manual`. An environment
+   documents of `man --json` and `COMMAND --help --json` keep the `schema` of `pod-manual`. A document with a
+   named form (`rules check`, `init check`, `ci check`) gives the name in `kind`, for example
+   `podnet.rules-check/1`. An environment
    document (`net shim`, `net socksify`, `net passwd-shim`, `net ts-shims`) is the exception: each key is a
    variable name and each value is a string, so that a shell can export each key.
 3. Endpoint: each `ready` event and each `detached` document has `url` (a string or `null`), `listen` (a string
@@ -18217,7 +18226,8 @@ The exit codes follow sysexits.h: 64 for a bad command line, 65 for input
 that `podnet receive` refuses (a bad name in a transfer, a name that
 exists), 66 when a file
 that must exist is missing (the key or the allow list of the link), 69 when a
-service or a network path is not available (no edge leg worked), 71 when a
+service or a network path is not available (`tunnel`, `warp` and the other
+commands that start a session: no edge leg worked), 71 when a
 file of the host cannot be used (a key file with a mode that is not 0600), 77
 when a peer is not in the allow list of the link or of a sealed relay session
 (`relay node --seal`, `relay connect --seal`), when a peer refused a key (a
@@ -18226,7 +18236,9 @@ did not match, 78 for a bad configuration
 (for example `PODNET_EDGE`). 68 is for an address of a peer that does not
 resolve. 124 is for a time limit: `--detach` was not ready in
 `--ready-timeout`, `podnet send` got no receiver in `--timeout`, or the hello
-of a link did not end in time. `podnet man exit-status` gives all of them.
+of a link did not end in time. `podnet doctor` gives 1 when no leg can work, and `podnet bench`
+gives 1 when no request worked: their job is the check, and the check
+failed. `podnet man exit-status` gives all of them.
 The exit codes of `podnet link` are in [link.md](link.md).
 
 `PODNET_ERROR_PROGRAM=/path/to/program` gives a JSON report of each failure
@@ -19789,7 +19801,7 @@ capture file and checks the disagreement line.
 
 ## The initial configuration
 
-`podnet init generate --node NAME --relay URL` writes a configuration that
+`podnet init generate NODE --relay URL` writes a configuration that
 listens on nothing. `podnet init check FILE` validates the document against
 schema 1. `podnet init enroll DIR --node NAME --relay URL` issues the
 identity, registers the node with the relay and writes the allow list. The
@@ -19801,7 +19813,7 @@ error `INIT-1`. A failed enrolment leaves no destination and no temporary
 directory.
 
 ```sh
-podnet init generate --node node-a --relay http://relay.example
+podnet init generate node-a --relay http://relay.example
 podnet init check node.json
 podnet init enroll state --node node-a --relay http://relay.example --offline
 ```
@@ -19829,12 +19841,18 @@ is active only when a policy is installed. Set one in a deployment that
 needs a classified egress.
 
 ```sh
-PODNET_POLICY=rules.json podnet fetch https://example.net/file
+PODNET_POLICY=rules.json podnet bench --duration 1 https://example.net/file
 podnet rules check rules.json
+podnet rules check rules.json --json
 ```
 
-`podnet rules check` names each rule that an earlier rule covers, and exits
-78 when a later rule is unreachable. The test
+`podnet bench` sends its requests through the policy: a refused destination
+is an error of each request. `podnet rules check` names each rule that an
+earlier rule covers, and exits 78 when a later rule is unreachable. Its
+`--json` document has the stamp (`schema` 1 and `podnet`) and the key
+`kind`: `podnet.rules-check/1`. `podnet init check --json` and
+`podnet ci check --json` have the same form, with the `kind`
+`podnet.init-check/1` and `podnet.ci-check/1`. The test
 `a_destination_that_matches_no_rule_is_refused_before_a_connect` uses a
 connector that counts its calls and proves the count is zero.
 
@@ -19892,7 +19910,8 @@ visible each road is to a middlebox. The result is a table with one row for
 each road and each deployment profile. It is not a pass count.
 
 ```sh
-podnet harness --data DIR [--json] [--archive FILE]
+podnet harness --data DIR
+podnet harness --data DIR --json --archive FILE
 ```
 
 `--data` names the fixture directory. It holds `rules.json`, `flow.json`,
@@ -20063,6 +20082,12 @@ the allow list does not admit it. Code 78 is a mismatch of a configuration,
 a protocol or a suite: a retry sends the same failing request. The codes in
 the first table stay distinct for that reason. `tests/exit_contract.rs`
 invokes the binary for each code and reads the status directly.
+
+`podnet doctor` and `podnet bench` give 1 (failure), not 69, when no leg
+can work or no request worked. Their job is the check, and the check
+failed. 69 is for the command that needs the service, for example
+`podnet tunnel` and `podnet warp` when no edge leg worked.
+`podnet man exit-status` gives the full list.
 
 ## How to read each code
 

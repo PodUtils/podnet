@@ -289,7 +289,8 @@ pub(crate) enum Command {
     Harness(cmd::runtime::HarnessArgs),
     /// Test the path from this host to the edge: the proxy, TCP and TLS to
     /// the APIs, the edge (7844) and MASQUE (443), and UDP 7844. Exit 0 when
-    /// at least one leg (quic, http2, quic+warp) can work, 1 when none can.
+    /// at least one leg (quic, http2, quic+warp, http2+relay) can work, 1
+    /// when none can.
     Doctor(DoctorArgs),
     /// Start a podnet command at boot, with no root: a systemd user unit (it
     /// stops at logout unless linger is on), else an @reboot line in the

@@ -71,7 +71,15 @@ pub(crate) async fn run(
                         },
                     );
                 }
-                println!("{}", serde_json::to_string_pretty(&account)?);
+                // T-519: the stamp of each document. A key `schema` of the
+                // record of the provider does not replace it.
+                if let Some(doc) = account.as_object_mut() {
+                    doc.insert("schema".into(), 1.into());
+                }
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&podnet::status::stamped(account))?
+                );
                 if transport_dead {
                     eprintln!(
                         "{}",

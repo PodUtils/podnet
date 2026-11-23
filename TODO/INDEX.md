@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**531 entries: 31 open, 13 partial, 24 blocked, 463 done.**
+**531 entries: 27 open, 13 partial, 24 blocked, 467 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 5 | 2 | 2 | 77 | 86 |
-| P2 | 16 | 7 | 10 | 229 | 262 |
-| P3 | 10 | 4 | 12 | 156 | 182 |
-| **All** | 31 | 13 | 24 | 463 | 531 |
+| P2 | 13 | 7 | 10 | 232 | 262 |
+| P3 | 9 | 4 | 12 | 157 | 182 |
+| **All** | 27 | 13 | 24 | 467 | 531 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -563,17 +563,17 @@ M8 Overlays, M9 Later.
 | [T-516](fixes.md) | P1 | S | M5 | defect | open | pod: with the seccomp backend, a program that cannot run exits 127 with no line (GitHub #690) |
 | [T-517](fixes.md) | P1 | M | M5 | defect | open | pod: SIGTERM, SIGINT or SIGHUP to podnet ends podnet and leaves the program running (GitHub #691) |
 | [T-518](fixes.md) | P1 | S | M5 | defect | open | rules check: a policy file that cannot be read or parsed exits 1; PODNET_POLICY gives 78 (GitHub #700) |
-| [T-519](fixes.md) | P2 | S | M5 | defect | open | JSON documents without the stamp: warp status, pod doctor and rules check (GitHub #693, #694) |
+| [T-519](fixes.md) | P2 | S | M5 | defect | done | JSON documents without the stamp: warp status, pod doctor and rules check (GitHub #693, #694) |
 | [T-520](fixes.md) | P2 | S | M5 | defect | open | send: the timeout line gives the wrong time, "within its 1 minutes" for --timeout 5 (GitHub #687) |
 | [T-521](fixes.md) | P2 | M | M5 | defect | open | error lines: a hint of the wrong hop (quick tunnel), and no hint for a dead proxy or a name that does not resolve (GitHub #695, #697, #698) |
 | [T-522](fixes.md) | P2 | M | M5 | defect | open | error lines and rows name one cause two to six times, with the Debug text of a Rust struct, and one line holds three resolvers (GitHub #696, #697, #698) |
 | [T-523](fixes.md) | P2 | S | M5 | defect | open | a listener that cannot bind: two lines for one cause, no next step, and the bind comes after the WARP session (GitHub #705, #706) |
 | [T-524](fixes.md) | P2 | S | M5 | defect | open | net doctor: a host with no loopback gets "not needed", and a TCP loopback listener starts and cannot be reached (GitHub #692) |
 | [T-525](fixes.md) | P2 | S | M5 | defect | open | net shim: the documented `--out /tmp/podnet-vnet` example prints a working LD_PRELOAD line on a noexec /tmp (GitHub #699) |
-| [T-526](fixes.md) | P2 | S | M5 | defect | open | docs/host-runtime.md: the examples `podnet fetch` and `podnet init generate --node` do not run (GitHub #701) |
+| [T-526](fixes.md) | P2 | S | M5 | defect | done | docs/host-runtime.md: the examples `podnet fetch` and `podnet init generate --node` do not run (GitHub #701) |
 | [T-527](fixes.md) | P2 | S | M5 | defect | open | pod --serve: a refused target gives SOCKS5 reply 0x01; docs/proxies.md says 0x04 for "refused" (GitHub #702) |
-| [T-528](fixes.md) | P2 | S | M5 | defect | open | doctor: exit 1 when no leg works; `podnet man exit-status` says 69 for "no edge leg worked" (GitHub #703) |
+| [T-528](fixes.md) | P2 | S | M5 | defect | done | doctor: exit 1 when no leg works; `podnet man exit-status` says 69 for "no edge leg worked" (GitHub #703) |
 | [T-529](fixes.md) | P2 | S | M5 | defect | open | state directory: the warning names a path that does not exist, and `warp register` prints it three times (GitHub #704) |
-| [T-530](fixes.md) | P3 | S | M5 | defect | open | bench: the text output shows `null` for the latency of a run with no answer (GitHub #698) |
+| [T-530](fixes.md) | P3 | S | M5 | defect | done | bench: the text output shows `null` for the latency of a run with no answer (GitHub #698) |
 | [T-531](fixes.md) | P2 | S | M5 | defect | open | pod: a bad PODNET_RESOLVE is ignored; the manual says exit 78 for each command (GitHub #687, end of the pass) |
 | [T-532](fixes.md) | P3 | S | M5 | defect | open | pod: the seccomp backend counts each refused connect twice; autostart remove of an unknown name exits 1 (GitHub #687, end of the pass) |

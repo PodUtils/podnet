@@ -52,7 +52,10 @@ pub(crate) async fn run(args: WarpArgs, client: podnet::warp::WarpClient) -> Res
                         }),
                     })
                     .collect();
-                println!("{}", serde_json::json!({ "doors": doors }));
+                println!(
+                    "{}",
+                    podnet::status::stamped(serde_json::json!({ "doors": doors }))
+                );
             } else {
                 for (a, r) in &results {
                     match r {

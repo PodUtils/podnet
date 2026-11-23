@@ -5,7 +5,8 @@ visible each road is to a middlebox. The result is a table with one row for
 each road and each deployment profile. It is not a pass count.
 
 ```sh
-podnet harness --data DIR [--json] [--archive FILE]
+podnet harness --data DIR
+podnet harness --data DIR --json --archive FILE
 ```
 
 `--data` names the fixture directory. It holds `rules.json`, `flow.json`,

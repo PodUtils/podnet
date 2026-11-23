@@ -443,8 +443,8 @@ build, with no feature.
 | `hf` | An ARDOP or VARA modem on a serial line, the line at 115200 baud and the radio at 300 to 3000 bit/s, 1200 by default. | Ordered, reliable, not duplex, no unit, rate BPS/8 bytes for each second. | `hf:PATH[,BPS]`, or `--carrier hf:PATH[,BPS]`. |
 
 ```sh
-podnet link listen /dev/ttyUSB0 --carrier serial:/dev/ttyUSB0,1200 --to 127.0.0.1:22
-podnet link dial /dev/ttyUSB1 --carrier hf:/dev/ttyUSB1,1200 --to 127.0.0.1:22
+podnet link listen /dev/ttyUSB0 --carrier serial:/dev/ttyUSB0,1200 --allow peers.allow --to 127.0.0.1:22
+podnet link dial /dev/ttyUSB1 --carrier hf:/dev/ttyUSB1,1200 --peer FINGERPRINT
 ```
 
 * The line is point to point. A dial and a listen both open the device, and the two ends of one wire know each other; the hello

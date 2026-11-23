@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 531 entries: 31 open, 13 partial, 24 blocked, 463 done.
+`TODO/INDEX.md` holds 531 entries: 27 open, 13 partial, 24 blocked, 467 done.
 
 ## State
 
@@ -59,10 +59,10 @@ not wait for a larger one.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
    - **First, the gate of the release of `v0.4.0-beta.18`** (the black-box QA pass of 2026-11-23, GitHub #687 and #689 to
      #706; `docs/maintenance.md`, Release, step 0: the release waits until each P1 and P2 entry is done): P1 T-515,
-     T-516, T-517 and T-518; then P2 T-519 to T-529 and T-531 (an S entry first: T-519, T-520, T-523 to T-529, T-531;
-     then T-521 and T-522); then P3 T-530 and T-532. T-516, T-520, T-521 and T-522 have an ask for podcrates (a COORD
-     issue `(to podcrates)`); each has a step in podnet that does not wait for the tag. T-527 and T-528 have a call
-     in their Premise that the owner can change.
+     T-516, T-517 and T-518; then P2 T-520 to T-525, T-527, T-529 and T-531 (an S entry first: T-520, T-523 to T-525,
+     T-527, T-529, T-531; then T-521 and T-522); then P3 T-532. T-516, T-520, T-521 and T-522 have an ask for podcrates
+     (a COORD issue `(to podcrates)`); each has a step in podnet that does not wait for the tag. T-527 has a call in
+     its Premise that the owner can change.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).

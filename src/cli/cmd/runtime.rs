@@ -175,13 +175,16 @@ pub(crate) fn rules(args: RulesArgs) -> Result<()> {
                     .collect();
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "schema": "podnet.rules-check/1",
+                    // T-519: the common stamp (`schema` 1 and `podnet`);
+                    // the old string id is the key `kind`.
+                    serde_json::to_string_pretty(&podnet::status::stamped(serde_json::json!({
+                        "schema": 1,
+                        "kind": "podnet.rules-check/1",
                         "file": file,
                         "rules": policy.rules.len(),
                         "default": policy.default.as_str(),
                         "shadowed": rows,
-                    }))?
+                    })))?
                 );
             } else {
                 println!(
@@ -289,15 +292,17 @@ pub(crate) async fn init(args: InitArgs) -> Result<()> {
             if json {
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&serde_json::json!({
-                        "schema": "podnet.init-check/1",
+                    // T-519: the common stamp; the old string id is `kind`.
+                    serde_json::to_string_pretty(&podnet::status::stamped(serde_json::json!({
+                        "schema": 1,
+                        "kind": "podnet.init-check/1",
                         "file": file,
                         "node": config.node,
                         "relay": config.relay,
                         "listeners": config.listen.len(),
                         "allowed": config.allow.len(),
                         "valid": true,
-                    }))?
+                    })))?
                 );
             } else {
                 println!(
@@ -340,7 +345,12 @@ pub(crate) async fn init(args: InitArgs) -> Result<()> {
             };
             let enrolled = podnet::initcfg::enrol(&dir, &config, &registrar).await?;
             if json {
-                println!("{}", serde_json::to_string_pretty(&enrolled)?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&podnet::status::stamped(serde_json::to_value(
+                        &enrolled
+                    )?))?
+                );
             } else {
                 println!("enrolled {} at {}", enrolled.node, enrolled.path);
                 println!("fingerprint: {}", enrolled.fingerprint);

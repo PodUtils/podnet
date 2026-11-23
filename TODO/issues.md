@@ -377,17 +377,17 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #690 | [qa 0.4.0-beta.18] pod: with the seccomp backend, a missing program path exits 127 with no line | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-516 |
 | #691 | [qa 0.4.0-beta.18] pod: SIGTERM, SIGINT or SIGHUP to podnet ends podnet and leaves the program running | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-517 |
 | #692 | [qa 0.4.0-beta.18] net doctor: no-loopback host reports "not needed"; a TCP loopback listener starts and cannot be reached | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-524 |
-| #693 | [qa 0.4.0-beta.18] warp status --json: the document has no `schema` and no `podnet` key | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-519 |
-| #694 | [qa 0.4.0-beta.18] pod doctor --json: the document has no `podnet` key | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-519 |
+| #693 | [qa 0.4.0-beta.18] warp status --json: the document has no `schema` and no `podnet` key | closed: T-519 done (the commit of T-519; CI run: the push of the lead) | T-519 |
+| #694 | [qa 0.4.0-beta.18] pod doctor --json: the document has no `podnet` key | closed: T-519 done (the commit of T-519; CI run: the push of the lead) | T-519 |
 | #695 | [qa 0.4.0-beta.18] tunnel: a non-JSON answer of the quick-tunnel service gives a hint for another step (edge register) | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-521 |
 | #696 | [qa 0.4.0-beta.18] tunnel --check, serve --check: the edge row prints one DNS error six times, as Rust debug text | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-522 |
 | #697 | [qa 0.4.0-beta.18] connect: a dead proxy gives "the remote does not answer", repeats the cause three times, no next step | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-521, T-522 |
 | #698 | [qa 0.4.0-beta.18] bench: a name that does not resolve gives one very long line and no next step | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-521, T-522, T-530 |
 | #699 | [qa 0.4.0-beta.18] net shim: the documented `--out /tmp/podnet-vnet` example prints a working LD_PRELOAD line on a noexec /tmp | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-525 |
 | #700 | [qa 0.4.0-beta.18] rules check: an unreadable or unparseable policy file exits 1; PODNET_POLICY gives 78 | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-518 |
-| #701 | [qa 0.4.0-beta.18] docs/host-runtime.md: the examples `podnet fetch` and `podnet init generate --node` do not run | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-526 |
+| #701 | [qa 0.4.0-beta.18] docs/host-runtime.md: the examples `podnet fetch` and `podnet init generate --node` do not run | closed: T-526 done (the commit of T-526; CI run: the push of the lead) | T-526 |
 | #702 | [qa 0.4.0-beta.18] pod --serve: a refused target gives SOCKS5 reply 0x01; docs/proxies.md says 0x04 for "refused" | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-527 |
-| #703 | [qa 0.4.0-beta.18] doctor: exit 1 when no leg works; `podnet man exit-status` says 69 for "no edge leg worked" | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-528 |
+| #703 | [qa 0.4.0-beta.18] doctor: exit 1 when no leg works; `podnet man exit-status` says 69 for "no edge leg worked" | closed: T-528 done (the commit of T-528; CI run: the push of the lead) | T-528 |
 | #704 | [qa 0.4.0-beta.18] state directory: the warning names a path that does not exist, and `warp register` prints it three times | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-529 |
 | #705 | [qa 0.4.0-beta.18] warp proxy: a listener that cannot bind prints the same cause on two error lines | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-523 |
 | #706 | [qa 0.4.0-beta.18] forward, net proxy, serve --local: a TCP bind denied by the host gives no hint to use a unix socket | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-523 |

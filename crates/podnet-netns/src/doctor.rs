@@ -424,6 +424,9 @@ pub(crate) fn doctor(json: bool) -> i32 {
             .collect();
         // T-078: the schema and the verdict words of podnet doctor.
         root.insert("schema".into(), SCHEMA.into());
+        // T-519: the stamp of each JSON document of podnet. An added
+        // optional key: the schema id stays (docs/decisions.md 2026-11-18).
+        root.insert("podnet".into(), crate::cli::stamp_version().into());
         root.insert("capabilities".into(), capabilities.into());
         root.insert(
             "verdicts".into(),

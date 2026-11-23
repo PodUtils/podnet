@@ -99,7 +99,7 @@ capture file and checks the disagreement line.
 
 ## The initial configuration
 
-`podnet init generate --node NAME --relay URL` writes a configuration that
+`podnet init generate NODE --relay URL` writes a configuration that
 listens on nothing. `podnet init check FILE` validates the document against
 schema 1. `podnet init enroll DIR --node NAME --relay URL` issues the
 identity, registers the node with the relay and writes the allow list. The
@@ -111,7 +111,7 @@ error `INIT-1`. A failed enrolment leaves no destination and no temporary
 directory.
 
 ```sh
-podnet init generate --node node-a --relay http://relay.example
+podnet init generate node-a --relay http://relay.example
 podnet init check node.json
 podnet init enroll state --node node-a --relay http://relay.example --offline
 ```
@@ -139,12 +139,18 @@ is active only when a policy is installed. Set one in a deployment that
 needs a classified egress.
 
 ```sh
-PODNET_POLICY=rules.json podnet fetch https://example.net/file
+PODNET_POLICY=rules.json podnet bench --duration 1 https://example.net/file
 podnet rules check rules.json
+podnet rules check rules.json --json
 ```
 
-`podnet rules check` names each rule that an earlier rule covers, and exits
-78 when a later rule is unreachable. The test
+`podnet bench` sends its requests through the policy: a refused destination
+is an error of each request. `podnet rules check` names each rule that an
+earlier rule covers, and exits 78 when a later rule is unreachable. Its
+`--json` document has the stamp (`schema` 1 and `podnet`) and the key
+`kind`: `podnet.rules-check/1`. `podnet init check --json` and
+`podnet ci check --json` have the same form, with the `kind`
+`podnet.init-check/1` and `podnet.ci-check/1`. The test
 `a_destination_that_matches_no_rule_is_refused_before_a_connect` uses a
 connector that counts its calls and proves the count is zero.
 

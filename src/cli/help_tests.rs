@@ -231,6 +231,85 @@ fn each_example_of_the_manual_parses() {
     }
 }
 
+/// T-526: each `podnet` command line of a fenced `sh` block of `README.md`
+/// and `docs/*.md` parses with the command model. `scripts/doc-commands.py
+/// --lines` gives the lines (the same blocks as `--check` and `--run`).
+/// `podnet pod` has its own parser (podnet-netns). A line in
+/// [`PLACEHOLDERS`] has a word that the reader replaces.
+#[test]
+fn each_command_of_a_document_parses() {
+    /// (the start of the line, the reason).
+    const PLACEHOLDERS: &[(&str, &str)] = &[
+        (
+            "podnet -q tunnel ...",
+            "a reference list: `...` is each command",
+        ),
+        (
+            "podnet --log-format json ...",
+            "a reference list: `...` is each command",
+        ),
+        (
+            "podnet --color never ...",
+            "a reference list: `...` is each command",
+        ),
+        (
+            "podnet tunnel --e2e --compat-destination ...",
+            "`...` is the rest of the tunnel command",
+        ),
+        (
+            "podnet warp nc HOST PORT",
+            "PORT is a number that the reader gives",
+        ),
+        (
+            "podnet update --version TAG",
+            "TAG is a release tag (vX.Y.Z)",
+        ),
+        (
+            "podnet warp --tuic tuic://UUID:PASSWORD@HOST:PORT?sni=NAME nc",
+            "PORT is a number that the reader gives",
+        ),
+    ];
+    let root = env!("CARGO_MANIFEST_DIR");
+    let out = std::process::Command::new("python3")
+        .args(["-I", "scripts/doc-commands.py", "--lines"])
+        .current_dir(root)
+        .output()
+        .expect("python3 runs scripts/doc-commands.py");
+    assert!(out.status.success(), "{out:?}");
+    let mut lines = 0;
+    let mut faults = Vec::new();
+    for line in String::from_utf8_lossy(&out.stdout).lines() {
+        let doc: serde_json::Value = serde_json::from_str(line).expect("a JSON line");
+        let at = doc["at"].as_str().unwrap_or_default();
+        let args: Vec<&str> = doc["args"]
+            .as_array()
+            .expect("args")
+            .iter()
+            .filter_map(|a| a.as_str())
+            .collect();
+        lines += 1;
+        let text = args.join(" ");
+        if args.get(1) == Some(&"pod") || PLACEHOLDERS.iter().any(|(p, _)| text.starts_with(p)) {
+            continue;
+        }
+        if let Err(err) = Cli::try_parse_from(&args) {
+            use clap::error::ErrorKind::{DisplayHelp, DisplayVersion};
+            if !matches!(err.kind(), DisplayHelp | DisplayVersion) {
+                let first = err.to_string();
+                let first = first.lines().next().unwrap_or_default().to_string();
+                faults.push(format!("{at}: {text}\n    {first}"));
+            }
+        }
+    }
+    assert!(lines > 100, "only {lines} command lines: {out:?}");
+    assert!(
+        faults.is_empty(),
+        "{} document lines do not parse:\n{}",
+        faults.len(),
+        faults.join("\n")
+    );
+}
+
 /// The manual names each command and each flag of the command tree.
 #[test]
 fn the_manual_names_each_command_and_flag() {

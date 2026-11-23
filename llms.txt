@@ -133,7 +133,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet init check`: Validate a configuration against schema 1 and the policy. It exits 78 with the named part when it cannot be used
 - `podnet init enroll`: Enrol a node: the identity, the allow list and the relay registration, all three or none
 - `podnet harness`: Run the road by profile verification matrix and print the table
-- `podnet doctor`: Test the path from this host to the edge: the proxy, TCP and TLS to the APIs, the edge (7844) and MASQUE (443), and UDP 7844. Exit 0 when at least one leg (quic, http2, quic+warp) can work, 1 when none can
+- `podnet doctor`: Test the path from this host to the edge: the proxy, TCP and TLS to the APIs, the edge (7844) and MASQUE (443), and UDP 7844. Exit 0 when at least one leg (quic, http2, quic+warp, http2+relay) can work, 1 when none can
 - `podnet autostart`: Start a podnet command at boot, with no root: a systemd user unit (it stops at logout unless linger is on), else an @reboot line in the crontab
 - `podnet autostart add`: Add an entry that runs `podnet ARGS`. The token and a proxy password go to a private env file (mode 0600), not to the unit, the crontab or the command line. Exit 69 when this host has no systemd user manager and no crontab, unless --manual is given
 - `podnet autostart remove`: Remove an entry: its unit or its crontab line, and its files. Other units and crontab lines stay as they are

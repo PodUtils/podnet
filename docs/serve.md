@@ -58,7 +58,7 @@ the service SERVICE (T-297). The link instance is found as `forward` finds it: `
 the run directory.
 
 ```sh
-podnet link connect /run/hub.sock --peer HUB-FINGERPRINT --allow hub.allow --control /run/link.ctl   # hub.allow: HUB-FINGERPRINT services=files
+podnet link connect /run/hub.sock --allow hub.allow --control /run/link.ctl   # hub.allow: HUB-FINGERPRINT services=files
 podnet serve ./public --ingress peer:HUB-FINGERPRINT/files                                        # at the connector
 podnet forward -L 8080=peer:CONNECTOR-FINGERPRINT/files                                           # at the hub: HTTP on 127.0.0.1:8080
 ```

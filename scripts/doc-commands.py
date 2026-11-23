@@ -32,13 +32,23 @@ the text of a block changes its hash: the block then needs a new decision.
         A reason that starts with `[needs TOOL,TOOL]` names the other
         programs of the block: with one of them absent, the block is not
         run (MISS), and the exit code is 1.
+    python3 -I scripts/doc-commands.py --lines
+        print each `podnet` command line of each block (all classes) as
+        one JSON object on each line: {"at": "FILE:LINE", "args": [...]}.
+        A line that ends with a backslash continues on the next line. The words
+        `VAR=value` before the command are not in `args`; a pipe, a list
+        operator, a redirection and `$(` end the command. The test
+        `each_command_of_a_document_parses` (src/cli/help_tests.rs)
+        parses each line with the command model of podnet (T-526).
 """
 
 import argparse
 import hashlib
+import json
 import os
 import pathlib
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -83,6 +93,52 @@ def blocks():
             digest = hashlib.sha256(text.encode()).hexdigest()[:10]
             out.append((rel, start, digest, text))
             i += 1
+    return out
+
+
+ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+# A placeholder `<NAME>` of a document is a value, not a redirection.
+PLACEHOLDER = re.compile(r"<([A-Za-z][-A-Za-z0-9_]*)>")
+BREAK = set("|&;()<>$")
+
+
+def command_lines(text, start):
+    """Give (line, args) for each `podnet` command of the block `text`
+    that starts at the line `start` of its file."""
+    out, joined, first = [], "", None
+    for n, raw in enumerate(text.split("\n"), start + 1):
+        if first is None:
+            first = n
+        if raw.rstrip().endswith("\\"):
+            joined += raw.rstrip()[:-1] + " "
+            continue
+        joined += raw
+        line, joined, at = PLACEHOLDER.sub(r"\1", joined), "", first
+        first = None
+        try:
+            lex = shlex.shlex(line, posix=True, punctuation_chars=True)
+            lex.whitespace_split = True
+            lex.commenters = "#"
+            words = list(lex)
+        except ValueError:
+            continue
+        segment = []
+        for i, word in enumerate(words + [";"]):
+            if word and set(word) <= BREAK or word.startswith("$("):
+                while segment and ASSIGN.match(segment[0]):
+                    segment.pop(0)
+                if segment and segment[0] == "podnet":
+                    out.append((at, segment))
+                # A redirection: the next word is a file, not a command.
+                segment = [] if not set(word) & set("<>") else ["<file>"]
+                continue
+            nxt = words[i + 1] if i + 1 < len(words) else ""
+            if word.isdigit() and nxt[:1] in ("<", ">"):
+                continue  # the number of a file descriptor
+            if segment == ["<file>"]:
+                segment = ["<after-file>"]
+                continue
+            segment.append(word)
     return out
 
 
@@ -145,6 +201,7 @@ def main():
     mode.add_argument("--list", action="store_true")
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--run", action="store_true")
+    mode.add_argument("--lines", action="store_true")
     ap.add_argument("--bin", default=str(ROOT / "target" / "debug" / "podnet"))
     ap.add_argument("--timeout", type=float, default=30.0)
     ap.add_argument("--only", help="FILE or FILE:LINE")
@@ -152,6 +209,11 @@ def main():
     sys.stdout.reconfigure(line_buffering=True)
 
     found = blocks()
+    if a.lines:
+        for f, line, _, text in found:
+            for at, args in command_lines(text, line):
+                print(json.dumps({"at": f"{f}:{at}", "args": args}))
+        return 0
     entries, errors = read_list()
     errors = check(found, entries, errors)
 

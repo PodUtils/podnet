@@ -43,7 +43,10 @@ reason for each leg that cannot work, and the roads: `direct` (quic or
 http2), `warp` (quic+warp) and `relay` (http2+relay). The last line,
 `next:`, gives the step to take: the `podnet tunnel` command for the legs
 that work, the clock to set, or the report for an issue (`next` in
-`--json`). Exit 0: at least one leg can work. Exit 1: none can. `--json` gives one document; `--samples` and `--timeout`
+`--json`). Exit 0: at least one of the four legs (`quic`, `http2`,
+`quic+warp`, `http2+relay`) can work; the relay leg alone is enough. Exit
+1: none can. The exit is 1, not 69: the doctor reports the path, and its
+check failed. `--json` gives one document; `--samples` and `--timeout`
 make it shorter.
 
 ```sh

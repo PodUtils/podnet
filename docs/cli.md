@@ -79,7 +79,9 @@ command that runs with no network (`cargo test -p podnet --test contracts`).
 1. Shape: a document is one JSON object. An event stream (a server command with `--json` in the foreground) is
    one JSON object on each line. Each line has a string `event`.
 2. Stamp: each object has `schema` (a positive integer) and `podnet` (the version line of the binary). The
-   documents of `man --json` and `COMMAND --help --json` keep the `schema` of `pod-manual`. An environment
+   documents of `man --json` and `COMMAND --help --json` keep the `schema` of `pod-manual`. A document with a
+   named form (`rules check`, `init check`, `ci check`) gives the name in `kind`, for example
+   `podnet.rules-check/1`. An environment
    document (`net shim`, `net socksify`, `net passwd-shim`, `net ts-shims`) is the exception: each key is a
    variable name and each value is a string, so that a shell can export each key.
 3. Endpoint: each `ready` event and each `detached` document has `url` (a string or `null`), `listen` (a string
@@ -127,7 +129,8 @@ The exit codes follow sysexits.h: 64 for a bad command line, 65 for input
 that `podnet receive` refuses (a bad name in a transfer, a name that
 exists), 66 when a file
 that must exist is missing (the key or the allow list of the link), 69 when a
-service or a network path is not available (no edge leg worked), 71 when a
+service or a network path is not available (`tunnel`, `warp` and the other
+commands that start a session: no edge leg worked), 71 when a
 file of the host cannot be used (a key file with a mode that is not 0600), 77
 when a peer is not in the allow list of the link or of a sealed relay session
 (`relay node --seal`, `relay connect --seal`), when a peer refused a key (a
@@ -136,7 +139,9 @@ did not match, 78 for a bad configuration
 (for example `PODNET_EDGE`). 68 is for an address of a peer that does not
 resolve. 124 is for a time limit: `--detach` was not ready in
 `--ready-timeout`, `podnet send` got no receiver in `--timeout`, or the hello
-of a link did not end in time. `podnet man exit-status` gives all of them.
+of a link did not end in time. `podnet doctor` gives 1 when no leg can work, and `podnet bench`
+gives 1 when no request worked: their job is the check, and the check
+failed. `podnet man exit-status` gives all of them.
 The exit codes of `podnet link` are in [link.md](link.md).
 
 `PODNET_ERROR_PROGRAM=/path/to/program` gives a JSON report of each failure

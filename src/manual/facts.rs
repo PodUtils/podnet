@@ -192,7 +192,7 @@ pub fn exits() -> Vec<Exit> {
     let row = |code: i32, name: &str, meaning: &str| Exit::new(code, name, meaning);
     vec![
         row(SUCCESS, "success", "The command completed. A server command (tunnel, serve, share, proxy) exits 0 when it is stopped with Ctrl-C or when --run-for ends."),
-        row(FAILURE, "failure", "A failure that has no other code. With --check: a check of an origin or of the network failed (a bad flag or configuration has its own code)."),
+        row(FAILURE, "failure", "A failure that has no other code. With --check: a check of an origin or of the network failed (a bad flag or configuration has its own code). podnet doctor: no leg can work on this host. podnet bench: no request worked."),
         row(NO_BACKEND, "no-backend", "podnet pod and podnet warp run: no backend can run on this host, the program is not in PATH (or cannot run), or the setup of the backend failed. pod doctor gives 3 when no backend can run."),
         // EXIT_VIOLATION of podnet-netns (crates/podnet-netns/src/learn.rs).
         row(4, "violation", "podnet pod --fail-on-violation: the program exited 0, and a destination was not in the learned file or a rule refused it. The pod writes each violation on stderr."),
@@ -200,7 +200,7 @@ pub fn exits() -> Vec<Exit> {
         row(DATA_ERROR, "data-error", "Input that podnet refuses: podnet receive got an entry with a bad name or kind, or a name that exists (the receiver never overwrites). Also more files or bytes than its caps, or data whose size or SHA-256 does not agree. Nothing of a refused transfer stays on the disk."),
         row(NO_INPUT, "no-input", "A file that must exist is missing: the key of the link where a command needs an existing key, or the allow list of the link."),
         row(NO_HOST, "no-host", "The address of a peer does not resolve."),
-        row(UNAVAILABLE, "unavailable", "A service or a network path is not available: no edge leg worked, the quick-tunnel service, the WARP API or the MASQUE endpoint did not answer."),
+        row(UNAVAILABLE, "unavailable", "A service or a network path is not available: no edge leg worked for podnet tunnel, podnet warp or another command that starts a session. Or the quick-tunnel service, the WARP API or the MASQUE endpoint did not answer. podnet doctor and podnet bench give 1 in place of 69."),
         row(OS_ERROR, "os-error", "A file of the host cannot be used: a key file or an allow list with a mode that lets other users change it (the key: any access), a symbolic link in place of the file, or a file of another user. The file is not replaced."),
         row(TEMPFAIL, "tempfail", "The quick-tunnel service refused a provision for now (HTTP 429): the error report (PODNET_ERROR_PROGRAM) has retry_after_s. Also: the edge refused the registration of a tunnel at two starts, and asks for a retry or does not know the new quick tunnel. Also: --detach lost the pipe to the command that started it. Try again later."),
         row(NO_PERM, "no-permission", "A peer is not in the allow list of the link or of a sealed relay session (default deny). Or a peer refused the key of this end: the link, relay --seal, a PresharedKey of wg:FILE. Nothing of a service was offered to it. podnet send and receive: the code did not match at the other end (the code is spent)."),
