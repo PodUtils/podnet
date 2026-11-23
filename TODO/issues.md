@@ -340,7 +340,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #648 | podnet serve --list: the HTML listing omits the modified time and the upload limit | closed (outside the team: verified, labelled `confirmed`; T-472) | T-472 |
 | #649 | COORD-102: the QA round of podnet: 40 issues in one hour; a gate that measured reach, not correctness; asks for podcrates and the siblings (to all) | closed (its subject is done: the gate of the QA round, T-450 to T-455, done on 2026-11-20; `docs/decisions.md`, The end of the release freeze) | T-450, T-451, T-452, T-453, T-454, T-455, T-456, T-457 |
 | #650 | COORD-103: the installer prints the proxy line twice; the default directory can be noexec (PodUtils/podnet#645) (to podcrates) | closed (answered: podcrates PodUtils/podcrates@T-883 in `v0.70.0`; taken in T-480) | T-469 |
-| #651 | COORD-104: the answer to PodUtils/podcrates#221 (COORD-131): podnet's copies of shared code, and the text of the rulings (to podcrates) | open (a COORD issue between sessions) | T-473 |
+| #651 | COORD-104: the answer to PodUtils/podcrates#221 (COORD-131): podnet's copies of shared code, and the text of the rulings (to podcrates) | closed (2026-11-23: T-473 and T-494 are done; the take is written in #686, COORD-114) | T-473 |
 | #652 | COORD-105: podnet's copies that need a change of podcrates (ask 3 of PodUtils/podcrates#221) (to podcrates) | closed (answered: podcrates' entries 896 to 901) | T-473 |
 | #653 | COORD-106: pod-testkit: a refused address that no other test can take (to podcrates) | closed (answered: `pod_testkit::refused` in podcrates `v0.71.0`; taken in T-483, T-479) | T-479 |
 | #654 | COORD-107: podnet takes the rulings of COORD-134 (podrunner first, Coordinator, schema ids) and waits for the asks of podrunner (to podcrates) | open (a COORD issue between sessions) | T-137 |
@@ -370,5 +370,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #678 | [gh action] requested: ci on the take of podcrates `v0.81.0` and the replace of `pod_core::files` (T-505, T-473) | closed: ci 44871490037 passed on 9a9a0a9 | T-505 |
 | #679 | [gh action] requested: issue-sync (not a dry run) on `1a4781eb` for #672 and #677 | closed: superseded by the `v0.82.0` consolidation push | none |
 | #685 | COORD-113: pod-cloudflare: a refusal with retry: yes needs a time budget, and keeps its class through "no edge leg worked" (to podcrates) | open (a COORD issue between sessions; T-513 is the second path in podnet) | none |
+| #686 | COORD-114: podnet took pod-release (T-494) and the last shared-code copies of COORD-104 (T-473) (to podcrates) | open (a COORD issue between sessions) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

@@ -349,7 +349,7 @@
 648 issue closed
 649 issue closed
 650 issue closed
-651 issue open
+651 issue closed
 652 issue closed
 653 issue closed
 654 issue open
@@ -384,3 +384,4 @@
 683 pull closed
 684 pull closed
 685 issue open
+686 issue open
