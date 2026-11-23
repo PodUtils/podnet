@@ -391,5 +391,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #704 | [qa 0.4.0-beta.18] state directory: the warning names a path that does not exist, and `warp register` prints it three times | closed: T-529 is done (black-box QA pass of 0.4.0-beta.18, 2026-11-23); `250110a` | T-529 |
 | #705 | [qa 0.4.0-beta.18] warp proxy: a listener that cannot bind prints the same cause on two error lines | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-523 |
 | #706 | [qa 0.4.0-beta.18] forward, net proxy, serve --local: a TCP bind denied by the host gives no hint to use a unix socket | open (black-box QA pass of 0.4.0-beta.18, 2026-11-23) | T-523 |
+| #707 | COORD-115: the QA pass of podnet 0.4.0-beta.18: asks for pod-hold, pod-wormhole, pod-ws, pod-proxy, pod-dns, pod-tls, pod-warp and pod-cloudflare (to podcrates) | open (a COORD issue between sessions; T-516, T-520, T-521, T-522, T-532) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.
