@@ -25,12 +25,34 @@ pub(crate) async fn run(
     match args.command {
         WarpCommand::Register => print_device(&client, path.as_deref()),
         WarpCommand::Status { json } => {
-            client.refresh().await?;
+            // Issue 486 (QUIC-5): an enrolment failure and a transport
+            // failure have two names and two exit classes.
+            if let Err(err) = client.refresh().await {
+                let enrol = podnet::warp::h3::enrolment(&err);
+                eprintln!("{}", podnet::warp::h3::enrolment_line(&enrol));
+                return Err(podnet::exit::fault(
+                    podnet::warp::h3::enrolment_fault(&enrol),
+                    err,
+                ));
+            }
             save(&client)?;
-            let mut account = client.account().await?;
+            let mut account = match client.account().await {
+                Ok(account) => account,
+                Err(err) => {
+                    let enrol = podnet::warp::h3::enrolment(&err);
+                    eprintln!("{}", podnet::warp::h3::enrolment_line(&enrol));
+                    return Err(podnet::exit::fault(
+                        podnet::warp::h3::enrolment_fault(&enrol),
+                        err,
+                    ));
+                }
+            };
             // Issue 116: the instance of warp up, with the account.
             let instance = podnet::warp::up::instance_state();
             let tun = podnet::warp::live::instance::instance_state_tun();
+            // QUIC-5: the data path of the instance is a transport state,
+            // not an enrolment state.
+            let transport_dead = instance["data_path"].as_str() == Some("tcp-dead");
             if json {
                 let active = podnet::warp::identity::warp_plus_label(&account) == "yes";
                 if let Some(doc) = account.as_object_mut() {
@@ -39,8 +61,29 @@ pub(crate) async fn run(
                     // Issue 178: warp_plus of the API is not the state of
                     // the account; warp_plus_active is.
                     doc.insert("warp_plus_active".into(), active.into());
+                    doc.insert("h3".into(), podnet::warp::h3::doc());
+                    doc.insert(
+                        "state".into(),
+                        if transport_dead {
+                            "transport failed".into()
+                        } else {
+                            "ok".into()
+                        },
+                    );
                 }
                 println!("{}", serde_json::to_string_pretty(&account)?);
+                if transport_dead {
+                    eprintln!(
+                        "{}",
+                        podnet::warp::h3::transport_line(
+                            "the data path of warp up does not answer"
+                        )
+                    );
+                    return Err(podnet::exit::fault(
+                        Fault::Unavailable,
+                        anyhow::anyhow!("the data path of warp up does not answer"),
+                    ));
+                }
                 return Ok(());
             }
             print_device(&client, path.as_deref());
@@ -48,6 +91,7 @@ pub(crate) async fn run(
                 "warp up     {}",
                 podnet::warp::live::instance::instances_line(&instance, &tun)
             );
+            println!("h3          {}", podnet::warp::h3::line());
             let field = |name: &str| account.get(name).map(plain_value).unwrap_or_default();
             println!("type        {}", field("account_type"));
             println!(
@@ -56,6 +100,16 @@ pub(crate) async fn run(
             );
             println!("premium     {}", field("premium_data"));
             println!("quota       {}", field("quota"));
+            if transport_dead {
+                eprintln!(
+                    "{}",
+                    podnet::warp::h3::transport_line("the data path of warp up does not answer")
+                );
+                return Err(podnet::exit::fault(
+                    Fault::Unavailable,
+                    anyhow::anyhow!("the data path of warp up does not answer"),
+                ));
+            }
         }
         WarpCommand::License { key } => {
             let key = if key == "-" {

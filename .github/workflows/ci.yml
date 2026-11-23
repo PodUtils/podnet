@@ -59,6 +59,17 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --locked --workspace
+      # #501: the harness prints the road by classifier table with the date.
+      # The check fails when padding stops hiding a road, when two rows print
+      # the same scores, or when the benign rate is over its bound.
+      - name: Harness matrix
+        run: |
+          set -eu
+          cargo build --locked -p podnet --bin podnet
+          python3 -I scripts/check-harness.py --self-test
+          ./target/debug/podnet harness --data tests/data/harness | tee "$RUNNER_TEMP/harness.txt"
+          ./target/debug/podnet harness --data tests/data/harness --json > "$RUNNER_TEMP/harness.json"
+          python3 -I scripts/check-harness.py "$RUNNER_TEMP/harness.json"
       # T-106, T-103: a text, a file and a directory of podnet send and
       # podnet receive with the Python magic-wormhole (pinned versions), at
       # the mailbox server of magic-wormhole on the loopback, both ways. A
@@ -238,6 +249,15 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets --features full -- -D warnings
       - name: Test with the feature full
         run: cargo test --locked --workspace --features full
+      # #501: the same table with each optional carrier built in.
+      - name: Harness matrix with the feature full
+        run: |
+          set -eu
+          cargo build --locked -p podnet --bin podnet --features full
+          python3 -I scripts/check-harness.py --self-test
+          ./target/debug/podnet harness --data tests/data/harness | tee "$RUNNER_TEMP/harness.txt"
+          ./target/debug/podnet harness --data tests/data/harness --json > "$RUNNER_TEMP/harness.json"
+          python3 -I scripts/check-harness.py "$RUNNER_TEMP/harness.json"
 
   # T-304: the C ABI (crates/podnet-capi, include/podnet.h). The shared library
   # is for a glibc target: a cdylib does not build for the static musl targets
@@ -436,6 +456,13 @@ jobs:
         run: |
           python3 -I scripts/check-layers.py --self-test
           python3 -I scripts/check-layers.py
+      # podnet#501, CLAIM-1 to CLAIM-4: each measurement carries a label,
+      # a host, a version, an input and the number of runs. A bare
+      # comparative fails.
+      - name: The claims of the documents
+        run: |
+          python3 -I scripts/check-claims.py --self-test
+          python3 -I scripts/check-claims.py
       # T-358, step 2: each sh block of the documents has a class.
       - name: The class of each documented command
         run: python3 -I scripts/doc-commands.py --check

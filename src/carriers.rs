@@ -18,13 +18,17 @@
 use anyhow::anyhow;
 use pod_link::memory::{self, Memory};
 use pod_link::unix::{self, Unix};
-use pod_link::{Carrier, CarrierError, CarrierErrorKind, Facts};
+use pod_link::{Carrier, CarrierError, CarrierErrorKind, Cost, Facts};
 
 use crate::build_features;
 use crate::exit::{self, Fault};
 use crate::link::carrier_fault;
 use crate::link_query::Query;
 use crate::network::Addressing;
+
+mod address;
+
+pub use address::{check_address, unix_path};
 
 /// What the flags of a command give to the carriers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,8 +58,10 @@ pub struct Row {
     pub about: &'static str,
     /// The form of its address.
     pub address: &'static str,
-    /// The cost class: `free` (no network, no money) or `network`.
-    pub cost: &'static str,
+    /// The cost class of the carrier: the class that its facts give
+    /// (`Facts::cost`). A build that leaves the carrier out prints this
+    /// class, because the facts are unknown then.
+    pub cost: Cost,
     /// True when the carrier needs a privilege of the process.
     pub needs_privilege: bool,
     /// The build feature that holds the carrier (T-311), when it has one.
@@ -92,6 +98,77 @@ fn make_memory(options: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     Ok(Box::new(Memory::new(options.ring)?))
 }
 
+/// The credential of the probe of a mail carrier. It signs no connection:
+/// the registry shows the facts and the host check alone.
+#[cfg(any(feature = "smtp", feature = "imap"))]
+fn probe_credential() -> pod_link::smtp::Credential {
+    pod_link::smtp::Credential::new("probe", "probe")
+        .expect("a probe credential has no control character")
+}
+
+/// The NTPv4 carrier for the registry (GitHub #484): its facts (a poll
+/// interval, a datagram unit, no reliability) and its host check. The
+/// registry has no peer, so a dial or a listen through it is a usage error.
+#[cfg(feature = "ntp")]
+fn make_ntp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_probe::Probe::new(
+        pod_link::ntp::Ntp::new(),
+    )))
+}
+
+#[cfg(not(feature = "ntp"))]
+fn make_ntp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("ntp")
+}
+
+/// The rate of the SMTP row over the fixed message of the gate (GitHub
+/// #484): 300 bytes for each submission, and the carrier flushes a partial
+/// batch after `pod_link::smtp::FLUSH_AFTER` (250 ms). The local stand in
+/// `tests/mail_stand` took 298 to 305 ms for the message in ten runs of
+/// `tests/link_carriers_drive.rs` on 2026-11-21, so the rate is 983 to 1007
+/// B/s; the row declares the rounded 950 B/s. SMTP is push-only, so the
+/// row has no service poll interval.
+pub const SMTP_BYTES_PER_SECOND: u64 = 950;
+
+/// The SMTP submission carrier for the registry (GitHub #484): the facts of
+/// a write-only stream with the cost class `medium`, and the rate of the
+/// fixed 300-byte message that the gate uses. The credential of the probe is
+/// a made-up value and signs nothing.
+#[cfg(feature = "smtp")]
+fn make_smtp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(
+        crate::link_probe::Probe::new(pod_link::smtp::Smtp::new(
+            probe_credential(),
+            "probe@invalid",
+            "probe@invalid",
+        ))
+        .with_rate(pod_link::Rate {
+            bytes_per_second: Some(SMTP_BYTES_PER_SECOND),
+            poll_interval: None,
+            cost: Cost::Medium,
+        }),
+    ))
+}
+
+#[cfg(not(feature = "smtp"))]
+fn make_smtp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("smtp")
+}
+
+/// The IMAP retrieval carrier for the registry (GitHub #484): the facts of a
+/// duplex stream with the cost class `high`, and its host check.
+#[cfg(feature = "imap")]
+fn make_imap(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::link_probe::Probe::new(
+        pod_link::imap::Imap::new(probe_credential(), "INBOX", "INBOX"),
+    )))
+}
+
+#[cfg(not(feature = "imap"))]
+fn make_imap(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    pending("imap")
+}
+
 /// A carrier whose feature is on but whose code is not in the tree. The
 /// entry that adds the carrier replaces the maker. A build with each
 /// carrier feature on has no such maker.
@@ -104,7 +181,10 @@ fn make_memory(options: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     feature = "poll",
     feature = "dns",
     feature = "s3",
-    feature = "icmp"
+    feature = "icmp",
+    feature = "ntp",
+    feature = "smtp",
+    feature = "imap"
 )))]
 fn pending(name: &'static str) -> Result<Box<dyn Carrier>, CarrierError> {
     Err(CarrierError::new(
@@ -245,14 +325,29 @@ fn make_icmp(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
     pending("icmp")
 }
 
+/// The carrier `serial` for the registry (PodUtils/podnet#499): the AX.25
+/// frames in KISS framing, the window and the timeout of the baud rate.
+/// The line opens at the address of the dial or the listen, which is
+/// `serial:PATH[,BAUD]`, or from the flag `--carrier serial:PATH[,BAUD]`.
+fn make_serial(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::offline::serial::Serial::default()))
+}
+
+/// The carrier `hf` for the registry (PodUtils/podnet#499): an ARDOP or
+/// VARA modem on a serial line, with the deferring ARQ and the degraded
+/// profile of `pod-offline`.
+fn make_hf(_: &Options) -> Result<Box<dyn Carrier>, CarrierError> {
+    Ok(Box::new(crate::offline::hf::Hf::default()))
+}
+
 /// The carriers of this build, in the order of the lists and of the
 /// first choice.
-pub const ROWS: [Row; 14] = [
+pub const ROWS: [Row; 19] = [
     Row {
         name: unix::NAME,
         about: "a stream over AF_UNIX, mode 0600, the uid of the peer checked",
         address: "PATH",
-        cost: "free",
+        cost: Cost::Low,
         needs_privilege: false,
         feature: None,
         make: make_unix,
@@ -261,7 +356,7 @@ pub const ROWS: [Row; 14] = [
         name: memory::NAME,
         about: "two ends in one process, a ring for each direction",
         address: "NAME",
-        cost: "free",
+        cost: Cost::Low,
         needs_privilege: false,
         feature: None,
         make: make_memory,
@@ -270,7 +365,7 @@ pub const ROWS: [Row; 14] = [
         name: "tcp",
         about: "TCP with TLS 1.3, the Ed25519 key of each end pinned in the handshake",
         address: "KEY@HOST:PORT to dial, IP:PORT to listen",
-        cost: "network",
+        cost: Cost::Low,
         needs_privilege: false,
         feature: Some("tcp"),
         make: make_tcp,
@@ -279,7 +374,7 @@ pub const ROWS: [Row; 14] = [
         name: "ws",
         about: "a WebSocket over TLS 1.3, the Ed25519 key of each end pinned in the handshake",
         address: "KEY@wss://HOST[:PORT]/PATH to dial, IP:PORT to listen",
-        cost: "network",
+        cost: Cost::Low,
         needs_privilege: false,
         feature: Some("ws"),
         make: make_ws,
@@ -289,7 +384,7 @@ pub const ROWS: [Row; 14] = [
         about:
             "one POST of HTTP/2 over TLS 1.3, the Ed25519 key of each end pinned in the handshake",
         address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
-        cost: "network",
+        cost: Cost::Low,
         needs_privilege: false,
         feature: Some("h2"),
         make: make_h2,
@@ -298,7 +393,7 @@ pub const ROWS: [Row; 14] = [
         name: "quic",
         about: "one stream of a QUIC connection, the Ed25519 key of each end pinned in the TLS 1.3 handshake",
         address: "KEY@HOST:PORT to dial, IP:PORT to listen",
-        cost: "network",
+        cost: Cost::Low,
         needs_privilege: false,
         feature: Some("quic"),
         make: make_quic,
@@ -307,7 +402,7 @@ pub const ROWS: [Row; 14] = [
         name: "udp",
         about: "KCP over UDP, the Ed25519 key of each end pinned in the TLS 1.3 handshake above it",
         address: "KEY@HOST:PORT to dial, IP:PORT to listen",
-        cost: "network",
+        cost: Cost::Low,
         needs_privilege: false,
         feature: Some("udp"),
         make: make_udp,
@@ -316,7 +411,7 @@ pub const ROWS: [Row; 14] = [
         name: "poll",
         about: "a long poll of HTTP/1.1 over TLS 1.3, the Ed25519 key of each end pinned in the handshake",
         address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
-        cost: "network",
+        cost: Cost::Medium,
         needs_privilege: false,
         feature: Some("poll"),
         make: make_poll,
@@ -325,7 +420,7 @@ pub const ROWS: [Row; 14] = [
         name: "sse",
         about: "POSTs up and one answer of SSE events down, HTTP/1.1 over TLS 1.3, the keys pinned",
         address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
-        cost: "network",
+        cost: Cost::High,
         needs_privilege: false,
         feature: Some("poll"),
         make: make_sse,
@@ -334,7 +429,7 @@ pub const ROWS: [Row; 14] = [
         name: "chunked",
         about: "POSTs up and one chunked answer down, HTTP/1.1 over TLS 1.3, the keys pinned",
         address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
-        cost: "network",
+        cost: Cost::Medium,
         needs_privilege: false,
         feature: Some("poll"),
         make: make_chunked,
@@ -343,7 +438,7 @@ pub const ROWS: [Row; 14] = [
         name: "httppoll",
         about: "POSTs up and a GET poll down, HTTP/1.1 over TLS 1.3, the keys pinned",
         address: "KEY@https://HOST[:PORT]/PATH to dial, IP:PORT to listen",
-        cost: "network",
+        cost: Cost::Highest,
         needs_privilege: false,
         feature: Some("poll"),
         make: make_httppoll,
@@ -352,7 +447,7 @@ pub const ROWS: [Row; 14] = [
         name: "dns",
         about: "query names up and TXT answers down, an ARQ and TLS 1.3 above, the Ed25519 key of each end pinned",
         address: "KEY@ZONE to dial (--dns-server), IP:PORT to listen (--dns-zone)",
-        cost: "network",
+        cost: Cost::Highest,
         needs_privilege: false,
         feature: Some("dns"),
         make: make_dns,
@@ -361,7 +456,7 @@ pub const ROWS: [Row; 14] = [
         name: "s3",
         about: "objects of a bucket of the S3 API each way, TLS 1.3 above, the Ed25519 key of each end pinned",
         address: "KEY@BUCKET[/PREFIX] to dial, BUCKET[/PREFIX] to listen (--s3-endpoint)",
-        cost: "network",
+        cost: Cost::Highest,
         needs_privilege: false,
         feature: Some("s3"),
         make: make_s3,
@@ -370,10 +465,55 @@ pub const ROWS: [Row; 14] = [
         name: "icmp",
         about: "the data of ICMP echo messages on a raw socket (CAP_NET_RAW, --allow-raw icmp), an ARQ and TLS 1.3 above, the keys pinned",
         address: "KEY@HOST to dial, an IPv4 address to listen",
-        cost: "network",
+        cost: Cost::High,
         needs_privilege: true,
         feature: Some("icmp"),
         make: make_icmp,
+    },
+    Row {
+        name: "ntp",
+        about: "the bytes in the extension fields of NTPv4 packets over UDP 123, a new field type for each packet, a poll of 16 s to 64 s",
+        address: "HOST[:PORT] to dial (port 123), IP:PORT to listen",
+        cost: Cost::Highest,
+        needs_privilege: false,
+        feature: Some("ntp"),
+        make: make_ntp,
+    },
+    Row {
+        name: "smtp",
+        about: "one message for each batch over submission, 587 with STARTTLS or 465 with TLS; the bytes up only, the bytes down come from imap",
+        address: "HOST:PORT to dial (587 or 465)",
+        cost: Cost::Medium,
+        needs_privilege: false,
+        feature: Some("smtp"),
+        make: make_smtp,
+    },
+    Row {
+        name: "imap",
+        about: "the bytes up by APPEND and down by UID FETCH over 143 with STARTTLS or 993 with TLS",
+        address: "HOST:PORT to dial (143 or 993)",
+        cost: Cost::High,
+        needs_privilege: false,
+        feature: Some("imap"),
+        make: make_imap,
+    },
+    Row {
+        name: "serial",
+        about: "AX.25 frames in KISS framing on a serial line, 256 bytes at most, a window of 4 and a retransmission timeout from the baud rate",
+        address: "serial:PATH[,BAUD] (115200 baud without one)",
+        cost: Cost::High,
+        needs_privilege: false,
+        feature: None,
+        make: make_serial,
+    },
+    Row {
+        name: "hf",
+        about: "an ARDOP or VARA modem on a serial line, 300 to 3000 bit/s, half duplex with a busy signal and a turnaround, the ARQ of the modem and the degraded profile",
+        address: "hf:PATH[,BPS] (1200 bit/s without one)",
+        cost: Cost::High,
+        needs_privilege: false,
+        feature: None,
+        make: make_hf,
     },
 ];
 
@@ -413,6 +553,22 @@ pub fn open_in(rows: &[Row], name: &str, options: &Options) -> anyhow::Result<Bo
     Ok(carrier)
 }
 
+/// The carrier `name` with its address in the flag (`--carrier
+/// serial:PATH[,BAUD]`, `--carrier hf:PATH[,BPS]`), or [`open`] for another
+/// name. The address that the carrier holds is checked here, so a bad
+/// spec exits before the command opens a listener.
+pub fn open_spec(name: &str, spec: &str, options: &Options) -> anyhow::Result<Box<dyn Carrier>> {
+    let carrier: Box<dyn Carrier> = match name {
+        crate::offline::serial::NAME => {
+            Box::new(crate::offline::serial::Serial::with_spec(spec.to_string()))
+        }
+        crate::offline::hf::NAME => Box::new(crate::offline::hf::Hf::with_spec(spec.to_string())),
+        _ => return open(name, options),
+    };
+    carrier.available().map_err(carrier_fault)?;
+    Ok(carrier)
+}
+
 /// Check the keys of `query` that depend on the carrier `name`: `mtu`
 /// needs a datagram carrier and gives at most its unit (T-306). Exit 64
 /// for an unknown carrier or a bad key. A carrier that this build leaves
@@ -433,102 +589,6 @@ pub fn check_query_in(rows: &[Row], name: &str, query: &Query) -> anyhow::Result
         Ok(carrier) => check_mtu(name, carrier.facts(), query),
         Err(_) => Ok(()),
     }
-}
-
-/// The carrier that a URL scheme names, for the hint of [`check_address`].
-fn carrier_of_scheme(scheme: &str) -> Option<&'static str> {
-    Some(match scheme {
-        "tcp" | "tls" => "tcp",
-        "ws" | "wss" => "ws",
-        "http" | "https" | "h2" => "h2",
-        "quic" => "quic",
-        "udp" | "kcp" => "udp",
-        "dns" => "dns",
-        "icmp" => "icmp",
-        "s3" => "s3",
-        "poll" | "sse" | "chunked" | "httppoll" => "poll",
-        _ => return None,
-    })
-}
-
-/// The scheme of `text` when it starts with `SCHEME://`.
-fn scheme_of(text: &str) -> Option<&str> {
-    let (scheme, _) = text.split_once("://")?;
-    let mut bytes = scheme.bytes();
-    let first = bytes.next()?;
-    let ok = first.is_ascii_alphabetic()
-        && bytes.all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.'));
-    ok.then_some(scheme)
-}
-
-/// True when `text` is `IP:PORT`, `[IPV6]:PORT` or `localhost:PORT`.
-fn is_host_port(text: &str) -> bool {
-    if text.parse::<std::net::SocketAddr>().is_ok() {
-        return true;
-    }
-    match text.rsplit_once(':') {
-        Some((host, port)) => host.eq_ignore_ascii_case("localhost") && port.parse::<u16>().is_ok(),
-        None => false,
-    }
-}
-
-/// The address of the carrier `name` with no `unix:` prefix (GitHub #634).
-/// The unix carrier takes `unix:PATH` and `unix://PATH` as the other unix
-/// socket options of podnet do, also after the key of a dial
-/// (`KEY@unix:PATH`). The other carriers get `address` unchanged.
-pub fn unix_path(name: &str, address: &str) -> String {
-    if name != "unix" {
-        return address.to_string();
-    }
-    let (key, target) = match address.split_once('@') {
-        Some((key, rest)) if !key.contains('/') => (Some(key), rest),
-        _ => (None, address),
-    };
-    let path = target
-        .strip_prefix("unix://")
-        .or_else(|| target.strip_prefix("unix:"))
-        .unwrap_or(target);
-    match key {
-        Some(key) => format!("{key}@{path}"),
-        None => path.to_string(),
-    }
-}
-
-/// Check that `address` has the form of the carrier `name` (GitHub #622
-/// item 8). The `unix` carrier (the default) takes a path. An address that
-/// starts with a URL scheme (`tcp://`, `wss://`, `quic://`), or that is
-/// `IP:PORT`, is for a network carrier: it exits 64, and the message names
-/// that carrier. The message does not show the address. The other
-/// carriers check their addresses when they open.
-pub fn check_address(name: &str, address: &str) -> anyhow::Result<()> {
-    if name != "unix" {
-        return Ok(());
-    }
-    // A dial address can hold the key of the listener: `KEY@HOST:PORT`.
-    let target = match address.split_once('@') {
-        Some((key, rest)) if !key.contains('/') => rest,
-        _ => address,
-    };
-    let usage = |text: String| Err(exit::fault(Fault::Usage, anyhow!(text)));
-    if let Some(scheme) = scheme_of(target) {
-        let hint = match carrier_of_scheme(&scheme.to_ascii_lowercase()) {
-            Some(carrier) => format!("give --carrier {carrier}"),
-            None => "give --carrier NAME (podnet link carriers lists them)".to_string(),
-        };
-        return usage(format!(
-            "the unix carrier takes a path, and the address starts with {scheme}://: \
-             {hint}, or give a path"
-        ));
-    }
-    if is_host_port(target) {
-        return usage(
-            "the unix carrier takes a path, and the address is HOST:PORT: give --carrier tcp \
-             (or another network carrier: podnet link carriers lists them), or give a path \
-             such as ./NAME.sock"
-                .to_string(),
-        );
-    }
-    Ok(())
 }
 
 /// The `mtu` of `query` against the facts of the carrier `name`.
@@ -565,14 +625,42 @@ pub struct Report {
 }
 
 impl Report {
-    /// The overhead class of the carrier on the wire (`Facts::cost`):
+    /// The cost class of the carrier on the wire (`Facts::cost`):
     /// `low`, `medium`, `high` or `highest`.
     pub fn overhead(&self) -> &'static str {
-        match self.facts.cost {
-            pod_link::Cost::Low => "low",
-            pod_link::Cost::Medium => "medium",
-            pod_link::Cost::High => "high",
-            pod_link::Cost::Highest => "highest",
+        cost_name(self.facts.cost)
+    }
+
+    /// The payload bytes that the carrier moves in one direction for each
+    /// second, when it declares a rate (`Facts::rate`, GitHub #484).
+    pub fn bytes_per_second(&self) -> Option<u64> {
+        self.facts.rate.bytes_per_second
+    }
+
+    /// The time between two polls of the carrier's service, when it polls
+    /// (`Facts::rate`). It is the floor of the latency of the carrier.
+    pub fn poll_interval(&self) -> Option<std::time::Duration> {
+        self.facts.rate.poll_interval
+    }
+
+    /// The rate in one phrase: the payload rate and the poll interval, or
+    /// the cost class alone when the carrier has not measured its rate. A
+    /// carrier with a rate and no poll is push-only or continuous, and says
+    /// `poll none` (GitHub #484: SMTP has no interval to poll).
+    pub fn rate(&self) -> String {
+        let mut parts = Vec::new();
+        if let Some(bytes) = self.bytes_per_second() {
+            parts.push(format!("{bytes} B/s"));
+        }
+        if let Some(poll) = self.poll_interval() {
+            parts.push(format!("poll {} s", poll.as_secs()));
+        } else if self.bytes_per_second().is_some() {
+            parts.push("poll none".to_string());
+        }
+        if parts.is_empty() {
+            format!("not measured, cost {}", self.overhead())
+        } else {
+            format!("{}, cost {}", parts.join(", "), self.overhead())
         }
     }
 
@@ -602,16 +690,28 @@ impl Report {
             Err(reason) => format!("unavailable: {reason}"),
         };
         format!(
-            "{name}: {framing}, {duplex}, {ordered}, mtu {mtu}, cost {cost}, address {address} ({addressing}): {state}",
+            "{name}: {framing}, {duplex}, {ordered}, mtu {mtu}, cost {cost}, rate {rate}, address {address} ({addressing}): {state}",
             name = self.name,
             framing = self.framing(),
             duplex = if self.facts.duplex { "duplex" } else { "half duplex" },
             ordered = if self.facts.ordered { "ordered" } else { "unordered" },
             mtu = self.facts.mtu.map_or("none".to_string(), |m| m.to_string()),
             cost = self.cost,
+            rate = self.rate(),
             address = self.address,
             addressing = self.addressing.name(),
         )
+    }
+}
+
+/// The name of a cost class, the one source of truth for the row of the
+/// registry and the facts of the carrier (GitHub #484).
+pub fn cost_name(cost: Cost) -> &'static str {
+    match cost {
+        Cost::Low => "low",
+        Cost::Medium => "medium",
+        Cost::High => "high",
+        Cost::Highest => "highest",
     }
 }
 
@@ -628,15 +728,25 @@ pub fn report_in(rows: &[Row], options: &Options) -> Vec<Report> {
                 Some(off) => Err(off),
                 None => (row.make)(options),
             };
-            let (facts, available) = match made {
-                Ok(c) => (c.facts(), c.available().map_err(|e| e.to_string())),
-                Err(e) => (Facts::STREAM, Err(e.to_string())),
+            let (facts, available, cost) = match made {
+                Ok(c) => {
+                    let facts = c.facts();
+                    // GitHub #484: the facts are the one source of truth
+                    // for the cost class of a carrier this build holds. The
+                    // row's declaration is for a carrier that is not built.
+                    (
+                        facts,
+                        c.available().map_err(|e| e.to_string()),
+                        cost_name(facts.cost),
+                    )
+                }
+                Err(e) => (Facts::STREAM, Err(e.to_string()), cost_name(row.cost)),
             };
             Report {
                 name: row.name,
                 about: row.about,
                 address: row.address,
-                cost: row.cost,
+                cost,
                 needs_privilege: row.needs_privilege,
                 feature: row.feature,
                 built: row.built(),
@@ -649,88 +759,4 @@ pub fn report_in(rows: &[Row], options: &Options) -> Vec<Report> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::link_query::parse;
-
-    #[test]
-    fn mtu_needs_a_datagram_carrier_and_fits_its_unit() {
-        let q = parse("mtu=1200").unwrap();
-        let datagram = Facts {
-            mtu: Some(1400),
-            ..Facts::STREAM
-        };
-        assert!(check_mtu("udp", datagram, &q).is_ok());
-        let big = parse("mtu=1500").unwrap();
-        let m = format!("{:#}", check_mtu("udp", datagram, &big).unwrap_err());
-        assert!(m.contains("1400") && !m.contains("1500"), "{m}");
-        let m = format!("{:#}", check_mtu("unix", Facts::STREAM, &q).unwrap_err());
-        assert!(m.contains("stream carrier") && !m.contains("1200"), "{m}");
-        assert!(check_mtu("unix", Facts::STREAM, &Query::default()).is_ok());
-    }
-
-    /// GitHub #622 item 8: a network address on the unix carrier exits 64
-    /// and names the carrier to give. A path stays good.
-    #[test]
-    fn a_network_address_on_the_unix_carrier_names_the_carrier() {
-        for (address, carrier) in [
-            ("tcp://127.0.0.1:18084", "--carrier tcp"),
-            ("TCP://127.0.0.1:18084", "--carrier tcp"),
-            ("wss://example.org/link", "--carrier ws"),
-            ("ws://127.0.0.1:80/", "--carrier ws"),
-            ("https://example.org/link", "--carrier h2"),
-            ("quic://127.0.0.1:443", "--carrier quic"),
-            ("udp://127.0.0.1:443", "--carrier udp"),
-            ("KEY@tcp://127.0.0.1:1", "--carrier tcp"),
-            ("gopher://x", "--carrier NAME"),
-            ("127.0.0.1:18084", "--carrier tcp"),
-            ("[::1]:18084", "--carrier tcp"),
-            ("localhost:8080", "--carrier tcp"),
-            ("KEY@127.0.0.1:18084", "--carrier tcp"),
-        ] {
-            let err = check_address("unix", address).unwrap_err();
-            assert_eq!(exit::code_of(&err), exit::USAGE, "{address}: {err:#}");
-            let m = format!("{err:#}");
-            assert!(m.contains(carrier), "{address}: {m}");
-            assert!(!m.contains("18084"), "the message shows no address: {m}");
-        }
-        for path in [
-            "/tmp/link.sock",
-            "./link.sock",
-            "link.sock",
-            "/run/a@b/link.sock",
-            "/tmp/x:1",
-            "dir/127.0.0.1:80",
-        ] {
-            assert!(check_address("unix", path).is_ok(), "{path}");
-        }
-        assert!(check_address("tcp", "127.0.0.1:18084").is_ok());
-        assert!(check_address("memory", "tcp://x").is_ok());
-    }
-
-    /// GitHub #634: `unix:PATH` is the path on the unix carrier. No socket
-    /// gets a name that starts with `unix:`.
-    #[test]
-    fn the_unix_carrier_takes_the_unix_prefix() {
-        for (address, path) in [
-            ("unix:/tmp/l1", "/tmp/l1"),
-            ("unix:qa-literal", "qa-literal"),
-            ("unix:///tmp/l1", "/tmp/l1"),
-            ("KEY@unix:/tmp/l1", "KEY@/tmp/l1"),
-            ("/tmp/l1", "/tmp/l1"),
-            ("dir/unix:x", "dir/unix:x"),
-        ] {
-            assert_eq!(unix_path("unix", address), path, "{address}");
-            assert!(check_address("unix", &unix_path("unix", address)).is_ok());
-        }
-        assert_eq!(unix_path("tcp", "unix:/x"), "unix:/x");
-    }
-
-    #[test]
-    fn check_query_knows_the_names() {
-        let q = parse("mtu=1200").unwrap();
-        assert!(check_query("unix", &q).is_err());
-        assert!(check_query("nope", &Query::default()).is_err());
-        assert!(check_query("unix", &Query::default()).is_ok());
-    }
-}
+mod tests;

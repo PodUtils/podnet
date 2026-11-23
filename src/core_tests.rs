@@ -58,14 +58,19 @@ mod trust {
     }
 
     /// Only these files may set a certificate verifier of their own: the
-    /// origin option noTLSVerify (podnet-core util/tls.rs, podnet-serve origin/dial.rs) and the doctor
+    /// origin option noTLSVerify (podnet-core util/tls.rs, podnet-serve origin/dial.rs), the doctor
     /// (doctor/tls_check.rs: it records the chain, gives the decision to webpki, and
-    /// closes each session after the handshake with no data). The MASQUE key
-    /// pin, which always compares the key, is the TLS of `pod-warp`.
+    /// closes each session after the handshake with no data), and the roads
+    /// of a link whose URL says allow_insecure=1 (roads/tuic.rs and
+    /// roads/juicity.rs: the password or token still authenticates the
+    /// session). The MASQUE key pin, which always compares the key, is the
+    /// TLS of `pod-warp`.
     #[test]
     fn no_other_code_sets_its_own_verifier() {
         const ALLOWED: &[&str] = &[
             "src/doctor/tls_check.rs",
+            "src/roads/juicity.rs",
+            "src/roads/tuic/mod.rs",
             "crates/podnet-serve/src/origin/dial.rs",
             "crates/podnet-core/src/util/tls.rs",
         ];

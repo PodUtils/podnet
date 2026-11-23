@@ -30,7 +30,7 @@ podnet pod doctor --json
 | `--flow-budget N` | Seccomp backend: the most sockets of the program that the pod tracks at one time (64 to 1048576). A `socket` call above it gets `EMFILE`. The default comes from `RLIMIT_NOFILE`: the supervisor raises its soft limit to the hard limit after the start of the program (the program keeps its limit), takes 64 descriptors as a reserve and two descriptors for each socket, and stops at 65536. `pod doctor` shows the default. A budget above the default gives a warning. The netns backend does not use it. |
 | `--map NAME=ADDR` | Resolve `NAME` to `ADDR`, with no upstream. |
 | `--backend NAME` | `auto` (default), `netns`, `netns-kernel` or `seccomp`. `auto` never takes `netns-kernel`. |
-| `--prefer-udp` | With `auto`: `seccomp` first when it works, because it carries UDP datagrams of each size (`netns` carries a datagram of 1500 bytes at most). `podnet warp run` sets it. |
+| `--prefer-udp` | With `auto`: `seccomp` first when it works. `podnet warp run` sets it. |
 | `--host-gateway` | Netns backend: a TCP connect to the gateway of the pod (`10.66.255.254`) and a port goes to `127.0.0.1` and that port on the host, and a UDP datagram to the gateway (not port 53) goes from a UDP socket of the host. Off by default: the connect gets a RST, and the datagram is dropped. |
 | `--session DIR` | Seccomp backend: the pods of DIR share the inbound listeners (`DIR/inbound`, unless `--inbound-dir`) and the fake DNS table (`DIR/dns`, one line `ADDRESS NAME` for each fake address, under `flock`). A name thus gets the same address in each pod of DIR. The netns backend does not use it. `podnet warp exec --detach` and `--join` set it. |
 | `--name-backend` | Write one line on stderr that names the backend that runs (also after `auto`), its limits and the reason of the choice (`Choice: ...`). `podnet warp exec` and `podnet warp shell` set it. `PODNET_NETNS_QUIET` (`podnet -q`) removes the line. |
@@ -188,9 +188,14 @@ socket) when there is one, else to TCP on the host.
 * Each flow has a queue of 64 datagrams. When the queue is full, the
   parent stops the read of the TUN until the queue has room: the kernel of
   the pod then counts the loss. A full queue does not end the flow.
-* A datagram of the program that is larger than the MTU (1500 bytes) is a
-  fragment, and it does not go through. A larger reply goes to the program
-  as fragments.
+* A datagram of the program that is larger than 1472 bytes (the TUN MTU of
+  1500 less the 20-byte IPv4 header and the 8-byte UDP header) arrives as
+  IPv4 fragments. The backend reassembles them before it makes the flow, so
+  the datagram goes through whole, up to the UDP payload limit of 65507
+  bytes. A larger reply goes to the program as fragments. An overlapping or
+  incomplete set is dropped after 30 seconds. A carrier that wraps the
+  datagram in its own header carries fewer bytes: the SOCKS5 UDP header
+  takes at least 10 more.
 
 Needs: unprivileged user namespaces, and `/dev/net/tun` or a veth pair. This backend carries
 TCP and UDP. No backend of the pod carries ICMP (`ping`) to the internet. The `seccomp` backend answers an echo to the

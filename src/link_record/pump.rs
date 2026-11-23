@@ -13,14 +13,20 @@ use pod_e2e::record::{record_len, Fault, Opened, HEADER};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, DuplexStream, ReadBuf};
 use tokio::sync::mpsc;
 
+use super::pace::Paced;
 use super::pack::{self, Refused};
-use super::{lock, Command, NewCarrier, Reader, Shared, COMPRESSED, DATA, FIN};
+use super::{lock, Command, NewCarrier, Reader, Shared, COMPRESSED, DATA, ENTROPY, FIN};
 
 /// The bytes between the application and the sender.
 pub(super) const PIPE: usize = 256 * 1024;
 
 /// The most payload bytes of one record.
 const CHUNK: usize = 32 * 1024;
+
+/// How long the opening read waits for more bytes before it sends the
+/// first record (FLY-1). The coalescing is the one write that PACE-2
+/// allows, and only at the start of a stream.
+const OPENING_GAP: std::time::Duration = std::time::Duration::from_millis(5);
 
 /// The bytes of sent payloads that the sender keeps for a RESUME.
 const LOG_LIMIT: usize = 1024 * 1024;
@@ -119,16 +125,19 @@ async fn put<W: AsyncWrite + Unpin>(
     shared: &Shared,
     log: Option<&mut Log>,
     io: &mut W,
+    paced: &mut Option<Paced>,
     kind: u8,
     flags: u16,
     payload: &[u8],
 ) -> io::Result<()> {
-    let record = lock(&shared.records)
-        .seal(Instant::now(), kind, flags, 0, payload)
-        .map_err(bad)?;
+    let (record, body) = seal(shared, kind, flags, payload)?;
+    if let Some(paced) = paced {
+        paced.wait(record.len()).await;
+    }
     if let Some(log) = log {
         log.push(counter_of(&record), kind, flags, payload);
     }
+    shared.shape.record(payload.len(), body);
     shared
         .stats
         .sent
@@ -138,6 +147,49 @@ async fn put<W: AsyncWrite + Unpin>(
         .wire_out
         .fetch_add(record.len() as u64, std::sync::atomic::Ordering::SeqCst);
     io.write_all(&record).await
+}
+
+/// The record of one payload, with the body that the profile chooses when
+/// the stream has a profile (T-370), else the one of `pod-e2e`.
+fn seal(shared: &Shared, kind: u8, flags: u16, payload: &[u8]) -> io::Result<(Vec<u8>, usize)> {
+    let mut records = lock(&shared.records);
+    let before = records.stats();
+    let record = if let Some(shaper) = &shared.shaper {
+        let mut shaper = lock(shaper);
+        // PAD-3: the bytes between the payload and the end of the body come
+        // from the band of the profile, not from a zero fill. The body
+        // starts with the payload length, so the peer keeps the plaintext
+        // and drops the tail.
+        let room = payload.len().saturating_add(4);
+        let shaped = shaper.shape(room);
+        let mut framed = None;
+        if kind == DATA && !payload.is_empty() && shaped.body > room {
+            if let Some(entropy) = &shared.entropy {
+                let tail = shaped.body - room;
+                let bytes = lock(entropy).fill(tail);
+                let mut body = Vec::with_capacity(shaped.body);
+                body.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+                body.extend_from_slice(payload);
+                body.extend_from_slice(&bytes);
+                shared.shape.entropy(&bytes);
+                framed = Some((body, flags | ENTROPY));
+            }
+        }
+        match framed {
+            Some((body, flags)) => records
+                .seal_with(Instant::now(), kind, flags, 0, &body, body.len())
+                .map_err(bad)?,
+            None => records
+                .seal_with(Instant::now(), kind, flags, 0, payload, shaped.body)
+                .map_err(bad)?,
+        }
+    } else {
+        records
+            .seal(Instant::now(), kind, flags, 0, payload)
+            .map_err(bad)?
+    };
+    let after = records.stats();
+    Ok((record, (after.body_out - before.body_out) as usize))
 }
 
 /// Seal the bytes of `app` into records on `io`, and serve the commands.
@@ -183,30 +235,75 @@ async fn run_send<W: AsyncWrite + Unpin>(
     let mut open = true;
     // A new carrier waits for the RESUME of the peer: no new record.
     let mut held = false;
+    let mut paced = shared
+        .options
+        .pace
+        .then_some(shared.options.profile.as_ref())
+        .flatten()
+        .map(|profile| Paced::new(profile, shared.options.measured_bps, Instant::now()));
+    // The opening write, coalesced to the target of the profile (FLY-1).
+    if open && !held && io.is_some() {
+        let target = shared.options.opening_write();
+        if target > 0 {
+            let (first, eof) = opening(app, target).await?;
+            if !first.is_empty() {
+                if let Some(w) = io.as_mut() {
+                    let sent = put(shared, Some(&mut log), w, &mut paced, DATA, 0, &first).await;
+                    lost(io, carry, sent)?;
+                }
+            }
+            if eof {
+                open = false;
+                if let Some(w) = io.as_mut() {
+                    let sent = put(shared, Some(&mut log), w, &mut paced, FIN, 0, &[]).await;
+                    lost(io, carry, sent)?;
+                }
+                if !carry {
+                    return Ok(());
+                }
+            }
+        }
+    }
+    let mut keepalive = paced
+        .as_mut()
+        .map(|paced| Instant::now() + paced.keepalive());
     loop {
         let reading = open && !held && io.is_some();
         if !reading && !commanded {
             return Ok(());
         }
+        let beat =
+            keepalive.unwrap_or_else(|| Instant::now() + std::time::Duration::from_secs(3600));
+        let idle = paced.is_some() && reading && !held;
         tokio::select! {
             read = app.read(&mut buf), if reading => {
                 let n = read?;
                 let Some(w) = io.as_mut() else { continue };
                 let sent = if n == 0 {
                     open = false;
-                    put(shared, Some(&mut log), w, FIN, 0, &[]).await
+                    put(shared, Some(&mut log), w, &mut paced, FIN, 0, &[]).await
                 } else {
                     let packed = shared.options.compress.then(|| pack::pack(&buf[..n])).flatten();
                     match &packed {
-                        Some(p) => put(shared, Some(&mut log), w, DATA, COMPRESSED, p).await,
-                        None => put(shared, Some(&mut log), w, DATA, 0, &buf[..n]).await,
+                        Some(p) => put(shared, Some(&mut log), w, &mut paced, DATA, COMPRESSED, p).await,
+                        None => put(shared, Some(&mut log), w, &mut paced, DATA, 0, &buf[..n]).await,
                     }
                 };
+                keepalive = paced.as_mut().map(|paced| Instant::now() + paced.keepalive());
                 lost(io, carry, sent)?;
                 // Without a new carrier to come, the FIN ends the sender.
                 if !open && !carry {
                     return Ok(());
                 }
+            }
+            // PACE-1: an idle channel sends an empty record, at a jittered
+            // interval. The peer drops an empty payload.
+            () = tokio::time::sleep_until(tokio::time::Instant::from_std(beat)), if idle => {
+                if let Some(w) = io.as_mut() {
+                    let sent = put(shared, Some(&mut log), w, &mut paced, DATA, 0, &[]).await;
+                    lost(io, carry, sent)?;
+                }
+                keepalive = paced.as_mut().map(|paced| Instant::now() + paced.keepalive());
             }
             command = commands.recv(), if commanded => match command {
                 // The application dropped its end: only its bytes are left.
@@ -224,7 +321,7 @@ async fn run_send<W: AsyncWrite + Unpin>(
                     })?;
                     for (_, kind, flags, payload) in rows {
                         let Some(w) = io.as_mut() else { break };
-                        let sent = put(shared, Some(&mut log), w, kind, flags, &payload).await;
+                        let sent = put(shared, Some(&mut log), w, &mut paced, kind, flags, &payload).await;
                         lost(io, carry, sent)?;
                     }
                 }
@@ -238,6 +335,37 @@ async fn run_send<W: AsyncWrite + Unpin>(
             },
         }
     }
+}
+
+/// The opening write of a stream: up to `target` bytes, with a short pause
+/// for each more byte, so that a page load's first records answer as one
+/// write. Gives the bytes and whether the application ended.
+async fn opening<W>(app: &mut W, target: usize) -> io::Result<(Vec<u8>, bool)>
+where
+    W: AsyncRead + Unpin,
+{
+    let mut out = Vec::with_capacity(target.min(CHUNK));
+    let mut first = true;
+    while out.len() < target {
+        let want = (target - out.len()).min(CHUNK);
+        let mut buf = vec![0u8; want];
+        let read = if first {
+            app.read(&mut buf).await
+        } else {
+            match tokio::time::timeout(OPENING_GAP, app.read(&mut buf)).await {
+                Ok(read) => read,
+                // No more byte in the gap: the opening write is complete.
+                Err(_) => return Ok((out, false)),
+            }
+        };
+        let n = read?;
+        if n == 0 {
+            return Ok((out, true));
+        }
+        out.extend_from_slice(&buf[..n]);
+        first = false;
+    }
+    Ok((out, false))
 }
 
 /// Write the RESUME record of this end on `io`.
@@ -383,13 +511,29 @@ async fn run_receive<R: AsyncRead + Unpin>(
                 shared.stats.received.fetch_add(1, SeqCst);
                 match r.kind {
                     DATA => {
-                        let payload = match r.flags {
-                            0 => r.payload,
-                            COMPRESSED => pack::unpack(&r.payload).map_err(|e| match e {
+                        let known = COMPRESSED | ENTROPY;
+                        if r.flags & !known != 0 {
+                            return Err(bad(format!("a record has the flags {:#x}", r.flags)));
+                        }
+                        let mut body = r.payload;
+                        if r.flags & ENTROPY != 0 {
+                            if body.len() < 4 {
+                                return Err(bad("an entropy record has no length"));
+                            }
+                            let len = u32::from_be_bytes(body[..4].try_into().expect("four bytes"))
+                                as usize;
+                            if len > body.len() - 4 {
+                                return Err(bad("an entropy record is shorter than its payload"));
+                            }
+                            body = body[4..4 + len].to_vec();
+                        }
+                        let payload = if r.flags & COMPRESSED != 0 {
+                            pack::unpack(&body).map_err(|e| match e {
                                 Refused::Limit => bad("decompress-limit"),
                                 Refused::Bad => bad("a compressed record is not snappy"),
-                            })?,
-                            other => return Err(bad(format!("a record has the flags {other:#x}"))),
+                            })?
+                        } else {
+                            body
                         };
                         let Some(to) = out.as_ref() else { continue };
                         if !payload.is_empty() && to.send(Ok(payload)).await.is_err() {

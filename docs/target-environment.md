@@ -25,6 +25,36 @@ edge leg on a GitHub runner and fetches the public URL. One limit stays: a proxy
 carry the edge connection or the MASQUE connection, because both need the Cloudflare certificate chain
 (and MASQUE needs a client certificate).
 
+## The network surface
+
+A chroot changes paths. It does not provide process or network isolation.
+
+The runtime does not make the guest the network surface. The network surface
+is the egress broker: when a policy is installed, each destination is
+classified before a socket is opened, and the policy of the deployment owns
+the decision. With neither `PODNET_POLICY` nor `PODNET_NODE_CONFIG` set, no
+policy is installed and every destination is allowed; the broker does not
+refuse by default. The guest asks the broker and does not decide its own
+egress class. The limits of that classification, and the five file system
+properties, are in `docs/host-runtime.md`.
+
+| Surface | What it is | What it does not do |
+| --- | --- | --- |
+| egress broker | one classified path for each destination, with a reason for a refusal | it does not isolate the guest process |
+| file system probe | five properties of the mount, at mount time | it does not change the mount |
+| crash log | a bounded, rotated log with redaction at write time | it does not keep the secret out of the process memory |
+| status page | the tree, generated and checked | it does not replace the repository state |
+
+The integration test `the_network_surface_needs_the_network_lab` needs
+`CAP_NET_ADMIN`: two network namespaces, a veth pair and a mount namespace
+for `/run/netns`. When the test process does not hold the capability, it
+re-executes itself under
+`unshare --user --map-root-user --net --mount`. It mounts a tmpfs on
+`/run/netns`, makes the namespaces and the veth pair, pings across it, then
+probes the mount and checks a policy. Only when neither route is available
+does it print a named skip; a lab that starts and fails is a failure. The
+gate runs it on this host, where the unshare route succeeds.
+
 ## Measured hosts
 
 ### A sandbox with an egress proxy (2026-11-01)

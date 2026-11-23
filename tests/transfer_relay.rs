@@ -178,7 +178,10 @@ async fn transfer_over_the_relay_crosses_the_cap() {
     let mut sender = settings(&mailbox.url, &[], Listen::No);
     sender.relay_pair = Some(write_pair(&pairs.path().join("relay"), &url));
     let mut receiver = settings(&mailbox.url, &[], Listen::No);
-    receiver.relay_resume.move_bytes = 256 << 10;
+    // H-19 (T-476): under a 1 MiB cap with the 768 KiB pair window and two
+    // 32 KiB chunks plus framing in flight, the largest safe whole-KiB move
+    // threshold is 191 KiB. 160 KiB leaves 32,704 bytes of room.
+    receiver.relay_resume.move_bytes = 160 << 10;
     let (sent, received) = run(sender, receiver, &file, out.path()).await;
     sent.unwrap();
     let (via, path) = landed(received);

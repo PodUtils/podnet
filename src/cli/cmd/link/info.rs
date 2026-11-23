@@ -90,7 +90,7 @@ fn live_lines(live: &Value) -> Vec<String> {
         .into_iter()
         .flatten()
         .map(|l| {
-            format!(
+            let mut line = format!(
                 "          peer {}  {}  {}  streams {}  opened {}  accepted {}  refused {} service {} forward",
                 l["peer"].as_str().unwrap_or("-"),
                 l["role"].as_str().unwrap_or("-"),
@@ -100,7 +100,19 @@ fn live_lines(live: &Value) -> Vec<String> {
                 l["accepted"],
                 l["refused_service"],
                 l["refused_forward"]
-            )
+            );
+            // PAD-5: the padded fraction of the sealed records is in the
+            // status of the link, in the text and in the JSON document.
+            if l["records_out"].as_u64().unwrap_or(0) > 0 {
+                if let Some(fraction) = l["padded_fraction"].as_f64() {
+                    line.push_str(&format!(
+                        "  padded {:.1}% of {} bytes",
+                        fraction * 100.0,
+                        l["body_bytes"].as_u64().unwrap_or(0)
+                    ));
+                }
+            }
+            line
         })
         .collect()
 }
@@ -402,9 +414,22 @@ fn report_doc(r: &Report) -> Value {
         "framing": r.framing(),
         "duplex": r.facts.duplex,
         "ordered": r.facts.ordered,
+        "reliable": r.facts.reliable,
         "mtu": r.facts.mtu,
         "cost": r.cost,
         "overhead": r.built.then(|| r.overhead()),
+        "rate": {
+            "bytes_per_second": r.bytes_per_second(),
+            "poll_interval_ms": r.poll_interval().map(|d| d.as_millis() as u64),
+            // GitHub #484: a carrier that declares a rate and has no
+            // interval to poll says `poll: none` rather than null.
+            "poll": if r.bytes_per_second().is_some() && r.poll_interval().is_none() {
+                Some("none")
+            } else {
+                None
+            },
+            "cost": r.built.then(|| r.overhead()),
+        },
         "needs_privilege": r.needs_privilege,
         "feature": r.feature,
         "built": r.built,

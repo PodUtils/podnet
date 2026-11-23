@@ -425,7 +425,7 @@ exits 78 before it binds the listener, and the message names both tailnets.
   and keep only the string `BackendState`. `crates/podnet-netns/src/tailscale.rs:172-191` (`state_warning`,
   `check_state`) is called at the start and after a failed dial (`crates/podnet-netns/src/tailscale.rs:317`
   and `crates/podnet-netns/src/tailscale.rs:413`); it warns once and never refuses.
-- `src/cli/cmd/net/shim.rs:63-95` (`net_tailscale`) reads no tailnet. `docs/networks.md:67` says only that
+- `src/cli/cmd/net/shim.rs:83-115` (`net_tailscale`) reads no tailnet. `docs/networks.md:67` says only that
   `tailscaled` must run with `--tun=userspace-networking`. The test with a fake LocalAPI:
   `crates/podnet-netns/src/tailscale.rs:569-600`.
 - `Fault::Config` (exit 78) and `Fault::Unavailable` (exit 69) are in `crates/podnet-core/src/exit.rs`.

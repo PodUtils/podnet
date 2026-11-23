@@ -450,6 +450,7 @@ one of `answered`, `refused` and `unknown`.
 | `paths` | array | One object for each TCP path (the hops). |
 | `clock` | object | The clock against the `Date` of an API. |
 | `git` | object | The installed git. |
+| `h3` | object | The shape of an HTTP/3 server and the schedule of the connection-ID rotation. |
 | `ssh_relay` | object | The SSH relay of `podnet ssh-relay`. |
 | `carriers` | array | One object for each carrier of `podnet link`. |
 | `proxy` | object | The proxy of the run. |
@@ -485,6 +486,9 @@ Each object of `paths`:
   and `detail` is `no SSH relay is given`. A stage that fails has `fail`
   and the stage in `detail` (`connect`, `banner`, `handshake` or `auth`). A
   stage with no answer in three times `--timeout` has `unknown`.
+* `h3`: `shape` and `congestion` (strings), `alpn_h3`, `control_stream` and `settings` (bool), `setting_ids`
+  (numbers) and `cid_rotation`: `min_s`, `max_s` and `jitter` (numbers) and `sample_s` (two numbers, the two
+  intervals of this run).
 * `carriers`: one object for each carrier of the registry, in its order: `carrier`, `verdict`, `status` and `detail` (strings).
   `ok` means that the host can use the carrier. `fail` means that it cannot, and `detail` gives the reason of `available()`.
 * `proxy`: `url` (string or null), `credentials` (bool or null), `direct`
@@ -531,6 +535,11 @@ against the binary and against this file. The test `the_ready_keys_are_fixed`
 `--run-for`, `--service-url`, `--strip-accept-encoding`, `--tcp`, `--token`,
 `--token-file`, `--transport`, `--unix`, `--url`, `--user-agent`, `--verbose`,
 `--warp-identity`.
+
+The end-to-end session adds `--e2e`, `--inspect`, `--connect`, `--control`,
+`--listen`, `--control-listen`, `--pair`, `--suite`, `--destination`,
+`--service`, `--peer`, `--compat-destination`, `--e2e-token` and
+`--e2e-token-seed-file`. [e2e.md](e2e.md) describes the session.
 
 ### Exit codes
 

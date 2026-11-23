@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "sni-tunnel",
+      "weight": 0.15,
+      "kind": "sni_suffix",
+      "value": "tunnel.example"
+    },
+    {
+      "id": "alpn-tunnel",
+      "weight": 0.15,
+      "kind": "alpn",
+      "value": "tunnel"
+    },
+    {
+      "id": "ja3-tunnel",
+      "weight": 0.2,
+      "kind": "ja3",
+      "value": "3a4084e71c0fd54082865bd5d356b961"
+    },
+    {
+      "id": "ja4-tunnel",
+      "weight": 0.2,
+      "kind": "ja4",
+      "value": "t13d0406tl_39e807bd56df_fb71836bce29"
+    },
+    {
+      "id": "small-records",
+      "weight": 0.3,
+      "kind": "record_median_below",
+      "value": 300
+    }
+  ]
+}

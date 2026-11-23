@@ -17,6 +17,7 @@ pub(crate) const HELP_GROUPS: &[(&str, &[&str])] = &[
             "expose",
             "ssh-relay",
             "serve",
+            "cover",
             "share",
             "send",
             "receive",
@@ -36,14 +37,23 @@ pub(crate) const HELP_GROUPS: &[(&str, &[&str])] = &[
         "Run in the background",
         &["ps", "logs", "wait", "stop", "autostart"],
     ),
+    ("Work with no network", &["offline"]),
     (
         "Check this host and podnet",
         &[
             "doctor",
             "status",
+            "host",
+            "stat",
+            "rules",
+            "init",
+            "harness",
+            "ci",
+            "forge",
             "ports",
             "components",
             "bench",
+            "sidecar",
             "bug-report",
             "update",
             "man",
@@ -109,8 +119,9 @@ fn grouped_commands(cmd: &clap::Command) -> String {
 pub(crate) fn top_command() -> clap::Command {
     let cmd = Cli::command();
     let template = format!(
-        "{{about-with-newline}}\n{{usage-heading}} {{usage}}\n\n{START_HERE}\n\n{}Options:\n{{options}}{{after-help}}",
-        grouped_commands(&cmd)
+        "{{about-with-newline}}\n{{usage-heading}} {{usage}}\n\n{START_HERE}\n\n{}Exit codes:\n{}Options:\n{{options}}{{after-help}}",
+        grouped_commands(&cmd),
+        podnet::exit::contract_table()
     );
     let root = Cli::command();
     with_examples(cmd.help_template(template), "podnet", &root)

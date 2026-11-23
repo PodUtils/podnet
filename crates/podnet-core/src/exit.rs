@@ -91,6 +91,58 @@ pub const TEMPFAIL: i32 = 75;
 /// `--detach`: the instance was not ready in time (as timeout(1)).
 pub const TIMEOUT: i32 = 124;
 
+/// The exit contract of podnet#501, EXIT-1 to EXIT-3: the six codes that
+/// a script depends on, with the meaning and the commands that can give
+/// each. The binary help and `docs/exit-codes.md` are generated from this
+/// one table.
+pub const CONTRACT: [(i32, &str, &str, &str); 6] = [
+    (
+        USAGE,
+        "usage",
+        "an unknown or malformed command, flag or value",
+        "each command",
+    ),
+    (
+        NO_INPUT,
+        "no-input",
+        "a key, identity or allow list that must exist is missing",
+        "link, send, receive, warp",
+    ),
+    (
+        UNAVAILABLE,
+        "unavailable",
+        "a carrier, listener or relay disabled by policy, or not answering",
+        "link, relay, init, harness",
+    ),
+    (
+        OS_ERROR,
+        "os-error",
+        "identity file permissions or ownership are wrong",
+        "link, serve",
+    ),
+    (
+        NO_PERM,
+        "no-perm",
+        "authentication failed or the peer is not in the allow list",
+        "link, send, receive, relay",
+    ),
+    (
+        CONFIG,
+        "config",
+        "a schema, policy, protocol or suite mismatch",
+        "init, rules, status, harness, link",
+    ),
+];
+
+/// [`CONTRACT`] as the lines of a help screen or a document.
+pub fn contract_table() -> String {
+    let mut out = String::new();
+    for (code, name, meaning, commands) in CONTRACT {
+        out.push_str(&format!("  {code:>3}  {name:<12} {meaning} ({commands})\n"));
+    }
+    out
+}
+
 /// An error with a [`Fault`] class. Its text is the text of the error.
 #[derive(Debug)]
 pub struct Faulted {

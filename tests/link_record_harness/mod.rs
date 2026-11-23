@@ -4,6 +4,7 @@
 #![allow(dead_code)]
 
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use pod_e2e::record::{Header, HEADER};
@@ -11,6 +12,7 @@ use podnet::identity::{self, AllowList, Identity};
 use podnet::link::{self, Link, Settings as LinkSettings, Stream};
 use podnet::link_record::{self as record, Options, Sealed};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::time::{sleep, Duration};
 
 pub fn install(dir: &Path, name: &str) -> Identity {
     let sub = dir.join(name);
@@ -179,6 +181,134 @@ pub async fn chain(
 
 pub fn pass() -> Edit {
     Box::new(|_, r| vec![r])
+}
+
+/// A link of `bps` bits per second, in both directions, in front of `stream`.
+/// The caller gets the end at the record layer: writes into it wait for the
+/// pump, so the handshake timing sees the rate and not a buffer.
+pub fn throttle<S>(stream: S, bps: u64) -> tokio::io::DuplexStream
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let (near, far) = tokio::io::duplex(256);
+    let (mut sr, mut sw) = tokio::io::split(stream);
+    let (mut nr, mut nw) = tokio::io::split(near);
+    tokio::spawn(async move { pump_rate(&mut sr, &mut nw, bps).await });
+    tokio::spawn(async move { pump_rate(&mut nr, &mut sw, bps).await });
+    far
+}
+
+async fn pump_rate<R, W>(r: &mut R, w: &mut W, bps: u64)
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    let mut buf = [0u8; 128];
+    loop {
+        let n = match r.read(&mut buf).await {
+            Ok(0) | Err(_) => break,
+            Ok(n) => n,
+        };
+        // The queue holds the bytes for their time at the rate.
+        sleep(Duration::from_secs_f64(n as f64 * 8.0 / bps as f64)).await;
+        if w.write_all(&buf[..n]).await.is_err() {
+            break;
+        }
+    }
+    let _ = w.shutdown().await;
+}
+
+/// A link of `bps` bits per second that passes traffic at once until
+/// `open` is set. The caller raises it after the handshake, so the benchmark
+/// measures the data path and not the setup.
+pub fn gated_throttle<S>(stream: S, bps: u64, open: Arc<AtomicBool>) -> tokio::io::DuplexStream
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let (near, far) = tokio::io::duplex(256);
+    let (mut sr, mut sw) = tokio::io::split(stream);
+    let (mut nr, mut nw) = tokio::io::split(near);
+    let (up, down) = (open.clone(), open);
+    tokio::spawn(async move { pump_rate_gated(&mut sr, &mut nw, bps, up).await });
+    tokio::spawn(async move { pump_rate_gated(&mut nr, &mut sw, bps, down).await });
+    far
+}
+
+async fn pump_rate_gated<R, W>(r: &mut R, w: &mut W, bps: u64, open: Arc<AtomicBool>)
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    let mut buf = [0u8; 128];
+    loop {
+        let n = match r.read(&mut buf).await {
+            Ok(0) | Err(_) => break,
+            Ok(n) => n,
+        };
+        if open.load(Ordering::SeqCst) {
+            sleep(Duration::from_secs_f64(n as f64 * 8.0 / bps as f64)).await;
+        }
+        if w.write_all(&buf[..n]).await.is_err() {
+            break;
+        }
+    }
+    let _ = w.shutdown().await;
+}
+
+/// A pair whose handshake is at full speed. The returned flag opens the
+/// throttles at `bps` for the data, so a slow-rate benchmark starts after
+/// its setup.
+pub async fn pair_slow_after_handshake(
+    dialer: Options,
+    listener: Options,
+    bps: u64,
+) -> (Sealed, Sealed, Arc<AtomicBool>) {
+    let dir = tempfile::tempdir().unwrap();
+    let (a, c) = (install(dir.path(), "a"), install(dir.path(), "c"));
+    let (s, t, _links) = streams().await;
+    let open = Arc::new(AtomicBool::new(false));
+    let (cp, list) = (c.public(), allow(&[&a]));
+    let (d, l) = tokio::join!(
+        record::dial(gated_throttle(s, bps, open.clone()), &a, Some(&cp), dialer),
+        record::accept(gated_throttle(t, bps, open.clone()), &c, &list, listener)
+    );
+    std::mem::forget(_links);
+    (d.unwrap(), l.unwrap(), open)
+}
+
+/// [`chain`] with a rate in front of each record end: a slow link.
+pub async fn chain_slow(
+    opts_a: Options,
+    opts_c: Options,
+    bps: u64,
+    to_c: Edit,
+    to_a: Edit,
+) -> (Sealed, Sealed, Seen) {
+    let dir = tempfile::tempdir().unwrap();
+    let (a, c) = (install(dir.path(), "a"), install(dir.path(), "c"));
+    let (ab_a, ab_b) = link::unix_pair(LinkSettings::default()).unwrap();
+    let (bc_b, bc_c) = link::unix_pair(LinkSettings::default()).unwrap();
+    let mut sa = ab_a.open().unwrap();
+    sa.write_all(b"x").await.unwrap();
+    let mut sb_in = ab_b.accept().await.unwrap();
+    let mut one = [0u8; 1];
+    sb_in.read_exact(&mut one).await.unwrap();
+    let mut sb_out = bc_b.open().unwrap();
+    sb_out.write_all(b"x").await.unwrap();
+    let mut sc = bc_c.accept().await.unwrap();
+    sc.read_exact(&mut one).await.unwrap();
+    let seen = Seen::default();
+    let (in_r, in_w) = tokio::io::split(sb_in);
+    let (out_r, out_w) = tokio::io::split(sb_out);
+    tokio::spawn(relay_one(in_r, out_w, seen.to_c.clone(), to_c));
+    tokio::spawn(relay_one(out_r, in_w, seen.to_a.clone(), to_a));
+    let (cp, list) = (c.public(), allow(&[&a]));
+    let (d, l) = tokio::join!(
+        record::dial(throttle(sa, bps), &a, Some(&cp), opts_a),
+        record::accept(throttle(sc, bps), &c, &list, opts_c)
+    );
+    std::mem::forget((ab_a, ab_b, bc_b, bc_c));
+    (d.unwrap(), l.unwrap(), seen)
 }
 
 pub fn header(record: &[u8]) -> Header {

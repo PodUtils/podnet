@@ -42,6 +42,8 @@ evidence behind it.
 | `podssh-copy.md` | What podnet copies from podssh, and in which order |
 | `hosted-relays.md` | The relays and mailboxes that others host for free: the magic-wormhole mailbox on 443, piping-server, the n0 iroh relays, Pinggy (2026-11-11) |
 | `cf-edge-standins.md` | Stand-ins for the Cloudflare Tunnel edge and the quick-tunnel service: what exists, what podnet built for CI (T-316, 2026-11-12) |
+| `hard-problems.md` | 32 hard or blocked problems of podnet and podcrates (H-01 to H-32, 2026-11-20) |
+| `hard-problems-results.md` | Research answers, grades, and landed fixes for H-01 to H-32 (2026-11-20 to 2026-11-23) |
 
 The field report itself is in `docs/reports/field-report-2026-11-05.md`.
 The attachments (the mwan program, the lab kit, the vn kit) are not in the

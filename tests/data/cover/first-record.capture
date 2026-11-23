@@ -1,0 +1,15 @@
+# The first client-to-server TLS application-data record of two connections,
+# captured at the wire boundary.
+# produced_by: cargo test -p podnet --test cover the_first_record_of_a_switch_is_the_covers_first_record,
+#   with a tee on the server socket of the local cover (127.0.0.1). The
+#   handshake records are dropped before the first data record. The
+#   authenticated client sends the proof and its padding; the unauthenticated
+#   client sends a GET padded to the same size and receives the real page.
+# produced_on: 2026-11-21
+# cover_version: 1.7.2
+# cover_script: tests/data/cover/script.toml
+# bound: both payloads are the script's first record size, 221 application
+#   bytes plus the 17-byte TLS 1.3 overhead, so 238 wire bytes (difference 0)
+# label type version payload_bytes
+authenticated 23 0303 238
+unauthenticated 23 0303 238

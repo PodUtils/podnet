@@ -386,19 +386,42 @@ static const struct forward *forward_match(const struct sockaddr *sa, socklen_t 
     return NULL;
 }
 
+static int valid_prefix(const char *s) {
+    size_t n = strlen(s);
+    if (n == 0 || n > 59) return 0;
+    for (size_t i = 0; i < n; i++) {
+        char c = s[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+              (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.'))
+            return 0;
+    }
+    return 1;
+}
+
 static void parse_config(void) {
     const char *v;
     memset(&cfg, 0, sizeof cfg);
     snprintf(cfg.prefix, sizeof cfg.prefix, "podnet-vnet");
     cfg.max_fds = 65536;
     cfg.local_v4.s_addr = htonl((10u << 24) | (66u << 16) | (0u << 8) | 2u);
-    if ((v = getenv("PODNET_VNET_PREFIX")) && *v) {
-        snprintf(cfg.prefix, sizeof cfg.prefix, "%s", v);
+    const char *bad_prefix = NULL;
+    if ((v = getenv("PODNET_VNET_PREFIX")) != NULL) {
+        if (valid_prefix(v))
+            snprintf(cfg.prefix, sizeof cfg.prefix, "%s", v);
+        else
+            bad_prefix = v;
     }
     if ((v = getenv("PODNET_VNET_CONTROL")) && *v) {
         snprintf(cfg.control, sizeof cfg.control, "%s", v);
     }
     cfg.log = (v = getenv("PODNET_VNET_LOG")) && *v && *v != '0';
+    // Print an ignored prefix unconditionally so direct preload never falls
+    // back to the default prefix silently.
+    if (bad_prefix) {
+        fprintf(stderr,
+                "podnet-vnet: PODNET_VNET_PREFIX %s is not 1 to 59 bytes of letters, digits, '.', '-' or '_'; using podnet-vnet\n",
+                bad_prefix);
+    }
     cfg.map_loopback = (v = getenv("PODNET_VNET_MAP_LOOPBACK")) && *v && *v != '0';
     cfg.host_netlink = (v = getenv("PODNET_VNET_HOST_NETLINK")) && *v && *v != '0';
     if ((v = getenv("PODNET_VNET_LOCAL_ADDR")) && *v) {
@@ -737,12 +760,16 @@ static int to_abstract(const struct sockaddr *sa, socklen_t len,
     }
     memset(un, 0, sizeof *un);
     un->sun_family = AF_UNIX;
-    int n = snprintf(un->sun_path + 1, sizeof(un->sun_path) - 1, "%s/%d/%s/%u",
+    // Build in a buffer the size of sun_path, then copy the bytes without the
+    // NUL: an abstract name may fill sun_path[1..] to the last byte.
+    char name[sizeof(un->sun_path)];
+    int n = snprintf(name, sizeof name, "%s/%d/%s/%u",
                      cfg.prefix, family, ip, port);
-    if (n <= 0 || (size_t)n >= sizeof(un->sun_path) - 1) {
+    if (n <= 0 || (size_t)n >= sizeof name) {
         errno = ENAMETOOLONG;
         return -1;
     }
+    memcpy(un->sun_path + 1, name, (size_t)n);
     *un_len = (socklen_t)(offsetof(struct sockaddr_un, sun_path) + 1 + (size_t)n);
     return 0;
 }

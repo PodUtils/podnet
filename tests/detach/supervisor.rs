@@ -306,7 +306,7 @@ fn a_planned_end_is_not_restarted() {
         "--listen",
         &switch,
         "--run-for",
-        "2",
+        "4",
         "--detach",
         "--name",
         "plan",

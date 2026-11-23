@@ -240,23 +240,47 @@ impl Edge {
         Edge::start_with_udp(api, routes, vec![]).await
     }
 
+    /// A stand-in that requires no client certificate: a caller that pins
+    /// the key of the edge opens a session, so a provider with no device
+    /// record (the static adapter) passes the same session test as the
+    /// Cloudflare adapter.
+    pub async fn start_open(api: ApiStandIn, routes: Vec<Route>) -> Edge {
+        Edge::start_inner(api, routes, vec![], false).await
+    }
+
     /// [`Edge::start`] with the UDP routes `udp` inside.
     pub async fn start_with_udp(api: ApiStandIn, routes: Vec<Route>, udp: Vec<Route>) -> Edge {
+        Edge::start_inner(api, routes, udp, true).await
+    }
+
+    async fn start_inner(
+        api: ApiStandIn,
+        routes: Vec<Route>,
+        udp: Vec<Route>,
+        client_auth: bool,
+    ) -> Edge {
         let provider = Arc::new(rustls::crypto::ring::default_provider());
-        let verifier = Arc::new(Enrolled {
-            api,
-            algorithms: provider.signature_verification_algorithms,
-        });
         let shown = Arc::new(Shown {
             keys: Mutex::new(VecDeque::new()),
             hellos: AtomicUsize::new(0),
         });
         shown.set(vec![DeviceKey::generate().unwrap()]);
-        let mut config = rustls::ServerConfig::builder_with_provider(provider)
+        let builder = rustls::ServerConfig::builder_with_provider(provider.clone())
             .with_protocol_versions(&[&rustls::version::TLS13])
-            .unwrap()
-            .with_client_cert_verifier(verifier)
-            .with_cert_resolver(shown.clone());
+            .unwrap();
+        let mut config = if client_auth {
+            let verifier = Arc::new(Enrolled {
+                api,
+                algorithms: provider.signature_verification_algorithms,
+            });
+            builder
+                .with_client_cert_verifier(verifier)
+                .with_cert_resolver(shown.clone())
+        } else {
+            builder
+                .with_no_client_auth()
+                .with_cert_resolver(shown.clone())
+        };
         config.alpn_protocols = vec![b"h2".to_vec()];
         let acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(config));
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();

@@ -73,8 +73,11 @@ use crate::link::{Link, ResetCode, Stream};
 mod accept;
 mod dump;
 mod redial;
+mod util;
 mod verbs;
 pub use redial::{Dialing, Redial};
+pub use util::token_path;
+use util::{now, same};
 
 /// The most bytes of a request line.
 pub const REQUEST_LIMIT: usize = 4096;
@@ -127,12 +130,6 @@ impl Answer {
     }
 }
 
-fn now() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs())
-}
-
 /// One link that an instance holds.
 pub struct Held {
     id: u64,
@@ -151,6 +148,9 @@ pub struct Held {
     /// The streams that a task serves and a verb can end: the id, and the
     /// signal that the task waits for.
     streams: Mutex<BTreeMap<u32, Arc<Notify>>>,
+    /// The padded bytes, the body bytes and the records of the sealed
+    /// streams of this link (T-370).
+    shape: Arc<crate::link_record::ShapeCounters>,
 }
 
 /// The most stream ids that a row of `status` lists.
@@ -218,6 +218,10 @@ impl Held {
             "refused_service": self.refused_service.load(Ordering::Relaxed),
             "refused_forward": self.refused_forward.load(Ordering::Relaxed),
             "since": self.since,
+            "records_out": self.shape.records(),
+            "body_bytes": self.shape.body(),
+            "padded_bytes": self.shape.padded(),
+            "padded_fraction": self.shape.fraction().fraction(),
         })
     }
 }
@@ -260,6 +264,11 @@ impl Slot {
     /// The task that serves the stream waits on the result.
     pub fn track(&self, stream: &Stream) -> Tracked {
         self.held.track(stream.id())
+    }
+
+    /// The counters of the sealed records of this link (T-370).
+    pub fn shape(&self) -> Arc<crate::link_record::ShapeCounters> {
+        self.held.shape.clone()
     }
 }
 
@@ -332,6 +341,7 @@ impl Hub {
             refused_service: AtomicU64::new(0),
             refused_forward: AtomicU64::new(0),
             streams: Mutex::new(BTreeMap::new()),
+            shape: crate::link_record::ShapeCounters::new(),
         });
         self.held
             .lock()
@@ -504,16 +514,6 @@ pub fn peer_list(fingerprint: &str) -> anyhow::Result<AllowList> {
 }
 
 /// The path of the token file of a socket.
-pub fn token_path(socket: &Path) -> PathBuf {
-    let mut name = socket.as_os_str().to_os_string();
-    name.push(".token");
-    PathBuf::from(name)
-}
-
-fn same(a: &[u8], b: &[u8]) -> bool {
-    a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
-}
-
 type Gate = Arc<dyn Fn(u32) -> bool + Send + Sync>;
 
 /// The control socket of a hub, and the task that serves it. The drop

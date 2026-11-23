@@ -329,3 +329,25 @@ podnet share --mode upload --dir /tmp/inbox --stop-after --idle-secs 600
   mode, the replies of the local server keep their own headers.
 * A download answers `If-None-Match: *` and a weak tag (`W/"..."`) with
   304.
+
+## Deferred responses
+
+`src/defer` is the response cache of a relay (T-371, GitHub #494; `podnet::defer`). It is a library primitive: as of 2026-11-20 no road of the
+CLI runs it.
+
+* The first request of a key is served live, with the origin's own timing. Its answer is then prepared for the next request of
+  the same key. The next request is served from the prepared copy after half of the origin's delay: the copy was made while
+  the last client was served, and it never replaces a response on its way (DEFER-1 and DEFER-4).
+* A miss is live, with the origin's timing. A miss that is faked is not a path of the cache.
+* The chunk size of `Defer::new` bounds the bytes of one prepared response. A larger response is served live each time, so the
+  bandwidth that the cache adds stays within the chunk (DEFER-2).
+* A response can carry a control stream inside bytes that an HTTP/1.1 application parses (GitHub #494). `Defer::carrying`
+  takes a `Carrier`; `Carrier::push` queues one frame, and splits a payload over 1024 bytes. `Defer` adds the next frame to
+  the head of the response as `x-pod-carrier: HEX`, before the blank line, on both the live and the replayed answer; the
+  prepared copy stays without it. HEX is `[u32 big-endian length][payload]`; `defer::carrier::frames` decodes every such
+  header of a response. One frame goes in each response, and only when the response with the line fits the chunk: else the
+  frame waits for a later response (DEFER-2). The status line, `Content-Length` and the body are unchanged, and an HTTP/1.1
+  parser ignores the unknown header.
+* `podnet::defer::Generator` gives request/response alternation at human timescales for the tests. Its profiles are data files
+  under `src/defer/profiles/`: a page load, a video call, a terminal and a file transfer. A new application is a new file
+  (SIM-1 to SIM-4). It is a tool of the tests and of the classifier harness, not a mode of a road.

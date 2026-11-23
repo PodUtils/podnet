@@ -7,6 +7,17 @@ fn main() {
     println!("cargo:rustc-env=PODNET_BUILD_COMMIT={commit}");
     let target = std::env::var("TARGET").unwrap_or_else(|_| "unknown".into());
     println!("cargo:rustc-env=PODNET_BUILD_TARGET={target}");
+    // The harness names the compiler of the run in the conditions of a
+    // measurement, so the number travels with the binary.
+    let rustc = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".into());
+    let version = std::process::Command::new(rustc)
+        .arg("--version")
+        .output()
+        .ok()
+        .filter(|out| out.status.success())
+        .map(|out| String::from_utf8_lossy(&out.stdout).trim().to_string())
+        .unwrap_or_else(|| "unknown".into());
+    println!("cargo:rustc-env=PODNET_RUSTC_VERSION={version}");
     // The date of the manual (issue 181): SOURCE_DATE_EPOCH, else the date
     // of the commit. Both are the same for each build of a commit, so a
     // rebuild gives the same binary.

@@ -554,3 +554,26 @@ fn root_writes_no_file_in_the_home_of_another_user() {
     assert!(out.status.success(), "{}", stderr(&out));
     assert!(!home.join(".local/state/podnet").exists());
 }
+
+/// `doctor --shape` prints one line for each road and opens no connection.
+#[test]
+fn the_shape_doctor_names_each_road() {
+    let out = podnet(&["doctor", "--shape"]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let text = String::from_utf8_lossy(&out.stdout);
+    for road in ["page-load", "video-call", "terminal", "file-transfer"] {
+        assert!(text.contains(&format!("road {road} ")), "{text}");
+    }
+    assert_eq!(
+        text.lines()
+            .filter(|line| line.starts_with("road "))
+            .count(),
+        4
+    );
+    assert!(text.contains("state observed"), "{text}");
+}

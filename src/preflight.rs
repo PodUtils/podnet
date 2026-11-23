@@ -373,6 +373,7 @@ fn local_address(local: &str) -> Result<String, String> {
     let first = found
         .first()
         .ok_or_else(|| format!("--local {local}: no address"))?;
+    // egress-exempt: a local bind check of --local; it never connects
     let socket = if first.is_ipv4() {
         tokio::net::TcpSocket::new_v4()
     } else {

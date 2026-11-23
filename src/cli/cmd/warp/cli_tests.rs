@@ -139,3 +139,38 @@ fn the_scan_hint_is_a_command() {
     let parsed = Cli::try_parse_from(command.split_whitespace());
     assert!(parsed.is_ok(), "{command}: {:?}", parsed.err());
 }
+
+// Issue 486 (QUIC-8): --tuic with nc, and the link that it carries.
+#[test]
+fn the_tuic_link_of_nc() {
+    let words = [
+        "podnet",
+        "warp",
+        "--tuic",
+        "tuic://123e4567-e89b-12d3-a456-426614174000:pw@edge.test:443?sni=edge.test&allow_insecure=1",
+        "nc",
+        "example.test",
+        "443",
+    ];
+    let cli = Cli::try_parse_from(words).unwrap();
+    let Command::Warp(args) = cli.command else {
+        panic!("warp")
+    };
+    let text = args.tuic.as_deref().unwrap();
+    let link = podnet::roads::tuic::Link::parse(text).unwrap();
+    assert_eq!(link.host, "edge.test");
+    assert_eq!(link.port, 443);
+    assert_eq!(link.sni, "edge.test");
+    assert!(link.allow_insecure);
+    match args.command {
+        WarpCommand::Nc {
+            host, port, udp, ..
+        } => {
+            assert_eq!(host, "example.test");
+            assert_eq!(port, 443);
+            assert!(!udp);
+        }
+        other => panic!("nc: {other:?}"),
+    }
+    assert!(podnet::roads::tuic::Link::parse("tuic://h:443").is_err());
+}

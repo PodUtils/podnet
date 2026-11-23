@@ -193,8 +193,9 @@ Options:
                            plane (no TUN, no stack): IPv4 TCP and UDP, never
                            chosen by auto; pod doctor shows if it works
       --prefer-udp         With auto: seccomp first when it works (UDP
-                           datagrams of any size go through; netns carries
-                           a datagram of 1500 bytes at most)
+                           datagrams of any size go through; netns
+                           reassembles fragments up to a UDP payload of
+                           65507 bytes)
       --name-backend       Print one line on stderr that names the backend
                            that runs, its limits and the reason of the
                            choice (also after auto)

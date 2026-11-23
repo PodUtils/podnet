@@ -17,6 +17,23 @@ pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
     let routes = podnet::vnet::shim::socks_route_list(&args.socks_routes).fault(Fault::Usage)?;
     // T-357: a bad forward is a usage error too.
     let forwards = podnet::vnet::shim::forward_list(&args.forwards).fault(Fault::Usage)?;
+    // H-05: resolve and check PODNET_VNET_PREFIX before building the shim so
+    // an invalid or non-UTF-8 value fails fast with exit 64.
+    let prefix = match std::env::var("PODNET_VNET_PREFIX") {
+        Ok(value) if podnet::vnet::addr::valid_prefix(&value) => value,
+        Ok(value) => {
+            return Err(anyhow::anyhow!(
+                "PODNET_VNET_PREFIX {value:?} is not 1 to {} bytes of letters, digits, '.', '-' or '_'",
+                podnet::vnet::addr::MAX_PREFIX
+            ))
+            .fault(Fault::Usage);
+        }
+        Err(std::env::VarError::NotPresent) => podnet::vnet::shim::unique_prefix(),
+        Err(std::env::VarError::NotUnicode(_)) => {
+            return Err(anyhow::anyhow!("PODNET_VNET_PREFIX is not valid UTF-8"))
+                .fault(Fault::Usage);
+        }
+    };
     let directory = args
         .out
         .clone()
@@ -27,6 +44,7 @@ pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
         _ => podnet::vnet::shim::build(&directory)?,
     };
     let options = podnet::vnet::shim::ShimOptions {
+        prefix,
         log: args.log,
         map_loopback: args.map_loopback,
         hosts,
@@ -43,7 +61,7 @@ pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
         },
         ..podnet::vnet::shim::ShimOptions::default()
     };
-    let env = options.environment(&shim.path);
+    let env = options.environment(&shim.path).fault(Fault::Usage)?;
     if args.json {
         let object: serde_json::Map<String, serde_json::Value> = env
             .into_iter()
@@ -51,8 +69,10 @@ pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
             .collect();
         println!("{}", serde_json::to_string_pretty(&object)?);
     } else {
-        println!("podnet: shim     {}", shim.path.display());
-        println!("podnet: origin   {:?}", shim.origin);
+        // The notes go to stderr, so `eval "$(podnet net shim)"` runs only
+        // the exports on stdout.
+        eprintln!("podnet: shim     {}", shim.path.display());
+        eprintln!("podnet: origin   {:?}", shim.origin);
         for (key, value) in &env {
             println!("  export {key}={value}");
         }

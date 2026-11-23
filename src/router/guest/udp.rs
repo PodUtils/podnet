@@ -283,6 +283,7 @@ async fn flow(ctx: Ctx, key: Key, mut inbox: mpsc::Receiver<Vec<u8>>, place: Hel
                 match tokio::time::timeout(IDLE, inbox.recv()).await {
                     Ok(Some(data)) => {
                         last.store(ctx.now_ms(), Ordering::Relaxed);
+                        // egress-exempt: `way_for` approved this destination before `open`
                         match send_to(&*socket, &data, dst).await {
                             Ok(()) => stats.add(&stats.udp_up),
                             Err(e) => tracing::debug!("UDP flow {guest} to {dst}: {e}"),

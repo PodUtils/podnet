@@ -358,6 +358,19 @@ async fn ssh(mut io: BoxedIo) -> Outcome {
 
 /// A DNS query for `example.com` (A) over UDP to 1.1.1.1:53, direct.
 async fn udp_dns(timeout: Duration) -> Outcome {
+    let resolver = crate::services::endpoint(crate::services::ONE, "udp-1").authority();
+    // EGRESS-3 and EGRESS-4: the UDP probe is a destination of the policy,
+    // checked before the socket is bound or a datagram is sent.
+    let (host, port) = match resolver.rsplit_once(':') {
+        Some((host, port)) if !host.is_empty() && !port.is_empty() => (host, port),
+        _ => return Outcome::Failed(format!("the resolver {resolver} is not HOST:PORT")),
+    };
+    let Ok(port) = port.parse::<u16>() else {
+        return Outcome::Failed(format!("the resolver {resolver} has no port"));
+    };
+    if let Err(refused) = crate::policy::permit(host.trim_matches(['[', ']']), port) {
+        return Outcome::Failed(refused.reason);
+    }
     let socket = match tokio::net::UdpSocket::bind("0.0.0.0:0").await {
         Ok(s) => s,
         Err(err) => return Outcome::Failed(format!("a UDP socket: {err}")),
@@ -366,7 +379,6 @@ async fn udp_dns(timeout: Duration) -> Outcome {
         0x12, 0x34, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 7, b'e', b'x', b'a', b'm', b'p', b'l', b'e', 3,
         b'c', b'o', b'm', 0, 0, 1, 0, 1,
     ];
-    let resolver = crate::services::endpoint(crate::services::ONE, "udp-1").authority();
     if let Err(err) = socket.send_to(&query, resolver.as_str()).await {
         return Outcome::Failed(format!("send: {err}"));
     }
@@ -381,6 +393,11 @@ async fn udp_dns(timeout: Duration) -> Outcome {
 
 /// TCP to the IPv6 address of 1.1.1.1 (2606:4700:4700::1111) on 443.
 async fn ipv6(timeout: Duration) -> Outcome {
+    // EGRESS-3 and EGRESS-4: the probe is a destination of the policy,
+    // checked before the socket opens.
+    if let Err(refused) = crate::policy::permit("2606:4700:4700::1111", 443) {
+        return Outcome::Failed(refused.reason);
+    }
     match tokio::time::timeout(
         timeout,
         tokio::net::TcpStream::connect("[2606:4700:4700::1111]:443"),
@@ -402,6 +419,11 @@ async fn localhost() -> Outcome {
     let Ok(addr) = listener.local_addr() else {
         return Outcome::Failed("no local address".into());
     };
+    // EGRESS-3 and EGRESS-4: the loopback listener is still a destination
+    // of the deployment's policy, checked before the socket opens.
+    if let Err(refused) = crate::policy::permit(&addr.ip().to_string(), addr.port()) {
+        return Outcome::Failed(refused.reason);
+    }
     match tokio::net::TcpStream::connect(addr).await {
         Ok(_) => Outcome::Ok,
         Err(err) => Outcome::Failed(format!("connect: {err}")),
@@ -517,66 +539,7 @@ pub fn advice(report: &Report) -> Vec<String> {
     out
 }
 
-fn mark(outcome: &Outcome) -> String {
-    match outcome {
-        Outcome::Ok => "ok".into(),
-        Outcome::Intercepted => "tls-intercepted".into(),
-        Outcome::Failed(_) => "fail".into(),
-        Outcome::NotTried => "-".into(),
-    }
-}
-
-/// The report as text.
-pub fn text(report: &Report) -> String {
-    let mut out = String::new();
-    out.push_str(&format!(
-        "proxy: {}   podnet warp up: {}\n\n",
-        report.proxy.as_deref().unwrap_or("none"),
-        if report.warp_up {
-            "runs"
-        } else {
-            "does not run"
-        }
-    ));
-    out.push_str(&format!(
-        "{:<20} {:<28} {:<16} {:<16} {:<16}\n",
-        "TASK", "TARGET", "DIRECT", "PROXY", "WARP"
-    ));
-    for row in &report.rows {
-        out.push_str(&format!(
-            "{:<20} {:<28} {:<16} {:<16} {:<16}\n",
-            row.task,
-            row.target,
-            mark(&row.direct),
-            mark(&row.proxy),
-            mark(&row.warp)
-        ));
-    }
-    for row in &report.rows {
-        if let Some(files) = &row.files {
-            out.push_str(&format!("  {}: files from {files}\n", row.task));
-        }
-    }
-    out.push_str(&format!(
-        "\nThis host, direct (no WARP): UDP DNS (1.1.1.1:53): {}   IPv6: {}   localhost: {}   resolver: {}\n",
-        mark(&report.udp_dns),
-        mark(&report.ipv6),
-        mark(&report.localhost),
-        mark(&report.resolver)
-    ));
-    if !report.udp_dns.works() {
-        out.push_str(if report.warp_up {
-            "  UDP fails for a program that runs on this host. Under WARP it has UDP: podnet warp exec -- CMD, podnet warp shell, or podnet warp run -- CMD.\n"
-        } else {
-            "  UDP fails for a program that runs on this host. Under WARP it has UDP: podnet warp run -- CMD, or start podnet warp up and use podnet warp exec -- CMD or podnet warp shell.\n"
-        });
-    }
-    out.push('\n');
-    for line in &report.advice {
-        out.push_str(&format!("* {line}\n"));
-    }
-    out
-}
+pub use crate::agent_text::text;
 
 /// The number of exposes of `agent up` that are not ready (issue 173).
 pub fn exposes_failed(exposed: &serde_json::Value) -> usize {

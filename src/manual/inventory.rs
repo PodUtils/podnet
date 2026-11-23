@@ -88,6 +88,31 @@ pub const COMPONENTS: &[ComponentEntry] = &[
         meaning: "The ICMP echo carrier: the frames ride in the data of ICMP echo messages (1400 bytes of payload) on a raw ICMPv4 socket. A session id tells one link from another. The ARQ of pod-link runs over the echoes and TLS 1.3 with ALPN podlink/1 over the ARQ; each end pins the Ed25519 key of the other end; a key that is not pinned exits 77. It needs CAP_NET_RAW (or uid 0) and the flag --allow-raw icmp; a host that refuses the raw socket exits 69. Duplex, ordered, cost class network, overhead high, privilege needed. Address: KEY@HOST to dial (IPv4), an IPv4 address with no port to listen. Build feature icmp.",
     },
     ComponentEntry {
+        name: "ntp",
+        kind: "carrier",
+        meaning: "The NTPv4 carrier: the bytes ride in the extension fields of NTP packets over UDP 123, 300 bytes for each request by default. Each packet takes a new unassigned field type (0x1000 to 0xEFFF), so a constant type is no signature. The carrier steers its own timestamps, and the offset stays inside the tolerance of the server (1 ms by default). A poll waits 16 s to 64 s (32 s by default): this is a control channel. A reply that the server cuts short is a carrier limit, not a protocol error. UDP loses a request, so the facts say not reliable: put the ARQ of pod-link above it. Duplex, ordered, not reliable, unit 300 bytes, cost class network, overhead highest, poll interval 32 s, rate 9 bytes for each second. Address: HOST[:PORT] to dial (port 123), IP:PORT to listen. Build feature ntp.",
+    },
+    ComponentEntry {
+        name: "smtp",
+        kind: "carrier",
+        meaning: "The SMTP submission carrier: the bytes of the dialer go up as one message for each batch (32 KiB by default), base64 in the body, with the session credential. Port 587 uses STARTTLS and port 465 uses TLS from the first byte; port 25 is refused before any connection, because the egress broker refuses it. The credential is a session credential, never the account password. A server size limit or a refused message is a carrier limit: the carrier reports it and stays open. One direction (the bytes down come from the imap carrier, and pod-link mail_pair joins the two). Ordered, reliable, not duplex, cost class network, overhead medium. The rate is the rate that the last submission measured, and no rate before the first message. Address: HOST:PORT to dial (587 or 465). Build feature smtp.",
+    },
+    ComponentEntry {
+        name: "imap",
+        kind: "carrier",
+        meaning: "The IMAP retrieval carrier: the bytes up go as APPEND and the bytes down come by UID FETCH, one message for each batch (32 KiB by default). Port 143 uses STARTTLS and port 993 uses TLS from the first byte. The credential is a session credential, never the account password. A server APPENDLIMIT, a refused APPEND or a fetch over the limit is a carrier limit: the carrier reports it and continues. The mailbox is polled each 5 s by default. Duplex, ordered, reliable, cost class network, overhead high, poll interval 5 s, rate 6553 bytes for each second. Address: HOST:PORT to dial (143 or 993). Build feature imap.",
+    },
+    ComponentEntry {
+        name: "serial",
+        kind: "carrier",
+        meaning: "An AX.25 frame of 256 bytes at most in KISS framing over a serial device, with a window of 4 frames. A retransmission timeout of two frame times at the baud rate (4.3 s at 1200 baud). The open is raw 8N1 with no flow control, O_NOCTTY and TIOCEXCL, and the settings are put back at the end. The line is point-to-point: one peer for as long as the line is held, no callsign and no address field. No pacing: the device runs at its speed. Duplex, ordered, cost class high, no privilege. Address: serial:PATH[,BAUD], 115200 baud without one. No build feature.",
+    },
+    ComponentEntry {
+        name: "hf",
+        kind: "carrier",
+        meaning: "An HF modem (ARDOP, VARA) on a serial device at 115200 baud, at 300 to 3000 bit/s: 1200 bit/s without one. Half duplex, so a reception holds each transmission, and the modem owns the retransmission (the session ARQ defers, so one chain is counted). The modem is driven by one blocking thread, so a modem that does not answer blocks that thread. Half duplex, ordered, cost class high, no privilege. Address: hf:PATH[,BPS]. No build feature.",
+    },
+    ComponentEntry {
         name: "ss",
         kind: "service",
         meaning: "The Shadowsocks service over a stream of the link. Cost class network, no privilege. Build feature ss.",

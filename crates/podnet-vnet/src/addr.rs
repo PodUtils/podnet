@@ -21,12 +21,48 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV
 
 use anyhow::{bail, Result};
 
-/// The abstract-name prefix, without the leading NUL.
-pub const ABSTRACT_PREFIX: &str = "podnet-vnet";
-/// The control socket name, without the leading NUL.
-pub const CONTROL_NAME: &str = "podnet-vnet/ctl";
+/// The abstract-name prefix, without the leading NUL, when
+/// `PODNET_VNET_PREFIX` is not set.
+pub const DEFAULT_PREFIX: &str = "podnet-vnet";
+/// The default prefix, kept for callers that name the constant.
+pub const ABSTRACT_PREFIX: &str = DEFAULT_PREFIX;
 /// Longest `sun_path` name, in bytes: `sizeof(sun_path) - 1`.
 pub const MAX_NAME: usize = 107;
+/// The longest prefix that still makes a name of [`MAX_NAME`] bytes with a
+/// full IPv6 literal and a 5-digit port: 107 - 48 = 59. The 48 bytes are
+/// three slashes, the family digit, 39 bytes of address and 5 of port.
+pub const MAX_PREFIX: usize = MAX_NAME - 48;
+/// The control socket name, without the leading NUL, when
+/// `PODNET_VNET_CONTROL` is not set.
+pub const CONTROL_NAME: &str = "podnet-vnet/ctl";
+
+/// The prefix of this process: `PODNET_VNET_PREFIX` when it is set, else
+/// [`DEFAULT_PREFIX`].
+///
+/// The shim and the stack of one network must read the same value, so the
+/// variable is the only place the prefix comes from. A value with a slash,
+/// a NUL, or one over [`MAX_PREFIX`] bytes is an error rather than a silent
+/// fallback, because a fallback would put the shim and the stack of a run
+/// under two names.
+pub fn prefix() -> Result<String> {
+    match std::env::var("PODNET_VNET_PREFIX") {
+        Ok(value) if valid_prefix(&value) => Ok(value),
+        Ok(value) => bail!(
+            "PODNET_VNET_PREFIX {value:?} is not 1 to {MAX_PREFIX} bytes of letters, digits, '.', '-' or '_'"
+        ),
+        Err(std::env::VarError::NotPresent) => Ok(DEFAULT_PREFIX.to_string()),
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// True when `value` is a prefix that builds a name this module parses.
+pub fn valid_prefix(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_PREFIX
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.')
+}
 
 /// Address family of a virtual endpoint.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -89,22 +125,28 @@ impl VirtAddr {
         Family::from_ip(&self.ip)
     }
 
-    /// Encode as the abstract name, without the leading NUL.
+    /// Encode as the abstract name, without the leading NUL, with the
+    /// prefix of this process ([`prefix`]).
     ///
     /// Returns an error when the rendered name cannot fit `sun_path`, which
     /// cannot happen for a well-formed IP literal but is checked anyway so a
     /// caller never builds a truncated `sockaddr_un`.
     pub fn abstract_name(&self) -> Result<String> {
+        self.abstract_name_with(&prefix()?)
+    }
+
+    /// Encode with an explicit prefix. The shim and the stack of a run pass
+    /// the same value so their names meet.
+    pub fn abstract_name_with(&self, prefix: &str) -> Result<String> {
+        if !valid_prefix(prefix) {
+            bail!("the prefix {prefix:?} is not 1 to {MAX_PREFIX} bytes of letters, digits, '.', '-' or '_'");
+        }
         let host = match self.ip {
             IpAddr::V4(ip) => ip.to_string(),
             IpAddr::V6(ip) => format_ipv6_rfc5952(&ip),
         };
         let port = self.port;
-        let name = format!(
-            "{ABSTRACT_PREFIX}/{}/{}/{port}",
-            self.family().number(),
-            host
-        );
+        let name = format!("{prefix}/{}/{}/{port}", self.family().number(), host);
         if name.len() > MAX_NAME {
             bail!(
                 "abstract name is {} bytes, over the {MAX_NAME}-byte sun_path limit",
@@ -123,35 +165,44 @@ impl VirtAddr {
         Ok(bytes)
     }
 
-    /// Parse `podnet-vnet/4/10.66.0.2/8080`, with or without a leading NUL.
+    /// Parse `podnet-vnet/4/10.66.0.2/8080`, with or without a leading NUL,
+    /// with the prefix of this process ([`prefix`]).
     pub fn from_abstract_name(name: &str) -> Result<Self> {
+        Self::from_abstract_name_with(name, &prefix()?)
+    }
+
+    /// Parse with an explicit prefix.
+    pub fn from_abstract_name_with(name: &str, prefix: &str) -> Result<Self> {
+        if !valid_prefix(prefix) {
+            bail!("the prefix {prefix:?} is not 1 to {MAX_PREFIX} bytes of letters, digits, '.', '-' or '_'");
+        }
         let name = name.strip_prefix('\0').unwrap_or(name);
         let mut parts = name.split('/');
-        let prefix = parts.next().unwrap_or_default();
-        if prefix != ABSTRACT_PREFIX {
-            bail!("not a podnet-vnet name: {name:?}");
+        let found = parts.next().unwrap_or_default();
+        if found != prefix {
+            bail!("not a {prefix} name: {name:?}");
         }
         let family = Family::from_number(
             parts
                 .next()
                 .unwrap_or_default()
                 .parse()
-                .map_err(|_| anyhow::anyhow!("podnet-vnet name has no family: {name:?}"))?,
+                .map_err(|_| anyhow::anyhow!("{prefix} name has no family: {name:?}"))?,
         )?;
         let host = parts
             .next()
-            .ok_or_else(|| anyhow::anyhow!("podnet-vnet name has no address: {name:?}"))?;
+            .ok_or_else(|| anyhow::anyhow!("{prefix} name has no address: {name:?}"))?;
         let port: u16 = parts
             .next()
-            .ok_or_else(|| anyhow::anyhow!("podnet-vnet name has no port: {name:?}"))?
+            .ok_or_else(|| anyhow::anyhow!("{prefix} name has no port: {name:?}"))?
             .parse()
-            .map_err(|_| anyhow::anyhow!("podnet-vnet name has a bad port: {name:?}"))?;
+            .map_err(|_| anyhow::anyhow!("{prefix} name has a bad port: {name:?}"))?;
         if parts.next().is_some() {
-            bail!("podnet-vnet name has trailing fields: {name:?}");
+            bail!("{prefix} name has trailing fields: {name:?}");
         }
         let ip: IpAddr = host
             .parse()
-            .map_err(|_| anyhow::anyhow!("podnet-vnet name has a bad address: {name:?}"))?;
+            .map_err(|_| anyhow::anyhow!("{prefix} name has a bad address: {name:?}"))?;
         if Family::from_ip(&ip) != family {
             bail!("podnet-vnet name family {family:?} does not match address {host:?}");
         }
@@ -443,34 +494,75 @@ mod tests {
 
     #[test]
     fn abstract_names_round_trip() {
+        // Explicit prefixes keep these tests free of the ambient variable.
+        let p = DEFAULT_PREFIX;
         let a = VirtAddr::v4(v4("10.66.0.2"), 8080);
-        assert_eq!(a.abstract_name().unwrap(), "podnet-vnet/4/10.66.0.2/8080");
         assert_eq!(
-            VirtAddr::from_abstract_name("podnet-vnet/4/10.66.0.2/8080").unwrap(),
+            a.abstract_name_with(p).unwrap(),
+            "podnet-vnet/4/10.66.0.2/8080"
+        );
+        assert_eq!(
+            VirtAddr::from_abstract_name_with("podnet-vnet/4/10.66.0.2/8080", p).unwrap(),
             a
         );
         assert_eq!(
-            VirtAddr::from_abstract_name("\0podnet-vnet/4/10.66.0.2/8080").unwrap(),
+            VirtAddr::from_abstract_name_with("\0podnet-vnet/4/10.66.0.2/8080", p).unwrap(),
             a
         );
         let b = VirtAddr::v6("fd00::2".parse().unwrap(), 443);
-        assert_eq!(b.abstract_name().unwrap(), "podnet-vnet/6/fd00::2/443");
         assert_eq!(
-            VirtAddr::from_abstract_name("podnet-vnet/6/fd00::2/443").unwrap(),
+            b.abstract_name_with(p).unwrap(),
+            "podnet-vnet/6/fd00::2/443"
+        );
+        assert_eq!(
+            VirtAddr::from_abstract_name_with("podnet-vnet/6/fd00::2/443", p).unwrap(),
             b
         );
         // Family must match the literal.
-        assert!(VirtAddr::from_abstract_name("podnet-vnet/4/fd00::2/443").is_err());
-        assert!(VirtAddr::from_abstract_name("podnet-vnet/6/10.66.0.2/443").is_err());
+        assert!(VirtAddr::from_abstract_name_with("podnet-vnet/4/fd00::2/443", p).is_err());
+        assert!(VirtAddr::from_abstract_name_with("podnet-vnet/6/10.66.0.2/443", p).is_err());
     }
 
     #[test]
     fn abstract_name_rejects_junk() {
-        assert!(VirtAddr::from_abstract_name("podnet-vnet/4/10.66.0.2").is_err());
-        assert!(VirtAddr::from_abstract_name("podnet-vnet/9/10.66.0.2/1").is_err());
-        assert!(VirtAddr::from_abstract_name("other/4/10.66.0.2/1").is_err());
-        assert!(VirtAddr::from_abstract_name("podnet-vnet/4/10.66.0.2/1/extra").is_err());
-        assert!(VirtAddr::from_abstract_name("podnet-vnet/4/999.1.1.1/1").is_err());
+        let p = DEFAULT_PREFIX;
+        assert!(VirtAddr::from_abstract_name_with("podnet-vnet/4/10.66.0.2", p).is_err());
+        assert!(VirtAddr::from_abstract_name_with("podnet-vnet/9/10.66.0.2/1", p).is_err());
+        assert!(VirtAddr::from_abstract_name_with("other/4/10.66.0.2/1", p).is_err());
+        assert!(VirtAddr::from_abstract_name_with("podnet-vnet/4/10.66.0.2/1/extra", p).is_err());
+        assert!(VirtAddr::from_abstract_name_with("podnet-vnet/4/999.1.1.1/1", p).is_err());
+        // A prefix that could not build a name is refused on the way in too.
+        assert!(VirtAddr::from_abstract_name_with("a-b/4/10.66.0.2/1", "").is_err());
+        assert!(VirtAddr::from_abstract_name_with("a-b/4/10.66.0.2/1", "a/b").is_err());
+    }
+
+    #[test]
+    fn explicit_prefixes_round_trip() {
+        let a = VirtAddr::v4(v4("10.66.0.2"), 8080);
+        assert_eq!(
+            a.abstract_name_with("run-7").unwrap(),
+            "run-7/4/10.66.0.2/8080"
+        );
+        assert_eq!(
+            VirtAddr::from_abstract_name_with("\0run-7/4/10.66.0.2/8080", "run-7").unwrap(),
+            a
+        );
+        // A name of another prefix is not this prefix's name.
+        assert!(
+            VirtAddr::from_abstract_name_with("podnet-vnet/4/10.66.0.2/8080", "run-7").is_err()
+        );
+        // A prefix that could not be parsed back is refused up front.
+        for bad in [
+            String::new(),
+            "a/b".to_string(),
+            "a b".to_string(),
+            "a\0b".to_string(),
+            "a".repeat(MAX_PREFIX + 1),
+        ] {
+            assert!(!valid_prefix(&bad), "{bad:?} was accepted as a prefix");
+            assert!(a.abstract_name_with(&bad).is_err(), "{bad:?}");
+        }
+        assert!(valid_prefix(&"a".repeat(MAX_PREFIX)));
     }
 
     #[test]
@@ -534,10 +626,31 @@ mod tests {
             "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff".parse().unwrap(),
             65535,
         );
-        let name = longest.abstract_name().unwrap();
+        let name = longest.abstract_name_with(DEFAULT_PREFIX).unwrap();
         assert!(name.len() <= MAX_NAME, "{name} is {} bytes", name.len());
         // 14 + 39 + 1 + 5 = 59.
         assert_eq!(name.len(), 59);
+    }
+
+    #[test]
+    fn the_longest_prefix_still_builds_a_full_ipv6_name() {
+        let prefix = "p".repeat(MAX_PREFIX);
+        assert!(valid_prefix(&prefix));
+        let longest = VirtAddr::v6(
+            "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff".parse().unwrap(),
+            65535,
+        );
+        let name = longest.abstract_name_with(&prefix).unwrap();
+        assert_eq!(name.len(), MAX_NAME, "{name} is {} bytes", name.len());
+        assert_eq!(
+            VirtAddr::from_abstract_name_with(&name, &prefix).unwrap(),
+            longest
+        );
+        // One byte more is refused rather than truncated.
+        let over = "p".repeat(MAX_PREFIX + 1);
+        assert!(!valid_prefix(&over));
+        let err = longest.abstract_name_with(&over).unwrap_err().to_string();
+        assert!(err.contains("not 1 to 59 bytes"), "{err}");
     }
 
     #[test]

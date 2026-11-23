@@ -14,6 +14,7 @@ podnet link listen /run/user/1000/app.sock --allow peers.txt --detach --name app
 podnet link status                                # the fingerprint, and the link instances that run
 podnet link close app                             # stop the instance; the listener removes its socket
 podnet link carriers                              # each carrier, and whether this host can use it
+podnet link p2p --peer HOST:PORT --relay turn://TURN:3478   # the direct path first, then the relay
 podnet components                                 # each carrier and service of this build, with its feature
 podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl   # hold a link, run a control socket
 podnet link status --control /run/user/1000/link.ctl --json                                         # ask that socket
@@ -49,9 +50,18 @@ podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of
 * `link close NAME` ends each link that the instance holds with the verb `close-link` of its control socket (one line `closed link
   ID  PEER` for each), then stops the instance (SIGTERM, then SIGKILL after `--timeout`, default 10 s). A socket that does not
   answer is one line on stderr, and the stop goes on. A name that is no link instance exits 64: use `podnet stop`.
-* `link carriers [--json]` prints one line for each carrier: its framing, duplex, order, MTU, cost, address form and
-  addressing mode, then `available` or `unavailable:` with the reason. The JSON has the same facts, `available` (bool) and
-  `reason` (string or null).
+* `link carriers [--json]` prints one line for each carrier: its framing, duplex, order, MTU, the cost class, the rate,
+  the address form and the addressing mode, then `available` or `unavailable:` with the reason. The JSON has the same facts,
+  `available` (bool), `reason` (string or null) and `rate` (`bytes_per_second`, `poll_interval_ms`, `poll`, `cost`).
+* `link p2p --peer HOST:PORT [--direct HOST:PORT] [--relay turn://HOST[:PORT]] [--timeout MS] [--check] [--json]` carries a
+  TCP stream to a peer. It tries the direct path first, and it takes the relay only when the direct path is refused or does
+  not answer before `--timeout` (3000 ms by default): TURN-7, the direct path is preferred, because a relay adds a hop that
+  sees the volume of the flow. Another failure of the direct path (a name that does not resolve, a policy) is the answer. The
+  text gives `path`, the class of the direct failure, the allocation `lifetime` and the `rate limit`; the JSON gives `path`,
+  `direct_failure`, `lifetime_s` and `rate_limit`. `--check` stops after the path opens. A host that refuses UDP gives one
+  line `path relay skipped: the host refuses UDP: HOST-ERROR`, and exit 69. No line, and no JSON document, holds the TURN
+  credential. The account comes from `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE` (or `PODNET_TURN_PASSWORD`);
+  `PODNET_TURN_LIFETIME` (1 to 3600 s) and `PODNET_TURN_RATE_LIMIT` (bytes for each second) are settings of the allocation.
 
 `--detach`, `--name`, `--ready-timeout`, `--replace` and `--no-restart` of `link listen` and `link connect` are the flags of the background record
 ([background.md](background.md)). `podnet ps`, `logs`, `wait` and `stop` work on a link instance. The ready document has
@@ -299,7 +309,9 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `retry` | 0 to 16 | T-263 adds it. |
 | `lb` | `weighted`, `rr`, `minrtt`, `leastload` | T-288 adds it. |
 | `compress` | `none`, `snappy` | Compresses the payload of each record with snappy before the seal (T-299). It needs `--seal` (else exit 64). |
-| `pad` | `on`, `off` | Pads each record to a bucket (T-300). It needs `--seal` (else exit 64). |
+| `pad` | `on`, `off` | Pads each record to a bucket (T-300). It needs `--seal` (else exit 64). It stays the fixed-bucket path. |
+| `profile` | `page-load`, `video-call`, `terminal`, `file-transfer` | The profile of the traffic that the stream imitates (T-370). It selects the padding distribution, the first-flight target, the pacer and the entropy band. It needs `--seal` (else exit 64). |
+| `firstflight` | 1 to 8388608 (bytes) | The opening write of the stream (T-370). It needs `--seal`; it replaces the target of the profile. |
 | `mtu` | 64 to 65535, at most the unit of the carrier | The `udp` carrier: the largest datagram of KCP, 64 to 1200 bytes (T-276). Another stream carrier has no unit: exit 64. |
 | `maxhops` | 1 to 8 | T-287 adds it. |
 | `poll` | 1 to 60 (seconds) | The poll carriers: the hold of a long poll that the dialer asks for (default 25 s; T-271). Another carrier: exit 64. |
@@ -334,9 +346,14 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `dns` | `KEY@ZONE` to dial (`--dns-server`), `IP:PORT` (UDP) to listen (`--dns-zone`) | Query names up and TXT answers down, an ARQ and TLS 1.3 with a pinned Ed25519 key above (T-278). Build feature `dns`. See "The DNS carrier". |
 | `s3` | `KEY@BUCKET[/PREFIX]` to dial, `BUCKET[/PREFIX]` to listen (`--s3-endpoint`) | Objects of a bucket of the S3 API each way, TLS 1.3 with a pinned Ed25519 key above (T-279). Build feature `s3`. See "The S3 carrier". |
 | `icmp` | `KEY@HOST` (IPv4) to dial, an IPv4 address with no port to listen | The data of ICMP echo messages on a raw socket, an ARQ and TLS 1.3 with a pinned Ed25519 key above (T-282). Build feature `icmp`; it needs `CAP_NET_RAW` and `--allow-raw icmp`. See "The ICMP carrier". |
+| `ntp` | `HOST[:PORT]` to dial (port 123), `IP:PORT` to listen | The bytes in the extension fields of NTPv4 packets, a new field type for each packet, a poll of 16 s to 64 s. Build feature `ntp`. See "The NTP and mail carriers". |
+| `smtp` | `HOST:PORT` to dial (587 or 465) | One message for each batch over submission: the bytes up only. Build feature `smtp`. See "The NTP and mail carriers". |
+| `imap` | `HOST:PORT` to dial (143 or 993) | `APPEND` up and `UID FETCH` down. Build feature `imap`. See "The NTP and mail carriers". |
+| `serial` | `serial:PATH[,BAUD]`, or `--carrier serial:PATH[,BAUD]` | AX.25 frames in KISS framing on a serial line, 256 bytes at most; a window of 4 and a retransmission timeout from the baud rate. See "The serial and HF carriers". |
+| `hf` | `hf:PATH[,BPS]`, or `--carrier hf:PATH[,BPS]` | An ARDOP or VARA modem on a serial line, 300 to 3000 bit/s, half duplex with a busy signal, the ARQ of the modem above. See "The serial and HF carriers". |
 
-The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `dns`, `s3` and `icmp` sit behind a build feature ([build.md](build.md), Features). The default build has none of
-them, and the binaries of a release are default builds: they have the carriers `unix` and `memory` only. Build
+The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `dns`, `s3`, `icmp`, `ntp`, `smtp` and `imap` sit behind a build feature ([build.md](build.md), Features). The default build has none of
+them, and the binaries of a release are default builds: they have the carriers `unix`, `memory`, `serial` and `hf` only. Build
 podnet with `--features` for another carrier. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason.
@@ -372,10 +389,105 @@ podnet link listen 0.0.0.0:7000 --carrier tcp --allow allowed.txt --to 127.0.0.1
 podnet link dial SERVER-FINGERPRINT@host.example:7000 --carrier tcp --allow servers.txt
 ```
 
-Each carrier reports `framing`, `duplex`, `ordered`, `mtu`, the cost and `available()`. A carrier that this host cannot use
-gives its reason, and a command that needs it exits 69 with the reason. `podnet doctor` has a row `carriers` with the same
-diagnosis. The addressing mode of each carrier is `peer`: the address names a peer, not a destination, so a consumer of
-destinations does not take it.
+Each carrier reports `framing`, `duplex`, `ordered`, `mtu`, the cost class, the rate and `available()`. The rate is the payload
+rate in bytes for each second and the poll interval, where the carrier declares them. A carrier with a rate and no poll interval
+is push-only or continuous, and says `poll none` in the text and `poll: "none"` with `poll_interval_ms: null` in the JSON. A
+carrier with neither says `rate not measured` and gives its cost class. The cost class is one of `low`, `medium`, `high` and
+`highest`, and it is the one of the carrier's facts when the build holds the carrier, so the text and the JSON name the same
+class for every row; a carrier that the build leaves out names the class of its row, which is the class of its facts. A carrier
+that this host cannot use gives its reason, and a command that needs it exits 69 with the reason. `podnet doctor` has a row
+`carriers` with the same diagnosis. The addressing mode of each carrier is `peer`: the address names a peer, not a destination,
+so a consumer of destinations does not take it.
+
+## The NTP and mail carriers
+
+Build with `--features ntp`, `--features smtp` or `--features imap`. `pod-link` of PodUtils/podcrates does the work
+(`pod_link::ntp`, `pod_link::smtp` and `pod_link::imap`); the registry in `src/carriers.rs` holds the rows. These carriers serve a
+network that permits time synchronisation and mail, and nothing else.
+
+| Carrier | What it is | Facts | Address |
+| --- | --- | --- | --- |
+| `ntp` | The bytes in the extension fields of NTPv4 packets over UDP 123. | Ordered, not reliable, duplex, unit 300 bytes, cost class `highest`, rate 9 bytes for each second, poll each 32 s. | `HOST[:PORT]` to dial (port 123), `IP:PORT` to listen. |
+| `smtp` | The bytes up as one message for each batch over submission, 587 with STARTTLS or 465 with TLS. | Ordered, reliable, not duplex, cost class `medium`, rate 950 bytes for each second (the rounded row value): measured on the local stand over one 300-byte message, ten runs 983 to 1007 B/s (298 to 305 ms, the 250 ms flush of the carrier in each, 2026-11-21), poll `none`. | `HOST:PORT` to dial (587 or 465); a dial gives a write-only stream. |
+| `imap` | `APPEND` up and `UID FETCH` down over 143 with STARTTLS or 993 with TLS. | Ordered, reliable, duplex, cost class `high`, rate 6553 bytes for each second, poll each 5 s. | `HOST:PORT` to dial (143 or 993). |
+
+* NTP-1 to NTP-4 hold: each packet takes another unassigned extension field type, the timestamps stay inside the tolerance of the
+  server, the poll waits 16 s to 64 s, and a truncated reply is a carrier limit, not an error. Because UDP loses a request, the
+  facts say `reliable: false`: put the ARQ of `pod-link` above this carrier.
+* MAIL-1 to MAIL-5 hold: one message is one batch, the session ARQ sends a lost message again, the credential is a credential of the
+  session (never the account password), a size limit or a refused message is a carrier limit, and port 25 is refused before any
+  connection. The port gives the mode of TLS, so a test port takes a mode of its own.
+* A submission carrier is one direction. Join it with a retrieval carrier to get both directions:
+  `pod_link::mail_pair(up, down)` makes one byte stream of the two. The carriers of `pod-link` are for a caller of the library:
+  the registry of podnet shows their facts and the host check, and a dial or a listen through `podnet link dial` or
+  `podnet link listen` is a usage error (exit 64), as for each carrier that needs the key of this install. `podnet link
+  carriers` shows the price of each before a caller chooses it.
+* The rate of an outgoing carrier is the one that its service measured. Until a submission goes, the registry prints `rate not
+  measured` with the cost class `medium`; it never prints a rate that no submission measured.
+* The password of a session is the caller's. The registry makes the probe carrier with a made-up credential that signs no
+  connection, and no text of podnet holds an account password.
+
+```sh
+podnet link carriers --json | jq '.carriers[] | select(.name == "ntp") | .rate'
+```
+
+## The serial and HF carriers
+
+These two carriers are for a host whose way out is a radio. `pod-offline` of PodUtils/podcrates does the work; the registry in
+`src/carriers.rs` holds the rows, and `src/offline/serial.rs` and `src/offline/hf.rs` are the glue. Both are in the default
+build, with no feature.
+
+| Carrier | What it is | Facts | Address |
+| --- | --- | --- | --- |
+| `serial` | AX.25 frames in KISS framing on a serial line, raw 8N1, `TIOCEXCL`, at 1200 baud by default. | Ordered, reliable, duplex, no unit, rate BAUD/10 bytes for each second. | `serial:PATH[,BAUD]`, or `--carrier serial:PATH[,BAUD]`. |
+| `hf` | An ARDOP or VARA modem on a serial line, the line at 115200 baud and the radio at 300 to 3000 bit/s, 1200 by default. | Ordered, reliable, not duplex, no unit, rate BPS/8 bytes for each second. | `hf:PATH[,BPS]`, or `--carrier hf:PATH[,BPS]`. |
+
+```sh
+podnet link listen /dev/ttyUSB0 --carrier serial:/dev/ttyUSB0,1200 --to 127.0.0.1:22
+podnet link dial /dev/ttyUSB1 --carrier hf:/dev/ttyUSB1,1200 --to 127.0.0.1:22
+```
+
+* The line is point to point. A dial and a listen both open the device, and the two ends of one wire know each other; the hello
+  of the link proves the keys above it. One line carries one peer for as long as it is held, and the second accept of a listener
+  waits rather than spinning.
+* A frame is an AX.25 frame with a control byte, a sequence and a payload of at most 255 bytes, inside the 256-byte maximum. A
+  larger frame is refused by name (`frame-too-large`); the carrier never splits it in silence.
+* The window is 4 frames (1 to 7), and the retransmission timeout is two frame times at the baud rate: about 2.13 s for one
+  256-byte frame and 4.27 s of timeout at 1200 baud.
+* The `hf` carrier defers to the ARQ of the modem. A frame goes once, the modem sends it again, and the session ARQ does not stack
+  a second chain above it. A reception stops a transmission and a turnaround follows it. The degraded profile is mandatory: one
+  frame in the window and every retransmission left to the modem.
+* Neither carrier paces its bytes. The device sets the speed: the wire at `BAUD`, the radio at `BPS`. A test that writes to a pty
+  must pace itself, or the bytes reach the reader far above the speed that the address names.
+* The modem driver blocks on the line while it waits for the answer of the modem, and the bridge keeps that block out of the
+  async runtime.
+
+The offline side of these carriers (the spool, the bundle, discovery, pairing and replication) is in
+[offline.md](offline.md).
+
+## The TURN network
+
+`turn://HOST[:PORT]` and `turns://HOST[:PORT]` are a network, not a carrier ([egress.md](egress.md), the networks). `pod-turn` of
+PodUtils/podcrates does the work: the UDP allocation of RFC 8656 for datagrams, and the TCP relay of RFC 6062 for a TCP stream.
+`src/networks/turn.rs` is the glue, and `src/networks/turn_socket.rs` runs the datagrams of one UDP allocation.
+
+* A TCP flow makes a TCP allocation, a Connect to the peer and a ConnectionBind (RFC 6062, 4.3), then carries the bytes of the
+  stream unchanged (RFC 6062, 4.5). The allocation is refreshed on its timer while the stream lives (TURN-2).
+* The other direction of RFC 6062 works too: a peer connects to the relayed address, the server sends a ConnectionAttempt, and
+  `pod_turn::Client::accept` binds it (RFC 6062, 4.2). podnet's caller is `networks::turn::listen`; a test carries the bytes of
+  the peer and of the caller both ways over it, on plain TCP and on TLS. No command uses this direction.
+* `turn://` uses plain TURN over TCP for a TCP stream: RFC 6062 needs a byte stream. Its datagrams still go over UDP. `turns://`
+  uses TLS on TCP for both. The default ports are 3478 (`turn`) and 5349 (`turns`).
+* The status of a network gives `lifetime_s` and `rate_limit` (TURN-6). TURN carries no rate limit attribute: the value is the
+  policy of the caller (`PODNET_TURN_RATE_LIMIT`). `podnet net doctor --json --network turn://...` shows the status.
+* The credential is in `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE` (mode 0600, one line) or `PODNET_TURN_PASSWORD`,
+  never in `argv`, a spec, a log line or `--json` (TURN-5). The realm is `PODNET_TURN_REALM`.
+* The TURN server is a third-party dependency ([egress.md](egress.md), TURN servers).
+
+```sh
+PODNET_TURN_USER=me PODNET_TURN_PASSWORD_FILE=./turn-password \
+  podnet link p2p --peer 203.0.113.9:22 --relay turn://turn.example:3478 --check
+```
 
 ## The WebSocket carrier
 
@@ -876,10 +988,35 @@ non-zero, no data).
   counted. A record that fails its check (a changed header, `pad` or body) ends the stream with an error.
 * `pad=on` (query key) pads each body to 0, 128, 512, 1024 or 2048 bytes, and above that to the next multiple of 2048. The
   receiver removes the padding. `pad` is in the associated data.
+* `profile=NAME` (query key) takes the place of the fixed bucket: the shaper of `pod-shape` chooses a bucket for each record
+  from the distribution of the profile, and the layer seals the body with `Records::seal_with`. A profile states when it pads
+  (each record, the first N records, or a payload below a threshold). The profiles are data files of `pod-shape`:
+  `page-load`, `video-call`, `terminal` and `file-transfer`.
+* The opening write is coalesced to the first-flight target of the profile: 16 KiB for a page load, 8 KiB for a video call,
+  4 KiB for a terminal and 64 KiB for a file transfer. At a measured rate the target is two seconds of that rate when it is
+  smaller. `firstflight=BYTES` sets the target. Only the first record is coalesced; each later write is one record (PACE-2).
+* The layer measures the rate before it sizes the opening write (T-371, GitHub #493). It writes one record with no payload
+  and a body of 8 KiB before the send task starts, and counts the time that the write waits on the transport. The peer opens
+  that record and drops it, because its payload is empty; it is a padded keepalive. A fast link accepts the write at once,
+  so the sample is 0 and the profile target stands. A link that queues the write for at least 5 ms over at least 64 bytes
+  gives its rate (bytes over waiting time, not wall time), and the opening write is two seconds of it. `Options::measured_bps`
+  from the query takes the place of the sample and skips the probe. `Sealed::measured_bps` reads the rate that the layer used.
+* `profile` turns the pacer on. Each stream has a window of 100 ms of its rate: the records that fit the window go at once, and
+  a full window waits. An idle channel sends an empty record at the keepalive interval of the profile, moved by its jitter
+  (about 20 percent). The session owns the pacer, so a forwarded port gets it (PACE-3).
+* The padded fraction is in `link status` (text and `--json`) and in the summary of a transfer: the padded bytes over the body
+  bytes, with the number of records. `Options::shape` carries the counters of a stream that the caller holds.
+* `podnet doctor --shape` prints one line for each road: its profile, its declared buckets and the state `declared`,
+  `observed` or `diverged`. A divergence prints a warning line and does not fail the command (DECL-2).
 * `compress=snappy` (query key) compresses the payload before the seal (flag bit `0x0002`). A payload under 256 bytes, and a
   payload that does not get smaller, go with no flag. The receiver refuses a compressed payload that says more than 8 MiB or
   more than 64 times its own size: the stream ends with `decompress-limit`. The receiver reads compressed records at all
   times. Each end sets `pad` and `compress` for its own direction.
+* With a profile, a data record whose chosen body is longer than the payload plus its four-byte length takes flag bit
+  `0x0004` (`link_record::ENTROPY`). Its body is the payload length as four big-endian bytes, the payload, and a padding tail
+  from `pod_shape::Entropy` of the profile's band. The receiver keeps the payload and drops the tail. A record with unknown
+  flag bits ends the stream. `podnet doctor --shape` and `Sealed::shape_counters` report the records and bytes of the tail,
+  and its lowest and highest bits per byte.
 * The RESUME record (library: `Sealed::resume`): the peer sends again the payloads that the sender of the RESUME did not get
   (it keeps up to 1 MiB of sent payloads). A RESUME is used once, within 10 minutes of the last record. A copy of a RESUME is
   refused and counted.
@@ -918,6 +1055,42 @@ non-zero, no data).
 * The table holds 4096 origins. At 90% (3686) each new origin evicts the worst origin first: expired or held, then the highest
   cost, then the most hops, then the oldest `seq`. A direct route is not evicted: a table that holds direct routes only refuses
   the new origin (`Full`). `evictions()` counts the evictions.
+
+## A cover listener: `podnet cover`
+
+`podnet cover` is a TLS listener that answers as a static site until a client proves that it holds the switch key
+(T-369, GitHub #491; `src/cover.rs`, over `pod-cover` and `pod-tls`).
+
+```sh
+podnet cover --listen 127.0.0.1:8443 --site DIR --script cover.toml \
+  --cert chain.pem --key key.pem --switch-key key.hex --to 127.0.0.1:8080
+```
+
+* The listener completes a real TLS handshake with the cover site. The certificate is the one of `--cert` and `--key` for each
+  connection, the site and the tunnel (SWITCH-1 and SWITCH-4). The operator owns the name of the site.
+* The first application bytes decide the connection. The first 56 bytes as the proof of the switch are an 8-byte timestamp, a
+  16-byte nonce and a 32-byte HMAC-SHA-256 tag. The tag covers the timestamp, the nonce and the switch key; a caller that
+  binds the exporter of the handshake covers it too. A valid proof
+  opens the tunnel to `--to`. Each other byte goes to the cover site: the same certificate, the same connection, no close and
+  no reset (SWITCH-2). A replayed proof, a proof outside the four-minute window, a wrong tag or a short frame is each of those
+  bytes. The site answers the request, and the connection stays open for the next request.
+* The site is a directory with `index.html`, its assets, `robots.txt` and `404.html`. A tree with no `index.html` exits 78. An
+  unknown name gets the default site's own 404 page. A path with `..` is never served. The `Server` header is `nginx` unless
+  `--server VALUE` gives another value; a value that names this project is refused. No response names PodUtils, the version or
+  the contract.
+* `--script FILE` is the measurement of the cover: its record sizes, its delays and its split policy, with the date and the
+  version of the cover. A missing script, or a script with no date or no cover version, exits 78 at load (SCRIPT-2 and
+  SCRIPT-3). The first records of a tunnel follow the measured sizes of the script (SCRIPT-1). A client that pads its first
+  record to the size of the cover's first record sends the proof, the four bytes `PAD1`, a two-byte big-endian padding
+  length, that many zero bytes, then the first session bytes. The listener strips the marker and the padding. If the first
+  record ends at the proof, the listener waits `FIRST_GAP` for the padding, so padding that arrives in a second TLS record
+  does not reach the tunnel. Bytes after the proof that do not start with `PAD1` are session bytes.
+* `--mux` carries a page load and a session over one connection through `pod-cover::Mux`. The page is the cover lane, so it
+  drains before each session frame (MUX-2). The live listener has no fixed volume budget: the session continues after the
+  page. `Cover::interleave` gives the same order with one budget for a caller that knows the volume of both lanes (MUX-1).
+* `--switch-key FILE` holds 64 hexadecimal characters. Both ends hold the key. `--name NAME` routes the name of the handshake
+  to the site.
+* Exit 78: the site, the script, the certificate, the key or the switch key cannot be used. Exit 69: the listener cannot bind.
 
 ## The C library
 

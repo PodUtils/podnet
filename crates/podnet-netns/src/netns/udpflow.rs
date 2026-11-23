@@ -35,6 +35,15 @@ pub(crate) const MAX_UDP_FLOWS: usize = 256;
 pub(crate) const UDP_QUEUE: usize = 64;
 /// The replies that wait for the TUN, for all flows.
 const UDP_REPLIES: usize = 1024;
+/// The fragmented datagrams that wait for their last fragment.
+pub(crate) const MAX_FRAGMENTS: usize = 64;
+/// A datagram with no fragment for this time is dropped.
+pub(crate) const FRAGMENT_IDLE: Duration = Duration::from_secs(30);
+/// The most bytes of one reassembled IPv4 payload, with a 20-byte header.
+pub(crate) const MAX_REASSEMBLED_BYTES: usize = 65_535 - 20;
+/// The most pieces of one datagram. Tiny fragments from one sender would
+/// otherwise grow a set without bound.
+pub(crate) const MAX_PIECES: usize = 1024;
 
 /// The flows by key, with the time of the last datagram of each.
 pub(crate) struct FlowTable<T> {
@@ -95,6 +104,219 @@ impl<T> FlowTable<T> {
     }
 }
 
+/// The key of one fragmented datagram: the addresses and the IPv4
+/// identification, not the ports, which the first fragment may not have
+/// arrived with.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct FragmentKey {
+    src: Ipv4Addr,
+    dst: Ipv4Addr,
+    id: u16,
+}
+
+/// The fragments of one datagram, and its total length when the last one
+/// has arrived.
+struct FragmentSet {
+    at: Instant,
+    total: Option<usize>,
+    pieces: Vec<(usize, Vec<u8>)>,
+}
+
+/// What the fragment table did with an IPv4 packet.
+pub(crate) enum Fragment {
+    /// Not an IPv4 UDP fragment: the caller keeps it for the stack.
+    Whole,
+    /// A fragment that waits for the others.
+    Pending,
+    /// A fragment the table dropped, with the reason for a verbose run.
+    Dropped(&'static str),
+    /// The last fragment of a datagram: its flow and its UDP payload.
+    Datagram(UdpKey, Vec<u8>),
+}
+
+/// Reassembles IPv4 UDP fragments before `parse_udp` sees them, so a
+/// datagram over the TUN MTU reaches its flow instead of the stack, which
+/// would answer it with a false ICMP port unreachable (H-04).
+///
+/// Bounded in both directions: [`MAX_FRAGMENTS`] datagrams wait, each at
+/// most [`MAX_REASSEMBLED_BYTES`] in at most [`MAX_PIECES`] pieces, and a
+/// set older than [`FRAGMENT_IDLE`] is dropped. An overlapping fragment
+/// drops its whole set, because the reassembled bytes would depend on the
+/// arrival order.
+///
+/// The IPv4 header checksum and the UDP checksum are not validated. The
+/// whole-datagram path does not validate them either, and the only sender
+/// on the TUN or veth is the pod.
+///
+/// This table lives here rather than in the UDP service of `pod-netstack`,
+/// whose `Head::Fragment` reassembles IPv4 fragments for the frontends that
+/// hand the stack a whole packet: the netns backend reads the TUN itself
+/// and calls [`parse_udp`] directly, so a fragment would reach it as a
+/// datagram with a short payload and get a false port unreachable.
+pub(crate) struct Fragments {
+    sets: HashMap<FragmentKey, FragmentSet>,
+}
+
+impl Fragments {
+    pub(crate) fn new() -> Self {
+        Self {
+            sets: HashMap::new(),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn len(&self) -> usize {
+        self.sets.len()
+    }
+
+    /// Add one packet, and return the datagram when this was its last
+    /// missing fragment.
+    pub(crate) fn push(&mut self, pkt: &[u8], now: Instant) -> Fragment {
+        if pkt.len() < 20 || pkt[0] >> 4 != 4 || pkt[9] != libc::IPPROTO_UDP as u8 {
+            return Fragment::Whole;
+        }
+        let ihl = usize::from(pkt[0] & 0x0f) * 4;
+        let total_len = usize::from(u16::from_be_bytes([pkt[2], pkt[3]]));
+        if ihl < 20 || total_len < ihl || total_len > pkt.len() {
+            return Fragment::Dropped("a bad IPv4 header length");
+        }
+        let bits = u16::from_be_bytes([pkt[6], pkt[7]]);
+        let more = bits & 0x2000 != 0;
+        let offset = usize::from(bits & 0x1fff) * 8;
+        if !more && offset == 0 {
+            return Fragment::Whole;
+        }
+        let data = &pkt[ihl..total_len];
+        if data.is_empty() {
+            return Fragment::Dropped("an empty fragment");
+        }
+        let end = offset + data.len();
+        if end > MAX_REASSEMBLED_BYTES {
+            return Fragment::Dropped("over the IPv4 payload limit");
+        }
+        let src = Ipv4Addr::new(pkt[12], pkt[13], pkt[14], pkt[15]);
+        let dst = Ipv4Addr::new(pkt[16], pkt[17], pkt[18], pkt[19]);
+        if dst.is_broadcast() || dst.is_multicast() || dst.is_loopback() {
+            return Fragment::Dropped("not a unicast destination");
+        }
+        let key = FragmentKey {
+            src,
+            dst,
+            id: u16::from_be_bytes([pkt[4], pkt[5]]),
+        };
+        if !self.sets.contains_key(&key) && self.sets.len() >= MAX_FRAGMENTS {
+            let oldest = self
+                .sets
+                .iter()
+                .min_by_key(|(_, set)| set.at)
+                .map(|(k, _)| *k);
+            if let Some(oldest) = oldest {
+                self.sets.remove(&oldest);
+            }
+        }
+        if let Some(set) = self.sets.get_mut(&key) {
+            set.at = now;
+        }
+        if let Some(set) = self.sets.get(&key) {
+            for (piece_offset, piece) in &set.pieces {
+                let piece_end = piece_offset + piece.len();
+                if offset < piece_end && *piece_offset < end {
+                    if *piece_offset == offset && piece.as_slice() == data {
+                        return Fragment::Pending;
+                    }
+                    self.sets.remove(&key);
+                    return Fragment::Dropped("overlapping fragments");
+                }
+            }
+            if let Some(total) = set.total {
+                if end > total {
+                    self.sets.remove(&key);
+                    return Fragment::Dropped("a fragment beyond the recorded length");
+                }
+                if !more && total != end {
+                    self.sets.remove(&key);
+                    return Fragment::Dropped("two different lengths");
+                }
+            }
+            if set.pieces.len() >= MAX_PIECES {
+                self.sets.remove(&key);
+                return Fragment::Dropped("too many fragments");
+            }
+        }
+        let set = self.sets.entry(key).or_insert_with(|| FragmentSet {
+            at: now,
+            total: None,
+            pieces: Vec::new(),
+        });
+        set.at = now;
+        if !more {
+            set.total = Some(end);
+        }
+        set.pieces.push((offset, data.to_vec()));
+        match self.take_complete(&key) {
+            Some(payload) => match parse_payload(key, &payload) {
+                Some(datagram) => datagram,
+                None => Fragment::Dropped("not a UDP datagram"),
+            },
+            None => Fragment::Pending,
+        }
+    }
+    /// all present without a gap.
+    fn take_complete(&mut self, key: &FragmentKey) -> Option<Vec<u8>> {
+        let set = self.sets.get(key)?;
+        let total = set.total?;
+        let mut spans: Vec<(usize, usize)> = set
+            .pieces
+            .iter()
+            .map(|(offset, data)| (*offset, offset + data.len()))
+            .collect();
+        spans.sort_unstable();
+        let mut cursor = 0;
+        for (start, end) in spans {
+            if start != cursor {
+                return None;
+            }
+            cursor = end;
+        }
+        if cursor != total {
+            return None;
+        }
+        let set = self.sets.remove(key)?;
+        let mut joined = vec![0u8; total];
+        for (offset, data) in set.pieces {
+            joined[offset..offset + data.len()].copy_from_slice(&data);
+        }
+        Some(joined)
+    }
+
+    /// Remove each set that has seen no fragment since the idle time.
+    pub(crate) fn reap(&mut self, now: Instant) {
+        self.sets
+            .retain(|_, set| now.saturating_duration_since(set.at) < FRAGMENT_IDLE);
+    }
+}
+
+/// The flow and payload of a reassembled IPv4 UDP datagram, under the same
+/// filters as [`parse_udp`].
+fn parse_payload(key: FragmentKey, payload: &[u8]) -> Option<Fragment> {
+    if key.dst.is_broadcast() || key.dst.is_multicast() || key.dst.is_loopback() {
+        return None;
+    }
+    if payload.len() < 8 {
+        return None;
+    }
+    let len = usize::from(u16::from_be_bytes([payload[4], payload[5]]));
+    if len < 8 || len > payload.len() {
+        return None;
+    }
+    let sport = u16::from_be_bytes([payload[0], payload[1]]);
+    let dport = u16::from_be_bytes([payload[2], payload[3]]);
+    Some(Fragment::Datagram(
+        (key.src, sport, key.dst, dport),
+        payload[8..len].to_vec(),
+    ))
+}
+
 /// One flow: its queue and its task. The drop of the flow stops the task,
 /// and the task closes its upstream.
 pub(crate) struct UdpFlow {
@@ -111,6 +333,7 @@ impl Drop for UdpFlow {
 /// The UDP side of the stack.
 pub(crate) struct UdpFlows {
     pub(crate) table: FlowTable<UdpFlow>,
+    fragments: Fragments,
     replies_tx: tokio::sync::mpsc::Sender<(UdpKey, Vec<u8>)>,
     replies: tokio::sync::mpsc::Receiver<(UdpKey, Vec<u8>)>,
     /// The datagrams that wait for a full queue, in their order.
@@ -122,6 +345,7 @@ impl UdpFlows {
         let (replies_tx, replies) = tokio::sync::mpsc::channel(UDP_REPLIES);
         Self {
             table: FlowTable::new(UDP_IDLE, MAX_UDP_FLOWS),
+            fragments: Fragments::new(),
             replies_tx,
             replies,
             held: VecDeque::new(),
@@ -247,11 +471,29 @@ impl UdpFlows {
         }
         let mut kept = VecDeque::with_capacity(rx.len());
         while let Some(pkt) = rx.pop_front() {
-            let Some((key, payload)) = parse_udp(&pkt) else {
-                kept.push_back(pkt);
+            let parsed = match parse_udp(&pkt) {
+                Some((key, payload)) => Some((key, payload.to_vec())),
+                None => match self.fragments.push(&pkt, now) {
+                    Fragment::Whole => {
+                        kept.push_back(pkt);
+                        None
+                    }
+                    Fragment::Pending => None,
+                    Fragment::Dropped(why) => {
+                        if route.verbose {
+                            eprintln!(
+                                "{}: udp: a fragmented datagram is dropped: {why}",
+                                program_name()
+                            );
+                        }
+                        None
+                    }
+                    Fragment::Datagram(key, payload) => Some((key, payload)),
+                },
+            };
+            let Some((key, payload)) = parsed else {
                 continue;
             };
-            let payload = payload.to_vec();
             if self.paused() {
                 self.held.push_back((key, payload));
             } else if let Err(payload) = self.give(key, payload, now, route) {
@@ -268,6 +510,7 @@ impl UdpFlows {
         }
         *rx = kept;
         self.table.reap(now);
+        self.fragments.reap(now);
     }
 
     /// Give `payload` to the flow of `key`; make the flow when it does not

@@ -281,6 +281,7 @@ pub async fn serve_on(
     way: Way,
 ) -> anyhow::Result<WgServer> {
     use anyhow::Context as _;
+    // egress-exempt: the WireGuard ListenPort of the server
     let sock = tokio::net::UdpSocket::bind(bind)
         .await
         .with_context(|| format!("ListenPort: udp:{bind}"))
@@ -366,6 +367,7 @@ async fn incoming(
         };
         match got {
             Incoming::Response { message, .. } | Incoming::CookieReply(message) => {
+                // egress-exempt: the answer to a WireGuard peer that sent to the listener
                 let _ = sock.send_to(&message, from).await;
             }
             Incoming::Packet { peer, packet } => {
@@ -441,6 +443,7 @@ async fn outgoing(
             }
         };
         for message in sealed.1 {
+            // egress-exempt: the answer to a WireGuard peer of the listener
             let _ = sock.send_to(&message, sealed.0).await;
         }
     }
@@ -461,6 +464,7 @@ async fn timers(sock: Arc<tokio::net::UdpSocket>, state: Shared) -> String {
                 .collect()
         };
         for (to, message) in out {
+            // egress-exempt: the keepalive to a WireGuard peer of the listener
             let _ = sock.send_to(&message, to).await;
         }
     }

@@ -175,6 +175,7 @@ fn seccomp_close_in_a_child_keeps_the_parent_entry() {
 /// copy it, close the first descriptor, and send a DNS query on the copy.
 /// The fake DNS of the pod answers when the copy has the destination.
 const DUP_UDP: &str = r#"
+#define _GNU_SOURCE
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>

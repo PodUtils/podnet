@@ -78,6 +78,11 @@ impl Dial for ByName {
             let limit = deadline
                 .saturating_duration_since(Instant::now())
                 .min(Duration::from_secs(10));
+            // EGRESS-3 and EGRESS-4: the service name maps to a destination
+            // that the deployment's policy decides, before any socket.
+            if let Origin::Tcp(host, port) = &origin {
+                crate::policy::permit_failure(host, *port)?;
+            }
             let work = async {
                 Ok::<Connected, std::io::Error>(match &origin {
                     Origin::Tcp(host, port) => {

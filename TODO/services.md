@@ -2024,8 +2024,8 @@ The abstract-name shim has no option to hand a chosen address to the SOCKS door.
 ## Premise
 
 - `parse_config` reads `PODNET_SOCKS_PROXY`, `_LOG`, `_ALL`, `_MAX_FDS` (`crates/podnet-vnet/shim/podnet-socks.c:239-251`).
-- `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:132-141`). `ShimOptions`
-  (`crates/podnet-vnet/src/shim.rs:30-54`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
+- `net socksify` prints a fixed environment (`src/cli/cmd/net/shim.rs:152-161`). `ShimOptions`
+  (`crates/podnet-vnet/src/shim.rs:32-56`) has no hand-off list. `podnet-vnet.c:676` translates each IP of a virtual socket.
 - The variable list is in `src/manual/facts.rs`. `docs/virtual-network.md` has no text on socksify
   (README.md:921 only), so item 4 of the issue needs a new section.
 - Names are set by T-016 (`PODNET_SOCKS_*`).
@@ -2078,9 +2078,9 @@ Tailscale and described only for Tailscale SSH.
 ## Premise
 
 - `net ts-shims` already takes `--out --user --uid --gid --shell --json` and prints `LD_PRELOAD`
-  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:149-193`,
+  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:169-213`,
   `crates/podnet-vnet/src/tailscale_ssh.rs:160-202`). It also writes `getent`, `id` and a compiled shim: more than a client needs.
-- `docs/target-environment.md:116` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
+- `docs/target-environment.md:146` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
   No doctor row names the silent `ssh-keygen`.
 - `tools/ts-sshd.sh:118-128` uses the preload for `ssh-keygen`.
 - Not measured: `ssh-keygen` on a host without passwd in this session.

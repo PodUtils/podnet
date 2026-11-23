@@ -80,6 +80,7 @@ const TOPIC_DOCUMENTS: &[&str] = &[
     "docs/forward.md",
     "docs/relay.md",
     "docs/link.md",
+    "docs/offline.md",
     "docs/egress.md",
     "docs/proxies.md",
     "docs/background.md",

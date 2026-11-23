@@ -161,6 +161,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
             let ProxyListen::Tcp(addr) = &rule.listen else {
                 unreachable!("Rule::parse admits TCP addresses for UDP")
             };
+            // egress-exempt: the UDP listener of -L
             let socket = tokio::net::UdpSocket::bind(addr)
                 .await
                 .with_context(|| format!("-L udp:{addr}"))

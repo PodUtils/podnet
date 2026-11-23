@@ -87,6 +87,7 @@ pub(super) async fn serve_udp_with(
             .await
             .context("the forward listener")?;
         if let Some(reply) = flows.local.as_ref().and_then(|t| t.handle(&buf[..n])) {
+            // egress-exempt: the answer to the client that sent the datagram
             let _ = socket.send_to(&reply, client).await;
             continue;
         }
@@ -143,6 +144,7 @@ pub async fn serve_dns_with(
 /// same port. An address in use exits 69. The caller binds them before it
 /// says that the door serves.
 pub async fn bind_dns(addr: SocketAddr) -> Result<(Arc<UdpSocket>, tokio::net::TcpListener)> {
+    // egress-exempt: the DNS door's listener
     let udp = UdpSocket::bind(addr)
         .await
         .with_context(|| format!("--dns {addr}"))
@@ -265,6 +267,7 @@ async fn flow(
             queue.close();
             while let Some(query) = failed.take().or_else(|| queue.try_recv().ok()) {
                 if let Some(reply) = servfail(&query) {
+                    // egress-exempt: the SERVFAIL answer to the querying client
                     let _ = socket.send_to(&reply, client).await;
                 }
             }
@@ -299,6 +302,7 @@ async fn carry(
             tokio::select! {
                 out = queue.recv() => match out {
                     Some(payload) => {
+                        // egress-exempt: `dial.datagrams` above was approved by the policy
                         let sent = send_to(&*datagrams, &payload, to).await;
                         if sent.is_err() {
                             *failed = Some(payload);
@@ -309,6 +313,7 @@ async fn carry(
                 },
                 back = recv_from(&*datagrams, &mut buf) => {
                     let (n, _) = back?;
+                    // egress-exempt: the answer to the client of the forward
                     socket.send_to(&buf[..n], client).await.map(|_| true)
                 }
             }

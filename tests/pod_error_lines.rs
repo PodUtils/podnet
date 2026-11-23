@@ -213,9 +213,10 @@ fn resolves_with_a_deleted_resolv_conf(conf: &str) {
     let script = format!(
         r#"set -e
 printf '{conf}\\n' > "{file}"
-mount --bind "{file}" /etc/resolv.conf
+target=$(readlink -f /etc/resolv.conf)
+mount --bind "{file}" "$target"
 rm "{file}"
-grep -q ' /etc/resolv.conf .*' /proc/self/mountinfo
+grep -q " $target " /proc/self/mountinfo
 for b in "$@"; do
   echo "backend $b"
   timeout 60 "{podnet}" pod --backend "$b" -x direct -- python3 -I -c '

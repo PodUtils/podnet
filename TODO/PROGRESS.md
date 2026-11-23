@@ -1,16 +1,17 @@
 # Progress
 
-`TODO/INDEX.md` holds 504 entries: 14 open, 13 partial, 35 blocked, 442 done.
+`TODO/INDEX.md` holds 508 entries: 14 open, 14 partial, 24 blocked, 456 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.81.0` (T-505): `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.82.0` (T-506): `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
-  (the transfer), `pod-extract`, `pod-manual`, `pod-cloudflare` and `pod-testkit`. Not taken yet: `pod-release`
+  (the transfer), `pod-extract`, `pod-manual`, `pod-cloudflare`, `pod-cover`, `pod-harness`, `pod-offline`,
+  `pod-shape`, optional `pod-sidecar` (feature `sidecar`), and `pod-testkit`. Not taken yet: `pod-release`
   (T-494), `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session reads the state of podcrates with
   `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates). A file that a block of `crates/*/SOURCES`
   names with no `taken` line is frozen: it takes fixes only, each as a COORD issue.
@@ -29,7 +30,7 @@
    the full lane in `gate.yml` (the case `errors`, the row `testers`).
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
-   before other work. The next tag after `v0.81.0` is the next take. T-494 (`pod-release` in place of
+   before other work. The next tag after `v0.82.0` is the next take. T-494 (`pod-release` in place of
    `src/update.rs`) is open behind podrunner's asks.
 2. **podnet's own work:** the order below. Skip an entry whose Correction says that its work is
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
@@ -80,7 +81,7 @@ not wait for a larger one.
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).
 14. **The asks of podswarm (PodUtils/podcrates#125), after podnet's own work (P3; each has a fallback in podswarm):**
     N-4 (one flow over several uplinks) is answered in `docs/router.md`: per flow only;
-    GitHub #495 stays deferred (the owner, 2026-11-12).
+    the optional packet sidecar (feature `sidecar`, off by default) adds per-flow link bonding.
 
 Releases (2026-11-09: betas, no crates.io): cut the next prerelease (`v0.4.0-beta.N`) unattended when
 a batch is green (`CLAUDE.md`).

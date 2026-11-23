@@ -490,6 +490,11 @@ pub fn log_filter(level: &str) -> String {
         "pod_wormhole",
         "pod_extract",
         "pod_cloudflare",
+        "pod_offline",
+        "pod_sidecar",
+        "pod_harness",
+        "pod_shape",
+        "pod_cover",
         "pod_manual",
     ]
     .map(|target| format!("{target}={level}"))

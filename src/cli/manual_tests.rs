@@ -143,8 +143,10 @@ fn sources() -> Vec<(PathBuf, String)> {
 }
 
 /// The names that need no fact, and the facts that no source names: cargo
-/// sets TARGET for build.rs; tracing-subscriber reads RUST_LOG.
-const EXEMPT: &[&str] = &["TARGET", "RUST_LOG"];
+/// sets TARGET and RUSTC for build.rs; tracing-subscriber reads RUST_LOG;
+/// the shell sets HOSTNAME for the conditions of a measurement; git reads
+/// GIT_PAGER, which podnet sets for its own children.
+const EXEMPT: &[&str] = &["TARGET", "RUSTC", "RUST_LOG", "HOSTNAME", "GIT_PAGER"];
 
 /// Each variable that the code reads or sets is a fact, and each fact is in
 /// the code.

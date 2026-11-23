@@ -42,6 +42,8 @@ impl Watch {
     /// the aggregate route holds each WAN. The probe needs `SO_MARK`
     /// (CAP_NET_ADMIN): an error names it.
     pub fn new(plan: Plan, target: SocketAddrV4, thresholds: Thresholds) -> Result<Watch> {
+        // egress-exempt: a local socket for SO_MARK; the probe's connect is
+        // checked against the policy in `probe`
         let socket = tokio::net::TcpSocket::new_v4().context("kernel probe: socket")?;
         set_mark(&socket, 1).context("kernel probe: setsockopt SO_MARK")?;
         let n = plan.wans.len();
@@ -154,7 +156,13 @@ fn set_mark(socket: &tokio::net::TcpSocket, mark: u32) -> std::io::Result<()> {
 
 /// A TCP connect to `target` with the fwmark `mark`, closed at once.
 async fn probe(mark: u32, target: SocketAddrV4, timeout: Duration) -> ProbeResult {
+    // EGRESS-3 and EGRESS-4: the probe is a destination of the policy,
+    // checked before the socket is made.
+    if crate::policy::permit(&target.ip().to_string(), target.port()).is_err() {
+        return ProbeResult::ConnectFailed { clean: false };
+    }
     let start = Instant::now();
+    // egress-exempt: the socket of the checked probe above; its connect follows
     let Ok(socket) = tokio::net::TcpSocket::new_v4() else {
         return ProbeResult::ConnectFailed { clean: false };
     };

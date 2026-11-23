@@ -63,10 +63,16 @@ LAYER = {
     "cloudflare": "cloudflare", "tunnel": "cloudflare", "edge_h2": "cloudflare",
     "edge_discovery": "cloudflare", "quicktunnel": "cloudflare",
     "config": "cloudflare", "proxy": "cloudflare",
-    "doctor": "podnet", "preflight": "podnet", "agent": "podnet", "agent_files": "podnet",
+    "doctor": "podnet", "doctor_shape": "podnet", "preflight": "podnet", "agent": "podnet", "agent_files": "podnet", "agent_text": "podnet",
+    # The forge seed and the CI declaration (FORGE-1 and CI-1).
+    "forge": "podnet", "ci": "podnet",
+    # The cover listener and the deferred responses (T-369, T-371).
+    "cover": "podnet", "defer": "podnet",
+    "hostprobe": "podnet", "crashlog": "podnet", "stat": "podnet", "policy": "core",
+    "initcfg": "podnet", "page": "podnet", "harness": "podnet",
     "status": "podnet", "bug_report": "podnet", "manual": "podnet",
     "update": "podnet", "fuzzing": "podnet", "lib": "podnet", "networks": "podnet", "roads": "podnet", "forwards": "podnet", "router": "podnet",
-    "test_host": "podnet", "link": "podnet", "link_ctl": "podnet", "link_service": "podnet", "link_group": "podnet", "link_tcp": "podnet", "link_ws": "podnet", "link_h2": "podnet", "link_keyed": "podnet", "link_probe": "podnet", "link_quic": "podnet", "link_udp": "podnet", "link_poll": "podnet", "link_dns": "podnet", "link_icmp": "podnet", "link_s3": "podnet", "link_split": "podnet", "link_chain": "podnet", "link_alias": "podnet", "link_socks": "podnet", "link_door": "podnet", "link_http": "podnet", "link_exec": "podnet", "exit_stdio": "podnet", "exit_stdio_tests": "podnet", "link_query": "podnet", "carriers": "podnet", "components": "podnet", "build_features": "podnet", "identity": "podnet", "hello": "podnet", "session": "podnet", "services": "core", "main": "podnet",
+    "test_host": "podnet", "link": "podnet", "link_ctl": "podnet", "link_service": "podnet", "link_group": "podnet", "link_tcp": "podnet", "link_ws": "podnet", "link_h2": "podnet", "link_keyed": "podnet", "link_probe": "podnet", "link_quic": "podnet", "link_udp": "podnet", "link_poll": "podnet", "link_dns": "podnet", "link_icmp": "podnet", "link_s3": "podnet", "link_split": "podnet", "link_chain": "podnet", "link_alias": "podnet", "link_socks": "podnet", "link_door": "podnet", "link_p2p": "podnet", "link_http": "podnet", "link_exec": "podnet", "exit_stdio": "podnet", "exit_stdio_tests": "podnet", "link_query": "podnet", "carriers": "podnet", "components": "podnet", "build_features": "podnet", "identity": "podnet", "hello": "podnet", "session": "podnet", "sidecar": "podnet", "e2e": "podnet", "offline": "podnet", "services": "core", "main": "podnet",
     "cli": "podnet",
     # The file transfer of magic-wormhole over pod-wormhole (T-102 to T-105).
     "transfer": "podnet",

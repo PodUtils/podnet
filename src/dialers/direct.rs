@@ -50,7 +50,10 @@ impl Dial for Direct {
             let socket = SystemDatagrams::bind(any)
                 .await
                 .map_err(|e| Failure::io(Stage::Connect, e))?;
-            Ok(Arc::new(socket) as Arc<dyn Datagrams>)
+            Ok(
+                Arc::new(crate::egress::CheckedDatagrams::new(Arc::new(socket)))
+                    as Arc<dyn Datagrams>,
+            )
         })
     }
 }

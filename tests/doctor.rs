@@ -6,7 +6,7 @@ mod test_host;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::process::Command;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 /// What the test proxy does with one CONNECT.
@@ -55,19 +55,33 @@ fn tls_config() -> Arc<rustls::ServerConfig> {
 /// A CONNECT proxy on a local port; `rule` chooses the action for each
 /// authority. Gives the port.
 fn proxy(rule: fn(&str) -> Action) -> u16 {
+    proxy_counted(rule).0
+}
+
+/// As [`proxy`], and the authority of every CONNECT that reached it. The
+/// log is the evidence of the test `doctor_quick_dials_each_path_once`.
+fn proxy_counted(rule: fn(&str) -> Action) -> (u16, Arc<Mutex<Vec<String>>>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let config = tls_config();
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let log = seen.clone();
     std::thread::spawn(move || {
         for stream in listener.incoming().flatten() {
             let config = config.clone();
-            std::thread::spawn(move || handle(stream, rule, config));
+            let log = log.clone();
+            std::thread::spawn(move || handle(stream, rule, config, log));
         }
     });
-    port
+    (port, seen)
 }
 
-fn handle(mut stream: TcpStream, rule: fn(&str) -> Action, config: Arc<rustls::ServerConfig>) {
+fn handle(
+    mut stream: TcpStream,
+    rule: fn(&str) -> Action,
+    config: Arc<rustls::ServerConfig>,
+    log: Arc<Mutex<Vec<String>>>,
+) {
     let mut head = Vec::new();
     let mut byte = [0u8; 1];
     while !head.ends_with(b"\r\n\r\n") {
@@ -83,6 +97,7 @@ fn handle(mut stream: TcpStream, rule: fn(&str) -> Action, config: Arc<rustls::S
         .and_then(|l| l.split(' ').nth(1))
         .unwrap_or("")
         .to_string();
+    log.lock().unwrap().push(authority.clone());
     match rule(&authority) {
         Action::Refuse => {
             let body = "port not on the allowlist";
@@ -299,6 +314,7 @@ fn doctor_json_keys_are_fixed() {
             "carriers",
             "clock",
             "git",
+            "h3",
             "lanes",
             "legs",
             "names",
@@ -317,6 +333,22 @@ fn doctor_json_keys_are_fixed() {
     assert_eq!(
         keys(&doc["clock"]),
         ["detail", "skew_s", "status", "verdict"]
+    );
+    assert_eq!(
+        keys(&doc["h3"]),
+        [
+            "alpn_h3",
+            "cid_rotation",
+            "congestion",
+            "control_stream",
+            "setting_ids",
+            "settings",
+            "shape"
+        ]
+    );
+    assert_eq!(
+        keys(&doc["h3"]["cid_rotation"]),
+        ["jitter", "max_s", "min_s", "sample_s"]
     );
     assert_eq!(
         keys(&doc["git"]),
@@ -382,8 +414,16 @@ fn doctor_json_keys_are_fixed() {
     );
 }
 
-/// T-216: `--quick` ends in the limit of 15 s. The fake proxy connects in 8 s
-/// and then never speaks TLS; with `--timeout 10` the path alone needs 18 s.
+/// T-216: `--quick` ends in the limit of 15 s, measured from the launch of
+/// the process. The fake proxy connects in 8 s and then never speaks TLS; with
+/// `--timeout 10` the path alone needs 18 s.
+///
+/// Measured on 2026-11-21: the run itself took 15.01 s of a 15 s deadline
+/// (`start` 0.1 ms to `report` 15.009 s), the wall time of the test 16.34 to
+/// 16.38 s on three runs, so the launch cost 1.33 s. `QUICK_RESERVE` now
+/// leaves 1.5 s of the 15 s for the launch, and the run is 13.5 s: the wall
+/// time of the test is 14.88 s. The 17 s bound is that plus the 2.30 s that
+/// one run under the load of the full suite added to the same sections.
 #[test]
 fn doctor_quick_ends_in_the_limit() {
     test_host::need_loopback!();
@@ -404,6 +444,54 @@ fn doctor_quick_ends_in_the_limit() {
         assert_ne!(leg["verdict"], "ok", "{all}");
     }
     assert!(doc["udp"]["detail"].is_string());
+}
+
+/// T-216: `--quick` takes one sample of each path and no more. The proxy
+/// counts every CONNECT it accepts. Each path makes one for its sample and
+/// one for the TLS check that the sample's `open` verdict asks for, so the
+/// count is exactly `1 + tls` per path, plus one for the WebSocket lane probe
+/// of the edge host. A retry, a second sample or a dial that no row of the
+/// document names would make a count that does not fit.
+#[test]
+fn doctor_quick_dials_each_path_once() {
+    test_host::need_loopback!();
+    let (port, seen) = proxy_counted(|_| Action::Terminate);
+    let (_, doc, all) = doctor_with(port, &["--quick", "--timeout", "1"]);
+    let seen = seen.lock().unwrap().clone();
+    assert!(!seen.is_empty(), "no CONNECT reached the proxy\n{all}");
+    let count = |authority: &str| seen.iter().filter(|a| a.as_str() == authority).count();
+    let mut paths = 0;
+    let mut expected = std::collections::BTreeSet::new();
+    for path in doc["paths"].as_array().unwrap() {
+        if path["via"].is_null() {
+            continue;
+        }
+        paths += 1;
+        assert_eq!(path["samples"]["sent"], 1, "{path}\n{all}");
+        let authority = path["target"].as_str().unwrap();
+        expected.insert(authority.to_string());
+        let tls = usize::from(!path["tls"].is_null());
+        let want = 1 + tls;
+        // The edge host also takes the WebSocket lane probe.
+        let edge = path["id"] == "edge-name";
+        let got = count(authority);
+        assert!(
+            got == want || (edge && got == want + 1),
+            "{authority} was dialled {got} times, not {want}{}: {seen:?}\n{all}",
+            if edge { " (+1 for the lane probe)" } else { "" }
+        );
+    }
+    assert!(paths > 0, "{all}");
+    let distinct: std::collections::BTreeSet<&String> = seen.iter().collect();
+    assert_eq!(
+        distinct.len(),
+        expected.len(),
+        "a dial went to an authority that no path names: {seen:?}\n{all}"
+    );
+    eprintln!(
+        "quick dials: {paths} paths, {} CONNECTs, authorities {seen:?}",
+        seen.len()
+    );
 }
 
 /// T-217: `lanes` holds the seven egress lanes, each `ok`, `fail` or

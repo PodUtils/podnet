@@ -68,26 +68,37 @@ pub use podnet_vnet as vnet;
 
 pub mod agent;
 pub mod agent_files;
+pub mod agent_text;
 pub mod bug_report;
 pub mod build_features;
 pub mod carriers;
+pub mod ci;
 pub mod cloudflare;
 pub mod components;
 pub mod config;
 #[cfg(test)]
 mod core_tests;
+pub mod cover;
+pub mod crashlog;
+pub mod defer;
 pub mod dialers;
 pub mod doctor;
+pub mod doctor_shape;
+pub mod e2e;
 pub mod edge_discovery;
 pub mod edge_h2;
 pub mod egress;
 pub mod exit_stdio;
 pub mod fetch;
+pub mod forge;
 #[doc(hidden)]
 pub mod forwards;
 pub mod fuzzing;
+pub mod harness;
 pub mod hello;
+pub mod hostprobe;
 pub mod identity;
+pub mod initcfg;
 pub mod link;
 pub mod link_alias;
 pub mod link_announce;
@@ -106,6 +117,7 @@ pub mod link_http;
 #[cfg(feature = "icmp")]
 pub mod link_icmp;
 pub mod link_keyed;
+pub mod link_p2p;
 #[cfg(feature = "poll")]
 pub mod link_poll;
 pub mod link_probe;
@@ -128,6 +140,9 @@ pub mod manual;
 pub mod mesh_announce;
 pub mod mesh_table;
 pub mod networks;
+pub mod offline;
+pub mod page;
+pub mod policy;
 pub mod preflight;
 pub mod proxy;
 pub mod quicktunnel;
@@ -139,6 +154,11 @@ pub mod router;
 #[cfg(test)]
 mod serve_tests;
 pub mod session;
+/// The packet sidecar (GitHub #495): behind the feature `sidecar`, so a
+/// default build has no packet path (LIM-2).
+#[cfg(feature = "sidecar")]
+pub mod sidecar;
+pub mod stat;
 pub mod status;
 #[cfg(test)]
 #[path = "../tests/test_host/mod.rs"]

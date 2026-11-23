@@ -53,6 +53,11 @@ impl Dial for Direct {
                 .saturating_duration_since(Instant::now())
                 .min(Duration::from_secs(30));
             let host = target.host();
+            // EGRESS-3 and EGRESS-4: the egress policy of this deployment
+            // decides on the target of a peer's request before any socket
+            // opens. The allow list admitted the peer; this is the second,
+            // independent control.
+            crate::policy::permit_failure(host.as_str(), target.port())?;
             let work = tokio::net::TcpStream::connect((host.as_str(), target.port()));
             let fail = |text: String| Failure::new(Stage::Connect, Class::Unavailable, text);
             match tokio::time::timeout(limit, work).await {
@@ -77,7 +82,10 @@ impl Dial for Direct {
             let socket = crate::network::SystemDatagrams::bind(any)
                 .await
                 .map_err(|e| Failure::io(Stage::Connect, e))?;
-            Ok(Arc::new(socket) as Arc<dyn Datagrams>)
+            Ok(
+                Arc::new(crate::egress::CheckedDatagrams::new(Arc::new(socket)))
+                    as Arc<dyn Datagrams>,
+            )
         })
     }
 }

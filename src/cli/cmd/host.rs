@@ -64,6 +64,26 @@ pub(crate) struct DoctorArgs {
         conflicts_with = "agent"
     )]
     connect_proxy: Option<String>,
+    /// Check the shape of the sealed record layer of each road: its
+    /// declared profile (page-load, video-call, terminal, file-transfer)
+    /// beside a sample of 1000 records. One line for each road says
+    /// `declared`, `observed` or `diverged`. A divergence is a warning line
+    /// and not a failed session: the command exits 0. It opens no
+    /// connection.
+    #[arg(
+        long,
+        conflicts_with_all = [
+            "agent",
+            "quick",
+            "samples",
+            "timeout",
+            "relay",
+            "ssh_relay",
+            "ssh_user",
+            "connect_proxy"
+        ]
+    )]
+    shape: bool,
 }
 
 #[derive(Args, Debug)]
@@ -290,7 +310,42 @@ pub(crate) fn man(args: ManArgs) -> Result<()> {
 }
 
 /// `podnet doctor`, and `podnet doctor --agent`.
+/// `podnet doctor --shape`: one line for each road, with a warning line for
+/// each divergence. It opens no connection.
+fn shape(json: bool) -> Result<()> {
+    let lines = podnet::doctor_shape::lines(podnet::doctor_shape::SAMPLES);
+    if json {
+        let roads: Vec<serde_json::Value> = lines
+            .iter()
+            .map(|line| {
+                serde_json::json!({
+                    "road": line.road,
+                    "profile": line.profile,
+                    "state": line.state,
+                    "line": line.text,
+                    "warnings": line.warnings,
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            podnet::status::stamped(serde_json::json!({"roads": roads}))
+        );
+        return Ok(());
+    }
+    for line in lines {
+        println!("{}", line.text);
+        for warning in line.warning_lines() {
+            eprintln!("{warning}");
+        }
+    }
+    Ok(())
+}
+
 pub(crate) async fn doctor(args: DoctorArgs) -> Result<()> {
+    if args.shape {
+        return shape(args.json);
+    }
     if args.agent {
         let report = podnet::agent::run(Duration::from_secs(args.timeout.max(3))).await;
         if args.json {
@@ -352,8 +407,48 @@ pub(crate) async fn doctor(args: DoctorArgs) -> Result<()> {
 }
 
 /// `podnet status`.
-pub(crate) fn status() -> Result<()> {
-    println!("{}", podnet::status::document());
+pub(crate) fn status(
+    page: bool,
+    out: Option<std::path::PathBuf>,
+    check: Option<std::path::PathBuf>,
+    root: Option<std::path::PathBuf>,
+) -> Result<()> {
+    if !page && out.is_none() && check.is_none() {
+        println!("{}", podnet::status::document());
+        return Ok(());
+    }
+    let root = match root {
+        Some(root) => root,
+        None => std::env::current_dir().context("the current directory")?,
+    };
+    let page_doc = podnet::page::Page::scan(&root)?;
+    if let Some(path) = &check {
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| anyhow::anyhow!("{}: {e}", path.display()))?;
+        let stale = page_doc.check(&text);
+        if !stale.is_empty() {
+            for entry in &stale {
+                eprintln!("podnet: {entry}");
+            }
+            return Err(podnet::exit::fault(
+                Fault::Config,
+                anyhow::anyhow!(
+                    "{}: the page is stale at {} entr(y/ies); run podnet status --page --out {}",
+                    path.display(),
+                    stale.len(),
+                    path.display()
+                ),
+            ));
+        }
+    }
+    if page || out.is_some() {
+        let text = page_doc.render();
+        match &out {
+            Some(path) => std::fs::write(path, &text)
+                .map_err(|e| anyhow::anyhow!("{}: {e}", path.display()))?,
+            None => print!("{text}"),
+        }
+    }
     Ok(())
 }
 

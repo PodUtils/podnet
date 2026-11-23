@@ -10,8 +10,10 @@ use std::path::{Path, PathBuf};
 /// The version of the JSON form of the report.
 pub const REPORT_SCHEMA: u32 = 1;
 
-/// The most bytes of a UDP datagram that the netns backend carries.
-pub(crate) const NETNS_UDP_LIMIT: u32 = 1500;
+/// The most bytes of a UDP datagram that the netns backend carries: the
+/// 65 507-byte UDP payload limit, now that `udpflow` reassembles the IPv4
+/// fragments of the 65 515-byte IPv4 payload that carries it.
+pub(crate) const NETNS_UDP_LIMIT: u32 = 65_507;
 
 #[derive(Default)]
 struct State {

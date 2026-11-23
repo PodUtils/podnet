@@ -29,8 +29,8 @@ pub(crate) struct ListenArgs {
     /// The address, in the form of the carrier: a path or `unix:PATH` for `unix`, a name for
     /// `memory`, `IP:PORT` for `tcp`. A query can follow the address:
     /// `ADDRESS?key=value&key=value` (keys: carrier, tls, retry, lb, compress,
-    /// pad, mtu, maxhops, poll, window, name). Only `carrier`, `pad` and
-    /// `compress` have an effect yet (the last two need --seal); a key with no
+    /// pad, profile, firstflight, mtu, maxhops, poll, window, name). `pad`,
+    /// `compress`, `profile` and `firstflight` need --seal; a key with no
     /// effect, a repeated key, an unknown key or a secret key (password, key,
     /// token, identity) exits 64. No message shows a value.
     #[arg(value_name = "ADDRESS")]

@@ -72,6 +72,8 @@ podnet man                                      # the manual
 | Area | Commands | Function | Document |
 | --- | --- | --- | --- |
 | Tunnels | `tunnel`, `demo`, `qr` | Quick tunnels and named tunnels to a local origin (HTTP, unix socket, TCP). | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
+| End-to-end session | `tunnel --e2e`, `tunnel --inspect` | Noise XX inside the carrier before any application byte, the destination in a sealed envelope, record keys from the handshake, and the hop table. | [e2e](https://github.com/PodUtils/podnet/blob/main/docs/e2e.md) |
+| Packet sidecar | `sidecar probe`, `search`, `run`, `split`, `faketcp`, `bond` | The packet path behind the build feature `sidecar`: a three-valued probe, a local simulator, five primitives, fake TCP and a bond, each with its limit. | [limits-carriers](https://github.com/PodUtils/podnet/blob/main/docs/limits-carriers.md) |
 | Raw streams | `tunnel --forward`, `connect` | SSH, databases and unix sockets through a quick tunnel. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | File server, transfer, git | `serve`, `share`, `git` | Serve a directory, receive or send files with a PIN, host git repositories. | [serve](https://github.com/PodUtils/podnet/blob/main/docs/serve.md) |
 | Transfer by code | `send`, `receive`, `send --words`, `--relay-pair`, `--piping` | A file, a directory or a text to another host with a short code, as magic-wormhole does: a public mailbox for the code, the bytes direct or through a transit relay (from podnet to podnet also the podnet relay or a piping server), sealed end to end. | [transfer](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md) |
@@ -84,10 +86,11 @@ podnet man                                      # the manual
 | Forwards | `forward -L`, `forward --dns`, `forward --name`, `forward --network warp` | TCP and UDP forwards and a DNS door through a network; names on 127.0.0.0/8 for a client that takes only HOST:PORT. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Exit on stdio | `exit --stdio` | One SOCKS5 session (CONNECT, and UDP in frames) on stdin and stdout, with no listener, for a pipe such as ssh. | [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Relays | `relay pair`, `node`, `connect`, `--resume`, `--seal`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only, sessions past the limits of the relay (`--resume`), sealed end to end (`--seal`); an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
-| Link | `link listen`, `dial`, `connect`, `status`, `mesh`, `close`, `carriers`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory; TCP with TLS, WebSocket, HTTP/2, QUIC, UDP with KCP, HTTP/1.1 polls, DNS, S3 and ICMP behind build features): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. Services at a peer: `raw`, `socks5`, `http`, `exec:` and `exec-status:` (the exit status goes to `link dial --status`). A local SOCKS5 door to a peer (`link dial --service socks5 --listen`, `--resolve-at peer\|local`). Names for live links, query keys, chains of `--egress` before the carrier, link groups, a mesh (`--announce`, `link mesh`) and a control socket. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. A C interface (`include/podnet.h`, a shared and a static library from `crates/podnet-capi`). | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
+| Link | `link listen`, `dial`, `connect`, `status`, `mesh`, `close`, `carriers`, `cover`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory; TCP with TLS, WebSocket, HTTP/2, QUIC, UDP with KCP, HTTP/1.1 polls, DNS, S3 and ICMP behind build features): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. Services at a peer: `raw`, `socks5`, `http`, `exec:` and `exec-status:` (the exit status goes to `link dial --status`). A local SOCKS5 door to a peer (`link dial --service socks5 --listen`, `--resolve-at peer\|local`). Names for live links, query keys, chains of `--egress` before the carrier, link groups, a mesh (`--announce`, `link mesh`) and a control socket. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. A C interface (`include/podnet.h`, a shared and a static library from `crates/podnet-capi`). | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
+| Offline | `offline spool`, `discover`, `bundle`, `capture`, `pair`, `replica`; carriers `serial` and `hf` | A store and forward line for a host with no network: a spool that survives a kill, mDNS discovery with a signed record, a bundle and its delta, a capture merged with its secret redacted, a pairing code, a replication log that converges; AX.25 over a serial line and an ARDOP or VARA modem. | [offline](https://github.com/PodUtils/podnet/blob/main/docs/offline.md) |
 | Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `unix:`, `warp` and `warp:identity=FILE` (TCP and UDP through a WARP session, for `route` and `forward --network`), and a chain `TOP over BELOW` (`wg:FILE over warp`). | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
-| Checks | `doctor`, `doctor --agent`, `status`, `ports`, `components`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
+| Checks | `doctor`, `doctor --agent`, `doctor --shape`, `status`, `ports`, `components`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
 | Update | `update` | Replace the binary after a check of the signature. | [install](https://github.com/PodUtils/podnet/blob/main/docs/install.md) |
 | Manual | `man`, `--help --json`, `completions` | The manual, JSON help, the llms files, exit codes. | [cli](https://github.com/PodUtils/podnet/blob/main/docs/cli.md) |
 
@@ -114,15 +117,19 @@ GitHub runner on each push and each day.
 
 * [docs/install.md](https://github.com/PodUtils/podnet/blob/main/docs/install.md): install, verify, update, rebuild a release.
 * [docs/tunnels.md](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md): origins, the configuration file, named tunnels, the edge protocol and transport, raw streams.
+* [docs/e2e.md](https://github.com/PodUtils/podnet/blob/main/docs/e2e.md): the end-to-end session, the hop table, the record layer and the compatibility path.
+* [docs/limits-carriers.md](https://github.com/PodUtils/podnet/blob/main/docs/limits-carriers.md): the limits of the packet sidecar, with the check for each one.
 * [docs/serve.md](https://github.com/PodUtils/podnet/blob/main/docs/serve.md): the file server, share, git hosting.
 * [docs/transfer.md](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md): `send` and `receive`, the transfer by code.
 * [docs/warp.md](https://github.com/PodUtils/podnet/blob/main/docs/warp.md): the WARP client.
+* [docs/quic.md](https://github.com/PodUtils/podnet/blob/main/docs/quic.md): the HTTP/3 shape, the stock client, the TUIC and Juicity roads, the connection ID rotation and the migration fallback.
 * [docs/pods.md](https://github.com/PodUtils/podnet/blob/main/docs/pods.md): `podnet pod`.
 * [docs/networks.md](https://github.com/PodUtils/podnet/blob/main/docs/networks.md): `podnet net`, Tailscale, NetBird, the passwd shim.
 * [docs/router.md](https://github.com/PodUtils/podnet/blob/main/docs/router.md): `podnet route`.
 * [docs/forward.md](https://github.com/PodUtils/podnet/blob/main/docs/forward.md): `forward`, the DNS door, `expose`.
 * [docs/relay.md](https://github.com/PodUtils/podnet/blob/main/docs/relay.md): `relay` and `ssh-relay`.
 * [docs/link.md](https://github.com/PodUtils/podnet/blob/main/docs/link.md): `link` (the key of an install, the allow list, the carriers, the services, the mesh).
+* [docs/offline.md](https://github.com/PodUtils/podnet/blob/main/docs/offline.md): `offline` (the spool, discovery, bundles, capture, pairing, replication) and the `serial` and `hf` carriers.
 * [docs/egress.md](https://github.com/PodUtils/podnet/blob/main/docs/egress.md): network specs and `--egress`.
 * [docs/proxies.md](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md): proxies, DNS, TLS roots.
 * [docs/background.md](https://github.com/PodUtils/podnet/blob/main/docs/background.md): `--detach`, `ps`, autostart.
@@ -132,6 +139,9 @@ GitHub runner on each push and each day.
 * [docs/protocol.md](https://github.com/PodUtils/podnet/blob/main/docs/protocol.md): the edge protocol and the WARP protocol.
 * [docs/virtual-network.md](https://github.com/PodUtils/podnet/blob/main/docs/virtual-network.md): the shim, the stack and the switch.
 * [docs/target-environment.md](https://github.com/PodUtils/podnet/blob/main/docs/target-environment.md): the measured hosts and the rules of podnet for them.
+* [docs/host-runtime.md](https://github.com/PodUtils/podnet/blob/main/docs/host-runtime.md): `host probe`, `stat`, `init`, the classified egress and the status page.
+* [docs/harness.md](https://github.com/PodUtils/podnet/blob/main/docs/harness.md): `harness`, the road by profile table and the relocatable archive.
+* [docs/exit-codes.md](https://github.com/PodUtils/podnet/blob/main/docs/exit-codes.md): the one table of exit codes.
 * [crates/podnet-netns/README.md](https://github.com/PodUtils/podnet/blob/main/crates/podnet-netns/README.md): the pod backends.
 * [SECURITY.md](https://github.com/PodUtils/podnet/blob/main/SECURITY.md): how to report a vulnerability, what Cloudflare can see, what listens, where secrets are kept.
 * [docs/development.md](https://github.com/PodUtils/podnet/blob/main/docs/development.md) and [docs/maintenance.md](https://github.com/PodUtils/podnet/blob/main/docs/maintenance.md): the rules and the procedures for contributors.

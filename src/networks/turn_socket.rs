@@ -38,6 +38,9 @@ pub(super) enum TurnStage {
     Permission,
     /// The ChannelBind of a peer, or its refresh.
     Bind,
+    /// The TCP relay of RFC 6062: the Connect, its ConnectionBind, or the
+    /// data connection.
+    Relay,
     /// The ChannelData of a datagram.
     Send,
     /// The transport, while the socket waits for a datagram.
@@ -51,6 +54,7 @@ impl TurnStage {
             TurnStage::Refresh => "refresh",
             TurnStage::Permission => "permission",
             TurnStage::Bind => "bind",
+            TurnStage::Relay => "relay",
             TurnStage::Send => "send",
             TurnStage::Receive => "receive",
         }

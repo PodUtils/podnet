@@ -408,6 +408,120 @@ fn socksify_takes_cidrs() {
     assert_eq!(alone.status.code(), Some(64), "{}", stderr(&alone));
 }
 
+/// H-05: two `net shim` runs in one network namespace get different
+/// abstract-name prefixes, and each one is a prefix the shim and the stack
+/// can parse.
+#[test]
+fn shim_prefixes_differ_per_run() {
+    if podnet::vnet::shim::compiler().is_err() {
+        eprintln!("skipping the build: no C compiler");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().to_str().unwrap();
+    let run = || {
+        let shim = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args(["net", "shim", "--out", out, "--json"])
+            .env_remove("PODNET_VNET_PREFIX")
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .output()
+            .unwrap();
+        assert_eq!(shim.status.code(), Some(0), "{}", stderr(&shim));
+        let doc: serde_json::Value = serde_json::from_slice(&shim.stdout).unwrap();
+        doc["PODNET_VNET_PREFIX"].as_str().unwrap().to_string()
+    };
+    let (a, b) = (run(), run());
+    assert_ne!(a, b, "{a}");
+    assert!(a.starts_with("podnet-vnet-"), "{a}");
+    assert!(podnet::vnet::addr::valid_prefix(&a), "{a}");
+    assert!(podnet::vnet::addr::valid_prefix(&b), "{b}");
+    let name = format!("{a}/4/10.66.0.2/8080");
+    assert!(podnet::vnet::VirtAddr::from_abstract_name_with(&name, &a).is_ok());
+    // The same prefix still builds a full IPv6 name under MAX_NAME.
+    let longest = podnet::vnet::VirtAddr::v6(
+        "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff".parse().unwrap(),
+        65535,
+    );
+    let name = longest.abstract_name_with(&a).unwrap();
+    assert!(name.len() <= podnet::vnet::addr::MAX_NAME, "{name}");
+    assert_eq!(
+        podnet::vnet::VirtAddr::from_abstract_name_with(&name, &a).unwrap(),
+        longest
+    );
+    // An explicit prefix in the environment is the caller's choice.
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_podnet"));
+    let chosen = cmd
+        .args(["net", "shim", "--out", out, "--json"])
+        .env("PODNET_VNET_PREFIX", "chosen-by-caller")
+        .env_remove("PODNET_ERROR_PROGRAM")
+        .output()
+        .unwrap();
+    assert_eq!(chosen.status.code(), Some(0), "{}", stderr(&chosen));
+    let doc: serde_json::Value = serde_json::from_slice(&chosen.stdout).unwrap();
+    assert_eq!(doc["PODNET_VNET_PREFIX"], "chosen-by-caller", "{doc}");
+    // A value that cannot build a name is a usage error, not a fallback.
+    for bad in ["", "a/b", "a b", &"p".repeat(60)] {
+        let out_bad = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args(["net", "shim", "--out", out, "--json"])
+            .env("PODNET_VNET_PREFIX", bad)
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .output()
+            .unwrap();
+        assert_eq!(out_bad.status.code(), Some(64), "{bad:?}");
+        assert!(
+            stderr(&out_bad).contains("PODNET_VNET_PREFIX"),
+            "{bad:?}: {}",
+            stderr(&out_bad)
+        );
+    }
+    // A non-UTF-8 value is refused before build with exit 64 too.
+    {
+        use std::ffi::OsStr;
+        use std::os::unix::ffi::OsStrExt;
+        let non_utf8_dir = tempfile::tempdir().unwrap();
+        let out_bad = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args([
+                "net",
+                "shim",
+                "--out",
+                non_utf8_dir.path().to_str().unwrap(),
+                "--json",
+            ])
+            .env("PODNET_VNET_PREFIX", OsStr::from_bytes(b"bad\xffprefix"))
+            .env_remove("PODNET_ERROR_PROGRAM")
+            .output()
+            .unwrap();
+        assert_eq!(out_bad.status.code(), Some(64), "{}", stderr(&out_bad));
+        assert!(
+            stderr(&out_bad).contains("PODNET_VNET_PREFIX"),
+            "{}",
+            stderr(&out_bad)
+        );
+        assert!(
+            !non_utf8_dir.path().join("libpodnet-vnet.so").exists(),
+            "non-UTF-8 prefix must fail before building the shim"
+        );
+    }
+    // Without --json, stdout holds only the exports, so `eval` is safe.
+    let plain = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["net", "shim", "--out", out])
+        .env_remove("PODNET_VNET_PREFIX")
+        .env_remove("PODNET_ERROR_PROGRAM")
+        .output()
+        .unwrap();
+    assert_eq!(plain.status.code(), Some(0), "{}", stderr(&plain));
+    let stdout = String::from_utf8(plain.stdout.clone()).unwrap();
+    assert!(!stdout.is_empty());
+    for line in stdout.lines() {
+        assert!(line.starts_with("  export "), "{line:?}");
+    }
+    assert!(
+        stderr(&plain).contains("podnet: shim"),
+        "{}",
+        stderr(&plain)
+    );
+}
+
 /// T-357: `net shim --forward` checks each forward and puts them in
 /// PODNET_VNET_FORWARD. A bad forward is exit 64 before a build.
 #[test]

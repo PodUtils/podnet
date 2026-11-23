@@ -39,8 +39,14 @@
 //! The wire: the type `DATA` carries bytes of the stream, `FIN` ends one
 //! direction (the half-close). A stream that ends with no `FIN` is a cut.
 
+mod measure;
+mod pace;
 mod pack;
 mod pump;
+mod shape;
+
+pub use pace::{Paced, WINDOW as PACE_WINDOW};
+pub use shape::{first_flight, profile_of, report, ShapeCounters};
 
 use std::io;
 use std::pin::Pin;
@@ -53,7 +59,8 @@ use anyhow::anyhow;
 use pod_e2e::record::{Records, Settings};
 use pod_e2e::{self as e2e, Refusal};
 use pod_identity::PublicKey;
-use tokio::io::{AsyncRead, AsyncWrite, DuplexStream, ReadBuf};
+use pod_shape::Profile;
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, DuplexStream, ReadBuf};
 use tokio::sync::mpsc;
 
 pub use pack::{MAX_RATIO, MAX_UNPACKED, MIN_PACK};
@@ -63,12 +70,17 @@ use crate::exit::{self, Fault};
 use crate::identity::{AllowList, Identity};
 use crate::session::{ResumeExpired, RESUME_WINDOW};
 
+use self::measure::Meter;
+
 /// The type of a record that carries bytes of the stream.
 pub const DATA: u8 = 1;
 /// The type of a record that ends one direction of the stream.
 pub const FIN: u8 = 2;
 /// The flag of a record whose payload is compressed with snappy (T-299).
 pub const COMPRESSED: u16 = 0x0002;
+/// The flag of a record whose body carries an entropy tail after a length
+/// prefixed payload (T-371, PAD-3). The prefix is four big-endian bytes.
+pub const ENTROPY: u16 = 0x0004;
 
 /// The settings of the layer of one stream.
 #[derive(Debug, Clone)]
@@ -78,6 +90,22 @@ pub struct Options {
     pub suites: Vec<Suite>,
     /// Pad each record to a bucket (T-300).
     pub pad: bool,
+    /// The padding, first-flight, pace and entropy profile (T-370). With
+    /// it, each body takes the bucket that the profile chooses, not the
+    /// fixed bucket of [`Options::pad`]. `pad` stays the compatibility path.
+    pub profile: Option<Profile>,
+    /// The opening write, in bytes. `None` takes the target of the profile.
+    pub firstflight: Option<usize>,
+    /// The rate that this end measured, in bits per second. Zero takes the
+    /// rate of the profile for the first flight, and the profile's pacer
+    /// waits in a window of its declared rate.
+    pub measured_bps: u64,
+    /// Pace the records of this stream (PACE-1 and PACE-3). `of_query`
+    /// turns it on with a profile; the tests turn it off.
+    pub pace: bool,
+    /// The counters that the session, or the instance, reads. `None` makes
+    /// its own counters, which [`Sealed::shape`] gives.
+    pub shape: Option<Arc<ShapeCounters>>,
     /// Compress the payloads with snappy before the seal (T-299).
     pub compress: bool,
     /// The settings of `pod-e2e` (the rekey, the resume window). `pad` of
@@ -100,6 +128,11 @@ impl Default for Options {
         Options {
             suites: Suite::ALL.to_vec(),
             pad: false,
+            profile: None,
+            firstflight: None,
+            measured_bps: 0,
+            pace: false,
+            shape: None,
             compress: false,
             records: SETTINGS,
             carry_over: false,
@@ -108,18 +141,37 @@ impl Default for Options {
 }
 
 impl Options {
-    /// The options of the query keys `compress` and `pad` (T-306).
-    pub fn of_query(query: &crate::link_query::Query) -> Options {
-        Options {
+    /// The options of the query keys `compress`, `pad`, `profile` and
+    /// `firstflight` (T-306, T-370). A profile that this build does not
+    /// have exits 64. A profile turns the pacer on.
+    pub fn of_query(query: &crate::link_query::Query) -> anyhow::Result<Options> {
+        let profile = match &query.profile {
+            Some(name) => Some(profile_of(name)?),
+            None => None,
+        };
+        Ok(Options {
             pad: query.pad.unwrap_or(false),
             compress: query.compress == Some("snappy"),
+            pace: profile.is_some(),
+            profile,
+            firstflight: query.firstflight,
             ..Options::default()
+        })
+    }
+
+    /// The opening write of this end: the profile's target or the one that
+    /// the query gives, bounded by two seconds of the measured rate
+    /// (FLY-1). Zero with no profile and no target.
+    pub fn opening_write(&self) -> usize {
+        if self.profile.is_none() && self.firstflight.is_none() {
+            return 0;
         }
+        first_flight(self.profile.as_ref(), self.firstflight, self.measured_bps)
     }
 
     fn settings(&self) -> Settings {
         Settings {
-            pad: self.pad,
+            pad: self.pad && self.profile.is_none(),
             ..self.records
         }
     }
@@ -189,6 +241,12 @@ pub(crate) struct Shared {
     pub(crate) records: Mutex<Records>,
     pub(crate) stats: Stats,
     pub(crate) options: Options,
+    /// The body of each record, from the profile (T-370).
+    pub(crate) shaper: Option<Mutex<pod_shape::Shaper>>,
+    /// The distribution of the padding tail of each record (PAD-3).
+    pub(crate) entropy: Option<Mutex<pod_shape::Entropy>>,
+    /// The padded and body bytes of this end.
+    pub(crate) shape: Arc<ShapeCounters>,
 }
 
 /// A byte stream over the records of one stream of a link.
@@ -218,6 +276,37 @@ impl Sealed {
     /// What this stream counted.
     pub fn stats(&self) -> &Stats {
         &self.shared.stats
+    }
+
+    /// The padded bytes and the body bytes of this end (T-370, PAD-5).
+    pub fn shape(&self) -> pod_shape::PaddedFraction {
+        self.shared.shape.fraction()
+    }
+
+    /// The counters of this end, which the command or the instance keeps.
+    pub fn shape_counters(&self) -> Arc<ShapeCounters> {
+        self.shared.shape.clone()
+    }
+
+    /// The profile of this stream, when the query gave one.
+    pub fn profile(&self) -> Option<&Profile> {
+        self.shared.options.profile.as_ref()
+    }
+
+    /// The opening write of this end, after the measured rate (FLY-1).
+    pub fn opening_write(&self) -> usize {
+        self.shared.options.opening_write()
+    }
+
+    /// The rate that this end measured, in bits per second. Zero when the
+    /// query did not have one and the handshake was too short to say.
+    pub fn measured_bps(&self) -> u64 {
+        self.shared.options.measured_bps
+    }
+
+    /// The records of `pod-e2e` of this end.
+    pub fn records(&self) -> pod_e2e::record::Stats {
+        lock(&self.shared.records).stats()
     }
 
     /// The epoch of the key that this end seals with, and of the one that it
@@ -305,6 +394,18 @@ pub fn ended(error: io::Error) -> anyhow::Error {
 
 pub(crate) fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// The seed of the shaper of one stream: the time and the process, so that
+/// two streams of one process do not repeat one bucket sequence (PAD-4).
+fn seed() -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let count = NEXT.fetch_add(1, Ordering::Relaxed);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos() as u64);
+    now ^ (u64::from(std::process::id()) << 32) ^ count.wrapping_mul(0x9e37_79b9_7f4a_7c15)
 }
 
 impl AsyncRead for Sealed {
@@ -480,10 +581,31 @@ where
     Ok(sealed)
 }
 
+/// The body of the probe that measures the link before the opening write
+/// (T-371). It is above the socket buffer of a fast link, which takes it at
+/// once, and a slow link is delayed for about a second, which is the sample.
+const PROBE_BODY: usize = 8 * 1024;
+
+/// Measure the write direction before the send task starts: seal a padded
+/// record with no payload, write it, and read the waiting time. The peer
+/// drops the record (an empty payload is a keepalive), so no byte of the
+/// stream is lost or reordered.
+async fn probe<S>(io: &mut S, records: &mut Records) -> anyhow::Result<u64>
+where
+    S: AsyncWrite + Unpin,
+{
+    let record = records
+        .seal_with(Instant::now(), DATA, 0, 0, &[], PROBE_BODY)
+        .map_err(|e| exit::fault(Fault::Unavailable, anyhow!(e.to_string())))?;
+    let mut meter = Meter::new(io);
+    meter.write_all(&record).await?;
+    Ok(meter.sample().measured_bps())
+}
+
 async fn parts<S>(
     mut channel: e2e::Channel<S>,
     peer: PublicKey,
-    options: Options,
+    mut options: Options,
 ) -> anyhow::Result<
     Pumps<impl std::future::Future<Output = ()>, impl std::future::Future<Output = ()>>,
 >
@@ -496,11 +618,31 @@ where
         .ok_or_else(|| exit::fault(Fault::Unavailable, anyhow!("the channel has no exporter")))?
         .records(suite, options.settings(), Instant::now())
         .map_err(fault)?;
-    let io = channel.into_transport();
+    let mut records = records;
+    let mut io = channel.into_transport();
+    // FLY-1: the measured rate sizes the opening write before the send task
+    // starts. A query that gave a rate keeps it, and sends no probe. A
+    // stream with no opening write needs no rate.
+    if options.measured_bps == 0 && options.opening_write() > 0 {
+        options.measured_bps = probe(&mut io, &mut records).await?;
+    }
+    let shape = options.shape.clone().unwrap_or_default();
+    let shaper = options
+        .profile
+        .as_ref()
+        .map(|profile| Mutex::new(pod_shape::Shaper::new(profile.clone(), seed())));
+    let entropy = options
+        .profile
+        .as_ref()
+        .and_then(|profile| shape::entropy_of(profile, seed() ^ 0x454e_5452_4f50_5931))
+        .map(Mutex::new);
     let shared = Arc::new(Shared {
         records: Mutex::new(records),
         stats: Stats::default(),
         options,
+        shaper,
+        entropy,
+        shape,
     });
     let (write, sender_read) = tokio::io::duplex(pump::PIPE);
     let (tx, read) = mpsc::channel(8);

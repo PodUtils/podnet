@@ -7,6 +7,7 @@ TCP 443. It needs no root and no TUN device.
 podnet warp register                # register a device, or load the saved one
 podnet warp status                  # the device and the account
 podnet warp status --json           # the account record as JSON
+podnet warp --h3-shape bbr status   # the shape of an HTTP/3 server, and the account
 podnet warp license <KEY>           # attach a WARP+ license key
 podnet warp rotate                  # make and enrol a new MASQUE key
 podnet warp delete                  # remove the device and the saved file
@@ -64,11 +65,12 @@ podnet warp down                    # stop it
   session end. Default: off. The log gives the cause of each close of a
   session.
 * `--probe IP:PORT` (default `1.1.1.1:443`) is the TCP probe of the data
-  path. A session can carry ICMP and UDP but no TCP. Each 30 s podnet
-  connects to the target through the session (`warp tun`: one SYN from the
-  tunnel address and port 61999; the answer does not go to the TUN). After
-  3 failures in a row, a new session takes the new flows (the log names
-  `reason=tcp-probe`). `--probe off` stops it.
+  path. A session that carries TCP passes it, and a session that stops
+  carrying TCP fails it. Each 30 s podnet connects to the target through
+  the session (`warp tun`: one SYN from the tunnel address and port 61999;
+  the answer does not go to the TUN). After 3 failures in a row, a new
+  session takes the new flows (the log names `reason=tcp-probe`).
+  `--probe off` stops it.
 * New devices: the WARP service limits the registrations of each address.
   Observed: HTTP 429 (error 1015) after about 10 new devices in 90 minutes,
   cleared after about 30 minutes. podnet then says so. A saved identity,
@@ -141,6 +143,17 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   packet is an HTTP datagram (RFC 9297), so a lost packet does not stop the
   other flows. A packet larger than a datagram goes as a capsule on the
   request stream. There is no relay and no proxy: they carry TCP only.
+* `--h3-shape common|cubic|newreno|bbr[|NAME-no-control]` (a flag of `podnet warp`, before or after the subcommand;
+  `PODNET_WARP_H3_SHAPE`): the congestion profile and the control stream of an HTTP/3 server. The default `common`
+  is Cubic with the control stream and its SETTINGS, because a distinctive controller is a fingerprint (QUIC-6).
+  `NAME-no-control` keeps the profile and sends no control stream. Another value exits 78. `podnet warp h3` serves
+  the selected shape as an HTTP/3 endpoint on the loopback; `warp status` and `doctor` report the selection. The
+  MASQUE client keeps the shape of `pod-warp`.
+* `warp status` prints `h3          h3-shape=SHAPE congestion=PROFILE control-stream=yes|no settings=yes|no`, and
+  the JSON document has the same facts under `h3`, with `cid_rotation`. The status names two states apart (QUIC-5):
+  `state       enrolment failed: ...` when the provider refuses or does not answer (exit 77 for a refusal, 69 for a
+  limit or no answer, 78 for a configuration), and `state       transport failed: ...` when the data path of a running
+  `warp up` does not answer (exit 69). An account with no instance has no state line.
 * `--cc none|reno|cubic` (a flag of `podnet warp`, before or after the subcommand; `PODNET_WARP_CC`): the congestion
   controller of the TCP connections of the userspace stack, for the data
   that it sends (an upload). The default is `none`: only the window of the

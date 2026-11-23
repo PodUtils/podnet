@@ -1,0 +1,14 @@
+# A video call: many small media objects, with no pause to read.
+name = "video-call"
+application = "video call"
+gap_ms = [20, 40]
+
+[[object]]
+min = 200
+max = 1200
+weight = 70
+
+[[object]]
+min = 1200
+max = 4000
+weight = 30

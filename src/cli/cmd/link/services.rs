@@ -278,14 +278,22 @@ async fn over<'a, Fut: std::future::Future<Output = Result<()>>>(
     let Some(seal) = seal else {
         return serve(Io::Plain(stream)).await;
     };
-    record::accept_with(
+    let shape = seal
+        .options
+        .shape
+        .clone()
+        .unwrap_or_else(record::ShapeCounters::new);
+    let out = record::accept_with(
         stream,
         &seal.me,
         &seal.allow,
         seal.options.clone(),
         |sealed| serve(Io::Sealed(sealed)),
     )
-    .await?
+    .await?;
+    // PAD-5: the summary of the sealed side of a transfer.
+    eprintln!("podnet: {}", shape.line());
+    out
 }
 
 /// The program of the service `name`, from `--exec-*`.
@@ -410,6 +418,11 @@ fn resolver(services: &BTreeMap<String, Service>) -> podnet::link_http::Resolver
 /// A connection to `target`. A name resolves with the resolver of this
 /// host, and no proxy is used: the service is on this host or its network.
 async fn connect(target: &Target) -> Result<BoxedIo> {
+    // EGRESS-3 and EGRESS-4: the target of a service is a destination of
+    // the deployment's policy, checked before the socket opens.
+    if let Target::Tcp { host, port } = target {
+        podnet::policy::permit_fault(host, *port)?;
+    }
     let work = async {
         Ok::<BoxedIo, std::io::Error>(match target {
             Target::Tcp { host, port } => {
@@ -448,7 +461,12 @@ impl Streams {
         let refusals = slot.refusals();
         let (hub, services, grant) = (self.hub.clone(), self.services.clone(), self.grant.clone());
         let (peer, shown, mesh) = (self.peer, self.shown.clone(), self.mesh.clone());
-        let seal = self.seal.clone();
+        // PACE-3 and PAD-5: the session owns the pacer and the counters, so
+        // a forwarded port gets both and the instance reports them.
+        let seal = self.seal.clone().map(|mut seal| {
+            seal.options.shape = Some(slot.shape());
+            seal
+        });
         tokio::spawn(async move {
             let mut stream = stream;
             tokio::select! {

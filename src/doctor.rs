@@ -52,15 +52,19 @@ pub struct Options {
     pub deadline: Option<Duration>,
 }
 
-/// The time limit of `--quick`.
+/// The time limit of `--quick`, measured from the launch of the process.
 pub const QUICK_LIMIT: Duration = Duration::from_secs(15);
 
+/// The launch cost that `--quick` leaves inside [`QUICK_LIMIT`]: 1.33 s on
+/// the 2026-11-21 host, so the run budget is 13.5 s of the 15 s.
+pub const QUICK_RESERVE: Duration = Duration::from_millis(1_500);
 impl Options {
-    /// The limits of `--quick`: one sample for each path, 15 s for the run.
+    /// The limits of `--quick`: one sample for each path and 15 s for the
+    /// whole command from launch.
     pub fn quick() -> Self {
         Self {
             samples: 1,
-            deadline: Some(QUICK_LIMIT),
+            deadline: Some(QUICK_LIMIT.saturating_sub(QUICK_RESERVE)),
             ..Self::default()
         }
     }
@@ -342,7 +346,8 @@ impl Report {
         out.push_str(&self.git.line());
         out.push_str(&self.ssh_relay.line());
         out.push_str(&self.carriers.text());
-        out.push_str("\nroads\n");
+        out.push_str(&crate::warp::h3::doctor_lines().join("\n"));
+        out.push_str("\n\nroads\n");
         for (road, verdict, reason) in self.roads() {
             out.push_str(&format!("  {road:<10} {:<8} {reason}\n", verdict.name()));
         }

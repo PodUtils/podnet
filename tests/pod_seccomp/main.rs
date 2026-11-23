@@ -80,6 +80,7 @@ int main(void) {
 mod dns;
 mod epoll;
 mod host_gateway;
+mod kernel_listen;
 mod listen;
 mod loopback_name;
 mod netns_tcp;

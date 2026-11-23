@@ -1,0 +1,43 @@
+# A measurement of the local cover server, not a hand-authored shape.
+# produced_by: cargo test -p podnet --test cover the_script_reproduces_the_cover_that_was_measured,
+#   with a tee on the server socket (127.0.0.1): five runs, each three GETs
+#   (/ , /robots.txt, /missing), recording the TLS application-data records
+#   that the server wrote after the handshake. The sizes here are the
+#   application bytes of each record: the wire payload minus the 17-byte TLS
+#   1.3 overhead (inner content type and tag).
+# produced_on: 2026-11-21
+# cover_version: 1.7.2
+# measured_runs: 5
+# measured_wire_records: 257 193 317
+# measured_application_records: 240 176 300
+# measured_gaps_us: 181..542, 154..362
+date = "2026-11-21"
+cover_version = "1.7.2"
+seed = 163
+
+# One response record per request: two in 128..255 and one in 256..511.
+[[record_size]]
+min = 128
+max = 255
+count = 2
+
+[[record_size]]
+min = 256
+max = 511
+count = 1
+
+# The two gaps between the three records of one run. Each jitter covers the
+# median gap of the five runs across fast and virtualised Linux hosts.
+[[timing]]
+micros = 300
+jitter_micros = 250
+count = 1
+
+[[timing]]
+micros = 220
+jitter_micros = 200
+count = 1
+
+[split]
+min = 512
+max = 1600

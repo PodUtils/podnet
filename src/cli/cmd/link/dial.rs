@@ -28,8 +28,8 @@ pub(crate) struct DialArgs {
     /// The address of the listener, in the form of the carrier (for `tcp`:
     /// `KEY@HOST:PORT`, with the key of the listener). A query can follow the
     /// address: `ADDRESS?key=value&key=value` (keys: carrier, tls, retry, lb,
-    /// compress, pad, mtu, maxhops, poll, window, name). Only `carrier`, `pad`
-    /// and `compress` have an effect yet (the last two need --seal); a key with
+    /// compress, pad, profile, firstflight, mtu, maxhops, poll, window, name).
+    /// `pad`, `compress`, `profile` and `firstflight` need --seal; a key with
     /// no effect, a repeated key, an unknown key or a secret key (password,
     /// key, token, identity) exits 64. No message shows a value.
     #[arg(value_name = "ADDRESS")]
@@ -145,19 +145,33 @@ async fn open_node(
 }
 
 /// The bytes of the stream of a dialer: the stream itself or, with --seal,
-/// its sealed form (T-298). The end that serves the stream must prove
-/// `expect`: the node of --node, or the listener of the link.
+/// its sealed form (T-298), and the counters of its records (T-370). The
+/// end that serves the stream must prove `expect`: the node of --node, or
+/// the listener of the link.
+pub(super) struct Wired {
+    pub(super) io: Box<dyn super::services::Wire>,
+    pub(super) shape: Option<Arc<podnet::link_record::ShapeCounters>>,
+}
+
 async fn wire(
     stream: link::Stream,
     me: &identity::Identity,
     expect: &PublicKey,
     options: Option<podnet::link_record::Options>,
-) -> Result<Box<dyn super::services::Wire>> {
+) -> Result<Wired> {
     match options {
-        None => Ok(Box::new(stream)),
-        Some(options) => Ok(Box::new(
-            podnet::link_record::dial(stream, me, Some(expect), options).await?,
-        )),
+        None => Ok(Wired {
+            io: Box::new(stream),
+            shape: None,
+        }),
+        Some(options) => {
+            let sealed = podnet::link_record::dial(stream, me, Some(expect), options).await?;
+            let shape = Some(sealed.shape_counters());
+            Ok(Wired {
+                io: Box::new(sealed),
+                shape,
+            })
+        }
     }
 }
 
@@ -235,8 +249,9 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
             (stream, peer)
         }
     };
-    let stream = wire(stream, &me, &expect, args.carrier.record.clone()).await?;
-    let (mut down, mut up) = tokio::io::split(stream);
+    let wired = wire(stream, &me, &expect, args.carrier.record.clone()).await?;
+    let shape = wired.shape;
+    let (mut down, mut up) = tokio::io::split(wired.io);
     let send = tokio::spawn(async move {
         let mut stdin = tokio::io::stdin();
         let _ = tokio::io::copy(&mut stdin, &mut up).await;
@@ -249,6 +264,9 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
         send.abort();
         link.close().await;
         stdout.flush().await?;
+        if let Some(shape) = &shape {
+            eprintln!("podnet: {}", shape.line());
+        }
         let code = code?;
         tokio::io::stderr().flush().await?;
         std::process::exit(code);
@@ -280,6 +298,10 @@ pub(crate) async fn dial(mut args: DialArgs, egress: Vec<String>) -> Result<()> 
     let stdin_done = send.is_finished();
     send.abort();
     link.close().await;
+    // PAD-5: the summary of the transfer, with the padded fraction.
+    if let Some(shape) = &shape {
+        eprintln!("podnet: {}", shape.line());
+    }
     if !stdin_done {
         // A blocking read of stdin cannot be stopped, and the runtime would
         // wait for it at exit: the far end has ended the stream, so exit now.

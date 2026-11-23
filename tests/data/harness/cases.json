@@ -1,0 +1,299 @@
+{
+  "cases": [
+    {
+      "road": "unix",
+      "profile": "direct",
+      "capture": "captures/unix.cap",
+      "faults": []
+    },
+    {
+      "road": "unix",
+      "profile": "proxy",
+      "capture": "captures/unix.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "unix",
+      "profile": "restricted",
+      "capture": "captures/unix.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "memory",
+      "profile": "direct",
+      "capture": "captures/memory.cap",
+      "faults": []
+    },
+    {
+      "road": "memory",
+      "profile": "proxy",
+      "capture": "captures/memory.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "memory",
+      "profile": "restricted",
+      "capture": "captures/memory.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "tcp",
+      "profile": "direct",
+      "capture": "captures/tcp.cap",
+      "faults": []
+    },
+    {
+      "road": "tcp",
+      "profile": "proxy",
+      "capture": "captures/tcp.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "tcp",
+      "profile": "restricted",
+      "capture": "captures/tcp.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "ws",
+      "profile": "direct",
+      "capture": "captures/ws.cap",
+      "faults": []
+    },
+    {
+      "road": "ws",
+      "profile": "proxy",
+      "capture": "captures/ws.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "ws",
+      "profile": "restricted",
+      "capture": "captures/ws.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "h2",
+      "profile": "direct",
+      "capture": "captures/h2.cap",
+      "faults": []
+    },
+    {
+      "road": "h2",
+      "profile": "proxy",
+      "capture": "captures/h2.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "h2",
+      "profile": "restricted",
+      "capture": "captures/h2.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "poll",
+      "profile": "direct",
+      "capture": "captures/poll.cap",
+      "faults": []
+    },
+    {
+      "road": "poll",
+      "profile": "proxy",
+      "capture": "captures/poll.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "poll",
+      "profile": "restricted",
+      "capture": "captures/poll.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "quic",
+      "profile": "direct",
+      "capture": "captures/quic.cap",
+      "faults": []
+    },
+    {
+      "road": "quic",
+      "profile": "proxy",
+      "capture": "captures/quic.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "quic",
+      "profile": "restricted",
+      "capture": "captures/quic.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "udp",
+      "profile": "direct",
+      "capture": "captures/udp.cap",
+      "faults": []
+    },
+    {
+      "road": "udp",
+      "profile": "proxy",
+      "capture": "captures/udp.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "udp",
+      "profile": "restricted",
+      "capture": "captures/udp.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "dns",
+      "profile": "direct",
+      "capture": "captures/dns.cap",
+      "faults": []
+    },
+    {
+      "road": "dns",
+      "profile": "proxy",
+      "capture": "captures/dns.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "dns",
+      "profile": "restricted",
+      "capture": "captures/dns.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "icmp",
+      "profile": "direct",
+      "capture": "captures/icmp.cap",
+      "faults": []
+    },
+    {
+      "road": "icmp",
+      "profile": "proxy",
+      "capture": "captures/icmp.cap",
+      "faults": [
+        {
+          "kind": "pad",
+          "to": 1200
+        }
+      ]
+    },
+    {
+      "road": "icmp",
+      "profile": "restricted",
+      "capture": "captures/icmp.cap",
+      "faults": [
+        {
+          "kind": "chunk",
+          "size": 64
+        }
+      ]
+    },
+    {
+      "road": "s3",
+      "profile": "direct",
+      "skip": "the s3 carrier needs a bucket and credentials; this lab has neither"
+    },
+    {
+      "road": "s3",
+      "profile": "proxy",
+      "skip": "the s3 carrier needs a bucket and credentials; this lab has neither"
+    },
+    {
+      "road": "s3",
+      "profile": "restricted",
+      "skip": "the s3 carrier needs a bucket and credentials; this lab has neither"
+    }
+  ]
+}

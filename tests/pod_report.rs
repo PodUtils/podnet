@@ -163,7 +163,7 @@ fn exit_status_of_the_program_is_in_the_report() {
         assert_eq!(report["reason"], Value::Null);
         assert_eq!(report["version"], env!("CARGO_PKG_VERSION"));
         let udp = if backend == "netns" {
-            Value::from(1500)
+            Value::from(65_507)
         } else {
             Value::Null
         };

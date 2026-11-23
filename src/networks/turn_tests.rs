@@ -28,8 +28,59 @@ fn fast() -> Limits {
 }
 
 async fn up_with(mock: &Mock, account: Account, limits: Limits) -> Result<Link, Failure> {
+    up_with_rate(mock, account, limits, None).await
+}
+
+async fn up_with_rate(
+    mock: &Mock,
+    account: Account,
+    limits: Limits,
+    rate_limit: Option<u64>,
+) -> Result<Link, Failure> {
     let spec = turn::parse(&format!("turn://{}", mock.addr)).unwrap();
-    turn::up(&spec, account, None, limits).await
+    turn::up(&spec, account, None, limits, rate_limit).await
+}
+
+/// The TLS face of the stand, `turns://`: the client trusts the CA of the
+/// stand alone (GitHub #485).
+async fn up_tls(mock: &Mock, limits: Limits) -> Result<Link, Failure> {
+    let spec = turn::parse(&format!("turns://{}", mock.tls)).unwrap();
+    turn::up_with_tls(
+        &spec,
+        Account::new(mock::USER, mock::PASSWORD),
+        None,
+        limits,
+        None,
+        mock::client_context(),
+    )
+    .await
+}
+
+/// An allocation of the TLS face that waits for a peer, the accept
+/// direction of RFC 6062 (GitHub #485).
+async fn listen_tls(mock: &Mock, limits: Limits) -> Result<turn::Accepted, Failure> {
+    let spec = turn::parse(&format!("turns://{}", mock.tls)).unwrap();
+    turn::listen(
+        &spec,
+        Account::new(mock::USER, mock::PASSWORD),
+        None,
+        limits,
+        None,
+        mock::client_context(),
+    )
+    .await
+}
+
+/// Wait until the stand-in has seen `want` control connections of a live
+/// allocation end.
+async fn until_closed(mock: &Mock, want: u32) {
+    for _ in 0..200 {
+        if mock.closed() >= want {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    panic!("{want} closes not seen: {:?}", mock.seen());
 }
 
 async fn up(mock: &Mock) -> Link {
@@ -85,7 +136,7 @@ fn network_spec_turn_forms_are_taken() {
         assert_eq!(network.label(), label, "{spec}");
         assert_eq!(network.turn().map(|t| t.1), Some(tls), "{spec}");
         assert!(network.caps().contains(Caps::EGRESS_UDP), "{spec}");
-        assert!(!network.caps().contains(Caps::EGRESS_TCP), "{spec}");
+        assert!(network.caps().contains(Caps::EGRESS_TCP), "{spec}");
     }
     // The TLS form needs the TCP connection to the server first.
     assert_eq!(parse("turns://turn.example").unwrap().checks().len(), 1);
@@ -349,6 +400,8 @@ async fn turn_a_silent_server_names_the_allocate_stage() {
     let silent = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let mock = Mock {
         addr: silent.local_addr().unwrap(),
+        tcp: silent.local_addr().unwrap(),
+        tls: silent.local_addr().unwrap(),
         control: Arc::default(),
     };
     let limits = Limits {
@@ -363,29 +416,205 @@ async fn turn_a_silent_server_names_the_allocate_stage() {
     assert!(err.text().contains("allocate"), "{err}");
 }
 
-/// TCP is refused by name: RFC 6062 is not in `pod-turn`.
+/// A TCP stream goes through a TCP allocation of RFC 6062: the Connect, its
+/// ConnectionBind, and the bare bytes of each direction. The allocation is
+/// refreshed before its end (TURN-2).
 #[tokio::test]
-async fn turn_a_tcp_dial_is_refused_by_name() {
+async fn turn_a_tcp_stream_goes_through_an_rfc6062_allocation() {
+    crate::test_host::need_loopback!();
+    let (mock, peer) = (mock::start().await, mock::tcp_echo_peer().await);
+    // A lifetime of 2 s: the stream refreshes at 1 s.
+    let limits = Limits {
+        lifetime: Duration::from_secs(2),
+        refresh_before: Duration::from_secs(1),
+        ..fast()
+    };
+    let link = up_with(&mock, Account::new(mock::USER, mock::PASSWORD), limits)
+        .await
+        .unwrap();
+    let dial = dial_of(&link);
+    let before = mock.count(REFRESH, 0);
+    let opened = dial
+        .dial(&Target::Addr(peer), tokio::time::Instant::now() + WAIT)
+        .await
+        .unwrap();
+    assert_eq!(opened.peer, Some(peer));
+    let mut io = opened.io;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    for text in [&b"first"[..], b"second"] {
+        io.write_all(text).await.unwrap();
+        let mut back = vec![0u8; 5 + text.len()];
+        io.read_exact(&mut back).await.unwrap();
+        assert_eq!(back, [&b"echo:"[..], text].concat());
+    }
+    // The keeper of the allocation refreshes it before the end.
+    until(&mock, REFRESH, 0, before + 1).await;
+    let shown = link.status.to_string();
+    assert!(
+        !shown.contains(mock::PASSWORD) && !shown.contains(mock::USER),
+        "{shown}"
+    );
+    drop(io);
+}
+
+/// GitHub #485: the same RFC 6062 stream over `turns://`, with TURN over
+/// TLS on TCP. The stream refreshes the allocation before its end, and the
+/// close sends a Refresh with lifetime 0.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn turn_a_tls_tcp_stream_goes_through_an_rfc6062_allocation() {
+    crate::test_host::need_loopback!();
+    let (mock, peer) = (mock::start().await, mock::tcp_echo_peer().await);
+    let limits = Limits {
+        lifetime: Duration::from_secs(2),
+        refresh_before: Duration::from_secs(1),
+        ..fast()
+    };
+    let link = up_tls(&mock, limits).await.unwrap();
+    assert_eq!(link.status["transport"], "tls", "{}", link.status);
+    assert!(
+        link.status["spec"]
+            .as_str()
+            .unwrap()
+            .starts_with("turns://"),
+        "{}",
+        link.status
+    );
+    let dial = dial_of(&link);
+    let closed_before = mock.closed();
+    let before = mock.count(REFRESH, 0);
+    let opened = dial
+        .dial(&Target::Addr(peer), tokio::time::Instant::now() + WAIT)
+        .await
+        .unwrap();
+    assert_eq!(opened.peer, Some(peer));
+    let mut io = opened.io;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    for text in [&b"first"[..], b"second"] {
+        io.write_all(text).await.unwrap();
+        let mut back = vec![0u8; 5 + text.len()];
+        io.read_exact(&mut back).await.unwrap();
+        assert_eq!(back, [&b"echo:"[..], text].concat());
+    }
+    // The refresh of the TCP allocation, before the lifetime of 2 s.
+    until(&mock, REFRESH, 0, before + 1).await;
+    assert!(
+        !link.status.to_string().contains(mock::PASSWORD)
+            && !link.status.to_string().contains(mock::USER),
+        "{}",
+        link.status
+    );
+    drop(io);
+    // The close: the aborted keeper drops the control connection, and the
+    // allocation of the stand-in ends with it.
+    until_closed(&mock, closed_before + 1).await;
+}
+
+/// GitHub #485: the other direction. A podnet allocation accepts a peer
+/// that connects to its relayed address (RFC 6062, 4.2), and the bytes of
+/// the peer and of the caller go both ways over TLS.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn turn_a_tls_allocation_accepts_a_peer() {
+    crate::test_host::need_loopback!();
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let mock = mock::start().await;
+    let limits = Limits {
+        lifetime: Duration::from_secs(120),
+        ..fast()
+    };
+    let accepted = listen_tls(&mock, limits).await.unwrap();
+    let relayed = accepted.relayed;
+    // A peer connects to the relayed address; the server sends the
+    // CONNECTION-ATTEMPT, and the client binds the new data connection.
+    let mut peer = tokio::net::TcpStream::connect(relayed).await.unwrap();
+    let stream = tokio::time::timeout(WAIT, accepted.stream)
+        .await
+        .expect("the accept before the timeout")
+        .expect("the accept channel")
+        .expect("the accepted stream");
+    let mut io = stream;
+    io.write_all(b"from client").await.unwrap();
+    let mut back = [0u8; 11];
+    peer.read_exact(&mut back).await.unwrap();
+    assert_eq!(&back, b"from client");
+    peer.write_all(b"from peer!").await.unwrap();
+    let mut back = [0u8; 10];
+    io.read_exact(&mut back).await.unwrap();
+    assert_eq!(&back, b"from peer!");
+    assert!(mock.count(ALLOCATE, 0) >= 1, "{:?}", mock.seen());
+    assert!(
+        mock.count(pod_turn::stun::CONNECTION_BIND, 0) >= 1,
+        "{:?}",
+        mock.seen()
+    );
+    drop(io);
+    drop(peer);
+}
+/// the caller. TURN carries no rate limit, so the caller's value is shown.
+#[tokio::test]
+async fn turn_the_status_shows_the_lifetime_and_the_rate_limit() {
     crate::test_host::need_loopback!();
     let mock = mock::start().await;
-    let dial = dial_of(&up(&mock).await);
-    let target = Target::Name {
-        host: "example.test".into(),
-        port: 443,
-    };
-    let err = dial
-        .dial(&target, tokio::time::Instant::now() + WAIT)
-        .await
-        .expect_err("TCP refused");
-    assert_eq!(err.class, Class::Unsupported);
+    let link = up_with_rate(
+        &mock,
+        Account::new(mock::USER, mock::PASSWORD),
+        Limits {
+            lifetime: Duration::from_secs(120),
+            ..fast()
+        },
+        Some(500_000),
+    )
+    .await
+    .unwrap();
+    assert_eq!(link.status["lifetime_s"], 120);
+    assert_eq!(link.status["rate_limit"], 500_000);
+    assert_eq!(link.status["relay"], "udp");
+    assert_eq!(link.status["tcp_relay"], "rfc6062");
+    assert!(!link.status.to_string().contains(mock::PASSWORD));
+}
+
+/// A host that refuses the UDP socket names the host error before any
+/// allocation, and the relay path is skipped by name.
+#[tokio::test]
+async fn turn_a_host_that_refuses_udp_names_the_host_error() {
+    struct NoUdp;
+    impl Dial for NoUdp {
+        fn label(&self) -> String {
+            "no-udp".into()
+        }
+        fn dial<'a>(
+            &'a self,
+            _: &'a Target,
+            _: tokio::time::Instant,
+        ) -> BoxFuture<'a, Result<Connected, Failure>> {
+            Box::pin(async { Err(Failure::new(Stage::Connect, Class::Refused, "unused")) })
+        }
+        fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn Datagrams>, Failure>> {
+            Box::pin(async {
+                Err(Failure::new(
+                    Stage::Connect,
+                    Class::Unavailable,
+                    "no UDP socket: the seccomp filter denies socket(AF_INET, SOCK_DGRAM)",
+                ))
+            })
+        }
+    }
+    let mock = mock::start().await;
+    let way: Arc<dyn Dial> = Arc::new(NoUdp);
+    let spec = turn::parse(&format!("turn://{}", mock.addr)).unwrap();
+    let err = turn::up(
+        &spec,
+        Account::new(mock::USER, mock::PASSWORD),
+        Some(&way),
+        fast(),
+        None,
+    )
+    .await
+    .expect_err("no UDP");
+    assert_eq!(err.class, Class::Unavailable);
+    assert!(err.text().contains("allocate"), "{err}");
     assert!(
-        err.text().contains("RFC 6062") && err.text().contains("example.test"),
+        err.text().contains("seccomp") && err.text().contains("SOCK_DGRAM"),
         "{err}"
-    );
-    assert_eq!(
-        mock.count(ALLOCATE, 0),
-        1,
-        "the refusal opens no allocation"
     );
 }
 
@@ -415,7 +644,9 @@ async fn turn_over_the_datagrams_of_the_way_below() {
     let way: Arc<dyn Dial> = below.clone();
     let spec = turn::parse(&format!("turn://{}", mock.addr)).unwrap();
     let account = Account::new(mock::USER, mock::PASSWORD);
-    let link = turn::up(&spec, account, Some(&way), fast()).await.unwrap();
+    let link = turn::up(&spec, account, Some(&way), fast(), None)
+        .await
+        .unwrap();
     let socket = dial_of(&link).datagrams().await.unwrap();
     send_to(&*socket, b"hi", peer).await.unwrap();
     assert_eq!(recv(&*socket).await.unwrap().0, b"echo:hi");

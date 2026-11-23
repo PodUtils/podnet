@@ -99,6 +99,31 @@ pub(crate) struct WarpArgs {
         hide_env_values = true
     )]
     pub(crate) cc: Option<String>,
+    /// The shape of the HTTP/3 endpoint of `warp h3`: common (the default),
+    /// cubic, newreno, bbr, or NAME-no-control. warp status and doctor
+    /// report the shape. A shape that is no shape is a configuration error
+    /// (exit 78).
+    #[arg(
+        long,
+        value_name = "SHAPE",
+        global = true,
+        env = "PODNET_WARP_H3_SHAPE",
+        hide_env_values = true
+    )]
+    pub(crate) h3_shape: Option<String>,
+    /// Go through a TUIC version 5 server (QUIC) for `warp nc HOST PORT`,
+    /// with no WARP identity: a link
+    /// tuic://UUID:PASSWORD@HOST:PORT?PARAM (allow_insecure=1 for a
+    /// self-signed certificate). TCP is one stream; UDP is the bounded
+    /// queue of the road, which stops reading stdin when it is full.
+    #[arg(
+        long,
+        value_name = "URL",
+        global = true,
+        env = "PODNET_WARP_TUIC",
+        hide_env_values = true
+    )]
+    pub(crate) tuic: Option<String>,
     /// Close each MASQUE session on purpose at this age, and open a new one
     /// (a new egress address). The TCP flows of the old session end.
     /// Default: off.
@@ -553,6 +578,22 @@ pub(crate) enum WarpCommand {
         keep_rp_filter: bool,
         #[command(flatten)]
         detach: DetachArgs,
+    },
+    /// Serve the HTTP/3 shape: a QUIC listener with the `h3` ALPN, a control
+    /// stream with SETTINGS that stays open, and a GET of the body. It uses
+    /// no WARP identity and no WARP session.
+    H3 {
+        /// The address to serve: ADDR:PORT. Port 0 takes a free port, which
+        /// the command prints as `h3 listen ADDR`.
+        #[arg(long, value_name = "ADDR", default_value = "127.0.0.1:0")]
+        listen: std::net::SocketAddr,
+        /// Write the qlog trace of the HTTP/3 events to this file. The
+        /// transport qlog of QUIC goes beside it.
+        #[arg(long, value_name = "FILE")]
+        qlog: Option<PathBuf>,
+        /// Stop after this many seconds instead of when the process ends.
+        #[arg(long, value_name = "SECS")]
+        run_for: Option<u64>,
     },
     /// Run a program with all its traffic sent through WARP. No root and no
     /// TUN device are necessary (podnet-netns).

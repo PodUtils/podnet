@@ -33,12 +33,17 @@ The kernel does not see these addresses. `podnet net addresses` prints the plan.
 
 ## 3. Shim
 
-Build the shim and start a program with it:
+Build the shim and start a program with it. The command prints the prefix
+of this run as an export, so evaluate the output before the program starts:
 
 ```sh
-podnet net shim --out /tmp/podnet-vnet --log
-LD_PRELOAD=/tmp/podnet-vnet/libpodnet-vnet.so ./server
+eval "$(podnet net shim --out /tmp/podnet-vnet --log)"
+./server
 ```
+
+The printed prefix reaches the shim through the environment that the
+command also prints, so a reader who copies only `LD_PRELOAD` gives the
+program another prefix than the stack it talks to.
 
 ### 3.1 Address translation
 
@@ -51,7 +56,17 @@ An IP endpoint becomes an abstract socket name:
 [fd00::2]:443    ->  \0podnet-vnet/6/fd00::2/443
 ```
 
-The IPv6 address is in the RFC 5952 form. The longest name is 60 bytes.
+The IPv6 address is in the RFC 5952 form. A `sun_path` holds 108 bytes with
+the leading NUL, so a name is at most 107 bytes. With the default prefix the
+longest name is 59 bytes, and a prefix may be at most 59 bytes.
+
+`podnet net shim` prints a prefix of its own for each run, as
+`PODNET_VNET_PREFIX`, so two shims in one network namespace do not bind the
+same name. A program and the stack it talks to must be started with the same
+value. Set the variable yourself to choose a fixed prefix. A value that is
+empty, over 59 bytes, or holds a byte other than a letter, a digit, `.`, `-`
+or `_` is a usage error of `podnet net shim`; the C shim ignores such a value
+with a line on stderr when a program loads it directly.
 
 An IPv4-mapped IPv6 address (`::ffff:A.B.C.D`) gets the IPv4 name (T-356).
 Thus a dual-mode `AF_INET6` client (for example .NET) that connects to
@@ -96,7 +111,9 @@ on the real `AF_UNIX` descriptor.
   show the virtual addresses. The internal calls of libc (for example the
   `AI_ADDRCONFIG` check of `getaddrinfo`) ask the host's kernel.
 * An abstract name is global on the host (in one network namespace). Two
-  programs that bind the same virtual address and port get `EADDRINUSE`.
+  programs that bind the same virtual address and port under the same prefix
+  get `EADDRINUSE`. Each run takes its own prefix unless
+  `PODNET_VNET_PREFIX` names one, so two runs of the shim do not collide.
 * An abstract name has no file permissions. Each user of the host can bind
   or connect to it. Thus the shim takes the same user only (`SO_PEERCRED`):
   `accept` closes a client of another user and takes the next client, and
@@ -133,7 +150,7 @@ interfaces to `NETLINK_ROUTE`, `getifaddrs` and `if_nameindex` (T-392):
 ## 4. Stack
 
 `NetStack::loopback()` makes a stack whose link sends each packet back into the
-stack. Programs and the proxy on one host use it.
+stack. Programs and the proxy in one network namespace use it.
 
 `NetStack::over_link(config)` makes a stack whose packets go to
 `link_out()` and come from `link_in()`. A pump moves the packets between the
@@ -147,7 +164,7 @@ queues and a byte stream. `vnet::switch::pump` is that pump.
 
 ## 5. Modes
 
-### 5.1 Direct (one host, no stack)
+### 5.1 Direct (one network namespace, no stack)
 
 Two programs with the shim talk through the abstract name. No other process is
 necessary.
@@ -180,7 +197,7 @@ socket path first. A socket that another process serves gives exit 69. A file
 that is not a socket gives exit 64. A stale socket is removed. A client that
 sends no request in 30 s gets SOCKS5 code 4 or HTTP 504.
 
-### 5.3 Switch (more than one host)
+### 5.3 Switch (more than one network namespace)
 
 `podnet net switch` is a hub for stacks. Each stack connects to it with a byte
 stream. The switch records the source address of each peer. It sends each
@@ -296,7 +313,8 @@ podnet net shim \
 
 * `ADDR:PORT` is `IPV4:PORT` or `[IPV6]:PORT`. An IPv4-mapped IPv6 address
   (`[::ffff:127.0.0.1]:7001`) matches its IPv4 forward.
-* `PATH` is absolute and has 107 bytes at most (`sun_path`). The shim keeps
+* `PATH` is absolute and has 107 bytes at most, the 108-byte `sun_path` less
+  its NUL. The shim keeps
   16 forwards at most.
 * A stream `connect` to a listed destination connects the descriptor to
   `PATH`. There is no SOCKS step and no other process. `getpeername` gives

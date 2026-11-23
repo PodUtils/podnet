@@ -6,11 +6,13 @@ pub(crate) mod args;
 pub(crate) mod client;
 pub(crate) mod export;
 pub(crate) mod front;
+pub(crate) mod h3;
 pub(crate) mod join;
 pub(crate) mod kept;
 pub(crate) mod pod;
 pub(crate) mod probe;
 pub(crate) mod run;
+pub(crate) mod tuic;
 pub(crate) mod tun;
 pub(crate) mod up;
 
@@ -33,6 +35,8 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
     if let Some(cc) = &args.cc {
         podnet::warp::ip::set_cc(podnet::warp::ip::parse_cc(cc)?);
     }
+    // Issue 486 (QUIC-6): the shape of the HTTP/3 session.
+    podnet::warp::h3::set_shape(args.h3_shape.as_deref()).fault(Fault::Config)?;
     // Issue 185: the renewal of the session.
     if let Some(secs) = args.session_max_age {
         podnet::warp::live::set_max_age(Some(Duration::from_secs(secs)));
@@ -59,6 +63,42 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
         locale: args.device_locale.clone(),
     })
     .fault(Fault::Usage)?;
+    // Issue 486 (QUIC-8): `warp nc` through a TUIC road, with no WARP
+    // identity and no WARP session.
+    if let Some(link) = &args.tuic {
+        let WarpCommand::Nc {
+            host,
+            port,
+            udp,
+            idle,
+            shutdown,
+            via_relay,
+            ..
+        } = &args.command
+        else {
+            return Err(podnet::exit::fault(
+                Fault::Usage,
+                anyhow::anyhow!("--tuic goes with nc HOST PORT"),
+            ));
+        };
+        if *via_relay {
+            return Err(podnet::exit::fault(
+                Fault::Usage,
+                anyhow::anyhow!("--tuic and --via-relay are exclusive"),
+            ));
+        }
+        return tuic::nc(link, host, *port, *udp, *idle, *shutdown).await;
+    }
+    // Issue 486 (QUIC-6): the HTTP/3 shape as a real endpoint. It uses no
+    // WARP identity and no session.
+    if let WarpCommand::H3 {
+        listen,
+        qlog,
+        run_for,
+    } = args.command
+    {
+        return h3::run(listen, qlog, run_for).await;
+    }
     // These commands use the running instance of podnet warp up.
     if up::before_client(&args).await? {
         return Ok(());
@@ -143,6 +183,7 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
         | WarpCommand::Exec { .. }
         | WarpCommand::Shell(_)
         | WarpCommand::SshConfig { .. }
-        | WarpCommand::Nc { .. } => unreachable!("handled before this function"),
+        | WarpCommand::Nc { .. }
+        | WarpCommand::H3 { .. } => unreachable!("handled before this function"),
     }
 }

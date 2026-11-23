@@ -156,6 +156,18 @@ pub const DOCS: &[(&str, &str)] = &[
         "docs/target-environment.md",
         "The hosts that podnet is for, and their limits.",
     ),
+    (
+        "docs/host-runtime.md",
+        "podnet host probe, stat, crash logs, the init configuration and the egress policy.",
+    ),
+    (
+        "docs/harness.md",
+        "podnet harness: the carriers, the classifiers, the measured table and the archive.",
+    ),
+    (
+        "docs/exit-codes.md",
+        "The exit codes of podnet, the table of the one constant and the labels of a claim.",
+    ),
 ];
 
 /// `llms.txt` and `llms-full.txt` of the repository at `root`: the manual

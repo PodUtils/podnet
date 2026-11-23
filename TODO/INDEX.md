@@ -34,16 +34,16 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**504 entries: 14 open, 13 partial, 35 blocked, 442 done.**
+**508 entries: 14 open, 14 partial, 24 blocked, 456 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 73 | 78 |
-| P2 | 5 | 8 | 10 | 222 | 245 |
-| P3 | 8 | 3 | 23 | 146 | 180 |
-| **All** | 14 | 13 | 35 | 442 | 504 |
-| **All** | 14 | 13 | 35 | 442 | 504 |
+| P1 | 1 | 2 | 2 | 75 | 80 |
+| P2 | 5 | 8 | 10 | 224 | 247 |
+| P3 | 8 | 4 | 12 | 156 | 180 |
+| **All** | 14 | 14 | 24 | 456 | 508 |
+| **All** | 14 | 14 | 24 | 456 | 508 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -410,20 +410,20 @@ M8 Overlays, M9 Later.
 | [T-362](fixes.md) | P3 | S | M5 | defect | done | docs/cli.md: the completion command writes to a directory that can be absent |
 | [T-363](fixes.md) | P2 | S | M5 | defect | done | net passwd-shim: the home of the entry is $HOME, not /state/home |
 | [T-364](fixes.md) | P3 | S | M5 | measurement | done | live: two runs in a row failed at the quick tunnel; the rerun passed (GitHub #516) |
-| [T-365](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: carry a session in NTPv4 extension fields, SMTP and IMAP (GitHub #484) |
-| [T-366](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: carry a session through a TURN allocation, with RFC 6062 (GitHub #485) |
-| [T-367](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID (GitHub #486) |
+| [T-365](deferred.md) | P3 | L | M9 | feature | done | Deferred: carry a session in NTPv4 extension fields, SMTP and IMAP (GitHub #484) |
+| [T-366](deferred.md) | P3 | L | M9 | feature | done | Deferred: carry a session through a TURN allocation, with RFC 6062 (GitHub #485) |
+| [T-367](deferred.md) | P3 | L | M9 | feature | partial | Deferred: close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID (GitHub #486) |
 | [T-368](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: register third-party services as roads, with a watch, a date and a count (GitHub #489) |
-| [T-369](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: switch after a real handshake, with a cover script and multiplexed cover (GitHub #491) |
-| [T-370](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: shape the record layer: padding profiles, entropy, first flight, pacing (GitHub #493) |
-| [T-371](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: shape the application: deferred responses, a generator, carriers in the payload (GitHub #494) |
-| [T-372](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: add a packet sidecar: desync search, disagreement probe, fake TCP, bonding (GitHub #495) |
-| [T-373](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: keep the session end to end: opaque destination and keys from the ends (GitHub #496) |
+| [T-369](deferred.md) | P3 | L | M9 | feature | done | Deferred: switch after a real handshake, with a cover script and multiplexed cover (GitHub #491) |
+| [T-370](deferred.md) | P3 | L | M9 | feature | done | Deferred: shape the record layer: padding profiles, entropy, first flight, pacing (GitHub #493) |
+| [T-371](deferred.md) | P3 | L | M9 | feature | done | Deferred: shape the application: deferred responses, a generator, carriers in the payload (GitHub #494) |
+| [T-372](deferred.md) | P3 | L | M9 | feature | done | Deferred: add a packet sidecar: desync search, disagreement probe, fake TCP, bonding (GitHub #495) |
+| [T-373](deferred.md) | P3 | L | M9 | feature | done | Deferred: keep the session end to end: opaque destination and keys from the ends (GitHub #496) |
 | [T-374](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: make the pool live, the budget per deployment, tokens expiring, hosts movable (GitHub #497) |
 | [T-375](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: resume a session across hours, and serve the full service surface at a peer (GitHub #498) |
-| [T-376](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: carry a session with no network: serial, HF, spool, discovery, pairing (GitHub #499) |
-| [T-377](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: state the host runtime: no open port, classified egress, stated limits (GitHub #500) |
-| [T-378](deferred.md) | P3 | L | M9 | feature | blocked | Deferred: build the verification harness: classifier, exit codes, conformance matrix (GitHub #501) |
+| [T-376](deferred.md) | P3 | L | M9 | feature | done | Deferred: carry a session with no network: serial, HF, spool, discovery, pairing (GitHub #499) |
+| [T-377](deferred.md) | P3 | L | M9 | feature | done | Deferred: state the host runtime: no open port, classified egress, stated limits (GitHub #500) |
+| [T-378](deferred.md) | P3 | L | M9 | feature | done | Deferred: build the verification harness: classifier, exit codes, conformance matrix (GitHub #501) |
 | [T-379](fixes.md) | P1 | S | M5 | defect | done | A unix listener of podnet fails with EXDEV in a Landlock domain |
 | [T-380](fixes.md) | P1 | S | M5 | defect | done | link listen over the unix carrier fails with EXDEV in a Landlock domain (pod-link) |
 | [T-381](fixes.md) | P2 | S | M5 | defect | done | The netns backend of podnet pod needs an AF_INET datagram socket (pod-hold) |
@@ -551,3 +551,7 @@ M8 Overlays, M9 Later.
 | [T-503](fixes.md) | P1 | S | M7 | defect | done | `pod --backend netns`: the second path of the resolver does not answer a loopback nameserver of the host |
 | [T-504](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.80.0 |
 | [T-505](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.81.0 |
+| [T-506](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.82.0 |
+| [T-507](fixes.md) | P1 | S | M7 | defect | done | `pod --backend seccomp`: refuse `listen(2)` on a kernel socket with `EPERM` (H-02) |
+| [T-508](fixes.md) | P2 | M | M7 | defect | done | `pod --backend netns`: reassemble IPv4 UDP fragments up to 65,507-byte payloads (H-04) |
+| [T-509](fixes.md) | P2 | S | M5 | defect | done | `net shim`: per-run `PODNET_VNET_PREFIX`, 59-byte cap, pre-build validation, and stderr warning (H-05) |

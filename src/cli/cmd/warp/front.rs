@@ -115,6 +115,7 @@ pub(crate) async fn run(
             // the proxy listeners.
             let dns_socket = match dns {
                 Some(addr) => Some(
+                    // egress-exempt: the DNS listener of the WARP front door
                     tokio::net::UdpSocket::bind(addr)
                         .await
                         .with_context(|| format!("binding the DNS address {addr}"))

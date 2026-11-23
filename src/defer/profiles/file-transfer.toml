@@ -1,0 +1,14 @@
+# A file transfer: full objects, back to back, with no pause to read.
+name = "file-transfer"
+application = "file transfer"
+gap_ms = [1, 10]
+
+[[object]]
+min = 16384
+max = 262144
+weight = 50
+
+[[object]]
+min = 262144
+max = 1048576
+weight = 50

@@ -68,6 +68,16 @@ fn probe_localhost() -> Result<(), String> {
     }
 }
 
+/// `Err(reason)` when this host has no route to ADDR: a UDP connect fails.
+pub(crate) fn route(addr: SocketAddr) -> Result<(), String> {
+    let socket = UdpSocket::bind("0.0.0.0:0")
+        .map_err(|e| format!("this host denies bind(AF_INET) for a route probe: {e}"))?;
+    socket
+        .connect(addr)
+        .map_err(|e| format!("this host has no route to {addr}: {e}"))?;
+    Ok(())
+}
+
 /// Write `skipping, REASON` to the standard error of the process. The
 /// test harness does not capture this write (it captures `eprintln!`), so
 /// the line shows for a test that passes too.
@@ -100,4 +110,14 @@ macro_rules! need_localhost {
     };
 }
 
-pub(crate) use {need_localhost, need_loopback};
+/// Skip the test (return from it) when this host has no route to ADDR.
+macro_rules! need_route {
+    ($addr:expr) => {
+        if let Err(why) = $crate::test_host::route($addr) {
+            $crate::test_host::skip_line(&why);
+            return;
+        }
+    };
+}
+
+pub(crate) use {need_localhost, need_loopback, need_route};

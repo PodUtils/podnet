@@ -15,6 +15,9 @@ pub use podnet_serve::road::{
     guard, private_socket, Access, Local, Published, Road, Role, Rule, Services, Users,
 };
 
+pub mod juicity;
+pub mod tuic;
+
 use crate::config::Config;
 use crate::ingress::{Ingress, Service};
 use crate::vnet::addr::VirtAddr;

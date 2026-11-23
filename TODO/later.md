@@ -1147,7 +1147,7 @@ reconnects with a 1 s to 30 s backoff; this leg does not.
    channel), then reconnect with the capped backoff of `relay_reverse.rs`.
 2. Give the new URL to the caller (a channel or a callback) at each reconnect.
 3. Log one line that names the relay and the reason of the end.
-4. `doctor`: add one line to the row at `src/doctor.rs:750-756` about the fixed session age.
+4. `doctor`: add one line to the row at `src/doctor.rs:755-761` about the fixed session age.
 5. Do not hardcode 60 minutes.
 
 ## Decision
@@ -2186,7 +2186,7 @@ case: a CI job on host A runs a build on host B over a link, and must get the st
 ## Premise
 
 - Read on 2026-11-16 at 1caa0be: `src/cli/cmd/link/dial.rs` ends with `std::process::exit(0)` when the far end ended the
-  stream first (`:287`). The `exec` service logs the status of the program on the listener only.
+  stream first (`:309`). The `exec` service logs the status of the program on the listener only.
 - The frames of the link are in `pod-link` of podcrates: a new record form of a service may need an ask to podcrates.
 
 ## Approach

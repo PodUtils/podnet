@@ -71,6 +71,59 @@ pub(crate) struct TunnelArgs {
     /// Not with --config.
     #[arg(long)]
     strip_accept_encoding: bool,
+    /// Run the session end to end: a Noise XX handshake on
+    /// the data stream before any application byte, the destination in a
+    /// sealed envelope, and record keys from the handshake. The relay
+    /// forwards and holds no key.
+    #[arg(long)]
+    pub(crate) e2e: bool,
+    /// The near end's data address (IP:PORT), where the relay forwards.
+    #[arg(long, value_name = "IP:PORT")]
+    pub(crate) connect: Option<String>,
+    /// The near end's control address (IP:PORT): the sealed destination
+    /// goes here, out of band.
+    #[arg(long, value_name = "IP:PORT")]
+    pub(crate) control: Option<String>,
+    /// The far end's data listen address (IP:PORT).
+    #[arg(long, value_name = "IP:PORT")]
+    pub(crate) listen: Option<String>,
+    /// The far end's control listen address (IP:PORT).
+    #[arg(long = "control-listen", value_name = "IP:PORT")]
+    pub(crate) control_listen: Option<String>,
+    /// The pair that the relay advertises: RELAY/PAIR.
+    #[arg(long, value_name = "RELAY/PAIR")]
+    pub(crate) pair: Option<String>,
+    /// A suite of the records: chacha20-poly1305 (default) or
+    /// aes-256-gcm. Give it twice to offer both.
+    #[arg(long, value_name = "NAME")]
+    pub(crate) suite: Vec<String>,
+    /// The destination, HOST:PORT. The far end reads it from the sealed
+    /// envelope; the near end puts it there.
+    #[arg(long, value_name = "HOST:PORT")]
+    pub(crate) destination: Option<String>,
+    /// The service name at the destination.
+    #[arg(long, default_value = "tcp", value_name = "NAME")]
+    pub(crate) service: String,
+    /// A peer that this end admits: 64 hex digits of its Ed25519 key. Give
+    /// it once for each peer.
+    #[arg(long, value_name = "KEY")]
+    pub(crate) peer: Vec<String>,
+    /// The compatibility path: the destination in clear on the control
+    /// stream, as /connect/HOST/PORT. It leaks the destination, and the
+    /// command prints that warning.
+    #[arg(long)]
+    pub(crate) compat_destination: bool,
+    /// Print the hop knowledge table and the exchange as a hop sees it.
+    #[arg(long)]
+    pub(crate) inspect: bool,
+    /// A token of one relay and one service (LEARN-2). It is refused by
+    /// another relay or another service.
+    #[arg(long, value_name = "TOKEN", hide_env_values = true)]
+    pub(crate) e2e_token: Option<String>,
+    /// The file of the 32-byte seed that minted the token, as 64 hex
+    /// digits on its first line.
+    #[arg(long, value_name = "FILE")]
+    pub(crate) e2e_token_seed_file: Option<PathBuf>,
 }
 
 /// The origin flags of `args`, by name. `--config` has the origin in its
@@ -93,6 +146,9 @@ fn origin_flags(args: &TunnelArgs) -> Vec<&'static str> {
 }
 
 pub(crate) async fn tunnel(args: TunnelArgs) -> Result<()> {
+    if args.e2e || args.inspect {
+        return super::e2e::tunnel_e2e(&args).await;
+    }
     let given = origin_flags(&args);
     if args.config.is_some() && !given.is_empty() {
         return Err(podnet::exit::fault(

@@ -1,0 +1,15 @@
+# A page load: a few objects of a page, then a pause to read it.
+name = "page-load"
+application = "page load"
+gap_ms = [100, 700]
+read_ms = [2000, 8000]
+
+[[object]]
+min = 2048
+max = 65536
+weight = 60
+
+[[object]]
+min = 65536
+max = 262144
+weight = 40

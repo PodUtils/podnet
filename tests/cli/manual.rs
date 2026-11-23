@@ -174,7 +174,10 @@ fn the_listen_defaults_agree_with_the_manual() {
         ) else {
             continue;
         };
-        if address.starts_with("tcp://") || address.starts_with("unix:") {
+        if address.starts_with("tcp://")
+            || address.starts_with("unix:")
+            || address.parse::<std::net::SocketAddr>().is_ok()
+        {
             table.insert(command.to_string(), address.to_string());
         }
     }

@@ -174,3 +174,22 @@ fn tunnel_takes_masque_endpoint() {
     let out = run("[2606:4700:103::2]:443");
     assert_eq!(out.status.code(), Some(0), "{}", stderr(&out));
 }
+
+/// Issue 486 (QUIC-6): --h3-shape takes a named shape, and another value is
+/// a configuration error before any network wait.
+#[test]
+fn warp_h3_shape_refuses_a_value_that_is_no_shape() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["warp", "--h3-shape", "bbr4", "status"])
+        .env_remove("PODNET_ERROR_PROGRAM")
+        .env("PODNET_STATE_DIR", dir.path())
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(78), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains("not a congestion profile"),
+        "{}",
+        stderr(&out)
+    );
+}

@@ -21,11 +21,11 @@ impl World {
     fn new() -> World {
         let api = stand::warp::Api::new("", "192.0.2.1", "2001:db8::1");
         let served = stand::http(api.handler()).unwrap();
-        World {
-            api,
-            served,
-            dir: tempfile::tempdir().unwrap(),
-        }
+        let dir = tempfile::tempdir().unwrap();
+        // `warp status` reads the run directory of the host unless the test
+        // names its own: no test sees an instance of the machine.
+        std::fs::create_dir_all(dir.path().join("run")).unwrap();
+        World { api, served, dir }
     }
 
     fn identity(&self) -> std::path::PathBuf {
@@ -38,6 +38,12 @@ impl World {
     }
 
     fn warp_with(&self, args: &[&str], stdin: Option<&str>) -> Output {
+        self.warp_at(&format!("http://{}", self.served.addr()), args, stdin)
+    }
+
+    /// `podnet warp` with the API base of `api`, for a test that the
+    /// stand-in cannot make fail on a read.
+    fn warp_at(&self, api: &str, args: &[&str], stdin: Option<&str>) -> Output {
         use std::io::Write as _;
         let identity = self.identity();
         let mut command = Command::new(env!("CARGO_BIN_EXE_podnet"));
@@ -49,8 +55,9 @@ impl World {
                 identity.to_str().unwrap(),
             ])
             .args(args)
-            .env("PODNET_WARP_API", format!("http://{}", self.served.addr()))
+            .env("PODNET_WARP_API", api)
             .env("PODNET_STATE_DIR", self.dir.path().join("state"))
+            .env("PODNET_RUN_DIR", self.dir.path().join("run"))
             .env_remove("PODNET_ERROR_PROGRAM")
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
@@ -134,6 +141,129 @@ fn warp_stand_in_status_reads_the_account_of_the_saved_device() {
     assert_eq!(world.api.asked("POST"), 1, "status registers no device");
 }
 
+/// QUIC-6 and QUIC-9: each `--h3-shape` value reaches `Shape::parse`, and
+/// `warp status` prints the ShapeReport line and the rotation schedule.
+#[test]
+fn warp_status_prints_the_h3_shape_and_the_rotation_schedule() {
+    test_host::need_loopback!();
+    let world = World::new();
+    ok(&world.warp(&["register"]), "register");
+    for (value, name, congestion) in [
+        ("common", "common", "cubic"),
+        // `cubic` is the common shape: pod-warp names both `common`, and
+        // the profile is the part that `--h3-shape` selects.
+        ("cubic", "common", "cubic"),
+        ("newreno", "newreno", "newreno"),
+        ("bbr", "bbr", "bbr"),
+    ] {
+        let out = world.warp(&["--h3-shape", value, "status"]);
+        ok(&out, "status");
+        let stdout = text(&out.stdout);
+        assert!(
+            stdout.contains(&format!(
+                "h3          h3-shape={name} congestion={congestion}"
+            )),
+            "the shape line of {value}: {stdout}"
+        );
+        let out = world.warp(&["--h3-shape", value, "status", "--json"]);
+        ok(&out, "status --json");
+        let stdout = text(&out.stdout);
+        let doc: serde_json::Value = serde_json::from_str(stdout.trim())
+            .unwrap_or_else(|e| panic!("status --json: {e}: {stdout}"));
+        assert_eq!(doc["h3"]["shape"], name, "{doc}");
+        assert_eq!(doc["h3"]["congestion"], congestion, "{doc}");
+        assert_eq!(doc["h3"]["cid_rotation"]["min_s"], 480, "{doc}");
+        assert_eq!(doc["h3"]["cid_rotation"]["max_s"], 780, "{doc}");
+        assert_eq!(doc["h3"]["cid_rotation"]["jitter"], 200, "{doc}");
+    }
+}
+
+/// A server that answers each request with `status`: the API that refuses a
+/// device which the identity file still holds.
+fn refusing_api(status: u16) -> std::net::SocketAddr {
+    use std::io::{Read as _, Write as _};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        for mut stream in listener.incoming().flatten() {
+            let mut request = Vec::new();
+            let mut byte = [0u8; 1];
+            while stream.read(&mut byte).map(|n| n == 1).unwrap_or(false) {
+                request.push(byte[0]);
+                if request.ends_with(b"\r\n\r\n") {
+                    break;
+                }
+            }
+            let _ = stream.write_all(
+                format!(
+                    "HTTP/1.1 {status} Refused\r\ncontent-length: 0\r\n\
+                     content-type: application/json\r\nconnection: close\r\n\r\n"
+                )
+                .as_bytes(),
+            );
+        }
+    });
+    addr
+}
+
+/// QUIC-5: a provider that refuses is an enrolment failure, with its own
+/// name and its own exit class (77), and not a transport failure.
+#[test]
+fn warp_status_names_an_enrolment_failure() {
+    test_host::need_loopback!();
+    let world = World::new();
+    ok(&world.warp(&["register"]), "register");
+    let api = format!("http://{}", refusing_api(403));
+    let out = world.warp_at(&api, &["status"], None);
+    assert_eq!(
+        out.status.code(),
+        Some(77),
+        "{}{}",
+        text(&out.stdout),
+        text(&out.stderr)
+    );
+    let err = text(&out.stderr);
+    assert!(err.contains("state       enrolment failed:"), "{err}");
+    assert!(!err.contains("transport failed"), "{err}");
+}
+
+/// QUIC-5: a data path that does not answer is a transport failure, with its
+/// own name and its own exit class (69).
+#[test]
+fn warp_status_names_a_transport_failure() {
+    test_host::need_loopback!();
+    let world = World::new();
+    ok(&world.warp(&["register"]), "register");
+    let run = world.dir.path().join("run");
+    let paths = podnet::instances::paths(&run, "warp").unwrap();
+    // `is_alive` reads the lock of the instance: hold it as its process
+    // would, so that the record is the record of a live instance.
+    let _held = podnet::instances::lock(&paths.lock).unwrap();
+    let record = podnet::instances::Record {
+        name: "warp".into(),
+        pid: std::process::id(),
+        state: "ready".into(),
+        ready: Some(serde_json::json!({
+            "listens": ["unix:/r/warp.sock"],
+            "data_path": "tcp-dead",
+            "last_probe": 0,
+        })),
+        ..Default::default()
+    };
+    podnet::instances::write(&run, &record).unwrap();
+    let out = world.warp(&["status"]);
+    assert_eq!(
+        out.status.code(),
+        Some(69),
+        "{}{}",
+        text(&out.stdout),
+        text(&out.stderr)
+    );
+    let err = text(&out.stderr);
+    assert!(err.contains("state       transport failed:"), "{err}");
+    assert!(!err.contains("enrolment failed"), "{err}");
+}
+
 #[test]
 fn warp_stand_in_license_from_stdin_reaches_the_api() {
     test_host::need_loopback!();
@@ -196,6 +326,9 @@ fn warp_stand_in_register_names_the_limit_of_new_devices() {
 // `tests/warp_edge` (the same edge as the tests of the network `warp`).
 #[allow(dead_code)]
 mod warp_edge;
+
+#[path = "warp_stand_in/providers.rs"]
+mod providers;
 
 mod through_the_edge {
     use std::io::{Read as _, Write as _};

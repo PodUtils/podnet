@@ -50,6 +50,15 @@ fn main() {
     let args = podnet::detach::prepare(std::env::args_os().collect());
     // Issue 210: the error report gives the refusal of a quick tunnel.
     podnet::report::read_refusals_with(podnet::quicktunnel::retry_of);
+    // LOG-1: a panic writes the backtrace, the versions and the last
+    // events, under the bound and with redaction at write time.
+    podnet::crashlog::install_from_env();
+    // EGRESS-4: the policy of the deployment is the one that classifies a
+    // destination, and it is installed before the first dial.
+    if let Err(err) = podnet::policy::install_from_env() {
+        eprintln!("podnet: {err}");
+        std::process::exit(podnet::exit::CONFIG);
+    }
     let args = cloudflared_compat(args);
     // T-060: each --egress becomes its old flag (--no-proxy, --proxy,
     // --transport relay, or -x of the pod).

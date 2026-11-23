@@ -5,8 +5,10 @@
 //! so a `podnet` binary can drop it in a writable directory, compile it with
 //! the host's `cc`, and use it without shipping a second file.
 
+use std::hash::{BuildHasher, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::{bail, Context, Result};
 
@@ -179,10 +181,33 @@ pub fn forward_list(forwards: &[String]) -> Result<String> {
     Ok(checked.join(","))
 }
 
+/// A counter that separates two runs in one process.
+static RUNS: AtomicU64 = AtomicU64::new(0);
+
+/// A prefix that two `net shim` runs in one network namespace do not share.
+///
+/// With the default prefix, two runs both bind `\0podnet-vnet/...`, and the
+/// second listener fails or, worse, talks to the first. The prefix carries
+/// the process id, 32 random bits from [`std::collections::hash_map::RandomState`]
+/// and a counter, so a restart that reuses a pid still gets a name of its
+/// own, and the name stays under [`crate::addr::MAX_PREFIX`] bytes.
+pub fn unique_prefix() -> String {
+    let salt = std::collections::hash_map::RandomState::new()
+        .build_hasher()
+        .finish();
+    let run = RUNS.fetch_add(1, Ordering::Relaxed);
+    format!(
+        "{}-{}-{:08x}-{run:x}",
+        crate::addr::DEFAULT_PREFIX,
+        std::process::id(),
+        salt & 0xffff_ffff
+    )
+}
+
 impl Default for ShimOptions {
     fn default() -> Self {
         Self {
-            prefix: "podnet-vnet".into(),
+            prefix: crate::addr::DEFAULT_PREFIX.into(),
             log: false,
             map_loopback: false,
             hosts: Vec::new(),
@@ -196,8 +221,16 @@ impl Default for ShimOptions {
 }
 
 impl ShimOptions {
-    /// Build the environment a preloaded program needs.
-    pub fn environment(&self, shim_path: &Path) -> Vec<(String, String)> {
+    /// Build the environment a preloaded program needs. Refuses a prefix that
+    /// cannot build a valid abstract socket name.
+    pub fn environment(&self, shim_path: &Path) -> Result<Vec<(String, String)>> {
+        if !crate::addr::valid_prefix(&self.prefix) {
+            bail!(
+                "PODNET_VNET_PREFIX {:?} is not 1 to {} bytes of letters, digits, '.', '-' or '_'",
+                self.prefix,
+                crate::addr::MAX_PREFIX
+            );
+        }
         let mut env = vec![(
             "LD_PRELOAD".to_string(),
             match std::env::var("LD_PRELOAD") {
@@ -237,7 +270,7 @@ impl ShimOptions {
                 self.socks_routes.join(","),
             ));
         }
-        env
+        Ok(env)
     }
 }
 
@@ -547,12 +580,36 @@ mod tests {
         };
         let env: std::collections::HashMap<_, _> = options
             .environment(Path::new("/tmp/libpodnet-vnet.so"))
+            .unwrap()
             .into_iter()
             .collect();
         assert!(env["LD_PRELOAD"].contains("libpodnet-vnet.so"));
         assert_eq!(env["PODNET_VNET_LOG"], "1");
         assert_eq!(env["PODNET_VNET_MAP_LOOPBACK"], "1");
         assert_eq!(env["PODNET_VNET_HOSTS"], "web=10.66.0.2");
+    }
+
+    #[test]
+    fn a_prefix_that_cannot_build_a_name_is_not_exported() {
+        for bad in [
+            String::new(),
+            "a/b".to_string(),
+            "a b".to_string(),
+            "p".repeat(crate::addr::MAX_PREFIX + 1),
+        ] {
+            let options = ShimOptions {
+                prefix: bad.clone(),
+                ..ShimOptions::default()
+            };
+            let err = options
+                .environment(Path::new("/tmp/libpodnet-vnet.so"))
+                .unwrap_err()
+                .to_string();
+            assert!(
+                err.contains("PODNET_VNET_PREFIX"),
+                "expected prefix error for {bad:?}, got {err}"
+            );
+        }
     }
 
     // T-167: the forms of a route of the socks shims.
@@ -597,6 +654,7 @@ mod tests {
         };
         let env: std::collections::HashMap<_, _> = options
             .environment(Path::new("/tmp/libpodnet-vnet.so"))
+            .unwrap()
             .into_iter()
             .collect();
         assert_eq!(env["PODNET_VNET_SOCKS"], DEFAULT_SOCKS_SOCKET);
@@ -639,6 +697,7 @@ mod tests {
         };
         let env: std::collections::HashMap<_, _> = options
             .environment(Path::new("/tmp/libpodnet-vnet.so"))
+            .unwrap()
             .into_iter()
             .collect();
         assert_eq!(
@@ -689,6 +748,21 @@ mod tests {
             let name = entry.unwrap().file_name();
             assert!(!name.to_string_lossy().ends_with(".tmp"), "{name:?}");
         }
+    }
+
+    #[test]
+    fn unique_prefixes_are_names_this_module_parses() {
+        let a = unique_prefix();
+        let b = unique_prefix();
+        assert_ne!(a, b, "{a}");
+        assert!(crate::addr::valid_prefix(&a), "{a}");
+        // A full IPv6 endpoint still fits `sun_path`.
+        let addr = crate::addr::VirtAddr::v6(
+            "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff".parse().unwrap(),
+            65535,
+        );
+        let name = addr.abstract_name_with(&a).unwrap();
+        assert!(name.len() <= crate::addr::MAX_NAME, "{name}");
     }
 
     #[test]

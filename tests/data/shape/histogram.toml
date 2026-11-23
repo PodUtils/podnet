@@ -1,0 +1,102 @@
+# An independently declared target for the shaped body sizes of each profile.
+#
+# The target is not sampled from the shaper and not Shape::of_profile: it is
+# computed from the profile's declared bucket weights and the body_for
+# mapping (the next declared bucket at or above the payload, else the next
+# multiple of 2048) over the workload below, by a separate script.
+# produced_by: python3 scripts/shape-histogram.py --profiles DIR
+# produced_on: 2026-11-21
+# cover_version: 1
+date = "2026-11-21"
+
+[[profile]]
+name = "page-load"
+samples = 2000
+session = 8
+payloads = [1, 100, 700, 1500, 3000]
+
+[[profile.target]]
+size = 128
+fraction = 0.072
+
+[[profile.target]]
+size = 512
+fraction = 0.12
+
+[[profile.target]]
+size = 1024
+fraction = 0.252
+
+[[profile.target]]
+size = 2048
+fraction = 0.356
+
+[[profile.target]]
+size = 4096
+fraction = 0.2
+
+[[profile]]
+name = "video-call"
+samples = 2000
+session = 0
+payloads = [1, 100, 700, 1500, 3000]
+
+[[profile.target]]
+size = 128
+fraction = 0.032
+
+[[profile.target]]
+size = 512
+fraction = 0.248
+
+[[profile.target]]
+size = 1024
+fraction = 0.32
+
+[[profile.target]]
+size = 2048
+fraction = 0.2
+
+[[profile.target]]
+size = 4096
+fraction = 0.2
+
+[[profile]]
+name = "terminal"
+samples = 2000
+session = 0
+payloads = [1, 100, 700]
+
+[[profile.target]]
+size = 128
+fraction = 0.366667
+
+[[profile.target]]
+size = 512
+fraction = 0.2
+
+[[profile.target]]
+size = 1024
+fraction = 0.433333
+
+[[profile]]
+name = "file-transfer"
+samples = 2000
+session = 0
+payloads = [1, 100, 700, 1500, 3000]
+
+[[profile.target]]
+size = 512
+fraction = 0.02
+
+[[profile.target]]
+size = 1024
+fraction = 0.1
+
+[[profile.target]]
+size = 2048
+fraction = 0.68
+
+[[profile.target]]
+size = 4096
+fraction = 0.2

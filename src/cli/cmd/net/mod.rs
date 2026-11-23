@@ -44,7 +44,9 @@ pub(crate) enum NetCommand {
         #[arg(long = "network", value_name = "SPEC")]
         networks: Vec<String>,
     },
-    /// Build (or locate) the LD_PRELOAD shim and print how to use it.
+    /// Build (or locate) the LD_PRELOAD shim and print how to use it. Each
+    /// run gets its own PODNET_VNET_PREFIX unless the environment names one,
+    /// so two shims in one network namespace do not collide.
     Shim(ShimArgs),
     /// Print the default virtual address plan.
     Addresses {

@@ -17,13 +17,15 @@ use anyhow::anyhow;
 use crate::exit::{self, Fault};
 
 /// The optional features, in the order of the issue.
-pub const OPTIONAL: [&str; 12] = [
-    "tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "trojan", "c-abi",
+pub const OPTIONAL: [&str; 16] = [
+    "tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ntp", "smtp", "imap", "ss",
+    "trojan", "sidecar", "c-abi",
 ];
 
 /// The features that `full` turns on: each optional feature.
-pub const FULL: [&str; 12] = [
-    "tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "trojan", "c-abi",
+pub const FULL: [&str; 16] = [
+    "tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ntp", "smtp", "imap", "ss",
+    "trojan", "sidecar", "c-abi",
 ];
 
 /// True when this binary holds the optional feature `name`. An unknown
@@ -42,8 +44,12 @@ pub fn built(name: &str) -> bool {
         "dns" => cfg!(feature = "dns"),
         "s3" => cfg!(feature = "s3"),
         "icmp" => cfg!(feature = "icmp"),
+        "ntp" => cfg!(feature = "ntp"),
+        "smtp" => cfg!(feature = "smtp"),
+        "imap" => cfg!(feature = "imap"),
         "ss" => cfg!(feature = "ss"),
         "trojan" => cfg!(feature = "trojan"),
+        "sidecar" => cfg!(feature = "sidecar"),
         "c-abi" => cfg!(feature = "c-abi"),
         _ => false,
     }

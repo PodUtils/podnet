@@ -103,8 +103,8 @@ const ROWS: [Row; 11] = [
     Row {
         scheme: "turn",
         forms: &["turn://HOST[:PORT]", "turns://HOST[:PORT]"],
-        about: "UDP through an allocation on a TURN server (RFC 8656), over UDP (turn) or over TLS on TCP (turns); TCP flows are not carried",
-        caps: Caps::EGRESS_UDP,
+        about: "UDP through an allocation on a TURN server (RFC 8656) and TCP through a TCP allocation (RFC 6062), over UDP (turn) or over TLS on TCP (turns)",
+        caps: Caps::EGRESS_TCP.with(Caps::EGRESS_UDP),
     },
     Row {
         scheme: "devtunnel",
@@ -473,9 +473,12 @@ impl Network for SpecNetwork {
             }
             if let Kind::Turn(spec) = &self.kind {
                 // The account comes from the environment, now and not at the
-                // parse: a parse reads no variable.
-                let account = turn::account(&|name| std::env::var(name).ok())?;
-                return Ok(turn::up(spec, account, ctx.below.as_ref(), Default::default()).await?);
+                // parse: a parse reads no variable. The lifetime and the
+                // rate limit are settings too (GitHub #485, TURN-6).
+                let get = |name: &str| std::env::var(name).ok();
+                let account = turn::account(&get)?;
+                let (limits, rate_limit) = turn::limits(&get)?;
+                return Ok(turn::up(spec, account, ctx.below.as_ref(), limits, rate_limit).await?);
             }
             if let Kind::Devtunnel(spec) = &self.kind {
                 // The token comes from the environment, now and not at the

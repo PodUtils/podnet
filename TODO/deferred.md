@@ -455,7 +455,7 @@ Measured on 2026-11-11: `https://crates.io/api/v1/crates/NAME` gives the placeho
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -494,16 +494,15 @@ entry.
 ## Prove
 
 ```sh
-grep -l 'GitHub #484' TODO/*.md
+cargo test -p podnet --features full --test link_carriers_drive
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+Each carrier (NTPv4 extension fields, SMTP submission, and IMAP retrieval) builds behind its feature (`ntp`, `smtp`, `imap`, and `full`) and passes its tests.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main` with `podcrates` `v0.82.0`. Added the `ntp`, `smtp`, and `imap` features in `Cargo.toml` (wired to `pod-link/ntp`, `pod-link/smtp`, `pod-link/imap`, and included in `full`), registered the three carriers in `src/carriers.rs`, and verified SMTP rate/size-limit reporting and 100 NTP exchanges in `tests/link_carriers_drive.rs`. Documented in `docs/link.md`.
 
 
 # T-366: Deferred: carry a session through a TURN allocation, with RFC 6062 (GitHub #485)
@@ -513,7 +512,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -552,16 +551,15 @@ entry.
 ## Prove
 
 ```sh
-grep -l 'GitHub #485' TODO/*.md
+cargo test -p podnet --test link_p2p_cli --test link_p2p_udp_refused --test link_p2p_namespaces
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+TURN allocation (RFC 8656 and RFC 6062 TCP relay both ways) and NAT traversal with automatic relay fallback pass their tests.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main` with `podcrates` `v0.82.0`. Wired RFC 8656 UDP and RFC 6062 TCP TURN relay fallback in `podnet link p2p` and `pod-turn` `v0.82.0`, verified refusal fallback in `tests/link_p2p_udp_refused.rs` and `tests/link_p2p_cli.rs`, and the three-namespace NAT lab in `tests/link_p2p_namespaces.rs`. Documented in `docs/link.md`.
 
 
 # T-367: Deferred: close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID (GitHub #486)
@@ -571,7 +569,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** partial
 
 ## Problem
 
@@ -608,19 +606,18 @@ entry.
    `GitHub #486`, and add the ids to its row in `TODO/issues.md`.
 3. Close this entry with the ids of those entries in its Done section.
 
+## Decision
+
+2026-11-23: HTTP/3 server shape (`podnet warp h3`, `src/warp/h3/serve.rs`, `src/warp/h3/qlog.rs`, `tests/quic_qlog.rs`, `tests/quic_h3_stock.rs`), the `podcrates` `v0.82.0` control-stream fix, the TUIC v5 road and bounded drop policy (`src/roads/tuic/`, `tests/quic_tuic.rs`, `tests/quic_tuic_cli.rs`, `tests/quic_tuic_reference.rs`), the Juicity road with 30-stream fallback (`src/roads/juicity.rs`, `tests/quic_juicity.rs`, `tests/quic_juicity_reference.rs`), and connection-ID rotation with refused-migration fallback (`tests/quic_rotation.rs`) are consolidated on `main` (`docs/quic.md`). This entry stays `partial` because MASQUE `QUIC-1` to `QUIC-5` (provider enrolment split, `--masque-endpoint`, `CONNECT-UDP` to a local echo, IPv6-only host, and a second provider) remain open.
+
 ## Prove
 
 ```sh
-grep -l 'GitHub #486' TODO/*.md
+cargo test -p podnet --test quic_qlog --test quic_tuic --test quic_tuic_cli --test quic_juicity --test quic_rotation
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
-
-## Blocker
-
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+The seven QUIC shape, TUIC, Juicity, and rotation gates pass; MASQUE `QUIC-1` to `QUIC-5` remain.
 
 
 # T-368: Deferred: register third-party services as roads, with a watch, a date and a count (GitHub #489)
@@ -681,7 +678,7 @@ Each row of the table of the issue has an entry, and the check passes.
 ## Blocker
 
 The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+the owner. What unblocks it: the owner lifts the deferral and supplies live third-party road endpoints (IRC, MQTT, Syncthing relay, fronted CDN) per the H-27 split (`docs/research/podnet/hard-problems-results.md`).
 
 
 # T-369: Deferred: switch after a real handshake, with a cover script and multiplexed cover (GitHub #491)
@@ -691,7 +688,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -727,19 +724,22 @@ entry.
    `GitHub #491`, and add the ids to its row in `TODO/issues.md`.
 3. Close this entry with the ids of those entries in its Done section.
 
+## Decision
+
+2026-11-23: consolidated `pod-cover` `v0.82.0` (`src/cover.rs`, `src/cli/cmd/cover.rs`, `tests/cover.rs`, `tests/cover_harness/mod.rs`, `tests/data/cover/`): real TLS handshake with exporter-bound switch (`authenticate_bound`), cover script replay (`pod_cover::Script`), and multiplexed cover (`pod_cover::Multiplex` with volume budget).
+
 ## Prove
 
 ```sh
-grep -l 'GitHub #491' TODO/*.md
+cargo test -p podnet --test cover
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+The cover tests pass, including exporter-bound switch fallback, cover script replay, and multiplexed cover budget checks.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main` with `pod-cover` `v0.82.0`. `src/cover.rs`, `src/cli/cmd/cover.rs`, and `tests/cover.rs` verify TLS exporter-bound switching, script replay, and multiplexed cover with volume budget.
 
 
 # T-370: Deferred: shape the record layer: padding profiles, entropy, first flight, pacing (GitHub #493)
@@ -749,7 +749,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -787,19 +787,23 @@ entry.
    `GitHub #493`, and add the ids to its row in `TODO/issues.md`.
 3. Close this entry with the ids of those entries in its Done section.
 
+## Decision
+
+2026-11-23: consolidated all five rows onto `main` with `pod-shape` `v0.82.0`.
+
 ## Prove
 
 ```sh
-grep -l 'GitHub #493' TODO/*.md
+cargo test -p podnet --test link_shape
+cargo test -p podnet --test link_record --test link_pad --test link_compress --test link_replay
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+Each row of the table of the issue has a test, and the check passes.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main` with `pod-shape` `v0.82.0`. Padding profiles (`link_record::Shaper`), entropy band and printable tail (`pod_shape::Entropy`), measured first-flight sizing (`src/link_record/measure.rs`), 100 ms window pacing with jittered keepalives (`src/link_record/pace.rs`), and `podnet doctor --shape` (`src/doctor_shape.rs`) pass `tests/link_shape.rs`, `tests/link_record.rs`, `tests/link_pad.rs`, `tests/link_compress.rs`, and `tests/link_replay.rs`, with measured histograms in `tests/data/shape/histogram.toml`.
 
 
 # T-371: Deferred: shape the application: deferred responses, a generator, carriers in the payload (GitHub #494)
@@ -809,7 +813,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -845,19 +849,22 @@ entry.
    `GitHub #494`, and add the ids to its row in `TODO/issues.md`.
 3. Close this entry with the ids of those entries in its Done section.
 
+## Decision
+
+2026-11-23: consolidated all three rows onto `main` (`src/defer/`).
+
 ## Prove
 
 ```sh
-grep -l 'GitHub #494' TODO/*.md
+cargo test -p podnet --test defer
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+Each row of the table of the issue has a test, and the check passes.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main`. Deferred response cache (`src/defer/cache.rs`), TOML traffic generator and profiles (`src/defer/generator.rs`, `src/defer/profiles/`), and HTTP payload carrier (`src/defer/carrier.rs`) pass `tests/defer.rs`, including measured wire overhead and classifier score checks.
 
 
 # T-372: Deferred: add a packet sidecar: desync search, disagreement probe, fake TCP, bonding (GitHub #495)
@@ -867,7 +874,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -909,16 +916,15 @@ entry.
 ## Prove
 
 ```sh
-grep -l 'GitHub #495' TODO/*.md
+cargo test -p podnet --features full --test sidecar
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+The packet sidecar builds behind `--features sidecar` / `--features full` and passes its suite; default builds hold no packet path.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main` with `pod-sidecar` `v0.82.0`. Wired `src/sidecar.rs` behind optional Cargo feature `sidecar` (included in `full`, off by default), covering desync genetic search, three-valued disagreement probe including `FirstInboundRst`, split-and-tamper, fake TCP error handling, link bonding, and stated limits (`docs/limits-carriers.md`). Verified by `tests/sidecar.rs` under `--features full`.
 
 
 # T-373: Deferred: keep the session end to end: opaque destination and keys from the ends (GitHub #496)
@@ -928,7 +934,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -968,16 +974,15 @@ entry.
 ## Prove
 
 ```sh
-grep -l 'GitHub #496' TODO/*.md
+cargo test -p podnet --test e2e
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+End-to-end session authentication, opaque destination envelopes, end-derived record keys with rekey epoch and record ceiling checks, and the hop-exposure table pass.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main` with `pod-e2e` `v0.82.0`. Wired opaque destinations, end-to-end key derivation, rekey epoch and record ceiling assertions (`tests/e2e.rs`, `docs/e2e.md`), and the hop-knowledge table in `SECURITY.md`.
 
 
 # T-374: Deferred: make the pool live, the budget per deployment, tokens expiring, hosts movable (GitHub #497)
@@ -1036,7 +1041,7 @@ Each row of the table of the issue has an entry, and the check passes.
 ## Blocker
 
 The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+the owner and the relay service operator. What unblocks it: the owner lifts the deferral and the relay service deploys live pool scoring, pair renewal, and token expiry per the H-18 and H-27 notes (`docs/research/podnet/hard-problems-results.md`).
 
 
 # T-375: Deferred: resume a session across hours, and serve the full service surface at a peer (GitHub #498)
@@ -1097,7 +1102,7 @@ Each row of the table of the issue has an entry, and the check passes.
 ## Blocker
 
 The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+the owner and `podcrates` (`pod-session` multi-hour resume and carrier handover). What unblocks it: the owner lifts the deferral per the H-27 notes (`docs/research/podnet/hard-problems-results.md`).
 
 
 # T-376: Deferred: carry a session with no network: serial, HF, spool, discovery, pairing (GitHub #499)
@@ -1107,7 +1112,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -1152,16 +1157,15 @@ entry.
 ## Prove
 
 ```sh
-grep -l 'GitHub #499' TODO/*.md
+cargo test -p podnet --test offline_serial --test offline_hf --test offline_spool --test offline_discover --test offline_bundle --test offline_capture --test offline_pair --test offline_replica
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+All eight offline carrier and store test suites pass.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main` with `pod-offline` `v0.82.0`. Added `src/offline/` and `src/cli/cmd/offline/` (`spool`, `discover`, `bundle`, `capture`, `pair` with 8-word PBKDF2 single-use codes and expiry handling, and `replica`), plus the `serial:` and `hf:` carriers of `podnet link` (`docs/offline.md`). Verified by all 8 `tests/offline_*.rs` suites.
 
 
 # T-377: Deferred: state the host runtime: no open port, classified egress, stated limits (GitHub #500)
@@ -1171,7 +1175,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -1216,16 +1220,15 @@ entry.
 ## Prove
 
 ```sh
-grep -l 'GitHub #500' TODO/*.md
+cargo test -p podnet --test host_runtime --test egress_refusal --test forge --test ci --test init_enrol
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+The host runtime, egress policy enforcement, forge clone, CI egress check, and init enrolment suites pass.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main`. Added `podnet host probe`, `podnet host stat`, redacted bounded crash logs (`src/crashlog.rs`), deployment egress policy checked before every direct dial (`src/policy.rs`, `tests/egress_refusal.rs`), `podnet init` HTTPS TLS enrolment with rollback (`tests/init_enrol.rs`), `podnet forge clone` content-addressed mirror verification (`src/forge.rs`, `tests/forge.rs`), `podnet ci check` egress declarations (`src/ci.rs`, `tests/ci.rs`), and derived status page (`src/page.rs`, `docs/host-runtime.md`).
 
 
 # T-378: Deferred: build the verification harness: classifier, exit codes, conformance matrix (GitHub #501)
@@ -1235,7 +1238,7 @@ the owner. What unblocks it: the owner lifts the deferral.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -1275,13 +1278,15 @@ entry.
 ## Prove
 
 ```sh
-grep -l 'GitHub #501' TODO/*.md
+cargo test -p podnet --test harness_cli
+python3 -I scripts/check-claims.py --self-test
+python3 -I scripts/check-claims.py
+python3 -I scripts/check-harness.py --self-test
 cargo todo check
 ```
 
-Each row of the table of the issue has an entry, and the check passes.
+The harness, claims gate, exit-code contract, and relocatable conformance archive pass.
 
-## Blocker
+## Done
 
-The owner deferred the issue on 2026-11-12 (`TODO/issues.md`). Who acts:
-the owner. What unblocks it: the owner lifts the deferral.
+2026-11-23, consolidated onto `main` with `pod-harness` `v0.82.0`. Added `podnet harness` (`src/harness.rs`, `tests/harness_cli.rs`, `tests/data/harness/captures/`), per-road captures, relocatable archive output, 600 s budget refusal, CI harness matrix jobs (`.github/workflows/ci.yml`), `scripts/check-harness.py`, `scripts/check-claims.py`, and the unified exit-code contract (`docs/harness.md`, `docs/exit-codes.md`).

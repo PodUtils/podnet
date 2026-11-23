@@ -41,7 +41,7 @@ docs/install.md 87ec5fb6ad skip a template: sha256:DIGEST is a placeholder; dock
 docs/install.md abb60731e4 live podnet update asks GitHub; <TAG> is a placeholder
 docs/install.md 944cb19562 skip a template: <TAG> is a placeholder
 
-docs/link.md a1d2069354 skip a reference list: FINGERPRINT placeholders, foreground listeners, a second host
+docs/link.md ceb95bbb0f skip a reference list: FINGERPRINT and device placeholders, foreground listeners
 docs/link.md 6d68d5659c skip a template: ADDRESS, FILE and FP are placeholders
 docs/link.md e92ca2cf53 skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
 docs/link.md 88d078efb5 skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
@@ -112,7 +112,7 @@ docs/tunnels.md 4bb2408e42 live a quick tunnel; <random> is a placeholder
 docs/tunnels.md 3937e7aa8d live a quick tunnel; <random> and user@host are placeholders
 docs/tunnels.md 47ef8efae1 skip a reference list: <URL> is a placeholder
 
-docs/virtual-network.md 5605199556 skip a template: ./server is a placeholder
+docs/virtual-network.md e36fe5a2cf skip a template: ./server is a placeholder
 docs/virtual-network.md 0c178d25d6 skip a foreground proxy; /run/app.sock is the socket of the user
 docs/virtual-network.md 75f5e32ef6 skip a template of three hosts S, A and B; <host> is a placeholder
 docs/virtual-network.md af8b01e7ad skip a foreground proxy after a switch in the background
@@ -120,8 +120,42 @@ docs/virtual-network.md 7b000d9346 run  builds the socks shim and loads its envi
 docs/virtual-network.md 0dd4a91b09 run  builds the shim with a SOCKS route
 docs/virtual-network.md bc9442650d run  builds the shim with two unix forwards
 
-docs/warp.md a6d65372d0 live WARP of Cloudflare; <KEY>, HOST:PORT and ... are placeholders
+docs/warp.md 9bdd958621 skip a reference list: <KEY> is a placeholder; register and delete change the install
 docs/warp.md 9f6cad43c6 live a WARP proxy in the foreground; ~/.config/podnet/rules of the user
 docs/development.md fe6648d10b skip a step of the maintainer: it writes src/cli/scenarios.txt in the repository
 docs/forward.md 2bce1676d1 live a forward through the relay to hosts of a private network
 docs/link.md 7c69a49b3e skip a reference list: the placeholders ADDRESS, FILE and FP
+
+# Blocks of the integ merge.
+docs/doctor.md 953525bdeb live the doctor probes the ways out of this host
+docs/e2e.md 667093fcb3 skip a template: pair and peer placeholders; two hosts
+docs/e2e.md f3503938b9 skip a template: pair and peer placeholders
+docs/e2e.md 1f6dde44b9 skip a reference: ... is a placeholder
+docs/harness.md 3df64d1137 skip a usage line: DIR and FILE are placeholders
+docs/harness.md 3e41583a93 skip a script of the reader's own directory
+docs/host-runtime.md cb480ac148 skip needs /mnt/data or volume.img
+docs/host-runtime.md 246a96275a skip a deliberate panic; VALUE is a placeholder
+docs/host-runtime.md 929a195f8a skip a peer at 127.0.0.1:9000 and a foreground server
+docs/host-runtime.md 171d0ebc29 skip a relay URL and a state directory; the commands run in sequence
+docs/host-runtime.md a5631b97a9 live needs a policy file and the network
+docs/host-runtime.md 6597beca32 skip needs a repository root with the status inputs
+docs/link.md 8dd8c3514a skip a JSON query of the carriers; jq is the reader's tool
+docs/link.md e748556a03 skip needs serial devices /dev/ttyUSB0 and /dev/ttyUSB1
+docs/link.md 389fb7017f live needs a TURN server and a password file
+docs/link.md 8fbcd54085 skip needs a site, a certificate and a switch key
+docs/offline.md 958f435b4d skip a reference list: FILE, NAME and FINGERPRINT placeholders; foreground listeners
+docs/offline.md 72f6f63d66 skip a sequence: ./used and offer.txt are created by the reader
+docs/offline.md d5c8b27329 skip needs serial devices /dev/ttyUSB0 and /dev/ttyUSB1
+docs/offline.md cc47cf87bf skip needs a serial device /dev/ttyUSB0
+docs/quic.md e490396ae4 live WARP and an H3 server; the qlog path is local
+docs/quic.md b76107dd68 skip a cargo test in the repository, not a temporary directory
+docs/quic.md bcf92a4f48 skip a cargo test in the repository, not a temporary directory
+docs/quic.md b171bd8e21 live a TUIC server; UUID, PASSWORD, HOST and PORT are placeholders
+docs/quic.md 3354bcd999 skip a cargo test in the repository, not a temporary directory
+docs/quic.md 8d07bd3227 skip a cargo test in the repository, not a temporary directory
+docs/quic.md 33f61e661d live downloads the TUIC server; needs the network
+docs/quic.md dcf8f69035 live the server downloaded in the block above
+docs/quic.md 6b73d22e33 skip a cargo test; the server is downloaded above
+docs/quic.md 5659bf5812 skip a cargo test; /path is a placeholder
+docs/quic.md 549d2063ef skip a cargo test in the repository, not a temporary directory
+docs/quic.md 1a5de87ea1 skip a cargo test in the repository, not a temporary directory

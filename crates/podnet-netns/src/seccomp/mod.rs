@@ -212,8 +212,15 @@ pub(crate) async fn supervise_seccomp(
         let (mem, mem_writable) = (n.memory.raw(), n.memory.writable());
         let req_pid = n.pid;
 
-        // T-456: the kernel answers each call on a kernel socket but `connect`.
-        if nr != libc::SYS_connect as i32 && matches!(map.get(&key), Some(Sock::Kernel { .. })) {
+        // T-456: the kernel answers each call on a kernel socket but `connect`
+        // and `listen`. A kernel socket is a real TCP socket of the host, so a
+        // continued `listen` opens a host port; an unbound `listen` also makes
+        // the kernel autobind a wildcard address, which no earlier hook sees.
+        // `handle_listen` refuses it.
+        if nr != libc::SYS_connect as i32
+            && nr != libc::SYS_listen as i32
+            && matches!(map.get(&key), Some(Sock::Kernel { .. }))
+        {
             if let Err(e) = notif_continue(lfd, id) {
                 if verbose {
                     eprintln!("{}: notif {nr}: {e:#}", crate::cli::program_name());

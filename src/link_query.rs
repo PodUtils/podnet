@@ -31,13 +31,15 @@ pub const MAX_URL: usize = 1024;
 pub const MAX_KEYS: usize = 16;
 
 /// The allowed keys, with the entry that gives each one its effect.
-pub const KEYS: [(&str, &str); 12] = [
+pub const KEYS: [(&str, &str); 14] = [
     ("carrier", "T-264"),
     ("tls", "T-269"),
     ("retry", "T-263"),
     ("lb", "T-288"),
     ("compress", "T-299"),
     ("pad", "T-300"),
+    ("profile", "T-370"),
+    ("firstflight", "T-370"),
     ("mtu", "T-276"),
     ("maxhops", "T-287"),
     ("poll", "T-271"),
@@ -61,6 +63,9 @@ pub const WINDOW: (u32, u32) = (16 * 1024, 8 * 1024 * 1024);
 /// The range of `mtu`, in bytes.
 pub const MTU: (usize, usize) = (64, 65535);
 
+/// The range of `firstflight`, in bytes.
+pub const FIRSTFLIGHT: (usize, usize) = (1, 8 * 1024 * 1024);
+
 /// The range of `retry`, in tries.
 pub const RETRY: (u8, u8) = (0, 16);
 
@@ -79,6 +84,10 @@ pub struct Query {
     pub lb: Option<&'static str>,
     pub compress: Option<&'static str>,
     pub pad: Option<bool>,
+    /// The padding, first-flight, pace and entropy profile (T-370).
+    pub profile: Option<String>,
+    /// The opening write, in bytes (T-370).
+    pub firstflight: Option<usize>,
     pub mtu: Option<usize>,
     pub maxhops: Option<u8>,
     pub poll: Option<u8>,
@@ -224,6 +233,16 @@ fn set(q: &mut Query, key: &str, v: &str) -> Result<(), String> {
         "lb" => q.lb = Some(one_of(v, &LB)?),
         "compress" => q.compress = Some(one_of(v, &COMPRESS)?),
         "pad" => q.pad = Some(switch(v)?),
+        "profile" => {
+            if !pod_shape::NAMES.contains(&v) {
+                return Err(format!(
+                    "the value is not one of {}",
+                    pod_shape::NAMES.join(", ")
+                ));
+            }
+            q.profile = Some(v.to_string());
+        }
+        "firstflight" => q.firstflight = Some(number(v, FIRSTFLIGHT)?),
         "mtu" => q.mtu = Some(number(v, MTU)?),
         "maxhops" => q.maxhops = Some(number(v, MAXHOPS)?),
         "poll" => q.poll = Some(number(v, POLL)?),
@@ -245,6 +264,8 @@ impl Query {
             self.lb.is_some(),
             self.compress.is_some(),
             self.pad.is_some(),
+            self.profile.is_some(),
+            self.firstflight.is_some(),
             self.mtu.is_some(),
             self.maxhops.is_some(),
             self.poll.is_some(),
@@ -262,9 +283,13 @@ impl Query {
     /// it. `carrier` has an effect. The others wait for their entry.
     pub fn require_wired(&self) -> Result<()> {
         for key in self.given() {
-            // `pad` and `compress` seal the records of a stream (T-299, T-300):
-            // the command checks that --seal is given.
-            if matches!(key, "carrier" | "pad" | "compress") {
+            // `pad`, `compress`, `profile` and `firstflight` seal the records
+            // of a stream (T-299, T-300, T-370): the command checks that
+            // --seal is given.
+            if matches!(
+                key,
+                "carrier" | "pad" | "compress" | "profile" | "firstflight"
+            ) {
                 continue;
             }
             // `mtu` and `kcp-nodelay` set the udp carrier (T-276), `poll`
@@ -298,19 +323,21 @@ mod tests {
 
     #[test]
     fn each_key_parses() {
-        let q = parse("carrier=tcp&tls=on&retry=3&lb=rr&compress=snappy&pad=off&mtu=1200&maxhops=4&poll=25&window=65536&name=a-b1").unwrap();
+        let q = parse("carrier=tcp&tls=on&retry=3&lb=rr&compress=snappy&pad=off&profile=page-load&firstflight=12000&mtu=1200&maxhops=4&poll=25&window=65536&name=a-b1").unwrap();
         assert_eq!(q.carrier.as_deref(), Some("tcp"));
         assert_eq!(q.tls, Some(true));
         assert_eq!(q.retry, Some(3));
         assert_eq!(q.lb, Some("rr"));
         assert_eq!(q.compress, Some("snappy"));
         assert_eq!(q.pad, Some(false));
+        assert_eq!(q.profile.as_deref(), Some("page-load"));
+        assert_eq!(q.firstflight, Some(12000));
         assert_eq!(q.mtu, Some(1200));
         assert_eq!(q.maxhops, Some(4));
         assert_eq!(q.poll, Some(25));
         assert_eq!(q.window, Some(65536));
         assert_eq!(q.name.as_deref(), Some("a-b1"));
-        assert_eq!(q.given().len(), 11);
+        assert_eq!(q.given().len(), 13);
     }
 
     #[test]
@@ -329,7 +356,7 @@ mod tests {
     fn an_unknown_key_lists_the_allowed_keys_and_not_its_name() {
         let m = err("hunter2=1");
         assert!(m.contains(
-            "carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window, name, kcp-nodelay"
+            "carrier, tls, retry, lb, compress, pad, profile, firstflight, mtu, maxhops, poll, window, name, kcp-nodelay"
         ));
         assert!(!m.contains("hunter2"));
     }
@@ -376,6 +403,8 @@ mod tests {
         assert!(err("maxhops=0").contains("not from 1 to 8"));
         assert!(err("window=1").contains("not from"));
         assert!(err("lb=x").contains("weighted, rr, minrtt, leastload"));
+        assert!(err("profile=x").contains("not one of page-load"));
+        assert!(err("firstflight=0").contains("not from 1"));
         assert!(err("name=").contains("no value"));
         assert!(err("name").contains("no value"));
         assert!(err("name=A").contains("1 to 32"));
@@ -415,6 +444,10 @@ mod tests {
             .require_wired()
             .is_ok());
         assert!(parse("compress=snappy&pad=on")
+            .unwrap()
+            .require_wired()
+            .is_ok());
+        assert!(parse("profile=terminal&firstflight=8000")
             .unwrap()
             .require_wired()
             .is_ok());

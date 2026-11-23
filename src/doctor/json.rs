@@ -28,6 +28,7 @@ impl Report {
             "git": self.git.to_json(),
             "ssh_relay": self.ssh_relay.to_json(),
             "carriers": self.carriers.to_json(),
+            "h3": crate::warp::h3::doc(),
             "proxy": self.proxy,
             "paths": self.paths.iter().map(|p| json!({
                 "id": p.target.id,

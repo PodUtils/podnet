@@ -1,0 +1,16 @@
+# A terminal: keystrokes and command output, with long pauses between
+# commands.
+name = "terminal"
+application = "terminal"
+gap_ms = [100, 2000]
+read_ms = [3000, 20000]
+
+[[object]]
+min = 40
+max = 400
+weight = 80
+
+[[object]]
+min = 400
+max = 8192
+weight = 20

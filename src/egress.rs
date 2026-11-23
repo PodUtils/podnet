@@ -246,6 +246,14 @@ pub async fn dial(
     via: Option<&Proxy>,
     timeout: Duration,
 ) -> Result<BoxedIo> {
+    // EGRESS-3 and RUN-1: the policy decides before any dial, and a
+    // refusal carries its reason instead of a timeout.
+    if let Err(refused) = crate::policy::permit(host, port) {
+        return Err(crate::exit::fault(
+            crate::exit::Fault::Unavailable,
+            anyhow::anyhow!(refused.to_string()),
+        ));
+    }
     match via {
         Some(proxy) => {
             open(
@@ -261,8 +269,15 @@ pub async fn dial(
 }
 
 /// Connect to `host:port` with no proxy: each address of the name, with
-/// [`ATTEMPT_DELAY`] between the starts.
+/// [`ATTEMPT_DELAY`] between the starts. The policy of the process decides
+/// before the first connect, as it does for [`dial`].
 pub async fn dial_direct(host: &str, port: u16, timeout: Duration) -> Result<TcpStream> {
+    if let Err(refused) = crate::policy::permit(host, port) {
+        return Err(crate::exit::fault(
+            crate::exit::Fault::Unavailable,
+            anyhow::anyhow!(refused.to_string()),
+        ));
+    }
     dialer(pod_proxy::ProxyChoice::Direct)
         .tcp(host, port, timeout)
         .await
@@ -272,7 +287,19 @@ pub async fn dial_direct(host: &str, port: u16, timeout: Duration) -> Result<Tcp
 /// Connect to the first of `addrs` that answers, with no proxy. The
 /// attempts start [`ATTEMPT_DELAY`] apart, or at once when the attempt
 /// before fails. Gives the index of the address and the stream.
+///
+/// The policy of the process decides for each address before the first
+/// connect, as [`dial_direct`] does. A refused address is never attempted,
+/// and its reason names the address.
 pub async fn dial_addrs(addrs: &[SocketAddr], timeout: Duration) -> Result<(usize, TcpStream)> {
+    for addr in addrs {
+        crate::policy::permit(&addr.ip().to_string(), addr.port()).map_err(|refused| {
+            crate::exit::fault(
+                crate::exit::Fault::Unavailable,
+                anyhow::anyhow!(refused.to_string()),
+            )
+        })?;
+    }
     pod_proxy::dial_addrs(addrs, timeout)
         .await
         .map_err(|e| error_of(&e))
@@ -391,6 +418,63 @@ pub fn refusal(err: &anyhow::Error) -> Option<&Refusal> {
 /// with podnet's words; the error is the cause of the failure.
 pub struct Egress {
     via: Option<Proxy>,
+}
+
+/// The datagrams of a way, with the policy of the process in front of each
+/// send (EGRESS-3 and EGRESS-4). A peer-supplied UDP target is refused with
+/// its reason before any datagram leaves.
+#[derive(Debug)]
+pub struct CheckedDatagrams {
+    inner: Arc<dyn pod_core::Datagrams>,
+}
+
+impl CheckedDatagrams {
+    /// Wrap `inner`.
+    pub fn new(inner: Arc<dyn pod_core::Datagrams>) -> CheckedDatagrams {
+        CheckedDatagrams { inner }
+    }
+}
+
+impl pod_core::Datagrams for CheckedDatagrams {
+    fn poll_writable(
+        &self,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        self.inner.poll_writable(cx)
+    }
+
+    fn try_send(&self, transmit: &pod_core::Transmit<'_>) -> std::io::Result<()> {
+        crate::policy::permit_io(
+            &transmit.destination.ip().to_string(),
+            transmit.destination.port(),
+        )?;
+        self.inner.try_send(transmit)
+    }
+
+    fn poll_recv(
+        &self,
+        cx: &mut std::task::Context<'_>,
+        bufs: &mut [std::io::IoSliceMut<'_>],
+        meta: &mut [pod_core::RecvMeta],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        self.inner.poll_recv(cx, bufs, meta)
+    }
+
+    fn local_addr(&self) -> std::io::Result<SocketAddr> {
+        self.inner.local_addr()
+    }
+
+    fn max_transmit_segments(&self) -> usize {
+        self.inner.max_transmit_segments()
+    }
+
+    fn max_receive_segments(&self) -> usize {
+        self.inner.max_receive_segments()
+    }
+
+    fn may_fragment(&self) -> bool {
+        self.inner.may_fragment()
+    }
 }
 
 /// The dial of the process, or through `via` alone.

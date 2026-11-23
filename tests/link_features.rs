@@ -13,7 +13,7 @@ use podnet::exit::{self, code_of};
 use serde_json::Value;
 
 /// The carriers that sit behind a feature, with the feature of each.
-const GATED: [(&str, &str); 12] = [
+const GATED: [(&str, &str); 15] = [
     ("tcp", "tcp"),
     ("ws", "ws"),
     ("h2", "h2"),
@@ -26,6 +26,9 @@ const GATED: [(&str, &str); 12] = [
     ("dns", "dns"),
     ("s3", "s3"),
     ("icmp", "icmp"),
+    ("ntp", "ntp"),
+    ("smtp", "smtp"),
+    ("imap", "imap"),
 ];
 
 fn podnet(args: &[&str]) -> std::process::Output {
@@ -43,7 +46,10 @@ fn podnet(args: &[&str]) -> std::process::Output {
 fn the_optional_features_are_the_ones_of_the_issue() {
     assert_eq!(
         features::OPTIONAL,
-        ["tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ss", "trojan", "c-abi"]
+        [
+            "tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ntp", "smtp", "imap",
+            "ss", "trojan", "sidecar", "c-abi"
+        ]
     );
 }
 
@@ -194,5 +200,37 @@ fn a_command_that_names_a_carrier_that_is_not_built_exits_69() {
         assert_eq!(out.status.code(), Some(69), "{name}");
         let err = String::from_utf8_lossy(&out.stderr).into_owned();
         assert!(err.contains("not built") && err.contains(feature), "{err}");
+    }
+}
+
+/// The packet sidecar is optional (GitHub #495, LIM-2): a dependency that
+/// is optional, and a command that names the feature when it is off.
+#[test]
+fn the_packet_sidecar_is_optional_and_its_command_names_the_feature() {
+    let manifest =
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml")).unwrap();
+    let line = manifest
+        .lines()
+        .find(|line| line.starts_with("pod-sidecar ="))
+        .expect("a pod-sidecar dependency");
+    assert!(line.contains("optional = true"), "{line}");
+    if cfg!(feature = "sidecar") {
+        let out = podnet(&["sidecar", "probe"]);
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "stderr: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let text = String::from_utf8_lossy(&out.stdout);
+        assert!(text.contains("verdict"), "{text}");
+    } else {
+        let out = podnet(&["sidecar", "probe"]);
+        assert_eq!(out.status.code(), Some(69));
+        let err = String::from_utf8_lossy(&out.stderr).into_owned();
+        assert!(
+            err.contains("not built") && err.contains("sidecar"),
+            "{err}"
+        );
     }
 }

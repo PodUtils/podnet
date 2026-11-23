@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "n": 3,
+  "prefix_len": 96,
+  "grams": [
+    {
+      "label": "sni-tunnel",
+      "weight": 0.5,
+      "gram": "74756e"
+    },
+    {
+      "label": "sni-tunnel",
+      "weight": 0.3,
+      "gram": "6e656c"
+    },
+    {
+      "label": "tls-handshake",
+      "weight": 0.2,
+      "gram": "160301"
+    }
+  ]
+}

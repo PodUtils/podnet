@@ -179,20 +179,20 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #481 | COORD-050: podnet took v0.30.0 and pod-relay at 83e0c93 (to podcrates) | closed (a COORD issue between sessions) | none |
 | #482 | COORD-051: two gaps of pod-relay after the take (pair renewal, pair on a second host) and the edge budget (to podcrates) | closed (a COORD issue between sessions) | none |
 | #483 | live: two runs in a row failed | closed | T-315 |
-| #484 | [DEFERRED] Carry a session in NTPv4 extension fields, SMTP and IMAP | open (deferred by the owner, 2026-11-12: T-365 waits for the owner) | T-365 |
-| #485 | [DEFERRED] Carry a session through a TURN allocation, with RFC 6062 | open (deferred by the owner, 2026-11-12: T-366 waits for the owner) | T-366 |
-| #486 | [DEFERRED] Close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID | open (deferred by the owner, 2026-11-12: T-367 waits for the owner) | T-367 |
-| #489 | [DEFERRED] Register third-party services as roads, with a watch, a date and a count | open (deferred by the owner, 2026-11-12: T-368 waits for the owner) | T-368 |
-| #491 | [DEFERRED] Switch after a real handshake, with a cover script and multiplexed cover | open (deferred by the owner, 2026-11-12: T-369 waits for the owner) | T-369 |
-| #493 | [DEFERRED] Shape the record layer: padding profiles, entropy, first flight, pacing | open (deferred by the owner, 2026-11-12: T-370 waits for the owner) | T-370 |
-| #494 | [DEFERRED] Shape the application: deferred responses, a generator, carriers in the payload | open (deferred by the owner, 2026-11-12: T-371 waits for the owner) | T-371 |
-| #495 | [DEFERRED] Add a packet sidecar: desync search, disagreement probe, fake TCP, bonding | open (deferred by the owner, 2026-11-12: T-372 waits for the owner) | T-372 |
-| #496 | [DEFERRED] Keep the session end to end: opaque destination and keys from the ends | open (deferred by the owner, 2026-11-12: T-373 waits for the owner) | T-373 |
-| #497 | [DEFERRED] Make the pool live, the budget per deployment, tokens expiring, hosts movable | open (deferred by the owner, 2026-11-12: T-374 waits for the owner) | T-374 |
-| #498 | [DEFERRED] Resume a session across hours, and serve the full service surface at a peer | open (deferred by the owner, 2026-11-12: T-375 waits for the owner) | T-375 |
-| #499 | [DEFERRED] Carry a session with no network: serial, HF, spool, discovery, pairing | open (deferred by the owner, 2026-11-12: T-376 waits for the owner) | T-376 |
-| #500 | [DEFERRED] State the host runtime: no open port, classified egress, stated limits | open (deferred by the owner, 2026-11-12: T-377 waits for the owner) | T-377 |
-| #501 | [DEFERRED] Build the verification harness: classifier, exit codes, conformance matrix | open (deferred by the owner, 2026-11-12: T-378 waits for the owner) | T-378 |
+| #484 | [DEFERRED] Carry a session in NTPv4 extension fields, SMTP and IMAP | closed (consolidated onto `main` with `podcrates` `v0.82.0`; T-365 done) | T-365 |
+| #485 | [DEFERRED] Carry a session through a TURN allocation, with RFC 6062 | closed (consolidated onto `main` with `podcrates` `v0.82.0`; T-366 done) | T-366 |
+| #486 | [DEFERRED] Close four QUIC gaps: MASQUE enrolment, HTTP/3 shape, version, connection ID | open (T-367 partial: HTTP/3 shape, TUIC, Juicity, rotation done; MASQUE QUIC-1 to QUIC-5 remain) | T-367 |
+| #489 | [DEFERRED] Register third-party services as roads, with a watch, a date and a count | open (deferred by the owner, 2026-11-12: T-368 blocked on outside endpoints) | T-368 |
+| #491 | [DEFERRED] Switch after a real handshake, with a cover script and multiplexed cover | closed (consolidated onto `main` with `pod-cover` `v0.82.0`; T-369 done) | T-369 |
+| #493 | [DEFERRED] Shape the record layer: padding profiles, entropy, first flight, pacing | closed (consolidated onto `main` with `pod-shape` `v0.82.0`; T-370 done) | T-370 |
+| #494 | [DEFERRED] Shape the application: deferred responses, a generator, carriers in the payload | closed (consolidated onto `main`; T-371 done) | T-371 |
+| #495 | [DEFERRED] Add a packet sidecar: desync search, disagreement probe, fake TCP, bonding | closed (consolidated onto `main` with `pod-sidecar` `v0.82.0`; T-372 done) | T-372 |
+| #496 | [DEFERRED] Keep the session end to end: opaque destination and keys from the ends | closed (consolidated onto `main` with `pod-e2e` `v0.82.0`; T-373 done) | T-373 |
+| #497 | [DEFERRED] Make the pool live, the budget per deployment, tokens expiring, hosts movable | open (deferred by the owner, 2026-11-12: T-374 blocked on relay server deployment) | T-374 |
+| #498 | [DEFERRED] Resume a session across hours, and serve the full service surface at a peer | open (deferred by the owner, 2026-11-12: T-375 blocked on `pod-session` multi-hour resume) | T-375 |
+| #499 | [DEFERRED] Carry a session with no network: serial, HF, spool, discovery, pairing | closed (consolidated onto `main` with `pod-offline` `v0.82.0`; T-376 done) | T-376 |
+| #500 | [DEFERRED] State the host runtime: no open port, classified egress, stated limits | closed (consolidated onto `main`; T-377 done) | T-377 |
+| #501 | [DEFERRED] Build the verification harness: classifier, exit codes, conformance matrix | closed (consolidated onto `main` with `pod-harness` `v0.82.0`; T-378 done) | T-378 |
 | #502 | COORD-052: podnet took v0.31.0 at e046560; relay connect hangs on a direct runner after the take of pod-relay (to podcrates) | closed (a COORD issue between sessions) | none |
 | #503 | net: add a Dev Tunnels network for TCP streams | closed | T-320 |
 | #504 | doctor: resolve the ssh-relay probe through the configured proxy | closed | T-322 |
@@ -368,5 +368,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #676 | [gh action] requested: ci on the retry waits of `pod_core::backoff` (T-473) | closed: ci 44850063694 passed on 00ceb2f | T-473 |
 | #677 | COORD-112: pod-core: one atomic replace of a file at a path (a temporary file, fsync, rename) (to podcrates) | closed (answered: podcrates `v0.81.0`, PodUtils/podcrates@T-1066; taken in T-505) | T-473 |
 | #678 | [gh action] requested: ci on the take of podcrates `v0.81.0` and the replace of `pod_core::files` (T-505, T-473) | closed: ci 44871490037 passed on 9a9a0a9 | T-505 |
+| #679 | [gh action] requested: issue-sync (not a dry run) on `1a4781eb` for #672 and #677 | closed: superseded by the `v0.82.0` consolidation push | none |
 
 #312 to #315, #318, #381 to #383, #415, #556 and #557 are closed; they are pull requests.

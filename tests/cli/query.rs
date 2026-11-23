@@ -52,7 +52,7 @@ fn a_repeated_key_exits_64() {
 fn an_unknown_key_exits_64_and_lists_the_keys() {
     refused(
         &format!("{SECRET}=1"),
-        "carrier, tls, retry, lb, compress, pad, mtu, maxhops, poll, window, name",
+        "carrier, tls, retry, lb, compress, pad, profile, firstflight, mtu, maxhops, poll, window, name",
     );
 }
 

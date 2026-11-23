@@ -12,13 +12,16 @@ autostart list | lane:local
 autostart run | live:Autostart with a systemd user unit
 bench | lane:errors; lane:net-bench
 bug-report | lane:local
+ci check |
 completions | lane:local
 components | lane:local
 connect | live:Throughput of the HTTP path and of a --forward WebSocket; live:Throughput through WARP, 1 to 16 MiB; lane:errors
+cover |
 demo | live:Quick tunnel, QUIC (UDP 7844); live:Quick tunnel, HTTP/2 (TCP 7844); live:Quick tunnel, JSON lines (--json); live:UDP probe, answered and refused; live:Quick tunnel through a local CONNECT proxy; live:Quick tunnel with no system DNS, then with 1.1.1.1 blocked; live:A wrong --resolve pin fails at the TLS name check; live:Quick tunnel, QUIC through WARP (TCP 443); live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:Quick tunnel through the WebSocket relay (7844 dropped); live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:way-tunnel
 doctor | live:podnet doctor; live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:warp up, env, exec, --persist and down; live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:doctor; lane:proxy-doctor
 exit | lane:net-exit
 expose | lane:net-switch
+forge clone |
 forward | lane:link-control; lane:wg-serve
 git serve | live:Git over HTTPS through a quick tunnel; live:Git over SSH through the reverse relay
 git init | live:Git over HTTPS through a quick tunnel; live:Git over SSH through the reverse relay
@@ -32,6 +35,7 @@ link close | lane:link-control
 link reconnect | lane:link-control
 link rotate | lane:link-control
 link carriers | lane:local
+link p2p |
 logs | live:warp tun --default-route (root), then everything as before; live:Router with WARP, the relay and a failover
 man | lane:man
 net demo | lane:local
@@ -44,6 +48,19 @@ net tailscale |
 net socksify | lane:local
 net passwd-shim | lane:local
 net ts-shims | lane:local
+offline spool add |
+offline spool list |
+offline spool take |
+offline spool check |
+offline discover announce |
+offline discover listen |
+offline bundle build |
+offline bundle apply |
+offline bundle verify |
+offline capture merge |
+offline pair offer |
+offline pair accept |
+offline replica merge |
 pod | lane:errors; lane:pod-seccomp; lane:pod-netns; lane:net-pod-auto; lane:net-pod-seccomp; lane:net-pod-netns; lane:proxy-pod-auto; lane:proxy-pod-seccomp; lane:proxy-pod-env
 ports | lane:local
 ps | live:SSH through the reverse relay; live:agent up and down; live:An IPv6-only host
@@ -57,6 +74,12 @@ route | live:Router with WARP, the relay and a failover
 send | live:100 MiB by code through the mailbox, a transit relay and the podnet relay
 serve | live:File server through a quick tunnel; live:File server through the reverse relay
 share | live:Large share uploads, QUIC and HTTP/2
+sidecar probe |
+sidecar search |
+sidecar run |
+sidecar split |
+sidecar faketcp |
+sidecar bond |
 ssh-relay | live:A unix socket through a public SSH relay
 status | lane:local
 stop | live:File server through a quick tunnel; live:Git over HTTPS through a quick tunnel; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:Git over SSH through the reverse relay; live:warp tun --default-route (root), then everything as before; live:warp tun --default-route with no default route (proxy only); live:An IPv6-only host; live:Router with WARP, the relay and a failover
@@ -73,6 +96,7 @@ warp exit | live:The commands of the second batch
 warp export | live:The commands of the second batch
 warp scan | live:The commands of the second batch
 warp forward | live:The commands of the second batch
+warp h3 | live:The commands of the second batch
 warp proxy | live:Exit 69 for an unavailable path; live:WARP proxy; live:The commands of the second batch; lane:errors
 warp up | live:Exit 69 for an unavailable path; live:warp up with its TCP listener refused; live:warp up, env, exec, --persist and down
 warp down | live:warp up with its TCP listener refused; live:warp up, env, exec, --persist and down
@@ -84,3 +108,10 @@ warp ssh-config | live:warp up, env, exec, --persist and down
 warp tun | live:Exit 69 for an unavailable path; live:warp tun --default-route (root), then everything as before; live:warp tun --default-route with no default route (proxy only); live:An IPv6-only host
 warp run | live:WARP run with the netns-raw backend (TCP, UDP, IPv6, no root); live:WARP run
 wg serve | lane:wg-serve
+harness |
+host probe |
+init check |
+init enroll |
+init generate |
+rules check |
+stat |

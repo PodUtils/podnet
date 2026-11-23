@@ -20,13 +20,15 @@ echo "fmt $f"; [ "$f" -eq 0 ] || { rc=1; head -20 "$log/fmt.log"; }
 cargo clippy --workspace --all-targets -- -D warnings > "$log/clippy.log" 2>&1; c=$?
 echo "clippy $c"; [ "$c" -eq 0 ] || { rc=1; grep -E "^(error|warning)" -A6 "$log/clippy.log" | head -40; }
 cargo run -q -p podnet-todo -- check > "$log/record.log" 2>&1; r=$?
-echo "record $r"; [ "$r" -eq 0 ] || { rc=1; head -20 "$log/record.log"; }
+echo "record $r"; [ "$r" -eq 0 ] || { rc=1; tail -20 "$log/record.log"; }
 python3 -I scripts/check-size.py > "$log/size.log" 2>&1; s=$?
 echo "size $s"; [ "$s" -eq 0 ] || { rc=1; grep -v "^check-size:" "$log/size.log" | head -20; }
 RUSTDOCFLAGS="-D warnings" cargo doc -q --locked --no-deps --workspace > "$log/doc.log" 2>&1; d=$?
 echo "doc $d"; [ "$d" -eq 0 ] || { rc=1; grep -E "^(error|warning)" -A6 "$log/doc.log" | head -20; }
 python3 -I scripts/check-layers.py > "$log/layers.log" 2>&1; l=$?
 echo "layers $l"; [ "$l" -eq 0 ] || { rc=1; grep -v "^check-layers:" "$log/layers.log" | head -20; }
+python3 -I scripts/check-claims.py > "$log/claims.log" 2>&1; q=$?
+echo "claims $q"; [ "$q" -eq 0 ] || { rc=1; head -20 "$log/claims.log"; }
 python3 -I scripts/doc-commands.py --check > "$log/doccmd.log" 2>&1; k=$?
 echo "doc-commands $k"; [ "$k" -eq 0 ] || { rc=1; head -20 "$log/doccmd.log"; }
 python3 -I scripts/gate-scenarios.py --check > "$log/scenarios.log" 2>&1; g=$?
@@ -36,7 +38,11 @@ echo "scenarios $g"; [ "$g" -eq 0 ] || { rc=1; head -20 "$log/scenarios.log"; }
 # says "skipped": CI still runs it.
 if command -v groff > /dev/null 2>&1 && command -v mandoc > /dev/null 2>&1; then
     m=0
-    cargo run --locked -q --bin podnet -- man --roff > "$log/podnet.1" 2> "$log/man.log" || m=1
+    : > "$log/man.log"
+    if ! cargo run --locked -q --bin podnet -- man --roff > "$log/podnet.1" 2> "$log/man-cargo.log"; then
+        m=1
+        cat "$log/man-cargo.log" >> "$log/man.log"
+    fi
     groff -man -Tutf8 -ww -z "$log/podnet.1" 2>> "$log/man.log" || true
     mandoc -T lint -W error "$log/podnet.1" >> "$log/man.log" 2>&1 || m=1
     [ -s "$log/man.log" ] && m=1

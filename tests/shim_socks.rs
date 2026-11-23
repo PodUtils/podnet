@@ -349,7 +349,7 @@ fn vnet_shim_sends_a_socks_route_to_the_door() {
         socks_socket: door.to_string_lossy().into_owned(),
         ..shim::ShimOptions::default()
     };
-    let env = options.environment(&shim.path);
+    let env = options.environment(&shim.path).unwrap();
     let env: Vec<(&str, &str)> = env.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
     let (lines, seen) = run_routes(
         &client,

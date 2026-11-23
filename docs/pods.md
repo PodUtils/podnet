@@ -146,7 +146,7 @@ podnet pod -x socks5://127.0.0.1:1080 \
 * The keys: `schema` (1), `version` (of podnet), `backend` (`netns`, `seccomp` or null), `choice` (the reason
   of the choice), `hold` (`enforced`, `advisory` or `none`: the words of `podnet pod doctor --json`),
   `not_held` (the ways out that the backend does not hold), `udp_limit` (the most bytes of a UDP datagram:
-  1500 for `netns`, null for `seccomp`), `exit` and `reason`.
+  65507 for `netns`, null for `seccomp`), `exit` and `reason`.
 * `exit` is null in the first write. In the last write it is the exit status of `podnet pod`. `reason` is
   the cause of a failure (exit 64 or 3), else null.
 * A pod that cannot start writes the report with `backend` null, `hold` `none` and its `reason`. Exit 3 of a
@@ -157,8 +157,7 @@ podnet pod -x socks5://127.0.0.1:1080 \
 
 ## Other options
 
-* `--backend auto|netns|netns-kernel|seccomp`; `--prefer-udp` (with `auto`: `seccomp` first when it works, because
-  `netns` carries a datagram of 1500 bytes at most); `--name-backend` prints one line on stderr with the
+* `--backend auto|netns|netns-kernel|seccomp`; `--prefer-udp` (with `auto`: `seccomp` first when it works); `--name-backend` prints one line on stderr with the
   backend, its limits and the reason of the choice.
 * `--map NAME=ADDR` resolves NAME to ADDR locally (repeatable).
 * `--host-gateway` (netns): a connect to `10.66.255.254` and a port goes to `127.0.0.1` on the host.

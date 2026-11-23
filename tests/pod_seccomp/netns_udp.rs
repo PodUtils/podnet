@@ -198,3 +198,57 @@ fn netns_two_flows_to_one_port_lose_nothing() {
     assert!(dests.iter().all(|d| d == "93.184.216.34:7000"), "{dests:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A datagram over the 1500-byte TUN MTU arrives whole (H-04). The guest
+/// kernel fragments it, and the backend must reassemble the fragments
+/// before the stack, which would answer them with a false port unreachable.
+const BIG_UDP_CLIENT: &str = r#"
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+int main(void) {
+    alarm(15);
+    int s = socket(AF_INET, SOCK_DGRAM, 0);
+    static unsigned char out[3000];
+    for (int i = 0; i < 3000; i++) out[i] = (unsigned char)(i % 251);
+    struct sockaddr_in d; memset(&d, 0, sizeof d);
+    d.sin_family = AF_INET; d.sin_port = htons(7000);
+    inet_pton(AF_INET, "93.184.216.34", &d.sin_addr);
+    if (sendto(s, out, sizeof out, 0, (struct sockaddr *)&d, sizeof d) < 0) {
+        perror("sendto"); return 1;
+    }
+    static unsigned char in[65536];
+    int n = recvfrom(s, in, sizeof in, 0, NULL, NULL);
+    if (n < 0) { perror("recvfrom"); return 1; }
+    unsigned long long h = 14695981039346656037ULL;
+    for (int i = 5; i < n; i++) { h ^= in[i]; h *= 1099511628211ULL; }
+    printf("UDP:%d:%.4s:%llu", n, n >= 4 ? (char *)in : "", h);
+    return 0;
+}
+"#;
+
+#[test]
+fn netns_backend_reassembles_a_datagram_over_the_mtu() {
+    if !have_compiler() || !netns_available() {
+        eprintln!("skipping: no compiler or no netns backend");
+        return;
+    }
+    let dir = temp_dir("nudp-big");
+    let sock = dir.join("socks.sock");
+    let listener = UnixListener::bind(&sock).unwrap();
+    let (dests, seen) = mpsc::channel();
+    std::thread::spawn(move || stream_echo_proxy(listener, dests));
+    let program = build_program(&dir, "udp-big", BIG_UDP_CLIENT, false);
+    let stdout = run_on("netns", &[&sock], &program);
+    // FNV-1a over the 3000 echoed bytes, computed independently here.
+    let mut h = 14_695_981_039_346_656_037u64;
+    for i in 0..3000u32 {
+        h ^= u64::from((i % 251) as u8);
+        h = h.wrapping_mul(1_099_511_628_211);
+    }
+    assert!(stdout.contains(&format!("UDP:3005:ECHO:{h}")), "{stdout:?}");
+    assert_eq!(seen.try_recv().unwrap(), "93.184.216.34:7000");
+    let _ = std::fs::remove_dir_all(&dir);
+}

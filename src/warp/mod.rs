@@ -38,6 +38,7 @@ pub mod export;
 pub mod find;
 pub mod foreign;
 pub mod forward;
+pub mod h3;
 pub mod hints;
 pub mod identity;
 pub mod ip;
@@ -60,7 +61,6 @@ pub mod wg;
 pub use identity::Identity;
 pub use ip::{check_cc, check_tcp_burst, WarpStack};
 pub use live::{Closable, Live};
-pub use pod_warp::h3;
 pub use register::Device;
 pub use session::{MasqueRx, MasqueSession, MasqueTx};
 
@@ -385,10 +385,16 @@ impl WarpClient {
         if let Some(door) = masque.endpoint {
             settings.door = pod_warp::Door::Pinned(Target::Addr(door));
         }
-        // A proxy reaches both families for podnet.
+        // A proxy reaches both families for podnet. A loopback front door
+        // is reachable without a default route, so a local stand-in works on
+        // a host with no uplink.
+        let loopback_door = matches!(
+            &settings.door,
+            pod_warp::Door::Pinned(Target::Addr(addr)) if addr.ip().is_loopback()
+        );
         settings.routes = pod_warp::Routes {
-            v4: proxy.is_some() || crate::resolve::has_default_route(false),
-            v6: proxy.is_some() || crate::resolve::has_default_route(true),
+            v4: proxy.is_some() || loopback_door || crate::resolve::has_default_route(false),
+            v6: proxy.is_some() || loopback_door || crate::resolve::has_default_route(true),
         };
         settings.hints = hints::current();
         settings.report = report();

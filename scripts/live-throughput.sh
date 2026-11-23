@@ -72,16 +72,24 @@ rate() {
     shift 4
     want=$((mib * 1048576))
     start=$(date +%s.%N)
+    hdr="$dir/rate.hdr"
+    body="$dir/rate.body"
+    : > "$hdr"
+    : > "$body"
     if [ "$method" = GET ]; then
-        bytes=$(curl -fsS --max-time 300 -o /dev/null -w '%{size_download}' "$@" "$target") || bytes=fail
+        res=$(curl -sS --max-time 300 -D "$hdr" -o "$body" -w '%{http_code} %{size_download}' "$@" "$target") || res="000 fail"
     else
         head -c "$want" /dev/zero > "$dir/up.bin"
-        bytes=$(curl -fsS --max-time 300 -o /dev/null -w '%{size_upload}' \
-            --data-binary "@$dir/up.bin" -H 'Content-Type: application/octet-stream' "$@" "$target") || bytes=fail
+        res=$(curl -sS --max-time 300 -D "$hdr" -o "$body" -w '%{http_code} %{size_upload}' \
+            --data-binary "@$dir/up.bin" -H 'Content-Type: application/octet-stream' "$@" "$target") || res="000 fail"
     fi
     end=$(date +%s.%N)
-    if [ "$bytes" != "$want" ]; then
-        echo "rate $label $name $method FAILED: $bytes of $want bytes"
+    code=${res%% *}
+    bytes=${res#* }
+    if [ "$code" != 200 ] || [ "$bytes" != "$want" ]; then
+        ray=$(grep -i '^cf-ray:' "$hdr" | tr -d '\r' | head -1 || true)
+        snippet=$(head -c 512 "$body" | tr '\r\n' ' ' | sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g')
+        echo "rate $label $name $method FAILED: status=$code bytes=$bytes/$want ${ray:+$ray }body=${snippet}"
         log
         exit 1
     fi
@@ -102,11 +110,28 @@ rate connect POST "http://127.0.0.1:$local/sink" "$largest"
 # over the public URL and over podnet connect.
 latency() {
     # latency NAME URL
+    : > "$dir/lat.txt"
+    : > "$dir/lat.err"
     for _ in $(seq 20); do
-        curl -fsS --max-time 30 -o /dev/null -w '%{time_total}\n' "$2" || echo fail
-    done > "$dir/lat.txt"
+        hdr="$dir/lat.hdr"
+        body="$dir/lat.body"
+        : > "$hdr"
+        : > "$body"
+        res=$(curl -sS --max-time 30 -D "$hdr" -o "$body" -w '%{http_code} %{time_total}' "$2") || res="000 fail"
+        code=${res%% *}
+        elapsed=${res#* }
+        if [ "$code" = 200 ]; then
+            echo "$elapsed" >> "$dir/lat.txt"
+        else
+            ray=$(grep -i '^cf-ray:' "$hdr" | tr -d '\r' | head -1 || true)
+            snippet=$(head -c 512 "$body" | tr '\r\n' ' ' | sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g')
+            echo "fail" >> "$dir/lat.txt"
+            echo "status=$code ${ray:+$ray }body=${snippet}" >> "$dir/lat.err"
+        fi
+    done
     if grep -q fail "$dir/lat.txt"; then
         echo "latency $label $1: $(grep -c fail "$dir/lat.txt") of 20 requests FAILED"
+        head -5 "$dir/lat.err"
         log
         exit 1
     fi

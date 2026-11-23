@@ -1390,7 +1390,7 @@ at the start, 311 after 100 sockets, 311 after the close. A long-lived pod runs 
   clones of `pair`, `inbox` and `udp`. The UDP reader exits only on a `recv_from` error.
 - Read: `handle_close` (`fdtable.rs:145`) and `sweep` (`fdtable.rs:85`) remove the table entry only.
   Nothing stops the relay.
-- Read: the test `seccomp_closed_sockets_free_their_entries` (`tests/pod_seccomp_fds.rs:266`) makes
+- Read: the test `seccomp_closed_sockets_free_their_entries` (`tests/pod_seccomp_fds.rs:267`) makes
   5000 sockets that never send. It cannot see the leak.
 - Not measured: the count of 3 per socket. No build ran in this triage.
 - Existing tests have a SOCKS5 UDP-in-stream stand-in (`seccomp_backend_relays_udp_in_the_stream`, `tests/pod_seccomp/udp.rs`).
@@ -1944,7 +1944,7 @@ allowlist, or (2) a statement that they are snapshots.
 
 - Read: `TODO/RULES.md:56` says that these directories "are readings at a time". `TODO/todo.toml:15`
   lists them as `readings`. `architecture.md:3` names its commit (`3bed023`, 2026-11-04).
-  `tests/docs.rs:94-105` reads eight documents, not these.
+  `tests/docs.rs:95-106` reads eight documents, not these.
 - Read: the live plan is the record. T-040 (`TODO/split.md:827`) still says that `seccomp.rs` has 1,900
   lines, and "do this entry before T-063 starts, or after T-067 is done". Now `seccomp.rs` has 1516
   lines and T-063 to T-067 are done. This is a stale figure in the record, not in a reading.
@@ -2222,8 +2222,8 @@ device that a service user saved. A second device spends a registration (`docs/d
 ## Premise
 
 - src/warp/mod.rs:885-892 at `9c1fc4b` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
-  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:415-417`) refuses and does not write over the file.
-- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:152` lists `PODNET_FOREIGN_HOME`.
+  `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:421-423`) refuses and does not write over the file.
+- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:163` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 
@@ -2356,12 +2356,12 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 
 ## Problem
 
-`podnet doctor` builds the relay row with `Relay::from_env(None)` and keeps it only when the URL starts with `https://` (`src/doctor.rs:159-170`). The user cannot pass the relay on the command line, and a loopback relay (`http://127.0.0.1:PORT`, allowed by `src/ws_relay.rs:119-171`) gives no row. `bug-report --doctor` has the same table. `--transport relay` is not seen either.
+`podnet doctor` builds the relay row with `Relay::from_env(None)` and keeps it only when the URL starts with `https://` (`src/doctor.rs:163-174`). The user cannot pass the relay on the command line, and a loopback relay (`http://127.0.0.1:PORT`, allowed by `src/ws_relay.rs:119-171`) gives no row. `bug-report --doctor` has the same table. `--transport relay` is not seen either.
 
 ## Premise
 
 - `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:41-51`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:17`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
-- `targets()` has no argument (`src/doctor.rs:111`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:263-282`).
+- `targets()` has no argument (`src/doctor.rs:115`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:283-302`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
 ## Approach
@@ -2434,14 +2434,14 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Problem
 
-`bind_unix` of the tailnet door removes the path and binds (`crates/podnet-netns/src/tailscale.rs:354-357`). It deletes a regular file and takes over a live socket. The ruling "Sockets" (`docs/decisions.md:22`): a live socket is 69, a file that is not a socket is 64, a stale socket is removed. The default path is `unix:/tmp/podnet-socks.sock` (`src/cli/cmd/net/mod.rs:78`).
+`bind_unix` of the tailnet door removes the path and binds (`crates/podnet-netns/src/tailscale.rs:354-357`). It deletes a regular file and takes over a live socket. The ruling "Sockets" (`docs/decisions.md:22`): a live socket is 69, a file that is not a socket is 64, a stale socket is removed. The default path is `unix:/tmp/podnet-socks.sock` (`src/cli/cmd/net/mod.rs:80`).
 
 ## Premise
 
 - Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:249`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-45`): `podnet-netns` cannot call it.
-- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:45`.
+- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:60`.
 - `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:174`).
-- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:77-83`).
+- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:97-103`).
 
 ## Approach
 
@@ -2472,11 +2472,11 @@ cargo test -p podnet-netns tailscale
 
 ## Problem
 
-`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:163-164` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`crates/podnet-vnet/src/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
+`RealTarget::parse` takes only a `SocketAddr` (`src/cli/cmd/net/proxy.rs`, before this entry) and `localhost:3000` gives `bad real address`. The help and `docs/virtual-network.md:180-181` say `host:port`. The dial is a bare `TcpStream::connect` (same file): the proxy of the process, `NO_PROXY` and the resolver chain do not apply, and the warn has a bare `io::Error` (`crates/podnet-vnet/src/proxy.rs:210`). Measured by the issue: a dead `--proxy` changed nothing.
 
 ## Premise
 
-- `connect_origin` (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:243-261`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:94-98`).
+- `connect_origin` (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:243-269`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:94-98`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`crates/podnet-vnet/src/proxy.rs:185-189`).
 
@@ -2621,16 +2621,16 @@ python3 scripts/check-size.py
 
 ## Problem
 
-`NEEDS` (`crates/podnet-vnet/src/doctor.rs:122-130`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`crates/podnet-vnet/src/switch.rs:413-415`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:126` repeats the short list.
+`NEEDS` (`crates/podnet-vnet/src/doctor.rs:122-132`) lists `warp proxy`, `connect -L` and `net proxy` for `listen(AF_INET)`, and `warp proxy` and `connect -L` for `listen(AF_UNIX)`. Missing: `net switch` (`crates/podnet-vnet/src/switch.rs:413-415`), `net tailscale` (`tailscale.rs:321-322`) and `relay connect --listen` (`src/cli/cmd/relay.rs:177,190-192`). `net proxy`, `net switch` and `net tailscale` default to a unix path (`src/cli/cmd/net/mod.rs:65,138,196`). `docs/target-environment.md:156` repeats the short list.
 
 ## Premise
 
-- Printed at `src/cli/cmd/net/mod.rs:314-315`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
+- Printed at `src/cli/cmd/net/mod.rs:316-317`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
 - `docs/networks.md:39-41` uses `net switch --listen tcp://` as its example.
 
 ## Approach
 
-1. Rewrite `NEEDS` with each command and the default form. Fix `docs/target-environment.md:126`.
+1. Rewrite `NEEDS` with each command and the default form. Fix `docs/target-environment.md:156`.
 2. A test reads the `--listen` flags of the command tree and fails when a command is not in `NEEDS` (a generated table is a later step).
 
 ## Prove
@@ -2688,7 +2688,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:29-45`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:316-321` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:46-63`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:334-339` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -2700,7 +2700,7 @@ cargo test -p podnet --test cli
 1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
 2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
 3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
-4. Update the help and `docs/virtual-network.md:316-321`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+4. Update the help and `docs/virtual-network.md:334-339`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
 
 ## Prove
 
@@ -2930,7 +2930,7 @@ restart it). The unix socket file stays after exit. The refusal text of `claim_s
 - The unix branch calls `claim_socket_path(&path, false)` with no guard: `src/cli/cmd/relay.rs:283`.
   `SocketFile` is in `src/cli/cmd/connect.rs:219-239` (`pub(crate)`).
 - Message: `crates/podnet-core/src/net.rs:26-32`.
-- `src/main.rs:147` allows `--replace` without `--detach` only for `Command::Connect`.
+- `src/main.rs:156` allows `--replace` without `--detach` only for `Command::Connect`.
 
 ## Approach
 
@@ -3084,9 +3084,9 @@ so. The README (`:307-362`) documents the precedence of the token and protocol f
 
 ## Premise
 
-- Guard: `src/cli/cmd/tunnel.rs:136` (`if args.config.is_none()`). The flags are read at `:138-162`, `:245`.
+- Guard: `src/cli/cmd/tunnel.rs:192` (`if args.config.is_none()`). The flags are read at `:194-218`, `:301`.
   The three per-origin flags are declared at `:62-73`.
-- The token case already has a usage error: `src/cli/cmd/tunnel.rs:111-127` (issue 172).
+- The token case already has a usage error: `src/cli/cmd/tunnel.rs:167-183` (issue 172).
 - Existing tests with `--config`: `a_bad_configuration_exits_78` and `bad_credentials_exit_78` (`tests/cli/exit_codes.rs`), `check_mode` and `the_config_file_gives_the_protocol_and_the_connections` (`tests/cli/startup.rs`) (none gives an origin flag).
 
 ## Approach
@@ -3170,7 +3170,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:205-211` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:249-259` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:64-70`.
+- `src/cli/cmd/host.rs:269-279` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:64-70`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3252,7 +3252,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 - `src/cli/cmd/warp/up.rs:19-29` (the `tun: true` arm matches `..`), `:434-446` (`warp_up_tun_args`), `:238-242` (the
   proxy path pushes `--replace`).
-- `src/cli/cmd/warp/args.rs:396-440` (the flags), `:409` (`conflicts_with = "persist"` on `tun`), `:534-549` (`Tun` has
+- `src/cli/cmd/warp/args.rs:421-465` (the flags), `:434` (`conflicts_with = "persist"` on `tun`), `:559-574` (`Tun` has
   `DetachArgs`, so `--replace` exists there, and has no `--dns`).
 - `crates/podnet-core/src/detach.rs:511-518` (the refusal text).
 
@@ -3295,7 +3295,7 @@ then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:
 
 - src/warp/live/instance.rs:70-76 at `9c1fc4b` (`instance_state` reads `INSTANCE`), :88-105 at `9c1fc4b` (`instance_state_in` takes a name),
   :131-158 at `9c1fc4b` (the line). `src/warp/up.rs:24-26` (two names), `:529-534` (`down` knows both).
-- `src/cli/cmd/warp/account.rs:32-45` (the arm `Status` of the account file).
+- `src/cli/cmd/warp/account.rs:51-88` (the arm `Status` of the account file).
 - `warp tun` has no `Live` and so no `data_path` (the issue notes it; not part of this entry).
 
 ## Approach
@@ -3334,7 +3334,7 @@ another type is shown as WARP+.
 
 ## Premise
 
-- src/warp/identity.rs:157-171 at `9c1fc4b`. Users: `src/cli/cmd/warp/account.rs:35`, `:53-56`, `:88-91`. Test: `src/cli/cmd/warp/cli_tests.rs:128-131`.
+- src/warp/identity.rs:157-171 at `9c1fc4b`. Users: `src/cli/cmd/warp/account.rs:57`, `:97-100`, `:142-145`. Test: `src/cli/cmd/warp/cli_tests.rs:128-131`.
 - The issue says the fixture type `limited` is a free type. This is not shown: src/warp/register.rs:627 at `9c1fc4b` is a test of
   the redaction of a licence key, and the test at `main.rs:894` uses `limited` with `premium_data` 10 as WARP+.
   The tree has no list of the types that the service sends. A closed list of paid types could hide a real paid account.
@@ -3411,13 +3411,13 @@ A shell probe with `HOME=$(mktemp -d)`: put a user file at the fish path, run `p
 
 ## Problem
 
-`docs/warp.md:95-100` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
+`docs/warp.md:97-102` says: "UDP (SOCKS5 UDP ASSOCIATE) is not served, and the rules do not apply." The code applies
 `-r`, `--rules-file` and `--rule-default` to `--l4`. The `--help` text says so.
 
 ## Premise
 
-- `docs/warp.md:91-100`. src/warp/proxy.rs:507-527 at `9c1fc4b` (the dial closure: `rules::current()`, `decide_static`, three actions).
-- `src/cli/cmd/warp/args.rs:340-344` (help). src/warp/rules.rs:304-309 at `9c1fc4b`, tests :316-331 at `9c1fc4b`.
+- `docs/warp.md:93-102`. src/warp/proxy.rs:507-527 at `9c1fc4b` (the dial closure: `rules::current()`, `decide_static`, three actions).
+- `src/cli/cmd/warp/args.rs:365-369` (help). src/warp/rules.rs:304-309 at `9c1fc4b`, tests :316-331 at `9c1fc4b`.
 - `TODO/deferred.md:91` (T-002) says the rules apply from commit db6dbe6.
 - No other file says that the rules do not apply: `grep -rn "rules do not apply" README.md docs` finds none.
 
@@ -3764,7 +3764,7 @@ cfb reads the document to qualify a host. The keys must not change within schema
 
 ## Premise
 
-- Read: `src/doctor.rs:245` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
+- Read: `src/doctor.rs:249` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
 - Read: `podnet doctor` has `--samples` and `--timeout` (`src/cli/cmd/host.rs`). It has no `--quick`. The default budget of the samples is 10 s (`Options::budget`).
 - Not measured: the time of a full run on a host with no egress.
 
@@ -3801,7 +3801,7 @@ Ask A-C-10 (P1): "A fixed JSON schema of the egress lanes for the node probe of 
 
 ## Premise
 
-- Read: `src/doctor.rs:223` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
+- Read: `src/doctor.rs:227` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
 - Read: the verdict words of the doctor are `ok`, `no` and others (`Verdict::name`). The lanes use `ok`, `fail` and `unknown`, so a map is necessary.
 - `ws_upgrade` has no probe now. `proxy` is the row of the proxy (T-184).
 
@@ -4036,11 +4036,11 @@ above. The check to satisfy is: no other user can connect, at any instant.
   src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:314`, `crates/podnet-vnet/src/switch.rs:434`,
   and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:324-327`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
-- `crates/podnet-netns/src/seccomp/accept.rs:46` is not exposed: it calls `private_dir` first
-  (`crates/podnet-netns/src/seccomp/accept.rs:43`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:44`).
-- The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:78`, `src/cli/cmd/net/mod.rs:95` and
-  `src/cli/cmd/net/mod.rs:173` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:244`).
-- `libc` is a dependency (`Cargo.toml:161`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `crates/podnet-netns/src/seccomp/accept.rs:61` is not exposed: it calls `private_dir` first
+  (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
+- The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:80`, `src/cli/cmd/net/mod.rs:97` and
+  `src/cli/cmd/net/mod.rs:175` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:246`).
+- `libc` is a dependency (`Cargo.toml:189`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.
@@ -4326,14 +4326,14 @@ create call makes the next run send `PATCH` for the same device id and no second
 - This is a defect of the WARP code (`src/warp/`). That code waits for `pod-warp` (T-050), and it takes
   fixes. The record needs a `state` field in `warp.json`: a format change. Breaking changes are allowed
   (beta).
-- `src/warp/mod.rs:415-417` (`register_or_load`): `check_file_writable` at `src/warp/mod.rs:450`, the
-  registration at `:451`, the save at `:452`, with no lock between. A stored device that is not enrolled
-  for MASQUE counts as "register again", not as "resume" (`src/warp/mod.rs:438-446`).
+- `src/warp/mod.rs:421-423` (`register_or_load`): `check_file_writable` at `src/warp/mod.rs:456`, the
+  registration at `:457`, the save at `:458`, with no lock between. A stored device that is not enrolled
+  for MASQUE counts as "register again", not as "resume" (`src/warp/mod.rs:444-452`).
 - src/warp/mod.rs:202-241 at `9c1fc4b` (`register_with`): `create_device`, then `enrol_masque`; the token stays in
   memory.
 - The call sites with no lock: `src/cli/cmd/warp/client.rs:153`, `PodUtils/podnet@7fe60e0:src/tunnel.rs:828` (only with
   `--warp-identity PATH`; without it `tunnel` registers a new device on each run and saves nothing),
-  `src/cli/cmd/warp/front.rs:200`, and the WireGuard `load_or_register` (`src/warp/export.rs:75`; the
+  `src/cli/cmd/warp/front.rs:201`, and the WireGuard `load_or_register` (`src/warp/export.rs:75`; the
   callers `src/cli/cmd/warp/client.rs:38` and `src/cli/cmd/warp/client.rs:57`).
 - src/warp/register.rs:67-95 at `9c1fc4b` (`send_api_to`): a status of 500 or more, or a transport error, goes to the
   next API host for each request, the registration POST included (src/warp/register.rs:77 at `9c1fc4b`).
@@ -7787,7 +7787,7 @@ getpid()`, and libtorrent passes that value as the expected `nlmsg_pid`, discard
 
 ## Premise
 
-- Read on 2026-11-16 at 5fbb2e3: `socket()` of `crates/podnet-vnet/shim/podnet-vnet.c` (`:1392`) gives each other domain
+- Read on 2026-11-16 at 5fbb2e3: `socket()` of `crates/podnet-vnet/shim/podnet-vnet.c` (`:1419`) gives each other domain
   to the host. Not measured here with libtorrent.
 - `getifaddrs` of glibc reads netlink too: the answer also changes what `getifaddrs` gives a program.
 - A program that needs the host's netlink (for example `ip`) under the shim: decide whether a variable turns the answer
@@ -10682,6 +10682,10 @@ the close of 1009 carried it). Alone, the test passed 3 times of 3.
 cargo test -p podnet --test transfer_relay -- transfer_over_the_relay_crosses_the_cap
 ```
 
+## Correction
+
+2026-11-23, H-19 (`docs/research/podnet/hard-problems-results.md`): worst-case bytes before a move are `move_bytes + PAIR_WINDOW (768 KiB) + 2 * CHUNK (64 KiB) + 64`. The default 48 MiB move under a 64 MiB cap has 15.2 MiB of room, while the test's 256 KiB move under a 1 MiB cap overshot by 65,600 bytes. `tests/transfer_relay.rs` now moves at 160 KiB (`<= 191 KiB`, leaving 32,704 bytes of room) and passes `transfer_over_the_relay_crosses_the_cap`. Adding `resume::move_under(cap, window)` in `pod-session` remains the follow-up.
+
 # T-477: A refusal for now (HTTP 429, exit 75) gets the hint "does not change with a retry"
 
 **Source:** `live` 44140229441 (2026-11-17): the quick-tunnel service answered HTTP 429 with `Retry-After: 3600`.
@@ -11911,3 +11915,146 @@ The two copies of a replace take `pod_core::files`: now each file is synced, its
 of `warp ssh-config` is new (before: no `create_new`, no sync). `cargo test --lib warp::ssh_config` (9, with
 `save_makes_a_private_file_and_keeps_a_link`), `cargo test -p podnet-netns --lib report` (6) and `cargo test --test
 pod_report` (5) pass. `sh scripts/agent/check.sh` passes. `ci` 44871490037 on `9a9a0a9` passed.
+
+# T-506: Take podcrates v0.82.0
+
+**Source:** `PodUtils/podcrates` tag `v0.82.0` (`51c09390`, 2026-11-23).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.81.0`. The tag `v0.82.0` adds `pod-cover`, `pod-harness`, `pod-offline`, `pod-shape`, optional `pod-sidecar`, `pod-link` `ntp`/`smtp`/`imap`, `pod-turn` RFC 6062 TCP relay, the HTTP/3 control-stream fix in `pod-warp`, hardened 8-word PBKDF2 pairing in `pod-offline`, and `url` 2.5.9 (`RUSTSEC-2026-0592`).
+
+## Premise
+
+- All manifests (`Cargo.toml`, `crates/*/Cargo.toml`), `Cargo.lock`, `fuzz/Cargo.lock`, `scripts/install/SOURCES`, and `.github/workflows/issue-sync.yml` pin the `podcrates` tag.
+- `pod-offline` v0.82.0 raises pairing codes from 4 words to 8 words (`WORDS_COUNT = 8`) and adds `Error::CodeExpired`.
+
+## Approach
+
+1. Update every `pod-*` dependency across `Cargo.toml` and `crates/*/Cargo.toml` to `tag = "v0.82.0", version = "0.82.0"`, adding `pod-cover`, `pod-harness`, `pod-offline`, `pod-shape`, optional `pod-sidecar`, `noq` `qlog`, `toml`, and features `ntp`, `smtp`, `imap`, `sidecar`, and `full`.
+2. Update `Cargo.lock` and `fuzz/Cargo.lock` (including `url` >= 2.5.9), `scripts/install/SOURCES`, and `.github/workflows/issue-sync.yml`.
+3. Align `src/cli/cmd/offline/{mod,pair}.rs`, `tests/offline_pair.rs`, `docs/offline.md`, `src/warp/h3/serve.rs`, and `docs/quic.md` with `v0.82.0`.
+
+## Prove
+
+```sh
+sh scripts/agent/check.sh
+cargo clippy --workspace --all-targets --features full -- -D warnings
+cargo test --features full --test sidecar
+cargo test --test offline_pair
+```
+
+## Done
+
+2026-11-23, consolidated onto `main`. Updated all workspace manifests, `Cargo.lock` (`url` 2.5.9), `fuzz/Cargo.lock`, `scripts/install/SOURCES`, and `.github/workflows/issue-sync.yml` to `podcrates` `v0.82.0` (`51c09390`). Aligned `offline pair` with 8-word codes and `Error::CodeExpired` (`tests/offline_pair.rs`: 2 passed), updated `docs/quic.md` and `src/warp/h3/serve.rs` for the `v0.82.0` control-stream fix, and verified `sh scripts/agent/check.sh`, `cargo clippy --workspace --all-targets --features full -- -D warnings`, and `cargo test --features full --test sidecar` (18 passed).
+
+# T-507: `pod --backend seccomp`: refuse `listen(2)` on a kernel socket with `EPERM` (H-02)
+
+**Source:** `docs/research/podnet/hard-problems.md` (H-02) and `docs/research/podnet/hard-problems-results.md`.
+**Category:** defect
+**Milestone:** M7
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+When `pod --backend seccomp` runs on a host where program memory cannot be written, `socket(AF_INET, SOCK_STREAM)` falls back to a real host TCP socket (`Sock::Kernel`). `supervise_seccomp` continued every call on `Sock::Kernel` except `connect`, so `listen(2)` reached the kernel and an unbound `listen` autobound a wildcard port on the host.
+
+## Premise
+
+- `crates/podnet-netns/src/seccomp/mod.rs` bypassed `handle_listen` for `Sock::Kernel`.
+- `crates/podnet-netns/src/seccomp/accept.rs` handled only `Sock::Stream`.
+
+## Approach
+
+1. Stop continuing `SYS_listen` on `Sock::Kernel` in `crates/podnet-netns/src/seccomp/mod.rs`.
+2. Return `EPERM` with a once-only warning in `crates/podnet-netns/src/seccomp/accept.rs`.
+3. Add 3 regression tests (bare IPv4 listen, bind then listen, bare IPv6 listen) checking both `EPERM` and `/proc/<pid>/fd` inodes against `/proc/net/tcp{,6}` in `tests/pod_seccomp/kernel_listen.rs`.
+
+## Prove
+
+```sh
+cargo test -p podnet --test pod_seccomp -- kernel_listen
+```
+
+## Done
+
+2026-11-23, consolidated onto `main`. Updated `crates/podnet-netns/src/seccomp/mod.rs` and `crates/podnet-netns/src/seccomp/accept.rs` to refuse `listen` on `Sock::Kernel` with `EPERM`. Reproducing tests in `tests/pod_seccomp/kernel_listen.rs`: `seccomp_kernel_socket_refuses_listen`, `seccomp_kernel_socket_refuses_listen_after_bind`, and `seccomp_kernel_socket_refuses_listen_v6` (3 passed). Control before the fix failed all 3 cases with `listen 0 0 ok` and a host LISTEN socket matching the program inode.
+
+# T-508: `pod --backend netns`: reassemble IPv4 UDP fragments up to 65,507-byte payloads (H-04)
+
+**Source:** `docs/research/podnet/hard-problems.md` (H-04) and `docs/research/podnet/hard-problems-results.md`.
+**Category:** defect
+**Milestone:** M7
+**Priority:** P2
+**Effort:** M
+**Status:** done
+
+## Problem
+
+In `pod --backend netns`, UDP datagrams larger than 1472 bytes arrive from the guest kernel as IPv4 fragments. Because `udpflow` did not reassemble fragments before passing non-UDP packets to `smoltcp`, `smoltcp` answered fragments with a false ICMP port unreachable and `NETNS_UDP_LIMIT` was capped at 1500 bytes.
+
+## Premise
+
+- `crates/podnet-netns/src/netns/udpflow.rs` called `parse_udp` on raw TUN frames and forwarded unmatched frames to the TCP stack.
+- `crates/podnet-netns/src/report.rs` reported `NETNS_UDP_LIMIT = 1500`.
+
+## Approach
+
+1. Add bounded IPv4 UDP fragment reassembly (`Fragments`, `MAX_FRAGMENTS = 64`, `MAX_PIECES = 1024`, `FRAGMENT_IDLE = 30s`, `MAX_REASSEMBLED_BYTES = 65_515`, overlap drop, oldest-set eviction) in `crates/podnet-netns/src/netns/udpflow.rs`.
+2. Raise `NETNS_UDP_LIMIT` to `65_507` in `crates/podnet-netns/src/report.rs` and update `crates/podnet-netns/src/cli.rs`, `crates/podnet-netns/README.md`, `docs/pods.md`, and `tests/pod_report.rs`.
+3. Add unit tests (including `a_full_fragment_table_evicts_the_oldest_set`) and an end-to-end 3000-byte UDP test (`netns_backend_reassembles_a_datagram_over_the_mtu`).
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib netns::udpflow
+cargo test -p podnet --test pod_seccomp -- netns_udp::
+cargo test -p podnet --test pod_report
+```
+
+## Done
+
+2026-11-23, consolidated onto `main`. Implemented `Fragments` in `crates/podnet-netns/src/netns/udpflow.rs` and raised `NETNS_UDP_LIMIT` to `65_507`. Reproducing tests: `netns_backend_reassembles_a_datagram_over_the_mtu` in `tests/pod_seccomp/netns_udp.rs` (4 passed in `netns_udp::`), `a_full_fragment_table_evicts_the_oldest_set` in `crates/podnet-netns/src/netns/udpflow/tests.rs` (17 passed in `netns::udpflow`), and `tests/pod_report.rs` (5 passed). Control before the fix failed `netns_backend_reassembles_a_datagram_over_the_mtu` (exit 101 after timeout on false ICMP port unreachable) and planted eviction cap `>` failed with `left: 65 right: 64`.
+
+# T-509: `net shim`: per-run `PODNET_VNET_PREFIX`, 59-byte cap, pre-build validation, and stderr warning (H-05)
+
+**Source:** `docs/research/podnet/hard-problems.md` (H-05) and `docs/research/podnet/hard-problems-results.md`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+Every `podnet net shim` run used the fixed abstract-socket prefix `podnet-vnet`, causing two shims in one network namespace to collide with `EADDRINUSE` or talk to each other. In addition, `sun_path` names truncated at 106 bytes instead of filling 107, invalid or non-UTF-8 `PODNET_VNET_PREFIX` values fell back silently, and `net shim` printed notes to stdout breaking `eval`.
+
+## Premise
+
+- `crates/podnet-vnet/src/addr.rs` hardcoded `ABSTRACT_PREFIX` without reading `PODNET_VNET_PREFIX`.
+- `crates/podnet-vnet/shim/podnet-vnet.c` copied `PODNET_VNET_PREFIX` without validation and reserved an extra NUL byte in `to_abstract`.
+
+## Approach
+
+1. Cap `MAX_PREFIX = 59`, add `prefix()`, `valid_prefix()`, `abstract_name_with()`, and `from_abstract_name_with()` in `crates/podnet-vnet/src/addr.rs`, and `unique_prefix()` plus `Result`-returning `ShimOptions::environment` in `crates/podnet-vnet/src/shim.rs`.
+2. Validate `PODNET_VNET_PREFIX` (including non-UTF-8) before build in `src/cli/cmd/net/shim.rs` with exit 64, and write notes to stderr so stdout holds only exports.
+3. Validate the prefix in `crates/podnet-vnet/shim/podnet-vnet.c`, print ignored-prefix warnings unconditionally to stderr, and copy full 107-byte abstract names in `to_abstract`.
+
+## Prove
+
+```sh
+cargo test -p podnet-vnet --lib
+cargo test -p podnet --test shim_sun_path
+cargo test -p podnet --test cli -- shim_prefixes_differ_per_run
+```
+
+## Done
+
+2026-11-23, consolidated onto `main`. Updated `crates/podnet-vnet/src/{addr,control,shim}.rs`, `crates/podnet-vnet/shim/podnet-vnet.c`, `src/cli/cmd/net/{mod,shim}.rs`, `src/manual/facts.rs`, and `docs/virtual-network.md`. Reproducing tests: `shim_prefixes_differ_per_run` in `tests/cli/net.rs` (1 passed, covering per-run unique prefix, invalid and non-UTF-8 exit 64 before build, and clean stdout exports), `a_long_prefix_and_a_full_ipv6_name_fit_sun_path` in `tests/shim_sun_path.rs` (1 passed, covering 107-byte abstract names and unconditional stderr warning without `PODNET_VNET_LOG`), and `a_prefix_that_cannot_build_a_name_is_not_exported` in `crates/podnet-vnet/src/shim.rs` (`podnet-vnet --lib`: 101 passed). Control before the fix failed `shim_prefixes_differ_per_run` (both runs printed `podnet-vnet`), exported 60-byte prefixes, returned exit 0 on non-UTF-8, and produced empty stderr on invalid prefix when quiet.

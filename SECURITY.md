@@ -83,6 +83,7 @@ edge; it does not listen. The commands below listen:
 | Command | Default address | Who can connect |
 | --- | --- | --- |
 | `podnet warp proxy` | `tcp://127.0.0.1:40000` | Each user of the host (loopback TCP). Use `--listen unix:/path` for the owner only. |
+| `podnet warp h3` | `127.0.0.1:0` | Each user of the host (loopback TCP). The endpoint serves the HTTP/3 shape and uses no WARP identity. |
 | `podnet net proxy` | `unix:/tmp/podnet-vnet.socks` | The owner only (socket mode 0600). |
 | `podnet net switch` | `unix:/tmp/podnet-vnet.switch` | The owner only (socket mode 0600, and the user of the peer, `SO_PEERCRED`). A TCP listener takes each peer that sends the shared token (`PODNET_SWITCH_TOKEN` or `--switch-token-file`); with no token it does not start. The token is not encrypted. The switch drops a packet whose source address is of another peer. |
 | `podnet net proxy --control NAME`, `--import VIRT`, the shim | abstract names `\0NAME`, `\0podnet-vnet/...` | The same user only (`SO_PASSCRED`, `SO_PEERCRED`). An abstract name has no file permissions. |

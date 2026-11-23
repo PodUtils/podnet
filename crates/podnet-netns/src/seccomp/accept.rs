@@ -32,6 +32,21 @@ pub(crate) async fn handle_listen(
     pid: u32,
 ) -> Result<()> {
     let fd = a[0] as i32;
+    // A kernel socket (T-456) is a TCP socket of the host, not a socketpair of
+    // the pod. Listening on it publishes a port of the host, and a `listen`
+    // with no `bind` first makes the kernel autobind a wildcard address, so
+    // neither `bind` nor `connect` can see it. The inbound path of the pod
+    // needs a socket that it owns, so this call has no safe answer.
+    if matches!(map.get(&key), Some(Sock::Kernel { .. })) {
+        static ONCE: std::sync::Once = std::sync::Once::new();
+        ONCE.call_once(|| {
+            crate::warn(
+                "listen on a socket of the kernel: EPERM (it would open a port of the host; \
+                 a server needs a host that allows writes to the memory of the program)",
+            );
+        });
+        return notif_respond(lfd, id, -1, libc::EPERM);
+    }
     let Some(Sock::Stream {
         bound: Some((_, port)),
         ..

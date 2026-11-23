@@ -5,8 +5,12 @@ mod dial;
 mod door;
 mod info;
 pub(crate) mod listen;
+mod p2p;
+mod query;
 pub(crate) mod services;
 mod swap;
+
+use query::apply_query;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -54,7 +58,14 @@ pub(crate) struct CarrierArgs {
     /// address, dial `KEY@HOST`. `s3` (feature `s3`) carries the link in
     /// objects of a bucket of the S3 API, TLS 1.3 above them with the same
     /// pins: listen at `BUCKET[/PREFIX]`, dial `KEY@BUCKET[/PREFIX]`, both
-    /// with --s3-endpoint. A key that is refused exits 77.
+    /// with --s3-endpoint. `serial` is AX.25 in KISS framing on a serial
+    /// line, point-to-point, 256-byte frames, a window of 4 and a
+    /// timeout from the baud rate; give --carrier serial:PATH[,BAUD], or
+    /// --carrier serial and the address serial:PATH[,BAUD]. `hf` is an
+    /// ARDOP or VARA modem on a serial line at 300 to 3000 bit/s. It is
+    /// half duplex, with a busy signal and a turnaround, and the ARQ of
+    /// the modem; give --carrier hf:PATH[,BPS]. A key that is refused
+    /// exits 77.
     #[arg(long, value_name = "NAME", default_value = "unix")]
     pub(crate) carrier: String,
     /// One session over two carriers: the bytes of the dialer go up on
@@ -90,8 +101,12 @@ pub(crate) struct CarrierArgs {
     /// stream) sees ciphertext only. Give it at both ends: a listener with
     /// --seal serves sealed streams only, and a dialer with --seal opens sealed
     /// streams only. A suite that does not match exits 78; a key that is
-    /// refused exits 77. The query keys `pad=on` and `compress=snappy` need it.
-    /// The local door (`link dial --listen`) and the control socket do not seal yet.
+    /// refused exits 77. The query keys `pad=on`, `compress=snappy`,
+    /// `profile=NAME` and `firstflight=BYTES` need it. `profile` selects the
+    /// padding distribution, the first-flight target, the pacer and the
+    /// entropy band of one kind of traffic (page-load, video-call, terminal,
+    /// file-transfer); `pad=on` stays the fixed-bucket path. The local door
+    /// (`link dial --listen`) and the control socket do not seal yet.
     #[arg(long)]
     pub(crate) seal: bool,
     /// The options of the sealed records, from the query of the address.
@@ -134,9 +149,27 @@ pub(crate) struct CarrierArgs {
     /// `podnet::link_keyed`.
     #[arg(skip)]
     pub(crate) tune: podnet::link_keyed::Tune,
+    /// The address that the flag `--carrier serial:PATH[,BAUD]` or
+    /// `--carrier hf:PATH[,BPS]` holds. The value in the flag is the whole
+    /// address of the carrier, and the positional address is then unused.
+    #[arg(skip)]
+    pub(crate) spec_address: Option<String>,
 }
 
 impl CarrierArgs {
+    /// Move `serial:PATH[,BAUD]` and `hf:PATH[,BPS]` from `--carrier` into
+    /// [`Self::spec_address`], and leave the name in `--carrier`.
+    pub(crate) fn normalize(&mut self) {
+        for name in ["serial", "hf"] {
+            let prefix = format!("{name}:");
+            if self.carrier.starts_with(&prefix) {
+                self.spec_address = Some(std::mem::take(&mut self.carrier));
+                self.carrier = name.to_string();
+                return;
+            }
+        }
+    }
+
     pub(crate) fn options(&self) -> Options {
         let base = Options::default();
         Options {
@@ -219,6 +252,13 @@ pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Chosen> {
             options: args.options(),
         })));
     }
+    if let Some(spec) = &args.spec_address {
+        return Ok(Chosen::Plain(carriers::open_spec(
+            &args.carrier,
+            spec,
+            &args.options(),
+        )?));
+    }
     if let Some(name) = KEYED.iter().find(|n| **n == args.carrier) {
         podnet::build_features::require(name)?;
         return Ok(Chosen::Keyed(name));
@@ -234,73 +274,6 @@ pub(super) fn open_carrier(args: &CarrierArgs) -> Result<Chosen> {
         &args.carrier,
         &args.options(),
     )?))
-}
-
-/// Split the query off `address` and check it before any socket opens
-/// (T-306). The key `carrier` takes the place of --carrier. A key that has
-/// no effect yet exits 64. The keys `pad` and `compress` need --seal (exit
-/// 64), and they set `carrier.record`. The result is the address with no
-/// query.
-pub(super) fn apply_query(address: &str, carrier: &mut CarrierArgs) -> Result<String> {
-    let (base, query) = podnet::link_query::split(address)?;
-    if let Some(name) = &query.carrier {
-        carrier.carrier.clone_from(name);
-    }
-    let base = if carrier.up_carrier.is_some() {
-        carrier.carrier = podnet::link_split::NAME.to_string();
-        if !base.contains('|') {
-            return Err(podnet::exit::fault(
-                podnet::exit::Fault::Usage,
-                anyhow::anyhow!("--up-carrier and --down-carrier: give the address UP|DOWN, the address of each half"),
-            ));
-        }
-        base.to_string()
-    } else {
-        carriers::check_query(&carrier.carrier, &query)?;
-        let base = carriers::unix_path(&carrier.carrier, base);
-        carriers::check_address(&carrier.carrier, &base)?;
-        base
-    };
-    query.require_wired()?;
-    if !carrier.seal && (query.pad.is_some() || query.compress.is_some()) {
-        return Err(podnet::exit::fault(
-            podnet::exit::Fault::Usage,
-            anyhow::anyhow!("the query keys pad and compress seal the records: give --seal"),
-        ));
-    }
-    carrier.record = carrier
-        .seal
-        .then(|| podnet::link_record::Options::of_query(&query));
-    carrier.tune = podnet::link_keyed::Tune::of_query(&carrier.carrier, &query)?;
-    let names = names_of(carrier);
-    if !names.iter().any(|n| n == "dns")
-        && (carrier.dns_server.is_some() || carrier.dns_zone.is_some())
-    {
-        return Err(podnet::exit::fault(
-            podnet::exit::Fault::Usage,
-            anyhow::anyhow!("--dns-server and --dns-zone are for the dns carrier"),
-        ));
-    }
-    carrier.tune.dns_server = carrier.dns_server;
-    carrier.tune.dns_zone.clone_from(&carrier.dns_zone);
-    let s3 = carrier.s3_endpoint.is_some()
-        || carrier.s3_region.is_some()
-        || carrier.s3_credentials.is_some()
-        || carrier.s3_prune;
-    if !names.iter().any(|n| n == "s3") && s3 {
-        return Err(podnet::exit::fault(
-            podnet::exit::Fault::Usage,
-            anyhow::anyhow!("--s3-endpoint, --s3-region, --s3-credentials and --s3-prune are for the s3 carrier"),
-        ));
-    }
-    carrier.tune.s3_endpoint.clone_from(&carrier.s3_endpoint);
-    carrier.tune.s3_region.clone_from(&carrier.s3_region);
-    carrier
-        .tune
-        .s3_credentials
-        .clone_from(&carrier.s3_credentials);
-    carrier.tune.s3_prune = carrier.s3_prune;
-    Ok(base)
 }
 
 /// Connect to `address` and prove the peer. A carrier with no key of its own
@@ -633,6 +606,12 @@ pub(crate) enum LinkCommand {
         #[arg(long, value_name = "ID")]
         link: Option<u64>,
     },
+    /// Carry a TCP stream to a peer: the direct path first, and a TURN relay
+    /// (turn://HOST[:PORT], with PODNET_TURN_USER and
+    /// PODNET_TURN_PASSWORD_FILE) when the direct path is refused or times
+    /// out. It prints the path that carried the flow and the allocation
+    /// lifetime.
+    P2p(p2p::P2pArgs),
     /// List the carriers of this build, with the flags of each and whether
     /// this host can use it. A carrier that this host cannot use gives its
     /// reason.
@@ -716,6 +695,7 @@ pub(crate) async fn link(args: LinkArgs, egress: Vec<String>) -> Result<()> {
         LinkCommand::Reconnect { name, link } => swap::swap("reconnect", &name, link).await,
         LinkCommand::Rotate { name, link } => swap::swap("rotate", &name, link).await,
         LinkCommand::Carriers { carrier, json } => info::carriers(&carrier.options(), json),
+        LinkCommand::P2p(args) => p2p::p2p(args).await,
     }
 }
 
@@ -740,6 +720,7 @@ mod tests {
             s3_prune: false,
             allow_raw: Vec::new(),
             tune: Default::default(),
+            spec_address: None,
         }
     }
 

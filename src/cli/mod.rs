@@ -19,16 +19,21 @@ use podnet::exit::Fault;
 use cmd::agent::{agent, AgentCommand};
 use cmd::autostart::{autostart, AutostartArgs};
 use cmd::bench::{bench, BenchArgs};
+use cmd::ci::{ci, CiArgs};
 use cmd::components::{components, ComponentsArgs};
 use cmd::connect::{connect, ConnectArgs};
+use cmd::cover::{cover, CoverArgs};
+use cmd::forge::{forge, ForgeArgs};
 use cmd::git::{git, GitArgs};
 use cmd::host::{DoctorArgs, ManArgs, PortsArgs, QrArgs, UpdateArgs};
 use cmd::instances::{instances_logs, instances_ps, instances_stop, instances_wait};
 use cmd::link::{link, LinkArgs};
 use cmd::net::{net, NetArgs};
+use cmd::offline::{offline, OfflineArgs};
 use cmd::relay::{relay, RelayArgs};
 use cmd::serve::{serve, ServeArgs};
 use cmd::share::{demo, share, DemoArgs, ShareArgs};
+use cmd::sidecar::{sidecar, SidecarArgs};
 use cmd::ssh_relay::{ssh_relay, SshRelayArgs};
 use cmd::tunnel::{tunnel, TunnelArgs};
 use cmd::warp::{warp, WarpArgs};
@@ -102,6 +107,11 @@ pub(crate) struct Cli {
     pub(crate) command: Command,
 }
 
+// The variants are the clap tree of the commands. `Link` is the largest
+// because its carrier flags are flattened into it, and a box would change
+// the tree that clap builds for no run-time gain: the value lives for the
+// length of the process.
+#[allow(clippy::large_enum_variant)]
 #[derive(Subcommand, Debug)]
 pub(crate) enum Command {
     /// Expose a service (cloudflared-style).
@@ -114,6 +124,11 @@ pub(crate) enum Command {
     /// root over smart HTTP and SSH, make a repository, print the clone
     /// URLs.
     Git(GitArgs),
+    /// A forge without one host: clone a local seed and check its hash.
+    Forge(ForgeArgs),
+    /// Check a pipeline's declared egress against the installed policy,
+    /// before its first step.
+    Ci(CiArgs),
     /// Send a file, a directory or a text with a short code, as
     /// magic-wormhole does: the code meets at a public mailbox, and the
     /// bytes go direct or through a transit relay, sealed end to end.
@@ -142,6 +157,10 @@ pub(crate) enum Command {
     /// its endpoints, its user and its URL rule are data of pod-services;
     /// --server, --user, --url-match and --url-skip override them.
     SshRelay(SshRelayArgs),
+    /// The packet sidecar, behind the feature `sidecar`:
+    /// probe, search, run, split, faketcp and bond against a local
+    /// simulator. A default build exits 69 with the feature name.
+    Sidecar(SidecarArgs),
     /// Send GET requests to a URL through the way out (--egress, --proxy) and
     /// measure the latency (p50, p95, p99), the rate and the errors. When
     /// no request works, the exit code is 1.
@@ -208,6 +227,18 @@ pub(crate) enum Command {
     /// and an allow list (default deny) says which peers may open streams.
     /// Listen, dial, connect, status, mesh, close, carriers.
     Link(LinkArgs),
+    /// A session with no network: a store-and-forward spool on a directory,
+    /// a signed mDNS announcement, and an offline bundle with a delta. One
+    /// capture format with a merge, a four-word single-use pairing code,
+    /// and a replication log. The carriers of a session without a network
+    /// are those of `podnet link`: serial:PATH[,BAUD] and hf:PATH[,BPS].
+    Offline(OfflineArgs),
+    /// A TLS listener that answers as a static site until a client proves
+    /// that it holds the switch key. An authenticated client gets the
+    /// tunnel; every other byte goes to the site with the same certificate
+    /// and no close. The cover script and its record sizes are data; with
+    /// --mux one connection carries the page load and the session.
+    Cover(CoverArgs),
     /// Run a program with all its traffic sent through a proxy (podnet-netns).
     ///
     /// Give the podnet-netns arguments after `pod`. See `podnet pod --help`.
@@ -222,11 +253,39 @@ pub(crate) enum Command {
     /// Show the manual, generated from this binary.
     Man(ManArgs),
     /// Print one line of JSON about this host. It opens no connection.
+    ///
+    /// With --page, print the status page of the tree: each repository,
+    /// its version, its last commit and its state. --check names each
+    /// entry that has gone stale.
     Status {
         /// The output is JSON; this flag is accepted for scripts.
         #[arg(long)]
         json: bool,
+        /// Print the status page of the tree.
+        #[arg(long, conflicts_with = "json")]
+        page: bool,
+        /// Write the page there rather than to stdout.
+        #[arg(long, value_name = "FILE", requires = "page")]
+        out: Option<PathBuf>,
+        /// Compare a page with the tree; exit 78 when an entry is stale.
+        #[arg(long, value_name = "FILE")]
+        check: Option<PathBuf>,
+        /// The root of the tree (default: the current directory).
+        #[arg(long, value_name = "DIR")]
+        root: Option<PathBuf>,
     },
+    /// State the five properties of a file system, and the fallback that
+    /// the runtime uses.
+    Host(cmd::runtime::HostArgs),
+    /// Measure throughput, latency and loss from a peer that timestamps
+    /// each arrival, and write a capture file.
+    Stat(cmd::runtime::StatArgs),
+    /// Check an egress policy: name each rule that an earlier rule covers.
+    Rules(cmd::runtime::RulesArgs),
+    /// Generate, check or enrol a node configuration.
+    Init(cmd::runtime::InitArgs),
+    /// Run the road by profile verification matrix and print the table.
+    Harness(cmd::runtime::HarnessArgs),
     /// Test the path from this host to the edge: the proxy, TCP and TLS to
     /// the APIs, the edge (7844) and MASQUE (443), and UDP 7844. Exit 0 when
     /// at least one leg (quic, http2, quic+warp) can work, 1 when none can.
@@ -290,6 +349,8 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Serve(args) => serve(args).await,
         Command::Share(args) => share(args).await,
         Command::Git(args) => git(args).await,
+        Command::Forge(args) => forge(args),
+        Command::Ci(args) => ci(args),
         Command::Send(args) => cmd::transfer::send(args).await,
         Command::Receive(args) => cmd::transfer::receive(args).await,
         Command::Connect(args) => connect(args).await,
@@ -318,7 +379,10 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Wg(args) => cmd::wg::wg(args, egress).await,
         Command::Relay(args) => relay(args).await,
         Command::Link(args) => link(args, egress).await,
+        Command::Offline(args) => offline(args),
+        Command::Cover(args) => cover(args).await,
         Command::SshRelay(args) => ssh_relay(args).await,
+        Command::Sidecar(args) => sidecar(args).await,
         Command::Pod { .. } => Err(podnet::exit::fault(
             Fault::Usage,
             anyhow::anyhow!("podnet pod runs before the runtime"),
@@ -326,7 +390,18 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Man(args) => cmd::host::man(args),
         Command::Doctor(args) => cmd::host::doctor(args).await,
         Command::Autostart(args) => autostart(args.command),
-        Command::Status { .. } => cmd::host::status(),
+        Command::Status {
+            page,
+            out,
+            check,
+            root,
+            ..
+        } => cmd::host::status(page, out, check, root),
+        Command::Host(args) => cmd::runtime::host(args),
+        Command::Stat(args) => cmd::runtime::stat(args),
+        Command::Rules(args) => cmd::runtime::rules(args),
+        Command::Init(args) => cmd::runtime::init(args).await,
+        Command::Harness(args) => cmd::runtime::harness(args),
         Command::BugReport {
             doctor,
             include_link,

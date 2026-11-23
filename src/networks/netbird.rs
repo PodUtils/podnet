@@ -61,6 +61,13 @@ impl Dial for NetbirdDialer {
 /// answer is a line for `podnet net doctor`, or the reason of a failure.
 pub async fn greeting(port: u16) -> Result<String, String> {
     let run = async {
+        // EGRESS-3 and EGRESS-4: even the loopback control API is a
+        // destination that the deployment's policy decides before the socket.
+        crate::policy::permit("127.0.0.1", port)
+            .map(|_| ())
+            .map_err(|refused| {
+                format!("127.0.0.1:{port} is refused by the egress policy: {refused}")
+            })?;
         let mut io = tokio::net::TcpStream::connect(("127.0.0.1", port))
             .await
             .map_err(|e| format!("127.0.0.1:{port} does not accept: {e}"))?;

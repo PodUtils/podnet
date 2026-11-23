@@ -21,6 +21,10 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet git serve`: Serve the git repositories under a root: smart HTTP on --local, through a quick tunnel or both, and SSH on --ssh or through a relay pair. It runs the installed git (git http-backend, git upload-pack, git receive-pack)
 - `podnet git init`: Make a bare repository NAME under the root (NAME.git when NAME has no .git at its end)
 - `podnet git urls`: Print the clone URLs of each repository under the root, and the fingerprint of the SSH host key. They come from the last git serve of the root
+- `podnet forge`: A forge without one host: clone a local seed and check its hash
+- `podnet forge clone`: Clone a local seed and verify that the checkout is HASH. It reads no forge account and allows the `file` protocol only
+- `podnet ci`: Check a pipeline's declared egress against the installed policy, before its first step
+- `podnet ci check`: Check a declaration against the installed egress policy. It exits 69 with the offending host named when the policy does not cover it
 - `podnet send`: Send a file, a directory or a text with a short code, as magic-wormhole does: the code meets at a public mailbox, and the bytes go direct or through a transit relay, sealed end to end
 - `podnet receive`: Receive what podnet send offers: type the code at the prompt, or give it on stdin (never on the command line)
 - `podnet connect`: Bridge a local socket to a remote WebSocket forward endpoint
@@ -28,6 +32,13 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet forward`: Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP with udp:LISTEN) and a DNS door with --dns. --network SPEC is direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL or warp
 - `podnet route`: A router of networks, groups, doors and guest wires from a config file (--config FILE), with health probes and --detach. A guest uses the router as its gateway
 - `podnet ssh-relay`: Publish a unix socket through an SSH relay (a remote forward on port 443), and keep the session: when the relay ends it, podnet connects again with a backoff and prints the new URL. The relay (--service), its endpoints, its user and its URL rule are data of pod-services; --server, --user, --url-match and --url-skip override them
+- `podnet sidecar`: The packet sidecar, behind the feature `sidecar`: probe, search, run, split, faketcp and bond against a local simulator. A default build exits 69 with the feature name
+- `podnet sidecar probe`: The three-valued disagreement probe. `simulator` is a correct local path. `disagreeing` is the simulator with a known disagreement. `silent` answers nothing, and it reports `could not determine`. `raw` is the host's raw socket, with a named skip when the host refuses one. No live network
+- `podnet sidecar search`: The genetic search against the local simulator, and no live path
+- `podnet sidecar run`: Apply a dated strategy to the local simulator. A file with no date has no evidence, and exits 78
+- `podnet sidecar split`: The split and tamper behaviours, each with the condition that defeats it and the check that sees the defeat
+- `podnet sidecar faketcp`: A UDP echo through fake TCP against a middlebox that refuses a plain UDP datagram. Raw sockets give a named skip, not a failure
+- `podnet sidecar bond`: Two emulated links at 10:1 carry one flow within 20 percent of the sum, and the flow does not move mid-stream
 - `podnet bench`: Send GET requests to a URL through the way out (--egress, --proxy) and measure the latency (p50, p95, p99), the rate and the errors. When no request works, the exit code is 1
 - `podnet exit`: A SOCKS5 exit on stdin and stdout, with no listener: one session for a pipe (ssh, `exec:`). CONNECT is the stream. UDP uses the command 0x83 of pod-proxy, UDP in the stream: a pipe has no UDP socket, so each datagram is a frame (2 bytes of length, then a SOCKS5 UDP datagram) on the same stream. See docs/proxies.md
 - `podnet ports`: List local TCP ports that are listening
@@ -40,7 +51,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet net`: Userspace virtual networking (no kernel interfaces)
 - `podnet net demo`: Prove the userspace TCP handshake + transfer in-process
 - `podnet net doctor`: Probe what this host permits
-- `podnet net shim`: Build (or locate) the LD_PRELOAD shim and print how to use it
+- `podnet net shim`: Build (or locate) the LD_PRELOAD shim and print how to use it. Each run gets its own PODNET_VNET_PREFIX unless the environment names one, so two shims in one network namespace do not collide
 - `podnet net addresses`: Print the default virtual address plan
 - `podnet net proxy`: Run a SOCKS5 / HTTP CONNECT proxy into the virtual network
 - `podnet net switch`: Run a switch that connects stacks on this host and on other hosts
@@ -68,6 +79,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet warp nc`: A byte pipe from stdin and stdout to HOST:PORT through WARP, for `ssh -o ProxyCommand='podnet warp nc %h %p'` and git over SSH. It uses the running podnet warp up, else a WARP session of its own
 - `podnet warp ssh-config`: Print an SSH config block and GIT_SSH_COMMAND that use podnet warp nc. With --write, --remove or --check: own the block in the SSH config file, between two marker lines
 - `podnet warp tun`: Make a TUN interface whose packets go through WARP. Needs CAP_NET_ADMIN and /dev/net/tun. Routes are not changed
+- `podnet warp h3`: Serve the HTTP/3 shape: a QUIC listener with the `h3` ALPN, a control stream with SETTINGS that stays open, and a GET of the body. It uses no WARP identity and no WARP session
 - `podnet warp run`: Run a program with all its traffic sent through WARP. No root and no TUN device are necessary (podnet-netns)
 - `podnet wg`: WireGuard: serve, a userspace WireGuard peer for a list of peers (a wg-quick file), whose flows go out through --egress
 - `podnet wg serve`: Be a WireGuard peer for a list of peers, with no TUN device and no capability. The UDP port is ListenPort of the file. A userspace stack ends the TCP and UDP flows of each peer, and dials each target through the way of --egress SPEC (a network spec: direct, a proxy URL, wg:FILE, warp, a chain; default: the way out of the process). The file is a wg-quick file: [Interface] with PrivateKey, ListenPort, Address (A.B.C.D/N: the net of the peers; the server has its first address) and MTU (576 to 9000, default 1420); one [Peer] for each peer with PublicKey, AllowedIPs (inside the net) and PresharedKey (optional). A key that the file does not list gets no answer. A packet with a source outside the AllowedIPs of its peer is dropped. IPv4 only inside the tunnel
@@ -85,10 +97,42 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet link close`: Stop a link instance that runs in the background. First end each link of the instance through its control socket (the verb close-link), so that the peers get a GOAWAY; then SIGTERM, and SIGKILL after --timeout. The listener removes its unix socket
 - `podnet link reconnect`: Make a new link to the peer of a link instance that dialed (`link connect`), through its control socket. Each reconnect makes a new session: it resets the open streams (each is named in the verb answer), ends the link, and dials again with the same key. A listener exits 69. The new link must prove the key of the old one
 - `podnet link rotate`: Move a link instance that dialed to a new link, with no stream lost: dial a new link first, send the streams that open from now on to it, and end the old link when its streams end. A listener exits 69
+- `podnet link p2p`: Carry a TCP stream to a peer: the direct path first, and a TURN relay (turn://HOST[:PORT], with PODNET_TURN_USER and PODNET_TURN_PASSWORD_FILE) when the direct path is refused or times out. It prints the path that carried the flow and the allocation lifetime
 - `podnet link carriers`: List the carriers of this build, with the flags of each and whether this host can use it. A carrier that this host cannot use gives its reason
+- `podnet offline`: A session with no network: a store-and-forward spool on a directory, a signed mDNS announcement, and an offline bundle with a delta. One capture format with a merge, a four-word single-use pairing code, and a replication log. The carriers of a session without a network are those of `podnet link`: serial:PATH[,BAUD] and hf:PATH[,BPS]
+- `podnet offline spool`: A store-and-forward spool: a directory of files, each with a checksum, a sequence and the sender's key
+- `podnet offline spool add`: Write one entry: a body, a sequence and the sender of this install
+- `podnet offline spool list`: List each entry that verifies, in the order of its sequence
+- `podnet offline spool take`: Take the entry with the lowest sequence: write its body, then remove the file. A process that dies before the write keeps it
+- `podnet offline spool check`: Check each file of the spool, and name each fault at its offset
+- `podnet offline discover`: A signed announcement over mDNS, and the peers that this host hears
+- `podnet offline discover announce`: Sign an announcement and send it to the mDNS group, or to one address
+- `podnet offline discover listen`: Hear announcements for a time and list the peers whose signature verified. A bad signature is counted and ignored
+- `podnet offline bundle`: An offline bundle with a signed manifest, and its delta update
+- `podnet offline bundle build`: Write a bundle, or a delta from --base, into a directory
+- `podnet offline bundle apply`: Apply a delta to the bundle that it names
+- `podnet offline bundle verify`: Read a bundle and check the signature of its manifest and each file
+- `podnet offline capture`: One record format for captures, merged by timestamp with redaction at write time
+- `podnet offline capture merge`: Merge capture files into one, ordered by the timestamp, then by the place of the file in the list, then by the line. The output is redacted again with each secret
+- `podnet offline pair`: An eight-word single-use code, bound to the Ed25519 key of this install, exchanged through a file or a spool
+- `podnet offline pair offer`: Make a code, sign the offer of it, and print the eight words
+- `podnet offline pair accept`: Take an offer with a code, use the code once, and write the record that binds the peer key to this key
+- `podnet offline replica`: An append-only replication log: last-writer-wins for each key with a vector clock and a stated tie rule
+- `podnet offline replica merge`: Merge replication logs into one, and print the state of each key and each conflict that the rule resolved
+- `podnet cover`: A TLS listener that answers as a static site until a client proves that it holds the switch key. An authenticated client gets the tunnel; every other byte goes to the site with the same certificate and no close. The cover script and its record sizes are data; with --mux one connection carries the page load and the session
 - `podnet pod`: Run a program with all its traffic sent through a proxy (podnet-netns)
 - `podnet man`: Show the manual, generated from this binary
 - `podnet status`: Print one line of JSON about this host. It opens no connection
+- `podnet host`: State the five properties of a file system, and the fallback that the runtime uses
+- `podnet host probe`: State the five properties of the file system of PATH: timestamps, atomic rename, hard links, permission bits and case sensitivity, as required or as emulated. It reads a boot sector of an image and the mount, and it opens no connection
+- `podnet stat`: Measure throughput, latency and loss from a peer that timestamps each arrival, and write a capture file
+- `podnet rules`: Check an egress policy: name each rule that an earlier rule covers
+- `podnet rules check`: Parse the policy in FILE and name each rule that an earlier rule covers, so the later rule is unreachable. It exits 78 when it finds one
+- `podnet init`: Generate, check or enrol a node configuration
+- `podnet init generate`: Generate a configuration that listens on nothing
+- `podnet init check`: Validate a configuration against schema 1 and the policy. It exits 78 with the named part when it cannot be used
+- `podnet init enroll`: Enrol a node: the identity, the allow list and the relay registration, all three or none
+- `podnet harness`: Run the road by profile verification matrix and print the table
 - `podnet doctor`: Test the path from this host to the edge: the proxy, TCP and TLS to the APIs, the edge (7844) and MASQUE (443), and UDP 7844. Exit 0 when at least one leg (quic, http2, quic+warp) can work, 1 when none can
 - `podnet autostart`: Start a podnet command at boot, with no root: a systemd user unit (it stops at logout unless linger is on), else an @reboot line in the crontab
 - `podnet autostart add`: Add an entry that runs `podnet ARGS`. The token and a proxy password go to a private env file (mode 0600), not to the unit, the crontab or the command line. Exit 69 when this host has no systemd user manager and no crontab, unless --manual is given
@@ -127,6 +171,9 @@ llms-full.txt has the manual and the documents in one file.
 - [docs/protocol.md](https://github.com/PodUtils/podnet/blob/main/docs/protocol.md): The edge protocol and the relay protocol.
 - [docs/virtual-network.md](https://github.com/PodUtils/podnet/blob/main/docs/virtual-network.md): The virtual network: design and use.
 - [docs/target-environment.md](https://github.com/PodUtils/podnet/blob/main/docs/target-environment.md): The hosts that podnet is for, and their limits.
+- [docs/host-runtime.md](https://github.com/PodUtils/podnet/blob/main/docs/host-runtime.md): podnet host probe, stat, crash logs, the init configuration and the egress policy.
+- [docs/harness.md](https://github.com/PodUtils/podnet/blob/main/docs/harness.md): podnet harness: the carriers, the classifiers, the measured table and the archive.
+- [docs/exit-codes.md](https://github.com/PodUtils/podnet/blob/main/docs/exit-codes.md): The exit codes of podnet, the table of the one constant and the labels of a claim.
 
 ## Manual
 

@@ -14,7 +14,7 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `tailscale` | `tailscale:/PATH/tailscaled.sock` | A tailnet, through the LocalAPI of `tailscaled` ([networks.md](networks.md)). | TCP |
 | `netbird` | `netbird`, `netbird:[PORT]` | The SOCKS5 listener of NetBird in netstack mode on `127.0.0.1:PORT` (default 1080). The target must be an IP address ([networks.md](networks.md)). | TCP |
 | `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. A name resolves at the `DNS` of the file, through the tunnel; with no `DNS` line, the target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
-| `turn` | `turn://HOST[:PORT]`, `turns://HOST[:PORT]` | An allocation on a TURN server (RFC 8656), over UDP (`turn`, port 3478) or over TLS on TCP (`turns`, port 5349). The user and the password come from `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE`, never from the spec ([networks.md](networks.md)). | UDP |
+| `turn` | `turn://HOST[:PORT]`, `turns://HOST[:PORT]` | An allocation on a TURN server (RFC 8656) for UDP and a TCP allocation (RFC 6062) for TCP, over UDP (`turn`, port 3478) or over TLS on TCP (`turns`, port 5349). `turn://` uses plain TURN over TCP for a TCP stream. The user and the password come from `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE`, never from the spec ([networks.md](networks.md)). | TCP, UDP |
 | `devtunnel` | `devtunnel://NAME`, `devtunnel://ID.CLUSTER` | A stream to a port of the host of a Microsoft Dev Tunnels tunnel, through its relay. The target host is `127.0.0.1`. The token comes from `PODNET_DEVTUNNEL_TOKEN_FILE` or `PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE` (or none with `PODNET_DEVTUNNEL_ANONYMOUS=1`), never from the spec ([networks.md](networks.md)). | TCP |
 | chain | `SPEC over SPEC` | A network over the way of the network below it: `wg:FILE over warp` sends the UDP of WireGuard through a WARP session. The top layer comes first. The chain carries what its top layer carries ([networks.md](networks.md), "A chain of networks"). | as the top layer |
 | `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
@@ -24,9 +24,9 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 * `SCHEME+exec:COMMAND` starts `COMMAND` with `sh -c` for each connection and uses its stdin and stdout
   as the proxy connection (see [proxies.md](proxies.md)).
 * An error about a spec shows the spec without its user and password.
-* `turn://` and `turns://` carry UDP only. A TCP target is refused by name (the TCP relay of RFC 6062 is not
-  in podnet). Use them with `podnet forward -L udp:... --network SPEC` or in a `networks:` entry of a router
-  file. `--egress` is a way for TCP: `--egress turn://...` gives one line that says so.
+* `turn://` and `turns://` carry UDP through a UDP allocation and TCP through a TCP allocation (RFC 6062). Use them with
+  `podnet forward -L ... --network SPEC`, `podnet link p2p --relay SPEC`, or a `networks:` entry of a router file.
+  `--egress turn://...` gives one line that says that the TLS or TCP connection of the network is not a proxy of the process.
 * `devtunnel://` opens streams to ports of the tunnel host and is not a proxy. Use it with `podnet forward -L ... --network SPEC`.
   `--egress devtunnel://...` gives one line that says so.
 * `warp` and `warp:identity=FILE` are networks of the registry: TCP and UDP through a WARP session, with names
@@ -78,3 +78,24 @@ podnet --egress direct doctor
 podnet pod --egress socks5://proxy-a:1080 --egress tailscale:/run/tailscale/tailscaled.sock -- ssh host
 podnet bench --egress socks5h://127.0.0.1:1080 https://example.com/
 ```
+
+## TURN servers
+
+A TURN server is a third-party service. podnet holds no server and mints no credential. It reads RFC 8656 over UDP or
+TLS, and RFC 6062 for a relayed TCP stream.
+
+| Item | Value | Checked |
+| --- | --- | --- |
+| The protocol | RFC 8656 (TURN), RFC 8489 (STUN), RFC 6062 (TCP relay) | 2026-11-20 |
+| The server of the operator | `turn://HOST[:PORT]` or `turns://HOST[:PORT]`, from the deployment | 2026-11-20 |
+| The client | `pod-turn` v0.79.0 of PodUtils/podcrates | 2026-11-20 |
+| The RFC texts | <https://www.rfc-editor.org/rfc/rfc8656>, <https://www.rfc-editor.org/rfc/rfc6062> | 2026-11-20 |
+| The test server | a stand-in on the loopback (`src/networks/turn_mock.rs`), and coturn for the tests of `pod-turn` | 2026-11-20 |
+
+The check each time: the RFC numbers are current, the workspace still takes the `pod-turn` release, and the stand-in answers
+each request that the client sends. The date is the date of the last reading. It is no promise about the service of another
+party: a server of the operator can change its policy or its ports without notice. A failed allocation names the stage
+(`allocate`, `refresh`, `permission`, `bind`, `relay`, `send`, `receive`) and the code of the server.
+
+The credential stays out of `argv`, a log line, an error and `--json` (TURN-5). A spec holds no user and no password; a
+credential in a spec is refused before any connection, and the message does not repeat it.

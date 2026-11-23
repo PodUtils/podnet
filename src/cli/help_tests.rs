@@ -229,7 +229,10 @@ fn the_manual_names_each_command_and_flag() {
     let manual = podnet::manual::manual(Cli::command());
     let text = pod_manual::text::render(&manual);
     fn walk(cmd: &clap::Command, path: &mut Vec<String>, text: &str) {
-        for sub in cmd.get_subcommands().filter(|c| c.get_name() != "help") {
+        for sub in cmd
+            .get_subcommands()
+            .filter(|c| c.get_name() != "help" && !c.is_hide_set())
+        {
             path.push(sub.get_name().to_string());
             assert!(
                 text.contains(&format!("podnet {}", path.join(" "))),

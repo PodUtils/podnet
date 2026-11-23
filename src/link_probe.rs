@@ -19,17 +19,31 @@ pub fn key() -> Arc<pod_identity::Identity> {
 }
 
 /// The facts and the host check of a carrier, with no dial and no listen.
-pub struct Probe<C>(C);
+pub struct Probe<C> {
+    carrier: C,
+    rate: Option<pod_link::Rate>,
+}
 
 impl<C: Carrier> Probe<C> {
     /// Wrap `carrier`. Make it with [`key`].
     pub fn new(carrier: C) -> Probe<C> {
-        Probe(carrier)
+        Probe {
+            carrier,
+            rate: None,
+        }
+    }
+
+    /// Declare the rate of the carrier in the registry, when the carrier
+    /// has one that its constructor does not know (the SMTP row of GitHub
+    /// #484 measures it only after a submission).
+    pub fn with_rate(mut self, rate: pod_link::Rate) -> Probe<C> {
+        self.rate = Some(rate);
+        self
     }
 
     fn usage(&self) -> CarrierError {
         CarrierError::new(
-            self.0.name(),
+            self.carrier.name(),
             CarrierErrorKind::Usage,
             "this carrier has no key of this install: use `podnet link listen` or `podnet link dial`",
         )
@@ -38,15 +52,19 @@ impl<C: Carrier> Probe<C> {
 
 impl<C: Carrier> Carrier for Probe<C> {
     fn name(&self) -> &'static str {
-        self.0.name()
+        self.carrier.name()
     }
 
     fn facts(&self) -> Facts {
-        self.0.facts()
+        let mut facts = self.carrier.facts();
+        if let Some(rate) = self.rate {
+            facts.rate = rate;
+        }
+        facts
     }
 
     fn available(&self) -> Result<(), CarrierError> {
-        self.0.available()
+        self.carrier.available()
     }
 
     fn dial<'a>(&'a self, _: &'a str) -> pod_link::Pending<'a, BoxIo> {

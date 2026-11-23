@@ -67,10 +67,27 @@ proxy or a gateway terminates TLS. It also tests UDP DNS to 1.1.1.1,
 IPv6 and TCP on 127.0.0.1, and prints the commands: for example
 `podnet warp up`, `podnet warp ssh-config`, or "nothing to do".
 
+## The shape of the record layer: `podnet doctor --shape`
+
+`podnet doctor --shape` checks the declared shape of each road of the sealed record layer against a sample of 1000 records. It
+opens no connection.
+
+```sh
+podnet doctor --shape
+podnet doctor --shape --json | jq '.roads'
+```
+
+Each line names one profile of `pod-shape` (page-load, video-call, terminal, file-transfer), its declared buckets and its
+state: `declared` (no record observed), `observed` (each bucket within 5 percentage points of the declared histogram) or
+`diverged` (a bucket or the padded fraction is outside the tolerance). A divergence prints a `warning ROAD: ...` line and the
+command exits 0: a shape that diverges is a warning, not a failed session (DECL-2). `--shape` conflicts with the network
+checks.
+
 ## Options of `podnet doctor`
 
-* `--quick`: one sample for each path and 15 s for the whole run. A part (the two lane probes too) that does not end in time gets
-  the verdict `unknown`. The JSON document keeps the same keys.
+* `--quick`: one sample for each path and 15 s for the whole run, measured from the launch of the process. The launch took
+  1.33 s on the host of the 2026-11-21 measurement, so 1.5 s is reserved for it and the probes get 13.5 s. A part (the two
+  lane probes too) that does not end in time gets the verdict `unknown`. The JSON document keeps the same keys.
 * `--samples N` (1 to 9; default 9) and `--timeout SECS` (default 3, for one connection and one TLS
   handshake) make the run shorter.
 * `--relay URL` (`PODNET_RELAY`) selects the relay to test. A loopback `http://` relay is allowed.
@@ -105,6 +122,7 @@ removed or renamed. A consumer ignores a key that it does not know. The tests pi
 | `legs` | `quic`, `http2`, `quic+warp` and `http2+relay`, each with `verdict`, `status` and `reason`. |
 | `paths` | One object for each TCP path: `id`, `target`, `via`, `verdict`, `detail`, `samples` (loss, best, median, p95, jitter), `tls` and `dns`. |
 | `clock`, `git`, `ssh_relay`, `proxy`, `udp` | The clock, the installed git, the SSH relay, the proxy of the run and the UDP 7844 probe. |
+| `h3` | The shape of an HTTP/3 server of this run (`shape`, `congestion`, `alpn_h3`, `control_stream`, `settings`, `setting_ids`) and the schedule `cid_rotation` (`min_s`, `max_s`, `jitter`, `sample_s`). `podnet warp h3` serves the selected shape; `doctor` and `warp status` report it and observe no session. The text has the rows `h3-shape`, `h3-control-stream` and `h3-cid-rotation`. |
 | `carriers` | One object for each carrier of `podnet link` ([link.md](link.md)): `carrier`, `verdict`, `status` and `detail` (the reason when the host cannot use the carrier). The row `icmp` says whether a raw ICMP socket opens here: `ok` names `--allow-raw icmp`; `fail` gives `a raw ICMP socket needs CAP_NET_RAW or uid 0`. A carrier row does not change `ok`. |
 
 `docs/protocol.md` section 9 gives each key and its type. Section 10 is the profile for a program that
