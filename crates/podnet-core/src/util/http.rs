@@ -19,42 +19,32 @@ pub struct RequestHead {
     pub headers: Vec<(String, String)>,
 }
 
+impl From<pod_core::http1::Request> for RequestHead {
+    fn from(request: pod_core::http1::Request) -> RequestHead {
+        RequestHead {
+            method: request.method,
+            path: request.target,
+            headers: request.headers,
+        }
+    }
+}
+
 impl RequestHead {
-    /// Parse a request head from bytes.
+    /// Parse a request head from bytes, with the reader of
+    /// `pod_core::http1` (the one reader of an HTTP/1.1 head of PodUtils):
+    /// a line ends with CRLF or LF, empty lines before the request line are
+    /// passed over, and the head has at most 16 KiB. A bare CR, a control
+    /// byte, a folded line, a space before a colon and a line with no colon
+    /// are refused: a head that two readers read in two ways can smuggle a
+    /// request.
     ///
     /// Returns the head and the number of bytes consumed, so the caller keeps
     /// any body that followed in the same read.
     pub fn parse(buf: &[u8]) -> Result<(RequestHead, usize), HttpParseError> {
-        let head_end = find_head_end(buf).ok_or(HttpParseError::Incomplete)?;
-        let head = std::str::from_utf8(&buf[..head_end]).map_err(|_| HttpParseError::Malformed)?;
-
-        let mut lines = head.split("\r\n");
-        let request_line = lines.next().ok_or(HttpParseError::Malformed)?;
-        let mut parts = request_line.split_whitespace();
-        let method = parts.next().ok_or(HttpParseError::Malformed)?.to_string();
-        let path = parts.next().ok_or(HttpParseError::Malformed)?.to_string();
-        if method.is_empty() || path.is_empty() {
-            return Err(HttpParseError::Malformed);
-        }
-
-        let mut headers = Vec::new();
-        for line in lines {
-            if line.is_empty() {
-                continue;
-            }
-            if let Some((name, value)) = line.split_once(':') {
-                headers.push((name.trim().to_ascii_lowercase(), value.trim().to_string()));
-            }
-        }
-
-        Ok((
-            RequestHead {
-                method,
-                path,
-                headers,
-            },
-            head_end + 4,
-        ))
+        use pod_core::http1::{find_request, parse_request, Bounds};
+        let (start, end) = find_request(buf, Bounds::DEFAULT)?.ok_or(HttpParseError::Incomplete)?;
+        let request = parse_request(&buf[start..end])?;
+        Ok((RequestHead::from(request), end))
     }
 
     /// Case-insensitive header lookup.
@@ -110,26 +100,47 @@ impl RequestHead {
 pub enum HttpParseError {
     /// More bytes are needed; not an error, just "read more".
     Incomplete,
-    /// The bytes are not an HTTP request.
-    Malformed,
+    /// No end of the head within 16 KiB: answer 431.
+    TooLarge,
+    /// The bytes are not an HTTP/1 request: answer `status` (400, or 505
+    /// for another version of HTTP).
+    Malformed { status: u16, why: String },
+}
+
+impl HttpParseError {
+    /// The status that answers it; none for [`HttpParseError::Incomplete`].
+    pub fn status(&self) -> Option<u16> {
+        match self {
+            HttpParseError::Incomplete => None,
+            HttpParseError::TooLarge => Some(431),
+            HttpParseError::Malformed { status, .. } => Some(*status),
+        }
+    }
+}
+
+impl From<pod_core::http1::RequestError> for HttpParseError {
+    fn from(e: pod_core::http1::RequestError) -> HttpParseError {
+        use pod_core::http1::RequestError;
+        match e {
+            RequestError::TooLarge => HttpParseError::TooLarge,
+            RequestError::Malformed { status, why } => HttpParseError::Malformed { status, why },
+            // A parse of bytes reads no stream: no client can leave.
+            RequestError::Gone(why) => HttpParseError::Malformed { status: 400, why },
+        }
+    }
 }
 
 impl std::fmt::Display for HttpParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             HttpParseError::Incomplete => write!(f, "incomplete request head"),
-            HttpParseError::Malformed => write!(f, "malformed request"),
+            HttpParseError::TooLarge => write!(f, "no end of the request's headers within 16 KiB"),
+            HttpParseError::Malformed { why, .. } => write!(f, "malformed request: {why}"),
         }
     }
 }
 
-/// Find the offset of the `\r\n\r\n` that ends the request head.
-fn find_head_end(buf: &[u8]) -> Option<usize> {
-    if buf.len() < 4 {
-        return None;
-    }
-    (0..=buf.len() - 4).find(|&i| &buf[i..i + 4] == b"\r\n\r\n")
-}
+impl std::error::Error for HttpParseError {}
 
 /// Something that can accumulate an HTTP response.
 /// The largest chunk of [`ResponseWriter::body_reader`].
@@ -292,12 +303,41 @@ mod tests {
         );
     }
 
+    /// T-473: the reader of `pod_core::http1` takes a bare LF and empty
+    /// lines first, and refuses each head that two readers could read in
+    /// two ways, with its status.
     #[test]
-    fn rejects_a_non_http_request() {
-        assert_eq!(
-            RequestHead::parse(b"NOTHTTP\r\n\r\n").unwrap_err(),
-            HttpParseError::Malformed
-        );
+    fn the_shared_reader_takes_and_refuses_each_kind_of_head() {
+        let long = format!("GET / HTTP/1.1\r\nX: {}\r\n", "y".repeat(16 * 1024));
+        // The path and the length of the head, or the status of the refusal.
+        type Want<'a> = Result<(&'a str, usize), Option<u16>>;
+        let cases: [(&[u8], Want); 13] = [
+            (b"GET /a HTTP/1.1\r\nHost: x\r\n\r\nBODY", Ok(("/a", 28))),
+            (b"GET /a HTTP/1.0\nHost: x\n\nBODY", Ok(("/a", 25))),
+            (b"\r\nGET /a HTTP/1.1\r\n\r\n", Ok(("/a", 21))),
+            (b"GET / HTTP/1.1\r\nHost: x\r\n", Err(None)),
+            (long.as_bytes(), Err(Some(431))),
+            (b"NOTHTTP\r\n\r\n", Err(Some(400))),
+            (b"GET / HTTP/2.0\r\n\r\n", Err(Some(505))),
+            (b"GET / HTTP/1.1\r\nX: a\rb\r\n\r\n", Err(Some(400))),
+            (b"GET / HTTP/1.1\r\nX: \x1b[2J\r\n\r\n", Err(Some(400))),
+            (b"GET / HTTP/1.1\r\nX: a\r\n b\r\n\r\n", Err(Some(400))),
+            (b"GET / HTTP/1.1\r\nX : a\r\n\r\n", Err(Some(400))),
+            (b"GET / HTTP/1.1\r\nno colon\r\n\r\n", Err(Some(400))),
+            (b"GET  / HTTP/1.1\r\n\r\n", Err(Some(400))),
+        ];
+        for (raw, want) in cases {
+            let text = String::from_utf8_lossy(&raw[..raw.len().min(40)]).into_owned();
+            match (RequestHead::parse(raw), want) {
+                (Ok((head, used)), Ok((path, length))) => {
+                    assert_eq!((head.path.as_str(), used), (path, length), "{text:?}");
+                }
+                (Err(e), Err(status)) => {
+                    assert_eq!(e.status(), status, "{text:?}: {e}");
+                }
+                (got, want) => panic!("{text:?}: {got:?} for {want:?}"),
+            }
+        }
     }
 
     #[test]
