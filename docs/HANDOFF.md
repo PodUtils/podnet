@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-23 (UTC), at `HEAD` `1325d5bb`. Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`,
+The state at 2026-11-23 22:10 (UTC), at `HEAD` `bdb3ba7`. Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`,
 `docs/maintenance.md`, and `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -21,138 +21,48 @@ no test (`defect_tests` in `TODO/todo.toml`).
 
 ## Where the code is
 
-* All finished work is on `main` of `PodUtils/podnet` (`HEAD` `1325d5bb`). The toolchain is Rust 1.99.1
-  (`rustup default 1.99.1`; add `rustfmt`, `clippy`, and the target `x86_64-unknown-linux-musl` in a new container).
-* podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.82.0` (`51c09390`, T-506), adding `pod-cover`,
-  `pod-harness`, `pod-offline`, `pod-shape`, optional `pod-sidecar` (feature `sidecar`), `pod-link` (`ntp`, `smtp`,
-  `imap`), `pod-turn` (RFC 6062), and `pod-warp` (HTTP/3 control-stream fix), with transitive `pod-beneath` and
-  `pod-hostprobe` in `Cargo.lock`. `url` is `2.5.9` (`RUSTSEC-2026-0592`), and `deny.toml` ignores `RUSTSEC-2026-0542`
-  (`75f69f51`). The installer core in `scripts/install/SOURCES` keeps `core.sh` (`9238e041...`) and `core-net.sh`
-  (`85bbaf3d...`) at `v0.82.0`.
-* The newest release is `v0.4.0-beta.17` (T-481).
-* The record is `TODO/`. `cargo todo check` agrees: 508 entries: 14 open, 14 partial, 24 blocked, 456 done.
-* Remote branches on `origin` (`git ls-remote --heads origin`): `main` and the four open Dependabot branches (`#680`,
-  `#681`, `#682`, `#684`; `#683` is closed). The former stale branch `claude/quirky-mccarthy-ad1v62` is deleted on
-  `origin`.
+* All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1. podnet takes the crates of
+  `PodUtils/podcrates` by the git tag `v0.82.0` (no newer tag at 2026-11-23). `pod-release` is taken (T-494).
+* The newest release is `v0.4.0-beta.17`. The next is `v0.4.0-beta.18` (below).
+* The record: `cargo todo check` agrees: 531 entries: 31 open, 13 partial, 24 blocked, 463 done.
 
-## CI and runs on the head
+## Done on 2026-11-23 (this session)
 
-* **`4df28952`** (`Take podcrates v0.82.0, consolidate deferred features, and apply hard-problems fixes`):
-  `issue-sync` `45141846884` passed (closed `#484`, `#485`, `#491`, `#493` to `#496`, `#499` to `#501`, `#672`, `#677`,
-  and `#679` on GitHub); `secrets` `45141846144` passed; `deny` `45141846402` failed (`RUSTSEC-2026-0542`); `live`
-  `45141846391` failed (`warp tun --default-route` with no default route); `ci` `45141846137` was cancelled.
-* **`75f69f51`** (`ci: gate turn_tests on loopback, disable debug symbols in ci, ignore RUSTSEC-2026-0542`):
-  `issue-sync` `45144945528`, `deny` `45144945139`, and `secrets` `45144945103` passed; `ci` `45144945248` was
-  cancelled by `1325d5bb`; `live` `45144945104` was in progress at handoff.
-* **`1325d5bb`** (`warp: allow front doors when an environment proxy is active without a default route`):
-  `issue-sync` `45146227312`, `deny` `45146226566`, and `secrets` `45146226502` passed; `ci` `45146226769` is queued
-  and `live` `45146226467` is pending.
-* Prior baseline runs before today: `ci` `44871490037` passed on `9a9a0a9` (`v0.81.0`); `gate` `44782773447` passed
-  on `3836971` (the full lane on the GitHub runner, with the case `errors` and the row `testers`); `live` `44713609259`
-  passed on `3f14a38`. About one `live` run of six fails at the public relay or at WARP's MASQUE door (T-406, T-488,
-  GitHub `#604`).
-* Pushes on `2026-11-23` started workflows directly. In a cloud session whose push starts no workflow, request runs via
-  `[gh action] requested` issues (`docs/maintenance.md`, "A run when a push starts no workflow"), respecting `ci`
-  concurrency and requesting `issue-sync.yml -f dry_run=false` when the record changes GitHub states (otherwise daily
-  `record-issues` fails, as in `45028265942` on `2026-11-22`).
+* T-494 (`af42f0d`): `podnet update` takes `pod-release` (the owner's ruling of 2026-11-23: the shared verifier,
+  with the check of Rekor). T-473 (`08232dd` to `91a53fb`): the last shared-code copies of COORD-104.
+* Dependabot #680, #681, #682, #684 as own commits (`ffde742`, `4cc620b`, `1e69fe3`, `62a41ac`; #684 also takes
+  noq-proto and noq-udp 1.5.0).
+* T-510 (live DoH second path), T-511 (qlog test race), T-512 (loopback tests gated), T-513 (quick tunnel refused
+  registration: true hint, exit 75, one new start), T-514 (`get-podlab.sh` falls back to the newest release at or
+  below a tag).
+* COORD: #685 (COORD-113, the retry budget of `pod-cloudflare`), #686 (COORD-114, the take of `pod-release` and
+  the end of T-473). Closed: #437, #585, #592, #606, #608, #651.
+* Runs: `ci` 45179728365 and `live` 45179728390 passed on `3448b93`; `ci` 45215638808 and `gate` 45215645049 passed
+  on `9d34eb7`. `live` 45186065944 and 45215638823 failed on the edge and on WARP's door (T-488, T-406; GitHub #688).
 
-## Consolidated work on `main` (2026-11-23)
+## The release of v0.4.0-beta.18: the state
 
-* **Take `podcrates` `v0.82.0` (`4df28952`, T-506):** updated all manifests, `Cargo.lock`, `fuzz/Cargo.lock`,
-  `scripts/install/SOURCES`, and `.github/workflows/issue-sync.yml`. Aligned `podnet offline pair` with 8-word PBKDF2
-  codes and `Error::CodeExpired`, and updated `src/warp/h3/serve.rs` and `docs/quic.md` for the `v0.82.0` HTTP/3
-  control-stream fix.
-* **Deferred feature set (`T-365`, `T-366`, `T-369` to `T-373`, `T-376` to `T-378` done; `T-367` partial):**
-  * NTPv4, SMTP, and IMAP carriers (`#484`, features `ntp`, `smtp`, `imap`, `full`).
-  * TURN RFC 8656/6062 relay and NAT traversal fallback (`#485`, `tests/link_p2p*.rs`).
-  * QUIC HTTP/3 server shape (`podnet warp h3`), qlog control stream, TUIC v5 road with bounded queue drop policy,
-    Juicity road with 30-stream fallback, and connection-ID rotation (`#486` partial: MASQUE `QUIC-1` to `QUIC-5` remain).
-  * Cover listener with TLS exporter-bound switch, cover scripts, and multiplexed cover (`#491`, `pod-cover`).
-  * Record-layer shaping: padding profiles, entropy tail, measured first flight, pacing, and `doctor --shape` (`#493`,
-    `pod-shape`).
-  * Application-layer shaping: deferred cache, TOML traffic generator, and HTTP payload carrier (`#494`, `src/defer/`).
-  * Optional packet sidecar (`#495`, feature `sidecar`, `pod-sidecar`, off by default).
-  * End-to-end opaque destinations, rekey epoch and ceiling checks, and hop-exposure table (`#496`, `pod-e2e`,
-    `SECURITY.md`).
-  * Offline carriers (`serial:`, `hf:`) and stores (`spool`, `discover`, `bundle`, `capture`, `pair`, `replica`)
-    (`#499`, `pod-offline`).
-  * Host runtime: `host probe` and `stat`, crash logs, deployment egress policy enforced before direct dials, `init` TLS
-    enrolment with rollback, `forge clone`, `ci check`, and derived status page (`#500`).
-  * Verification harness: `podnet harness`, per-road captures, relocatable archives, `scripts/check-harness.py`,
-    `scripts/check-claims.py`, and exit-code contract (`#501`, `pod-harness`).
-* **Hard-problems research and fixes (`docs/research/podnet/hard-problems-results.md`):**
-  * **H-02 (T-507):** `pod --backend seccomp` refuses `listen(2)` on `Sock::Kernel` with `EPERM`, verified by 3 cases
-    and `/proc/<pid>/fd` inode checks in `tests/pod_seccomp/kernel_listen.rs`.
-  * **H-04 (T-508):** `pod --backend netns` reassembles IPv4 UDP fragments up to `65,507`-byte payloads
-    (`NETNS_UDP_LIMIT = 65_507`), verified by 17 unit tests (including oldest-set eviction) and
-    `tests/pod_seccomp/netns_udp.rs`.
-  * **H-05 (T-509):** `net shim` generates per-run `PODNET_VNET_PREFIX` (capped at 59 bytes), validates invalid and
-    non-UTF-8 prefixes before build with exit 64, copies full 107-byte abstract names, prints ignored-prefix warnings
-    unconditionally to stderr, and writes notes to stderr so stdout holds only exports.
-  * **H-10:** `docs/warp.md` corrects the TCP probe description to reflect live TCP carriage over MASQUE.
-  * **H-11 and H-19:** `scripts/live-throughput.sh` captures non-200 status, `cf-ray`, and error bodies instead of
-    dropping them with `curl -f`; `tests/transfer_relay.rs` lowers the `1 MiB` cap test move threshold to `160 KiB`
-    (`<= 191 KiB`, T-476).
-* **CI and WARP proxy fixes (`75f69f51`, `1325d5bb`):**
-  * `75f69f51`: gated `src/networks/turn_tests.rs` on loopback, disabled debug symbols in `.github/workflows/ci.yml`,
-    and ignored `RUSTSEC-2026-0542` in `deny.toml`.
-  * `1325d5bb`: allowed WARP front doors when an environment proxy is active without a default route (`src/warp/h3.rs`,
-    `src/warp/mod.rs`, `src/warp/session.rs`).
+1. The black-box QA pass ran (a binary of `1947a8e`): 19 findings, #687 and #689 to #706. The triage is T-515 to
+   T-532 (`bdb3ba7`; the calls of the lead are in `TODO/PROGRESS.md`, "Calls made without a ruling").
+2. Four fix agents work in local worktrees (`.claude/worktrees/agent-*`, not pushed): T-515, T-517, T-518, T-523,
+   T-531 (exit codes, the stop signals of `pod`); T-519, T-526, T-528, T-530 (JSON stamps, docs); T-521, T-522
+   (error lines; COORD asks for `pod-ws`, `pod-proxy`, `pod-dns`, `pod-tls`); T-516, T-520, T-524, T-525, T-527,
+   T-529, T-532 (COORD asks for `pod-hold`, `pod-wormhole`). If a worktree is gone, start the entry again from its
+   Approach.
+3. Then: cherry-pick each batch, run `sh scripts/agent/check.sh`, push, file one COORD issue `(to podcrates)` with
+   the asks, close each QA issue through the record, run `gate.yml`, then the release steps (`docs/maintenance.md`,
+   Release, steps 1 to 6). The breaking changes for the notes: `update` (the check of Rekor; `--version` takes
+   `vX.Y.Z` only; the mode of the binary; a warning when `podnet.prev` cannot be written), exit 75 for a transient
+   refusal of a tunnel (T-513), and the changes of T-515 to T-532 (exit codes, SOCKS5 reply codes, the key `kind`
+   of `rules check --json`).
+4. The release proves T-487 (the image attestation and digests) and closes COORD-109 (#656).
 
-## Next steps
+## Other next steps
 
-`docs/research/podnet/hard-problems.md` (2026-11-20) and `docs/research/podnet/hard-problems-results.md` hold the
-findings and follow-ups for `H-01` to `H-32`.
-
-1. Read `ci` (`45146226769`) and `live` (`45146226467`) on `1325d5bb` (plus `live` `45144945104` on `75f69f51`). Fix any
-   failure first, then append a `state:` line to COORD-107 (`#654`) once `ci` and `live` pass on `1325d5bb`.
-2. Start the organization watcher (the pinned commit and command are in `CLAUDE.md`, "Talk with the other sessions of
-   PodUtils"):
-
-   ```text
-   python3 -I .work/podcrates-agent/watch.py podnet --state .work/agent
-   ```
-
-   Take each COORD issue `(to podnet)` of podrunner first. Run `sh scripts/agent/podcrates.sh` at start and at each new
-   tag after `v0.82.0`; take the tag (T-137), and write the take into COORD-107 (`#654`) as a `state:` line with its CI
-   run.
-3. Cut `v0.4.0-beta.18`. Before its dry run (`docs/maintenance.md`, Release, step 0):
-   * Run the black-box QA pass: give `scripts/agent/qa-pass.md` as it is to a new agent with the binary of the commit,
-     the documents, and `podlab` only (not a session that read the source). Triage each finding into an entry.
-   * Run `gate.yml` on the commit.
-
-   Then run the release steps. The release must prove T-487: the job `image` passes (the attestation check and the
-   pull-back of each architecture image), the release notes include "The image, by digest", `release-proofs.yml` passes,
-   and the hand-off COORD issue names the digest of the manifest list. Then close COORD-109 (`#656`) through the record.
-4. Finish remaining `T-473` (P2, partial) shared-code adoptions: the CONNECT client of `crates/podnet-core/src/connect.rs`
-   (the `--connect-proxy` path of `ssh-relay`; to `pod-proxy`, a change of tested behaviour), the HTTP head readers of
-   `crates/podnet-netns/src/tailscale.rs` and `src/router/control.rs` (`pod_proxy::http`), the request parser of
-   `crates/podnet-core/src/util/http.rs`, and the groups and lead of the help (`pod-manual`). `Backoff` in
-   `crates/podnet-serve/src/relay/supervise.rs` stays (its tests give it short waits). Note: `pod_core::clock`,
-   `pod_core::backoff` (`src/cli/cmd/warp/run.rs`, `src/cli/cmd/warp/tun.rs`), and `pod_core::files::replace`
-   (`crates/podnet-netns/src/report.rs`, `src/warp/ssh_config.rs`) landed before `1a4781eb`.
-5. Finish `T-494` (P2, open): take `pod-release` in place of `src/update.rs` and `src/update/cosign.rs`. Read
-   `PodUtils/podcrates@T-880`, `PodUtils/podcrates@T-966`, and `PodUtils/podcrates@T-964` (Rekor v2) first. The ruling in
-   `CLAUDE.md` (`SHA256SUMS`, certificate identity, and cosign signature checked; no Rekor inclusion proof) must hold, or
-   the ruling changes.
-6. Optional takes from `v0.80.0` onward: `pod-unit` for `src/cli/cmd/autostart.rs`, and `pod-control` for a status
-   socket.
-7. Follow up on `T-476` (P2, open): `tests/transfer_relay.rs` uses the `160 KiB` (`<= 191 KiB`) move threshold from
-   `4df28952` (H-19); follow up on `pod-session` `resume::move_under(cap, window)` and 20-run parallel load checks.
-8. Finish `T-492` step 3 (P3, partial): update `free_port` users in `tests/commands.rs` and `tests/warp_stand_in.rs` to
-   take a port that the child reports where the command can report one.
-9. P3 and blocked follow-ups:
-   * `T-367` (`#486`, partial): finish the remaining MASQUE `QUIC-1` to `QUIC-5` items when unblocked.
-   * `T-488` (open): sporadic HTTP 530 of quick tunnels; measure with `--ha-connections 1` and the paired
-     early-vs-steady design using the H-11 body/`cf-ray` capture in `scripts/live-throughput.sh`.
-   * `T-414` (partial): the WARP proxy ends on a failed health check (send evidence to podcrates); `T-415` (partial).
-   * `T-406` (blocked) and `T-478` (open): read logs of a failed `live` step and the answer of podcrates on COORD-098
-     (`#604`).
-   * `#489` (`T-368`), `#497` (`T-374`), and `#498` (`T-375`): deferred and blocked (need outside resources per H-27);
-     leave open and unlabelled (`docs/decisions.md`, 2026-11-16).
-10. Open Dependabot PRs (`#680`, `#681`, `#682`, `#684`; note `#684` failed `ci` `45142689882` and `deny` `45142689681`):
-    apply each judged update as an own commit on `main` (checks green) and close the PR with a link to the commit
-    (`CLAUDE.md`).
+* T-476 (`pod-session` `move_under`), T-492 step 3, T-367 (MASQUE QUIC-1 to QUIC-5), T-488, T-414, T-415, T-406,
+  T-478; optional takes of `pod-unit` and `pod-control`.
+* The GitHub MCP tool adds a "Generated by" line to each comment and issue body; `CLAUDE.md` forbids it. An edit
+  by the MCP tool adds it again. Remove the lines by hand or with another tool.
 
 ## How to work here
 
@@ -188,22 +98,9 @@ Use `pod_testkit::refused`, bind port `0`, or use `127.0.0.1:1` instead of freei
 
 | Issue | Waits for |
 | --- | --- |
-| `#654` (COORD-107, takes of podcrates) | Amended on 2026-11-23T08:57:21Z with `v0.82.0` (`4df28952`). Add a `state:` line after `1325d5bb` `ci` and `live` pass, and on future tags. |
-| `#656` (COORD-109, ghcr.io image: T-487) | Next beta (`v0.4.0-beta.18`) proves attestation, pull-back, and digests. |
-| `#651` (COORD-104, shared code copies) | Remaining T-473 items and `pod-release` (T-494), `pod-detach`, `pod_core::lock`. |
-| `#604` (COORD-098, relay holds lost socket) | Relay server fix (T-406, T-478). |
+| `#686` (COORD-114, the take of `pod-release`) | The `taken` line of podcrates. |
+| `#685` (COORD-113, the retry budget of `pod-cloudflare`) | A release of podcrates. |
+| `#654` (COORD-107, takes of podcrates) | A `state:` line at each new tag. |
+| `#656` (COORD-109, ghcr.io image: T-487) | `v0.4.0-beta.18`. |
+| `#604` (COORD-098, relay holds a lost socket) | The relay fix (T-406, T-478). |
 | `#413` (COORD-006) | T-161 and T-200 (`pod-relay`). |
-
-Closed on GitHub via `issue-sync` `45141846884` on `4df28952`: `#672`, `#677` (`COORD-112`), `#679`, `#484`, `#485`,
-`#491`, `#493` to `#496`, and `#499` to `#501`.
-The coordinator of podcrates closed `#437`, `#585`, `#592`, `#606`, and `#608` on 2026-11-23. The record agrees
-(`34015bb`).
-
-The other open issues in `TODO/issues.md` are `#89`, `#140`, `#149`, `#151`, `#161`, `#222`, `#358`, `#360`, `#375`,
-`#397`, `#407`, `#435`, `#461`, `#469`, `#471`, `#486`, `#489`, `#497`, `#498`, `#507`, and `#620`. Open
-Dependabot PRs are `#680`, `#681`, `#682`, and `#684`.
-
-## Waiting on the owner
-
-* The first black-box QA pass before `v0.4.0-beta.18` (`scripts/agent/qa-pass.md`): a session with the binary, the
-  documents, and `podlab` only.
