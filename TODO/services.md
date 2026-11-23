@@ -2078,7 +2078,7 @@ Tailscale and described only for Tailscale SSH.
 ## Premise
 
 - `net ts-shims` already takes `--out --user --uid --gid --shell --json` and prints `LD_PRELOAD`
-  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:169-213`,
+  (merged with an old value) and `SANDHOME_PASSWD` (`src/cli/cmd/net/shim.rs:163-204`,
   `crates/podnet-vnet/src/tailscale_ssh.rs:160-202`). It also writes `getent`, `id` and a compiled shim: more than a client needs.
 - `docs/target-environment.md:146` names only the Tailscale shim for `getpwuid`. README.md:923 uses `ts-shims`.
   No doctor row names the silent `ssh-keygen`.
@@ -2455,7 +2455,7 @@ rule today) when the shadowed action is `reject` and the flag that allows it is 
   (src/warp/rules.rs:100 at `9c1fc4b`) joins the flags and the file and compares nothing. `for_name`
   (src/warp/rules.rs:122-129 at `9c1fc4b`) takes `.find`.
 - The pod rules: `select_chain` (`crates/podnet-netns/src/rules.rs:111-148`) is the same loop;
-  `domain_matches` (`crates/podnet-netns/src/rules.rs:196-203`): `NAME` matches the name only, `.NAME`
+  `domain_matches` (`crates/podnet-netns/src/rules.rs:222-229`): `NAME` matches the name only, `.NAME`
   matches the name and each name under it.
 - `warp proxy --check` is handled in `src/cli/cmd/warp/front.rs:25-47` (the flag `check: bool` is in the
   arguments of the command): it builds the table, prints each rule and exits 0, or 64 for a bad rule.

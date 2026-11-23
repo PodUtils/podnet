@@ -2223,7 +2223,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 - src/warp/mod.rs:885-892 at `9c1fc4b` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
   `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:421-423`) refuses and does not write over the file.
-- `crates/podnet-core/src/state.rs:67-118` has the model. `src/manual/facts.rs:163` lists `PODNET_FOREIGN_HOME`.
+- `crates/podnet-core/src/state.rs:67-125` has the model. `src/manual/facts.rs:163` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 
@@ -2269,7 +2269,7 @@ The tests cover: refuse, allow with the variable, mode still checked, no registr
 
 ## Premise
 
-- `Task` has one `host` and one `port`, and `Check::Tls` is one handshake (`src/agent.rs:26-42`). The three rows are at `src/agent.rs:60-65`, `:74-79` and `:88-93`. The table prints one target (`src/agent.rs:541-561`).
+- `Task` has one `host` and one `port`, and `Check::Tls` is one handshake (`src/agent.rs:26-42`). The three rows are at `src/agent.rs:60-65`, `:74-79` and `:88-93`. The table prints one target (`src/agent.rs:542-562`).
 - `registry-1.docker.io` is in pod-services as the endpoint `registry` of `docker-hub-registry`. The other hosts are not in pod-services (read of `services/` at podcrates v0.7.0).
 - `src/agent.rs` is a taken source of pod-services (not frozen).
 - Not measured: the three answers of the issue (curl of 2026-11-07).
@@ -2441,7 +2441,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 - Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:313`, `src/cli/cmd/connect.rs:247`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-45`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:60`.
 - `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:174`).
-- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:97-103`).
+- `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:94-100`).
 
 ## Approach
 
@@ -2625,7 +2625,7 @@ python3 scripts/check-size.py
 
 ## Premise
 
-- Printed at `src/cli/cmd/net/mod.rs:316-317`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
+- Printed at `src/cli/cmd/net/mod.rs:318-319`. `tests/cli/main.rs` has `doctor_tells_listen_from_bind`.
 - `docs/networks.md:39-41` uses `net switch --listen tcp://` as its example.
 
 ## Approach
@@ -2688,7 +2688,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:46-63`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:334-339` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:43-60`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:334-339` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -2846,7 +2846,7 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 
 ## Premise
 
-- `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`crates/podnet-core/src/state.rs:344-359`).
+- `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`crates/podnet-core/src/state.rs:424-439`).
 - `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs` lines 151-188 at `ed79896`).
 - `DirBuilder::mode(0o700)` applies only to a new directory (lines 143-146 at `ed79896`).
 - The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs` line 871 at `ed79896`.
@@ -3289,7 +3289,7 @@ The lead, 2026-11-09: `agent status --json` exits 0. The state, with the result 
 
 `warp up --tun` starts the instance `warp-tun`. `warp status` reads the instance `warp` only. On a host that runs the
 tunnel, it prints `warp up     not running (podnet warp up starts it)` and `instance: {"running": false}`. A script
-then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:538`).
+then restarts a working tunnel. `agent status` has the same text (`src/agent.rs:539`).
 
 ## Premise
 
@@ -4039,7 +4039,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
 - `crates/podnet-netns/src/seccomp/accept.rs:61` is not exposed: it calls `private_dir` first
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:80`, `src/cli/cmd/net/mod.rs:97` and
-  `src/cli/cmd/net/mod.rs:175` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:246`).
+  `src/cli/cmd/net/mod.rs:177` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:248`).
 - `libc` is a dependency (`Cargo.toml:195`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
@@ -7327,7 +7327,7 @@ documented commands" of the job `test` of `ci.yml`; set the entry `done` when th
 
 ## Done
 
-2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:338` (`net passwd-shim`,
+2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:347` (`net passwd-shim`,
 then `ssh-keygen`) in the step "The documented commands": `pass docs/networks.md:337`; `doc-commands: 4 passed, 0 failed,
 0 not run`.
 
@@ -12495,7 +12495,7 @@ python3 scripts/check-size.py
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -12546,6 +12546,25 @@ no execute permission, must give exit 3 and one line with the seccomp backend to
 cargo test -p podnet --test pod_error_lines
 cargo test -p podnet-netns
 ```
+
+## Done
+
+2026-11-23, the commit of this entry (the part of podnet; the part of podcrates is open). Before a backend starts
+the program, `podnet pod` checks it (`crates/podnet-netns/src/program.rs`, `can_run`): a path with a `/` must be a
+regular file with an execute bit that `access(X_OK)` accepts; a bare name must be in `PATH`
+(`pod_hold::spawn::resolve`). A program that cannot run gives one line (`execvpe PATH: REASON`, or `the program
+"NAME" is not in PATH`) and exit 3 on each backend. The tests: `a_program_that_cannot_run_exits_3_with_one_line`
+(`tests/pod_error_lines.rs`: the programs `/nonexistent/prog`, a directory, a file with no execute bit and a bare
+name not in PATH, on each backend that `podnet pod doctor` finds: seccomp, netns and netns-kernel on this host), and
+`a_program_that_cannot_run_gives_one_line` (the unit table of `can_run`). `cargo test -p podnet --test
+pod_error_lines`: 4 passed. `cargo test -p podnet-netns`: 173 passed. Control: on the code before the fix the test
+fails at each seccomp row: `seccomp, /nonexistent/prog: exit Some(127), want 3 and one line with "No such file or
+directory"` (no line of the cause); the netns rows give exit 3 and the line, and a bare name gives `execvpe
+podnet-no-such-program: No such file or directory`. Left: a file that the kernel cannot run (`ENOEXEC`, a binary of
+another architecture) still exits 127 with no line on the seccomp backend. The COORD ask (to podcrates):
+`pod_hold::spawn::start` reports the errno of the `execve` of the program as a `Failure` (a pipe with `FD_CLOEXEC`,
+as `crates/podnet-netns/src/raw.rs` does), with the class of the errno, and `resolve` checks a path with a `/`. When
+podnet takes that tag, the check of a path with a `/` in `program.rs` goes away.
 
 
 # T-517: pod: SIGTERM, SIGINT or SIGHUP to podnet ends podnet and leaves the program running (GitHub #691)
@@ -12763,7 +12782,7 @@ cargo test -p podnet-netns doctor
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -12807,6 +12826,22 @@ writes "1 minutes" (a wrong plural).
 cargo test -p podnet --test transfer send_timeout
 cargo test -p podnet transfer
 ```
+
+## Done
+
+2026-11-23, the commit of this entry. The call: podnet writes the line itself, from the value that it has
+(`Failed::Expired(life)` holds the `--timeout` of `settings.wait`), because the words of pod-wormhole are wrong for
+each value that is not a whole number of minutes, and the fix of the crate comes with a later tag. `failed` of
+`src/transfer/mod.rs` gives `nobody took the code within its TIME; it is spent`, with `exact_time`: whole minutes as
+"N minute" or "N minutes", else "N second" or "N seconds". The exit code stays 124. The tests:
+`send_timeout_line_gives_the_exact_time` (`src/transfer/mod.rs`: 1 s, 5 s, 60 s, 90 s, 600 s, 1800 s) and
+`send_timeout_names_the_value_of_timeout` (`tests/transfer.rs`: a sender at the stand-in mailbox with `--timeout` 1
+and 2, nobody takes the code: exit 124 and "within its 1 second;", "within its 2 seconds;"). `cargo test -p podnet
+--test transfer send_timeout`: 1 passed. Control: on the code before the fix the test fails with `1 s: nobody took
+the code within its 1 minutes; it is spent`. The COORD ask (to podcrates): `Failed::Expired(life)` of
+`pod-wormhole` (`failed.rs`) writes the time exactly (whole minutes as "N minute(s)", else "N second(s)", singular
+for 1), with a test of 1 s, 5 s, 60 s, 90 s and 600 s. podnet keeps its own line after the take (the line is
+podnet's own text).
 
 
 # T-521: error lines: a hint of the wrong hop (quick tunnel), and no hint for a dead proxy or a name that does not resolve (GitHub #695, #697, #698)
@@ -13176,7 +13211,7 @@ says "nothing accepts a connection" when the cause is EACCES of the connect.
 - Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:47`) is the one place that gives the class to a
   refused bind. It adds no words. `src/cli/cmd/local.rs:65` writes its own line (`serve --local`).
 - Read: `src/cli/cmd/agent.rs:104` calls `podnet::ports::reachable(*p, ...)`, which gives a bool: a refused connect and
-  an EACCES give the same answer. The advice with the unix sockets is in `src/agent.rs:528` and is not used here.
+  an EACCES give the same answer. The advice with the unix sockets is in `src/agent.rs:529` and is not used here.
 - Not read: the `warp forward` lines (`src/cli/cmd/warp/front.rs:276`, `:291`) have the same form by the same reading.
 
 ## Approach
@@ -13212,7 +13247,7 @@ cargo test -p podnet --test warp_stand_in
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -13242,11 +13277,11 @@ no advice to use a unix socket.
 
 ## Premise
 
-- Read: `crates/podnet-vnet/src/doctor.rs:146` (`verdict`) returns "not needed" when the two rows `bind(AF_INET,
+- Read: `crates/podnet-vnet/src/doctor.rs:153` (`verdict`) returns "not needed" when the two rows `bind(AF_INET,
   127.0.0.1:0)` and `listen(AF_INET, 127.0.0.1:0)` are `ok`. The probes (`crates/podnet-vnet/src/doctor.rs:539`) have
   no connect.
 - Read: `podnet agent` has the probe that is missing: `localhost()` of `src/agent.rs` binds a listener on 127.0.0.1 and
-  connects to it. `src/agent.rs:526` turns its failure into the advice "TCP on 127.0.0.1 does not work here: use unix
+  connects to it. `src/agent.rs:527` turns its failure into the advice "TCP on 127.0.0.1 does not work here: use unix
   sockets". The two doctors disagree on the same host.
 - The code is podnet's own (`crates/podnet-vnet`). Not measured: a loopback that has `127.0.0.1` but drops the
   packets.
@@ -13269,6 +13304,21 @@ cargo test -p podnet-vnet doctor
 cargo test -p podnet --test doctor
 ```
 
+## Done
+
+2026-11-23, the commit of this entry. `podnet_core::ports::loopback_connect` (a TCP listener on 127.0.0.1 and a
+connect to it, with a check of the address before the connect) and `unix_connect` are the one probe of both doctors:
+`podnet agent` (`localhost()` of `src/agent.rs`, with the egress policy as its check) and `podnet net doctor` (the new
+rows `connect(AF_INET, 127.0.0.1)` and `connect(AF_UNIX, path)`). `verdict` says "not needed" only when the TCP
+connect works; with bind and listen ok and the connect refused it says `podnet-vnet: TCP on the loopback does not
+work here: use unix sockets (warp proxy --listen unix:, net proxy, connect -L unix://)`, and with no connect at all
+"not ready". `docs/networks.md` names the rows; `scripts/lab-lane.sh` (case `doctor`) fails when `net doctor` says
+"not needed" with a failed loopback connect. The tests: `doctor_verdict_needs_a_loopback_connect`
+(`crates/podnet-vnet/src/doctor/tests.rs`: connect works; no loopback; no connect at all; bind denied; and the probe
+set has both rows) and `loopback_connect_names_the_failed_step` (`crates/podnet-core/src/ports.rs`). `cargo test -p
+podnet-vnet doctor`: 4 passed. `cargo test -p podnet --test doctor`: passed. Control: with the verdict before the fix
+the test fails with `no loopback: podnet-vnet: not needed: ...`. The lab `no-loopback` was not run in this session.
+
 
 # T-525: net shim: the documented `--out /tmp/podnet-vnet` example prints a working LD_PRELOAD line on a noexec /tmp (GitHub #699)
 
@@ -13277,7 +13327,7 @@ cargo test -p podnet --test doctor
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -13301,9 +13351,9 @@ no error, and the printed export cannot load. An explicit `--out` is not checked
 
 ## Premise
 
-- Read: `crates/podnet-core/src/state.rs:243` (`allows_exec`, `statvfs` with `ST_NOEXEC`) and `exec_dir` choose a
+- Read: `crates/podnet-core/src/state.rs:285` (`allows_exec`, `statvfs` with `ST_NOEXEC`) and `exec_dir` choose a
   directory that is not `noexec` when no `--out` is given (`src/cli/cmd/net/shim.rs:41`, `:161`, `:200`). With `--out`,
-  the directory is used as it is (`src/cli/cmd/net/shim.rs:37` to `:43` and `:159` to `:164`). `net shim`, `net socksify`
+  the directory is used as it is (`src/cli/cmd/net/shim.rs:37` to `:40` and `:159` to `:158`). `net shim`, `net socksify`
   and `net ts-shims` have the same fault. `net passwd-shim` was not read.
 - The code is podnet's own. Not measured: `net socksify --out` and `net ts-shims --out` in the lab (the reading says
   the same).
@@ -13327,6 +13377,21 @@ no error, and the printed export cannot load. An explicit `--out` is not checked
 cargo test -p podnet-core state
 cargo test -p podnet --test shim_direct
 ```
+
+## Done
+
+2026-11-23, the commit of this entry. `podnet_core::state::shim_dir` takes the `--out` of `net shim`, `net
+socksify`, `net ts-shims` and `net passwd-shim` (`src/cli/cmd/net/shim.rs`). With no `--out` it is `exec_dir`. An
+`--out` whose nearest existing directory is on a `noexec` file system (`allows_exec`) gives exit 78 and one line:
+`DIR is on a noexec file system: a shim cannot load from it; give another --out, or none (podnet uses DIR2)`. There
+is no silent fallback. The examples of `docs/networks.md` and `docs/virtual-network.md` use no `--out /tmp/...`;
+`docs/target-environment.md` and the help of `--out` say that a `noexec` file system is refused. The tests:
+`state_shim_dir_refuses_an_explicit_noexec_out` (`crates/podnet-core/src/state.rs`: the check as an argument) and
+`an_explicit_out_on_a_noexec_mount_exits_78` (`tests/shim_direct.rs`: a user and mount namespace mounts a `noexec`
+tmpfs and an exec tmpfs; the four commands with `--out` on the `noexec` tmpfs exit 78 with the line; `net
+passwd-shim` on the exec tmpfs exits 0; a host that refuses the namespace skips). `cargo test -p podnet-core state`
+and `cargo test -p podnet --test shim_direct`: passed (12 tests). Control: on the code before the fix the test fails
+with each `noexec` row at exit 0 (`noexec shim 0 2 podnet: shim     .../noexec/shim/libpodnet-vnet.so`).
 
 
 # T-526: docs/host-runtime.md: the examples `podnet fetch` and `podnet init generate --node` do not run (GitHub #701)
@@ -13428,7 +13493,7 @@ cargo test -p podnet --test claims_docs
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -13489,6 +13554,23 @@ document or the door is wrong.
 cargo test -p podnet-netns door
 cargo test -p podnet --test pod_early_reply
 ```
+
+## Done
+
+2026-11-23, the commit of this entry. The call of the lead: the door maps the typed cause to the codes of RFC 1928
+(`socks_code` of `crates/podnet-netns/src/door.rs`): `0x02` a policy refusal; the code of an upstream that refused
+(`UpstreamRefused`); `0x05` `ConnectionRefused`; `0x03` `NetworkUnreachable`; `0x04` `HostUnreachable`, a name with
+no address (`NoAddress`, `connect_direct` of `crates/podnet-netns/src/upstream.rs` now resolves first) or a time
+limit; `0x01` any other failure. The door no longer reads words (`socks5_code_for_error` is not called; it stays in
+`crates/podnet-netns/src/socks.rs`, a file that podcrates imported). The front door of `pod --serve` keeps the cause
+(`Failure::caused`, `crates/podnet-netns/src/frontdoor.rs`). HTTP keeps 403, 504 and 502. `docs/proxies.md` has the
+table. The tests: `door_socks_reply_code_by_cause` (`crates/podnet-netns/src/door/tests.rs`: 9 causes, also a failure
+whose words say "denied" and "refused": `0x01`) and `serve_gives_the_socks5_reply_code_of_the_cause`
+(`tests/pod_early_reply.rs`: `pod --serve -x direct`, a refused port gives `0x05` and a name with no address `0x04`;
+HTTP CONNECT gives 502 for each). `cargo test -p podnet-netns door` and `cargo test -p podnet --test
+pod_early_reply`: passed (5 tests). Control: on the code before the fix the test fails with `a refused port: SOCKS5
+0x01 (want 0x05)` and `a name with no address: SOCKS5 0x01 (want 0x04)`. Not measured: an unreachable network on a
+real host (the unit row holds it).
 
 
 # T-528: doctor: exit 1 when no leg works; `podnet man exit-status` says 69 for "no edge leg worked" (GitHub #703)
@@ -13583,7 +13665,7 @@ cargo test -p podnet --test doctor
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -13611,10 +13693,10 @@ say where the files go (`/tmp/podnet-65534`), only "the next state directory".
 
 ## Premise
 
-- Read: `check_own_with` (`crates/podnet-core/src/state.rs:96`) takes the owner of the nearest directory that exists
+- Read: `check_own_with` (`crates/podnet-core/src/state.rs:97`) takes the owner of the nearest directory that exists
   (`owner_of`, `crates/podnet-core/src/state.rs:71`: it walks up from `~/.local/state/podnet` to HOME) and names `path`
   (the path that does not exist) in the message. The owner and the path do not match.
-- Read: `choose` (`crates/podnet-core/src/state.rs:127`) writes the warning (`:136`) on each call. `state_dir()` has no
+- Read: `choose` (`crates/podnet-core/src/state.rs:134`) writes the warning (`:136`) on each call. `state_dir()` has no
   cache, so each caller of the state directory in one process (the three calls of `warp register`) repeats it.
 - Read: the line says "podnet uses the next state directory" and not which one; `choose` knows the next candidate
   (the one it returns).
@@ -13638,6 +13720,21 @@ say where the files go (`/tmp/podnet-65534`), only "the next state directory".
 cargo test -p podnet-core state
 cargo test -p podnet --test warp_register
 ```
+
+## Done
+
+2026-11-23, the commit of this entry. `check_own_with` (`crates/podnet-core/src/state.rs`) names the directory that
+has the other owner and the path in it: `/var/tmp/qa/home (in it: /var/tmp/qa/home/.local/state/podnet) belongs to
+the user 0, ...`. `choose` gives each warning one time in each process (`warn_first`) and ends it with the directory
+that it uses: `; podnet uses /tmp/podnet-65534`. `choose_with` takes the owner check as an argument. The tests:
+`state_a_foreign_home_is_named_once_with_the_used_directory` (`crates/podnet-core/src/state.rs`: HOME of another
+user with no `.local`; `.local` of another user; HOME of this user; two warnings of one line) and
+`a_foreign_home_gives_one_warning_with_the_used_directory` (`tests/warp_register.rs`: `podnet warp register` with
+HOME of uid 65534 as root, or HOME `/` as another user: one warning, it names HOME and the used directory).
+`cargo test -p podnet-core state` and `cargo test -p podnet --test warp_register`: passed. Control: with the code
+before the fix the binary test fails with 3 lines `WARN podnet_core::state: /tmp/.tmpZsudpd/home/.local/state/podnet
+belongs to the user 65534, not to this user (0): ...`, and the unit test fails at the row "no .local" (the line
+names the path that does not exist).
 
 
 # T-530: bench: the text output shows `null` for the latency of a run with no answer (GitHub #698)
@@ -13755,7 +13852,7 @@ backend counts each refused connect twice in "(N refused)""; "`autostart remove 
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -13797,3 +13894,22 @@ podnet logs nosuchname                 podnet: no log of nosuchname at ...: No s
 cargo test -p podnet --test pod_seccomp_rules
 cargo test -p podnet --test exit_contract
 ```
+
+## Done
+
+2026-11-23, the commit of this entry. The cause of the double count, found with the test: the fake DNS of the seccomp
+backend gives a name an IPv4 and an IPv6 address (`198.18.0.0` and `fd63:6672:7300::c612:0` for `lab.test`); a
+program that takes each address of `getaddrinfo` in order calls `connect` two times for one flow, and each refused
+`connect` counted (the netns backend gives an IPv4 address only, so it counts 1). `note_refusal_of`
+(`crates/podnet-netns/src/rules.rs`) counts the second family of the same target within 2 s as the same flow; `-v`
+names it as "the other address of the same flow". `autostart remove` of an unknown name gives exit 69 and `no
+autostart entry NAME (podnet autostart list)` (`crates/podnet-core/src/autostart.rs`, a file that podcrates imported
+into pod-unit: a fix only). The tests: `one_refused_connect_counts_once_on_each_backend`
+(`tests/pod_seccomp_rules.rs`: a C client that tries each address of `lab.test` with a reject rule and `-v`, on
+seccomp and netns: one count line, `(1 refused)`) and `exit_69_is_an_unknown_name` (`tests/exit_contract.rs`:
+`stop`, `logs` and `autostart remove` with an unknown name: exit 69 and one line). `cargo test -p podnet --test
+pod_seccomp_rules`: 11 passed; `cargo test -p podnet --test exit_contract`: 9 passed. Control: on the code before the
+fix the first test fails with `seccomp: TRIES:2 OK:0` and the lines `(1 refused)` and `(2 refused)`, and the second
+with `["autostart", "remove", "nosuchname"]: exit Some(1)`. The COORD note (to podcrates): the fix of the frozen file
+`crates/podnet-core/src/autostart.rs` (`remove`: exit 69 for an unknown name) for pod-unit, if pod-unit takes
+`remove`.
