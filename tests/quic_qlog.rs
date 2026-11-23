@@ -14,6 +14,8 @@
 //! reads the QUIC traces again until the evidence is on disk, or for
 //! [`FLUSH_WAIT`] at most.
 
+mod test_host;
+
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -149,6 +151,7 @@ fn request_get(authority: &str) -> Vec<u8> {
 /// and the QUIC trace of noq has the stream frames of that stream.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_qlog_shows_the_http3_control_stream() {
+    test_host::need_loopback!();
     let dir = tempfile::tempdir().expect("a directory for the traces");
     let qlog = dir.path().join("qlog");
     std::fs::create_dir_all(&qlog).expect("the directory of the QUIC traces");

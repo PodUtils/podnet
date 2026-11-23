@@ -39,6 +39,7 @@ fn go() -> Option<std::path::PathBuf> {
 /// of the control stream and the request.
 #[test]
 fn a_stock_quic_go_client_completes_a_request_against_the_shape() {
+    test_host::need_loopback!();
     let Some(go) = go() else {
         test_host::skip_line(
             "this host has no Go toolchain, so the stock quic-go HTTP/3 client cannot run",

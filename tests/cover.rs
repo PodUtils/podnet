@@ -2,6 +2,8 @@
 //! on the first application bytes, the fall-through to the site, and the
 //! sizes of the cover script. Every connection is on the loopback.
 
+mod test_host;
+
 mod cover_harness;
 
 use std::path::{Path, PathBuf};
@@ -14,6 +16,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[tokio::test]
 async fn an_unauthenticated_client_gets_the_real_page_twice() {
+    test_host::need_loopback!();
     let fixture = fixture(false).await;
     let ca = ca();
     let addr = serve(&fixture, &ca).await;
@@ -44,6 +47,7 @@ async fn an_unauthenticated_client_gets_the_real_page_twice() {
 
 #[tokio::test]
 async fn an_authenticated_client_gets_the_tunnel_and_the_same_certificate() {
+    test_host::need_loopback!();
     let fixture = fixture(false).await;
     let ca = ca();
     let addr = serve(&fixture, &ca).await;
@@ -74,6 +78,7 @@ async fn an_authenticated_client_gets_the_tunnel_and_the_same_certificate() {
 
 #[tokio::test]
 async fn a_proof_bound_to_another_connection_gets_the_site() {
+    test_host::need_loopback!();
     let fixture = fixture(false).await;
     let ca = ca();
     let addr = serve(&fixture, &ca).await;
@@ -101,6 +106,7 @@ async fn a_proof_bound_to_another_connection_gets_the_site() {
 
 #[tokio::test]
 async fn a_replayed_proof_past_the_window_falls_through_to_the_site() {
+    test_host::need_loopback!();
     let fixture = fixture(false).await;
     let ca = ca();
     let addr = serve(&fixture, &ca).await;
@@ -121,6 +127,7 @@ async fn a_replayed_proof_past_the_window_falls_through_to_the_site() {
 
 #[tokio::test]
 async fn a_replayed_proof_inside_the_window_falls_through_to_the_site() {
+    test_host::need_loopback!();
     let fixture = fixture(false).await;
     let ca = ca();
     let addr = serve(&fixture, &ca).await;
@@ -149,6 +156,7 @@ async fn a_replayed_proof_inside_the_window_falls_through_to_the_site() {
 
 #[tokio::test]
 async fn a_muxed_connection_sends_the_page_before_the_session() {
+    test_host::need_loopback!();
     let fixture = fixture(true).await;
     let ca = ca();
     let addr = serve(&fixture, &ca).await;
@@ -169,6 +177,7 @@ async fn a_muxed_connection_sends_the_page_before_the_session() {
 
 #[tokio::test]
 async fn a_page_load_completes_before_one_session_byte() {
+    test_host::need_loopback!();
     let fixture = fixture(true).await;
     let page = fixture.cover.page(Some("localhost"));
     let session = vec![7u8; 4096];
@@ -197,6 +206,7 @@ async fn a_page_load_completes_before_one_session_byte() {
 /// the size that the script gives the cover's first record (SCRIPT-1).
 #[tokio::test]
 async fn the_first_record_of_a_switch_is_the_covers_first_record() {
+    test_host::need_loopback!();
     let fixture = fixture(false).await;
     let ca = ca();
     let first_size = fixture.cover.first_record_size();
@@ -335,6 +345,7 @@ async fn the_first_record_of_a_switch_is_the_covers_first_record() {
 /// at the proof, still reaches the tunnel without its padding.
 #[tokio::test]
 async fn a_first_record_split_at_the_proof_keeps_the_padding_out_of_the_session() {
+    test_host::need_loopback!();
     let fixture = fixture(false).await;
     let ca = ca();
     let addr = serve(&fixture, &ca).await;
@@ -360,6 +371,7 @@ async fn a_first_record_split_at_the_proof_keeps_the_padding_out_of_the_session(
 /// stream reproduces that measurement within the stated tolerance.
 #[tokio::test]
 async fn the_script_reproduces_the_cover_that_was_measured() {
+    test_host::need_loopback!();
     let fixture = fixture(false).await;
     let ca = ca();
     let script = fixture.cover.script().clone();

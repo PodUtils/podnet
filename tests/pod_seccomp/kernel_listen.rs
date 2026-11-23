@@ -199,15 +199,19 @@ fn refuses_listen(stem: &str, source: &str, expect_bind: Option<&str>) {
     let mut lines = BufReader::new(stdout).lines();
     let mut said = Vec::new();
     let mut during = Vec::new();
+    // The sample can be empty (a network namespace with no listener), so a
+    // flag, not the rows, says that it was taken.
+    let mut sampled = false;
     for line in lines.by_ref() {
         let line = line.unwrap();
         if line.starts_with("PORT ") {
             // The program is inside its pause and the listen has been
             // answered, so a host listener would be visible now.
             during = listening_rows_both();
+            sampled = true;
         }
         said.push(line);
-        if said.iter().any(|l| l.starts_with("listen ")) && !during.is_empty() {
+        if said.iter().any(|l| l.starts_with("listen ")) && sampled {
             break;
         }
     }
@@ -253,6 +257,7 @@ fn seccomp_kernel_socket_refuses_listen() {
 
 #[test]
 fn seccomp_kernel_socket_refuses_listen_after_bind() {
+    crate::test_host::need_loopback!();
     if !have_compiler() || !seccomp_available() {
         eprintln!("skipping: no compiler or no SECCOMP_RET_USER_NOTIF");
         return;

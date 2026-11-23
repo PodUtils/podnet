@@ -8,6 +8,8 @@
 //! stdout. It does not prove interoperability with `tuic-server`, and it
 //! exercises no UDP: the UDP path of the road is the test `quic_tuic`.
 
+mod test_host;
+
 use std::net::SocketAddr;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -102,6 +104,7 @@ async fn serve(conn: noq::Connection) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_tuic_option_of_warp_nc_carries_stdin_to_stdout() {
+    test_host::need_loopback!();
     let endpoint = pod_quic::endpoint::server(
         pod_quic::endpoint::server_config(crypto()).unwrap(),
         "127.0.0.1:0".parse().unwrap(),

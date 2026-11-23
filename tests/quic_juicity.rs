@@ -12,6 +12,8 @@
 //! `quic_juicity_reference` runs the same paths against the reference
 //! binary.
 
+mod test_host;
+
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -151,6 +153,7 @@ fn link(server: SocketAddr) -> Link {
 /// The gate: a UDP session and a TCP session, each byte echoed.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_juicity_client_completes_udp_and_tcp_sessions() {
+    test_host::need_loopback!();
     let endpoint = pod_quic::endpoint::server(
         pod_quic::endpoint::server_config(crypto()).unwrap(),
         "127.0.0.1:0".parse().unwrap(),
@@ -209,6 +212,7 @@ async fn a_juicity_client_completes_udp_and_tcp_sessions() {
 /// QUIC connection, and the server, which counts what it accepts, sees two.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_juicity_client_opens_a_new_connection_after_thirty_streams() {
+    test_host::need_loopback!();
     let endpoint = pod_quic::endpoint::server(
         pod_quic::endpoint::server_config(crypto()).unwrap(),
         "127.0.0.1:0".parse().unwrap(),

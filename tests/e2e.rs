@@ -2,6 +2,8 @@
 //! destination, the record keys from the handshake, the KEY-2 header, the
 //! suite check, the rekey, the splice, the tokens and the relay's view.
 
+mod test_host;
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -104,6 +106,7 @@ async fn echo() -> (String, u16) {
 /// destination, no service and no key.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_relay_dump_holds_no_plaintext_destination_service_or_key() {
+    test_host::need_loopback!();
     let client_id = identity(11);
     let server_id = identity(12);
     let client_hex = client_id.public().hex();
@@ -269,6 +272,7 @@ fn a_suite_mismatch_exits_78_before_a_record() {
 /// layer takes the new key before it seals the record after the ceiling.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn one_gib_loopback_transfer_rekeys_and_completes() {
+    test_host::need_loopback!();
     let pair = Pair::named("relay-a", "pair-1");
     // Either suite rekeys on the same byte count. The hardware-accelerated
     // suite keeps this 1 GiB run practical in a debug build.

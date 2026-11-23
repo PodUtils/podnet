@@ -1,6 +1,8 @@
 //! Deferred responses and the traffic generator (T-371, GitHub #494): a
 //! local origin on the loopback, no root and no public network.
 
+mod test_host;
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -58,6 +60,7 @@ async fn direct_delay(address: &str, request: &[u8]) -> Duration {
 
 #[tokio::test]
 async fn the_first_is_live_the_second_is_prepared_and_a_miss_is_live() {
+    test_host::need_loopback!();
     let addr = origin(
         Duration::from_millis(30),
         b"the page of the origin".to_vec(),
@@ -208,6 +211,7 @@ async fn measure_large_body() -> Wire {
 
 #[tokio::test]
 async fn the_wire_overhead_of_a_body_over_the_chunk_stays_under_the_stated_ratio() {
+    test_host::need_loopback!();
     let wire = measure_large_body().await;
     let numerator = wire.relay - wire.payload;
     let denominator = wire.payload;
@@ -250,15 +254,21 @@ async fn the_wire_overhead_of_a_body_over_the_chunk_stays_under_the_stated_ratio
 }
 
 /// The failing control: the prepared-bytes accounting of the cache is zero
-/// for a body over the chunk, while the relay wrote real framing bytes. An
-/// assertion that the old accounting is the wire overhead fails with both
-/// numbers, which is the defect this test replaced.
+/// for a body over the chunk, while the relay wrote real framing bytes. The
+/// old accounting is not the wire overhead, which is the defect this test
+/// replaced. The test asserts the two numbers directly (not with
+/// `should_panic`), so that a host with no loopback skips it.
 #[tokio::test]
-#[should_panic(expected = "the old accounting reports 0 bytes")]
 async fn the_old_prepared_bytes_accounting_undercounts_the_wire() {
+    test_host::need_loopback!();
     let wire = measure_large_body().await;
     let numerator = wire.relay - wire.payload;
     assert_eq!(
+        wire.old_overhead, 0,
+        "the old accounting reports {} bytes, not 0",
+        wire.old_overhead
+    );
+    assert_ne!(
         wire.old_overhead, numerator,
         "the old accounting reports {} bytes, the wire wrote {numerator} bytes over the payload",
         wire.old_overhead
@@ -267,6 +277,7 @@ async fn the_old_prepared_bytes_accounting_undercounts_the_wire() {
 
 #[tokio::test]
 async fn a_response_larger_than_the_chunk_is_served_live_each_time() {
+    test_host::need_loopback!();
     let addr = origin(Duration::from_millis(5), vec![3u8; 512]).await;
     let mut defer = Defer::new(HttpOrigin::new(addr), 64);
     let a = defer.serve(REQUEST).await.unwrap();
@@ -279,6 +290,7 @@ async fn a_response_larger_than_the_chunk_is_served_live_each_time() {
 
 #[tokio::test]
 async fn a_response_carries_a_control_stream_inside_the_http_profile() {
+    test_host::need_loopback!();
     let body = b"the page of the origin";
     let addr = origin(Duration::from_millis(5), body.to_vec()).await;
     let mut carrier = Carrier::new();
@@ -367,6 +379,7 @@ async fn a_response_carries_a_control_stream_inside_the_http_profile() {
 
 #[tokio::test]
 async fn a_response_with_no_room_in_the_chunk_keeps_the_frame_for_later() {
+    test_host::need_loopback!();
     let body = &[5u8; 32];
     let addr = origin(Duration::from_millis(2), body.to_vec()).await;
     let mut carrier = Carrier::new();
@@ -470,6 +483,7 @@ fn the_generated_stream_scores_lower_than_a_plain_tunnel_in_the_harness() {
 
 #[tokio::test]
 async fn the_generator_reaches_the_cache_with_the_times_of_the_profile() {
+    test_host::need_loopback!();
     let addr = origin(Duration::from_millis(20), b"ok".to_vec()).await;
     let mut defer = Defer::new(HttpOrigin::new(addr.clone()), 1024);
     let profile = Profile::load("page-load").unwrap();

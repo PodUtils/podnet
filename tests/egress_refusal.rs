@@ -8,6 +8,8 @@
 //! `podnet tunnel --e2e` and the `link` services over a unix socket. Each
 //! one holds a bound listener and asserts that it never accepts.
 
+mod test_host;
+
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -50,6 +52,7 @@ fn policy_file(dir: &Path) -> PathBuf {
 
 #[tokio::test]
 async fn dial_addrs_refuses_before_a_connect() {
+    test_host::need_loopback!();
     install_refuse();
     let (listener, port) = listener();
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
@@ -63,6 +66,7 @@ async fn dial_addrs_refuses_before_a_connect() {
 
 #[tokio::test]
 async fn the_cover_origin_is_refused_before_a_connect() {
+    test_host::need_loopback!();
     install_refuse();
     let (listener, port) = listener();
     let err = podnet::cover::open_target(&format!("127.0.0.1:{port}"))
@@ -75,6 +79,7 @@ async fn the_cover_origin_is_refused_before_a_connect() {
 
 #[tokio::test]
 async fn a_deferred_origin_is_refused_before_a_connect() {
+    test_host::need_loopback!();
     use podnet::defer::Origin as _;
     install_refuse();
     let (listener, port) = listener();
@@ -90,6 +95,7 @@ async fn a_deferred_origin_is_refused_before_a_connect() {
 
 #[tokio::test]
 async fn the_netbird_greeting_is_refused_before_a_connect() {
+    test_host::need_loopback!();
     install_refuse();
     let (listener, port) = listener();
     let err = podnet::networks::netbird_greeting(port).await.unwrap_err();
@@ -100,6 +106,7 @@ async fn the_netbird_greeting_is_refused_before_a_connect() {
 
 #[tokio::test]
 async fn the_agent_probes_are_refused_with_their_reason() {
+    test_host::need_loopback!();
     use podnet::agent::Outcome;
     install_refuse();
     let report = podnet::agent::run(Duration::from_millis(50)).await;
@@ -125,6 +132,7 @@ async fn pump(a: tokio::io::DuplexStream, b: tokio::io::DuplexStream) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn the_e2e_far_end_refuses_the_destination_from_the_relay() {
+    test_host::need_loopback!();
     install_refuse();
     let (listener, port) = listener();
     let destination = ("127.0.0.1".to_string(), port);
@@ -327,6 +335,7 @@ fn request(command: u8, atyp: u8, addr: &[u8], port: u16) -> Vec<u8> {
 
 #[test]
 fn the_link_socks5_service_refuses_a_peer_target() {
+    test_host::need_loopback!();
     let (listener, port) = listener();
     let pair = pair(&["socks5"]);
     let mut dial = pair.dial("socks5");
@@ -347,6 +356,7 @@ fn the_link_socks5_service_refuses_a_peer_target() {
 
 #[test]
 fn the_link_service_target_is_refused_before_connect() {
+    test_host::need_loopback!();
     let (listener, port) = listener();
     let target = format!("origin=127.0.0.1:{port}");
     let mut pair = pair(&[target.as_str()]);
@@ -360,6 +370,7 @@ fn the_link_service_target_is_refused_before_connect() {
 
 #[test]
 fn the_link_http_service_refuses_a_connect() {
+    test_host::need_loopback!();
     let (listener, port) = listener();
     let target = format!("echo=127.0.0.1:{port}");
     let pair = pair(&["http", &target]);
@@ -381,6 +392,7 @@ fn the_link_http_service_refuses_a_connect() {
 
 #[test]
 fn the_e2e_near_end_refuses_before_a_connect() {
+    test_host::need_loopback!();
     let dir = tempfile::tempdir().unwrap();
     let policy = policy_file(dir.path());
     let (_data, data_port) = listener();

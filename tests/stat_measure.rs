@@ -6,6 +6,8 @@
 //! reports, within 5 percent. A forged peer that compresses its timestamps
 //! makes the two rates disagree, and the output says so.
 
+mod test_host;
+
 use std::net::UdpSocket;
 use std::process::Command;
 use std::thread::JoinHandle;
@@ -79,6 +81,7 @@ fn capture(
 /// samples.
 #[test]
 fn a_throttled_loopback_agrees_with_an_external_clock() {
+    test_host::need_loopback!();
     let dir = tempfile::tempdir().unwrap();
     let count = 10;
     let (addr, handle) = peer(count, false);
@@ -112,6 +115,7 @@ fn a_throttled_loopback_agrees_with_an_external_clock() {
 /// capture says so instead of averaging them.
 #[test]
 fn a_forged_timestamp_is_reported_as_a_disagreement() {
+    test_host::need_loopback!();
     let dir = tempfile::tempdir().unwrap();
     let count = 5;
     let (addr, handle) = peer(count, true);
@@ -135,6 +139,7 @@ fn a_forged_timestamp_is_reported_as_a_disagreement() {
 /// gives zero loss and one that answers none gives one.
 #[test]
 fn a_peer_that_answers_nothing_is_all_loss() {
+    test_host::need_loopback!();
     let dir = tempfile::tempdir().unwrap();
     let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
     let addr = socket.local_addr().unwrap().to_string();

@@ -6,6 +6,8 @@
 //! and the packets of the test are a valid announcement and the same
 //! announcement with its port changed after the signature.
 
+mod test_host;
+
 use std::net::UdpSocket;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -36,6 +38,7 @@ fn free_port() -> u16 {
 
 #[test]
 fn an_announcement_goes_to_one_address_as_one_txt_record() {
+    test_host::need_loopback!();
     let dir = tempfile::tempdir().expect("a temporary directory");
     let me = key(&dir.path().join("key"));
     let receiver = UdpSocket::bind("127.0.0.1:0").expect("a socket");
@@ -91,6 +94,7 @@ fn an_announcement_goes_to_one_address_as_one_txt_record() {
 
 #[test]
 fn a_listener_takes_the_signed_record_and_ignores_a_changed_one() {
+    test_host::need_loopback!();
     let dir = tempfile::tempdir().expect("a temporary directory");
     let me = key(&dir.path().join("key"));
     let good =

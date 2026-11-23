@@ -307,6 +307,7 @@ fn netns_kernel_relays_tcp() {
 
 #[test]
 fn netns_kernel_relays_tcp_through_a_proxy_on_the_loopback() {
+    test_host::need_loopback!();
     if !kernel_available() {
         return;
     }
@@ -327,6 +328,7 @@ fn netns_kernel_relays_tcp_through_a_proxy_on_the_loopback() {
 
 #[test]
 fn netns_kernel_resets_a_connect_when_the_upstream_is_dead() {
+    test_host::need_loopback!();
     if !kernel_available() {
         return;
     }

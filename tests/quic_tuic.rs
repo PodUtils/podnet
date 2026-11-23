@@ -10,6 +10,8 @@
 //! from the specification for this test, not a reference TUIC server, so
 //! this is not a proof of interoperability with another implementation.
 
+mod test_host;
+
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -170,6 +172,7 @@ async fn lossy(server: SocketAddr, drop: u64) -> (SocketAddr, Arc<AtomicU64>, Ar
 /// and the queue inside its bound.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn udp_echo_survives_five_percent_loss_within_the_queue_bound() {
+    test_host::need_loopback!();
     let endpoint = pod_quic::endpoint::server(
         pod_quic::endpoint::server_config(crypto()).unwrap(),
         "127.0.0.1:0".parse().unwrap(),
