@@ -38,7 +38,9 @@ pub async fn probe_door(
 ) -> Result<DoorTimes> {
     // Issue 486 (QUIC-1, PodUtils/podnet#366): a host with no IPv4 route
     // does not dial an IPv4 door. A proxy reaches both families.
-    if proxy.is_none() {
+    if proxy.is_none()
+        && crate::egress::proxy_for(&endpoint.ip().to_string(), endpoint.port()).is_none()
+    {
         let mut log = Vec::new();
         if let Some(failure) = crate::warp::h3::family(
             crate::resolve::has_default_route(false),

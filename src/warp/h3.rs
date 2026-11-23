@@ -197,6 +197,26 @@ pub fn family(has_ipv4: bool, target: &Target, log: &mut Vec<String>) -> Option<
     None
 }
 
+/// Whether `door` goes through a proxy, passed explicitly or read from the
+/// environment (`HTTPS_PROXY`, `ALL_PROXY`, and tool files). A proxy
+/// reaches both address families without a local default route.
+pub(crate) fn via_proxy(proxy: Option<&crate::egress::Proxy>, door: &pod_warp::Door) -> bool {
+    if proxy.is_some() {
+        return true;
+    }
+    match door {
+        pod_warp::Door::Pinned(Target::Addr(addr)) => {
+            crate::egress::proxy_for(&addr.ip().to_string(), addr.port()).is_some()
+        }
+        pod_warp::Door::Pinned(Target::Name { host, port }) => {
+            crate::egress::proxy_for(host, *port).is_some()
+        }
+        pod_warp::Door::Record => {
+            crate::egress::proxy_for(pod_warp::service::masque_sni(), 443).is_some()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

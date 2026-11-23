@@ -385,16 +385,16 @@ impl WarpClient {
         if let Some(door) = masque.endpoint {
             settings.door = pod_warp::Door::Pinned(Target::Addr(door));
         }
-        // A proxy reaches both families for podnet. A loopback front door
-        // is reachable without a default route, so a local stand-in works on
-        // a host with no uplink.
+        // A proxy (flag or environment) reaches both families; a loopback
+        // front door needs no default route.
+        let via_proxy = h3::via_proxy(proxy, &settings.door);
         let loopback_door = matches!(
             &settings.door,
             pod_warp::Door::Pinned(Target::Addr(addr)) if addr.ip().is_loopback()
         );
         settings.routes = pod_warp::Routes {
-            v4: proxy.is_some() || loopback_door || crate::resolve::has_default_route(false),
-            v6: proxy.is_some() || loopback_door || crate::resolve::has_default_route(true),
+            v4: via_proxy || loopback_door || crate::resolve::has_default_route(false),
+            v6: via_proxy || loopback_door || crate::resolve::has_default_route(true),
         };
         settings.hints = hints::current();
         settings.report = report();
