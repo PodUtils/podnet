@@ -67,13 +67,14 @@ pub fn candidates(env: &dyn Fn(&str) -> Option<OsString>) -> Option<Vec<(String,
 /// `PODNET_FOREIGN_HOME=allow`: write in a directory of another user anyway.
 pub const FOREIGN_HOME_VARIABLE: &str = "PODNET_FOREIGN_HOME";
 
-/// The owner of `path`, or of its nearest directory that exists.
-fn owner_of(path: &Path) -> Option<u32> {
+/// The owner of `path`, or of its nearest directory that exists, with the
+/// path that has that owner.
+fn owner_of(path: &Path) -> Option<(u32, &Path)> {
     use std::os::unix::fs::MetadataExt as _;
     let mut at = Some(path);
     while let Some(p) = at {
         if let Ok(meta) = std::fs::metadata(p) {
-            return Some(meta.uid());
+            return Some((meta.uid(), p));
         }
         at = p.parent();
     }
@@ -94,7 +95,7 @@ pub fn check_own(path: &Path) -> Result<()> {
 }
 
 fn check_own_with(path: &Path, me: u32, allow: bool) -> Result<()> {
-    let Some(owner) = owner_of(path) else {
+    let Some((owner, found)) = owner_of(path) else {
         return Ok(());
     };
     if owner == me {
@@ -108,11 +109,17 @@ fn check_own_with(path: &Path, me: u32, allow: bool) -> Result<()> {
         );
         return Ok(());
     }
+    // T-529: name the path that has the other owner; `path` can be missing.
+    let named = if found == path {
+        path.display().to_string()
+    } else {
+        format!("{} (in it: {})", found.display(), path.display())
+    };
     Err(crate::exit::fault(
         crate::exit::Fault::Config,
         anyhow::anyhow!(
             "{} belongs to the user {owner}, not to this user ({me}): podnet writes no file of another user (a file of root in the home of a user breaks it). Run as that user (sudo -u USER, or sudo -H), give another path, or set {FOREIGN_HOME_VARIABLE}=allow",
-            path.display()
+            named
         ),
     ))
 }
@@ -125,21 +132,56 @@ pub fn state_dir() -> Result<Option<PathBuf>> {
 
 /// [`state_dir`] with the variables of `env`.
 pub fn choose(env: &dyn Fn(&str) -> Option<OsString>) -> Result<Option<PathBuf>> {
+    let (dir, skipped) = choose_with(env, &check_own)?;
+    for line in skipped {
+        if warn_first(&line) {
+            tracing::warn!("{line}");
+        }
+    }
+    Ok(dir)
+}
+
+/// True the first time that this process gives `line` (T-529: each caller
+/// of [`state_dir`] chooses again, and `warp register` has three).
+fn warn_first(line: &str) -> bool {
+    static SEEN: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+    let mut seen = SEEN
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if seen.iter().any(|s| s == line) {
+        return false;
+    }
+    seen.push(line.to_string());
+    true
+}
+
+/// [`choose`] with the check of the owner in `check`: the directory, and a
+/// warning for each directory of another user that it skips, which names
+/// the directory that podnet uses.
+fn choose_with(
+    env: &dyn Fn(&str) -> Option<OsString>,
+    check: &dyn Fn(&Path) -> Result<()>,
+) -> Result<(Option<PathBuf>, Vec<String>)> {
     let Some(candidates) = candidates(env) else {
-        return Ok(None);
+        return Ok((None, Vec::new()));
     };
     let mut failures = Vec::new();
+    let mut skipped = Vec::new();
     for (source, dir) in candidates {
         // A HOME of another user is skipped, with a warning (podssh #118).
         if source == "$HOME" || source == "$XDG_STATE_HOME" {
-            if let Err(err) = check_own(&dir) {
-                tracing::warn!("{err:#}; podnet uses the next state directory");
+            if let Err(err) = check(&dir) {
+                skipped.push(format!("{err:#}"));
                 failures.push(format!("{} ({source}): {err:#}", dir.display()));
                 continue;
             }
         }
         match prepare(&dir) {
-            Ok(()) => return Ok(Some(dir)),
+            Ok(()) => {
+                let used = format!("; podnet uses {}", dir.display());
+                let skipped = skipped.into_iter().map(|line| line + &used).collect();
+                return Ok((Some(dir), skipped));
+            }
             Err(err) => failures.push(format!("{} ({source}): {err:#}", dir.display())),
         }
     }
@@ -250,6 +292,44 @@ pub fn allows_exec(dir: &Path) -> bool {
         return false;
     }
     st.f_flag & libc::ST_NOEXEC == 0
+}
+
+/// T-525: the directory of a shim: `out` when the user gives it, else
+/// [`exec_dir`] of `name`. A shim cannot load from a `noexec` file system:
+/// an explicit `out` there is an error (exit 78), with no silent fallback,
+/// because the user writes that path into `LD_PRELOAD`.
+pub fn shim_dir(out: Option<PathBuf>, name: &str) -> Result<PathBuf> {
+    shim_dir_with(out, name, allows_exec)
+}
+
+/// [`shim_dir`] with the check of the file system in `allows`.
+fn shim_dir_with(
+    out: Option<PathBuf>,
+    name: &str,
+    allows: impl Fn(&Path) -> bool,
+) -> Result<PathBuf> {
+    let Some(out) = out else {
+        return exec_dir(name);
+    };
+    // The directory can be made later: check the nearest one that exists.
+    let there = out
+        .ancestors()
+        .find(|dir| dir.exists())
+        .unwrap_or(Path::new("."));
+    if allows(there) {
+        return Ok(out);
+    }
+    let other = match exec_dir(name) {
+        Ok(dir) => format!(" (podnet uses {})", dir.display()),
+        Err(_) => String::new(),
+    };
+    Err(crate::exit::fault(
+        crate::exit::Fault::Config,
+        anyhow::anyhow!(
+            "{} is on a noexec file system: a shim cannot load from it; give another --out, or none{other}",
+            out.display()
+        ),
+    ))
 }
 
 /// A directory for a file that must run or be loaded (a shim), named
@@ -375,6 +455,83 @@ pub fn temp_name(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// T-525 (GitHub #699): an explicit --out on a noexec file system gives
+    /// exit 78 and one line; an exec file system or no --out passes.
+    #[test]
+    fn state_shim_dir_refuses_an_explicit_noexec_out() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("podnet-vnet");
+        for (given, exec, refused) in [
+            (Some(out.clone()), false, true),
+            (Some(out.clone()), true, false),
+            (None, false, false),
+        ] {
+            let got = shim_dir_with(given.clone(), "podnet-vnet", |_| exec);
+            match (refused, got) {
+                (true, Err(err)) => {
+                    assert_eq!(crate::exit::code_of(&err), 78, "{err:#}");
+                    let line = format!("{err:#}");
+                    assert!(line.contains(&out.display().to_string()), "{line}");
+                    assert!(line.contains("noexec") && !line.contains('\n'), "{line}");
+                }
+                (false, Ok(path)) => assert!(given.is_none() || path == out, "{path:?}"),
+                (refused, got) => panic!("{given:?} exec={exec}: refused={refused}, {got:?}"),
+            }
+        }
+    }
+
+    /// T-529 (GitHub #704): the warning names the directory that has the
+    /// other owner and the directory that podnet uses, and comes once.
+    #[test]
+    fn state_a_foreign_home_is_named_once_with_the_used_directory() {
+        let root = tempfile::tempdir().unwrap();
+        let (home, tmp) = (root.path().join("home"), root.path().join("tmp"));
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::create_dir_all(&tmp).unwrap();
+        let me = unsafe { libc::geteuid() };
+        let env = |key: &str| match key {
+            "HOME" => Some(home.clone().into_os_string()),
+            "TMPDIR" => Some(tmp.clone().into_os_string()),
+            _ => None,
+        };
+        let used = tmp.join(format!("podnet-{me}"));
+        let state = home.join(".local/state/podnet");
+        let other = |p: &Path| check_own_with(p, me + 1, false);
+        let mine = |p: &Path| check_own_with(p, me, false);
+        // HOME of another user, .local missing; then .local of another user.
+        for (layout, owner_path) in [
+            ("no .local", home.clone()),
+            (".local made", home.join(".local")),
+        ] {
+            if layout == ".local made" {
+                std::fs::create_dir_all(home.join(".local")).unwrap();
+            }
+            let (dir, warnings) = choose_with(&env, &other).unwrap();
+            assert_eq!(dir.as_deref(), Some(used.as_path()), "{layout}");
+            assert_eq!(warnings.len(), 1, "{layout}: {warnings:?}");
+            let want = format!(
+                "{} (in it: {}) belongs to the user {me}, not to this user ({})",
+                owner_path.display(),
+                state.display(),
+                me + 1
+            );
+            assert!(warnings[0].starts_with(&want), "{layout}: {}", warnings[0]);
+            assert!(
+                warnings[0].ends_with(&format!("; podnet uses {}", used.display())),
+                "{layout}: {}",
+                warnings[0]
+            );
+        }
+        // HOME of this user: no warning.
+        let (dir, warnings) = choose_with(&env, &mine).unwrap();
+        assert_eq!(dir.as_deref(), Some(state.as_path()));
+        assert!(warnings.is_empty(), "{warnings:?}");
+        // Two calls in one process: one warning.
+        let line = format!("T-529 test {}", root.path().display());
+        assert!(warn_first(&line));
+        assert!(!warn_first(&line));
+    }
 
     // podssh #118: a directory of another user is refused; allow writes.
     #[test]

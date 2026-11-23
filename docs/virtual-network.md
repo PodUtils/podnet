@@ -37,7 +37,7 @@ Build the shim and start a program with it. The command prints the prefix
 of this run as an export, so evaluate the output before the program starts:
 
 ```sh
-eval "$(podnet net shim --out /tmp/podnet-vnet --log)"
+eval "$(podnet net shim --log)"
 ./server
 ```
 

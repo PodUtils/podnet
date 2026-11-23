@@ -232,3 +232,49 @@ async fn a_partial_file_with_an_unknown_state_is_refused() {
     assert!(WarpClient::load(&path).is_err());
     assert!(fake.log.lock().unwrap().is_empty());
 }
+
+/// T-529 (GitHub #704): with a HOME of another user, `warp register` warns
+/// one time, names HOME (the directory that has the other owner), and names
+/// the state directory that it uses. Before, it gave the line 3 times.
+#[test]
+fn a_foreign_home_gives_one_warning_with_the_used_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    let (home, tmp) = (dir.path().join("home"), dir.path().join("tmp"));
+    std::fs::create_dir_all(&home).unwrap();
+    std::fs::create_dir_all(&tmp).unwrap();
+    // SAFETY: geteuid has no failure.
+    let me = unsafe { libc::geteuid() };
+    let home = if me == 0 {
+        std::os::unix::fs::chown(&home, Some(65534), None).unwrap();
+        home
+    } else {
+        // The root directory belongs to root, not to this user.
+        std::path::PathBuf::from("/")
+    };
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["warp", "register"])
+        .env("HOME", &home)
+        .env("TMPDIR", &tmp)
+        .env("PODNET_WARP_API", "http://127.0.0.1:1")
+        .env_remove("XDG_STATE_HOME")
+        .env_remove("XDG_RUNTIME_DIR")
+        .env_remove("PODNET_STATE_DIR")
+        .env_remove("PODNET_FOREIGN_HOME")
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    let warnings: Vec<&str> = stderr
+        .lines()
+        .filter(|l| l.contains("belongs to the user"))
+        .collect();
+    let used = tmp.join(format!("podnet-{me}"));
+    assert_eq!(warnings.len(), 1, "{stderr}");
+    assert!(
+        warnings[0].contains(&format!("{} (in it: ", home.display())),
+        "{stderr}"
+    );
+    assert!(
+        warnings[0].ends_with(&format!("podnet uses {}", used.display())),
+        "{stderr}"
+    );
+}

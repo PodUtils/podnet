@@ -705,3 +705,76 @@ int main(int argc,char**argv){{
     let _ = server.wait();
     assert_eq!(verdict, "eagain");
 }
+
+/// T-525 (GitHub #699): each command that writes a shim refuses an explicit
+/// `--out` on a `noexec` file system with exit 78 and one line, and takes
+/// the same `--out` on a file system that allows exec. A user and mount
+/// namespace mounts the two tmpfs; a host that refuses it skips.
+#[test]
+fn an_explicit_out_on_a_noexec_mount_exits_78() {
+    let can = Command::new("unshare")
+        .args(["-rm", "true"])
+        .output()
+        .is_ok_and(|o| o.status.success());
+    if !can {
+        eprintln!("skip: no user and mount namespace on this host");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let base = dir.path().display().to_string();
+    let script = r#"set -e
+base=$1; shift
+mkdir -p "$base/noexec" "$base/exec"
+mount -t tmpfs -o noexec none "$base/noexec" || { echo skip; exit 0; }
+mount -t tmpfs none "$base/exec" || { echo skip; exit 0; }
+for fs in noexec exec; do
+  for cmd in shim socksify ts-shims passwd-shim; do
+    [ "$fs" = exec ] && [ "$cmd" != passwd-shim ] && continue
+    code=0
+    "$@" net "$cmd" --out "$base/$fs/$cmd" >/dev/null 2>"$base/err" || code=$?
+    echo "$fs $cmd $code $(grep -c . "$base/err") $(head -1 "$base/err")"
+  done
+done
+"#;
+    let out = Command::new("unshare")
+        .args(["-rm", "sh", "-c", script, "sh", &base])
+        .arg(env!("CARGO_BIN_EXE_podnet"))
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        out.status.success(),
+        "{stdout}{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    if stdout.trim() == "skip" {
+        eprintln!("skip: the namespace cannot mount a tmpfs");
+        return;
+    }
+    let mut faults = Vec::new();
+    let mut rows = 0;
+    for line in stdout.lines() {
+        rows += 1;
+        let mut words = line.splitn(5, ' ');
+        let (fs, cmd, code, lines, first) = (
+            words.next().unwrap_or(""),
+            words.next().unwrap_or(""),
+            words.next().unwrap_or(""),
+            words.next().unwrap_or(""),
+            words.next().unwrap_or(""),
+        );
+        let ok = match fs {
+            "noexec" => {
+                code == "78"
+                    && lines == "1"
+                    && first.contains(&format!("{base}/noexec/{cmd} is on a noexec file system"))
+            }
+            _ => code == "0",
+        };
+        if !ok {
+            faults.push(line.to_string());
+        }
+    }
+    assert_eq!(rows, 5, "{stdout}");
+    assert!(faults.is_empty(), "{}", faults.join("\n"));
+}

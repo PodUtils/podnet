@@ -412,21 +412,22 @@ async fn ipv6(timeout: Duration) -> Outcome {
 
 /// A TCP listener on 127.0.0.1 and a connect to it.
 async fn localhost() -> Outcome {
-    let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {
-        Ok(l) => l,
-        Err(err) => return Outcome::Failed(format!("bind: {err}")),
-    };
-    let Ok(addr) = listener.local_addr() else {
-        return Outcome::Failed("no local address".into());
-    };
-    // EGRESS-3 and EGRESS-4: the loopback listener is still a destination
-    // of the deployment's policy, checked before the socket opens.
-    if let Err(refused) = crate::policy::permit(&addr.ip().to_string(), addr.port()) {
-        return Outcome::Failed(refused.reason);
-    }
-    match tokio::net::TcpStream::connect(addr).await {
-        Ok(_) => Outcome::Ok,
-        Err(err) => Outcome::Failed(format!("connect: {err}")),
+    // T-524: the probe of `podnet net doctor` too.
+    let probe = tokio::task::spawn_blocking(|| {
+        crate::ports::loopback_connect(|addr| {
+            // EGRESS-3 and EGRESS-4: the loopback listener is still a
+            // destination of the deployment's policy, checked before the
+            // socket opens.
+            crate::policy::permit(&addr.ip().to_string(), addr.port())
+                .map(|_| ())
+                .map_err(|refused| refused.reason)
+        })
+    })
+    .await;
+    match probe {
+        Ok(Ok(_)) => Outcome::Ok,
+        Ok(Err(why)) => Outcome::Failed(why),
+        Err(err) => Outcome::Failed(format!("the probe stopped: {err}")),
     }
 }
 

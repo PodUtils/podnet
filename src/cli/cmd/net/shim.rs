@@ -34,11 +34,8 @@ pub(crate) fn net_shim(args: ShimArgs) -> Result<()> {
                 .fault(Fault::Usage);
         }
     };
-    let directory = args
-        .out
-        .clone()
-        .map(Ok)
-        .unwrap_or_else(|| podnet::state::exec_dir("podnet-vnet"))?;
+    // T-525: an explicit --out on a noexec file system is refused.
+    let directory = podnet::state::shim_dir(args.out.clone(), "podnet-vnet")?;
     let shim = match podnet::vnet::shim::locate() {
         Some(shim) if args.out.is_none() => shim,
         _ => podnet::vnet::shim::build(&directory)?,
@@ -154,11 +151,8 @@ pub(crate) fn print_environment(
 pub(crate) fn net_socksify(args: SocksifyArgs) -> Result<()> {
     // T-167: a bad route is a usage error before the shim is built.
     let cidrs = podnet::vnet::shim::socks_route_list(&args.cidrs).fault(Fault::Usage)?;
-    let directory = args
-        .out
-        .clone()
-        .map(Ok)
-        .unwrap_or_else(|| podnet::state::exec_dir("podnet-socks"))?;
+    // T-525: an explicit --out on a noexec file system is refused.
+    let directory = podnet::state::shim_dir(args.out.clone(), "podnet-socks")?;
     let shim = match podnet::vnet::shim::locate_socks() {
         Some(shim) if args.out.is_none() => shim,
         _ => podnet::vnet::shim::build_socks(&directory)?,
@@ -193,11 +187,8 @@ fn write_user_shims(
 )> {
     use podnet::vnet::tailscale_ssh;
 
-    let directory = args
-        .out
-        .clone()
-        .map(Ok)
-        .unwrap_or_else(|| podnet::state::exec_dir("podnet-ts-shims"))?;
+    // T-525: an explicit --out on a noexec file system is refused.
+    let directory = podnet::state::shim_dir(args.out.clone(), "podnet-ts-shims")?;
     let mut user = tailscale_ssh::current_user();
     // The home of the entry is $HOME: ssh and ssh-keygen find ~/.ssh by
     // the entry, not by $HOME (T-363).

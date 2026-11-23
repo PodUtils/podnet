@@ -132,6 +132,13 @@ UDP egress: refused makes --protocol auto skip QUIC on UDP 7844; unknown keeps t
   order (the next leg starts after 2 s); PODNET_UDP=off|on|probe sets it
 ";
 
+/// The probe of a connect to a TCP listener on 127.0.0.1 (T-524).
+pub const CONNECT_INET: &str = "connect(AF_INET, 127.0.0.1)";
+/// The probe of a connect to a unix socket at a path (T-524).
+pub const CONNECT_UNIX: &str = "connect(AF_UNIX, path)";
+/// The commands that take a unix socket in place of a TCP listener.
+const UNIX_COMMANDS: &str = "warp proxy --listen unix:, net proxy, connect -L unix://";
+
 /// The last line of `podnet net doctor`. "not ready" only when the shim is
 /// needed (AF_INET bind is refused) and a condition of it fails. A host that
 /// allows AF_INET needs no shim; `podnet pod doctor` tests another thing (the
@@ -144,7 +151,14 @@ pub fn verdict(probes: &[Probe]) -> String {
             .is_some_and(|p| p.result.is_ok())
     };
     if ok("bind(AF_INET, 127.0.0.1:0)") && ok("listen(AF_INET, 127.0.0.1:0)") {
-        return "podnet-vnet: not needed: this host allows AF_INET bind and listen, so programs use real addresses (podnet pod doctor tests the backends of podnet pod)".into();
+        // T-524: a listener that no connect reaches is no listener.
+        if ok(CONNECT_INET) {
+            return "podnet-vnet: not needed: this host allows AF_INET bind, listen and connect, so programs use real addresses (podnet pod doctor tests the backends of podnet pod)".into();
+        }
+        if ok(CONNECT_UNIX) {
+            return format!("podnet-vnet: TCP on the loopback does not work here: use unix sockets ({UNIX_COMMANDS})");
+        }
+        return "podnet-vnet: not ready: no connect on the loopback (TCP or AF_UNIX)".into();
     }
     if ready(probes) {
         return "podnet-vnet: ready".into();
@@ -536,6 +550,13 @@ mod linux {
         None
     }
 
+    fn connected(result: Result<(), String>) -> ProbeResult {
+        match result {
+            Ok(()) => ProbeResult::Ok("a listener answered".into()),
+            Err(why) => ProbeResult::Fail(why),
+        }
+    }
+
     pub fn run() -> Vec<Probe> {
         let mut probes = vec![
             unshare_probe("unshare(CLONE_NEWUSER)", libc::CLONE_NEWUSER),
@@ -560,6 +581,11 @@ mod linux {
             "listen(AF_INET, 127.0.0.1:0)",
             bind_v4([127, 0, 0, 1], libc::SOCK_STREAM),
         );
+        // T-524: a bind and a listen can work where a connect fails.
+        probes.push(Probe {
+            name: super::CONNECT_INET,
+            result: connected(podnet_core::ports::loopback_connect(|_| Ok(())).map(drop)),
+        });
         pair(
             &mut probes,
             "bind(AF_INET, 127.0.0.2:0)",
@@ -598,6 +624,10 @@ mod linux {
             "listen(AF_UNIX, path)",
             path_result,
         );
+        probes.push(Probe {
+            name: super::CONNECT_UNIX,
+            result: connected(podnet_core::ports::unix_connect(&path)),
+        });
         pair(
             &mut probes,
             "bind(AF_UNIX, \\0abstract)",
@@ -649,94 +679,4 @@ mod linux {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn probes_run_and_render() {
-        let probes = run();
-        assert!(!probes.is_empty());
-        let rendered = render(&probes);
-        assert!(rendered.contains("bind(AF_UNIX, path)"));
-        assert!(!ready(&[]), "an empty probe set is not ready");
-        let allowed = |name: &'static str| Probe {
-            name,
-            result: ProbeResult::Ok("allowed".into()),
-        };
-        let open = [
-            allowed("bind(AF_INET, 127.0.0.1:0)"),
-            allowed("listen(AF_INET, 127.0.0.1:0)"),
-        ];
-        assert!(verdict(&open).starts_with("podnet-vnet: not needed"));
-        let sealed = [
-            Probe {
-                name: "bind(AF_INET, 127.0.0.1:0)",
-                result: ProbeResult::Fail("EACCES".into()),
-            },
-            allowed("bind(AF_UNIX, path)"),
-        ];
-        assert_eq!(
-            verdict(&sealed),
-            "podnet-vnet: not ready: no C compiler for the shim"
-        );
-        // Issue 181: the detail of the probe, and the advice for a scratch
-        // directory.
-        let mut scratch = sealed.to_vec();
-        scratch.push(Probe {
-            name: "cc -shared -fPIC",
-            result: ProbeResult::Fail("cannot create a scratch dir".into()),
-        });
-        let v = verdict(&scratch);
-        assert!(v.contains("cannot create a scratch dir"), "{v}");
-        assert!(v.contains("TMPDIR"), "{v}");
-    }
-
-    // T-168: a passwd file with no entry for the uid is one fail line that
-    // names the shim.
-    #[test]
-    fn passwd_probe_names_the_shim() {
-        let dir = std::env::temp_dir().join(format!("podnet-passwd-probe-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let file = dir.join("passwd");
-        std::fs::write(
-            &file,
-            "root:x:0:0:root:/root:/bin/sh\nme:x:1000:1000::/home/me:/bin/sh\n",
-        )
-        .unwrap();
-        assert_eq!(
-            passwd_probe(&file, 1000).result,
-            ProbeResult::Ok("uid 1000 is me".into())
-        );
-        match passwd_probe(&file, 4242).result {
-            ProbeResult::Fail(why) => {
-                assert!(why.contains("uid 4242"), "{why}");
-                assert!(why.contains("podnet net passwd-shim"), "{why}");
-            }
-            other => panic!("{other:?}"),
-        }
-        assert!(!passwd_probe(&dir.join("none"), 0).result.is_ok());
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn ready_requires_the_core_conditions() {
-        let probes = vec![
-            Probe {
-                name: "bind(AF_INET, 127.0.0.1:0)",
-                result: ProbeResult::Fail("EACCES".into()),
-            },
-            Probe {
-                name: "bind(AF_UNIX, path)",
-                result: ProbeResult::Ok("allowed".into()),
-            },
-            Probe {
-                name: "cc -shared -fPIC",
-                result: ProbeResult::Ok("cc".into()),
-            },
-        ];
-        assert!(ready(&probes));
-        let mut not_ready = probes.clone();
-        not_ready[0].result = ProbeResult::Ok("allowed".into());
-        assert!(!ready(&not_ready));
-    }
-}
+mod tests;

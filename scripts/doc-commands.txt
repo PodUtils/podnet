@@ -61,7 +61,7 @@ docs/maintenance.md 1da99bd822 live the GitHub API through forge.web.pkgforge.de
 docs/maintenance.md 2406900df5 live reads PodUtils/podcrates from GitHub
 docs/maintenance.md 29261c6550 skip a template of the take procedure: vX.Y.Z and pod-NAME are placeholders
 
-docs/networks.md df6f52b309 skip a reference list: foreground servers and the placeholder ./server
+docs/networks.md 159ce1fea2 skip a reference list: foreground servers and the placeholder ./server
 docs/networks.md 8d40d38a40 skip a reference list: a foreground switch and the placeholder switch-host
 docs/networks.md 20a2357daf live needs a running tailscaled and a tailnet
 docs/networks.md d8966cbe82 live needs netbird and a NetBird account (NB_SETUP_KEY=... is a placeholder)
@@ -112,7 +112,7 @@ docs/tunnels.md 4bb2408e42 live a quick tunnel; <random> is a placeholder
 docs/tunnels.md 3937e7aa8d live a quick tunnel; <random> and user@host are placeholders
 docs/tunnels.md 47ef8efae1 skip a reference list: <URL> is a placeholder
 
-docs/virtual-network.md e36fe5a2cf skip a template: ./server is a placeholder
+docs/virtual-network.md 9c652c4aa9 skip a template: ./server is a placeholder
 docs/virtual-network.md 0c178d25d6 skip a foreground proxy; /run/app.sock is the socket of the user
 docs/virtual-network.md 75f5e32ef6 skip a template of three hosts S, A and B; <host> is a placeholder
 docs/virtual-network.md af8b01e7ad skip a foreground proxy after a switch in the background

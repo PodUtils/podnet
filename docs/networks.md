@@ -24,8 +24,8 @@ It needs no namespace, no TUN device and no capability.
 ```sh
 podnet net doctor                         # what this host permits
 podnet net doctor --network SPEC          # also the row of one network (repeatable)
-podnet net shim --out /tmp/podnet-vnet        # build the LD_PRELOAD shim (--map-loopback: 127.0.0.1 connects go to the stack)
-LD_PRELOAD=/tmp/podnet-vnet/libpodnet-vnet.so ./server      # bind 10.66.0.2:8080 works
+podnet net shim --out "$HOME/.local/share/podnet-vnet"   # build the LD_PRELOAD shim (--map-loopback: 127.0.0.1 connects go to the stack)
+LD_PRELOAD="$HOME/.local/share/podnet-vnet/libpodnet-vnet.so" ./server   # bind 10.66.0.2:8080 works
 podnet net proxy --forward 10.66.0.2:8080=unix:/run/app.sock
 podnet net switch --listen unix:/tmp/podnet-vnet.switch   # connect stacks
 podnet net proxy --switch unix:/tmp/podnet-vnet.switch --address 10.66.0.3
@@ -49,7 +49,16 @@ podnet net proxy --switch tcp://switch-host:7000 --address 10.66.0.3
 `podnet net doctor` calls `bind` and then `listen` for each stream socket
 (a policy can allow one and refuse the other; `SO_ACCEPTCONN` confirms the
 listen), and sends one QUIC packet to the edge on UDP 7844: answered, refused
-or `?` (no answer in 3 s). It prints the commands that need each listener.
+or `?` (no answer in 3 s). It connects to a TCP listener on 127.0.0.1 and to a
+unix socket (the rows `connect(AF_INET, 127.0.0.1)` and `connect(AF_UNIX, path)`):
+a host can allow a bind and a listen on the loopback and refuse each connect to
+it (no address on `lo`). Then the last line says `TCP on the loopback does not
+work here: use unix sockets`. It prints the commands that need each listener.
+
+A shim must load from a file system that allows exec. With no `--out`,
+`net shim`, `net socksify`, `net ts-shims` and `net passwd-shim` take the first
+directory that is writable and not `noexec`. An `--out` on a `noexec` file
+system is an error (exit 78) that names the directory that podnet would use.
 `PODNET_UDP=off` makes a tunnel use no QUIC on UDP 7844; `PODNET_UDP=on` skips
 the probe at start.
 

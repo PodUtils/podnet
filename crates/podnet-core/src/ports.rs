@@ -99,9 +99,63 @@ pub async fn confirm_local_http(port: u16) -> anyhow::Result<u16> {
     Ok(port)
 }
 
+/// T-524: open a TCP listener on 127.0.0.1 and connect to it. A bind and a
+/// listen can work on a host where a connect to the loopback fails (no
+/// address on `lo`). `check` sees the address of the listener before the
+/// connect (the policy of `podnet agent`). The error is one line:
+/// `bind: ...`, `connect: ...`, or the text of `check`.
+pub fn loopback_connect(
+    check: impl FnOnce(std::net::SocketAddr) -> Result<(), String>,
+) -> Result<std::net::SocketAddr, String> {
+    let listener =
+        std::net::TcpListener::bind(("127.0.0.1", 0)).map_err(|e| format!("bind: {e}"))?;
+    let addr = listener
+        .local_addr()
+        .map_err(|e| format!("no local address: {e}"))?;
+    check(addr)?;
+    std::net::TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(2))
+        .map_err(|e| format!("connect: {e}"))?;
+    Ok(addr)
+}
+
+/// T-524: bind a unix socket at `path`, connect to it, and remove the file.
+pub fn unix_connect(path: &std::path::Path) -> Result<(), String> {
+    let _ = std::fs::remove_file(path);
+    let result = std::os::unix::net::UnixListener::bind(path)
+        .map_err(|e| format!("bind: {e}"))
+        .and_then(|listener| {
+            std::os::unix::net::UnixStream::connect(path)
+                .map(drop)
+                .map_err(|e| format!("connect: {e}"))?;
+            drop(listener);
+            Ok(())
+        });
+    let _ = std::fs::remove_file(path);
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn loopback_connect_names_the_failed_step() {
+        let dir = std::env::temp_dir().join(format!("podnet-unix-connect-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert_eq!(unix_connect(&dir.join("s.sock")), Ok(()));
+        let none = unix_connect(&dir.join("no/such/s.sock")).unwrap_err();
+        assert!(none.starts_with("bind: "), "{none}");
+        let _ = std::fs::remove_dir_all(&dir);
+        let refused = loopback_connect(|_| Err("refused by the policy".into()));
+        // A host with no loopback refuses the bind: the line names it.
+        match refused {
+            Err(line) => assert!(
+                line == "refused by the policy" || line.starts_with("bind: "),
+                "{line}"
+            ),
+            Ok(addr) => panic!("the check was not called: {addr}"),
+        }
+    }
 
     #[tokio::test]
     async fn the_probe_splits_open_and_closed_ports() {

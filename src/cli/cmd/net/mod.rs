@@ -100,7 +100,8 @@ pub(crate) struct TailscaleArgs {
 
 #[derive(Args, Debug)]
 pub(crate) struct SocksifyArgs {
-    /// Directory to write and compile the shim into.
+    /// Directory to write and compile the shim into. A noexec file system
+    /// is refused (exit 78).
     #[arg(long)]
     out: Option<PathBuf>,
     /// The unix socket of the front door (exported as PODNET_SOCKS_PROXY). It
@@ -127,7 +128,7 @@ pub(crate) struct TsShimsArgs {
     /// Directory for passwd, group, getent, id and fakepwd.so. It must
     /// belong to this user, and other users must not write it. Default:
     /// `podnet-ts-shims` in the first private directory that is not noexec
-    /// (as for `net shim`).
+    /// (as for `net shim`). A noexec file system is refused (exit 78).
     #[arg(long)]
     out: Option<PathBuf>,
     /// Local login name. Default: the current user.
@@ -149,7 +150,8 @@ pub(crate) struct TsShimsArgs {
 
 #[derive(Args, Debug)]
 pub(crate) struct ShimArgs {
-    /// Directory to write and compile the shim into when none is found.
+    /// Directory to write and compile the shim into when none is found. A
+    /// noexec file system is refused (exit 78).
     #[arg(long)]
     out: Option<PathBuf>,
     /// Log every translation the shim performs.

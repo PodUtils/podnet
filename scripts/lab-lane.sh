@@ -159,6 +159,15 @@ case_main() {
         case $code in 0 | 1) ;; *) exit 1 ;; esac
         if grep -q 'panicked' "$dir/doctor.txt"; then exit 1; fi
         test -s "$dir/doctor.txt" || exit 1
+        # T-524: where a connect to the loopback fails (the lab
+        # no-loopback), net doctor does not say "not needed".
+        timeout 60 "$podnet" net doctor >"$dir/net-doctor.txt" 2>&1
+        cat "$dir/net-doctor.txt"
+        if grep -q '^connect(AF_INET, 127.0.0.1) *fail' "$dir/net-doctor.txt" &&
+            grep -q 'podnet-vnet: not needed' "$dir/net-doctor.txt"; then
+            echo "net doctor: not needed with no loopback connect"
+            exit 1
+        fi
         # In a network lab, the doctor names the proxy of the lab, and its
         # credential where the lab gives one.
         if in_list "$LANE_PROFILE" "$NET_LABS"; then
