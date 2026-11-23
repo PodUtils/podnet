@@ -369,5 +369,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #677 | COORD-112: pod-core: one atomic replace of a file at a path (a temporary file, fsync, rename) (to podcrates) | closed (answered: podcrates `v0.81.0`, PodUtils/podcrates@T-1066; taken in T-505) | T-473 |
 | #678 | [gh action] requested: ci on the take of podcrates `v0.81.0` and the replace of `pod_core::files` (T-505, T-473) | closed: ci 44871490037 passed on 9a9a0a9 | T-505 |
 | #679 | [gh action] requested: issue-sync (not a dry run) on `1a4781eb` for #672 and #677 | closed: superseded by the `v0.82.0` consolidation push | none |
+| #685 | COORD-113: pod-cloudflare: a refusal with retry: yes needs a time budget, and keeps its class through "no edge leg worked" (to podcrates) | open (a COORD issue between sessions; T-513 is the second path in podnet) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.
