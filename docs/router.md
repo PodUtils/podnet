@@ -397,8 +397,9 @@ of the peer: the user of the router, or root. A peer that is not allowed gets 40
 A write answers with the status document of the new state. An error answers `{"error": TEXT}` with
 400 (a bad request, an unknown key of a door), 403 (the gate), 404 (an unknown path, group, member, door or
 network), 405 (a wrong method), 409 (no `health` section; a door that listens there; a name that is taken; a
-network that a door, a guest or a group uses), 429 (a rotate too soon) or 502 (the network did not come
-up, or the door could not bind; the router stays as it was). The exit codes of the flags: 64 for 4xx, 75 for 429, 69 when no router answers.
+network that a door, a guest or a group uses), 429 (a rotate too soon), 431 (a request head of more than 16 KiB),
+502 (the network did not come up, or the door could not bind; the router stays as it was) or 505 (a request that is
+not HTTP/1.0 or HTTP/1.1). The exit codes of the flags: 64 for 4xx, 75 for 429, 69 when no router answers.
 
 ## Kernel mode
 
