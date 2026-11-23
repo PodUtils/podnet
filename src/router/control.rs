@@ -350,6 +350,8 @@ fn reason(code: u16) -> &'static str {
         405 => "Method Not Allowed",
         409 => "Conflict",
         429 => "Too Many Requests",
+        431 => "Request Header Fields Too Large",
+        505 => "HTTP Version Not Supported",
         _ => "Bad Gateway",
     }
 }
@@ -504,47 +506,27 @@ impl Router {
     }
 }
 
-/// Read one request: the method, the route and the body.
+/// Read one request: the method, the route and the body. The head is read
+/// by the request reader of `pod_proxy::http` (16 KiB at most); a head that
+/// it refuses gets its status (400, 431 or 505).
 async fn read_request(
     stream: &mut tokio::net::UnixStream,
 ) -> Result<(String, String, Vec<u8>), Answer> {
     use tokio::io::AsyncReadExt as _;
     let bad = |text: &str| Answer::new(400, text.to_string());
-    let mut data = Vec::new();
-    let mut buf = [0u8; 512];
-    let end = loop {
-        if let Some(at) = data.windows(4).position(|w| w == b"\r\n\r\n") {
-            break at + 4;
-        }
-        if data.len() >= 8192 {
-            return Err(bad("the head is too long"));
-        }
-        let n = stream
-            .read(&mut buf)
-            .await
-            .map_err(|e| bad(&e.to_string()))?;
-        if n == 0 {
-            return Err(bad("the request ends in the head"));
-        }
-        data.extend_from_slice(&buf[..n]);
-    };
-    let head = String::from_utf8_lossy(&data[..end]).into_owned();
-    let mut lines = head.lines();
-    let mut first = lines.next().unwrap_or("").split_whitespace();
-    let (Some(method), Some(route)) = (first.next(), first.next()) else {
-        return Err(bad("give METHOD /route/NAME HTTP/1.0"));
-    };
-    let length = lines
-        .filter_map(|l| l.split_once(':'))
-        .find(|(k, _)| k.trim().eq_ignore_ascii_case("content-length"))
-        .map(|(_, v)| v.trim().parse::<usize>())
+    let (head, mut body) = pod_proxy::http::read_request(stream, Vec::new())
+        .await
+        .map_err(|e| Answer::new(e.status().unwrap_or(400), e.to_string()))?;
+    let length = head
+        .header("content-length")
+        .map(str::parse::<usize>)
         .transpose()
         .map_err(|_| bad("content-length is not a number"))?
         .unwrap_or(0);
     if length > BODY_LIMIT {
         return Err(bad("the body is too long"));
     }
-    let mut body = data[end..].to_vec();
+    let mut buf = [0u8; 512];
     while body.len() < length {
         let n = stream
             .read(&mut buf)
@@ -556,7 +538,7 @@ async fn read_request(
         body.extend_from_slice(&buf[..n]);
     }
     body.truncate(length);
-    Ok((method.to_string(), route.to_string(), body))
+    Ok((head.method, head.target, body))
 }
 
 /// The status document of the router of the control socket `path`
@@ -569,7 +551,7 @@ pub async fn read_status(path: &Path) -> Result<Value> {
 /// (`podnet route --status --metrics`).
 pub async fn read_metrics(path: &Path) -> Result<String> {
     let (code, line, body) = exchange(path, "GET", "/route/metrics", None).await?;
-    if code != Some(200) {
+    if code != 200 {
         return Err(refusal(code, &line, &body));
     }
     String::from_utf8(body).context("the metrics of the control socket")
@@ -584,31 +566,32 @@ pub async fn request(
     body: Option<&Value>,
 ) -> Result<Value> {
     let (code, line, answer) = exchange(path, method, route, body).await?;
-    if code != Some(200) {
+    if code != 200 {
         return Err(refusal(code, &line, &answer));
     }
     serde_json::from_slice(&answer).context("the answer of the control socket")
 }
 
 /// The error of an answer that is not a 200: an [`Answer`] with the text of
-/// its JSON `error`, else the status line.
-fn refusal(code: Option<u16>, line: &str, body: &[u8]) -> anyhow::Error {
+/// its JSON `error`, else the status and the reason.
+fn refusal(code: u16, line: &str, body: &[u8]) -> anyhow::Error {
     let value: Value = serde_json::from_slice(body).unwrap_or(Value::Null);
     let text = value["error"].as_str().unwrap_or(line).to_string();
-    match code {
-        Some(code) => Answer::new(code, text).into(),
-        None => anyhow::anyhow!("the control socket answered: {line}"),
-    }
+    Answer::new(code, text).into()
 }
 
-/// One exchange: the code, the status line and the body of the answer.
+/// The longest body of an answer of the control socket.
+const ANSWER_LIMIT: usize = 16 << 20;
+
+/// One exchange: the code, the status and the reason, and the body of the
+/// answer. The answer is read by the response reader of `pod_proxy::http`.
 async fn exchange(
     path: &Path,
     method: &str,
     route: &str,
     body: Option<&Value>,
-) -> Result<(Option<u16>, String, Vec<u8>)> {
-    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+) -> Result<(u16, String, Vec<u8>)> {
+    use tokio::io::AsyncWriteExt as _;
     let exchange = async {
         let mut stream = tokio::net::UnixStream::connect(path)
             .await
@@ -621,12 +604,9 @@ async fn exchange(
         // A router that refuses the peer answers and closes before it reads.
         let _ = stream.write_all(head.as_bytes()).await;
         let _ = stream.write_all(body.as_bytes()).await;
-        let mut answer = Vec::new();
-        (&mut stream)
-            .take(16 << 20)
-            .read_to_end(&mut answer)
-            .await?;
-        Ok::<_, anyhow::Error>(answer)
+        pod_proxy::http::read_response(&mut stream, Vec::new(), ANSWER_LIMIT)
+            .await
+            .context("the control socket gave no HTTP answer")
     };
     let answer = tokio::time::timeout(CONTROL_LIMIT, exchange)
         .await
@@ -636,17 +616,8 @@ async fn exchange(
                 path.display()
             )
         })??;
-    let split = answer
-        .windows(4)
-        .position(|w| w == b"\r\n\r\n")
-        .context("the control socket gave no HTTP answer")?;
-    let status_line = String::from_utf8_lossy(&answer[..split]);
-    let line = status_line.lines().next().unwrap_or("").to_string();
-    let code = line
-        .split_whitespace()
-        .nth(1)
-        .and_then(|c| c.parse::<u16>().ok());
-    Ok((code, line, answer[split + 4..].to_vec()))
+    let line = format!("{} {}", answer.status, answer.reason);
+    Ok((answer.status, line, answer.body))
 }
 
 #[cfg(test)]

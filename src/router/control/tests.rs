@@ -116,6 +116,53 @@ fn answer_of(err: &anyhow::Error) -> &Answer {
         .unwrap_or_else(|| panic!("not an answer of the socket: {err:#}"))
 }
 
+/// T-473: the control socket reads a head with the request reader of
+/// `pod_proxy::http`. Each head that it refuses gets one status and one
+/// JSON error; a good head with its body gets 200.
+#[tokio::test]
+async fn route_control_answers_each_bad_head_with_its_status() {
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+    let dir = tempfile::tempdir().unwrap();
+    let (router, _) = identity_router(&dir.path().join("state"), false);
+    let path = serve(&router, dir.path()).await;
+    let long = format!(
+        "GET /route/status HTTP/1.0\r\nx: {}\r\n\r\n",
+        "y".repeat(16 * 1024)
+    );
+    let cases: [(&[u8], u16); 7] = [
+        (b"GET /route/status HTTP/1.0\r\n\r\n", 200),
+        (b"GET /route/status HTTP/1.0\nHost: x\n\n", 200),
+        (
+            b"PATCH /route/interval HTTP/1.0\r\ncontent-length: 14\r\n\r\n{\"seconds\": 5}",
+            200,
+        ),
+        (long.as_bytes(), 431),
+        (b"GET /route/status HTTP/2.0\r\n\r\n", 505),
+        (b"GET /route/status HTTP/1.0\r\nx\x1b: y\r\n\r\n", 400),
+        (
+            b"GET /route/status HTTP/1.0\r\ncontent-length: x\r\n\r\n",
+            400,
+        ),
+    ];
+    for (sent, code) in cases {
+        let mut stream = tokio::net::UnixStream::connect(&path).await.unwrap();
+        let _ = stream.write_all(sent).await;
+        let mut answer = Vec::new();
+        // A close with bytes unread can end the read with a reset after the
+        // answer: the answer is what counts.
+        let _ = stream.read_to_end(&mut answer).await;
+        let text = String::from_utf8_lossy(&answer);
+        assert!(
+            text.starts_with(&format!("HTTP/1.0 {code} ")),
+            "{:?}: {text}",
+            String::from_utf8_lossy(&sent[..sent.len().min(60)])
+        );
+        if code != 200 {
+            assert!(text.contains("{\"error\":"), "{text}");
+        }
+    }
+}
+
 /// T-180, the Prove: a rotate makes the new link before it ends the old one,
 /// gives the network the same state directory both times (so a WARP network
 /// registers no new device), logs each rotation, and keeps a gap between two

@@ -37,7 +37,7 @@ use std::task::{Context as TaskContext, Poll};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadBuf};
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf};
 use tokio::net::{TcpStream, UnixStream};
 use tokio::task::JoinHandle;
 
@@ -200,55 +200,30 @@ impl AsyncWrite for Conn {
     }
 }
 
+/// The longest head of a LocalAPI answer.
+const MAX_HEAD: usize = 64 * 1024;
+
 /// Read the HTTP response head, stopping *exactly* at the blank line so the
-/// bytes of a `101` handover that follow are not consumed.
+/// bytes of a `101` handover that follow are not consumed. The reader is
+/// the one of `pod_proxy::http`.
 async fn read_http_head(stream: &mut UnixStream) -> io::Result<String> {
-    const MAX_HEAD: usize = 64 * 1024;
-    let mut head = Vec::with_capacity(256);
-    let mut byte = [0u8; 1];
-    loop {
-        let n = stream.read(&mut byte).await?;
-        if n == 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "tailscaled closed the local API connection before responding",
-            ));
-        }
-        head.push(byte[0]);
-        if head.ends_with(b"\r\n\r\n") {
-            break;
-        }
-        if head.len() > MAX_HEAD {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "local API response head is too large",
-            ));
-        }
-    }
-    Ok(String::from_utf8_lossy(&head).into_owned())
+    pod_proxy::http::read_head_exact(stream, MAX_HEAD)
+        .await
+        .map_err(|e| io::Error::new(e.kind(), format!("the tailscaled local API: {e}")))
 }
 
+/// The status and the headers (names in lower case; the first of each name)
+/// of a response head, by the parser of `pod_proxy::http`.
 fn parse_http_head(head: &str) -> io::Result<(u16, HashMap<String, String>)> {
-    let mut lines = head.split("\r\n");
-    let status_line = lines.next().unwrap_or_default();
-    let status: u16 = status_line
-        .split_whitespace()
-        .nth(1)
-        .and_then(|s| s.parse().ok())
-        .ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("bad status line {status_line:?}"),
-            )
-        })?;
+    let (status, _, fields) = pod_proxy::http::parse_head(head).map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("the tailscaled local API: {e}"),
+        )
+    })?;
     let mut headers = HashMap::new();
-    for line in lines {
-        if line.is_empty() {
-            break;
-        }
-        if let Some((name, value)) = line.split_once(':') {
-            headers.insert(name.trim().to_ascii_lowercase(), value.trim().to_string());
-        }
+    for (name, value) in fields {
+        headers.entry(name).or_insert(value);
     }
     Ok((status, headers))
 }
@@ -466,6 +441,56 @@ mod tests {
                 None
             }
         })
+    }
+
+    /// The head reader of the local API (pod_proxy::http, T-473): it stops
+    /// at the blank line, keeps the bytes of the handover in the stream, and
+    /// gives one error that names the local API for each fault.
+    #[tokio::test]
+    async fn the_head_reader_stops_at_the_blank_line_and_names_each_fault() {
+        let long = format!("HTTP/1.1 200 OK\r\nX: {}\r\n", "y".repeat(MAX_HEAD));
+        // The status and the `Upgrade` header, or words of the error.
+        type Want = Result<(u16, Option<&'static str>), &'static str>;
+        let cases: [(&[u8], Want); 5] = [
+            (
+                b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: ts-dial\r\n\r\nAFTER",
+                Ok((101, Some("ts-dial"))),
+            ),
+            (
+                b"HTTP/1.0 200 OK\r\nupgrade: a\r\nUpgrade: b\r\n\r\nAFTER",
+                Ok((200, Some("a"))),
+            ),
+            (b"HTTP/1.1 101 Swi", Err("closed before")),
+            (long.as_bytes(), Err("no end of headers")),
+            (b"SSH-2.0-x\r\n\r\nAFTER", Err("not an HTTP status line")),
+        ];
+        for (sent, want) in cases {
+            let (mut ours, mut theirs) = UnixStream::pair().unwrap();
+            let sent = sent.to_vec();
+            // The peer writes, then closes; a write past a full buffer waits.
+            tokio::spawn(async move { theirs.write_all(&sent).await });
+            let got = match read_http_head(&mut ours).await {
+                Ok(head) => parse_http_head(&head),
+                Err(e) => Err(e),
+            };
+            match (got, want) {
+                (Ok((status, headers)), Ok((code, upgrade))) => {
+                    assert_eq!(status, code);
+                    assert_eq!(headers.get("upgrade").map(String::as_str), upgrade);
+                    let mut rest = Vec::new();
+                    ours.read_to_end(&mut rest).await.unwrap();
+                    assert_eq!(rest, b"AFTER", "the bytes after the head stay");
+                }
+                (Err(e), Err(words)) => {
+                    let text = e.to_string();
+                    assert!(
+                        text.contains("tailscaled local API") && text.contains(words),
+                        "{text}"
+                    );
+                }
+                (got, want) => panic!("{got:?} for {want:?}"),
+            }
+        }
     }
 
     #[test]
