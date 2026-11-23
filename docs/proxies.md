@@ -100,10 +100,18 @@ The door has these rules for each client:
 * The door serves 1024 live clients at one time. It closes a client that comes over the cap.
 * The door waits at most 30 s for the connection to the far end. `net tailscale` waits 10 s and `net proxy`
   waits 5 s.
-* The failure of a dial gives the reply by its class: a refusal of a rule or of a policy is SOCKS5 `0x02` and
-  HTTP 403; a time limit is SOCKS5 `0x04` and HTTP 504; any other failure is a general failure (or a
-  host unreachable, when the text says refused or denied) and HTTP 502. An HTTP answer has a short text
-  body.
+* The failure of a dial gives the reply by the type of its cause (RFC 1928), not by the words of its text.
+  An HTTP answer has a short text body.
+
+  | Cause | SOCKS5 | HTTP |
+  | --- | --- | --- |
+  | A refusal of a rule or of a policy | `0x02` (not allowed) | 403 |
+  | An upstream proxy refused with a code | the code of the upstream | 502 |
+  | The far end refused the connection | `0x05` (connection refused) | 502 |
+  | The network is unreachable | `0x03` (network unreachable) | 502 |
+  | The host is unreachable, or the name has no address | `0x04` (host unreachable) | 502 |
+  | A time limit | `0x04` (host unreachable) | 504 |
+  | Any other failure | `0x01` (general failure) | 502 |
 * A request with port 0 takes the port of `--port` (`net proxy` and `net tailscale`).
 * `pod --serve`, `net proxy` and `net tailscale` take SOCKS5 and CONNECT only. A plain `http://` request
   gets 405. `net proxy` and `net tailscale` end a flow after 300 s.

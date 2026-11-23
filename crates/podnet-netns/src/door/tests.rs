@@ -376,3 +376,74 @@ async fn front_door_hands_a_command_to_its_extension() {
     let out = ask(&door, &[5, 1, 0, 5, 4, 0, 1, 0, 0, 0, 0, 0, 0]).await;
     assert_eq!(out[3], 0x07, "{out:?}");
 }
+
+/// T-527 (GitHub #702): the SOCKS5 reply code comes from the type of the
+/// cause (RFC 1928), not from the words of the text.
+#[test]
+fn door_socks_reply_code_by_cause() {
+    use std::io::{Error as Io, ErrorKind as K};
+    let wrapped = |cause: anyhow::Error| {
+        Failure::caused(
+            Stage::Proxy,
+            Class::Unavailable,
+            cause.to_string(),
+            cause.context("direct TCP to x:1"),
+        )
+    };
+    let rows: [(&str, Failure, u8); 9] = [
+        (
+            "connection refused",
+            Failure::io(Stage::Connect, Io::from(K::ConnectionRefused)),
+            0x05,
+        ),
+        (
+            "refused in the chain",
+            wrapped(Io::from(K::ConnectionRefused).into()),
+            0x05,
+        ),
+        (
+            "network unreachable",
+            wrapped(Io::from(K::NetworkUnreachable).into()),
+            0x03,
+        ),
+        (
+            "host unreachable",
+            wrapped(Io::from(K::HostUnreachable).into()),
+            0x04,
+        ),
+        (
+            "a name with no address",
+            wrapped(crate::upstream::NoAddress("no name".into()).into()),
+            0x04,
+        ),
+        (
+            "an upstream that refused",
+            wrapped(
+                crate::upstream::UpstreamRefused {
+                    target: "x:1".into(),
+                    code: 0x05,
+                }
+                .into(),
+            ),
+            0x05,
+        ),
+        (
+            "a policy refusal",
+            Failure::new(Stage::Proxy, Class::Policy, "refused by the rule r"),
+            0x02,
+        ),
+        (
+            "a timeout",
+            Failure::new(Stage::Proxy, Class::Timeout, "no answer"),
+            0x04,
+        ),
+        (
+            "words only",
+            Failure::new(Stage::Proxy, Class::Unavailable, "access denied: refused"),
+            0x01,
+        ),
+    ];
+    for (name, failure, want) in rows {
+        assert_eq!(socks_code(&failure), want, "{name}: {}", failure.chain());
+    }
+}

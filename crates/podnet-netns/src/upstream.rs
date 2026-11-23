@@ -209,9 +209,39 @@ pub use crate::rules::{
     Selected, MAX_NETS,
 };
 
+/// The name of a target has no address (the resolver failed, or gave
+/// none). The text is the text of the resolver.
+#[derive(Debug)]
+pub struct NoAddress(pub String);
+
+impl std::fmt::Display for NoAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for NoAddress {}
+
 /// TCP to `target` (`host:port`, `[v6]:port`) from this process.
 pub async fn connect_direct(target: &str) -> Result<tokio::net::TcpStream> {
-    let stream = tokio::net::TcpStream::connect(target)
+    // T-527: a name that does not resolve is a typed cause (the SOCKS5 door
+    // answers it with "host unreachable"); the io::Error of the resolver
+    // has no kind for it.
+    let addrs: Vec<SocketAddr> = match tokio::net::lookup_host(target).await {
+        Ok(addrs) => addrs.collect(),
+        Err(e) if e.kind() == std::io::ErrorKind::InvalidInput => {
+            return Err(e).with_context(|| format!("direct TCP to {target}"));
+        }
+        Err(e) => {
+            return Err(anyhow::Error::new(NoAddress(e.to_string())))
+                .with_context(|| format!("direct TCP to {target}"));
+        }
+    };
+    if addrs.is_empty() {
+        return Err(anyhow::Error::new(NoAddress("no address".into())))
+            .with_context(|| format!("direct TCP to {target}"));
+    }
+    let stream = tokio::net::TcpStream::connect(&addrs[..])
         .await
         .with_context(|| format!("direct TCP to {target}"))?;
     let _ = stream.set_nodelay(true);

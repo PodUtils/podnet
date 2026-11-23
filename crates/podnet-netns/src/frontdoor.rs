@@ -178,14 +178,16 @@ impl Dial for PodDial {
                     if let Some(refused) = e.downcast_ref::<UpstreamRefused>() {
                         crate::flowlog::refused(flow, &text, refused.code);
                     }
-                    // The reply code follows the words of the outer text.
+                    // T-527: the failure keeps its cause; the door takes the
+                    // reply code from its type, not from its words.
                     if self.verbose {
                         eprintln!("{}: front door: {e:#}", crate::cli::program_name());
                     }
-                    Err(Failure::new(
+                    Err(Failure::caused(
                         Stage::Proxy,
                         Class::Unavailable,
                         e.to_string(),
+                        e,
                     ))
                 }
             }

@@ -448,13 +448,31 @@ enum Request {
     Refused,
 }
 
-/// The SOCKS5 reply code of a failed dial: "not allowed" for a policy
-/// refusal, "host unreachable" for a timeout, else by the words of the text.
-fn socks_code(e: &Failure) -> u8 {
-    match e.class {
-        Class::Policy => 0x02,
-        Class::Timeout => 0x04,
-        _ => socks::socks5_code_for_error(&e.to_string()),
+/// The SOCKS5 reply code (RFC 1928) of a failed dial, by the type of its
+/// cause (T-527): 0x02 a policy refusal; the code of an upstream that
+/// refused; 0x05 connection refused; 0x03 network unreachable; 0x04 host
+/// unreachable, a name with no address, or a timeout; 0x01 any other failure.
+pub(crate) fn socks_code(e: &Failure) -> u8 {
+    use std::io::ErrorKind as K;
+    if e.class == Class::Policy {
+        return 0x02;
+    }
+    let mut next: Option<&(dyn std::error::Error + 'static)> = Some(e);
+    while let Some(cause) = next {
+        if let Some(refused) = cause.downcast_ref::<crate::upstream::UpstreamRefused>() {
+            return refused.code;
+        }
+        if cause.is::<crate::upstream::NoAddress>() {
+            return 0x04;
+        }
+        next = cause.source();
+    }
+    match e.io_cause().map(std::io::Error::kind) {
+        Some(K::ConnectionRefused) => 0x05,
+        Some(K::NetworkUnreachable) => 0x03,
+        Some(K::HostUnreachable | K::TimedOut) => 0x04,
+        _ if e.class == Class::Timeout => 0x04,
+        _ => 0x01,
     }
 }
 

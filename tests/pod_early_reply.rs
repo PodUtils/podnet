@@ -146,3 +146,78 @@ fn early_reply_needs_serve() {
     assert_eq!(out.status.code(), Some(64));
     assert!(String::from_utf8_lossy(&out.stderr).contains("--early-reply works with --serve"));
 }
+
+/// Ask the door at `addr` for `host:port` with SOCKS5 CONNECT and with HTTP
+/// CONNECT; return the SOCKS5 reply code and the HTTP status line.
+fn ask_both(addr: &str, host: &str, port: u16) -> (u8, String) {
+    let mut client = TcpStream::connect(addr).unwrap();
+    client
+        .set_read_timeout(Some(Duration::from_secs(20)))
+        .unwrap();
+    client.write_all(&[5, 1, 0]).unwrap();
+    let mut method = [0u8; 2];
+    client.read_exact(&mut method).unwrap();
+    let mut request = vec![5, 1, 0, 3, host.len() as u8];
+    request.extend_from_slice(host.as_bytes());
+    request.extend_from_slice(&port.to_be_bytes());
+    client.write_all(&request).unwrap();
+    let mut reply = [0u8; 10];
+    client.read_exact(&mut reply).unwrap();
+    let mut http = TcpStream::connect(addr).unwrap();
+    http.set_read_timeout(Some(Duration::from_secs(20)))
+        .unwrap();
+    write!(
+        http,
+        "CONNECT {host}:{port} HTTP/1.1\r\nHost: {host}:{port}\r\n\r\n"
+    )
+    .unwrap();
+    let mut status = String::new();
+    BufReader::new(http).read_line(&mut status).unwrap();
+    (reply[1], status.trim_end().to_string())
+}
+
+/// T-527 (GitHub #702): `pod --serve` answers each cause of a failed dial
+/// with its RFC 1928 code, and HTTP CONNECT with 502. Before the fix, each
+/// row got 0x01.
+#[test]
+fn serve_gives_the_socks5_reply_code_of_the_cause() {
+    test_host::need_loopback!();
+    let mut child = pod_command()
+        .args(["--serve", "tcp://127.0.0.1:0", "-x", "direct"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut line = String::new();
+    BufReader::new(child.stderr.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let addr = line
+        .split("tcp://")
+        .nth(1)
+        .and_then(|rest| rest.split_whitespace().next())
+        .unwrap_or_else(|| panic!("no address in {line:?}"))
+        .to_string();
+    // A port with no listener: bind one, then close it.
+    let closed = TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let rows = [
+        ("a refused port", "127.0.0.1", closed, 0x05),
+        ("a name with no address", "nowhere.invalid", 80, 0x04),
+    ];
+    let mut faults = Vec::new();
+    for (name, host, port, want) in rows {
+        let (code, status) = ask_both(&addr, host, port);
+        if code != want || !status.contains(" 502 ") {
+            faults.push(format!(
+                "{name}: SOCKS5 {code:#04x} (want {want:#04x}), HTTP {status:?} (want 502)"
+            ));
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    assert!(faults.is_empty(), "{}", faults.join("\n"));
+}
