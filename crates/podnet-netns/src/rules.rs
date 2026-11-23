@@ -159,6 +159,32 @@ pub(crate) fn note_refusal(what: &str, target: &str, rule: &str, verbose: bool) 
     crate::notice::connect_failed(target, &line, verbose);
 }
 
+/// [`note_refusal`] for a connect of the family `v6` to an address of a
+/// name (T-532). The fake DNS of the seccomp backend gives a name an IPv4
+/// and an IPv6 address, and a program tries the second address after a
+/// refusal of the first: that is one flow, and it counts once.
+pub(crate) fn note_refusal_of(what: &str, target: &str, rule: &str, verbose: bool, v6: bool) {
+    use std::time::{Duration, Instant};
+    static LAST: std::sync::Mutex<Option<(String, bool, Instant)>> = std::sync::Mutex::new(None);
+    let mut last = LAST
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let second = matches!(&*last, Some((t, family, at))
+        if t == target && *family != v6 && at.elapsed() < Duration::from_secs(2));
+    *last = (!second).then(|| (target.to_string(), v6, Instant::now()));
+    drop(last);
+    if second {
+        if verbose {
+            let line = format!(
+                "{what} {target} refused by the rule {rule} (the other address of the same flow)"
+            );
+            crate::notice::connect_failed(target, &line, verbose);
+        }
+        return;
+    }
+    note_refusal(what, target, rule, verbose);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -259,3 +259,28 @@ fn a_failed_check_exits_with_a_code_whose_row_names_the_command() {
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
+
+/// T-532: an unknown name gives exit 69 and one line, for each command
+/// that takes the name of an instance or of an autostart entry.
+#[test]
+fn exit_69_is_an_unknown_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let name = "nosuchname";
+    let mut faults = Vec::new();
+    for args in [
+        ["stop", name].as_slice(),
+        ["logs", name].as_slice(),
+        ["autostart", "remove", name].as_slice(),
+    ] {
+        let out = podnet(args, dir.path(), &[]);
+        let text = stderr(&out);
+        let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
+        if out.status.code() != Some(exit::UNAVAILABLE)
+            || lines.len() != 1
+            || !lines[0].contains(name)
+        {
+            faults.push(format!("{args:?}: exit {:?}; {lines:?}", out.status.code()));
+        }
+    }
+    assert!(faults.is_empty(), "{}", faults.join("\n"));
+}

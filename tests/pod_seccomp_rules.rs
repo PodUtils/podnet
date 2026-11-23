@@ -343,3 +343,65 @@ fn a_learned_set_with_a_bad_line_is_a_usage_error() {
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(output.status.code(), Some(64));
 }
+
+/// Connect one time to lab.test:80 as a client does: take each address of
+/// getaddrinfo in order until one connects.
+const BY_NAME: &str = r#"
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <sys/socket.h>
+int main(void) {
+    alarm(10);
+    struct addrinfo hints, *res, *ai;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC; hints.ai_socktype = SOCK_STREAM;
+    if (getaddrinfo("lab.test", "80", &hints, &res) != 0) { printf("NONAME\n"); return 2; }
+    int tries = 0, ok = 0;
+    for (ai = res; ai; ai = ai->ai_next) {
+        int s = socket(ai->ai_family, ai->ai_socktype, 0);
+        tries++;
+        if (connect(s, ai->ai_addr, ai->ai_addrlen) == 0) { ok = 1; close(s); break; }
+        close(s);
+    }
+    printf("TRIES:%d OK:%d\n", tries, ok);
+    return 0;
+}
+"#;
+
+/// T-532: one connect of a program to a name that a rule refuses counts
+/// once on each backend, also where the name has an IPv4 and an IPv6
+/// address (the seccomp backend counted 2).
+#[test]
+fn one_refused_connect_counts_once_on_each_backend() {
+    if !have_compiler() {
+        eprintln!("skipping: no compiler");
+        return;
+    }
+    let mut faults = Vec::new();
+    for (backend, there) in [
+        ("seccomp", seccomp_available()),
+        ("netns", netns_available()),
+    ] {
+        if !there {
+            eprintln!("skipping {backend}: not on this host");
+            continue;
+        }
+        let proxy = Proxy::start(&format!("count-{backend}"));
+        // -v prints a line for each refused connect, with the count.
+        let output = proxy.run(backend, BY_NAME, &["-v", "-r", "domain:lab.test=reject"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let counts: Vec<&str> = stderr
+            .lines()
+            .filter(|l| l.contains("refused by the rule") && l.ends_with(" refused)"))
+            .collect();
+        if !stdout(&output).contains("OK:0")
+            || counts.len() != 1
+            || !counts[0].ends_with("(1 refused)")
+        {
+            faults.push(format!("{backend}: {}{stderr}", stdout(&output)));
+        }
+    }
+    assert!(faults.is_empty(), "{}", faults.join("\n"));
+}

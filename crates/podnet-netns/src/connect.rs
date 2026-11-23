@@ -216,7 +216,9 @@ pub(crate) fn handle_connect(
         _ => crate::flowlog::decided("tcp", &target, &picked),
     };
     if chain.is_none() && ruled {
-        crate::rules::note_refusal("connect", &target, picked.rule_name(), route.verbose);
+        // T-532: the IPv4 and the IPv6 address of one name are one flow.
+        let v6 = ip.is_ipv6();
+        crate::rules::note_refusal_of("connect", &target, picked.rule_name(), route.verbose, v6);
         return notif_respond(lfd, id, -1, libc::ECONNREFUSED);
     }
     let started = dials.state.start(key, id, nonblocking);

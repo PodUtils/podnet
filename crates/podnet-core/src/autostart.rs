@@ -643,7 +643,11 @@ pub fn remove(name: &str, limit: Duration) -> Result<Vec<String>> {
         }
     }
     if done.is_empty() {
-        bail!("no autostart entry {name}");
+        // T-532: an unknown name exits 69, as `stop` and `logs` do.
+        return Err(crate::exit::fault(
+            crate::exit::Fault::Unavailable,
+            anyhow::anyhow!("no autostart entry {name} (podnet autostart list)"),
+        ));
     }
     Ok(done)
 }
