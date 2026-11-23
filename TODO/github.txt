@@ -139,7 +139,7 @@
 434 issue closed
 435 issue open
 436 issue closed
-437 issue open
+437 issue closed
 438 issue closed
 439 issue closed
 440 issue closed
@@ -283,14 +283,14 @@
 582 issue closed
 583 issue closed
 584 issue closed
-585 issue open
+585 issue closed
 586 issue closed
 587 issue closed
 588 issue closed
 589 issue closed
 590 issue closed
 591 issue closed
-592 issue open
+592 issue closed
 593 issue closed
 594 issue closed
 595 issue closed
@@ -304,9 +304,9 @@
 603 issue closed
 604 issue open
 605 issue closed
-606 issue open
+606 issue closed
 607 issue closed
-608 issue open
+608 issue closed
 609 issue closed
 610 issue closed
 611 issue closed
