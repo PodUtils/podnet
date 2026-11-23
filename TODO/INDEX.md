@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**509 entries: 13 open, 13 partial, 24 blocked, 459 done.**
+**510 entries: 13 open, 13 partial, 24 blocked, 460 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 75 | 80 |
-| P2 | 4 | 7 | 10 | 227 | 248 |
+| P2 | 4 | 7 | 10 | 228 | 249 |
 | P3 | 8 | 4 | 12 | 156 | 180 |
-| **All** | 13 | 13 | 24 | 459 | 509 |
+| **All** | 13 | 13 | 24 | 460 | 510 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -555,3 +555,4 @@ M8 Overlays, M9 Later.
 | [T-508](fixes.md) | P2 | M | M7 | defect | done | `pod --backend netns`: reassemble IPv4 UDP fragments up to 65,507-byte payloads (H-04) |
 | [T-509](fixes.md) | P2 | S | M5 | defect | done | `net shim`: per-run `PODNET_VNET_PREFIX`, 59-byte cap, pre-build validation, and stderr warning (H-05) |
 | [T-510](fixes.md) | P2 | S | M5 | defect | done | live: the check of agent up cannot connect to the address that the resolver of the runner gives |
+| [T-511](fixes.md) | P2 | S | M5 | defect | done | ci: the test of the HTTP/3 qlog reads the QUIC trace of noq before noq flushes it |

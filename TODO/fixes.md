@@ -12169,3 +12169,48 @@ python3 scripts/check-workflows.py
 
 2026-11-23, the commit of this entry. The test is the live step "agent up and down" of `.github/workflows/live.yml`:
 its curl has a second path through DNS over HTTPS. `python3 scripts/check-workflows.py` passes. The next push runs live.
+
+# T-511: ci: the test of the HTTP/3 qlog reads the QUIC trace of noq before noq flushes it
+
+**Source:** ci 45163142934 on ef189d2 (2026-11-23), failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The job `test` of ci 45163142934 failed in `tests/quic_qlog.rs::the_qlog_shows_the_http3_control_stream`:
+"no QUIC qlog with a stream frame of stream 3: [.../client-...-client.qlog, .../podnet-h3-...-server.qlog]".
+The test failed in 6 of 100 runs on an idle host, and in 5 of 100 runs on a host with load.
+
+## Premise
+
+- noq-proto 1.5.0 (`QlogFileFactory`) writes each QUIC trace through a `BufWriter` of 8 KiB. n0-qlog 0.2.0
+  (`QlogStreamer`) flushes it only in `finish_log`, at the drop of the connection state: after the drain period of
+  the close, and after the drop of each handle.
+- The test read the traces after `closed()`, with the handle of the client connection still alive. When the
+  events of the trace did not fill the buffer, the stream frame of stream 3 was not on disk yet.
+- The fault is in the test. pod-quic and the code of podnet do not read the QUIC traces.
+- The rule "Quality first" (2026-11-17): each edge has a check and a second path.
+
+## Approach
+
+1. `get()` gives back the endpoint of the client. The test drops the connection, waits for `wait_idle()` of the
+   endpoint (5 s at most), drops the endpoint, and waits for the end of the server task (5 s at most).
+2. The test reads the QUIC traces again each 50 ms, until a trace has a stream frame of stream `id` or 5 s end.
+   The assertion and its message do not change.
+
+## Prove
+
+```sh
+for i in $(seq 100); do cargo test -q --test quic_qlog || echo FAIL; done | grep -c FAIL
+# the same loop with 6 busy loops of the shell and a release build of podnet-netns
+```
+
+## Done
+
+2026-11-23, the commit of this entry. The test is `tests/quic_qlog.rs::the_qlog_shows_the_http3_control_stream`.
+Before: 6 of 100 runs failed on an idle host, 5 of 100 under load. After: 0 of 100 on an idle host, 0 of 100 under
+load (6 busy loops of the shell and a release build of podnet-netns on 4 CPUs).

@@ -6,12 +6,19 @@
 //! the QUIC trace of noq writes the stream frames. The test reads both
 //! files and asserts that the control stream is in each one, at the stream
 //! id that the HTTP/3 trace names.
+//!
+//! noq writes its QUIC trace through a `BufWriter` and flushes it only when
+//! the connection state drops: after the drain period of the close, and
+//! after the drop of each handle. The test thus drops the connection, waits
+//! until the endpoint of the client is idle and the server ends, and then
+//! reads the QUIC traces again until the evidence is on disk, or for
+//! [`FLUSH_WAIT`] at most.
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use pod_quic::noq::crypto::rustls::QuicServerConfig;
-use pod_quic::noq::{ClientConfig, Connection};
+use pod_quic::noq::{ClientConfig, Connection, Endpoint};
 use pod_warp::h3::wire::{self, Frames, FRAME_HEADERS};
 use pod_warp::h3::{frame, Shape};
 use podnet::warp::h3::qlog::Trace;
@@ -19,6 +26,12 @@ use podnet::warp::h3::serve::Listener;
 
 /// The server name of the certificate.
 const NAME: &str = "localhost";
+
+/// The longest time to wait for the flush of the QUIC traces.
+const FLUSH_WAIT: Duration = Duration::from_secs(5);
+
+/// The time between two reads of the QUIC traces.
+const FLUSH_STEP: Duration = Duration::from_millis(50);
 
 /// The certificate of the shape and the roots that trust it.
 fn cert() -> (Arc<QuicServerConfig>, rustls::RootCertStore) {
@@ -55,12 +68,13 @@ fn cert() -> (Arc<QuicServerConfig>, rustls::RootCertStore) {
 }
 
 /// The client: a QUIC connection with a qlog trace of its own, a control
-/// stream, and one GET.
+/// stream, and one GET. The endpoint comes back with the connection, so
+/// that the caller can wait until it is idle.
 async fn get(
     addr: std::net::SocketAddr,
     roots: rustls::RootCertStore,
     qlog: &std::path::Path,
-) -> (Connection, u16) {
+) -> (Endpoint, Connection, u16) {
     let settings = pod_quic::Settings::default();
     let tls = pod_quic::connect::tls(
         Arc::new(rustls::crypto::ring::default_provider()),
@@ -111,8 +125,8 @@ async fn get(
             None => panic!("the answer ended with no HEADERS"),
         }
     };
-    let _control = control;
-    (conn, status)
+    drop(control);
+    (endpoint, conn, status)
 }
 
 /// The field section of `GET /` with the authority `NAME`: the static
@@ -156,11 +170,16 @@ async fn the_qlog_shows_the_http3_control_stream() {
         let listener = listener.clone();
         async move { listener.accept().await }
     });
-    let (conn, status) = get(addr, roots, &qlog).await;
+    let (endpoint, conn, status) = get(addr, roots, &qlog).await;
     assert_eq!(status, 200, "the status of the answer");
     conn.close(0u32.into(), b"done");
-    let _ = tokio::time::timeout(Duration::from_secs(5), conn.closed()).await;
-    let _ = tokio::time::timeout(Duration::from_secs(5), serve).await;
+    let _ = tokio::time::timeout(FLUSH_WAIT, conn.closed()).await;
+    // The drop of the last handle and the drain of the connection flush the
+    // QUIC trace of the client; the end of `serve` drops the server's handle.
+    drop(conn);
+    let _ = tokio::time::timeout(FLUSH_WAIT, endpoint.wait_idle()).await;
+    drop(endpoint);
+    let _ = tokio::time::timeout(FLUSH_WAIT, serve).await;
 
     // The HTTP/3 trace: the control stream, its role and its SETTINGS.
     let h3 = std::fs::read_to_string(dir.path().join("h3.qlog")).expect("the HTTP/3 trace");
@@ -187,42 +206,22 @@ async fn the_qlog_shows_the_http3_control_stream() {
         "the SETTINGS: {settings:?}"
     );
 
-    // The QUIC trace of noq: a stream frame of that stream.
-    let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(&qlog)
-        .expect("the directory of the QUIC traces")
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .collect();
-    files.sort();
+    // The QUIC trace of noq: a stream frame of that stream. A writer can
+    // flush after the drain, so read the traces again until the evidence is
+    // on disk, or until `FLUSH_WAIT` ends.
+    let deadline = tokio::time::Instant::now() + FLUSH_WAIT;
+    let (files, named) = loop {
+        let (files, named) = traced(&qlog, id);
+        if !named.is_empty() || tokio::time::Instant::now() >= deadline {
+            break (files, named);
+        }
+        tokio::time::sleep(FLUSH_STEP).await;
+    };
     assert!(
         !files.is_empty(),
         "no qlog file of the QUIC transport in {}",
         qlog.display()
     );
-    let mut named = Vec::new();
-    for file in &files {
-        let text = std::fs::read_to_string(file).unwrap_or_default();
-        let mut found = false;
-        for line in text.lines() {
-            let line = line.strip_prefix('\u{1e}').unwrap_or(line);
-            let Ok(event) = serde_json::from_str::<serde_json::Value>(line) else {
-                continue;
-            };
-            if event["name"] != "quic:packet_sent" && event["name"] != "quic:packet_received" {
-                continue;
-            }
-            let Some(frames) = event["data"]["frames"].as_array() else {
-                continue;
-            };
-            for frame in frames {
-                if frame["frame_type"] == "stream" && frame["stream_id"].as_u64() == Some(id) {
-                    found = true;
-                }
-            }
-        }
-        if found {
-            named.push(file.clone());
-        }
-    }
     assert!(
         !named.is_empty(),
         "no QUIC qlog with a stream frame of stream {id}: {files:?}"
@@ -234,4 +233,36 @@ async fn the_qlog_shows_the_http3_control_stream() {
             .map(|f| f.file_name().unwrap().to_string_lossy().into_owned())
             .collect::<Vec<_>>()
     );
+}
+
+/// The QUIC traces in `qlog`, and the traces that have a stream frame of
+/// stream `id` in a sent or received packet.
+fn traced(qlog: &std::path::Path, id: u64) -> (Vec<std::path::PathBuf>, Vec<std::path::PathBuf>) {
+    let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(qlog)
+        .expect("the directory of the QUIC traces")
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .collect();
+    files.sort();
+    let named = files
+        .iter()
+        .filter(|file| {
+            let text = std::fs::read_to_string(file).unwrap_or_default();
+            text.lines().any(|line| {
+                let line = line.strip_prefix('\u{1e}').unwrap_or(line);
+                let Ok(event) = serde_json::from_str::<serde_json::Value>(line) else {
+                    return false;
+                };
+                if event["name"] != "quic:packet_sent" && event["name"] != "quic:packet_received" {
+                    return false;
+                }
+                event["data"]["frames"].as_array().is_some_and(|frames| {
+                    frames.iter().any(|frame| {
+                        frame["frame_type"] == "stream" && frame["stream_id"].as_u64() == Some(id)
+                    })
+                })
+            })
+        })
+        .cloned()
+        .collect();
+    (files, named)
 }
