@@ -12214,3 +12214,71 @@ for i in $(seq 100); do cargo test -q --test quic_qlog || echo FAIL; done | grep
 2026-11-23, the commit of this entry. The test is `tests/quic_qlog.rs::the_qlog_shows_the_http3_control_stream`.
 Before: 6 of 100 runs failed on an idle host, 5 of 100 under load. After: 0 of 100 on an idle host, 0 of 100 under
 load (6 busy loops of the shell and a release build of podnet-netns on 4 CPUs).
+
+# T-512: ci: the new loopback tests of 4df28952 fail on a host with no bind(AF_INET) and with the loopback down
+
+**Source:** ci 45157147187 on af42f0d (2026-11-23), failed.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The jobs `restricted-host` and `no-loopback` of `.github/workflows/ci.yml` failed. In `tests/cover.rs`, 10 tests
+stopped at `tests/cover_harness/mod.rs:106`: `TcpListener::bind("127.0.0.1:0")` gave `PermissionDenied`. Each ci run
+after 4df28952 was cancelled, and cargo stops at the first test binary that fails. Thus the other new test files of
+4df28952 that bind 127.0.0.1 did not run in these jobs. With the loopback down, some of them wait with no time limit.
+
+## Premise
+
+- The rule of the two jobs (`ci.yml`, T-076, issue 217): a test that binds or connects 127.0.0.1 skips with
+  `test_host::need_loopback!()`. It does not fail, and it does not wait for a time limit.
+- The skip changes no assertion. A test that does not need the loopback does not skip.
+
+## Approach
+
+1. Run both jobs on a local host with `--no-fail-fast`, to see each test that fails.
+2. Add `need_loopback!()` at the start of each test that binds or connects 127.0.0.1.
+3. A test with `should_panic` cannot skip: a skip is a pass with no panic. Write its assertion directly.
+4. The sample of the listeners of `tests/pod_seccomp/kernel_listen.rs` can be empty in a network namespace. A flag,
+   not the rows, says that the sample was taken; else the test reads `/proc` after the program stopped.
+
+## Prove
+
+```sh
+sh scripts/restricted-host.sh --no-fail-fast
+unshare -n -- cargo test --offline --workspace --no-fail-fast
+```
+
+## Done
+
+2026-11-23, commit da0003f1. These tests now skip with `need_loopback!()` when the host refuses bind(AF_INET) or
+has no loopback:
+
+- `tests/cover.rs`: the 10 tests on the loopback (all but the 3 tests of the script file).
+- `tests/defer.rs`: 7 tests (all but the 2 tests of the generator with no origin). The control test
+  `the_old_prepared_bytes_accounting_undercounts_the_wire` asserts the two numbers directly; it has no `should_panic`.
+- `tests/e2e.rs`: `one_gib_loopback_transfer_rekeys_and_completes`,
+  `the_relay_dump_holds_no_plaintext_destination_service_or_key`.
+- `tests/egress_refusal.rs`: the 10 tests.
+- `tests/offline_discover.rs`: `a_listener_takes_the_signed_record_and_ignores_a_changed_one`,
+  `an_announcement_goes_to_one_address_as_one_txt_record`.
+- `tests/stat_measure.rs`: the 3 tests.
+- `tests/quic_juicity.rs` (2), `tests/quic_qlog.rs` (1), `tests/quic_tuic.rs` (1), `tests/quic_tuic_cli.rs`
+  (`the_tuic_option_of_warp_nc_carries_stdin_to_stdout`), `tests/quic_h3_stock.rs` (1).
+- `tests/pod_netns_kernel.rs`: `netns_kernel_relays_tcp_through_a_proxy_on_the_loopback`,
+  `netns_kernel_resets_a_connect_when_the_upstream_is_dead`.
+- `tests/pod_seccomp/kernel_listen.rs`: `seccomp_kernel_socket_refuses_listen_after_bind`. The test
+  `seccomp_kernel_socket_refuses_listen` failed in a network namespace with no listener: the sample of the listeners
+  was empty, so the test read `/proc` after the program stopped. A flag now says that the sample was taken.
+
+Before the fix, `sh scripts/restricted-host.sh --no-fail-fast` failed in 41 tests of 12 test files of this list, and
+`unshare -n -- cargo test --offline --workspace --no-fail-fast` failed in most of these files and waited with no time
+limit in `tests/e2e.rs` and `tests/stat_measure.rs`. After the fix, no test of this list fails in either run, and
+no test waits. The plants of both jobs still fail with `PermissionDenied` and `test result: FAILED`. The tests that
+still fail on the local host are of the host, not of CI: `tests/network_lab.rs` and `tests/link_p2p_namespaces.rs`
+(no `ip` program), `seccomp_kernel_socket_refuses_listen_v6` (no IPv6), and, as root, the `router::kernel` and
+`router::guest` unit tests and `a_resolv_conf_of_a_deleted_file_still_resolves` (CI skips them: its runner refuses
+the user namespace).
