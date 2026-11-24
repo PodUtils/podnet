@@ -16,7 +16,7 @@ docs/build.md c35416886a live a build and the tests from the source tree: fetche
 docs/build.md 8c15cc5283 live a build of podnet-capi from the source tree: fetches crates; ci.yml runs it
 docs/build.md 752a049c77 live cargo-fuzz and a nightly toolchain: fetches them; fuzz.yml runs it
 
-docs/cli.md 908ddc65c3 skip a reference list: the last three lines have the placeholder `...`
+docs/cli.md adfc11c729 skip a reference list: the last three lines have the placeholder `...`
 docs/cli.md 071c676c5c skip a template: needs the files of the user (./site, config.yml)
 
 docs/doctor.md 7288935548 live the doctor probes the ways out of this host

@@ -4,12 +4,13 @@ The repository is a Cargo workspace:
 
 | Crate | Contents |
 | --- | --- |
-| `podnet` (root) | The CLI and the library: the edge client (provisioning, discovery, QUIC, HTTP/2, Cap'n Proto and its RPC), the service layer, WARP. |
+| `podnet` (root) | The CLI and the library: the host of the tunnel of `pod-cloudflare` (`src/tunnel.rs`), the glue over the shared crates, WARP, the router, the link and the transfer. |
 | `crates/podnet-core` | A library: the core layer of podnet (the process, the files, the state, the reports, the supervisor). The other crates use it. |
 | `crates/podnet-serve` | A library: the services of podnet (the file server, the file transfer, the gate, the ingress rules, the origins, the client of the SSH relay). It uses `podnet-core`. |
 | `crates/podnet-netns` | A library: run a program with all its traffic sent through a proxy (`podnet pod`). |
 | `crates/podnet-vnet` | A library: the userspace virtual network (`podnet net`) and the C sources of its `LD_PRELOAD` shims. |
 | `crates/podnet-capi` | The C ABI: `include/podnet.h`, a shared library and a static library over the link. It is not a default member (see The C library). |
+| `crates/podnet-todo` | The checker of the work record in `TODO/` (`cargo todo`), a wrapper of `pod-todo`. It is not a default member. |
 
 ## Build
 
@@ -35,7 +36,7 @@ The `LD_PRELOAD` shims need a C compiler at run time (`cc`, `gcc` or
 ## Features
 
 The default build has no optional feature. An optional carrier or service of
-the link sits behind a Cargo feature of the `podnet` crate:
+the link, and the packet sidecar, sit behind a Cargo feature of the `podnet` crate:
 
 | Feature | Holds | Entry |
 | --- | --- | --- |
@@ -48,10 +49,14 @@ the link sits behind a Cargo feature of the `podnet` crate:
 | `dns` | The DNS simplex carrier (query names and TXT answers) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-278 |
 | `s3` | The object-storage carrier (objects of a bucket of the S3 API, SigV4) with TLS 1.3 and a pinned Ed25519 key. It holds `tcp` and `poll`. | T-279 |
 | `icmp` | The ICMP echo carrier (the data of echo messages on a raw socket, `CAP_NET_RAW`) with an ARQ, TLS 1.3 and a pinned Ed25519 key. It holds `tcp`. | T-282 |
+| `ntp` | The NTPv4 carrier (the bytes in the extension fields of NTP packets over UDP 123). | GitHub #484 |
+| `smtp` | The SMTP submission carrier (one message for each batch). | GitHub #484 |
+| `imap` | The IMAP carrier (`APPEND` up, `UID FETCH` down). | GitHub #484 |
+| `sidecar` | The packet sidecar, `podnet sidecar` ([limits-carriers.md](limits-carriers.md)). | GitHub #495 |
 | `ss` | The Shadowsocks service. | T-294 |
 | `trojan` | The Trojan service. | T-295 |
 | `c-abi` | The C ABI. The code is the crate `crates/podnet-capi` (see The C library), which does not turn the feature on: the feature gates no code. | T-304 |
-| `full` | `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `dns`, `s3`, `icmp`, `ss`, `trojan` and `c-abi`: each optional feature. | T-311 |
+| `full` | `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `dns`, `s3`, `icmp`, `ntp`, `smtp`, `imap`, `ss`, `trojan`, `sidecar` and `c-abi`: each optional feature. | T-311 |
 
 ```sh
 cargo build --release --features quic,icmp   # two optional carriers

@@ -78,16 +78,16 @@ These rules apply to each session. Obey them before any other default.
   Cloudflare tunnel (`pod-cloudflare`, glue in `src/tunnel.rs`) is one
   adapter of podnet; WARP, the relay, pods and virtual networks are others.
   Services: file server, file transfer, git hosting, router.
-- Workspace: `podnet` (root: CLI and library), `crates/podnet-netns` (the
-  pod backends, library only), `crates/podnet-todo` (the record tool, a
-  wrapper of `pod-todo`). podnet takes `pod-todo`, `pod-core`, `pod-tls`
-  and `pod-proxy` of `PodUtils/podcrates` by a git tag. The
-  target is five crates here (`podnet`, `podnet-core`, `podnet-netns`,
-  `podnet-vnet`, `podnet-serve`); the WARP and Cloudflare adapters and the
-  shared layers move to the shared repository `PodUtils/podcrates`
-  (`docs/decisions.md`, 2026-11-05, Shared crates and podcrates design). Do not add a
-  dependency for the edge protocol: it is `pod-cloudflare` of
-  `PodUtils/podcrates`.
+- Workspace: `podnet` (root: CLI and library), `crates/podnet-core`,
+  `crates/podnet-netns` (the pod backends), `crates/podnet-serve` and
+  `crates/podnet-vnet` (the default members), `crates/podnet-capi` (the C
+  interface) and `crates/podnet-todo` (the record tool, a wrapper of
+  `pod-todo`). podnet takes the `pod-*` crates of `PodUtils/podcrates` by one
+  git tag (`Cargo.toml`; `TODO/PROGRESS.md` lists them). The WARP and
+  Cloudflare adapters and the shared layers are crates of
+  `PodUtils/podcrates` (`docs/decisions.md`, 2026-11-05, Shared crates and
+  podcrates design). Do not add a dependency for the edge protocol: it is
+  `pod-cloudflare` of `PodUtils/podcrates`.
 - A source file has at most 800 lines (`scripts/check-size.py`). A file in
   its allowlist can only get smaller; lower its count when it shrinks.
 - Check before each push (`sh scripts/agent/check.sh`):
@@ -103,16 +103,20 @@ These rules apply to each session. Obey them before any other default.
   disk is full.
 - Documents: `README.md` (short: the overview, the install, a map of the
   capabilities), the topic documents `docs/install.md`, `docs/tunnels.md`,
-  `docs/serve.md`, `docs/transfer.md`, `docs/warp.md`, `docs/pods.md`, `docs/networks.md`,
-  `docs/router.md`, `docs/forward.md`, `docs/relay.md`, `docs/link.md`, `docs/offline.md`, `docs/egress.md`,
-  `docs/proxies.md`, `docs/background.md`, `docs/doctor.md`, `docs/cli.md`,
-  `docs/library.md`, `docs/build.md` (a new capability goes into its topic
-  document, and into the map of the README), `docs/protocol.md`,
-  `docs/virtual-network.md`,
-  `docs/target-environment.md`, `docs/maintenance.md`, `docs/decisions.md`,
-  `docs/development.md`, `crates/podnet-netns/README.md`, `docs/releases/`,
-  `docs/reports/` (reports and the text of issues that GitHub deleted),
-  `docs/research/` (the studies behind the plan).
+  `docs/e2e.md`, `docs/limits-carriers.md`, `docs/serve.md`,
+  `docs/transfer.md`, `docs/warp.md`, `docs/quic.md`, `docs/pods.md`,
+  `docs/networks.md`, `docs/router.md`, `docs/forward.md`, `docs/relay.md`,
+  `docs/link.md`, `docs/offline.md`, `docs/egress.md`, `docs/proxies.md`,
+  `docs/background.md`, `docs/doctor.md`, `docs/host-runtime.md`,
+  `docs/harness.md`, `docs/exit-codes.md`, `docs/cli.md`, `docs/library.md`
+  and `docs/build.md` (a new capability goes into its topic document, and
+  into the map of the README), `docs/protocol.md`, `docs/virtual-network.md`,
+  `docs/target-environment.md`, `docs/lab-profiles/` (the lab profiles),
+  `docs/schema/` (the JSON schemas), `docs/maintenance.md`,
+  `docs/decisions.md`, `docs/development.md`, `docs/HANDOFF.md` (the state of
+  unfinished work), `crates/*/README.md`, `docs/releases/`, `docs/reports/`
+  (reports and the text of issues that GitHub deleted) and `docs/research/`
+  (the studies behind the plan).
 
 ## Talk with the other sessions of PodUtils
 

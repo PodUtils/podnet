@@ -59,9 +59,8 @@ not wait for a larger one.
 
 1. **M0, the record and the guards:** done.
 2. **M1, the rename:** done (the public image was measured on 2026-11-11).
-3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
-   entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
-   The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
+3. **M5, the fixes, at any time from M0, beside M1 to M4:** the entries of the triage of GitHub #347 to #412 are done.
+   The entries that stay (P1 first, then P2, then P3):
    - The follow-ups of the release `v0.4.0-beta.18`: T-537. The rest of P1 T-516 (it waits
      for a tag of `pod-hold`) and of P2 T-522 (the length of a DNS line waits for `pod-dns`), at the take of the tag
      that has the ask of COORD-115.
@@ -76,14 +75,9 @@ not wait for a larger one.
    at most 800 lines, and no allowlist has an entry.
 5. **M3, the crates:** T-053, then the prerelease T-054. The take of `pod-cloudflare` is done (podcrates `v0.69.0`).
 6. **M4, the adapters:** done.
-7. **M6, the services:** the shared part (the resumable layer and `--seal` of the reverse road) is done; the file
-   server and git: done; the router: done; the transfer by code: `podnet send` and `podnet receive` are done
-   over `pod-wormhole` (`docs/transfer.md`; `docs/decisions.md`, 2026-11-13, The transfer layer).
-   The transit key is magic-wormhole's (`Wormhole::derive_key` of `pod-wormhole` v0.42.0): a file and a
-   directory go to and from each client of magic-wormhole. The podnet relay is the last way of the transit from podnet to podnet (done:
-   `podnet send --relay-pair NAME`); a piping server is the last way of all (`--piping`). The interop with the Python magic-wormhole and the live step of 100 MiB are done.
-    The owner's rulings of 2026-11-11 add: T-179 (the
-    direction split, an option, off by default).
+7. **M6, the services:** done: the file server, git, the router, the resumable layer and `--seal` of the reverse road, and the
+   transfer by code (`podnet send` and `podnet receive` over `pod-wormhole`; `docs/transfer.md`; `docs/decisions.md`,
+   2026-11-13, The transfer layer). One entry stays: T-179 (the direction split, an option, off by default).
 8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.
 9. **M8, the overlays:** T-114, T-115, T-247 (blocked: a NetBird account).
 10. **M9, later:** T-123, T-124 and T-126 to T-129, each when its start condition holds; T-001: edit GitHub #89 into a guide
@@ -94,7 +88,10 @@ not wait for a larger one.
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); T-163 is
     partial (its edge leg waits for `pod-cloudflare`); and the link entries T-294, T-295.
-12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`, in the order of the entries. The entries of E0 (the identity, the link, the carriers, the commands, the peer target and the control socket) are done. The carriers ws, h2, quic, udp, dns, icmp and the poll carriers are done (the glue of `pod-link` v0.40.0), and the record layer of E6; the seccomp rule of a raw socket in a pod is done (`pod --allow-raw icmp`); the ARQ is done (`podnet::link_arq`). The mesh keeps the two next hops of one round in a diamond. The S3 carrier is done (`pod_link::s3` of v0.46.0, proven against the stand-in of `pod-link` of v0.47.0). Go on with the services T-294 and T-295 (blocked on `pod-egress`), the rest of E3 and E7 to E10. Each optional carrier sits behind its Cargo feature (done). Blocked: T-294 and T-295 (`pod-egress`, T-127); the portable build was removed by the owner (2026-11-16). `docs/decisions.md`, 2026-11-12, The link workstream, has the calls and the asks for podcrates.
+12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`:
+    T-281, T-283 and T-284 (blocked: each is a take of `pod-link`), and T-294 and T-295 (blocked: `pod-egress`, T-127). The
+    other entries of `TODO/link.md` are done. `docs/link.md` describes the built part. `docs/decisions.md`, 2026-11-12,
+    The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and
     podssh first; cfb and githome wait):
     T-221 (`bench`), T-219 and T-220 (blocked on `pod-unit`, `pod-relay`).

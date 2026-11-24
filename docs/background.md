@@ -49,8 +49,8 @@ or a container that kills each process of its run also ends it.
 * A token or a proxy password on the command line goes to the environment
   of the instance, not to its arguments or its record. The record of a
   foreground `--name` (no `--detach`) has no secret either.
-* The files are in `$XDG_RUNTIME_DIR/podnet/run/` (else `run` in the state
-  directory, or `PODNET_RUN_DIR`), mode 0700: `NAME.json` (0600), `NAME.lock`
+* The files are in `PODNET_RUN_DIR`, else `$XDG_RUNTIME_DIR/podnet/run/`, else
+  `run` in the state directory (mode 0700): `NAME.json` (0600), `NAME.lock`
   (held while the instance runs), `NAME.secrets` (0600, only when the
   instance has a token or a proxy password: the variables that hold them)
   and `NAME.log` (0600, cut at 1 MiB; the

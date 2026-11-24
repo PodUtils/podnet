@@ -13,9 +13,10 @@ a tag has. Each release also has these files:
 
 | File | Contents |
 | --- | --- |
-| `SHA256SUMS` | The SHA-256 of each binary, of `podnet.1`, of the llms files, of `pod-report.schema.json` and of `release-index.json`. |
+| `SHA256SUMS` | The SHA-256 of each binary, of `podnet-install.sh`, of `podnet.1`, of the llms files, of `pod-report.schema.json` and of `release-index.json`. |
 | `SHA256SUMS.sigstore.json` | The keyless cosign signature of `SHA256SUMS`. |
 | `provenance.sigstore.json` | The SLSA provenance of the binaries. |
+| `podnet-install.sh` | The install script with the pins of the release (see "Install script"). |
 | `podnet.1` | The manual page (`podnet man --roff`). |
 | `llms.txt`, `llms-full.txt` | The index, and the manual with the documents, for agents. |
 | `pod-report.schema.json` | The JSON Schema of `podnet pod --report` ([pods.md](pods.md)). |
@@ -227,7 +228,7 @@ docker run --rm ghcr.io/podutils/podnet:beta demo --exit-on-verify
 The proxy listens on all addresses of the container: publish the port on
 127.0.0.1 only, or give `--proxy-user` and `--proxy-password-file`.
 
-Pin the image by digest. After `v0.4.0-beta.17`, the release notes of each release have the section "The image, by
+Pin the image by digest. The notes of a release whose job `image` passed have the section "The image, by
 digest": the digest of the manifest list and of each image of one architecture. The provenance of the manifest list
 is attested in the registry. The binary in each image is the file of the release (the same SHA-256 as in
 `SHA256SUMS`).

@@ -115,26 +115,10 @@ GitHub runner on each push and each day.
 
 ## Documents
 
-* [docs/install.md](https://github.com/PodUtils/podnet/blob/main/docs/install.md): install, verify, update, rebuild a release.
-* [docs/tunnels.md](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md): origins, the configuration file, named tunnels, the edge protocol and transport, raw streams.
+The column "Document" of the table above links the topic documents. More documents:
+
 * [docs/e2e.md](https://github.com/PodUtils/podnet/blob/main/docs/e2e.md): the end-to-end session, the hop table, the record layer and the compatibility path.
-* [docs/limits-carriers.md](https://github.com/PodUtils/podnet/blob/main/docs/limits-carriers.md): the limits of the packet sidecar, with the check for each one.
-* [docs/serve.md](https://github.com/PodUtils/podnet/blob/main/docs/serve.md): the file server, share, git hosting.
-* [docs/transfer.md](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md): `send` and `receive`, the transfer by code.
-* [docs/warp.md](https://github.com/PodUtils/podnet/blob/main/docs/warp.md): the WARP client.
 * [docs/quic.md](https://github.com/PodUtils/podnet/blob/main/docs/quic.md): the HTTP/3 shape, the stock client, the TUIC and Juicity roads, the connection ID rotation and the migration fallback.
-* [docs/pods.md](https://github.com/PodUtils/podnet/blob/main/docs/pods.md): `podnet pod`.
-* [docs/networks.md](https://github.com/PodUtils/podnet/blob/main/docs/networks.md): `podnet net`, Tailscale, NetBird, the passwd shim.
-* [docs/router.md](https://github.com/PodUtils/podnet/blob/main/docs/router.md): `podnet route`.
-* [docs/forward.md](https://github.com/PodUtils/podnet/blob/main/docs/forward.md): `forward`, the DNS door, `expose`.
-* [docs/relay.md](https://github.com/PodUtils/podnet/blob/main/docs/relay.md): `relay` and `ssh-relay`.
-* [docs/link.md](https://github.com/PodUtils/podnet/blob/main/docs/link.md): `link` (the key of an install, the allow list, the carriers, the services, the mesh).
-* [docs/offline.md](https://github.com/PodUtils/podnet/blob/main/docs/offline.md): `offline` (the spool, discovery, bundles, capture, pairing, replication) and the `serial` and `hf` carriers.
-* [docs/egress.md](https://github.com/PodUtils/podnet/blob/main/docs/egress.md): network specs and `--egress`.
-* [docs/proxies.md](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md): proxies, DNS, TLS roots.
-* [docs/background.md](https://github.com/PodUtils/podnet/blob/main/docs/background.md): `--detach`, `ps`, autostart.
-* [docs/doctor.md](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md): `doctor`, `bench`, `status`, `components`, `agent`.
-* [docs/cli.md](https://github.com/PodUtils/podnet/blob/main/docs/cli.md): the manual, JSON help, llms files, exit codes.
 * [docs/library.md](https://github.com/PodUtils/podnet/blob/main/docs/library.md) and [docs/build.md](https://github.com/PodUtils/podnet/blob/main/docs/build.md): the Rust library, build and fuzz.
 * [docs/protocol.md](https://github.com/PodUtils/podnet/blob/main/docs/protocol.md): the edge protocol and the WARP protocol.
 * [docs/virtual-network.md](https://github.com/PodUtils/podnet/blob/main/docs/virtual-network.md): the shim, the stack and the switch.
@@ -157,4 +141,4 @@ included third-party files.
 
 ---
 
-Former name: podnet was `cfrs` before v0.4.0-beta.1. The binary, the variables and the signing identity have new names.
+Old name: `cfrs` is the name of podnet before `v0.4.0-beta.1`. The binary, the variables and the signing identity have other names now.

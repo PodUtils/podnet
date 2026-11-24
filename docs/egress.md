@@ -88,7 +88,7 @@ TLS, and RFC 6062 for a relayed TCP stream.
 | --- | --- | --- |
 | The protocol | RFC 8656 (TURN), RFC 8489 (STUN), RFC 6062 (TCP relay) | 2026-11-20 |
 | The server of the operator | `turn://HOST[:PORT]` or `turns://HOST[:PORT]`, from the deployment | 2026-11-20 |
-| The client | `pod-turn` v0.79.0 of PodUtils/podcrates | 2026-11-20 |
+| The client | `pod-turn` of PodUtils/podcrates, at the tag of `Cargo.toml` | 2026-11-20 |
 | The RFC texts | <https://www.rfc-editor.org/rfc/rfc8656>, <https://www.rfc-editor.org/rfc/rfc6062> | 2026-11-20 |
 | The test server | a stand-in on the loopback (`src/networks/turn_mock.rs`), and coturn for the tests of `pod-turn` | 2026-11-20 |
 

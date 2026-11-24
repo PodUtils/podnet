@@ -28,7 +28,7 @@ it only when stdin and stdout are a terminal; `--no-pager` turns the pager off.
 ```sh
 podnet man                      # the whole manual, in a pager on a terminal
 podnet man warp run             # one command
-podnet man exit-status          # one topic: environment, files, inventory, exit-status, examples, see-also
+podnet man exit-status          # one topic: environment, files, inventory, exit-status, examples, pod, see-also
 podnet man --roff > podnet.1      # a man(7) page (also a release asset)
 podnet man --json               # the model and the facts, for a program
 podnet warp run --help --json   # the same JSON for one command (at each level)
@@ -134,24 +134,10 @@ podnet serve --check --dir ./site --spa
 podnet tunnel --check --json --config config.yml | jq -e .ok
 ```
 
-The exit codes follow sysexits.h: 64 for a bad command line, 65 for input
-that `podnet receive` refuses (a bad name in a transfer, a name that
-exists), 66 when a file
-that must exist is missing (the key or the allow list of the link), 69 when a
-service or a network path is not available (`tunnel`, `warp` and the other
-commands that start a session: no edge leg worked), 71 when a
-file of the host cannot be used (a key file with a mode that is not 0600), 77
-when a peer is not in the allow list of the link or of a sealed relay session
-(`relay node --seal`, `relay connect --seal`), when a peer refused a key (a
-`PresharedKey` of `wg:FILE` that differs), or when the code of `podnet send`
-did not match, 78 for a bad configuration
-(for example `PODNET_EDGE`). 68 is for an address of a peer that does not
-resolve. 124 is for a time limit: `--detach` was not ready in
-`--ready-timeout`, `podnet send` got no receiver in `--timeout`, or the hello
-of a link did not end in time. `podnet doctor` gives 1 when no leg can work, and `podnet bench`
-gives 1 when no request worked: their job is the check, and the check
-failed. `podnet man exit-status` gives all of them.
-The exit codes of `podnet link` are in [link.md](link.md).
+The exit codes follow sysexits.h. `podnet man exit-status` gives the full list, and
+[exit-codes.md](exit-codes.md) gives the codes that a script must tell apart. The codes of `podnet link` are
+in [link.md](link.md). `podnet doctor` and `podnet bench` give 1 (not 69) when no leg can work or no request
+worked: their job is the check, and the check failed.
 
 `PODNET_ERROR_PROGRAM=/path/to/program` gives a JSON report of each failure
 (version, system, command, exit code, the last 64 log lines) to that program
