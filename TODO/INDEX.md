@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**533 entries: 14 open, 15 partial, 24 blocked, 480 done.**
+**536 entries: 17 open, 15 partial, 24 blocked, 480 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 2 | 3 | 2 | 81 | 88 |
-| P2 | 4 | 8 | 10 | 240 | 262 |
-| P3 | 8 | 4 | 12 | 158 | 182 |
-| **All** | 14 | 15 | 24 | 480 | 533 |
+| P2 | 6 | 8 | 10 | 240 | 264 |
+| P3 | 9 | 4 | 12 | 158 | 183 |
+| **All** | 17 | 15 | 24 | 480 | 536 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -579,3 +579,6 @@ M8 Overlays, M9 Later.
 | [T-532](fixes.md) | P3 | S | M5 | defect | done | pod: the seccomp backend counts each refused connect twice; autostart remove of an unknown name exits 1 (GitHub #687, end of the pass) |
 | [T-533](fixes.md) | P1 | S | M5 | release | open | Publish `v0.4.0-beta.18`: the fixes of the QA pass of 2026-11-23, `pod-release` and podcrates `v0.82.0` |
 | [T-534](fixes.md) | P1 | S | M5 | defect | done | The release commit 9f3c8a2 fails the lane and the restricted host: the row warp-proxy-dead-proxy and a dead unix socket that a forked child holds |
+| [T-535](fixes.md) | P2 | S | M5 | defect | open | live: the check of a WebSocket through a --url origin gives no line of podnet when the tunnel is not ready |
+| [T-536](fixes.md) | P3 | S | M5 | defect | open | a refused unix bind says that the directory is not writable when the host refuses the socket itself |
+| [T-537](fixes.md) | P2 | S | M5 | chore | open | the build image of Dependabot #680 cannot link loongarch64: --no-rosegment |

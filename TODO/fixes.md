@@ -14144,3 +14144,105 @@ The case `errors` passes in the labs `bind-denied`, `listen-denied`, `bind-netns
   kernel of a runner). Before the fix, 80 runs here gave no failure: the race is rare on this host.
 - An ask for podcrates: the same one-connect probe is in `pod-control` (`unix.rs`), `pod-link` (`unix.rs`) and
   `pod-warp` (`find.rs`); `socket_answers` belongs in `pod-core`.
+
+# T-535: live: the check of a WebSocket through a --url origin gives no line of podnet when the tunnel is not ready
+
+**Source:** `live` 45322152685 on `cfbc215`, attempt 3 (2026-11-24): the step "WebSocket through a --url origin" failed
+with "the tunnel is not ready after 90 s" for `http2`, and printed no line of podnet.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`scripts/live-ws-url.sh` writes the lines of `podnet tunnel` to `tunnel.err` and stops after 90 s with one line of its
+own. The cause (a refusal of the edge, a slow registration, or a fault of podnet) is not in the log of the job.
+
+## Premise
+
+- `scripts/live-share.sh` prints the masked tail of its `share.err` when the share is not ready (the pattern to copy).
+- The rule "Quality first" (2026-11-17): each failure gives one true line; a check must keep its evidence.
+
+## Approach
+
+1. When the tunnel is not ready in time, print the masked tail (25 lines) of `tunnel.err`, as `scripts/live-share.sh`
+   does.
+2. Check each other `scripts/live-*.sh` for a wait that ends with no line of podnet, and make it print the same tail.
+
+## Prove
+
+```sh
+grep -n "not ready" scripts/live-*.sh
+python3 scripts/check-workflows.py
+# the next failed wait of live shows the lines of podnet
+```
+
+# T-536: a refused unix bind says that the directory is not writable when the host refuses the socket itself
+
+**Source:** T-534 (2026-11-24): in the lab `listen-denied` of podlab, a unix listener gives "Permission denied (os error
+13); the directory of the socket is not writable", but the directory is writable: the lab refuses the socket.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The next step of a refused unix bind (T-523, `bind_fault_unix`) reads EACCES as a directory that is not writable. On a
+host whose policy refuses AF_UNIX listeners (a seccomp or LSM rule), the line names a false cause.
+
+## Premise
+
+- podlab `listen-denied` refuses the bind of an AF_UNIX listener in a writable directory (T-534, local runs).
+
+## Approach
+
+1. On EACCES, test the directory (`access(dir, W_OK | X_OK)`). Name the directory only when the test fails; else say
+   that the host refuses the unix listener, and name `podnet net doctor`.
+2. One table-driven test: a writable directory with a refused socket (a seccomp filter in the test, or the lab row),
+   and a directory with no write bit.
+
+## Prove
+
+```sh
+cargo test --test listener_bind
+# the lab listen-denied: the row of a unix listener names the refusal of the host
+```
+
+# T-537: the build image of Dependabot #680 cannot link loongarch64: --no-rosegment
+
+**Source:** release dry run 45347322318 on `cfbc215` (2026-11-24), job `linux loongarch64-unknown-linux-musl`:
+"unsupported linker arg: --no-rosegment" (zig cc).
+**Category:** chore
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`images/build/Dockerfile` pins `rust:1-alpine` by digest. The digest of Dependabot #680 (`8d0e82ab`) gives a link of
+`loongarch64-unknown-linux-musl` that passes `--no-rosegment`, and zig cc refuses it. `27d2e3a` took back the digest
+`0cce0a5e`; dry run 45353622174 (attempt 2) then linked each target. Dependabot proposes the new digest again.
+
+## Premise
+
+- The digest `0cce0a5e` built `v0.4.0-beta.17` and `v0.4.0-beta.18` for each target.
+- `ci` does not read `images/build/Dockerfile`: only `release.yml` builds in the image. A fault of the image shows in a
+  release dry run only.
+
+## Approach
+
+1. Find which part of the new image gives `--no-rosegment` (the version of rustc in the image, or the target spec).
+2. Take the new digest only with a fix (a linker flag of the target in `release.yml`, or a newer cargo-zigbuild or
+   zig), and run a release dry run before the commit.
+3. Until then, close each Dependabot pull request of this image with a link to this entry.
+
+## Prove
+
+```sh
+# a release dry run with the new digest passes the job linux loongarch64-unknown-linux-musl
+```
