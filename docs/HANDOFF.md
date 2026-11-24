@@ -34,9 +34,8 @@ no test (`defect_tests` in `TODO/todo.toml`).
 1. **Read the runs of `ci` and `live` on the last commits** (the watcher prints each end). A red run goes first.
 2. **Open follow-ups:** T-537 (the build image of Dependabot #680 cannot link loongarch64; find the part of the new
    image that gives `--no-rosegment`, and prove a fix with a release dry run; close each Dependabot PR of that image
-   with a link to T-537 until then), T-540 (`release-index.json` in `release.yml`, PodUtils/podcrates@T-1118), and a
-   COORD ask `(to podcrates)` from T-534: one `socket_answers` in `pod-core` for the one-connect probes of
-   `pod-control` (`src/unix.rs:27`), `pod-link` (`src/unix.rs:154`) and `pod-warp` (`src/find.rs:112`).
+   with a link to T-537 until then), and T-540 (`release-index.json` in `release.yml`,
+   PodUtils/podcrates@T-1118).
 3. **The next beta `v0.4.0-beta.19`:** the black-box QA pass first (`docs/maintenance.md`, Release, step 0), then
    the steps 1 to 6. Its job `image` proves T-487: the attestation, `gh attestation verify`, the section "The image,
    by digest" of the notes. Then write the digests in a hand-off COORD issue `(to all)` and close COORD-109 (#656)
@@ -98,6 +97,7 @@ Use `pod_testkit::refused`, bind port `0`, or use `127.0.0.1:1` instead of freei
 | Issue | Waits for |
 | --- | --- |
 | `#708` (COORD-116, the take of `v0.82.1`) | podcrates reads it; then close it through the record. |
+| `#709` (COORD-117, one `socket_answers` in `pod-core`, the ask of T-534) | A tag of podcrates with it; then podnet takes it and removes its copy. |
 | `#707` (COORD-115, the asks of the QA pass of beta.18) | A tag of podcrates; T-516 and T-522 partial. |
 | `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
 | `#656` (COORD-109, ghcr.io image: T-487) | The job `image` of the release of beta.19. |
