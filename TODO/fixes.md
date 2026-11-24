@@ -11214,6 +11214,9 @@ WebSocket": "latency http2+direct http: 2 of 20 requests FAILED". The capture of
 `cf-ray` `a5f0a38f2dc5a375-SEA` and `a5f0a3929924ba48-SEA`, the page "Origin DNS error | <tunnel>.trycloudflare.com".
 The tunnel had registered at sea10 and sea09; the GETs and POSTs of 16 MiB before passed. The same code passed `live`
 45179728390 on `3448b93`. The edge did not find the new quick tunnel for 2 requests: a fault of the edge.
+2026-11-24: `live` 45309573101 (`9f3c8a2`, the release commit of `v0.4.0-beta.18`, T-533) failed in the same step: the
+POST of 16 MiB over `http2+direct` got HTTP 530, `cf-ray` `a5f4e5494c61e3c6-IAD`, "Origin DNS error". The code of the
+step is the code of `cca0b3d`, whose `live` 45289544910 passed. The failed job runs again.
 
 # T-489: Take podcrates v0.74.0
 
