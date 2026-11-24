@@ -442,7 +442,9 @@ jobs:
             python3 -I scripts/gate-scenarios.py --notes "$RUNNER_TEMP/gate/lane.txt"
             printf '\n'
             # The promises of each command, and those with a test (T-455).
-            python3 -I scripts/promises.py --notes dist/podnet-x86_64-unknown-linux-musl
+            # A downloaded artifact has no execute bit: run a copy (T-533).
+            install -m 0755 dist/podnet-x86_64-unknown-linux-musl "$RUNNER_TEMP/podnet-notes"
+            python3 -I scripts/promises.py --notes "$RUNNER_TEMP/podnet-notes"
             printf '\n## The commits of this release\n\n'
           } > "$RUNNER_TEMP/body.md"
           budget=$((120000 - $(wc -c < "$RUNNER_TEMP/body.md")))

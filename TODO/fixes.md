@@ -8443,6 +8443,12 @@ upload of 16 MiB with `--cc cubic`): the public endpoint reset one upload (`curl
 `warp proxy` ended with `the MASQUE session is open, and a DNS query to 1.1.1.1:53 through it got no answer`, so the
 tries 2 and 3 got `Couldn't connect`. The proxy ends on a failed health check of its session, where it could open a new
 session. The code is `pod-warp` (frozen); the evidence goes to podcrates with step 3.
+2026-11-24: `live` 45322152685 on `cfbc215` (the release commit of `v0.4.0-beta.18`), attempt 2, failed in "The commands of
+the second batch": the upload of 16 MiB with the congestion controller `cubic` got a reset; then each connect to the
+WARP proxy at 127.0.0.1:40012 was refused; podnet's last line: "the MASQUE session is open, and a DNS query to
+1.1.1.1:53 through it got no answer (1.1.1.1:53: no answer in 5000 ms)". The proxy ended on the failed health check.
+Attempt 1 of the same run failed at the WARP API (HTTP 429, error 1015, T-397). The same code passed `live`
+45317818764 on `1634d0a`.
 
 # T-415: live: the first request through the WARP proxy gets a reset 5 s after the start
 
@@ -14042,6 +14048,19 @@ gh run list -R PodUtils/podnet --workflow release-proofs.yml --limit 1
 
 The job `image` of the release run passes, and the notes of the release have the section "The image, by digest".
 
+## Correction
+
+2026-11-24: the dry runs of `release.yml` found two faults of the release path, not of the code:
+
+- Dry run 45347322318 on `cfbc215`: the job `linux loongarch64-unknown-linux-musl` failed at the link: "unsupported
+  linker arg: --no-rosegment" (zig cc). The build image of Dependabot #680 (`rust:1-alpine@sha256:8d0e82ab`) gives it.
+  `27d2e3a` takes back the digest `0cce0a5e` of `v0.4.0-beta.17`; dry run 45353622174 (attempt 2) links each target.
+- Dry run 45353622174 (attempt 2): the job `publish` failed: `promises.py --notes` ran
+  `dist/podnet-x86_64-unknown-linux-musl`, and a downloaded artifact has no execute bit ("Permission denied"). The step
+  runs a copy with mode 0755.
+- `live` on `cfbc215` failed three times at outside services (WARP's API: HTTP 429, error 1015; the MASQUE session: no
+  DNS answer, T-414; a quick tunnel over HTTP/2 not ready in 90 s, with no log in the script). `live` 45353877401
+  passed on `27d2e3a`.
 
 # T-534: The release commit 9f3c8a2 fails the lane and the restricted host: the row warp-proxy-dead-proxy and a dead unix socket that a forked child holds
 
