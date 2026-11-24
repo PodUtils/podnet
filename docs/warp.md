@@ -76,6 +76,7 @@ podnet warp down                    # stop it
   cleared after about 30 minutes. podnet then says so. A saved identity,
   `warp rotate` and new sessions do not register. `--ephemeral`, a new
   `--listen-identity` file and `warp export` each register one device.
+
 ## Proxy
 
 * `podnet warp proxy` listens on `tcp://127.0.0.1:40000` by default. Use
@@ -92,6 +93,7 @@ podnet warp down                    # stop it
   A listener on an address that is not loopback, with no credentials, gets
   a warning. `--max-connections N` limits the clients; `--dns ADDR`
   answers DNS through WARP.
+
 ## WARP as a network of the registry
 
 `warp` and `warp:identity=FILE` are specs of the registry of networks ([egress.md](egress.md)): TCP and UDP
@@ -158,6 +160,7 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   controller of the TCP connections of the userspace stack, for the data
   that it sends (an upload). The default is `none`: only the window of the
   peer limits it.
+
 ## Listeners, identities and rules
 
 * `--listen-identity LISTEN=PATH` (repeatable): the clients of LISTEN use
@@ -187,6 +190,7 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   podnet warp proxy -r domain:.corp.example=direct -r cidr:10.0.0.0/8=direct \
       -r domain:.ads.example=reject --rules-file ~/.config/podnet/rules
   ```
+
 ## Run a program
 
 * `podnet warp run --backend netns-raw` runs the program in a user and network
@@ -258,6 +262,7 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
     writes `warp-ca.pem` (that bundle and the system bundle) and the env
     file, `warp exec` and `warp shell` name it, so that the proxy and WARP
     both work. With no system bundle, a warning says to unset the variable.
+
 ## SSH over WARP
 
 * `podnet warp nc HOST PORT`: a byte pipe from stdin and stdout to HOST:PORT
@@ -281,6 +286,7 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   `--host` is one pattern of 1 to 255 characters from `A-Z a-z 0-9 . _ -
   * ? ! : @ % , [ ]`; a space, a newline or another control character
   exits 64, and nothing is printed or written.
+
 ## TUN interface
 
 * `podnet warp tun --default-route` (CAP_NET_ADMIN) sends the whole host
@@ -300,6 +306,7 @@ others). It reads the variables `PODNET_WARP_API`, `PODNET_WARP_CC`, `PODNET_WAR
   packets through WARP. It writes 0 to the `rp_filter` of the interface; `--keep-rp-filter` keeps the value. It does not change the routes: add routes for the
   destinations to send through WARP, and keep a route for the MASQUE endpoint
   outside the interface. The command prints examples.
+
 ## Sessions, relay and the registration API
 
 * `podnet warp proxy`, `podnet warp run` and `podnet warp tun` open a new MASQUE

@@ -1036,8 +1036,7 @@ non-zero, no data).
 
 ## The route table
 
-`podnet::mesh_table` is the path-vector route table of the mesh (T-286). `--announce` fills it from the announcements of the direct peers (verb `routes`). The forwarding (T-287) uses it; the status view
-(T-289) will use it.
+`podnet::mesh_table` is the path-vector route table of the mesh (T-286). `--announce` fills it from the announcements of the direct peers (verb `routes`). The forwarding (T-287) and the status view (T-289, `podnet link mesh`) use it.
 
 * The table does no I/O. The caller gives the time in milliseconds to each call, and checks the signature of an announcement
   before `RouteTable::learn`.

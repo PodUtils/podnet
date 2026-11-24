@@ -24,12 +24,11 @@ no test (`defect_tests` in `TODO/todo.toml`).
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (a cloud container can have an
   older default: `rustup default 1.99`; with Rust 1.97, cargo says "no matching package named `pod-release`").
   podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.82.1` (T-539, `a0b727c`; COORD-116, #708).
-* The release `v0.4.0-beta.18` (T-533) is published from `de6027b`. `release-proofs.yml` 45374896321 passed. The job
-  `image` failed after the push: a `docker logout` before `actions/attest` (T-538, fixed in `fefb28e`, with a rule in
-  `scripts/check-workflows.py`). The images of beta.18 have no attestation; the digests are in COORD-109 (#656).
-* `ci` 45388481179 and `live` 45388481255 passed on `4a4361a` (T-535, T-536, T-541). The release dry run 45389095107
-  passed on `c6b5bdf` (T-540). The commits after `4a4361a` change the workflows, one test and the record: the `ci` of
-  the head checks them.
+* The newest release is `v0.4.0-beta.18` (T-533), published from `de6027b`. `release-proofs.yml` 45374896321 passed.
+  Its job `image` failed after the push (T-538: a `docker logout` before `actions/attest`; fixed in `fefb28e`, with a
+  rule in `scripts/check-workflows.py`). The images of beta.18 have no attestation; their digests are in COORD-109 (#656).
+* The release dry run 45389095107 passed on `c6b5bdf` (T-540). Read the runs of `ci` and `live` on the head before
+  each release. `live` fails often at outside services (see "Facts").
 * The record: `cargo todo check` agrees.
 
 ## The next steps, in order
@@ -51,6 +50,8 @@ Do not stop for a confirmation and do not end the turn after a report (`CLAUDE.m
 
 ## Facts for the next session
 
+* An issue closes through the record: set its row in `TODO/issues.md` and its line in `TODO/github.txt` to `closed`
+  before any close on GitHub. `issue-sync` opens again an issue whose row is open (`docs/maintenance.md`, "The issue loop").
 * `live` fails often at outside services: WARP's door (a certificate of Let's Encrypt, T-406), WARP's API and the
   quick-tunnel service (HTTP 429, error 1015, for one hour after many runs from one address), quick tunnels (HTTP 530,
   T-488). Read the failed step before a fix; do not run `live` again and again from one address.

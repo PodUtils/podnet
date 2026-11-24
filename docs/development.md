@@ -5,15 +5,17 @@ each session; `docs/maintenance.md` has the procedures.
 
 ## Checks before a push
 
-Run `sh scripts/agent/check.sh`. It runs `cargo fmt --all --check`,
-`cargo clippy --workspace --all-targets -- -D warnings`, `cargo todo check`
-(the work record in `TODO/`, `TODO/RULES.md`), `python3 -I scripts/check-size.py`,
-`cargo doc` with `-D warnings`, `python3 -I scripts/check-layers.py`,
-`python3 -I scripts/check-claims.py`, `python3 -I scripts/doc-commands.py --check`,
-`python3 -I scripts/gate-scenarios.py --check`, the man page, the installer core, the
-workflows and `shellcheck`, and then `cargo test --workspace`
-(`sh scripts/agent/check.sh notest` skips the tests). Push only when each exits 0.
-CI (`.github/workflows/ci.yml`) runs the same.
+Run `sh scripts/agent/check.sh`. It runs these checks:
+
+* `cargo fmt --all --check` and `cargo clippy --workspace --all-targets -- -D warnings`;
+* `cargo todo check` (the work record in `TODO/`, `TODO/RULES.md`);
+* `python3 -I scripts/check-size.py`, `python3 -I scripts/check-layers.py` and `python3 -I scripts/check-claims.py`;
+* `cargo doc` with `-D warnings`;
+* `python3 -I scripts/doc-commands.py --check` and `python3 -I scripts/gate-scenarios.py --check`;
+* the man page, the installer core, the workflows and `shellcheck`;
+* `cargo test --workspace`. `sh scripts/agent/check.sh notest` skips it.
+
+Push only when each exits 0. CI (`.github/workflows/ci.yml`) runs the same.
 
 ## File size
 

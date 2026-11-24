@@ -120,15 +120,17 @@ CC_x86_64_unknown_linux_musl=clang cargo rustc --release -p podnet-capi \
 
 ## Fuzz
 
-`fuzz/` has a libFuzzer target for each parser of bytes from the network
-or from a file (Cap'n Proto, the RPC of the edge, capsules, proxy URLs and
-answers, SRV and DoH, ACL rules, ingress rules, YAML, HTTP/2 headers, vnet
-frames, the request head to the origin, the seccomp handlers, the wg-quick
-file, the network specs and the router file, the messages, the zip and the
-records of the transfer, the route announcements and the route table of the
-link mesh). It
-needs a nightly toolchain and glibc. `.github/workflows/fuzz.yml` runs each
-target each week. A crash input becomes a unit test before the fix.
+`fuzz/` has a libFuzzer target for each parser of bytes from the network or from a file. The targets cover:
+
+* the edge: Cap'n Proto, the RPC of the edge, capsules, HTTP/2 headers and the request head to the origin;
+* the proxy and the names: proxy URLs and answers, SRV and DoH, the network specs and the router file;
+* the rules: ACL rules, ingress rules, YAML and the wg-quick file;
+* the virtual network and the pods: vnet frames and the seccomp handlers;
+* the transfer and the link: the messages, the zip and the records of the transfer, the route announcements and the
+  route table of the link mesh.
+
+A target needs a nightly toolchain and glibc. `.github/workflows/fuzz.yml` runs each target each week. A crash input
+becomes a unit test before the fix.
 
 ```sh
 cargo +stable install cargo-fuzz --locked --version 0.13.1
