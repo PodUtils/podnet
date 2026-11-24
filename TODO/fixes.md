@@ -14206,6 +14206,15 @@ cargo test -p podnet --test live_scripts
 # the next failed wait of live shows the lines of podnet
 ```
 
+## Correction
+
+2026-11-24: `live` 45396168492 on `1d446af` failed at the step "The commands of the second batch", "a nested session
+(issue 156)": `curl: (97) Recv failure: Connection reset by peer`, and no line of podnet. The runtime code of
+`1d446af` is the code of `4a4361a`, whose `live` 45388481255 passed: the cause is outside (WARP; the same run shows the
+door `162.159.198.1` with a certificate of Let's Encrypt, T-406). `scripts/live-batch2.sh` now prints the masked tail
+of the logs of the nested and the outer proxy when the request through the nested session fails (`redact`, the mask of
+`wait_port`).
+
 ## Done
 
 2026-11-24, the commit of this entry.

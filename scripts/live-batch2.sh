@@ -35,6 +35,11 @@ trap cleanup EXIT
 # "Address already in use"). Reserve them for this job.
 sudo -n sysctl -q -w net.ipv4.ip_local_reserved_ports=40010-40020 2> /dev/null || true
 
+# The last 20 lines of the log FILE, with each device id masked.
+redact() {
+    sed -E 's/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|t\.[0-9a-f-]{8,}/<id>/g' "$1" | tail -20
+}
+
 # Wait for a TCP port, at most 90 s.
 wait_port() {
     i=0
@@ -42,7 +47,7 @@ wait_port() {
         i=$((i + 1))
         if [ "$i" -gt 90 ]; then
             echo "port $1 does not listen after 90 s"
-            sed -E 's/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|t\.[0-9a-f-]{8,}/<id>/g' "$2" | tail -20
+            redact "$2"
             exit 1
         fi
         sleep 1
@@ -160,7 +165,16 @@ while :; do
     sleep "$pause"
     attempt=$((attempt + 1))
 done
-curl -fsS --max-time 30 -x socks5h://127.0.0.1:40011 https://one.one.one.one/cdn-cgi/trace | grep '^warp=on'
+# T-535: a failed request through the nested session prints the lines of
+# both proxies (live 45396168492 printed only the line of curl).
+if ! curl -fsS --max-time 30 -x socks5h://127.0.0.1:40011 https://one.one.one.one/cdn-cgi/trace | grep '^warp=on'; then
+    echo "the nested session: no warp=on through 127.0.0.1:40011"
+    echo "== the nested proxy"
+    redact "$dir/nested.log"
+    echo "== the outer proxy (127.0.0.1:40010)"
+    redact "$dir/rules.log"
+    exit 1
+fi
 
 echo "== warp export (issue 148)"
 "$podnet" warp export --export-identity "$dir/wg.json" --format json > "$dir/wg-out.json" 2> /dev/null
