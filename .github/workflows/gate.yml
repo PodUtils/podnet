@@ -82,9 +82,18 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           if test $status -ne 0; then
+            # The log of a failed case. A case with rows (errors) prints
+            # each line `row NAME: fail` with the lines of that row (the
+            # lines after the row before it). Another case prints its last
+            # 40 lines.
             for f in $(grep -o '/var/tmp/lane/out/[^ )]*' "$RUNNER_TEMP/lane.txt"); do
               echo "== $f"
-              tail -n 40 "$f"
+              if grep -q '^row .*: fail$' "$f"; then
+                awk '/^row / { if ($0 ~ /: fail$/) { printf "%s", rows; print } rows = ""; next }
+                  { rows = rows $0 "\n" }' "$f"
+              else
+                tail -n 40 "$f"
+              fi
             done
             exit 1
           fi

@@ -128,9 +128,18 @@ run tunnel-dead-proxy 60 tunnel --hello-world --proxy http://127.0.0.1:1
 check tunnel-dead-proxy 69 "could not reach the proxy 127\.0\.0\.1:1"
 row tunnel-dead-proxy $?
 
-run warp-proxy-dead-proxy 60 warp proxy --proxy http://127.0.0.1:1 --listen 127.0.0.1:0
-check warp-proxy-dead-proxy 69 "each host failed: .*could not reach the proxy 127\.0\.0\.1:1"
-row warp-proxy-dead-proxy $?
+# warp proxy binds its listeners before the registration (T-523). The
+# listener is a unix socket: bind-denied refuses each TCP bind, not a bind
+# of AF_UNIX. A lab that refuses the listener too (listen-denied) gives the
+# line of the bind and exit 69: n.a. (the rows listen-* check that line).
+run warp-proxy-dead-proxy 60 warp proxy --proxy http://127.0.0.1:1 --listen "unix:$dir/warp-proxy-dead-proxy.sock"
+if test "$code" -eq 69 && grep -q '^podnet: warp proxy: a listener did not start: ' "$dir/warp-proxy-dead-proxy.err"; then
+    why="the lab refuses the listener: $(grep -m 1 '^podnet' "$dir/warp-proxy-dead-proxy.err")"
+    row warp-proxy-dead-proxy 77
+else
+    check warp-proxy-dead-proxy 69 "each host failed: .*could not reach the proxy 127\.0\.0\.1:1"
+    row warp-proxy-dead-proxy $?
+fi
 
 # relay connect: a session to a node through the relay; a fault of the
 # relay ends it with exit 69. The token is a stand-in (no dial gets so far).

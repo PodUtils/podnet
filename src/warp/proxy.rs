@@ -71,7 +71,7 @@ pub async fn bind(listen: &ProxyListen) -> Result<Bound> {
             // Issue 115: a socket that answers belongs to a running proxy:
             // it is not taken. Before, it was removed, and the running
             // proxy lost its clients.
-            if std::os::unix::net::UnixStream::connect(path).is_ok() {
+            if crate::net::socket_answers(path) {
                 bail!(
                     "unix:{} is served by another process (podnet ps; podnet warp down stops podnet warp up)",
                     path.display()
@@ -381,9 +381,11 @@ mod tests {
         let (accepted, connected) = tokio::join!(first.accept(), client);
         assert!(accepted.is_ok() && connected.is_ok());
         drop(first);
+        let taken = bind(&ProxyListen::Unix(path)).await;
         assert!(
-            bind(&ProxyListen::Unix(path)).await.is_ok(),
-            "a dead socket is taken"
+            taken.is_ok(),
+            "a dead socket is taken: {:#}",
+            taken.err().unwrap()
         );
     }
 

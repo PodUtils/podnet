@@ -2438,7 +2438,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:314`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-45`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:314`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-70`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:60`.
 - `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:174`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:98-104`).
@@ -3530,7 +3530,7 @@ session is up, each task waits in `live.get()` for up to 20 s. `--max-connection
 ## Premise
 
 - `src/warp/proxy.rs:194-216` (`serve_dns`), `:138-149` (`admit`), `:159-186` (`health_log`), `:109-124` (`Stats`),
-  `:382-384` (length check in `forward_dns_to`).
+  `:382-385` (length check in `forward_dns_to`).
 - `src/warp/live.rs:25` (`WAIT_FOR_NEW` 20 s).
 - `src/warp/proxy.rs` has 1902 lines (allowlist): put the new code in a new file.
 
@@ -4034,7 +4034,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   `set_permissions(path, 0o600)`.
 - The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:251`,
   src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:315`, `crates/podnet-vnet/src/switch.rs:434`,
-  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:324-327`),
+  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:341-344`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
 - `crates/podnet-netns/src/seccomp/accept.rs:61` is not exposed: it calls `private_dir` first
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
@@ -12457,7 +12457,7 @@ listener or relay disabled by policy, or not answering"; "1 (failure): A failure
 
 ## Premise
 
-- Read: `crates/podnet-core/src/net.rs:89` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
+- Read: `crates/podnet-core/src/net.rs:114` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
   `PermissionDenied` and `AddrNotAvailable`. `forward`, `net proxy`, `serve`, `route`, `link` and `cover` call it.
 - Read: `src/cli/cmd/connect.rs:109` binds the TCP listener of `-L` and adds only a context (`:110`). It does not
   call `bind_fault`, so the exit code is 1. `unix_listener` (`src/cli/cmd/connect.rs:246`, `:249`) has the same
@@ -13256,7 +13256,7 @@ says "nothing accepts a connection" when the cause is EACCES of the connect.
   (`src/cli/cmd/warp/mod.rs:156`, `warp_client`, which registers a device for `--ephemeral`): the registration comes
   before `bind_all` (`src/cli/cmd/warp/front.rs:134`). The comment of issue 97 says that the listeners
   bind before the session; that is true of the session of the proxy, not of the registration.
-- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:89`) is the one place that gives the class to a
+- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:114`) is the one place that gives the class to a
   refused bind. It adds no words. `src/cli/cmd/local.rs:65` writes its own line (`serve --local`).
 - Read: `src/cli/cmd/agent.rs:104` calls `podnet::ports::reachable(*p, ...)`, which gives a bool: a refused connect and
   an EACCES give the same answer. The advice with the unix sockets is in `src/agent.rs:529` and is not used here.
@@ -14038,3 +14038,87 @@ gh run list -R PodUtils/podnet --workflow release-proofs.yml --limit 1
 ```
 
 The job `image` of the release run passes, and the notes of the release have the section "The image, by digest".
+
+
+# T-534: The release commit 9f3c8a2 fails the lane and the restricted host: the row warp-proxy-dead-proxy and a dead unix socket that a forked child holds
+
+**Source:** `gate.yml` run 45309579073 on `9f3c8a2` (job `lane`, case `errors` in the labs `bind-denied`,
+`listen-denied`, `bind-netns-vm-denied` and `testers`); `ci` run 45309573045 on `9f3c8a2` (job `restricted-host`, the
+step "Test with bind(AF_INET) refused").
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+1. The case `errors` (`scripts/lab-errors.sh`) exits 1 in four labs. The log of the job shows `tail -n 40` of each
+   `LAB.errors.txt`, and each row in these lines is `pass` or `n.a.`: the failed row is not in the log.
+2. The unit test `warp::proxy::tests::a_unix_socket_that_answers_is_not_taken` (`src/warp/proxy.rs`) fails with "a
+   dead socket is taken" (488 passed, 1 failed). The same test passed in `restricted-host` on `cca0b3d` (ci
+   45289544540).
+
+## Premise
+
+- Read: `gate` passed on `9d34eb7`. The commits since then are the fixes T-515 to T-532.
+- Read: T-523 (`cca0b3d`) binds the listeners of `warp proxy` before the registration of the device
+  (`front::bind_early`). The row `warp-proxy-dead-proxy` gives `--listen 127.0.0.1:0`.
+- Read: the test drops its listener, then `bind` probes the socket with one connect. A note in
+  `crates/podnet-netns/src/listen.rs` (test of `claim_unix_path`) says that a bound and closed listener can stay open
+  in a child that a parallel test forks.
+- Measured: podlab v0.81.0 (`get-podlab.sh v0.82.0` falls back to it), the release binary of `9f3c8a2`.
+
+## Approach
+
+1. Run the case `errors` in the labs; find the failed row and its fault line.
+2. A stale check of the script: change the row, not podnet, when podnet gives the true line and the documented exit
+   code.
+3. `gate.yml`: for a failed case with rows, print each line `row NAME: fail` with the lines of that row.
+4. The probe of a unix socket: a connect that works is checked again. A socket answers only when each of 3 connects,
+   50 ms apart, works. One test pins the class: a child that holds the listener until its exec.
+
+## Prove
+
+```sh
+python3 -I scripts/check-workflows.py
+sh -n scripts/lab-errors.sh
+cargo test -p podnet-core --lib net::
+cargo test -p podnet-netns --lib listen::
+sh scripts/restricted-host.sh --lib warp::proxy
+```
+
+The case `errors` passes in the labs `bind-denied`, `listen-denied`, `bind-netns-vm-denied` and `testers`.
+
+## Done
+
+2026-11-24, the commit of this entry.
+
+- The failed row, in each of the four labs: `warp-proxy-dead-proxy`. Its lines (bind-denied):
+  `podnet: warp proxy: a listener did not start: binding tcp://127.0.0.1:0: Permission denied (os error 13); this
+  host refuses the bind (...)`, exit 69, and `fault: 0 lines match 'each host failed: .*could not reach the proxy
+  127\.0\.0\.1:1'`. listen-denied gives the same line. The cause: T-523 binds the listener before
+  the registration, so a lab that refuses each TCP bind stops the command at the bind. That is the true line and the
+  documented exit code (69; the rows `listen-*` check it). The check of the row was stale.
+- The fix of the row: the listener is `unix:DIR/warp-proxy-dead-proxy.sock` (bind-denied refuses each TCP bind, not
+  a bind of AF_UNIX), so the row checks the dead proxy in these labs. A lab that refuses the listener too (exit 69
+  and `a listener did not start`) gives n.a. with the line.
+- `gate.yml`: for a failed case, each line `row NAME: fail` with the lines of its row (awk); a case with no row
+  line gives its last 40 lines. `check-workflows.py`: 11 files, 0 faults.
+- The cause of the failed test: a child that another test forks keeps a copy of the listener until its exec. Thus
+  the connect of the probe to the closed socket works, and `bind` says "served by another process". The fix:
+  `podnet_core::net::socket_answers` (3 connects, 50 ms apart; each must work), in `claim_socket_path` and
+  `warp::proxy::bind`; the same rule in `podnet_netns::listen::claim_unix_path`. The test of `warp::proxy` keeps
+  its assertion and prints the error.
+- The test: `a_socket_that_a_forked_child_holds_until_its_exec_is_stale` (`crates/podnet-core/src/net.rs`: a child
+  sleeps 40 ms between its fork and its exec; the claim takes the closed socket, and a live socket answers).
+  Control: with one probe (the code before the fix) it fails 5 of 5 runs with "is served by another process"; with
+  the fix it passes 20 of 20 runs.
+- Local lab runs (podlab v0.81.0, uid 65534): before the fix, `bind-denied` and `listen-denied` exit 1 with the row
+  above. After the fix, the case `errors` exits 0 in `bind-denied`, `listen-denied` (the row is n.a.: the lab
+  refuses the unix listener), `bind-netns-vm-denied` and `testers` (the row passes in the other three).
+- The lib tests of podnet with bind(AF_INET) refused (the preload of `scripts/restricted-host.sh`): 40 runs, 0
+  failures of `warp::proxy` (the tests `router::kernel` and `router::guest::veth_tests` skipped: they need the
+  kernel of a runner). Before the fix, 80 runs here gave no failure: the race is rare on this host.
+- An ask for podcrates: the same one-connect probe is in `pod-control` (`unix.rs`), `pod-link` (`unix.rs`) and
+  `pod-warp` (`find.rs`); `socket_answers` belongs in `pod-core`.

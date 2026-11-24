@@ -20,7 +20,7 @@ pub fn claim_socket_path(path: &std::path::Path, replace: bool) -> Result<()> {
     use std::os::unix::fs::FileTypeExt as _;
     match std::fs::symlink_metadata(path) {
         Ok(meta) if meta.file_type().is_socket() => {
-            if !replace && std::os::unix::net::UnixStream::connect(path).is_ok() {
+            if !replace && socket_answers(path) {
                 return Err(fault(
                     Fault::Unavailable,
                     anyhow::anyhow!(
@@ -40,6 +40,31 @@ pub fn claim_socket_path(path: &std::path::Path, replace: bool) -> Result<()> {
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(err) => Err(err).with_context(|| format!("unix:{}", path.display())),
     }
+}
+
+/// The connects of [`socket_answers`], and the time between two of them.
+#[cfg(unix)]
+const PROBES: u32 = 3;
+#[cfg(unix)]
+const PROBE_GAP: std::time::Duration = std::time::Duration::from_millis(50);
+
+/// Whether a process serves the unix socket at `path` (issue 115, T-534).
+/// A child that a process forks keeps a copy of each listener of the
+/// parent until its exec. Thus a socket that its server closed can take a
+/// connect for a short time. The socket answers only when each of
+/// [`PROBES`] connects, [`PROBE_GAP`] apart, works. A socket that does not
+/// answer costs one connect; a socket that answers costs 100 ms.
+#[cfg(unix)]
+pub fn socket_answers(path: &std::path::Path) -> bool {
+    for probe in 0..PROBES {
+        if probe > 0 {
+            std::thread::sleep(PROBE_GAP);
+        }
+        if std::os::unix::net::UnixStream::connect(path).is_err() {
+            return false;
+        }
+    }
+    true
 }
 
 /// The kind of the address of a listener: the next step of a refused bind
@@ -216,6 +241,39 @@ mod tests {
                 None => assert!(!line.contains("; "), "{listener:?} {kind:?}: {line}"),
             }
         }
+    }
+
+    /// T-534: a forked child keeps a copy of the listener of its parent
+    /// until its exec. A socket that its server closed is stale, also while
+    /// such a child holds it for a short time: the claim takes it. A socket
+    /// that its server keeps answers each probe: exit 69.
+    #[test]
+    fn a_socket_that_a_forked_child_holds_until_its_exec_is_stale() {
+        use std::os::unix::process::CommandExt as _;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("held.sock");
+        let listener = std::os::unix::net::UnixListener::bind(&path).unwrap();
+        // spawn() returns after the exec of the child: spawn on a thread.
+        let child = std::thread::spawn(|| {
+            let mut command = std::process::Command::new("true");
+            // SAFETY: the closure only sleeps (nanosleep) between the fork
+            // and the exec; it takes no lock and allocates nothing.
+            unsafe {
+                command.pre_exec(|| {
+                    std::thread::sleep(std::time::Duration::from_millis(40));
+                    Ok(())
+                });
+            }
+            command.status()
+        });
+        std::thread::sleep(std::time::Duration::from_millis(15));
+        drop(listener);
+        let claim = claim_socket_path(&path, false);
+        assert!(child.join().unwrap().unwrap().success());
+        assert!(claim.is_ok(), "{:#}", claim.unwrap_err());
+        assert!(!path.exists());
+        let _live = std::os::unix::net::UnixListener::bind(&path).unwrap();
+        assert!(socket_answers(&path));
     }
 
     #[tokio::test]

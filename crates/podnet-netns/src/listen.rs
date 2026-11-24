@@ -295,6 +295,23 @@ fn move_no_replace(from: &std::path::Path, to: &std::path::Path) -> std::io::Res
     }
 }
 
+/// Whether a process serves the unix socket at `path` (T-534): each of 3
+/// connects, 50 ms apart, works. A forked child keeps a copy of each
+/// listener of the parent until its exec, so a socket that its server
+/// closed can take a connect for a short time. The same rule as
+/// `podnet_core::net::socket_answers` (this crate does not use podnet-core).
+pub fn socket_answers(path: &std::path::Path) -> bool {
+    for probe in 0..3 {
+        if probe > 0 {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        if std::os::unix::net::UnixStream::connect(path).is_err() {
+            return false;
+        }
+    }
+    true
+}
+
 /// Make `path` free for a new unix listener. A socket that answers belongs
 /// to another process: `AddrInUse`. A file that is not a socket is never
 /// removed: `InvalidInput`. A stale socket is removed.
@@ -303,7 +320,7 @@ pub fn claim_unix_path(path: &std::path::Path) -> std::io::Result<()> {
     use std::os::unix::fs::FileTypeExt as _;
     match std::fs::symlink_metadata(path) {
         Ok(meta) if meta.file_type().is_socket() => {
-            if std::os::unix::net::UnixStream::connect(path).is_ok() {
+            if socket_answers(path) {
                 return Err(Error::new(
                     ErrorKind::AddrInUse,
                     format!("unix:{} is served by another process", path.display()),
