@@ -193,7 +193,9 @@ issues are the channel, and each session watches them
   entry keeps the text of the issue. Close the issue through the record
   when each of its entries is done (its row and its line `closed`, with the
   commits and the CI runs); `.github/workflows/issue-sync.yml` sets the
-  state on GitHub. Do not close it by hand.
+  state on GitHub. Do not close it by hand. The workflow opens again an issue
+  that the record says is open: change the record first, then push
+  (`docs/maintenance.md`, "The issue loop").
 - At the start of a session, read `docs/HANDOFF.md` first when it exists
   (the state of unfinished work), then `TODO/PROGRESS.md`, then
   `docs/maintenance.md` (the procedures, the tools in `scripts/agent/`,

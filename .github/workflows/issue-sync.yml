@@ -11,7 +11,8 @@ name: issue-sync
 # `uses:` names the commit of the tag v0.82.1 of podcrates
 # (scripts/check-workflows.py: each `uses:` names a commit);
 # `podcrates_ref` names the same tag. Move both at each take (T-137).
-# A dispatch is a dry run unless `dry_run` is false.
+# A dispatch is a dry run unless `dry_run` is false. A push and the daily run
+# change the issues. A push with `[skip ci]` in its message starts no run.
 
 on:
   push:
@@ -37,4 +38,4 @@ jobs:
     uses: PodUtils/podcrates/.github/workflows/issue-sync.yml@0d7832b992b701ef1805496fe49375bb97543b0c # v0.82.1
     with:
       podcrates_ref: v0.82.1
-      dry_run: ${{ inputs.dry_run || false }}
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
