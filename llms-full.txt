@@ -14468,13 +14468,14 @@ a tag has. Each release also has these files:
 
 | File | Contents |
 | --- | --- |
-| `SHA256SUMS` | The SHA-256 of each binary, of `podnet.1`, of the llms files and of `pod-report.schema.json`. |
+| `SHA256SUMS` | The SHA-256 of each binary, of `podnet.1`, of the llms files, of `pod-report.schema.json` and of `release-index.json`. |
 | `SHA256SUMS.sigstore.json` | The keyless cosign signature of `SHA256SUMS`. |
 | `provenance.sigstore.json` | The SLSA provenance of the binaries. |
 | `podnet.1` | The manual page (`podnet man --roff`). |
 | `llms.txt`, `llms-full.txt` | The index, and the manual with the documents, for agents. |
 | `pod-report.schema.json` | The JSON Schema of `podnet pod --report` ([pods.md](pods.md)). |
 | `THIRD-PARTY-LICENSES.md` | The license texts of the crates in the binaries. |
+| `release-index.json` | In each release after `v0.4.0-beta.18`: each file with its SHA-256, its size and its target, the tag, the commit and the identity of the signer, in the schema of `pod-release` of PodUtils/podcrates. `SHA256SUMS` names it, so its signature covers it. |
 
 Verify the files before you use them. Download the binary, `SHA256SUMS` and
 the two bundles to one directory. Then do these steps:

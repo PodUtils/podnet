@@ -316,6 +316,16 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # T-540 (PodUtils/podcrates@T-1118): the writer of release-index.json of
+      # PodUtils/podcrates (scripts/release-index.py of the tag v0.82.1), at a
+      # pinned commit, and checked by its SHA-256 before it runs.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: PodUtils/podcrates
+          ref: 0d7832b992b701ef1805496fe49375bb97543b0c
+          path: .podcrates
+          sparse-checkout: scripts
+          persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: dist
@@ -348,8 +358,27 @@ jobs:
           sha256sum podnet-* podnet.1 llms.txt llms-full.txt pod-report.schema.json > SHA256SUMS
           python3 -I ../scripts/install/pins.py stamp ../scripts/install.sh --version "$version" --assets . \
             --out podnet-install.sh
-          sha256sum podnet-* podnet.1 llms.txt llms-full.txt pod-report.schema.json > SHA256SUMS
+          # T-540: the release index names each file with its SHA-256, size and
+          # target, before SHA256SUMS: the signature of SHA256SUMS signs it too.
+          echo "32726ae339de11b25a3903dd794120fe75a4fd894ae030ed3fb9be8a30d264c1  ../.podcrates/scripts/release-index.py" |
+            sha256sum -c -
+          python3 -I ../.podcrates/scripts/release-index.py --project "$GITHUB_REPOSITORY" --version "v$version" \
+            --dir . --date "$(git -C .. log -1 --format=%ct)" --commit "$GITHUB_SHA" --out release-index.json \
+            podnet-* podnet.1 llms.txt llms-full.txt pod-report.schema.json
+          sha256sum podnet-* podnet.1 llms.txt llms-full.txt pod-report.schema.json release-index.json > SHA256SUMS
           cat SHA256SUMS
+          # Each file of the index has its line in SHA256SUMS, and the index
+          # names each file of SHA256SUMS but itself.
+          python3 -I - <<'PY'
+          import json
+          index = json.load(open("release-index.json"))
+          sums = dict(reversed(line.split("  ", 1)) for line in open("SHA256SUMS").read().splitlines())
+          named = {f["name"]: f["sha256"] for f in index["files"]}
+          assert set(named) == set(sums) - {"release-index.json"}, (sorted(named), sorted(sums))
+          for name, digest in named.items():
+              assert sums[name] == digest, name
+          print(f"release-index.json: {len(named)} files, each as SHA256SUMS")
+          PY
       # The published installer installs from the files, and a second run
       # changes nothing.
       - name: the installer installs

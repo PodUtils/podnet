@@ -4,7 +4,8 @@ name: release proofs
 # tells a user to check them:
 #
 # * SHA256SUMS has one line for each binary (and for podnet.1 when the release
-#   has it), and each line is correct.
+#   has it), and each line is correct. A release-index.json has its line, and
+#   names each other file with the SHA-256 of SHA256SUMS (T-540).
 # * The provenance of each binary names release.yml at the tag and the commit
 #   of the tag. It is checked through the API and with the bundle of the
 #   release.
@@ -86,6 +87,23 @@ jobs:
           if [ -f pod-report.schema.json ]; then
             grep -q '  pod-report\.schema\.json$' SHA256SUMS || { echo "SHA256SUMS has no line for pod-report.schema.json"; exit 1; }
             want=$((want + 1))
+          fi
+          # T-540: the release index (each release after v0.4.0-beta.18) has its line, and
+          # names each other file of SHA256SUMS with the same SHA-256.
+          if [ -f release-index.json ]; then
+            grep -q '  release-index\.json$' SHA256SUMS || { echo "SHA256SUMS has no line for release-index.json"; exit 1; }
+            want=$((want + 1))
+            TAG="$TAG" python3 -I - <<'PY'
+          import json, os
+          index = json.load(open("release-index.json"))
+          sums = dict(reversed(line.split("  ", 1)) for line in open("SHA256SUMS").read().splitlines())
+          named = {f["name"]: f["sha256"] for f in index["files"]}
+          assert index["version"] == os.environ["TAG"], index["version"]
+          assert set(named) == set(sums) - {"release-index.json"}, (sorted(named), sorted(sums))
+          for name, digest in named.items():
+              assert sums[name] == digest, name
+          print(f"ok   release-index.json: {len(named)} files, each as SHA256SUMS")
+          PY
           fi
           lines=$(wc -l < SHA256SUMS)
           test "$want" -eq "$lines" || { echo "SHA256SUMS has $lines lines, not $want"; exit 1; }
