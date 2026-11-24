@@ -117,7 +117,7 @@ Use `pod_testkit::refused`, bind port `0`, or use `127.0.0.1:1` instead of freei
 | Issue | Waits for |
 | --- | --- |
 | `#707` (COORD-115, the asks of the QA pass of beta.18) | A tag of podcrates; T-516 and T-522 partial. |
-| `#686` (COORD-114, the take of `pod-release`) | Done in podcrates (T-966); close after the next take. |
+| `#686` (COORD-114, the take of `pod-release`) | Done in podcrates (PodUtils/podcrates@T-966); close after the next take. |
 | `#685` (COORD-113, the retry budget of `pod-cloudflare`) | Answered in `v0.82.1`; close with the take. |
 | `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
 | `#656` (COORD-109, ghcr.io image: T-487) | The result of the release of beta.18. |
