@@ -14428,7 +14428,7 @@ sh scripts/agent/check.sh
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -14445,7 +14445,8 @@ cannot check a release of podnet by its index. podssh writes it since `v0.77.0`.
 
 1. `release.yml`, job `publish`: get the script `release-index.py` of podcrates at the tag of `Cargo.toml`, check its
    SHA-256, and run it before `SHA256SUMS`. `SHA256SUMS` has the line of the index.
-2. The dry run writes the index too, and the job checks it with `pod-release verify --all`.
+2. The dry run writes the index too. The job compares the index with `SHA256SUMS`; `release-proofs.yml` does the
+   same for a published release that has an index.
 
 ## Prove
 
@@ -14454,6 +14455,15 @@ python3 -I scripts/check-workflows.py
 ```
 
 The dry run of `release.yml` has `release-index.json`, and `SHA256SUMS` names it.
+
+## Done
+
+2026-11-24, `c6b5bdf`. The job `publish` checks out `scripts` of PodUtils/podcrates at `0d7832b9` (the tag
+`v0.82.1`), checks the SHA-256 of `release-index.py` (`32726ae3...`), writes `release-index.json` after the installer
+and before `SHA256SUMS`, and compares the two. `release-proofs.yml` checks the line of the index, its version and each
+SHA-256 when a release has one. `docs/install.md` names the file. The release dry run 45389095107 on `c6b5bdf`
+passed: "release-index.py: OK", "release-index.json: 13 files, each as SHA256SUMS", and the line of the index in
+`SHA256SUMS`. The first release with the index is the release after `v0.4.0-beta.18`.
 
 
 # T-541: tests of a tool or of IPv6 of the host fail on a host without it, in place of a skip

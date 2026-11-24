@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-24 12:00 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`,
+The state at 2026-11-24 12:50 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`,
 `docs/maintenance.md`, and `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -27,6 +27,9 @@ no test (`defect_tests` in `TODO/todo.toml`).
 * The release `v0.4.0-beta.18` (T-533) is published from `de6027b`. `release-proofs.yml` 45374896321 passed. The job
   `image` failed after the push: a `docker logout` before `actions/attest` (T-538, fixed in `fefb28e`, with a rule in
   `scripts/check-workflows.py`). The images of beta.18 have no attestation; the digests are in COORD-109 (#656).
+* `ci` 45388481179 and `live` 45388481255 passed on `4a4361a` (T-535, T-536, T-541). The release dry run 45389095107
+  passed on `c6b5bdf` (T-540). The commits after `4a4361a` change the workflows, one test and the record: the `ci` of
+  the head checks them.
 * The record: `cargo todo check` agrees.
 
 ## The next steps, in order
@@ -34,8 +37,8 @@ no test (`defect_tests` in `TODO/todo.toml`).
 1. **Read the runs of `ci` and `live` on the last commits** (the watcher prints each end). A red run goes first.
 2. **Open follow-ups:** T-537 (the build image of Dependabot #680 cannot link loongarch64; find the part of the new
    image that gives `--no-rosegment`, and prove a fix with a release dry run; close each Dependabot PR of that image
-   with a link to T-537 until then), and T-540 (`release-index.json` in `release.yml`,
-   PodUtils/podcrates@T-1118).
+   with a link to T-537 until then). T-540 is done: the next release has `release-index.json` (dry run
+   45389095107); write it in the notes of beta.19, and tell podcrates in the hand-off COORD issue (PodUtils/podcrates@T-1118).
 3. **The next beta `v0.4.0-beta.19`:** the black-box QA pass first (`docs/maintenance.md`, Release, step 0), then
    the steps 1 to 6. Its job `image` proves T-487: the attestation, `gh attestation verify`, the section "The image,
    by digest" of the notes. Then write the digests in a hand-off COORD issue `(to all)` and close COORD-109 (#656)

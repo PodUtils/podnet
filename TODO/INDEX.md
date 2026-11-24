@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**540 entries: 15 open, 15 partial, 24 blocked, 486 done.**
+**540 entries: 14 open, 15 partial, 24 blocked, 487 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 3 | 2 | 84 | 90 |
 | P2 | 5 | 8 | 10 | 241 | 264 |
-| P3 | 9 | 4 | 12 | 160 | 185 |
-| **All** | 15 | 15 | 24 | 486 | 540 |
+| P3 | 8 | 4 | 12 | 161 | 185 |
+| **All** | 14 | 15 | 24 | 487 | 540 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -584,5 +584,5 @@ M8 Overlays, M9 Later.
 | [T-537](fixes.md) | P2 | S | M5 | chore | open | the build image of Dependabot #680 cannot link loongarch64: --no-rosegment |
 | [T-538](fixes.md) | P1 | S | M5 | defect | done | The job image of the release of v0.4.0-beta.18 fails: a docker logout before the push of the attestation |
 | [T-539](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.82.1 |
-| [T-540](fixes.md) | P3 | S | M5 | feature | open | release.yml writes `release-index.json` before `SHA256SUMS` |
+| [T-540](fixes.md) | P3 | S | M5 | feature | done | release.yml writes `release-index.json` before `SHA256SUMS` |
 | [T-541](fixes.md) | P3 | S | M5 | defect | done | tests of a tool or of IPv6 of the host fail on a host without it, in place of a skip |
