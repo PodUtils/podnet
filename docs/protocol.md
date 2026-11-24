@@ -154,13 +154,14 @@ WARP (section 5). The attempts are real registrations, in a staggered race
 
 `--leg-failover serial` starts a leg only after the one before failed. When
 another leg can follow, an attempt has the time limit of the budgets of its
-leg (`attempt_limit` in `src/tunnel.rs`): 3 tries of the registration, each
-with the limits of its steps, and 5 seconds at most between two tries.
+leg (`attempt_limit` of pod-cloudflare): the first try, 30 s in which more
+tries can start after the first refusal with "retry: yes", and the last try.
+Each try has the limits of its steps.
 
 | Leg | One try | Time limit |
 | --- | --- | --- |
-| `quic` | QUIC handshake 10 s, registration 30 s | 130 s |
-| `http2`, `http2+relay` | TCP, TLS and HTTP/2 handshake 10 s each, control stream and registration 30 s each | 280 s |
+| `quic` | QUIC handshake 10 s, registration 30 s | 110 s |
+| `http2`, `http2+relay` | TCP, TLS and HTTP/2 handshake 10 s each, control stream and registration 30 s each | 210 s |
 | `quic+warp` | | no limit |
 
 A try over more than one edge address can take longer than one try of the

@@ -211,8 +211,10 @@ exits 78 and the error names the variable.
 
 The edge can refuse the registration of a tunnel. Its answer has a cause,
 and "retry: yes" or "retry: no". At "retry: yes", pod-cloudflare tries the
-registration 3 times, with 1 s to 5 s between two tries. Then podnet reads
-the refusal:
+registration again with the same tunnel. New tries start for 30 s from the
+first refusal, with 1 s to 5 s between two tries. When each edge leg failed
+with "retry: yes", the start fails with exit 75. Then podnet reads the
+refusal:
 
 | Refusal | What podnet does | Exit code when it fails |
 | --- | --- | --- |

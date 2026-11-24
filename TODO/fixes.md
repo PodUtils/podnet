@@ -2880,7 +2880,7 @@ Tests: a 0644 file becomes 0600 after `save`; a symlink is replaced; `load` refu
 
 ## Problem
 
-`docs/protocol.md:209` says the alternates are the first 3 hosts of the pool. The text after it says the default relay uses 6 hosts until a pool is cached. The code takes 3 (`MAX_ALTERNATES`, src/relay_pool.rs lines 39 and 119 at `7c5f87e`; the file went to `pod-relay` of PodUtils/podcrates). The seed has 6 endpoints (`ajam-relay.toml`). A connect with no pool tries the primary and 3 hosts. The stagger is 2 s each (`src/ws_relay.rs:206`).
+`docs/protocol.md:210` says the alternates are the first 3 hosts of the pool. The text after it says the default relay uses 6 hosts until a pool is cached. The code takes 3 (`MAX_ALTERNATES`, src/relay_pool.rs lines 39 and 119 at `7c5f87e`; the file went to `pod-relay` of PodUtils/podcrates). The seed has 6 endpoints (`ajam-relay.toml`). A connect with no pool tries the primary and 3 hosts. The stagger is 2 s each (`src/ws_relay.rs:206`).
 
 ## Premise
 
@@ -12363,6 +12363,13 @@ cargo test -p podnet --lib a_refusal_that_a_new_start_can_fix_gets_one_more_star
 cargo test -p podnet --test quick_tunnel_standin a_quick_tunnel_that_the_edge_does_not_know_gets_one_new_start
 ```
 
+## Correction
+
+2026-11-24 (T-539): podcrates `v0.82.1` does item 4 of the approach. pod-cloudflare tries the same tunnel again for
+30 s at retry: yes, and gives the class TempFail through "no edge leg worked" when each leg asked for a retry, with the
+typed refusal of the last leg in its chain. `refusals` reads the typed refusal first and then the text of the chain,
+so that the refusals of the other legs stay in the count. `again` of `src/tunnel.rs` stays as the second path.
+
 ## Done
 
 2026-11-23, the commit of this entry. The tests are
@@ -12376,6 +12383,7 @@ its first case: podnet exits 69 with "a refused token or tunnel does not change 
 a quick tunnel", and prints no ready line. After the fix the three tests pass. The wait for the same tunnel inside
 pod-cloudflare, the class TempFail through "no edge leg worked", and a stand-in refusal with retry: yes go to
 podcrates as a COORD issue.
+
 
 # T-514: gate: get-podlab.sh fails when the podcrates tag of Cargo.toml has no GitHub release
 
@@ -13106,7 +13114,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
   with `: `). A failure of podcrates holds the text of its cause in its own text (`pod_core::Failure::caused`), so the
   cause comes twice. `src/report.rs:57` has `chain_text`, which names a cause that is already in the line once. The
   rows of `--check` do not call it. The `origin` rows are the double text of `io_fail`
-  (`PodUtils/podcrates:crates/pod-cloudflare/src/origin.rs:155`, `:301`, `:311`).
+  (`PodUtils/podcrates:crates/pod-cloudflare/src/origin.rs:155`, `:336`, `:346`).
 - Read: the `edge` row comes from the system resolver of podnet (`system_srv`, `src/tunnel.rs:282`). hickory writes
   `no records found for Query { ... }` with the Debug form of its `Query`. The row shows the error of hickory as it is.
 - Read: `src/egress.rs:334` adds `{at} through the proxy {label}` to the error of a dial. `pod-ws` adds `could not
@@ -14009,7 +14017,7 @@ PodUtils/podnet#656).
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -14061,6 +14069,20 @@ The job `image` of the release run passes, and the notes of the release have the
 - `live` on `cfbc215` failed three times at outside services (WARP's API: HTTP 429, error 1015; the MASQUE session: no
   DNS answer, T-414; a quick tunnel over HTTP/2 not ready in 90 s, with no log in the script). `live` 45353877401
   passed on `27d2e3a`.
+- The job `image` of the release run 45366987263 failed at the step "the provenance of the image, in the registry":
+  the step before it logged out of ghcr.io (T-538). The images and the manifest list are on ghcr.io, and the pull-back
+  check of each image passed.
+
+## Done
+
+2026-11-24, `de6027b` (the tag `v0.4.0-beta.18`). `release.yml` 45366921104 (`publish=v0.4.0-beta.18`) made the
+tag; the release run 45366987263 built each target, passed the job `gate / lane`, and published the prerelease with
+17 files (the 8 binaries, `SHA256SUMS`, `SHA256SUMS.sigstore.json`, `provenance.sigstore.json`, the installer, the
+man page, the llms files, the schema and the licenses). `release-proofs.yml` 45374896321 passed (the rebuild of
+`x86_64` and `aarch64`, and the proofs). The job `image` failed after the push (T-538): the manifest list is
+`sha256:3bdf929f0f0bd87cfb299faa51fdbac89dd2fd4ad8d15067c13f1ec77be9079b`; it has no attestation, and the notes have
+no section "The image, by digest". The next release proves T-487; COORD-109 (#656) stays open until then.
+
 
 # T-534: The release commit 9f3c8a2 fails the lane and the restricted host: the row warp-proxy-dead-proxy and a dead unix socket that a forked child holds
 
@@ -14297,3 +14319,98 @@ The job `image` of the next release passes.
   After the fix: `check-workflows: 11 files, 0 faults`. The plant on the fixed copy gives the same fault line.
 - The images of `v0.4.0-beta.18` have no attestation, and its notes have no section "The image, by digest". The next
   release proves T-487.
+
+
+# T-539: Take podcrates v0.82.1
+
+**Source:** `PodUtils/podcrates` tag `v0.82.1` (`0d7832b9`, 2026-11-24); PodUtils/podcrates#257 (COORD-152); the answer
+to COORD-113 (PodUtils/podnet#685).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.82.0`. The tag `v0.82.1` answers COORD-113: in `pod-cloudflare`, a refusal of the
+registration with retry: yes gets new tries for 30 s with the same tunnel, and "no edge leg worked" has the class
+TempFail (exit 75) when each leg asked for a retry, with the typed `fail::Refused` of the last leg in its chain. The
+stand-in of the edge has `Reply::RefuseRetry` and `Edge::script`, and `Reply` is `non_exhaustive`. `pod-testkit` has
+`need_route!`.
+
+## Premise
+
+- Read: the diff `v0.82.0..v0.82.1` of the crates `pod-cloudflare` and `pod-testkit`. The tag has no
+  `adoption/podnet/` patch. `core.sh`, `core-net.sh` and `pins.py` of `scripts/install/` did not change.
+- Read: `crates/podnet-core/src/hop.rs` `refusals` returned the typed refusals only, when the chain had one. With
+  v0.82.1 the chain has the typed refusal of the last leg only: a start whose first leg said retry: no and whose last
+  leg said retry: yes read as "each refusal asks for a retry" (exit 75 in place of 69).
+- COORD-115 (PodUtils/podnet#707): `v0.82.1` answers none of its asks. T-516 and T-522 stay partial.
+
+## Approach
+
+1. Each `pod-*` pin names `v0.82.1`: the manifests, `Cargo.lock`, `fuzz/Cargo.lock`, `scripts/install/SOURCES` (tag
+   and commit), `.github/workflows/issue-sync.yml` (`uses:` at `0d7832b9` and `podcrates_ref`).
+2. `refusals` reads the typed refusals, then each refusal of the text of the chain, each one time. `again` of
+   `src/tunnel.rs` stays as the second path.
+3. `tests/quick_tunnel_standin.rs`: a row with 4 refusals with retry: yes, then an accept.
+4. `docs/tunnels.md` (A refused registration) and `docs/protocol.md` (the attempt limits: 110 s and 210 s).
+5. `tests/pod_seccomp_diff.rs` takes `pod_testkit::need_route!`; `tests/test_host/mod.rs` drops its copy.
+
+## Prove
+
+```sh
+cargo test -p podnet --lib a_refused_registration_gives_the_hint_and_the_code_of_its_kind
+cargo test -p podnet --test quick_tunnel_standin
+cargo test -p podnet --test pod_seccomp_diff
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-24, the commit of this entry.
+
+- The test of the class: two rows of `a_refused_registration_gives_the_hint_and_the_code_of_its_kind`
+  (`src/report.rs`) in the form of v0.82.1 (the text of each leg, the typed refusal of the last leg, the class of
+  pod-cloudflare). Control: on `refusals` before the fix the row "Invalid tunnel secret (retry: no); Tunnel not found
+  (retry: yes)" of a named tunnel fails: the second line is "the edge asks for a retry; ... (exit 75)". After the fix:
+  1 passed.
+- `tests/quick_tunnel_standin.rs`: 4 passed (the new row: ready with 1 provision and 4 refused registrations).
+  `tests/pod_seccomp_diff.rs`: 1 passed.
+
+
+# T-540: release.yml writes `release-index.json` before `SHA256SUMS`
+
+**Source:** PodUtils/podcrates@T-1118 (the answer to COORD-114, PodUtils/podnet#686): each project writes its own
+`release-index.json` with the script `release-index.py` of podcrates in its release workflow, before `SHA256SUMS`.
+**Category:** feature
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The releases of podnet have no `release-index.json`. `pod-release verify --all` and the other readers of the index
+cannot check a release of podnet by its index. podssh writes it since `v0.77.0`.
+
+## Premise
+
+- Read: PodUtils/podcrates@T-1118 at `v0.82.1`. Its start condition: the coordinator names the step in a COORD issue
+  `(to podnet)`.
+- Read: `podnet update` does not need the index (T-494).
+
+## Approach
+
+1. `release.yml`, job `publish`: get the script `release-index.py` of podcrates at the tag of `Cargo.toml`, check its
+   SHA-256, and run it before `SHA256SUMS`. `SHA256SUMS` has the line of the index.
+2. The dry run writes the index too, and the job checks it with `pod-release verify --all`.
+
+## Prove
+
+```sh
+python3 -I scripts/check-workflows.py
+```
+
+The dry run of `release.yml` has `release-index.json`, and `SHA256SUMS` names it.

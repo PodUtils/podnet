@@ -200,7 +200,7 @@ fn seccomp_errnos_match_the_host() {
     // The host side needs a loopback and a free bind(AF_INET): with no
     // network the kernel gives other answers, and the comparison is void.
     test_host::need_loopback!();
-    test_host::need_route!("192.0.2.10:7777".parse().unwrap());
+    pod_testkit::need_route!("192.0.2.10:7777".parse().unwrap());
     let Some(cc) = compiler() else {
         eprintln!("skipping: no C compiler");
         return;

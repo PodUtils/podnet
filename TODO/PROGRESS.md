@@ -1,13 +1,13 @@
 # Progress
 
-`TODO/INDEX.md` holds 537 entries: 17 open, 15 partial, 24 blocked, 481 done.
+`TODO/INDEX.md` holds 539 entries: 17 open, 15 partial, 24 blocked, 483 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.82.0` (T-506): `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.82.1` (T-539): `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
   (the transfer), `pod-extract`, `pod-manual`, `pod-cloudflare`, `pod-cover`, `pod-harness`, `pod-offline`,
@@ -15,8 +15,9 @@
   `pod-testkit`. Not taken yet: `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session reads the state of
   podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates). A file that a block of `crates/*/SOURCES`
   names with no `taken` line is frozen: it takes fixes only, each as a COORD issue.
-- The newest release is `v0.4.0-beta.17` (T-481). The next release proves T-487 (the attestation of the image, the
-  pull-back check, the digests in the notes) and then closes GitHub #656.
+- The newest release is `v0.4.0-beta.18` (T-533, 2026-11-24). Its job `image` failed after the push (T-538: a logout
+  before the attestation). The next release proves T-487 (the attestation of the image, the digests in the notes) and
+  then closes GitHub #656.
 - Deferred feature consolidation (`4df28952`): T-365, T-366, T-369 to T-373, and T-376 to T-378 are done; T-367
   (GitHub #486) stays partial on MASQUE `QUIC-1` to `QUIC-5`; T-368 (#489), T-374 (#497), and T-375 (#498) stay
   blocked.
@@ -36,17 +37,16 @@
    the full lane in `gate.yml` (the case `errors`, the row `testers`).
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
-   before other work. The next tag after `v0.82.0` is the next take.
+   before other work. The next tag after `v0.82.1` is the next take.
 2. **podnet's own work:** the order below. Skip an entry whose Correction says that its work is
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.17`. The next beta is
-   T-533 (`v0.4.0-beta.18`): the version and the notes are set; the steps 3 to 6 of `docs/maintenance.md`, Release,
-   are next (`gate.yml` on the head, the dry run, the publish), and it proves the attestation and digests of the
-   image (issue 656). The pass of 2026-11-23 found 19 issues; each entry is done except T-516 and T-522 (partial: their
-   rest waits for podcrates, COORD-115; `docs/decisions.md`, 2026-11-23, A partial QA entry whose rest is a crate of
-   podcrates).
+3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.18`. The next beta
+   (`v0.4.0-beta.19`) runs the black-box QA pass first, and proves the attestation and the digests of the image
+   (issue 656). The pass of 2026-11-23 found 19 issues; each entry is done except T-516 and T-522
+   (partial: their rest waits for podcrates, COORD-115; `docs/decisions.md`, 2026-11-23, A partial QA entry whose rest
+   is a crate of podcrates).
 
 ### The order of podnet's own work
 
@@ -59,9 +59,9 @@ not wait for a larger one.
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
-   - **First, the release T-533 (`v0.4.0-beta.18`)**, after the black-box QA pass of 2026-11-23 (GitHub #687 and #689
-     to #706). Then the rest of P1 T-516 (it waits for a tag of `pod-hold`) and of P2 T-522 (the length of a DNS line
-     waits for `pod-dns`), at the take of the tag that has the ask of COORD-115.
+   - The follow-ups of the release `v0.4.0-beta.18`: T-535, T-536, T-537 and T-540. The rest of P1 T-516 (it waits
+     for a tag of `pod-hold`) and of P2 T-522 (the length of a DNS line waits for `pod-dns`), at the take of the tag
+     that has the ask of COORD-115.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**537 entries: 17 open, 15 partial, 24 blocked, 481 done.**
+**539 entries: 17 open, 15 partial, 24 blocked, 483 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 2 | 3 | 2 | 82 | 89 |
+| P1 | 1 | 3 | 2 | 84 | 90 |
 | P2 | 6 | 8 | 10 | 240 | 264 |
-| P3 | 9 | 4 | 12 | 158 | 183 |
-| **All** | 17 | 15 | 24 | 481 | 537 |
+| P3 | 10 | 4 | 12 | 158 | 184 |
+| **All** | 17 | 15 | 24 | 483 | 539 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -577,9 +577,11 @@ M8 Overlays, M9 Later.
 | [T-530](fixes.md) | P3 | S | M5 | defect | done | bench: the text output shows `null` for the latency of a run with no answer (GitHub #698) |
 | [T-531](fixes.md) | P2 | S | M5 | defect | done | pod: a bad PODNET_RESOLVE is ignored; the manual says exit 78 for each command (GitHub #687, end of the pass) |
 | [T-532](fixes.md) | P3 | S | M5 | defect | done | pod: the seccomp backend counts each refused connect twice; autostart remove of an unknown name exits 1 (GitHub #687, end of the pass) |
-| [T-533](fixes.md) | P1 | S | M5 | release | open | Publish `v0.4.0-beta.18`: the fixes of the QA pass of 2026-11-23, `pod-release` and podcrates `v0.82.0` |
+| [T-533](fixes.md) | P1 | S | M5 | release | done | Publish `v0.4.0-beta.18`: the fixes of the QA pass of 2026-11-23, `pod-release` and podcrates `v0.82.0` |
 | [T-534](fixes.md) | P1 | S | M5 | defect | done | The release commit 9f3c8a2 fails the lane and the restricted host: the row warp-proxy-dead-proxy and a dead unix socket that a forked child holds |
 | [T-535](fixes.md) | P2 | S | M5 | defect | open | live: the check of a WebSocket through a --url origin gives no line of podnet when the tunnel is not ready |
 | [T-536](fixes.md) | P3 | S | M5 | defect | open | a refused unix bind says that the directory is not writable when the host refuses the socket itself |
 | [T-537](fixes.md) | P2 | S | M5 | chore | open | the build image of Dependabot #680 cannot link loongarch64: --no-rosegment |
 | [T-538](fixes.md) | P1 | S | M5 | defect | done | The job image of the release of v0.4.0-beta.18 fails: a docker logout before the push of the attestation |
+| [T-539](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.82.1 |
+| [T-540](fixes.md) | P3 | S | M5 | feature | open | release.yml writes `release-index.json` before `SHA256SUMS` |

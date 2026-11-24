@@ -383,8 +383,8 @@
 682 pull closed
 683 pull closed
 684 pull closed
-685 issue open
-686 issue open
+685 issue closed
+686 issue closed
 687 issue closed
 688 issue open
 689 issue closed

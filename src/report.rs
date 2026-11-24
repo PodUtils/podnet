@@ -127,6 +127,29 @@ mod tests {
                 retry_after: std::time::Duration::from_secs(1),
             }))
         };
+        // As pod-cloudflare v0.82.1 joins the failures of the legs: the
+        // text of each leg, and the typed refusal of the last leg in the
+        // chain. The class is TempFail when each leg said retry: yes.
+        let last_typed = |said: &[(&str, bool)]| {
+            let text = joined(said).to_string();
+            let class = if said.iter().all(|(_, retry)| *retry) {
+                pod_core::Class::TempFail
+            } else {
+                pod_core::Class::Unavailable
+            };
+            let (cause, retry) = said.last().copied().unwrap();
+            anyhow::Error::new(pod_core::Failure::caused(
+                pod_core::Stage::EdgeRegister,
+                class,
+                text,
+                pod_core::Failure::from(pod_cloudflare::fail::Refused {
+                    client: "podnet".into(),
+                    cause: cause.into(),
+                    should_retry: retry,
+                    retry_after: std::time::Duration::from_secs(1),
+                }),
+            ))
+        };
         let not_found = "Unauthorized: Tunnel not found";
         let bad_token = "Unauthorized: Invalid tunnel secret";
         let not_a_refusal = || {
@@ -198,6 +221,18 @@ mod tests {
                 Named,
                 "check that the named tunnel exists",
                 69,
+            ),
+            (
+                last_typed(&[(bad_token, false), (not_found, true)]),
+                Named,
+                "check that the named tunnel exists",
+                69,
+            ),
+            (
+                last_typed(&[(not_found, true), (not_found, true)]),
+                Named,
+                "the edge asks for a retry",
+                75,
             ),
             (
                 not_a_refusal(),

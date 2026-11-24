@@ -108,18 +108,21 @@ fn quick_tunnel_standin_detach_ps_logs_and_stop() {
 }
 
 /// Live 45169011007: the edge refused the registration of a quick tunnel
-/// that the service made some seconds before ("Tunnel not found"). podnet
-/// makes one new quick tunnel; each other refusal ends the start at once.
-/// The stand-in refuses with retry: no; it has no refusal with retry: yes.
+/// that the service made some seconds before ("Tunnel not found"). With
+/// retry: no, podnet makes one new quick tunnel; each other refusal ends
+/// the start at once. With retry: yes (PodUtils/podnet#685), pod-cloudflare
+/// tries the same tunnel again for 30 s: no new quick tunnel.
 #[test]
 fn a_quick_tunnel_that_the_edge_does_not_know_gets_one_new_start() {
     test_host::need_loopback!();
-    // (the cause, the edge accepts after the first refusal, the
-    // provisions, the exit code, the second line has)
+    // (the cause, the refusals with retry: yes before an accept, the edge
+    // accepts after the first refusal with retry: no, the provisions, the
+    // exit code, the second line has)
     let cases = [
-        ("Unauthorized: Tunnel not found", true, 2, None, ""),
+        ("Unauthorized: Tunnel not found", 0, true, 2, None, ""),
         (
             "Unauthorized: Tunnel not found",
+            0,
             false,
             2,
             Some(75),
@@ -127,19 +130,30 @@ fn a_quick_tunnel_that_the_edge_does_not_know_gets_one_new_start() {
         ),
         (
             "Unauthorized: Invalid tunnel secret",
+            0,
             false,
             1,
             Some(69),
             "start podnet again to get a new quick tunnel",
         ),
+        ("Unauthorized: Tunnel not found", 4, true, 1, None, ""),
     ];
-    for (cause, accept, provisions, code, hint) in cases {
+    for (cause, retries, accept, provisions, code, hint) in cases {
         let standin = Standin::start();
-        standin.edge.answer(standin::Reply::Refuse(cause.into()));
+        if retries == 0 {
+            standin.edge.answer(standin::Reply::Refuse(cause.into()));
+        } else {
+            standin
+                .edge
+                .script((0..retries).map(|_| standin::Reply::RefuseRetry {
+                    cause: cause.into(),
+                    after: Duration::from_secs(1),
+                }));
+        }
         let edge = standin.edge.clone();
         let flip = std::thread::spawn(move || {
             let end = std::time::Instant::now() + LONG;
-            while accept && std::time::Instant::now() < end {
+            while accept && retries == 0 && std::time::Instant::now() < end {
                 if !edge.registrations.lock().unwrap().is_empty() {
                     edge.answer(standin::Reply::Accept);
                     return;
@@ -152,12 +166,14 @@ fn a_quick_tunnel_that_the_edge_does_not_know_gets_one_new_start() {
             None => {
                 let ready = tunnel.ready();
                 let issued = standin.api.issued.lock().unwrap().clone();
-                assert_eq!(hostname_of(&ready), issued[1].hostname, "{cause}");
+                let last = issued.last().expect("a quick tunnel");
+                assert_eq!(hostname_of(&ready), last.hostname, "{cause}");
                 tunnel.signal(libc::SIGTERM);
                 tunnel.wait(LONG).expect("podnet stops");
                 let stderr = tunnel.stderr();
-                assert!(
+                assert_eq!(
                     stderr.contains("tries a new quick tunnel again"),
+                    retries == 0,
                     "{stderr}"
                 );
             }
@@ -184,7 +200,11 @@ fn a_quick_tunnel_that_the_edge_does_not_know_gets_one_new_start() {
         // accept, the other edge connections register too.
         let registrations = standin.edge.registrations.lock().unwrap().clone();
         let refused = registrations.iter().filter(|r| !r.accepted).count();
-        let refused_starts = if accept { 1 } else { provisions };
+        let refused_starts = match (retries, accept) {
+            (0, true) => 1,
+            (0, false) => provisions,
+            (n, _) => n,
+        };
         assert_eq!(refused, refused_starts, "{cause}: {registrations:?}");
         let accepted = registrations.iter().any(|r| r.accepted);
         assert_eq!(accepted, accept, "{cause}: {registrations:?}");

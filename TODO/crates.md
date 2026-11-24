@@ -990,6 +990,8 @@ Done so far:
 
 2026-11-13: the line "Next: `pod-relay`" above is old: `pod-relay` is taken (v0.30.0). The next take is `pod-warp` (`adoption/podnet/pod-warp.patch` on `main` of podcrates; the trial passes). podnet applies it at the tag that follows the COORD issue of the freeze (COORD-063, GitHub #520). `pod-cloudflare` follows. Taken at v0.36.0: `pod-todo`, `pod-core`, `pod-tls`, `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`, `pod-identity`, `pod-session`, `pod-link`, `pod-turn` and `pod-devtunnel` (`Cargo.toml`).
 
+2026-11-24: v0.82.1 is taken (T-539; PodUtils/podcrates#257, COORD-152): each `pod-*` dependency names `tag = "v0.82.1"` and `version = "0.82.1"`. `pod-cloudflare` answers COORD-113 (the retry budget of 30 s, TempFail through "no edge leg worked"); `pod-testkit` has `need_route!`. No hand-off for podnet.
+
 # T-161: relay node: renew the pair before it expires (GitHub #358)
 
 **Source:** GitHub #358 (https://github.com/PodUtils/podnet/issues/358); PodUtils/podcrates#35 (cfb), ask A-N-12.
@@ -1241,7 +1243,7 @@ are never used). A node whose primary host stops answering retries that host for
   (reconnect loop).
 - `src/cli/cmd/relay.rs:124`, `:180` (validation only), `:337`.
 - Not measured: whether the relay accepts a node socket for a pair on every host of the deployment.
-  `docs/protocol.md:209-215` measures the forward road only.
+  `docs/protocol.md:210-216` measures the forward road only.
 
 ## Approach
 

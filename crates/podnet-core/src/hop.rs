@@ -258,23 +258,25 @@ pub struct Said {
 const REFUSED: &str = "the edge refused the registration: ";
 
 /// The refusals of a registration in `err`. The typed refusal of
-/// pod-cloudflare comes first. pod-cloudflare v0.82.0 does not keep it
-/// when it joins the failures of the legs ("no edge leg worked: ..."):
-/// the second path reads each refusal from the text of the chain.
+/// pod-cloudflare comes first. When pod-cloudflare joins the failures of
+/// the legs ("no edge leg worked: ..."), the chain holds the typed refusal
+/// of the last leg only (v0.82.1): the refusals of the other legs come
+/// from the text of the chain. Each refusal is in the list one time.
 pub fn refusals(err: &anyhow::Error) -> Vec<Said> {
-    let typed: Vec<Said> = err
+    let mut found: Vec<Said> = Vec::new();
+    for r in err
         .chain()
         .filter_map(|e| e.downcast_ref::<pod_cloudflare::fail::Refused>())
-        .map(|r| Said {
+    {
+        let said = Said {
             cause: r.cause.clone(),
             retry: r.should_retry,
-        })
-        .collect();
-    if !typed.is_empty() {
-        return typed;
+        };
+        if !found.contains(&said) {
+            found.push(said);
+        }
     }
     let text: Vec<String> = err.chain().map(|e| e.to_string()).collect();
-    let mut found = Vec::new();
     for mut rest in text.iter().map(String::as_str) {
         while let Some(at) = rest.find(REFUSED) {
             rest = &rest[at + REFUSED.len()..];
