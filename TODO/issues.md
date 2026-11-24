@@ -392,7 +392,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #705 | [qa 0.4.0-beta.18] warp proxy: a listener that cannot bind prints the same cause on two error lines | closed: T-523 done in the commit of the entry, 2026-11-23 (tests/listener_bind.rs; CI after the push) | T-523 |
 | #706 | [qa 0.4.0-beta.18] forward, net proxy, serve --local: a TCP bind denied by the host gives no hint to use a unix socket | closed: T-523 done in the commit of the entry, 2026-11-23 (tests/listener_bind.rs; CI after the push) | T-523 |
 | #707 | COORD-115: the QA pass of podnet 0.4.0-beta.18: asks for pod-hold, pod-wormhole, pod-ws, pod-proxy, pod-dns, pod-tls, pod-warp and pod-cloudflare (to podcrates) | open (a COORD issue between sessions; T-516, T-520, T-521, T-522, T-532) | none |
-| #708 | COORD-116: podnet took podcrates v0.82.1; COORD-113 and COORD-114 closed; the release v0.4.0-beta.18 (to podcrates) | open (a COORD issue between sessions) | none |
+| #708 | COORD-116: podnet took podcrates v0.82.1; COORD-113 and COORD-114 closed; the release v0.4.0-beta.18 (to podcrates) | closed (read: PodUtils/podcrates#257 names the take, a0b727c; PodUtils/podcrates@T-1117 is the line of docs/tunnels.md, 4a4361a) | none |
 | #709 | COORD-117: pod-core: one probe of a unix socket that a forked child can hold (socket_answers) for pod-control, pod-link and pod-warp (to podcrates) | open (a COORD issue between sessions; the ask of T-534) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

@@ -96,7 +96,6 @@ Use `pod_testkit::refused`, bind port `0`, or use `127.0.0.1:1` instead of freei
 
 | Issue | Waits for |
 | --- | --- |
-| `#708` (COORD-116, the take of `v0.82.1`) | podcrates reads it; then close it through the record. |
 | `#709` (COORD-117, one `socket_answers` in `pod-core`, the ask of T-534) | A tag of podcrates with it; then podnet takes it and removes its copy. |
 | `#707` (COORD-115, the asks of the QA pass of beta.18) | A tag of podcrates; T-516 and T-522 partial. |
 | `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
