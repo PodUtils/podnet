@@ -57,7 +57,9 @@ podnet forward --network relay --alias-port 7000 \
   lines of a hosts file.
 * A name is letters, digits, `-` and `.`, in lowercase; each name once (else exit 64) (T-404).
 
+### A service of a peer
 
+`-L LISTEN=peer:FINGERPRINT/SERVICE` reaches a service of a peer through a link ([link.md](link.md)):
 
 ```sh
 podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl --detach --name peer1
@@ -75,8 +77,7 @@ podnet forward -L unix:/run/db.sock=peer:FINGERPRINT/db       # a unix listener
   maps the name to a target (`link listen --service NAME=TARGET`, or `--to TARGET` for `raw`). A service that the peer does not
   have, or whose origin does not answer, closes that connection. The forward and the link stay up.
 * `--network peer:...` is refused with exit 64: a peer way takes the form `-L LISTEN=peer:FINGERPRINT/SERVICE`.
-* The services that a peer offers beyond `--service` (SOCKS5, HTTP proxy, and the other services of the link workstream) are
-  separate work.
+* The services that a peer offers (`raw`, `socks5`, `http`, `exec:` and the others) are in [link.md](link.md).
 
 ### DNS door
 

@@ -6,12 +6,14 @@ each session; `docs/maintenance.md` has the procedures.
 ## Checks before a push
 
 Run `sh scripts/agent/check.sh`. It runs `cargo fmt --all --check`,
-`cargo clippy --workspace --all-targets -- -D warnings`,
-`cargo test --workspace`, `cargo todo check` (the work record in
-`TODO/`, `TODO/RULES.md`), `python3 -I scripts/check-size.py`,
-`python3 -I scripts/check-layers.py` and
-`python3 -I scripts/doc-commands.py --check`. Push
-only when each exits 0. CI (`.github/workflows/ci.yml`) runs the same.
+`cargo clippy --workspace --all-targets -- -D warnings`, `cargo todo check`
+(the work record in `TODO/`, `TODO/RULES.md`), `python3 -I scripts/check-size.py`,
+`cargo doc` with `-D warnings`, `python3 -I scripts/check-layers.py`,
+`python3 -I scripts/check-claims.py`, `python3 -I scripts/doc-commands.py --check`,
+`python3 -I scripts/gate-scenarios.py --check`, the man page, the installer core, the
+workflows and `shellcheck`, and then `cargo test --workspace`
+(`sh scripts/agent/check.sh notest` skips the tests). Push only when each exits 0.
+CI (`.github/workflows/ci.yml`) runs the same.
 
 ## File size
 
@@ -25,7 +27,7 @@ list: split the file.
 
 Each top module of `src/` belongs to one crate of the split
 (`docs/research/podnet/architecture.md`, section 4.1): core, vnet, relay,
-warp, serve, cloudflare or podnet. `scripts/check-layers.py` has the table
+warp, serve, cloudflare or podnet (`LAYER` in the script is the list). `scripts/check-layers.py` has the table
 of module to crate and the crates that each crate may use. A `crate::X`
 reference (outside `#[cfg(test)]`) to a crate that the crate of the module
 may not use is a fault, except the rows of `scripts/layers-allow.txt`.
@@ -70,10 +72,10 @@ profiles of `pod-lab` (`PodUtils/podcrates:crates/pod-lab/LANES.md`). It
 takes the binary `podlab` and the podnet binary to test, and runs each
 command in a lab of each profile with `podlab run PROFILE -- ...`.
 
-1. Get `podlab`. From podcrates `v0.58.0`, the release has the static
-   binary: `sh scripts/get-podlab.sh v0.60.0` downloads
+1. Get `podlab`. The release of podcrates `v0.58.0` or later has the static
+   binary: `sh scripts/get-podlab.sh TAG` (for example `v0.82.1`) downloads
    `podlab-ARCH-unknown-linux-musl` and `SHA256SUMS` into the new directory
-   `.work/podlab-v0.60.0` and checks the SHA-256. Not each tag of podcrates
+   `.work/podlab-TAG` and checks the SHA-256. Not each tag of podcrates
    has a release: when the release of the tag does not have the asset, the
    script takes the newest release at or below the tag that has it, and
    writes one line with the two versions (T-514). It reads the list of
@@ -161,7 +163,7 @@ the section of the gate.
 
 ### The network labs
 
-From podcrates `v0.60.0`, `podlab` has network labs. Each lab is a
+`podlab` of podcrates `v0.60.0` or later has network labs. Each lab is a
 network namespace with no route out, with its own stand-in proxy on
 `127.0.0.1:3128` (or no proxy), a TLS stand-in server that answers each
 name, and `SSL_CERT_FILE`. The lane runs these commands in the labs
@@ -245,8 +247,7 @@ server on `127.0.0.1:PORT` with another body, and builds the shim with
 A shim case also checks the shim log (`connect -> forward`) and the peer
 of the AF_UNIX connection of the broker (`SO_PEERCRED`: the `dotnet`
 process). `CONSUMER_SHIM=PATH` takes another shim: the job `static` of
-`ci.yml` plants a shim with no match of the IPv4-mapped address (T-356
-removed), and the check must fail. CI runs the cases with no lab.
+`ci.yml` plants a shim with no match of the IPv4-mapped address, and the check must fail. CI runs the cases with no lab.
 
 ## The consumer Python HTTP client
 

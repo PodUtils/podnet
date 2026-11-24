@@ -12,7 +12,7 @@ Use `podnet net doctor` to see what the host permits.
 | Part | Module | Function |
 | --- | --- | --- |
 | Shim | `crates/podnet-vnet/shim/podnet-vnet.c`, `vnet::shim` | An `LD_PRELOAD` library. It changes `AF_INET` sockets into `AF_UNIX` abstract sockets. |
-| Stack | `vnet::stack` | A `smoltcp` TCP/IP stack. It owns the virtual addresses. |
+| Stack | `vnet::stack` | A `smoltcp` TCP/IP stack. It owns the virtual addresses. The code is `pod-netstack` of PodUtils/podcrates, at its old path. |
 | Link | `vnet::device`, `vnet::framing` | The packet queues of the stack, and the framing for a byte stream. |
 | Proxy | `vnet::proxy` | A SOCKS5 and HTTP `CONNECT` front door into the stack. |
 | Switch | `vnet::switch` | A hub that connects stacks, and the fault injector. |

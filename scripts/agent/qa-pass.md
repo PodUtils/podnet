@@ -1,7 +1,7 @@
 # The black-box QA pass of podnet
 
 This file is the prompt of the black-box QA pass before each beta (T-454; `docs/maintenance.md`, Release, step 0).
-Give it to a new agent, as it is. Fill in the three values of "The inputs". Each pass uses the same prompt, so two
+Give it to a new agent, as it is. Fill in the four values of "The inputs". Each pass uses the same prompt, so two
 passes can be compared.
 
 ## Your task
@@ -11,7 +11,7 @@ fault that a user can find with the binary and the documents only. Write each fa
 
 ## The inputs
 
-- VERSION: the version to test (for example `0.4.0-beta.18`).
+- VERSION: the version to test (for example `0.4.0-beta.19`).
 - BINARY: the path of the release binary `podnet-x86_64-unknown-linux-musl` of VERSION, or of the artifact of `ci`
   for the commit of the dry run.
 - DOCS: a directory with `README.md` and `docs/` of the same commit.

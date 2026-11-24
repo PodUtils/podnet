@@ -183,9 +183,12 @@ no XL: make two entries.
   `.github/workflows/record-issues.yml` holds the list to GitHub each day
   (`scripts/check-github-numbers.py`). It is red until a session maps the
   new number.
-- When each entry of an issue is done: comment on the issue with the
-  commits and the evidence, and close it. Then set the State of its row to
-  `closed`, with the commit, and change its line in `TODO/github.txt`.
+- When each entry of an issue is done: set the State of its row to
+  `closed`, with the commit, and change its line in `TODO/github.txt`, in
+  the commit that closes the last entry. Then push. `.github/workflows/issue-sync.yml`
+  closes the issue. Close an issue by hand only after its row says `closed`:
+  the workflow opens again an issue that the record says is open
+  (`docs/maintenance.md`, "The issue loop").
 - An issue that GitHub deleted stays in the list as `NUMBER issue
   deleted`. Its row's State starts with `deleted`. Its entries stay. No
   comment goes to it.

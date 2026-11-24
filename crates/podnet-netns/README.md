@@ -440,9 +440,12 @@ The public modules are also used alone:
 
 ## Tests
 
-`tests/seccomp.rs` compiles small C programs (static and dynamic) and runs them
-with both backends. A backend that the host does not permit is skipped. Each
-test program has a 10-second alarm, so a lost reply fails the test.
+The tests of the pod backends are in `tests/pod_seccomp/` and in the
+`tests/pod_*.rs` files of the workspace root (`podnet pod` end to end), and in
+`crates/podnet-netns/tests/` (the raw IP pod and the veth wire). The seccomp
+tests compile small C programs (static and dynamic) and run them with both
+backends. A backend that the host does not permit is skipped. Each test
+program has a 10-second alarm, so a lost reply fails the test.
 
 `tests/pod_seccomp_diff.rs` (a test of the workspace root) runs one series
 of socket calls on the host kernel and in a seccomp pod, and compares the

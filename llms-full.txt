@@ -17131,7 +17131,9 @@ podnet forward --network relay --alias-port 7000 \
   lines of a hosts file.
 * A name is letters, digits, `-` and `.`, in lowercase; each name once (else exit 64) (T-404).
 
+### A service of a peer
 
+`-L LISTEN=peer:FINGERPRINT/SERVICE` reaches a service of a peer through a link ([link.md](link.md)):
 
 ```sh
 podnet link connect /run/user/1000/app.sock --peer FINGERPRINT --control /run/user/1000/link.ctl --detach --name peer1
@@ -17149,8 +17151,7 @@ podnet forward -L unix:/run/db.sock=peer:FINGERPRINT/db       # a unix listener
   maps the name to a target (`link listen --service NAME=TARGET`, or `--to TARGET` for `raw`). A service that the peer does not
   have, or whose origin does not answer, closes that connection. The forward and the link stay up.
 * `--network peer:...` is refused with exit 64: a peer way takes the form `-L LISTEN=peer:FINGERPRINT/SERVICE`.
-* The services that a peer offers beyond `--service` (SOCKS5, HTTP proxy, and the other services of the link workstream) are
-  separate work.
+* The services that a peer offers (`raw`, `socks5`, `http`, `exec:` and the others) are in [link.md](link.md).
 
 ### DNS door
 
@@ -17923,8 +17924,8 @@ check gives `ok`, `fail` or `unknown`.
 
 `podnet doctor` tests the path from this host to the edge, and gives `ok`,
 `fail` or `unknown` for each hop (the words of `podnet net doctor` and
-`podnet doctor --agent` too). In `--json`, the key is `status`; the old key
-`verdict` has the same value for one release:
+`podnet doctor --agent` too). In `--json`, the key is `status`; the key
+`verdict` has the same value, for readers of the old key:
 
 * the proxy of each target (the password is never printed), and the
   targets that `NO_PROXY` sends direct;
@@ -18003,8 +18004,7 @@ checks.
 
 ## Options of `podnet doctor`
 
-* `--quick`: one sample for each path and 15 s for the whole run, measured from the launch of the process. The launch took
-  1.33 s on the host of the 2026-11-21 measurement, so 1.5 s is reserved for it and the probes get 13.5 s. A part (the two
+* `--quick`: one sample for each path and 15 s for the whole run, measured from the launch of the process. 1.5 s is reserved for the launch, and the probes get 13.5 s. A part (the two
   lane probes too) that does not end in time gets the verdict `unknown`. The JSON document keeps the same keys.
 * `--samples N` (1 to 9; default 9) and `--timeout SECS` (default 3, for one connection and one TLS
   handshake) make the run shorter.
@@ -19143,7 +19143,7 @@ Use `podnet net doctor` to see what the host permits.
 | Part | Module | Function |
 | --- | --- | --- |
 | Shim | `crates/podnet-vnet/shim/podnet-vnet.c`, `vnet::shim` | An `LD_PRELOAD` library. It changes `AF_INET` sockets into `AF_UNIX` abstract sockets. |
-| Stack | `vnet::stack` | A `smoltcp` TCP/IP stack. It owns the virtual addresses. |
+| Stack | `vnet::stack` | A `smoltcp` TCP/IP stack. It owns the virtual addresses. The code is `pod-netstack` of PodUtils/podcrates, at its old path. |
 | Link | `vnet::device`, `vnet::framing` | The packet queues of the stack, and the framing for a byte stream. |
 | Proxy | `vnet::proxy` | A SOCKS5 and HTTP `CONNECT` front door into the stack. |
 | Switch | `vnet::switch` | A hub that connects stacks, and the fault injector. |

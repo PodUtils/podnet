@@ -8,8 +8,8 @@ check gives `ok`, `fail` or `unknown`.
 
 `podnet doctor` tests the path from this host to the edge, and gives `ok`,
 `fail` or `unknown` for each hop (the words of `podnet net doctor` and
-`podnet doctor --agent` too). In `--json`, the key is `status`; the old key
-`verdict` has the same value for one release:
+`podnet doctor --agent` too). In `--json`, the key is `status`; the key
+`verdict` has the same value, for readers of the old key:
 
 * the proxy of each target (the password is never printed), and the
   targets that `NO_PROXY` sends direct;
@@ -88,8 +88,7 @@ checks.
 
 ## Options of `podnet doctor`
 
-* `--quick`: one sample for each path and 15 s for the whole run, measured from the launch of the process. The launch took
-  1.33 s on the host of the 2026-11-21 measurement, so 1.5 s is reserved for it and the probes get 13.5 s. A part (the two
+* `--quick`: one sample for each path and 15 s for the whole run, measured from the launch of the process. 1.5 s is reserved for the launch, and the probes get 13.5 s. A part (the two
   lane probes too) that does not end in time gets the verdict `unknown`. The JSON document keeps the same keys.
 * `--samples N` (1 to 9; default 9) and `--timeout SECS` (default 3, for one connection and one TLS
   handshake) make the run shorter.

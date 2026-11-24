@@ -32,13 +32,12 @@ h3-shape=common congestion=cubic control-stream=no settings=no
 
 The shape line is printed before the first session, so `control-stream=no` there means no session has been observed. The qlog of the run records the control stream and each request.
 
-### The control stream and podcrates v0.82.0
+### The control stream
 
-In `podcrates` v0.79.0, `crates/pod-warp/src/h3/server.rs` returned from `control()` and dropped its `SendStream`,
-sending a FIN on the control stream (`H3_CLOSED_CRITICAL_STREAM`). `podcrates` `v0.82.0` fixed `pod-warp/src/h3/server.rs`
-to keep the control stream open for the connection lifetime (RFC 9114, section 6.2.1). `src/warp/h3/serve.rs` remains in
-podnet because `podnet warp h3` adds transport qlog output (`--qlog`) and structured HTTP/3 trace events on top of
-`pod-warp`'s shape and wire framing.
+`pod-warp` of `podcrates` v0.82.0 or later (`pod-warp/src/h3/server.rs`) keeps the control stream open for the lifetime
+of the connection (RFC 9114, section 6.2.1). A server that ends the control stream sends a FIN, and a client closes the
+connection with `H3_CLOSED_CRITICAL_STREAM`. `src/warp/h3/serve.rs` stays in podnet because `podnet warp h3` adds
+transport qlog output (`--qlog`) and structured HTTP/3 trace events on top of the shape and the wire framing of `pod-warp`.
 
 ## The stock client
 
@@ -89,11 +88,10 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 `Connect` command, the `quic` relay mode of UDP and the session stream with its first read and its close. The layout is
 the one of `tuic-protocol/tuic`'s `SPEC.md`.
 
-The road is the implementation of `podssh-ws`'s TUIC, moved here so that the org has one: `command.rs` is podssh's
-command layout, `link.rs` its link grammar and credential types, and `stream.rs` its session stream. Podnet adds
-`PENDING_MAX`, the bounded queue and the UDP relay. A new shared `pod-tuic` in podcrates was the first choice; it
-needs a tag after `v0.79.0`, and a tag is a push, which this work may not make. The fallback is therefore the port,
-and the follow-up that removes the podssh copy is named below.
+The road is a port of the TUIC code of `podssh-ws`: `command.rs` is podssh's command layout, `link.rs` its link grammar
+and credential types, and `stream.rs` its session stream. Podnet adds `PENDING_MAX`, the bounded queue and the UDP relay.
+A shared `pod-tuic` crate of podcrates would replace the port. No such crate exists, so the road is a port, and the
+follow-up that removes the podssh copy is named below.
 
 The three deliberate differences from podssh:
 
@@ -261,10 +259,8 @@ crates/podssh-cli/src/man/notes_tuic.rs
 .github/workflows/tuic-interop.yml
 ```
 
-The first choice was a `pod-tuic` crate in podcrates that both podnet and podssh consume. Podcrates consumption is a
-git tag, the last tag is `v0.79.0`, and a new tag is a push, which this work may not make. A path dependency would
-work only in this worktree and break every other checkout. No file of podcrates or podssh was changed here; the
-podnet copy is the one the tests above exercise.
+A shared `pod-tuic` crate in podcrates, which both podnet and podssh take by a git tag, would remove the copy. No such
+crate exists. A path dependency works in one checkout only. The podnet copy is the one that the tests above exercise.
 
 TUIC keeps no 30-stream bound. `SPEC.md` names none, and QUIC's own `max_concurrent_uni_streams` and
 `max_concurrent_bidi_streams` make an `open_uni` or `open_bi` wait until the peer allows it. The 30-stream rule below
