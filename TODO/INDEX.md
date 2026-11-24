@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**536 entries: 17 open, 15 partial, 24 blocked, 480 done.**
+**537 entries: 17 open, 15 partial, 24 blocked, 481 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 2 | 3 | 2 | 81 | 88 |
+| P1 | 2 | 3 | 2 | 82 | 89 |
 | P2 | 6 | 8 | 10 | 240 | 264 |
 | P3 | 9 | 4 | 12 | 158 | 183 |
-| **All** | 17 | 15 | 24 | 480 | 536 |
+| **All** | 17 | 15 | 24 | 481 | 537 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -582,3 +582,4 @@ M8 Overlays, M9 Later.
 | [T-535](fixes.md) | P2 | S | M5 | defect | open | live: the check of a WebSocket through a --url origin gives no line of podnet when the tunnel is not ready |
 | [T-536](fixes.md) | P3 | S | M5 | defect | open | a refused unix bind says that the directory is not writable when the host refuses the socket itself |
 | [T-537](fixes.md) | P2 | S | M5 | chore | open | the build image of Dependabot #680 cannot link loongarch64: --no-rosegment |
+| [T-538](fixes.md) | P1 | S | M5 | defect | done | The job image of the release of v0.4.0-beta.18 fails: a docker logout before the push of the attestation |

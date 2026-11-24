@@ -12,6 +12,11 @@ DIR is .github/workflows when it is not given. The rules:
   and no other right, or with no right (`{}`).
 * Each job has `timeout-minutes`.
 * A job named in READ_ONLY has no right to write.
+* A step with `push-to-registry: true` (actions/attest) comes after a
+  `docker login` (or docker/login-action) of its job, with no
+  `docker logout` between them: the action reads the credentials of the
+  registry from the docker config (the image job of the release of
+  v0.4.0-beta.18 failed with "No credentials found for registry ghcr.io").
 
 Exit 1 with one line for each fault. Exit 2 when a file cannot be read.
 """
@@ -36,6 +41,27 @@ def writes(permissions) -> list[str]:
     if isinstance(permissions, str):
         return [] if permissions == "read-all" else [permissions]
     return [k for k, v in permissions.items() if v == "write"]
+
+
+def registry_faults(path: Path, name: str, job: dict) -> list[str]:
+    faults = []
+    logged_in = False
+    for i, step in enumerate(job.get("steps") or [], 1):
+        if not isinstance(step, dict):
+            continue
+        if str(step.get("uses", "")).startswith("docker/login-action@"):
+            logged_in = True
+        run = str(step.get("run", ""))
+        login, logout = run.rfind("docker login"), run.rfind("docker logout")
+        if login > logout:
+            logged_in = True
+        elif logout > login:
+            logged_in = False
+        push = (step.get("with") or {}).get("push-to-registry")
+        if push in (True, "true") and not logged_in:
+            what = step.get("name") or step.get("uses") or f"step {i}"
+            faults.append(f"{path}: job {name}, {what}: push-to-registry with no docker login before it")
+    return faults
 
 
 def check(path: Path) -> list[str]:
@@ -63,6 +89,7 @@ def check(path: Path) -> list[str]:
             faults.append(f"{path}: job {name} has no timeout-minutes")
         if name in READ_ONLY and writes(job.get("permissions")):
             faults.append(f"{path}: job {name} may write: {', '.join(writes(job.get('permissions')))}")
+        faults += registry_faults(path, name, job)
     return faults
 
 

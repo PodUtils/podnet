@@ -14246,3 +14246,54 @@ cargo test --test listener_bind
 ```sh
 # a release dry run with the new digest passes the job linux loongarch64-unknown-linux-musl
 ```
+
+
+# T-538: The job image of the release of v0.4.0-beta.18 fails: a docker logout before the push of the attestation
+
+**Source:** `release.yml` run 45366987263 on `de6027b` (tag `v0.4.0-beta.18`), job `image` 138371539304, the step
+"the provenance of the image, in the registry": `Error: No credentials found for registry ghcr.io`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The step "the images" pushes the images and the manifest list, and then runs `docker logout ghcr.io`. The next step
+(`actions/attest` with `push-to-registry: true`) reads the credentials of the registry from the docker config, and
+there are none. The attestation of the manifest list is not made, and the step that checks it and writes the section
+"The image, by digest" into the notes does not run (T-487).
+
+## Premise
+
+- Read: the job log of 138371539304. The images and the manifest list are on ghcr.io (the digest of the manifest
+  list is `sha256:3bdf929f0f0bd87cfb299faa51fdbac89dd2fd4ad8d15067c13f1ec77be9079b`). The pull-back check of each
+  image passed.
+- Read: these steps run only on a tag, so the dry runs did not find the fault.
+
+## Approach
+
+1. `release.yml`: the step "the images" keeps the login. The last step logs out after `gh attestation verify`.
+2. `scripts/check-workflows.py`: a rule for the class. A step with `push-to-registry: true` comes after a
+   `docker login` (or `docker/login-action`) of its job, with no `docker logout` between them.
+3. `ci.yml`, job `plant`: a plant that puts a `docker logout` before the step must fail the check.
+
+## Prove
+
+```sh
+python3 -I scripts/check-workflows.py
+```
+
+The job `image` of the next release passes.
+
+## Done
+
+2026-11-24, the commit of this entry.
+
+- The test: the rule of `scripts/check-workflows.py`, and its plant in `ci.yml` (job `plant`, "a logout before
+  push-to-registry"). Control: on `release.yml` before the fix the check fails with `.github/workflows/release.yml:
+  job image, the provenance of the image, in the registry: push-to-registry with no docker login before it` (exit 1).
+  After the fix: `check-workflows: 11 files, 0 faults`. The plant on the fixed copy gives the same fault line.
+- The images of `v0.4.0-beta.18` have no attestation, and its notes have no section "The image, by digest". The next
+  release proves T-487.

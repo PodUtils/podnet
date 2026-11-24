@@ -583,6 +583,11 @@ jobs:
           sed -i '0,/^  contents: read$/s//  contents: write/' "$w/ci.yml"
           must_fail "check-workflows.py, write at the top level" python3 scripts/check-workflows.py "$w"
 
+          # A docker logout before the step that pushes an attestation (the image job of v0.4.0-beta.18).
+          rm -rf "$w"; cp -r .github/workflows "$w"
+          sed -i '/^      - name: the provenance of the image, in the registry$/i\          docker logout ghcr.io' "$w/release.yml"
+          must_fail "check-workflows.py, a logout before push-to-registry" python3 scripts/check-workflows.py "$w"
+
           # A number of TODO/github.txt that TODO/issues.md does not map.
           sed -i '/^89 issue open$/d' TODO/github.txt
           git diff --quiet -- TODO/github.txt && { echo "the plant did not change TODO/github.txt"; exit 1; }

@@ -592,7 +592,8 @@ jobs:
             echo "\`gh attestation verify oci://$repo@$digest --repo $GITHUB_REPOSITORY\`."
           } > "$RUNNER_TEMP/image-digests.md"
           cat "$RUNNER_TEMP/image-digests.md"
-          docker logout ghcr.io
+          # The login stays: actions/attest reads it from the docker config to
+          # push the attestation (scripts/check-workflows.py). The next step logs out.
       - name: the provenance of the image, in the registry
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -609,7 +610,6 @@ jobs:
           DIGEST: ${{ steps.images.outputs.digest }}
         run: |
           set -eu
-          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           gh attestation verify "oci://$REPO@$DIGEST" --repo "$GITHUB_REPOSITORY" \
             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
           docker logout ghcr.io
