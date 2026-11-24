@@ -52,7 +52,7 @@ const PROBE_GAP: std::time::Duration = std::time::Duration::from_millis(50);
 /// A child that a process forks keeps a copy of each listener of the
 /// parent until its exec. Thus a socket that its server closed can take a
 /// connect for a short time. The socket answers only when each of
-/// [`PROBES`] connects, [`PROBE_GAP`] apart, works. A socket that does not
+/// 3 connects, 50 ms apart, works. A socket that does not
 /// answer costs one connect; a socket that answers costs 100 ms.
 #[cfg(unix)]
 pub fn socket_answers(path: &std::path::Path) -> bool {
