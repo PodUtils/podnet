@@ -53,7 +53,7 @@ files that hold no entries are fixed in code: `RECORD_FILES =
 ```
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
-| [T-100](ts.md) | P2 | S | M8 | defect | done | C2: `podssh ts` waits for ever when no network map arrives |
+| podssh T-100 | P2 | S | M8 | defect | done | C2: `podssh ts` waits for ever when no network map arrives |
 ```
 
 Exactly 7 cells; no `|` in the title; the link is the area file name (no

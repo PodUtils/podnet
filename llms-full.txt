@@ -15242,7 +15242,7 @@ challenge. A read user that sends a change gets 403.
 
 `podnet serve --hash-password` reads a password from the first line of
 stdin and prints its hash (`pbkdf2-sha256$ITERATIONS$SALT$KEY`, PBKDF2 with
-HMAC-SHA256, hex):
+HMAC-SHA256, hex).
 
 `podnet serve --add-user USER:ROLE --users FILE` reads a password from the
 first line of stdin and adds the line `USER:ROLE:HASH` to `FILE`. A new
