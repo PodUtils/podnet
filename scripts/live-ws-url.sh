@@ -12,6 +12,15 @@ dir=$(mktemp -d)
 pids=""
 trap 'kill $pids 2> /dev/null || true' EXIT
 
+mask() {
+    sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g'
+}
+# T-535: each failure after the start of the tunnel prints the masked tail of
+# the lines of podnet, so that the log of the job has the cause.
+log() {
+    mask < "$dir/tunnel.err" | tail -25
+}
+
 # The echo server takes a free port and writes it to a file, so that two runs
 # in one step do not meet on one port.
 python3 -I -c '
@@ -38,11 +47,22 @@ port=$(cat "$dir/port")
 
 "$podnet" tunnel --url "http://127.0.0.1:$port" --protocol "$protocol" --transport direct \
     --json --no-verify > "$dir/tunnel.out" 2> "$dir/tunnel.err" &
-pids="$pids $!"
+tunnel=$!
+pids="$pids $tunnel"
 i=0
 until grep -q '"event":"ready"' "$dir/tunnel.out" 2> /dev/null; do
     i=$((i + 1))
-    [ "$i" -lt 90 ] || { echo "the tunnel is not ready after 90 s"; exit 1; }
+    if ! kill -0 "$tunnel" 2> /dev/null; then
+        log
+        wait "$tunnel" && rc=0 || rc=$?
+        echo "podnet tunnel ended before it was ready (exit $rc)"
+        exit 1
+    fi
+    if [ "$i" -ge 90 ]; then
+        log
+        echo "the tunnel is not ready after 90 s"
+        exit 1
+    fi
     sleep 1
 done
 url=$(jq -r 'select(.event == "ready") | .url' "$dir/tunnel.out")
@@ -50,7 +70,7 @@ host=${url#https://}
 echo "::add-mask::$host"
 # T-399: the name must resolve to IPv4 first (a new name, or an IPv6 answer
 # only, gave ENETUNREACH in live 43898114234).
-sh "$(dirname "$0")/live-wait-name.sh" "$host" 240
+sh "$(dirname "$0")/live-wait-name.sh" "$host" 240 || { log; exit 1; }
 
 i=0
 until python3 -I -c '
@@ -64,8 +84,8 @@ asyncio.run(main())
 ' "wss://$host/" 2> "$dir/client.err"; do
     i=$((i + 1))
     if [ "$i" -ge 30 ]; then
-        tail -3 "$dir/client.err" | sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g'
-        sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g' "$dir/tunnel.err" | tail -10
+        mask < "$dir/client.err" | tail -3
+        log
         echo "ws-url $protocol: the WebSocket through the --url origin failed"
         exit 1
     fi

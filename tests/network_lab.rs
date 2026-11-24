@@ -4,8 +4,9 @@
 //! mount namespace for `/run/netns`). The test runs the lab directly when
 //! the process holds the capability, re-executes itself under
 //! `unshare --user --map-root-user --net --mount` when it does not, and
-//! prints a named skip only when neither route is available. A lab that
-//! starts and fails is a failure, never a skip.
+//! prints a named skip only when neither route is available, or when the
+//! host has no `ip`, `mount` or `ping`. A lab that starts and fails is a
+//! failure, never a skip.
 //!
 //! `docs/target-environment.md` holds the limits; the podnet process is an
 //! egress broker at the host, not a guest with its own network stack.
@@ -122,6 +123,11 @@ fn lab() -> Result<(), String> {
 
 #[test]
 fn the_network_surface_needs_the_network_lab() {
+    // T-541: a host without one of the tools of the lab has no lab: a skip
+    // with the name of the tool.
+    for tool in ["ip", "mount", "ping"] {
+        pod_testkit::need_tool!(tool);
+    }
     if std::env::var(INSIDE).ok().as_deref() == Some("1") {
         if let Err(why) = lab() {
             panic!("the network lab: {why}");

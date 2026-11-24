@@ -12474,7 +12474,7 @@ listener or relay disabled by policy, or not answering"; "1 (failure): A failure
 
 ## Premise
 
-- Read: `crates/podnet-core/src/net.rs:114` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
+- Read: `crates/podnet-core/src/net.rs:144` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
   `PermissionDenied` and `AddrNotAvailable`. `forward`, `net proxy`, `serve`, `route`, `link` and `cover` call it.
 - Read: `src/cli/cmd/connect.rs:109` binds the TCP listener of `-L` and adds only a context (`:110`). It does not
   call `bind_fault`, so the exit code is 1. `unix_listener` (`src/cli/cmd/connect.rs:246`, `:249`) has the same
@@ -13273,7 +13273,7 @@ says "nothing accepts a connection" when the cause is EACCES of the connect.
   (`src/cli/cmd/warp/mod.rs:156`, `warp_client`, which registers a device for `--ephemeral`): the registration comes
   before `bind_all` (`src/cli/cmd/warp/front.rs:134`). The comment of issue 97 says that the listeners
   bind before the session; that is true of the session of the proxy, not of the registration.
-- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:114`) is the one place that gives the class to a
+- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:144`) is the one place that gives the class to a
   refused bind. It adds no words. `src/cli/cmd/local.rs:65` writes its own line (`serve --local`).
 - Read: `src/cli/cmd/agent.rs:104` calls `podnet::ports::reachable(*p, ...)`, which gives a bool: a refused connect and
   an EACCES give the same answer. The advice with the unix sockets is in `src/agent.rs:529` and is not used here.
@@ -14175,7 +14175,7 @@ with "the tunnel is not ready after 90 s" for `http2`, and printed no line of po
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -14196,10 +14196,25 @@ own. The cause (a refusal of the edge, a slow registration, or a fault of podnet
 ## Prove
 
 ```sh
-grep -n "not ready" scripts/live-*.sh
-python3 scripts/check-workflows.py
+cargo test -p podnet --test live_scripts
 # the next failed wait of live shows the lines of podnet
 ```
+
+## Done
+
+2026-11-24, the commit of this entry.
+
+- `scripts/live-ws-url.sh` prints the masked tail (25 lines) of `tunnel.err` at each failure after the start of the
+  tunnel: the wait of 90 s, the wait for the name, the WebSocket client. `scripts/live-ws-url.sh`,
+  `scripts/live-throughput.sh` and `scripts/live-share.sh` stop at once when podnet ends before its ready line, with
+  the tail and the exit code of podnet. `scripts/live-throughput.sh` defines `log` before its first use, and prints it
+  when the public URL does not answer.
+- The test: `tests/live_scripts.rs`, `a_live_script_prints_the_lines_of_podnet_when_podnet_ends_before_ready` (a
+  table of the three scripts; a stand-in `podnet` writes one line with a tunnel host and exits 69; each script must
+  print the masked line and "ended before it was ready (exit 69)" in less than 30 s). The row of `live-ws-url.sh`
+  needs the Python module `websockets` and skips with its name when the host has none. Control: on the script before
+  the fix, `live-ws-url.sh` prints only "the tunnel is not ready after 90 s", after 90 s, and no line of podnet.
+
 
 # T-536: a refused unix bind says that the directory is not writable when the host refuses the socket itself
 
@@ -14209,7 +14224,7 @@ python3 scripts/check-workflows.py
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -14230,9 +14245,26 @@ host whose policy refuses AF_UNIX listeners (a seccomp or LSM rule), the line na
 ## Prove
 
 ```sh
-cargo test --test listener_bind
+cargo test -p podnet-core --lib net::
 # the lab listen-denied: the row of a unix listener names the refusal of the host
 ```
+
+## Done
+
+2026-11-24, the commit of this entry.
+
+- `crates/podnet-core/src/net.rs`: `unix_listener(path)` tests the directory of the socket with `access(2)` (`W_OK |
+  X_OK`) and gives `Listener::UnixWritableDir` or `Listener::Unix`. `bind_fault_unix(path)` takes the path; at
+  `PermissionDenied` in a writable directory, the step is "the directory of the socket is writable: this host refuses
+  the unix listener (a seccomp or LSM rule); give a TCP address where the command takes one (podnet net doctor)". The
+  other kinds of a refused bind keep the steps of `Listener::Unix`. Each of the 8 callers gives its path; `net
+  tailscale` takes the kind from `unix_listener`.
+- The tests: three rows of `UnixWritableDir` in `a_refused_bind_is_69_with_one_line_and_a_next_step`, and
+  `a_refused_unix_bind_names_the_directory_only_when_it_is_not_writable` (a writable directory, a directory that does
+  not exist, and a directory of mode 0500, which root can write). `cargo test -p podnet-core --lib net::`: 5 passed.
+  Control: the code before the fix had one step for each unix `PermissionDenied`, "the directory of the socket is not
+  writable", also in a writable directory (the row of T-534 in the lab `listen-denied`). The lab row is not run here.
+
 
 # T-537: the build image of Dependabot #680 cannot link loongarch64: --no-rosegment
 
@@ -14378,6 +14410,8 @@ sh scripts/agent/check.sh
   1 passed.
 - `tests/quick_tunnel_standin.rs`: 4 passed (the new row: ready with 1 provision and 4 refused registrations).
   `tests/pod_seccomp_diff.rs`: 1 passed.
+- The take missed one line: `docs/tunnels.md` (`--leg-failover serial`) gave 130 s and 280 s. The next commit gives
+  110 s and 210 s (PodUtils/podcrates@T-1117).
 
 
 # T-540: release.yml writes `release-index.json` before `SHA256SUMS`
@@ -14414,3 +14448,58 @@ python3 -I scripts/check-workflows.py
 ```
 
 The dry run of `release.yml` has `release-index.json`, and `SHA256SUMS` names it.
+
+
+# T-541: tests of a tool or of IPv6 of the host fail on a host without it, in place of a skip
+
+**Source:** the local gate of 2026-11-24 (T-539): `tests/link_p2p_namespaces.rs`
+(`three_namespaces_show_direct_first_and_relay_fallback`) and `tests/network_lab.rs`
+(`the_network_surface_needs_the_network_lab`), as root in a cloud container with no iproute2 and no ping;
+`tests/pod_seccomp/kernel_listen.rs` (`seccomp_kernel_socket_refuses_listen_v6`) on a kernel with no IPv6.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The tests check CAP_NET_ADMIN only. On a host with the capability and no `ip`, the test of three namespaces panics
+with "the command runs: Os { code: 2, kind: NotFound, ... }"; with `ip` and no `ping`, both tests panic with "exec of
+\"ping\" failed". `cargo test --workspace` stops at the first such test binary, and the test binaries after it do
+not run. On a kernel with no IPv6 (no `/proc/net/if_inet6`), `socket(AF_INET6)` of the program is not a kernel socket,
+so `listen` works, and the v6 test of the seccomp backend fails with "listen on a kernel socket must get EPERM".
+
+## Premise
+
+- Read: the module comment says that the test skips with a named reason. `pod_testkit::need_tool!` gives the skip
+  line of a missing tool (`pod-testkit` v0.82.1).
+- Measured: the panic in a container as root with no iproute2.
+
+## Approach
+
+1. `pod_testkit::need_tool!` for each tool of the lab: `ip`, `iptables`, `sysctl` and `ping` in
+   `tests/link_p2p_namespaces.rs` (after the check of the capability); `ip`, `mount` and `ping` in
+   `tests/network_lab.rs`. A lab that starts and fails stays a failure.
+2. The v6 test of `tests/pod_seccomp/kernel_listen.rs` skips when the host cannot bind `[::1]:0`.
+3. The module comments name the tools.
+
+## Prove
+
+```sh
+PATH=/usr/bin:/bin cargo test -p podnet --test link_p2p_namespaces --test network_lab
+cargo test -p podnet --test pod_seccomp kernel_listen
+```
+
+## Done
+
+2026-11-24, the commit of this entry.
+
+- Control: in this container as root, with no iproute2 and no ping, `three_namespaces_show_direct_first_and_relay_fallback`
+  panicked with "the command runs: ... NotFound", then (with iproute2) with "exec of \"ping\" failed";
+  `the_network_surface_needs_the_network_lab` panicked with "exec of \"ping\" failed"; on this kernel with no IPv6,
+  `seccomp_kernel_socket_refuses_listen_v6` failed (3 runs of 3) with "listen 0 0 ok".
+- After the fix: with no ping, both labs skip with "skipping, this host has no ping that can execute"; with
+  `/usr/sbin` off the PATH, the test of three namespaces skips on `iptables`; with each tool, both labs pass (1 passed
+  each). `cargo test -p podnet --test pod_seccomp kernel_listen`: 3 passed (the v6 test skips with "this host has no
+  IPv6 socket").

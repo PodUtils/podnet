@@ -83,7 +83,7 @@ pub(crate) async fn net_tailscale(args: TailscaleArgs) -> Result<()> {
 
     let listen = ProxyListen::parse(&args.listen)?;
     let kind = match &listen {
-        ProxyListen::Unix(_) => podnet::net::Listener::Unix,
+        ProxyListen::Unix(path) => podnet::net::unix_listener(path),
         ProxyListen::Tcp(_) => podnet::net::Listener::Ip,
     };
     // A live socket is exit 69, a file that is no socket is 64.

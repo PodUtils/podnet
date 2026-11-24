@@ -16,7 +16,8 @@ protocol=$2
 sizes=${3:-20 64}
 dir=$(mktemp -d)
 mkdir "$dir/in"
-trap 'kill $(jobs -p) 2> /dev/null || true' EXIT
+share=""
+trap 'kill $share 2> /dev/null || true' EXIT
 
 mask() {
     sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g; s#/s/[A-Za-z0-9_-]+#/s/<id>#g'
@@ -28,9 +29,16 @@ log() {
 RUST_LOG=podnet=debug "$podnet" share --dir "$dir/in" --protocol "$protocol" --transport direct \
     --json --no-verify --idle-secs 0 --max-request 90000000 \
     > "$dir/share.out" 2> "$dir/share.err" &
+share=$!
 i=0
 until grep -q '"url"' "$dir/share.out" 2> /dev/null; do
     i=$((i + 1))
+    if ! kill -0 "$share" 2> /dev/null; then
+        log
+        wait "$share" && rc=0 || rc=$?
+        echo "podnet share ended before it was ready (exit $rc)"
+        exit 1
+    fi
     if [ "$i" -gt 90 ]; then
         log
         echo "share is not ready after 90 s"

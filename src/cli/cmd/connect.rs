@@ -250,7 +250,7 @@ pub(crate) fn unix_listener(
     podnet::net::claim_socket_path(path, replace)?;
     let listener = podnet_netns::listen::bind_private(path)
         .with_context(|| format!("binding unix:{}", path.display()))
-        .map_err(podnet::net::bind_fault_unix)?;
+        .map_err(podnet::net::bind_fault_unix(path))?;
     let file = SocketFile {
         path: path.to_path_buf(),
         id: file_id(path),

@@ -214,7 +214,7 @@ fn bind_unix(path: &Path, replace: bool) -> Result<tokio::net::UnixListener> {
     podnet_core::net::claim_socket_path(path, replace)?;
     let listener = tokio::net::UnixListener::bind(path)
         .with_context(|| format!("unix:{}", path.display()))
-        .map_err(podnet_core::net::bind_fault_unix)?;
+        .map_err(podnet_core::net::bind_fault_unix(path))?;
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
     Ok(listener)
 }

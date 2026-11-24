@@ -80,7 +80,7 @@ pub async fn bind(listen: &ProxyListen) -> Result<Bound> {
             crate::net::claim_socket_path(path, false)?;
             let listener = podnet_netns::listen::bind_private(path)
                 .with_context(|| format!("binding unix:{}", path.display()))
-                .map_err(crate::net::bind_fault_unix)?;
+                .map_err(crate::net::bind_fault_unix(path))?;
             Ok(Bound::Unix(listener, listen.clone()))
         }
     }

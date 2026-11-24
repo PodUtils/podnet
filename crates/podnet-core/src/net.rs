@@ -73,10 +73,36 @@ pub fn socket_answers(path: &std::path::Path) -> bool {
 pub enum Listener {
     /// A TCP or UDP address (HOST:PORT).
     Ip,
-    /// A unix socket (unix:PATH).
+    /// A unix socket (unix:PATH) in a directory that this process cannot
+    /// write, or whose directory podnet did not test.
     Unix,
+    /// A unix socket in a directory that this process can write and search
+    /// (`access(2)`): a refused bind is a refusal of the host (T-536).
+    UnixWritableDir,
     /// A device or another kind (a TUN or veth wire): the class, no step.
     Other,
+}
+
+/// The kind of the unix listener at `path`: [`Listener::UnixWritableDir`]
+/// when this process can write and search the directory of `path`, else
+/// [`Listener::Unix`].
+#[cfg(unix)]
+pub fn unix_listener(path: &std::path::Path) -> Listener {
+    use std::os::unix::ffi::OsStrExt as _;
+    let dir = match path.parent() {
+        Some(dir) if !dir.as_os_str().is_empty() => dir,
+        _ => std::path::Path::new("."),
+    };
+    let Ok(text) = std::ffi::CString::new(dir.as_os_str().as_bytes()) else {
+        return Listener::Unix;
+    };
+    // SAFETY: access(2) reads the path of a CString that lives to the end
+    // of the call.
+    if unsafe { libc::access(text.as_ptr(), libc::W_OK | libc::X_OK) } == 0 {
+        Listener::UnixWritableDir
+    } else {
+        Listener::Unix
+    }
 }
 
 /// The next step for a refused bind of a `listener` with the error `kind`.
@@ -103,6 +129,10 @@ pub fn bind_step(listener: Listener, kind: std::io::ErrorKind) -> Option<&'stati
         (Listener::Unix, NotFound) => {
             "the directory of the socket does not exist; create it, or give a path in a directory that exists"
         }
+        (Listener::UnixWritableDir, PermissionDenied) => {
+            "the directory of the socket is writable: this host refuses the unix listener (a seccomp or LSM rule); give a TCP address where the command takes one (podnet net doctor)"
+        }
+        (Listener::UnixWritableDir, kind) => return bind_step(Listener::Unix, kind),
         _ => return None,
     })
 }
@@ -115,10 +145,13 @@ pub fn bind_fault(err: anyhow::Error) -> anyhow::Error {
     bind_fault_of(Listener::Ip, err)
 }
 
-/// [`bind_fault`] for a unix socket. `NotFound` (a directory that does not
-/// exist) is a refused bind too.
-pub fn bind_fault_unix(err: anyhow::Error) -> anyhow::Error {
-    bind_fault_of(Listener::Unix, err)
+/// [`bind_fault`] for a unix socket at `path`. `NotFound` (a directory that
+/// does not exist) is a refused bind too. `PermissionDenied` names the
+/// directory only when this process cannot write it ([`unix_listener`]).
+#[cfg(unix)]
+pub fn bind_fault_unix(path: &std::path::Path) -> impl FnOnce(anyhow::Error) -> anyhow::Error {
+    let listener = unix_listener(path);
+    move |err| bind_fault_of(listener, err)
 }
 
 /// [`bind_fault`] for the address kind `listener`. The text is one line: the
@@ -129,7 +162,7 @@ pub fn bind_fault_of(listener: Listener, err: anyhow::Error) -> anyhow::Error {
     let refused = |k: &std::io::ErrorKind| match k {
         AddrInUse | PermissionDenied | AddrNotAvailable => true,
         // A unix socket in a directory that does not exist.
-        NotFound => listener == Listener::Unix,
+        NotFound => matches!(listener, Listener::Unix | Listener::UnixWritableDir),
         _ => false,
     };
     let Some(kind) = err.chain().find_map(|e| {
@@ -222,6 +255,26 @@ mod tests {
                 UNAVAILABLE,
                 Some("does not exist"),
             ),
+            // T-536: a refused bind in a writable directory is a refusal
+            // of the host, not a directory that is not writable.
+            (
+                Listener::UnixWritableDir,
+                PermissionDenied,
+                UNAVAILABLE,
+                Some("this host refuses the unix listener"),
+            ),
+            (
+                Listener::UnixWritableDir,
+                AddrInUse,
+                UNAVAILABLE,
+                Some("give another path"),
+            ),
+            (
+                Listener::UnixWritableDir,
+                NotFound,
+                UNAVAILABLE,
+                Some("does not exist"),
+            ),
             (Listener::Ip, NotFound, FAILURE, None),
             (Listener::Other, NotFound, FAILURE, None),
         ];
@@ -240,6 +293,61 @@ mod tests {
                 Some(step) => assert!(line.contains(step), "{listener:?} {kind:?}: {line}"),
                 None => assert!(!line.contains("; "), "{listener:?} {kind:?}: {line}"),
             }
+            if listener == Listener::UnixWritableDir {
+                assert!(!line.contains("not writable"), "{kind:?}: {line}");
+            }
+        }
+    }
+
+    /// T-536: `bind_fault_unix` tests the directory of the path. A refused
+    /// bind in a directory that this process can write names the host; in
+    /// a directory that does not exist or that it cannot write, the
+    /// directory.
+    #[test]
+    fn a_refused_unix_bind_names_the_directory_only_when_it_is_not_writable() {
+        use crate::exit::{code_of, UNAVAILABLE};
+        let dir = tempfile::tempdir().unwrap();
+        let locked = dir.path().join("locked");
+        std::fs::create_dir(&locked).unwrap();
+        std::fs::set_permissions(&locked, std::os::unix::fs::PermissionsExt::from_mode(0o500))
+            .unwrap();
+        // SAFETY: geteuid has no precondition.
+        let root = unsafe { libc::geteuid() } == 0;
+        // (the path, its kind, the line has); root writes each directory.
+        let cases = [
+            (
+                dir.path().join("a.sock"),
+                Listener::UnixWritableDir,
+                "this host refuses the unix listener",
+            ),
+            (
+                dir.path().join("missing/a.sock"),
+                Listener::Unix,
+                "the directory of the socket is not writable",
+            ),
+            (
+                locked.join("a.sock"),
+                if root {
+                    Listener::UnixWritableDir
+                } else {
+                    Listener::Unix
+                },
+                if root {
+                    "this host refuses the unix listener"
+                } else {
+                    "the directory of the socket is not writable"
+                },
+            ),
+        ];
+        for (path, kind, has) in cases {
+            assert_eq!(unix_listener(&path), kind, "{}", path.display());
+            let err =
+                anyhow::Error::new(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+                    .context(format!("binding unix:{}", path.display()));
+            let err = bind_fault_unix(&path)(err);
+            let line = format!("{err:#}");
+            assert_eq!(code_of(&err), UNAVAILABLE, "{line}");
+            assert!(line.contains(has), "{line}");
         }
     }
 

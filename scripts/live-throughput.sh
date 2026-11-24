@@ -22,22 +22,44 @@ here=$(cd "$(dirname "$0")" && pwd)
 # A free port of the loopback (a fixed port can be held by an earlier step).
 port=$(python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
 local=$(python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
-trap 'kill $(jobs -p) 2> /dev/null || true' EXIT
+# Each process of the script is in pids: `jobs -p` in a command substitution
+# of an EXIT trap gives no process in dash, and an origin outlived the script.
+pids=""
+trap 'kill $pids 2> /dev/null || true' EXIT
 largest=0
 for s in $sizes; do [ "$s" -gt "$largest" ] && largest=$s; done
 label="$protocol+$transport"
 
+# T-535: each failure after the start of the tunnel prints the masked tail of
+# the lines of podnet.
+log() {
+    sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g' "$dir/tunnel.err" | tail -25
+    if [ -s "$dir/connect.err" ]; then
+        echo "== podnet connect"
+        sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g' "$dir/connect.err" | tail -25
+    fi
+}
+
 python3 -I "$here/origin-sink.py" "$port" &
+pids="$pids $!"
 sleep 1
 
 "$podnet" tunnel --url "http://127.0.0.1:$port" --forward "tcp://127.0.0.1:$port" \
     --protocol "$protocol" --transport "$transport" --json --no-verify \
     > "$dir/tunnel.out" 2> "$dir/tunnel.err" &
+tunnel=$!
+pids="$pids $tunnel"
 i=0
 until grep -q '"event":"ready"' "$dir/tunnel.out" 2> /dev/null; do
     i=$((i + 1))
+    if ! kill -0 "$tunnel" 2> /dev/null; then
+        log
+        wait "$tunnel" && rc=0 || rc=$?
+        echo "podnet tunnel ended before it was ready (exit $rc)"
+        exit 1
+    fi
     if [ "$i" -gt 90 ]; then
-        sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g' "$dir/tunnel.err" | tail -20
+        log
         echo "the tunnel is not ready after 90 s"
         exit 1
     fi
@@ -50,21 +72,14 @@ forward=$(jq -r 'select(.event == "ready") | .forward' "$dir/tunnel.out")
 [ "$forward" = "wss://$host/__podnet/ws" ] || { echo "the ready event has no forward endpoint"; exit 1; }
 echo "::add-mask::$host"
 # A new name takes some seconds to resolve (issue 119).
-sh "$(dirname "$0")/live-wait-name.sh" "$host" 240
+sh "$(dirname "$0")/live-wait-name.sh" "$host" 240 || { log; exit 1; }
 i=0
 until curl -fsS -o /dev/null --max-time 10 "$url/"; do
     i=$((i + 1))
-    [ "$i" -lt 30 ] || { echo "the public URL does not answer"; exit 1; }
+    [ "$i" -lt 30 ] || { echo "the public URL does not answer"; log; exit 1; }
     sleep 2
 done
 
-log() {
-    sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g' "$dir/tunnel.err" | tail -25
-    if [ -s "$dir/connect.err" ]; then
-        echo "== podnet connect"
-        sed -E 's/[a-z0-9-]+\.trycloudflare\.com/<tunnel>.trycloudflare.com/g' "$dir/connect.err" | tail -25
-    fi
-}
 
 rate() {
     # rate NAME METHOD URL MIB [CURL ARGUMENT...]
@@ -102,6 +117,7 @@ for s in $sizes; do
 done
 
 "$podnet" connect -L "tcp://127.0.0.1:$local" "$forward" > "$dir/connect.out" 2> "$dir/connect.err" &
+pids="$pids $!"
 sleep 2
 rate connect GET "http://127.0.0.1:$local/$largest.bin" "$largest"
 rate connect POST "http://127.0.0.1:$local/sink" "$largest"

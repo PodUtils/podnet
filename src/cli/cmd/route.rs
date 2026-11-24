@@ -180,7 +180,7 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
         podnet::net::claim_socket_path(&path, args.detach.replace)?;
         let listener = podnet_netns::listen::bind_private(&path)
             .with_context(|| format!("control unix:{}", path.display()))
-            .map_err(podnet::net::bind_fault_unix)?;
+            .map_err(podnet::net::bind_fault_unix(&path))?;
         println!("podnet: route  control unix:{}", path.display());
         servers.spawn(router.clone().serve_control(listener));
     }

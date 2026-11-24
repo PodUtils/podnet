@@ -433,7 +433,7 @@ async fn serve_for(listen: ProxyListen, token: Option<String>, owner: u32) -> Re
             podnet_core::net::claim_socket_path(path, false)?;
             let listener = podnet_netns::listen::bind_private(path)
                 .with_context(|| format!("binding unix:{}", path.display()))
-                .map_err(podnet_core::net::bind_fault_unix)?;
+                .map_err(podnet_core::net::bind_fault_unix(path))?;
             tokio::spawn(async move {
                 while let Ok((stream, _)) = listener.accept().await {
                     // Issue 308: the same user only. Root can connect to a

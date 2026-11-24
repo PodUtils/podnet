@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 539 entries: 17 open, 15 partial, 24 blocked, 483 done.
+`TODO/INDEX.md` holds 540 entries: 15 open, 15 partial, 24 blocked, 486 done.
 
 ## State
 
@@ -59,7 +59,7 @@ not wait for a larger one.
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
-   - The follow-ups of the release `v0.4.0-beta.18`: T-535, T-536, T-537 and T-540. The rest of P1 T-516 (it waits
+   - The follow-ups of the release `v0.4.0-beta.18`: T-537 and T-540. The rest of P1 T-516 (it waits
      for a tag of `pod-hold`) and of P2 T-522 (the length of a DNS line waits for `pod-dns`), at the take of the tag
      that has the ask of COORD-115.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).

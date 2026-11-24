@@ -271,5 +271,11 @@ fn seccomp_kernel_socket_refuses_listen_v6() {
         eprintln!("skipping: no compiler or no SECCOMP_RET_USER_NOTIF");
         return;
     }
+    // T-541: on a kernel with no IPv6, socket(AF_INET6) is not a kernel
+    // socket, and the test says nothing.
+    if let Err(e) = std::net::UdpSocket::bind("[::1]:0") {
+        eprintln!("skipping: this host has no IPv6 socket: {e}");
+        return;
+    }
     refuses_listen("bare_listen6", BARE_LISTEN6, None);
 }

@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-24 10:00 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`,
+The state at 2026-11-24 12:00 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`,
 `docs/maintenance.md`, and `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -21,50 +21,27 @@ no test (`defect_tests` in `TODO/todo.toml`).
 
 ## Where the code is
 
-* All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1. podnet takes the crates of
-  `PodUtils/podcrates` by the git tag `v0.82.0`. The tag `v0.82.1` is out (COORD-152, PodUtils/podcrates#257): its take
-  is the first step of the next session (below).
-* The release `v0.4.0-beta.18` (T-533) was published from `de6027b` on 2026-11-24: see "The release" below.
-* The record: `cargo todo check` agrees: 536 entries.
-
-## The release of v0.4.0-beta.18 (T-533)
-
-* `release.yml` 45366921104 (`publish=v0.4.0-beta.18`) made the tag; the release run is 45366987263 on `de6027b`.
-  At this handoff the run builds the binaries (each target, the gate lane, then the image and the release).
-* Evidence: `ci` 45360283838 and the dry run 45360290009 passed on `de6027b`; `live` 45353877401 passed on `27d2e3a`
-  (the same code: `de6027b` changes only `release.yml` and the record); `gate` 45322155916 passed on `cfbc215` (the same
-  code and lane scripts).
-* After the run: check the release files and `release-proofs.yml` (each file OK, Verified OK), the job `image` (the
-  attestation, the pull-back by digest, the section "The image, by digest" in the notes: T-487). Then set T-533 done
-  with its Done section, write the digest of the manifest list beside the SHA-256 of each file in a hand-off COORD issue
-  `(to all)`, and close COORD-109 (#656) and its record row (T-487).
+* All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (a cloud container can have an
+  older default: `rustup default 1.99`; with Rust 1.97, cargo says "no matching package named `pod-release`").
+  podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.82.1` (T-539, `a0b727c`; COORD-116, #708).
+* The release `v0.4.0-beta.18` (T-533) is published from `de6027b`. `release-proofs.yml` 45374896321 passed. The job
+  `image` failed after the push: a `docker logout` before `actions/attest` (T-538, fixed in `fefb28e`, with a rule in
+  `scripts/check-workflows.py`). The images of beta.18 have no attestation; the digests are in COORD-109 (#656).
+* The record: `cargo todo check` agrees.
 
 ## The next steps, in order
 
-1. **Take podcrates `v0.82.1`** (T-137; COORD-152). A worktree of the last session held a finished take (commit
-   `2552b93`, not pushed, lost with the container); do it again from these facts:
-   * Bump each `pod-*` pin to `v0.82.1` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`, `scripts/install/SOURCES`:
-     tag and commit only, `core.sh`, `core-net.sh` and `pins.py` keep their SHA-256; `.github/workflows/issue-sync.yml`:
-     `uses:` at `0d7832b9...` and `podcrates_ref: v0.82.1`). The tag has no `adoption/podnet/` patch.
-   * COORD-113 (#685) is answered: a refusal with retry: yes gets 30 s of tries; "no edge leg worked" is TempFail
-     (exit 75) when each leg asked for a retry, with the typed `fail::Refused` of the last leg in its chain.
-     `crates/podnet-core/src/hop.rs` `refusals` must read the typed refusal first and then the text of the chain for
-     the other legs (an early return on the typed one gives exit 75 by mistake when an earlier leg said retry: no).
-     `src/tunnel.rs` `again` stays as the second path. `standin::Reply` is `non_exhaustive` (podnet does not match on
-     it), with `RefuseRetry` and `Edge::script`: add a row to `tests/quick_tunnel_standin.rs` (4 refusals, then an
-     accept: ready with 1 provision). `docs/tunnels.md` and `docs/protocol.md` 3.3: the attempt limits are 110 s
-     (`quic`) and 210 s (`http2`, `http2+relay`). Take `pod_testkit::need_route!` in place of the copy in
-     `tests/test_host/mod.rs`.
-   * COORD-115 (#707): `v0.82.1` answers none of its asks. T-516 and T-522 stay partial.
-   * Record a new entry for the take, a new entry for the ask PodUtils/podcrates@T-1118 (`release.yml` writes
-     `release-index.json` before `SHA256SUMS`), a line in T-137, and a Correction in T-513. Then a COORD issue
-     `(to podcrates)` with the commit, and close COORD-113 (#685) and COORD-114 (#686) when podcrates has read them.
-2. **Open follow-ups of this session:** T-535 (`scripts/live-ws-url.sh` prints no line of podnet on a timeout), T-536
-   (a refused unix bind names a false cause), T-537 (the build image of Dependabot #680 cannot link loongarch64; close
-   each Dependabot PR of that image with a link to T-537 until it is fixed), and a COORD ask `(to podcrates)` from
-   T-534: one `socket_answers` in `pod-core` for the one-connect probes of `pod-control` (`src/unix.rs:27`), `pod-link`
-   (`src/unix.rs:154`) and `pod-warp` (`src/find.rs:112`).
-3. The rest of the work order of `TODO/PROGRESS.md`: T-516 and T-522 (wait for COORD-115), T-476, T-492 step 3, T-367,
+1. **Read the runs of `ci` and `live` on the last commits** (the watcher prints each end). A red run goes first.
+2. **Open follow-ups:** T-537 (the build image of Dependabot #680 cannot link loongarch64; find the part of the new
+   image that gives `--no-rosegment`, and prove a fix with a release dry run; close each Dependabot PR of that image
+   with a link to T-537 until then), T-540 (`release-index.json` in `release.yml`, PodUtils/podcrates@T-1118), and a
+   COORD ask `(to podcrates)` from T-534: one `socket_answers` in `pod-core` for the one-connect probes of
+   `pod-control` (`src/unix.rs:27`), `pod-link` (`src/unix.rs:154`) and `pod-warp` (`src/find.rs:112`).
+3. **The next beta `v0.4.0-beta.19`:** the black-box QA pass first (`docs/maintenance.md`, Release, step 0), then
+   the steps 1 to 6. Its job `image` proves T-487: the attestation, `gh attestation verify`, the section "The image,
+   by digest" of the notes. Then write the digests in a hand-off COORD issue `(to all)` and close COORD-109 (#656)
+   through the record.
+4. The rest of the work order of `TODO/PROGRESS.md`: T-516 and T-522 (wait for COORD-115), T-476, T-492 step 3, T-367,
    T-488, T-414, T-415, T-406, T-478.
 
 ## Facts for the next session
@@ -91,6 +68,10 @@ no test (`defect_tests` in `TODO/todo.toml`).
   `cargo test --features full --test sidecar`, `python3 -I scripts/check-harness.py --self-test`, and
   `python3 -I scripts/check-claims.py`.
 * Touch each changed file before `sh scripts/agent/check.sh` if a stash or file move leaves stale timestamps.
+* A cloud container can lack `ip` (iproute2) and the Python module `websockets`: `apt-get install -y iproute2` and
+  `pip install --break-system-packages websockets` (the scripts run `python3 -I`, which reads no user site). The
+  full suite takes about 90 minutes here; run it with `--no-fail-fast`, as `cargo test` stops at the first failed
+  test binary.
 * Run the podlab lane locally: `sh scripts/get-podlab.sh v0.68.0 .work/podlab-v0.68.0`, build podnet, copy the binary,
   podlab asset, `scripts/lab-lane.sh`, `scripts/lab-errors.sh`, and `tests/consumers/` to a directory readable by uid
   65534 (such as `/var/tmp/lane/`), then run as root:
@@ -116,10 +97,9 @@ Use `pod_testkit::refused`, bind port `0`, or use `127.0.0.1:1` instead of freei
 
 | Issue | Waits for |
 | --- | --- |
+| `#708` (COORD-116, the take of `v0.82.1`) | podcrates reads it; then close it through the record. |
 | `#707` (COORD-115, the asks of the QA pass of beta.18) | A tag of podcrates; T-516 and T-522 partial. |
-| `#686` (COORD-114, the take of `pod-release`) | Done in podcrates (PodUtils/podcrates@T-966); close after the next take. |
-| `#685` (COORD-113, the retry budget of `pod-cloudflare`) | Answered in `v0.82.1`; close with the take. |
 | `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
-| `#656` (COORD-109, ghcr.io image: T-487) | The result of the release of beta.18. |
+| `#656` (COORD-109, ghcr.io image: T-487) | The job `image` of the release of beta.19. |
 | `#604` (COORD-098, relay holds a lost socket) | The relay fix (T-406, T-478). |
 | `#413` (COORD-006) | T-161 and T-200 (`pod-relay`). |

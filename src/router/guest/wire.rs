@@ -93,7 +93,7 @@ impl WireSpec {
                 bind_seqpacket(path)
                     .map(Opened::Listener)
                     .with_context(|| format!("unix:{}", path.display()))
-                    .map_err(crate::net::bind_fault_unix)
+                    .map_err(crate::net::bind_fault_unix(path))
             }
             WireSpec::Tun(name) => open_tun(name)
                 .map(Opened::Packets)

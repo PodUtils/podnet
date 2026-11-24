@@ -551,7 +551,7 @@ impl Control {
         }
         let listener = bind_private(path)
             .with_context(|| format!("the control socket {}", path.display()))
-            .map_err(crate::net::bind_fault_unix)?;
+            .map_err(crate::net::bind_fault_unix(path))?;
         let token_file = token_path(path);
         let written = std::fs::remove_file(&token_file)
             .or_else(|e| {

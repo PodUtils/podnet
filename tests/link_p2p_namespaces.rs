@@ -21,8 +21,10 @@
 //!   `direct refused`.
 //!
 //! The test is not ignored. It skips with a named reason only when the
-//! process has no CAP_NET_ADMIN; `scripts/ci/root-netns-tests.sh` runs it as
-//! root, where the capability is present.
+//! process has no CAP_NET_ADMIN, or the host has no `ip`, `iptables`,
+//! `sysctl` or `ping`;
+//! `scripts/ci/root-netns-tests.sh` runs it as root, where the capability is
+//! present.
 
 mod test_host;
 
@@ -508,6 +510,11 @@ fn three_namespaces_show_direct_first_and_relay_fallback() {
             "CAP_NET_ADMIN is absent; the three-namespace NAT lab needs the capability",
         );
         return;
+    }
+    // T-541: a host without one of the tools of the lab skips with the
+    // name of the tool.
+    for tool in ["ip", "iptables", "sysctl", "ping"] {
+        pod_testkit::need_tool!(tool);
     }
     let cone = case("c", true);
     assert_eq!(
