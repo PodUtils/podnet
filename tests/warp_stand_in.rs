@@ -350,11 +350,12 @@ mod through_the_edge {
             .port()
     }
 
-    /// `warp proxy` on a free port of the loopback, with the edge as the
-    /// front door. Gives the child and its port when it listens, or the
-    /// output of a child that ended.
+    /// `warp proxy` on port 0 of the loopback, with the edge as the front
+    /// door. Gives the child and the port of its line `podnet: warp proxy
+    /// socks5h://ADDR` when it listens, or the output of a child that ended
+    /// (T-492: a port that the test frees can go to another test first).
     fn proxy(world: &World, edge: SocketAddr) -> Result<(Child, u16), Output> {
-        let port = free_port();
+        use std::io::BufRead as _;
         let identity = world.identity();
         let mut child = Command::new(env!("CARGO_BIN_EXE_podnet"))
             .args([
@@ -364,7 +365,7 @@ mod through_the_edge {
                 identity.to_str().unwrap(),
             ])
             .args(["--masque-endpoint", &edge.to_string()])
-            .args(["proxy", "--listen", &format!("tcp://127.0.0.1:{port}")])
+            .args(["proxy", "--listen", "tcp://127.0.0.1:0"])
             .args(["--run-for", "60"])
             .env("PODNET_WARP_API", format!("http://{}", world.served.addr()))
             .env("PODNET_STATE_DIR", world.dir.path().join("state"))
@@ -374,15 +375,35 @@ mod through_the_edge {
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
+        // The port of the listen line; the other lines of stdout are read
+        // to the end, so that the child never waits on a full pipe.
+        let stdout = child.stdout.take().unwrap();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            for line in std::io::BufReader::new(stdout).lines() {
+                let Ok(line) = line else { break };
+                let port = line
+                    .strip_prefix("podnet: warp proxy  socks5h://127.0.0.1:")
+                    .and_then(|rest| rest.split_whitespace().next())
+                    .and_then(|port| port.parse::<u16>().ok());
+                if let Some(port) = port {
+                    let _ = tx.send(port);
+                }
+            }
+        });
         let deadline = Instant::now() + Duration::from_secs(30);
+        let mut port = None;
         while Instant::now() < deadline {
             if let Ok(Some(_)) = child.try_wait() {
                 return Err(child.wait_with_output().unwrap());
             }
-            if TcpStream::connect(("127.0.0.1", port)).is_ok() {
-                return Ok((child, port));
+            match port {
+                None => port = rx.recv_timeout(Duration::from_millis(100)).ok(),
+                Some(port) if TcpStream::connect(("127.0.0.1", port)).is_ok() => {
+                    return Ok((child, port));
+                }
+                Some(_) => std::thread::sleep(Duration::from_millis(100)),
             }
-            std::thread::sleep(Duration::from_millis(100));
         }
         let _ = child.kill();
         Err(child.wait_with_output().unwrap())

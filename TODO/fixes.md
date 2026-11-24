@@ -11390,6 +11390,12 @@ cargo test --lib a_closed_port_fails_with_its_address
 2026-11-19, steps 1 and 2 in the commit of this entry: `the_pin_cookie_of_a_plain_tcp_listener_is_not_secure` passes
 three runs of three; `a_closed_port_fails_with_its_address` passes. Step 3 is open.
 
+2026-11-24, step 3 in part: `proxy` of `tests/warp_stand_in.rs` gives `warp proxy` the listener `tcp://127.0.0.1:0`
+and reads the port from its line `podnet: warp proxy  socks5h://127.0.0.1:PORT` (a thread reads stdout to its end).
+`cargo test -p podnet --test warp_stand_in through_the_edge`: 6 passed, three runs of three. Open: `warp forward -L`
+and `warp up --port` of the same file, and `free_port` of `tests/commands.rs` (`forward --name` listens on the port
+of its target).
+
 # T-493: Take podcrates v0.77.0
 
 **Source:** PodUtils/podcrates#240 (COORD-145, 2026-11-19): the tag `v0.77.0` at `7cbe674`.
