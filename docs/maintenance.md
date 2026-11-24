@@ -212,20 +212,34 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 6. Watch the runs of the commit (`watch-runs.sh`). Read the evidence in the
    job log.
 7. Set each entry to `done` (`cargo todo set`), with its Done section.
+   Write the evidence into the Done section: the cause, the change, the
+   tests, the CI run and the live run with the lines of the log that prove
+   the fix, and what is not proven.
    The record sets the state of each issue (the owner's ruling "Issues";
-   `issue_rules = "on"` in `TODO/todo.toml`). Close an issue through the
-   record, not by hand: when each of its entries is done, set the State of
-   its row in `TODO/issues.md` to `closed` with the commit, and set its line
-   in `TODO/github.txt` to `closed`, in the commit that closes the last
-   entry. `.github/workflows/issue-sync.yml` (the workflow of podcrates at
-   a tag) then writes the status block, closes the issue and writes one
-   comment with each entry and its tag. It opens again an issue that the
-   record says is open. Do not edit the status block by hand, and do not
-   write the state of an issue in a comment. Write the evidence (the
-   cause, the change, the tests, the CI run and the live run with the
-   lines of the log that prove the fix, and what is not proven) into the
-   Done section of the entry. A COORD issue, a run request and a
-   `[Reference]` issue close by hand, not on entries.
+   `issue_rules = "on"` in `TODO/todo.toml`). Close an issue as follows:
+   1. When each entry of the issue is done, set the State of its row in
+      `TODO/issues.md` to `closed` with the commit, and set its line in
+      `TODO/github.txt` to `closed`. Do this in the commit that closes the
+      last entry.
+   2. Push the commit.
+   3. Let `issue-sync.yml` close the issue. It writes the status block, closes
+      the issue and writes one comment with each entry and its tag. If you
+      close the issue by hand, do it after step 1 and never before.
+   The rule that keeps an issue closed: `issue-sync.yml` sets each issue to
+   the state of its row. It opens again an issue that the record says is open
+   and that someone closed on GitHub. A run starts at each push to `main`
+   that has no `[skip ci]` in its message, and on a dispatch. A close by hand
+   with the row `open` is therefore undone at the next push. A close that
+   the record also says is closed stays. Do not edit the status block by
+   hand, and do not write the state of an issue in a comment. A COORD issue
+   and a run request close on an answer, not on entries: when its subject
+   is done, set the State of its row to `closed` and its line in
+   `TODO/github.txt` to `closed`, then close it. Only an issue of the kind
+   `reference` (the title starts with `[Reference]`) keeps the state that a
+   session gives it by hand; the sync writes its block only.
+   To list the issues that disagree with the record, compare
+   `cargo todo issues --json` with the state of each issue on GitHub
+   before a push.
 8. The job report of `live` opens an issue "live: two runs in a row failed"
    after two failed runs. Map it to an entry. Write the cause of each
    failure and the run that passed into the Done section, and close it
@@ -244,7 +258,17 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 | `release-proofs.yml` | after a release | checks the release files, SHA256SUMS and the signatures |
 | `fuzz.yml` | on a schedule | fuzz targets |
 | `record-issues.yml` | each day, by hand | `TODO/github.txt` against GitHub (`scripts/check-github-numbers.py`) |
-| `issue-sync.yml` | push to `main`, each day, by hand (a dry run by default) | the state and the status block of each issue from the record (`issue-sync.yml` of podcrates at the tag of T-137) |
+| `issue-sync.yml` | push to `main` (not with `[skip ci]`), each day, by hand (a dry run by default) | the state and the status block of each issue from the record (`issue-sync.yml` of podcrates at the tag of T-137) |
+
+Facts about `issue-sync.yml`:
+
+* A push with `[skip ci]` in the message starts no run. Then GitHub keeps its
+  state until the next run.
+* The daily run has started no run since the workflow exists (measured
+  2026-11-24: 0 runs of the event `schedule`; the other daily workflows run).
+  Do not rely on it.
+* Each change of the workflow takes effect at the next push. A dry run
+  (`dry_run` true) changes no issue.
 
 Facts about `live.yml`:
 
