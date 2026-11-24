@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 531 entries: 13 open, 15 partial, 24 blocked, 479 done.
+`TODO/INDEX.md` holds 532 entries: 14 open, 15 partial, 24 blocked, 479 done.
 
 ## State
 
@@ -41,10 +41,12 @@
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.17`. The next beta
-   (`v0.4.0-beta.18`) runs the black-box QA pass (`scripts/agent/qa-pass.md`) and `gate.yml` on the head first, and
-   proves the attestation and digests of the image (issue 656). The pass of 2026-11-23 found 19 issues; its entries are
-   in `TODO/fixes.md` (the list below), and the release waits for each P1 and P2 entry of them.
+3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.17`. The next beta is
+   T-533 (`v0.4.0-beta.18`): the version and the notes are set; the steps 3 to 6 of `docs/maintenance.md`, Release,
+   are next (`gate.yml` on the head, the dry run, the publish), and it proves the attestation and digests of the
+   image (issue 656). The pass of 2026-11-23 found 19 issues; each entry is done except T-516 and T-522 (partial: their
+   rest waits for podcrates, COORD-115; `docs/decisions.md`, 2026-11-23, A partial QA entry whose rest is a crate of
+   podcrates).
 
 ### The order of podnet's own work
 
@@ -57,11 +59,9 @@ not wait for a larger one.
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** each
    entry of this list is done. A fix in a pod backend lands now: the split of the pod backends is done.
    The list (the triage of GitHub #347 to #412; P1 first, then P2, then P3):
-   - **First, the gate of the release of `v0.4.0-beta.18`** (the black-box QA pass of 2026-11-23, GitHub #687 and #689 to
-     #706; `docs/maintenance.md`, Release, step 0: the release waits until each P1 and P2 entry is done): P1
-     T-516 (partial: the rest waits for a tag of `pod-hold`); then P2 T-522 (partial: the length of a DNS line waits for
-     `pod-dns`). T-516 and T-522 have an ask for podcrates (a COORD issue
-     `(to podcrates)`); each has a step in podnet that does not wait for the tag.
+   - **First, the release T-533 (`v0.4.0-beta.18`)**, after the black-box QA pass of 2026-11-23 (GitHub #687 and #689
+     to #706). Then the rest of P1 T-516 (it waits for a tag of `pod-hold`) and of P2 T-522 (the length of a DNS line
+     waits for `pod-dns`), at the take of the tag that has the ask of COORD-115.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).

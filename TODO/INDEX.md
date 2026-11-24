@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**531 entries: 13 open, 15 partial, 24 blocked, 479 done.**
+**532 entries: 14 open, 15 partial, 24 blocked, 479 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 3 | 2 | 80 | 86 |
+| P1 | 2 | 3 | 2 | 80 | 87 |
 | P2 | 4 | 8 | 10 | 240 | 262 |
 | P3 | 8 | 4 | 12 | 158 | 182 |
-| **All** | 13 | 15 | 24 | 479 | 531 |
+| **All** | 14 | 15 | 24 | 479 | 532 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -577,3 +577,4 @@ M8 Overlays, M9 Later.
 | [T-530](fixes.md) | P3 | S | M5 | defect | done | bench: the text output shows `null` for the latency of a run with no answer (GitHub #698) |
 | [T-531](fixes.md) | P2 | S | M5 | defect | done | pod: a bad PODNET_RESOLVE is ignored; the manual says exit 78 for each command (GitHub #687, end of the pass) |
 | [T-532](fixes.md) | P3 | S | M5 | defect | done | pod: the seccomp backend counts each refused connect twice; autostart remove of an unknown name exits 1 (GitHub #687, end of the pass) |
+| [T-533](fixes.md) | P1 | S | M5 | release | open | Publish `v0.4.0-beta.18`: the fixes of the QA pass of 2026-11-23, `pod-release` and podcrates `v0.82.0` |

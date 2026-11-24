@@ -13989,3 +13989,52 @@ fix the first test fails with `seccomp: TRIES:2 OK:0` and the lines `(1 refused)
 with `["autostart", "remove", "nosuchname"]: exit Some(1)`. The COORD note (to podcrates): the fix of the frozen file
 `crates/podnet-core/src/autostart.rs` (`remove`: exit 69 for an unknown name) for pod-unit, if pod-unit takes
 `remove`.
+
+
+# T-533: Publish `v0.4.0-beta.18`: the fixes of the QA pass of 2026-11-23, `pod-release` and podcrates `v0.82.0`
+
+**Source:** `docs/maintenance.md`, Release; `CLAUDE.md`, Releases (2026-11-09): cut the next prerelease when a batch of
+fixes is green. The black-box QA pass of 2026-11-23 (GitHub #687, #689 to #706) and the proof of T-487 (COORD-109,
+PodUtils/podnet#656).
+**Category:** release
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`v0.4.0-beta.17` has none of the fixes of the QA pass of 2026-11-23 (T-515 to T-532), the shared verifier of
+`pod-release` (T-494), the takes of podcrates `v0.71.0` to `v0.82.0`, and the deferred features of `4df28952`. The
+steps of the image of T-487 run only on a tag, so they have no proof yet.
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release". Step 0 (the black-box QA pass) found 19 issues. Each is an entry,
+  and each entry is done except T-516 and T-522. These two are partial: the part of podnet is done, and the rest waits
+  for a tag of podcrates (COORD-115, PodUtils/podnet#707). The release does not wait for that rest
+  (`docs/decisions.md`, 2026-11-23, A partial QA entry whose rest is a crate of podcrates). The notes name the limit.
+- The notes have `## Breaking`: the exit codes and the JSON keys that changed (T-494, T-513, T-515 to T-532).
+- `ci` 45289544540 and `live` 45289544910 passed on `cca0b3d`, the last commit of the fixes before the version.
+
+## Approach
+
+0. The QA pass of 2026-11-23: #687, #689 to #706. Each entry is done, except T-516 and T-522 (partial; their rest
+   waits for podcrates).
+1. Set the version `0.4.0-beta.18` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`), write the llms files again.
+2. Write `docs/releases/v0.4.0-beta.18.md`, with `## Breaking`.
+3. Push; wait until `ci` and `live` pass on that commit. Dispatch `gate.yml` on that commit and wait until it passes.
+4. Dispatch the dry run of `release.yml` (`publish` empty).
+5. Dispatch `release.yml` with `publish=v0.4.0-beta.18`.
+6. Check the files of the release, `release-proofs.yml`, and the job `image` (the attestation of the manifest list,
+   the pull-back check, the section "The image, by digest" of the notes). Write the digests in COORD-109 (#656) and
+   close it through the record.
+
+## Prove
+
+```sh
+gh release view v0.4.0-beta.18 -R PodUtils/podnet
+gh run list -R PodUtils/podnet --workflow release-proofs.yml --limit 1
+```
+
+The job `image` of the release run passes, and the notes of the release have the section "The image, by digest".
