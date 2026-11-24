@@ -34,6 +34,9 @@ no test (`defect_tests` in `TODO/todo.toml`).
 
 ## The next steps, in order
 
+These steps are the start of the work, not its end. After them, continue with the work order of `TODO/PROGRESS.md`.
+Do not stop for a confirmation and do not end the turn after a report (`CLAUDE.md`, "Work without a stop").
+
 1. **Read the runs of `ci` and `live` on the last commits** (the watcher prints each end). A red run goes first.
 2. **Open follow-ups:** T-537 (the build image of Dependabot #680 cannot link loongarch64; find the part of the new
    image that gives `--no-rosegment`, and prove a fix with a release dry run; close each Dependabot PR of that image

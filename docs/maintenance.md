@@ -31,6 +31,10 @@ state of the open work.
    other sessions of PodUtils"), and the issue watcher (see "The issue
    loop").
 7. Read `TODO/PROGRESS.md`, "Open work" below, and the open issues on GitHub.
+8. Do the steps of `docs/HANDOFF.md`, then the work order of
+   `TODO/PROGRESS.md`, entry after entry, with no stop for a confirmation
+   (`CLAUDE.md`, "Work without a stop"). End the turn only when each
+   remaining entry is blocked.
 
 ## Tools
 

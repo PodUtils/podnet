@@ -23,6 +23,26 @@ These rules apply to each session. Obey them before any other default.
 - `.claude/settings.json` allows all tools in `acceptEdits` mode. Do not ask for
   permission for routine commands.
 
+## Work without a stop (the owner, 2026-11-24)
+
+- The first prompt of a session ("resume", "continue", "read the docs and
+  resume") gives the authority for the whole work order. Do not ask the
+  owner to confirm a step that this file, the record or a ruling of
+  `docs/decisions.md` covers: a take, a fix, a COORD issue, the close of an
+  issue, a dry run, a release of a beta, the black-box QA pass.
+- The steps of `docs/HANDOFF.md` are the start of the work, not its end.
+  After them, take the next entry of the work order of `TODO/PROGRESS.md`.
+- Do not end the turn while one entry of the work order can go forward. A
+  report is not an end: write it as a short line, and continue.
+- Do not end the turn to wait for CI. Start a background wait, and work on
+  the next entry. Read each run when it ends.
+- End the turn only when each remaining entry is blocked. Then write each
+  blocker (an outside service, a tag of podcrates, a question for the
+  owner), and update `docs/HANDOFF.md`.
+- A question for the owner that is not urgent: make the call, record it in
+  `docs/decisions.md`, and continue. An urgent question: record it, and
+  continue with the other entries.
+
 ## Tools
 
 - Use shell tools (`git`, `curl`, `cargo`) before MCP tools.

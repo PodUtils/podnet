@@ -30,6 +30,9 @@
 
 ## Work order
 
+Do the entries below one after the other, with no stop for a confirmation of the owner (`CLAUDE.md`, "Work without a
+stop"). End a turn only when each remaining entry is blocked.
+
 00. **Before all: podrunner first** (`docs/decisions.md`, 2026-11-18, podrunner first and Coordinator): a red run of podnet's CI, then each ask of podrunner (a COORD issue `(to podnet)`; the coordinator is the session of podcrates), then each ask of githome and cfb, then the take of each tag of podcrates. Other work waits.
 0. **The QA round of 2026-11-17 is done** (`docs/decisions.md`, The QA round and the release freeze): the gate of
    correctness (the entries 450 to 455) is done (2026-11-20). The freeze of releases and features ends with it. Each next
