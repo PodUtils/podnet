@@ -344,7 +344,7 @@ jobs:
           CC_aarch64_unknown_linux_musl: clang
           CFLAGS_aarch64_unknown_linux_musl: --target=aarch64-linux-musl
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: rust-lld
-        run: cargo build --locked --release --target ${{ matrix.target }}
+        run: cargo build --locked --release --features release --target ${{ matrix.target }}
       - name: The binaries are static, and their sizes
         run: |
           set -eu

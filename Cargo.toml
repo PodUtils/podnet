@@ -351,6 +351,10 @@ sidecar = ["dep:pod-sidecar"]
 c-abi = []
 # Each optional carrier and service, for CI (`cargo test --features full`).
 full = ["tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ntp", "smtp", "imap", "ss", "trojan", "sidecar", "c-abi"]
+# The features of the release binaries (T-428): the network carriers of
+# podnet link that build and pass their tests on each target of the release
+# set. The static x86-64 binary grows from 42.6 MB to 45.1 MB with them.
+release = ["tcp", "ws", "h2", "quic", "udp", "poll", "dns"]
 
 [dev-dependencies]
 # The NAT simulator of pod-natprobe for the row nat of doctor (T-543).

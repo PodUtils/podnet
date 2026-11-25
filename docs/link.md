@@ -353,8 +353,8 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 | `hf` | `hf:PATH[,BPS]`, or `--carrier hf:PATH[,BPS]` | An ARDOP or VARA modem on a serial line, 300 to 3000 bit/s, half duplex with a busy signal, the ARQ of the modem above. See "The serial and HF carriers". |
 
 The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `dns`, `s3`, `icmp`, `ntp`, `smtp` and `imap` sit behind a build feature ([build.md](build.md), Features). The default build has none of
-them, and the binaries of a release are default builds: they have the carriers `unix`, `memory`, `serial` and `hf` only. Build
-podnet with `--features` for another carrier. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
+them. The binaries of a release have the feature `release`: the carriers `unix`, `memory`, `serial`, `hf`, `tcp`, `ws`, `h2`,
+`quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll` and `dns` (T-428). Build podnet with `--features` for another carrier. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason.
 

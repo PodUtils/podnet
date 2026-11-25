@@ -8846,6 +8846,11 @@ grep -n 'default builds' docs/link.md
 
 2026-11-17: step 1 is done (`docs/link.md`; the notes of the next beta). Step 2 waits for the build of each feature on
 each target of the release set.
+2026-11-25: step 2 takes the first way: the feature `release` (`tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `dns`) for
+each release-mode build (`release.yml`, `rebuild.sh` for a tag that has the feature, `gate.yml`, `live.yml`, the job
+`static` of `ci.yml`). The size, measured on x86-64 musl: 42.6 MB default, 45.1 MB with `release` (+5.8 %), 45.9 MB
+with `full`. The other features (`s3`, `icmp`, `ntp`, `smtp`, `imap`, `ss`, `trojan`, `sidecar`, `c-abi`) stay out. The
+proof is the dry run of `release.yml` (each target builds) after `v0.4.0-beta.19`.
 
 # T-429: Small output faults of the QA round (GitHub #622)
 

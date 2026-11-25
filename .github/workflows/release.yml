@@ -111,7 +111,7 @@ jobs:
           docker run --rm -v "$PWD:/work" -w /work \
             -e CARGO_BUILD_JOBS=4 -e RUSTFLAGS=-Ctarget-feature=+crt-static -e PODNET_BUILD_COMMIT \
             "$image" \
-            cargo build --locked --release --target ${{ matrix.target }}
+            cargo build --locked --release --features release --target ${{ matrix.target }}
       - name: the binaries are static
         run: |
           set -eu
@@ -232,7 +232,7 @@ jobs:
               RUSTFLAGS= cargo install --quiet --locked --root /tmp/zigbuild cargo-zigbuild --version "$ZIGBUILD_VERSION"
               export PATH="/tmp/zigbuild/bin:$PATH"
               rustup target add "$TARGET"
-              cargo zigbuild --locked --release --target "$TARGET"
+              cargo zigbuild --locked --release --features release --target "$TARGET"
               mkdir -p dist
               for b in podnet; do cp "target/$TARGET/release/$b" "dist/$b-$TARGET"; done'
       - name: the binaries are static

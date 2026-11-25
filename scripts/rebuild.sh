@@ -65,12 +65,18 @@ else
     "$engine" pull "$image" > /dev/null
 fi
 
-# The command of release.yml, at another path in the container.
+# The command of release.yml, at another path in the container. A tag with
+# the feature `release` (T-428) was built with it; an older tag was not.
+features=
+if grep -q '^release = ' "$src/Cargo.toml"; then
+    features="--features release"
+fi
+# shellcheck disable=SC2086 # $features is empty or two words.
 "$engine" run --rm -v "$src:/rebuild/$tag" -w "/rebuild/$tag" \
     -e CARGO_BUILD_JOBS=4 -e RUSTFLAGS=-Ctarget-feature=+crt-static \
     -e PODNET_BUILD_COMMIT="$commit" -e CFRS_BUILD_COMMIT="$commit" \
     "$image" \
-    cargo build --locked --release --target "$target"
+    cargo build --locked --release $features --target "$target"
 # The container wrote target/ as root: give it back to this user, so that
 # the cleanup can remove it.
 "$engine" run --rm -v "$src:/rebuild/$tag" "$image" \
