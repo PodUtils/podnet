@@ -35,7 +35,8 @@ echo 7-crossover-clockwork-adroitness | podnet receive --yes   # a script
   answer.
 * `--json` prints one JSON object for each event on stdout: the sender
   prints `{"event": "code", "code", "mailbox"}` first, then
-  `{"event": "sent", "bytes", "sha256", "via"}`; the receiver prints
+  `{"event": "sent", "bytes", "sha256", "via"}` (`bytes` of a text is its
+  length in UTF-8, and `sha256` is null); the receiver prints
   `{"event": "received", ...}`.
 * The receiver prints a text and the name of a file or a directory with
   each control character escaped (`\u{1b}`, `\r`) on a terminal: the

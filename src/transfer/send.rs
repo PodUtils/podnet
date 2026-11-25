@@ -33,8 +33,8 @@ pub struct Opened {
 /// What a sender sent.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sent {
-    /// The bytes that went over the transit (a zip for a directory); 0 for a
-    /// text.
+    /// The bytes that went over the transit (a zip for a directory), or the
+    /// bytes of a text (UTF-8) in the mailbox.
     pub bytes: u64,
     /// Their SHA-256 in hex, which the receiver acked; none for a text.
     pub sha256: Option<String>,
@@ -116,8 +116,9 @@ async fn send_text(hole: &mut Wormhole, settings: &Settings, text: &str) -> Resu
         }
     }
     hole.close(Mood::Happy).await;
+    // GitHub #720: the bytes of the text (UTF-8) that went in the mailbox.
     Ok(Sent {
-        bytes: 0,
+        bytes: text.len() as u64,
         sha256: None,
         via: "mailbox".into(),
     })

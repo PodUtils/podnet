@@ -173,7 +173,13 @@ fn send_and_receive_on_the_loopback() {
     assert_eq!(got.status.code(), Some(0), "{}", text(&got));
     let event: serde_json::Value = serde_json::from_slice(&got.stdout).unwrap();
     assert_eq!(event["text"], "hello there");
-    assert_eq!(finish(child, rest).0, Some(0));
+    let (status, said, err) = finish(child, rest);
+    assert_eq!(status, Some(0), "{err}");
+    // GitHub #720: the sent event of a text gives its bytes.
+    let sent: serde_json::Value = serde_json::from_str(said.trim()).unwrap();
+    assert_eq!(sent["event"], "sent", "{said}");
+    assert_eq!(sent["bytes"], 11, "{said}");
+    assert_eq!(sent["sha256"], serde_json::Value::Null, "{said}");
 }
 
 #[test]
