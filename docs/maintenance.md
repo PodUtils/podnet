@@ -83,7 +83,7 @@ state of the open work.
   Never amend the block of an open request, and never add a second block in
   a comment: close it and open a new issue. When the block checks the head
   of `main`, push nothing to `main` until it ran. Watch each run to its end
-  (`scripts/agent/watch-runs.sh`). Map each new issue (a request of a run,
+  (`runs.py`, below). Map each new issue (a request of a run,
   a COORD issue) in `TODO/issues.md` and `TODO/github.txt` in the next
   commit: `record-issues.yml` fails each day on a number with no line.
 * **Pushes**: `git push origin main`. The identity comes from
@@ -118,11 +118,16 @@ state of the open work.
     suspended account; then read the copy, or the `IssuesEvent` and
     `IssueCommentEvent` payloads of `repos/PodUtils/podnet/events` (the
     last 300 events), and add the text to `docs/reports/`.
-  * `watch-runs.sh FULL_SHA [MIN_RUNS]`: each run of a commit when it ends,
-    with the failed jobs and steps (`runs.py` reads the run list). Give the
-    full SHA (`git rev-parse HEAD`): the API does not match a short SHA. A
-    push to `main` starts five runs (`ci`, `live`, `deny`, `secrets`,
-    `issue-sync`): `MIN_RUNS` 5. A dispatch of `gate` on the commit is a sixth.
+  * The runs of a commit: `runs.py` of PodUtils/podcrates, beside the
+    watcher in `.work/podcrates-agent/` (`CLAUDE.md`, "Talk with the other
+    sessions of PodUtils"; T-544):
+    `python3 -I .work/podcrates-agent/runs.py --repo PodUtils/podnet --until SHA --min-runs 5`.
+    It prints each run of the commit when it ends, with the failed jobs and
+    steps, and exits 0 (each green), 1 (one red), 3 (each cancelled by a
+    newer push) or 2 (the time limit). A push to `main` starts five runs
+    (`ci`, `live`, `deny`, `secrets`, `issue-sync`); a dispatch of `gate`
+    on the commit is a sixth. `--once` prints the state of the runs of the
+    newest commit.
 * **Other scripts** (in `scripts/`):
   * `v6only/up.sh BINARY`, `v6only/run.sh CMD`, `v6only/acceptance.sh
     BINARY`, `v6only/down.sh`: an IPv6-only host on a runner (issue 163).
@@ -176,7 +181,7 @@ cargo deny --locked check
 ```
 
 Then commit (name T-137 and the crate in the message), push, watch the
-runs (`watch-runs.sh`), and write the take in T-137 (`TODO/crates.md`,
+runs (`runs.py`), and write the take in T-137 (`TODO/crates.md`,
 Correction, "Done so far"). Each `pod-*` dependency of `podnet` and
 `podnet-netns` has `version` beside `git` and `tag` (cargo-deny counts a
 git dependency with no version as a wildcard). When the patch raises
@@ -210,7 +215,7 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
    once). When the network of WARP or of the edge is needed, add a step to
    `.github/workflows/live.yml`: this sandbox cannot reach them.
 5. Run `scripts/agent/check.sh`. Commit and push to `main`.
-6. Watch the runs of the commit (`watch-runs.sh`). Read the evidence in the
+6. Watch the runs of the commit (`runs.py`). Read the evidence in the
    job log.
 7. Set each entry to `done` (`cargo todo set`), with its Done section.
    Write the evidence into the Done section: the cause, the change, the

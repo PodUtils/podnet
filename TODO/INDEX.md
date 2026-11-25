@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**543 entries: 16 open, 13 partial, 24 blocked, 490 done.**
+**543 entries: 15 open, 13 partial, 24 blocked, 491 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 86 | 91 |
 | P2 | 6 | 7 | 10 | 242 | 265 |
-| P3 | 9 | 4 | 12 | 161 | 186 |
-| **All** | 16 | 13 | 24 | 490 | 543 |
+| P3 | 8 | 4 | 12 | 162 | 186 |
+| **All** | 15 | 13 | 24 | 491 | 543 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -588,4 +588,4 @@ M8 Overlays, M9 Later.
 | [T-541](fixes.md) | P3 | S | M5 | defect | done | tests of a tool or of IPv6 of the host fail on a host without it, in place of a skip |
 | [T-542](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.83.0 |
 | [T-543](fixes.md) | P2 | M | M5 | feature | open | Take `pod-natprobe`: the class of the NAT of the host for `link p2p` and `doctor` |
-| [T-544](fixes.md) | P3 | S | M5 | chore | open | Take `scripts/agent/runs.py` of podcrates in place of `watch-runs.sh` and podnet's own `runs.py` |
+| [T-544](fixes.md) | P3 | S | M5 | chore | done | Take the script `runs.py` of podcrates in place of podnet's `watch-runs.sh` and `runs.py` |

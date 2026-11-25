@@ -14562,7 +14562,7 @@ to COORD-115 (PodUtils/podnet#707) and COORD-117 (PodUtils/podnet#709).
 podnet named podcrates `v0.82.1`. The tag `v0.83.0` answers COORD-115 (`pod-hold`, `pod-wormhole`, `pod-ws`,
 `pod-proxy`, `pod-dns`, `pod-tls`, `pod-warp`, `pod-cloudflare`: PodUtils/podcrates@T-1125 to PodUtils/podcrates@T-1134) and COORD-117
 (`pod_core::files::socket_answers`, PodUtils/podcrates@T-1209), and adds `pod-natprobe` (PodUtils/podcrates@T-802) and
-the shared `scripts/agent/runs.py` (PodUtils/podcrates@T-1213).
+the shared script `runs.py` of podcrates (PodUtils/podcrates@T-1213).
 
 ## Premise
 
@@ -14641,34 +14641,43 @@ podnet doctor --json
 ```
 
 
-# T-544: Take `scripts/agent/runs.py` of podcrates in place of `watch-runs.sh` and podnet's own `runs.py`
+# T-544: Take the script `runs.py` of podcrates in place of podnet's `watch-runs.sh` and `runs.py`
 
-**Source:** PodUtils/podcrates#259 (COORD-154): "Take `scripts/agent/runs.py` in place of `watch-runs.sh` and its own
+**Source:** PodUtils/podcrates#259 (COORD-154): "Take the script `runs.py` of podcrates in place of `watch-runs.sh` and its own
 `runs.py` (PodUtils/podcrates@T-1213)".
 **Category:** chore
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
-podnet keeps `scripts/agent/runs.py` and `scripts/agent/watch-runs.sh`. podcrates has one `runs.py` for each session
-(PodUtils/podcrates@T-1213). The rule "Shared code first" says to take it.
+podnet kept its own run watcher (the shell script `watch-runs.sh` and its helper `runs.py` in `scripts/agent/`).
+podcrates has one watcher of the runs for each session (PodUtils/podcrates@T-1213). The rule "Shared code first" says
+to take it.
 
 ## Premise
 
-- Read: `scripts/agent/runs.py` of podcrates at `v0.83.0`, and podnet's two scripts and their users
-  (`docs/maintenance.md`, "Tools").
+- Read: the script `runs.py` of podcrates at `v0.83.0`. It imports `watch.py` from beside it and needs the `watch.py`
+  of the same tag (`watch.Checks`): with the `watch.py` of `f76099d`, its self-test fails with "module 'watch' has no
+  attribute 'Checks'".
 
 ## Approach
 
-1. Get `runs.py` of podcrates at a pinned commit into `.work/podcrates-agent/`, as the watcher (`CLAUDE.md`), and
-   remove podnet's copies.
-2. `docs/maintenance.md`: the commands of the new script.
+1. `CLAUDE.md`: the watcher, its test and `runs.py` come from podcrates at the commit of `v0.83.0` (`5fd6fb7e`).
+2. Remove podnet's `watch-runs.sh` and `runs.py`.
+3. `docs/maintenance.md`: the commands of the shared `runs.py`.
 
 ## Prove
 
 ```sh
-python3 -I .work/podcrates-agent/runs.py --help
+python3 -I .work/podcrates-agent/watch.py --self-test
+python3 -I .work/podcrates-agent/runs.py --self-test
 ```
+
+## Done
+
+2026-11-24, the commit of this entry. With `watch.py`, `watch_test.py` and `runs.py` of `5fd6fb7e`: "watch
+self-test: passed" and "runs self-test: passed". `CLAUDE.md` gets the three files at that commit; podnet's two
+scripts are gone; `docs/maintenance.md` gives `runs.py --repo PodUtils/podnet --until SHA --min-runs 5`.

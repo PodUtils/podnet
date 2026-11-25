@@ -45,7 +45,7 @@ Do not stop for a confirmation and do not end the turn after a report (`CLAUDE.m
    the steps 1 to 6. Its job `image` proves T-487: the attestation, `gh attestation verify`, the section "The image,
    by digest" of the notes. Then write the digests in a hand-off COORD issue `(to all)` and close COORD-109 (#656)
    through the record.
-4. The rest of the work order of `TODO/PROGRESS.md`: T-543 (`pod-natprobe`), T-544 (`runs.py`), T-476, T-492 step 3, T-367,
+4. The rest of the work order of `TODO/PROGRESS.md`: T-543 (`pod-natprobe`), T-476, T-492 step 3, T-367,
    T-488, T-414, T-415, T-406, T-478.
 
 ## Facts for the next session

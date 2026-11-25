@@ -132,11 +132,12 @@ issues are the channel, and each session watches them
 
    ```sh
    mkdir -p .work/podcrates-agent
-   for f in watch.py watch_test.py; do
+   for f in watch.py watch_test.py runs.py; do
      curl -qfsSL -o ".work/podcrates-agent/$f" \
-       "https://raw.githubusercontent.com/PodUtils/podcrates/f76099d94e7f4bf69686ec6b0949c88dc7e7f66b/scripts/agent/$f"
+       "https://raw.githubusercontent.com/PodUtils/podcrates/5fd6fb7e3495d5e9a591e36c5752e268309f6e4a/scripts/agent/$f"
    done
    python3 -I .work/podcrates-agent/watch.py --self-test
+   python3 -I .work/podcrates-agent/runs.py --self-test
    python3 -I .work/podcrates-agent/watch.py podnet --state .work/agent
    ```
 
