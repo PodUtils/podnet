@@ -224,6 +224,8 @@ pub struct Report {
     pub quick: bool,
     /// The probes of the lanes `masque_udp443` and `ws_upgrade` (T-260).
     pub probes: Probes,
+    /// The class of the NAT of this host (T-543, `pod-natprobe`).
+    pub nat: Nat,
 }
 
 /// The clock of this host against the `Date` header of an answer.
@@ -326,6 +328,11 @@ impl Report {
             self.udp.1.name(),
             self.udp.1.detail()
         ));
+        out.push_str(&format!(
+            "nat    {}: {}\n",
+            self.nat.verdict.name(),
+            self.nat.detail
+        ));
         if let Some(names) = &self.names {
             out.push_str(&format!("names  {names}\n"));
         }
@@ -423,6 +430,10 @@ pub async fn run(options: Options) -> Report {
         () = late() => Egress::Unknown(LATE.into()),
     };
     let probes = lane_probes.finish(end, &udp).await;
+    let nat = tokio::select! {
+        n = nat_check::nat(&udp) => n,
+        () = late() => Nat::late(LATE),
+    };
     let names = names(&paths);
     let legs = legs(&paths, &udp);
     let clock = tokio::select! {
@@ -456,6 +467,7 @@ pub async fn run(options: Options) -> Report {
         ssh_relay,
         quick: options.deadline.is_some(),
         probes,
+        nat,
     }
 }
 
@@ -495,45 +507,10 @@ mod ssh_relay_check;
 pub use ssh_relay_check::{SshRelay, SshRelayTarget};
 mod tls_check;
 use tls_check::tls;
-
-fn proxy_report(targets: &[Target]) -> Value {
-    let mut used = Vec::new();
-    for t in targets {
-        if let Some(p) = crate::egress::proxy_for(&t.host, t.port) {
-            used.push((t.id, p));
-        }
-    }
-    let direct: Vec<&str> = targets
-        .iter()
-        .filter(|t| crate::egress::proxy_for(&t.host, t.port).is_none())
-        .map(|t| t.id)
-        .collect();
-    let first = used.first().map(|(_, p)| p.clone());
-    let text = match &first {
-        None => "none: each connection is direct".to_string(),
-        Some(p) => {
-            let mut text = format!(
-                "{} (credentials: {})",
-                p.label(),
-                if p.has_credentials() {
-                    "present"
-                } else {
-                    "none"
-                }
-            );
-            if !direct.is_empty() {
-                text.push_str(&format!("; direct by NO_PROXY: {}", direct.join(", ")));
-            }
-            text
-        }
-    };
-    json!({
-        "url": first.as_ref().map(|p| p.label()),
-        "credentials": first.as_ref().map(|p| p.has_credentials()),
-        "direct": direct,
-        "text": text,
-    })
-}
+mod nat_check;
+pub use nat_check::Nat;
+mod proxy_row;
+use proxy_row::proxy_report;
 
 async fn path(target: Target, options: &Options, start: Instant) -> Path {
     let via = crate::egress::proxy_for(&target.host, target.port).map(|p| p.label());

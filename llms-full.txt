@@ -17981,6 +17981,11 @@ check gives `ok`, `fail` or `unknown`.
   that terminates TLS, are named;
 * names and addresses: if the proxy allows one and refuses the other;
 * UDP 7844: one QUIC packet (answered, refused or unknown);
+* NAT: the class of the NAT of this host (`pod-natprobe`, the profile `Fast`, the
+  STUN servers of the built-in catalog that the egress policy permits): the
+  connectivity, the mapping and the filtering of IPv4. `ok` with the classes,
+  `refused` where UDP to the servers is blocked, `unknown` with the reason. No
+  STUN request goes out where UDP 7844 is refused;
 * the lane `masque_udp443`: one QUIC packet to the MASQUE front door on UDP 443.
   `ok` on any answer. `fail` on a refusal, and on silence when UDP 7844
   answers. `unknown` on silence when UDP 7844 does not answer, and when a
@@ -18080,6 +18085,7 @@ removed or renamed. A consumer ignores a key that it does not know. The tests pi
 | `legs` | `quic`, `http2`, `quic+warp` and `http2+relay`, each with `verdict`, `status` and `reason`. |
 | `paths` | One object for each TCP path: `id`, `target`, `via`, `verdict`, `detail`, `samples` (loss, best, median, p95, jitter), `tls` and `dns`. |
 | `clock`, `git`, `ssh_relay`, `proxy`, `udp` | The clock, the installed git, the SSH relay, the proxy of the run and the UDP 7844 probe. |
+| `nat` | The NAT of this host: `verdict`, `connectivity`, `mapping` and `filtering` (words such as `behind-nat` and `endpoint-independent`, or null) and `detail`. It does not change `ok`. |
 | `h3` | The shape of an HTTP/3 server of this run (`shape`, `congestion`, `alpn_h3`, `control_stream`, `settings`, `setting_ids`) and the schedule `cid_rotation` (`min_s`, `max_s`, `jitter`, `sample_s`). `podnet warp h3` serves the selected shape; `doctor` and `warp status` report it and observe no session. The text has the rows `h3-shape`, `h3-control-stream` and `h3-cid-rotation`. |
 | `carriers` | One object for each carrier of `podnet link` ([link.md](link.md)): `carrier`, `verdict`, `status` and `detail` (the reason when the host cannot use the carrier). The row `icmp` says whether a raw ICMP socket opens here: `ok` names `--allow-raw icmp`; `fail` gives `a raw ICMP socket needs CAP_NET_RAW or uid 0`. A carrier row does not change `ok`. |
 

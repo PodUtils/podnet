@@ -135,6 +135,7 @@ fn the_roads_follow_the_legs() {
         ssh_relay: SshRelay::none(),
         quick: false,
         probes: Probes::untested(),
+        nat: super::Nat::late("untested"),
     };
     let roads = report.roads();
     assert_eq!(roads[0].0, "direct");
@@ -240,6 +241,7 @@ fn doctor_json_dns_keys_are_fixed() {
         ssh_relay: SshRelay::none(),
         quick: false,
         probes: Probes::untested(),
+        nat: super::Nat::late("untested"),
     };
     let json = report.to_json();
     assert_eq!(keys(&json["paths"][0]["dns"]), ["addresses", "ms"]);
@@ -279,6 +281,7 @@ fn the_lanes_follow_the_legs_and_paths() {
         ssh_relay: SshRelay::none(),
         quick: false,
         probes: Probes::untested(),
+        nat: super::Nat::late("untested"),
     };
     let lane =
         |report: &Report, name: &str| lanes(report).into_iter().find(|l| l.name == name).unwrap();
@@ -407,6 +410,7 @@ fn the_lanes_hold_the_probes() {
         ssh_relay: SshRelay::none(),
         quick: false,
         probes: Probes::untested(),
+        nat: super::Nat::late("untested"),
     };
     report.probes.masque_udp = LaneProbe {
         verdict: Verdict::Ok,
