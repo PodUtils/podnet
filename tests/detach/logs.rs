@@ -113,7 +113,7 @@ fn the_log_holds_each_line_that_the_start_shows() {
     let proxy = format!("unix:{}", env._tmp.path().join("np.sock").display());
     let site = site.display().to_string();
     let switch = env.switch();
-    let cases: [(&str, Vec<&str>, &str); 3] = [
+    let mut cases: Vec<(&str, Vec<&str>, &str)> = vec![
         (
             "np",
             vec!["net", "proxy", "--listen", &proxy],
@@ -124,12 +124,15 @@ fn the_log_holds_each_line_that_the_start_shows() {
             vec!["net", "switch", "--listen", &switch],
             "podnet: switch",
         ),
-        (
+    ];
+    // A TCP listener of the loopback: not on a host that refuses it.
+    if crate::test_host::loopback().is_ok() {
+        cases.push((
             "sv",
             vec!["serve", "--dir", &site, "--local", "127.0.0.1:0"],
             "podnet: serve",
-        ),
-    ];
+        ));
+    }
     for (name, args, banner) in cases {
         let mut all = args.clone();
         all.extend(["--detach", "--name", name]);

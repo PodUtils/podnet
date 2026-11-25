@@ -14857,6 +14857,10 @@ The reply of `pod-warp` (COORD-120, #712, to podcrates). Step 1 is done in podne
 
 `cargo test -p podnet --test detach`
 
+## Correction
+
+2026-11-25: `ci` 45537758563 (`ef14ef2`) failed in the jobs `restricted-host` and `no-loopback`: the case `serve --local 127.0.0.1:0` of the test needs a TCP listener of the loopback, which these hosts refuse. The case runs only where `test_host::loopback` passes.
+
 ## Done
 
 2026-11-25, the commit of this entry. `tests/detach/logs.rs`, `the_log_holds_each_line_that_the_start_shows` (a table of `net proxy`, `net switch` and `serve --local`; each line that the start shows is in the log; a start that fails before its ready shows its error line): it failed on the code before the fix (`"podnet: proxy    unix:..." is not in the log`), and passes now. `cargo test --test detach`: 26 passed.
