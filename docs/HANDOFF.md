@@ -1,6 +1,6 @@
 # Handoff
 
-The state at 2026-11-24 12:50 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`,
+The state at 2026-11-25 00:50 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`,
 `docs/maintenance.md`, and `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -29,6 +29,11 @@ no test (`defect_tests` in `TODO/todo.toml`).
   rule in `scripts/check-workflows.py`). The images of beta.18 have no attestation; their digests are in COORD-109 (#656).
 * The release dry run 45389095107 passed on `c6b5bdf` (T-540). Read the runs of `ci` and `live` on the head before
   each release. `live` fails often at outside services (see "Facts").
+* The last session (2026-11-24) took podcrates `v0.83.0` (`a6a6ccb`, T-542; T-516 and T-522 are done; #690, #696 to
+  #698, COORD-115 #707 and COORD-117 #709 are closed) and the shared `runs.py` (`1bf4161`, T-544). At its end, `ci`
+  45518282235 and `live` 45518282050 on `1bf4161` were running: read them first. The local full suite of the take
+  passed (172 test binaries). `live` 45412239533 and 45422220326 failed at the quick-tunnel service (HTTP 429, error
+  1015): an outside rate limit; podnet gave the true line and exit 75.
 * The record: `cargo todo check` agrees.
 
 ## The next steps, in order
@@ -37,16 +42,32 @@ These steps are the start of the work, not its end. After them, continue with th
 Do not stop for a confirmation and do not end the turn after a report (`CLAUDE.md`, "Work without a stop").
 
 1. **Read the runs of `ci` and `live` on the last commits** (the watcher prints each end). A red run goes first.
-2. **Open follow-ups:** T-537 (the build image of Dependabot #680 cannot link loongarch64; find the part of the new
-   image that gives `--no-rosegment`, and prove a fix with a release dry run; close each Dependabot PR of that image
-   with a link to T-537 until then). T-540 is done: the next release has `release-index.json` (dry run
-   45389095107); write it in the notes of beta.19, and tell podcrates in the hand-off COORD issue (PodUtils/podcrates@T-1118).
-3. **The next beta `v0.4.0-beta.19`:** the black-box QA pass first (`docs/maintenance.md`, Release, step 0), then
-   the steps 1 to 6. Its job `image` proves T-487: the attestation, `gh attestation verify`, the section "The image,
-   by digest" of the notes. Then write the digests in a hand-off COORD issue `(to all)` and close COORD-109 (#656)
+2. **T-537** (the newer build image `rust:1-alpine@sha256:8d0e82ab` of Dependabot #680 cannot link loongarch64).
+   Found: the job log of dry run 45347322318 (job 138284933209) shows that rustc gives `-Wl,--no-rosegment` as the
+   first argument to the wrapper of cargo-zigbuild `0.23.4` with zig `0.16.0`, and zig cc refuses it ("unsupported
+   linker arg: --no-rosegment"). The old digest `0cce0a5e` gives no such argument. Next: find the rustc version of
+   the new image (the target spec of `loongarch64-unknown-linux-musl`), then try a newer cargo-zigbuild (a filter of
+   the argument) or a zig version that takes it, in a release dry run on a commit with the new digest. Until then,
+   close each Dependabot PR of that image with a link to T-537.
+3. **The next beta `v0.4.0-beta.19`.** Step 0 is the black-box QA pass: give `scripts/agent/qa-pass.md` as it is to
+   a new agent, with a static binary of the head (`rustup target add x86_64-unknown-linux-musl`, then
+   `CC_x86_64_unknown_linux_musl=clang cargo build --release --locked --target x86_64-unknown-linux-musl`), a copy of
+   `README.md` and `docs/`, and podlab (`sh scripts/get-podlab.sh v0.83.0 DIR`), in a directory that uid 65534 can
+   read (for example `/var/tmp/qa`). The agent must not read the source. Each finding becomes an entry; each P1 and
+   P2 finding is done before the release. Then the steps 1 to 6 of `docs/maintenance.md`, Release. The notes name
+   `release-index.json` (T-540). Its job `image` proves T-487 (the attestation, `gh attestation verify`, the section
+   "The image, by digest"); then write the digests in a hand-off COORD issue `(to all)` and close COORD-109 (#656)
    through the record.
-4. The rest of the work order of `TODO/PROGRESS.md`: T-543 (`pod-natprobe`), T-476, T-492 step 3, T-367,
-   T-488, T-414, T-415, T-406, T-478.
+4. **T-545** (P2: temp paths named by the pid alone, lesson 5 of PodUtils/podvm#567). The ask for the shared
+   function is COORD-119 (#711); write podnet's second path in `podnet-core` and the check of the class now, and
+   take the function of podcrates when its tag is out.
+5. **T-543** (P2: take `pod-natprobe` for a NAT row of `doctor` and the path choice of `link p2p`).
+6. The rest of the work order of `TODO/PROGRESS.md`: T-476, T-492 step 3 (`warp forward`, `warp up`,
+   `tests/commands.rs`), T-367, T-488, T-414, T-415, T-406, T-478.
+7. **The daily run of `issue-sync`** has never started on its schedule (the audit of 2026-11-24). `781959e` aligned
+   its `dry_run` line with podrunner's caller. Check the `schedule` runs of `issue-sync` after 06:17 UTC of
+   2026-11-25; when none started, find the cause and write a COORD issue `(to podcrates)` if the fault is in the
+   reusable workflow.
 
 ## Facts for the next session
 
@@ -74,6 +95,8 @@ Do not stop for a confirmation and do not end the turn after a report (`CLAUDE.m
   `cargo test --features full --test sidecar`, `python3 -I scripts/check-harness.py --self-test`, and
   `python3 -I scripts/check-claims.py`.
 * Touch each changed file before `sh scripts/agent/check.sh` if a stash or file move leaves stale timestamps.
+* `runs.py` of podcrates (in `.work/podcrates-agent/`, beside the watcher) follows the runs of a commit:
+  `python3 -I .work/podcrates-agent/runs.py --repo PodUtils/podnet --until SHA --min-runs 5`.
 * A cloud container can lack `ip` (iproute2) and the Python module `websockets`: `apt-get install -y iproute2` and
   `pip install --break-system-packages websockets` (the scripts run `python3 -I`, which reads no user site). The
   full suite takes about 90 minutes here; run it with `--no-fail-fast`, as `cargo test` stops at the first failed
@@ -105,6 +128,7 @@ Use `pod_testkit::refused`, bind port `0`, or use `127.0.0.1:1` instead of freei
 | --- | --- |
 | `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
 | `#710` (COORD-118, the take of `v0.83.0`) | podcrates reads it; then close it through the record. |
+| `#711` (COORD-119, a temp directory and a temp file with a random name in `pod-core`) | A tag of podcrates with them (T-545). |
 | `#656` (COORD-109, ghcr.io image: T-487) | The job `image` of the release of beta.19. |
 | `#604` (COORD-098, relay holds a lost socket) | The relay fix (T-406, T-478). |
 | `#413` (COORD-006) | T-161 and T-200 (`pod-relay`). |
