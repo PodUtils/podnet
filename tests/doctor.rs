@@ -318,6 +318,7 @@ fn doctor_json_keys_are_fixed() {
             "lanes",
             "legs",
             "names",
+            "nat",
             "next",
             "ok",
             "paths",

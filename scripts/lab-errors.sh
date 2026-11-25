@@ -179,6 +179,13 @@ forward_row() {
             row "$name" 77
             return
         fi
+        # T-564: no TCP connect reaches the loopback of the lab, and podnet
+        # refuses the listener with the step (exit 69).
+        if grep -q 'a TCP connect to 127\.0\.0\.1 fails on this host' "$dir/$name.err"; then
+            why="podnet refused the listener with the step: no TCP connect reaches the loopback of the lab"
+            row "$name" 77
+            return
+        fi
         echo "forward did not start: $(cat "$dir/$name.err")"
         row "$name" 1
         return

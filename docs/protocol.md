@@ -456,6 +456,7 @@ one of `answered`, `refused` and `unknown`.
 | `carriers` | array | One object for each carrier of `podnet link`. |
 | `proxy` | object | The proxy of the run. |
 | `udp` | object | The UDP 7844 probe. |
+| `nat` | object | The class of the NAT of this host (T-543). |
 
 Each object of `roads` has `road`, `verdict`, `status` and `reason` (strings).
 Each object of `legs` has `leg`, `verdict`, `status` and `reason` (strings).
@@ -495,6 +496,9 @@ Each object of `paths`:
 * `proxy`: `url` (string or null), `credentials` (bool or null), `direct`
   (strings), `text` (string).
 * `udp`: `target`, `verdict`, `status` and `detail` (strings).
+* `nat`: `verdict` and `detail` (strings); `connectivity`, `mapping` and
+  `filtering` (string or null: words such as `behind-nat`,
+  `endpoint-independent` and `address-and-port-dependent`).
 
 ### Lanes
 

@@ -37,6 +37,7 @@ async fn stand_in() -> u16 {
 /// (`session.rs`, `open.rs`).
 #[tokio::test]
 async fn a_failure_through_the_relay_names_each_cause_once() {
+    crate::test_host::need_loopback!();
     let mut urls = Vec::new();
     for _ in 0..4 {
         urls.push(format!("http://127.0.0.1:{}", stand_in().await));
