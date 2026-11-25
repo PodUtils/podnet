@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 585 entries: 13 open, 14 partial, 28 blocked, 530 done.
+`TODO/INDEX.md` holds 585 entries: 12 open, 14 partial, 29 blocked, 530 done.
 
 ## State
 
@@ -23,7 +23,7 @@
   blocked.
 - Hard-problems fixes (`docs/research/podnet/hard-problems-results.md`, `4df28952`): T-507 (H-02), T-508 (H-04), T-509
   (H-05), H-10 (`docs/warp.md`), H-11 (`scripts/live-throughput.sh`), and H-19 (`tests/transfer_relay.rs` `160 KiB` cap
-  test move; T-476 stays open for `pod-session` `move_under`).
+  test move; T-476 is blocked on `pod-session` `move_under`, COORD-126 #756).
 - The goal (the owner, 2026-11-13): close each issue except the deferred ones, then a final complete beta. The takes
   follow the plan of podcrates (PodUtils/podcrates#133; `docs/decisions.md`, 2026-11-13).
 - Keep this section short. Write the current state only; git keeps the history.
@@ -64,7 +64,7 @@ not wait for a larger one.
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
    - open and partial follow-ups (`TODO/fixes.md`):
-     T-476 (`pod-session` `move_under`), T-478, T-406 (blocked, #604), T-488, T-492 (partial, step 3), T-414 and T-415
+     T-476 (blocked, COORD-126 #756), T-478, T-406 (blocked, #604), T-488, T-492 (partial, step 3), T-414 and T-415
      (partial), T-358 and T-398 (partial), T-428 (partial).
 4. **M2, the splits:** T-044 (blocked:
    the rows left go with the takes, T-137). The split of the tunnel is done by the take of `pod-cloudflare`; each file has

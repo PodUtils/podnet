@@ -10699,7 +10699,7 @@ manual has 6). `cargo test -p podnet --lib warp::up`: 17 passed.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -10728,6 +10728,10 @@ the close of 1009 carried it). Alone, the test passed 3 times of 3.
 ```sh
 cargo test -p podnet --test transfer_relay -- transfer_over_the_relay_crosses_the_cap
 ```
+
+## Blocker
+
+`resume::move_under` of `pod-session` (COORD-126, #756, to podcrates). The test moves at 160 KiB until the tag.
 
 ## Correction
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**585 entries: 13 open, 14 partial, 28 blocked, 530 done.**
+**585 entries: 12 open, 14 partial, 29 blocked, 530 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 3 | 2 | 89 | 95 |
-| P2 | 4 | 7 | 13 | 277 | 301 |
+| P2 | 3 | 7 | 14 | 277 | 301 |
 | P3 | 8 | 4 | 13 | 163 | 188 |
-| **All** | 13 | 14 | 28 | 530 | 585 |
+| **All** | 12 | 14 | 29 | 530 | 585 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -520,7 +520,7 @@ M8 Overlays, M9 Later.
 | [T-473](fixes.md) | P2 | M | M3 | chore | done | A survey of podnet's copies of shared code against podcrates and the siblings (PodUtils/podcrates#221) |
 | [T-474](fixes.md) | P1 | S | M5 | defect | done | `ssh-relay` ignores `--proxy`, `--egress`, `--resolve` and the proxy variables |
 | [T-475](fixes.md) | P2 | S | M5 | defect | done | `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6 |
-| [T-476](fixes.md) | P2 | S | M6 | defect | open | `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move |
+| [T-476](fixes.md) | P2 | S | M6 | defect | blocked | `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move |
 | [T-477](fixes.md) | P2 | S | M5 | defect | done | A refusal for now (HTTP 429, exit 75) gets the hint "does not change with a retry" |
 | [T-478](fixes.md) | P1 | M | M6 | defect | open | Two parallel SSH sessions through one relay node: one hung with no line |
 | [T-479](fixes.md) | P2 | S | M5 | defect | done | Tests free a port to get a refused address; another test can take the port |

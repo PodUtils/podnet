@@ -438,6 +438,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #753 | COORD-123: pod-dns: a line of a name that does not resolve is cut inside a cause, and one group of resolvers has no cause (to podcrates) | open (a COORD issue between sessions; the ask of T-575) | none |
 | #754 | COORD-124: pod-proxy: a proxy command that does not exist floods stderr, gives a wrong cause and hides the command (to podcrates) | open (a COORD issue between sessions; the ask of T-580) | none |
 | #755 | COORD-125: pod-cloudflare: the DoH step of the edge discovery waits about 35 s with no line (to podcrates) | open (a COORD issue between sessions; the ask of T-579) | none |
+| #756 | COORD-126: pod-session: resume::move_under(cap, window), the largest move that keeps a session under a relay cap (to podcrates) | open (a COORD issue between sessions; the ask of T-476) | none |
 | #745 | [qa 0.4.0-beta.19] --egress, forward --network: an unknown spec is read as a proxy host:port, and the error does not give the known specs | closed: T-570 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-570 |
 | #746 | [qa 0.4.0-beta.19] forward: a UDP forward and the DNS door over "direct" carry no datagram ("direct carries no UDP") | closed: T-571 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-571 |
 
