@@ -15127,6 +15127,10 @@ local listener:
 * A client can half-close its connection after the request (`nc -N`,
   `printf ... | podnet link dial`). It still gets the answer.
 * An address in use is refused (exit 69).
+* A loopback address that no TCP connect reaches (a host with no address on
+  `lo`) is refused (exit 69), with the step: a unix socket. `--check` fails
+  the row of that listener. `forward -L`, `connect -L` and each `--listen
+  tcp://` of a loopback address do the same.
 * `--check` with `--local` checks the directory (and `--spa`), each
   `--local` listener, and starts nothing: podnet binds a TCP address with no
   listen and closes it at once (an address in use fails the row), and a unix

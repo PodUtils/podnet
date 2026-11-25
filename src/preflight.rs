@@ -386,6 +386,9 @@ fn local_address(local: &str) -> Result<String, String> {
             s.bind(*first)
         })
         .map_err(|e| format!("--local {local}: binding {first}: {e}"))?;
+    // GitHub #736: a loopback address that no connect reaches.
+    crate::net::loopback::check(first.ip(), &format!("--local {local}"))
+        .map_err(|e| crate::report::chain_text(&e))?;
     Ok(format!("{first}: can be bound (no listen)"))
 }
 

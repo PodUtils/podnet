@@ -167,6 +167,7 @@ impl Road for Local {
                 .await
                 .with_context(|| format!("--local {addr}"))
                 .map_err(podnet_core::net::bind_fault)?;
+            podnet_core::net::loopback::check_listener(&listener, &format!("--local {addr}"))?;
             let bound = podnet_core::net::bound_addr(
                 listener.local_addr(),
                 addr.parse().ok(),

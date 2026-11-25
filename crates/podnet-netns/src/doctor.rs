@@ -697,7 +697,10 @@ mod tests {
         let text = format!("{err}");
         assert!(text.starts_with("the seccomp backend cannot hold this program: the pod cannot read its memory (Permission denied (os error 13))"), "{text}");
         assert!(text.contains("use --backend netns"), "{text}");
-        let ok = super::Probe { ok: true, ..probe.clone() };
+        let ok = super::Probe {
+            ok: true,
+            ..probe.clone()
+        };
         assert!(crate::seccomp_can_hold(&ok, || true).is_ok());
         // GitHub #749: where netns cannot run, the line does not send the
         // user to it.

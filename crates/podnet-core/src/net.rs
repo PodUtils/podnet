@@ -2,6 +2,8 @@
 
 use std::sync::Once;
 
+pub mod loopback;
+
 use anyhow::{Context, Result};
 use tokio::io::{AsyncRead, AsyncWrite};
 
@@ -221,12 +223,15 @@ pub fn bound_addr(
     ))
 }
 
-/// Bind a TCP listener. A refused bind exits 69.
+/// Bind a TCP listener. A refused bind exits 69, and so does a loopback
+/// address that no connect reaches ([`loopback::check`], GitHub #736).
 pub async fn bind_tcp(addr: std::net::SocketAddr) -> Result<tokio::net::TcpListener> {
-    tokio::net::TcpListener::bind(addr)
+    let listener = tokio::net::TcpListener::bind(addr)
         .await
         .with_context(|| format!("binding tcp://{addr}"))
-        .map_err(bind_fault)
+        .map_err(bind_fault)?;
+    loopback::check(addr.ip(), &format!("tcp://{addr}"))?;
+    Ok(listener)
 }
 
 pub fn init_crypto() {

@@ -184,6 +184,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
                     .await
                     .with_context(|| format!("-L {addr}"))
                     .map_err(podnet::net::bind_fault)?;
+                podnet::net::loopback::check_listener(&listener, &format!("-L {addr}"))?;
                 println!(
                     "podnet: forward  {}  ->  {shown}  via {}",
                     bound(listener.local_addr(), addr),

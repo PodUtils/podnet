@@ -68,6 +68,7 @@ pub(crate) async fn bind_local(local: &str, replace: bool, router: axum::Router)
             ));
         }
     };
+    podnet::net::loopback::check_listener(&listener, &format!("--local {local}"))?;
     let bound = podnet::net::bound_addr(
         listener.local_addr(),
         addr.parse().ok(),

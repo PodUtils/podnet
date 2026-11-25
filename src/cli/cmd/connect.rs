@@ -110,6 +110,10 @@ pub(crate) async fn connect(args: ConnectArgs) -> Result<()> {
                     .await
                     .with_context(|| format!("binding tcp://{bind}:{port}"))
                     .map_err(podnet::net::bind_fault)?;
+                podnet::net::loopback::check_listener(
+                    &listener,
+                    &format!("-L tcp://{bind}:{port}"),
+                )?;
                 tcp.push((local.describe(), listener));
             }
             LocalSpec::Unix(path) => {
