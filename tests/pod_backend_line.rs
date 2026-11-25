@@ -169,7 +169,13 @@ fn warp_exec_names_its_backend_once() {
         lines[0].contains("seccomp backend: ") || lines[0].contains("netns backend: "),
         "{lines:?}"
     );
-    assert!(lines[0].contains("use --backend"), "{lines:?}");
+    // GitHub #713: where netns cannot run, the line says so in place of
+    // the step to it.
+    assert!(
+        lines[0].contains("use --backend")
+            || lines[0].contains("the netns backend cannot run here"),
+        "{lines:?}"
+    );
     // -q removes the line.
     let out = host.warp_exec(&["-q"], "auto", truth);
     assert!(backend_lines(&out).is_empty(), "{}", stderr(&out));
