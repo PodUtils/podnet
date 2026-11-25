@@ -16162,3 +16162,45 @@ behind a dependent mapping (RFC 4787), the direct path cannot work, and the try 
 ## Blocker
 
 A channel between the two ends before the dial: `link p2p` has none (step 1).
+
+# T-587: live: a second run of doctor sees the leg quic+warp as not ok, and the step prints no reason
+
+**Source:** `live` 45625694770 (`405d47c`, the step "podnet doctor") and `live` 45628685352 (`581b852`) and
+45624138074 (`5809e66`, the step "Quick tunnel with UDP and TCP 7844 dropped (staggered legs)"), 2026-11-25.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+Each step runs `podnet doctor` two times: the text, then `--json`. In three runs of one day the text run gave the leg
+`quic+warp` ok, and the `--json` run a second later gave it not ok; `jq -e` printed `false`, and the step printed no
+reason of the leg.
+
+## Premise
+
+- Read: the job logs of the three runs. The text runs list "4 of 4 legs" (or `quic+warp ok` with 7844 dropped).
+- Read: T-406 and `live` 45589043028: WARP's door shows a certificate of Let's Encrypt at times in place of its key; the
+  leg is then `unknown` with that reason. Not measured: the reason of the three `--json` runs (the steps did not print
+  it).
+
+## Approach
+
+`scripts/live-doctor.sh` runs `doctor --json` until the leg `quic+warp` is ok, at most three times with 15 s between
+the runs, and prints the legs with their reasons after each run that is not ok. Both doctor steps of `live.yml` use
+it; their time limits grow to 5 and 7 minutes.
+
+## Prove
+
+```sh
+python3 -I scripts/check-workflows.py
+sh -n scripts/live-doctor.sh
+# the next live runs: a run that is not ok prints its legs
+```
+
+## Done
+
+2026-11-25, the commit of this entry. `python3 -I scripts/check-workflows.py`: 11 files, 0 faults. The proof is the
+next `live` run on `main`.

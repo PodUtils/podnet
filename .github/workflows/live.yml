@@ -75,11 +75,11 @@ jobs:
       # by hand in its workflow services.yml.
       # podnet doctor (issue 11): on the runner each leg can work.
       - name: podnet doctor
-        timeout-minutes: 3
+        timeout-minutes: 5
         run: |
           set -eu
           target/release/podnet doctor
-          target/release/podnet doctor --json > doctor.json
+          sh scripts/live-doctor.sh target/release/podnet doctor.json
           for leg in quic http2 quic+warp; do
             jq -e --arg leg "$leg" '.legs[] | select(.leg == $leg) | .status == "ok"' doctor.json
           done
@@ -412,7 +412,7 @@ jobs:
       # UDP and TCP 7844 dropped with no answer: the staggered race starts
       # WARP after two 2 s steps, not after the serial time limits.
       - name: Quick tunnel with UDP and TCP 7844 dropped (staggered legs)
-        timeout-minutes: 5
+        timeout-minutes: 7
         run: |
           set -eu
           sudo iptables -A OUTPUT -p udp --dport 7844 -j DROP
@@ -420,8 +420,7 @@ jobs:
           trap 'sudo iptables -D OUTPUT -p udp --dport 7844 -j DROP; sudo iptables -D OUTPUT -p tcp --dport 7844 -j DROP' EXIT
           # The doctor names the legs that cannot work, and quic+warp can.
           target/release/podnet doctor --samples 3 || true
-          target/release/podnet doctor --samples 3 --json > doctor-drop.json || true
-          jq -e '.legs[] | select(.leg == "quic+warp") | .status == "ok"' doctor-drop.json
+          sh scripts/live-doctor.sh target/release/podnet doctor-drop.json --samples 3
           jq -e '.legs[] | select(.leg == "http2") | .status != "ok"' doctor-drop.json
           jq -e '.legs[] | select(.leg == "quic") | .status != "ok"' doctor-drop.json
           sh scripts/live-run.sh race timeout 240 target/release/podnet demo --exit-on-verify --warp-identity "$RUNNER_TEMP/tunnel-warp.json" ||
