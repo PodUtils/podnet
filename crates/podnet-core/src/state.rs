@@ -21,6 +21,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context as _, Result};
 
+pub mod temp;
+
 /// The variable that names the state directory.
 pub const STATE_DIR_VARIABLE: &str = "PODNET_STATE_DIR";
 
@@ -254,7 +256,8 @@ pub fn prepare(dir: &Path) -> Result<()> {
 
 /// Write and remove a file in `dir`.
 pub fn writable(dir: &Path) -> Result<()> {
-    let probe = dir.join(format!(".podnet-probe-{}", std::process::id()));
+    // T-545: a random name; a pid is not unique across PID namespaces.
+    let probe = temp::random_path(dir, ".podnet-probe-", "");
     std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -438,18 +441,10 @@ pub fn replace_file(path: &Path, bytes: &[u8], mode: u32) -> Result<()> {
     Ok(())
 }
 
-/// A new name beside `path` for a temporary file: `.NAME.PID.N.tmp`.
+/// A new name beside `path` for a temporary file: `.NAME.NONCE.tmp`
+/// ([`temp::beside`]; T-545: a pid is not unique across PID namespaces).
 pub fn temp_name(path: &Path) -> PathBuf {
-    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let name = path.file_name().map_or_else(
-        || std::ffi::OsString::from("file"),
-        |name| name.to_os_string(),
-    );
-    let mut temp = std::ffi::OsString::from(".");
-    temp.push(name);
-    temp.push(format!(".{}.{n}.tmp", std::process::id()));
-    path.with_file_name(temp)
+    temp::beside(path)
 }
 
 #[cfg(test)]

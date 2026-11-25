@@ -11,6 +11,7 @@
 //! test of the command (`tests/turn_network.rs`, by `#[path]`).
 #![allow(dead_code)]
 
+use podnet_core::state::temp;
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -138,9 +139,11 @@ fn acceptor() -> TlsAcceptor {
 /// CA goes to a file beside the temporary files of this process, because
 /// the context of the trust reads a file.
 pub fn client_context() -> Arc<pod_tls::Context> {
-    let path =
-        std::env::temp_dir().join(format!("podnet-turn-stand-ca-{}.pem", std::process::id()));
-    std::fs::write(&path, certificates().ca.as_bytes()).expect("the CA of the TURN stand");
+    // T-545: one random name for each process (not the pid).
+    static PATH: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+    let at = PATH.get_or_init(|| temp::random_path(&std::env::temp_dir(), "pn-ca-", ".pem"));
+    let path = at.clone();
+    std::fs::write(at, certificates().ca.as_bytes()).expect("the CA of the TURN stand");
     let mut settings = pod_tls::Settings::new(pod_tls::Words::new("turn stand"));
     settings.ca_file = Some(pod_tls::CaFile::new("the CA of the TURN stand", path));
     Arc::new(pod_tls::Context::new(provider(), settings))

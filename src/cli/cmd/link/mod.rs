@@ -625,14 +625,20 @@ pub(crate) enum LinkCommand {
 }
 
 /// Start the control socket of an instance at `explicit`, else at
-/// `link-PID.ctl` in the run directory. A host with no run directory runs
+/// `link-PID-NONCE.ctl` in the run directory. A host with no run directory runs
 /// with no socket (the ready document says `control: null`); an explicit
 /// path that cannot be used exits 69 or 71.
 pub(crate) fn start_control(hub: &Arc<Hub>, explicit: Option<&Path>) -> Result<Option<Control>> {
     let path = match explicit {
         Some(path) => path.to_path_buf(),
         None => match podnet::instances::run_dir() {
-            Ok(dir) => dir.join(format!("link-{}.ctl", std::process::id())),
+            // T-545: the pid and a nonce; a pid is not unique across PID
+            // namespaces that share the run directory.
+            Ok(dir) => podnet_core::state::temp::random_path(
+                &dir,
+                &format!("link-{}-", std::process::id()),
+                ".ctl",
+            ),
             Err(err) => {
                 tracing::warn!(error = %format!("{err:#}"), "no control socket: there is no run directory");
                 return Ok(None);

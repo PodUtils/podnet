@@ -500,16 +500,19 @@ mod linux {
         let result = match found {
             Some(path) => {
                 // Compile a trivial shared object to prove the whole path works.
-                let dir =
-                    std::env::temp_dir().join(format!("podnet-vnet-probe-{}", std::process::id()));
-                let source = dir.join("probe.c");
-                let output = dir.join("probe.so");
-                if std::fs::create_dir_all(&dir).is_err() {
+                // T-545: a new directory with a random name; a pid is not
+                // unique across PID namespaces.
+                let Ok(dir) = podnet_core::state::temp::new_temp_dir(
+                    &std::env::temp_dir(),
+                    "podnet-vnet-probe-",
+                ) else {
                     return Probe {
                         name: "cc -shared -fPIC",
                         result: ProbeResult::Fail("cannot create a scratch dir".into()),
                     };
-                }
+                };
+                let source = dir.join("probe.c");
+                let output = dir.join("probe.so");
                 if std::fs::write(&source, "int podnet_vnet_probe(void){return 0;}\n").is_err() {
                     return Probe {
                         name: "cc -shared -fPIC",
@@ -614,8 +617,12 @@ mod linux {
                 result: bind_netlink(),
             },
         ]);
-        let path =
-            std::env::temp_dir().join(format!("podnet-vnet-probe-{}.sock", std::process::id()));
+        // T-545: a random name (bind refuses a path that exists).
+        let path = podnet_core::state::temp::random_path(
+            &std::env::temp_dir(),
+            "podnet-vnet-probe-",
+            ".sock",
+        );
         let path_result = bind_unix_path(&path);
         let _ = std::fs::remove_file(&path);
         pair(
@@ -632,7 +639,9 @@ mod linux {
             &mut probes,
             "bind(AF_UNIX, \\0abstract)",
             "listen(AF_UNIX, \\0abstract)",
-            bind_unix_abstract(format!("podnet-vnet-probe-{}", std::process::id()).as_bytes()),
+            bind_unix_abstract(
+                format!("podnet-vnet-probe-{}", podnet_core::state::temp::nonce()).as_bytes(),
+            ),
         );
         probes.push(option(
             "/dev/net/tun",

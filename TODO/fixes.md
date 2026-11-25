@@ -2223,7 +2223,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 - src/warp/mod.rs:885-892 at `9c1fc4b` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
   `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:421-423`) refuses and does not write over the file.
-- `crates/podnet-core/src/state.rs:67-125` has the model. `src/manual/facts.rs:163` lists `PODNET_FOREIGN_HOME`.
+- `crates/podnet-core/src/state.rs:69-127` has the model. `src/manual/facts.rs:163` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 
@@ -2846,7 +2846,7 @@ A fake relay and a target that writes, shuts down its write half, then reads to 
 
 ## Premise
 
-- `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`crates/podnet-core/src/state.rs:424-439`).
+- `state::replace_file(path, bytes, mode)` writes through a rename, sets the mode and replaces a symlink (`crates/podnet-core/src/state.rs:427-442`).
 - `read_private` returns `Option` and logs the reason: `load` needs an error with a `Fault::Config` class (`src/relay_reverse.rs` lines 151-188 at `ed79896`).
 - `DirBuilder::mode(0o700)` applies only to a new directory (lines 143-146 at `ed79896`).
 - The test `a_pair_file_is_private_and_the_newest_is_chosen` is at `src/relay_reverse.rs` line 871 at `ed79896`.
@@ -4034,7 +4034,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   `set_permissions(path, 0o600)`.
 - The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:251`,
   src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:315`, `crates/podnet-vnet/src/switch.rs:434`,
-  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:328-331`),
+  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:375-378`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
 - `crates/podnet-netns/src/seccomp/accept.rs:61` is not exposed: it calls `private_dir` first
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
@@ -13459,7 +13459,7 @@ no error, and the printed export cannot load. An explicit `--out` is not checked
 
 ## Premise
 
-- Read: `crates/podnet-core/src/state.rs:285` (`allows_exec`, `statvfs` with `ST_NOEXEC`) and `exec_dir` choose a
+- Read: `crates/podnet-core/src/state.rs:288` (`allows_exec`, `statvfs` with `ST_NOEXEC`) and `exec_dir` choose a
   directory that is not `noexec` when no `--out` is given (`src/cli/cmd/net/shim.rs:41`, `:165`, `:204`). With `--out`,
   the directory is used as it is (`src/cli/cmd/net/shim.rs:37` to `:40` and `:163` to `:162`). `net shim`, `net socksify`
   and `net ts-shims` have the same fault. `net passwd-shim` was not read.
@@ -13801,10 +13801,10 @@ say where the files go (`/tmp/podnet-65534`), only "the next state directory".
 
 ## Premise
 
-- Read: `check_own_with` (`crates/podnet-core/src/state.rs:97`) takes the owner of the nearest directory that exists
-  (`owner_of`, `crates/podnet-core/src/state.rs:71`: it walks up from `~/.local/state/podnet` to HOME) and names `path`
+- Read: `check_own_with` (`crates/podnet-core/src/state.rs:99`) takes the owner of the nearest directory that exists
+  (`owner_of`, `crates/podnet-core/src/state.rs:73`: it walks up from `~/.local/state/podnet` to HOME) and names `path`
   (the path that does not exist) in the message. The owner and the path do not match.
-- Read: `choose` (`crates/podnet-core/src/state.rs:134`) writes the warning (`:136`) on each call. `state_dir()` has no
+- Read: `choose` (`crates/podnet-core/src/state.rs:136`) writes the warning (`:138`) on each call. `state_dir()` has no
   cache, so each caller of the state directory in one process (the three calls of `warp register`) repeats it.
 - Read: the line says "podnet uses the next state directory" and not which one; `choose` knows the next candidate
   (the one it returns).
@@ -14701,7 +14701,7 @@ in a PID namespace. Name temp files with `mkdir` or `O_EXCL` and a nonce."
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -14735,6 +14735,23 @@ resolv.conf of a pod), `crates/podnet-vnet/src/doctor.rs:504`, `:618` and `:635`
 cargo test -p podnet-core --lib temp
 python3 -I scripts/check-layers.py
 ```
+
+## Done
+
+2026-11-25, the commit of this entry. `podnet-core` has `state::temp` (`nonce`, `random_path`, `new_temp_dir` with mode
+0700, `new_temp_file` with `O_EXCL` and mode 0600, `beside`): a nonce of 64 bits from `getrandom`, the hasher seed of
+the standard library and the time as the second path, and a new name on `EEXIST`. `state::temp_name` and
+`state::writable` use it. The code paths of the Problem use it: the enrol directory of `initcfg`, the bind directory
+of `router::guest::wire`, the scratch of `serve-at`, the capture file of `stat` (`O_EXCL`), the socket of `warp run`,
+the default control socket of `link` (now `link-PID-NONCE.ctl`; the help, the manual and `docs/link.md` say so), the
+probe directory, socket and abstract name of `vnet doctor`, the CA file of the TURN stand. `podnet-netns` (no
+`podnet-core` dependency) writes the resolv.conf of a pod with `listen::write_new_file` (`O_EXCL`, mode 0644, a
+random name); its `random_hex` no longer falls back to the pid. Tests: `cargo test -p podnet-core --lib temp` (5
+passed): `temp_paths_are_new_private_and_distinct` (a planted path of the pid is not taken) and the class test
+`no_temp_path_is_named_by_the_pid`, which scans each source file of the workspace and failed on the code before the
+fix (`src/stat.rs:155`, shown once with the old `src/stat.rs`). The libraries of `podnet-core`, `podnet-netns` and
+`podnet-vnet` pass. When podcrates tags the function of COORD-119 (#711), the take of that tag (T-137) replaces
+`state::temp` with it.
 
 
 # T-546: warp proxy: a client with no WARP session gets a TCP reset, and the live step hides the line of pod_warp

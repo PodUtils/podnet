@@ -57,7 +57,7 @@ pub(crate) struct ListenArgs {
     #[command(flatten)]
     pub(crate) services: ServiceArgs,
     /// The control socket (mode 0600, with the token file PATH.token). The
-    /// default is `link-PID.ctl` in the run directory of podnet. The ready
+    /// default is `link-PID-NONCE.ctl` in the run directory of podnet. The ready
     /// document names it. `podnet link status` reads it.
     #[arg(long, value_name = "PATH")]
     pub(crate) control: Option<PathBuf>,

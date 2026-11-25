@@ -239,15 +239,62 @@ pub fn bind_in_private_dir(path: &std::path::Path) -> std::io::Result<tokio::net
     Ok(listener)
 }
 
-/// 16 hex digits from the kernel's random source.
-fn random_hex() -> String {
+/// 16 hex digits from the kernel's random source. When the source fails,
+/// the second path is the random seed of the hasher of the standard library
+/// with the time (T-545: never the pid alone; a pid is not unique across PID
+/// namespaces).
+pub(crate) fn random_hex() -> String {
+    use std::hash::{BuildHasher as _, Hasher as _};
     let mut bytes = [0u8; 8];
-    let _ = std::fs::File::open("/dev/urandom").and_then(|mut f| {
+    let read = std::fs::File::open("/dev/urandom").and_then(|mut f| {
         use std::io::Read as _;
         f.read_exact(&mut bytes)
     });
-    let pid = u64::from(std::process::id());
-    format!("{:016x}", u64::from_le_bytes(bytes) ^ pid)
+    if read.is_ok() {
+        return format!("{:016x}", u64::from_le_bytes(bytes));
+    }
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos() as u64);
+    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    hasher.write_u64(nanos);
+    format!("{:016x}", hasher.finish())
+}
+
+/// Write `text` to a new file `DIR/PREFIXNONCESUFFIX` (`O_EXCL`, mode 0644,
+/// no symlink followed); a name that exists gives a new name (T-545).
+pub(crate) fn write_new_file(
+    dir: &std::path::Path,
+    prefix: &str,
+    suffix: &str,
+    text: &str,
+) -> std::io::Result<std::path::PathBuf> {
+    use std::io::Write as _;
+    use std::os::unix::fs::OpenOptionsExt as _;
+    for _ in 0..32 {
+        let path = dir.join(format!("{prefix}{}{suffix}", random_hex()));
+        let opened = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o644)
+            .custom_flags(libc::O_CLOEXEC | libc::O_NOFOLLOW)
+            .open(&path);
+        match opened {
+            Ok(mut file) => {
+                if let Err(e) = file.write_all(text.as_bytes()) {
+                    let _ = std::fs::remove_file(&path);
+                    return Err(e);
+                }
+                return Ok(path);
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        }
+    }
+    Err(std::io::Error::new(
+        std::io::ErrorKind::AlreadyExists,
+        format!("{}: 32 random names exist already", dir.display()),
+    ))
 }
 
 /// Move `from` to `to` when `to` does not exist: `renameat2` with

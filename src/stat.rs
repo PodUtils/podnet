@@ -152,9 +152,14 @@ impl Capture {
         let text = self.text();
         let parent = path.parent().unwrap_or_else(|| Path::new("."));
         std::fs::create_dir_all(parent)?;
-        let tmp = path.with_extension(format!("tmp-{}", std::process::id()));
+        // T-545: a new file with a random name; a pid is not unique across
+        // PID namespaces.
+        let tmp = podnet_core::state::temp_name(path);
         {
-            let mut file = std::fs::File::create(&tmp)
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&tmp)
                 .map_err(|e| anyhow::anyhow!("{}: {e}", tmp.display()))?;
             file.write_all(text.as_bytes())?;
             file.sync_all()?;

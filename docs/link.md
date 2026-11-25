@@ -202,7 +202,7 @@ Proof: `tests/service_exec.rs`. Not proven: `--exec-user` as root (the test runs
 ## The control socket
 
 `link listen` and `link connect` run a control socket for the links they hold. It is a unix socket with the mode 0600, at
-`--control PATH` (default `link-PID.ctl` in the run directory; a host with no run directory runs with none, and the ready
+`--control PATH` (default `link-PID-NONCE.ctl` in the run directory; a host with no run directory runs with none, and the ready
 document says `control: null`). The token is in `PATH.token` (mode 0600): 32 random bytes in hex, new for each run. The instance
 removes both files at its stop. The token is never in the ready document, `status`, `ps` or the log.
 

@@ -7,7 +7,6 @@
 //! allow list `{FINGERPRINT}` and one service, SERVICE, whose target is
 //! that socket. A peer opens a stream of SERVICE and speaks HTTP on it.
 
-use std::os::unix::fs::DirBuilderExt as _;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
@@ -51,14 +50,9 @@ struct Scratch(PathBuf);
 
 impl Scratch {
     fn new() -> Result<Scratch> {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.subsec_nanos());
-        let path = std::env::temp_dir().join(format!("pn-at-{}-{nanos:x}", std::process::id()));
-        std::fs::DirBuilder::new()
-            .mode(0o700)
-            .create(&path)
-            .with_context(|| format!("making {}", path.display()))
+        // T-545: a new directory of mode 0700 with a random name.
+        let path = podnet_core::state::temp::new_temp_dir(&std::env::temp_dir(), "pn-at-")
+            .context("making a private directory")
             .map_err(|e| exit::fault(Fault::OsError, e))?;
         Ok(Scratch(path))
     }

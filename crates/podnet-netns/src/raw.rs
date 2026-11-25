@@ -117,13 +117,13 @@ fn exec_path(program: &str) -> Result<CString> {
 /// TUN fd that does not come.
 pub fn spawn(opts: &RawOptions) -> Result<RawPod> {
     let program = opts.program.first().context("no program to run")?;
-    let resolv = std::env::temp_dir().join(format!(
-        "podnet-netns-raw-resolv-{}.conf",
-        std::process::id()
-    ));
-    std::fs::write(
-        &resolv,
-        format!("nameserver {}\noptions ndots:0\n", opts.nameserver),
+    // T-545: a new file with a random name; a pid is not unique across PID
+    // namespaces that share /tmp.
+    let resolv = crate::listen::write_new_file(
+        &std::env::temp_dir(),
+        "podnet-netns-raw-resolv-",
+        ".conf",
+        &format!("nameserver {}\noptions ndots:0\n", opts.nameserver),
     )
     .context("writing the resolv.conf of the pod")?;
     let prepared = Prepared {

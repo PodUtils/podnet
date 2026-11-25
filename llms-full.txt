@@ -8844,8 +8844,8 @@ podnet link listen
         without it the listener exits 64.
     --control PATH
         The control socket (mode 0600, with the token file PATH.token). The
-        default is `link-PID.ctl` in the run directory of podnet. The ready
-        document names it. `podnet link status` reads it.
+        default is `link-PID-NONCE.ctl` in the run directory of podnet. The
+        ready document names it. `podnet link status` reads it.
     --json
         Print the ready document as one line of JSON in place of the text.
     --announce
@@ -9344,8 +9344,8 @@ podnet link connect
         RTT of the link in milliseconds.
     --control PATH
         The control socket (mode 0600, with the token file PATH.token). The
-        default is `link-PID.ctl` in the run directory of podnet. The ready
-        document names it.
+        default is `link-PID-NONCE.ctl` in the run directory of podnet. The
+        ready document names it.
     --json
         Print the ready document as one line of JSON in place of the text.
     --check
@@ -13833,8 +13833,8 @@ FILES
       exits 71). podnet link listen, dial and status --create make it on first
       use. podnet link status prints its fingerprint. The seed is never
       printed, logged or put in JSON.
-  <run directory>/link-PID.ctl, link-PID.ctl.token (podnet link listen
-  --control, link connect --control)
+  <run directory>/link-PID-NONCE.ctl, link-PID-NONCE.ctl.token (podnet link
+  listen --control, link connect --control)
       The control socket of a link instance (mode 0600) and its token (32
       random bytes in hex, mode 0600, new for each run). One JSON object for
       each line: status, peer, open. A request is 4 KiB at most, an answer 64

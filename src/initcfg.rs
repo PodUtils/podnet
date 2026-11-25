@@ -421,13 +421,10 @@ pub async fn enrol(
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_else(|| "state".to_string());
-    let stamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|elapsed| elapsed.as_nanos())
-        .unwrap_or(0);
-    let tmp: PathBuf = parent.join(format!(".{name}.enrol-{}-{stamp}", std::process::id()));
-    std::fs::create_dir(&tmp)
-        .map_err(|e| InitError::Enrol(format!("{}: {e}", tmp.display())).fault())?;
+    // T-545: a new directory with a random name; a pid is not unique
+    // across PID namespaces.
+    let tmp: PathBuf = podnet_core::state::temp::new_temp_dir(parent, &format!(".{name}.enrol-"))
+        .map_err(|e| InitError::Enrol(e.to_string()).fault())?;
 
     let outcome = build(&tmp, config, registrar).await;
     match outcome {

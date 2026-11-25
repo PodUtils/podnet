@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**545 entries: 15 open, 14 partial, 25 blocked, 491 done.**
+**545 entries: 14 open, 14 partial, 25 blocked, 492 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 86 | 91 |
-| P2 | 6 | 8 | 11 | 242 | 267 |
+| P2 | 5 | 8 | 11 | 243 | 267 |
 | P3 | 8 | 4 | 12 | 162 | 186 |
-| **All** | 15 | 14 | 25 | 491 | 545 |
+| **All** | 14 | 14 | 25 | 492 | 545 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -589,5 +589,5 @@ M8 Overlays, M9 Later.
 | [T-542](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.83.0 |
 | [T-543](fixes.md) | P2 | M | M5 | feature | open | Take `pod-natprobe`: the class of the NAT of the host for `link p2p` and `doctor` |
 | [T-544](fixes.md) | P3 | S | M5 | chore | done | Take the script `runs.py` of podcrates in place of podnet's `watch-runs.sh` and `runs.py` |
-| [T-545](fixes.md) | P2 | M | M5 | defect | open | temp files and sockets named by the pid alone: two processes in two PID namespaces meet on one path |
+| [T-545](fixes.md) | P2 | M | M5 | defect | done | temp files and sockets named by the pid alone: two processes in two PID namespaces meet on one path |
 | [T-546](fixes.md) | P2 | S | M5 | defect | blocked | warp proxy: a client with no WARP session gets a TCP reset, and the live step hides the line of pod_warp |

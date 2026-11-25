@@ -43,8 +43,12 @@ pub(crate) async fn run(args: WarpArgs, client: podnet::warp::WarpClient) -> Res
             } else {
                 backend
             };
-            let socket =
-                std::env::temp_dir().join(format!("podnet-warp-{}.sock", std::process::id()));
+            // T-545: a random name; a pid is not unique across PID namespaces.
+            let socket = podnet_core::state::temp::random_path(
+                &std::env::temp_dir(),
+                "podnet-warp-",
+                ".sock",
+            );
             let live = Arc::new(client)
                 .connect_live()
                 .await

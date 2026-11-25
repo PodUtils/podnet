@@ -344,10 +344,15 @@ pub(crate) fn private_resolv_conf() -> Result<()> {
             std::io::Error::last_os_error()
         );
     }
-    let file =
-        std::env::temp_dir().join(format!("podnet-netns-resolv-{}.conf", std::process::id()));
-    std::fs::write(&file, format!("nameserver {TUN_GW}\noptions ndots:0\n"))
-        .context("writing the resolv.conf of the pod")?;
+    // T-545: a new file with a random name; a pid is not unique across PID
+    // namespaces that share /tmp.
+    let file = crate::listen::write_new_file(
+        &std::env::temp_dir(),
+        "podnet-netns-resolv-",
+        ".conf",
+        &format!("nameserver {TUN_GW}\noptions ndots:0\n"),
+    )
+    .context("writing the resolv.conf of the pod")?;
     let source = CString::new(file.as_os_str().as_encoded_bytes())?;
     let target = CString::new("/etc/resolv.conf")?;
     let rc = unsafe {

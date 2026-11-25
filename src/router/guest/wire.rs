@@ -185,16 +185,13 @@ fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> 
 /// socket never exists at `path` with the mode of the umask: it is bound in
 /// a new directory of mode 0700, set to 0600, and then moved to `path`.
 pub fn bind_seqpacket(path: &Path) -> io::Result<OwnedFd> {
-    use std::os::unix::fs::{DirBuilderExt as _, PermissionsExt as _};
+    use std::os::unix::fs::PermissionsExt as _;
     let parent = match path.parent() {
         Some(p) if !p.as_os_str().is_empty() => p,
         _ => Path::new("."),
     };
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.subsec_nanos());
-    let dir = parent.join(format!(".pnb-{}-{nanos}", std::process::id()));
-    std::fs::DirBuilder::new().mode(0o700).create(&dir)?;
+    // T-545: a new directory of mode 0700 with a random name.
+    let dir = podnet_core::state::temp::new_temp_dir(parent, ".pnb-")?;
     let staged = dir.join("s");
     let bound = (|| {
         // SAFETY: a socket with constant arguments.
