@@ -260,9 +260,10 @@ done
 }
 
 /// T-482: each refusal of the netns backends gives one line of podnet with
-/// its cause, and its exit code. Where the namespaces are refused, the child
-/// prints the cause; before, the parent added a false second line ("write
-/// uid/gid maps: the child died before it named its namespace").
+/// its cause, and its exit code. Where the namespaces are refused, the probe
+/// before the start gives the cause and the next step (GitHub #740); before
+/// T-482, the parent added a false second line ("write uid/gid maps: the
+/// child died before it named its namespace").
 #[test]
 fn each_refusal_of_the_netns_backend_is_one_line() {
     let backends = backends();
@@ -285,7 +286,7 @@ fn each_refusal_of_the_netns_backend_is_one_line() {
             true,
             &["pod", "--backend", "netns", "-x", "direct", "--", "true"],
             3,
-            "unshare(CLONE_NEWNET) failed",
+            "the netns backend cannot run here (unshare(NEWUSER|NEWNET): ",
         ),
         (
             "the program does not exist",

@@ -46,6 +46,7 @@ pub mod socks;
 pub mod tailscale;
 pub mod upstream;
 
+mod canrun;
 mod cli;
 mod connect;
 mod dgram;
@@ -236,14 +237,18 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
     };
     let name_backend = args.name_backend;
     let netns = |args: Args, reason: &str| {
-        name_the_backend(name_backend, BackendKind::Netns, reason);
+        name_the_backend(name_backend, BackendKind::Netns, reason, true);
         report.backend(BackendKind::Netns, reason);
         run(args)
     };
     // T-153: opt in only. `auto` never takes it: the flow table of the netns
     // backend stays the default.
     let netns_kernel = |args: Args, reason: &str| {
-        name_the_backend(name_backend, BackendKind::NetnsKernel, reason);
+        name_the_backend(name_backend, BackendKind::NetnsKernel, reason, true);
+        // GitHub #713: it works only where the netns backend works.
+        if let Err(no) = canrun::netns_probe() {
+            bail!("{}", no.line("netns-kernel"));
+        }
         let probe = nfprobe::probe_netfilter();
         if !probe.ok {
             bail!(
@@ -254,8 +259,8 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
         report.backend(BackendKind::NetnsKernel, reason);
         kernel::run(args)
     };
-    let seccomp = |args: Args, reason: &str| {
-        name_the_backend(name_backend, BackendKind::Seccomp, reason);
+    let seccomp = |args: Args, reason: &str, netns_runs: bool| {
+        name_the_backend(name_backend, BackendKind::Seccomp, reason, netns_runs);
         // T-231: with no read of the memory of the program, the pod sees no
         // address and refuses each connect: refuse the run at its start.
         seccomp_can_hold(&doctor::probe_mem_read())?;
@@ -264,21 +269,21 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
     };
     let result = match args.backend {
         // T-382: a refused TCP connect holds in each namespace (Landlock).
-        BackendKind::Netns => match tcp_connect_refused() {
-            Some(why) => Err(anyhow::anyhow!(
-                "the netns backend cannot carry a TCP connect here ({why}; the refusal holds in each \
-                 network namespace); use --backend seccomp"
-            )),
-            None => netns(args, "--backend netns"),
+        // GitHub #740: the probe of `auto` and of `pod doctor` runs before
+        // the start, so a refused namespace gives the cause and the next
+        // step, and the report names no backend.
+        BackendKind::Netns => match canrun::netns_probe() {
+            Err(no) => Err(anyhow::anyhow!(no.line("netns"))),
+            Ok(()) => netns(args, "--backend netns"),
         },
         BackendKind::NetnsKernel => netns_kernel(args, "--backend netns-kernel"),
-        BackendKind::Seccomp => seccomp(args, "--backend seccomp"),
+        BackendKind::Seccomp => seccomp(args, "--backend seccomp", true),
         BackendKind::Auto if args.prefer_udp && doctor::probe_seccomp_notif().ok => {
-            seccomp(args, "auto with --prefer-udp takes seccomp first")
+            seccomp(args, "auto with --prefer-udp takes seccomp first", true)
         }
         // T-113: the netns backend needs unshare and a TUN; without them
         // the seccomp backend is the only thing that can work.
-        BackendKind::Auto => match netns_probe() {
+        BackendKind::Auto => match canrun::netns_probe() {
             Ok(()) => {
                 warn_inbound("netns");
                 netns(
@@ -289,6 +294,7 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
             Err(why) => seccomp(
                 args,
                 &format!("auto takes netns first, but netns cannot run here ({why})"),
+                false,
             ),
         },
     };
@@ -378,8 +384,11 @@ pub(crate) fn warn(text: &str) {
 }
 
 /// The line that names the backend that runs and its limits (T-071).
-fn backend_line(kind: BackendKind) -> &'static str {
+/// GitHub #713: where the netns backend cannot run (`netns_runs` false),
+/// the seccomp line does not send the user to it.
+fn backend_line(kind: BackendKind, netns_runs: bool) -> &'static str {
     match kind {
+        BackendKind::Seccomp if !netns_runs => "seccomp backend: socket options and addresses are emulated; the netns backend cannot run here",
         BackendKind::Seccomp => "seccomp backend: socket options and addresses are emulated; use --backend netns when a program fails",
         BackendKind::NetnsKernel => "netns-kernel backend: IPv4 TCP and UDP only; the program has the loopback and no other interface, a destination on 127.0.0.0/8 stays in the pod, and a ping of another address is answered by the pod; use --backend netns when a program needs more",
         _ => "netns backend: a loopback listener of the program is not seen from outside, and a UDP datagram larger than 1500 bytes does not go through; use --backend seccomp when a program needs them",
@@ -388,73 +397,13 @@ fn backend_line(kind: BackendKind) -> &'static str {
 
 /// Print [`backend_line`] and the reason of the choice (T-113) once on
 /// stderr when `on`, unless [`quiet`].
-fn name_the_backend(on: bool, kind: BackendKind, reason: &str) {
+fn name_the_backend(on: bool, kind: BackendKind, reason: &str, netns_runs: bool) {
     if on {
-        warn(&format!("{}. Choice: {reason}", backend_line(kind)));
+        warn(&format!(
+            "{}. Choice: {reason}",
+            backend_line(kind, netns_runs)
+        ));
     }
-}
-
-/// The test hook of the choice of `auto` (T-113): set and not empty, the
-/// netns backend cannot run.
-const TEST_NO_NETNS_VARIABLE: &str = "PODNET_NETNS_TEST_NO_NETNS";
-
-/// Whether the netns backend can run here: `unshare` of a network namespace
-/// (as root) or of a user and a network namespace, with `lo` and a TUN in
-/// it. Gives the reason when it cannot.
-fn netns_probe() -> std::result::Result<(), String> {
-    if std::env::var_os(TEST_NO_NETNS_VARIABLE).is_some_and(|v| !v.is_empty()) {
-        return Err(format!("{TEST_NO_NETNS_VARIABLE} is set"));
-    }
-    if let Some(why) = tcp_connect_refused() {
-        return Err(why);
-    }
-    if probe_unshare(libc::CLONE_NEWNET).ok {
-        return Ok(());
-    }
-    let probe = probe_unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET);
-    if probe.ok {
-        return Ok(());
-    }
-    Err(format!("{}: {}", probe.name, probe.detail))
-}
-
-/// Whether a TCP connect of this process is refused with `EACCES` or
-/// `EPERM` (T-382). A Landlock domain that handles `CONNECT_TCP` (the lab
-/// `bind-denied`) refuses each TCP connect of the program in each network
-/// namespace, so the program cannot reach the stack of the netns backend.
-/// The probe connects to `127.0.0.1:1` with no wait: a refused port or a
-/// listener both mean that the connect is allowed. Gives the reason.
-fn tcp_connect_refused() -> Option<String> {
-    let refused = |e: &std::io::Error| matches!(e.raw_os_error(), Some(libc::EACCES | libc::EPERM));
-    let fd = unsafe {
-        libc::socket(
-            libc::AF_INET,
-            libc::SOCK_STREAM | libc::SOCK_CLOEXEC | libc::SOCK_NONBLOCK,
-            0,
-        )
-    };
-    if fd < 0 {
-        let e = std::io::Error::last_os_error();
-        return refused(&e).then(|| format!("a TCP socket is refused: {e}"));
-    }
-    let addr = libc::sockaddr_in {
-        sin_family: libc::AF_INET as libc::sa_family_t,
-        sin_port: 1u16.to_be(),
-        sin_addr: libc::in_addr {
-            s_addr: u32::from(std::net::Ipv4Addr::LOCALHOST).to_be(),
-        },
-        sin_zero: [0; 8],
-    };
-    let rc = unsafe {
-        libc::connect(
-            fd,
-            (&addr as *const libc::sockaddr_in).cast(),
-            std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t,
-        )
-    };
-    let e = std::io::Error::last_os_error();
-    unsafe { libc::close(fd) };
-    (rc != 0 && refused(&e)).then(|| format!("a TCP connect to 127.0.0.1 is refused: {e}"))
 }
 
 /// Add `single-request` to `RES_OPTIONS` of a program environment (issue

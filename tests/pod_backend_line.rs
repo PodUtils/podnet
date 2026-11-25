@@ -394,3 +394,153 @@ fn netns_is_refused_where_tcp_connect_is_refused() {
         "{lines:?}"
     );
 }
+
+/// Refuse each `unshare` of the calling process and of its children with
+/// `EPERM` (a seccomp filter), as the lab `userns-off` of pod-lab refuses a
+/// new user namespace. Call it in the child, before the exec.
+fn seccomp_refuse_unshare() -> std::io::Result<()> {
+    let nr = libc::SYS_unshare as u32;
+    let refuse = libc::SECCOMP_RET_ERRNO | libc::EPERM as u32;
+    let filter = [
+        // Load the number of the system call.
+        libc::sock_filter {
+            code: 0x20,
+            jt: 0,
+            jf: 0,
+            k: 0,
+        },
+        // unshare: the next instruction, else skip it.
+        libc::sock_filter {
+            code: 0x15,
+            jt: 0,
+            jf: 1,
+            k: nr,
+        },
+        libc::sock_filter {
+            code: 0x06,
+            jt: 0,
+            jf: 0,
+            k: refuse,
+        },
+        libc::sock_filter {
+            code: 0x06,
+            jt: 0,
+            jf: 0,
+            k: libc::SECCOMP_RET_ALLOW,
+        },
+    ];
+    let program = libc::sock_fprog {
+        len: filter.len() as u16,
+        filter: filter.as_ptr() as *mut libc::sock_filter,
+    };
+    if unsafe { libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) } != 0
+        || unsafe {
+            libc::prctl(
+                libc::PR_SET_SECCOMP,
+                libc::SECCOMP_MODE_FILTER,
+                &program as *const libc::sock_fprog,
+            )
+        } != 0
+    {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+/// `podnet pod ARGS` with `fault` in the process (a hook of `pre_exec`).
+fn pod_under(fault: fn() -> std::io::Result<()>, host: &Host, args: &[&str]) -> Output {
+    use std::os::unix::process::CommandExt;
+    let mut cmd = podnet();
+    cmd.arg("pod")
+        .args(args)
+        .env("HOME", host.dir.path())
+        .env("XDG_RUNTIME_DIR", host.dir.path())
+        .env_remove("PODNET_NETNS_QUIET")
+        .env_remove("PODNET_NETNS_TEST_NO_NETNS");
+    unsafe { cmd.pre_exec(fault) };
+    cmd.output().unwrap()
+}
+
+/// GitHub #713 and #740: where the netns backend cannot run (each TCP
+/// connect refused: the lab `bind-denied`; each `unshare` refused: the lab
+/// `userns-off`), `pod doctor` says `fail` for netns and netns-kernel,
+/// `--backend netns` exits 3 with one line that has the cause and the next
+/// step, its report names no backend and holds that line, and the seccomp
+/// line of `auto` does not send the user to `--backend netns`.
+#[test]
+fn the_doctor_and_the_start_agree_where_netns_cannot_run() {
+    let (netns, seccomp) = backends();
+    if !netns {
+        eprintln!("skipping: the netns backend cannot run on this host");
+        return;
+    }
+    type Fault = fn() -> std::io::Result<()>;
+    // (the fault, its name, the words of the line)
+    let mut table: Vec<(Fault, &str, &str)> = vec![(
+        seccomp_refuse_unshare,
+        "unshare refused",
+        "the netns backend cannot run here (unshare(NEWUSER|NEWNET): Operation not permitted",
+    )];
+    if landlock_abi() >= 4 {
+        table.push((
+            landlock_refuse_tcp,
+            "TCP connect refused",
+            "the netns backend cannot carry a TCP connect here",
+        ));
+    }
+    let host = Host::new();
+    let proxy = format!("socks5://unix:{}", host.socket.display());
+    let report = host.dir.path().join("report.json");
+    let report_arg = report.display().to_string();
+    let mut faults = Vec::new();
+    for (fault, name, words) in table {
+        let out = pod_under(fault, &host, &["doctor", "--json"]);
+        let doctor: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        for key in ["backend_netns", "backend_netns_kernel"] {
+            if doctor[key] != serde_json::Value::Bool(false) {
+                faults.push(format!("{name}: doctor {key} is {}", doctor[key]));
+            }
+        }
+        if doctor["verdicts"]["netns"] != "fail" || doctor["hold"]["netns"]["level"] != "none" {
+            faults.push(format!("{name}: doctor says that netns can run: {doctor}"));
+        }
+        let args = [
+            "--backend",
+            "netns",
+            "--report",
+            &report_arg,
+            "-x",
+            &proxy,
+            "--",
+            "true",
+        ];
+        let out = pod_under(fault, &host, &args);
+        let text = stderr(&out);
+        if out.status.code() != Some(3) || !text.contains(words) {
+            faults.push(format!("{name}: --backend netns: {:?} {text}", out.status));
+        }
+        let lines: Vec<&str> = text.lines().filter(|l| !l.contains("warning")).collect();
+        if lines.len() != 1 || !lines[0].contains("; use --backend seccomp") {
+            faults.push(format!("{name}: not one line with the next step: {text}"));
+        }
+        let json: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&report).unwrap()).unwrap();
+        let reason = json["reason"].as_str().unwrap_or_default();
+        if json["backend"] != serde_json::Value::Null
+            || json["hold"] != "none"
+            || !reason.contains(words)
+        {
+            faults.push(format!("{name}: the report is not true: {json}"));
+        }
+        if !seccomp {
+            continue;
+        }
+        let args = ["--name-backend", "-x", &proxy, "--", "true"];
+        let out = pod_under(fault, &host, &args);
+        let lines = backend_lines(&out);
+        if !out.status.success() || lines.len() != 1 || lines[0].contains("use --backend netns") {
+            faults.push(format!("{name}: auto: {lines:?} {}", stderr(&out)));
+        }
+    }
+    assert!(faults.is_empty(), "{}", faults.join("\n"));
+}

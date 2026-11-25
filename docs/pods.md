@@ -202,6 +202,13 @@ podnet pod -x socks5://127.0.0.1:1080 \
 ## Check the host: `podnet pod doctor`
 
 `podnet pod doctor [--json]` measures what the host permits and says which backend can run
-([doctor.md](doctor.md)). It exits 3 when no backend can run. When a program and WARP are the goal, use
+([doctor.md](doctor.md)). It exits 3 when no backend can run. Its verdict of `netns` is the probe that
+the start of the backend runs: an `unshare` of a network namespace (with or without a user namespace), with
+`lo` and a TUN or a veth pair in it, and a TCP connect to `127.0.0.1` that is not refused. `netns-kernel`
+needs the same and the row `netfilter in a namespace`. `auto` takes `netns` only when the probe passes.
+`--backend netns` and `--backend netns-kernel` run the probe before the start. Where it fails, they print
+one line with the cause and the next step (`use --backend seccomp`) and exit 3, and the report has
+`backend` null, `hold` `none` and that line as `reason`. Where `auto` takes `seccomp` because `netns` cannot
+run, the line of `--name-backend` does not give `--backend netns` as a next step. When a program and WARP are the goal, use
 `podnet warp run` and `podnet warp exec` ([warp.md](warp.md)): they run a pod over WARP.
 

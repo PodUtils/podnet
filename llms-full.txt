@@ -13525,9 +13525,9 @@ ENVIRONMENT
       user-net or veth): the process runs the probe before main and exits with
       the result code. Do not set it. Used by: pod (internal).
   PODNET_NETNS_TEST_NO_NETNS
-      A test hook of --backend auto: set and not empty, the netns backend
-      cannot run, and auto takes the seccomp backend. Used by: pod (tests
-      only).
+      A test hook of the netns backend: set and not empty, the netns backend
+      cannot run. auto takes the seccomp backend, --backend netns exits 3, and
+      pod doctor says fail. Used by: pod (tests only).
   PODNET_NETNS_TEST_VETH
       A test hook of the netns backend: set and not empty, the namespace uses
       the veth wire (a veth pair and a packet socket) also when it can open
@@ -16258,7 +16258,14 @@ podnet pod -x socks5://127.0.0.1:1080 \
 ## Check the host: `podnet pod doctor`
 
 `podnet pod doctor [--json]` measures what the host permits and says which backend can run
-([doctor.md](doctor.md)). It exits 3 when no backend can run. When a program and WARP are the goal, use
+([doctor.md](doctor.md)). It exits 3 when no backend can run. Its verdict of `netns` is the probe that
+the start of the backend runs: an `unshare` of a network namespace (with or without a user namespace), with
+`lo` and a TUN or a veth pair in it, and a TCP connect to `127.0.0.1` that is not refused. `netns-kernel`
+needs the same and the row `netfilter in a namespace`. `auto` takes `netns` only when the probe passes.
+`--backend netns` and `--backend netns-kernel` run the probe before the start. Where it fails, they print
+one line with the cause and the next step (`use --backend seccomp`) and exit 3, and the report has
+`backend` null, `hold` `none` and that line as `reason`. Where `auto` takes `seccomp` because `netns` cannot
+run, the line of `--name-backend` does not give `--backend netns` as a next step. When a program and WARP are the goal, use
 `podnet warp run` and `podnet warp exec` ([warp.md](warp.md)): they run a pod over WARP.
 
 <!-- document: docs/networks.md -->
@@ -18077,7 +18084,7 @@ reads the document (flags, exit codes, readiness, failure causes).
 
 * `podnet pod doctor [--json]` measures what the host permits for `podnet pod`: `unshare`, `/dev/net/tun`,
   `ptrace`, `seccomp` user notification, memory access of the program, netfilter in a namespace and a
-  veth wire. It says whether the `netns`, the `netns-kernel` and the `seccomp` backend can run (`backend_netns_kernel` in the JSON), the flow budget of the
+  veth wire, and a TCP connect to `127.0.0.1` (a refusal holds in each namespace). It says whether the `netns`, the `netns-kernel` and the `seccomp` backend can run (`backend_netns_kernel` in the JSON), the flow budget of the
   `seccomp` backend, and how much each backend holds. It exits 3 when no backend can run ([pods.md](pods.md)).
 * `podnet net doctor [--json]` probes what the host permits for the virtual network: `bind` and `listen`
   for each socket family, `/dev/net/tun`, `/dev/vsock`, a C compiler for the shims, seccomp and

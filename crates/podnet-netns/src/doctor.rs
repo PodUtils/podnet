@@ -3,6 +3,7 @@ use crate::prelude::*;
 
 // ── capability probes ───────────────────────────────────────────────────────
 
+#[derive(Clone)]
 pub(crate) struct Probe {
     pub(crate) name: &'static str,
     pub(crate) ok: bool,
@@ -392,6 +393,7 @@ pub(crate) fn probe_mem_write() -> Probe {
 }
 
 pub(crate) fn doctor(json: bool) -> i32 {
+    let tcp = crate::canrun::tcp_connect_refused();
     let probes = [
         probe_unshare(libc::CLONE_NEWNET),
         probe_unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET),
@@ -403,9 +405,19 @@ pub(crate) fn doctor(json: bool) -> i32 {
         crate::nfprobe::probe_netfilter(),
         probe_mem_read(),
         probe_veth(),
+        // T-382: a refused TCP connect holds in each namespace.
+        crate::canrun::tcp_row(&tcp),
     ];
-    // The unshare probes make the TUN, else the veth wire (T-174).
-    let netns_available = probes[0].ok || probes[1].ok;
+    // The unshare probes make the TUN, else the veth wire (T-174). GitHub
+    // #713: the rule of the start of the backend decides the verdict.
+    let netns = crate::canrun::netns_probe_with(tcp, |flags| match flags {
+        libc::CLONE_NEWNET => probes[0].clone(),
+        _ => probes[1].clone(),
+    });
+    let netns_available = netns.is_ok();
+    let netns_why = netns.err().map(|no| format!(" ({no})")).unwrap_or_default();
+    // T-153: the netns-kernel backend works only where netns works.
+    let netns_kernel = probes[6].ok && netns_available;
     let seccomp_available = probes[4].ok;
     let hold = Hold::of(netns_available, seccomp_available && probes[7].ok);
     let any = netns_available || seccomp_available;
@@ -438,7 +450,7 @@ pub(crate) fn doctor(json: bool) -> i32 {
         );
         root.insert("backend_netns".into(), netns_available.into());
         root.insert("backend_seccomp".into(), seccomp_available.into());
-        root.insert("backend_netns_kernel".into(), probes[6].ok.into());
+        root.insert("backend_netns_kernel".into(), netns_kernel.into());
         root.insert("backend_available".into(), any.into());
         root.insert("flow_budget".into(), budget.json());
         root.insert("hold".into(), hold.json());
@@ -455,9 +467,10 @@ pub(crate) fn doctor(json: bool) -> i32 {
         println!("  {:<34} {:<5} {}", p.name, verdict(p.ok), p.detail);
     }
     println!(
-        "{}: backend netns:   {}",
+        "{}: backend netns:   {}{}",
         crate::cli::program_name(),
-        verdict(netns_available)
+        verdict(netns_available),
+        netns_why
     );
     println!(
         "{}: backend seccomp: {}",
@@ -473,7 +486,7 @@ pub(crate) fn doctor(json: bool) -> i32 {
     println!(
         "{}: backend netns-kernel: {} (--backend netns-kernel only; auto does not take it)",
         crate::cli::program_name(),
-        verdict(probes[6].ok)
+        verdict(netns_kernel)
     );
     println!("{}: {}", crate::cli::program_name(), budget.line());
     for line in hold.lines() {
