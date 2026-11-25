@@ -254,7 +254,7 @@ async fn dialer_tailnet_gives_the_refusal_of_the_daemon() {
         .await
         .expect_err("a refusal");
     assert_eq!(err.stage, Stage::Connect);
-    assert!(err.to_string().contains("status 403"), "{err}");
+    assert!(err.chain().contains("status 403"), "{}", err.chain());
 }
 
 #[test]

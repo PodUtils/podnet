@@ -111,7 +111,7 @@ impl Dial for Counting {
             self.dials.fetch_add(1, Ordering::SeqCst);
             let tcp = TcpStream::connect(("127.0.0.1", self.port))
                 .await
-                .map_err(|e| Failure::io(Stage::Connect, e))?;
+                .map_err(|e| Failure::io(Stage::Connect, "a test dial", e))?;
             Ok(Connected::new(Box::new(tcp)))
         })
     }

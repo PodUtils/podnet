@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**586 entries: 12 open, 13 partial, 29 blocked, 532 done.**
+**587 entries: 12 open, 13 partial, 29 blocked, 533 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 3 | 2 | 89 | 95 |
+| P1 | 1 | 3 | 2 | 90 | 96 |
 | P2 | 3 | 6 | 14 | 279 | 302 |
 | P3 | 8 | 4 | 13 | 163 | 188 |
-| **All** | 12 | 13 | 29 | 532 | 586 |
+| **All** | 12 | 13 | 29 | 533 | 587 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -632,3 +632,4 @@ M8 Overlays, M9 Later.
 | [T-585](fixes.md) | P1 | S | M5 | release | partial | Publish `v0.4.0-beta.19`: the fixes of the QA pass of 2026-11-25 and podcrates `v0.84.0` |
 | [T-586](fixes.md) | P3 | M | M8 | feature | blocked | link p2p: take the relay first when the NAT classes of both ends rule out the direct path |
 | [T-587](fixes.md) | P2 | S | M5 | defect | done | live: a second run of doctor sees the leg quic+warp as not ok, and the step prints no reason |
+| [T-588](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.85.0 |

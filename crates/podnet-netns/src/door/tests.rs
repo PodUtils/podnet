@@ -393,7 +393,11 @@ fn door_socks_reply_code_by_cause() {
     let rows: [(&str, Failure, u8); 9] = [
         (
             "connection refused",
-            Failure::io(Stage::Connect, Io::from(K::ConnectionRefused)),
+            Failure::io(
+                Stage::Connect,
+                "a test dial",
+                Io::from(K::ConnectionRefused),
+            ),
             0x05,
         ),
         (

@@ -137,14 +137,16 @@ impl Dial for VnetDialer {
                 .stack
                 .bind_udp(VirtAddr::new(self.local, 0))
                 .await
-                .map_err(|e| Failure::io(Stage::Connect, e))?;
+                .map_err(|e| {
+                    Failure::io(Stage::Connect, "a UDP socket of the virtual network", e)
+                })?;
             Ok(Arc::new(socket.into_datagrams()) as Arc<dyn Datagrams>)
         })
     }
 }
 
 fn connect_failure(e: io::Error) -> Failure {
-    Failure::io(Stage::Connect, e)
+    Failure::io(Stage::Connect, "TCP in the virtual network", e)
 }
 
 /// The chain of `-x` hops of `podnet pod` as a way out: TCP only.
@@ -254,7 +256,7 @@ impl Dial for Tailnet {
                 self.dialer
                     .dial(&target.host(), target.port())
                     .await
-                    .map_err(|e| Failure::io(Stage::Connect, e))
+                    .map_err(|e| Failure::io(Stage::Connect, what.clone(), e))
             })
             .await?;
             Ok(Connected::new(Box::new(conn)))

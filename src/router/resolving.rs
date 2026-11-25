@@ -62,7 +62,9 @@ impl Resolving {
                     io.read_exact(&mut message).await?;
                     Ok::<_, std::io::Error>(message)
                 };
-                let message = sent.await.map_err(|e| Failure::io(Stage::Dns, e))?;
+                let message = sent
+                    .await
+                    .map_err(|e| Failure::io(Stage::Dns, "a DNS query over TCP", e))?;
                 if message.len() < 12 || message[..2] != id.to_be_bytes() {
                     return Err(dns(
                         Class::Protocol,

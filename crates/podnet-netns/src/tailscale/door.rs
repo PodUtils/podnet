@@ -73,7 +73,11 @@ impl Dial for TailnetDial {
                         tokio::spawn(async move { gate.refresh(&dialer).await });
                     }
                     crate::warn(&format!("tailscale: {host}:{port} failed: {err}"));
-                    Err(Failure::io(Stage::Connect, err))
+                    Err(Failure::io(
+                        Stage::Connect,
+                        format!("tailscale: {host}:{port}"),
+                        err,
+                    ))
                 }
             }
         })

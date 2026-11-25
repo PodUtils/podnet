@@ -592,7 +592,9 @@ impl Dial for Egress {
                 let any = std::net::SocketAddr::from((std::net::Ipv4Addr::UNSPECIFIED, 0));
                 let socket = crate::network::SystemDatagrams::bind(any)
                     .await
-                    .map_err(|e| Failure::io(Stage::Connect, e))?;
+                    .map_err(|e| {
+                        Failure::io(Stage::Connect, format!("a UDP socket on {any}"), e)
+                    })?;
                 Ok(Arc::new(CheckedDatagrams::new(Arc::new(socket)))
                     as Arc<dyn pod_core::Datagrams>)
             }),

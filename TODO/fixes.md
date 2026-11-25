@@ -16204,3 +16204,55 @@ sh -n scripts/live-doctor.sh
 
 2026-11-25, the commit of this entry. `python3 -I scripts/check-workflows.py`: 11 files, 0 faults. The proof is the
 next `live` run on `main`.
+
+# T-588: Take podcrates v0.85.0
+
+**Source:** `PodUtils/podcrates` tag `v0.85.0` (`1d1c9fc3`, 2026-11-25); PodUtils/podcrates#262 (COORD-156) and
+PodUtils/podcrates#263 (COORD-157, the owner's ruling "Hosted sessions and worker roles").
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.84.0`. The tag `v0.85.0` makes the text of a failure its step (PodUtils/podcrates@T-1351): `Failure::io(stage,
+step, e)` takes a step, and the texts of `pod-cloudflare`, `pod-quic` and `pod-warp` changed. It gives random temp names
+to `pod-link`, `pod-warp` and five other crates (PodUtils/podcrates@T-1343). COORD-157 asks each repository to keep the role table of the
+lead and its workers in `docs/hosted-sessions.md`.
+
+## Premise
+
+- Read: the section "podnet" of COORD-156 and COORD-157. The tag has no `adoption/podnet/` patch. `core.sh`,
+  `core-net.sh`, `pins.py` and `release-index.py` did not change.
+- Read: podnet finds a refused registration with `downcast_ref::<pod_cloudflare::fail::Refused>` over each link of the
+  chain (`hop.rs`), which is what `fail::find` does.
+
+## Approach
+
+1. Each `pod-*` pin names `v0.85.0` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`, `scripts/install/SOURCES`,
+   `issue-sync.yml`, the checkout of `release-index.py`).
+2. Each call of `Failure::io` gives its step (17 calls).
+3. The tests that pin a changed text read the new text.
+4. `docs/hosted-sessions.md` has the role table and the brief of a worker of podcrates `v0.85.0`; `docs/decisions.md`
+   has the ruling.
+
+## Prove
+
+```sh
+cargo test --workspace --no-fail-fast
+cargo clippy --workspace --all-targets --features full -- -D warnings
+```
+
+## Done
+
+2026-11-25, the commit of this entry. Each `pod-*` pin names `v0.85.0` (`1d1c9fc3`); the installer core and
+`release-index.py` did not change. Each of the 17 calls of `Failure::io` gives its step (for example "a UDP socket on
+0.0.0.0:0", "sending the WireGuard handshake", "TCP to ADDR through LABEL"). `dialer::tests::
+dialer_tailnet_gives_the_refusal_of_the_daemon` reads `Failure::chain()` (the text of the failure is its step now).
+`cargo clippy --workspace --all-targets --features full -- -D warnings` passes. `cargo test --workspace
+--no-fail-fast`: each binary passes but `doctor_json_keys_are_fixed` (the key `nat` of T-543, fixed in the commit
+before) and the test of the tailnet above (fixed here); both pass now. `docs/hosted-sessions.md` has the role table and
+the brief of a worker of podcrates `v0.85.0` (COORD-157); `docs/decisions.md` has the ruling.
+

@@ -319,12 +319,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # T-540 (PodUtils/podcrates@T-1118): the writer of release-index.json of
-      # PodUtils/podcrates (scripts/release-index.py of the tag v0.84.0), at a
+      # PodUtils/podcrates (scripts/release-index.py of the tag v0.85.0), at a
       # pinned commit, and checked by its SHA-256 before it runs.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: PodUtils/podcrates
-          ref: ca1d3e3b94f3ea2fed94915e76fd44709915b90f
+          ref: 1d1c9fc307a90e6d92c7ef86a126f13708195b63
           path: .podcrates
           sparse-checkout: scripts
           persist-credentials: false

@@ -137,10 +137,11 @@ async fn handshake(keys: &Keys, sock: &Sock) -> Result<Tunnel, Failure> {
         }
         sock.send(&init.message)
             .await
-            .map_err(|e| Failure::io(Stage::Connect, e))?;
+            .map_err(|e| Failure::io(Stage::Connect, "sending the WireGuard handshake", e))?;
         let end = Deadline::now() + REKEY_TIMEOUT;
         while let Ok(read) = tokio::time::timeout_at(end, sock.recv(&mut buf)).await {
-            let n = read.map_err(|e| Failure::io(Stage::Connect, e))?;
+            let n = read
+                .map_err(|e| Failure::io(Stage::Connect, "reading the WireGuard handshake", e))?;
             match buf[..n].first() {
                 Some(&pod_wg::MSG_RESPONSE) => match init.finish(keys, &buf[..n], Instant::now()) {
                     Ok(session) => {
@@ -236,7 +237,13 @@ impl Dial for WgDialer {
                         format!("{addr}: no answer through {}", self.label),
                     )
                 })?
-                .map_err(|e| Failure::io(Stage::Connect, e))?;
+                .map_err(|e| {
+                    Failure::io(
+                        Stage::Connect,
+                        format!("TCP to {addr} through {}", self.label),
+                        e,
+                    )
+                })?;
             Ok(Connected {
                 local: Some(stream.local_addr()),
                 peer: Some(addr),
@@ -255,7 +262,7 @@ impl Dial for WgDialer {
                 .stack
                 .bind_udp(SocketAddr::new(self.local, 0))
                 .await
-                .map_err(|e| Failure::io(Stage::Connect, e))?;
+                .map_err(|e| Failure::io(Stage::Connect, "a UDP socket of the tunnel", e))?;
             Ok(Arc::new(socket.into_datagrams()) as Arc<dyn Datagrams>)
         })
     }
@@ -293,7 +300,7 @@ async fn carrier(
     };
     let socket = SystemDatagrams::bind(any)
         .await
-        .map_err(|e| Failure::io(Stage::Connect, e))?;
+        .map_err(|e| Failure::io(Stage::Connect, format!("a UDP socket on {any}"), e))?;
     Ok(Arc::new(socket))
 }
 

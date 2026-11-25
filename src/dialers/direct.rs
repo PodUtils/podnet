@@ -49,7 +49,7 @@ impl Dial for Direct {
             let any = SocketAddr::from((std::net::Ipv4Addr::UNSPECIFIED, 0));
             let socket = SystemDatagrams::bind(any)
                 .await
-                .map_err(|e| Failure::io(Stage::Connect, e))?;
+                .map_err(|e| Failure::io(Stage::Connect, format!("a UDP socket on {any}"), e))?;
             Ok(
                 Arc::new(crate::egress::CheckedDatagrams::new(Arc::new(socket)))
                     as Arc<dyn Datagrams>,

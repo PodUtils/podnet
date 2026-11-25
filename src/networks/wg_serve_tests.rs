@@ -56,7 +56,7 @@ impl Dial for Recording {
             }
             let stream = tokio::net::TcpStream::connect(self.to)
                 .await
-                .map_err(|e| Failure::io(Stage::Connect, e))?;
+                .map_err(|e| Failure::io(Stage::Connect, "a test socket", e))?;
             Ok(Connected::new(Box::new(stream)))
         })
     }

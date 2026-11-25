@@ -55,7 +55,7 @@ impl pod_core::Dial for Direct {
             };
             let tcp = tokio::net::TcpStream::connect(addr)
                 .await
-                .map_err(|e| pod_core::Failure::io(pod_core::Stage::Connect, e))?;
+                .map_err(|e| pod_core::Failure::io(pod_core::Stage::Connect, "a test dial", e))?;
             Ok(pod_core::Connected {
                 io: Box::new(tcp),
                 peer: Some(addr),
