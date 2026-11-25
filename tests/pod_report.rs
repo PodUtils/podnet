@@ -134,13 +134,20 @@ fn schema_file_is_json_with_the_keys_of_the_report() {
 }
 
 /// A program that exits 7 makes `podnet pod` exit 7, and the report holds
-/// `"exit": 7`, the backend and the hold of `pod doctor`.
+/// `"exit": 7`, the backend and the hold of `pod doctor`. GitHub #739: the
+/// report of each backend of `--backend` agrees with the schema.
 #[test]
 fn exit_status_of_the_program_is_in_the_report() {
     let doctor = doctor();
     let mut ran = 0;
-    for backend in ["netns", "seccomp"] {
-        if !available(&doctor, backend) {
+    // (backend, its key in `pod doctor --json`, its hold, udp_limit)
+    let table = [
+        ("netns", "netns", "netns", Value::from(65_507)),
+        ("netns-kernel", "netns_kernel", "netns", Value::Null),
+        ("seccomp", "seccomp", "seccomp", Value::Null),
+    ];
+    for (backend, key, hold, udp) in table {
+        if !available(&doctor, key) {
             eprintln!("skipping, the {backend} backend cannot run on this host");
             continue;
         }
@@ -158,15 +165,10 @@ fn exit_status_of_the_program_is_in_the_report() {
         assert_eq!(report["exit"], 7);
         assert_eq!(report["schema"], 1);
         assert_eq!(report["backend"], backend);
-        assert_eq!(report["hold"], doctor["hold"][backend]["level"]);
-        assert_eq!(report["not_held"], doctor["hold"][backend]["not_held"]);
+        assert_eq!(report["hold"], doctor["hold"][hold]["level"]);
+        assert_eq!(report["not_held"], doctor["hold"][hold]["not_held"]);
         assert_eq!(report["reason"], Value::Null);
         assert_eq!(report["version"], env!("CARGO_PKG_VERSION"));
-        let udp = if backend == "netns" {
-            Value::from(65_507)
-        } else {
-            Value::Null
-        };
         assert_eq!(report["udp_limit"], udp);
         let mode = std::fs::metadata(&file).unwrap().permissions().mode();
         assert_eq!(mode & 0o777, 0o600);
