@@ -1129,7 +1129,7 @@ podcrates) of the Approach, item 1, when that ask is written. The donor values a
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1175,6 +1175,13 @@ T-049 is done; podcrates answers the COORD issue for `edge_h2.rs`.
 
 2026-11-12, the take of `pod-relay` v0.30.0 (83e0c93). The crate parses the `limits` of `/relays.json` with the published names, stores them with the cached pool, and gives them to the budget (`RelayBudget::meter_for`; PodUtils/podcrates#89, ask 3 of GitHub #413, podcrates T-123). `ws_relay::meter` uses it. The WARP leg through the relay (`src/warp/session.rs`) has its budget under the limits of the relay: 4 MiB under `max_session_bytes` and 30 min under `max_session_ms`, never over 60 MiB and 11.5 h. Proven by `a_pool_with_limits_sets_the_budget`, `a_pool_with_no_limits_keeps_the_constants` and `the_age_of_the_budget_follows_the_limits_of_the_relay` (`src/ws_relay/relay_tests.rs`, 3 passed, commit 7e462ec). With the constants in place of `meter_for`, the first and the third fail. What is left: the HTTP/2 edge leg. `PodUtils/podnet@7fe60e0:src/edge_h2.rs:409` and `PodUtils/podnet@7fe60e0:src/edge_h2.rs:644` (frozen: `pod-cloudflare`) count `ws_relay::SESSION_BYTES` and `SESSION_AGE` directly, outside `RelayBudget`. The edge leg of a tunnel through a relay with smaller caps still uses the constants. The change is `RelayBudget::meter_for` in place of the constants in `serve_h2` and `Budget::relay`. Send a COORD issue (to podcrates) with this change (Approach, item 2). Do it in podnet only as a fix when podcrates agrees. The entry is done when the edge leg uses the limits, or when podnet takes `pod-cloudflare` (T-052).
 
+## Done
+
+2026-11-25, by the take of `pod-cloudflare` (T-542, T-583, T-588; podcrates `v0.85.0`). The HTTP/2 edge leg through a
+relay takes its budget from the relay in use: `pod_cloudflare::edge_h2::Budget::relay` gives the age
+`pod_relay::relay::time_budget(&context.in_use())` and the bytes `pod_relay::relay::byte_budget(context, None)`, the
+limits of `/relays.json` under the constants. podnet keeps no copy of `SESSION_BYTES` or `SESSION_AGE` in the edge leg.
+The tests of the limits are in the crate; podnet's `src/ws_relay/relay_tests.rs` keeps the three tests of 7e462ec.
 # T-175: DoH: keep one connection for each resolver server (an ask of pod-dns and pod-proxy) (GitHub #370)
 
 **Source:** GitHub #370 (https://github.com/PodUtils/podnet/issues/370)

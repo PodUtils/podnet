@@ -59,7 +59,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #357 | verify: young name exits 69, tears down a working tunnel | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-160 |
 | #358 | relay node: pair cannot be renewed | open | T-161 |
 | #359 | relay alternates chosen once (cost is the 2 s stagger) | closed | T-162 |
-| #360 | relay session budget is a constant | open | T-163 |
+| #360 | relay session budget is a constant | closed: T-163 done (the edge leg of `pod-cloudflare` takes the limits of the relay in use; podcrates v0.85.0) | T-163 |
 | #361 | `--no-verify` undocumented, name misleads | closed (ci 42638635724, live 42638635442 at dbfcfd6) | T-164 |
 | #362 | ssh relay leg: no supervision (no caller) | closed | T-165 |
 | #363 | ssh relay leg: one relay, one user | closed | T-166 |

@@ -62,7 +62,7 @@
 357 issue closed
 358 issue open
 359 issue closed
-360 issue open
+360 issue closed
 361 issue closed
 362 issue closed
 363 issue closed

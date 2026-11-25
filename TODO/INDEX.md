@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**588 entries: 12 open, 14 partial, 29 blocked, 533 done.**
+**588 entries: 12 open, 13 partial, 29 blocked, 534 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 3 | 2 | 90 | 96 |
-| P2 | 3 | 6 | 14 | 279 | 302 |
+| P2 | 3 | 5 | 14 | 280 | 302 |
 | P3 | 8 | 5 | 13 | 163 | 189 |
-| **All** | 12 | 14 | 29 | 533 | 588 |
+| **All** | 12 | 13 | 29 | 534 | 588 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -208,7 +208,7 @@ M8 Overlays, M9 Later.
 | [T-160](fixes.md) | P2 | S | M5 | defect | done | tunnel verify: a name that this host cannot resolve yet keeps the tunnel up (GitHub #357) |
 | [T-161](crates.md) | P2 | M | M3 | feature | blocked | relay node: renew the pair before it expires (GitHub #358) |
 | [T-162](crates.md) | P3 | M | M3 | feature | done | relay: a host that stalls is tried last on the next connect (GitHub #359) |
-| [T-163](crates.md) | P2 | M | M3 | feature | partial | relay: the session budget comes from the pool document (GitHub #360) |
+| [T-163](crates.md) | P2 | M | M3 | feature | done | relay: the session budget comes from the pool document (GitHub #360) |
 | [T-164](fixes.md) | P3 | S | M5 | docs | done | Document `--no-verify` in the README, and say what it does not do (GitHub #361) |
 | [T-165](later.md) | P3 | M | M9 | feature | done | The SSH forward-relay leg: supervise the session after `run()` returns (GitHub #362) |
 | [T-166](later.md) | P3 | M | M9 | feature | done | The SSH relay leg: the relay, the user and the URL rule are data (GitHub #363) |
