@@ -1647,7 +1647,7 @@ Left, with the reason.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -1727,6 +1727,10 @@ the baseline, and the stored body is the cap with the flag set. An origin that a
 line `ffffffffffffffff` and closes: the exchange ends with an error as today, with no panic, and the ring
 holds the partial record marked `incomplete`. Another uid cannot connect to `inspect.sock`, and its mode is
 0600.
+
+## Blocker
+
+The capture hook in the copy helpers of `pod-cloudflare` (COORD-128, #758, to podcrates).
 
 ## Start condition
 

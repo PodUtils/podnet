@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**588 entries: 12 open, 13 partial, 29 blocked, 534 done.**
+**588 entries: 11 open, 13 partial, 30 blocked, 534 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 3 | 2 | 90 | 96 |
 | P2 | 3 | 5 | 14 | 280 | 302 |
-| P3 | 8 | 5 | 13 | 163 | 189 |
-| **All** | 12 | 13 | 29 | 534 | 588 |
+| P3 | 7 | 5 | 14 | 163 | 189 |
+| **All** | 11 | 13 | 30 | 534 | 588 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -289,7 +289,7 @@ M8 Overlays, M9 Later.
 | [T-241](fixes.md) | P2 | M | M5 | defect | done | `warp`: register under a lock, save the device before the enrolment step, and fail over the registration POST only when no response came (GitHub #432) |
 | [T-242](services.md) | P3 | M | M6 | feature | done | Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433) |
 | [T-243](overlays.md) | P3 | M | M8 | feature | done | `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434) |
-| [T-244](later.md) | P3 | L | M9 | feature | open | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
+| [T-244](later.md) | P3 | L | M9 | feature | blocked | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
 | [T-245](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |
 | [T-246](overlays.md) | P3 | S | M8 | feature | done | NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode |
 | [T-247](overlays.md) | P3 | M | M8 | measurement | blocked | NetBird: measure netstack mode on a proxy-only host |
