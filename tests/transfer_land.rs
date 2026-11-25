@@ -140,7 +140,7 @@ fn transfer_land_refuses_each_hostile_name_and_writes_nothing() {
             }],
             "NUL",
         ),
-        ("long", vec![raw(&long, b"1")], "over 255 bytes"),
+        ("long", vec![raw(&long, b"1")], "more than 255 bytes"),
         ("case", vec![raw("A", b"1"), raw("a", b"2")], "case folded"),
         (
             "symlink",

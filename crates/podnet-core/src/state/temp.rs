@@ -6,16 +6,14 @@
 //! file is made with `mkdir` or `O_EXCL`, so a second process never takes or
 //! removes the path of the first. An existing name gives a new name.
 //!
-//! The functions have the contract of the ask COORD-119 (PodUtils/podnet#711)
-//! for `pod-core`; podnet takes that function when its tag is out.
+//! `new_temp_dir` and `new_temp_file` are the functions of `pod-core`
+//! (COORD-119, PodUtils/podnet#711; podcrates `v0.84.0`). `random_path` and
+//! `beside` give a name only, for a socket that `bind` makes and for a file
+//! that a rename moves.
 
 use std::fs::File;
 use std::io;
-use std::os::unix::fs::{DirBuilderExt as _, OpenOptionsExt as _};
 use std::path::{Path, PathBuf};
-
-/// The number of names that a call tries before it gives up.
-const TRIES: usize = 32;
 
 /// 16 hex digits from the random source of the kernel. When the source
 /// fails, the second path mixes the time, a counter and the random seed of
@@ -48,39 +46,26 @@ pub fn random_path(parent: &Path, prefix: &str, suffix: &str) -> PathBuf {
     parent.join(format!("{prefix}{}{suffix}", nonce()))
 }
 
-/// Make a new directory `PARENT/PREFIXNONCE` with mode 0700. A name that
-/// exists gives a new name; another error is returned as it is.
+/// A new directory `PARENT/PREFIX-RANDOM` with mode 0700: the function of
+/// `pod-core` (COORD-119, T-1343), and the parent in the text of an error.
 pub fn new_temp_dir(parent: &Path, prefix: &str) -> io::Result<PathBuf> {
-    for _ in 0..TRIES {
-        let path = random_path(parent, prefix, "");
-        match std::fs::DirBuilder::new().mode(0o700).create(&path) {
-            Ok(()) => return Ok(path),
-            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(io::Error::new(e.kind(), format!("{}: {e}", path.display()))),
-        }
-    }
-    Err(exhausted(parent))
+    pod_core::files::new_temp_dir(parent, prefix).map_err(|e| named(parent, e))
 }
 
-/// Make a new file `PARENT/PREFIXNONCESUFFIX` with `O_EXCL` and mode 0600,
-/// and open it for writing. A name that exists gives a new name; another
-/// error is returned as it is.
+/// A new file `PARENT/PREFIX-RANDOMSUFFIX` with mode 0600, open for writing:
+/// the function of `pod-core` (COORD-119, T-1343), and the parent in the
+/// text of an error.
 pub fn new_temp_file(parent: &Path, prefix: &str, suffix: &str) -> io::Result<(PathBuf, File)> {
-    for _ in 0..TRIES {
-        let path = random_path(parent, prefix, suffix);
-        let opened = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(0o600)
-            .custom_flags(libc::O_CLOEXEC | libc::O_NOFOLLOW)
-            .open(&path);
-        match opened {
-            Ok(file) => return Ok((path, file)),
-            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(io::Error::new(e.kind(), format!("{}: {e}", path.display()))),
-        }
+    pod_core::files::new_temp_file(parent, prefix, suffix).map_err(|e| named(parent, e))
+}
+
+/// An error of `pod-core` with the parent directory in its text. The text
+/// of `AlreadyExists` names the parent already.
+fn named(parent: &Path, e: io::Error) -> io::Error {
+    if e.kind() == io::ErrorKind::AlreadyExists {
+        return e;
     }
-    Err(exhausted(parent))
+    io::Error::new(e.kind(), format!("{}: {e}", parent.display()))
 }
 
 /// A new name beside `path` for a temporary file: `.NAME.NONCE.tmp`, in the
@@ -96,20 +81,13 @@ pub fn beside(path: &Path) -> PathBuf {
     random_path(parent, &format!(".{name}."), ".tmp")
 }
 
-fn exhausted(parent: &Path) -> io::Error {
-    io::Error::new(
-        io::ErrorKind::AlreadyExists,
-        format!("{}: {TRIES} random names exist already", parent.display()),
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt as _;
 
     fn scratch() -> PathBuf {
-        new_temp_dir(&std::env::temp_dir(), "podnet-temp-test-").unwrap()
+        new_temp_dir(&std::env::temp_dir(), "podnet-temp-test").unwrap()
     }
 
     /// T-545: two calls (as two processes with one pid in two PID
@@ -121,8 +99,8 @@ mod tests {
         let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
         type Make = fn(&Path) -> PathBuf;
         let cases: [(&str, Make, u32); 2] = [
-            ("dir", |p| new_temp_dir(p, "d-").unwrap(), 0o700),
-            ("file", |p| new_temp_file(p, "f-", ".x").unwrap().0, 0o600),
+            ("dir", |p| new_temp_dir(p, "d").unwrap(), 0o700),
+            ("file", |p| new_temp_file(p, "f", ".x").unwrap().0, 0o600),
         ];
         for (kind, make, want) in cases {
             let (a, b) = (make(&root), make(&root));
@@ -226,13 +204,13 @@ mod tests {
     #[test]
     fn a_missing_parent_is_an_error_with_the_path() {
         let gone = Path::new("/nonexistent-podnet-parent");
-        let e = new_temp_dir(gone, "d-").unwrap_err();
+        let e = new_temp_dir(gone, "d").unwrap_err();
         assert_eq!(e.kind(), io::ErrorKind::NotFound);
         assert!(
-            e.to_string().contains("/nonexistent-podnet-parent/d-"),
+            e.to_string().starts_with("/nonexistent-podnet-parent: "),
             "{e}"
         );
-        let e = new_temp_file(gone, "f-", "").unwrap_err();
+        let e = new_temp_file(gone, "f", "").unwrap_err();
         assert_eq!(e.kind(), io::ErrorKind::NotFound);
     }
 }

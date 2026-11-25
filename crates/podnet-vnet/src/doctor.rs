@@ -504,7 +504,7 @@ mod linux {
                 // unique across PID namespaces.
                 let Ok(dir) = podnet_core::state::temp::new_temp_dir(
                     &std::env::temp_dir(),
-                    "podnet-vnet-probe-",
+                    "podnet-vnet-probe",
                 ) else {
                     return Probe {
                         name: "cc -shared -fPIC",
@@ -620,7 +620,7 @@ mod linux {
         // T-545: a random name (bind refuses a path that exists).
         let path = podnet_core::state::temp::random_path(
             &std::env::temp_dir(),
-            "podnet-vnet-probe-",
+            "podnet-vnet-probe",
             ".sock",
         );
         let path_result = bind_unix_path(&path);

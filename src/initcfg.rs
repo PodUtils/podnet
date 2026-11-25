@@ -451,10 +451,12 @@ pub async fn enrol(
     let name = dest
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "state".to_string());
+        .unwrap_or_else(|| "state".to_string())
+        // A prefix of pod-core holds no "..".
+        .replace("..", "_");
     // T-545: a new directory with a random name; a pid is not unique
     // across PID namespaces.
-    let tmp: PathBuf = podnet_core::state::temp::new_temp_dir(parent, &format!(".{name}.enrol-"))
+    let tmp: PathBuf = podnet_core::state::temp::new_temp_dir(parent, &format!(".{name}.enrol"))
         .map_err(|e| InitError::Enrol(e.to_string()).fault())?;
 
     let outcome = build(&tmp, config, registrar).await;

@@ -51,7 +51,7 @@ struct Scratch(PathBuf);
 impl Scratch {
     fn new() -> Result<Scratch> {
         // T-545: a new directory of mode 0700 with a random name.
-        let path = podnet_core::state::temp::new_temp_dir(&std::env::temp_dir(), "pn-at-")
+        let path = podnet_core::state::temp::new_temp_dir(&std::env::temp_dir(), "pn-at")
             .context("making a private directory")
             .map_err(|e| exit::fault(Fault::OsError, e))?;
         Ok(Scratch(path))

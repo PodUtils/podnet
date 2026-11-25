@@ -14714,7 +14714,7 @@ in a PID namespace. Name temp files with `mkdir` or `O_EXCL` and a nonce."
 podnet names temp paths with `std::process::id()` alone. A pod, a container and a PID namespace give pid 1 or the same
 small pid to two processes that share `/tmp`. The second process then takes or removes the file of the first. Paths
 of the code (not of tests): `src/cli/cmd/warp/run.rs:47` (the socket of `warp run`), `src/warp/export.rs:343`,
-`src/cli/cmd/link/mod.rs:635`, `src/stat.rs:158`, `src/initcfg.rs:459`, `src/cli/cmd/serve_at.rs:57`,
+`src/cli/cmd/link/mod.rs:635`, `src/stat.rs:158`, `src/initcfg.rs:461`, `src/cli/cmd/serve_at.rs:57`,
 `src/router/guest/wire.rs:196`, `crates/podnet-netns/src/netns/mod.rs:348` and `crates/podnet-netns/src/raw.rs` (the
 resolv.conf of a pod), `crates/podnet-vnet/src/doctor.rs:504`, `:618` and `:635`,
 `crates/podnet-vnet/src/tailscale_ssh.rs:210`, `crates/podnet-core/src/state.rs:257` and `:451`.
@@ -14767,7 +14767,7 @@ fix (`src/stat.rs:158`, shown once with the old `src/stat.rs`). The libraries of
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -14800,9 +14800,13 @@ python3 -I scripts/check-workflows.py
 # the next live run prints the line of pod_warp at a reset; the take of the tag with the fix of COORD-120
 ```
 
-## Blocker
+## Done
 
-The reply of `pod-warp` (COORD-120, #712, to podcrates). Step 1 is done in podnet.
+2026-11-25, the commit of T-583. podcrates `v0.84.0` has the fix of COORD-120 (PodUtils/podcrates@T-1365): a client of
+the proxy with no WARP session gets the SOCKS5 reply 1 (also for `UDP ASSOCIATE`) or HTTP 503 `no WARP session:
+CAUSE`, then a close with no reset; `Forward` with no session closes with no reset. Its tests are in the crate
+(`proxy::tests::a_socks5_client_with_no_session_gets_the_reply_1`, `an_http_client_with_no_session_gets_the_status_503`,
+`a_forward_with_no_session_closes_with_no_reset`). Step 1 (the `live` step) was done before.
 
 # T-547: pod doctor: the netns backend is ok on a host where its TCP connect is refused (bind-denied)
 
@@ -14901,7 +14905,7 @@ The reply of `pod-warp` (COORD-120, #712, to podcrates). Step 1 is done in podne
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -14919,9 +14923,12 @@ COORD-121 (#726, to podcrates): the class by the issuer, and each cause once. po
 
 `cargo test -p podnet --lib a_masque_door_failure_names_the_class_of_its_certificate` (with the tag of the fix)
 
-## Blocker
+## Done
 
-The fix of `pod-warp` (COORD-121, #726).
+2026-11-25, the commit of T-583. podcrates `v0.84.0` has the fix of COORD-121 (PodUtils/podcrates@T-1366): the line of a
+door that shows another key names the class by the issuer of its certificate, and says each cause once
+(`open::tests::the_cause_of_another_key_is_named_by_the_issuer_of_the_certificate` in the crate).
+`report::tests::a_masque_door_failure_names_the_class_of_its_certificate` passes with the text of the tag.
 
 # T-551: tunnel, send, receive, relay, offline: a JSON event with no schema and no podnet key
 
@@ -15616,24 +15623,47 @@ Exit 66 (no-input) for an absent identity file.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
-The error line of a name that does not resolve is cut with `...` in the middle of a cause.
+The error line of a name that does not resolve is cut with `...` in the middle of a cause:
+
+```
+podnet: bench: no request worked: GET http://nothing.invalid/: connecting to nothing.invalid:80: could not resolve nothing.invalid: system resolver: failed to lookup address information: Name does not resolve; DNS over HTTPS: 8 resolvers failed, 4 with: TLS: invalid peer certificate: cert...
+```
+
+The line says "4 with:" and does not give the cause of the other 4 resolvers. The same cut is in `connect`, `relay
+connect`, the WARN line of `forward` and `net proxy --forward`, and in the lab `no-proxy-no-dns` (`Address family not
+supported...`).
 
 ## Premise
 
-- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/errors/9999-wip-737-uncommitted.diff` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+- Read: `order.rs` and `lookup.rs` of `pod-dns` at podcrates `v0.84.0`. `order::fit` cuts the joined failures of the
+  sources at 160 bytes with `pod_core::text::clip`; `lookup::fold` names only the cause of the largest group of
+  resolvers. The whole text goes only to the log of `pod-dns` at debug.
+- Read: the change of a fix agent (`docs/reports/wip-2026-11-25/errors/9999-wip-737-uncommitted.diff`): a layer of
+  `tracing` in podnet that keeps the two debug events of `pod-dns` and puts their text back into the error line.
 
 ## Approach
 
-Give each cause in full one time, in a line of a sane length.
+The cut is made in `pod-dns`: the fix goes there (COORD-123, to podcrates). podnet takes it with the next tag.
+
+## Decision
+
+2026-11-25: the change of the fix agent is not taken. It reads the words and the targets of the debug log of another
+crate, so a change of a log line of `pod-dns` breaks the error line of podnet with no failed build. The rule "Shared
+code first" (`docs/decisions.md`, 2026-11-17) puts the fix into the crate that makes the cut.
 
 ## Prove
 
-`cargo test -p podnet --lib resolve`
+```sh
+cargo test -p podnet --test error_words
+```
+
+## Blocker
+
+The fix of `pod-dns` (COORD-123, to podcrates): no cut inside a cause, and each group of resolvers with its cause.
 
 # T-576: warp up: the failure prints two lines of about 1500 characters that repeat each cause
 
@@ -15816,3 +15846,64 @@ A time limit of the proxy ends both tries (the second path goes another way, or 
 ## Prove
 
 `cargo test -p podnet --lib update`
+
+# T-583: Take podcrates v0.84.0
+
+**Source:** `PodUtils/podcrates` tag `v0.84.0` (`ca1d3e3b`, 2026-11-25); PodUtils/podcrates#260 (COORD-155); the answers
+to COORD-119 (PodUtils/podnet#711), COORD-120 (PodUtils/podnet#712) and COORD-121 (PodUtils/podnet#726).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.83.0`. The tag `v0.84.0` answers COORD-119 (`pod_core::files::new_temp_dir` and
+`new_temp_file`, PodUtils/podcrates@T-1343), COORD-120 (a client of the proxy of `pod-warp` with no session gets the
+SOCKS5 reply 1 or the HTTP status 503, PodUtils/podcrates@T-1365) and COORD-121 (a pin mismatch names the class by the
+issuer of the door certificate, PodUtils/podcrates@T-1366). Its breaking items for podnet: `Class::Data` (65), the
+workspace dependency `h2` is the fork `pod-h2`, the `Display` of a failure of `pod-cloudflare` gives its step alone,
+and `standin::edge::listen` is removed.
+
+## Premise
+
+- Read: COORD-155 and its section "podnet". The tag has no `adoption/podnet/` patch. `core.sh`, `core-net.sh`,
+  `pins.py` and `release-index.py` did not change (their SHA-256 at `ca1d3e3b` is the one of `scripts/install/SOURCES`
+  and of `release.yml`).
+- Read: podnet names no item of the crate `h2` in its code; the root dependency `h2` becomes `pod-h2`, and the lock has
+  one `h2`.
+- Read: `exit::text` and the rows of `--check` (`report::chain_text`) walk the `source()` chain and say each cause
+  once, so the step-only `Display` of `pod-cloudflare` keeps its causes in a podnet line.
+- Read: podnet does not call `standin::edge::listen`.
+
+## Approach
+
+1. Each `pod-*` pin names `v0.84.0` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`, `scripts/install/SOURCES`,
+   `issue-sync.yml`, and the checkout of `release-index.py` in `release.yml`); `h2` is `pod-h2` of the tag.
+2. `podnet_core::state::temp::{new_temp_dir, new_temp_file}` call the functions of `pod-core` (the name is
+   `PREFIX-RANDOM`), and add the parent to the text of an error. `nonce`, `random_path` and `beside` stay: they give a
+   name only, for a socket that `bind` makes and a file that a rename moves.
+3. `exit::code_of_class` gives `DATA_ERROR` (65) for `Class::Data`.
+4. T-546 and T-550 take the fixes of the tag.
+
+## Prove
+
+```sh
+cargo test --workspace
+cargo test -p podnet-core --lib temp
+cargo test -p podnet --lib a_masque_door_failure_names_the_class_of_its_certificate
+```
+
+## Done
+
+2026-11-25, the commit of this entry. Each `pod-*` pin names `v0.84.0` (`ca1d3e3b`): the manifests, `Cargo.lock`,
+`fuzz/Cargo.lock`, `scripts/install/SOURCES`, `issue-sync.yml` and the checkout of `release-index.py`; `h2` is
+`pod-h2` 0.4.20 of the tag, and the lock has no `h2` of crates.io. `state::temp::{new_temp_dir, new_temp_file}` call
+`pod-core` (podnet's loop is gone); `exit::code_of_class` gives 65 for `Class::Data`. The text of `pod-extract` for a
+component over 255 bytes changed: `tests/transfer_land.rs` reads "more than 255 bytes" (exit 65 as before).
+`cargo clippy --workspace --all-targets --features full -- -D warnings` passes. Tests: `cargo test -p podnet-core
+--lib` (`state::temp` and `exit::tests::each_class_of_a_crate_has_a_code_of_podnet`), and `cargo test --workspace
+--no-fail-fast`: each binary passes but two SIGHUP cases (`tests/pod_signals.rs`, `tests/signals.rs`), which failed only because the run
+was under `nohup` (SIGHUP ignored for each child) and pass alone (`cargo test --test pod_signals`: 1 passed, two times; `cargo test --test signals`: 3 passed).
+

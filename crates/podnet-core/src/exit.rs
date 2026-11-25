@@ -272,10 +272,11 @@ fn plain_names(text: &str) -> String {
 }
 
 /// The code of a class of a failure of a crate. A class with a code that
-/// podnet does not give (76, 79, 80) exits [`FAILURE`].
+/// podnet does not give (76, 79, 80) exits [`FAILURE`]. `Class::Data`
+/// (podcrates `v0.84.0`, T-1238) exits [`DATA_ERROR`].
 pub fn code_of_class(class: pod_core::Class) -> i32 {
     match i32::from(class.exit_code()) {
-        code @ (USAGE | NO_INPUT | UNAVAILABLE | TEMPFAIL | NO_PERM | CONFIG) => code,
+        code @ (USAGE | DATA_ERROR | NO_INPUT | UNAVAILABLE | TEMPFAIL | NO_PERM | CONFIG) => code,
         _ => FAILURE,
     }
 }
@@ -371,5 +372,27 @@ mod tests {
         assert_eq!(code_of(&err), TEMPFAIL);
         let failure = pod_core::Failure::new(pod_core::Stage::Quic, pod_core::Class::Protocol, "x");
         assert_eq!(code_of(&anyhow::Error::new(failure)), FAILURE);
+    }
+
+    /// Each class of `pod-core` exits a code of podnet's contract or
+    /// [`FAILURE`]; a class whose code podnet gives keeps it (T-583:
+    /// `Class::Data` of podcrates `v0.84.0` is 65).
+    #[test]
+    fn each_class_of_a_crate_has_a_code_of_podnet() {
+        let ours = [
+            USAGE,
+            DATA_ERROR,
+            NO_INPUT,
+            UNAVAILABLE,
+            TEMPFAIL,
+            NO_PERM,
+            CONFIG,
+        ];
+        for class in pod_core::Class::ALL {
+            let raw = i32::from(class.exit_code());
+            let want = if ours.contains(&raw) { raw } else { FAILURE };
+            assert_eq!(code_of_class(class), want, "{class:?}");
+        }
+        assert_eq!(code_of_class(pod_core::Class::Data), DATA_ERROR);
     }
 }

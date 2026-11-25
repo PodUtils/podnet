@@ -191,7 +191,7 @@ pub fn bind_seqpacket(path: &Path) -> io::Result<OwnedFd> {
         _ => Path::new("."),
     };
     // T-545: a new directory of mode 0700 with a random name.
-    let dir = podnet_core::state::temp::new_temp_dir(parent, ".pnb-")?;
+    let dir = podnet_core::state::temp::new_temp_dir(parent, ".pnb")?;
     let staged = dir.join("s");
     let bound = (|| {
         // SAFETY: a socket with constant arguments.

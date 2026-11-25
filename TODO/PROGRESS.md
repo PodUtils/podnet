@@ -1,13 +1,13 @@
 # Progress
 
-`TODO/INDEX.md` holds 581 entries: 27 open, 13 partial, 26 blocked, 515 done.
+`TODO/INDEX.md` holds 582 entries: 26 open, 13 partial, 25 blocked, 518 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.83.0` (T-542): `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.84.0` (T-583): `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
   (the transfer), `pod-extract`, `pod-manual`, `pod-cloudflare`, `pod-cover`, `pod-harness`, `pod-offline`,
@@ -40,7 +40,7 @@ stop"). End a turn only when each remaining entry is blocked.
    the full lane in `gate.yml` (the case `errors`, the row `testers`).
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
-   before other work. The next tag after `v0.83.0` is the next take.
+   before other work. The next tag after `v0.84.0` is the next take.
 2. **podnet's own work:** the order below. Skip an entry whose Correction says that its work is
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
@@ -59,8 +59,8 @@ not wait for a larger one.
 2. **M1, the rename:** done (the public image was measured on 2026-11-11).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** the entries of the triage of GitHub #347 to #412 are done.
    The entries that stay (P1 first, then P2, then P3):
-   - The findings of the QA pass of `v0.4.0-beta.19` (#713 to #751): T-547, T-550, T-564, T-572 to T-582 are open; T-572 (P1) first. Fixes not reviewed: `docs/reports/wip-2026-11-25/`.
-   - The take of COORD-154: T-543 (`pod-natprobe`). The reset of a `warp proxy` client with no session: T-546 (blocked, COORD-120).
+   - The findings of the QA pass of `v0.4.0-beta.19` (#713 to #751): T-547, T-564, T-572 to T-582 are open; T-572 (P1) first. Fixes not reviewed: `docs/reports/wip-2026-11-25/`.
+   - The take of COORD-154: T-543 (`pod-natprobe`).
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
