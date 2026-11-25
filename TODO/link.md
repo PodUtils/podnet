@@ -1256,7 +1256,7 @@ CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1286,14 +1286,18 @@ cargo test --test link_dnsstream
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-The carrier is a take of `pod-link` of PodUtils/podcrates, its entry 496 in the record of podcrates (PodUtils/podcrates#133,
-2026-11-13; estimate: tag `v0.40.0`).
 
 ## Start condition
 
 T-277 and T-278 are done.
+
+## Correction
+
+2026-11-25: the carrier is in the taken `pod-link` (podcrates `v0.85.0`, its module dns): the queries in flight
+(`DnsSettings::in_flight`, 1 to 1024; podnet gives 8, row E2-3 of GitHub #468), the reorder by the ARQ of the session
+(the test dns_loss of the crate: 3 % loss with reorder and duplicates), a token bucket of queries
+(`queries_per_second`) and a backoff of 0 to 2 s. The block is gone. What is left is the proof in podnet:
+`tests/link_dns.rs` with 256 KiB, a SERVFAIL backoff and the rate ceiling over the taken carrier.
 
 # T-282: link: the ICMP echo carrier (GitHub #469)
 

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 588 entries: 11 open, 13 partial, 30 blocked, 534 done.
+`TODO/INDEX.md` holds 588 entries: 12 open, 13 partial, 29 blocked, 534 done.
 
 ## State
 
@@ -85,7 +85,7 @@ not wait for a larger one.
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); and the link
     entries T-294, T-295.
 12. **The link workstream (GitHub #466 to #476), after podnet's own work (M9, P3):** the open entries of `TODO/link.md`:
-    T-281, T-283 and T-284 (blocked: each is a take of `pod-link`), and T-294 and T-295 (blocked: `pod-egress`, T-127). The
+    T-281 (open: the proof over the taken DNS carrier), T-283 and T-284 (blocked: each is a take of `pod-link`), and T-294 and T-295 (blocked: `pod-egress`, T-127). The
     other entries of `TODO/link.md` are done. `docs/link.md` describes the built part. `docs/decisions.md`, 2026-11-12,
     The link workstream, has the calls and the asks for podcrates.
 13. **The asks of cfb, after podnet's own work** (the owner, 2026-11-09, Priority: podvm, podnet and

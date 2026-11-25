@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**588 entries: 11 open, 13 partial, 30 blocked, 534 done.**
+**588 entries: 12 open, 13 partial, 29 blocked, 534 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 3 | 2 | 90 | 96 |
 | P2 | 3 | 5 | 14 | 280 | 302 |
-| P3 | 7 | 5 | 14 | 163 | 189 |
-| **All** | 11 | 13 | 30 | 534 | 588 |
+| P3 | 8 | 5 | 13 | 163 | 189 |
+| **All** | 12 | 13 | 29 | 534 | 588 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -326,7 +326,7 @@ M8 Overlays, M9 Later.
 | [T-278](link.md) | P3 | L | M9 | feature | done | link: the DNS simplex carrier (GitHub #468) |
 | [T-279](link.md) | P3 | L | M9 | feature | done | link: the object-storage simplex carrier (GitHub #468) |
 | [T-280](link.md) | P3 | M | M9 | feature | done | link: the HTTP poll simplex carrier (GitHub #468) |
-| [T-281](link.md) | P3 | L | M9 | feature | blocked | link: the DNS stream carrier with a pipelined query window (GitHub #469) |
+| [T-281](link.md) | P3 | L | M9 | feature | open | link: the DNS stream carrier with a pipelined query window (GitHub #469) |
 | [T-282](link.md) | P3 | L | M9 | feature | done | link: the ICMP echo carrier (GitHub #469) |
 | [T-283](link.md) | P3 | M | M9 | feature | blocked | link: a WireGuard peer as a carrier (GitHub #469) |
 | [T-284](link.md) | P3 | L | M9 | feature | blocked | link: NAT traversal with a relay fallback (GitHub #469) |
