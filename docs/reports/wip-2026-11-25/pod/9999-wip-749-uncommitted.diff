@@ -1,0 +1,363 @@
+diff --git a/crates/podnet-netns/src/canrun.rs b/crates/podnet-netns/src/canrun.rs
+index 85003fe..e66f646 100644
+--- a/crates/podnet-netns/src/canrun.rs
++++ b/crates/podnet-netns/src/canrun.rs
+@@ -51,14 +51,17 @@ impl NoNetns {
+ /// of a network namespace (as root) or of a user and a network namespace,
+ /// with `lo` and a TUN (or a veth pair) in it.
+ pub(crate) fn netns_probe() -> Result<(), NoNetns> {
+-    netns_probe_with(tcp_connect_refused(), probe_unshare)
++    netns_probe_with(tcp_connect_refused(), probe_unshare, probe_id_maps)
+ }
+ 
+-/// [`netns_probe`] over a TCP probe and the `unshare` probes that
+-/// `unshare` gives (the doctor gives the rows that it already has).
++/// [`netns_probe`] over a TCP probe, the `unshare` probes that `unshare`
++/// gives and the probe of the id maps that `maps` gives (the doctor gives
++/// the rows that it already has). The id maps count only for a user
++/// namespace: a network namespace alone (root) needs none.
+ pub(crate) fn netns_probe_with(
+     tcp: Option<String>,
+     unshare: impl Fn(libc::c_int) -> Probe,
++    maps: impl FnOnce() -> Probe,
+ ) -> Result<(), NoNetns> {
+     if std::env::var_os(TEST_NO_NETNS_VARIABLE).is_some_and(|v| !v.is_empty()) {
+         return Err(NoNetns::Hook);
+@@ -69,9 +72,14 @@ pub(crate) fn netns_probe_with(
+     if unshare(libc::CLONE_NEWNET).ok {
+         return Ok(());
+     }
+-    let probe = unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET);
++    let mut probe = unshare(libc::CLONE_NEWUSER | libc::CLONE_NEWNET);
+     if probe.ok {
+-        return Ok(());
++        // GitHub #749: the parent writes the id maps of the child in
++        // /proc; a masked /proc refuses them.
++        probe = maps();
++        if probe.ok {
++            return Ok(());
++        }
+     }
+     Err(NoNetns::Namespace(format!(
+         "{}: {}",
+@@ -79,6 +87,88 @@ pub(crate) fn netns_probe_with(
+     )))
+ }
+ 
++/// Whether the seccomp backend can hold a program here: the filter with
++/// `SECCOMP_RET_USER_NOTIF` (`notif`), and the read of the memory of a
++/// program (`mem_read`, T-231). The doctor and the start use this rule
++/// (GitHub #749). Gives the reason when it cannot.
++pub(crate) fn seccomp_probe_with(notif: &Probe, mem_read: &Probe) -> Result<(), String> {
++    for probe in [notif, mem_read] {
++        if !probe.ok {
++            return Err(format!("{}: {}", probe.name, probe.detail));
++        }
++    }
++    Ok(())
++}
++
++/// The name of the row of [`probe_id_maps`].
++const ID_MAPS: &str = "write the id maps (NEWUSER)";
++
++/// Whether this process can write the id maps of a child in a new user
++/// namespace (`/proc/<pid>/setgroups`, `uid_map` and `gid_map`), as the
++/// start of the netns backend does (GitHub #749). The child calls only
++/// `unshare`, `write`, `read` and `_exit`.
++pub(crate) fn probe_id_maps() -> Probe {
++    let fail = |detail: String| Probe {
++        name: ID_MAPS,
++        ok: false,
++        detail,
++    };
++    let (mut ready, mut go) = ([0; 2], [0; 2]);
++    // SAFETY: pipe2(2) writes two descriptors into each array.
++    if unsafe { libc::pipe2(ready.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
++        return fail(format!("pipe: {}", std::io::Error::last_os_error()));
++    }
++    if unsafe { libc::pipe2(go.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
++        let e = std::io::Error::last_os_error();
++        close_all(&ready);
++        return fail(format!("pipe: {e}"));
++    }
++    // SAFETY: the child calls only async-signal-safe functions.
++    let pid = unsafe { libc::fork() };
++    if pid < 0 {
++        let e = std::io::Error::last_os_error();
++        close_all(&ready);
++        close_all(&go);
++        return fail(format!("fork: {e}"));
++    }
++    if pid == 0 {
++        unsafe {
++            let byte: u8 = u8::from(libc::unshare(libc::CLONE_NEWUSER) != 0);
++            libc::write(ready[1], (&byte as *const u8).cast(), 1);
++            let mut wait = 0u8;
++            libc::read(go[0], (&mut wait as *mut u8).cast(), 1);
++            libc::_exit(0);
++        }
++    }
++    close_all(&[ready[1], go[0]]);
++    let mut byte = 2u8;
++    // SAFETY: a read of one byte into `byte`.
++    let n = unsafe { libc::read(ready[0], (&mut byte as *mut u8).cast(), 1) };
++    let result = match (n, byte) {
++        (1, 0) => crate::netns::write_id_maps(pid as u32).map_err(|e| format!("{e:#}")),
++        _ => Err("unshare(CLONE_NEWUSER) of the probe child failed".to_string()),
++    };
++    close_all(&[ready[0], go[1]]);
++    let mut status = 0;
++    // SAFETY: a wait for our own child.
++    unsafe { libc::waitpid(pid, &mut status, 0) };
++    match result {
++        Ok(()) => Probe {
++            name: ID_MAPS,
++            ok: true,
++            detail: "setgroups, uid_map and gid_map of a child".into(),
++        },
++        Err(detail) => fail(detail),
++    }
++}
++
++fn close_all(fds: &[libc::c_int]) {
++    for fd in fds {
++        // SAFETY: each descriptor is a pipe end of probe_id_maps.
++        unsafe { libc::close(*fd) };
++    }
++}
++
+ /// Whether a TCP connect of this process is refused with `EACCES` or
+ /// `EPERM` (T-382). A Landlock domain that handles `CONNECT_TCP` (the lab
+ /// `bind-denied`) refuses each TCP connect of the program in each network
+@@ -139,41 +229,37 @@ mod tests {
+         }
+     }
+ 
+-    // GitHub #713, #740: one rule for the doctor and the start. A TCP
+-    // refusal fails the backend also where each namespace works, and the
+-    // line of each cause gives a next step.
++    // GitHub #713, #740, #749: one rule for the doctor and the start. A
++    // TCP refusal fails the backend also where each namespace works; a user
++    // namespace needs the id maps; the line of each cause gives a next step.
+     #[test]
+     fn the_netns_rule_and_its_line() {
+         let refused = Some("a TCP connect to 127.0.0.1 is refused: EACCES".to_string());
+-        // (tcp, unshare NEWNET, unshare NEWUSER|NEWNET, the start works,
+-        // the words of the line)
++        let tcp = "cannot carry a TCP connect here";
++        let userns = "an unprivileged user namespace works";
++        // (tcp, unshare NEWNET, unshare NEWUSER|NEWNET, the id maps, the
++        // start works, the words of the line)
+         let table = [
+-            (None, true, true, true, ""),
+-            (None, false, true, true, ""),
+-            (
+-                refused.clone(),
+-                true,
+-                true,
+-                false,
+-                "cannot carry a TCP connect here",
+-            ),
+-            (
+-                None,
+-                false,
+-                false,
+-                false,
+-                "an unprivileged user namespace works",
+-            ),
++            (None, true, true, true, true, ""),
++            (None, true, false, false, true, ""),
++            (None, false, true, true, true, ""),
++            (refused.clone(), true, true, true, false, tcp),
++            (None, false, false, true, false, userns),
++            (None, false, true, false, false, userns),
+         ];
+-        for (tcp, net, pair, works, words) in table {
+-            let got = netns_probe_with(tcp.clone(), |flags| {
+-                row(if flags == libc::CLONE_NEWNET {
+-                    net
+-                } else {
+-                    pair
+-                })
+-            });
+-            assert_eq!(got.is_ok(), works, "{tcp:?} {net} {pair}");
++        for (tcp, net, pair, maps, works, words) in table {
++            let got = netns_probe_with(
++                tcp.clone(),
++                |flags| {
++                    row(if flags == libc::CLONE_NEWNET {
++                        net
++                    } else {
++                        pair
++                    })
++                },
++                || row(maps),
++            );
++            assert_eq!(got.is_ok(), works, "{tcp:?} {net} {pair} {maps}");
+             if let Err(no) = got {
+                 let line = no.line("netns");
+                 assert!(line.contains(words), "{line}");
+@@ -181,4 +267,37 @@ mod tests {
+             }
+         }
+     }
++
++    // GitHub #749: the seccomp backend needs the filter and the read of
++    // the memory of a program; the reason names the probe that failed.
++    #[test]
++    fn the_seccomp_rule_names_the_probe() {
++        let probe = |name, ok| Probe {
++            name,
++            ok,
++            detail: "Permission denied".into(),
++        };
++        let table = [
++            (true, true, None),
++            (false, true, Some("notif")),
++            (true, false, Some("read program memory")),
++        ];
++        for (notif, mem, want) in table {
++            let got =
++                seccomp_probe_with(&probe("notif", notif), &probe("read program memory", mem));
++            assert_eq!(
++                got.as_ref().err().map(|e| e.split(':').next().unwrap()),
++                want,
++                "{got:?}"
++            );
++        }
++    }
++
++    // GitHub #749: the probe of the id maps runs and gives one row.
++    #[test]
++    fn the_id_maps_probe_gives_one_row() {
++        let probe = probe_id_maps();
++        assert_eq!(probe.name, ID_MAPS);
++        assert!(!probe.detail.is_empty());
++    }
+ }
+diff --git a/crates/podnet-netns/src/doctor.rs b/crates/podnet-netns/src/doctor.rs
+index 87f8660..30d1009 100644
+--- a/crates/podnet-netns/src/doctor.rs
++++ b/crates/podnet-netns/src/doctor.rs
+@@ -407,19 +407,29 @@ pub(crate) fn doctor(json: bool) -> i32 {
+         probe_veth(),
+         // T-382: a refused TCP connect holds in each namespace.
+         crate::canrun::tcp_row(&tcp),
++        // GitHub #749: the parent writes the id maps of a user namespace.
++        crate::canrun::probe_id_maps(),
+     ];
+     // The unshare probes make the TUN, else the veth wire (T-174). GitHub
+     // #713: the rule of the start of the backend decides the verdict.
+-    let netns = crate::canrun::netns_probe_with(tcp, |flags| match flags {
+-        libc::CLONE_NEWNET => probes[0].clone(),
+-        _ => probes[1].clone(),
+-    });
++    let netns = crate::canrun::netns_probe_with(
++        tcp,
++        |flags| match flags {
++            libc::CLONE_NEWNET => probes[0].clone(),
++            _ => probes[1].clone(),
++        },
++        || probes[10].clone(),
++    );
+     let netns_available = netns.is_ok();
+     let netns_why = netns.err().map(|no| format!(" ({no})")).unwrap_or_default();
+     // T-153: the netns-kernel backend works only where netns works.
+     let netns_kernel = probes[6].ok && netns_available;
+-    let seccomp_available = probes[4].ok;
+-    let hold = Hold::of(netns_available, seccomp_available && probes[7].ok);
++    // GitHub #749: the rule of the start of the seccomp backend: the filter
++    // and the read of the memory of a program.
++    let seccomp = crate::canrun::seccomp_probe_with(&probes[4], &probes[7]);
++    let seccomp_available = seccomp.is_ok();
++    let seccomp_why = seccomp.err().map(|why| format!("fail ({why})"));
++    let hold = Hold::of(netns_available, seccomp_available);
+     let any = netns_available || seccomp_available;
+     let budget = flow_budget();
+ 
+@@ -475,12 +485,10 @@ pub(crate) fn doctor(json: bool) -> i32 {
+     println!(
+         "{}: backend seccomp: {}",
+         crate::cli::program_name(),
+-        if !seccomp_available {
+-            "fail"
+-        } else if probes[5].ok {
+-            "ok"
+-        } else {
+-            "ok (getsockname/getpeername: fail)"
++        match (&seccomp_why, probes[5].ok) {
++            (Some(why), _) => why.as_str(),
++            (None, true) => "ok",
++            (None, false) => "ok (getsockname/getpeername: fail)",
+         }
+     );
+     println!(
+@@ -685,12 +693,21 @@ mod tests {
+             ok: false,
+             detail: "Permission denied (os error 13)".into(),
+         };
+-        let err = crate::seccomp_can_hold(&probe).expect_err("no read");
++        let err = crate::seccomp_can_hold(&probe, || true).expect_err("no read");
+         let text = format!("{err}");
+         assert!(text.starts_with("the seccomp backend cannot hold this program: the pod cannot read its memory (Permission denied (os error 13))"), "{text}");
+         assert!(text.contains("use --backend netns"), "{text}");
+         let ok = super::Probe { ok: true, ..probe };
+-        assert!(crate::seccomp_can_hold(&ok).is_ok());
++        assert!(crate::seccomp_can_hold(&ok, || true).is_ok());
++        // GitHub #749: where netns cannot run, the line does not send the
++        // user to it.
++        let err = crate::seccomp_can_hold(&probe, || false).expect_err("no read");
++        let text = format!("{err}");
++        assert!(!text.contains("use --backend netns"), "{text}");
++        assert!(
++            text.contains("the netns backend cannot run here either"),
++            "{text}"
++        );
+     }
+ 
+     // T-231: the child of a probe waits, so its memory can be opened each
+diff --git a/crates/podnet-netns/src/lib.rs b/crates/podnet-netns/src/lib.rs
+index 59e8301..c2ad809 100644
+--- a/crates/podnet-netns/src/lib.rs
++++ b/crates/podnet-netns/src/lib.rs
+@@ -263,7 +263,9 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
+         name_the_backend(name_backend, BackendKind::Seccomp, reason, netns_runs);
+         // T-231: with no read of the memory of the program, the pod sees no
+         // address and refuses each connect: refuse the run at its start.
+-        seccomp_can_hold(&doctor::probe_mem_read())?;
++        seccomp_can_hold(&doctor::probe_mem_read(), || {
++            netns_runs && canrun::netns_probe().is_ok()
++        })?;
+         report.backend(BackendKind::Seccomp, reason);
+         run_seccomp(args)
+     };
+@@ -310,13 +312,26 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
+ /// Refuse the seccomp backend when the supervisor cannot read the memory of
+ /// a program (`probe`, `doctor::probe_mem_read`): no call can be held, and
+ /// the program would run with each connect refused (T-231).
+-pub(crate) fn seccomp_can_hold(probe: &doctor::Probe) -> Result<()> {
++/// GitHub #749: the next step names `--backend netns` only where
++/// `netns_runs` says that the netns backend can run.
++pub(crate) fn seccomp_can_hold(
++    probe: &doctor::Probe,
++    netns_runs: impl FnOnce() -> bool,
++) -> Result<()> {
+     if probe.ok {
+         return Ok(());
+     }
++    let step = match netns_runs() {
++        true => {
++            "use --backend netns, or run the pod where /proc/<pid>/mem of a child can be opened"
++        }
++        false => {
++            "the netns backend cannot run here either: run the pod where /proc/<pid>/mem of \
++                  a child can be opened (podnet pod doctor shows each probe)"
++        }
++    };
+     bail!(
+-        "the seccomp backend cannot hold this program: the pod cannot read its memory ({}); \
+-         use --backend netns, or run the pod where /proc/<pid>/mem of a child can be opened",
++        "the seccomp backend cannot hold this program: the pod cannot read its memory ({}); {step}",
+         probe.detail
+     )
+ }

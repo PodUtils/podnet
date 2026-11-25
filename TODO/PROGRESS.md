@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 570 entries: 16 open, 13 partial, 26 blocked, 515 done.
+`TODO/INDEX.md` holds 581 entries: 27 open, 13 partial, 26 blocked, 515 done.
 
 ## State
 
@@ -59,6 +59,7 @@ not wait for a larger one.
 2. **M1, the rename:** done (the public image was measured on 2026-11-11).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** the entries of the triage of GitHub #347 to #412 are done.
    The entries that stay (P1 first, then P2, then P3):
+   - The findings of the QA pass of `v0.4.0-beta.19` (#713 to #751): T-547, T-550, T-564, T-572 to T-582 are open; T-572 (P1) first. Fixes not reviewed: `docs/reports/wip-2026-11-25/`.
    - The take of COORD-154: T-543 (`pod-natprobe`). The reset of a `warp proxy` client with no session: T-546 (blocked, COORD-120).
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).

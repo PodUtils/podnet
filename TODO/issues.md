@@ -423,6 +423,17 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #747 | [qa 0.4.0-beta.19] route --config: a missing or bad file exits 64; tunnel --config and "man exit-status" give 78 for the same fault | closed: T-567 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-567 |
 | #748 | [qa 0.4.0-beta.19] wg serve: on a host that refuses UDP, the error tells the user to give a port above 1023 or a unix socket | closed: T-568 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-568 |
 | #750 | [qa 0.4.0-beta.19] serve --local, net proxy --listen: where getsockname is refused, the error is a bare "Not supported (os error 95)" and exit 1 | closed: T-569 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-569 |
+| #725 | [qa 0.4.0-beta.19] pod: PODNET_POLICY does not refuse a destination (the program reaches a refused host) | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-572 |
+| #727 | [qa 0.4.0-beta.19] bench, connect: a refusal of PODNET_POLICY gives the next step of a connect failure | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-573 |
+| #731 | [qa 0.4.0-beta.19] warp status, rotate, delete, license: a missing identity file exits 78, not 66 (no-input) | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-574 |
+| #737 | [qa 0.4.0-beta.19] bench, connect, tunnel, relay connect, forward: the line of a name that does not resolve is cut with "..." in the middle of a cause | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-575 |
+| #738 | [qa 0.4.0-beta.19] warp up: the failure prints two lines of about 1500 characters each that repeat each cause several times | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-576 |
+| #739 | [qa 0.4.0-beta.19] pod --report: "backend": "netns-kernel" is not a value of pod-report.schema.json | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-577 |
+| #740 | [qa 0.4.0-beta.19] pod --backend netns (userns-off): the start failure gives no next step, and the report has no true reason | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-578 |
+| #741 | [qa 0.4.0-beta.19] tunnel: behind a proxy, the start waits about 35 s in DNS over HTTPS with no line at the default level and no cause at -v | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-579 |
+| #744 | [qa 0.4.0-beta.19] --proxy http+exec: a command that does not exist floods stderr with one sh line for each try and ends with a wrong cause | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-580 |
+| #749 | [qa 0.4.0-beta.19] pod doctor: says that seccomp (and netns) are ok in no-proc and proc-masked, where the pod cannot start | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-581 |
+| #751 | [qa 0.4.0-beta.19] update --check: a proxy that does not answer costs 60 s and the error gives no next step | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-582 |
 | #745 | [qa 0.4.0-beta.19] --egress, forward --network: an unknown spec is read as a proxy host:port, and the error does not give the known specs | closed: T-570 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-570 |
 | #746 | [qa 0.4.0-beta.19] forward: a UDP forward and the DNS door over "direct" carry no datagram ("direct carries no UDP") | closed: T-571 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-571 |
 

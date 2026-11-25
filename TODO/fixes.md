@@ -15530,3 +15530,289 @@ A spec with no scheme that is not `HOST:PORT` (a port of 0 to 65535) and not `un
 ## Done
 
 2026-11-25, the commit of this entry. `tests/forward_udp.rs`, `forward_carries_udp_over_the_way_of_the_process` (a UDP forward and the DNS door, both over `--no-proxy`, to a UDP echo): it failed on the code before the fix (`no answer`), and passes now.
+
+# T-572: pod: PODNET_POLICY does not refuse a destination
+
+**Source:** GitHub #725 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** open
+
+## Problem
+
+With `PODNET_POLICY` that refuses `example.com` (or `"default":"refuse"`), `podnet pod -x PROXY -- curl https://example.com` gives 200 on the backends netns and seccomp and through `--serve`; `bench` and `forward` refuse with the same file. `exit` ignores it too.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/pod/0001-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+
+## Approach
+
+A permit hook in podnet-netns that `src/main.rs` sets from `podnet::policy::permit`; each dial of the pod asks it; a refusal has the class Policy.
+
+## Prove
+
+`cargo test --test pod_policy`
+
+# T-573: bench, connect: a refusal of PODNET_POLICY gives the next step of a connect failure
+
+**Source:** GitHub #727 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A refusal of the policy ends with `the connect hop failed; check the host and the port of the target ...`, not the step of the policy.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/errors/0002-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+
+## Approach
+
+`report::error_line` gives the step of the policy (the rule, `PODNET_POLICY`, `podnet rules check FILE`) for a failure of the class Policy.
+
+## Prove
+
+`cargo test -p podnet --lib report`
+
+# T-574: warp status, rotate, delete, license: a missing identity file exits 78, not 66
+
+**Source:** GitHub #731 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A missing identity file exits 78; `podnet man exit-status` gives 66 for a file that must exist.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/errors/0001-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+
+## Approach
+
+Exit 66 (no-input) for an absent identity file.
+
+## Prove
+
+`cargo test --test cli warp`
+
+# T-575: bench, connect, tunnel, relay connect, forward: the line of a name that does not resolve is cut with ... in a cause
+
+**Source:** GitHub #737 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The error line of a name that does not resolve is cut with `...` in the middle of a cause.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/errors/9999-wip-737-uncommitted.diff` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+
+## Approach
+
+Give each cause in full one time, in a line of a sane length.
+
+## Prove
+
+`cargo test -p podnet --lib resolve`
+
+# T-576: warp up: the failure prints two lines of about 1500 characters that repeat each cause
+
+**Source:** GitHub #738 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`warp up` fails with two lines of about 1500 characters; each cause comes several times.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/errors/0003-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+
+## Approach
+
+One line that names each cause one time (the tidy of `exit::text`); a repetition in `pod-warp` goes to COORD-121.
+
+## Prove
+
+`cargo test -p podnet --lib warp`
+
+# T-577: pod --report: the backend netns-kernel is not a value of pod-report.schema.json
+
+**Source:** GitHub #739 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`pod --report` writes `"backend": "netns-kernel"`, which `docs/schema/pod-report.schema.json` does not allow.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/pod/0002-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+
+## Approach
+
+The schema takes the value of the documented backend.
+
+## Prove
+
+`cargo test --test pod_report`
+
+# T-578: pod --backend netns (userns-off): the start failure gives no next step, and the report has no true reason
+
+**Source:** GitHub #740 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+In the lab userns-off, `pod --backend netns` fails with no next step, and the report gives no true reason.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/pod/0003-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+
+## Approach
+
+One line with the cause and the step (`--backend seccomp`); the true reason in the report. One probe for the doctor and the start (with T-547).
+
+## Prove
+
+`cargo test -p podnet-netns --lib doctor`
+
+# T-579: tunnel: behind a proxy the start waits about 35 s in DNS over HTTPS with no line
+
+**Source:** GitHub #741 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+Behind a proxy, `tunnel` waits about 35 s in DNS over HTTPS with no line at the default level and no cause at `-v`.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- Not measured: the code path.
+
+## Approach
+
+A line at the default level when a step of the resolver chain is slow, with its cause; a shorter limit for a resolver that does not answer.
+
+## Prove
+
+`cargo test -p podnet --lib resolve`
+
+# T-580: --proxy http+exec: a command that does not exist floods stderr and ends with a wrong cause
+
+**Source:** GitHub #744 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`--proxy http+exec:/nonexist/prog` prints one `sh: ... not found` line for each try (2430 in 1 s), hides the whole command, and ends with "the connection closed before the response ended".
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- Not measured: the code path.
+
+## Approach
+
+Capture the stderr of the command; a command that ends before its first byte gives its exit status and its stderr once; show the command when it has no secret; stop the tries of a command that cannot start.
+
+## Prove
+
+`cargo test --test proxy_exec`
+
+# T-581: pod doctor: seccomp and netns are ok in no-proc and proc-masked, where the pod cannot start
+
+**Source:** GitHub #749 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+In the labs no-proc and proc-masked, `pod doctor` says ok and exits 0; the pod cannot start.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/pod/9999-wip-749-uncommitted.diff` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+
+## Approach
+
+The doctor runs the probes of the start of each backend (with T-547, T-578).
+
+## Prove
+
+`cargo test -p podnet-netns --lib doctor`
+
+# T-582: update --check: a proxy that does not answer costs 60 s and the error gives no next step
+
+**Source:** GitHub #751 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`update --check --proxy http://192.0.2.1:3128` tries the API and then releases.atom through the same proxy (2 x 29 s), says the cause two times, and gives no next step.
+
+## Premise
+
+- Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
+- Not measured: the code path.
+
+## Approach
+
+A time limit of the proxy ends both tries (the second path goes another way, or is skipped); the cause one time; the step of the proxy hop.
+
+## Prove
+
+`cargo test -p podnet --lib update`

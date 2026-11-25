@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**570 entries: 16 open, 13 partial, 26 blocked, 515 done.**
+**581 entries: 27 open, 13 partial, 26 blocked, 515 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 87 | 92 |
-| P2 | 7 | 7 | 12 | 265 | 291 |
+| P1 | 2 | 2 | 2 | 87 | 93 |
+| P2 | 17 | 7 | 12 | 265 | 301 |
 | P3 | 8 | 4 | 12 | 162 | 186 |
-| **All** | 16 | 13 | 26 | 515 | 570 |
+| **All** | 27 | 13 | 26 | 515 | 581 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -616,3 +616,14 @@ M8 Overlays, M9 Later.
 | [T-569](fixes.md) | P2 | S | M5 | defect | done | serve --local, net proxy --listen: where getsockname is refused, a bare Not supported and exit 1 |
 | [T-570](fixes.md) | P2 | S | M5 | defect | done | --egress, forward --network: an unknown spec is read as a proxy HOST:PORT |
 | [T-571](fixes.md) | P1 | S | M5 | defect | done | forward: a UDP forward and the DNS door over the way of the process carry no datagram |
+| [T-572](fixes.md) | P1 | S | M5 | defect | open | pod: PODNET_POLICY does not refuse a destination |
+| [T-573](fixes.md) | P2 | S | M5 | defect | open | bench, connect: a refusal of PODNET_POLICY gives the next step of a connect failure |
+| [T-574](fixes.md) | P2 | S | M5 | defect | open | warp status, rotate, delete, license: a missing identity file exits 78, not 66 |
+| [T-575](fixes.md) | P2 | S | M5 | defect | open | bench, connect, tunnel, relay connect, forward: the line of a name that does not resolve is cut with ... in a cause |
+| [T-576](fixes.md) | P2 | S | M5 | defect | open | warp up: the failure prints two lines of about 1500 characters that repeat each cause |
+| [T-577](fixes.md) | P2 | S | M5 | defect | open | pod --report: the backend netns-kernel is not a value of pod-report.schema.json |
+| [T-578](fixes.md) | P2 | S | M5 | defect | open | pod --backend netns (userns-off): the start failure gives no next step, and the report has no true reason |
+| [T-579](fixes.md) | P2 | S | M5 | defect | open | tunnel: behind a proxy the start waits about 35 s in DNS over HTTPS with no line |
+| [T-580](fixes.md) | P2 | S | M5 | defect | open | --proxy http+exec: a command that does not exist floods stderr and ends with a wrong cause |
+| [T-581](fixes.md) | P2 | S | M5 | defect | open | pod doctor: seccomp and netns are ok in no-proc and proc-masked, where the pod cannot start |
+| [T-582](fixes.md) | P2 | S | M5 | defect | open | update --check: a proxy that does not answer costs 60 s and the error gives no next step |
