@@ -118,15 +118,17 @@ pub(crate) async fn route(args: RouteArgs) -> Result<()> {
     let Some(path) = &args.config else {
         return Err(anyhow::anyhow!("give --config FILE")).fault(Fault::Usage);
     };
-    let config = podnet::router::load(path).fault(Fault::Usage)?;
+    // GitHub #747: a file that cannot be read or used is a configuration
+    // fault (78), as in each command with --config.
+    let config = podnet::router::load(path).fault(Fault::Config)?;
     if args.export.is_some() {
         let Some(section) = &config.kernel else {
             return Err(anyhow::anyhow!(
                 "--export mwan-json: the file has no kernel section"
             ))
-            .fault(Fault::Usage);
+            .fault(Fault::Config);
         };
-        let plan = podnet::router::kernel::Plan::new(section).fault(Fault::Usage)?;
+        let plan = podnet::router::kernel::Plan::new(section).fault(Fault::Config)?;
         let target = config.health.as_ref().map(|h| h.target.as_str());
         println!("{:#}", plan.mwan_json(target));
         return Ok(());

@@ -432,3 +432,8 @@
 734 issue closed
 735 issue closed
 736 issue open
+742 issue closed
+743 issue closed
+747 issue closed
+748 issue closed
+750 issue closed

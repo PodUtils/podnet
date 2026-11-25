@@ -418,5 +418,10 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #734 | [qa 0.4.0-beta.19] autostart add: refuses ~/.local/bin/podnet as "a temporary directory" and tells the user to copy it to ~/.local/bin | closed: T-562 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-562 |
 | #735 | [qa 0.4.0-beta.19] offline bundle build: the example of docs/offline.md (--file ./site:/site) does not run | closed: T-563 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-563 |
 | #736 | [qa 0.4.0-beta.19] serve --local: on a host with no loopback address the listener is "ready" and --check passes, but no client can connect | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-564 |
+| #742 | [qa 0.4.0-beta.19] net proxy: docs/virtual-network.md says that curl does not accept a unix-socket SOCKS proxy, but it does | closed: T-565 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-565 |
+| #743 | [qa 0.4.0-beta.19] --log-format json: the final ERROR object has no "timestamp", the other objects have one | closed: T-566 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-566 |
+| #747 | [qa 0.4.0-beta.19] route --config: a missing or bad file exits 64; tunnel --config and "man exit-status" give 78 for the same fault | closed: T-567 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-567 |
+| #748 | [qa 0.4.0-beta.19] wg serve: on a host that refuses UDP, the error tells the user to give a port above 1023 or a unix socket | closed: T-568 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-568 |
+| #750 | [qa 0.4.0-beta.19] serve --local, net proxy --listen: where getsockname is refused, the error is a bare "Not supported (os error 95)" and exit 1 | closed: T-569 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-569 |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

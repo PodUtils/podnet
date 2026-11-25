@@ -193,6 +193,14 @@ fn log_format_json_gives_json_lines_only() {
             let v: serde_json::Value = serde_json::from_str(line)
                 .unwrap_or_else(|e| panic!("{args:?}: not JSON ({e}): {line}"));
             assert!(v["level"].is_string(), "{line}");
+            // GitHub #743: the last error object has the keys of the others.
+            let ts = v["timestamp"]
+                .as_str()
+                .unwrap_or_else(|| panic!("{args:?}: no timestamp: {line}"));
+            assert!(
+                ts.len() == 27 && ts.ends_with('Z') && ts.as_bytes()[10] == b'T',
+                "{ts}"
+            );
         }
     }
 }

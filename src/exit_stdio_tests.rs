@@ -51,7 +51,7 @@ async fn exit_stdio_serves_connect_and_refuses_associate() {
 async fn the_reply_of_a_failed_dial_follows_its_class() {
     crate::test_host::need_loopback!();
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
-    /// The dial of this host with a deadline of 1 ms: a time limit at once.
+    /// A dial that ends at its time limit.
     struct Short;
     impl Dial for Short {
         fn label(&self) -> String {
@@ -62,8 +62,16 @@ async fn the_reply_of_a_failed_dial_follows_its_class() {
             target: &'a Target,
             _: Instant,
         ) -> BoxFuture<'a, Result<Connected, Failure>> {
-            crate::dialers::Direct
-                .dial(target, Instant::now() + std::time::Duration::from_millis(1))
+            // The failure of a dial that ends at its time limit, as
+            // pod-proxy gives it, through the mapping of podnet's dialers
+            // (a host network can refuse 192.0.2.1 at once).
+            let timeout = pod_proxy::DialError::Timeout {
+                step: format!("connecting to {target}"),
+                after: std::time::Duration::from_secs(30),
+                stage: Stage::Connect,
+            };
+            let failure = crate::dialers::failure(anyhow::Error::new(timeout), Stage::Connect);
+            Box::pin(async move { Err(failure) })
         }
     }
     let (_held, refused) = pod_testkit::refused::refused();

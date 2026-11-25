@@ -106,7 +106,7 @@ pub(crate) async fn bind_early(args: &WarpArgs) -> Result<Option<Early>> {
                     tokio::net::UdpSocket::bind(addr)
                         .await
                         .with_context(|| format!("binding the DNS address udp:{addr}"))
-                        .map_err(podnet::net::bind_fault)
+                        .map_err(podnet::net::bind_fault_udp(addr.port()))
                         .fault(Fault::Unavailable)?,
                 ),
                 None => None,

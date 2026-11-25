@@ -262,7 +262,11 @@ pub async fn serve(
             let listener = podnet_core::net::bind_tcp(*bind).await?;
             // Issue 300: keep the bound address (the port that the kernel
             // chose for port 0), not the requested one.
-            listen = ProxyListen::Tcp(listener.local_addr()?);
+            listen = ProxyListen::Tcp(podnet_core::net::bound_addr(
+                listener.local_addr(),
+                Some(*bind),
+                &format!("--listen tcp://{bind}"),
+            )?);
             tokio::spawn(async move {
                 let _ = door.serve_tcp(listener).await;
             })

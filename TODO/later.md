@@ -2285,7 +2285,7 @@ satellite link, a relay plan billed by the gigabyte).
 ## Premise
 
 - Read on 2026-11-16 at 1caa0be: `docs/router.md` says "The counters of a door start at 0 when it is added and go with
-  it when it is removed" (`docs/router.md:305`); `src/router/door_stats.rs` has counts and bytes, no limit.
+  it when it is removed" (`docs/router.md:306`); `src/router/door_stats.rs` has counts and bytes, no limit.
 
 ## Approach
 

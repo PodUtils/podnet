@@ -299,7 +299,16 @@ pub(crate) fn error_json(text: &str, code: i32) -> String {
         .map(|l| l.strip_prefix("podnet: ").unwrap_or(l))
         .collect::<Vec<_>>()
         .join("; ");
+    // GitHub #743: the key `timestamp` of each log line, in the same form
+    // (RFC 3339 UTC with microseconds).
+    let now = std::time::SystemTime::now();
+    let micros = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.subsec_micros());
+    let second = pod_core::clock::rfc3339(now);
+    let timestamp = format!("{}.{micros:06}Z", second.trim_end_matches('Z'));
     serde_json::json!({
+        "timestamp": timestamp,
         "level": "ERROR",
         "fields": { "message": message.trim_end(), "exit_code": code },
         "target": "podnet",

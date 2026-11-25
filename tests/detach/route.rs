@@ -52,7 +52,7 @@ fn route_detaches_and_lists_its_members() {
         "{}",
         String::from_utf8_lossy(&stop.stderr)
     );
-    // A bad file is a usage error that names the key.
+    // A bad file is a configuration fault (78, GitHub #747) that names the key.
     std::fs::write(
         dir.join("bad.yml"),
         "doors:\n  - listen: unix:/x\n    via: nowhere\n",
@@ -64,8 +64,25 @@ fn route_detaches_and_lists_its_members() {
         dir.join("bad.yml").to_str().unwrap(),
         "--check",
     ]);
-    assert_eq!(bad.status.code(), Some(64));
+    assert_eq!(bad.status.code(), Some(78));
     assert!(String::from_utf8_lossy(&bad.stderr).contains("doors[0].via"));
+    // GitHub #747: a missing file and an unknown key exit 78 too, as in
+    // `tunnel --config`.
+    std::fs::write(dir.join("key.yml"), "bogus: 1\n").unwrap();
+    for file in ["missing.yml", "key.yml"] {
+        let out = env.run(&[
+            "route",
+            "--config",
+            dir.join(file).to_str().unwrap(),
+            "--check",
+        ]);
+        assert_eq!(
+            out.status.code(),
+            Some(78),
+            "{file}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
 }
 
 /// T-180: `route --control` pins a member, changes the probe interval,

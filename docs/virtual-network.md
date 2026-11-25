@@ -188,9 +188,11 @@ podnet net proxy --listen unix:/tmp/podnet-vnet.socks \
     --forward 10.66.0.2:8080=unix:/run/app.sock
 ```
 
-A client must speak SOCKS5 over `AF_UNIX` itself, because `curl` does not
-accept a unix-socket SOCKS proxy. On a host that permits a TCP bind, use
-`--listen tcp://127.0.0.1:1080` and `ALL_PROXY=socks5h://127.0.0.1:1080`.
+A client speaks SOCKS5 over `AF_UNIX`. curl 7.84 and later takes the
+socket path in the proxy URL:
+`curl --proxy socks5h://localhost/tmp/podnet-vnet.socks http://10.66.0.2:8080/`.
+For a client that takes no socket path, on a host that permits a TCP bind,
+use `--listen tcp://127.0.0.1:1080` and `ALL_PROXY=socks5h://127.0.0.1:1080`.
 
 Each unix listener (`net proxy`, `net switch`, `net tailscale`) claims its
 socket path first. A socket that another process serves gives exit 69. A file

@@ -167,7 +167,11 @@ impl Road for Local {
                 .await
                 .with_context(|| format!("--local {addr}"))
                 .map_err(podnet_core::net::bind_fault)?;
-            let bound = listener.local_addr()?;
+            let bound = podnet_core::net::bound_addr(
+                listener.local_addr(),
+                addr.parse().ok(),
+                &format!("--local {addr}"),
+            )?;
             let url = format!("http://{bound}/");
             let ready = serde_json::json!({ "road": "local", "url": url });
             let service = crate::gate::plain_http(service);

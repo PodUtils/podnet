@@ -285,7 +285,7 @@ pub async fn serve_on(
     let sock = tokio::net::UdpSocket::bind(bind)
         .await
         .with_context(|| format!("ListenPort: udp:{bind}"))
-        .map_err(crate::net::bind_fault)?;
+        .map_err(crate::net::bind_fault_udp(bind.port()))?;
     let sock = Arc::new(sock);
     let local = sock.local_addr()?;
     let allowed: Arc<Vec<Vec<(Ipv4Addr, u8)>>> =

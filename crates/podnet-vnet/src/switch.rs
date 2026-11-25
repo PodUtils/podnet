@@ -413,7 +413,11 @@ async fn serve_for(listen: ProxyListen, token: Option<String>, owner: u32) -> Re
             let listener = podnet_core::net::bind_tcp(*addr).await?;
             // Issue 300: keep the bound address (the port that the kernel
             // chose for port 0), not the requested one.
-            listen = ProxyListen::Tcp(listener.local_addr()?);
+            listen = ProxyListen::Tcp(podnet_core::net::bound_addr(
+                listener.local_addr(),
+                Some(*addr),
+                &format!("--listen tcp://{addr}"),
+            )?);
             tokio::spawn(async move {
                 while let Ok((mut stream, from)) = listener.accept().await {
                     let table = table.clone();

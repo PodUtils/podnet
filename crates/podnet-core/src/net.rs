@@ -62,6 +62,11 @@ pub enum Listener {
     UnixWritableDir,
     /// A device or another kind (a TUN or veth wire): the class, no step.
     Other,
+    /// A UDP port above 1023 (GitHub #748): a refusal is a host that gives
+    /// no UDP, not a port that needs privilege.
+    Udp,
+    /// A UDP port below 1024.
+    UdpPrivileged,
 }
 
 /// The kind of the unix listener at `path`: [`Listener::UnixWritableDir`]
@@ -97,7 +102,16 @@ pub fn bind_step(listener: Listener, kind: std::io::ErrorKind) -> Option<&'stati
         (Listener::Ip, PermissionDenied) => {
             "this host refuses the bind (a port below 1024 needs privilege, and some hosts refuse each TCP listener); give a port above 1023, or a unix socket (unix:PATH) where the command takes one (podnet net doctor)"
         }
-        (Listener::Ip, AddrNotAvailable) => {
+        (Listener::Udp | Listener::UdpPrivileged, AddrInUse) => {
+            "another process has this UDP port; give another port (port 0 gives a free one)"
+        }
+        (Listener::Udp, PermissionDenied) => {
+            "this host refuses UDP sockets (a seccomp rule or a policy of the host): this command needs UDP and cannot run here (podnet net doctor)"
+        }
+        (Listener::UdpPrivileged, PermissionDenied) => {
+            "a port below 1024 needs privilege; give a port above 1023 (podnet net doctor)"
+        }
+        (Listener::Ip | Listener::Udp | Listener::UdpPrivileged, AddrNotAvailable) => {
             "no interface of this host has this address; give 127.0.0.1, 0.0.0.0 or an address of this host"
         }
         (Listener::Unix, AddrInUse) => {
@@ -124,6 +138,16 @@ pub fn bind_step(listener: Listener, kind: std::io::ErrorKind) -> Option<&'stati
 /// error stays as it is.
 pub fn bind_fault(err: anyhow::Error) -> anyhow::Error {
     bind_fault_of(Listener::Ip, err)
+}
+
+/// [`bind_fault`] for a UDP socket on `port` (GitHub #748).
+pub fn bind_fault_udp(port: u16) -> impl FnOnce(anyhow::Error) -> anyhow::Error {
+    let listener = if (1..1024).contains(&port) {
+        Listener::UdpPrivileged
+    } else {
+        Listener::Udp
+    };
+    move |err| bind_fault_of(listener, err)
 }
 
 /// [`bind_fault`] for a unix socket at `path`. `NotFound` (a directory that
@@ -172,6 +196,31 @@ pub fn bind_fault_of(listener: Listener, err: anyhow::Error) -> anyhow::Error {
     fault(Fault::Unavailable, anyhow::anyhow!("{text}; {step}"))
 }
 
+/// The address of a bound listener (GitHub #750): `getsockname` (`got`),
+/// else the address that the command asked for (`asked`) when its port is
+/// fixed. With port 0 the port that the kernel gave is not known: exit 69,
+/// one line with `label`, the cause and the next step.
+pub fn bound_addr(
+    got: std::io::Result<std::net::SocketAddr>,
+    asked: Option<std::net::SocketAddr>,
+    label: &str,
+) -> Result<std::net::SocketAddr> {
+    let e = match got {
+        Ok(addr) => return Ok(addr),
+        Err(e) => e,
+    };
+    if let Some(asked) = asked.filter(|a| a.port() != 0) {
+        tracing::debug!(error = %e, "getsockname refused: the address of the command line is used");
+        return Ok(asked);
+    }
+    Err(crate::exit::fault(
+        crate::exit::Fault::Unavailable,
+        anyhow::anyhow!(
+            "{label}: this host refuses getsockname ({e}), so the port that the kernel gave for port 0 is not known; give a fixed port, or a unix socket (unix:PATH) where the command takes one"
+        ),
+    ))
+}
+
 /// Bind a TCP listener. A refused bind exits 69.
 pub async fn bind_tcp(addr: std::net::SocketAddr) -> Result<tokio::net::TcpListener> {
     tokio::net::TcpListener::bind(addr)
@@ -189,6 +238,37 @@ pub fn init_crypto() {
 
 #[cfg(test)]
 mod tests {
+    /// GitHub #750: a refused getsockname takes the asked address when its
+    /// port is fixed; with port 0 it exits 69 with the label and a step.
+    #[test]
+    fn a_refused_getsockname_has_a_second_path() {
+        use std::net::SocketAddr;
+        let refused = || Err(std::io::Error::from_raw_os_error(libc::EOPNOTSUPP));
+        let fixed: SocketAddr = "127.0.0.1:18220".parse().unwrap();
+        let zero: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        assert_eq!(
+            super::bound_addr(refused(), Some(fixed), "--local").unwrap(),
+            fixed
+        );
+        assert_eq!(
+            super::bound_addr(Ok(fixed), Some(zero), "--local").unwrap(),
+            fixed
+        );
+        for asked in [Some(zero), None] {
+            let err = super::bound_addr(refused(), asked, "--local 127.0.0.1:0").unwrap_err();
+            let line = format!("{err:#}");
+            assert_eq!(
+                crate::exit::code_of(&err),
+                crate::exit::UNAVAILABLE,
+                "{line}"
+            );
+            assert!(
+                line.contains("--local 127.0.0.1:0") && line.contains("give a fixed port"),
+                "{line}"
+            );
+        }
+    }
+
     use super::*;
 
     /// T-515, T-523: a refused bind of each kind of listener is exit 69 and
@@ -258,6 +338,21 @@ mod tests {
             ),
             (Listener::Ip, NotFound, FAILURE, None),
             (Listener::Other, NotFound, FAILURE, None),
+            // GitHub #748: a refused UDP socket on a high port is a host
+            // with no UDP; a low port needs privilege.
+            (
+                Listener::Udp,
+                PermissionDenied,
+                UNAVAILABLE,
+                Some("this host refuses UDP sockets"),
+            ),
+            (
+                Listener::UdpPrivileged,
+                PermissionDenied,
+                UNAVAILABLE,
+                Some("below 1024 needs privilege"),
+            ),
+            (Listener::Udp, AddrInUse, UNAVAILABLE, Some("this UDP port")),
         ];
         for (listener, kind, code, step) in cases {
             let err = anyhow::Error::new(std::io::Error::from(kind)).context("binding ADDR");
@@ -273,6 +368,12 @@ mod tests {
             match step {
                 Some(step) => assert!(line.contains(step), "{listener:?} {kind:?}: {line}"),
                 None => assert!(!line.contains("; "), "{listener:?} {kind:?}: {line}"),
+            }
+            if listener == Listener::Udp {
+                assert!(
+                    !line.contains("1023") && !line.contains("unix:"),
+                    "{kind:?}: {line}"
+                );
             }
             if listener == Listener::UnixWritableDir {
                 assert!(!line.contains("not writable"), "{kind:?}: {line}");

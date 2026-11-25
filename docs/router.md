@@ -64,7 +64,8 @@ doors:
 ```
 
 * The file uses the YAML reader of podnet (block mappings and sequences, comments; no flow collections
-  except `[]` and `{}`). An unknown key is a usage error (exit 64, with or without `--check`), and the
+  except `[]` and `{}`). A file that is missing or cannot be read, and an unknown key, exit 78 (a configuration fault, with or
+  without `--check`), and the
   error names the key or the line.
 * A name is letters, digits, `-` and `_`. A group and a network cannot have the same name.
 * `networks` maps a name to a network spec (see [egress.md](egress.md)): `direct`, a proxy URL, `relay`,
@@ -462,7 +463,7 @@ podnet: route  kernel  WANs: a up, b down; the aggregate route holds a
 The kernel mode probes IPv4 only. A host name in `health.target` is resolved one time at the start.
 
 `podnet route --config FILE --export mwan-json` prints the WANs of the kernel section in the JSON form
-of the mwan director (`wans` and `clients`) and runs nothing. It exits 64 when the file has no kernel
+of the mwan director (`wans` and `clients`) and runs nothing. It exits 78 when the file has no kernel
 section.
 
 ## Background and autostart

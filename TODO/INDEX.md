@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**563 entries: 16 open, 13 partial, 26 blocked, 508 done.**
+**568 entries: 16 open, 13 partial, 26 blocked, 513 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 86 | 91 |
-| P2 | 7 | 7 | 12 | 259 | 285 |
+| P2 | 7 | 7 | 12 | 264 | 290 |
 | P3 | 8 | 4 | 12 | 162 | 186 |
-| **All** | 16 | 13 | 26 | 508 | 563 |
+| **All** | 16 | 13 | 26 | 513 | 568 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -609,3 +609,8 @@ M8 Overlays, M9 Later.
 | [T-562](fixes.md) | P2 | S | M5 | defect | done | autostart add: refuses a binary under /var/tmp as temporary, with exit 64 |
 | [T-563](fixes.md) | P2 | S | M5 | defect | done | offline bundle build: the example of docs/offline.md (--file ./site:/site) does not run |
 | [T-564](fixes.md) | P2 | S | M5 | defect | open | serve --local: on a host with no loopback address the listener is ready, and no client can connect |
+| [T-565](fixes.md) | P2 | S | M5 | docs | done | docs/virtual-network.md says that curl does not take a unix-socket SOCKS proxy |
+| [T-566](fixes.md) | P2 | S | M5 | defect | done | --log-format json: the last ERROR object has no timestamp |
+| [T-567](fixes.md) | P2 | S | M5 | defect | done | route --config: a missing or bad file exits 64; tunnel --config gives 78 |
+| [T-568](fixes.md) | P2 | S | M5 | defect | done | wg serve: on a host that refuses UDP, the step says to give a port above 1023 or a unix socket |
+| [T-569](fixes.md) | P2 | S | M5 | defect | done | serve --local, net proxy --listen: where getsockname is refused, a bare Not supported and exit 1 |

@@ -2397,7 +2397,7 @@ A client that connects and sends nothing, or one byte of a SOCKS5 greeting, hold
 
 ## Premise
 
-- `crates/podnet-vnet/src/proxy.rs:84-96`: `fill_buf`, `socks5_read_request` and `http_read_connect` have no timeout. The copy is wrapped at `:118-125`. Accept loops: `:268-293`.
+- `crates/podnet-vnet/src/proxy.rs:84-96`: `fill_buf`, `socks5_read_request` and `http_read_connect` have no timeout. The copy is wrapped at `:118-125`. Accept loops: `:272-297`.
 - `crates/podnet-netns/src/tailscale.rs:377,383,387`: same reads. The dial and the copy have a timeout (`:386`, `:406`).
 - `crates/podnet-netns/src/frontdoor.rs:79,121`: same reads in the door of `pod --serve` (not in the issue).
 - `src/warp/proxy.rs:628-630,657-661,703-706`: the precedent.
@@ -2438,7 +2438,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:315`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-51`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:437`, `crates/podnet-vnet/src/proxy.rs:319`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-51`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:60`.
 - `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:174`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:98-104`).
@@ -2513,7 +2513,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 
 ## Problem
 
-`forward` binds inside a spawned task and returns a `JoinHandle` (`crates/podnet-vnet/src/proxy.rs:186-204`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:120`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`crates/podnet-vnet/src/switch.rs:753-757`).
+`forward` binds inside a spawned task and returns a `JoinHandle` (`crates/podnet-vnet/src/proxy.rs:186-204`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:120`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`crates/podnet-vnet/src/switch.rs:757-761`).
 
 ## Premise
 
@@ -2551,7 +2551,7 @@ Tests: a forward outside the subnet returns the error; a second forward of one a
 
 ## Problem
 
-`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `crates/podnet-vnet/src/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:464`). No counter, no log, no accessor. The `spoofed` counter (`:153`) has no accessor. The rule of the project: a drop is counted (`NetStats::dropped`, `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`). The fault injector counts are not readable either (`crates/podnet-vnet/src/switch.rs:54-111`).
+`Table::forward` drops a packet when the queue of the peer is full and ignores the error (`let _ = peer.try_send(...)`, `crates/podnet-vnet/src/switch.rs:164,171`). The queue is 1024 packets (`:30`, `:468`). No counter, no log, no accessor. The `spoofed` counter (`:153`) has no accessor. The rule of the project: a drop is counted (`NetStats::dropped`, `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`). The fault injector counts are not readable either (`crates/podnet-vnet/src/switch.rs:54-111`).
 
 ## Premise
 
@@ -2688,7 +2688,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:43-60`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:334-339` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:43-60`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:336-341` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -2700,7 +2700,7 @@ cargo test -p podnet --test cli
 1. Build one `Resolver` from `--map`. Pass it as `StackConfig.dns` (switch path) and to the door through `hosts_pairs()`.
 2. `net shim --map NAME=ADDR` (repeatable) fills `ShimOptions::hosts`.
 3. `--map-file PATH` with `Resolver::from_lines`. Validate each address against the subnet at parse time.
-4. Update the help and `docs/virtual-network.md:334-339`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
+4. Update the help and `docs/virtual-network.md:336-341`. The use of `upstream` and `catch_all` is a separate ruling: do not wire them here.
 
 ## Prove
 
@@ -4033,7 +4033,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
 - `crates/podnet-netns/src/listen.rs:127-240` (`bind_private`) calls `UnixListener::bind(path)`, then
   `set_permissions(path, 0o600)`.
 - The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:251`,
-  src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:316`, `crates/podnet-vnet/src/switch.rs:434`,
+  src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:320`, `crates/podnet-vnet/src/switch.rs:438`,
   and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:375-378`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
 - `crates/podnet-netns/src/seccomp/accept.rs:61` is not exposed: it calls `private_dir` first
@@ -12483,7 +12483,7 @@ listener or relay disabled by policy, or not answering"; "1 (failure): A failure
 
 ## Premise
 
-- Read: `crates/podnet-core/src/net.rs:125` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
+- Read: `crates/podnet-core/src/net.rs:139` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
   `PermissionDenied` and `AddrNotAvailable`. `forward`, `net proxy`, `serve`, `route`, `link` and `cover` call it.
 - Read: `src/cli/cmd/connect.rs:109` binds the TCP listener of `-L` and adds only a context (`:110`). It does not
   call `bind_fault`, so the exit code is 1. `unix_listener` (`src/cli/cmd/connect.rs:246`, `:249`) has the same
@@ -13299,7 +13299,7 @@ says "nothing accepts a connection" when the cause is EACCES of the connect.
   (`src/cli/cmd/warp/mod.rs:156`, `warp_client`, which registers a device for `--ephemeral`): the registration comes
   before `bind_all` (`src/cli/cmd/warp/front.rs:134`). The comment of issue 97 says that the listeners
   bind before the session; that is true of the session of the proxy, not of the registration.
-- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:125`) is the one place that gives the class to a
+- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:139`) is the one place that gives the class to a
   refused bind. It adds no words. `src/cli/cmd/local.rs:65` writes its own line (`serve --local`).
 - Read: `src/cli/cmd/agent.rs:104` calls `podnet::ports::reachable(*p, ...)`, which gives a bool: a refused connect and
   an EACCES give the same answer. The advice with the unix sockets is in `src/agent.rs:529` and is not used here.
@@ -15327,3 +15327,148 @@ In a lab with no address on `lo`, `podnet serve --local 127.0.0.1:18140` prints 
 ## Prove
 
 `cargo test --test serve_local` (a new table test) and the lab `no-loopback` of the lane
+
+# T-565: docs/virtual-network.md says that curl does not take a unix-socket SOCKS proxy
+
+**Source:** GitHub #742 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** docs
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`docs/virtual-network.md`, 5.2: "A client must speak SOCKS5 over `AF_UNIX` itself, because `curl` does not accept a unix-socket SOCKS proxy." curl 8.5 takes `--proxy socks5h://localhost/PATH` and reaches the virtual network through `net proxy`.
+
+## Premise
+
+- Measured by the tester: `curl --proxy socks5h://localhost/PATH http://10.66.0.2:8080/` through `net proxy --listen unix:PATH` gives the page, also in the lab `bind-denied`.
+
+## Approach
+
+The document gives the curl form (curl 7.84 and later) and keeps the TCP listener for a client that takes no socket path.
+
+## Prove
+
+`python3 -I scripts/doc-commands.py --check`
+
+## Done
+
+2026-11-25, the commit of this entry. The paragraph gives the form; `doc-commands.py --check` passes.
+
+# T-566: --log-format json: the last ERROR object has no timestamp
+
+**Source:** GitHub #743 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+With `--log-format json`, each log object has `timestamp`, `level`, `fields` and `target`; the last object (the error that ends the command) has no `timestamp`.
+
+## Premise
+
+- Read: `error_json` of `src/cli/help.rs`: it wrote `level`, `fields` and `target` only.
+
+## Approach
+
+`error_json` writes `timestamp` in the form of the log of `tracing` (RFC 3339 UTC, microseconds).
+
+## Prove
+
+`cargo test --test cli log_format_json_gives_json_lines_only`
+
+## Done
+
+2026-11-25, the commit of this entry. `tests/cli/log.rs`, `log_format_json_gives_json_lines_only`: each JSON line of stderr has a `timestamp` of 27 characters (the last error line failed this before the fix).
+
+# T-567: route --config: a missing or bad file exits 64; tunnel --config gives 78
+
+**Source:** GitHub #747 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet route --config MISSING --check` and a file with an unknown key exit 64; `tunnel --config` exits 78 for the same faults, as `podnet man exit-status` says (78: a configuration file given with --config).
+
+## Premise
+
+- Read: `src/cli/cmd/route.rs` (`router::load(...).fault(Fault::Usage)`) and `docs/router.md` ("An unknown key is a usage error (exit 64)").
+
+## Approach
+
+A file that cannot be read or used exits 78 (also `--export mwan-json` with no kernel section). `docs/router.md` says so.
+
+## Prove
+
+`cargo test --test detach route_detaches_and_lists_its_members`
+
+## Done
+
+2026-11-25, the commit of this entry. `tests/detach/route.rs`: a bad file, a missing file and an unknown key exit 78 (the test asserted 64 before).
+
+# T-568: wg serve: on a host that refuses UDP, the step says to give a port above 1023 or a unix socket
+
+**Source:** GitHub #748 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podlab run udp-denied -- podnet wg serve --config wg.conf` (`ListenPort = 51900`) gives `this host refuses the bind (a port below 1024 needs privilege, and some hosts refuse each TCP listener); give a port above 1023, or a unix socket`. The port is above 1023, the host refuses UDP, and `wg serve` takes no unix socket.
+
+## Premise
+
+- Read: `bind_step` of `crates/podnet-core/src/net.rs`: one step for each TCP and UDP address.
+
+## Approach
+
+`Listener::Udp` and `Listener::UdpPrivileged` with their steps (a host that gives no UDP; a port below 1024); `net::bind_fault_udp(port)` for each UDP bind: `wg serve`, `forward -L udp:`, the DNS door of `forward` and of `warp`.
+
+## Prove
+
+`cargo test -p podnet-core --lib net::tests`
+
+## Done
+
+2026-11-25, the commit of this entry. `net::tests::a_refused_bind_is_69_with_one_line_and_a_next_step` (the table of the kinds of a refused bind) has the UDP rows: a high port names a host with no UDP and no `1023` and no `unix:`.
+
+# T-569: serve --local, net proxy --listen: where getsockname is refused, a bare Not supported and exit 1
+
+**Source:** GitHub #750 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podlab run getsockname-denied -- podnet serve --dir D --local 127.0.0.1:18220` and `net proxy --listen tcp://127.0.0.1:0` give `podnet: Not supported (os error 95)` and exit 1; with a fixed port the address is known, and the listener still fails.
+
+## Premise
+
+- Read: the binds of `serve --local` (`src/cli/cmd/local.rs`, `crates/podnet-serve/src/road.rs`) and of `net proxy` and `net switch` (podnet-vnet): `local_addr()?`. `forward` has a second path already (T-502).
+
+## Approach
+
+`net::bound_addr`: getsockname, else the asked address when its port is fixed; with port 0, exit 69 with the flag, the cause and the step (a fixed port or a unix socket). The four binds use it.
+
+## Prove
+
+`cargo test -p podnet-core --lib a_refused_getsockname_has_a_second_path`
+
+## Done
+
+2026-11-25, the commit of this entry. `net::tests::a_refused_getsockname_has_a_second_path`. In the lab `getsockname-denied`: `serve --local 127.0.0.1:18220` serves, and `--local 127.0.0.1:0` gives one line with the step.

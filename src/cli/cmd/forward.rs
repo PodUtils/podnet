@@ -165,7 +165,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
             let socket = tokio::net::UdpSocket::bind(addr)
                 .await
                 .with_context(|| format!("-L udp:{addr}"))
-                .map_err(podnet::net::bind_fault)?;
+                .map_err(podnet::net::bind_fault_udp(addr.port()))?;
             println!(
                 "podnet: forward  udp:{}  ->  {shown}  via {}",
                 bound(socket.local_addr(), addr),
