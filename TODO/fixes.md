@@ -16265,7 +16265,7 @@ the brief of a worker of podcrates `v0.85.0` (COORD-157); `docs/decisions.md` ha
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -16280,11 +16280,12 @@ documented; the step fails, and each later step is skipped. The run is red for a
 
 ## Approach
 
-1. `scripts/live-run.sh`: an exit 75 with `HTTP 429` of the quick-tunnel service writes `LIVE_QUICK_REFUSED=1` to
-   `$GITHUB_ENV` and a `::warning::`, and exits 0 with a file `NAME.refused`; the step ends after its call when the
-   file exists.
-2. Each later step that provisions a quick tunnel has `if: env.LIVE_QUICK_REFUSED != '1'`.
-3. The `report` job of `live` does not count a run whose only fault is the quota.
+1. `scripts/live-step.sh` is the shell of each step of the job `live` (`defaults.run.shell`). It runs the script of the
+   step as `bash -e` does. A step that fails with `quick-tunnel service returned HTTP 429` in its output gives a
+   `::warning::`, writes `LIVE_QUICK_REFUSED=1` to `$GITHUB_ENV`, and passes. Each other failure keeps its exit code.
+2. The output goes to a file that `tail --pid` streams: a process that a step leaves in the background (a stand-in
+   proxy) does not hold the step.
+3. A green run has no `report` job: the quota does not open the issue "live: two runs in a row failed".
 
 ## Prove
 
@@ -16292,3 +16293,11 @@ documented; the step fails, and each later step is skipped. The run is red for a
 python3 -I scripts/check-workflows.py
 # the next live run with a 429: a warning, and the run is green
 ```
+
+## Done
+
+2026-11-25 (steps 1 to 3), the commit of this entry. A local run of `scripts/live-step.sh` over four scripts: a 429
+line and exit 75 gives the warning, the variable and exit 0; another exit 3 stays 3; exit 0 stays 0; a script that
+leaves `sleep 30` in the background ends in 1 s. `python3 -I scripts/check-workflows.py`: 0 faults. The proof on the
+runner is the next `live` run with a 429.
+

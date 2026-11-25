@@ -44,10 +44,16 @@ jobs:
   live:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # T-589: a step that the quota of the quick-tunnel service refuses (HTTP
+    # 429) gives a warning and passes (scripts/live-step.sh).
+    defaults:
+      run:
+        shell: bash scripts/live-step.sh {0}
     steps:
       - name: A planted failure
         if: inputs.plant == 'fail'
         timeout-minutes: 1
+        shell: bash
         run: |
           echo "plant=fail: this run fails on purpose"
           exit 1
