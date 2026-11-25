@@ -1121,7 +1121,9 @@ jobs:
           for burst in default 4 none default; do
             port=$((port + 1))
             exe=target/release/podnet
-            log=podnet=debug
+            # T-546: pod_warp holds the proxy; its lines (a client refused
+            # with no session) show the cause of a reset.
+            log=podnet=debug,pod_warp=debug
             if [ "$burst" = default ]; then unset PODNET_WARP_TCP_BURST; else export PODNET_WARP_TCP_BURST=$burst; fi
             RUST_LOG=$log "$exe" warp proxy --listen "tcp://127.0.0.1:$port" --run-for 90 > "burst-$port.log" 2>&1 &
             bp=$!
@@ -1135,7 +1137,20 @@ jobs:
             for try in 1 2 3; do
               rate=$(curl -sS --max-time 45 -o "body-$port.bin" -w '%{speed_download} %{size_download} %{http_code}' -x "socks5h://127.0.0.1:$port" \
                 'https://speed.cloudflare.com/__down?bytes=20000000' || true)
-              case "$rate" in *" 429") limited=$((${limited:-0} + 1)); sleep $((try * 10)) ;; *) break ;; esac
+              case "$rate" in
+                *" 429") limited=$((${limited:-0} + 1)); sleep $((try * 10)) ;;
+                # T-546: no WARP session opened (WARP's door showed a
+                # certificate of Let's Encrypt, T-406), and the proxy closed
+                # the client: try again after a wait.
+                *" 000")
+                  if grep -q 'refused: no session' "burst-$port.log"; then
+                    nosession=$((${nosession:-0} + 1)); sleep $((try * 10))
+                  else
+                    break
+                  fi
+                  ;;
+                *) break ;;
+              esac
             done
             leg=direct
             if grep -q 'MASQUE goes through the relay' "burst-$port.log"; then leg=relay; fi
@@ -1163,6 +1178,8 @@ jobs:
           # the default run, the rate is not measured this time.
           if [ "${default:-0}" = 0 ] && [ "${limited:-0}" -gt 0 ]; then
             echo "::warning::speed.cloudflare.com answered 429 to each try through WARP: the rate is not measured"
+          elif [ "${default:-0}" = 0 ] && [ "${nosession:-0}" -gt 0 ]; then
+            echo "::warning::no WARP session opened for the default runs (WARP's door, T-406): the rate is not measured"
           else
             awk -v r="${default:-0}" 'BEGIN { exit !(r >= 1000000) }'
           fi

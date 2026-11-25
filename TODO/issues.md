@@ -372,7 +372,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #685 | COORD-113: pod-cloudflare: a refusal with retry: yes needs a time budget, and keeps its class through "no edge leg worked" (to podcrates) | closed (answered: podcrates `v0.82.1`, PodUtils/podcrates#257; taken in T-539, the typed refusal is the first path, T-513 the second) | none |
 | #686 | COORD-114: podnet took pod-release (T-494) and the last shared-code copies of COORD-104 (T-473) (to podcrates) | closed (read: PodUtils/podcrates@T-966 and PodUtils/podcrates@T-1118; the index of a release is T-540) | none |
 | #687 | [qa 0.4.0-beta.18] send: the timeout line gives the wrong time ("within its 1 minutes" for --timeout 5) | closed: T-520, T-531 and T-532 are done; T-531 in the commit of the entry, 2026-11-23 (tests/config_input.rs; CI after the push) | T-520, T-531, T-532 |
-| #688 | live: two runs in a row failed | open (live 45186065944: HTTP 530 of a quick tunnel, T-488; live 45215638823: WARP's door and the relay, T-406) | T-406, T-488 |
+| #688 | live: two runs in a row failed | open (live 45186065944: HTTP 530 of a quick tunnel, T-488; live 45215638823: WARP's door and the relay, T-406; live 45517951377: WARP's door in "warp scan", T-406; live 45518282050: resets of `warp proxy` with no session, T-546) | T-406, T-488, T-546 |
 | #689 | [qa 0.4.0-beta.18] connect: a failed listener bind exits 1; net proxy and forward exit 69 | closed: T-515 done in the commit of the entry, 2026-11-23 (tests/listener_bind.rs; CI after the push) | T-515 |
 | #690 | [qa 0.4.0-beta.18] pod: with the seccomp backend, a missing program path exits 127 with no line | closed: T-516 done (T-542, the take of podcrates v0.83.0, ends T-516 and T-522; the test of each entry is in its Done section) | T-516 |
 | #691 | [qa 0.4.0-beta.18] pod: SIGTERM, SIGINT or SIGHUP to podnet ends podnet and leaves the program running | closed: T-517 done in the commit of the entry, 2026-11-23 (tests/pod_signals.rs; CI after the push) | T-517 |
@@ -396,5 +396,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #709 | COORD-117: pod-core: one probe of a unix socket that a forked child can hold (socket_answers) for pod-control, pod-link and pod-warp (to podcrates) | closed (answered: podcrates v0.83.0, PodUtils/podcrates@T-1209; taken in T-542, podnet re-exports `pod_core::files::socket_answers`) | none |
 | #710 | COORD-118: podnet took podcrates v0.83.0; COORD-115 and COORD-117 closed; runs.py and the watcher of v0.83.0 (to podcrates) | open (a COORD issue between sessions) | none |
 | #711 | COORD-119: pod-core: one temp directory and one temp file with a random name (lesson 5 of PodUtils/podvm#567) (to podcrates) | open (a COORD issue between sessions; the ask of T-545) | none |
+| #712 | COORD-120: pod-warp proxy: a client with no WARP session gets a reset, not a SOCKS5 or HTTP failure reply (to podcrates) | open (a COORD issue between sessions; the ask of T-546) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

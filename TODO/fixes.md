@@ -8230,6 +8230,9 @@ The steps before it opened WARP sessions to 162.159.198.2:443 some seconds earli
 "Throughput through WARP, 1 to 16 MiB": the door 162.159.198.2:443 showed a certificate of Let's Encrypt; the MASQUE
 session took the public relay; its HTTP/2 connection closed with no `close_notify` 18 s later, and the WebSocket of
 `podnet connect` in flight was lost. The same class as the run of 2026-11-20. A fault of WARP's door and of the relay.
+2026-11-25: `live` 45517951377 (`a6a6ccb`) failed in "warp scan" of `scripts/live-batch2.sh`: both doors showed a
+certificate of Let's Encrypt (CN=YE1) in two scans 10 s apart, as on 2026-11-23. `live` 45518282050 (`1bf4161`)
+failed in "WARP proxy" with resets of the SOCKS5 handshake: T-546 (the proxy closes a client with no session).
 
 
 # T-407: podnet connect resets a local connection when one WebSocket dial fails
@@ -14725,3 +14728,48 @@ resolv.conf of a pod), `crates/podnet-vnet/src/doctor.rs:504`, `:618` and `:635`
 cargo test -p podnet-core --lib temp
 python3 -I scripts/check-layers.py
 ```
+
+
+# T-546: warp proxy: a client with no WARP session gets a TCP reset, and the live step hides the line of pod_warp
+
+**Source:** `live` 45518282050 (`1bf4161`, 2026-11-25), step "WARP proxy".
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+Three of four runs of `podnet warp proxy` in the step gave `curl: (97) Recv failure: Connection reset by peer` in the
+SOCKS5 handshake; the fourth run carried 20 MB. The step printed no line of the cause: it sets
+`RUST_LOG=podnet=debug`, and the proxy is in `pod_warp`. `pod_warp::proxy::Proxy::client` (podcrates `v0.83.0`) logs
+`WARP proxy client refused: no session` and drops the stream with the greeting unread; Linux then sends a reset, and
+the client gets no reply of its protocol. The run before (`live` 45517951377) showed the class of the cause: both
+MASQUE doors gave a certificate of Let's Encrypt in place of the pinned key (T-406).
+
+## Premise
+
+- Read: the file `proxy.rs` of `pod-warp` in podcrates `v0.83.0`, the function `client`.
+- Read: the job log of `live` 45518282050 (job 138893564385) and of `live` 45517951377 (job 138882163681).
+- Not measured: that the resets of 45518282050 came from the path "no session". The next run with `pod_warp=debug`
+  shows it.
+
+## Approach
+
+1. podnet (`.github/workflows/live.yml`, step "WARP proxy"): the burst runs log `pod_warp=debug`; a download that ends
+   with no HTTP status and a line `refused: no session` is tried again after a wait, as a 429 is. When no default run
+   had a session, the step gives a warning and does not measure the rate.
+2. pod-warp (COORD-120, #712): a failure reply in the protocol of the client (SOCKS5 reply 1, HTTP 503) before a close
+   with no reset, with a test. podnet takes it with the next tag.
+
+## Prove
+
+```sh
+python3 -I scripts/check-workflows.py
+# the next live run prints the line of pod_warp at a reset; the take of the tag with the fix of COORD-120
+```
+
+## Blocker
+
+The reply of `pod-warp` (COORD-120, #712, to podcrates). Step 1 is done in podnet.
