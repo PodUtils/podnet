@@ -14681,3 +14681,47 @@ python3 -I .work/podcrates-agent/runs.py --self-test
 2026-11-24, the commit of this entry. With `watch.py`, `watch_test.py` and `runs.py` of `5fd6fb7e`: "watch
 self-test: passed" and "runs self-test: passed". `CLAUDE.md` gets the three files at that commit; podnet's two
 scripts are gone; `docs/maintenance.md` gives `runs.py --repo PodUtils/podnet --until SHA --min-runs 5`.
+
+
+# T-545: temp files and sockets named by the pid alone: two processes in two PID namespaces meet on one path
+
+**Source:** PodUtils/podvm#567 (COORD-180 of podvm, to all), lesson 5: "A pid is not unique where your process can run
+in a PID namespace. Name temp files with `mkdir` or `O_EXCL` and a nonce."
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+podnet names temp paths with `std::process::id()` alone. A pod, a container and a PID namespace give pid 1 or the same
+small pid to two processes that share `/tmp`. The second process then takes or removes the file of the first. Paths
+of the code (not of tests): `src/cli/cmd/warp/run.rs:47` (the socket of `warp run`), `src/warp/export.rs:343`,
+`src/cli/cmd/link/mod.rs:635`, `src/stat.rs:155`, `src/initcfg.rs:428`, `src/cli/cmd/serve_at.rs:57`,
+`src/router/guest/wire.rs:196`, `crates/podnet-netns/src/netns/mod.rs:348` and `crates/podnet-netns/src/raw.rs` (the
+resolv.conf of a pod), `crates/podnet-vnet/src/doctor.rs:504`, `:618` and `:635`,
+`crates/podnet-vnet/src/tailscale_ssh.rs:210`, `crates/podnet-core/src/state.rs:257` and `:451`.
+
+## Premise
+
+- Read: `pod_core::files::create_new_private` creates a file with `O_EXCL` and mode 0600. pod-core has no public
+  function for a temp directory or a temp file with a random name (`random_name` of `files/socket.rs` is private).
+- Read: some paths add a time (`nanos`, `stamp`); a time is not a nonce either.
+
+## Approach
+
+1. COORD ask (to podcrates): `pod_core::files::new_temp_dir(parent, prefix)` and `new_temp_file(parent, prefix)`: a
+   random name, `mkdir` with mode 0700 or `O_EXCL` with mode 0600, and a new name on `EEXIST`.
+2. podnet, until the tag: one function in `podnet-core` with the same contract, and each path above uses it. A path
+   that another process must find (a socket that a client opens by name) keeps a fixed name in a private directory
+   of the user (`state_dir`), not in `/tmp`.
+3. A check pins the class: `scripts/check-layers.py` (or a new check) refuses `process::id()` in a path of the code
+   outside tests.
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib temp
+python3 -I scripts/check-layers.py
+```

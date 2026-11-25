@@ -395,5 +395,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #708 | COORD-116: podnet took podcrates v0.82.1; COORD-113 and COORD-114 closed; the release v0.4.0-beta.18 (to podcrates) | closed (read: PodUtils/podcrates#257 names the take, a0b727c; PodUtils/podcrates@T-1117 is the line of docs/tunnels.md, 4a4361a) | none |
 | #709 | COORD-117: pod-core: one probe of a unix socket that a forked child can hold (socket_answers) for pod-control, pod-link and pod-warp (to podcrates) | closed (answered: podcrates v0.83.0, PodUtils/podcrates@T-1209; taken in T-542, podnet re-exports `pod_core::files::socket_answers`) | none |
 | #710 | COORD-118: podnet took podcrates v0.83.0; COORD-115 and COORD-117 closed; runs.py and the watcher of v0.83.0 (to podcrates) | open (a COORD issue between sessions) | none |
+| #711 | COORD-119: pod-core: one temp directory and one temp file with a random name (lesson 5 of PodUtils/podvm#567) (to podcrates) | open (a COORD issue between sessions; the ask of T-545) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.
