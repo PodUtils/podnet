@@ -131,9 +131,11 @@ pub(crate) async fn warp(mut args: WarpArgs) -> Result<()> {
         };
         match path {
             Some(path) if podnet::state::exists(&path).fault(Fault::Config)? => {}
+            // GitHub #731: an absent identity file is no input (66), not a
+            // configuration that cannot be used (78).
             Some(path) => {
                 return Err(podnet::exit::fault(
-                    Fault::Config,
+                    Fault::NoInput,
                     anyhow::anyhow!(
                         "no WARP identity at {}; run podnet warp register first",
                         path.display()

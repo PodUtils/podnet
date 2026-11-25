@@ -55,6 +55,37 @@ fn exit_66_is_a_missing_allow_list() {
     assert!(stderr(&out).contains("no allow list"), "{}", stderr(&out));
 }
 
+/// GitHub #731: each warp command that uses a saved device exits 66 when
+/// the identity file is absent, at the default path and at --identity. The
+/// line names the file and `podnet warp register`.
+#[test]
+fn exit_66_is_a_missing_warp_identity() {
+    let dir = tempfile::tempdir().unwrap();
+    let given = dir.path().join("absent").join("nonexist.json");
+    let given = given.to_str().unwrap();
+    let default = dir.path().join("warp.json");
+    let default = default.to_str().unwrap();
+    let commands: [&[&str]; 4] = [
+        &["warp", "status", "--json"],
+        &["warp", "rotate"],
+        &["warp", "delete"],
+        &["warp", "license", "ABC"],
+    ];
+    for command in commands {
+        for (identity, path) in [(None, default), (Some(given), given)] {
+            let mut args = command.to_vec();
+            if let Some(identity) = identity {
+                args.extend(["--identity", identity]);
+            }
+            let out = podnet(&args, dir.path(), &[]);
+            let err = stderr(&out);
+            assert_eq!(out.status.code(), Some(exit::NO_INPUT), "{args:?}: {err}");
+            assert!(err.contains(path), "{args:?}: {err}");
+            assert!(err.contains("podnet warp register"), "{args:?}: {err}");
+        }
+    }
+}
+
 #[test]
 fn exit_69_is_a_listener_that_is_not_available() {
     let dir = tempfile::tempdir().unwrap();

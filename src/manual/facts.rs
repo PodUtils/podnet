@@ -198,7 +198,7 @@ pub fn exits() -> Vec<Exit> {
         row(4, "violation", "podnet pod --fail-on-violation: the program exited 0, and a destination was not in the learned file or a rule refused it. The pod writes each violation on stderr."),
         row(USAGE, "usage", "A bad command line: an unknown command or flag, a missing or bad value. Nothing was done."),
         row(DATA_ERROR, "data-error", "Input that podnet refuses: podnet receive got an entry with a bad name or kind, or a name that exists (the receiver never overwrites). Also more files or bytes than its caps, or data whose size or SHA-256 does not agree. Nothing of a refused transfer stays on the disk."),
-        row(NO_INPUT, "no-input", "A file that must exist is missing: the key of the link where a command needs an existing key, or the allow list of the link."),
+        row(NO_INPUT, "no-input", "A file that must exist is missing: the key of the link where a command needs an existing key, or the allow list of the link. warp status, license, rotate and delete: the WARP identity."),
         row(NO_HOST, "no-host", "The address of a peer does not resolve."),
         row(UNAVAILABLE, "unavailable", "A service or a network path is not available: no edge leg worked for podnet tunnel, podnet warp or another command that starts a session. Or the quick-tunnel service, the WARP API or the MASQUE endpoint did not answer. podnet doctor and podnet bench give 1 in place of 69."),
         row(OS_ERROR, "os-error", "A file of the host cannot be used: a key file or an allow list with a mode that lets other users change it (the key: any access), a symbolic link in place of the file, or a file of another user. The file is not replaced."),

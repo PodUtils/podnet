@@ -14096,7 +14096,8 @@ EXIT STATUS
       agree. Nothing of a refused transfer stays on the disk.
   66 (no-input)
       A file that must exist is missing: the key of the link where a command
-      needs an existing key, or the allow list of the link.
+      needs an existing key, or the allow list of the link. warp status,
+      license, rotate and delete: the WARP identity.
   68 (no-host)
       The address of a peer does not resolve.
   69 (unavailable)
