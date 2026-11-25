@@ -598,3 +598,33 @@ fn the_icmp_row_says_whether_a_raw_socket_opens() {
     }
     assert!(carriers.text().contains("icmp"));
 }
+
+/// GitHub #718: the verdict of a MASQUE door follows the issuer of its
+/// certificate: WARP's own key is ok, an outage of WARP's side is unknown,
+/// a middlebox that terminates TLS fails the leg `quic+warp`.
+#[test]
+fn a_masque_door_is_judged_by_its_issuer() {
+    let cases = [
+        (
+            Some("C=US, O=Cloudflare, Inc., CN=2024-02-27 Self-Signed Root"),
+            Verdict::Ok,
+        ),
+        (Some("C=US, O=Let's Encrypt, CN=YE1"), Verdict::Unknown),
+        (
+            Some("O=Anthropic, CN=Egress Gateway SDS Issuing CA (production)"),
+            Verdict::Refused,
+        ),
+        (None, Verdict::Unknown),
+    ];
+    for (issuer, want) in cases {
+        let got = tls_check::masque_door(issuer.map(str::to_string));
+        assert_eq!(got.verdict, want, "{issuer:?}: {}", got.detail);
+        if want == Verdict::Refused {
+            assert!(
+                got.detail.contains("middlebox") && !got.detail.contains("give its root"),
+                "{}",
+                got.detail
+            );
+        }
+    }
+}

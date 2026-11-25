@@ -100,3 +100,69 @@ fn detach_prints_only_the_ready_document_on_stdout() {
     let stderr = String::from_utf8_lossy(&start.stderr);
     assert!(stderr.contains("podnet: switch"), "{stderr}");
 }
+
+/// GitHub #714: each line that the start shows (the banner of the command,
+/// which it prints itself, and its log lines) is in the log of the
+/// instance too, after the separator of this start; and a start that fails
+/// before its ready still shows its error line.
+#[test]
+fn the_log_holds_each_line_that_the_start_shows() {
+    let env = Env::new();
+    let site = env._tmp.path().join("site");
+    std::fs::create_dir_all(&site).unwrap();
+    let proxy = format!("unix:{}", env._tmp.path().join("np.sock").display());
+    let site = site.display().to_string();
+    let switch = env.switch();
+    let cases: [(&str, Vec<&str>, &str); 3] = [
+        (
+            "np",
+            vec!["net", "proxy", "--listen", &proxy],
+            "podnet: proxy",
+        ),
+        (
+            "sw",
+            vec!["net", "switch", "--listen", &switch],
+            "podnet: switch",
+        ),
+        (
+            "sv",
+            vec!["serve", "--dir", &site, "--local", "127.0.0.1:0"],
+            "podnet: serve",
+        ),
+    ];
+    for (name, args, banner) in cases {
+        let mut all = args.clone();
+        all.extend(["--detach", "--name", name]);
+        let start = env.run(&all);
+        let shown = String::from_utf8_lossy(&start.stderr).into_owned();
+        assert!(start.status.success(), "{name}: {shown}");
+        assert!(
+            shown.contains(banner),
+            "{name}: the start shows {banner:?}: {shown}"
+        );
+        let logs = env.run(&["logs", name]);
+        let text = String::from_utf8_lossy(&logs.stdout).into_owned();
+        for line in shown.lines().filter(|l| !l.trim().is_empty()) {
+            assert!(
+                text.contains(line.trim_end()),
+                "{name}: {line:?} is not in the log:\n{text}"
+            );
+        }
+    }
+    // A start that fails before its ready: the error line reaches the caller.
+    let bad = env.run(&[
+        "net",
+        "proxy",
+        "--listen",
+        "unix:/nonexistent-dir/x.sock",
+        "--detach",
+        "--name",
+        "bad",
+    ]);
+    assert!(!bad.status.success());
+    let shown = String::from_utf8_lossy(&bad.stderr);
+    assert!(
+        shown.contains("podnet:"),
+        "the error line is shown: {shown:?}"
+    );
+}

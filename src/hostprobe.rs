@@ -104,7 +104,10 @@ impl Report {
             })
             .collect();
         serde_json::to_string_pretty(&serde_json::json!({
-            "schema": "podnet.host-probe/1",
+            // GitHub #724: the stamp of docs/cli.md; the form is in `kind`.
+            "schema": 1,
+            "kind": "podnet.host-probe/1",
+            "podnet": podnet_core::build::version(),
             "path": self.path,
             "filesystem": self.filesystem,
             "family": self.family.name(),

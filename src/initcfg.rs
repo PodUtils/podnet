@@ -316,7 +316,7 @@ impl Registrar {
                 );
                 let stream = crate::egress::dial(&host, port, None, *timeout)
                     .await
-                    .map_err(|e| format!("dialling the relay {authority}: {e}"))?;
+                    .map_err(|e| dial_failed(&authority, &e))?;
                 if url.https {
                     let config = crate::trust::context()
                         .client_config_with(&[], &[b"http/1.1"])
@@ -334,6 +334,37 @@ impl Registrar {
             }
         }
     }
+}
+
+/// The line of a failed dial of the relay (GitHub #722): each cause one
+/// time, and the next step of its hop.
+fn dial_failed(authority: &str, e: &anyhow::Error) -> String {
+    let step = match crate::hop::of(e) {
+        Some(hop) => hop.hint(),
+        None => "check the host and the port of --relay, and that the relay listens there; a host that reaches out only through a proxy needs --proxy",
+    };
+    format!(
+        "dialling the relay {authority}: {}; {step}",
+        crate::exit::text(e)
+    )
+}
+
+/// The line of a relay that answered with an error status (GitHub #723):
+/// the status, and a short text body on one line; an HTML page or a long
+/// body is left out (it is not the answer of a relay of podnet).
+fn refused_by_relay(status: u16, head: &str, body: &str) -> String {
+    let chunked = head
+        .lines()
+        .any(|l| l.to_ascii_lowercase().replace(' ', "") == "transfer-encoding:chunked");
+    let text = body.trim();
+    let html = text.starts_with('<') || chunked && text.contains('<');
+    let shown = match text.lines().next() {
+        Some(line) if !html && !chunked && !line.is_empty() && line.len() <= 200 => {
+            format!(": {}", line.trim())
+        }
+        _ => String::new(),
+    };
+    format!("the relay answered HTTP {status}{shown}; this URL may not be a relay of podnet: check --relay")
 }
 
 /// Send one request on `stream` and parse the reply.
@@ -372,7 +403,7 @@ fn parse_reply(reply: &[u8]) -> Result<Value, String> {
         .and_then(|code| code.parse::<u16>().ok())
         .ok_or_else(|| format!("the relay answered no status: {head:?}"))?;
     if !(200..300).contains(&status) {
-        return Err(format!("the relay answered {status}: {body}"));
+        return Err(refused_by_relay(status, &head, &body));
     }
     if body.trim().is_empty() {
         return Ok(serde_json::json!({"status": status}));
@@ -496,6 +527,38 @@ mod tests {
 
     fn config() -> NodeConfig {
         NodeConfig::generated("node-a", "http://relay.example:8080")
+    }
+
+    /// GitHub #722 and #723: a relay that cannot be reached gives each cause
+    /// and a next step; a URL that is not a relay gives its status and one
+    /// line, not the body of an HTML page with its chunk sizes.
+    #[tokio::test]
+    async fn a_failed_enrolment_gives_one_line_with_the_cause_and_a_step() {
+        crate::test_host::need_loopback!();
+        let (_held, refused) = pod_testkit::refused::refused();
+        let registrar = Registrar::Http {
+            timeout: std::time::Duration::from_secs(5),
+        };
+        let relay = format!("http://{refused}");
+        let err = registrar
+            .register("node-a", "key", &relay)
+            .await
+            .unwrap_err();
+        assert!(err.contains("refused"), "the cause: {err}");
+        assert!(
+            err.contains("; check") || err.contains("; give"),
+            "a step: {err}"
+        );
+        let page = "HTTP/1.1 405 Method Not Allowed\r\nTransfer-Encoding: chunked\r\n\r\n22e\r\n<!doctype html><html><body>Example</body></html>\r\n0\r\n\r\n";
+        let plain = "HTTP/1.1 403 Forbidden\r\nContent-Length: 12\r\n\r\nnode refused";
+        for (reply, has, lacks) in [
+            (page, "HTTP 405;", "<"),
+            (plain, "HTTP 403: node refused;", "\n"),
+        ] {
+            let err = parse_reply(reply.as_bytes()).unwrap_err();
+            assert!(err.contains(has) && err.contains("check --relay"), "{err}");
+            assert!(!err.contains(lacks) && !err.contains("22e"), "{err}");
+        }
     }
 
     #[test]

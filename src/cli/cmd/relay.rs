@@ -142,13 +142,13 @@ pub(crate) async fn relay(args: RelayArgs) -> Result<()> {
             if json {
                 println!(
                     "{}",
-                    serde_json::json!({
+                    podnet::status::stamped(serde_json::json!({
                         "name": pair.name,
                         "connect_token": pair.connect_token(),
                         "expires": pair.expires,
                         "relay": pair.relay,
                         "file": path,
-                    })
+                    }))
                 );
             } else {
                 println!("name        {}", pair.name);

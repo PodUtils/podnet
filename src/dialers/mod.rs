@@ -39,10 +39,7 @@ pub fn process() -> Arc<dyn Dial> {
 /// A failed dial of podnet as a [`Failure`]: the stage of its hop, else
 /// `stage`. The text keeps the chain of the error.
 fn failure(e: anyhow::Error, stage: Stage) -> Failure {
-    let class = match e.chain().find_map(|c| c.downcast_ref::<std::io::Error>()) {
-        Some(io) => Class::of_io(io.kind()),
-        None => Class::Unavailable,
-    };
+    let class = crate::egress::class_of(&e, Class::Unavailable);
     crate::egress::dial_failure(e, stage, class)
 }
 

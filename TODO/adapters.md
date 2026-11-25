@@ -605,9 +605,9 @@ connection, not the bandwidth.
 
 ## Premise
 
-- The door answers after the dial. `crates/podnet-netns/src/frontdoor.rs:121-138` dials with
-  `connect_upstream_async`, then replies with `socks5_reply` at `crates/podnet-netns/src/frontdoor.rs:138`.
-  The HTTP CONNECT arm does the same at `crates/podnet-netns/src/frontdoor.rs:165-175`.
+- The door answers after the dial. `crates/podnet-netns/src/frontdoor.rs:155-172` dials with
+  `connect_upstream_async`, then replies with `socks5_reply` at `crates/podnet-netns/src/frontdoor.rs:172`.
+  The HTTP CONNECT arm does the same at `crates/podnet-netns/src/frontdoor.rs:199-209`.
 - The upstream client waits for two replies in turn: `crates/podnet-netns/src/upstream.rs:342-357`
   (`socks5_handshake`: the greeting, then `read_exact` of the method reply) and
   `crates/podnet-netns/src/upstream.rs:419-452` (`socks5_connect`: the request, then `read_exact` of the

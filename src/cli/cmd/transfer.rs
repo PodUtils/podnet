@@ -144,7 +144,7 @@ fn settings(way: &WayArgs) -> Result<Settings> {
 /// One event: a JSON line on stdout, or a line of text on stderr.
 fn say(json: bool, event: serde_json::Value, text: &str) {
     if json {
-        println!("{event}");
+        println!("{}", podnet::status::stamped(event));
         let _ = std::io::stdout().flush();
     } else {
         eprintln!("{text}");
@@ -246,7 +246,10 @@ pub(crate) async fn receive(args: ReceiveArgs) -> Result<()> {
     match transfer::receive(&settings, &code, &how, &mut ask).await? {
         Received::Text(text) => {
             if args.way.json {
-                println!("{}", json!({ "event": "received", "text": text }));
+                println!(
+                    "{}",
+                    podnet::status::stamped(json!({ "event": "received", "text": text }))
+                );
             } else if std::io::stdout().is_terminal() {
                 // A control sequence of the sender does not reach the
                 // terminal; a pipe gets the text as it came (T-347).

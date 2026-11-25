@@ -208,14 +208,12 @@ pub(super) async fn tls(target: &Target, timeout: Duration) -> TlsResult {
         ),
     };
     match result {
+        Ok(Ok(_)) if target.tls == Tls::Masque => masque_door(issuer),
         Ok(Ok(_)) => TlsResult {
             verdict: Verdict::Ok,
-            detail: match (&issuer, target.tls) {
-                (Some(i), Tls::Masque) => {
-                    format!("issuer {i} (pinned per device; not judged here)")
-                }
-                (Some(i), _) => format!("issuer {i}; the chain is valid"),
-                (None, _) => "the chain is valid".into(),
+            detail: match &issuer {
+                Some(i) => format!("issuer {i}; the chain is valid"),
+                None => "the chain is valid".into(),
             },
             issuer,
         },
@@ -252,5 +250,35 @@ pub(super) async fn tls(target: &Target, timeout: Duration) -> TlsResult {
                 }
             }
         }
+    }
+}
+
+/// The verdict of a MASQUE door by the issuer of its certificate (GitHub
+/// #718): WARP's door shows a key of Cloudflare, which a device pins; a
+/// certificate of Let's Encrypt is an outage of WARP's side (unknown: a later
+/// try passes); another issuer is a middlebox that terminates TLS, and MASQUE
+/// cannot pass through it.
+pub(super) fn masque_door(issuer: Option<String>) -> TlsResult {
+    use crate::hop::DoorCert;
+    let Some(i) = issuer.clone() else {
+        return TlsResult {
+            verdict: Verdict::Unknown,
+            detail: "the door showed no certificate".into(),
+            issuer,
+        };
+    };
+    let class = crate::hop::door_cert(&i);
+    let (verdict, detail) = match class {
+        DoorCert::Warp => (
+            Verdict::Ok,
+            format!("issuer {i} (WARP's door; the key is pinned per device)"),
+        ),
+        DoorCert::Outage => (Verdict::Unknown, format!("issuer {i}: {}", class.hint())),
+        DoorCert::Middlebox => (Verdict::Refused, format!("issuer {i}: {}", class.hint())),
+    };
+    TlsResult {
+        verdict,
+        detail,
+        issuer,
     }
 }

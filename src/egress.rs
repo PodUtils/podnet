@@ -378,6 +378,19 @@ pub(crate) fn dial_failure(e: anyhow::Error, stage: Stage, class: Class) -> Fail
     }
 }
 
+/// The class of a failed dial `e` (GitHub #719): the class of the
+/// [`DialError`] in its chain (a time limit, a name with no address), else
+/// the class of its error of I/O, else `default`.
+pub(crate) fn class_of(e: &anyhow::Error, default: Class) -> Class {
+    if let Some(dial) = e.chain().find_map(|c| c.downcast_ref::<DialError>()) {
+        return dial.stage_and_class().1;
+    }
+    match e.chain().find_map(|c| c.downcast_ref::<std::io::Error>()) {
+        Some(io) => Class::of_io(io.kind()),
+        None => default,
+    }
+}
+
 /// `e` with the proxy named once: pod-proxy writes `could not reach the
 /// proxy P: could not connect to P: ...` (GitHub #697).
 fn proxy_named_once(e: DialError) -> DialError {
@@ -551,7 +564,10 @@ impl Dial for Egress {
             let limit = deadline.saturating_duration_since(Instant::now());
             match dial(&target.host(), target.port(), self.via.as_ref(), limit).await {
                 Ok(io) => Ok(Connected::new(Box::new(io))),
-                Err(e) => Err(dial_failure(e, Stage::Connect, Class::Unavailable)),
+                Err(e) => {
+                    let class = class_of(&e, Class::Unavailable);
+                    Err(dial_failure(e, Stage::Connect, class))
+                }
             }
         })
     }

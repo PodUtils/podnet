@@ -207,6 +207,86 @@ fn instance(record: &crate::instances::Record) -> Value {
 mod tests {
     use super::*;
 
+    /// The `println!` statements of `text` (one source file, before its
+    /// test module) that print a JSON document with no stamp: a `json!(`
+    /// or a `{event}` with no `stamped` in the statement.
+    fn bare_json(text: &str) -> Vec<usize> {
+        let lines: Vec<&str> = text.lines().collect();
+        let end = (0..lines.len())
+            .find(|&i| {
+                lines[i].starts_with("#[cfg(test)]")
+                    && lines.get(i + 1).is_some_and(|l| l.starts_with("mod "))
+            })
+            .unwrap_or(lines.len());
+        (0..end)
+            .filter(|&i| lines[i].replace("eprintln!(", "").contains("println!("))
+            .filter(|&i| {
+                let stop = (i..end).find(|&j| lines[j].contains(");")).unwrap_or(i);
+                let statement = lines[i..=stop.min(i + 12)].join(" ");
+                (statement.contains("json!(") || statement.contains("{event}"))
+                    && !statement.contains("stamped")
+            })
+            .map(|i| i + 1)
+            .collect()
+    }
+
+    /// GitHub #716, the class: each JSON document that a command prints has
+    /// `schema` and `podnet` (`docs/cli.md`, JSON documents, rule 2). The
+    /// plant must be found.
+    #[test]
+    fn each_printed_json_document_is_stamped() {
+        let plant = "fn f() {\n    println!(\n        \"{}\",\n        json!({ \"event\": \"x\" })\n    );\n    println!(\"{}\", stamped(json!({})));\n}\n";
+        assert_eq!(bare_json(plant), vec![2]);
+        let mut files = Vec::new();
+        let mut dirs = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")];
+        while let Some(dir) = dirs.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap().flatten() {
+                let path = entry.path();
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if path.is_dir() {
+                    dirs.push(path);
+                } else if name.ends_with(".rs")
+                    && name != "tests.rs"
+                    && !name.ends_with("_tests.rs")
+                {
+                    files.push(path);
+                }
+            }
+        }
+        assert!(files.len() > 100, "the scan read {} files", files.len());
+        let faults: Vec<String> = files
+            .iter()
+            .flat_map(|f| {
+                let text = std::fs::read_to_string(f).unwrap();
+                bare_json(&text)
+                    .into_iter()
+                    .map(move |n| format!("{}:{n}", f.display()))
+            })
+            .collect();
+        assert!(
+            faults.is_empty(),
+            "a JSON document with no stamp (#716): {faults:#?}"
+        );
+        // GitHub #724: `schema` is a positive integer; a named form is `kind`.
+        let named: Vec<String> = files
+            .iter()
+            .flat_map(|f| {
+                let text = std::fs::read_to_string(f).unwrap();
+                let end = text.find("#[cfg(test)]\nmod ").unwrap_or(text.len());
+                text[..end]
+                    .lines()
+                    .enumerate()
+                    .filter(|(_, l)| l.contains("\"schema\": \""))
+                    .map(|(n, _)| format!("{}:{}", f.display(), n + 1))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        assert!(
+            named.is_empty(),
+            "a schema that is not an integer (#724): {named:#?}"
+        );
+    }
+
     /// T-140: `podnet status` names the data path of a WARP instance.
     #[test]
     fn status_names_the_data_path_of_an_instance() {

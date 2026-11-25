@@ -105,11 +105,11 @@ fn listen(args: ListenArgs) -> Result<()> {
             .collect();
         println!(
             "{}",
-            serde_json::json!({
+            podnet::status::stamped(serde_json::json!({
                 "peers": rows,
                 "records": heard.records,
                 "ignored": heard.ignored,
-            })
+            }))
         );
     } else {
         for peer in &peers {

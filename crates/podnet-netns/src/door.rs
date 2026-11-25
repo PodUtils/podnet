@@ -471,7 +471,12 @@ pub(crate) fn socks_code(e: &Failure) -> u8 {
         Some(K::ConnectionRefused) => 0x05,
         Some(K::NetworkUnreachable) => 0x03,
         Some(K::HostUnreachable | K::TimedOut) => 0x04,
-        _ if e.class == Class::Timeout => 0x04,
+        // GitHub #719: a name with no address (the stage of the resolver,
+        // or the class of a name that is not found) and a time limit.
+        _ if matches!(e.class, Class::Timeout | Class::NotFound) => 0x04,
+        // GitHub #721: a refusal with no error of I/O (a virtual stack).
+        _ if e.class == Class::Refused => 0x05,
+        _ if e.stage == pod_core::Stage::Dns => 0x04,
         _ => 0x01,
     }
 }

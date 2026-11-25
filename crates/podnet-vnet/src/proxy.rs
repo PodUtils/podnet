@@ -133,9 +133,10 @@ async fn wait_established(stream: &mut TcpStream) -> Result<(), Failure> {
     let peer = stream.peer_addr();
     match tokio::time::timeout(CONNECT_LIMIT, stream.established()).await {
         Ok(Ok(())) => Ok(()),
+        // GitHub #721: a refusal has its class (SOCKS5 0x05, HTTP 502).
         Ok(Err(err)) => Err(Failure::new(
             Stage::Connect,
-            Class::Unavailable,
+            Class::Refused,
             format!("{peer} refused the connection: {err}"),
         )),
         Err(_) => Err(Failure::new(
@@ -396,6 +397,20 @@ mod tests {
             "{answer}"
         );
         assert!(answer.contains("HTTP CONNECT only"), "{answer}");
+    }
+
+    /// GitHub #721: a closed virtual port gets the SOCKS5 reply 0x05
+    /// (connection refused, RFC 1928), at once.
+    #[tokio::test]
+    async fn a_closed_virtual_port_gets_the_socks5_reply_of_a_refusal() {
+        let net = Arc::new(NetStack::loopback());
+        let mut socks = vec![5, 1, 0, 5, 1, 0, 1, 10, 66, 0, 2];
+        socks.extend_from_slice(&81u16.to_be_bytes());
+        let (answer, took) = ask(net, &socks).await;
+        let bytes = answer.as_bytes();
+        assert_eq!(&bytes[..2], &[5, 0], "the method: {bytes:?}");
+        assert_eq!(bytes.get(3), Some(&0x05), "the reply: {bytes:?}");
+        assert!(took < std::time::Duration::from_secs(1), "{took:?}");
     }
 
     /// T-433 (GitHub #609): a target outside the subnet of the stack gets a

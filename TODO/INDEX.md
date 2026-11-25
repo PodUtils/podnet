@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**545 entries: 14 open, 14 partial, 25 blocked, 492 done.**
+**557 entries: 15 open, 14 partial, 26 blocked, 502 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 86 | 91 |
-| P2 | 5 | 8 | 11 | 243 | 267 |
+| P2 | 6 | 8 | 12 | 253 | 279 |
 | P3 | 8 | 4 | 12 | 162 | 186 |
-| **All** | 14 | 14 | 25 | 492 | 545 |
+| **All** | 15 | 14 | 26 | 502 | 557 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -591,3 +591,15 @@ M8 Overlays, M9 Later.
 | [T-544](fixes.md) | P3 | S | M5 | chore | done | Take the script `runs.py` of podcrates in place of podnet's `watch-runs.sh` and `runs.py` |
 | [T-545](fixes.md) | P2 | M | M5 | defect | done | temp files and sockets named by the pid alone: two processes in two PID namespaces meet on one path |
 | [T-546](fixes.md) | P2 | S | M5 | defect | blocked | warp proxy: a client with no WARP session gets a TCP reset, and the live step hides the line of pod_warp |
+| [T-547](fixes.md) | P2 | S | M5 | defect | open | pod doctor: the netns backend is ok on a host where its TCP connect is refused (bind-denied) |
+| [T-548](fixes.md) | P2 | S | M5 | defect | done | logs: the log of a detached instance does not hold the lines that the start shows before the ready |
+| [T-549](fixes.md) | P2 | S | M5 | defect | done | warp proxy: a MASQUE door behind a TLS middlebox gives the step --ca-file |
+| [T-550](fixes.md) | P2 | S | M5 | defect | blocked | pod-warp: a pin mismatch blames WARP for the certificate of a middlebox and says the cause two times |
+| [T-551](fixes.md) | P2 | S | M5 | defect | done | tunnel, send, receive, relay, offline: a JSON event with no schema and no podnet key |
+| [T-552](fixes.md) | P2 | S | M5 | defect | done | pod --serve: a listener that cannot bind gives the bare error of the system and exit 3 |
+| [T-553](fixes.md) | P2 | S | M5 | defect | done | doctor: the leg quic+warp is ok where a TLS middlebox answers at the MASQUE door |
+| [T-554](fixes.md) | P2 | S | M5 | defect | done | exit: a name with no address and a dial time limit get SOCKS5 0x01, not 0x04 |
+| [T-555](fixes.md) | P2 | S | M5 | defect | done | net proxy: a closed virtual port gets SOCKS5 0x01 |
+| [T-556](fixes.md) | P2 | S | M5 | defect | done | init enroll: a failed dial of the relay drops the cause and gives no next step |
+| [T-557](fixes.md) | P2 | S | M5 | defect | done | init enroll: a relay URL that is not a relay prints the raw chunked HTML body |
+| [T-558](fixes.md) | P2 | S | M5 | defect | done | host probe, stat --json: schema is a string and the podnet key is missing |

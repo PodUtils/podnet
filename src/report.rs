@@ -42,6 +42,11 @@ pub fn error_line(err: &anyhow::Error) -> String {
             "\npodnet: the quick-tunnel service did not answer with its API: a proxy or a gateway on the way can answer with its own page; check the proxy and its allow-list for the host of the service ({} or the host of --service-url); a named tunnel (--token) does not use this service",
             quick_service_host()
         ));
+    } else if let Some(issuer) = crate::hop::door_issuer(&format!("{err:#}")) {
+        // GitHub #715: the key of MASQUE is pinned; the issuer of the
+        // certificate that the door showed tells the cause.
+        let hint = crate::hop::door_cert(issuer).hint();
+        line.push_str(&format!("\npodnet: the MASQUE door failed; {hint}"));
     } else if let Some(hop) = crate::hop::of(err) {
         line.push_str(&format!("\npodnet: the {hop} hop failed; {}", hop.hint()));
     }
@@ -94,6 +99,35 @@ mod tests {
             let line = error_line(&err);
             assert!(line.contains(has), "{class:?}: {line}");
             assert!(!line.contains(lacks), "{class:?}: {line}");
+        }
+    }
+
+    /// GitHub #715: a MASQUE door that showed a certificate of a middlebox
+    /// gives no `--ca-file` step (the key is pinned): the issuer names the
+    /// class and its step.
+    #[test]
+    fn a_masque_door_failure_names_the_class_of_its_certificate() {
+        let cases = [
+            (
+                "O=Anthropic, CN=Egress Gateway SDS Issuing CA (production)",
+                "middlebox",
+            ),
+            ("C=US, O=Let's Encrypt, CN=YE1", "try again later"),
+            (
+                "C=US, O=Cloudflare, Inc., CN=2024-02-27 Self-Signed Root",
+                "warp register",
+            ),
+        ];
+        for (issuer, has) in cases {
+            let text = format!("TLS handshake with the MASQUE front door 162.159.198.2:443: unexpected error: MASQUE peer key does not match the pinned key; the door showed a certificate of {issuer}");
+            let failure =
+                pod_core::Failure::new(pod_core::Stage::Tls, pod_core::Class::Unavailable, text);
+            let line = error_line(&anyhow::Error::new(failure));
+            assert!(line.contains(has), "{issuer}: {line}");
+            assert!(
+                !line.contains("give its root with --ca-file"),
+                "{issuer}: {line}"
+            );
         }
     }
 

@@ -86,15 +86,49 @@ pub(crate) async fn bind_front_door(
     use crate::listen::ProxyListen;
     Ok(match listen {
         ProxyListen::Unix(path) => (
-            FrontListener::Unix(crate::listen::bind_claimed(path)?),
+            FrontListener::Unix(
+                crate::listen::bind_claimed(path).map_err(|e| bind_refused(listen, e))?,
+            ),
             listen.clone(),
         ),
         ProxyListen::Tcp(addr) => {
-            let listener = tokio::net::TcpListener::bind(addr).await?;
+            let listener = tokio::net::TcpListener::bind(addr)
+                .await
+                .map_err(|e| bind_refused(listen, e))?;
             let actual = listener.local_addr()?;
             (FrontListener::Tcp(listener), ProxyListen::Tcp(actual))
         }
     })
+}
+
+/// A listener of `--serve` that cannot bind (GitHub #717): exit 69 (as
+/// each command with a listener, `docs/cli.md`), one line with the address
+/// one time and the next step.
+#[derive(Debug)]
+pub struct BindRefused(pub String);
+
+impl std::fmt::Display for BindRefused {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for BindRefused {}
+
+/// The error of a refused bind of `listen`: a [`BindRefused`] with the next
+/// step for the kinds of a refused bind, else the error with the address.
+fn bind_refused(listen: &crate::listen::ProxyListen, e: std::io::Error) -> anyhow::Error {
+    use crate::listen::ProxyListen::{Tcp, Unix};
+    use std::io::ErrorKind::{AddrInUse, AddrNotAvailable, NotFound, PermissionDenied};
+    let step = match (listen, e.kind()) {
+        (_, AddrInUse) => "another process has this address; give another port (port 0 gives a free one), or a unix socket (unix:PATH)",
+        (Tcp(_), PermissionDenied) => "this host refuses the TCP bind; give a unix socket (unix:PATH)",
+        (Unix(_), PermissionDenied) => "the directory of the socket is not writable; give a path in a directory that you can write",
+        (Unix(_), NotFound) => "the directory of the socket does not exist; create it, or give a path in a directory that exists",
+        (_, AddrNotAvailable) => "no interface of this host has this address; give 127.0.0.1, 0.0.0.0 or an address of this host",
+        _ => return anyhow::Error::new(e).context(format!("binding {listen}")),
+    };
+    anyhow::Error::new(BindRefused(format!("binding {listen}: {e}; {step}")))
 }
 
 /// The way out of the pod door: the rules choose a chain (or a refusal),

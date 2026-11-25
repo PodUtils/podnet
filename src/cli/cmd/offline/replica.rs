@@ -95,11 +95,11 @@ fn merge(args: MergeArgs) -> Result<()> {
             .collect();
         println!(
             "{}",
-            serde_json::json!({
+            podnet::status::stamped(serde_json::json!({
                 "records": lines.len(),
                 "state": values,
                 "conflicts": rows,
-            })
+            }))
         );
     } else {
         println!("records {}", lines.len());

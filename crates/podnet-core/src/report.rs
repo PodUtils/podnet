@@ -50,7 +50,7 @@ pub fn hide(value: &str) {
 }
 
 /// Remove the ANSI escape sequences of `text`.
-fn strip_ansi(text: &str) -> String {
+pub fn strip_ansi(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
     while let Some(c) = chars.next() {

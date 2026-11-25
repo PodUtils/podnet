@@ -317,7 +317,9 @@ fn verified(show: Show, url: &str, dns: &str) {
     if show.json {
         println!(
             "{}",
-            serde_json::json!({"event": "verified", "url": url, "dns": dns})
+            podnet::status::stamped(
+                serde_json::json!({"event": "verified", "url": url, "dns": dns})
+            )
         );
     }
 }

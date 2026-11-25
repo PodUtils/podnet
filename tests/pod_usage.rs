@@ -129,3 +129,32 @@ fn podnet_pod_prints_its_own_program_name() {
     assert!(text.starts_with("podnet pod: "), "{text:?}");
     assert!(!text.contains("podnet-netns"), "{text:?}");
 }
+
+/// GitHub #717: a `--serve` listener that cannot bind exits 69 (as each
+/// command with a listener), with one line that names the address one time
+/// and gives the next step; not the bare error of the system and exit 3.
+#[test]
+fn a_front_door_that_cannot_bind_exits_69_with_the_address() {
+    test_host::need_loopback!();
+    let held = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let busy = format!("tcp://{}", held.local_addr().unwrap());
+    let missing = "unix:/nonexistent-podnet-dir/x.sock".to_string();
+    for (listen, step) in [
+        (&busy, "give another port"),
+        (&missing, "the directory of the socket does not exist"),
+    ] {
+        let out = pod_command()
+            .args(["--serve", listen, "-x", "socks5://127.0.0.1:9"])
+            .output()
+            .unwrap();
+        let text = String::from_utf8_lossy(&out.stderr);
+        assert_eq!(out.status.code(), Some(69), "{listen}: {text}");
+        assert_eq!(text.lines().count(), 1, "{listen}: one line: {text}");
+        assert_eq!(
+            text.matches(listen.as_str()).count(),
+            1,
+            "{listen}: the address one time: {text}"
+        );
+        assert!(text.contains(step), "{listen}: {text}");
+    }
+}

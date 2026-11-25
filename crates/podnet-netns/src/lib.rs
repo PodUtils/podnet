@@ -132,6 +132,9 @@ pub(crate) fn readable_copy(fd: RawFd) -> std::io::Result<tokio::io::unix::Async
 /// The exit code of a usage error (sysexits `EX_USAGE`).
 pub const USAGE: i32 = 64;
 
+/// The exit code of a listener that cannot bind (sysexits `EX_UNAVAILABLE`).
+pub const UNAVAILABLE: i32 = 69;
+
 /// Run the command line of `podnet pod` with `argv` (without the program name).
 /// Return the exit status.
 pub fn main_with_args(argv: &[String]) -> i32 {
@@ -194,6 +197,10 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
         ));
         match outcome {
             Ok(()) => return 0,
+            // GitHub #717: a refused bind is not a host with no backend.
+            Err(e) if e.is::<frontdoor::BindRefused>() => {
+                return report.fail(UNAVAILABLE, &format!("{e}"))
+            }
             Err(e) => return report.fail(EXIT_NO_BACKEND, &format!("{e:#}")),
         }
     }

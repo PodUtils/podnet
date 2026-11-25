@@ -127,7 +127,10 @@ impl Capture {
             })
             .collect();
         serde_json::to_string_pretty(&serde_json::json!({
-            "schema": "podnet.stat/1",
+            // GitHub #724: the stamp of docs/cli.md; the form is in `kind`.
+            "schema": 1,
+            "kind": "podnet.stat/1",
+            "podnet": podnet_core::build::version(),
             "peer": self.peer,
             "rate_bps": self.rate_bps,
             "size": self.size,

@@ -16286,7 +16286,8 @@ podnet net proxy --switch unix:/tmp/podnet-vnet.switch --address 10.66.0.3
 ```
 
 `net proxy` is the front door of [proxies.md](proxies.md) over the stack. The door
-answers a closed virtual port with 502 (SOCKS5 `0x04`), and an address that nothing owns with 504 after 5 s.
+answers a closed virtual port with 502 (SOCKS5 `0x05`, connection refused), and an address that nothing owns with 504
+(SOCKS5 `0x04`) after 5 s.
 
 A unix switch takes the same user only. A TCP switch needs a shared token:
 set `PODNET_SWITCH_TOKEN`, or give `--switch-token-file PATH`, to the switch

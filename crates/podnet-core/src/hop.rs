@@ -369,8 +369,87 @@ pub fn refusal_of(err: &anyhow::Error) -> Option<&EdgeRefusal> {
     err.chain().find_map(|e| e.downcast_ref::<EdgeRefusal>())
 }
 
+/// The class of the certificate that a MASQUE front door of WARP showed
+/// (GitHub #715, #718). WARP's door shows a key of a Cloudflare root
+/// (`O=Cloudflare, Inc., CN=... Self-Signed Root`), which the device pins.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DoorCert {
+    /// A certificate of Cloudflare: the door of WARP itself.
+    Warp,
+    /// A certificate of Let's Encrypt: WARP's side shows one at times, in
+    /// place of its key (live 45518282050); a later try passes.
+    Outage,
+    /// A certificate of another issuer: a middlebox on the way terminates
+    /// TLS. The key is pinned, so no root (`--ca-file`) helps.
+    Middlebox,
+}
+
+/// The class of the door certificate of the issuer `issuer` (a name as
+/// `C=US, O=Cloudflare, Inc., CN=...`).
+pub fn door_cert(issuer: &str) -> DoorCert {
+    let lower = issuer.to_ascii_lowercase();
+    if lower.contains("o=cloudflare") {
+        DoorCert::Warp
+    } else if lower.contains("o=let's encrypt") {
+        DoorCert::Outage
+    } else {
+        DoorCert::Middlebox
+    }
+}
+
+impl DoorCert {
+    /// What to do, for a MASQUE handshake that failed on this certificate.
+    pub fn hint(self) -> &'static str {
+        match self {
+            DoorCert::Warp => "the door shows a key of Cloudflare that the device record does not pin: register the device again (podnet warp register)",
+            DoorCert::Outage => "WARP's door shows a certificate of Let's Encrypt at times in place of its key; try again later, or use another egress",
+            DoorCert::Middlebox => "a middlebox on the way terminates TLS (the issuer is not Cloudflare); the MASQUE key is pinned, so no root (--ca-file) helps: go around the middlebox (the WebSocket relay, a proxy that does not inspect TLS, or another egress)",
+        }
+    }
+}
+
+/// The issuer that the text of a MASQUE failure names: the words after
+/// `the door showed a certificate of`, to the next `;`, `)` or `.` at an end.
+pub fn door_issuer(text: &str) -> Option<&str> {
+    const MARK: &str = "the door showed a certificate of ";
+    let at = text.find(MARK)? + MARK.len();
+    let rest = &text[at..];
+    let end = rest
+        .find(['\n', ';', ')'])
+        .or_else(|| rest.find(". "))
+        .unwrap_or(rest.len());
+    let issuer = rest[..end].trim().trim_end_matches('.');
+    (!issuer.is_empty()).then_some(issuer)
+}
+
 #[cfg(test)]
 mod tests {
+    /// GitHub #715 and #718: the class of a door certificate follows its
+    /// issuer, and the issuer comes from the text of the failure.
+    #[test]
+    fn the_door_certificate_has_its_class_and_its_hint() {
+        use super::{door_cert, door_issuer, DoorCert};
+        let cases = [
+            (
+                "C=US, O=Cloudflare, Inc., CN=2024-02-27 Self-Signed Root",
+                DoorCert::Warp,
+            ),
+            ("C=US, O=Let's Encrypt, CN=YE1", DoorCert::Outage),
+            (
+                "O=Anthropic, CN=Egress Gateway SDS Issuing CA (production)",
+                DoorCert::Middlebox,
+            ),
+            ("CN=Corp Proxy Root", DoorCert::Middlebox),
+        ];
+        for (issuer, class) in cases {
+            assert_eq!(door_cert(issuer), class, "{issuer}");
+            let text = format!("TLS handshake with the MASQUE front door 1.2.3.4:443: unexpected error: MASQUE peer key does not match the pinned key; the door showed a certificate of {issuer}; the device record was read again");
+            assert_eq!(door_issuer(&text).map(door_cert), Some(class), "{text}");
+        }
+        assert!(!DoorCert::Middlebox.hint().contains("give its root"));
+        assert_eq!(door_issuer("a TLS failure with no door"), None);
+    }
+
     use super::*;
     use anyhow::Context;
 

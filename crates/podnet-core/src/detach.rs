@@ -307,9 +307,9 @@ fn begin_log(path: &Path, name: &str) {
         pod_core::clock::http_date(crate::trust::unix_secs(std::time::SystemTime::now())),
         std::process::id()
     );
-    // Issue 182: a restarted child has the log as its stderr (from its
-    // supervisor); a tee to the same file wrote each line two times.
-    if !same_file(&file, 2) {
+    // Issue 182: a restarted child has the log as its stderr (its
+    // supervisor's); a tee to it wrote each line two times. #714: copy.
+    if !same_file(&file, 2) && !(is_child() && copy::start(&file)) {
         crate::report::set_log_tee(file);
     }
 }
@@ -400,8 +400,8 @@ pub fn ready(doc: serde_json::Value) {
     let _ = instances::write(&state.dir, &state.record);
     let line = format!("{READY}{doc}\n");
     let _ = std::io::stdout().flush();
-    // From the leave on, stderr is the log itself.
-    crate::report::clear_log_tee();
+    crate::report::clear_log_tee(); // from the leave on, stderr is the log
+    copy::stop();
     if !unix::leave(log.as_ref(), line.as_bytes()) {
         std::process::exit(TEMPFAIL);
     }
@@ -789,6 +789,7 @@ pub fn previous_of(path: &Path) -> PathBuf {
     path.with_file_name(name)
 }
 
+mod copy;
 pub mod foreground;
 /// The supervisor of a detached child (issue 73). It has no async runtime.
 mod supervise;
