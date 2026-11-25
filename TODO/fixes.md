@@ -15525,8 +15525,8 @@ A spec with no scheme that is not `HOST:PORT` (a port of 0 to 65535) and not `un
 
 ## Prove
 
-`cargo test --test commands forward_carries_udp_over_the_way_of_the_process`
+`cargo test --test forward_udp forward_carries_udp_over_the_way_of_the_process`
 
 ## Done
 
-2026-11-25, the commit of this entry. `tests/commands.rs`, `forward_carries_udp_over_the_way_of_the_process` (a UDP forward and the DNS door, both over `--no-proxy`, to a UDP echo): it failed on the code before the fix (`no answer`), and passes now.
+2026-11-25, the commit of this entry. `tests/forward_udp.rs`, `forward_carries_udp_over_the_way_of_the_process` (a UDP forward and the DNS door, both over `--no-proxy`, to a UDP echo): it failed on the code before the fix (`no answer`), and passes now.

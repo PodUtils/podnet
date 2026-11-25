@@ -580,7 +580,7 @@ impl Dial for Egress {
     }
 
     /// GitHub #746: the way of the process carries UDP when it has no proxy
-    /// (the socket of the system, as [`crate::dialers::Direct`]); a proxy
+    /// (an IPv4 socket of the system, as the dialer `Direct`); a proxy
     /// carries no UDP, and the refusal names it.
     fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn pod_core::Datagrams>, Failure>> {
         let proxy = match &self.via {
@@ -591,7 +591,14 @@ impl Dial for Egress {
             },
         };
         match proxy {
-            None => crate::dialers::Direct.datagrams(),
+            None => Box::pin(async move {
+                let any = std::net::SocketAddr::from((std::net::Ipv4Addr::UNSPECIFIED, 0));
+                let socket = crate::network::SystemDatagrams::bind(any)
+                    .await
+                    .map_err(|e| Failure::io(Stage::Connect, e))?;
+                Ok(Arc::new(CheckedDatagrams::new(Arc::new(socket)))
+                    as Arc<dyn pod_core::Datagrams>)
+            }),
             Some(proxy) => Box::pin(async move {
                 Err(Failure::new(
                     Stage::Connect,
