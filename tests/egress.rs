@@ -426,3 +426,19 @@ fn a_proxy_url_with_no_password_is_shown() {
     assert!(!text.contains("secretpw"), "{text}");
     assert!(text.contains("127.0.0.1:9"), "{text}");
 }
+
+/// GitHub #751: a proxy that fails ends `update --check` after one try. The
+/// feed goes through the same proxy, so it is not tried; the line names the
+/// cause once and gives the step of the proxy hop.
+#[test]
+fn a_failed_proxy_ends_update_check_after_one_try() {
+    test_host::need_loopback!();
+    let (code, text) = podnet(
+        &["--proxy", "http://127.0.0.1:9", "update", "--check"],
+        &[],
+    );
+    assert_eq!(code, Some(69), "{text}");
+    assert!(!text.contains("releases.atom"), "{text}");
+    assert_eq!(text.matches("Connection refused").count(), 1, "{text}");
+    assert!(text.contains("podnet: the proxy hop failed; "), "{text}");
+}

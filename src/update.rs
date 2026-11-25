@@ -148,6 +148,13 @@ async fn newest(current: &Version) -> Result<Version> {
         Ok(tags) => return version::newest(&tags, pre).context("no release found"),
         Err(err) => err,
     };
+    // GitHub #751: the feed goes through the same proxy. A proxy that does
+    // not answer (or refuses) fails the feed too, after its time limit
+    // again: the error of the API is the error of the command, with the
+    // step of the proxy hop.
+    if crate::hop::of(&api) == Some(crate::hop::Hop::Proxy) {
+        return Err(api);
+    }
     tracing::info!(error = %format!("{api:#}"), "the GitHub API did not answer; reading releases.atom");
     let feed = get(
         &format!("https://github.com/{REPOSITORY}/releases.atom"),
