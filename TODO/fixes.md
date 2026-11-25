@@ -16256,3 +16256,39 @@ dialer_tailnet_gives_the_refusal_of_the_daemon` reads `Failure::chain()` (the te
 before) and the test of the tailnet above (fixed here); both pass now. `docs/hosted-sessions.md` has the role table and
 the brief of a worker of podcrates `v0.85.0` (COORD-157); `docs/decisions.md` has the ruling.
 
+
+# T-589: live: the quick-tunnel service refuses the runner for an hour (HTTP 429, error 1015), and each later step fails
+
+**Source:** `live` 45616517699 (`5809e66`), 45632652103 (`66b29ce`) and 45589043028's neighbours, 2026-11-25: the steps
+"Quick tunnel through the WebSocket relay" and "Quick tunnel with UDP and TCP 7844 dropped".
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A run of `live` provisions about twelve quick tunnels. Three runs of one day met the quota of the quick-tunnel
+service: `quick-tunnel service returned HTTP 429 (Retry-After: 3600 s): error code: 1015`. podnet exits 75 as
+documented; the step fails, and each later step is skipped. The run is red for a quota of another party.
+
+## Premise
+
+- Read: the job logs of the three runs. The 429 comes after 10 to 13 provisions in about 15 minutes.
+- Not measured: the quota of the service for one address.
+
+## Approach
+
+1. `scripts/live-run.sh`: an exit 75 with `HTTP 429` of the quick-tunnel service writes `LIVE_QUICK_REFUSED=1` to
+   `$GITHUB_ENV` and a `::warning::`, and exits 0 with a file `NAME.refused`; the step ends after its call when the
+   file exists.
+2. Each later step that provisions a quick tunnel has `if: env.LIVE_QUICK_REFUSED != '1'`.
+3. The `report` job of `live` does not count a run whose only fault is the quota.
+
+## Prove
+
+```sh
+python3 -I scripts/check-workflows.py
+# the next live run with a 429: a warning, and the run is green
+```
