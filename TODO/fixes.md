@@ -14624,7 +14624,7 @@ podcrates).
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -14656,6 +14656,13 @@ cargo test -p podnet --test link_p2p_namespaces
 podnet doctor --json
 ```
 
+## Correction
+
+2026-11-25: step 3 needs the class of the peer too ("both ends dependent mappings"). `link p2p` has no channel to the
+peer before its dial, so the class of this host alone does not decide it: step 3 is T-586. Step 4 uses the simulator
+of `pod-natprobe` (each class of RFC 5780 in virtual time): the namespaces of `tests/link_p2p_namespaces.rs` have no
+STUN server.
+
 ## Done
 
 2026-11-25 (steps 1 and 2), the commit of this entry. podnet takes `pod-natprobe` by the tag `v0.84.0`.
@@ -14665,8 +14672,11 @@ that the egress policy permits, resolved by the resolver of podnet. Where the UD
 STUN request goes out and the row is `unknown` with the reason; a probe that does not end in 4 s is `unknown`. The row
 does not change `ok`. `docs/doctor.md` names it. Test: `doctor::nat_check::tests::a_host_with_no_udp_gets_no_probe`
 (`cargo test -p podnet --lib doctor::`: 33 passed). On this host (UDP refused): `nat unknown: UDP does not leave this
-host (...): no NAT probe`. Steps 3 (`link p2p` takes the relay first for two dependent mappings) and 4 (the test over
-the stand-in NATs of `tests/link_p2p_namespaces.rs`) are open.
+host (...): no NAT probe`. Step 4, the same day: `doctor::nat_check::tests::each_class_of_nat_gives_its_row` drives the
+simulator of `pod-natprobe` (a dev-dependency with the feature `sim`) for a table of five rows: an endpoint-independent
+and an address-and-port-dependent NAT (`ok`, the mapping named), a blocked UDP path in the 600 ms of `Fast` (`unknown`),
+and with `Standard` (`refused`, `udp-blocked`; `unknown` with no corroboration). The simulator takes the place of the
+stand-in NATs of `tests/link_p2p_namespaces.rs` (Correction). Step 3 is T-586.
 # T-544: Take the script `runs.py` of podcrates in place of podnet's `watch-runs.sh` and `runs.py`
 
 **Source:** PodUtils/podcrates#259 (COORD-154): "Take the script `runs.py` of podcrates in place of `watch-runs.sh` and its own
@@ -16104,3 +16114,37 @@ gh run list -R PodUtils/podnet --workflow release-proofs.yml --limit 1
 ```
 
 The job `image` of the release run passes, and the notes of the release have the section "The image, by digest".
+
+# T-586: link p2p: take the relay first when the NAT classes of both ends rule out the direct path
+
+**Source:** T-543 step 3 (PodUtils/podcrates#259, COORD-154: "Take `pod-natprobe`").
+**Category:** feature
+**Milestone:** M8
+**Priority:** P3
+**Effort:** M
+**Status:** blocked
+
+## Problem
+
+`podnet link p2p` tries the direct path first and the TURN relay after a refusal or a time limit. Where both ends are
+behind a dependent mapping (RFC 4787), the direct path cannot work, and the try costs its time limit.
+
+## Premise
+
+- Read: `src/cli/cmd/link/p2p.rs` and `src/link_p2p.rs`: the dial has no channel to the peer before the direct try.
+- Read: `pod_natprobe::Report::compact_profile` (20 bytes for a peer) and `strategy::predict` (the strategy of two
+  peers from their classes).
+
+## Approach
+
+1. A channel that carries the compact profile of each end before the dial (the pairing of `link`, or the relay).
+2. `strategy::predict` over both profiles: the relay first where it says that the direct path cannot work.
+3. A test over the simulator of `pod-natprobe` for each pair of classes.
+
+## Prove
+
+`cargo test -p podnet --test link_p2p`
+
+## Blocker
+
+A channel between the two ends before the dial: `link p2p` has none (step 1).

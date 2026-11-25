@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**584 entries: 13 open, 15 partial, 27 blocked, 529 done.**
+**585 entries: 13 open, 14 partial, 28 blocked, 530 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 3 | 2 | 89 | 95 |
-| P2 | 4 | 8 | 13 | 276 | 301 |
-| P3 | 8 | 4 | 12 | 163 | 187 |
-| **All** | 13 | 15 | 27 | 529 | 584 |
+| P2 | 4 | 7 | 13 | 277 | 301 |
+| P3 | 8 | 4 | 13 | 163 | 188 |
+| **All** | 13 | 14 | 28 | 530 | 585 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -587,7 +587,7 @@ M8 Overlays, M9 Later.
 | [T-540](fixes.md) | P3 | S | M5 | feature | done | release.yml writes `release-index.json` before `SHA256SUMS` |
 | [T-541](fixes.md) | P3 | S | M5 | defect | done | tests of a tool or of IPv6 of the host fail on a host without it, in place of a skip |
 | [T-542](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.83.0 |
-| [T-543](fixes.md) | P2 | M | M5 | feature | partial | Take `pod-natprobe`: the class of the NAT of the host for `link p2p` and `doctor` |
+| [T-543](fixes.md) | P2 | M | M5 | feature | done | Take `pod-natprobe`: the class of the NAT of the host for `link p2p` and `doctor` |
 | [T-544](fixes.md) | P3 | S | M5 | chore | done | Take the script `runs.py` of podcrates in place of podnet's `watch-runs.sh` and `runs.py` |
 | [T-545](fixes.md) | P2 | M | M5 | defect | done | temp files and sockets named by the pid alone: two processes in two PID namespaces meet on one path |
 | [T-546](fixes.md) | P2 | S | M5 | defect | done | warp proxy: a client with no WARP session gets a TCP reset, and the live step hides the line of pod_warp |
@@ -630,3 +630,4 @@ M8 Overlays, M9 Later.
 | [T-583](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.84.0 |
 | [T-584](fixes.md) | P3 | S | M5 | defect | done | send --json: the sent event of a text gives "bytes": 0 |
 | [T-585](fixes.md) | P1 | S | M5 | release | partial | Publish `v0.4.0-beta.19`: the fixes of the QA pass of 2026-11-25 and podcrates `v0.84.0` |
+| [T-586](fixes.md) | P3 | M | M8 | feature | blocked | link p2p: take the relay first when the NAT classes of both ends rule out the direct path |

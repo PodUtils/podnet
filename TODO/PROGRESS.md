@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 584 entries: 13 open, 15 partial, 27 blocked, 529 done.
+`TODO/INDEX.md` holds 585 entries: 13 open, 14 partial, 28 blocked, 530 done.
 
 ## State
 
@@ -60,7 +60,6 @@ not wait for a larger one.
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** the entries of the triage of GitHub #347 to #412 are done.
    The entries that stay (P1 first, then P2, then P3):
    - The findings of the QA pass of `v0.4.0-beta.19` (#713 to #751): each is done but T-575, T-579 and T-580 (blocked: COORD-123 #753, COORD-125 #755, COORD-124 #754 to podcrates). Next: the release `v0.4.0-beta.19`.
-   - The take of COORD-154: T-543 (`pod-natprobe`, partial: the row `nat` of `doctor` is done; `link p2p` and the namespace test are open).
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).

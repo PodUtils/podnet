@@ -353,6 +353,8 @@ c-abi = []
 full = ["tcp", "ws", "h2", "quic", "udp", "poll", "dns", "s3", "icmp", "ntp", "smtp", "imap", "ss", "trojan", "sidecar", "c-abi"]
 
 [dev-dependencies]
+# The NAT simulator of pod-natprobe for the row nat of doctor (T-543).
+pod-natprobe = { git = "https://github.com/PodUtils/podcrates", tag = "v0.84.0", version = "0.84.0", features = ["sim"] }
 # The responder of the tests of WireGuard (src/warp/wg/standin.rs).
 pod-wg = { git = "https://github.com/PodUtils/podcrates", tag = "v0.84.0", version = "0.84.0", features = ["standin"] }
 # The stand-in of the quick-tunnel service and of the edge

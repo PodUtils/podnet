@@ -148,4 +148,93 @@ mod tests {
         );
         assert_eq!(snake("UdpBlocked"), "udp-blocked");
     }
+
+    // T-543: the row of each class of NAT of the simulator of pod-natprobe:
+    // a mapping is named; a blocked UDP path that a check of the network
+    // corroborates is `refused` (the profile `Standard`; in the 600 ms of
+    // `Fast`, which the doctor runs, it stays `unknown`); with no
+    // corroboration it is `unknown`.
+    #[test]
+    fn each_class_of_nat_gives_its_row() {
+        use pod_natprobe::report::{FilteringBehavior as F, MappingBehavior as M};
+        use pod_natprobe::sim::{drive_sim, NatSpec, SimStunServer, SimWorld};
+        use pod_natprobe::wire::AddrPolicy;
+        use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+        let wan = IpAddr::V4(Ipv4Addr::new(198, 51, 100, 10));
+        let pp = SocketAddr::from(([203, 0, 113, 1], 3478));
+        let aa = SocketAddr::from(([203, 0, 113, 2], 3479));
+        // (mapping, filtering, UDP blocked, corroborated, verdict, mapping word)
+        let (fast, standard) = (Profile::Fast, Profile::Standard);
+        let (eim, apdm) = (M::EndpointIndependent, M::AddressAndPortDependent);
+        let (eif, apdf) = (F::EndpointIndependent, F::AddressAndPortDependent);
+        let (ok, refused, unknown) = (Verdict::Ok, Verdict::Refused, Verdict::Unknown);
+        // (profile, mapping, filtering, UDP blocked, corroborated, verdict,
+        // mapping word)
+        let table = [
+            (
+                fast,
+                eim,
+                eif,
+                false,
+                true,
+                ok,
+                Some("endpoint-independent"),
+            ),
+            (
+                fast,
+                apdm,
+                apdf,
+                false,
+                true,
+                ok,
+                Some("address-and-port-dependent"),
+            ),
+            (fast, eim, eif, true, true, unknown, None),
+            (standard, eim, eif, true, true, refused, None),
+            (standard, eim, eif, true, false, unknown, None),
+        ];
+        for (profile, mapping, filtering, blocked, online, verdict, word) in table {
+            let mut spec = NatSpec::home_eim_apdf(wan);
+            spec.mapping = mapping;
+            spec.filtering = filtering;
+            spec.udp_blocked = blocked;
+            // A blocked path is decided over two servers.
+            let b = SocketAddr::from(([203, 0, 113, 3], 19302));
+            let (servers, endpoints) = if blocked {
+                (
+                    vec![
+                        SimStunServer::plain("s1", pp),
+                        SimStunServer::plain("s2", b),
+                    ],
+                    vec![ServerEndpoint::new("s1", pp), ServerEndpoint::new("s2", b)],
+                )
+            } else {
+                (
+                    vec![SimStunServer::rfc5780("s1", pp, aa)],
+                    vec![ServerEndpoint::rfc5780("s1", pp)],
+                )
+            };
+            let mut world = SimWorld::new(Ipv4Addr::new(192, 168, 1, 10), vec![spec], servers, 7);
+            world.online_ok = online;
+            let mut settings =
+                Settings::for_profile(profile, endpoints).with_addr_policy(AddrPolicy::Lab);
+            settings.run_nat64 = false;
+            settings.run_portmap = false;
+            settings.run_ipv6 = false;
+            let (report, _) = drive_sim(settings, &mut world, 7).expect("the simulator runs");
+            let row = of_report(&report);
+            let case =
+                format!("{profile:?} {mapping:?} {filtering:?} blocked={blocked} online={online}");
+            assert_eq!(row.verdict, verdict, "{case}: {}", row.detail);
+            assert_eq!(row.mapping.as_deref(), word, "{case}: {}", row.detail);
+            assert!(
+                row.detail.starts_with("the NAT probe"),
+                "{case}: {}",
+                row.detail
+            );
+            if verdict == Verdict::Refused {
+                assert_eq!(row.connectivity.as_deref(), Some("udp-blocked"), "{case}");
+            }
+        }
+    }
 }
