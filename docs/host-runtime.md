@@ -129,6 +129,11 @@ address family, the port and the policy of the deployment. A refusal carries
 its reason, so a policy decision is not a timeout. The policy lives in
 `src/policy.rs`; a socket asks it and does not decide for itself.
 
+The error line of a refusal names the rule (or the default) in its first
+line. The second line names the variable and the file of the policy, and
+the command that shows its rules (`podnet rules check FILE`). It does not
+give the step of a failed connect: podnet made no connection.
+
 `PODNET_POLICY` names a policy file. `PODNET_NODE_CONFIG` names a node
 configuration whose `egress` object is the policy. The process installs the
 policy before the first dial. A file that cannot be read or parsed exits 78.

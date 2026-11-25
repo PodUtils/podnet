@@ -251,7 +251,7 @@ pub async fn dial(
     if let Err(refused) = crate::policy::permit(host, port) {
         return Err(crate::exit::fault(
             crate::exit::Fault::Unavailable,
-            anyhow::anyhow!(refused.to_string()),
+            anyhow::Error::new(refused),
         ));
     }
     match via {
@@ -275,7 +275,7 @@ pub async fn dial_direct(host: &str, port: u16, timeout: Duration) -> Result<Tcp
     if let Err(refused) = crate::policy::permit(host, port) {
         return Err(crate::exit::fault(
             crate::exit::Fault::Unavailable,
-            anyhow::anyhow!(refused.to_string()),
+            anyhow::Error::new(refused),
         ));
     }
     dialer(pod_proxy::ProxyChoice::Direct)
@@ -294,10 +294,7 @@ pub async fn dial_direct(host: &str, port: u16, timeout: Duration) -> Result<Tcp
 pub async fn dial_addrs(addrs: &[SocketAddr], timeout: Duration) -> Result<(usize, TcpStream)> {
     for addr in addrs {
         crate::policy::permit(&addr.ip().to_string(), addr.port()).map_err(|refused| {
-            crate::exit::fault(
-                crate::exit::Fault::Unavailable,
-                anyhow::anyhow!(refused.to_string()),
-            )
+            crate::exit::fault(crate::exit::Fault::Unavailable, anyhow::Error::new(refused))
         })?;
     }
     pod_proxy::dial_addrs(addrs, timeout)

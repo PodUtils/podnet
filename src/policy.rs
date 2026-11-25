@@ -16,6 +16,13 @@ use std::net::IpAddr;
 
 use serde::Deserialize;
 
+mod said;
+pub use said::{refusal_in, Stop};
+
+/// The words that end the reason of each refusal of the policy. The error
+/// line reads them ([`refusal_in`]).
+const BEFORE: &str = "before any connect";
+
 /// What the policy does with a destination.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -368,7 +375,7 @@ impl Policy {
                     action: rule.action,
                     rule: Some(rule.name.clone()),
                     reason: Some(format!(
-                        "the rule {:?} {} the destination {}:{} ({}), before any connect",
+                        "the rule {:?} {} the destination {}:{} ({}), {BEFORE}",
                         rule.name,
                         rule.action.as_str(),
                         destination.host,
@@ -383,7 +390,7 @@ impl Policy {
             return Verdict::refuse(
                 self.default,
                 format!(
-                    "no rule matches {}:{} ({}), so the policy {} it before any connect (EGRESS-3)",
+                    "no rule matches {}:{} ({}), so the policy {} it {BEFORE} (EGRESS-3)",
                     destination.host,
                     destination.port,
                     destination.family_name(),
@@ -512,6 +519,7 @@ pub fn install_from_env() -> Result<(), String> {
     if let Some(path) = std::env::var_os(POLICY_VARIABLE) {
         let policy = Policy::load(std::path::Path::new(&path)).map_err(|e| format!("{e:#}"))?;
         install(policy);
+        let _ = SOURCE.set((POLICY_VARIABLE, path.into()));
         return Ok(());
     }
     if let Some(path) = std::env::var_os(NODE_VARIABLE) {
@@ -529,8 +537,18 @@ pub fn install_from_env() -> Result<(), String> {
         let policy =
             Policy::parse(&egress.to_string()).map_err(|e| format!("{}: {e}", path.display()))?;
         install(policy);
+        let _ = SOURCE.set((NODE_VARIABLE, path));
     }
     Ok(())
+}
+
+/// The variable and the file that gave the policy of this process.
+static SOURCE: std::sync::OnceLock<(&'static str, std::path::PathBuf)> = std::sync::OnceLock::new();
+
+/// The variable and the file that gave the installed policy, when
+/// [`install_from_env`] installed it.
+pub fn source() -> Option<(&'static str, &'static std::path::Path)> {
+    SOURCE.get().map(|(name, path)| (*name, path.as_path()))
 }
 
 static INSTALLED: std::sync::OnceLock<Policy> = std::sync::OnceLock::new();
@@ -552,10 +570,11 @@ pub fn installed() -> Option<&'static Policy> {
 pub fn permit_failure(host: &str, port: u16) -> Result<(), pod_core::Failure> {
     match permit(host, port) {
         Ok(_) => Ok(()),
-        Err(refused) => Err(pod_core::Failure::new(
+        Err(refused) => Err(pod_core::Failure::caused(
             pod_core::Stage::Connect,
             pod_core::Class::Unavailable,
-            refused.reason,
+            refused.reason.clone(),
+            refused,
         )),
     }
 }
@@ -565,10 +584,7 @@ pub fn permit_failure(host: &str, port: u16) -> Result<(), pod_core::Failure> {
 /// dials through `anyhow::Result` uses this.
 pub fn permit_fault(host: &str, port: u16) -> anyhow::Result<()> {
     permit(host, port).map(|_| ()).map_err(|refused| {
-        crate::exit::fault(
-            crate::exit::Fault::Unavailable,
-            anyhow::anyhow!(refused.reason),
-        )
+        crate::exit::fault(crate::exit::Fault::Unavailable, anyhow::Error::new(refused))
     })
 }
 

@@ -425,3 +425,75 @@ fn the_e2e_near_end_refuses_before_a_connect() {
     no_connection(&_data);
     no_connection(&_control);
 }
+
+/// GitHub #727: a refusal of the policy gives the rule and the step of the
+/// policy file as the second line, in each command, not the step of a
+/// failed connect hop. The remote of `connect` is not said to be silent.
+#[test]
+fn a_refusal_gives_the_step_of_the_policy_in_each_command() {
+    test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let policy = dir.path().join("pol.json");
+    std::fs::write(
+        &policy,
+        r#"{"default":"direct","rules":[{"name":"no-invalid","action":"refuse","host":"*.invalid"}]}"#,
+    )
+    .unwrap();
+    let (free, port) = listener();
+    drop(free);
+    let local = format!("tcp://127.0.0.1:{port}");
+    let cases: [(&[&str], i32); 3] = [
+        (
+            &[
+                "bench",
+                "--duration",
+                "1",
+                "--no-proxy",
+                "http://refused.invalid/",
+            ],
+            podnet::exit::FAILURE,
+        ),
+        (
+            &[
+                "bench",
+                "--duration",
+                "1",
+                "--proxy",
+                "http://127.0.0.1:9",
+                "https://refused.invalid/",
+            ],
+            podnet::exit::FAILURE,
+        ),
+        (
+            &[
+                "connect",
+                "--no-proxy",
+                "wss://refused.invalid/__podnet/ws",
+                "-L",
+                &local,
+            ],
+            podnet::exit::UNAVAILABLE,
+        ),
+    ];
+    for (args, code) in cases {
+        let out = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args(args)
+            .env("PODNET_POLICY", &policy)
+            .env("PODNET_STATE_DIR", dir.path().join("state"))
+            .env_remove("RUST_LOG")
+            .output()
+            .unwrap();
+        let err = text(&out.stderr);
+        assert_eq!(out.status.code(), Some(code), "{args:?}: {err}");
+        let lines: Vec<&str> = err.lines().filter(|l| l.starts_with("podnet: ")).collect();
+        let hint = lines.last().copied().unwrap_or_default();
+        assert!(hint.contains("the rule \"no-invalid\""), "{args:?}: {err}");
+        assert!(
+            hint.contains(&format!("podnet rules check {}", policy.display())),
+            "{args:?}: {err}"
+        );
+        for wrong in ["hop failed", "--proxy", "does not answer"] {
+            assert!(!err.contains(wrong), "{args:?}: {wrong}: {err}");
+        }
+    }
+}

@@ -70,6 +70,11 @@ pub async fn dial(
 /// of the proxy or of a name is on the way, so the line does not say that
 /// the remote does not answer (GitHub #697).
 pub fn remote_lead(remote: &str, err: &anyhow::Error) -> String {
+    // GitHub #727: the policy refused before any connect; the remote was
+    // not asked.
+    if crate::policy::refusal_in(err).is_some() {
+        return format!("the egress policy refuses the remote {remote}");
+    }
     match crate::hop::of(err) {
         Some(crate::hop::Hop::Proxy | crate::hop::Hop::Dns) => format!("the remote {remote}"),
         _ => format!("the remote {remote} does not answer"),

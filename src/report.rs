@@ -8,7 +8,10 @@ pub use podnet_core::report::*;
 /// The line that podnet prints for the error `err`: masked and clean.
 pub fn error_line(err: &anyhow::Error) -> String {
     let mut line = format!("podnet: {}", clean(&mask(&chain_text(err))));
-    if let Some(hint) = pod_tls::clock_hint(&format!("{err:#} {err:?}")) {
+    if let Some(stop) = crate::policy::refusal_in(err) {
+        // GitHub #727: a refusal of the policy comes before any connect.
+        line.push_str(&format!("\npodnet: {}", stop.hint()));
+    } else if let Some(hint) = pod_tls::clock_hint(&format!("{err:#} {err:?}")) {
         line.push_str("\npodnet: ");
         line.push_str(&hint);
     } else if let Some(status) = crate::egress::refusal(err)
