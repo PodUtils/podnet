@@ -16059,3 +16059,48 @@ the event only.
 
 2026-11-25, the commit of this entry. `tests/cli/transfer.rs` `send_and_receive_on_the_loopback` reads the `sent`
 event of a text: it failed on the code before the fix (`bytes` 0, want 11) and passes now.
+
+# T-585: Publish `v0.4.0-beta.19`: the fixes of the QA pass of 2026-11-25 and podcrates `v0.84.0`
+
+**Source:** `docs/maintenance.md`, Release; `CLAUDE.md`, Releases (2026-11-09): cut the next prerelease when a batch of
+fixes is green. The black-box QA pass of 2026-11-25 (GitHub #713 to #751) and the proof of T-487 (COORD-109,
+PodUtils/podnet#656).
+**Category:** release
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+`v0.4.0-beta.18` has none of the fixes of the QA pass of 2026-11-25 (T-545 to T-584), the take of podcrates
+`v0.83.0` and `v0.84.0`, and the row `nat` of `doctor`. The steps of the image of T-487 have no proof yet (the job
+`image` of beta.18 failed after the push, T-538).
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release". Step 0 (the black-box QA pass) found 38 issues (#713 to #751, not
+  #726). Each is an entry. Each P1 and P2 entry is done, but T-575, T-579 and T-580: their cause and fix are wholly in
+  a crate of podcrates (COORD-123 #753, COORD-125 #755, COORD-124 #754). The release does not wait for them
+  (`docs/decisions.md`, 2026-11-25, A QA finding whose whole fix is a crate of podcrates). The notes name the limits.
+- The notes have `## Breaking`: the exit codes, the verdicts of `pod doctor` and the policy of `pod`.
+
+## Approach
+
+1. Set the version `0.4.0-beta.19` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`), write the llms files again.
+2. Write `docs/releases/v0.4.0-beta.19.md`, with `## Breaking`.
+3. Push; wait until `ci` and `live` pass on that commit. Dispatch `gate.yml` on that commit and wait until it passes.
+4. Dispatch the dry run of `release.yml` (`publish` empty).
+5. Dispatch `release.yml` with `publish=v0.4.0-beta.19`.
+6. Check the files of the release, `release-proofs.yml`, and the job `image` (the attestation of the manifest list,
+   the pull-back check, the section "The image, by digest" of the notes). Write the digests in a hand-off COORD issue
+   `(to all)` and in COORD-109 (#656), and close #656 through the record.
+
+## Prove
+
+```sh
+gh release view v0.4.0-beta.19 -R PodUtils/podnet
+gh run list -R PodUtils/podnet --workflow release-proofs.yml --limit 1
+```
+
+The job `image` of the release run passes, and the notes of the release have the section "The image, by digest".

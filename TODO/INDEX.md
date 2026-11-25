@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**583 entries: 13 open, 14 partial, 27 blocked, 529 done.**
+**584 entries: 13 open, 15 partial, 27 blocked, 529 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 89 | 94 |
+| P1 | 1 | 3 | 2 | 89 | 95 |
 | P2 | 4 | 8 | 13 | 276 | 301 |
 | P3 | 8 | 4 | 12 | 163 | 187 |
-| **All** | 13 | 14 | 27 | 529 | 583 |
+| **All** | 13 | 15 | 27 | 529 | 584 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -629,3 +629,4 @@ M8 Overlays, M9 Later.
 | [T-582](fixes.md) | P2 | S | M5 | defect | done | update --check: a proxy that does not answer costs 60 s and the error gives no next step |
 | [T-583](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.84.0 |
 | [T-584](fixes.md) | P3 | S | M5 | defect | done | send --json: the sent event of a text gives "bytes": 0 |
+| [T-585](fixes.md) | P1 | S | M5 | release | partial | Publish `v0.4.0-beta.19`: the fixes of the QA pass of 2026-11-25 and podcrates `v0.84.0` |
