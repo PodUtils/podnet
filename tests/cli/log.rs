@@ -150,7 +150,8 @@ fn status_is_quiet_with_a_proxy() {
 }
 
 /// The error line of `update --check` with no way to GitHub names the
-/// step "reading the list of releases" once.
+/// step "reading the list of releases" once; the feed through the same
+/// proxy is not tried (T-582).
 #[test]
 fn update_error_names_its_step_once() {
     test_host::need_loopback!();
@@ -168,7 +169,8 @@ fn update_error_names_its_step_once() {
         1,
         "{err}"
     );
-    assert!(err.contains("releases.atom"), "{err}");
+    // GitHub #751: a failed proxy hop ends the command after one try.
+    assert!(!err.contains("releases.atom"), "{err}");
 }
 
 /// Issue 181: with --log-format json, each line of stderr is JSON, also

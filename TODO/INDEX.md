@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**582 entries: 26 open, 13 partial, 25 blocked, 518 done.**
+**583 entries: 13 open, 14 partial, 27 blocked, 529 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 2 | 2 | 2 | 88 | 94 |
-| P2 | 16 | 7 | 11 | 267 | 301 |
-| P3 | 8 | 4 | 12 | 162 | 186 |
-| **All** | 26 | 13 | 25 | 518 | 582 |
+| P1 | 1 | 2 | 2 | 89 | 94 |
+| P2 | 4 | 8 | 13 | 276 | 301 |
+| P3 | 8 | 4 | 12 | 163 | 187 |
+| **All** | 13 | 14 | 27 | 529 | 583 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -587,11 +587,11 @@ M8 Overlays, M9 Later.
 | [T-540](fixes.md) | P3 | S | M5 | feature | done | release.yml writes `release-index.json` before `SHA256SUMS` |
 | [T-541](fixes.md) | P3 | S | M5 | defect | done | tests of a tool or of IPv6 of the host fail on a host without it, in place of a skip |
 | [T-542](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.83.0 |
-| [T-543](fixes.md) | P2 | M | M5 | feature | open | Take `pod-natprobe`: the class of the NAT of the host for `link p2p` and `doctor` |
+| [T-543](fixes.md) | P2 | M | M5 | feature | partial | Take `pod-natprobe`: the class of the NAT of the host for `link p2p` and `doctor` |
 | [T-544](fixes.md) | P3 | S | M5 | chore | done | Take the script `runs.py` of podcrates in place of podnet's `watch-runs.sh` and `runs.py` |
 | [T-545](fixes.md) | P2 | M | M5 | defect | done | temp files and sockets named by the pid alone: two processes in two PID namespaces meet on one path |
 | [T-546](fixes.md) | P2 | S | M5 | defect | done | warp proxy: a client with no WARP session gets a TCP reset, and the live step hides the line of pod_warp |
-| [T-547](fixes.md) | P2 | S | M5 | defect | open | pod doctor: the netns backend is ok on a host where its TCP connect is refused (bind-denied) |
+| [T-547](fixes.md) | P2 | S | M5 | defect | done | pod doctor: the netns backend is ok on a host where its TCP connect is refused (bind-denied) |
 | [T-548](fixes.md) | P2 | S | M5 | defect | done | logs: the log of a detached instance does not hold the lines that the start shows before the ready |
 | [T-549](fixes.md) | P2 | S | M5 | defect | done | warp proxy: a MASQUE door behind a TLS middlebox gives the step --ca-file |
 | [T-550](fixes.md) | P2 | S | M5 | defect | done | pod-warp: a pin mismatch blames WARP for the certificate of a middlebox and says the cause two times |
@@ -608,7 +608,7 @@ M8 Overlays, M9 Later.
 | [T-561](fixes.md) | P2 | S | M5 | defect | done | man --json SECTION: docs/cli.md names the keys variables, exits and table as sections |
 | [T-562](fixes.md) | P2 | S | M5 | defect | done | autostart add: refuses a binary under /var/tmp as temporary, with exit 64 |
 | [T-563](fixes.md) | P2 | S | M5 | defect | done | offline bundle build: the example of docs/offline.md (--file ./site:/site) does not run |
-| [T-564](fixes.md) | P2 | S | M5 | defect | open | serve --local: on a host with no loopback address the listener is ready, and no client can connect |
+| [T-564](fixes.md) | P2 | S | M5 | defect | done | serve --local: on a host with no loopback address the listener is ready, and no client can connect |
 | [T-565](fixes.md) | P2 | S | M5 | docs | done | docs/virtual-network.md says that curl does not take a unix-socket SOCKS proxy |
 | [T-566](fixes.md) | P2 | S | M5 | defect | done | --log-format json: the last ERROR object has no timestamp |
 | [T-567](fixes.md) | P2 | S | M5 | defect | done | route --config: a missing or bad file exits 64; tunnel --config gives 78 |
@@ -616,15 +616,16 @@ M8 Overlays, M9 Later.
 | [T-569](fixes.md) | P2 | S | M5 | defect | done | serve --local, net proxy --listen: where getsockname is refused, a bare Not supported and exit 1 |
 | [T-570](fixes.md) | P2 | S | M5 | defect | done | --egress, forward --network: an unknown spec is read as a proxy HOST:PORT |
 | [T-571](fixes.md) | P1 | S | M5 | defect | done | forward: a UDP forward and the DNS door over the way of the process carry no datagram |
-| [T-572](fixes.md) | P1 | S | M5 | defect | open | pod: PODNET_POLICY does not refuse a destination |
-| [T-573](fixes.md) | P2 | S | M5 | defect | open | bench, connect: a refusal of PODNET_POLICY gives the next step of a connect failure |
-| [T-574](fixes.md) | P2 | S | M5 | defect | open | warp status, rotate, delete, license: a missing identity file exits 78, not 66 |
+| [T-572](fixes.md) | P1 | S | M5 | defect | done | pod: PODNET_POLICY does not refuse a destination |
+| [T-573](fixes.md) | P2 | S | M5 | defect | done | bench, connect: a refusal of PODNET_POLICY gives the next step of a connect failure |
+| [T-574](fixes.md) | P2 | S | M5 | defect | done | warp status, rotate, delete, license: a missing identity file exits 78, not 66 |
 | [T-575](fixes.md) | P2 | S | M5 | defect | blocked | bench, connect, tunnel, relay connect, forward: the line of a name that does not resolve is cut with ... in a cause |
-| [T-576](fixes.md) | P2 | S | M5 | defect | open | warp up: the failure prints two lines of about 1500 characters that repeat each cause |
-| [T-577](fixes.md) | P2 | S | M5 | defect | open | pod --report: the backend netns-kernel is not a value of pod-report.schema.json |
-| [T-578](fixes.md) | P2 | S | M5 | defect | open | pod --backend netns (userns-off): the start failure gives no next step, and the report has no true reason |
-| [T-579](fixes.md) | P2 | S | M5 | defect | open | tunnel: behind a proxy the start waits about 35 s in DNS over HTTPS with no line |
-| [T-580](fixes.md) | P2 | S | M5 | defect | open | --proxy http+exec: a command that does not exist floods stderr and ends with a wrong cause |
-| [T-581](fixes.md) | P2 | S | M5 | defect | open | pod doctor: seccomp and netns are ok in no-proc and proc-masked, where the pod cannot start |
-| [T-582](fixes.md) | P2 | S | M5 | defect | open | update --check: a proxy that does not answer costs 60 s and the error gives no next step |
+| [T-576](fixes.md) | P2 | S | M5 | defect | done | warp up: the failure prints two lines of about 1500 characters that repeat each cause |
+| [T-577](fixes.md) | P2 | S | M5 | defect | done | pod --report: the backend netns-kernel is not a value of pod-report.schema.json |
+| [T-578](fixes.md) | P2 | S | M5 | defect | done | pod --backend netns (userns-off): the start failure gives no next step, and the report has no true reason |
+| [T-579](fixes.md) | P2 | S | M5 | defect | blocked | tunnel: behind a proxy the start waits about 35 s in DNS over HTTPS with no line |
+| [T-580](fixes.md) | P2 | S | M5 | defect | blocked | --proxy http+exec: a command that does not exist floods stderr and ends with a wrong cause |
+| [T-581](fixes.md) | P2 | S | M5 | defect | done | pod doctor: seccomp and netns are ok in no-proc and proc-masked, where the pod cannot start |
+| [T-582](fixes.md) | P2 | S | M5 | defect | done | update --check: a proxy that does not answer costs 60 s and the error gives no next step |
 | [T-583](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.84.0 |
+| [T-584](fixes.md) | P3 | S | M5 | defect | done | send --json: the sent event of a text gives "bytes": 0 |

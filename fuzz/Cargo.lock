@@ -2794,6 +2794,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pod-natprobe"
+version = "0.84.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.84.0#ca1d3e3b94f3ea2fed94915e76fd44709915b90f"
+dependencies = [
+ "pod-core",
+ "pod-services",
+ "pod-turn",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "pod-netstack"
 version = "0.84.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.84.0#ca1d3e3b94f3ea2fed94915e76fd44709915b90f"
@@ -3094,6 +3108,7 @@ dependencies = [
  "pod-identity",
  "pod-link",
  "pod-manual",
+ "pod-natprobe",
  "pod-netstack",
  "pod-offline",
  "pod-proxy",

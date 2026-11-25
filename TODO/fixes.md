@@ -4040,7 +4040,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:80`, `src/cli/cmd/net/mod.rs:97` and
   `src/cli/cmd/net/mod.rs:177` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:248`).
-- `libc` is a dependency (`Cargo.toml:195`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `libc` is a dependency (`Cargo.toml:197`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.
@@ -14624,7 +14624,7 @@ podcrates).
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -14656,7 +14656,17 @@ cargo test -p podnet --test link_p2p_namespaces
 podnet doctor --json
 ```
 
+## Done
 
+2026-11-25 (steps 1 and 2), the commit of this entry. podnet takes `pod-natprobe` by the tag `v0.84.0`.
+`src/doctor/nat_check.rs`: the row `nat` of `podnet doctor` (text and `--json`: `verdict`, `connectivity`, `mapping`,
+`filtering`, `detail`) runs `Prober` with the profile `Fast` over the STUN servers of the catalog of `pod-services`
+that the egress policy permits, resolved by the resolver of podnet. Where the UDP probe of the doctor is refused, no
+STUN request goes out and the row is `unknown` with the reason; a probe that does not end in 4 s is `unknown`. The row
+does not change `ok`. `docs/doctor.md` names it. Test: `doctor::nat_check::tests::a_host_with_no_udp_gets_no_probe`
+(`cargo test -p podnet --lib doctor::`: 33 passed). On this host (UDP refused): `nat unknown: UDP does not leave this
+host (...): no NAT probe`. Steps 3 (`link p2p` takes the relay first for two dependent mappings) and 4 (the test over
+the stand-in NATs of `tests/link_p2p_namespaces.rs`) are open.
 # T-544: Take the script `runs.py` of podcrates in place of podnet's `watch-runs.sh` and `runs.py`
 
 **Source:** PodUtils/podcrates#259 (COORD-154): "Take the script `runs.py` of podcrates in place of `watch-runs.sh` and its own
@@ -14815,7 +14825,7 @@ CAUSE`, then a close with no reset; `Forward` with no session closes with no res
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -14835,6 +14845,14 @@ CAUSE`, then a close with no reset; `Forward` with no session closes with no res
 ## Prove
 
 `podnet pod doctor --json` and `podnet pod --backend netns -- /bin/true` in the lab `bind-denied` (`sh scripts/lab-lane.sh`)
+
+## Done
+
+2026-11-25, the commit of T-578 (one change for both). `pod doctor` has the row "TCP connect (127.0.0.1)", and its
+verdict of netns and netns-kernel is the rule of `canrun.rs` that the start uses, with the cause in the text line.
+Where `auto` takes seccomp because netns cannot run, the line of `--name-backend` does not say "use --backend netns".
+Test: `tests/pod_backend_line.rs` `the_doctor_and_the_start_agree_where_netns_cannot_run` (TCP connect refused by
+Landlock, `unshare` refused by a seccomp filter) failed on the code before the fix and passes now.
 
 # T-548: logs: the log of a detached instance does not hold the lines that the start shows before the ready
 
@@ -15314,7 +15332,7 @@ A directory SRC gives each regular file under it at DEST/PATH, in the order of t
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -15333,7 +15351,20 @@ In a lab with no address on `lo`, `podnet serve --local 127.0.0.1:18140` prints 
 
 ## Prove
 
-`cargo test --test serve_local` (a new table test) and the lab `no-loopback` of the lane
+`cargo test -p podnet-core --lib loopback` and the lab `no-loopback` of the lane
+
+## Done
+
+2026-11-25, the commit of this entry. `podnet_core::net::loopback::check` binds a second socket of a loopback
+address on port 0 and connects to it (1 s): a connect that fails (not a refusal of this process, EACCES or EPERM)
+exits 69 with the cause and the step (a unix socket). `net::bind_tcp` (`warp proxy`, `relay connect`, `net
+switch`, `net proxy --listen tcp://`), `serve --local`, `git serve` and `share --local`, `forward -L` and `connect
+-L` run it after the bind; `serve --check` fails the row of the listener. The listener of the command gets no
+connection of the check. `docs/serve.md` says it. Test: `net::loopback::tests::a_loopback_that_no_connect_reaches_exits_69`
+(a table: ENETUNREACH on IPv4 and IPv6, a time limit, an open loopback, an address that is not a loopback, EACCES).
+The lab `no-loopback` of podlab `v0.84.0` (uid 65534): `serve --local 127.0.0.1:18140`, `forward -L` and `net
+proxy --listen tcp://` exit 69 with the line (before: ready, and no client connects); `serve --check --local` fails
+the row; on this host each starts as before.
 
 # T-565: docs/virtual-network.md says that curl does not take a unix-socket SOCKS proxy
 
@@ -15545,7 +15576,7 @@ A spec with no scheme that is not `HOST:PORT` (a port of 0 to 65535) and not `un
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -15554,7 +15585,7 @@ With `PODNET_POLICY` that refuses `example.com` (or `"default":"refuse"`), `podn
 ## Premise
 
 - Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/pod/0001-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+- A fix agent wrote the change on `ef14ef2` (the directory docs/reports/wip-2026-11-25 of `405d47c`); the lead reviewed it.
 
 ## Approach
 
@@ -15564,6 +15595,17 @@ A permit hook in podnet-netns that `src/main.rs` sets from `podnet::policy::perm
 
 `cargo test --test pod_policy`
 
+## Done
+
+2026-11-25, the commit of this entry (a fix agent wrote it on `ef14ef2`; the lead reviewed it and took it on
+`main`). `podnet_netns::rules::set_permit` holds the check of the egress policy of the process; `src/main.rs` sets it
+to `podnet::policy::permit`. `select_chain` and `select_chain_udp` ask it before the rules of `-r`, so the netns,
+netns-kernel and seccomp backends and `--serve` refuse a destination that the policy refuses: `ECONNREFUSED` (netns:
+a reset), SOCKS5 `0x02`, HTTP 403. The line names the rule of the policy (`refused by PODNET_POLICY: ...`); the flow
+log names the rule `policy`; `--learn` does not send such a flow through `-x`. Tests: `tests/pod_policy.rs` (2: the
+program on each backend that runs here, and the door) failed on the code before the fix (`5809e66` with the tests of
+the fix: 0 passed, 2 failed) and pass now; `rules::tests::the_policy_refuses_before_the_rules` passes.
+
 # T-573: bench, connect: a refusal of PODNET_POLICY gives the next step of a connect failure
 
 **Source:** GitHub #727 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
@@ -15571,7 +15613,7 @@ A permit hook in podnet-netns that `src/main.rs` sets from `podnet::policy::perm
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -15580,7 +15622,7 @@ A refusal of the policy ends with `the connect hop failed; check the host and th
 ## Premise
 
 - Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/errors/0002-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+- A fix agent wrote the change on `ef14ef2` (the directory docs/reports/wip-2026-11-25 of `405d47c`); the lead reviewed it.
 
 ## Approach
 
@@ -15590,6 +15632,17 @@ A refusal of the policy ends with `the connect hop failed; check the host and th
 
 `cargo test -p podnet --lib report`
 
+## Done
+
+2026-11-25, the commit of this entry (a fix agent wrote it; the lead reviewed it). `src/policy/said.rs` reads a
+refusal of the policy in the chain (the typed `Refused` first, then the words of its reason for a layer that keeps
+only the text), and `report::error_line` gives its step before each other hint: the rule (or the default), the
+variable and the file of the policy, and `podnet rules check FILE`. `connect` says "the egress policy refuses the
+remote", not "does not answer". `egress::dial`, `dial_direct`, `dial_addrs`, `permit_fault` and `permit_failure` keep
+the typed `Refused` in the chain. Tests: `tests/egress_refusal.rs`
+`a_refusal_gives_the_step_of_the_policy_in_each_command` (bench direct, bench with `--proxy`, connect) failed on the
+code before the fix and passes now; the unit tests of `policy::said` pass.
+
 # T-574: warp status, rotate, delete, license: a missing identity file exits 78, not 66
 
 **Source:** GitHub #731 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
@@ -15597,7 +15650,7 @@ A refusal of the policy ends with `the connect hop failed; check the host and th
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -15606,7 +15659,7 @@ A missing identity file exits 78; `podnet man exit-status` gives 66 for a file t
 ## Premise
 
 - Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/errors/0001-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+- A fix agent wrote the change on `ef14ef2` (the directory docs/reports/wip-2026-11-25 of `405d47c`); the lead reviewed it.
 
 ## Approach
 
@@ -15615,6 +15668,14 @@ Exit 66 (no-input) for an absent identity file.
 ## Prove
 
 `cargo test --test cli warp`
+
+## Done
+
+2026-11-25, the commit of this entry (a fix agent wrote it; the lead reviewed it). An absent identity file of `warp
+status`, `rotate`, `delete` and `license` gives `Fault::NoInput` (66); a stat error and `PODNET_STATE_DIR=none` stay 78.
+The row 66 of `podnet man exit-status` names the WARP identity. Test: `tests/exit_contract.rs`
+`exit_66_is_a_missing_warp_identity` (the four commands, at the default path and at `--identity`) failed on the code
+before the fix (exit 78) and passes now.
 
 # T-575: bench, connect, tunnel, relay connect, forward: the line of a name that does not resolve is cut with ... in a cause
 
@@ -15642,12 +15703,12 @@ supported...`).
 - Read: `order.rs` and `lookup.rs` of `pod-dns` at podcrates `v0.84.0`. `order::fit` cuts the joined failures of the
   sources at 160 bytes with `pod_core::text::clip`; `lookup::fold` names only the cause of the largest group of
   resolvers. The whole text goes only to the log of `pod-dns` at debug.
-- Read: the change of a fix agent (`docs/reports/wip-2026-11-25/errors/9999-wip-737-uncommitted.diff`): a layer of
+- Read: the change of a fix agent (the directory docs/reports/wip-2026-11-25 of `405d47c`): a layer of
   `tracing` in podnet that keeps the two debug events of `pod-dns` and puts their text back into the error line.
 
 ## Approach
 
-The cut is made in `pod-dns`: the fix goes there (COORD-123, to podcrates). podnet takes it with the next tag.
+The cut is made in `pod-dns`: the fix goes there (COORD-123, #753, to podcrates). podnet takes it with the next tag.
 
 ## Decision
 
@@ -15663,7 +15724,7 @@ cargo test -p podnet --test error_words
 
 ## Blocker
 
-The fix of `pod-dns` (COORD-123, to podcrates): no cut inside a cause, and each group of resolvers with its cause.
+The fix of `pod-dns` (COORD-123, #753, to podcrates): no cut inside a cause, and each group of resolvers with its cause.
 
 # T-576: warp up: the failure prints two lines of about 1500 characters that repeat each cause
 
@@ -15672,7 +15733,7 @@ The fix of `pod-dns` (COORD-123, to podcrates): no cut inside a cause, and each 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -15681,7 +15742,7 @@ The fix of `pod-dns` (COORD-123, to podcrates): no cut inside a cause, and each 
 ## Premise
 
 - Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/errors/0003-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+- A fix agent wrote the change on `ef14ef2` (the directory docs/reports/wip-2026-11-25 of `405d47c`); the lead reviewed it.
 
 ## Approach
 
@@ -15691,6 +15752,19 @@ One line that names each cause one time (the tidy of `exit::text`); a repetition
 
 `cargo test -p podnet --lib warp`
 
+## Done
+
+2026-11-25, the commit of this entry (a fix agent wrote it; the lead reviewed it). `warp up` keeps the error lines of
+the child until a log line comes after them, so the failure says the cause and the steps of the child once. The
+relay leg of WARP (`src/warp/relay_dial.rs`) gives the cause alone at the stage relay (pod-warp names the door and
+the relay); an IPv6 door is "the relay has no IPv6 egress". `ws_relay::connect` names the failed hosts of the relay
+with the same words together. `exit::tidy` names a way out ("through the relay URL", "through the proxy URL") once
+in a line. The text of `pod-warp` says each cause once since podcrates `v0.84.0` (COORD-121, T-583). Tests:
+`warp::relay_dial::tests::a_failure_through_the_relay_names_each_cause_once`,
+`warp::up::tests::the_error_of_the_child_is_said_once` and a row of `exit::tests::tidy_says_each_part_once_and_no_debug_form`
+(`cargo test -p podnet --lib warp::`: 74 passed). These are unit tests of new seams: the code before the fix has no
+such seam, so the failure before the fix is the output of the issue.
+
 # T-577: pod --report: the backend netns-kernel is not a value of pod-report.schema.json
 
 **Source:** GitHub #739 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
@@ -15698,7 +15772,7 @@ One line that names each cause one time (the tidy of `exit::text`); a repetition
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -15707,7 +15781,7 @@ One line that names each cause one time (the tidy of `exit::text`); a repetition
 ## Premise
 
 - Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/pod/0002-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+- A fix agent wrote the change on `ef14ef2` (the directory docs/reports/wip-2026-11-25 of `405d47c`); the lead reviewed it.
 
 ## Approach
 
@@ -15717,6 +15791,13 @@ The schema takes the value of the documented backend.
 
 `cargo test --test pod_report`
 
+## Done
+
+2026-11-25, the commit of this entry (a fix agent wrote it; the lead reviewed it). `pod-report.schema.json` takes the
+backend `netns-kernel`; `docs/pods.md` names the value, and `udp_limit` null for `netns-kernel`. Test:
+`tests/pod_report.rs` `exit_status_of_the_program_is_in_the_report` (a table of the three backends; each report agrees
+with the schema) failed on the code before the fix and passes now.
+
 # T-578: pod --backend netns (userns-off): the start failure gives no next step, and the report has no true reason
 
 **Source:** GitHub #740 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
@@ -15724,7 +15805,7 @@ The schema takes the value of the documented backend.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -15733,7 +15814,7 @@ In the lab userns-off, `pod --backend netns` fails with no next step, and the re
 ## Premise
 
 - Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/pod/0003-*.patch` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+- A fix agent wrote the change on `ef14ef2` (the directory docs/reports/wip-2026-11-25 of `405d47c`); the lead reviewed it.
 
 ## Approach
 
@@ -15743,6 +15824,17 @@ One line with the cause and the step (`--backend seccomp`); the true reason in t
 
 `cargo test -p podnet-netns --lib doctor`
 
+## Done
+
+2026-11-25, the commit of this entry (a fix agent wrote it; the lead reviewed it). `crates/podnet-netns/src/canrun.rs` has
+the one rule of the netns backend (the test hook, the TCP connect of T-382, `unshare` with or without a user
+namespace). `--backend netns` and `--backend netns-kernel` run it before the start: a refused namespace gives one line
+with the cause and the step ("use --backend seccomp, or run the pod where an unprivileged user namespace works"),
+exit 3, and a report with `backend` null, `hold` none and that line as the reason. Tests: `tests/pod_backend_line.rs`
+`the_doctor_and_the_start_agree_where_netns_cannot_run` and `tests/pod_error_lines.rs`
+`each_refusal_of_the_netns_backend_is_one_line` failed on the code before the fix and pass now;
+`canrun::tests::the_netns_rule_and_its_line` passes.
+
 # T-579: tunnel: behind a proxy the start waits about 35 s in DNS over HTTPS with no line
 
 **Source:** GitHub #741 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
@@ -15750,7 +15842,7 @@ One line with the cause and the step (`--backend seccomp`); the true reason in t
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -15759,7 +15851,7 @@ Behind a proxy, `tunnel` waits about 35 s in DNS over HTTPS with no line at the 
 ## Premise
 
 - Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- Not measured: the code path.
+- Read: the code path is in `pod-cloudflare` of podcrates `v0.84.0` (podnet only shows its text and its wait).
 
 ## Approach
 
@@ -15769,6 +15861,10 @@ A line at the default level when a step of the resolver chain is slow, with its 
 
 `cargo test -p podnet --lib resolve`
 
+## Blocker
+
+The fix of `pod-cloudflare` (COORD-125 (#755), to podcrates). podnet takes it with the next tag; the release notes of `v0.4.0-beta.19` name the limit (`docs/decisions.md`, 2026-11-25).
+
 # T-580: --proxy http+exec: a command that does not exist floods stderr and ends with a wrong cause
 
 **Source:** GitHub #744 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
@@ -15776,7 +15872,7 @@ A line at the default level when a step of the resolver chain is slow, with its 
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -15785,7 +15881,7 @@ A line at the default level when a step of the resolver chain is slow, with its 
 ## Premise
 
 - Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- Not measured: the code path.
+- Read: the code path is in `pod-proxy` of podcrates `v0.84.0` (podnet only shows its text and its wait).
 
 ## Approach
 
@@ -15795,6 +15891,10 @@ Capture the stderr of the command; a command that ends before its first byte giv
 
 `cargo test --test proxy_exec`
 
+## Blocker
+
+The fix of `pod-proxy` (COORD-124 (#754), to podcrates). podnet takes it with the next tag; the release notes of `v0.4.0-beta.19` name the limit (`docs/decisions.md`, 2026-11-25).
+
 # T-581: pod doctor: seccomp and netns are ok in no-proc and proc-masked, where the pod cannot start
 
 **Source:** GitHub #749 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
@@ -15802,7 +15902,7 @@ Capture the stderr of the command; a command that ends before its first byte giv
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -15811,7 +15911,7 @@ In the labs no-proc and proc-masked, `pod doctor` says ok and exits 0; the pod c
 ## Premise
 
 - Read: the GitHub issue (black-box QA pass of 0.4.0-beta.19).
-- A fix agent wrote a change that is not reviewed: `docs/reports/wip-2026-11-25/pod/9999-wip-749-uncommitted.diff` (a patch of `git format-patch` on `ef14ef2`). Review it, apply it, show its test failing on the code before it, and run the gate.
+- A fix agent wrote the change on `ef14ef2` (the directory docs/reports/wip-2026-11-25 of `405d47c`); the lead reviewed it.
 
 ## Approach
 
@@ -15821,6 +15921,19 @@ The doctor runs the probes of the start of each backend (with T-547, T-578).
 
 `cargo test -p podnet-netns --lib doctor`
 
+## Done
+
+2026-11-25, the commit of this entry. The unfinished change of a fix agent, reviewed and finished by the lead. The
+rule of the netns backend (`canrun::netns_probe_with`) asks the probe of the id maps where only a user namespace
+works: the parent writes `setgroups`, `uid_map` and `gid_map` of a child, as the start does (`canrun::probe_id_maps`);
+a masked `/proc` refuses them. `pod doctor` has that row, and its verdict of seccomp is the rule of the start
+(`canrun::seccomp_probe_with`: the filter and the read of the memory of a program). Where netns cannot run, the line
+of a seccomp backend that cannot read the memory does not send the user to `--backend netns`. A fault of the change
+was fixed: the child of the probe held the write end of its own pipe and waited without end (the lib tests hung);
+the child closes the ends of the parent, and the parent kills the child after the maps. Tests:
+`canrun::tests::the_netns_rule_and_its_line` (a row for each probe), `the_seccomp_rule_names_the_probe`,
+`the_id_maps_probe_gives_one_row`, `doctor::tests` (`cargo test -p podnet-netns --lib`: 177 passed).
+
 # T-582: update --check: a proxy that does not answer costs 60 s and the error gives no next step
 
 **Source:** GitHub #751 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
@@ -15828,7 +15941,7 @@ The doctor runs the probes of the start of each backend (with T-547, T-578).
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -15846,6 +15959,15 @@ A time limit of the proxy ends both tries (the second path goes another way, or 
 ## Prove
 
 `cargo test -p podnet --lib update`
+
+## Done
+
+2026-11-25, the commit of this entry. `update::newest` does not read `releases.atom` after a failure of the proxy
+hop of the API: the feed goes through the same proxy, so a proxy that does not answer cost a second time limit. The
+error is the typed error of the API, so the line names the cause once and the second line gives the step of the proxy
+hop (the joined text before lost the type, and the hint with it). Test: `tests/egress.rs`
+`a_failed_proxy_ends_update_check_after_one_try` failed on the code before the fix (the line held `releases.atom` and
+the cause two times) and passes now.
 
 # T-583: Take podcrates v0.84.0
 
@@ -15907,3 +16029,33 @@ component over 255 bytes changed: `tests/transfer_land.rs` reads "more than 255 
 --no-fail-fast`: each binary passes but two SIGHUP cases (`tests/pod_signals.rs`, `tests/signals.rs`), which failed only because the run
 was under `nohup` (SIGHUP ignored for each child) and pass alone (`cargo test --test pod_signals`: 1 passed, two times; `cargo test --test signals`: 3 passed).
 
+# T-584: send --json: the sent event of a text gives "bytes": 0
+
+**Source:** GitHub #720 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25); the rest of T-551.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet send --json --text` of an 8-byte text prints `{"event": "sent", "bytes": 0, ...}`. T-551 fixed the stamp of
+the event only.
+
+## Premise
+
+- Read: `src/transfer/send.rs`, `send_text`: a text gives `bytes: 0` (the field held the bytes of the transit only).
+
+## Approach
+
+`bytes` of a text is its length in UTF-8; `sha256` stays null. `docs/transfer.md` says it.
+
+## Prove
+
+`cargo test --test cli transfer::send_and_receive_on_the_loopback`
+
+## Done
+
+2026-11-25, the commit of this entry. `tests/cli/transfer.rs` `send_and_receive_on_the_loopback` reads the `sent`
+event of a text: it failed on the code before the fix (`bytes` 0, want 11) and passes now.

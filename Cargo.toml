@@ -191,6 +191,8 @@ snap = "1"
 # The TURN client (RFC 8656) over UDP and TLS of PodUtils/podcrates: the
 # network turn://HOST:PORT (src/networks/turn.rs) allocates with it.
 pod-turn = { git = "https://github.com/PodUtils/podcrates", tag = "v0.84.0", version = "0.84.0" }
+# The class of the NAT of the host for podnet doctor (T-543).
+pod-natprobe = { git = "https://github.com/PodUtils/podcrates", tag = "v0.84.0", version = "0.84.0" }
 # The Dev Tunnels client (management read, relay WebSocket, SSH with no user
 # authentication, direct-tcpip streams, bounded reconnect) of
 # PodUtils/podcrates: the network devtunnel://TUNNEL (src/networks/devtunnel.rs)

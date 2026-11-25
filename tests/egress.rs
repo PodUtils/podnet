@@ -433,10 +433,7 @@ fn a_proxy_url_with_no_password_is_shown() {
 #[test]
 fn a_failed_proxy_ends_update_check_after_one_try() {
     test_host::need_loopback!();
-    let (code, text) = podnet(
-        &["--proxy", "http://127.0.0.1:9", "update", "--check"],
-        &[],
-    );
+    let (code, text) = podnet(&["--proxy", "http://127.0.0.1:9", "update", "--check"], &[]);
     assert_eq!(code, Some(69), "{text}");
     assert!(!text.contains("releases.atom"), "{text}");
     assert_eq!(text.matches("Connection refused").count(), 1, "{text}");

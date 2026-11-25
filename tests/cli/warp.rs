@@ -3,14 +3,14 @@
 use super::*;
 
 /// warp status, license, rotate and delete use a saved device and register
-/// none.
+/// none; an absent identity exits 66 (T-574).
 #[test]
 fn warp_status_registers_no_device() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("none.json");
     for command in ["status", "rotate", "delete"] {
         let out = podnet(&["warp", "--identity", path.to_str().unwrap(), command]);
-        assert_eq!(out.status.code(), Some(78), "{command}: {}", stderr(&out));
+        assert_eq!(out.status.code(), Some(66), "{command}: {}", stderr(&out));
         assert!(
             stderr(&out).contains("no WARP identity at"),
             "{}",
