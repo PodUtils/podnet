@@ -49,6 +49,7 @@ pub mod pod;
 pub mod proxy;
 pub mod quic;
 pub mod register;
+mod relay_dial;
 pub mod route;
 pub mod rules;
 pub mod session;
@@ -171,44 +172,6 @@ impl Dial for MasqueDial {
     }
 }
 
-/// The WebSocket relay of podnet as the relay leg of a session (issue 76).
-struct RelayDial(Arc<crate::ws_relay::Relay>);
-
-impl Dial for RelayDial {
-    fn label(&self) -> String {
-        format!("the relay {}", self.0.url())
-    }
-
-    fn dial<'a>(
-        &'a self,
-        target: &'a Target,
-        deadline: tokio::time::Instant,
-    ) -> BoxFuture<'a, std::result::Result<Connected, Failure>> {
-        Box::pin(async move {
-            let Target::Addr(addr) = target else {
-                let text = format!("the relay takes an address, not {target}");
-                return Err(Failure::new(
-                    pod_core::Stage::Connect,
-                    pod_core::Class::Usage,
-                    text,
-                ));
-            };
-            let limit = deadline.saturating_duration_since(tokio::time::Instant::now());
-            let io = self.0.connect(*addr, limit).await.map_err(|e| {
-                let text = format!("{target} through the relay {}: {e:#}", self.0.url());
-                Failure::caused(
-                    pod_core::Stage::Connect,
-                    pod_core::Class::Unavailable,
-                    text,
-                    e,
-                )
-            })?;
-            let io = pod_tls::fragment::wrap(Box::new(io), live::split());
-            Ok(Connected::new(io))
-        })
-    }
-}
-
 /// The relay of the fallback: the relay of `--transport relay` when it is
 /// set, else the relay of `PODNET_RELAY` or the default relay. One for the
 /// process.
@@ -229,7 +192,7 @@ fn masque_relay() -> Option<Arc<crate::ws_relay::Relay>> {
 /// The relay leg of `pod-warp` over `relay`, with the budget of a relay
 /// session (the owner ruling of 2026-11-04).
 fn relay_leg(relay: &Arc<crate::ws_relay::Relay>) -> pod_warp::Relay {
-    let mut leg = pod_warp::Relay::new(Arc::new(RelayDial(relay.clone())), relay.url());
+    let mut leg = pod_warp::Relay::new(Arc::new(relay_dial::RelayDial(relay.clone())), relay.url());
     leg.meter = Some(Arc::new(|io| {
         let (io, budget) = crate::ws_relay::meter(Box::new(io));
         let renew: pod_warp::net::Renew = Arc::new(move || budget.spent());

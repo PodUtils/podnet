@@ -324,10 +324,36 @@ impl Relay {
                 )
             })?
             .map_err(|failure| {
-                anyhow::anyhow!("the relay {url}: {}", failure.lines(&shown).join("; "))
+                anyhow::anyhow!("the relay {url}: {}", said_once(&failure.lines(&shown)))
             })?;
         Ok(Box::new(pod_relay::stream::of(opened.session)))
     }
+}
+
+/// The lines of a failed open in one phrase, each cause once (GitHub #738):
+/// the hosts that failed with the same words are named together, as
+/// `host-a, host-b: cause`. A line with no host stays as it is.
+fn said_once(lines: &[String]) -> String {
+    let mut groups: Vec<(Vec<&str>, &str)> = Vec::new();
+    for line in lines {
+        let (host, cause) = match line.split_once(": ") {
+            Some((host, cause)) if !host.is_empty() && !host.contains(' ') => (Some(host), cause),
+            _ => (None, line.as_str()),
+        };
+        match groups.iter_mut().find(|(_, said)| *said == cause) {
+            Some((hosts, _)) => {
+                if let Some(host) = host.filter(|h| !hosts.contains(h)) {
+                    hosts.push(host);
+                }
+            }
+            None => groups.push((host.into_iter().collect(), cause)),
+        }
+    }
+    let phrase = |(hosts, cause): &(Vec<&str>, &str)| match hosts[..] {
+        [] => cause.to_string(),
+        _ => format!("{}: {cause}", hosts.join(", ")),
+    };
+    groups.iter().map(phrase).collect::<Vec<_>>().join("; ")
 }
 
 #[cfg(test)]

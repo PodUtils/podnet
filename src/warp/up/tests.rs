@@ -257,3 +257,42 @@ fn the_system_bundles_are_the_bundles_of_the_manual() {
     );
     assert_eq!(named, SYSTEM_BUNDLES);
 }
+
+/// GitHub #738: the error of the child is said once. Its lines wait in the
+/// tee, and the error of this process carries the cause and the step of
+/// the child; a log line comes at once.
+#[test]
+fn the_error_of_the_child_is_said_once() {
+    const LABEL: &str = "podnet warp proxy --detach";
+    let cause = "TLS handshake with the MASQUE front door 162.159.198.2:443: no answer";
+    let step = "the MASQUE door failed; try again later";
+    let log = "2026-11-02T10:00:00Z  WARN podnet: the front door 162.159.198.1:443 failed";
+    let child = [
+        log.to_string(),
+        "podnet: --detach: the instance warp started".to_string(),
+        log.to_string(),
+        format!("podnet: {cause}"),
+        format!("podnet: {step}"),
+    ];
+    for success in [false, true] {
+        let mut tee = Tee::default();
+        let mut shown: Vec<String> = Vec::new();
+        for line in &child {
+            shown.extend(tee.line(line));
+        }
+        let stderr = tee.kept.clone();
+        shown.extend(tee.end(success));
+        if success {
+            assert_eq!(shown, child, "a child that worked shows each line");
+            continue;
+        }
+        let text = failure_text(LABEL, 69, &stderr, false);
+        assert_eq!(text, format!("{LABEL} exited 69: {cause}\npodnet: {step}"));
+        shown.push(format!("podnet: {text}"));
+        let all = shown.join("\n");
+        assert_eq!(all.matches(cause).count(), 1, "{all}");
+        assert_eq!(all.matches(step).count(), 1, "{all}");
+        assert_eq!(all.matches(log).count(), 2, "{all}");
+        assert!(all.contains("podnet: --detach: the instance"), "{all}");
+    }
+}

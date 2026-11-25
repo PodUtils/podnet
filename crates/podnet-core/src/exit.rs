@@ -244,7 +244,40 @@ pub fn tidy(text: &str) -> String {
             None => i += 1,
         }
     }
-    plain_names(&parts.join(": "))
+    way_once(&plain_names(&parts.join(": ")))
+}
+
+/// The words of a way out that a line names: `through the relay URL`.
+const WAYS: [&str; 2] = [" through the relay ", " through the proxy "];
+
+/// `text` with each way out ([`WAYS`] and its URL) named once (GitHub
+/// #738): the first time names the way of the clauses after it. A layer
+/// that names the way and a layer below that names it again give the
+/// others (pod-warp: the relay leg and the dial of each front door).
+fn way_once(text: &str) -> String {
+    let mut out = text.to_string();
+    for way in WAYS {
+        let mut said: Vec<String> = Vec::new();
+        let mut from = 0;
+        while let Some(at) = out[from..].find(way).map(|a| a + from) {
+            let start = at + way.len();
+            let rest = &out[start..];
+            let len = [": ", " ", ";", ")", ","]
+                .iter()
+                .filter_map(|end| rest.find(end))
+                .min()
+                .unwrap_or(rest.len());
+            let phrase = out[at..start + len].to_string();
+            if len > 0 && said.contains(&phrase) {
+                out.replace_range(at..start + len, "");
+                from = at;
+            } else {
+                said.push(phrase);
+                from = start + len;
+            }
+        }
+    }
+    out
 }
 
 /// `text` with each `DnsName("x")`, `UniformResourceIdentifier("x")` and
@@ -327,6 +360,15 @@ mod tests {
                 "TLS: certificate not valid for name \"1.1.1.1\"; certificate is only valid for default.domain or 10.0.0.1",
             ),
             ("HTTP 403: Forbidden", "HTTP 403: Forbidden"),
+            // GitHub #738: a way out is named once.
+            (
+                "a; and through the relay https://r.example: TCP to the door 1.2.3.4:443 through the relay https://r.example; the other address failed too (TCP to the door [::1]:443 through the relay https://r.example: no IPv6)",
+                "a; and through the relay https://r.example: TCP to the door 1.2.3.4:443; the other address failed too (TCP to the door [::1]:443: no IPv6)",
+            ),
+            (
+                "x through the proxy http://p:1: y through the proxy http://q:2",
+                "x through the proxy http://p:1: y through the proxy http://q:2",
+            ),
             ("a: b: a", "a: b: a"),
             ("", ""),
         ];

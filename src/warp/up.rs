@@ -47,7 +47,9 @@ pub(super) fn quote(s: &str) -> String {
 /// Run `podnet ARGV` (the command `label`, for example `podnet warp proxy
 /// --detach`), print its lines, and give its ready document (the last line).
 /// The lines of stderr go to stderr at once and are kept for the text of a
-/// failure ([`failure_text`]).
+/// failure ([`failure_text`]). The error lines of the child (`podnet: ...`)
+/// wait: a failure says them once, in the line of this process (GitHub
+/// #738).
 pub fn start(label: &str, argv: &[String]) -> Result<serde_json::Value> {
     use std::io::{BufRead as _, BufReader};
     let exe = std::env::current_exe().context("the path of this binary")?;
@@ -67,22 +69,25 @@ pub fn start(label: &str, argv: &[String]) -> Result<serde_json::Value> {
         .with_context(|| format!("starting {label}"))?;
     let stderr = child.stderr.take();
     let tee = std::thread::spawn(move || {
-        let mut kept = String::new();
+        let mut tee = Tee::default();
         if let Some(stderr) = stderr {
             for line in BufReader::new(stderr).split(b'\n').map_while(Result::ok) {
-                let line = String::from_utf8_lossy(&line).into_owned();
-                eprintln!("{line}");
-                kept.push_str(&line);
-                kept.push('\n');
+                for shown in tee.line(&String::from_utf8_lossy(&line)) {
+                    eprintln!("{shown}");
+                }
             }
         }
-        kept
+        tee
     });
     let out = child
         .wait_with_output()
         .with_context(|| format!("waiting for {label}"))?;
-    let stderr = tee.join().unwrap_or_default();
+    let tee = tee.join().unwrap_or_default();
+    let stderr = tee.kept.clone();
     let text = String::from_utf8_lossy(&out.stdout);
+    for shown in tee.end(out.status.success()) {
+        eprintln!("{shown}");
+    }
     if !out.status.success() {
         let code = out.status.code().unwrap_or(1);
         // SAFETY: geteuid() has no precondition.
@@ -127,14 +132,72 @@ fn tun_fault(stderr: &str) -> Option<TunFault> {
     }
 }
 
-/// The last error line of the child (a line `podnet: TEXT`), without the
-/// prefix. The log lines before it have no such prefix.
-fn cause_of(stderr: &str) -> Option<&str> {
-    stderr
+/// The lines of stderr of a child, as [`start`] shows them: a line
+/// `podnet: ...` waits until a log line comes after it. The lines that wait
+/// at the end are the error of the child.
+#[derive(Default)]
+pub(crate) struct Tee {
+    /// Each line, for [`failure_text`].
+    pub(crate) kept: String,
+    /// The lines `podnet: ...` that wait.
+    held: Vec<String>,
+}
+
+impl Tee {
+    /// Keep `line`, and give the lines to show now.
+    pub(crate) fn line(&mut self, line: &str) -> Vec<String> {
+        self.kept.push_str(line);
+        self.kept.push('\n');
+        if line.starts_with("podnet: ") {
+            self.held.push(line.to_string());
+            return Vec::new();
+        }
+        let mut shown = std::mem::take(&mut self.held);
+        shown.push(line.to_string());
+        shown
+    }
+
+    /// The lines to show at the end. After a failure, the error of the
+    /// child is in the error of this process ([`failure_text`]): only the
+    /// other lines are shown.
+    pub(crate) fn end(self, success: bool) -> Vec<String> {
+        if success {
+            return self.held;
+        }
+        let error = error_of(&self.kept);
+        self.held
+            .into_iter()
+            .filter(|l| {
+                !l.strip_prefix("podnet: ")
+                    .is_some_and(|l| error.contains(&l))
+            })
+            .collect()
+    }
+}
+
+/// The error of the child: the last lines `podnet: TEXT`, without the
+/// prefix, and with no line of `--detach`. The first is the cause; the
+/// others say what to do. The log lines before them have no such prefix.
+fn error_of(stderr: &str) -> Vec<&str> {
+    let mut error: Vec<&str> = stderr
         .lines()
         .rev()
+        .take_while(|l| l.starts_with("podnet: ") || l.is_empty())
         .filter_map(|l| l.strip_prefix("podnet: "))
-        .find(|l| !l.starts_with("--detach:"))
+        .filter(|l| !l.starts_with("--detach:"))
+        .collect();
+    error.reverse();
+    if error.is_empty() {
+        // A log line after the error: the last error line alone.
+        error.extend(
+            stderr
+                .lines()
+                .rev()
+                .filter_map(|l| l.strip_prefix("podnet: "))
+                .find(|l| !l.starts_with("--detach:")),
+        );
+    }
+    error
 }
 
 /// The text of the error when the command `label` exited with `code` and
@@ -144,9 +207,14 @@ fn cause_of(stderr: &str) -> Option<&str> {
 /// whether this process runs as root (sudo does not help then).
 pub fn failure_text(label: &str, code: i32, stderr: &str, root: bool) -> String {
     let mut text = format!("{label} exited {code}");
-    if let Some(cause) = cause_of(stderr) {
+    let error = error_of(stderr);
+    if let Some((cause, steps)) = error.split_first() {
         text.push_str(": ");
         text.push_str(cause);
+        for step in steps {
+            text.push_str("\npodnet: ");
+            text.push_str(step);
+        }
     }
     if !label.contains("warp tun") {
         return text;
