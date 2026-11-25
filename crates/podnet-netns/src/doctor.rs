@@ -407,19 +407,29 @@ pub(crate) fn doctor(json: bool) -> i32 {
         probe_veth(),
         // T-382: a refused TCP connect holds in each namespace.
         crate::canrun::tcp_row(&tcp),
+        // GitHub #749: the parent writes the id maps of a user namespace.
+        crate::canrun::probe_id_maps(),
     ];
     // The unshare probes make the TUN, else the veth wire (T-174). GitHub
     // #713: the rule of the start of the backend decides the verdict.
-    let netns = crate::canrun::netns_probe_with(tcp, |flags| match flags {
-        libc::CLONE_NEWNET => probes[0].clone(),
-        _ => probes[1].clone(),
-    });
+    let netns = crate::canrun::netns_probe_with(
+        tcp,
+        |flags| match flags {
+            libc::CLONE_NEWNET => probes[0].clone(),
+            _ => probes[1].clone(),
+        },
+        || probes[10].clone(),
+    );
     let netns_available = netns.is_ok();
     let netns_why = netns.err().map(|no| format!(" ({no})")).unwrap_or_default();
     // T-153: the netns-kernel backend works only where netns works.
     let netns_kernel = probes[6].ok && netns_available;
-    let seccomp_available = probes[4].ok;
-    let hold = Hold::of(netns_available, seccomp_available && probes[7].ok);
+    // GitHub #749: the rule of the start of the seccomp backend: the filter
+    // and the read of the memory of a program.
+    let seccomp = crate::canrun::seccomp_probe_with(&probes[4], &probes[7]);
+    let seccomp_available = seccomp.is_ok();
+    let seccomp_why = seccomp.err().map(|why| format!("fail ({why})"));
+    let hold = Hold::of(netns_available, seccomp_available);
     let any = netns_available || seccomp_available;
     let budget = flow_budget();
 
@@ -475,12 +485,10 @@ pub(crate) fn doctor(json: bool) -> i32 {
     println!(
         "{}: backend seccomp: {}",
         crate::cli::program_name(),
-        if !seccomp_available {
-            "fail"
-        } else if probes[5].ok {
-            "ok"
-        } else {
-            "ok (getsockname/getpeername: fail)"
+        match (&seccomp_why, probes[5].ok) {
+            (Some(why), _) => why.as_str(),
+            (None, true) => "ok",
+            (None, false) => "ok (getsockname/getpeername: fail)",
         }
     );
     println!(
@@ -685,12 +693,21 @@ mod tests {
             ok: false,
             detail: "Permission denied (os error 13)".into(),
         };
-        let err = crate::seccomp_can_hold(&probe).expect_err("no read");
+        let err = crate::seccomp_can_hold(&probe, || true).expect_err("no read");
         let text = format!("{err}");
         assert!(text.starts_with("the seccomp backend cannot hold this program: the pod cannot read its memory (Permission denied (os error 13))"), "{text}");
         assert!(text.contains("use --backend netns"), "{text}");
-        let ok = super::Probe { ok: true, ..probe };
-        assert!(crate::seccomp_can_hold(&ok).is_ok());
+        let ok = super::Probe { ok: true, ..probe.clone() };
+        assert!(crate::seccomp_can_hold(&ok, || true).is_ok());
+        // GitHub #749: where netns cannot run, the line does not send the
+        // user to it.
+        let err = crate::seccomp_can_hold(&probe, || false).expect_err("no read");
+        let text = format!("{err}");
+        assert!(!text.contains("use --backend netns"), "{text}");
+        assert!(
+            text.contains("the netns backend cannot run here either"),
+            "{text}"
+        );
     }
 
     // T-231: the child of a probe waits, so its memory can be opened each

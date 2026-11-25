@@ -263,7 +263,9 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
         name_the_backend(name_backend, BackendKind::Seccomp, reason, netns_runs);
         // T-231: with no read of the memory of the program, the pod sees no
         // address and refuses each connect: refuse the run at its start.
-        seccomp_can_hold(&doctor::probe_mem_read())?;
+        seccomp_can_hold(&doctor::probe_mem_read(), || {
+            netns_runs && canrun::netns_probe().is_ok()
+        })?;
         report.backend(BackendKind::Seccomp, reason);
         run_seccomp(args)
     };
@@ -310,13 +312,26 @@ fn run_args(args: Args, report: &report::Report) -> i32 {
 /// Refuse the seccomp backend when the supervisor cannot read the memory of
 /// a program (`probe`, `doctor::probe_mem_read`): no call can be held, and
 /// the program would run with each connect refused (T-231).
-pub(crate) fn seccomp_can_hold(probe: &doctor::Probe) -> Result<()> {
+/// GitHub #749: the next step names `--backend netns` only where
+/// `netns_runs` says that the netns backend can run.
+pub(crate) fn seccomp_can_hold(
+    probe: &doctor::Probe,
+    netns_runs: impl FnOnce() -> bool,
+) -> Result<()> {
     if probe.ok {
         return Ok(());
     }
+    let step = match netns_runs() {
+        true => {
+            "use --backend netns, or run the pod where /proc/<pid>/mem of a child can be opened"
+        }
+        false => {
+            "the netns backend cannot run here either: run the pod where /proc/<pid>/mem of \
+                  a child can be opened (podnet pod doctor shows each probe)"
+        }
+    };
     bail!(
-        "the seccomp backend cannot hold this program: the pod cannot read its memory ({}); \
-         use --backend netns, or run the pod where /proc/<pid>/mem of a child can be opened",
+        "the seccomp backend cannot hold this program: the pod cannot read its memory ({}); {step}",
         probe.detail
     )
 }
