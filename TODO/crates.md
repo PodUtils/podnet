@@ -992,6 +992,8 @@ Done so far:
 
 2026-11-24: v0.82.1 is taken (T-539; PodUtils/podcrates#257, COORD-152): each `pod-*` dependency names `tag = "v0.82.1"` and `version = "0.82.1"`. `pod-cloudflare` answers COORD-113 (the retry budget of 30 s, TempFail through "no edge leg worked"); `pod-testkit` has `need_route!`. No hand-off for podnet.
 
+2026-11-24: v0.83.0 is taken (T-542; PodUtils/podcrates#259, COORD-154): each `pod-*` dependency names `tag = "v0.83.0"` and `version = "0.83.0"`. It answers COORD-115 (the rest of T-516 and T-522) and COORD-117 (`pod_core::files::socket_answers`). `pod-natprobe` (T-543) and `runs.py` (T-544) are entries of their own. No hand-off for podnet.
+
 # T-161: relay node: renew the pair before it expires (GitHub #358)
 
 **Source:** GitHub #358 (https://github.com/PodUtils/podnet/issues/358); PodUtils/podcrates#35 (cfb), ask A-N-12.

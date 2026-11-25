@@ -42,30 +42,11 @@ pub fn claim_socket_path(path: &std::path::Path, replace: bool) -> Result<()> {
     }
 }
 
-/// The connects of [`socket_answers`], and the time between two of them.
+/// Whether a process serves the unix socket at `path` (issue 115, T-534):
+/// the probe of pod-core (3 connects, 50 ms apart; COORD-117,
+/// PodUtils/podcrates@T-1209).
 #[cfg(unix)]
-const PROBES: u32 = 3;
-#[cfg(unix)]
-const PROBE_GAP: std::time::Duration = std::time::Duration::from_millis(50);
-
-/// Whether a process serves the unix socket at `path` (issue 115, T-534).
-/// A child that a process forks keeps a copy of each listener of the
-/// parent until its exec. Thus a socket that its server closed can take a
-/// connect for a short time. The socket answers only when each of
-/// 3 connects, 50 ms apart, works. A socket that does not
-/// answer costs one connect; a socket that answers costs 100 ms.
-#[cfg(unix)]
-pub fn socket_answers(path: &std::path::Path) -> bool {
-    for probe in 0..PROBES {
-        if probe > 0 {
-            std::thread::sleep(PROBE_GAP);
-        }
-        if std::os::unix::net::UnixStream::connect(path).is_err() {
-            return false;
-        }
-    }
-    true
-}
+pub use pod_core::files::socket_answers;
 
 /// The kind of the address of a listener: the next step of a refused bind
 /// depends on it.

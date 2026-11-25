@@ -1,39 +1,30 @@
-//! T-516: check the program of the pod before a backend starts it. The
-//! seccomp backend starts the program with `pod_hold::spawn::start`, and
-//! a failed `execve` there exits 127 with no line (pod-hold v0.82.0 does not
-//! report the errno). Each backend gets the same check here: one line and
-//! exit 3. Remove the check of a path with a `/` when podnet takes the
-//! tag of pod-hold that reports the errno of `execve`.
+//! T-516: check the program of the pod before a backend starts it, with
+//! `pod_hold::spawn::resolve` (a name in `PATH`, or a path with a `/`: an
+//! absent path, a directory and a file with no execute bit fail). Each
+//! backend gets the same check: one line and exit 3. pod-hold v0.83.0 also
+//! reports the errno of a failed `execve` of `spawn::start`
+//! (PodUtils/podcrates@T-1125).
 
 use std::ffi::OsStr;
-use std::os::unix::ffi::OsStrExt;
-use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
 
-/// Check that `name` can run: a name with a `/` is a regular file with an
-/// execute bit that this process can execute; another name is in the
-/// directories of `path` (the `PATH` of the program). The error is one line,
-/// in the form of the netns backend (`execvpe PATH: REASON`).
+/// Check that `name` can run: a name with a `/` is a file that this process
+/// can execute; another name is in the directories of `path` (the `PATH`
+/// of the program). The error is one line that names the program.
 pub(crate) fn can_run(name: &str, path: Option<&OsStr>) -> anyhow::Result<()> {
-    if !name.contains('/') {
-        pod_hold::spawn::resolve(name, path)?;
-        return Ok(());
-    }
-    let error = |e: std::io::Error| anyhow::anyhow!("execvpe {name}: {e}");
-    let meta = std::fs::metadata(Path::new(name)).map_err(error)?;
-    // execve(2) gives EACCES for a file that is not regular (a directory)
-    // and for a file with no execute bit.
-    if !meta.is_file() || meta.permissions().mode() & 0o111 == 0 {
-        return Err(error(std::io::Error::from_raw_os_error(libc::EACCES)));
-    }
-    let Ok(c_name) = std::ffi::CString::new(OsStr::new(name).as_bytes()) else {
-        return Err(anyhow::anyhow!("execvpe {name}: the path has a NUL byte"));
-    };
-    // SAFETY: a valid C string; access(2) only reads it.
-    if unsafe { libc::access(c_name.as_ptr(), libc::X_OK) } != 0 {
-        return Err(error(std::io::Error::last_os_error()));
-    }
+    pod_hold::spawn::resolve(name, path)?;
     Ok(())
+}
+
+/// The path that `execve` of a backend runs: `name` found as `execvp`
+/// finds it (a name with a `/` as it is, another name in `PATH`). Each
+/// backend calls `execve` with it, not `execvpe`: `execvpe` runs a file
+/// that the kernel refuses (ENOEXEC) with `/bin/sh`, and the pod then
+/// exits 127 with no line (T-516).
+pub(crate) fn exec_path(name: &str) -> anyhow::Result<std::ffi::CString> {
+    use std::os::unix::ffi::OsStrExt as _;
+    let path = std::env::var_os("PATH");
+    let found = pod_hold::spawn::resolve(name, path.as_deref())?;
+    Ok(std::ffi::CString::new(found.as_os_str().as_bytes())?)
 }
 
 #[cfg(test)]

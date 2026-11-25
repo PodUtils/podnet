@@ -23,7 +23,7 @@ no test (`defect_tests` in `TODO/todo.toml`).
 
 * All finished work is on `main` of `PodUtils/podnet`. The toolchain is Rust 1.99.1 (a cloud container can have an
   older default: `rustup default 1.99`; with Rust 1.97, cargo says "no matching package named `pod-release`").
-  podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.82.1` (T-539, `a0b727c`; COORD-116, #708).
+  podnet takes the crates of `PodUtils/podcrates` by the git tag `v0.83.0` (T-542; COORD-154, PodUtils/podcrates#259).
 * The newest release is `v0.4.0-beta.18` (T-533), published from `de6027b`. `release-proofs.yml` 45374896321 passed.
   Its job `image` failed after the push (T-538: a `docker logout` before `actions/attest`; fixed in `fefb28e`, with a
   rule in `scripts/check-workflows.py`). The images of beta.18 have no attestation; their digests are in COORD-109 (#656).
@@ -45,7 +45,7 @@ Do not stop for a confirmation and do not end the turn after a report (`CLAUDE.m
    the steps 1 to 6. Its job `image` proves T-487: the attestation, `gh attestation verify`, the section "The image,
    by digest" of the notes. Then write the digests in a hand-off COORD issue `(to all)` and close COORD-109 (#656)
    through the record.
-4. The rest of the work order of `TODO/PROGRESS.md`: T-516 and T-522 (wait for COORD-115), T-476, T-492 step 3, T-367,
+4. The rest of the work order of `TODO/PROGRESS.md`: T-543 (`pod-natprobe`), T-544 (`runs.py`), T-476, T-492 step 3, T-367,
    T-488, T-414, T-415, T-406, T-478.
 
 ## Facts for the next session
@@ -103,8 +103,6 @@ Use `pod_testkit::refused`, bind port `0`, or use `127.0.0.1:1` instead of freei
 
 | Issue | Waits for |
 | --- | --- |
-| `#709` (COORD-117, one `socket_answers` in `pod-core`, the ask of T-534) | A tag of podcrates with it; then podnet takes it and removes its copy. |
-| `#707` (COORD-115, the asks of the QA pass of beta.18) | A tag of podcrates; T-516 and T-522 partial. |
 | `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
 | `#656` (COORD-109, ghcr.io image: T-487) | The job `image` of the release of beta.19. |
 | `#604` (COORD-098, relay holds a lost socket) | The relay fix (T-406, T-478). |

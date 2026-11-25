@@ -2438,7 +2438,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:314`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-70`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:433`, `crates/podnet-vnet/src/proxy.rs:314`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-51`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:60`.
 - `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:174`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:98-104`).
@@ -4034,7 +4034,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   `set_permissions(path, 0o600)`.
 - The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:251`,
   src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:315`, `crates/podnet-vnet/src/switch.rs:434`,
-  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:341-344`),
+  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:328-331`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
 - `crates/podnet-netns/src/seccomp/accept.rs:61` is not exposed: it calls `private_dir` first
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
@@ -12480,7 +12480,7 @@ listener or relay disabled by policy, or not answering"; "1 (failure): A failure
 
 ## Premise
 
-- Read: `crates/podnet-core/src/net.rs:144` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
+- Read: `crates/podnet-core/src/net.rs:125` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
   `PermissionDenied` and `AddrNotAvailable`. `forward`, `net proxy`, `serve`, `route`, `link` and `cover` call it.
 - Read: `src/cli/cmd/connect.rs:109` binds the TCP listener of `-L` and adds only a context (`:110`). It does not
   call `bind_fault`, so the exit code is 1. `unix_listener` (`src/cli/cmd/connect.rs:246`, `:249`) has the same
@@ -12535,7 +12535,7 @@ binds after the link to a peer is up.
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -12606,6 +12606,17 @@ another architecture) still exits 127 with no line on the seccomp backend. The C
 as `crates/podnet-netns/src/raw.rs` does), with the class of the errno, and `resolve` checks a path with a `/`. When
 podnet takes that tag, the check of a path with a `/` in `program.rs` goes away.
 
+2026-11-24 (T-542, the take of podcrates `v0.83.0`): the rest is done. `pod_hold::spawn::start` reports the errno of
+`execve`, and `resolve` checks a path with a `/` (PodUtils/podcrates@T-1125). `can_run` (`crates/podnet-netns/src/program.rs`)
+calls `resolve` for each name; podnet's own check of a path is gone. The netns backends (`netns/mod.rs`, `raw.rs`)
+start the program with `execve` of the resolved path (`program::exec_path`), not `execvpe`: `execvpe` gave a file
+that the kernel refuses (ENOEXEC) to `/bin/sh`, and the pod exited 127 with no line. The test: a row "a file with an
+execute bit that the kernel cannot run" in `a_program_that_cannot_run_exits_3_with_one_line`
+(`tests/pod_error_lines.rs`; the test clears the proxy variables of the host, which give a line of their own).
+Control: on `v0.82.1` the row gives exit 127 and no line on each backend; after the take, the seccomp backend gives
+exit 3 and `the program "PATH" could not be started: execve: ENOEXEC: Exec format error (os error 8)`, and the netns
+backends give exit 3 and one line too. `cargo test -p podnet --test pod_error_lines`: 4 passed. `cargo test -p
+podnet-netns`: 173 passed. `docs/pods.md` says that a script needs a `#!` line.
 
 # T-517: pod: SIGTERM, SIGINT or SIGHUP to podnet ends podnet and leaves the program running (GitHub #691)
 
@@ -13077,7 +13088,7 @@ the pass prompt, check 3, "one error line that names each cause once and says wh
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -13224,6 +13235,12 @@ COORD asks (to podcrates):
    two times. podnet's rows use `chain_text`. Test: `format!("{:#}", anyhow::Error::new(failure))` of a refused
    origin says "Connection refused" once.
 
+2026-11-24 (T-542, the take of podcrates `v0.83.0`): the rest is done. `pod-dns` gives one short line for a name that
+no resolver answers (asks 1 to 5 of COORD-115, PodUtils/podcrates@T-1129 to PodUtils/podcrates@T-1134). `tests/error_words.rs` holds each
+row to 300 bytes; the exemption of a name under `.invalid` (the field `short`) is gone. Control: `podnet --no-proxy
+connect --stdio wss://nowhere.invalid/__podnet/ws` gives a line of 612 bytes on `v0.82.1` and of 273 bytes on
+`v0.83.0` ("DNS over HTTPS: 8 resolvers failed, 4 with: TLS: ..."). `cargo test -p podnet --test error_words`: 2
+passed.
 
 # T-523: a listener that cannot bind: two lines for one cause, no next step, and the bind comes after the WARP session (GitHub #705, #706)
 
@@ -13279,7 +13296,7 @@ says "nothing accepts a connection" when the cause is EACCES of the connect.
   (`src/cli/cmd/warp/mod.rs:156`, `warp_client`, which registers a device for `--ephemeral`): the registration comes
   before `bind_all` (`src/cli/cmd/warp/front.rs:134`). The comment of issue 97 says that the listeners
   bind before the session; that is true of the session of the proxy, not of the registration.
-- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:144`) is the one place that gives the class to a
+- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:125`) is the one place that gives the class to a
   refused bind. It adds no words. `src/cli/cmd/local.rs:65` writes its own line (`serve --local`).
 - Read: `src/cli/cmd/agent.rs:104` calls `podnet::ports::reachable(*p, ...)`, which gives a bool: a refused connect and
   an EACCES give the same answer. The advice with the unix sockets is in `src/agent.rs:529` and is not used here.
@@ -14528,3 +14545,130 @@ cargo test -p podnet --test pod_seccomp kernel_listen
   `/usr/sbin` off the PATH, the test of three namespaces skips on `iptables`; with each tool, both labs pass (1 passed
   each). `cargo test -p podnet --test pod_seccomp kernel_listen`: 3 passed (the v6 test skips with "this host has no
   IPv6 socket").
+
+
+# T-542: Take podcrates v0.83.0
+
+**Source:** `PodUtils/podcrates` tag `v0.83.0` (`5fd6fb7e`, 2026-11-24); PodUtils/podcrates#259 (COORD-154); the answers
+to COORD-115 (PodUtils/podnet#707) and COORD-117 (PodUtils/podnet#709).
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet named podcrates `v0.82.1`. The tag `v0.83.0` answers COORD-115 (`pod-hold`, `pod-wormhole`, `pod-ws`,
+`pod-proxy`, `pod-dns`, `pod-tls`, `pod-warp`, `pod-cloudflare`: PodUtils/podcrates@T-1125 to PodUtils/podcrates@T-1134) and COORD-117
+(`pod_core::files::socket_answers`, PodUtils/podcrates@T-1209), and adds `pod-natprobe` (PodUtils/podcrates@T-802) and
+the shared `scripts/agent/runs.py` (PodUtils/podcrates@T-1213).
+
+## Premise
+
+- Read: COORD-154 and the diff `v0.82.1..v0.83.0`. The tag has no `adoption/podnet/` patch. `core.sh`, `core-net.sh`,
+  `pins.py` and `release-index.py` did not change.
+- Read: the breaking changes (`Failed::Unreachable` holds `Missed`; `EnrolError::NoAnswer`; `Class::CantCreate` and
+  `Class::Internal`) need no change of podnet: podnet matches with a `_` arm or binds no `String`. podnet maps a class
+  of a crate onto its own contract (`exit::code_of_class`): 70 and 73 exit 1.
+- Read: podnet does not take `pod-unit`, `pod-acme` or `pod-opentunnel`; their items of COORD-154 do not apply.
+
+## Approach
+
+1. Each `pod-*` pin names `v0.83.0` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`, `scripts/install/SOURCES`,
+   `issue-sync.yml`, and the checkout of `release-index.py` in `release.yml`).
+2. `podnet_core::net::socket_answers` and `podnet_netns::listen::socket_answers` re-export
+   `pod_core::files::socket_answers`.
+3. `src/transfer/mod.rs`: the words of an expired code are those of `pod-wormhole` (T-520); `exact_time` is gone.
+4. The rest of T-516 and of T-522 (their Done sections).
+5. `pod-natprobe` and `runs.py` are entries of their own (T-543, T-544).
+
+## Prove
+
+```sh
+cargo test --workspace
+cargo test -p podnet --test pod_error_lines
+cargo test -p podnet --test error_words
+```
+
+## Done
+
+2026-11-24, the commit of this entry. `cargo build --workspace --all-targets --features full` and `cargo clippy
+--workspace --all-targets --features full -- -D warnings` pass with no change for the breaking items.
+`cargo test -p podnet-core --lib net::`: 5 passed; `cargo test -p podnet-netns`: 173 passed; `cargo test -p podnet
+--lib transfer::`: 22 passed; `tests/pod_error_lines.rs`: 4 passed; `tests/error_words.rs`: 2 passed. The full suite:
+see the commit.
+
+
+# T-543: Take `pod-natprobe`: the class of the NAT of the host for `link p2p` and `doctor`
+
+**Source:** PodUtils/podcrates#259 (COORD-154): "Take `pod-natprobe` (PodUtils/podcrates@T-802)". PodUtils/podcrates@T-802 (GitHub #212 of
+podcrates).
+**Category:** feature
+**Milestone:** M5
+**Priority:** P2
+**Effort:** M
+**Status:** open
+
+## Problem
+
+`podnet link p2p` picks the direct path or the relay by a try. It cannot say before the try which class of NAT the
+host is behind (the mapping and the filtering of RFC 5780, the port allocation of RFC 4787, NAT64, PCP and UPnP).
+`podnet doctor` has no NAT row.
+
+## Premise
+
+- Read: the README of the crate `pod-natprobe` at `v0.83.0`: a state machine with no I/O; the caller gives the sockets, the
+  clock, the resolver and the list of STUN servers. Each property is `Observed`, `Unknown` (with its reason) or
+  `NotApplicable`.
+- Read: `src/networks/turn_*.rs` and `tests/link_p2p_*.rs` (the TURN relay and the direct path).
+
+## Approach
+
+1. Add `pod-natprobe` by the tag of the other crates. Drive `Prober` with the dialers of podnet (the egress policy;
+   no UDP where the host refuses it).
+2. `podnet doctor`: a row `nat` with the mapping and the filtering class, and `Unknown` with its reason on a host
+   with no UDP. `--json` has the same fields.
+3. `podnet link p2p`: when the class says that the direct path cannot work (both ends dependent mappings), go to
+   the relay first.
+4. One table-driven test over the stand-in NATs of `tests/link_p2p_namespaces.rs` (cone and symmetric).
+
+## Prove
+
+```sh
+cargo test -p podnet --test link_p2p_namespaces
+podnet doctor --json
+```
+
+
+# T-544: Take `scripts/agent/runs.py` of podcrates in place of `watch-runs.sh` and podnet's own `runs.py`
+
+**Source:** PodUtils/podcrates#259 (COORD-154): "Take `scripts/agent/runs.py` in place of `watch-runs.sh` and its own
+`runs.py` (PodUtils/podcrates@T-1213)".
+**Category:** chore
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+podnet keeps `scripts/agent/runs.py` and `scripts/agent/watch-runs.sh`. podcrates has one `runs.py` for each session
+(PodUtils/podcrates@T-1213). The rule "Shared code first" says to take it.
+
+## Premise
+
+- Read: `scripts/agent/runs.py` of podcrates at `v0.83.0`, and podnet's two scripts and their users
+  (`docs/maintenance.md`, "Tools").
+
+## Approach
+
+1. Get `runs.py` of podcrates at a pinned commit into `.work/podcrates-agent/`, as the watcher (`CLAUDE.md`), and
+   remove podnet's copies.
+2. `docs/maintenance.md`: the commands of the new script.
+
+## Prove
+
+```sh
+python3 -I .work/podcrates-agent/runs.py --help
+```

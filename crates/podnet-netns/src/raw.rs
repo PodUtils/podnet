@@ -10,7 +10,7 @@
 //!
 //! The caller can be a multi-threaded process: everything that allocates
 //! is made before `fork()`. The child only does system calls until
-//! `execvpe`.
+//! `execve`.
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -33,7 +33,7 @@ pub struct RawOptions {
     pub nameserver: IpAddr,
 }
 
-/// The program of the pod cannot be run (`execvpe` failed: not in PATH,
+/// The program of the pod cannot be run (`execve` failed: not in PATH,
 /// not executable). The caller exits 3, as the netns backend does (issue
 /// 251: the child exited 127 with no message).
 #[derive(Debug)]
@@ -44,7 +44,7 @@ pub struct ExecError {
 
 impl std::fmt::Display for ExecError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "execvpe {}: {}", self.program, self.error)
+        write!(f, "execve {}: {}", self.program, self.error)
     }
 }
 
@@ -92,6 +92,26 @@ struct Prepared {
     mtu: usize,
 }
 
+/// The path of `program` for `execve`, or the [`ExecError`] of a program
+/// that cannot run, with the `io::Error` of its cause (`NotFound` for a
+/// name that is not in `PATH`).
+fn exec_path(program: &str) -> Result<CString> {
+    crate::program::exec_path(program).map_err(|e| {
+        let error = e
+            .chain()
+            .find_map(|c| c.downcast_ref::<std::io::Error>())
+            .map(|io| match io.raw_os_error() {
+                Some(code) => std::io::Error::from_raw_os_error(code),
+                None => std::io::Error::new(io.kind(), io.to_string()),
+            })
+            .unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, format!("{e:#}")));
+        anyhow::Error::new(ExecError {
+            program: program.to_owned(),
+            error,
+        })
+    })
+}
+
 /// Start the program in a raw pod. The child exits with 3 when the
 /// namespace or the TUN cannot be made; the caller gets the error of the
 /// TUN fd that does not come.
@@ -107,7 +127,7 @@ pub fn spawn(opts: &RawOptions) -> Result<RawPod> {
     )
     .context("writing the resolv.conf of the pod")?;
     let prepared = Prepared {
-        path: CString::new(program.as_bytes())?,
+        path: exec_path(program)?,
         argv: opts
             .program
             .iter()
@@ -136,7 +156,7 @@ pub fn spawn(opts: &RawOptions) -> Result<RawPod> {
         .collect();
     let (parent, child) = socketpair()?;
     // SAFETY: the child only does system calls on memory made above, then
-    // execvpe or _exit.
+    // execve or _exit.
     let pid = unsafe { libc::fork() };
     if pid < 0 {
         let _ = std::fs::remove_file(&resolv);
@@ -162,7 +182,7 @@ pub fn spawn(opts: &RawOptions) -> Result<RawPod> {
             write_all_fd(parent, b"a")?;
         }
         let fd = recv_fd(parent).context("the TUN of the namespace did not come (no /dev/net/tun, or the namespace cannot bring up its interfaces)")?;
-        // The end of the child has FD_CLOEXEC: a good execvpe closes it
+        // The end of the child has FD_CLOEXEC: a good execve closes it
         // (no byte), and a failed one sends its errno.
         let mut errno = [0u8; 4];
         let n = read_exact_fd(parent, &mut errno);
@@ -319,9 +339,10 @@ unsafe fn child_main(
         return NO_BACKEND;
     }
     libc::close(ctl);
-    // `sock` has FD_CLOEXEC: execvpe closes it. When execvpe fails, the
-    // parent gets the errno.
-    libc::execvpe(p.path.as_ptr(), argv.as_ptr(), envp.as_ptr());
+    // `sock` has FD_CLOEXEC: execve closes it. When execve fails, the
+    // parent gets the errno (T-516: execve, not execvpe, which runs an
+    // ENOEXEC file with /bin/sh).
+    libc::execve(p.path.as_ptr(), argv.as_ptr(), envp.as_ptr());
     let errno = (*libc::__errno_location()).to_ne_bytes();
     libc::write(sock, errno.as_ptr().cast(), errno.len());
     127

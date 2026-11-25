@@ -16238,6 +16238,11 @@ podnet pod -x socks5://127.0.0.1:1080 \
   pod stays. A program that does not end in 10 s, or a second stop signal, gets SIGKILL with each process of
   the pod, and podnet exits 128+N. A stop signal of the terminal (Ctrl-C) reaches the program directly, as
   each process of the foreground group; podnet waits for the program.
+* A program that cannot run: each backend finds the program as `execvp` does (a name with a `/` as it is,
+  another name in `PATH`) and starts it with `execve`. A script needs a `#!` line: the pod does not give a file
+  with no `#!` and no ELF header to `/bin/sh`. A program that cannot run (not found, no execute bit, a
+  directory, a format that the kernel refuses) gives one line with the program and the cause, and exit 3, on
+  each backend.
 
 ## Check the host: `podnet pod doctor`
 

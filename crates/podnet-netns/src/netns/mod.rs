@@ -287,7 +287,7 @@ pub(crate) fn child_setup(sock: RawFd, args: &Args) -> Result<()> {
 /// refused (T-383: the stack answers DNS over TCP at the gateway).
 pub(crate) fn exec_program(sock: RawFd, args: &Args, dns_over_tcp: bool) -> Result<()> {
     let program = &args.program;
-    let path = CString::new(program[0].as_bytes())?;
+    let path = crate::program::exec_path(&program[0])?;
     let mut argv: Vec<CString> = Vec::with_capacity(program.len() + 1);
     for a in program {
         argv.push(CString::new(a.as_bytes())?);
@@ -316,13 +316,9 @@ pub(crate) fn exec_program(sock: RawFd, args: &Args, dns_over_tcp: bool) -> Resu
     }
     unsafe {
         libc::close(sock);
-        libc::execvpe(path.as_ptr(), ptrs.as_ptr(), envp.as_ptr());
+        libc::execve(path.as_ptr(), ptrs.as_ptr(), envp.as_ptr());
     }
-    bail!(
-        "execvpe {}: {}",
-        program[0],
-        std::io::Error::last_os_error()
-    )
+    bail!("execve {}: {}", program[0], std::io::Error::last_os_error())
 }
 
 /// In a new mount namespace, put a resolv.conf with the TUN gateway over

@@ -813,7 +813,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- `bind_private` and `bind_claimed` in `crates/podnet-netns/src/listen.rs:127` and `:341` bind at mode 0600, refuse a regular file and replace a stale socket. The peer check exists in `src/router/control.rs:337`.
+- `bind_private` and `bind_claimed` in `crates/podnet-netns/src/listen.rs:127` and `:328` bind at mode 0600, refuse a regular file and replace a stale socket. The peer check exists in `src/router/control.rs:337`.
 - `AF_UNIX` is allowed on the test host (measured by the issue). The CI jobs `restricted-host` and `no-loopback` exist (`scripts/restricted-host.sh`, `.github/workflows/ci.yml`).
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 

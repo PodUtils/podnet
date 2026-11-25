@@ -43,10 +43,6 @@ struct Row {
     hint: &'static str,
     /// A text that each line names at most one time (a target, a lead).
     once: &'static [&'static str],
-    /// The error line is shorter than 300 bytes. A name that no resolver
-    /// answers is not: pod-dns joins the failure of each resolver (the
-    /// COORD ask of T-522).
-    short: bool,
 }
 
 fn row(
@@ -55,7 +51,6 @@ fn row(
     code: i32,
     hint: &'static str,
     once: &'static [&'static str],
-    short: bool,
 ) -> Row {
     Row {
         name,
@@ -63,7 +58,6 @@ fn row(
         code,
         hint,
         once,
-        short,
     }
 }
 
@@ -172,7 +166,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             69,
             PROXY,
             &["example.com:443", "could not reach the proxy"],
-            true,
         ),
         row(
             "relay connect, a dead proxy",
@@ -180,7 +173,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             69,
             PROXY,
             &["could not reach the proxy"],
-            true,
         ),
         row(
             "bench, a dead proxy",
@@ -192,7 +184,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             1,
             PROXY,
             &["example.com:80", "could not reach the proxy"],
-            true,
         ),
         row(
             "send, a dead proxy",
@@ -200,7 +191,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             69,
             PROXY,
             &[],
-            true,
         ),
         row(
             "warp proxy, a dead proxy",
@@ -220,7 +210,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             69,
             PROXY,
             &["could not reach the proxy"],
-            true,
         ),
         row(
             "connect, a refused port",
@@ -233,7 +222,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             69,
             CONNECT,
             &[],
-            true,
         ),
         row(
             "relay connect, a refused port",
@@ -250,7 +238,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             69,
             CONNECT,
             &[],
-            true,
         ),
         row(
             "bench, a refused port",
@@ -264,7 +251,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             1,
             CONNECT,
             &[],
-            true,
         ),
         row(
             "connect, a name that does not resolve",
@@ -277,7 +263,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             69,
             DNS,
             &[],
-            false,
         ),
         row(
             "relay connect, a name that does not resolve",
@@ -294,7 +279,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             69,
             DNS,
             &[],
-            false,
         ),
         row(
             "bench, a name that does not resolve",
@@ -310,7 +294,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             1,
             DNS,
             &[],
-            false,
         ),
         row(
             "bench, an address with no answer",
@@ -326,7 +309,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             1,
             CONNECT,
             &[],
-            true,
         ),
         row(
             "tunnel, a service page that is not its API",
@@ -343,7 +325,6 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
             69,
             SERVICE,
             &[],
-            true,
         ),
     ];
     let runs: Vec<_> = rows
@@ -373,7 +354,9 @@ fn each_error_line_names_its_cause_once_and_says_what_to_do() {
         for why in faults_of_words(first, row.once) {
             fault(why);
         }
-        if row.short && first.len() >= 300 {
+        // T-522: each error line is shorter than 300 bytes, also for a name
+        // that no resolver answers (pod-dns v0.83.0).
+        if first.len() >= 300 {
             fault(format!("a line of {} bytes", first.len()));
         }
         match lines.get(1) {

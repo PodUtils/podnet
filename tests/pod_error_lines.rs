@@ -300,7 +300,7 @@ fn each_refusal_of_the_netns_backend_is_one_line() {
                 "/nonexistent/prog",
             ],
             3,
-            "execvpe /nonexistent/prog: No such file or directory",
+            "No such file or directory",
         ),
         (
             "a flag of the seccomp backend",
@@ -378,11 +378,22 @@ fn a_program_that_cannot_run_exits_3_with_one_line() {
     let dir = tempfile::tempdir().unwrap();
     let plain = dir.path().join("plain");
     std::fs::write(&plain, "#!/bin/sh\n").unwrap();
+    // T-516: a file with an execute bit that the kernel cannot run
+    // (ENOEXEC: no `#!` and no ELF header); pod-hold v0.83.0 reports the
+    // errno of `execve`.
+    let foreign = dir.path().join("foreign");
+    std::fs::write(&foreign, b"\x00\x01\x02not a program\n").unwrap();
+    std::fs::set_permissions(
+        &foreign,
+        std::os::unix::fs::PermissionsExt::from_mode(0o755),
+    )
+    .unwrap();
     let rows = [
         ("/nonexistent/prog".to_owned(), "No such file or directory"),
         (dir.path().display().to_string(), "Permission denied"),
         (plain.display().to_string(), "Permission denied"),
         ("podnet-no-such-program".to_owned(), "is not in PATH"),
+        (foreign.display().to_string(), "Exec format error"),
     ];
     let mut faults = Vec::new();
     for backend in &backends {
@@ -392,6 +403,16 @@ fn a_program_that_cannot_run_exits_3_with_one_line() {
                 .arg(env!("CARGO_BIN_EXE_podnet"))
                 .args(["pod", "--backend", backend, "-x", "direct", "--", program])
                 .env_remove("PODNET_NETNS_QUIET")
+                // The proxy variables of the host give a line of their own
+                // ("the program does not get HTTPS_PROXY ...").
+                .env_remove("HTTPS_PROXY")
+                .env_remove("https_proxy")
+                .env_remove("HTTP_PROXY")
+                .env_remove("http_proxy")
+                .env_remove("ALL_PROXY")
+                .env_remove("all_proxy")
+                .env_remove("NO_PROXY")
+                .env_remove("no_proxy")
                 .output()
                 .unwrap();
             let stderr = String::from_utf8_lossy(&out.stderr);

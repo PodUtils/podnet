@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**540 entries: 14 open, 15 partial, 24 blocked, 487 done.**
+**543 entries: 16 open, 13 partial, 24 blocked, 490 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 3 | 2 | 84 | 90 |
-| P2 | 5 | 8 | 10 | 241 | 264 |
-| P3 | 8 | 4 | 12 | 161 | 185 |
-| **All** | 14 | 15 | 24 | 487 | 540 |
+| P1 | 1 | 2 | 2 | 86 | 91 |
+| P2 | 6 | 7 | 10 | 242 | 265 |
+| P3 | 9 | 4 | 12 | 161 | 186 |
+| **All** | 16 | 13 | 24 | 490 | 543 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -560,13 +560,13 @@ M8 Overlays, M9 Later.
 | [T-513](fixes.md) | P2 | S | M5 | defect | done | live: the edge did not know a new quick tunnel, and the second line said that a retry does not help |
 | [T-514](fixes.md) | P1 | S | M5 | defect | done | gate: get-podlab.sh fails when the podcrates tag of Cargo.toml has no GitHub release |
 | [T-515](fixes.md) | P1 | S | M5 | defect | done | connect: a TCP or unix listener that cannot bind exits 1; net proxy, forward and warp proxy exit 69 (GitHub #689) |
-| [T-516](fixes.md) | P1 | S | M5 | defect | partial | pod: with the seccomp backend, a program that cannot run exits 127 with no line (GitHub #690) |
+| [T-516](fixes.md) | P1 | S | M5 | defect | done | pod: with the seccomp backend, a program that cannot run exits 127 with no line (GitHub #690) |
 | [T-517](fixes.md) | P1 | M | M5 | defect | done | pod: SIGTERM, SIGINT or SIGHUP to podnet ends podnet and leaves the program running (GitHub #691) |
 | [T-518](fixes.md) | P1 | S | M5 | defect | done | rules check: a policy file that cannot be read or parsed exits 1; PODNET_POLICY gives 78 (GitHub #700) |
 | [T-519](fixes.md) | P2 | S | M5 | defect | done | JSON documents without the stamp: warp status, pod doctor and rules check (GitHub #693, #694) |
 | [T-520](fixes.md) | P2 | S | M5 | defect | done | send: the timeout line gives the wrong time, "within its 1 minutes" for --timeout 5 (GitHub #687) |
 | [T-521](fixes.md) | P2 | M | M5 | defect | done | error lines: a hint of the wrong hop (quick tunnel), and no hint for a dead proxy or a name that does not resolve (GitHub #695, #697, #698) |
-| [T-522](fixes.md) | P2 | M | M5 | defect | partial | error lines and rows name one cause two to six times, with the Debug text of a Rust struct, and one line holds three resolvers (GitHub #696, #697, #698) |
+| [T-522](fixes.md) | P2 | M | M5 | defect | done | error lines and rows name one cause two to six times, with the Debug text of a Rust struct, and one line holds three resolvers (GitHub #696, #697, #698) |
 | [T-523](fixes.md) | P2 | S | M5 | defect | done | a listener that cannot bind: two lines for one cause, no next step, and the bind comes after the WARP session (GitHub #705, #706) |
 | [T-524](fixes.md) | P2 | S | M5 | defect | done | net doctor: a host with no loopback gets "not needed", and a TCP loopback listener starts and cannot be reached (GitHub #692) |
 | [T-525](fixes.md) | P2 | S | M5 | defect | done | net shim: the documented `--out /tmp/podnet-vnet` example prints a working LD_PRELOAD line on a noexec /tmp (GitHub #699) |
@@ -586,3 +586,6 @@ M8 Overlays, M9 Later.
 | [T-539](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.82.1 |
 | [T-540](fixes.md) | P3 | S | M5 | feature | done | release.yml writes `release-index.json` before `SHA256SUMS` |
 | [T-541](fixes.md) | P3 | S | M5 | defect | done | tests of a tool or of IPv6 of the host fail on a host without it, in place of a skip |
+| [T-542](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.83.0 |
+| [T-543](fixes.md) | P2 | M | M5 | feature | open | Take `pod-natprobe`: the class of the NAT of the host for `link p2p` and `doctor` |
+| [T-544](fixes.md) | P3 | S | M5 | chore | open | Take `scripts/agent/runs.py` of podcrates in place of `watch-runs.sh` and podnet's own `runs.py` |
