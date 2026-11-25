@@ -11363,7 +11363,7 @@ already in use (os error 98)`. The class of T-479 (a freed port is free for each
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -11402,6 +11402,16 @@ and reads the port from its line `podnet: warp proxy  socks5h://127.0.0.1:PORT` 
 `cargo test -p podnet --test warp_stand_in through_the_edge`: 6 passed, three runs of three. Open: `warp forward -L`
 and `warp up --port` of the same file, and `free_port` of `tests/commands.rs` (`forward --name` listens on the port
 of its target).
+
+## Done
+
+Step 3, 2026-11-25, the commit of this entry: `tests/warp_stand_in.rs`
+`warp_stand_in_forward_carries_a_local_port_through_the_edge` binds `-L 127.0.0.1:0=...` and reads the port of the
+listen line of `warp forward` (3 runs of 3 pass). The other users of a freed port need a fixed port by the meaning of
+the test, and the command reports no port before its work: the config file of a reference server
+(`tests/quic_tuic_reference.rs`, `tests/quic_juicity_reference.rs`), a name forward on the port of its target
+(`tests/commands.rs`, on 127.0.0.2 and 127.0.0.3, which no other test binds), `warp up --port` (a port that the
+pointer file names) and `offline discover listen --bind` (UDP; the command prints only its last JSON).
 
 # T-493: Take podcrates v0.77.0
 

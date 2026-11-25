@@ -350,6 +350,31 @@ mod through_the_edge {
             .port()
     }
 
+    /// The port after `127.0.0.1:` in the first line of stdout of `child`
+    /// that starts with `lead`, before `deadline`. The rest of stdout goes
+    /// on to the end in a thread.
+    fn listen_port(child: &mut std::process::Child, lead: &str, deadline: Instant) -> Option<u16> {
+        use std::io::BufRead as _;
+        let stdout = child.stdout.take()?;
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            for line in std::io::BufReader::new(stdout)
+                .lines()
+                .map_while(Result::ok)
+            {
+                let _ = tx.send(line);
+            }
+        });
+        while let Ok(line) = rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+            if line.starts_with(lead) {
+                let (_, port) = line.split_once("127.0.0.1:")?;
+                let digits: String = port.chars().take_while(char::is_ascii_digit).collect();
+                return digits.parse().ok();
+            }
+        }
+        None
+    }
+
     /// `warp proxy` on port 0 of the loopback, with the edge as the front
     /// door. Gives the child and the port of its line `podnet: warp proxy
     /// socks5h://ADDR` when it listens, or the output of a child that ended
@@ -547,7 +572,6 @@ mod through_the_edge {
         let (world, edge) = world_and_edge().await;
         let addr = edge.addr;
         let got = tokio::task::spawn_blocking(move || {
-            let local = free_port();
             let identity = world.identity();
             let mut child = Command::new(env!("CARGO_BIN_EXE_podnet"))
                 .args([
@@ -558,7 +582,8 @@ mod through_the_edge {
                 ])
                 .args(["--masque-endpoint", &addr.to_string()])
                 .args(["forward", "--run-for", "60"])
-                .args(["-L", &format!("127.0.0.1:{local}=203.0.113.9:{ECHO_TCP}")])
+                // T-492: port 0; the port comes from the listen line.
+                .args(["-L", &format!("127.0.0.1:0=203.0.113.9:{ECHO_TCP}")])
                 .env("PODNET_WARP_API", format!("http://{}", world.served.addr()))
                 .env("PODNET_STATE_DIR", world.dir.path().join("state"))
                 .env_remove("PODNET_ERROR_PROGRAM")
@@ -568,8 +593,9 @@ mod through_the_edge {
                 .spawn()
                 .unwrap();
             let deadline = Instant::now() + Duration::from_secs(30);
+            let local = listen_port(&mut child, "podnet: warp forward ", deadline);
             let mut echoed = false;
-            while Instant::now() < deadline && !echoed {
+            while let Some(local) = local.filter(|_| Instant::now() < deadline && !echoed) {
                 if let Ok(Some(_)) = child.try_wait() {
                     break;
                 }
