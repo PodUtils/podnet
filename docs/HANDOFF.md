@@ -104,6 +104,7 @@ Use `pod_testkit::refused`, bind port `0`, or use `127.0.0.1:1` instead of freei
 | Issue | Waits for |
 | --- | --- |
 | `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
+| `#710` (COORD-118, the take of `v0.83.0`) | podcrates reads it; then close it through the record. |
 | `#656` (COORD-109, ghcr.io image: T-487) | The job `image` of the release of beta.19. |
 | `#604` (COORD-098, relay holds a lost socket) | The relay fix (T-406, T-478). |
 | `#413` (COORD-006) | T-161 and T-200 (`pod-relay`). |
