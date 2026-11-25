@@ -129,6 +129,7 @@ The column "Document" of the table above links the topic documents. More documen
 * [crates/podnet-netns/README.md](https://github.com/PodUtils/podnet/blob/main/crates/podnet-netns/README.md): the pod backends.
 * [SECURITY.md](https://github.com/PodUtils/podnet/blob/main/SECURITY.md): how to report a vulnerability, what Cloudflare can see, what listens, where secrets are kept.
 * [docs/development.md](https://github.com/PodUtils/podnet/blob/main/docs/development.md) and [docs/maintenance.md](https://github.com/PodUtils/podnet/blob/main/docs/maintenance.md): the rules and the procedures for contributors.
+* [docs/hosted-sessions.md](https://github.com/PodUtils/podnet/blob/main/docs/hosted-sessions.md): setup for Claude Code and Codex.
 
 This README describes `main`. The notes in `docs/releases/` say what a tag has. `llms.txt` and
 `llms-full.txt` give the manual and the documents as plain text for agents.

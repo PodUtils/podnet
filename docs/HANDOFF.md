@@ -1,7 +1,7 @@
 # Handoff
 
-The state at 2026-11-25 07:55 (UTC). Read this file first, then `CLAUDE.md`, `TODO/PROGRESS.md`,
-`docs/maintenance.md`, and `docs/decisions.md`. Remove this file when the lead session has no unfinished step.
+The product work state at 2026-11-25 07:55 (UTC). Start a hosted checkout with
+[TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
 
@@ -11,7 +11,7 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 ## Where the code is
 
-* All finished work is on `main`. The toolchain is Rust 1.99.1 (`rustup default 1.99`).
+* All finished work is on `main`. Use the pinned Rust toolchain from [Hosted sessions](hosted-sessions.md).
 * Done in the session of 2026-11-25: T-537 (release dry run 45533314862 passed with cargo-zigbuild `0.24.1` and the
   image digest `8d0e82ab`; loongarch64 links), T-545 (temp paths with a nonce, `podnet_core::state::temp`), T-546 step 1
   (`live` logs `pod_warp`; COORD-120 #712 asks pod-warp for a failure reply), and the fixes of the QA pass of

@@ -1,6 +1,7 @@
 # Rules for agents in this repository
 
 These rules apply to each session. Obey them before any other default.
+Use [TODO/RESUME.md](TODO/RESUME.md) to start a hosted session.
 
 ## Git
 
@@ -12,9 +13,8 @@ These rules apply to each session. Obey them before any other default.
 - Do not add `Co-Authored-By`, `Claude-Session`, "Generated with" or other
   agent attribution lines to commits, pull requests, comments or files.
 - Commit and push to `origin main` after each completed step.
-- `.claude/session-start.sh` sets the identity and the branch at session start,
-  and turns off commit signing for this repository (the signing key of a cloud
-  session is not the key of this identity).
+- `scripts/session-start.sh` sets the local identity and branch for both Claude
+  Code and Codex, and turns off commit signing for this repository.
 - A cloud session starts with a shallow clone. Run
   `git fetch --unshallow origin main` before a `git log` over a release range.
 
@@ -124,24 +124,9 @@ A session of podnet runs with no messages to the other sessions. GitHub
 issues are the channel, and each session watches them
 (`PodUtils/podcrates:docs/session-protocol.md`).
 
-1. At the start of each session, get the one watcher of the organization
-   from PodUtils/podcrates at a pinned commit (the owner's ruling
-   "Watcher", 2026-11-15, PodUtils/podcrates#186), and keep it running
-   under the Monitor tool (it polls each 120 s; start it again when the
-   monitor ends). `.work/` is in `.gitignore`.
-
-   ```sh
-   mkdir -p .work/podcrates-agent
-   for f in watch.py watch_test.py runs.py; do
-     curl -qfsSL -o ".work/podcrates-agent/$f" \
-       "https://raw.githubusercontent.com/PodUtils/podcrates/5fd6fb7e3495d5e9a591e36c5752e268309f6e4a/scripts/agent/$f"
-   done
-   python3 -I .work/podcrates-agent/watch.py --self-test
-   python3 -I .work/podcrates-agent/runs.py --self-test
-   python3 -I .work/podcrates-agent/watch.py podnet --state .work/agent
-   ```
-
-   It prints one line for each issue and pull request of PodUtils/podnet
+1. Start the organization and Actions watchers through the shared script
+   in [Hosted sessions](docs/hosted-sessions.md).
+   The organization watcher prints one line for each issue and pull request of PodUtils/podnet
    (new, closed, reopened, merged), for each item of another repository
    of PodUtils whose title holds `(to podnet)` or `(to all)` or that has
    the label `podnet`, for each new or edited comment of these items, and
@@ -197,10 +182,8 @@ issues are the channel, and each session watches them
   state on GitHub. Do not close it by hand. The workflow opens again an issue
   that the record says is open: change the record first, then push
   (`docs/maintenance.md`, "The issue loop").
-- At the start of a session, read `docs/HANDOFF.md` first when it exists
-  (the state of unfinished work), then `TODO/PROGRESS.md`, then
-  `docs/maintenance.md` (the procedures, the tools in `scripts/agent/`,
-  the workflows, the release steps).
+- At the start of a session, follow [TODO/RESUME.md](TODO/RESUME.md).
+  See `docs/maintenance.md` for the tools, workflows and release steps.
 
 ## Decisions
 
