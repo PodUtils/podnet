@@ -10,7 +10,7 @@ if [ "$(uname -s)" != Linux ]; then
     echo "cloud-setup: Linux is required" >&2
     exit 2
 fi
-for tool in cc curl git python3 sha256sum timeout; do
+for tool in cc curl flock git python3 sha256sum timeout; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         printf 'cloud-setup: install %s on this host\n' "$tool" >&2
         exit 1
@@ -46,17 +46,28 @@ install_rustup() (
     timeout 120 "$tmp/rustup-init" -y --no-modify-path --default-toolchain none </dev/null
 )
 
+mkdir -p "$CARGO_HOME"
+exec 9>"$CARGO_HOME/podnet-setup.lock"
+if ! flock -w 120 9; then
+    echo "cloud-setup: another setup still holds the Cargo cache lock" >&2
+    exit 1
+fi
 if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
     install_rustup
 fi
-if ! RUSTUP_AUTO_INSTALL=0 rustup which cargo >/dev/null 2>&1 ||
-   ! RUSTUP_AUTO_INSTALL=0 cargo fmt --version >/dev/null 2>&1 ||
-   ! RUSTUP_AUTO_INSTALL=0 cargo clippy --version >/dev/null 2>&1; then
+export RUSTUP_AUTO_INSTALL=0
+if ! rustup which cargo >/dev/null 2>&1 ||
+   ! cargo fmt --version >/dev/null 2>&1 ||
+   ! cargo clippy --version >/dev/null 2>&1; then
     timeout 600 rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal \
         --component clippy,rustfmt --no-self-update </dev/null
 fi
 rustc --version
-GIT_TERMINAL_PROMPT=0 timeout 600 cargo fetch --locked </dev/null
+host=$(rustc -vV | sed -n 's/^host: //p')
+test -n "$host"
+if ! timeout 30 cargo fetch --locked --offline --target "$host" </dev/null >/dev/null 2>&1; then
+    GIT_TERMINAL_PROMPT=0 timeout 600 cargo fetch --locked --target "$host" </dev/null
+fi
 printf 'cloud-setup: %s on %s\n' "$(uname -m)" "$(uname -r)"
 printf 'cloud-setup: uid %s\n' "$(id -u)"
 if command -v unshare >/dev/null 2>&1; then

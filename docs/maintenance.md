@@ -7,7 +7,7 @@ state of the open work.
 
 ## Start of a session
 
-1. Read `CLAUDE.md` and this document.
+1. Follow [the resume steps](../TODO/RESUME.md) and read `CLAUDE.md`.
 2. Make sure that the branch is `main` and that the tree is clean:
    `git status`, `git log --oneline -5`.
 3. List the open issues:
@@ -27,9 +27,8 @@ state of the open work.
 5. Read the state of `PodUtils/podcrates`: `sh scripts/agent/podcrates.sh`
    (a new release to take; the frozen files; the COORD issues; see
    "Shared crates").
-6. Start the watcher of the organization (`CLAUDE.md`, "Talk with the
-   other sessions of PodUtils"), and the issue watcher (see "The issue
-   loop").
+6. Read `.work/watch.log` and `.work/runs.log`. Run
+   `sh scripts/session-start.sh` again to restart a stopped watcher.
 7. Read `TODO/PROGRESS.md`, "Open work" below, and the open issues on GitHub.
 8. Do the steps of `docs/HANDOFF.md`, then the work order of
    `TODO/PROGRESS.md`, entry after entry, with no stop for a confirmation
@@ -51,16 +50,13 @@ state of the open work.
   GitHub REST API. Add a query parameter that changes (for example
   `&n=$RANDOM`), because the mirror keeps answers in a cache. The log of a
   job: `.../actions/jobs/JOB_ID/logs` (follow redirects: `curl -L`).
-* **Writes to GitHub** (a comment, the close of an issue, the dispatch of a
-  workflow): the MCP tools of GitHub (`add_issue_comment`, `issue_write`,
-  `actions_run_trigger`). No comment has an attribution line (`CLAUDE.md`).
+* **Issue writes and comments**: use the GitHub MCP tools (`issue_write`,
+  `add_issue_comment`). Follow the attribution rules in `CLAUDE.md`.
+* **Workflow dispatch**: follow [Run GitHub Actions](#run-github-actions).
 * **Runs from the session** (measured 2026-11-24): a push to `main` of the
   session starts `ci`, `deny`, `secrets`, `live` and `issue-sync`. A push
-  with `[skip ci]` in the message starts none of them. The session can also
-  start a workflow (`actions_run_trigger`, method `run_workflow`, ref `main`)
-  and cancel a run (`cancel_workflow_run`) when its token allows it. Do not
-  dispatch a workflow that the push already started. Push in batches: each
-  push starts about 12 jobs of `ci`, and the runners of the organization are
+  with `[skip ci]` in the message starts none of them. Push in batches:
+  each push starts about 12 jobs of `ci`, and the runners of the organization are
   shared. Cancel the runs of a head that a newer push replaces. A release
   (`release.yml -f publish=vX`) is also a dispatch.
   `issue-sync` runs on a push only (its daily run has never started):
@@ -68,26 +64,8 @@ state of the open work.
   record, GitHub keeps the old state until the next push without `[skip ci]`
   (or a dispatch with `dry_run` false). Else the daily `record-issues` fails
   on each difference.
-* **A run when a push starts no workflow** (the rule of the owner,
-  2026-11-06; the fallback when the session cannot start a run): the local agent of the owner runs the commands, and it is a
-  smaller model. For each run, open a NEW issue in `PodUtils/podnet` titled
-  exactly `[gh action] requested`, with ONE workflow in each request (the
-  agent starts only the first `gh workflow run` of a block), and:
-  * one line of why;
-  * ONE `sh` block: `set -e` first, each `gh` command in full (`-R
-    PodUtils/podnet` and every flag), nothing that needs judgement, and a
-    last line that echoes the run ids;
-  * at the end: "Run the block as it is, once. Then write here: the output
-    of the last line, or the line where it stopped and its error."
-
-  Never amend the block of an open request, and never add a second block in
-  a comment: close it and open a new issue. When the block checks the head
-  of `main`, push nothing to `main` until it ran. Watch each run to its end
-  (`runs.py`, below). Map each new issue (a request of a run,
-  a COORD issue) in `TODO/issues.md` and `TODO/github.txt` in the next
-  commit: `record-issues.yml` fails each day on a number with no line.
 * **Pushes**: `git push origin main`. The identity comes from
-  `.claude/session-start.sh`.
+  `scripts/session-start.sh`.
 * **Helper scripts of the agent** (in `scripts/agent/`):
   * `podcrates.sh`: the state of `PodUtils/podcrates` for podnet (see
     "Shared crates").
@@ -118,10 +96,9 @@ state of the open work.
     suspended account; then read the copy, or the `IssuesEvent` and
     `IssueCommentEvent` payloads of `repos/PodUtils/podnet/events` (the
     last 300 events), and add the text to `docs/reports/`.
-  * The runs of a commit: `runs.py` of PodUtils/podcrates, beside the
-    watcher in `.work/podcrates-agent/` (`CLAUDE.md`, "Talk with the other
-    sessions of PodUtils"; T-544):
-    `python3 -I .work/podcrates-agent/runs.py --repo PodUtils/podnet --until SHA --min-runs 5`.
+  * The runs of a commit: `runs.py` of PodUtils/podcrates in
+    `.work/podcrates-agent/PIN/`. Use the pin from `scripts/session-start.sh`:
+    `python3 -I .work/podcrates-agent/PIN/runs.py --repo PodUtils/podnet --until SHA --min-runs 5`.
     It prints each run of the commit when it ends, with the failed jobs and
     steps, and exits 0 (each green), 1 (one red), 3 (each cancelled by a
     newer push) or 2 (the time limit). A push to `main` starts five runs
@@ -139,8 +116,39 @@ state of the open work.
     compare them with its SHA256SUMS (issue 162).
   * `quic-vn.py HOST PORT`: the QUIC versions of a UDP endpoint (Version
     Negotiation; issue 157).
-  * Run the two watchers under the Monitor tool (a monitor stops after
-    30 min: start it again when it ends).
+
+## Run GitHub Actions
+
+Check the workflow's runs for the intended commit with
+`gh run list -R PodUtils/podnet --workflow ci.yml --branch main --commit SHA`
+or the available GitHub read tool. Use the existing run if the push
+already started it.
+
+For a required manual run, confirm the workflow supports
+`workflow_dispatch`. In Claude Code, use the GitHub dispatch tool if
+available. With GitHub CLI access, check `gh auth status --hostname github.com`
+and dispatch the exact workflow, ref and inputs. For a manual CI run on
+the current head of `main`, use
+`gh workflow run ci.yml -R PodUtils/podnet --ref main`.
+
+For failed jobs of a known run, use
+`gh run rerun RUN -R PodUtils/podnet --failed` if a rerun is needed.
+Verify the accepted run and its commit. Use
+`gh run watch RUN -R PodUtils/podnet --exit-status` to monitor it.
+If dispatch is ambiguous, check the run list again before retrying.
+
+If the session has no dispatch route or access is denied, open a new
+issue in `PodUtils/podnet` titled exactly `[gh action] requested`, one
+per workflow. Give the reason, the direct attempt and its error, and one
+shell block with `set -e`, the complete commands with `-R PodUtils/podnet`,
+and a final command that prints the run IDs. Ask the operator to run the
+block once and report its final line or the command and error where it
+stopped.
+
+To change an open request, close it and open a new issue. Wait for a
+request against the head of `main` to start before the next push.
+Watch the accepted run and map the request in `TODO/issues.md` and
+`TODO/github.txt` in the next commit.
 
 ## Shared crates
 
@@ -191,9 +199,8 @@ apply it at the commit of `adoption/podnet/commit` in a worktree, then
 merge; a conflict in podnet's own code is podnet's to solve.
 
 **Talk with the other sessions.** `CLAUDE.md`, "Talk with the other
-sessions of PodUtils": the watcher of the organization
-(`.work/podcrates-agent/watch.py`) under the Monitor tool; podnet
-writes `COORD-NNN: subject (to OTHER)` issues in `PodUtils/podnet` only:
+sessions of PodUtils": read `.work/watch.log` for organization messages.
+Podnet writes `COORD-NNN: subject (to OTHER)` issues in `PodUtils/podnet` only:
 the commit of each take, each fix of frozen code, a fault of a patch. A
 COORD issue is not a defect: it gets no record entry. Its number goes
 into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
@@ -201,9 +208,7 @@ into `TODO/github.txt`, and its row in `TODO/issues.md` has the entries
 
 ## The issue loop
 
-1. Keep `scripts/agent/watch-issues.sh` running under a Monitor. It records
-   the issues that exist at its first run and prints nothing for them. Look
-   at the open issues once at the start of a session (above).
+1. Look at open issues at startup. Read `.work/watch.log` for updates.
 2. For each new issue: save its text to the scratchpad, and start one Sonnet
    agent to triage it (`CLAUDE.md`). The agent reads the code and reports
    the cause, the change and the tests. It does not edit the repository.
@@ -410,8 +415,8 @@ work order, `TODO/INDEX.md` has each entry. Facts that a session needs:
   number (for example #276 for GitHub #296). QA #279 to #289 are GitHub
   #299 to #309, and their commits name the GitHub number. The record
   imports issues from #311 on (`scripts/check-github-numbers.py`).
-* **Shallow clone**: a cloud session starts with 50 commits of history.
-  Run `git fetch --unshallow origin main` before a `git log` over a
-  release range.
+* **Shallow clone**: check `git rev-parse --is-shallow-repository`.
+  If it prints `true`, run `git fetch --unshallow origin main` before
+  reading a release range.
 * **Questions for the owner**: in `TODO/PROGRESS.md` and
   `docs/decisions.md`.

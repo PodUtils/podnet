@@ -15,8 +15,8 @@ Use [TODO/RESUME.md](TODO/RESUME.md) to start a hosted session.
 - Commit and push to `origin main` after each completed step.
 - `scripts/session-start.sh` sets the local identity and branch for both Claude
   Code and Codex, and turns off commit signing for this repository.
-- A cloud session starts with a shallow clone. Run
-  `git fetch --unshallow origin main` before a `git log` over a release range.
+- If `git rev-parse --is-shallow-repository` prints `true`, run
+  `git fetch --unshallow origin main` before reading a release range.
 
 ## Permissions
 
