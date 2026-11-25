@@ -1,17 +1,19 @@
 # Handoff
 
-The product work state at 2026-11-25 14:30 (UTC). Start a hosted checkout with
+The product work state at 2026-11-25 16:30 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
 
 **podrunner first** (the owner, 2026-11-18; `docs/decisions.md`). The order: a red run of podnet's CI; each ask of
 podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-137); podnet's own work in the order of
-`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.84.0`, taken) at 14:30.
+`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.85.0`, taken in T-588) at 16:30.
 
 ## Where the code is
 
 * All finished work is on `main`. Use the pinned Rust toolchain from [Hosted sessions](hosted-sessions.md).
+* Done later on 2026-11-25: T-588 (podcrates `v0.85.0`, COORD-127 #757), T-587 and T-589 (`live` robustness),
+  T-492, T-543 (done), T-584; T-476 blocked on COORD-126 (#756); T-586 recorded.
 * Done in the session of 2026-11-25 (afternoon): T-583 (the take of podcrates `v0.84.0`, `405d47c`; COORD-122 #752 read
   by podcrates), T-546 and T-550 (by the tag), the reviewed fixes of the QA pass of `0.4.0-beta.19` (T-547, T-572 to
   T-574, T-576 to T-578, T-581), T-564, T-582, T-584 (#720), and T-543 steps 1 and 2 (the row `nat` of `doctor`).
@@ -20,13 +22,14 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 ## The next steps, in order
 
-1. **The release `v0.4.0-beta.19`:** `docs/releases/v0.4.0-beta.19.md` is written. Then the steps 1 to 6 of
-   `docs/maintenance.md`, Release: the version, `ci` and `live` green on the commit, `gate.yml`, the dry run, the
-   publish, `release-proofs.yml`. The job `image` proves T-487; then the digests in a hand-off COORD issue `(to all)`,
-   and close COORD-109 (#656) through the record.
-2. **T-543 steps 3 and 4:** `link p2p` takes the relay first for two dependent mappings; the table test over the
-   stand-in NATs of `tests/link_p2p_namespaces.rs`.
-3. The rest of the work order: T-476, T-492 step 3, T-367, T-488, T-414, T-415, T-406, T-478.
+1. **The release `v0.4.0-beta.19` (T-585):** `ci` 45646491033 and `live` 45646491036 passed on `2ef8e3a`, `gate`
+   45640209602 on `b4aa4a9`. The dry run of `release.yml` runs on `2ef8e3a`. Then `publish=v0.4.0-beta.19`,
+   `release-proofs.yml`, the job `image` (T-487), the digests in a hand-off COORD issue `(to all)` and in #656; close
+   #656 through the record.
+2. **After the tag:** push the local work of the worktree `/tmp/wt-next` (T-428 step 2, the feature `release`), then a
+   dry run of `release.yml` proves that each target builds with it.
+3. The rest of the work order: T-367 (blocked in practice: `pod-warp`), T-488, T-414, T-415, T-406, T-478, T-589 (the
+   proof on the next `live` run with a 429).
 4. **The daily run of `issue-sync`:** check that the event `schedule` runs.
 
 ## Facts for the next session
@@ -61,6 +64,7 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 | Issue | Waits for |
 | --- | --- |
+| `#756` (COORD-126, `pod-session` `move_under`) | A tag with it (T-476). |
 | `#753` (COORD-123, `pod-dns` cuts a line inside a cause) | A tag with the fix (T-575). |
 | `#754` (COORD-124, `pod-proxy`, a proxy command that does not exist) | A tag with the fix (T-580). |
 | `#755` (COORD-125, `pod-cloudflare`, the DoH wait of the edge discovery) | A tag with the fix (T-579). |
