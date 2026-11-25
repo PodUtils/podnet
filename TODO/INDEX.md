@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**545 entries: 16 open, 13 partial, 25 blocked, 491 done.**
+**545 entries: 15 open, 14 partial, 25 blocked, 491 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 86 | 91 |
-| P2 | 7 | 7 | 11 | 242 | 267 |
+| P2 | 6 | 8 | 11 | 242 | 267 |
 | P3 | 8 | 4 | 12 | 162 | 186 |
-| **All** | 16 | 13 | 25 | 491 | 545 |
+| **All** | 15 | 14 | 25 | 491 | 545 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -581,7 +581,7 @@ M8 Overlays, M9 Later.
 | [T-534](fixes.md) | P1 | S | M5 | defect | done | The release commit 9f3c8a2 fails the lane and the restricted host: the row warp-proxy-dead-proxy and a dead unix socket that a forked child holds |
 | [T-535](fixes.md) | P2 | S | M5 | defect | done | live: the check of a WebSocket through a --url origin gives no line of podnet when the tunnel is not ready |
 | [T-536](fixes.md) | P3 | S | M5 | defect | done | a refused unix bind says that the directory is not writable when the host refuses the socket itself |
-| [T-537](fixes.md) | P2 | S | M5 | chore | open | the build image of Dependabot #680 cannot link loongarch64: --no-rosegment |
+| [T-537](fixes.md) | P2 | S | M5 | chore | partial | the build image of Dependabot #680 cannot link loongarch64: --no-rosegment |
 | [T-538](fixes.md) | P1 | S | M5 | defect | done | The job image of the release of v0.4.0-beta.18 fails: a docker logout before the push of the attestation |
 | [T-539](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.82.1 |
 | [T-540](fixes.md) | P3 | S | M5 | feature | done | release.yml writes `release-index.json` before `SHA256SUMS` |

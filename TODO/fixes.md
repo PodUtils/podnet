@@ -14309,7 +14309,7 @@ cargo test -p podnet-core --lib net::
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -14335,6 +14335,13 @@ cargo test -p podnet-core --lib net::
 ```sh
 # a release dry run with the new digest passes the job linux loongarch64-unknown-linux-musl
 ```
+
+## Correction
+
+2026-11-25: the cause is in cargo-zigbuild: newer rustc gives `-Wl,--no-rosegment` for loongarch64
+(rust-lang/rust#162546), and cargo-zigbuild `0.24.0` and later drop it (rust-cross/cargo-zigbuild#505, commit
+`d36754d1`, the file `linker_args.rs`). `release.yml` takes cargo-zigbuild `0.24.1` and `images/build/Dockerfile` the
+digest `8d0e82ab` of Dependabot #680. A release dry run proves it.
 
 
 # T-538: The job image of the release of v0.4.0-beta.18 fails: a docker logout before the push of the attestation

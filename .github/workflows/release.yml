@@ -193,7 +193,9 @@ jobs:
       TARGET: ${{ matrix.target }}
       ZIG_VERSION: 0.16.0
       ZIG_SHA256: 70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00
-      ZIGBUILD_VERSION: 0.23.4
+      # T-537: 0.24.0 and later drop the argument --no-rosegment that newer
+      # rustc gives for loongarch64 (rust-cross/cargo-zigbuild#505).
+      ZIGBUILD_VERSION: 0.24.1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
