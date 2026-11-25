@@ -439,3 +439,51 @@ fn each_tag_in_the_documents_has_a_release_note() {
     }
     assert!(missing.is_empty(), "tags with no release note: {missing:?}");
 }
+
+/// GitHub #732: each topic section that `docs/cli.md` names for
+/// `podnet man --json SECTION` runs, and its document has the key that the
+/// line gives.
+#[test]
+fn each_topic_of_man_json_in_cli_md_runs_with_its_key() {
+    let text = std::fs::read_to_string("docs/cli.md").unwrap();
+    let start = text
+        .find("For a topic, the\n  section and its key are:")
+        .expect("the line of the topics");
+    let line = &text[start..start + text[start..].find(".\n").unwrap()];
+    let pairs: Vec<(&str, &str)> = line
+        .split("`")
+        .collect::<Vec<_>>()
+        .chunks(4)
+        .filter(|c| c.len() == 4)
+        .map(|c| (c[1], c[3]))
+        .collect();
+    assert_eq!(pairs.len(), 5, "{line}");
+    for (section, key) in pairs {
+        let out = std::process::Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args(["man", "--json", section])
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{section}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let doc: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert!(doc.get(key).is_some(), "{section}: no key {key}");
+    }
+}
+
+/// GitHub #728: the policy file of `docs/host-runtime.md` parses, with a
+/// port as a number and as a string.
+#[test]
+fn the_policy_example_of_host_runtime_md_parses() {
+    let text = std::fs::read_to_string("docs/host-runtime.md").unwrap();
+    let at = text
+        .find("A policy file (`rules.json`):")
+        .expect("the example");
+    let start = at + text[at..].find("```json\n").unwrap() + "```json\n".len();
+    let end = start + text[start..].find("```").unwrap();
+    let policy =
+        podnet::policy::Policy::parse(&text[start..end]).unwrap_or_else(|e| panic!("{e:#}"));
+    assert_eq!(policy.rules.len(), 3);
+}

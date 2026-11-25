@@ -143,7 +143,7 @@ docs/link.md 8dd8c3514a skip a JSON query of the carriers; jq is the reader's to
 docs/link.md 207a7d5be5 skip needs serial devices /dev/ttyUSB0 and /dev/ttyUSB1
 docs/link.md 389fb7017f live needs a TURN server and a password file
 docs/link.md 8fbcd54085 skip needs a site, a certificate and a switch key
-docs/offline.md 958f435b4d skip a reference list: FILE, NAME and FINGERPRINT placeholders; foreground listeners
+docs/offline.md 80998c49d9 skip a reference list: FILE, NAME and FINGERPRINT placeholders; foreground listeners
 docs/offline.md 72f6f63d66 skip a sequence: ./used and offer.txt are created by the reader
 docs/offline.md d5c8b27329 skip needs serial devices /dev/ttyUSB0 and /dev/ttyUSB1
 docs/offline.md cc47cf87bf skip needs a serial device /dev/ttyUSB0

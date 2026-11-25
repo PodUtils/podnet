@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**557 entries: 15 open, 14 partial, 26 blocked, 502 done.**
+**563 entries: 16 open, 13 partial, 26 blocked, 508 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 86 | 91 |
-| P2 | 6 | 8 | 12 | 253 | 279 |
+| P2 | 7 | 7 | 12 | 259 | 285 |
 | P3 | 8 | 4 | 12 | 162 | 186 |
-| **All** | 15 | 14 | 26 | 502 | 557 |
+| **All** | 16 | 13 | 26 | 508 | 563 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -581,7 +581,7 @@ M8 Overlays, M9 Later.
 | [T-534](fixes.md) | P1 | S | M5 | defect | done | The release commit 9f3c8a2 fails the lane and the restricted host: the row warp-proxy-dead-proxy and a dead unix socket that a forked child holds |
 | [T-535](fixes.md) | P2 | S | M5 | defect | done | live: the check of a WebSocket through a --url origin gives no line of podnet when the tunnel is not ready |
 | [T-536](fixes.md) | P3 | S | M5 | defect | done | a refused unix bind says that the directory is not writable when the host refuses the socket itself |
-| [T-537](fixes.md) | P2 | S | M5 | chore | partial | the build image of Dependabot #680 cannot link loongarch64: --no-rosegment |
+| [T-537](fixes.md) | P2 | S | M5 | chore | done | the build image of Dependabot #680 cannot link loongarch64: --no-rosegment |
 | [T-538](fixes.md) | P1 | S | M5 | defect | done | The job image of the release of v0.4.0-beta.18 fails: a docker logout before the push of the attestation |
 | [T-539](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.82.1 |
 | [T-540](fixes.md) | P3 | S | M5 | feature | done | release.yml writes `release-index.json` before `SHA256SUMS` |
@@ -603,3 +603,9 @@ M8 Overlays, M9 Later.
 | [T-556](fixes.md) | P2 | S | M5 | defect | done | init enroll: a failed dial of the relay drops the cause and gives no next step |
 | [T-557](fixes.md) | P2 | S | M5 | defect | done | init enroll: a relay URL that is not a relay prints the raw chunked HTML body |
 | [T-558](fixes.md) | P2 | S | M5 | defect | done | host probe, stat --json: schema is a string and the podnet key is missing |
+| [T-559](fixes.md) | P2 | S | M5 | defect | done | rules check: the documents do not give the fields of a policy rule |
+| [T-560](fixes.md) | P2 | S | M5 | defect | done | ci check: a declaration with schema 1 is refused, and each string is taken |
+| [T-561](fixes.md) | P2 | S | M5 | defect | done | man --json SECTION: docs/cli.md names the keys variables, exits and table as sections |
+| [T-562](fixes.md) | P2 | S | M5 | defect | done | autostart add: refuses a binary under /var/tmp as temporary, with exit 64 |
+| [T-563](fixes.md) | P2 | S | M5 | defect | done | offline bundle build: the example of docs/offline.md (--file ./site:/site) does not run |
+| [T-564](fixes.md) | P2 | S | M5 | defect | open | serve --local: on a host with no loopback address the listener is ready, and no client can connect |

@@ -412,5 +412,11 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #726 | COORD-121: pod-warp: a pin mismatch names the cause by the issuer of the door certificate, and says each cause once (to podcrates) | open (a COORD issue between sessions; the ask of T-550) | none |
 | #729 | [qa 0.4.0-beta.19] stat --json: "schema" is a string and the "podnet" key is missing | closed: T-558 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test of each entry is in its Done section) | T-558 |
 | #733 | [qa 0.4.0-beta.19] relay pair --json: the document has no "schema" and no "podnet" key | closed: T-551 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; `relay pair --json` is one of the six sites of T-551) | T-551 |
+| #728 | [qa 0.4.0-beta.19] rules check: the documents do not give the fields of a policy rule | closed: T-559 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-559 |
+| #730 | [qa 0.4.0-beta.19] ci check: a declaration with "schema": 1 is refused; the help and the documents do not give the form | closed: T-560 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-560 |
+| #732 | [qa 0.4.0-beta.19] man --json SECTION: the section names "variables", "exits" and "table" of the document are refused | closed: T-561 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-561 |
+| #734 | [qa 0.4.0-beta.19] autostart add: refuses ~/.local/bin/podnet as "a temporary directory" and tells the user to copy it to ~/.local/bin | closed: T-562 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-562 |
+| #735 | [qa 0.4.0-beta.19] offline bundle build: the example of docs/offline.md (--file ./site:/site) does not run | closed: T-563 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-563 |
+| #736 | [qa 0.4.0-beta.19] serve --local: on a host with no loopback address the listener is "ready" and --check passes, but no client can connect | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-564 |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

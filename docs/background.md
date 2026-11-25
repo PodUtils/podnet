@@ -106,7 +106,9 @@ podnet autostart remove web
   `TUNNEL_TOKEN` and `PODNET_PROXY`. The unit, the crontab line and the
   command line of the process hold no secret.
 * The unit and the line run this binary by its absolute path. A binary in
-  a temporary directory is refused. The unit quotes for systemd (`%` and
+  a directory that the host clears at a reboot or a logout (the temporary
+  directory, `/tmp`, `/dev/shm`, `$XDG_RUNTIME_DIR`) is refused with exit 78;
+  `/var/tmp` is kept across a reboot. The unit quotes for systemd (`%` and
   `$` are escaped), the crontab line for `sh`.
 * An entry runs in the foreground under its service manager: `add`
   removes `--detach`, `--name`, `--ready-timeout` and `--no-restart`, and

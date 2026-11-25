@@ -1557,7 +1557,8 @@ podnet ci check
 
   Arguments:
     FILE
-        The declaration: {"schema": ..., "hosts": [{host, port, udp}]}.
+        The declaration: {"schema": 1, "kind": "podnet.ci-egress/1", "hosts":
+        [{"host": "api.example", "port": 443, "udp": false}]}.
 
   Options:
     --json
@@ -10640,7 +10641,8 @@ podnet offline bundle build
         The name of the bundle, one line. Required.
     --file SRC:DEST
         A file of the bundle: SRC:DEST, with a relative DEST that has no `..`.
-        Repeat it for each file.
+        A directory SRC gives each file under it at DEST/PATH. Repeat it for
+        each file.
     --base DIR
         The bundle of the previous release. With it, the output is a delta from
         that bundle, not a full bundle.
@@ -12014,7 +12016,9 @@ podnet rules check
 
   Arguments:
     FILE
-        The JSON policy: {"default": ..., "rules": [...]}.
+        The JSON policy: {"default": "refuse", "rules": [{"name": "api",
+        "host": "*.example.com", "port": 443, "family": "any", "action":
+        "direct"}]}. docs/host-runtime.md gives each field.
 
   Options:
     --json
@@ -17902,7 +17906,9 @@ podnet autostart remove web
   `TUNNEL_TOKEN` and `PODNET_PROXY`. The unit, the crontab line and the
   command line of the process hold no secret.
 * The unit and the line run this binary by its absolute path. A binary in
-  a temporary directory is refused. The unit quotes for systemd (`%` and
+  a directory that the host clears at a reboot or a logout (the temporary
+  directory, `/tmp`, `/dev/shm`, `$XDG_RUNTIME_DIR`) is refused with exit 78;
+  `/var/tmp` is kept across a reboot. The unit quotes for systemd (`%` and
   `$` are escaped), the crontab line for `sh`.
 * An entry runs in the foreground under its service manager: `add`
   removes `--detach`, `--name`, `--ready-timeout` and `--no-restart`, and
@@ -18282,8 +18288,9 @@ password in its environment. Use it to collect failures in tests.
   Each flag has `short`, `long`, `value`, `help`, `kind`, `default`, `values`, `env`, `required` and
   `repeatable`. `facts` has `variables` (in groups), `exits` (each `code` is a value, `128+N` or the code of
   the program), `files` and `tables` (the inventory).
-* `podnet man --json SECTION` prints one section: `{"schema", "name", "command"}` for a command, or
-  `variables`, `files`, `exits`, `examples` or `table` for a topic.
+* `podnet man --json SECTION` prints one section: `{"schema", "name", "command"}` for a command. For a topic, the
+  section and its key are: `environment` (`variables`), `files` (`files`), `exit-status` (`exits`), `examples`
+  (`examples`) and `inventory` (`table`).
 * `podnet COMMAND --help --json` prints the JSON of `podnet man --json COMMAND` for one command, at each level
   (`podnet route --help --json`, `podnet warp run --help --json`). At the root it prints the root command.
 * `podnet man --roff` prints a man(7) page. `podnet.1` is a release asset.
@@ -19890,6 +19897,26 @@ podnet rules check rules.json
 podnet rules check rules.json --json
 ```
 
+A policy file (`rules.json`):
+
+```json
+{"default": "refuse", "rules": [
+  {"name": "api", "host": "*.example.net", "port": 443, "action": "direct"},
+  {"name": "dns", "host": "1.1.1.1", "port": "53", "family": "ipv4", "action": "proxy"},
+  {"name": "no-ads", "host": "ads.example.com", "action": "refuse"}
+]}
+```
+
+| Field | Necessary | Value |
+| --- | --- | --- |
+| `default` | no (`refuse`) | The action for a destination that no rule matches. |
+| `rules` | yes | The rules, in order. The first rule that matches decides. |
+| `name` | yes | The name of the rule. A refusal and `rules check` name it. |
+| `host` | yes | A name or an address (`example.net`), a suffix (`*.example.net`: each name under it), or `*` (each host). |
+| `port` | no (`*`) | A number (`443`), a string of a number (`"443"`), a range (`"8000-8999"`), or `"*"` (each port). |
+| `family` | no (`any`) | `any`, `ipv4` or `ipv6`: the family of the resolved address. A name has `any` until it resolves. |
+| `action` | yes | `direct`, `proxy`, `relay`, `refuse` or `queue`. |
+
 `podnet bench` sends its requests through the policy: a refused destination
 is an error of each request. `podnet rules check` names each rule that an
 earlier rule covers, and exits 78 when a later rule is unreachable. A file
@@ -19920,6 +19947,15 @@ near end of `podnet tunnel --e2e` is a command-level check with exit 69.
 needs of a pipeline and checks it against the installed policy before the
 first step. It names each offending host and exits 69. Without an installed
 policy it exits 78.
+
+```json
+{"schema": 1, "kind": "podnet.ci-egress/1", "hosts": [
+  {"host": "api.example.net", "port": 443, "udp": false}
+]}
+```
+
+`schema` is 1 and `kind` is `podnet.ci-egress/1`; the older form `"schema": "podnet.ci-egress/1"` is read too. Another
+value exits 78. `udp` is `false` when it is not given.
 
 `podnet forge clone --seed PATH --expect HASH DEST` clones a local
 content-addressed seed with the `file` protocol only, verifies the commit

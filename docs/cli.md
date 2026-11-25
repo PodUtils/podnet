@@ -153,8 +153,9 @@ password in its environment. Use it to collect failures in tests.
   Each flag has `short`, `long`, `value`, `help`, `kind`, `default`, `values`, `env`, `required` and
   `repeatable`. `facts` has `variables` (in groups), `exits` (each `code` is a value, `128+N` or the code of
   the program), `files` and `tables` (the inventory).
-* `podnet man --json SECTION` prints one section: `{"schema", "name", "command"}` for a command, or
-  `variables`, `files`, `exits`, `examples` or `table` for a topic.
+* `podnet man --json SECTION` prints one section: `{"schema", "name", "command"}` for a command. For a topic, the
+  section and its key are: `environment` (`variables`), `files` (`files`), `exit-status` (`exits`), `examples`
+  (`examples`) and `inventory` (`table`).
 * `podnet COMMAND --help --json` prints the JSON of `podnet man --json COMMAND` for one command, at each level
   (`podnet route --help --json`, `podnet warp run --help --json`). At the root it prints the root command.
 * `podnet man --roff` prints a man(7) page. `podnet.1` is a release asset.

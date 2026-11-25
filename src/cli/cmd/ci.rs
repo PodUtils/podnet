@@ -24,7 +24,8 @@ pub(crate) enum CiCommand {
     /// Check a declaration against the installed egress policy. It exits 69
     /// with the offending host named when the policy does not cover it.
     Check {
-        /// The declaration: {"schema": ..., "hosts": [{host, port, udp}]}.
+        /// The declaration: {"schema": 1, "kind": "podnet.ci-egress/1",
+        /// "hosts": [{"host": "api.example", "port": 443, "udp": false}]}.
         file: PathBuf,
         /// Print one JSON document.
         #[arg(long)]

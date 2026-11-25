@@ -8,10 +8,13 @@
 //! The declaration is JSON:
 //!
 //! ```json
-//! {"schema":"podnet.ci-egress/1","hosts":[
+//! {"schema":1,"kind":"podnet.ci-egress/1","hosts":[
 //!   {"host":"api.example","port":443,"udp":false}
 //! ]}
 //! ```
+//!
+//! The older form `"schema":"podnet.ci-egress/1"` (with no `kind`) is read
+//! too. Another value of `schema` or `kind` is refused (GitHub #730).
 //!
 //! A `proxy` rule carries TCP in this tree. A step that needs UDP with only
 //! a proxy rule is refused, because the rule does not cover the need.
@@ -35,9 +38,13 @@ pub struct Need {
 /// A pipeline declaration.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct Declaration {
-    /// The schema of the document.
+    /// The stamp of the document: 1 (with `kind`), or the older form, the
+    /// name of the form.
     #[serde(default)]
-    pub schema: String,
+    pub schema: serde_json::Value,
+    /// The name of the form: `podnet.ci-egress/1`.
+    #[serde(default)]
+    pub kind: Option<String>,
     /// The destinations of the pipeline.
     pub hosts: Vec<Need>,
 }
@@ -88,7 +95,31 @@ impl Report {
 pub fn check_text(text: &str, policy: &Policy) -> anyhow::Result<Report> {
     let declaration: Declaration = serde_json::from_str(text)
         .map_err(|e| anyhow::anyhow!("the declaration is not JSON of the CI egress schema: {e}"))?;
+    form_of(&declaration)?;
     Ok(check(&declaration, policy))
+}
+
+/// The name of the form of a declaration.
+pub const FORM: &str = "podnet.ci-egress/1";
+
+/// Check the stamp of `declaration` (GitHub #730): `"schema": 1` with no
+/// `kind` or the `kind` [`FORM`], or the older form: the name of the form in `schema`.
+fn form_of(declaration: &Declaration) -> anyhow::Result<()> {
+    let kind = declaration.kind.as_deref();
+    let good = match &declaration.schema {
+        serde_json::Value::Number(n) => n.as_u64() == Some(1) && kind.is_none_or(|k| k == FORM),
+        serde_json::Value::String(s) => s == FORM && kind.is_none_or(|k| k == FORM),
+        serde_json::Value::Null => kind.is_none_or(|k| k == FORM),
+        _ => false,
+    };
+    if good {
+        return Ok(());
+    }
+    anyhow::bail!(
+        "the declaration has schema {} and kind {:?}: give \"schema\": 1 and \"kind\": \"{FORM}\"",
+        declaration.schema,
+        kind.unwrap_or("none")
+    )
 }
 
 /// Check `declaration` against `policy`.
@@ -122,7 +153,7 @@ pub fn check(declaration: &Declaration, policy: &Policy) -> Report {
         allowed += 1;
     }
     Report {
-        schema: declaration.schema.clone(),
+        schema: FORM.to_string(),
         allowed,
         refused,
     }

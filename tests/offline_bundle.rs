@@ -247,3 +247,50 @@ fn a_delta_of_another_base_is_refused_by_name() {
         "{out:?}"
     );
 }
+
+/// GitHub #735: the example of `docs/offline.md` runs: a directory SRC gives
+/// each file under it at DEST/PATH; a link in it is refused with exit 65.
+#[test]
+fn a_directory_source_gives_each_file_under_it() {
+    let dir = tempfile::tempdir().expect("a temporary directory");
+    let key_dir = dir.path().join("key");
+    key(&key_dir);
+    let site = dir.path().join("site");
+    std::fs::create_dir_all(site.join("css")).expect("a directory");
+    std::fs::write(site.join("index.html"), b"<p>hi</p>").expect("a file");
+    std::fs::write(site.join("css/a.css"), b"p{}").expect("a file");
+    let build = |out: &str| {
+        podnet(
+            dir.path(),
+            &[
+                "offline",
+                "bundle",
+                "build",
+                "--out",
+                out,
+                "--name",
+                "field",
+                "--file",
+                "./site:site",
+                "--key",
+                key_dir.to_str().expect("a path"),
+            ],
+        )
+        .current_dir(dir.path())
+        .output()
+        .expect("bundle build")
+    };
+    let out = build("./bundle");
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    assert!(
+        String::from_utf8_lossy(&out.stdout).contains(" files 2"),
+        "{out:?}"
+    );
+    std::os::unix::fs::symlink("/etc/passwd", site.join("link")).expect("a link");
+    let out = build("./bundle2");
+    assert_eq!(out.status.code(), Some(65), "{out:?}");
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("not a regular file"),
+        "{out:?}"
+    );
+}

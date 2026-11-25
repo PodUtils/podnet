@@ -144,6 +144,26 @@ podnet rules check rules.json
 podnet rules check rules.json --json
 ```
 
+A policy file (`rules.json`):
+
+```json
+{"default": "refuse", "rules": [
+  {"name": "api", "host": "*.example.net", "port": 443, "action": "direct"},
+  {"name": "dns", "host": "1.1.1.1", "port": "53", "family": "ipv4", "action": "proxy"},
+  {"name": "no-ads", "host": "ads.example.com", "action": "refuse"}
+]}
+```
+
+| Field | Necessary | Value |
+| --- | --- | --- |
+| `default` | no (`refuse`) | The action for a destination that no rule matches. |
+| `rules` | yes | The rules, in order. The first rule that matches decides. |
+| `name` | yes | The name of the rule. A refusal and `rules check` name it. |
+| `host` | yes | A name or an address (`example.net`), a suffix (`*.example.net`: each name under it), or `*` (each host). |
+| `port` | no (`*`) | A number (`443`), a string of a number (`"443"`), a range (`"8000-8999"`), or `"*"` (each port). |
+| `family` | no (`any`) | `any`, `ipv4` or `ipv6`: the family of the resolved address. A name has `any` until it resolves. |
+| `action` | yes | `direct`, `proxy`, `relay`, `refuse` or `queue`. |
+
 `podnet bench` sends its requests through the policy: a refused destination
 is an error of each request. `podnet rules check` names each rule that an
 earlier rule covers, and exits 78 when a later rule is unreachable. A file
@@ -174,6 +194,15 @@ near end of `podnet tunnel --e2e` is a command-level check with exit 69.
 needs of a pipeline and checks it against the installed policy before the
 first step. It names each offending host and exits 69. Without an installed
 policy it exits 78.
+
+```json
+{"schema": 1, "kind": "podnet.ci-egress/1", "hosts": [
+  {"host": "api.example.net", "port": 443, "udp": false}
+]}
+```
+
+`schema` is 1 and `kind` is `podnet.ci-egress/1`; the older form `"schema": "podnet.ci-egress/1"` is read too. Another
+value exits 78. `udp` is `false` when it is not given.
 
 `podnet forge clone --seed PATH --expect HASH DEST` clones a local
 content-addressed seed with the `file` protocol only, verifies the commit

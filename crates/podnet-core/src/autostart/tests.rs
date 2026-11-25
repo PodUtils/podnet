@@ -132,3 +132,28 @@ fn names() {
         assert!(check_name(bad).is_err(), "{bad}");
     }
 }
+
+/// GitHub #734: a binary under `/var/tmp` (kept across a reboot) or a home
+/// is lasting; a binary under `/tmp`, `/dev/shm` or the runtime directory is
+/// in a directory that the host clears.
+#[test]
+fn a_binary_is_refused_only_in_a_directory_that_the_host_clears() {
+    let dirs = [
+        PathBuf::from("/tmp"),
+        PathBuf::from("/dev/shm"),
+        PathBuf::from("/run/user/1000"),
+    ];
+    let cases = [
+        ("/var/tmp/home/.local/bin/podnet", None),
+        ("/home/u/.local/bin/podnet", None),
+        ("/usr/local/bin/podnet", None),
+        ("/tmp/x/podnet", Some("/tmp")),
+        ("/dev/shm/podnet", Some("/dev/shm")),
+        ("/run/user/1000/podnet", Some("/run/user/1000")),
+    ];
+    for (exe, want) in cases {
+        let got = cleared_dir(Path::new(exe), &dirs);
+        assert_eq!(got.as_deref(), want.map(Path::new), "{exe}");
+    }
+    assert!(!cleared_dirs().contains(&PathBuf::from("/var/tmp")));
+}

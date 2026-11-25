@@ -291,7 +291,7 @@ fn default_action() -> Action {
 struct RawRule {
     name: String,
     host: String,
-    #[serde(default = "any_port")]
+    #[serde(default = "any_port", deserialize_with = "port_text")]
     port: String,
     #[serde(default)]
     family: Family,
@@ -300,6 +300,21 @@ struct RawRule {
 
 fn any_port() -> String {
     "*".into()
+}
+
+/// The port of a rule as text: a number (`443`, GitHub #728) or a string
+/// (`"443"`, `"8000-8999"`, `"*"`).
+fn port_text<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Port {
+        Number(u64),
+        Text(String),
+    }
+    Ok(match Port::deserialize(d)? {
+        Port::Number(n) => n.to_string(),
+        Port::Text(t) => t,
+    })
 }
 
 impl Policy {

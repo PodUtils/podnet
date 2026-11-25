@@ -10,8 +10,8 @@ podnet offline spool add ./spool --file report.txt        # one entry, with a se
 podnet offline spool take ./spool --out report.txt        # the lowest sequence: write the body, then remove the entry
 podnet offline discover announce --name field --address /dev/ttyUSB0 --port 22 --to 127.0.0.1:5353
 podnet offline discover listen --timeout 10 --json        # the peers whose signature verified
-podnet offline bundle build --out ./bundle --name field --file ./site:/site
-podnet offline bundle build --out ./delta --name field --base ./old --file ./site:/site
+podnet offline bundle build --out ./bundle --name field --file ./site:site   # each file of ./site at site/PATH
+podnet offline bundle build --out ./delta --name field --base ./old --file ./site:site
 podnet offline bundle apply --base ./old --delta ./delta
 podnet offline capture merge ./a.cap ./b.cap --out all.cap --secret-file secrets.txt
 podnet offline pair offer --out offer.txt                 # eight words, and a signed offer

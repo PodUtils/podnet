@@ -149,7 +149,9 @@ pub(crate) enum RulesCommand {
     /// covers, so the later rule is unreachable. It exits 78 when it finds
     /// one, and when FILE cannot be read or parsed.
     Check {
-        /// The JSON policy: {"default": ..., "rules": [...]}.
+        /// The JSON policy: {"default": "refuse", "rules": [{"name": "api",
+        /// "host": "*.example.com", "port": 443, "family": "any",
+        /// "action": "direct"}]}. docs/host-runtime.md gives each field.
         file: PathBuf,
         /// Print one JSON document.
         #[arg(long)]

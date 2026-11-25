@@ -132,3 +132,39 @@ fn a_declaration_that_is_not_json_is_config() {
         text(&out.stderr)
     );
 }
+
+/// GitHub #730: the stamp of `docs/cli.md` (`"schema": 1` and the `kind`)
+/// is read, the older form too; another value exits 78 with the form to give.
+#[test]
+fn the_declaration_takes_the_stamp_and_refuses_another_form() {
+    let dir = tempfile::tempdir().unwrap();
+    let policy = write(dir.path(), "policy.json", POLICY);
+    let hosts = r#""hosts":[{"host":"api.example","port":443}]"#;
+    let cases = [
+        (
+            format!(r#"{{"schema":1,"kind":"podnet.ci-egress/1",{hosts}}}"#),
+            0,
+        ),
+        (format!(r#"{{"schema":1,{hosts}}}"#), 0),
+        (format!(r#"{{"schema":"podnet.ci-egress/1",{hosts}}}"#), 0),
+        (format!(r#"{{"schema":"anything",{hosts}}}"#), 78),
+        (format!(r#"{{"schema":2,{hosts}}}"#), 78),
+    ];
+    for (i, (body, code)) in cases.iter().enumerate() {
+        let declaration = write(dir.path(), &format!("need{i}.json"), body);
+        let out = run(Some(&policy), &declaration, &[]);
+        assert_eq!(
+            out.status.code(),
+            Some(*code),
+            "{body}: {}",
+            text(&out.stderr)
+        );
+        if *code == 78 {
+            assert!(
+                text(&out.stderr).contains(r#""kind": "podnet.ci-egress/1""#),
+                "{}",
+                text(&out.stderr)
+            );
+        }
+    }
+}

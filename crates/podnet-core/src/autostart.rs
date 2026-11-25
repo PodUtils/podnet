@@ -389,6 +389,27 @@ pub fn login_line(line: &str) -> String {
     format!("nohup {line} >/dev/null 2>&1 &")
 }
 
+/// The directories that the host clears at a reboot or a logout (GitHub
+/// #734): the temporary directory, `/tmp`, `/dev/shm` and the runtime
+/// directory of the user. `/var/tmp` is kept across a reboot (FHS 5.15).
+fn cleared_dirs() -> Vec<PathBuf> {
+    let mut dirs = vec![
+        std::env::temp_dir(),
+        PathBuf::from("/tmp"),
+        PathBuf::from("/dev/shm"),
+    ];
+    dirs.extend(std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from));
+    dirs.retain(|d| d != Path::new("/var/tmp") && d != Path::new("/"));
+    dirs
+}
+
+/// The directory of `dirs` that holds `exe`, if one does.
+fn cleared_dir(exe: &Path, dirs: &[PathBuf]) -> Option<PathBuf> {
+    dirs.iter()
+        .map(|d| d.canonicalize().unwrap_or_else(|_| d.clone()))
+        .find(|d| exe.starts_with(d))
+}
+
 /// Add the entry `name` that runs `podnet ARGS`. The variables of `extra`
 /// (the secrets of an instance, for `--from`) replace those of the
 /// environment. With `manual`, no probe runs and no unit or cron line is
@@ -414,18 +435,17 @@ pub fn add(
     }
     let exe = crate::self_exe::this_binary().context("the path of this binary")?;
     let exe = exe.canonicalize().unwrap_or(exe);
-    for tmp in [
-        std::env::temp_dir(),
-        PathBuf::from("/tmp"),
-        PathBuf::from("/var/tmp"),
-    ] {
-        let tmp = tmp.canonicalize().unwrap_or(tmp);
-        if exe.starts_with(&tmp) {
-            return Err(usage(anyhow::anyhow!(
-                "{} is in a temporary directory: copy podnet to a lasting place (for example ~/.local/bin) first",
-                exe.display()
-            )));
-        }
+    if let Some(cleared) = cleared_dir(&exe, &cleared_dirs()) {
+        // GitHub #734: the place of the binary is a fault of the host, not
+        // of the command line (78, not 64).
+        return Err(crate::exit::fault(
+            crate::exit::Fault::Config,
+            anyhow::anyhow!(
+                "{} is in {}, which the host clears at a reboot or a logout: copy podnet to a lasting place (for example ~/.local/bin or /usr/local/bin) first",
+                exe.display(),
+                cleared.display()
+            ),
+        ));
     }
     let dir = dir()?;
     let (kept, mut vars) = split_secrets(args, &|k| std::env::var(k).ok());

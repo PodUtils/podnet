@@ -35,7 +35,8 @@ pub(crate) struct BuildArgs {
     #[arg(long, value_name = "NAME")]
     pub(crate) name: String,
     /// A file of the bundle: SRC:DEST, with a relative DEST that has no
-    /// `..`. Repeat it for each file.
+    /// `..`. A directory SRC gives each file under it at DEST/PATH. Repeat
+    /// it for each file.
     #[arg(long = "file", value_name = "SRC:DEST")]
     pub(crate) files: Vec<String>,
     /// The bundle of the previous release. With it, the output is a delta
@@ -84,11 +85,52 @@ fn files_of(flags: &[String]) -> Result<Vec<(String, Vec<u8>)>> {
                 anyhow!("--file {flag:?}: the DEST is empty"),
             ));
         }
+        let meta = std::fs::metadata(source)
+            .map_err(|e| exit::fault(Fault::NoInput, anyhow!("{source}: {e}")))?;
+        if meta.is_dir() {
+            // GitHub #735: a directory gives each regular file under it, at
+            // DEST/PATH, in the order of the names.
+            tree_of(
+                std::path::Path::new(source),
+                dest.trim_end_matches('/'),
+                &mut out,
+            )?;
+            continue;
+        }
         let body = std::fs::read(source)
             .map_err(|e| exit::fault(Fault::NoInput, anyhow!("{source}: {e}")))?;
         out.push((dest.to_string(), body));
     }
     Ok(out)
+}
+
+/// Each regular file under `dir`, at `dest/PATH`. A symbolic link or a
+/// special file is refused (exit 65): the bundle holds files only.
+fn tree_of(dir: &std::path::Path, dest: &str, out: &mut Vec<(String, Vec<u8>)>) -> Result<()> {
+    let read = |e: std::io::Error| exit::fault(Fault::NoInput, anyhow!("{}: {e}", dir.display()));
+    let mut entries: Vec<_> = std::fs::read_dir(dir)
+        .map_err(read)?
+        .collect::<Result<_, _>>()
+        .map_err(read)?;
+    entries.sort_by_key(|e| e.file_name());
+    for entry in entries {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let kind = entry.file_type().map_err(read)?;
+        let at = format!("{dest}/{name}");
+        if kind.is_dir() {
+            tree_of(&path, &at, out)?;
+        } else if kind.is_file() {
+            let body = std::fs::read(&path).map_err(read)?;
+            out.push((at, body));
+        } else {
+            return Err(exit::fault(
+                Fault::DataError,
+                anyhow!("{}: not a regular file (a link or a special file); give it with --file SRC:DEST", path.display()),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn build(args: BuildArgs) -> Result<()> {

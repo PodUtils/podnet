@@ -12727,11 +12727,11 @@ unknown action (`"default":"allow"`) also exits 1.
 
 ## Premise
 
-- Read: `src/cli/cmd/runtime.rs:163` calls `Policy::load(&file)?` and gives the error no class: exit 1. The same
-  function loads `PODNET_POLICY` in `install_from_env` (`src/policy.rs:496`), which `src/main.rs:58` turns into exit
+- Read: `src/cli/cmd/runtime.rs:165` calls `Policy::load(&file)?` and gives the error no class: exit 1. The same
+  function loads `PODNET_POLICY` in `install_from_env` (`src/policy.rs:511`), which `src/main.rs:58` turns into exit
   78. Thus one loader has two classes.
 - Read: the `--help` of `rules check` says it exits 78 when a rule is unreachable. That case is right
-  (`src/cli/cmd/runtime.rs:203` gives `Fault::Config`). The bad file is the other case.
+  (`src/cli/cmd/runtime.rs:205` gives `Fault::Config`). The bad file is the other case.
 - The code is podnet's own.
 
 ## Approach
@@ -12801,7 +12801,7 @@ debug binary of beta.17).
 
 - Read: `podnet::status::stamped` (`src/status.rs:123`) adds `schema` (1 unless the document has one) and `podnet`.
   `warp status --json` prints the account record with `serde_json::to_string_pretty(&account)` and does not call it
-  (`src/cli/cmd/warp/account.rs:74`). `rules check` does the same (`src/cli/cmd/runtime.rs:179`, with its own
+  (`src/cli/cmd/warp/account.rs:74`). `rules check` does the same (`src/cli/cmd/runtime.rs:181`, with its own
   string `schema`).
 - Read: `podnet-netns` writes the document of `pod doctor --json` itself. It has `schema` from `SCHEMA`
   (`crates/podnet-netns/src/doctor.rs:426`) and no version. The library takes the version line of the caller
@@ -14309,7 +14309,7 @@ cargo test -p podnet-core --lib net::
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -14342,6 +14342,12 @@ cargo test -p podnet-core --lib net::
 (rust-lang/rust#162546), and cargo-zigbuild `0.24.0` and later drop it (rust-cross/cargo-zigbuild#505, commit
 `d36754d1`, the file `linker_args.rs`). `release.yml` takes cargo-zigbuild `0.24.1` and `images/build/Dockerfile` the
 digest `8d0e82ab` of Dependabot #680. A release dry run proves it.
+
+## Done
+
+2026-11-25, `ec69b3b`. The release dry run 45533314862 on `ec69b3b` (cargo-zigbuild `0.24.1`, the image digest
+`8d0e82ab`) passed each job: the job `linux loongarch64-unknown-linux-musl` linked, its binary is static and ran under
+QEMU, and the jobs of the other eight targets and `gate / lane` passed.
 
 
 # T-538: The job image of the release of v0.4.0-beta.18 fails: a docker logout before the push of the attestation
@@ -15144,3 +15150,176 @@ Both give `schema` 1, `kind` (the name of the form) and `podnet`. The scan of `e
 ## Done
 
 2026-11-25, the commit of this entry. `status::tests::each_printed_json_document_is_stamped` refuses a `"schema": "` in the code of `src/`; it found the two sites before the fix, and passes now.
+
+# T-559: rules check: the documents do not give the fields of a policy rule
+
+**Source:** GitHub #728 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+A rule written from the words of the manual ("A rule names a host, a family, a port and an action") fails `podnet rules check`: `missing field name`, and `"port": 443` gives `invalid type: integer 443, expected a string`. No document gives the keys of a rule, that `name` is necessary, the form of `port` or of `family`, or the meaning of `*`.
+
+## Premise
+
+- Read: `RawRule` of `src/policy.rs` (`name`, `host`, `port` as a string, `family`, `action`) and `docs/host-runtime.md`, "The classified egress" (no example file).
+
+## Approach
+
+`docs/host-runtime.md` gives an example policy file and a table of each field. `port` takes a number too. The help of `rules check` gives one rule in full.
+
+## Prove
+
+`cargo test --test docs the_policy_example_of_host_runtime_md_parses`
+
+## Done
+
+2026-11-25, the commit of this entry. `tests/docs.rs`, `the_policy_example_of_host_runtime_md_parses` (the example of the document parses, with a port as a number and as a string).
+
+# T-560: ci check: a declaration with schema 1 is refused, and each string is taken
+
+**Source:** GitHub #730 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet ci check ci.json` with `{"schema":1,"hosts":[...]}` gives `invalid type: integer 1, expected a string` and exit 78; any string is taken. The help gives `{"schema": ..., ...}`, and `docs/cli.md` says that `schema` is a positive integer.
+
+## Premise
+
+- Read: `Declaration` of `src/ci.rs` (`schema: String`, not checked).
+
+## Approach
+
+The declaration takes `"schema": 1` with the `kind` `podnet.ci-egress/1` (or no `kind`), and the older `"schema": "podnet.ci-egress/1"`; another value exits 78 with the form to give. The help and `docs/host-runtime.md` give an example.
+
+## Prove
+
+`cargo test --test ci the_declaration_takes_the_stamp_and_refuses_another_form`
+
+## Done
+
+2026-11-25, the commit of this entry. `tests/ci.rs`, `the_declaration_takes_the_stamp_and_refuses_another_form` (five forms: three are read, two exit 78 with the form). Before the fix `"schema": 1` exited 78 (the issue).
+
+# T-561: man --json SECTION: docs/cli.md names the keys variables, exits and table as sections
+
+**Source:** GitHub #732 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet man --json exits`, `variables` and `table` exit 64. `docs/cli.md` says that `podnet man --json SECTION` takes `variables`, `files`, `exits`, `examples` or `table` for a topic. The binary takes `environment`, `files`, `exit-status`, `examples` and `inventory`, and these are the keys of the documents.
+
+## Premise
+
+- Measured: the key of each topic section of `podnet man --json`: environment (`variables`), files (`files`), exit-status (`exits`), examples (`examples`), inventory (`table`). The names of the sections come from `pod-manual`.
+
+## Approach
+
+`docs/cli.md` gives each section with its key.
+
+## Prove
+
+`cargo test --test docs each_topic_of_man_json_in_cli_md_runs_with_its_key`
+
+## Done
+
+2026-11-25, the commit of this entry. `tests/docs.rs`, `each_topic_of_man_json_in_cli_md_runs_with_its_key` (each section of the line runs, and its document has the key).
+
+# T-562: autostart add: refuses a binary under /var/tmp as temporary, with exit 64
+
+**Source:** GitHub #734 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`~/.local/bin/podnet autostart add qa1 -- net proxy ...` with HOME under `/var/tmp` gives `... is in a temporary directory: copy podnet to a lasting place (for example ~/.local/bin) first` and exit 64; `--manual` too. The step of the line cannot be followed.
+
+## Premise
+
+- Read: `autostart::add` of `crates/podnet-core/src/autostart.rs`: `/var/tmp` was in the list. FHS 5.15: `/var/tmp` is kept across a reboot.
+
+## Approach
+
+Refuse only a directory that the host clears at a reboot or a logout: the temporary directory, `/tmp`, `/dev/shm`, `$XDG_RUNTIME_DIR`. The exit is 78 (the place of the binary is a fault of the host, not of the command line). `docs/background.md` says so.
+
+## Prove
+
+`cargo test -p podnet-core --lib a_binary_is_refused_only_in_a_directory_that_the_host_clears`
+
+## Done
+
+2026-11-25, the commit of this entry. `autostart::tests::a_binary_is_refused_only_in_a_directory_that_the_host_clears` (a table of six paths; `/var/tmp` and a home are lasting).
+
+# T-563: offline bundle build: the example of docs/offline.md (--file ./site:/site) does not run
+
+**Source:** GitHub #735 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet offline bundle build --out ./bundle --name field --file ./site:/site` (the example of `docs/offline.md`) gives `./site: Is a directory (os error 21)` and exit 66; an absolute DEST exits 65.
+
+## Premise
+
+- Read: `files_of` of `src/cli/cmd/offline/bundle.rs`: a SRC was read as one file; the manifest refuses an absolute DEST (as the help says).
+
+## Approach
+
+A directory SRC gives each regular file under it at DEST/PATH, in the order of the names; a link or a special file in it exits 65. The example of the document has a relative DEST (`--file ./site:site`), and the help says that a directory is taken.
+
+## Prove
+
+`cargo test --test offline_bundle a_directory_source_gives_each_file_under_it`
+
+## Done
+
+2026-11-25, the commit of this entry. `tests/offline_bundle.rs`, `a_directory_source_gives_each_file_under_it` (the example form: 2 files; a link in the directory exits 65).
+
+# T-564: serve --local: on a host with no loopback address the listener is ready, and no client can connect
+
+**Source:** GitHub #736 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+In a lab with no address on `lo`, `podnet serve --local 127.0.0.1:18140` prints its banner and `--detach` is ready; `serve --check --local` passes (`can be bound (no listen)`); a client gets `Couldn't connect to server`. `forward -L` and `net proxy --listen tcp://127.0.0.1:...` start with no warning. `podnet net doctor` knows the fault (`TCP on the loopback does not work here: use unix sockets`).
+
+## Premise
+
+- Read: the GitHub issue (lab with no loopback).
+- Not measured: the bind helpers of each command.
+
+## Approach
+
+1. One shared probe after a TCP bind on a loopback address: a connect to the bound address; a refusal gives one warning line with the next step (a unix socket), or exit 69 where the command has a unix form.
+2. `serve --check --local` runs the same probe.
+3. A test with a stand-in that refuses the connect (the seam of `net doctor`).
+
+## Prove
+
+`cargo test --test serve_local` (a new table test) and the lab `no-loopback` of the lane
