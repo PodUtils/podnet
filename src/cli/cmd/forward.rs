@@ -106,7 +106,7 @@ pub(crate) async fn forward(args: ForwardArgs) -> Result<()> {
     let dial: Arc<dyn Dial> = match &args.network {
         Some(spec) => {
             let network = podnet::networks::parse(spec)
-                .map_err(anyhow::Error::from)
+                .map_err(|e| anyhow::Error::from(e).context("--network"))
                 .fault(Fault::Usage)?;
             // A usage fault of the network is exit 64, a refused key 77.
             let link = network

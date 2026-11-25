@@ -423,5 +423,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #747 | [qa 0.4.0-beta.19] route --config: a missing or bad file exits 64; tunnel --config and "man exit-status" give 78 for the same fault | closed: T-567 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-567 |
 | #748 | [qa 0.4.0-beta.19] wg serve: on a host that refuses UDP, the error tells the user to give a port above 1023 or a unix socket | closed: T-568 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-568 |
 | #750 | [qa 0.4.0-beta.19] serve --local, net proxy --listen: where getsockname is refused, the error is a bare "Not supported (os error 95)" and exit 1 | closed: T-569 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-569 |
+| #745 | [qa 0.4.0-beta.19] --egress, forward --network: an unknown spec is read as a proxy host:port, and the error does not give the known specs | closed: T-570 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-570 |
+| #746 | [qa 0.4.0-beta.19] forward: a UDP forward and the DNS door over "direct" carry no datagram ("direct carries no UDP") | closed: T-571 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-571 |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

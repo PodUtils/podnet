@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**568 entries: 16 open, 13 partial, 26 blocked, 513 done.**
+**570 entries: 16 open, 13 partial, 26 blocked, 515 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 86 | 91 |
-| P2 | 7 | 7 | 12 | 264 | 290 |
+| P1 | 1 | 2 | 2 | 87 | 92 |
+| P2 | 7 | 7 | 12 | 265 | 291 |
 | P3 | 8 | 4 | 12 | 162 | 186 |
-| **All** | 16 | 13 | 26 | 513 | 568 |
+| **All** | 16 | 13 | 26 | 515 | 570 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -614,3 +614,5 @@ M8 Overlays, M9 Later.
 | [T-567](fixes.md) | P2 | S | M5 | defect | done | route --config: a missing or bad file exits 64; tunnel --config gives 78 |
 | [T-568](fixes.md) | P2 | S | M5 | defect | done | wg serve: on a host that refuses UDP, the step says to give a port above 1023 or a unix socket |
 | [T-569](fixes.md) | P2 | S | M5 | defect | done | serve --local, net proxy --listen: where getsockname is refused, a bare Not supported and exit 1 |
+| [T-570](fixes.md) | P2 | S | M5 | defect | done | --egress, forward --network: an unknown spec is read as a proxy HOST:PORT |
+| [T-571](fixes.md) | P1 | S | M5 | defect | done | forward: a UDP forward and the DNS door over the way of the process carry no datagram |

@@ -77,6 +77,24 @@ fn network_spec_a_bad_spec_is_one_usage_line_with_no_password() {
     );
 }
 
+/// GitHub #745: a spec that is not known (not HOST:PORT, no known scheme)
+/// is not read as a proxy: the line says that the spec is not known and
+/// gives the known forms.
+#[test]
+fn network_spec_an_unknown_spec_gives_the_known_forms() {
+    for spec in ["bogus:thing", "wireguard", "foo://x"] {
+        let err = parse(spec)
+            .err()
+            .unwrap_or_else(|| panic!("{spec:?} parsed"));
+        assert_eq!(err.class, Class::Usage, "{spec:?}: {err}");
+        assert!(!err.text().contains("proxy port"), "{spec:?}: {err}");
+        for form in ["direct", "a proxy URL", "wg:FILE", "warp"] {
+            assert!(err.text().contains(form), "{spec:?}: {err}");
+        }
+    }
+    assert!(parse("127.0.0.1:1080").is_ok());
+}
+
 #[test]
 fn network_spec_warp_is_in_the_registry() {
     let network = parse("warp").expect("warp is a network");

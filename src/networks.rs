@@ -267,6 +267,17 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
         return Ok(Kind::Hop { tailscale: true });
     }
     let schemed = spec.contains("://") || spec.contains("+exec:") || spec.contains("+unix:");
+    // GitHub #745: a spec with no scheme is a proxy only as HOST:PORT.
+    let host_port = spec
+        .rsplit_once(':')
+        .is_some_and(|(host, port)| !host.is_empty() && port.parse::<u16>().is_ok());
+    if !schemed && !spec.starts_with("unix:") && !host_port {
+        return Err(usage(format!(
+            "{}: not a known network spec; give one of {}",
+            redacted(spec),
+            known_forms()
+        )));
+    }
     if spec.starts_with("unix:") || !schemed {
         hop(spec).map_err(|e| usage(format!("{spec}: {e:#}")))?;
         return Ok(Kind::Hop { tailscale: false });
@@ -275,9 +286,25 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
         Ok(proxy) => Ok(Kind::Proxy(proxy)),
         Err(why) => match hop(spec) {
             Ok(_) => Ok(Kind::Hop { tailscale: false }),
-            Err(_) => Err(usage(format!("{}: {why}", redacted(spec)))),
+            Err(_) => Err(usage(format!(
+                "{}: {why}; the network specs are {}",
+                redacted(spec),
+                known_forms()
+            ))),
         },
     }
+}
+
+/// The forms of each network spec, for an error line (GitHub #745).
+fn known_forms() -> String {
+    let forms: Vec<&str> = ROWS
+        .iter()
+        .map(|r| match r.scheme {
+            "proxy" => "a proxy URL (http://, socks5://, socks5h://)",
+            _ => r.forms[0],
+        })
+        .collect();
+    forms.join(", ")
 }
 
 /// `spec` with no user and password: a spec can go into an error line.

@@ -15472,3 +15472,61 @@ A file that cannot be read or used exits 78 (also `--export mwan-json` with no k
 ## Done
 
 2026-11-25, the commit of this entry. `net::tests::a_refused_getsockname_has_a_second_path`. In the lab `getsockname-denied`: `serve --local 127.0.0.1:18220` serves, and `--local 127.0.0.1:0` gives one line with the step.
+
+# T-570: --egress, forward --network: an unknown spec is read as a proxy HOST:PORT
+
+**Source:** GitHub #745 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet --egress bogus:thing bench ...` gives `proxy port: invalid digit found in string`; `--egress wireguard` gives `proxy "wireguard" needs host:port`; `forward --network bogus:thing` does not name its flag. The line does not say that the spec is not known and does not give the known specs.
+
+## Premise
+
+- Read: `kind` of `src/networks.rs`: a spec with no scheme went to the parser of a hop of the pod (a proxy HOST:PORT).
+
+## Approach
+
+A spec with no scheme that is not `HOST:PORT` (a port of 0 to 65535) and not `unix:` is not known: the line gives the first form of each row of the registry. A proxy scheme that is not known gives the same list. `forward --network` names its flag.
+
+## Prove
+
+`cargo test -p podnet --lib network_spec_an_unknown_spec_gives_the_known_forms`
+
+## Done
+
+2026-11-25, the commit of this entry. `networks::tests::network_spec_an_unknown_spec_gives_the_known_forms` (`bogus:thing`, `wireguard`, `foo://x`: no "proxy port", the forms are named; `127.0.0.1:1080` is still a proxy).
+
+# T-571: forward: a UDP forward and the DNS door over the way of the process carry no datagram
+
+**Source:** GitHub #746 (`[qa 0.4.0-beta.19]`, black-box QA pass of 2026-11-25).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet forward -L udp:15401=127.0.0.1:15400` with no proxy logs `a UDP flow ended: direct carries no UDP`, and the client gets no answer; the DNS door answers SERVFAIL. `docs/forward.md`: "`direct` and `wg:FILE` carry UDP."
+
+## Premise
+
+- Read: `Egress` of `src/egress.rs` (the way of the process, label `direct`): it had no `datagrams`, so the default of `pod_core::Dial` refused. `--network direct` (`dialers::Direct`) carried UDP.
+
+## Approach
+
+`Egress::datagrams`: with no proxy for UDP, the socket of the system (as `dialers::Direct`); with a proxy, a refusal that names the proxy.
+
+## Prove
+
+`cargo test --test commands forward_carries_udp_over_the_way_of_the_process`
+
+## Done
+
+2026-11-25, the commit of this entry. `tests/commands.rs`, `forward_carries_udp_over_the_way_of_the_process` (a UDP forward and the DNS door, both over `--no-proxy`, to a UDP echo): it failed on the code before the fix (`no answer`), and passes now.

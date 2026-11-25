@@ -578,6 +578,29 @@ impl Dial for Egress {
             None => way().dialer.names_inside(),
         }
     }
+
+    /// GitHub #746: the way of the process carries UDP when it has no proxy
+    /// (the socket of the system, as [`crate::dialers::Direct`]); a proxy
+    /// carries no UDP, and the refusal names it.
+    fn datagrams<'a>(&'a self) -> BoxFuture<'a, Result<Arc<dyn pod_core::Datagrams>, Failure>> {
+        let proxy = match &self.via {
+            Some(proxy) => Some(proxy.label()),
+            None => match choice() {
+                ProxyChoice::Direct => None,
+                _ => proxy_for("udp.invalid", 53).map(|p| p.label()),
+            },
+        };
+        match proxy {
+            None => crate::dialers::Direct.datagrams(),
+            Some(proxy) => Box::pin(async move {
+                Err(Failure::new(
+                    Stage::Connect,
+                    Class::Unavailable,
+                    format!("the proxy {proxy} carries no UDP"),
+                ))
+            }),
+        }
+    }
 }
 
 /// The counters of the decisions of [`crate::decisions`].
