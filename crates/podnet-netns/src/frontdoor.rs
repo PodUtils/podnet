@@ -171,11 +171,11 @@ impl Dial for PodDial {
             let picked = select_chain(&self.rules, &self.chain, &text);
             let flow = crate::flowlog::decided("tcp", &text, &picked);
             let Some(selected) = picked.chain() else {
-                crate::rules::note_refusal("front door", &text, picked.rule_name(), self.verbose);
+                crate::rules::note_refusal("front door", &text, &picked, self.verbose);
                 return Err(Failure::new(
                     Stage::Proxy,
                     Class::Policy,
-                    format!("refused by the rule {}", picked.rule_name()),
+                    format!("refused by {}", picked.refused_by()),
                 ));
             };
             if self.verbose {

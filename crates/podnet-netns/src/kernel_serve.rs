@@ -152,7 +152,7 @@ async fn tcp_flow(shared: Arc<Shared>, stream: TcpStream) {
     let picked = crate::learn::select(&shared.rules, &shared.proxies, &target, "tcp");
     let flow = crate::flowlog::decided("tcp", &target, &picked);
     let Some(chain) = picked.chain().map(<[Proxy]>::to_vec) else {
-        crate::rules::note_refusal("connect", &target, picked.rule_name(), shared.verbose);
+        crate::rules::note_refusal("connect", &target, &picked, shared.verbose);
         return reset(stream);
     };
     if shared.verbose {

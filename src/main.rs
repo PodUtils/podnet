@@ -59,6 +59,13 @@ fn main() {
         eprintln!("podnet: {err}");
         std::process::exit(podnet::exit::CONFIG);
     }
+    // GitHub #725: each dial of a pod (netns, seccomp, `--serve`) asks the
+    // same policy before the rules of `-r`.
+    podnet_netns::rules::set_permit(|host, port| {
+        podnet::policy::permit(host, port)
+            .map(drop)
+            .map_err(|refused| refused.reason)
+    });
     let args = cloudflared_compat(args);
     // T-060: each --egress becomes its old flag (--no-proxy, --proxy,
     // --transport relay, or -x of the pod).

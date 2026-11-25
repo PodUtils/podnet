@@ -139,10 +139,12 @@ pub(crate) fn select<'a>(
     match &mut *mode {
         Mode::Learn { seen, .. } => {
             seen.insert(destination);
+            // GitHub #725: a refusal of the egress policy stays a refusal.
             match picked.choice {
-                Choice::Reject if !default.is_empty() => Selected {
+                Choice::Reject if !default.is_empty() && picked.policy.is_none() => Selected {
                     choice: Choice::Chain(default),
                     rule: None,
+                    policy: None,
                 },
                 _ => picked,
             }
@@ -156,12 +158,13 @@ pub(crate) fn select<'a>(
                 return Selected {
                     choice: Choice::Reject,
                     rule: Some(&NOT_LEARNED),
+                    policy: None,
                 };
             }
             if picked.chain().is_none() {
                 violations.insert(format!(
-                    "{proto} {target}: learned, refused by the rule {}",
-                    picked.rule_name()
+                    "{proto} {target}: learned, refused by {}",
+                    picked.refused_by()
                 ));
             }
             picked

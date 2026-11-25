@@ -126,6 +126,12 @@ podnet pod -x socks5://127.0.0.1:1080 \
   error (exit 64). `--allow-shadowed-rules` makes it a warning.
 * `--default-action allow|reject` sets what the pod does with a target that no rule matches (default
   `allow`).
+* The egress policy of the process (`PODNET_POLICY`, [host-runtime.md](host-runtime.md), "The classified egress") decides before the rules, on
+  each backend and with `--serve`. A destination that the policy refuses gets the answer of a `reject`
+  rule, and the line names the rule of the policy, for example `connect example.com:443 refused by
+  PODNET_POLICY: the rule "no-example" refuse the destination example.com:443 (any family), before any
+  connect`. The flow log names the rule `policy`. `--learn` does not send such a flow through the `-x`
+  chain.
 * With the `seccomp` backend, `127.0.0.0/8` goes direct (or to a listener of the program itself).
   `--loopback-rules` applies the rules to a TCP connect to `127.0.0.0/8` and `::1` too.
 

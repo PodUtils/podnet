@@ -337,8 +337,7 @@ pub(crate) async fn send_payload(
     let picked = crate::learn::select(egress.rules, egress.proxies, &target, "udp");
     crate::flowlog::datagram(fd, &target, &picked);
     if picked.chain().is_none() {
-        let rule = picked.rule_name();
-        crate::rules::note_refusal("udp", &target, rule, egress.verbose);
+        crate::rules::note_refusal("udp", &target, &picked, egress.verbose);
         return Err(libc::EACCES);
     }
     crate::dgram::fits_relay(payload.len(), ip, name.as_deref())?;

@@ -84,10 +84,13 @@ pub enum Choice<'a> {
 
 /// The decision for one target, and the rule that made it (`None`: the
 /// default).
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Selected<'a> {
     pub choice: Choice<'a>,
     pub rule: Option<&'a Rule>,
+    /// The reason of a refusal of the egress policy of the process
+    /// ([`set_permit`]), else `None`.
+    pub policy: Option<String>,
 }
 
 impl<'a> Selected<'a> {
@@ -99,31 +102,78 @@ impl<'a> Selected<'a> {
         }
     }
 
-    /// The text of the rule, or `default`.
+    /// The text of the rule, `policy` for a refusal of the policy, or
+    /// `default`.
     pub fn rule_name(&self) -> &'a str {
-        self.rule.map_or("default", |r| r.spec.as_str())
+        match self.policy {
+            Some(_) => POLICY_RULE,
+            None => self.rule.map_or("default", |r| r.spec.as_str()),
+        }
     }
+
+    /// The words of a refusal after `refused by`: `the rule SPEC`, or
+    /// `PODNET_POLICY: REASON` for a refusal of the policy (GitHub #725).
+    pub fn refused_by(&self) -> String {
+        match &self.policy {
+            Some(reason) => format!("PODNET_POLICY: {reason}"),
+            None => format!("the rule {}", self.rule_name()),
+        }
+    }
+}
+
+/// The name of the rule of a refusal of the egress policy, in the flow log.
+pub const POLICY_RULE: &str = "policy";
+
+/// The check of the egress policy of the process (GitHub #725): the host
+/// and the port of a destination. An error is the reason of a refusal.
+pub type Permit = fn(&str, u16) -> std::result::Result<(), String>;
+
+static PERMIT: std::sync::OnceLock<Permit> = std::sync::OnceLock::new();
+
+/// Set the check of the egress policy of the process. Each decision of the
+/// pod ([`select_chain`], [`select_chain_udp`]) calls it before the rules
+/// of `-r`, so a refused destination is never dialed. A second call has no
+/// effect. With no check, each destination goes to the rules.
+pub fn set_permit(permit: Permit) {
+    let _ = PERMIT.set(permit);
 }
 
 /// First matching rule wins; otherwise the default `-x` chain. A rule is a
 /// single hop or a refusal; the default is a chain. `target` is `HOST:PORT`
 /// of a TCP connection: the rules of a port (`port:`, `tcp:`) match its port.
 pub fn select_chain<'a>(rules: &'a [Rule], default: &'a [Proxy], target: &str) -> Selected<'a> {
-    select(rules, default, target, true)
+    select(rules, default, target, true, PERMIT.get().copied())
 }
 
 /// [`select_chain`] for a datagram flow: no rule of a port matches it.
 pub fn select_chain_udp<'a>(rules: &'a [Rule], default: &'a [Proxy], target: &str) -> Selected<'a> {
-    select(rules, default, target, false)
+    select(rules, default, target, false, PERMIT.get().copied())
 }
 
-fn select<'a>(rules: &'a [Rule], default: &'a [Proxy], target: &str, tcp: bool) -> Selected<'a> {
+/// The decision for `target`: first the egress policy (`permit`), then the
+/// first rule that matches, else the default chain.
+fn select<'a>(
+    rules: &'a [Rule],
+    default: &'a [Proxy],
+    target: &str,
+    tcp: bool,
+    permit: Option<Permit>,
+) -> Selected<'a> {
     let (host, port) = match target.rsplit_once(':') {
         Some((h, p)) => (h, p.parse::<u16>().ok()),
         None => (target, None),
     };
-    let port = port.filter(|_| tcp);
     let bare = host.trim_start_matches('[').trim_end_matches(']');
+    // GitHub #725: the policy of the process decides before the rules, so
+    // a rule of `-r` cannot send a refused destination out.
+    if let Some(Err(reason)) = permit.map(|check| check(bare, port.unwrap_or(0))) {
+        return Selected {
+            choice: Choice::Reject,
+            rule: None,
+            policy: Some(reason),
+        };
+    }
+    let port = port.filter(|_| tcp);
     let ip: Option<IpAddr> = bare.parse().ok();
     for rule in rules {
         if rule
@@ -138,12 +188,14 @@ fn select<'a>(rules: &'a [Rule], default: &'a [Proxy], target: &str, tcp: bool) 
             return Selected {
                 choice,
                 rule: Some(rule),
+                policy: None,
             };
         }
     }
     Selected {
         choice: Choice::Chain(default),
         rule: None,
+        policy: None,
     }
 }
 
@@ -153,9 +205,10 @@ static REFUSALS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::ne
 /// Count a refusal of `target` by `rule`, and print one line with the
 /// count: with `verbose` for each refusal, else for the first refusal of
 /// `target` (T-452).
-pub(crate) fn note_refusal(what: &str, target: &str, rule: &str, verbose: bool) {
+pub(crate) fn note_refusal(what: &str, target: &str, picked: &Selected<'_>, verbose: bool) {
     let count = REFUSALS.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-    let line = format!("{what} {target} refused by the rule {rule} ({count} refused)");
+    let by = picked.refused_by();
+    let line = format!("{what} {target} refused by {by} ({count} refused)");
     crate::notice::connect_failed(target, &line, verbose);
 }
 
@@ -163,7 +216,13 @@ pub(crate) fn note_refusal(what: &str, target: &str, rule: &str, verbose: bool) 
 /// name (T-532). The fake DNS of the seccomp backend gives a name an IPv4
 /// and an IPv6 address, and a program tries the second address after a
 /// refusal of the first: that is one flow, and it counts once.
-pub(crate) fn note_refusal_of(what: &str, target: &str, rule: &str, verbose: bool, v6: bool) {
+pub(crate) fn note_refusal_of(
+    what: &str,
+    target: &str,
+    picked: &Selected<'_>,
+    verbose: bool,
+    v6: bool,
+) {
     use std::time::{Duration, Instant};
     static LAST: std::sync::Mutex<Option<(String, bool, Instant)>> = std::sync::Mutex::new(None);
     let mut last = LAST
@@ -175,14 +234,14 @@ pub(crate) fn note_refusal_of(what: &str, target: &str, rule: &str, verbose: boo
     drop(last);
     if second {
         if verbose {
-            let line = format!(
-                "{what} {target} refused by the rule {rule} (the other address of the same flow)"
-            );
+            let by = picked.refused_by();
+            let line =
+                format!("{what} {target} refused by {by} (the other address of the same flow)");
             crate::notice::connect_failed(target, &line, verbose);
         }
         return;
     }
-    note_refusal(what, target, rule, verbose);
+    note_refusal(what, target, picked, verbose);
 }
 
 #[cfg(test)]
@@ -210,6 +269,50 @@ mod tests {
         assert_eq!(other.rule_name(), "default");
         assert_eq!(other.chain().unwrap()[0].port, 1);
         assert!(Rule::parse("domain:a=rejected").is_err());
+    }
+
+    // GitHub #725: the egress policy of the process decides before the
+    // rules of `-r`, for a TCP and a datagram flow. A refusal names the
+    // reason of the policy; an allowed destination goes to the rules.
+    #[test]
+    fn the_policy_refuses_before_the_rules() {
+        fn permit(host: &str, port: u16) -> std::result::Result<(), String> {
+            match (host, port) {
+                ("refused.example", _) | ("2001:db8::1", 443) => Err(format!(
+                    "the rule \"no\" refuse the destination {host}:{port}"
+                )),
+                _ => Ok(()),
+            }
+        }
+        let default = vec![Proxy::parse("socks5://127.0.0.1:1").unwrap()];
+        let rules = vec![Rule::parse("domain:.example=direct").unwrap()];
+        // (target, tcp, the reason of a refusal of the policy)
+        let table: [(&str, bool, Option<&str>); 5] = [
+            ("refused.example:443", true, Some("refused.example:443")),
+            ("refused.example:53", false, Some("refused.example:53")),
+            ("[2001:db8::1]:443", true, Some("2001:db8::1:443")),
+            ("[2001:db8::1]:80", true, None),
+            ("other.example:443", true, None),
+        ];
+        for (target, tcp, refused) in table {
+            let picked = select(&rules, &default, target, tcp, Some(permit));
+            match refused {
+                Some(seen) => {
+                    assert!(picked.chain().is_none(), "{target}");
+                    assert_eq!(picked.rule_name(), POLICY_RULE, "{target}");
+                    let by = picked.refused_by();
+                    assert!(by.starts_with("PODNET_POLICY: the rule \"no\""), "{by}");
+                    assert!(by.ends_with(seen), "{target}: {by}");
+                }
+                None => assert!(
+                    picked.policy.is_none() && picked.chain().is_some(),
+                    "{target}"
+                ),
+            }
+            // With no policy, the rules decide each target.
+            let free = select(&rules, &default, target, tcp, None);
+            assert!(free.chain().is_some() && free.policy.is_none(), "{target}");
+        }
     }
 
     // T-328: a rule of a port or of a host and a port; a datagram flow has

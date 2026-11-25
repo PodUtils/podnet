@@ -258,7 +258,7 @@ impl TcpRoute<'_> {
         let flow = crate::flowlog::decided("tcp", target, &picked);
         let Some(chain) = picked.chain().map(<[Proxy]>::to_vec) else {
             // T-156: the dial fails at once, and the program gets a RST.
-            crate::rules::note_refusal("connect", target, picked.rule_name(), self.verbose);
+            crate::rules::note_refusal("connect", target, &picked, self.verbose);
             return (Box::pin(async { bail!("a rule refuses the target") }), flow);
         };
         if self.verbose {
