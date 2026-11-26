@@ -676,7 +676,7 @@ process (`--proxy https://`) is T-614 (a TLS hop of `pod-proxy`, COORD-134 #779)
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -711,6 +711,10 @@ T-059 is done.
 2026-11-12, GitHub #471 (rows E5-5 and E5-6). A Shadowsocks service (SIP004) and a Trojan service at a peer need the accept side of the codecs of `pod-egress`: T-294 and T-295, blocked on the take of `pod-egress`. Ask A4 for podcrates: the chunk codec of SIP004 and the Trojan request codec as parts that work on the accept side, with the published SIP004 vectors in the tests.
 
 2026-11-26, the take. `pod-egress` v0.86.0 has the three clients (features `vless`, `shadowsocks` and `wisp`); podnet takes them and has no code of the protocols. Three networks of the registry (`src/networks/servers.rs`): `vless://HOST:PORT?type=ws|xhttp&security=...` (the share link with no ID; the ID from `PODNET_VLESS_ID_FILE` or `PODNET_VLESS_ID`), `ss://HOST:PORT` (the key `METHOD:PASSWORD` or the `ss://` URI of the server from `PODNET_SHADOWSOCKS_KEY_FILE` or `PODNET_SHADOWSOCKS_KEY`) and `wisp:wss://HOST[:PORT]/PATH` (no secret). `forward --network`, a `networks:` entry of `route`, a chain and `net doctor --network` take them; `--egress` refuses them with one line. A bad spec or secret is a usage error (exit 64) that names the variable and shows no secret. The tests use stand-ins on the loopback (`src/networks/servers_stand.rs`): `networks::servers::tests` and `tests/road_network.rs`. The workflow test against Xray-core, a Shadowsocks server and wisp-server-python stays with `pod-egress` (its tests and the interop workflows of podssh). Waits on podcrates: a Wisp road that opens a new connection when the server closed it (podnet holds the one retry now), the stand-ins of the three servers as a feature of `pod-egress` or `pod-testkit`, the WebSocket of an Outline server from a spec with no secret, and the password extension of Wisp version 2.
+2026-11-26, the lead: the commit `T-127` is on `main`. What stays: a run against each real server in a workflow
+(Xray-core for VLESS over WebSocket and TLS, `ssserver` of shadowsocks-rust, a Wisp server), and the asks of the crate
+in COORD-137 (PodUtils/podnet#782).
+
 # T-128: The DERP carrier through `pod-derp`
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.6 and 3 (C17).

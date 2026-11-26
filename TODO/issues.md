@@ -466,5 +466,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #779 | COORD-134: pod-proxy: a TLS hop for an https:// proxy of the process; pod-egress: its stand-ins behind a feature (to podcrates) | open (a COORD issue between sessions; the ask of T-614) | none |
 | #780 | COORD-135: pod-acme: a contact of the account, and an ACME stand-in behind a feature (to podcrates) | open (a COORD issue between sessions; the asks of T-129) | none |
 | #781 | COORD-136: pod-cloudflare: the capture hook names the ingress rule, and ends an exchange whose chunked body the decoder refuses (to podcrates) | open (a COORD issue between sessions; the asks of T-244) | none |
+| #782 | COORD-137: pod-egress: a Wisp road that opens again, stand-ins behind a feature, Shadowsocks over a WebSocket from a key file, the Wisp password (to podcrates) | open (a COORD issue between sessions; the asks of T-127) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.
