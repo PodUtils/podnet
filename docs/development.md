@@ -47,7 +47,7 @@ line `FILE HASH CLASS REASON`:
 | Class | Meaning |
 | --- | --- |
 | `run` | It runs offline as written, with `podnet` on PATH. |
-| `scenario` | It runs offline as written after a set-up: `scripts/doc-scenarios/HASH.sh`. |
+| `scenario` | It runs offline as written after a set-up: a file of `scripts/doc-scenarios/` named by the hash of the block. |
 | `live` | It needs a live service or a second host. |
 | `root` | It needs root or a kernel feature. |
 | `skip` | It is not a command to run as written: a template with placeholders, a reference list, two hosts. |
@@ -56,7 +56,7 @@ HASH is the first 10 hex digits of the SHA-256 of the block. A change of a
 block changes its hash, so a new or changed block needs a new line.
 `--list` prints each block with its file, line, hash and class.
 `--check` fails on a block with no line and on a line with no block. It
-also fails on a `scenario` line with no file `scripts/doc-scenarios/HASH.sh`,
+also fails on a `scenario` line with no set-up file (the hash and `.sh` in `scripts/doc-scenarios/`),
 on a scenario file with no function `setup`, on a scenario file with no
 `scenario` line, and on a `BACKGROUND` line that names no line of the block.
 `--run` runs each `run` and each `scenario` block with `sh -e` in a new
@@ -70,8 +70,8 @@ exits 1. CI runs `--check` (job `workflows`) and `--run` (job `test`).
 
 A scenario gives a block what it needs to run offline: files, variables,
 a server or a stand-in on the loopback or on a unix socket. The block stays
-as a user types it. The scenario is a shell file
-`scripts/doc-scenarios/HASH.sh`. `--run` reads `scripts/doc-scenarios/lib.sh`
+as a user types it. The scenario is a shell file of `scripts/doc-scenarios/`:
+the hash of the block and `.sh`. `--run` reads `scripts/doc-scenarios/lib.sh`
 (the helpers), then the scenario, in the work directory of the block.
 `DOC_ROOT` is the root of the repository, and `DOC_DIR` is a private
 directory for the logs of the run.
