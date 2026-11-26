@@ -544,8 +544,15 @@ impl Router {
         for (name, spec) in &config.networks {
             let network = crate::networks::parse(spec)
                 .map_err(|e| anyhow::anyhow!("networks.{name}: {}", e.text()))?;
+            // The name of the network: its settings with the suffix of the
+            // name (TURN, the roads of T-126), as a change of the control
+            // gives it.
+            let ctx = Ctx {
+                name: Some(name.clone()),
+                ..Ctx::default()
+            };
             let link = network
-                .up(&Ctx::default())
+                .up(&ctx)
                 .await
                 .with_context(|| format!("networks.{name}"))?;
             let way = link

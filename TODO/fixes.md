@@ -1595,7 +1595,7 @@ scripts/agent/check.sh` exits 0. CI: at the merge.
    name already holds a pool address keeps the pool address. State it in the README.
 2. `address_for` returns `Option<Ipv4Addr>`. At `next >= FAKE_IP_COUNT` it returns `None`, with no
    insert. Add `RCODE_SERVFAIL = 2`. `answer` returns SERVFAIL on `None`.
-3. Update `docs/proxies.md:58-63`: the pool bound, case-insensitivity, SERVFAIL at the end.
+3. Update `docs/proxies.md:60-65`: the pool bound, case-insensitivity, SERVFAIL at the end.
 
 ## Prove
 
@@ -2223,7 +2223,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 - src/warp/mod.rs:885-892 at `9c1fc4b` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
   `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:421-423`) refuses and does not write over the file.
-- `crates/podnet-core/src/state.rs:69-127` has the model. `src/manual/facts.rs:163` lists `PODNET_FOREIGN_HOME`.
+- `crates/podnet-core/src/state.rs:69-127` has the model. `src/manual/facts.rs:168` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 
@@ -3170,7 +3170,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:207-213` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:272-282` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:64-70`.
+- `src/cli/cmd/host.rs:272-282` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:66-72`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -7385,7 +7385,7 @@ documented commands" of the job `test` of `ci.yml`; set the entry `done` when th
 
 ## Done
 
-2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:356` (`net passwd-shim`,
+2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:434` (`net passwd-shim`,
 then `ssh-keygen`) in the step "The documented commands": `pass docs/networks.md:337`; `doc-commands: 4 passed, 0 failed,
 0 not run`.
 
@@ -13746,7 +13746,7 @@ rep= 1
 ```
 
 (`s5.py` sends the SOCKS5 greeting `05 01 00`, then a CONNECT request, and prints the reply.) With HTTP CONNECT the door
-answers 502 for each case. The promise: `docs/proxies.md:103` to `:105`, "any other failure is a general failure (or a
+answers 502 for each case. The promise: `docs/proxies.md:105` to `:107`, "any other failure is a general failure (or a
 host unreachable, when the text says refused or denied) and HTTP 502." A refused target is "Connection refused (os error
 111)": the text says "refused", so the reply should be SOCKS5 `0x04` by this sentence. The door gives `0x01` (general
 failure) for a refused port, for a name that does not resolve and for a network that is unreachable. The client
@@ -13777,7 +13777,7 @@ document or the door is wrong.
    failure `0x01`. The HTTP side keeps 403, 504 and 502. The word search of `socks5_code_for_error` goes away.
    The other choice, which the lead may take: keep the rule of the document (refused gives `0x04`) and read
    `failure.chain()`. Curl and other clients show a different text for `0x05`, so the first choice helps the user more.
-2. `docs/proxies.md:103` to `:105` states the table of the replies. The manual (`podnet man`) gets the same table if it
+2. `docs/proxies.md:105` to `:107` states the table of the replies. The manual (`podnet man`) gets the same table if it
    has the text.
 3. One table-driven test: for each cause (a closed port, a name that does not resolve, an unreachable network, a
    policy refusal, a timeout, an other failure) and each client form (SOCKS5 CONNECT, HTTP CONNECT): the reply code or
@@ -13846,10 +13846,10 @@ the relay leg works gives exit 0.
 
 - Read: `src/cli/cmd/host.rs:406` bails with a plain error when `report.ok()` is false: exit 1.
   `Report::ok` (`src/doctor.rs:251`) is true when any of the legs has the verdict `ok`, the relay leg too. Thus a host
-  where only `http2+relay` works gives exit 0, and the help (`src/cli/mod.rs:291`) lists three legs only.
+  where only `http2+relay` works gives exit 0, and the help (`src/cli/mod.rs:292`) lists three legs only.
 - Read: the exit 1 of `doctor` is in the help, in `docs/doctor.md`, in the research list
   (`docs/research/podnet/parity-checklist.md`), and in the lane (`scripts/lab-lane.sh`, the case
-  `proxy-doctor` runs `doctor` through a proxy that refuses). The manual row of 69 (`src/manual/facts.rs:203`) and `docs/cli.md:139` name "no edge
+  `proxy-doctor` runs `doctor` through a proxy that refuses). The manual row of 69 (`src/manual/facts.rs:208`) and `docs/cli.md:139` name "no edge
   leg worked" for the commands that start a tunnel (`tunnel`, `warp`); `podnet tunnel` with no quick-tunnel service gives 69 (#695).
 - The call (the owner may rule otherwise; `TODO/PROGRESS.md`, Calls made without a ruling): keep the exit 1 of `doctor`
   and `bench`. A command whose job is to report that something is not available has failed in its check; 69 is for the
@@ -13858,10 +13858,10 @@ the relay leg works gives exit 0.
 
 ## Approach
 
-1. `src/manual/facts.rs:203` and `docs/cli.md:139` say that "no edge leg worked" is 69 for `tunnel`, `warp` and the
+1. `src/manual/facts.rs:208` and `docs/cli.md:139` say that "no edge leg worked" is 69 for `tunnel`, `warp` and the
    commands that start a session, and that `doctor` and `bench` give 1 when no leg or no request worked. The row of 1
    names them. `docs/exit-codes.md` gets the same sentence.
-2. `podnet doctor --help` (`src/cli/mod.rs:291`) and `docs/doctor.md:46` name the four legs (`quic`, `http2`,
+2. `podnet doctor --help` (`src/cli/mod.rs:292`) and `docs/doctor.md:46` name the four legs (`quic`, `http2`,
    `quic+warp`, `http2+relay`): exit 0 when at least one works, the relay leg too.
 3. One table-driven test: for each command that reports "no leg" or "no request" (`doctor`, `doctor --json`, `bench`,
    `tunnel` with no edge), the exit code is a code that the row of the table of `podnet man exit-status --json` names for

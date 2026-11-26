@@ -269,6 +269,17 @@ fn egress_alias_a_spec_that_the_command_cannot_take_is_one_usage_line() {
         assert!(text.contains("is not a proxy of the process"), "{text}");
         assert!(text.contains("--network warp"), "{text}");
     }
+    // T-126: the roads of pod-egress are networks of the registry.
+    for spec in ["https://proxy.example:8443", "wstunnel:wss://ws.example"] {
+        for words in [
+            &["podnet", "--egress", spec, "status"][..],
+            &["podnet", "--egress", spec, "pod", "--", "true"],
+        ] {
+            let text = err(words);
+            assert!(text.contains("is a network of the registry"), "{text}");
+            assert!(text.contains(&format!("--network {spec}")), "{text}");
+        }
+    }
     assert!(err(&["podnet", "status", "--egress"]).contains("--egress needs a value"));
     let secret = err(&["podnet", "--egress", "gopher://u:secret@p:70", "status"]);
     assert!(!secret.contains("secret"), "{secret}");

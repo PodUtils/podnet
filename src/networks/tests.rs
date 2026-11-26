@@ -31,7 +31,6 @@ fn network_spec_each_form_of_the_two_old_parsers_is_taken() {
         "unix:/run/proxy.sock",
         "proxy.example:1080",
         "socks://proxy.example:1080",
-        "https://proxy.example:3128",
     ] {
         let network = parse(spec).unwrap();
         assert!(
@@ -132,9 +131,11 @@ fn network_spec_the_label_has_no_credentials() {
         parse("u:pw@proxy.example:1080").unwrap().label(),
         "***@proxy.example:1080"
     );
-    assert_eq!(
-        parse("https://u:pw@proxy.example:3128").unwrap().label(),
-        "https://***@proxy.example:3128"
+    // T-126: https:// is the proxy over TLS; a password in it is refused.
+    let err = parse("https://u:pw@proxy.example:3128").unwrap_err();
+    assert!(
+        err.text().starts_with("https://***@proxy.example:3128: "),
+        "{err}"
     );
 }
 
@@ -152,6 +153,8 @@ fn network_spec_the_table_has_one_row_for_each_scheme() {
             "wg",
             "turn",
             "devtunnel",
+            "https",
+            "wstunnel",
             "warp",
             "peer",
             "chain"

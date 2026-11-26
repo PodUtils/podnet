@@ -1,8 +1,8 @@
 # Virtual networks and overlays
 
 This page gives `podnet net`: the virtual network, Tailscale, NetBird, WireGuard and the passwd shim. The design
-of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:`, `netbird:` and
-`wg:` are networks of the registry ([egress.md](egress.md)).
+of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:`, `netbird:`,
+`wg:`, `turn://`, `devtunnel://`, `https://` and `wstunnel:` are networks of the registry ([egress.md](egress.md)).
 
 | Command | Function |
 | --- | --- |
@@ -343,6 +343,84 @@ authentication, and opens the channels.
 * `podnet net doctor --network devtunnel://TUNNEL` adds the row of the network: `ok` when the network comes up,
   `fail` with the stage (for example the Dev Tunnels management API) when it does not. The row holds no token.
 * Not in the network: the creation and the deletion of tunnels, the device-code login, and a token store.
+
+## A proxy over TLS: `https://[USER@]HOST[:PORT]`
+
+```sh
+export PODNET_HTTPS_PROXY_AUTH_FILE=/etc/podnet/proxy-auth   # one line: USER:PASSWORD
+podnet forward -L 127.0.0.1:2222=code.example:22 --network https://proxy.example:443
+podnet net doctor --network https://proxy.example:443
+```
+
+A host whose proxy takes only TLS (Caddy's forwardproxy, the `https_port` of squid, h2o) can use the proxy as a
+network. Each stream opens TLS to the proxy, then a CONNECT inside the TLS: HTTP/2 when the proxy chooses `h2`
+by ALPN (the streams share one connection), else HTTP/1.1 (one connection for each stream). podnet has no code
+of this road: it is `via` of `pod-egress` (PodUtils/podcrates).
+
+* The default port is 443. A password, a path or a query in the URL is a usage error (exit 64) that does not
+  repeat the secret. `https://USER@HOST` names the user, and the file then holds the password alone.
+* The credentials are a setting, not a part of the spec. `PODNET_HTTPS_PROXY_AUTH_FILE` is a file whose one line
+  is `USER:PASSWORD`. `PODNET_HTTPS_PROXY_AUTH` is the same line (give one of them; the file is the better
+  choice). With neither, no `Proxy-Authorization` goes. A URL that names a user and no password, two forms, a file
+  that cannot be read and a bad line are usage errors (exit 64) that name the variable and not the value.
+* `PODNET_HTTPS_PROXY_VERSION` is the versions of HTTP that the client offers: `auto` (default), `1.1` or `2`.
+* A network `NAME` of a router file reads the variables with the suffix `_NAME` (the name in capitals, `-` as `_`)
+  when one of them is set: `PODNET_HTTPS_PROXY_AUTH_FILE_OFFICE` for the network `office`.
+* The TCP connection to the proxy uses the way out of the process (`--proxy`, the variables), or the way below
+  the network (`'https://HOST over socks5h://127.0.0.1:1080'`). The certificate of the proxy is checked with the
+  roots of podnet (`--ca-file`, `SSL_CERT_FILE`).
+* `up` makes one TLS handshake with the proxy. It proves the reach and the certificate. A fault starts with the
+  spec and names the hop: `https://proxy.example:443: the proxy: TLS: ...`. The credentials go with each CONNECT.
+  A refusal names the proxy, the target and the status: `the proxy https://proxy.example:443 refused CONNECT
+  code.example:22: 407 Proxy Authentication Required; ...`.
+* The status of the link has the scheme, the spec, the form of the credentials (`file`, `variable` or `none`) and
+  the versions offered. It has no user and no password.
+* `--egress https://...` and `podnet pod -x` refuse the network by name: it is not a proxy of the process. The
+  proxy of the process (`--proxy`, `HTTPS_PROXY`) does not take `https://` ([proxies.md](proxies.md)).
+* `podnet net doctor --network https://HOST:PORT` adds the row of the network: `ok` when the TLS handshake with the
+  proxy passes, `fail` with the hop when it does not. The row holds no credential.
+* Tests use a stand-in proxy on the loopback with a CA of the test (`src/networks/road_stand.rs`,
+  `src/networks/via_tests.rs`, `tests/road_network.rs`). They need no account.
+
+## wstunnel: `wstunnel:wss://HOST[:PORT]`
+
+```sh
+printf 'path-prefix %s\n' "$PREFIX" > /etc/podnet/wstunnel-secret   # the -r PREFIX of the server
+export PODNET_WSTUNNEL_SECRET_FILE=/etc/podnet/wstunnel-secret
+podnet forward -L 127.0.0.1:2222=10.0.0.5:22 --network wstunnel:wss://wst.example
+```
+
+A host that reaches only a WebSocket on TCP 443 can use a server of erebe/wstunnel (9.1 to 11,
+`wstunnel server wss://[::]:443`) as a network. Each stream opens a WebSocket to the server with a token that
+names the target. The server dials the target before it answers. podnet has no code of this road: it is
+`wstunnel` of `pod-egress` (PodUtils/podcrates).
+
+* `wstunnel:wss://HOST[:PORT]` is TLS (default port 443). `wstunnel:ws://HOST[:PORT]` has no TLS (default port 80).
+  `wstunnel:HOST[:PORT]` is the same as `wss://`. The URL has no path, no query, no user and no password: a usage
+  error (exit 64) that does not repeat them. The other transports of wstunnel (`https://`, `wts://`) are refused by
+  name. `wstunnel:PORT` is still the SOCKS5 hop of a host named `wstunnel`.
+* The secret is a setting, not a part of the spec. `PODNET_WSTUNNEL_SECRET_FILE` is a file with the lines
+  `path-prefix PREFIX` (the `--restrict-http-upgrade-path-prefix` of the server), `credentials USER[:PASSWORD]`
+  (Basic) and `authorization VALUE` (the header as it is), each one time, or one line with the prefix alone. `#`
+  starts a comment line. `PODNET_WSTUNNEL_SECRET` is the same text (give one of them). With neither, the client
+  sends the defaults of wstunnel: the prefix `v1` and no `Authorization`.
+* A bad line is a usage error (exit 64) that names the variable and the number of the line, never its text. A
+  secret over `ws://` to a host that is not the loopback is a usage error: give `wss://`.
+* A network `NAME` of a router file reads the variables with the suffix `_NAME` when one of them is set.
+* The TCP connection to the server uses the way out of the process, or the way below the network. The
+  certificate of the server is checked with the roots of podnet (`--ca-file`).
+* `up` makes one connection to the server (TLS for `wss://`). A fault starts with the spec and names the hop:
+  `wstunnel:wss://wst.example: the wstunnel server: ...`. A refusal of the server names it and its status:
+  `the wstunnel server wss://wst.example refused the tunnel: 400 Invalid request; ...`. The server does not give
+  the cause (a prefix, a restriction, or a target that it could not reach); its log gives it.
+* The status of the link has the scheme, the spec, the transport (`tls`) and the form of the secret (`file`,
+  `variable` or `default`). It has no secret.
+* `--egress wstunnel:...` and `podnet pod -x` refuse the network by name: it is not a proxy of the process.
+* `podnet net doctor --network wstunnel:wss://HOST` adds the row of the network: `ok` when the server takes the
+  connection, `fail` with the hop when it does not. The row holds no secret.
+* Tests use a stand-in wstunnel server on the loopback with a CA of the test (`src/networks/road_stand.rs`). The
+  run against the binary of wstunnel is a test of `pod-egress`.
+* Not in the network: the HTTP/2 transport of wstunnel, a reverse tunnel, and UDP.
 
 ## A user with no passwd entry
 

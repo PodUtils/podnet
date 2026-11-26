@@ -53,7 +53,11 @@ pub(crate) struct ForwardArgs {
     /// of a Dev Tunnels tunnel through its relay; the target host is
     /// 127.0.0.1; the token comes from PODNET_DEVTUNNEL_TOKEN_FILE or
     /// PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE, or PODNET_DEVTUNNEL_ANONYMOUS=1
-    /// sends none), or
+    /// sends none), or https://[USER@]HOST[:PORT] (TCP through a forward
+    /// proxy over TLS, by CONNECT; the credentials come from
+    /// PODNET_HTTPS_PROXY_AUTH_FILE), or wstunnel:wss://HOST[:PORT] (TCP
+    /// through a wstunnel server; the secret comes from
+    /// PODNET_WSTUNNEL_SECRET_FILE), or
     /// warp or warp:identity=FILE (TCP and UDP through a WARP session; names
     /// resolve inside the tunnel; the device is kept in FILE, else in the
     /// default identity file of podnet warp). A SOCKS5 or HTTP proxy carries no UDP. Default:

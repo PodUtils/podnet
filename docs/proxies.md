@@ -24,7 +24,9 @@ podnet --no-proxy tunnel --url http://127.0.0.1:8080
   (for example `%2F` for `/`).
 * `http://` uses `CONNECT`. `socks5://` resolves the name on this host;
   `socks5h://` gives the name to the proxy. podnet refuses `socks4://` and
-  `https://`.
+  `https://` as the proxy of the process. A proxy over TLS is the network
+  `https://HOST[:PORT]` of `podnet forward --network` and of a router file
+  ([networks.md](networks.md), "A proxy over TLS").
 * A proxy on a unix socket: `socks5h+unix:/PATH` (also
   `socks5h://unix:/PATH`), or `http+unix:/PATH`. The path has no user, no
   password and no host: podnet refuses `socks5h+unix://USER:PASS@HOST` and

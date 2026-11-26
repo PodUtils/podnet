@@ -2680,6 +2680,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "pod-egress"
+version = "0.86.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.86.0#22d1a7557c982b8eb5bef5b8c0e030f5ac54f6ef"
+dependencies = [
+ "base64",
+ "bytes",
+ "hmac 0.13.0",
+ "http",
+ "pod-core",
+ "pod-h2",
+ "pod-proxy",
+ "pod-tls",
+ "pod-ws",
+ "rustls",
+ "rustls-pki-types",
+ "serde_json",
+ "sha2 0.11.1",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+ "zeroize",
+]
+
+[[package]]
 name = "pod-extract"
 version = "0.86.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.86.0#22d1a7557c982b8eb5bef5b8c0e030f5ac54f6ef"
@@ -3136,6 +3160,7 @@ dependencies = [
  "pod-devtunnel",
  "pod-dns",
  "pod-e2e",
+ "pod-egress",
  "pod-extract",
  "pod-h2",
  "pod-harness",

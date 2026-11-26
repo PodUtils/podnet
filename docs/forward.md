@@ -23,7 +23,8 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
 * `-L LISTEN=peer:FINGERPRINT/SERVICE` opens one stream of a link to a peer for each accepted connection, and asks the peer
   for its service (see "A service of a peer" below). It carries TCP only.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
-  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `devtunnel://TUNNEL` (TCP only), `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
+  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `devtunnel://TUNNEL` (TCP only), `https://HOST[:PORT]` (a proxy over TLS, TCP only),
+  `wstunnel:wss://HOST[:PORT]` (TCP only), `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
   only), `unix:/PATH`, or a chain `TOP over BELOW` (`'wg:FILE over warp'`). The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
 * `devtunnel://TUNNEL` carries a TCP forward through a Microsoft Dev Tunnels relay to a port of the tunnel host:

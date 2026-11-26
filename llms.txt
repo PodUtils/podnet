@@ -29,7 +29,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet receive`: Receive what podnet send offers: type the code at the prompt, or give it on stdin (never on the command line)
 - `podnet connect`: Bridge a local socket to a remote WebSocket forward endpoint
 - `podnet expose`: Publish a local service by one word: --via tunnel (a Cloudflare tunnel), relay (a node of the reverse relay) or switch (a virtual address). It runs `tunnel`, `relay node` or `net proxy --forward`
-- `podnet forward`: Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP with udp:LISTEN) and a DNS door with --dns. --network SPEC is direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL or warp
+- `podnet forward`: Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP with udp:LISTEN) and a DNS door with --dns. --network SPEC is direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL, https://HOST (a proxy over TLS), wstunnel:wss://HOST or warp
 - `podnet route`: A router of networks, groups, doors and guest wires from a config file (--config FILE), with health probes and --detach. A guest uses the router as its gateway
 - `podnet ssh-relay`: Publish a unix socket through an SSH relay (a remote forward on port 443), and keep the session: when the relay ends it, podnet connects again with a backoff and prints the new URL. The relay (--service), its endpoints, its user and its URL rule are data of pod-services; --server, --user, --url-match and --url-skip override them
 - `podnet sidecar`: The packet sidecar, behind the feature `sidecar`: probe, search, run, split, faketcp and bond against a local simulator. A default build exits 69 with the feature name

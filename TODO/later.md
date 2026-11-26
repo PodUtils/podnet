@@ -614,6 +614,37 @@ T-059 is done.
 forbids a copy into podnet. No part of this entry is possible in podnet now. Nothing was changed in the code. The
 entry stays `open`. It starts when `pod-egress` has a release (wave 4) and podnet takes it (T-137).
 
+2026-11-26, The work is done with `pod-egress` `v0.86.0` (features `via` and `wstunnel`), a git dependency by the
+tag; it adds no package outside podcrates to `Cargo.lock`. podnet has no code of either road. The Approach steps 1
+and 2 ("copy") do not apply: the roads come from the crate.
+
+- Two networks of the registry: `https://[USER@]HOST[:PORT]` (`src/networks/via.rs`: TLS to the proxy, then
+  CONNECT on HTTP/2 or HTTP/1.1) and `wstunnel:wss://HOST[:PORT]`, `wstunnel:ws://HOST[:PORT]`,
+  `wstunnel:HOST[:PORT]` (`src/networks/wstunnel.rs`). `podnet forward --network`, a `networks:` entry of
+  `podnet route`, a chain (`TOP over BELOW`) and `podnet net doctor --network` take them. `--egress` and
+  `podnet pod -x` refuse them with one line that names `podnet forward --network`.
+- The secrets come from a file or a variable, never from the spec: `PODNET_HTTPS_PROXY_AUTH_FILE` or
+  `PODNET_HTTPS_PROXY_AUTH` (`PODNET_HTTPS_PROXY_VERSION` for the offer), `PODNET_WSTUNNEL_SECRET_FILE` or
+  `PODNET_WSTUNNEL_SECRET`; a router network `NAME` reads them with the suffix `_NAME`
+  (`src/networks/secret.rs`). `Router::up` now gives each network its name in `Ctx::name` (before, only a
+  change of the control gave it, so the suffix of `turn://` too did not apply at the start). A bad spec and a bad or missing secret are usage errors (exit 64) that name the
+  variable and show no value. `up` proves the reach and the certificate of the server with one connection; a
+  fault names the hop (`the proxy`, `the wstunnel server`).
+- A change of behaviour: the network spec `https://HOST:PORT` was a pod hop in cleartext HTTP (the parser of
+  `podnet_netns::upstream` reads `https` as `http`). It is now the proxy over TLS. `podnet pod -x https://...`
+  keeps its old meaning.
+- Tests: `networks::via_tests` (`https_proxy_dialer_through_a_test_ca`,
+  `wstunnel_dialer_through_a_stand_in_server`, `wstunnel_dialer_with_no_server_fails_at_up_and_names_the_server`,
+  the table tests of the bad specs and of the secret faults) and `tests/road_network.rs` (a forward through each
+  road with `--ca-file`, the usage table, the rows of `net doctor`). The stand-ins are in
+  `src/networks/road_stand.rs`, with the CA of the TURN stand.
+- Gaps, outside podnet: (1) the proxy of the process (`--proxy https://...`, `HTTPS_PROXY=https://...`) stays
+  refused: the dialer of the process is `pod-proxy`'s, which has no TLS hop; it needs a TLS proxy in `pod-proxy`
+  (a COORD issue to podcrates). (2) `pod-egress` exports no stand-in server (its proxy and wstunnel servers of
+  the tests are in its `tests/`), so podnet has its own small stand-ins; a feature `standin`, as `pod-devtunnel`
+  has, would replace them. (3) `via` has no probe with no target: `up` proves the TLS with `pod_ws::Way::open_tls`,
+  and the credentials are proved only at the first CONNECT.
+
 # T-127: Egress through VLESS, Shadowsocks and Wisp
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.4 and 3 (C16).

@@ -179,6 +179,19 @@ fn warp_refusal(label: &str) -> String {
     )
 }
 
+/// The line for `--egress https://HOST` and `--egress wstunnel:URL` (T-126):
+/// a road of `pod-egress` is a network of the registry, not a proxy URL of
+/// the process or a hop of podnet pod.
+fn road_refusal(label: &str, road: &str) -> String {
+    let what = match road {
+        "https" => "an HTTPS proxy (TLS to the proxy, then CONNECT)",
+        _ => "a wstunnel server",
+    };
+    format!(
+        "--egress {label}: {what} is a network of the registry, not a proxy of the process or a hop of podnet pod; use podnet forward -L LISTEN=HOST:PORT --network {label}, or a networks: entry of podnet route"
+    )
+}
+
 /// `podnet --egress A --egress B pod ...`: `-x A -x B` after the word pod.
 fn pod_hops(
     mut kept: Vec<String>,
@@ -208,6 +221,9 @@ fn pod_hops(
         }
         if network.is_warp() {
             return Err(warp_refusal(&network.label()));
+        }
+        if let Some(road) = network.road() {
+            return Err(road_refusal(&network.label(), road));
         }
         if let Some(port) = network.netbird_port() {
             // The listener of NetBird netstack mode is a SOCKS5 hop.
@@ -265,6 +281,9 @@ fn process_way(
     }
     if network.is_warp() {
         return Err(warp_refusal(&network.label()));
+    }
+    if let Some(road) = network.road() {
+        return Err(road_refusal(&network.label(), road));
     }
     let flags: Vec<String> = match (network.scheme(), network.relay_url()) {
         ("direct", _) => vec!["--no-proxy".into()],

@@ -198,6 +198,11 @@ pod-natprobe = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0",
 # PodUtils/podcrates: the network devtunnel://TUNNEL (src/networks/devtunnel.rs)
 # opens streams with it.
 pod-devtunnel = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }
+# The roads out of PodUtils/podcrates (T-126): `via`, a forward proxy over
+# TLS with CONNECT on HTTP/1.1 or HTTP/2 (the network https://HOST:PORT,
+# src/networks/via.rs), and `wstunnel`, a client of a wstunnel server (the
+# network wstunnel:URL, src/networks/wstunnel.rs).
+pod-egress = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0", features = ["via", "wstunnel"] }
 anyhow = "1"
 axum ={ version = "0.8", features = ["multipart"] }
 base64 = "0.23"

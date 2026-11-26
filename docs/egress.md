@@ -16,6 +16,8 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. A name resolves at the `DNS` of the file, through the tunnel; with no `DNS` line, the target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
 | `turn` | `turn://HOST[:PORT]`, `turns://HOST[:PORT]` | An allocation on a TURN server (RFC 8656) for UDP and a TCP allocation (RFC 6062) for TCP, over UDP (`turn`, port 3478) or over TLS on TCP (`turns`, port 5349). `turn://` uses plain TURN over TCP for a TCP stream. The user and the password come from `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE`, never from the spec ([networks.md](networks.md)). | TCP, UDP |
 | `devtunnel` | `devtunnel://NAME`, `devtunnel://ID.CLUSTER` | A stream to a port of the host of a Microsoft Dev Tunnels tunnel, through its relay. The target host is `127.0.0.1`. The token comes from `PODNET_DEVTUNNEL_TOKEN_FILE` or `PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE` (or none with `PODNET_DEVTUNNEL_ANONYMOUS=1`), never from the spec ([networks.md](networks.md)). | TCP |
+| `https` | `https://[USER@]HOST[:PORT]` | A forward proxy over TLS: TLS to the proxy, then CONNECT on HTTP/2 or HTTP/1.1 (`via` of `pod-egress`). The credentials come from `PODNET_HTTPS_PROXY_AUTH_FILE` or `PODNET_HTTPS_PROXY_AUTH`, never from the spec ([networks.md](networks.md), "A proxy over TLS"). | TCP |
+| `wstunnel` | `wstunnel:wss://HOST[:PORT]`, `wstunnel:ws://HOST[:PORT]`, `wstunnel:HOST[:PORT]` | A server of erebe/wstunnel, 9.1 to 11 (`wstunnel` of `pod-egress`). The path prefix and the credentials come from `PODNET_WSTUNNEL_SECRET_FILE` or `PODNET_WSTUNNEL_SECRET`, never from the spec ([networks.md](networks.md), "wstunnel"). | TCP |
 | chain | `SPEC over SPEC` | A network over the way of the network below it: `wg:FILE over warp` sends the UDP of WireGuard through a WARP session. The top layer comes first. The chain carries what its top layer carries ([networks.md](networks.md), "A chain of networks"). | as the top layer |
 | `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
@@ -29,6 +31,10 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
   `--egress turn://...` gives one line that says that the TLS or TCP connection of the network is not a proxy of the process.
 * `devtunnel://` opens streams to ports of the tunnel host and is not a proxy. Use it with `podnet forward -L ... --network SPEC`.
   `--egress devtunnel://...` gives one line that says so.
+* `https://HOST[:PORT]` and `wstunnel:URL` open their own streams through a proxy over TLS or a wstunnel server. Use them
+  with `podnet forward -L ... --network SPEC`, a `networks:` entry of a router file, or `podnet net doctor --network SPEC`.
+  `--egress https://...` and `--egress wstunnel:...` give one line that says that the network is not a proxy of the
+  process or a hop of a pod. The proxy of the process does not take `https://` ([proxies.md](proxies.md)).
 * `warp` and `warp:identity=FILE` are networks of the registry: TCP and UDP through a WARP session, with names
   resolved inside the tunnel ([router.md](router.md), "WARP as a member"). Use them with
   `podnet forward --network warp` or in a `networks:` entry of a router file. `--egress warp` gives one line
@@ -78,6 +84,29 @@ podnet --egress direct doctor
 podnet pod --egress socks5://proxy-a:1080 --egress tailscale:/run/tailscale/tailscaled.sock -- ssh host
 podnet bench --egress socks5h://127.0.0.1:1080 https://example.com/
 ```
+
+## A proxy over TLS and wstunnel
+
+```sh
+export PODNET_HTTPS_PROXY_AUTH_FILE=/etc/podnet/proxy-auth   # one line: USER:PASSWORD
+podnet forward -L 127.0.0.1:2222=code.example:22 --network https://proxy.example:443
+
+export PODNET_WSTUNNEL_SECRET_FILE=/etc/podnet/wstunnel-secret   # path-prefix PREFIX
+podnet forward -L 127.0.0.1:2222=10.0.0.5:22 --network wstunnel:wss://wst.example
+```
+
+Both are roads of `pod-egress` (PodUtils/podcrates); podnet holds no code of them. A spec holds no secret: a
+password, a path prefix or a token in a spec is a usage error (exit 64) that does not repeat it. A missing or bad
+secret is a usage error that names the variable. `up` proves the reach and the certificate of the server with one
+connection, and a fault names the hop (`the proxy`, `the wstunnel server`). Each form, each setting and each fault
+is in [networks.md](networks.md).
+
+| Item | Value | Checked |
+| --- | --- | --- |
+| The protocol of the proxy | CONNECT of RFC 9110 (section 9.3.6) and of RFC 9113 (section 8.5), over TLS | 2026-11-26 |
+| The protocol of wstunnel | the WebSocket transport of erebe/wstunnel 9.1 to 11 (its token, its path prefix) | 2026-11-26 |
+| The client | `pod-egress` of PodUtils/podcrates (features `via` and `wstunnel`), at the tag of `Cargo.toml` | 2026-11-26 |
+| The test servers | stand-ins on the loopback (`src/networks/road_stand.rs`); the runs against wstunnel and Caddy are tests of `pod-egress` | 2026-11-26 |
 
 ## TURN servers
 

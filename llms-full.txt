@@ -64,7 +64,8 @@ SYNOPSIS
     forward  Forward local ports through a network: -L LISTEN=HOST:PORT (TCP,
              or UDP with udp:LISTEN) and a DNS door with --dns. --network SPEC
              is direct, a proxy, the relay, a tailnet, wg:FILE, turn://HOST for
-             UDP, devtunnel://TUNNEL or warp
+             UDP, devtunnel://TUNNEL, https://HOST (a proxy over TLS),
+             wstunnel:wss://HOST or warp
     route    A router of networks, groups, doors and guest wires from a config
              file (--config FILE), with health probes and --detach. A guest
              uses the router as its gateway
@@ -2021,7 +2022,8 @@ podnet expose
 podnet forward
   Forward local ports through a network: -L LISTEN=HOST:PORT (TCP, or UDP with
   udp:LISTEN) and a DNS door with --dns. --network SPEC is direct, a proxy, the
-  relay, a tailnet, wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL or warp.
+  relay, a tailnet, wg:FILE, turn://HOST for UDP, devtunnel://TUNNEL,
+  https://HOST (a proxy over TLS), wstunnel:wss://HOST or warp.
 
   Usage: podnet forward [OPTIONS]
 
@@ -2063,11 +2065,15 @@ podnet forward
         Tunnels tunnel through its relay; the target host is 127.0.0.1; the
         token comes from PODNET_DEVTUNNEL_TOKEN_FILE or
         PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE, or PODNET_DEVTUNNEL_ANONYMOUS=1
-        sends none), or warp or warp:identity=FILE (TCP and UDP through a WARP
-        session; names resolve inside the tunnel; the device is kept in FILE,
-        else in the default identity file of podnet warp). A SOCKS5 or HTTP
-        proxy carries no UDP. Default: the way out of the process (--proxy, the
-        variables, else direct).
+        sends none), or https://[USER@]HOST[:PORT] (TCP through a forward proxy
+        over TLS, by CONNECT; the credentials come from
+        PODNET_HTTPS_PROXY_AUTH_FILE), or wstunnel:wss://HOST[:PORT] (TCP
+        through a wstunnel server; the secret comes from
+        PODNET_WSTUNNEL_SECRET_FILE), or warp or warp:identity=FILE (TCP and
+        UDP through a WARP session; names resolve inside the tunnel; the device
+        is kept in FILE, else in the default identity file of podnet warp). A
+        SOCKS5 or HTTP proxy carries no UDP. Default: the way out of the
+        process (--proxy, the variables, else direct).
     --run-for SECONDS
         Stop after this many seconds.
     --ca-file PATH
@@ -13646,6 +13652,32 @@ ENVIRONMENT
       missing user or password is a usage error (exit 64). One account for each
       process. Used by: the network turn://HOST[:PORT] and turns://HOST[:PORT]
       (forward --network, link p2p --relay, a networks: entry of route).
+  PODNET_HTTPS_PROXY_AUTH_FILE, PODNET_HTTPS_PROXY_AUTH,
+  PODNET_HTTPS_PROXY_VERSION
+      The credentials of a forward proxy over TLS: the one line USER:PASSWORD
+      of the file in PODNET_HTTPS_PROXY_AUTH_FILE, else the value of
+      PODNET_HTTPS_PROXY_AUTH (give one of them). When the URL names the user,
+      the line is the password alone. With neither, no Proxy-Authorization
+      goes. PODNET_HTTPS_PROXY_VERSION is the versions of HTTP that the client
+      offers: auto (the default: HTTP/2, else HTTP/1.1), 1.1 or 2. A network
+      NAME of a router file reads the variables with the suffix _NAME when one
+      of them is set. A spec holds no password, and no credential is in a log
+      line, an error or --json. A bad value is a usage error (exit 64) that
+      names the variable. Used by: the network https://[USER@]HOST[:PORT]
+      (forward --network, a networks: entry of route, net doctor --network).
+  PODNET_WSTUNNEL_SECRET_FILE, PODNET_WSTUNNEL_SECRET
+      The secret of a wstunnel server: the text of the file in
+      PODNET_WSTUNNEL_SECRET_FILE, else the value of PODNET_WSTUNNEL_SECRET
+      (give one of them). The lines are path-prefix PREFIX, credentials
+      USER[:PASSWORD] and authorization VALUE, or one line with the prefix
+      alone. With neither, the client sends the defaults of wstunnel (the
+      prefix v1). A secret over ws:// to a host that is not the loopback is a
+      usage error. A network NAME of a router file reads the variables with the
+      suffix _NAME when one of them is set. A spec holds no secret, and no
+      secret is in a log line, an error or --json. A bad secret is a usage
+      error (exit 64) that names the variable and the number of the line. Used
+      by: the network wstunnel:wss://HOST[:PORT] (forward --network, a
+      networks: entry of route, net doctor --network).
   PODNET_WARP_DEVICE_NAME, PODNET_WARP_DEVICE_MODEL, PODNET_WARP_DEVICE_LOCALE
       The value of --device-name, --device-model and --device-locale: what a
       new device declares at its registration (a name of 1 to 64 characters, a
@@ -14389,7 +14421,7 @@ podnet man                                      # the manual
 | Relays | `relay pair`, `node`, `connect`, `--resume`, `--seal`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only, sessions past the limits of the relay (`--resume`), sealed end to end (`--seal`); an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
 | Link | `link listen`, `dial`, `connect`, `status`, `mesh`, `close`, `carriers`, `cover`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory; TCP with TLS, WebSocket, HTTP/2, QUIC, UDP with KCP, HTTP/1.1 polls, DNS, S3 and ICMP behind build features): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. Services at a peer: `raw`, `socks5`, `http`, `exec:` and `exec-status:` (the exit status goes to `link dial --status`). A local SOCKS5 door to a peer (`link dial --service socks5 --listen`, `--resolve-at peer\|local`). Names for live links, query keys, chains of `--egress` before the carrier, link groups, a mesh (`--announce`, `link mesh`) and a control socket. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. A C interface (`include/podnet.h`, a shared and a static library from `crates/podnet-capi`). | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
 | Offline | `offline spool`, `discover`, `bundle`, `capture`, `pair`, `replica`; carriers `serial` and `hf` | A store and forward line for a host with no network: a spool that survives a kill, mDNS discovery with a signed record, a bundle and its delta, a capture merged with its secret redacted, a pairing code, a replication log that converges; AX.25 over a serial line and an ARDOP or VARA modem. | [offline](https://github.com/PodUtils/podnet/blob/main/docs/offline.md) |
-| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `unix:`, `warp` and `warp:identity=FILE` (TCP and UDP through a WARP session, for `route` and `forward --network`), and a chain `TOP over BELOW` (`wg:FILE over warp`). | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
+| Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `https:` (a proxy over TLS), `wstunnel:` (a wstunnel server), `unix:`, `warp` and `warp:identity=FILE` (TCP and UDP through a WARP session, for `route` and `forward --network`), and a chain `TOP over BELOW` (`wg:FILE over warp`). | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
 | Background | `--detach`, `ps`, `logs`, `wait`, `stop`, `autostart` | Run a command in the background, restart it, start it at boot. | [background](https://github.com/PodUtils/podnet/blob/main/docs/background.md) |
 | Checks | `doctor`, `doctor --agent`, `doctor --shape`, `status`, `ports`, `components`, `bench`, `bug-report`, `agent up` | Test the host, the path to the edge and a way out. | [doctor](https://github.com/PodUtils/podnet/blob/main/docs/doctor.md) |
 | Update | `update` | Replace the binary after a check of the signature. | [install](https://github.com/PodUtils/podnet/blob/main/docs/install.md) |
@@ -14402,7 +14434,7 @@ podnet man                                      # the manual
 | No UDP to the edge | The HTTP/2 edge leg on TCP 7844. |
 | Only TCP 443 out | The QUIC edge leg inside WARP (MASQUE), or the WebSocket relay. |
 | No DNS resolver | DNS over HTTPS by IP address, then a static edge list. |
-| Egress through a proxy only | HTTP `CONNECT`, SOCKS5, Digest, unix-socket and command proxies, and `NO_PROXY`. |
+| Egress through a proxy only | HTTP `CONNECT`, a proxy over TLS (as a network), SOCKS5, Digest, unix-socket and command proxies, and `NO_PROXY`. |
 | No root, no TUN, no network namespace | `podnet pod` (seccomp backend), `podnet warp run`. |
 | No `AF_INET` bind | `podnet net` (shim and userspace stack), unix-socket origins. |
 
@@ -16283,8 +16315,8 @@ run, the line of `--name-backend` does not give `--backend netns` as a next step
 # Virtual networks and overlays
 
 This page gives `podnet net`: the virtual network, Tailscale, NetBird, WireGuard and the passwd shim. The design
-of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:`, `netbird:` and
-`wg:` are networks of the registry ([egress.md](egress.md)).
+of the virtual network is in [virtual-network.md](virtual-network.md). The specs `tailscale:`, `netbird:`,
+`wg:`, `turn://`, `devtunnel://`, `https://` and `wstunnel:` are networks of the registry ([egress.md](egress.md)).
 
 | Command | Function |
 | --- | --- |
@@ -16625,6 +16657,84 @@ authentication, and opens the channels.
 * `podnet net doctor --network devtunnel://TUNNEL` adds the row of the network: `ok` when the network comes up,
   `fail` with the stage (for example the Dev Tunnels management API) when it does not. The row holds no token.
 * Not in the network: the creation and the deletion of tunnels, the device-code login, and a token store.
+
+## A proxy over TLS: `https://[USER@]HOST[:PORT]`
+
+```sh
+export PODNET_HTTPS_PROXY_AUTH_FILE=/etc/podnet/proxy-auth   # one line: USER:PASSWORD
+podnet forward -L 127.0.0.1:2222=code.example:22 --network https://proxy.example:443
+podnet net doctor --network https://proxy.example:443
+```
+
+A host whose proxy takes only TLS (Caddy's forwardproxy, the `https_port` of squid, h2o) can use the proxy as a
+network. Each stream opens TLS to the proxy, then a CONNECT inside the TLS: HTTP/2 when the proxy chooses `h2`
+by ALPN (the streams share one connection), else HTTP/1.1 (one connection for each stream). podnet has no code
+of this road: it is `via` of `pod-egress` (PodUtils/podcrates).
+
+* The default port is 443. A password, a path or a query in the URL is a usage error (exit 64) that does not
+  repeat the secret. `https://USER@HOST` names the user, and the file then holds the password alone.
+* The credentials are a setting, not a part of the spec. `PODNET_HTTPS_PROXY_AUTH_FILE` is a file whose one line
+  is `USER:PASSWORD`. `PODNET_HTTPS_PROXY_AUTH` is the same line (give one of them; the file is the better
+  choice). With neither, no `Proxy-Authorization` goes. A URL that names a user and no password, two forms, a file
+  that cannot be read and a bad line are usage errors (exit 64) that name the variable and not the value.
+* `PODNET_HTTPS_PROXY_VERSION` is the versions of HTTP that the client offers: `auto` (default), `1.1` or `2`.
+* A network `NAME` of a router file reads the variables with the suffix `_NAME` (the name in capitals, `-` as `_`)
+  when one of them is set: `PODNET_HTTPS_PROXY_AUTH_FILE_OFFICE` for the network `office`.
+* The TCP connection to the proxy uses the way out of the process (`--proxy`, the variables), or the way below
+  the network (`'https://HOST over socks5h://127.0.0.1:1080'`). The certificate of the proxy is checked with the
+  roots of podnet (`--ca-file`, `SSL_CERT_FILE`).
+* `up` makes one TLS handshake with the proxy. It proves the reach and the certificate. A fault starts with the
+  spec and names the hop: `https://proxy.example:443: the proxy: TLS: ...`. The credentials go with each CONNECT.
+  A refusal names the proxy, the target and the status: `the proxy https://proxy.example:443 refused CONNECT
+  code.example:22: 407 Proxy Authentication Required; ...`.
+* The status of the link has the scheme, the spec, the form of the credentials (`file`, `variable` or `none`) and
+  the versions offered. It has no user and no password.
+* `--egress https://...` and `podnet pod -x` refuse the network by name: it is not a proxy of the process. The
+  proxy of the process (`--proxy`, `HTTPS_PROXY`) does not take `https://` ([proxies.md](proxies.md)).
+* `podnet net doctor --network https://HOST:PORT` adds the row of the network: `ok` when the TLS handshake with the
+  proxy passes, `fail` with the hop when it does not. The row holds no credential.
+* Tests use a stand-in proxy on the loopback with a CA of the test (`src/networks/road_stand.rs`,
+  `src/networks/via_tests.rs`, `tests/road_network.rs`). They need no account.
+
+## wstunnel: `wstunnel:wss://HOST[:PORT]`
+
+```sh
+printf 'path-prefix %s\n' "$PREFIX" > /etc/podnet/wstunnel-secret   # the -r PREFIX of the server
+export PODNET_WSTUNNEL_SECRET_FILE=/etc/podnet/wstunnel-secret
+podnet forward -L 127.0.0.1:2222=10.0.0.5:22 --network wstunnel:wss://wst.example
+```
+
+A host that reaches only a WebSocket on TCP 443 can use a server of erebe/wstunnel (9.1 to 11,
+`wstunnel server wss://[::]:443`) as a network. Each stream opens a WebSocket to the server with a token that
+names the target. The server dials the target before it answers. podnet has no code of this road: it is
+`wstunnel` of `pod-egress` (PodUtils/podcrates).
+
+* `wstunnel:wss://HOST[:PORT]` is TLS (default port 443). `wstunnel:ws://HOST[:PORT]` has no TLS (default port 80).
+  `wstunnel:HOST[:PORT]` is the same as `wss://`. The URL has no path, no query, no user and no password: a usage
+  error (exit 64) that does not repeat them. The other transports of wstunnel (`https://`, `wts://`) are refused by
+  name. `wstunnel:PORT` is still the SOCKS5 hop of a host named `wstunnel`.
+* The secret is a setting, not a part of the spec. `PODNET_WSTUNNEL_SECRET_FILE` is a file with the lines
+  `path-prefix PREFIX` (the `--restrict-http-upgrade-path-prefix` of the server), `credentials USER[:PASSWORD]`
+  (Basic) and `authorization VALUE` (the header as it is), each one time, or one line with the prefix alone. `#`
+  starts a comment line. `PODNET_WSTUNNEL_SECRET` is the same text (give one of them). With neither, the client
+  sends the defaults of wstunnel: the prefix `v1` and no `Authorization`.
+* A bad line is a usage error (exit 64) that names the variable and the number of the line, never its text. A
+  secret over `ws://` to a host that is not the loopback is a usage error: give `wss://`.
+* A network `NAME` of a router file reads the variables with the suffix `_NAME` when one of them is set.
+* The TCP connection to the server uses the way out of the process, or the way below the network. The
+  certificate of the server is checked with the roots of podnet (`--ca-file`).
+* `up` makes one connection to the server (TLS for `wss://`). A fault starts with the spec and names the hop:
+  `wstunnel:wss://wst.example: the wstunnel server: ...`. A refusal of the server names it and its status:
+  `the wstunnel server wss://wst.example refused the tunnel: 400 Invalid request; ...`. The server does not give
+  the cause (a prefix, a restriction, or a target that it could not reach); its log gives it.
+* The status of the link has the scheme, the spec, the transport (`tls`) and the form of the secret (`file`,
+  `variable` or `default`). It has no secret.
+* `--egress wstunnel:...` and `podnet pod -x` refuse the network by name: it is not a proxy of the process.
+* `podnet net doctor --network wstunnel:wss://HOST` adds the row of the network: `ok` when the server takes the
+  connection, `fail` with the hop when it does not. The row holds no secret.
+* Tests use a stand-in wstunnel server on the loopback with a CA of the test (`src/networks/road_stand.rs`). The
+  run against the binary of wstunnel is a test of `pod-egress`.
+* Not in the network: the HTTP/2 transport of wstunnel, a reverse tunnel, and UDP.
 
 ## A user with no passwd entry
 
@@ -17208,7 +17318,8 @@ podnet forward -L unix:/run/db.sock=db.internal:5432 --run-for 3600
 * `-L LISTEN=peer:FINGERPRINT/SERVICE` opens one stream of a link to a peer for each accepted connection, and asks the peer
   for its service (see "A service of a peer" below). It carries TCP only.
 * `--network SPEC` selects the network (see [egress.md](egress.md)): `direct`, a proxy URL, `relay` or
-  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `devtunnel://TUNNEL` (TCP only), `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
+  `relay:URL`, `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `devtunnel://TUNNEL` (TCP only), `https://HOST[:PORT]` (a proxy over TLS, TCP only),
+  `wstunnel:wss://HOST[:PORT]` (TCP only), `turn://HOST[:PORT]` or `turns://HOST[:PORT]` (UDP
   only), `unix:/PATH`, or a chain `TOP over BELOW` (`'wg:FILE over warp'`). The default is the way out of the process: `--proxy`, the
   proxy variables, else direct.
 * `devtunnel://TUNNEL` carries a TCP forward through a Microsoft Dev Tunnels relay to a port of the tunnel host:
@@ -17591,6 +17702,8 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
 | `wg` | `wg:FILE` | A WireGuard peer of a wg-quick file, on a userspace stack. A name resolves at the `DNS` of the file, through the tunnel; with no `DNS` line, the target must be an IP address ([networks.md](networks.md)). | TCP, UDP |
 | `turn` | `turn://HOST[:PORT]`, `turns://HOST[:PORT]` | An allocation on a TURN server (RFC 8656) for UDP and a TCP allocation (RFC 6062) for TCP, over UDP (`turn`, port 3478) or over TLS on TCP (`turns`, port 5349). `turn://` uses plain TURN over TCP for a TCP stream. The user and the password come from `PODNET_TURN_USER` and `PODNET_TURN_PASSWORD_FILE`, never from the spec ([networks.md](networks.md)). | TCP, UDP |
 | `devtunnel` | `devtunnel://NAME`, `devtunnel://ID.CLUSTER` | A stream to a port of the host of a Microsoft Dev Tunnels tunnel, through its relay. The target host is `127.0.0.1`. The token comes from `PODNET_DEVTUNNEL_TOKEN_FILE` or `PODNET_DEVTUNNEL_ACCESS_TOKEN_FILE` (or none with `PODNET_DEVTUNNEL_ANONYMOUS=1`), never from the spec ([networks.md](networks.md)). | TCP |
+| `https` | `https://[USER@]HOST[:PORT]` | A forward proxy over TLS: TLS to the proxy, then CONNECT on HTTP/2 or HTTP/1.1 (`via` of `pod-egress`). The credentials come from `PODNET_HTTPS_PROXY_AUTH_FILE` or `PODNET_HTTPS_PROXY_AUTH`, never from the spec ([networks.md](networks.md), "A proxy over TLS"). | TCP |
+| `wstunnel` | `wstunnel:wss://HOST[:PORT]`, `wstunnel:ws://HOST[:PORT]`, `wstunnel:HOST[:PORT]` | A server of erebe/wstunnel, 9.1 to 11 (`wstunnel` of `pod-egress`). The path prefix and the credentials come from `PODNET_WSTUNNEL_SECRET_FILE` or `PODNET_WSTUNNEL_SECRET`, never from the spec ([networks.md](networks.md), "wstunnel"). | TCP |
 | chain | `SPEC over SPEC` | A network over the way of the network below it: `wg:FILE over warp` sends the UDP of WireGuard through a WARP session. The top layer comes first. The chain carries what its top layer carries ([networks.md](networks.md), "A chain of networks"). | as the top layer |
 | `peer` | `peer:FINGERPRINT/SERVICE` | One stream to a service of a peer, over a link that a running `podnet link connect` or `link listen` instance holds ([link.md](link.md)). A peer way: it meets a peer and dials no destination. | TCP |
 
@@ -17604,6 +17717,10 @@ one form for each command. The same specs are used by `--egress`, `podnet forwar
   `--egress turn://...` gives one line that says that the TLS or TCP connection of the network is not a proxy of the process.
 * `devtunnel://` opens streams to ports of the tunnel host and is not a proxy. Use it with `podnet forward -L ... --network SPEC`.
   `--egress devtunnel://...` gives one line that says so.
+* `https://HOST[:PORT]` and `wstunnel:URL` open their own streams through a proxy over TLS or a wstunnel server. Use them
+  with `podnet forward -L ... --network SPEC`, a `networks:` entry of a router file, or `podnet net doctor --network SPEC`.
+  `--egress https://...` and `--egress wstunnel:...` give one line that says that the network is not a proxy of the
+  process or a hop of a pod. The proxy of the process does not take `https://` ([proxies.md](proxies.md)).
 * `warp` and `warp:identity=FILE` are networks of the registry: TCP and UDP through a WARP session, with names
   resolved inside the tunnel ([router.md](router.md), "WARP as a member"). Use them with
   `podnet forward --network warp` or in a `networks:` entry of a router file. `--egress warp` gives one line
@@ -17654,6 +17771,29 @@ podnet pod --egress socks5://proxy-a:1080 --egress tailscale:/run/tailscale/tail
 podnet bench --egress socks5h://127.0.0.1:1080 https://example.com/
 ```
 
+## A proxy over TLS and wstunnel
+
+```sh
+export PODNET_HTTPS_PROXY_AUTH_FILE=/etc/podnet/proxy-auth   # one line: USER:PASSWORD
+podnet forward -L 127.0.0.1:2222=code.example:22 --network https://proxy.example:443
+
+export PODNET_WSTUNNEL_SECRET_FILE=/etc/podnet/wstunnel-secret   # path-prefix PREFIX
+podnet forward -L 127.0.0.1:2222=10.0.0.5:22 --network wstunnel:wss://wst.example
+```
+
+Both are roads of `pod-egress` (PodUtils/podcrates); podnet holds no code of them. A spec holds no secret: a
+password, a path prefix or a token in a spec is a usage error (exit 64) that does not repeat it. A missing or bad
+secret is a usage error that names the variable. `up` proves the reach and the certificate of the server with one
+connection, and a fault names the hop (`the proxy`, `the wstunnel server`). Each form, each setting and each fault
+is in [networks.md](networks.md).
+
+| Item | Value | Checked |
+| --- | --- | --- |
+| The protocol of the proxy | CONNECT of RFC 9110 (section 9.3.6) and of RFC 9113 (section 8.5), over TLS | 2026-11-26 |
+| The protocol of wstunnel | the WebSocket transport of erebe/wstunnel 9.1 to 11 (its token, its path prefix) | 2026-11-26 |
+| The client | `pod-egress` of PodUtils/podcrates (features `via` and `wstunnel`), at the tag of `Cargo.toml` | 2026-11-26 |
+| The test servers | stand-ins on the loopback (`src/networks/road_stand.rs`); the runs against wstunnel and Caddy are tests of `pod-egress` | 2026-11-26 |
+
 ## TURN servers
 
 A TURN server is a third-party service. podnet holds no server and mints no credential. It reads RFC 8656 over UDP or
@@ -17703,7 +17843,9 @@ podnet --no-proxy tunnel --url http://127.0.0.1:8080
   (for example `%2F` for `/`).
 * `http://` uses `CONNECT`. `socks5://` resolves the name on this host;
   `socks5h://` gives the name to the proxy. podnet refuses `socks4://` and
-  `https://`.
+  `https://` as the proxy of the process. A proxy over TLS is the network
+  `https://HOST[:PORT]` of `podnet forward --network` and of a router file
+  ([networks.md](networks.md), "A proxy over TLS").
 * A proxy on a unix socket: `socks5h+unix:/PATH` (also
   `socks5h://unix:/PATH`), or `http+unix:/PATH`. The path has no user, no
   password and no host: podnet refuses `socks5h+unix://USER:PASS@HOST` and

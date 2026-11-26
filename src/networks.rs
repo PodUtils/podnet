@@ -6,7 +6,9 @@
 //! (`unix:/PATH`, `HOST:PORT`, `socks://`, `https://`), `tailscale:/PATH`,
 //! `netbird:[PORT]`, `wg:FILE` (WireGuard), `devtunnel://TUNNEL` (TCP through
 //! a Dev Tunnels relay), `turn://HOST[:PORT]` and
-//! `turns://HOST[:PORT]` (UDP through a TURN server), the relay (`relay`,
+//! `turns://HOST[:PORT]` (UDP through a TURN server), `https://HOST[:PORT]`
+//! (TCP through a proxy over TLS), `wstunnel:wss://HOST[:PORT]` (TCP through
+//! a wstunnel server), the relay (`relay`,
 //! `relay:URL`), or a chain of these (`TOP over BELOW`, [`chain`]).
 //! [`networks`] is the table of the
 //! networks of this build: a static table in the binary, with no
@@ -32,13 +34,16 @@ pub mod chain;
 mod devtunnel;
 mod netbird;
 mod peer;
+mod secret;
 pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
 mod tailscale;
 mod turn;
 mod turn_socket;
+mod via;
 mod warp;
 mod wg;
 pub mod wg_serve;
+mod wstunnel;
 pub use tailscale::{rows as tailscale_rows, state as tailscale_state};
 
 /// One row of the registry: a scheme, its forms and what it gives.
@@ -54,7 +59,7 @@ pub struct Row {
     pub caps: Caps,
 }
 
-const ROWS: [Row; 11] = [
+const ROWS: [Row; 13] = [
     Row {
         scheme: "direct",
         forms: &["direct"],
@@ -113,6 +118,18 @@ const ROWS: [Row; 11] = [
         caps: Caps::EGRESS_TCP,
     },
     Row {
+        scheme: "https",
+        forms: &["https://[USER@]HOST[:PORT]"],
+        about: "TCP through a forward proxy over TLS, by CONNECT on HTTP/2 or HTTP/1.1; the credentials come from PODNET_HTTPS_PROXY_AUTH_FILE",
+        caps: Caps::EGRESS_TCP,
+    },
+    Row {
+        scheme: "wstunnel",
+        forms: &["wstunnel:wss://HOST[:PORT]", "wstunnel:ws://HOST[:PORT]", "wstunnel:HOST[:PORT]"],
+        about: "TCP through a wstunnel server (erebe/wstunnel 9.1 to 11); the secret comes from PODNET_WSTUNNEL_SECRET_FILE",
+        caps: Caps::EGRESS_TCP,
+    },
+    Row {
         scheme: "warp",
         forms: &["warp", "warp:identity=FILE"],
         about: "TCP and UDP through a WARP session (MASQUE), with names resolved inside the tunnel; the device is kept in the identity file, else in warp.json of the state directory of the network",
@@ -158,6 +175,10 @@ enum Kind {
     Turn(turn::Spec),
     /// The Dev Tunnels tunnel of this spec (T-320).
     Devtunnel(devtunnel::Spec),
+    /// A forward proxy over TLS (T-126).
+    Via(via::Spec),
+    /// A wstunnel server (T-126).
+    Wstunnel(wstunnel::Spec),
     /// A WARP session (T-097, T-180).
     Warp(warp::Spec),
     /// A service of the peer with this fingerprint (T-266).
@@ -245,6 +266,12 @@ fn kind(spec: &str) -> Result<Kind, Failure> {
     if devtunnel::is_devtunnel(spec) {
         return devtunnel::parse(spec).map(Kind::Devtunnel);
     }
+    if via::is_via(spec) {
+        return via::parse(spec).map(Kind::Via);
+    }
+    if wstunnel::is_wstunnel(spec) {
+        return wstunnel::parse(spec).map(Kind::Wstunnel);
+    }
     if let Some(rest) = spec.strip_prefix("peer:") {
         // `peer:PORT` is the SOCKS hop of a host named peer, as it was.
         if rest.parse::<u16>().is_err() {
@@ -330,6 +357,8 @@ impl SpecNetwork {
             Kind::Wg(path) => format!("wg:{}", path.display()),
             Kind::Turn(spec) => spec.label(),
             Kind::Devtunnel(spec) => spec.label(),
+            Kind::Via(spec) => spec.label(),
+            Kind::Wstunnel(spec) => spec.label(),
             Kind::Warp(spec) => spec.label(),
             Kind::Chain(layers) => chain::label(layers),
             _ => redacted(&self.spec),
@@ -367,6 +396,16 @@ impl SpecNetwork {
     pub fn devtunnel(&self) -> Option<String> {
         match &self.kind {
             Kind::Devtunnel(spec) => Some(spec.locator.to_string()),
+            _ => None,
+        }
+    }
+
+    /// The road of `pod-egress` that the spec names: `https` for
+    /// `https://HOST`, `wstunnel` for `wstunnel:URL`.
+    pub fn road(&self) -> Option<&'static str> {
+        match self.kind {
+            Kind::Via(_) => Some("https"),
+            Kind::Wstunnel(_) => Some("wstunnel"),
             _ => None,
         }
     }
@@ -440,8 +479,14 @@ impl SpecNetwork {
                 UpstreamChain::parse(&[self.spec.as_str()])
                     .map_err(|e| usage(format!("{}: {e:#}", self.label())))?,
             ),
-            Kind::Wg(_) | Kind::Turn(_) | Kind::Devtunnel(_) | Kind::Warp(_) | Kind::Chain(_) => {
-                unreachable!("wg:FILE, turn://, devtunnel://, warp and a chain come up in `up`")
+            Kind::Wg(_)
+            | Kind::Turn(_)
+            | Kind::Devtunnel(_)
+            | Kind::Via(_)
+            | Kind::Wstunnel(_)
+            | Kind::Warp(_)
+            | Kind::Chain(_) => {
+                unreachable!("wg:FILE, turn://, devtunnel://, https://, wstunnel:, warp and a chain come up in `up`")
             }
             Kind::Peer {
                 fingerprint,
@@ -471,6 +516,8 @@ impl Network for SpecNetwork {
             Kind::Wg(_) => "wg",
             Kind::Turn(_) => "turn",
             Kind::Devtunnel(_) => "devtunnel",
+            Kind::Via(_) => "https",
+            Kind::Wstunnel(_) => "wstunnel",
             Kind::Warp(_) => "warp",
             Kind::Peer { .. } => "peer",
             Kind::Chain(_) => "chain",
@@ -517,6 +564,17 @@ impl Network for SpecNetwork {
                 // parse: a parse reads no variable.
                 let account = devtunnel::account(&|name| std::env::var(name).ok())?;
                 return Ok(devtunnel::up(spec, account, ctx.below.as_ref()).await?);
+            }
+            // T-126: the secrets come from the environment, now and not at
+            // the parse, with the suffix of a network of a router file.
+            let get = |name: &str| std::env::var(name).ok();
+            if let Kind::Via(spec) = &self.kind {
+                let settings = via::settings(&get, ctx.name.as_deref())?;
+                return Ok(via::up(spec, settings, ctx.below.as_ref()).await?);
+            }
+            if let Kind::Wstunnel(spec) = &self.kind {
+                let settings = wstunnel::settings(&get, ctx.name.as_deref())?;
+                return Ok(wstunnel::up(spec, settings, ctx.below.as_ref()).await?);
             }
             if let Some(below) = &ctx.below {
                 return Err(Failure::new(
@@ -595,6 +653,16 @@ impl Network for SpecNetwork {
                 tls: true,
             }],
             Kind::Devtunnel(_) => devtunnel::checks(),
+            Kind::Via(spec) => vec![Check {
+                name: "https-proxy".into(),
+                target: spec.target(),
+                tls: true,
+            }],
+            Kind::Wstunnel(spec) => vec![Check {
+                name: "wstunnel".into(),
+                target: spec.target(),
+                tls: spec.server.tls(),
+            }],
             Kind::Chain(layers) => layers.iter().flat_map(|l| l.checks()).collect(),
             Kind::Netbird(port) => vec![Check {
                 name: "netbird".into(),
@@ -617,6 +685,8 @@ impl Network for SpecNetwork {
 #[cfg(test)]
 mod devtunnel_tests;
 #[cfg(test)]
+mod road_stand;
+#[cfg(test)]
 mod tailscale_tests;
 #[cfg(test)]
 mod tests;
@@ -624,6 +694,8 @@ mod tests;
 mod turn_mock;
 #[cfg(test)]
 mod turn_tests;
+#[cfg(test)]
+mod via_tests;
 #[cfg(test)]
 pub(crate) mod warp_tests;
 #[cfg(test)]
