@@ -56,7 +56,8 @@ pub(crate) struct ListArgs {
 #[derive(Args, Debug)]
 pub(crate) struct TakeArgs {
     pub(crate) path: PathBuf,
-    /// Write the body here. Default: stdout.
+    /// Write the body to this new file (a file that exists exits 64, and the
+    /// entry stays). Default: stdout.
     #[arg(long, value_name = "FILE")]
     pub(crate) out: Option<PathBuf>,
 }
@@ -149,12 +150,17 @@ fn take(args: TakeArgs) -> Result<()> {
                 .write(true)
                 .create_new(true)
                 .open(path)
-                .map_err(|e| {
-                    let fault = match e.kind() {
-                        std::io::ErrorKind::AlreadyExists => Fault::DataError,
-                        _ => Fault::NoInput,
-                    };
-                    exit::fault(fault, anyhow!("{}: {e}", path.display()))
+                .map_err(|e| match e.kind() {
+                    // T-613: take writes a new file; the entry stays in the
+                    // spool, and nothing is done.
+                    std::io::ErrorKind::AlreadyExists => exit::fault(
+                        Fault::Usage,
+                        anyhow!(
+                            "--out {}: the file exists; give a new path (take does not write over a file)",
+                            path.display()
+                        ),
+                    ),
+                    _ => exit::fault(Fault::OsError, anyhow!("{}: {e}", path.display())),
                 })?;
             file.write_all(&entry.body)
                 .and_then(|()| file.sync_all())

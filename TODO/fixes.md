@@ -17234,3 +17234,40 @@ sh scripts/agent/check.sh
 
 2026-11-26, the commit of this entry. The workspace builds with `--features full` with no warning; the tests of the
 changed parts pass (`egress::`, `relay_reverse::resume`, `cargo test --test error_words --test link_registry`).
+
+# T-613: offline spool take --out exits 65 for a file that exists, and the document does not say it
+
+**Source:** T-358 step 2 (a), the blocks of `docs/offline.md` (2026-11-26): `podnet offline spool take ./spool --out
+report.txt` with `report.txt` present printed `podnet: report.txt: File exists (os error 17)` and exited 65.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`spool take --out FILE` opens FILE with `create_new`. A file that exists gave 65 (data that does not verify), and each
+other failure of the open gave 66 (a missing input). `docs/offline.md` gives 71 for a failure of the file system and
+does not say that `--out` refuses a file that exists.
+
+## Premise
+
+- Read: `take` of `src/cli/cmd/offline/spool.rs`.
+
+## Approach
+
+1. A file that exists is a usage error (exit 64) with the step: give a new path. The entry stays in the spool. Another
+   failure of the open exits 71.
+2. The help of `--out` and `docs/offline.md` say so. A table test.
+
+## Prove
+
+```sh
+cargo test --test offline_spool take_out_refuses_a_file_that_exists_and_keeps_the_entry
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `take_out_refuses_a_file_that_exists_and_keeps_the_entry` (a file that
+exists: 64, the body unchanged; a directory that does not exist: 71; then a new path takes the entry) passes.

@@ -10274,7 +10274,8 @@ podnet offline spool take
 
   Options:
     --out FILE
-        Write the body here. Default: stdout.
+        Write the body to this new file (a file that exists exits 64, and the
+        entry stays). Default: stdout.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads

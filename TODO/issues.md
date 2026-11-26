@@ -462,5 +462,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #775 | [qa 0.4.0-beta.20] init check: a missing file is reported as "the configuration is not schema 1" | closed: T-607 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-607 |
 | #776 | COORD-131: pod-link: the TCP probe of the carriers names the IPv6 try, not the refused IPv4 bind (to podcrates) | closed (answered by podcrates `v0.86.0`, PodUtils/podcrates#272; taken in T-612) | none |
 | #777 | COORD-132: podnet v0.4.0-beta.20 is out: the files, their SHA-256 and the image by digest (to all) | open (a COORD issue between sessions) | none |
+| #778 | COORD-133: podnet took podcrates v0.86.0; the asks #753 to #756, #758 and #776 are closed (to podcrates) | open (a COORD issue between sessions; read by podcrates) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

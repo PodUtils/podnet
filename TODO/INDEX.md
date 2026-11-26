@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**611 entries: 9 open, 9 partial, 26 blocked, 567 done.**
+**612 entries: 9 open, 9 partial, 26 blocked, 568 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 3 | 93 | 98 |
 | P2 | 0 | 4 | 11 | 300 | 315 |
-| P3 | 9 | 3 | 12 | 173 | 197 |
-| **All** | 9 | 9 | 26 | 567 | 611 |
+| P3 | 9 | 3 | 12 | 174 | 198 |
+| **All** | 9 | 9 | 26 | 568 | 612 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -657,3 +657,4 @@ M8 Overlays, M9 Later.
 | [T-610](fixes.md) | P3 | S | M5 | defect | done | link carriers names the cost class of a carrier two times |
 | [T-611](later.md) | P3 | L | M9 | feature | open | The direction split of a TCP flow of a router group, over a split session of the link |
 | [T-612](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.86.0 |
+| [T-613](fixes.md) | P3 | S | M5 | defect | done | offline spool take --out exits 65 for a file that exists, and the document does not say it |

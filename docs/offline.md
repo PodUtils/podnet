@@ -39,7 +39,8 @@ removes the file only after the write. A process that is killed before the write
 the body again; the test `a_taken_entry_survives_a_kill_before_its_consume` kills a real process between the receive and
 the consume and reads the entry afterwards. A process that dies between the write and the removal leaves the entry, so a
 second take writes the body a second time. The spool is at least once, not exactly once: a body that must apply once
-needs an idempotent apply, with the digest of `spool list` as its key.
+needs an idempotent apply, with the digest of `spool list` as its key. `--out` names a new file: a file that exists exits 64, and
+the entry stays in the spool.
 
 `spool check DIR` reads each file and prints `FILE OFFSET WHY` for each fault, then exits 65; a spool with no fault prints
 `ok: no fault` and exits 0. An entry with a bad checksum, a bad header or a bad length is a fault, and it is not listed by

@@ -151,3 +151,72 @@ fn child_receives_then_waits() {
         std::thread::sleep(Duration::from_millis(100));
     }
 }
+
+/// T-613: `take --out` writes a new file. A file that exists exits 64 and
+/// keeps the entry; a directory that does not exist exits 71; a new path
+/// takes the entry.
+#[test]
+fn take_out_refuses_a_file_that_exists_and_keeps_the_entry() {
+    let dir = tempfile::tempdir().expect("a temp dir");
+    state(&dir.path().join("state"));
+    let spool = dir.path().join("spool");
+    let body = dir.path().join("body.txt");
+    std::fs::write(&body, "the body of T-613\n").expect("a body");
+    let s = spool.to_str().expect("a path");
+    let add = podnet(
+        dir.path(),
+        &[
+            "offline",
+            "spool",
+            "add",
+            s,
+            "--file",
+            body.to_str().unwrap(),
+        ],
+    )
+    .output()
+    .expect("spool add");
+    assert_eq!(add.status.code(), Some(0), "{add:?}");
+    let missing = dir.path().join("no-such-dir/out.txt");
+    // (the --out path, the exit code)
+    let cases = [(&body, 64), (&missing, 71)];
+    for (out, code) in cases {
+        let take = podnet(
+            dir.path(),
+            &[
+                "offline",
+                "spool",
+                "take",
+                s,
+                "--out",
+                out.to_str().unwrap(),
+            ],
+        )
+        .output()
+        .expect("spool take");
+        assert_eq!(take.status.code(), Some(code), "{take:?}");
+    }
+    assert_eq!(
+        std::fs::read_to_string(&body).unwrap(),
+        "the body of T-613\n"
+    );
+    let fresh = dir.path().join("taken.txt");
+    let take = podnet(
+        dir.path(),
+        &[
+            "offline",
+            "spool",
+            "take",
+            s,
+            "--out",
+            fresh.to_str().unwrap(),
+        ],
+    )
+    .output()
+    .expect("spool take");
+    assert_eq!(take.status.code(), Some(0), "the entry stayed: {take:?}");
+    assert_eq!(
+        std::fs::read_to_string(&fresh).unwrap(),
+        "the body of T-613\n"
+    );
+}
