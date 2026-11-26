@@ -17665,6 +17665,12 @@ has no code of this road: it is `vless` of `pod-egress` (PodUtils/podcrates).
   `src/networks/servers/tests.rs`, `tests/road_network.rs`).
 * Not in the network: early data (0-RTT), UDP, and the VMess and Trojan protocols.
 
+Proof: `cargo test --workspace -- vless_dialer_`, `tests/road_network.rs`, and the `live.yml` step
+"A VLESS network through Xray-core (WebSocket and TLS)". That step runs Xray-core v26.11.9 on the loopback with a
+VLESS inbound over a WebSocket and TLS, and a certificate of a CA that podnet trusts with `--ca-file`. A stream to a
+TCP echo goes through the network with the ID of `PODNET_VLESS_ID_FILE`, a wrong ID gets no echo, and no ID is in
+the output.
+
 ## Shadowsocks: `ss://HOST:PORT`
 
 ```sh
@@ -17699,6 +17705,12 @@ The address of the target goes in the first chunk, and the server dials it. podn
 * Tests use a stand-in Shadowsocks server of the AEAD form on the loopback (`src/networks/servers_stand.rs`).
 * Not in the network: the WebSocket of an Outline server, UDP, and a plugin.
 
+Proof: `cargo test --workspace -- shadowsocks_dialer_`, `tests/road_network.rs`, and the `live.yml` step
+"A Shadowsocks network through ssserver (AEAD and 2022)". That step runs `ssserver` of shadowsocks-rust v1.25.0 on
+the loopback with `aes-256-gcm` and `2022-blake3-aes-256-gcm`. A stream to a TCP echo goes through the network with
+each key from a file of mode 0600 (`METHOD:PASSWORD`, and the `ss://` URI that `ssurl` gives), a wrong key gets no
+echo, and no key is in the output.
+
 ## Wisp: `wisp:wss://HOST[:PORT]/PATH`
 
 ```sh
@@ -17728,6 +17740,11 @@ dials it. podnet has no code of this road: it is `wisp` of `pod-egress` (PodUtil
   hop when it does not.
 * Tests use a stand-in Wisp server of version 2 on the loopback (`src/networks/servers_stand.rs`).
 * Not in the network: UDP streams, and the password and key extensions of Wisp version 2.
+
+Proof: `cargo test --workspace -- wisp_dialer_`, `tests/road_network.rs`, and the `live.yml` step
+"A Wisp network through wisp-server-python (version 1)". That step runs wisp-server-python 0.11.0 (Wisp version 1)
+on the loopback over `ws://`. A stream to a TCP echo goes through the network, and a target that refuses the
+connection gives the words `the Wisp server closed the stream` in the log.
 
 ## A user with no passwd entry
 

@@ -905,6 +905,246 @@ jobs:
           echo "certificates of the CA: $issued, then $again"
           test "$again" = "$issued" || fail "the restart asked the CA for a new certificate" 2
           pkill -f 'serve .* --acme acme.podnet.test' || true
+      - name: A Shadowsocks network through ssserver (AEAD and 2022)
+        timeout-minutes: 5
+        # T-127: ssserver of shadowsocks-rust on the loopback, not the
+        # stand-in of the tests: one server of aes-256-gcm and one of
+        # 2022-blake3-aes-256-gcm. A stream to a TCP echo goes through a
+        # Shadowsocks network of podnet forward with each key, from a file
+        # of mode 0600: METHOD:PASSWORD for the first, the ss:// URI that
+        # ssurl gives for the second. A wrong key gets no echo. No key is in
+        # the output of podnet.
+        run: |
+          set -eu
+          d=$(mktemp -d); v=v1.25.0
+          u=https://github.com/shadowsocks/shadowsocks-rust/releases/download/$v/shadowsocks-$v.x86_64-unknown-linux-musl.tar.xz
+          sh scripts/retry.sh curl -qfsSL -o "$d/ss.txz" "$u"
+          echo "8439bf43c324b0fc273e663d0b1f8926fd8f666cbd1e0fd59b35096f0e778e92  $d/ss.txz" | sha256sum -c
+          tar -xJf "$d/ss.txz" -C "$d" ssserver ssurl
+          fail() {
+            echo "$1"; echo "--- ssserver"; tail -30 "$d/ss.log" || true
+            echo "--- forward"; tail -20 "$d/fwd-$2.err" || true; exit 1
+          }
+          listening() {
+            for _ in $(seq 40); do (exec 3<> "/dev/tcp/127.0.0.1/$1") 2> /dev/null && return 0; sleep 0.5; done
+            fail "nothing listens on 127.0.0.1:$1" "$2"
+          }
+          ready() {
+            for _ in $(seq 40); do grep -q '^podnet: forward' "$d/fwd-$1.out" && return 0; sleep 0.5; done
+            fail "the forward with the key $1 did not come up" "$1"
+          }
+          ask() {
+            python3 -I -c '
+          import socket, sys
+          c = socket.create_connection(("127.0.0.1", int(sys.argv[1])), 10); c.settimeout(float(sys.argv[2]))
+          c.sendall(b"ping"); print(c.recv(100).decode())
+          ' "$1" "$2" 2> /dev/null || true
+          }
+          umask 077
+          aes=$(openssl rand -base64 24); psk=$(openssl rand -base64 32); wrong=$(openssl rand -base64 32)
+          echo "::add-mask::$aes"; echo "::add-mask::$psk"; echo "::add-mask::$wrong"
+          AES=$aes PSK=$psk python3 -I -c '
+          import json, os
+          def one(port, method, key):
+              return {"server": "127.0.0.1", "server_port": port, "method": method, "password": os.environ[key]}
+          print(json.dumps({"servers": [one(47550, "aes-256-gcm", "AES"), one(47551, "2022-blake3-aes-256-gcm", "PSK")]}))
+          ' > "$d/ss.json"
+          "$d/ssserver" -c "$d/ss.json" > "$d/ss.log" 2>&1 &
+          srv=$!
+          python3 -I -c '
+          import socket
+          t = socket.socket(); t.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); t.bind(("127.0.0.1", 47559)); t.listen(8)
+          t.settimeout(240)
+          while True:
+              c, _ = t.accept(); c.settimeout(10)
+              try:
+                  c.sendall(b"echo:" + c.recv(100))
+              except OSError:
+                  pass
+              c.close()
+          ' &
+          listening 47550 aes; listening 47551 2022; listening 47559 aes
+          printf 'aes-256-gcm:%s\n' "$aes" > "$d/key-aes"
+          "$d/ssurl" -e "$d/ss.json" | grep '@127.0.0.1:47551' > "$d/key-2022" || fail "ssurl gave no ss:// URI" 2022
+          printf '2022-blake3-aes-256-gcm:%s\n' "$wrong" > "$d/key-wrong"
+          test "$(stat -c %a "$d/key-2022")" = 600 || fail "a key file is not 0600" 2022
+          fwd() {
+            PODNET_SHADOWSOCKS_KEY_FILE="$d/key-$1" target/release/podnet forward -L "$2=127.0.0.1:47559" \
+              --network "ss://127.0.0.1:$3" --run-for 60 > "$d/fwd-$1.out" 2> "$d/fwd-$1.err" &
+          }
+          fwd aes 47552 47550; fwd 2022 47553 47551; fwd wrong 47554 47551
+          ready aes; ready 2022; ready wrong
+          got=$(ask 47552 10); echo "aes-256-gcm, METHOD:PASSWORD: $got"
+          test "$got" = "echo:ping" || fail "no answer of the TCP echo through the Shadowsocks network (aes-256-gcm)" aes
+          got=$(ask 47553 10); echo "2022-blake3-aes-256-gcm, the ss:// URI of ssurl: $got"
+          test "$got" = "echo:ping" || fail "no answer of the TCP echo through the Shadowsocks network (2022)" 2022
+          got=$(ask 47554 5); echo "a wrong key: '$got'"
+          test "$got" != "echo:ping" || fail "the server took a wrong key" wrong
+          uri=$(sed 's/@.*//' "$d/key-2022")
+          if grep -q -F -e "$aes" -e "$psk" -e "$wrong" -e "$uri" "$d"/fwd-*.out "$d"/fwd-*.err; then
+            echo "a key is in the output"; exit 1
+          fi
+          kill "$srv" || true
+      - name: A VLESS network through Xray-core (WebSocket and TLS)
+        timeout-minutes: 5
+        # T-127: Xray-core on the loopback, not the stand-in of the tests,
+        # with a VLESS inbound over a WebSocket and TLS. The certificate is
+        # for vless.podnet.test, from a CA made here: podnet trusts it with
+        # --ca-file, and sni= names it. A stream to a TCP echo goes through a
+        # VLESS network of podnet forward with the ID of PODNET_VLESS_ID_FILE
+        # (a UUID made here). A wrong ID gets no echo. No ID is in the output
+        # of podnet.
+        run: |
+          set -eu
+          d=$(mktemp -d); v=v26.11.9
+          u=https://github.com/XTLS/Xray-core/releases/download/$v/Xray-linux-64.zip
+          sh scripts/retry.sh curl -qfsSL -o "$d/xray.zip" "$u"
+          echo "b651f7e1d9966ee2c1b1ee1bf8b52c72771824d3065dce96bbc8bcc19ed95f82  $d/xray.zip" | sha256sum -c
+          unzip -q "$d/xray.zip" xray -d "$d/xray"
+          chmod +x "$d/xray/xray"
+          fail() {
+            echo "$1"; echo "--- xray"; tail -30 "$d/xray.log" || true
+            echo "--- forward"; tail -20 "$d/fwd-$2.err" || true; exit 1
+          }
+          listening() {
+            for _ in $(seq 40); do (exec 3<> "/dev/tcp/127.0.0.1/$1") 2> /dev/null && return 0; sleep 0.5; done
+            fail "nothing listens on 127.0.0.1:$1" right
+          }
+          ready() {
+            for _ in $(seq 40); do grep -q '^podnet: forward' "$d/fwd-$1.out" && return 0; sleep 0.5; done
+            fail "the forward with the ID $1 did not come up" "$1"
+          }
+          ask() {
+            python3 -I -c '
+          import socket, sys
+          c = socket.create_connection(("127.0.0.1", int(sys.argv[1])), 10); c.settimeout(float(sys.argv[2]))
+          c.sendall(b"ping"); print(c.recv(100).decode())
+          ' "$1" "$2" 2> /dev/null || true
+          }
+          umask 077
+          openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 2 \
+            -subj /CN=podnet-live-ca -keyout "$d/ca.key" -out "$d/ca.pem" 2> /dev/null
+          openssl req -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -subj /CN=vless.podnet.test \
+            -keyout "$d/leaf.key" -out "$d/leaf.csr" 2> /dev/null
+          printf '%s\n' 'subjectAltName=DNS:vless.podnet.test' 'basicConstraints=critical,CA:FALSE' \
+            'extendedKeyUsage=serverAuth' > "$d/leaf.ext"
+          openssl x509 -req -in "$d/leaf.csr" -CA "$d/ca.pem" -CAkey "$d/ca.key" -CAcreateserial -days 2 \
+            -sha256 -extfile "$d/leaf.ext" -out "$d/leaf.pem" 2> /dev/null
+          openssl verify -CAfile "$d/ca.pem" -verify_hostname vless.podnet.test "$d/leaf.pem"
+          id=$(cat /proc/sys/kernel/random/uuid); wrong=$(cat /proc/sys/kernel/random/uuid)
+          echo "::add-mask::$id"; echo "::add-mask::$wrong"
+          printf '%s\n' "$id" > "$d/id-right"; printf '%s\n' "$wrong" > "$d/id-wrong"
+          ID=$id D=$d python3 -I -c '
+          import json, os
+          d = os.environ["D"]
+          tls = {"alpn": ["http/1.1"], "certificates": [{"certificateFile": d + "/leaf.pem", "keyFile": d + "/leaf.key"}]}
+          print(json.dumps({
+              "log": {"loglevel": "info"},
+              "inbounds": [{
+                  "listen": "127.0.0.1", "port": 47560, "protocol": "vless",
+                  "settings": {"clients": [{"id": os.environ["ID"]}], "decryption": "none"},
+                  "streamSettings": {"network": "ws", "security": "tls", "tlsSettings": tls, "wsSettings": {"path": "/ws"}},
+              }],
+              # The freedom outbound blocks a private target of a VLESS
+              # inbound by default (finalRules): allow the loopback.
+              "outbounds": [{"protocol": "freedom", "settings": {"finalRules": [{"action": "allow", "ip": ["127.0.0.0/8"]}]}}],
+          }))
+          ' > "$d/xray.json"
+          "$d/xray/xray" run -test -c "$d/xray.json"
+          "$d/xray/xray" run -c "$d/xray.json" > "$d/xray.log" 2>&1 &
+          srv=$!
+          python3 -I -c '
+          import socket
+          t = socket.socket(); t.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); t.bind(("127.0.0.1", 47569)); t.listen(8)
+          t.settimeout(240)
+          while True:
+              c, _ = t.accept(); c.settimeout(10)
+              try:
+                  c.sendall(b"echo:" + c.recv(100))
+              except OSError:
+                  pass
+              c.close()
+          ' &
+          listening 47560; listening 47569
+          fwd() {
+            PODNET_VLESS_ID_FILE="$d/id-$1" target/release/podnet forward --ca-file "$d/ca.pem" -L "$2=127.0.0.1:47569" \
+              --network 'vless://127.0.0.1:47560?type=ws&security=tls&sni=vless.podnet.test&path=/ws' --run-for 60 \
+              > "$d/fwd-$1.out" 2> "$d/fwd-$1.err" &
+          }
+          fwd right 47561; fwd wrong 47562
+          ready right; ready wrong
+          got=$(ask 47561 10); echo "the ID of the server: $got"
+          test "$got" = "echo:ping" || fail "no answer of the TCP echo through the VLESS network" right
+          got=$(ask 47562 5); echo "a wrong ID: '$got'"
+          test "$got" != "echo:ping" || fail "the server took a wrong ID" wrong
+          grep -h 'VLESS' "$d"/fwd-*.err | tail -3 || true
+          if grep -q -F -e "$id" -e "$wrong" "$d"/fwd-*.out "$d"/fwd-*.err; then echo "an ID is in the output"; exit 1; fi
+          kill "$srv" || true
+      - name: A Wisp network through wisp-server-python (version 1)
+        timeout-minutes: 5
+        # T-127: wisp-server-python on the loopback, not the stand-in of the
+        # tests, each package pinned by its version and its hash. It speaks
+        # Wisp version 1 (a CONTINUE first, no INFO), as the road of
+        # pod-egress does. A stream to a TCP echo goes through a Wisp
+        # network of podnet forward; a target that refuses the connection
+        # gets the CLOSE of the server, with its reason, in the log of podnet.
+        run: |
+          set -eu
+          d=$(mktemp -d)
+          /usr/bin/python3 -m venv "$d/venv"
+          cat > "$d/requirements.txt" <<'REQ'
+          wisp-python==0.11.0 --hash=sha256:081f6d04252ce7c083eef962220aa7a9bf8bd6d1b89a93c012f94c0b66b1ecf7
+          websockets==17.4 --hash=sha256:9ae1429ee9e52b139167ed0169757806a27ed7307e942e8c62037a9184e9843b --hash=sha256:c6bd2c9781915592b209160d0f017d4c7c82ad53075e6b0c24d2a89299e7f9e9
+          asyncudp==0.11.0 --hash=sha256:96d859d86471e3ed30cf9f05cb38e96920156e3a9fe70ee916096ba758ea316e
+          python-socks==3.2.1 --hash=sha256:db2c37d4f7aeebfbba91d2d7670718b2d516061b34296fa8498c6f671e87c504
+          psutil==7.2.2 --hash=sha256:076a2d2f923fd4821644f5ba89f059523da90dc9014e85f8e45a5774ca5bc6f9
+          uvloop==0.23.0 --hash=sha256:090865d8ce7a03986755a3ce711b7dd0d4b44eb14ab74368b717f3fad1180208
+          REQ
+          sh scripts/retry.sh "$d/venv/bin/pip" install -q --disable-pip-version-check --require-hashes \
+            --only-binary :all: -r "$d/requirements.txt"
+          fail() {
+            echo "$1"; echo "--- wisp-server-python"; tail -30 "$d/wisp.log" || true
+            echo "--- forward"; tail -20 "$d/fwd.err" || true; exit 1
+          }
+          listening() {
+            for _ in $(seq 40); do (exec 3<> "/dev/tcp/127.0.0.1/$1") 2> /dev/null && return 0; sleep 0.5; done
+            fail "nothing listens on 127.0.0.1:$1"
+          }
+          ask() {
+            python3 -I -c '
+          import socket, sys
+          c = socket.create_connection(("127.0.0.1", int(sys.argv[1])), 10); c.settimeout(float(sys.argv[2]))
+          c.sendall(b"ping"); print(c.recv(100).decode())
+          ' "$1" "$2" 2> /dev/null || true
+          }
+          "$d/venv/bin/python" -I -m wisp.server --host 127.0.0.1 --port 47570 --allow-loopback --threads 1 \
+            > "$d/wisp.log" 2>&1 &
+          python3 -I -c '
+          import socket
+          t = socket.socket(); t.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); t.bind(("127.0.0.1", 47579)); t.listen(8)
+          t.settimeout(240)
+          while True:
+              c, _ = t.accept(); c.settimeout(10)
+              try:
+                  c.sendall(b"echo:" + c.recv(100))
+              except OSError:
+                  pass
+              c.close()
+          ' &
+          listening 47570; listening 47579
+          # 47578: no listener, so the server cannot reach it.
+          target/release/podnet forward -L 47571=127.0.0.1:47579 -L 47572=127.0.0.1:47578 \
+            --network wisp:ws://127.0.0.1:47570/wisp/ --run-for 60 > "$d/fwd.out" 2> "$d/fwd.err" &
+          for _ in $(seq 40); do grep -q '^podnet: forward' "$d/fwd.out" && break; sleep 0.5; done
+          grep -q '^podnet: forward' "$d/fwd.out" || fail "the forward through the Wisp server did not come up"
+          got=$(ask 47571 10); echo "echo: $got"
+          test "$got" = "echo:ping" || fail "no answer of the TCP echo through the Wisp network"
+          got=$(ask 47572 10); echo "a target that refuses: '$got'"
+          test "$got" != "echo:ping" || fail "an answer from a port with no listener"
+          for _ in $(seq 20); do grep -q 'the Wisp server closed the stream' "$d/fwd.err" && break; sleep 0.5; done
+          grep -h 'the Wisp server closed the stream' "$d/fwd.err" | tail -1 \
+            || fail "the log of podnet does not give the reason of the server for a target that refuses"
+          pkill -f 'wisp.server --host 127.0.0.1 --port 47570' || true
       - name: Exit 69 for an unavailable path
         timeout-minutes: 3
         run: |

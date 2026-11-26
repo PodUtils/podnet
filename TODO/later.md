@@ -715,6 +715,8 @@ T-059 is done.
 (Xray-core for VLESS over WebSocket and TLS, `ssserver` of shadowsocks-rust, a Wisp server), and the asks of the crate
 in COORD-137 (PodUtils/podnet#782).
 
+2026-11-26, the runs against real servers. Three steps of `.github/workflows/live.yml` run each road of the release binary against a real server on the loopback, each download pinned by its version and its SHA-256: "A Shadowsocks network through ssserver (AEAD and 2022)" (shadowsocks-rust v1.25.0, `aes-256-gcm` with a `METHOD:PASSWORD` key and `2022-blake3-aes-256-gcm` with the `ss://` URI of `ssurl`, each from a file of mode 0600; a wrong key gets no echo), "A VLESS network through Xray-core (WebSocket and TLS)" (Xray-core v26.11.9, a VLESS inbound over a WebSocket and TLS with a certificate of a CA made in the step, `--ca-file` and `sni=`, the ID from `PODNET_VLESS_ID_FILE`; a wrong ID gets no echo; the freedom outbound needs a `finalRules` entry that allows 127.0.0.0/8, as Xray-core blocks a private target of a VLESS inbound by default), and "A Wisp network through wisp-server-python (version 1)" (wisp-python 0.11.0 and its packages pinned by hashes, `--allow-loopback`; a target that refuses gets the CLOSE of the server in the log). Each step checks the TCP echo through `podnet forward --network SPEC`, and that no secret is in the output of podnet. wisp-python 0.11.0 speaks Wisp version 1 only: the version 2 opening of the road is proven by the stand-in alone. The status waits on the first green run of `live`.
+
 # T-128: The DERP carrier through `pod-derp`
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.6 and 3 (C17).
