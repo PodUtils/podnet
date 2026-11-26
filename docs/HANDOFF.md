@@ -1,6 +1,6 @@
 # Handoff
 
-The product work state at 2026-11-26 (UTC). Start a hosted checkout with
+The product work state at 2026-11-26 02:00 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -12,6 +12,9 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 ## Where the code is
 
 * All finished work is on `main`. Use the pinned Rust toolchain from [Hosted sessions](hosted-sessions.md).
+* Done on 2026-11-26: T-428 (the feature `release`; #620 closed), T-053 and T-054, T-398 (the lane case `local-files`:
+  15 commands get a scenario), T-163 (#360 closed), T-321's TCP half (docs). T-114 and T-244 blocked on COORD-130 (#760)
+  and COORD-128 (#758).
 * The release `v0.4.0-beta.19` is out (T-585; tag at `2ef8e3a`; COORD-129 #759). T-487 is proven; #656 is closed.
   T-163 is done (by the take of `pod-cloudflare`); T-244 is blocked on COORD-128 (#758).
 * Done later on 2026-11-25: T-588 (podcrates `v0.85.0`, COORD-127 #757), T-587 and T-589 (`live` robustness),
@@ -24,14 +27,20 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 ## The next steps, in order
 
-1. **The proof of T-428 step 2:** a dry run of `release.yml` on `main` (each target builds with the feature
-   `release`). Then T-428 is done, and the notes of the next beta list the carriers.
-2. **The proof of T-589 and T-587:** the next `live` run with a 429 of the quick-tunnel service (a warning, a green
-   run), and with a flip of the leg `quic+warp` (a second run of the doctor).
-3. The rest of the work order: T-281 (a proof over the DNS carrier of `pod-link`), T-488, T-414, T-415, T-406, T-478.
-4. **The daily run of `issue-sync`:** no run of the event `schedule` came on 2026-11-24 and 2026-11-25. podrunner's
-   come 11 to 12 h late. Check again; if none comes, ask podcrates (the reusable workflow) by a COORD issue.
-5. **The next beta (`v0.4.0-beta.20`):** the black-box QA pass first (`scripts/agent/qa-pass.md`).
+1. **The proof of T-589 and T-587** (both in `scripts/live-step.sh`): the next `live` run that meets the quota of the
+   quick-tunnel service (HTTP 429) or WARP's door with a certificate of Let's Encrypt gives a warning and stays green.
+   The autostart step prints the journal of a unit that stopped (`live` 45733368792: exit 75 with no cause). If the
+   journal shows a cause that is not a quota, it is a defect of `autostart run` or of the tunnel: record it.
+2. **Each tag of podcrates:** COORD-123 to COORD-126 (#753 to #756), COORD-128 (#758) and COORD-130 (#760) wait for
+   one. Take it first (T-137), then close each answered ask and unblock T-575, T-579, T-580, T-476, T-244, T-114.
+3. **The next beta (`v0.4.0-beta.20`):** the black-box QA pass first (`scripts/agent/qa-pass.md`); its notes list the
+   carriers of the feature `release` (T-428).
+4. The rest of the work order is open research or waits for a run or a ruling: T-281 (a proof of the DNS carrier needs
+   hooks of `pod-link`), T-321 (a doctor row of TURN: `route --check` makes no connection now), T-358 step 3, T-414 and
+   T-415 (a warning of their `live` steps), T-478 (the logs of its next failure), T-488 (runs that the quota limits),
+   T-123 to T-129 (a ruling of the owner before the work).
+5. **The daily run of `issue-sync`:** no run of the event `schedule` came on 2026-11-24 and 2026-11-25; podrunner's
+   come 11 to 12 h late. Check again.
 
 ## Facts for the next session
 
@@ -70,6 +79,7 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 | `#754` (COORD-124, `pod-proxy`, a proxy command that does not exist) | A tag with the fix (T-580). |
 | `#755` (COORD-125, `pod-cloudflare`, the DoH wait of the edge discovery) | A tag with the fix (T-579). |
 | `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
+| `#760` (COORD-130, a shared headscale harness) | podcrates writes it (T-114, T-115). |
 | `#758` (COORD-128, the capture hook of `pod-cloudflare`) | A tag with it (T-244). |
 | `#759` (COORD-129, the hand-off of beta.19) | The other sessions read it; then close it through the record. |
 | `#604` (COORD-098, relay holds a lost socket) | The relay fix (T-406, T-478). |
