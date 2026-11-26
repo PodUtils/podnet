@@ -2100,7 +2100,7 @@ Not proven: a record of 1 MiB as a limit (the copy has no record size of its own
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -2134,10 +2134,6 @@ cargo test --test service_ss --features ss
 sh scripts/agent/check.sh
 ```
 
-## Blocker
-
-PodUtils/podcrates must release `pod-egress` (T-127, T-137) and answer ask A4 (a COORD issue to podcrates): the server half of the SIP004 codec. It unblocks when the release exists.
-
 ## Start condition
 
 T-127 is done (the take of `pod-egress`), and T-266 and T-311 are done.
@@ -2145,6 +2141,15 @@ T-127 is done (the take of `pod-egress`), and T-266 and T-311 are done.
 ## Correction
 
 2026-11-26, the accept side is in `pod-egress` v0.86.0 (feature `shadowsocks`): `shadowsocks::codec::Decoder::new` opens a request stream with the master key, `Encoder::new` seals the answer, `parse_address` reads the address, `master_key` derives the key, and `replay::ReplayWindow` is the replay window. The published SIP004 vectors are `pod_testkit::vectors::SHADOWSOCKS`. The service is built: `--service ss` of `link listen` and `link connect` (`src/link_ss.rs`, the feature `ss`). The key `METHOD:PASSWORD` comes from `PODNET_SHADOWSOCKS_SERVICE_KEY_FILE` or `PODNET_SHADOWSOCKS_SERVICE_KEY`, never from `argv`; a Shadowsocks 2022 method exits 64 (the server side of SIP022 is not in the crate, and the row asks for SIP004 alone). A salt goes into a replay window of 10 minutes after its first chunk opens. A stream that does not open ends with no byte back and one line. Proof: `tests/service_ss.rs` (the vectors open at the service; each method carries a session of the client of `pod-egress`; the `ss://` network of T-127 reaches an echo target through `forward -L PORT=peer:FP/ss`) and `the_service_ss_needs_its_feature_and_then_its_key` of `tests/link_features.rs`. The Blocker is answered for this entry.
+
+## Done
+
+2026-11-26, `b55f6c9e`. `cargo test --test service_ss --features ss`: 7 passed (the three published SIP004 vectors
+open at the service; a 100 KB echo for each method; a table of streams that do not open, each with its class and no
+byte back; a replayed salt is refused with 77; a target that refuses gives 69; the whole road `link listen --service
+ss`, `link connect`, `forward -L PORT=peer:FP/ss`, `forward --network ss://`). `the_service_ss_needs_its_feature_and_then_its_key`
+passes in both builds. COORD-140 (PodUtils/podnet#785, ask 2) asks for the accept-side API of Shadowsocks in the crate.
+
 
 # T-295: link: a Trojan service at a peer (GitHub #471)
 
@@ -2189,7 +2194,7 @@ sh scripts/agent/check.sh
 
 ## Blocker
 
-PodUtils/podcrates must release `pod-egress` (T-127, T-137) and answer ask A4 (a COORD issue to podcrates): the server half of the Trojan codec. It unblocks when the release exists.
+COORD-140 (PodUtils/podnet#785, ask 1): `pod-egress` `v0.86.0` has the client side of Trojan only; the service needs a public parser of a Trojan request on the accept side. It unblocks at the tag of podcrates that has it.
 
 ## Start condition
 

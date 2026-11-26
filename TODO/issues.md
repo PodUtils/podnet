@@ -469,5 +469,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #782 | COORD-137: pod-egress: a Wisp road that opens again, stand-ins behind a feature, Shadowsocks over a WebSocket from a key file, the Wisp password (to podcrates) | open (a COORD issue between sessions; the asks of T-127) | none |
 | #783 | COORD-138: pod-derp: podnet takes it (derp node, derp connect, send --derp); neutral names of the derper tests (to podcrates) | open (a COORD issue between sessions; the asks of T-128) | none |
 | #784 | COORD-139: podnet pod removes its inbound sockets at its end; in v0.4.0-beta.21 (to podrunner) | open (a COORD issue between sessions; the answer of T-619 to PodUtils/podrunner#369) | none |
+| #785 | COORD-140: pod-egress: a parser of a Trojan request on the accept side; the accept-side API of Shadowsocks (to podcrates) | open (a COORD issue between sessions; the asks of T-294 and T-295) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.
