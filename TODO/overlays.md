@@ -72,7 +72,7 @@ Ask the podcrates session before the work. The Premise lists the harness of pods
 **Milestone:** M8
 **Priority:** P3
 **Effort:** S
-**Status:** partial
+**Status:** blocked
 
 ## Problem
 
@@ -96,6 +96,10 @@ After M4, the tailnet dialer is a `Dialer` (T-056). It is not yet a network with
 cargo test --workspace -- network_spec_tailscale
 gh workflow run ts-headscale.yml
 ```
+
+## Blocker
+
+Step 3 needs the headscale harness of T-114 (COORD-130, #760).
 
 ## Start condition
 

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**588 entries: 9 open, 12 partial, 30 blocked, 537 done.**
+**588 entries: 9 open, 11 partial, 31 blocked, 537 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 91 | 96 |
 | P2 | 0 | 5 | 15 | 282 | 302 |
-| P3 | 8 | 5 | 13 | 163 | 189 |
-| **All** | 9 | 12 | 30 | 537 | 588 |
+| P3 | 8 | 4 | 14 | 163 | 189 |
+| **All** | 9 | 11 | 31 | 537 | 588 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -160,7 +160,7 @@ M8 Overlays, M9 Later.
 | [T-112](pods.md) | P3 | S | M7 | feature | done | netns: the gateway address reaches the loopback of the host, when the user asks |
 | [T-113](pods.md) | P2 | S | M7 | feature | done | `warp exec` and `warp shell` try the netns backend first |
 | [T-114](overlays.md) | P2 | M | M8 | chore | blocked | A headscale harness in CI for the `tailscaled` sidecar |
-| [T-115](overlays.md) | P3 | S | M8 | feature | partial | The tailnet as a network of the registry and of the router |
+| [T-115](overlays.md) | P3 | S | M8 | feature | blocked | The tailnet as a network of the registry and of the router |
 | [T-116](overlays.md) | P3 | S | M8 | feature | done | WireGuard: read a wg-quick file into a peer, with optional reserved bytes |
 | [T-117](overlays.md) | P3 | M | M8 | feature | done | WireGuard: `wg:FILE` as a network over UDP or over a carrier |
 | [T-118](overlays.md) | P3 | M | M8 | research | done | Research: NetBird, Firezone and ZeroTier as networks |
