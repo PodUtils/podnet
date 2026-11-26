@@ -1,17 +1,20 @@
 # Handoff
 
-The product work state at 2026-11-26 09:50 (UTC). Start a hosted checkout with
+The product work state at 2026-11-26 10:40 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
 
 **podrunner first** (the owner, 2026-11-18; `docs/decisions.md`). The order: a red run of podnet's CI; each ask of
 podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-137); podnet's own work in the order of
-`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.86.0`, taken in T-612) at 09:50.
+`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.86.0`, taken in T-612) at 10:40.
 
 ## Where the code is
 
 * All finished work is on `main`. Use the pinned Rust toolchain from [Hosted sessions](hosted-sessions.md).
+* Done on 2026-11-26 (10:40): T-611 (the TCP direction split), T-126 (the networks `https://` and `wstunnel:` of
+  `pod-egress`; T-614 blocked on COORD-134 #779), T-358 step 2 (b, c) (the `live` and `root` blocks of the documents in
+  `live.yml`, the offline blocks in the labs), T-613, T-615, T-616, T-617. T-123 and T-124 are blocked (no `pod-ts`).
 * Done on 2026-11-26 after beta.20: T-612 (the take of podcrates `v0.86.0`; T-575, T-579, T-580, T-476, T-598 done by
   it; T-244 open again), T-610, T-613, T-179 (the design of the TCP split), T-358 step 3 (the lane case
   `consumer-podrunner`) and step 2 (a) (the class `scenario`: 23 documented blocks run), T-321 item 4 dropped
@@ -38,19 +41,19 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 ## The next steps, in order
 
-1. **Two agents work in worktrees** (`.claude/worktrees/`): T-611 (the TCP direction split over a split session of the
-   link) and T-244 (`tunnel --inspect` over the capture hook of `pod-cloudflare` `v0.86.0`). Review each commit, take it
-   onto `main`, and write the record (they do not edit `TODO/INDEX.md`, `PROGRESS.md`, `issues.md`, `github.txt`).
-2. **The proofs that wait for a run:** T-609 (the dry run 45786027233 builds each target with `s3`, `icmp`, `ntp`,
-   `smtp`, `imap`; the `live` step "A link over ICMP echo (root)", fixed in `193d905`), T-321 (the `live` step of coturn:
-   UDP and TCP over RFC 6062). Mark each done when its run passes.
-3. **T-358:** step 2 (b) the `live` blocks of the documents, (c) the `root` block and the blocks of a restricted host in
-   the profiles of `pod-lab`; step 1 `ipv6-only` (no IPv6 on the runner).
-4. **Each tag of podcrates:** COORD-130 (#760, the headscale harness: T-114, T-115). COORD-133 (#778) reports the take
-   of `v0.86.0`; COORD-129 (#759) and COORD-132 (#777) close when the other sessions read them.
-5. **The next beta (`v0.4.0-beta.21`):** the black-box QA pass first, when the batch above is green.
-6. Waits for a run or a ruling: T-414 and T-415 (a warning of their `live` steps), T-478 (blocked on T-406), T-488
-   (runs that the quota limits), T-123 to T-129 (a ruling of the owner).
+1. **Three agents work in worktrees** (`.claude/worktrees/`): T-244 (`tunnel --inspect` over the capture hook of
+   `pod-cloudflare` `v0.86.0`), T-129 (ACME for `serve` and `git serve`, `pod-acme`) and T-127 (VLESS, Shadowsocks and
+   Wisp, `pod-egress`). Review each commit, take it onto `main`, and write the record (they do not edit
+   `TODO/INDEX.md`, `PROGRESS.md`, `issues.md`, `github.txt`). Then T-128 (the DERP carrier, `pod-derp`).
+2. **The proofs that wait for a run:** T-609 (the dry run 45786027233 passed; the `live` step "A link over ICMP echo
+   (root)", fixed in `0248aa61` with `link status --create`), T-321 (the `live` step of coturn: UDP and TCP over RFC
+   6062). Mark each done when its run passes.
+3. **T-358:** step 1 `ipv6-only` (no IPv6 on the runner).
+4. **Each tag of podcrates:** COORD-130 (#760, the headscale harness: T-114, T-115), COORD-134 (#779, T-614).
+5. **The next beta (`v0.4.0-beta.21`):** the black-box QA pass first, when the batch above is green. The notes name the
+   breaking change: a network spec `https://` is now a TLS proxy.
+6. Waits for a run or a tag: T-414 and T-415 (a warning of their `live` steps), T-478 (blocked on T-406), T-488 (runs
+   that the quota limits), T-123 and T-124 (`pod-ts`).
 
 ## Facts for the next session
 
