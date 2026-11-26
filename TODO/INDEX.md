@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**618 entries: 1 open, 11 partial, 29 blocked, 577 done.**
+**618 entries: 1 open, 9 partial, 29 blocked, 579 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 3 | 94 | 99 |
 | P2 | 0 | 3 | 11 | 303 | 317 |
-| P3 | 1 | 6 | 15 | 179 | 201 |
-| **All** | 1 | 11 | 29 | 577 | 618 |
+| P3 | 1 | 4 | 15 | 181 | 201 |
+| **All** | 1 | 9 | 29 | 579 | 618 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -172,9 +172,9 @@ M8 Overlays, M9 Later.
 | [T-124](later.md) | P3 | L | M9 | feature | blocked | Tailscale in the process: an adapter crate behind a feature that is off by default, with the static build proven |
 | [T-125](later.md) | P3 | L | M9 | feature | done | A userspace WireGuard responder: `podnet wg serve` |
 | [T-126](later.md) | P3 | M | M9 | feature | done | Egress through an `https://` proxy and through wstunnel |
-| [T-127](later.md) | P3 | L | M9 | feature | partial | Egress through VLESS, Shadowsocks and Wisp |
+| [T-127](later.md) | P3 | L | M9 | feature | done | Egress through VLESS, Shadowsocks and Wisp |
 | [T-128](later.md) | P3 | L | M9 | feature | partial | The DERP carrier through `pod-derp` |
-| [T-129](later.md) | P3 | M | M9 | feature | partial | An ACME client for a public listener |
+| [T-129](later.md) | P3 | M | M9 | feature | done | An ACME client for a public listener |
 | [T-130](later.md) | P3 | M | M9 | research | done | Research: the iroh road, and a relay and mailbox of podnet's own |
 | [T-131](later.md) | P3 | L | M9 | chore | done | A crate that podnet and podssh share for the layer, the channel and the identity |
 | [T-132](later.md) | P3 | S | M9 | chore | done | `try_update` in place of the macro `update_atomic!` |

@@ -676,7 +676,7 @@ process (`--proxy https://`) is T-614 (a TLS hop of `pod-proxy`, COORD-134 #779)
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -716,6 +716,15 @@ T-059 is done.
 in COORD-137 (PodUtils/podnet#782).
 
 2026-11-26, the runs against real servers. Three steps of `.github/workflows/live.yml` run each road of the release binary against a real server on the loopback, each download pinned by its version and its SHA-256: "A Shadowsocks network through ssserver (AEAD and 2022)" (shadowsocks-rust v1.25.0, `aes-256-gcm` with a `METHOD:PASSWORD` key and `2022-blake3-aes-256-gcm` with the `ss://` URI of `ssurl`, each from a file of mode 0600; a wrong key gets no echo), "A VLESS network through Xray-core (WebSocket and TLS)" (Xray-core v26.11.9, a VLESS inbound over a WebSocket and TLS with a certificate of a CA made in the step, `--ca-file` and `sni=`, the ID from `PODNET_VLESS_ID_FILE`; a wrong ID gets no echo; the freedom outbound needs a `finalRules` entry that allows 127.0.0.0/8, as Xray-core blocks a private target of a VLESS inbound by default), and "A Wisp network through wisp-server-python (version 1)" (wisp-python 0.11.0 and its packages pinned by hashes, `--allow-loopback`; a target that refuses gets the CLOSE of the server in the log). Each step checks the TCP echo through `podnet forward --network SPEC`, and that no secret is in the output of podnet. wisp-python 0.11.0 speaks Wisp version 1 only: the version 2 opening of the road is proven by the stand-in alone. The status waits on the first green run of `live`.
+
+## Done
+
+2026-11-26, `b005b605` and `58811431`. `live` 45837023458 (`2c412a4`) passed the steps "A Shadowsocks network
+through ssserver (AEAD and 2022)" (`aes-256-gcm` and `2022-blake3-aes-256-gcm` give the echo; a wrong key gives
+none), "A VLESS network through Xray-core (WebSocket and TLS)" (the echo; a wrong ID gives none) and "A Wisp network
+through wisp-server-python (version 1)". The tests `vless_dialer_through_a_stand_in_server`,
+`shadowsocks_dialer_through_a_stand_in_server` and `wisp_dialer_through_a_stand_in_server` pass. The asks of
+COORD-137 (#782) extend the crate; podnet drops its retry of a Wisp road at the tag that has one.
 
 # T-128: The DERP carrier through `pod-derp`
 
@@ -803,7 +812,7 @@ all roots. The step "podnet doctor" asserts `derp.status == "ok"` for the fleet.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -845,6 +854,15 @@ T-091 is done.
 SHA-256) on the loopback: a first order by TLS-ALPN-01, a GET of a file over HTTPS with the root of Pebble, and a
 restart that serves the kept certificate with no new order. The asks of the crate are COORD-135 (PodUtils/podnet#780):
 a contact of the account, and a stand-in of a CA behind a feature.
+
+## Done
+
+2026-11-26, `5441f332` and `2c412a48`. `live` 45837023458 (`2c412a4`) passed the step "HTTPS with a certificate of
+ACME (Pebble)": a first order by TLS-ALPN-01 on the listener of `serve --acme`, a GET over HTTPS with the root of
+Pebble (`first start: acme-ok`), and a restart that serves the kept certificate with no new order (`certificates of
+the CA: 1, then 1`). The tests of `cargo test -p podnet-serve --lib acme` pass (the name check, the state, the modes,
+the renewal time, the challenge on the listener, a failed first order). The asks of COORD-135 (#780: a contact of the
+account, a stand-in of a CA) extend the crate; `--acme-email` comes with the tag that has the contact.
 
 # T-130: Research: the iroh road, and a relay and mailbox of podnet's own
 

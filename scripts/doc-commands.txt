@@ -63,7 +63,7 @@ docs/link.md 83e298b511 skip a template: KEY is a placeholder; two proxies
 docs/link.md 75a4e45854 skip a template: three hosts A, B and C with placeholder fingerprints
 
 docs/maintenance.md 10b256c498 live [needs curl,python3] the GitHub API through forge.web.pkgforge.dev
-docs/maintenance.md 1da99bd822 live [needs curl,python3] the GitHub API through forge.web.pkgforge.dev
+docs/maintenance.md 1da99bd822 live-manual [needs curl,python3] the GitHub API through forge.web.pkgforge.dev, which answers 403 at times
 docs/maintenance.md 2406900df5 live-manual a step of the maintainer in the source tree; reads PodUtils/podcrates from GitHub
 docs/maintenance.md 29261c6550 skip a template of the take procedure: vX.Y.Z and pod-NAME are placeholders
 
@@ -101,7 +101,7 @@ docs/router.md a39e85b241 live-manual needs a far host that holds the allow list
 docs/serve.md 9ab0dfc04a live-manual a reference list of servers in the foreground; ./app, /run/site.sock and NAME are placeholders
 docs/serve.md 21250fc791 skip a template: HUB-FINGERPRINT and CONNECTOR-FINGERPRINT; two hosts
 docs/serve.md b37100d2e0 skip a template: CLIENT-FINGERPRINT and SERVER-FINGERPRINT; two hosts
-docs/serve.md 8660aa071d live --acme needs a public DNS name, port 443 and an ACME CA
+docs/serve.md 8660aa071d live-manual --acme needs a public DNS name, port 443 and an ACME CA; the live step of Pebble runs the same flags
 docs/serve.md 5e6c1ef82c scenario [needs curl,tar] the server of ./public in the background (the first shell), then the client
 docs/serve.md 5cef402f52 scenario [needs curl] the server of ./public in the background (the first shell), then the client
 docs/serve.md 872babe603 scenario [needs curl] the users file with bob and report.pdf; the server in the background (the first shell); the password of bob on the stdin of curl
