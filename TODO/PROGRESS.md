@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 616 entries: 4 open, 10 partial, 29 blocked, 573 done.
+`TODO/INDEX.md` holds 616 entries: 3 open, 11 partial, 29 blocked, 573 done.
 
 ## State
 
@@ -61,7 +61,7 @@ not wait for a larger one.
    - The findings of the QA pass of `v0.4.0-beta.20` (#761 to #775): each is done.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
-   - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: the capture hook is in `pod-cloudflare` `v0.86.0`).
+   - the donor review (GitHub #429 to #434): done, except #435: T-244 (partial: `tunnel --inspect` is built; `clear`, the measurements and COORD-136 #781 stay).
    - open and partial follow-ups (`TODO/fixes.md`):
      T-478 and T-406 (blocked, #604), T-488, T-414 and T-415
      (partial), T-358 (partial).
@@ -78,7 +78,8 @@ not wait for a larger one.
 10. **M9, later:** T-123, T-124 and T-127 to T-129, each when its start condition holds (the egress roads of `pod-egress`
     are done; the proxy of the process is T-614, blocked on COORD-134 #779); T-001: edit GitHub #89 into a guide
     that a new client tests from.
-    T-127, T-128 and T-129 take `pod-egress`, `pod-derp` and `pod-acme` (wave 4). T-123 and T-124 are blocked: podcrates
+    T-127, T-128 and T-129 take `pod-egress`, `pod-derp` and `pod-acme` (wave 4); T-129 is built (partial: its Pebble step
+    of `live` and COORD-135 #780). T-123 and T-124 are blocked: podcrates
     `v0.86.0` has no `pod-ts` (the entry of `pod-ts` in podcrates is open).
 10b. **Networks over the new crates (podcrates v0.33.0):** T-321 (`turn://`, `pod-turn`).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200

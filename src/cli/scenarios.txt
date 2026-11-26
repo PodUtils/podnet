@@ -72,7 +72,7 @@ relay connect | live:SSH through the reverse relay; live:File server through the
 relay stop | live:SSH through the reverse relay; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:100 MiB by code through the mailbox, a transit relay and the podnet relay; live:Git over SSH through the reverse relay
 route | live:Router with WARP, the relay and a failover
 send | live:100 MiB by code through the mailbox, a transit relay and the podnet relay
-serve | live:File server through a quick tunnel; live:File server through the reverse relay
+serve | live:File server through a quick tunnel; live:File server through the reverse relay; live:HTTPS with a certificate of ACME (Pebble)
 share | live:Large share uploads, QUIC and HTTP/2
 sidecar probe |
 sidecar search |

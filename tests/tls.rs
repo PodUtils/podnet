@@ -117,7 +117,9 @@ fn a_private_ca_is_trusted_only_when_it_is_given() {
     // Without the CA: a certificate error.
     let text = tunnel(port, &[], &[]);
     assert!(
-        text.contains("UnknownIssuer") || text.contains("unknown issuer"),
+        text.contains("no trusted CA signed")
+            || text.contains("UnknownIssuer")
+            || text.contains("unknown issuer"),
         "{text}"
     );
 

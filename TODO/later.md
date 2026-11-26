@@ -1720,7 +1720,7 @@ through the way of a member of the group, and a TCP flow is one stream of the se
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -1848,6 +1848,10 @@ POST with `Authorization` and `?token=` through the public URL, then `list`, `sh
 `[redacted]`) and `replay` (the origin got no `Authorization` and no `token`; exchange 2 names exchange 1).
 The commands `tunnel inspect list`, `show` and `replay` have no scenario of the release gate: they are
 experimental (`src/cli/scenarios.txt`).
+
+2026-11-26, the lead: the commit `T-244` is on `main`. What stays: `tunnel inspect clear`; the measurements of the Prove
+(1000 requests per second against a loopback origin; a 50 MiB upload and download within 8 MiB of resident set); and
+the two gaps of the hook above, asked in COORD-136 (PodUtils/podnet#781).
 
 # T-248: Router: a guest-wire router that ends guest TCP on smoltcp
 
