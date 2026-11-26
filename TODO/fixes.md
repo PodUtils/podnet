@@ -17163,7 +17163,7 @@ rows wait for a release build with the feature").
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -17203,6 +17203,12 @@ echo, an object store, NTP or mail, and the release gate has no row of the `icmp
 another user's, or others can change it; chmod go-w` (exit 71). The step wrote the allow lists as the runner user,
 and `sudo podnet` reads them as root, which refuses a file of another user by design. The step now writes the state
 and the allow lists as root (`sudo mktemp -d`, `sudo tee`).
+
+## Done
+
+2026-11-26, `23205be` and `0248aa61`. The dry run `release` 45786027233 (`23205be`) built each of the eight targets
+with the feature `release` (`s3`, `icmp`, `ntp`, `smtp` and `imap` in it). `live` 45802633188 (`3a3d9f2`) passed the
+step "A link over ICMP echo (root)": an echo through a link over ICMP echo between two podnet processes as root.
 
 # T-610: link carriers names the cost class of a carrier two times
 

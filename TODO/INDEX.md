@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**616 entries: 2 open, 12 partial, 29 blocked, 573 done.**
+**616 entries: 2 open, 11 partial, 29 blocked, 574 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 3 | 93 | 98 |
-| P2 | 0 | 4 | 11 | 302 | 317 |
+| P2 | 0 | 3 | 11 | 303 | 317 |
 | P3 | 2 | 6 | 15 | 177 | 200 |
-| **All** | 2 | 12 | 29 | 573 | 616 |
+| **All** | 2 | 11 | 29 | 574 | 616 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -653,7 +653,7 @@ M8 Overlays, M9 Later.
 | [T-606](fixes.md) | P2 | S | M5 | defect | done | forward: a refused bind of port 18000 tells the user to "give a port above 1023" |
 | [T-607](fixes.md) | P3 | S | M5 | defect | done | init check: a missing file is reported as "the configuration is not schema 1" |
 | [T-608](fixes.md) | P1 | S | M5 | release | done | Publish `v0.4.0-beta.20`: the carriers of the feature `release` and the fixes of the QA pass of 2026-11-26 |
-| [T-609](fixes.md) | P2 | S | M5 | feature | partial | The release set holds each carrier of the link: s3, icmp, ntp, smtp and imap join the feature release |
+| [T-609](fixes.md) | P2 | S | M5 | feature | done | The release set holds each carrier of the link: s3, icmp, ntp, smtp and imap join the feature release |
 | [T-610](fixes.md) | P3 | S | M5 | defect | done | link carriers names the cost class of a carrier two times |
 | [T-611](later.md) | P3 | L | M9 | feature | done | The direction split of a TCP flow of a router group, over a split session of the link |
 | [T-612](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.86.0 |
