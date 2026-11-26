@@ -72,7 +72,7 @@ Ask the podcrates session before the work. The Premise lists the harness of pods
 **Milestone:** M8
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** partial
 
 ## Problem
 
@@ -97,10 +97,6 @@ cargo test --workspace -- network_spec_tailscale
 gh workflow run ts-headscale.yml
 ```
 
-## Blocker
-
-Step 3 needs the headscale harness of T-114 (COORD-130, #760).
-
 ## Start condition
 
 T-059 and T-114 are done.
@@ -115,6 +111,8 @@ candidate; T-137). No work was done. State in the tree: `src/networks.rs` alread
 waits for T-114.
 
 2026-11-12, steps 1 and 2 are done (see Done). Step 3 (the test in the harness of T-114) is left.
+
+2026-11-26: step 3 waits for the shared headscale harness of T-114 (COORD-130, #760).
 
 ## Done
 
