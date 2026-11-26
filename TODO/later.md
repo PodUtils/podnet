@@ -573,7 +573,7 @@ CI: ci 43567820518, deny 43567823619, secrets 43567826340 and live 43567829232 o
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -644,6 +644,20 @@ and 2 ("copy") do not apply: the roads come from the crate.
   the tests are in its `tests/`), so podnet has its own small stand-ins; a feature `standin`, as `pod-devtunnel`
   has, would replace them. (3) `via` has no probe with no target: `up` proves the TLS with `pod_ws::Way::open_tls`,
   and the credentials are proved only at the first CONNECT.
+
+## Done
+
+2026-11-26, `f9d5079` of a worktree, taken onto `main` on the tag `v0.86.0`. The networks `https://[USER@]HOST[:PORT]`
+(`pod_egress::via`) and `wstunnel:wss://HOST[:PORT]` (`pod_egress::wstunnel`) are in the registry of networks, with
+their secrets in variables (`PODNET_HTTPS_PROXY_AUTH_FILE`, `PODNET_WSTUNNEL_SECRET_FILE`, with the suffix `_NAME` in a
+router file). Tests: `https_proxy_dialer_through_a_test_ca`, `https_proxy_with_an_unknown_ca_fails_at_up_and_names_the_proxy`,
+`wstunnel_dialer_through_a_stand_in_server`, `wstunnel_dialer_with_no_server_fails_at_up_and_names_the_server`,
+`network_spec_a_bad_road_spec_is_a_usage_line_with_no_secret`, `a_road_secret_fault_names_the_variable_and_hides_the_value`,
+`a_tcp_forward_goes_through_each_road_of_pod_egress`, `a_bad_road_spec_or_secret_is_a_usage_error_with_no_secret` and
+`net_doctor_has_a_row_for_each_road_that_names_the_hop`. A breaking change for the notes: the network spec `https://HOST`
+was a cleartext HTTP pod hop; it is now the proxy over TLS (`pod -x https://` keeps its meaning). The proxy of the
+process (`--proxy https://`) is T-614 (a TLS hop of `pod-proxy`, COORD-134 #779).
+
 
 # T-127: Egress through VLESS, Shadowsocks and Wisp
 

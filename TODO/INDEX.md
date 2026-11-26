@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**612 entries: 8 open, 9 partial, 26 blocked, 569 done.**
+**613 entries: 7 open, 9 partial, 27 blocked, 570 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 3 | 93 | 98 |
 | P2 | 0 | 4 | 11 | 300 | 315 |
-| P3 | 8 | 3 | 12 | 175 | 198 |
-| **All** | 8 | 9 | 26 | 569 | 612 |
+| P3 | 7 | 3 | 13 | 176 | 199 |
+| **All** | 7 | 9 | 27 | 570 | 613 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -171,7 +171,7 @@ M8 Overlays, M9 Later.
 | [T-123](later.md) | P3 | M | M9 | feature | open | Tailscale in the process: take the fork of tailscale-rs through `pod-ts` |
 | [T-124](later.md) | P3 | L | M9 | feature | open | Tailscale in the process: an adapter crate behind a feature that is off by default, with the static build proven |
 | [T-125](later.md) | P3 | L | M9 | feature | done | A userspace WireGuard responder: `podnet wg serve` |
-| [T-126](later.md) | P3 | M | M9 | feature | open | Egress through an `https://` proxy and through wstunnel |
+| [T-126](later.md) | P3 | M | M9 | feature | done | Egress through an `https://` proxy and through wstunnel |
 | [T-127](later.md) | P3 | L | M9 | feature | open | Egress through VLESS, Shadowsocks and Wisp |
 | [T-128](later.md) | P3 | L | M9 | feature | open | The DERP carrier through `pod-derp` |
 | [T-129](later.md) | P3 | M | M9 | feature | open | An ACME client for a public listener |
@@ -658,3 +658,4 @@ M8 Overlays, M9 Later.
 | [T-611](later.md) | P3 | L | M9 | feature | done | The direction split of a TCP flow of a router group, over a split session of the link |
 | [T-612](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.86.0 |
 | [T-613](fixes.md) | P3 | S | M5 | defect | done | offline spool take --out exits 65 for a file that exists, and the document does not say it |
+| [T-614](fixes.md) | P3 | S | M9 | feature | blocked | An https:// proxy of the process (--proxy, HTTPS_PROXY) through a TLS hop of pod-proxy |

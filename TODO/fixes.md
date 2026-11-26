@@ -17278,3 +17278,39 @@ cargo test --test offline_spool take_out_refuses_a_file_that_exists_and_keeps_th
 
 2026-11-26, the commit of this entry. The test `take_out_refuses_a_file_that_exists_and_keeps_the_entry` (a file that
 exists: 64, the body unchanged; a directory that does not exist: 71; then a new path takes the entry) passes.
+
+# T-614: An https:// proxy of the process (--proxy, HTTPS_PROXY) through a TLS hop of pod-proxy
+
+**Source:** T-126 (2026-11-26): the networks `https://` and `wstunnel:` are built; the proxy of the process is not.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+`--proxy https://HOST` and `HTTPS_PROXY=https://HOST` are refused: the dialer of the process is `pod_proxy::Dialer`,
+whose `Proxy` has no TLS hop to the proxy. A host whose only way out is an HTTPS proxy can use it only as a network of
+`forward --network` or of a router, not for the tunnel, the relay, WARP or `update`.
+
+## Premise
+
+- Read: `pod_proxy::Proxy` of podcrates `v0.86.0` (no scheme `https` for the hop); `pod_egress::via` has the TLS hop
+  for one connection, not for the dialer of the process.
+
+## Approach
+
+1. Take the TLS hop of `pod-proxy` when its tag has it; `--proxy https://` and `HTTPS_PROXY=https://` take it with the
+   trust of podnet (`--ca-file`).
+2. A test with the stand-in of T-126 (`src/networks/road_stand.rs`) or the stand-in of the crate.
+
+## Prove
+
+```sh
+cargo test --test road_network
+```
+
+## Blocker
+
+COORD-134 (PodUtils/podnet#779): a TLS hop to the proxy in `pod_proxy::Dialer` (ask 1).
