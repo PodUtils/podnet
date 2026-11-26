@@ -16,7 +16,7 @@ ci check | lane:local-files
 completions | lane:local
 components | lane:local
 connect | live:Throughput of the HTTP path and of a --forward WebSocket; live:Throughput through WARP, 1 to 16 MiB; lane:errors
-cover |
+cover | lane:local-tcp
 demo | live:Quick tunnel, QUIC (UDP 7844); live:Quick tunnel, HTTP/2 (TCP 7844); live:Quick tunnel, JSON lines (--json); live:UDP probe, answered and refused; live:Quick tunnel through a local CONNECT proxy; live:Quick tunnel with no system DNS, then with 1.1.1.1 blocked; live:A wrong --resolve pin fails at the TLS name check; live:Quick tunnel, QUIC through WARP (TCP 443); live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:Quick tunnel through the WebSocket relay (7844 dropped); live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:way-tunnel
 doctor | live:podnet doctor; live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:warp up, env, exec, --persist and down; live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:doctor; lane:proxy-doctor
 exit | lane:net-exit
@@ -35,7 +35,7 @@ link close | lane:link-control
 link reconnect | lane:link-control
 link rotate | lane:link-control
 link carriers | lane:local
-link p2p |
+link p2p | lane:local-tcp
 logs | live:warp tun --default-route (root), then everything as before; live:Router with WARP, the relay and a failover
 man | lane:man
 net demo | lane:local
@@ -108,10 +108,10 @@ warp ssh-config | live:warp up, env, exec, --persist and down
 warp tun | live:Exit 69 for an unavailable path; live:warp tun --default-route (root), then everything as before; live:warp tun --default-route with no default route (proxy only); live:An IPv6-only host
 warp run | live:WARP run with the netns-raw backend (TCP, UDP, IPv6, no root); live:WARP run
 wg serve | lane:wg-serve
-harness |
+harness | lane:local-files
 host probe | lane:local-files
 init check | lane:local-files
-init enroll |
+init enroll | lane:local-files
 init generate | lane:local-files
 rules check | lane:local-files
 stat | lane:local-udp

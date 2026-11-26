@@ -161,23 +161,20 @@ pub(crate) async fn p2p(args: P2pArgs) -> Result<()> {
         }
         return Ok(());
     }
-    // The stream is a byte pipe: stdin up, stdout down, to the end.
-    let io = opened.io;
-    let (mut read, mut write) = tokio::io::split(io);
-    let mut input = tokio::io::stdin();
-    let mut output = tokio::io::stdout();
-    tokio::select! {
-        up = tokio::io::copy(&mut input, &mut write) => {
-            up.map_err(|e| anyhow!("stdin: {e}"))?;
-        }
-        down = tokio::io::copy(&mut read, &mut output) => {
-            down.map_err(|e| anyhow!("stdout: {e}"))?;
-        }
-    }
+    // The stream is a byte pipe: stdin up, stdout down. At the end of stdin
+    // the FIN goes to the peer, and the answer is read until the peer
+    // closes (T-592: the end of stdin dropped the answer).
+    let end = pod_warp::nc::PipeEnd {
+        shutdown: true,
+        idle: pod_warp::nc::TCP_IDLE,
+    };
+    let piped = pod_warp::nc::pipe_with(opened.io, tokio::io::stdin(), tokio::io::stdout(), end)
+        .await
+        .map_err(|failure| exit::fault(fault_of(failure.class), anyhow!(failure)));
     if let Some(link) = relay.take() {
         link.close().await;
     }
-    Ok(())
+    piped
 }
 
 /// The exit class of a failure of the path.

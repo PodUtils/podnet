@@ -236,3 +236,56 @@ async fn link_p2p_names_the_relay_flag_when_no_relay_is_given() {
     assert_eq!(done.code, Some(77), "{}", done.text());
     assert!(done.stderr.contains("--relay"), "{}", done.text());
 }
+
+/// T-592: the stream is a byte pipe to the end of both sides. The answer of
+/// the peer reaches stdout when stdin ends first (the FIN goes up, and the
+/// answer comes after it), and when the peer closes while stdin is open.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn link_p2p_carries_the_answer_of_the_peer_to_the_end() {
+    use tokio::io::AsyncWriteExt as _;
+    test_host::need_loopback!();
+    // (the input, whether stdin stays open, the answer on stdout)
+    let cases: [(&[u8], bool, &str); 2] = [(b"ping", false, "echo:ping"), (b"", true, "echo:")];
+    for (input, hold, want) in cases {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let echo = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut got = Vec::new();
+            if !hold {
+                // Read to the FIN, then answer late.
+                stream.read_to_end(&mut got).await.unwrap();
+                tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+            }
+            stream.write_all(b"echo:").await.unwrap();
+            stream.write_all(&got).await.unwrap();
+        });
+        let mut cmd = podnet(&["--peer", &addr.to_string()]);
+        cmd.stdin(Stdio::piped());
+        let mut child = cmd.spawn().unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        stdin.write_all(input).await.unwrap();
+        // The end of stdin, or a stdin that stays open to the end.
+        let held = if hold {
+            Some(stdin)
+        } else {
+            drop(stdin);
+            None
+        };
+        let out =
+            tokio::time::timeout(std::time::Duration::from_secs(20), child.wait_with_output())
+                .await
+                .expect("link p2p ends when the peer closes")
+                .unwrap();
+        drop(held);
+        echo.await.unwrap();
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{stdout}{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(stdout.lines().any(|l| l == want), "hold {hold}: {stdout}");
+    }
+}

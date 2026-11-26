@@ -7911,7 +7911,7 @@ next push runs live.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** M
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -8012,6 +8012,22 @@ announce` to a unicast `offline discover listen` on the loopback (the listener n
 `proc-masked`, `listen-denied` and `nonroot-nocaps`; `local-udp` is n.a. in `no-loopback` and `udp-denied`. 5 commands
 leave the experimental mark. Still experimental: `cover`, `harness`, `link p2p`, `net tailscale` (T-114), `init
 enroll`, and the `sidecar` commands.
+2026-11-26, the seventh part. `local-files` adds `init enroll --offline` (the state directory with its key, and
+`"registered": false`) and `harness` over `tests/data/harness` (the lane copies the fixtures and the cover script of
+`tests/data/cover` beside the cases). A new lane case `local-tcp` runs `link p2p` on the direct path to an echo peer on
+the loopback (`--check --json` names `"path":"direct"`, and the stream carries `echo:ping`), and `cover` with a P-256
+certificate of `openssl` to a TLS client with no switch key (`HTTP/1.1 200` and the page). The lane found three
+defects: T-590, T-591 and T-592. As uid 65534 with `podlab` `v0.84.0`: `local-files` passes in each of the six
+profiles; `local-tcp` passes in `proc-masked`, `nonroot-nocaps` and `udp-denied`, and is n.a. in `bind-denied`,
+`no-loopback` and `listen-denied`. 4 commands leave the experimental mark. Still experimental: `net tailscale` (T-114)
+and the `sidecar` commands (feature `sidecar`, not in a release binary).
+
+## Done
+
+2026-11-26, the commit of this entry. Each command of a release binary but `net tailscale` has a scenario
+(`python3 scripts/gate-scenarios.py --check`: 0 faults). The scenario of `net tailscale` is the work of T-114 (blocked
+on the shared headscale harness, COORD-130 #760): its Prove runs the command. The `sidecar` commands are not in a release
+binary (feature `sidecar`).
 
 # T-399: live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet
 
@@ -16445,3 +16461,41 @@ cargo test --lib -p podnet the_site_answers_the_names_of_its_flag
 
 2026-11-26, the commit of this entry. The table test `the_site_answers_the_names_of_its_flag` (three names with no
 `--name`, three with it) passes, and `tests/cover.rs` passes; `curl -k` of `/` with no `--name` gets the index.
+
+# T-592: link p2p drops the answer of the peer when stdin ends first
+
+**Source:** the lane case `local-tcp` of T-398, 2026-11-26: `echo ping | podnet link p2p --peer ECHO` printed the
+path and no `echo:ping`, in each of three tries.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet link p2p` copied stdin up and the stream down in one `select!`, and ended at the first copy that ended. At the end
+of stdin the process ended before the peer answered: a request through `link p2p` lost its answer.
+
+## Premise
+
+- Read: `src/cli/cmd/link/p2p.rs`, and `pod_warp::nc::pipe_with` of podcrates `v0.85.0` (the pipe of `warp nc`).
+- Measured: an echo peer on the loopback got `ping`, and stdout got no answer.
+
+## Approach
+
+1. Shared code first: the pipe is `pod_warp::nc::pipe_with` with `shutdown: true`. At the end of stdin the FIN goes to
+   the peer, and the stream is read until the peer closes. A peer that closes first ends the command, also with stdin
+   open.
+2. A table test of `tests/link_p2p_cli.rs` pins both ends.
+
+## Prove
+
+```sh
+cargo test --test link_p2p_cli link_p2p_carries_the_answer_of_the_peer_to_the_end
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `link_p2p_carries_the_answer_of_the_peer_to_the_end` passes; with the old
+`select!` it fails (no answer in 20 s). A peer that closes while stdin is open ends the command in 0.06 s.

@@ -59,7 +59,7 @@
 
 set -u
 
-CASES="version man local local-files local-udp errors doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
+CASES="version man local local-files local-udp local-tcp errors doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version errors doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
 WAYOUT_CASES="way-tunnel way-relay"
@@ -210,6 +210,10 @@ case_main() {
         echo lab-secret-1 >secrets.txt
         step '^merged 2 record(s) into all.cap, 1 marked redacted' "$podnet" offline capture merge a.cap b.cap --out all.cap --secret-file secrets.txt || exit 1
         if grep -q "$(hx lab-secret-1)" all.cap; then echo "the secret is in the merged capture"; exit 1; fi
+        step '"registered": false' "$podnet" init enroll --node lab-node --relay https://relay.example --offline enrolled --json || exit 1
+        test -s enrolled/link-identity.key || { echo "init enroll wrote no key"; exit 1; }
+        # The verification matrix over the fixtures of tests/data/harness.
+        step '^conditions: host ' "$podnet" harness --data "$dir/../harness-data" || exit 1
         if command -v git >/dev/null 2>&1; then
             git init -q seed && git -C seed -c user.email=lab@lab.test -c user.name=lab commit -q --allow-empty -m seed || exit 1
             step '^cloned seed ' "$podnet" forge clone --seed seed --expect "$(git -C seed rev-parse HEAD)" clone || exit 1
@@ -379,6 +383,72 @@ case_main() {
         echo "client: $got"
         test "$got" = "echo:ping"
         exit $?
+        ;;
+    local-tcp)
+        # T-398: the commands that listen and dial TCP on the loopback only:
+        # link p2p on its direct path to an echo peer, and the cover site of
+        # podnet cover to a TLS client with no switch key.
+        if ! python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); s.listen(1); c = socket.create_connection(s.getsockname(), 2)' 2>/dev/null; then
+            echo "the lab refuses TCP on the loopback"
+            exit 77
+        fi
+        cd "$dir" || exit 1
+        free() { python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
+        port=$(free)
+        python3 -I -c '
+import socket, sys
+s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(("127.0.0.1", int(sys.argv[1]))); s.listen(4); s.settimeout(60)
+for _ in range(2):
+    c, _ = s.accept(); data = c.recv(100); c.sendall(b"echo:" + data); c.close()
+' "$port" &
+        peer=$!
+        sleep 1
+        timeout 60 "$podnet" link p2p --peer "127.0.0.1:$port" --check --json >p2p.json 2>p2p.err
+        code=$?
+        echo "link p2p --check -> exit $code"
+        test $code -eq 0 && grep -q '"path":"direct"' p2p.json || { cat p2p.json p2p.err; kill $peer 2>/dev/null; exit 1; }
+        echo ping | timeout 60 "$podnet" link p2p --peer "127.0.0.1:$port" >p2p.txt 2>p2p.err
+        code=$?
+        echo "link p2p -> exit $code"
+        test $code -eq 0 && grep -q 'echo:ping' p2p.txt || { cat p2p.txt p2p.err; kill $peer 2>/dev/null; exit 1; }
+        wait $peer
+        if ! command -v openssl >/dev/null 2>&1; then
+            echo "no openssl on this host: cover is not run"
+            exit 0
+        fi
+        openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -keyout cover.key -out cover.pem -days 2 \
+            -subj /CN=site.lab -addext subjectAltName=DNS:site.lab >/dev/null 2>&1 || { echo "openssl made no certificate"; exit 1; }
+        mkdir -p site && echo '<p>the lab cover</p>' >site/index.html
+        python3 -I -c 'import os; print(os.urandom(32).hex())' >switch.key
+        port=$(free)
+        "$podnet" cover --listen "127.0.0.1:$port" --site site --script "$dir/../cover-script.toml" --cert cover.pem \
+            --key cover.key --switch-key switch.key --to 127.0.0.1:9 >cover.txt 2>cover.err &
+        cover=$!
+        python3 -I -c '
+import socket, ssl, sys, time
+port = int(sys.argv[1])
+for _ in range(50):
+    try:
+        raw = socket.create_connection(("127.0.0.1", port), 2); break
+    except OSError:
+        time.sleep(0.2)
+else:
+    raise SystemExit("the cover does not listen")
+ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
+t = ctx.wrap_socket(raw, server_hostname="site.lab")
+t.sendall(b"GET / HTTP/1.1\r\nHost: site.lab\r\n\r\n")
+data = b""
+while b"the lab cover" not in data:
+    b = t.recv(4096)
+    if not b: break
+    data += b
+print(data.decode(errors="replace"))
+' "$port" >cover.out 2>&1
+        code=$?
+        kill $cover 2>/dev/null
+        echo "cover -> exit $code"
+        test $code -eq 0 && grep -q '^HTTP/1.1 200' cover.out && grep -q 'the lab cover' cover.out || { cat cover.out cover.err; exit 1; }
         ;;
     local-udp)
         # T-398: the commands that send UDP on the loopback only: a signed
@@ -1024,6 +1094,8 @@ case $work in
 /tmp | /tmp/*) echo "lab-lane: LANE_DIR $work is in /tmp; a lab hides it" >&2; exit 64 ;;
 esac
 write_helpers "$work"
+cp -r "$root/tests/data/harness" "$work/harness-data" || exit 1
+cp "$root/tests/data/cover/script.toml" "$work/cover-script.toml" || exit 1
 cp "$root/tests/consumers/python-http/client.py" "$work/http-client.py" || exit 1
 cp "$root/tests/consumers/connect-proxy.py" "$root/tests/consumers/servers.py" "$work/" || exit 1
 python3 -I "$work/echo.py" "$work/echo.sock" &

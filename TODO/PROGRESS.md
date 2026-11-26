@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 590 entries: 9 open, 11 partial, 30 blocked, 540 done.
+`TODO/INDEX.md` holds 591 entries: 9 open, 10 partial, 30 blocked, 542 done.
 
 ## State
 
@@ -65,7 +65,7 @@ not wait for a larger one.
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
    - open and partial follow-ups (`TODO/fixes.md`):
      T-476 (blocked, COORD-126 #756), T-478, T-406 (blocked, #604), T-488, T-414 and T-415
-     (partial), T-358 and T-398 (partial).
+     (partial), T-358 (partial).
 4. **M2, the splits:** T-044 (blocked:
    the rows left go with the takes, T-137). The split of the tunnel is done by the take of `pod-cloudflare`; each file has
    at most 800 lines, and no allowlist has an entry.

@@ -200,6 +200,12 @@ LANE_MAP = {
         "forge clone",
         "offline replica merge",
         "offline capture merge",
+        "init enroll",
+        "harness",
+    ],
+    "local-tcp": [
+        "link p2p",
+        "cover",
     ],
     "local-udp": [
         "offline discover listen",

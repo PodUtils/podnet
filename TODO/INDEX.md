@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**590 entries: 9 open, 11 partial, 30 blocked, 540 done.**
+**591 entries: 9 open, 10 partial, 30 blocked, 542 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 91 | 96 |
-| P2 | 0 | 4 | 15 | 285 | 304 |
+| P2 | 0 | 3 | 15 | 287 | 305 |
 | P3 | 8 | 5 | 13 | 163 | 189 |
-| **All** | 9 | 11 | 30 | 540 | 590 |
+| **All** | 9 | 10 | 30 | 542 | 591 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -442,7 +442,7 @@ M8 Overlays, M9 Later.
 | [T-395](fixes.md) | P2 | S | M5 | defect | done | live: the check of agent up fails when the resolver of the runner caches NXDOMAIN for the new name |
 | [T-396](link.md) | P3 | S | M9 | chore | done | link: remove the entry 305 and the empty feature `portable` (GitHub #475) |
 | [T-397](fixes.md) | P2 | S | M5 | defect | done | live: two quick tunnels over WARP within a minute register two devices, and WARP answers HTTP 429 |
-| [T-398](fixes.md) | P2 | M | M5 | chore | partial | The release gate: a scenario for each experimental command |
+| [T-398](fixes.md) | P2 | M | M5 | chore | done | The release gate: a scenario for each experimental command |
 | [T-399](fixes.md) | P2 | S | M5 | defect | done | live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet |
 | [T-400](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.14`: the gate, the dry run, the publish and the release proofs |
 | [T-401](fixes.md) | P2 | S | M5 | defect | done | --detach and autostart stop on a host with no /proc: podnet cannot find its own file |
@@ -636,3 +636,4 @@ M8 Overlays, M9 Later.
 | [T-589](fixes.md) | P3 | S | M5 | defect | partial | live: the quick-tunnel service refuses the runner for an hour (HTTP 429, error 1015), and each later step fails |
 | [T-590](fixes.md) | P2 | S | M5 | defect | done | The crash log and the harness name podcrates 0.79.0, and podnet takes v0.85.0 |
 | [T-591](fixes.md) | P2 | S | M5 | defect | done | podnet cover with no --name answers each request with the 404 page, also / |
+| [T-592](fixes.md) | P2 | S | M5 | defect | done | link p2p drops the answer of the peer when stdin ends first |
