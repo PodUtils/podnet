@@ -282,7 +282,8 @@ mod tests {
     }
 
     /// T-615: a send that the host refuses exits 69 with the step and the
-    /// address (a send to port 0 fails on each host: EINVAL).
+    /// address (a send to port 0 fails on each host: EINVAL). A host that
+    /// refuses the bind of a UDP socket fails at the step before.
     #[test]
     fn a_refused_announcement_names_its_step_and_exits_69() {
         let identity = Identity::from_seed(&[23; 32]);
@@ -290,8 +291,10 @@ mod tests {
         let text = format!("{e:#}");
         assert_eq!(crate::exit::code_of(&e), crate::exit::UNAVAILABLE, "{text}");
         assert!(
-            text.contains("sending the announcement to 127.0.0.1:0"),
+            text.contains("sending the announcement to 127.0.0.1:0")
+                || text.contains("a UDP socket for the announcement"),
             "{text}"
         );
+        assert!(text.contains("no UDP to 127.0.0.1:0"), "{text}");
     }
 }
