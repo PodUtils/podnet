@@ -2122,7 +2122,10 @@ server.
 2026-11-26, a live TURN server: the `live` step "A TURN network through coturn (UDP, and TCP over RFC 6062)" installs
 coturn of Ubuntu on the runner, runs it on the loopback with a long-term account and `--allow-loopback-peers`, and sends
 one datagram to a UDP echo and one stream to a TCP echo through `podnet forward --network turn://127.0.0.1:3478`. The
-output holds no password. The proof is its first pass in `live` (this host cannot install coturn).
+output holds no password. The proof is its first pass in `live` (this host cannot install coturn). Item 4 (a named TURN service
+of `pod-services`) is dropped (a call of the session; `docs/decisions.md`, 2026-11-26): a public TURN service gives no
+allocation without an account of its own, so a name in `pod-services` saves only the host and the port, and the user
+gives the account anyway. `turn://HOST[:PORT]` stays the form. T-321 is done when the coturn step passes.
 
 # T-354: net: `devtunnel://` with a tunnel access token, or with no token
 
