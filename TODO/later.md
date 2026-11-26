@@ -724,7 +724,7 @@ in COORD-137 (PodUtils/podnet#782).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -774,6 +774,10 @@ derper v1.104.4 on the runner. A transfer: `podnet send --derp` runs a node of t
 offers its ticket in a hint of the kind `podnet-derp-v1`; a podnet receiver dials it (`src/transfer/derp_way.rs`,
 `tests/transfer_derp.rs`). Waits: a row of `podnet doctor` with the probe of the fleet
 (`pod_derp::servers::probe_kept`), and a live step of a transfer through a derper.
+
+2026-11-26, the lead: the commits `T-128` are on `main`. What stays: the `live` step "The DERP road through a derper on
+the runner" passes; a row of `podnet doctor` for the DERP fleet (`pod_derp::servers::probe_kept`); a `live` step of a
+transfer through a derper. COORD-138 (PodUtils/podnet#783) asks podcrates for neutral names of its derper tests.
 
 # T-129: An ACME client for a public listener
 
