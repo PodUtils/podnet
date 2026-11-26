@@ -18,6 +18,14 @@ fn main() {
         .map(|out| String::from_utf8_lossy(&out.stdout).trim().to_string())
         .unwrap_or_else(|| "unknown".into());
     println!("cargo:rustc-env=PODNET_RUSTC_VERSION={version}");
+    // The tag of podcrates that this build takes (the crash log and the
+    // conditions of the harness name it): the tag of pod-core in Cargo.toml.
+    println!("cargo:rerun-if-changed=Cargo.toml");
+    let podcrates = std::fs::read_to_string("Cargo.toml")
+        .ok()
+        .and_then(|text| podcrates_tag(&text))
+        .unwrap_or_else(|| "unknown".into());
+    println!("cargo:rustc-env=PODNET_PODCRATES={podcrates}");
     // The date of the manual (issue 181): SOURCE_DATE_EPOCH, else the date
     // of the commit. Both are the same for each build of a commit, so a
     // rebuild gives the same binary.
@@ -29,6 +37,13 @@ fn main() {
         .or_else(commit_date)
         .unwrap_or_default();
     println!("cargo:rustc-env=PODNET_BUILD_DATE={date}");
+}
+
+/// The version of the tag `vX.Y.Z` of the line of `pod-core` in a manifest.
+fn podcrates_tag(manifest: &str) -> Option<String> {
+    let line = manifest.lines().find(|l| l.starts_with("pod-core = "))?;
+    let tag = line.split("tag = \"v").nth(1)?.split('"').next()?;
+    (!tag.is_empty()).then(|| tag.to_string())
 }
 
 /// YYYY-MM-DD of a Unix time (the algorithm of Howard Hinnant).

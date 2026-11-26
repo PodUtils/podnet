@@ -20,6 +20,15 @@ fn data() -> String {
     format!("{}/tests/data/harness", env!("CARGO_MANIFEST_DIR"))
 }
 
+/// The tag of podcrates in the manifest (the tag of `pod-core`).
+fn podcrates_tag() -> &'static str {
+    include_str!("../Cargo.toml")
+        .lines()
+        .find(|l| l.starts_with("pod-core = "))
+        .and_then(|l| l.split("tag = \"v").nth(1)?.split('"').next())
+        .unwrap()
+}
+
 fn harness(args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_podnet"))
         .args(["harness", "--data", &data()])
@@ -47,7 +56,7 @@ fn the_table_has_the_date_the_profiles_and_the_skips() {
     assert_eq!(doc["conditions"]["runs"], 1);
     assert!(!doc["conditions"]["host"].as_str().unwrap().is_empty());
     assert!(!doc["conditions"]["podnet"].as_str().unwrap().is_empty());
-    assert_eq!(doc["conditions"]["podcrates"], "0.79.0");
+    assert_eq!(doc["conditions"]["podcrates"], podcrates_tag());
     let rows = doc["rows"].as_array().unwrap();
     assert_eq!(rows.len(), 33, "{} rows", rows.len());
     let skips: Vec<(&str, &str)> = rows
@@ -173,7 +182,8 @@ fn the_text_names_the_conditions_and_the_benign_rate() {
     assert!(text.contains("benign cover site"), "{text}");
     assert!(text.contains("false-positive rate"), "{text}");
     assert!(text.contains("conditions: host"), "{text}");
-    assert!(text.contains("podcrates 0.79.0"), "{text}");
+    let podcrates = format!("podcrates {}", podcrates_tag());
+    assert!(text.contains(&podcrates), "{text}");
     assert!(text.contains("elapsed"), "{text}");
 }
 

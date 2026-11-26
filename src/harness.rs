@@ -33,8 +33,8 @@ pub const BENIGN_LIMIT: f64 = 0.1;
 /// The number of benign draws behind the false-positive rate.
 pub const BENIGN_SAMPLES: usize = 32;
 
-/// The versions of the components of a run.
-pub const PODCRATES: &str = "0.79.0";
+/// The version of podcrates in the conditions of a run.
+pub const PODCRATES: &str = crate::crashlog::PODCRATES;
 
 /// The named skip of a host that holds no raw socket.
 const ICMP_SKIP: &str = "the icmp carrier needs a raw socket; this lab holds none";

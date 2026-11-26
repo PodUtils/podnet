@@ -31,9 +31,10 @@ pub const DIR_VARIABLE: &str = "PODNET_CRASH_LOG_DIR";
 pub const MAX_VARIABLE: &str = "PODNET_CRASH_LOG_MAX";
 /// The variable that sets the number of files.
 pub const SLOTS_VARIABLE: &str = "PODNET_CRASH_LOG_SLOTS";
-/// The versions of the shared crates of podcrates that this build takes.
-/// The value is the tag in `Cargo.toml`; a test reads the tag from that file.
-pub const PODCRATES: &str = "0.79.0";
+/// The version of the shared crates of podcrates that this build takes: the
+/// tag of `pod-core` in `Cargo.toml`, read by `build.rs`. The test
+/// `the_podcrates_version_is_the_tag_of_the_manifest` compares the two.
+pub const PODCRATES: &str = env!("PODNET_PODCRATES");
 
 struct State {
     /// The directory of the log. `None` takes the state directory when a
@@ -292,5 +293,18 @@ mod tests {
         let kept = last_events(usize::MAX);
         assert_eq!(kept.len(), EVENTS);
         assert_eq!(kept[0], "event 3");
+    }
+
+    /// The version that the crash log and the harness name is the tag of
+    /// each `pod-*` dependency of the manifest (it went stale at 0.79.0).
+    #[test]
+    fn the_podcrates_version_is_the_tag_of_the_manifest() {
+        let manifest = include_str!("../Cargo.toml");
+        let tags: std::collections::BTreeSet<&str> = manifest
+            .lines()
+            .filter(|l| l.starts_with("pod-") && l.contains("PodUtils/podcrates"))
+            .filter_map(|l| l.split("tag = \"v").nth(1)?.split('"').next())
+            .collect();
+        assert_eq!(tags.into_iter().collect::<Vec<_>>(), vec![PODCRATES]);
     }
 }

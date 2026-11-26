@@ -111,6 +111,10 @@ pub struct Config {
 #[derive(Debug)]
 pub struct Cover {
     sites: Sites,
+    /// With no `--name`, the site answers each name and a handshake with no
+    /// name, as the default server of a web server does. Before, each
+    /// request got the 404 page, also `/`: a cover with no page.
+    every_name: bool,
     script: Script,
     /// The key of the switch. Each connection binds the proof to the
     /// exporter of its own TLS handshake, so the switch is built for that
@@ -142,6 +146,7 @@ impl Cover {
         }
         let switch = Switch::new(config.switch_key);
         Ok(Cover {
+            every_name: config.name.is_none(),
             sites,
             script,
             switch_key: config.switch_key,
@@ -168,7 +173,11 @@ impl Cover {
 
     /// The answer of the site to one request of the name `sni`.
     pub fn respond(&self, sni: Option<&str>, request: &[u8]) -> Vec<u8> {
-        let mut response = self.sites.respond(sni, request);
+        let mut response = if self.every_name {
+            self.sites.default.respond(request)
+        } else {
+            self.sites.respond(sni, request)
+        };
         // SWITCH-2: the connection to the site stays open after the page.
         for (name, value) in &mut response.headers {
             if name.eq_ignore_ascii_case("connection") {
@@ -612,5 +621,44 @@ mod tests {
         assert!(is_method(b"POST /x HTTP/1.1\r\n"));
         assert!(!is_method(b"GE"));
         assert!(!is_method(&[0u8; 56]));
+    }
+
+    /// The page of `/` for each name of the handshake: with `--name` only
+    /// that name gets the site; with no `--name` each name and no name get
+    /// it (before, each got the 404 page).
+    #[test]
+    fn the_site_answers_the_names_of_its_flag() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("index.html"), "<p>the page</p>").unwrap();
+        let script = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/cover/script.toml");
+        let load = |name: Option<&str>| {
+            Cover::load(Config {
+                site: dir.path().display().to_string(),
+                name: name.map(str::to_string),
+                script: script.to_string(),
+                switch_key: [9; 32],
+                target: "127.0.0.1:9".into(),
+                server: None,
+                mux: false,
+            })
+            .unwrap()
+        };
+        let cases: [(Option<&str>, Option<&str>, &str); 6] = [
+            (None, Some("site.example"), "200"),
+            (None, None, "200"),
+            (None, Some("other.example"), "200"),
+            (Some("site.example"), Some("site.example"), "200"),
+            (Some("site.example"), Some("other.example"), "404"),
+            (Some("site.example"), None, "404"),
+        ];
+        for (flag, sni, want) in cases {
+            let cover = load(flag);
+            let out = cover.respond(sni, b"GET / HTTP/1.1\r\nHost: x\r\n\r\n");
+            let head = String::from_utf8_lossy(&out[..12]).to_string();
+            assert!(
+                head.ends_with(want),
+                "--name {flag:?}, name {sni:?}: {head}"
+            );
+        }
     }
 }

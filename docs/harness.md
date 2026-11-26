@@ -25,7 +25,7 @@ reason. A higher score means that the road looks more like the tunnel model.
 | flow | size mean, standard deviation, p10, p50, p90, inter-arrival histogram | `flow.json` | one pass over the packets |
 | prefix | the first N bytes, as byte n-grams | `prefix.json` | one pass over the prefix |
 
-The classifiers are in `pod-harness` of podcrates v0.79.0. The glue is
+The classifiers are in `pod-harness` of podcrates (the tag of `Cargo.toml`). The glue is
 `src/harness.rs`; the command is in `src/cli/cmd/runtime.rs`.
 
 ## The table

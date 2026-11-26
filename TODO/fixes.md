@@ -16365,3 +16365,83 @@ line and exit 75 gives the warning, the variable and exit 0; another exit 3 stay
 leaves `sleep 30` in the background ends in 1 s. `python3 -I scripts/check-workflows.py`: 0 faults. The proof on the
 runner is the next `live` run with a 429.
 
+# T-590: The crash log and the harness name podcrates 0.79.0, and podnet takes v0.85.0
+
+**Source:** a run of `podnet harness --data tests/data/harness` for T-398, 2026-11-26: the line of the conditions says
+`podcrates 0.79.0`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`src/crashlog.rs` and `src/harness.rs` each held `PODCRATES = "0.79.0"`. The comment said that a test reads the tag of
+`Cargo.toml`; no test did. Six takes later, the crash log and the conditions of each harness run named a wrong version
+of the shared crates. A crash report or a measurement then points at the wrong code.
+
+## Premise
+
+- Read: `src/crashlog.rs`, `src/harness.rs`, `tests/harness_cli.rs` (a literal `0.79.0`), and `Cargo.toml` (`v0.85.0`).
+
+## Approach
+
+1. `build.rs` reads the tag of `pod-core` in `Cargo.toml` and sets `PODNET_PODCRATES` (`unknown` when there is none).
+   `crashlog::PODCRATES` is `env!("PODNET_PODCRATES")`; `harness::PODCRATES` is the same constant.
+2. The test `the_podcrates_version_is_the_tag_of_the_manifest` reads each `pod-*` dependency of the manifest: one tag,
+   and it is `PODCRATES`. `tests/harness_cli.rs` reads the tag of the manifest in place of a literal.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet the_podcrates_version_is_the_tag_of_the_manifest
+cargo test --test harness_cli
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The tests `the_podcrates_version_is_the_tag_of_the_manifest`,
+`the_table_has_the_date_the_profiles_and_the_skips` and `the_text_names_the_conditions_and_the_benign_rate` pass; `podnet harness` prints
+`podcrates 0.85.0`.
+
+# T-591: podnet cover with no --name answers each request with the 404 page, also /
+
+**Source:** a run of `podnet cover` for T-398, 2026-11-26: `curl -k https://localhost:PORT/` got `404 Not Found`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`Cover::load` put the site into `pod_cover::Sites` only under `--name`. `Sites::respond` gives an unknown name, and no
+name, the 404 page of the default site. With no `--name`, each name was unknown: the cover had no page, and a probe saw
+a site with no `/`.
+
+## Premise
+
+- Read: `src/cover.rs` (`Cover::load`, `Cover::respond`) and `Sites::respond` of `pod-cover` at `v0.85.0`.
+- Measured: `curl -k` of `/` with no `--name` got 404; with `--name localhost` it got the index.
+
+## Approach
+
+1. `Cover` keeps `every_name` (no `--name`). `Cover::respond` then asks the default site; else it asks `Sites`.
+2. A table test loads the cover with and with no `--name`, and asks `/` for three names of the handshake.
+
+## Decision
+
+With no `--name`, the site answers each name and a handshake with no name, as the default server of a web server does.
+With `--name`, only that name gets the site, as before. The help of `--name` says so.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet the_site_answers_the_names_of_its_flag
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The table test `the_site_answers_the_names_of_its_flag` (three names with no
+`--name`, three with it) passes, and `tests/cover.rs` passes; `curl -k` of `/` with no `--name` gets the index.

@@ -38,7 +38,8 @@ pub(crate) struct CoverArgs {
     #[arg(long, value_name = "HOST:PORT")]
     to: String,
     /// The name of the site, for the routing of the handshake's name. An
-    /// unknown name gets the default site's own 404 page.
+    /// unknown name gets the default site's own 404 page. Without it, the
+    /// site answers each name.
     #[arg(long, value_name = "NAME")]
     name: Option<String>,
     /// The value of the `Server` header. The default is `nginx`. A value
