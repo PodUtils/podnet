@@ -2099,8 +2099,15 @@ Not proven: a live TURN server.
 in `src/networks/turn.rs` (`connect_tcp`: a TCP allocation, `Connect` and `ConnectionBind`; the status
 `tcp_relay: rfc6062`). Tests: `turn_a_tcp_stream_goes_through_an_rfc6062_allocation` (the bytes of each direction, a
 refresh before the end of a lifetime of 2 s) and `turn_a_tls_tcp_stream_goes_through_an_rfc6062_allocation`; `cargo
-test -p podnet --lib networks::turn`: 19 passed. `docs/networks.md` says it now. What stays: a row of `doctor` for a TURN network, and an account for each network (one account
-serves each process now).
+test -p podnet --lib networks::turn`: 19 passed. `docs/networks.md` says it now. What stays: an account for each
+network (one account serves each process now). The row of `doctor` is `podnet net doctor --network turn://...`
+(7d849e1).
+
+2026-11-26, the text after the TCP half: the refusal of `--egress turn://...` said "a TURN network carries UDP only";
+it now says that the network makes an allocation for each flow and is not a proxy of the process, and names `forward
+-L PORT=HOST:PORT` beside `-L udp:`. `docs/networks.md` lost the old bullet "TCP is not carried", and
+`docs/router.md` says "UDP, and TCP over RFC 6062". Test: `cli::way_tests` (the refusal of `--egress turn://` and of
+`--egress turns://` before `pod`).
 
 # T-354: net: `devtunnel://` with a tunnel access token, or with no token
 

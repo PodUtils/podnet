@@ -270,8 +270,8 @@ ChannelData. podnet has no TURN code of its own.
   `turn://turn.example:3478: refresh: TURN: the server answered the Refresh request with 437`. The socket does
   not try again. The flow ends, and the next datagram of its client starts a new flow with a new allocation.
   A datagram for a full queue is dropped (UDP has no flow control).
-* TCP is not carried. A TCP target gives one line that names RFC 6062 (the TCP relay), which `pod-turn` does not
-  have. `--egress turn://...` and `podnet pod -x` refuse the network by name.
+* `--egress turn://...` and `podnet pod -x` refuse the network by name: it makes an allocation for each flow, and it
+  is not a proxy of the process.
 * `turn://` and `turns://` are networks of `podnet forward --network` and of a `networks:` entry of a router
   file ([router.md](router.md)).
 * `podnet net doctor --network turn://HOST:PORT` adds the row of the network: `ok` when the allocation comes up,

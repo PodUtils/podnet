@@ -250,7 +250,7 @@ fn egress_alias_a_spec_that_the_command_cannot_take_is_one_usage_line() {
         ],
     ] {
         let text = err(words);
-        assert!(text.contains("carries UDP only"), "{text}");
+        assert!(text.contains("is not a proxy of the process"), "{text}");
         assert!(text.contains("podnet forward"), "{text}");
     }
     for words in [

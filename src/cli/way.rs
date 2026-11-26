@@ -153,11 +153,12 @@ fn removed_before(words: &[String], at: usize) -> usize {
     n
 }
 
-/// The line for `--egress turn://HOST` and `turns://HOST`: the network carries
-/// UDP, and `--egress` is a way for TCP.
+/// The line for `--egress turn://HOST` and `turns://HOST`: the network makes
+/// an allocation for each flow, and no command takes it as a proxy of the
+/// process.
 fn turn_refusal(label: &str) -> String {
     format!(
-        "--egress {label}: a TURN network carries UDP only, and --egress is a way for TCP; use podnet forward -L udp:PORT=HOST:PORT --network {label}, or a networks: entry of podnet route"
+        "--egress {label}: a TURN network makes an allocation for each flow and is not a proxy of the process; use podnet forward -L udp:PORT=HOST:PORT or -L PORT=HOST:PORT --network {label}, or a networks: entry of podnet route"
     )
 }
 

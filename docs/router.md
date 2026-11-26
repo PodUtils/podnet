@@ -69,7 +69,7 @@ doors:
   error names the key or the line.
 * A name is letters, digits, `-` and `_`. A group and a network cannot have the same name.
 * `networks` maps a name to a network spec (see [egress.md](egress.md)): `direct`, a proxy URL, `relay`,
-  `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` (UDP only), `unix:/PATH` or a chain
+  `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` (UDP, and TCP over RFC 6062), `unix:/PATH` or a chain
   `TOP over BELOW` (`wg:/etc/wg0.conf over warp`). A `tailscale:/PATH` network is a member of a group
   and the `via` of a door, as each other network. When `tailscaled` is not `Running` at the start, the
   router prints one warning and goes on: each dial through that network fails until the daemon is logged
