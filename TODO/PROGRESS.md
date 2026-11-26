@@ -79,7 +79,7 @@ not wait for a larger one.
     are done; the proxy of the process is T-614, blocked on COORD-134 #779); T-001: edit GitHub #89 into a guide
     that a new client tests from.
     T-127, T-128 and T-129 take `pod-egress`, `pod-derp` and `pod-acme` (wave 4). T-123 and T-124 are blocked: podcrates
-    `v0.86.0` has no `pod-ts` (its T-039 is open).
+    `v0.86.0` has no `pod-ts` (the entry of `pod-ts` in podcrates is open).
 10b. **Networks over the new crates (podcrates v0.33.0):** T-321 (`turn://`, `pod-turn`).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); and the link
