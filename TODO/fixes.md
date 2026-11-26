@@ -16233,6 +16233,13 @@ sh -n scripts/live-doctor.sh
 # the next live runs: a run that is not ok prints its legs
 ```
 
+## Correction
+
+2026-11-26: `live` 45731580672 (`49baa57`) proves the print: three runs 15 s apart each gave the leg `quic+warp`
+`unknown` with "issuer C=US, O=Let's Encrypt, CN=YE1: WARP's door shows a certificate of Let's Encrypt at times in
+place of its key" (T-406). The retry does not help a run of that outage. `scripts/live-step.sh` (T-589) now turns a
+step that fails with that line into a warning, as it does with the quota of the quick-tunnel service.
+
 ## Done
 
 2026-11-25, the commit of this entry. `python3 -I scripts/check-workflows.py`: 11 files, 0 faults. The proof is the

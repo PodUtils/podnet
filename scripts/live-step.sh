@@ -4,8 +4,9 @@
 # of the step. The quick-tunnel service refuses a busy address for an hour
 # (HTTP 429, error code 1015), and podnet then exits 75 as documented: a
 # step that fails with that line in its output gives a warning, sets
-# LIVE_QUICK_REFUSED=1 for the later steps, and passes. Each other failure
-# keeps its exit code.
+# LIVE_QUICK_REFUSED=1 for the later steps, and passes. A step that fails
+# because WARP's door shows a certificate of Let's Encrypt (T-587) gives a
+# warning and passes too. Each other failure keeps its exit code.
 #
 #   shell: bash scripts/live-step.sh {0}
 set -u
@@ -24,6 +25,12 @@ if [ "$rc" -ne 0 ] && grep -q 'quick-tunnel service returned HTTP 429' "$log"; t
     if [ -n "${GITHUB_ENV:-}" ]; then
         echo "LIVE_QUICK_REFUSED=1" >> "$GITHUB_ENV"
     fi
+    rc=0
+elif [ "$rc" -ne 0 ] && grep -q "WARP's door shows a certificate of Let's Encrypt" "$log"; then
+    # T-587: WARP's door shows a certificate of Let's Encrypt in place of its
+    # key at times (an outage of WARP's side, T-406); podnet names it and
+    # cannot go around it.
+    echo "::warning::WARP's door shows a certificate of Let's Encrypt in place of its key; the step is not measured (T-587, T-406)"
     rc=0
 fi
 rm -f "$log"
