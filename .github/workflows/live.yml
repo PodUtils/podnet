@@ -1751,13 +1751,39 @@ jobs:
       # namespace v6up has IPv4 to the runner and podnet warp tun; v6only
       # behind it has IPv6 only, with NAT66 out of the TUN. The routes of
       # the runner do not change.
+      # T-358 step 1: after the checks, the lane runs its row ipv6-host in
+      # v6only (the rows of the profile ipv6-only of podlab on a real
+      # IPv6-only host, with no lab and no proxy). podlab is the release
+      # asset of the podcrates tag of Cargo.toml, as in gate.yml. A row
+      # that fails fails the step; version and doctor must pass.
       - name: An IPv6-only host
-        timeout-minutes: 12
+        timeout-minutes: 20
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
+          tag=$(sed -n 's/^pod-core = .*tag = "\(v[0-9][0-9.]*\)".*/\1/p' Cargo.toml)
+          test -n "$tag"
+          sh scripts/get-podlab.sh "$tag" "$RUNNER_TEMP/podlab"
           trap 'sh scripts/v6only/down.sh' EXIT
           sh scripts/v6only/up.sh target/release/podnet
           sh scripts/v6only/acceptance.sh target/release/podnet
+          lane="$RUNNER_TEMP/v6lane"
+          status=0
+          sh scripts/v6only/run.sh env LANE_DIR="$lane" sh "$PWD/scripts/lab-lane.sh" \
+            "$RUNNER_TEMP/podlab" "$PWD/target/release/podnet" ipv6-host > v6lane.txt 2>&1 || status=$?
+          cat v6lane.txt
+          sed 's/^/  /' "$lane/ipv6-host.lab.txt" || true
+          if [ "$status" -ne 0 ]; then
+            for f in $(grep -o "$lane/[^ )]*" v6lane.txt); do
+              echo "== $f"
+              tail -n 40 "$f"
+            done
+            exit 1
+          fi
+          for row in version doctor; do
+            grep -Eq "^ipv6-host +$row +pass" v6lane.txt || { echo "the row $row of ipv6-host did not pass"; exit 1; }
+          done
       # The test box (issue 21): a user whose only egress is a policy proxy.
       - name: The test box
         timeout-minutes: 15

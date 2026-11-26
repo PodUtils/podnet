@@ -15,7 +15,9 @@ A scenario runs the release binary of podnet as a user runs it:
   (gate.yml, the job gate of each release).
 
 The script reads the text of each step, and of each script of scripts/
-that the step runs, and finds each call of the podnet binary in it. The
+that the step runs, and finds each call of the podnet binary in it. A step
+that runs scripts/lab-lane.sh (live.yml runs its row ipv6-host) does not
+get the calls of the lane: the lane counts by its cases (LANE_MAP). The
 file src/cli/scenarios.txt holds one line for each command of podnet with
 no subcommand: the path of the command, then its scenarios. A command
 with no scenario is experimental: its help says so (src/cli/help.rs), and
@@ -36,7 +38,8 @@ ROOT = Path(__file__).resolve().parent.parent
 TABLE = ROOT / "src/cli/scenarios.txt"
 LIVE = ROOT / ".github/workflows/live.yml"
 CI = ROOT / ".github/workflows/ci.yml"
-LANE = ROOT / "scripts/lab-lane.sh"
+LANE_REL = "scripts/lab-lane.sh"
+LANE = ROOT / LANE_REL
 
 HEADER = """\
 # The scenarios of each command of podnet with no subcommand (T-358 step 4).
@@ -293,7 +296,7 @@ def derive(paths):
     table = {p: [] for p in paths}
     live = steps(LIVE)
     for name, text in live:
-        found = called(with_scripts(text), paths)
+        found = called(with_scripts(text, {LANE_REL}), paths)
         for step, p, proof in VIA:
             if step == name and proof in text:
                 found.add(p)
@@ -304,7 +307,7 @@ def derive(paths):
         if step not in names:
             raise SystemExit(f"gate-scenarios: VIA names the step {step!r}, which live.yml does not have")
     for name, text in steps(CI, "static"):
-        for p in sorted(called(with_scripts(text), paths)):
+        for p in sorted(called(with_scripts(text, {LANE_REL}), paths)):
             table[p].append(f"ci:{name}")
     for case, found in lane_calls(paths).items():
         for p in sorted(found):

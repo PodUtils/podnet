@@ -257,6 +257,43 @@ n.a. when `podnet pod` refuses with `no proxy: give -x PROXY`. The plant
 `LANE_PLANT=net` gives podnet a proxy that does not listen: each `net-pod`
 command must fail. `ipv6-only` does not hold on a kernel with no IPv6.
 
+### The row ipv6-host
+
+The lab `ipv6-only` of `podlab` has no route out: its IPv6 address is on
+the loopback of the lab, so its rows do not reach a real IPv6 network. The
+row `ipv6-host` is not a profile of `pod-lab`. It runs the rows of the
+network labs on the host itself, with no lab: run the lane in an IPv6-only
+host. The step "An IPv6-only host" of `live.yml` runs it in the namespace
+`v6only` of `scripts/v6only/up.sh` (IPv6 only, out through WARP; no proxy),
+after `scripts/v6only/acceptance.sh`:
+
+```sh
+sh scripts/v6only/run.sh env LANE_DIR="$RUNNER_TEMP/v6lane" sh "$PWD/scripts/lab-lane.sh" \
+    "$RUNNER_TEMP/podlab" "$PWD/target/release/podnet" ipv6-host
+```
+
+* `podlab-check`: `podlab check ipv6-only --network NAME:443
+  --network-literal ADDRESS` checks the host: no IPv4 default route, a
+  connect to `127.0.0.1` allowed, an IPv6 default route, and a TLS
+  ClientHello to ADDRESS port 443 that gets a certificate. Exit 3 (a part
+  is unseen) is n.a., and the rows run. Another exit makes each row n.a.
+* `version`, `errors` and `doctor`. The doctor must say `proxy  none: each
+  connection is direct`.
+* `net-curl`: no podnet. `curl https://NAME/` gets HTTP 200 directly (the
+  control of the host).
+* `net-bench`: `podnet bench https://NAME/` with no proxy. Each request
+  gets an answer.
+* `net-exit`: `podnet exit --stdio` with no proxy; a SOCKS5 CONNECT to
+  `NAME:443`, then TLS and GET over the session get HTTP 200.
+* `net-pod-auto`, `net-pod-seccomp` and `net-pod-netns`: n.a. when
+  `podnet pod` refuses with `no proxy: give -x PROXY`.
+
+NAME is `LANE_HOST_NAME` (default `one.one.one.one`, a name with A and
+AAAA records: podnet must go on to the IPv6 address). ADDRESS is
+`LANE_HOST_LITERAL` (default `2606:4700:4700::1111`). The step fails when
+a row fails, or when `version` or `doctor` does not pass. With no PROFILE,
+the lane does not run `ipv6-host`.
+
 ### The row allow-connect
 
 The row `allow-connect` is not a profile of `pod-lab`. The lane runs

@@ -108,7 +108,7 @@ The kit ran in a netns and in a VM with IPv6 only (NAT66 out through
 WARP). `scripts/v6only/` makes the same host on a runner: the namespace
 `v6up` has IPv4 and `podnet warp tun --default-route`; `v6only` behind it
 has IPv6 only (no IPv4 route; the address 127.0.0.1 stays). The step "An IPv6-only host" of `live.yml` runs
-`scripts/v6only/acceptance.sh`.
+`scripts/v6only/acceptance.sh`, then the row `ipv6-host` of `scripts/lab-lane.sh` in `v6only` (`docs/development.md`, The row ipv6-host).
 
 | Fact | Result | Mark |
 | --- | --- | --- |

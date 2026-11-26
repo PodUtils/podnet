@@ -7139,6 +7139,28 @@ unreachable (os error 101)`) and exit 1, with no step and no address; `podnet ne
 unix:/tmp/podnet-vnet.socks: Operation not permitted (os error 1)` and exit 1, a code that `docs/exit-codes.md` does
 not give.
 
+2026-11-26, step 1, `ipv6-only` on a host with IPv6. The lab of `podlab run ipv6-only` has no route out (its IPv6
+address `fd00:6c61:62::1` is on the loopback of the lab), so a row in it reaches no real IPv6 network. The lane has the
+row `ipv6-host` (`docs/development.md`, The row ipv6-host): the rows of `NET_CASES` on the host itself, with no lab. The
+step "An IPv6-only host" of `live.yml` gets `podlab` of the podcrates tag of `Cargo.toml` (`scripts/get-podlab.sh`),
+runs `scripts/v6only/up.sh` and `acceptance.sh`, then runs `scripts/lab-lane.sh PODLAB PODNET ipv6-host` in the namespace
+`v6only` with `scripts/v6only/run.sh` (IPv6 only, out through WARP, no proxy variable). The rows: `podlab-check`
+(`podlab check ipv6-only --network one.one.one.one:443 --network-literal 2606:4700:4700::1111`: no IPv4 default route,
+the loopback connect, an IPv6 default route, a ClientHello to the IPv6 address that gets a certificate; exit 3 is
+n.a. and the rows run; another exit that is not 0 makes each row n.a.); `version`; `errors` (`scripts/lab-errors.sh`); `doctor` (exit 0 or 1, no panic, `proxy  none: each
+connection is direct`); `net-curl` (curl gets HTTP 200 from `https://one.one.one.one/` directly, the control);
+`net-bench` (`podnet bench` of that URL with no proxy: each request gets an answer); `net-exit` (`podnet exit --stdio`,
+a SOCKS5 CONNECT to `one.one.one.one:443`, then TLS and GET get HTTP 200); `net-pod-auto`, `net-pod-seccomp` and
+`net-pod-netns` are n.a. when `podnet pod` refuses with `no proxy: give -x PROXY`. The name has A and AAAA records:
+`net-bench` and `net-exit` check that a direct dial of podnet goes on to the IPv6 address when the IPv4 address
+gives `ENETUNREACH`. A failed row fails the step, and `version` and `doctor` must pass. `scripts/gate-scenarios.py`
+does not give the calls of the lane to the step (the lane counts by its cases). Here (no IPv6 route, podlab
+v0.86.0) the row gives n.a. at `podlab-check`. With a stand-in podlab whose check exits 0, on the IPv4 network of this
+host with the musl podnet of beta.19 as root: `version`, `doctor`, `net-curl`, `net-bench` (85 requests, 0 errors) and
+`net-exit` pass, the three `net-pod` rows are n.a.; `errors` fails in `connect-no-name` and `relay-no-name` (exit 69,
+want 68: this host breaks TLS to each DoH server, so the lookup fails on DoH, not on a name with no answer). The run
+of `live.yml` gives the result on the IPv6-only host.
+
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 

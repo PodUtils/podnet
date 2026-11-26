@@ -36,6 +36,16 @@
 # The plant LANE_PLANT=net gives podnet a proxy that does not listen; each
 # net-pod row must then fail.
 #
+# The row ipv6-host is not a profile of podlab. It runs the rows of
+# NET_CASES on this host, with no lab: run the lane in an IPv6-only host
+# (live.yml runs it in the namespace of scripts/v6only/up.sh). First,
+# `podlab check ipv6-only` checks the host, with TLS to the IPv6 address
+# LANE_HOST_LITERAL (default 2606:4700:4700::1111) on port 443. An exit
+# of the check that is not 0 or 3 makes the row n.a. With no proxy,
+# net-curl, net-bench and net-exit go direct to https://LANE_HOST_NAME/
+# (default one.one.one.one, a name with A and AAAA records). The host has
+# no IPv4 route, so podnet must go on to the IPv6 address of the name.
+#
 # The row testers (T-453) is the host class of the external testers: the
 # lab bind-denied (no bind of AF_INET, no TCP connect but to the
 # loopback, so no netns backend), and PODNET_NETNS_TEST_MEM=none (the pod
@@ -255,9 +265,9 @@ case_main() {
             echo "net doctor: not needed with no loopback connect"
             exit 1
         fi
-        # In a network lab, the doctor names the proxy of the lab, and its
-        # credential where the lab gives one.
-        if in_list "$LANE_PROFILE" "$NET_LABS"; then
+        # In a network lab (and on the host of ipv6-host), the doctor names
+        # the proxy, and its credential where the lab gives one.
+        if in_list "$LANE_PROFILE" "$NET_LABS ipv6-host"; then
             want="proxy  none: each connection is direct"
             if test -n "${HTTPS_PROXY:-}"; then
                 want="proxy  http://127.0.0.1:3128 (credentials: none)"
@@ -717,26 +727,37 @@ net_case() {
     name=$1
     podnet=$2
     dir=$3
-    url=https://lab.test/
+    host=lab.test
+    if test -n "${LANE_DIRECT_NAME:-}"; then
+        # The row ipv6-host: a real name, direct (the outer script sets it).
+        host=$LANE_DIRECT_NAME
+    fi
+    url=https://$host/
     if test -z "${HTTPS_PROXY:-}"; then
-        # No proxy: podnet pod has no egress, and must say so.
+        # No proxy: podnet pod has no egress, and must say so. A lab with
+        # no proxy has no direct target for the other rows.
         case $name in net-curl | net-bench | net-exit)
-            echo "the lab has no proxy"
+            test -n "${LANE_DIRECT_NAME:-}" || {
+                echo "the lab has no proxy"
+                return 77
+            }
+            ;;
+        *)
+            timeout 60 "$podnet" pod -- /bin/true >"$dir/out.txt" 2>&1
+            code=$?
+            cat "$dir/out.txt"
+            echo "pod exit $code"
+            test $code -ne 0 && grep -q 'no proxy: give -x PROXY' "$dir/out.txt" || return 1
+            echo "the lab has no proxy; podnet pod refused with the reason"
             return 77
             ;;
         esac
-        timeout 60 "$podnet" pod -- /bin/true >"$dir/out.txt" 2>&1
-        code=$?
-        cat "$dir/out.txt"
-        echo "pod exit $code"
-        test $code -ne 0 && grep -q 'no proxy: give -x PROXY' "$dir/out.txt" || return 1
-        echo "the lab has no proxy; podnet pod refused with the reason"
-        return 77
     fi
     case $name in
     net-bench)
         # podnet bench through the proxy of the lab, with its roots
-        # (SSL_CERT_FILE): each request gets an answer (T-398).
+        # (SSL_CERT_FILE), or direct in ipv6-host: each request gets an
+        # answer (T-398).
         timeout 60 "$podnet" bench "$url" --duration 2 --connections 2 --json >"$dir/out.txt" 2>"$dir/err.txt"
         code=$?
         cat "$dir/out.txt" "$dir/err.txt"
@@ -750,15 +771,17 @@ sys.exit(0 if d.get("requests", 0) > 0 and not d.get("errors") else 1)' "$dir/ou
         ;;
     net-exit)
         # podnet exit --stdio: a SOCKS5 session on a pipe, out through the
-        # proxy of the lab; the client runs TLS and GET over it (T-398).
-        timeout 60 python3 -I "$dir/../exit-client.py" lab.test "$podnet" exit --stdio >"$dir/out.txt" 2>&1
+        # proxy of the lab (or direct in ipv6-host: podnet resolves the
+        # name); the client runs TLS and GET over it (T-398).
+        timeout 60 python3 -I "$dir/../exit-client.py" "$host" "$podnet" exit --stdio >"$dir/out.txt" 2>&1
         code=$?
         cat "$dir/out.txt"
         test $code -eq 0 && grep -q '^HTTP/1.1 200' "$dir/out.txt"
         return $?
         ;;
     net-curl)
-        # The control of the lab: curl reaches the stand-in through the proxy.
+        # The control of the lab: curl reaches the stand-in through the
+        # proxy. In ipv6-host: curl reaches the name directly.
         curl -sS -m 20 -o /dev/null -w '%{http_code}\n' "$url" >"$dir/out.txt" 2>&1
         code=$?
         cat "$dir/out.txt"
@@ -1536,6 +1559,11 @@ net) ;;
 *) echo "lab-lane: LANE_PLANT is refuse, port or net" >&2; exit 64 ;;
 esac
 export LANE_PROXY_PORT LANE_UPSTREAM_PORT
+# The row ipv6-host: the real name and the IPv6 address. Only that row
+# gives LANE_DIRECT_NAME to its cases; a lab never gets it.
+host_name=${LANE_HOST_NAME:-one.one.one.one}
+host_literal=${LANE_HOST_LITERAL:-2606:4700:4700::1111}
+unset LANE_DIRECT_NAME
 
 # The stand-in proxy and its server, outside the lab.
 start_proxy() {
@@ -1565,7 +1593,8 @@ failed=0
 printf '%-22s %-17s %s\n' PROFILE COMMAND RESULT
 for profile in "$@"; do
     # allow-connect: the lab bind-denied with a connect to the proxy port
-    # only. A network lab runs the rows of NET_CASES.
+    # only. A network lab runs the rows of NET_CASES. ipv6-host has no lab
+    # (an empty $lab): its rows run on this host.
     lab=$profile
     cases=$CASES
     mem_hook=
@@ -1582,20 +1611,41 @@ for profile in "$@"; do
     elif test "$profile" = way-ws; then
         lab="--way-out ws-upgrade-refused"
         cases=$WAYWS_CASES
+    elif test "$profile" = ipv6-host; then
+        lab=
+        cases=$NET_CASES
     elif in_list "$profile" "$NET_LABS"; then
         cases=$NET_CASES
     fi
     if in_list "$profile" "$DOC_LABS"; then
         cases="$cases docs"
     fi
-    # $lab is the profile, or options and the profile: split it.
-    # shellcheck disable=SC2086
-    "$podlab" run $lab -- /bin/true >"$work/$profile.lab.txt" 2>&1
-    code=$?
-    if test $code -ne 0; then
-        why=$(grep -v '^ ' "$work/$profile.lab.txt" | grep -v '^holds' | head -n 1)
-        printf '%-22s %-17s n.a.: the lab does not hold (exit %s): %s\n' "$profile" '*' "$code" "$why"
-        continue
+    if test -z "$lab"; then
+        # No lab: podlab checks this host against the profile ipv6-only.
+        # Exit 3: no part fails, and a part is unseen; the rows run.
+        "$podlab" check ipv6-only --network "$host_name:443" --network-literal "$host_literal" \
+            >"$work/$profile.lab.txt" 2>&1
+        code=$?
+        why=$({ grep -E '^ +fails ' "$work/$profile.lab.txt"; grep -E '^ +unseen ' "$work/$profile.lab.txt"; } |
+            head -n 1 | sed 's/^ *//')
+        case $code in
+        0) printf '%-22s %-17s pass\n' "$profile" podlab-check ;;
+        3) printf '%-22s %-17s n.a.: a part is unseen: %s\n' "$profile" podlab-check "$why" ;;
+        *)
+            printf '%-22s %-17s n.a.: the host does not hold ipv6-only (exit %s): %s\n' "$profile" '*' "$code" "$why"
+            continue
+            ;;
+        esac
+    else
+        # $lab is the profile, or options and the profile: split it.
+        # shellcheck disable=SC2086
+        "$podlab" run $lab -- /bin/true >"$work/$profile.lab.txt" 2>&1
+        code=$?
+        if test $code -ne 0; then
+            why=$(grep -v '^ ' "$work/$profile.lab.txt" | grep -v '^holds' | head -n 1)
+            printf '%-22s %-17s n.a.: the lab does not hold (exit %s): %s\n' "$profile" '*' "$code" "$why"
+            continue
+        fi
     fi
     if test "$profile" = allow-connect && ! start_proxy; then
         printf '%-22s %-17s fail: the stand-in proxy did not start\n' "$profile" '*'
@@ -1605,8 +1655,12 @@ for profile in "$@"; do
     for c in $cases; do
         log="$work/$profile.$c.txt"
         : >"$work/proxy.txt"
-        # shellcheck disable=SC2086
-        PODNET_NETNS_TEST_MEM=$mem_hook LANE_PROFILE=$profile "$podlab" run $lab -- /bin/sh "$self" --case "$c" "$podnet" "$work/$profile-$c" >"$log" 2>&1
+        if test -z "$lab"; then
+            LANE_DIRECT_NAME=$host_name LANE_PROFILE=$profile /bin/sh "$self" --case "$c" "$podnet" "$work/$profile-$c" >"$log" 2>&1
+        else
+            # shellcheck disable=SC2086
+            PODNET_NETNS_TEST_MEM=$mem_hook LANE_PROFILE=$profile "$podlab" run $lab -- /bin/sh "$self" --case "$c" "$podnet" "$work/$profile-$c" >"$log" 2>&1
+        fi
         code=$?
         case $code in
         0) result=pass ;;

@@ -49,7 +49,13 @@ loopback that stays, as podnet measured.
   (`src/resolve.rs`; `pod_dns::route::has_default_route`).
 * Direct dials alternate the families and go on to the next address after
   250 ms (`PodUtils/podcrates:crates/pod-proxy/src/race.rs`, `dial_addrs`).
-  Inferred.
+  Inferred. The rows `net-bench` and `net-exit` of the lane row
+  `ipv6-host` dial a name with A and AAAA records directly on the host of
+  `scripts/v6only/` (`docs/development.md`, The row ipv6-host).
+* The lab of `podlab run ipv6-only` has no route out: its IPv6 address
+  `fd00:6c61:62::1` is on the loopback of the lab. A row in the lab does
+  not reach a real IPv6 network. The row `ipv6-host` runs the rows of the
+  profile on a real IPv6-only host, with no lab.
 
 ## The commands of podnet in the class
 
