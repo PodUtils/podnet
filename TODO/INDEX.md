@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**616 entries: 1 open, 11 partial, 29 blocked, 575 done.**
+**617 entries: 1 open, 11 partial, 29 blocked, 576 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 3 | 93 | 98 |
 | P2 | 0 | 3 | 11 | 303 | 317 |
-| P3 | 1 | 6 | 15 | 178 | 200 |
-| **All** | 1 | 11 | 29 | 575 | 616 |
+| P3 | 1 | 6 | 15 | 179 | 201 |
+| **All** | 1 | 11 | 29 | 576 | 617 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -662,3 +662,4 @@ M8 Overlays, M9 Later.
 | [T-615](fixes.md) | P2 | S | M5 | defect | done | offline announce gives a raw I/O error and exit 1 on a host with no UDP |
 | [T-616](fixes.md) | P2 | S | M5 | defect | done | A Unix socket of net proxy and net switch stays after a clean stop, and a foreign socket gives exit 1 |
 | [T-617](fixes.md) | P3 | S | M5 | defect | done | The reason of a policy refusal says "refuse it", not "refuses it" |
+| [T-618](fixes.md) | P3 | S | M5 | defect | done | With a CA file, podnet-ca.pem beside the binary is not read, and no line says so |

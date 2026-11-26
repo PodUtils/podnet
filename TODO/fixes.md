@@ -17465,3 +17465,40 @@ cargo test --lib policy
 2026-11-26, the commit of this entry. The tests `each_refusal_reads_back_as_its_rule` and
 `each_shape_of_a_refusal_gives_the_step_of_the_policy` pass, and `cargo test -p podnet-netns --lib rules`
 (18 tests) pass with the new words.
+
+# T-618: With a CA file, podnet-ca.pem beside the binary is not read, and no line says so
+
+**Source:** T-128 (2026-11-26): a test of the `derp` row of `doctor` on a host with `SSL_CERT_FILE` set.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+With `--ca-file` or `SSL_CERT_FILE`, podnet uses that file alone and does not read `podnet-ca.pem` beside the binary,
+as `podnet man` says. A user who puts a root in `podnet-ca.pem` then gets a TLS failure, and the hint of an unknown
+issuer said that `podnet-ca.pem` "adds to" the roots. No line said that the file was not read.
+
+## Premise
+
+- Read: `context` of `crates/podnet-core/src/trust.rs`; `Words::unknown_issuer_hint` of `pod-tls` `v0.86.0`.
+
+## Approach
+
+1. With a CA file, the hint names that file and its source, and does not name `podnet-ca.pem`.
+2. A `podnet-ca.pem` beside the binary that is not read gives one warning line: the file, the source that replaces the
+   roots, and what to do.
+3. A table test of the words.
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib trust
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_ca_file_names_itself_in_the_hint_and_the_file_beside_is_said` (no
+CA file; `SSL_CERT_FILE` with and without a file beside the binary; `--ca-file` with one) passes.

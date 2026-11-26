@@ -52,23 +52,55 @@ pub fn set_ca_file(path: PathBuf) {
 pub fn context() -> &'static Arc<Context> {
     static CONTEXT: OnceLock<Arc<Context>> = OnceLock::new();
     CONTEXT.get_or_init(|| {
-        let mut words = Words::new("podnet");
-        words.replace_roots = format!("--ca-file FILE or {CA_FILE_VARIABLE}");
-        words.add_roots = Some(format!("{BESIDE_BINARY} beside the binary"));
-        let mut settings = Settings::new(words);
-        settings.ca_file = CA_FILE
+        let replacing = CA_FILE
             .get()
-            .map(|path| CaFile::new("--ca-file", path.clone()))
+            .map(|path| ("--ca-file", path.clone()))
             .or_else(|| {
                 std::env::var_os(CA_FILE_VARIABLE)
                     .filter(|v| !v.is_empty())
-                    .map(|v| CaFile::new(CA_FILE_VARIABLE, v))
+                    .map(|v| (CA_FILE_VARIABLE, PathBuf::from(v)))
             });
-        settings.extra_bundle = crate::self_exe::this_binary()
+        let beside = crate::self_exe::this_binary()
             .and_then(|exe| exe.parent().map(|dir| dir.join(BESIDE_BINARY)));
+        let (words, ignored) = words_of(replacing.as_ref(), beside.as_deref());
+        if let Some(line) = ignored {
+            tracing::warn!(kind = "tls.roots", "{line}");
+        }
+        let mut settings = Settings::new(words);
+        settings.ca_file = replacing.map(|(source, path)| CaFile::new(source, path));
+        settings.extra_bundle = beside;
         let provider = Arc::new(rustls::crypto::ring::default_provider());
         Arc::new(Context::new(provider, settings))
     })
+}
+
+/// The words of the hint of an unknown issuer, and a line when
+/// `podnet-ca.pem` is beside the binary but a CA file replaces the roots
+/// (T-618). With a CA file, the hint names that file alone: the file beside
+/// the binary is not read then.
+fn words_of(
+    replacing: Option<&(&str, PathBuf)>,
+    beside: Option<&std::path::Path>,
+) -> (Words, Option<String>) {
+    let mut words = Words::new("podnet");
+    match replacing {
+        None => {
+            words.replace_roots = format!("--ca-file FILE or {CA_FILE_VARIABLE}");
+            words.add_roots = Some(format!("{BESIDE_BINARY} beside the binary"));
+            (words, None)
+        }
+        Some((source, path)) => {
+            words.replace_roots = format!("the file of {source} ({})", path.display());
+            let ignored = beside.filter(|b| b.is_file()).map(|b| {
+                format!(
+                    "{} is not read: {source} ({}) replaces the roots; put its roots in that file",
+                    b.display(),
+                    path.display()
+                )
+            });
+            (words, ignored)
+        }
+    }
 }
 
 /// The trust of each WebSocket and relay connection (`pod-ws`, `pod-relay`):
@@ -128,6 +160,54 @@ mod tests {
             .unwrap()
             .with_root_certificates(rustls::RootCertStore::empty())
             .with_no_client_auth()
+    }
+
+    /// T-618: with a CA file, the hint names that file, not the file beside
+    /// the binary, and a file beside the binary gives one line.
+    #[test]
+    fn a_ca_file_names_itself_in_the_hint_and_the_file_beside_is_said() {
+        let dir = tempfile::tempdir().unwrap();
+        let beside = dir.path().join(BESIDE_BINARY);
+        type Case<'a> = (Option<(&'a str, PathBuf)>, bool, &'a str, Option<&'a str>);
+        let cases: [Case; 4] = [
+            (None, true, "--ca-file FILE or SSL_CERT_FILE", None),
+            (
+                Some(("SSL_CERT_FILE", "/b.pem".into())),
+                false,
+                "SSL_CERT_FILE (/b.pem)",
+                None,
+            ),
+            (
+                Some(("SSL_CERT_FILE", "/b.pem".into())),
+                true,
+                "SSL_CERT_FILE (/b.pem)",
+                Some("is not read"),
+            ),
+            (
+                Some(("--ca-file", "/c.pem".into())),
+                true,
+                "--ca-file (/c.pem)",
+                Some("--ca-file (/c.pem) replaces"),
+            ),
+        ];
+        for (replacing, present, hint, line) in cases {
+            if present {
+                std::fs::write(&beside, "").unwrap();
+            } else {
+                let _ = std::fs::remove_file(&beside);
+            }
+            let (words, ignored) = words_of(replacing.as_ref(), Some(&beside));
+            let text = words.unknown_issuer_hint();
+            assert!(text.contains(hint), "{text}");
+            assert_eq!(text.contains("adds to them"), replacing.is_none(), "{text}");
+            match line {
+                Some(want) => assert!(
+                    ignored.as_deref().unwrap_or("").contains(want),
+                    "{ignored:?}"
+                ),
+                None => assert!(ignored.is_none(), "{ignored:?}"),
+            }
+        }
     }
 
     // The relay and the WebSocket clients take the configuration of the
