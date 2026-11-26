@@ -17533,3 +17533,391 @@ cargo test -p podnet-core --lib trust
 
 2026-11-26, the commit of this entry. The test `a_ca_file_names_itself_in_the_hint_and_the_file_beside_is_said` (no
 CA file; `SSL_CERT_FILE` with and without a file beside the binary; `--ca-file` with one) passes.
+
+# T-620: podnet: an unknown flag or command says that a newer release knows it
+
+**Source:** GitHub #786 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). The binary `0.4.0-beta.21` gives each unknown flag or command (`--bogus-flag`, `tunel`, `frobnicate`, `tunnel --bogus`) the line `podnet 0.4.0-beta.20 does not know 'X'; a newer release can: podnet update --check`, with exit 64. `podnet update --check` says that no newer release exists. No connection is made before the line. Promise: one true line that names the cause and says what to do; `man exit-status` 64.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+An unknown flag or command gets the line that a newer release can know it. The line is false for a typing mistake (`tunel`) and for a word that no release has. It sends the user to an update that does not help, and it can hide the tip of clap ("a similar subcommand exists").
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `src/cli/argv.rs` and `src/cli/help.rs` (the line "a newer release can"). The first step of the work is to read it.
+
+## Approach
+
+1. The line names a newer release only when a check of the release says that one exists (one try, a short limit, no failure shown); else it gives no such line.
+2. Keep the tip of clap. For an unknown word, point to `podnet --help`.
+3. A table test of the words: typing mistake, unknown word, unknown flag.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet cli::argv::an_unknown_word_does_not_promise_a_newer_release
+```
+
+# T-621: exit: the run does not end when the client closes stdin
+
+**Source:** GitHub #787 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). `podnet exit --stdio --no-proxy`: the client sends SOCKS5 CONNECT to 127.0.0.1:18999 (a server that accepts and never writes or closes), reads the reply, and closes stdin. The process still runs after 90 s, with nothing on stderr. With a target that closes, the run ends at once with exit 0. Promise: `podnet exit --help` and `docs/proxies.md:172-173`: "The run ends when the client closes stdin."
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+After the client closes stdin, `podnet exit --stdio` does not end while the remote end keeps its side open. The process (and the SSH channel or `exec:` road above it) stays with no time limit.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `src/exit_stdio.rs` (the copy of the stream). The first step of the work is to read it.
+
+## Approach
+
+1. When stdin reaches the end, shut the write side of the target, and end the copy after a short limit if the target does not close.
+2. Exit 0 as the document says.
+3. A test with a target that never closes: the run ends after the end of stdin.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet exit_stdio::the_run_ends_when_stdin_closes_and_the_target_stays_open
+```
+
+# T-622: stat: a peer name that does not resolve exits 1, not 68
+
+**Source:** GitHub #788 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). `podnet stat --peer x.invalid:9 --count 3` writes `podnet: x.invalid:9: failed to lookup address information: Name does not resolve` and exits 1. Other commands give 68, with a second line (`--resolve HOST=IP`), and they try DNS over HTTPS. Promise: `podnet man exit-status`, 68 (no-host): "The address of a peer does not resolve."
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`stat` exits 1 for a name that does not resolve. The line has no next step, and `stat` does not use the shared resolver path.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `src/cli/cmd/` (the `stat` command) and the resolver path of the other commands. The first step of the work is to read it.
+
+## Approach
+
+1. Resolve the peer through the shared resolver path (the second path: DNS over HTTPS).
+2. A failure of the name exits 68 with the hint `--resolve HOST=IP`.
+3. A table test for the exit code.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet stat::a_peer_name_that_does_not_resolve_exits_68
+```
+
+# T-623: derp node: the error line repeats the same proxy cause for each of about 100 servers
+
+**Source:** GitHub #789 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). `podnet derp node --to 127.0.0.1:18200 --peer CEAJEQSR-... --proxy http://127.0.0.1:1` writes `no DERP server took the node:` and the cause `could not reach the proxy 127.0.0.1:1: Connection refused` for each of about 100 servers (more than 9000 characters). Exit 69 and the second line are correct. Promise: one line that names each cause once; `doctor` writes "...; and 11 more that did not" and `warp proxy` writes "each host failed: 2 hosts (...)".
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The one cause of the proxy is on the line about 100 times. No server was tried.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `src/derp.rs` (the line "no DERP server took the node"). The first step of the work is to read it.
+
+## Approach
+
+1. Group the servers by cause: one cause with the count and the first names, as `doctor` does.
+2. When the proxy is the cause, stop after the first failure of the proxy hop (no server was tried).
+3. A table test with 100 servers and one cause.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet derp::the_error_line_names_one_cause_once
+```
+
+# T-624: ssh-relay: a relay that is never reached makes the command retry with no end and no exit code
+
+**Source:** GitHub #790 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). `podnet ssh-relay` with a dead proxy, a refused port (`--server 127.0.0.1:1`), a name under `.invalid`, or a server that never answers (127.0.0.1:18999) retries each 30 s with no end (`timeout 45` ended it). No exit code (69 or 68). With a server that does not answer, no line is written. With `--detach`, the start waits for `--ready-timeout` (240 s). Promise: `docs/relay.md:259-260` (a session that ran is tried again); `man exit-status` 69 and 68; `tunnel`, `connect`, `relay connect`, `derp node` and `warp proxy` end at the first start with 69 or 68.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`ssh-relay` never ends when the relay is not reached at the first start. A script gets no exit code. A server that does not answer gives no line.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `crates/podnet-serve/src/relay/supervise.rs` (the supervisor) and the start of `ssh-relay`. The first step of the work is to read it.
+
+## Approach
+
+1. The first start that fails ends the command with 69 (68 for a name that does not resolve) and the line of the cause. The backoff stays for a session that ran.
+2. A server that does not answer gets a limit and a line.
+3. Write the rule in `docs/relay.md`.
+
+## Prove
+
+```sh
+cargo test -p podnet-serve --lib relay::supervise::a_first_start_that_fails_ends_with_the_exit_code
+```
+
+# T-625: connect: a TLS server that does not answer gets a hint that names a wrong cause
+
+**Source:** GitHub #791 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). A server on 127.0.0.1:18999 accepts and never writes. `podnet connect --no-proxy wss://127.0.0.1:18999/__podnet/ws -L tcp://127.0.0.1:18080` writes `TLS to 127.0.0.1: no answer in 20 s`, then `the network ended the connection before the TLS handshake was done`, exit 69 after 20 s. `bench` gives the hop `connect` (exit 1) and `relay connect` gives the hop `tls` (CA root, clock) for the same fault. Promise: one line that names each cause once and says what to do.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The two lines of `connect` contradict each other: the TCP connect worked, and the peer was silent. Three commands give three hops and hints for one fault.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `src/cli/cmd/connect.rs` and `crates/podnet-core/src/hop.rs` (the hint of the hop). The first step of the work is to read it.
+
+## Approach
+
+1. A silent peer after the TCP connect is one kind of fault with one hop and one hint (the peer does not answer the handshake: check the service and that it speaks TLS).
+2. The three commands use the same mapping.
+3. A table test of the three commands.
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib hop::a_silent_tls_peer_gets_one_hint
+```
+
+# T-626: relay connect: a pair name with an upper-case letter passes the check, and the relay refuses it with exit 69
+
+**Source:** GitHub #792 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). `podnet relay connect ... --token abc UPPER` (and `Upper`) writes `the relay refused the session to UPPER: HTTP 400: reverse: use /v1/node/<name>, ...` and exits 69. The same name in lower case reaches the token check. Other bad names (`x/y`, `A B`) exit 64 with no request. Promise: `docs/relay.md:55`: "A name that is not a valid pair name exits 64."
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The local check lets an upper-case name pass. The relay refuses it, and its text speaks of URL paths, not of the name.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: the check that writes `is not a pair name` (`src/link_p2p.rs`, `src/cli/argv.rs`) and the rule of the relay. The first step of the work is to read it.
+
+## Approach
+
+1. Make the local check equal to the rule of the relay: an upper-case letter exits 64 with `is not a pair name (upper-case letters are not allowed)`.
+2. Use one function for the client and the relay.
+3. A table test of the names.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet a_pair_name_with_an_upper_case_letter_exits_64
+```
+
+# T-627: serve: --add-user writes the notice of a foreground server
+
+**Source:** GitHub #793 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). `printf '%s\n' 'pw-alice-123' | podnet serve --add-user alice:read --users users` (stdin not a terminal) writes `podnet serve runs in the foreground until a stop signal ... add --detach ... or --run-for SECS` before `the user alice (read) is in users`, exit 0. The same notice comes with a bad role (exit 64). `--hash-password` writes no notice. Promise: `docs/serve.md:223-231`: `--add-user` serves nothing.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+`serve --add-user` is a one-shot command, but it writes the notice of a foreground server, with two wrong tips.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `src/cli/cmd/serve.rs` and `src/cli/cmd/serve_users.rs` (where the notice is written; `--hash-password` skips it). The first step of the work is to read it.
+
+## Approach
+
+1. Write the notice only when the server starts: not for `--add-user` and not for `--hash-password`.
+2. A table test of the one-shot flags.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet cli::cmd::serve::a_one_shot_serve_flag_writes_no_foreground_notice
+```
+
+# T-628: serve: the upload example of docs/serve.md gets 409 as written
+
+**Source:** GitHub #794 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). The example of `docs/serve.md:255-258` (`podnet serve --dir ./share --list --upload --users users --local 127.0.0.1:8080` and `curl -fsS -u bob -T report.pdf http://127.0.0.1:8080/inbox/report.pdf`) gets 409 with a new `./share`: nothing makes `./share/inbox`. The example does not show how `bob` gets the role `write`. Promise: `docs/serve.md:239-240`: "The directory of PATH must exist (else 409)."
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The example does not run as written.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `docs/serve.md:223-260`. The first step of the work is to read it.
+
+## Approach
+
+1. Add `mkdir -p share/inbox`, or use a path at the root of the share.
+2. Add the step `--add-user bob:write` before the example.
+3. Run the example as written in a new directory.
+
+## Prove
+
+```sh
+cargo test --workspace docs_examples::the_upload_example_of_serve_md_runs_as_written
+```
+
+# T-629: connect: a CONNECT that the proxy refuses with 403 is reported as "could not reach the proxy"
+
+**Source:** GitHub #795 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). In the lab `proxy-only` (the proxy takes the ports 443, 80 and 8443, and answers 403 for port 22): `podnet connect wss://example.com:22/x`, `relay connect --relay https://example.com:22` and `send --mailbox wss://example.com:22/v1` write `could not reach the proxy http://127.0.0.1:3128: the proxy refused CONNECT with HTTP 403: Forbidden`. `connect` adds `the proxy hop failed; check the proxy URL, its user and password, and the allow-list`. `bench` gives a correct line. Promise: one line that names each cause once and says what to do.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The proxy was reached and it refused the target. The line says "could not reach the proxy" and does not name the target port that the proxy refused, so the user does not see that port 443 can pass.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `src/egress.rs` (`dial_failure`, `failed`) and the WebSocket client path of `connect`, `relay connect` and `send`; `bench` has the correct text. The first step of the work is to read it.
+
+## Approach
+
+1. A refusal of CONNECT with a status names the proxy and the target (`example.com:22`): "the proxy X refused CONNECT to example.com:22 with HTTP 403"; the hint names the allow-list of the ports of the proxy.
+2. The three WebSocket clients use the text of `bench` (one function).
+3. A table test of the status codes 403 and 407.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet egress::a_connect_refused_by_the_proxy_names_the_target
+```
+
+# T-630: warp: a WARP identity file with mode 0644 exits 78, but man exit-status gives 71
+
+**Source:** GitHub #796 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). `podnet warp status --identity w644.json` and `warp proxy --identity badwarp.json` (mode 0644) write `has mode 0644: other users may read the WARP key. Run: chmod 600 ...` and exit 78. `link listen` gives 71 for the same class of fault. Promise: `man exit-status` 71 (os-error): a key file with a mode that lets other users change it (the key: any access), a file of another user; 78 is a configuration. `docs/warp.md:43` says 78 for a file of another user.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The WARP key file with a wrong mode exits 78, not 71. The documents disagree.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `src/warp/export/check.rs` (the mode check) and `docs/warp.md:43`. The first step of the work is to read it.
+
+## Approach
+
+1. The mode check of the identity file and the owner check exit 71.
+2. Fix `docs/warp.md:43` and the other documents of the exit codes to say 71.
+3. A table test: mode and owner give 71.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet warp::a_warp_identity_with_a_wrong_mode_exits_71
+```
+
+# T-631: warp proxy: the help and docs/warp.md give two rule kinds, but the binary takes four
+
+**Source:** GitHub #797 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). `podnet warp proxy --identity warp.json -r port:22=reject -r tcp:1.2.3.4:5=direct --check` works. The error for `foo:bar=tunnel` names four kinds (domain, cidr, port, tcp). The help of `-r, --rule` and `docs/warp.md:171-174` name two (domain, cidr). Promise: the help and the document of `warp proxy --rule`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+The help and the document do not name `port:` and `tcp:`, or their form and meaning (for example, whether `port:` matches each host, as in `podnet pod --rule`).
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `src/cli/cmd/net/proxy.rs` (the help text of `--rule`) and `docs/warp.md:160-180`. The first step of the work is to read it.
+
+## Approach
+
+1. Write the four kinds, their form and their meaning in the help and in `docs/warp.md` (same words as `docs/pods.md`).
+2. A test that each kind of the parser appears in the help.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet cli::cmd::net::proxy::the_help_names_each_rule_kind
+```
+
+# T-632: pod: --log-format json does not apply to the podnet pod: lines
+
+**Source:** GitHub #798 (`[qa 0.4.0-beta.21]`, the QA pass of 0.4.0-beta.21, 2026-11-26). `podnet --log-format json pod ...` writes each `podnet pod:` line as plain text: the warning about the upstream, the `--name-backend` line, the line of a refused rule and the usage error (`no proxy: give -x PROXY ...`, exit 64). `connect` follows the flag, also for the last error line (one JSON object with `exit_code`). Promise: `podnet --help` `--log-format` and `docs/cli.md:19`: "The log on stderr as text, or as one JSON object for each line."
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** open
+
+## Problem
+
+A program that reads the log of podnet as JSON cannot parse the `podnet pod:` lines. The lines of the program in the pod are not in scope.
+
+## Premise
+
+- Read: the text of the issue.
+- Not read: `crates/podnet-netns` and the pod command (`src/cli/cmd/`), the writer of the `podnet pod:` lines. The first step of the work is to read it.
+
+## Approach
+
+1. Write each `podnet pod:` line through the log (tracing) as the other commands do, so `--log-format json` applies, and the last error line has `exit_code`.
+2. Keep the text form as it is.
+3. A test: with `--log-format json`, each stderr line of podnet is JSON.
+
+## Prove
+
+```sh
+cargo test --workspace pod_log_format::each_podnet_pod_line_is_json_with_log_format_json
+```

@@ -470,5 +470,18 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #783 | COORD-138: pod-derp: podnet takes it (derp node, derp connect, send --derp); neutral names of the derper tests (to podcrates) | open (a COORD issue between sessions; the asks of T-128) | none |
 | #784 | COORD-139: podnet pod removes its inbound sockets at its end; in v0.4.0-beta.21 (to podrunner) | open (a COORD issue between sessions; the answer of T-619 to PodUtils/podrunner#369) | none |
 | #785 | COORD-140: pod-egress: a parser of a Trojan request on the accept side; the accept-side API of Shadowsocks (to podcrates) | open (a COORD issue between sessions; the asks of T-294 and T-295) | none |
+| #786 | [qa 0.4.0-beta.21] podnet: an unknown flag or command says that a newer release knows it | open (T-620) | T-620 |
+| #787 | [qa 0.4.0-beta.21] exit: the run does not end when the client closes stdin | open (T-621) | T-621 |
+| #788 | [qa 0.4.0-beta.21] stat: a peer name that does not resolve exits 1, not 68 | open (T-622) | T-622 |
+| #789 | [qa 0.4.0-beta.21] derp node: the error line repeats the same proxy cause for each of about 100 servers | open (T-623) | T-623 |
+| #790 | [qa 0.4.0-beta.21] ssh-relay: a relay that is never reached makes the command retry with no end and no exit code | open (T-624) | T-624 |
+| #791 | [qa 0.4.0-beta.21] connect: a TLS server that does not answer gets a hint that names a wrong cause | open (T-625) | T-625 |
+| #792 | [qa 0.4.0-beta.21] relay connect: a pair name with an upper-case letter passes the check, and the relay refuses it with exit 69 | open (T-626) | T-626 |
+| #793 | [qa 0.4.0-beta.21] serve: --add-user writes the notice of a foreground server, but it is a one-shot command | open (T-627) | T-627 |
+| #794 | [qa 0.4.0-beta.21] serve: the upload example of docs/serve.md gets 409 as written | open (T-628) | T-628 |
+| #795 | [qa 0.4.0-beta.21] connect: a CONNECT that the proxy refuses with 403 is reported as "could not reach the proxy" | open (T-629) | T-629 |
+| #796 | [qa 0.4.0-beta.21] warp: a WARP identity file with mode 0644 exits 78, man exit-status gives 71 for this cause | open (T-630) | T-630 |
+| #797 | [qa 0.4.0-beta.21] warp proxy: the help and docs/warp.md give two rule kinds, but the binary takes four | open (T-631) | T-631 |
+| #798 | [qa 0.4.0-beta.21] pod: --log-format json does not apply; the lines of the pod stay plain text | open (T-632) | T-632 |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.
