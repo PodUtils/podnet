@@ -132,8 +132,8 @@ Each call is in its entry, and the work goes on with it until the owner rules ot
 - T-103: an inflate decoder for the zip of a directory (own code or a pure Rust crate), in the
   shared crate that reads the zip.
 - T-112: `--host-gateway` off by default.
-- T-126 to T-130: the extra egress roads, the DERP carrier, ACME, iroh and a relay of podnet's
-  own have no ruling; each asks the owner before its work starts.
+- T-126 to T-129: the extra egress roads, ACME and the DERP carrier start on the released crates (`docs/decisions.md`,
+  2026-11-26, The work of wave 4 starts). T-130 (iroh, a relay of podnet's own) still asks the owner first.
 
 ## Owner actions
 
