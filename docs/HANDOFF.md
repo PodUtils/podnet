@@ -1,17 +1,21 @@
 # Handoff
 
-The product work state at 2026-11-26 11:45 (UTC). Start a hosted checkout with
+The product work state at 2026-11-26 17:20 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
 
 **podrunner first** (the owner, 2026-11-18; `docs/decisions.md`). The order: a red run of podnet's CI; each ask of
 podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-137); podnet's own work in the order of
-`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.86.0`, taken in T-612) at 11:45.
+`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.86.0`, taken in T-612) at 17:20.
 
 ## Where the code is
 
 * All finished work is on `main`. Use the pinned Rust toolchain from [Hosted sessions](hosted-sessions.md).
+* Done on 2026-11-26 (17:20): T-127, T-128, T-129 and T-321 (each proven by its `live` step against a real server:
+  ssserver, Xray-core, wisp-server-python, derper, Pebble, coturn), T-294 (the service `ss`), T-618, T-619 (the inbound
+  sockets of `pod`, PodUtils/podrunner#369, answered by COORD-139 #784). T-358 step 1 `ipv6-only`: the row `ipv6-host`
+  passed in `live` 45861374486; `gate.yml` runs on `8712a9c` for its Prove. Blocked: T-295 (COORD-140 #785).
 * Done on 2026-11-26 (11:45): T-609 (the ICMP step of `live` 45802633188). Built and partial: T-129 (ACME; the Pebble
   step of `live`; COORD-135 #780), T-244 (`tunnel --inspect`, `clear`, the measurements; COORD-136 #781), T-127 (VLESS,
   Shadowsocks, Wisp; the steps against real servers in `live`; COORD-137 #782).
@@ -44,18 +48,14 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 ## The next steps, in order
 
-1. **One agent works in a worktree** (`.claude/worktrees/`): T-128 (the DERP carrier, `pod-derp`). Review its commit,
-   take it onto `main`, and write the record (it does not edit `TODO/INDEX.md`, `PROGRESS.md`, `issues.md`,
-   `github.txt`).
-2. **The proofs that wait for a run of `live` on `9b084ce` or later:** T-321 (the coturn step, now on port 47478), T-129
-   (the Pebble step), T-127 (the steps of `ssserver`, Xray-core and wisp-server-python). Fix a step that fails; mark
-   each entry done when its steps pass and its COORD asks are only extensions.
-3. **T-358:** step 1 `ipv6-only` (no IPv6 on the runner).
-4. **Each tag of podcrates:** COORD-130 (#760, the headscale harness: T-114, T-115), COORD-134 (#779, T-614).
-5. **The next beta (`v0.4.0-beta.21`):** the black-box QA pass first, when the batch above is green. The notes name the
-   breaking change: a network spec `https://` is now a TLS proxy.
-6. Waits for a run or a tag: T-414 and T-415 (a warning of their `live` steps), T-478 (blocked on T-406), T-488 (runs
-   that the quota limits), T-123 and T-124 (`pod-ts`).
+1. **The black-box QA pass of `v0.4.0-beta.21`** runs on the artifact of `ci` 45856630710 (`bffca86`), with podlab
+   `v0.86.0`. Triage each finding `[qa 0.4.0-beta.21]` into an entry; fix each P1 and P2 finding.
+2. **T-358:** mark it done when `gate.yml` on `8712a9c` passes (its Prove).
+3. **The release of `v0.4.0-beta.21`:** after the QA pass, the dry run, then `publish`; a COORD issue `(to all)` with the
+   files and digests; answer PodUtils/podrunner#369 (COORD-139 #784) with the version.
+4. **Each tag of podcrates:** COORD-130 (#760), COORD-134 (#779), COORD-135 to COORD-138 (#780 to #783), COORD-140 (#785).
+5. Waits for a run or a ruling: T-414 and T-415 (a warning of their `live` steps), T-478 (blocked on T-406), T-488,
+   T-123 and T-124 (`pod-ts`), T-001 (the owner).
 
 ## Facts for the next session
 
