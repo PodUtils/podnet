@@ -733,7 +733,7 @@ COORD-137 (#782) extend the crate; podnet drops its retry of a Wisp road at the 
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -804,6 +804,15 @@ through a derper on the runner" now also checks the row with `--derp-server loca
 server; `via` is `DERP localhost:8443`). The certificate of the derper goes into `podnet-ca.pem` beside a copy of the
 binary: that file adds to the roots, so the public mailbox keeps its trust; `--ca-file` and `SSL_CERT_FILE` replace
 all roots. The step "podnet doctor" asserts `derp.status == "ok"` for the fleet. Waits: a pass of these steps in `live`.
+
+## Done
+
+2026-11-26, `243ce625`, `5202490b` and `56d6bc77`. `live` 45846666989 (`55827e9`) passed the step "The DERP road
+through a derper on the runner" (derper v1.104.4 with a certificate of the run): 4 MiB come back through
+`derp node` and `derp connect`, an unadmitted client exits 77, the row `derp` of `doctor --derp-server` is `ok`, and
+8 MiB go by `send --derp` and `receive` with `via` `DERP localhost:8443`. The tests `derp_each_session_ends_with_its_code`,
+`derp_the_command_line_refuses_each_bad_value`, `derp_a_transfer_takes_the_derp_way_by_its_rules` and
+`each_shape_of_answer_gives_its_row` pass. COORD-138 (#783) asks podcrates for neutral names of its derper tests.
 
 # T-129: An ACME client for a public listener
 

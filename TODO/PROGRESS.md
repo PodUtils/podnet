@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 618 entries: 1 open, 9 partial, 28 blocked, 580 done.
+`TODO/INDEX.md` holds 618 entries: 1 open, 8 partial, 28 blocked, 581 done.
 
 ## State
 
@@ -75,8 +75,7 @@ not wait for a larger one.
    2026-11-13, The transfer layer). Each entry is done (the TCP part of the direction split too, 2026-11-26).
 8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.
 9. **M8, the overlays:** T-114 and T-115 (blocked: a shared headscale harness, COORD-130 #760), T-247 (blocked: a NetBird account).
-10. **M9, later:** T-128 (the DERP road of `pod-derp`: built; its `live` transfer step waits for a run). T-123 and
-    T-124 are blocked: podcrates `v0.86.0` has no `pod-ts` (the entry of `pod-ts` in podcrates is open). The proxy of
+10. **M9, later:** T-123 and T-124 are blocked: podcrates `v0.86.0` has no `pod-ts` (the entry of `pod-ts` in podcrates is open). The proxy of
     the process `https://` is T-614, blocked on COORD-134 #779. T-001: edit GitHub #89 into a guide that a new client
     tests from (blocked: the owner).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
