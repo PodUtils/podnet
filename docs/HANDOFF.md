@@ -1,6 +1,6 @@
 # Handoff
 
-The product work state at 2026-11-26 21:10 (UTC). Start a hosted checkout with
+The product work state at 2026-11-26 21:30 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -31,11 +31,12 @@ PodUtils/podrunner#369, has its fix on `main` (T-619) and its answer (COORD-139 
 
 ## The next steps, in order
 
-1. **The black-box QA pass of `v0.4.0-beta.21`** runs (an agent with `scripts/agent/qa-pass.md`) on the artifact of
-   `ci` 45856630710 (`bffca86`, SHA-256 `c59abeac...76`), with the docs of that commit and podlab `v0.86.0`, in
-   `/var/tmp/qa/b21` (not in git). Each finding is a GitHub issue `[qa 0.4.0-beta.21] ...`. When the pass ends (or in a
-   new session, when no agent runs): triage each finding into an entry, map it in `TODO/issues.md` and
-   `TODO/github.txt`, and fix each P1 and P2 finding. With no pass result, run the pass again with the same prompt.
+1. **The findings of the QA pass of `v0.4.0-beta.21`** (#786 to #798; the pass ended, its summary is the last comment
+   of #786): the entries are T-620 to T-632 (P2: T-620, T-621, T-622, T-623, T-624, T-629; the rest P3). Four agents
+   work in worktrees: the triage of the entries (TODO only), group A (T-620, T-622, T-625, T-629: the error lines of a
+   dial), group B (T-621, T-624, T-632: `exit --stdio`, `ssh-relay`, `pod --log-format json`), group C (T-623, T-626,
+   T-627, T-628, T-630, T-631: texts and documents). Take each commit onto `main`, write the Done sections, and close the
+   issues through the record. With no agent running (a new session), take the entries one by one.
 2. **The release of `v0.4.0-beta.21`** (`docs/maintenance.md`, Release): set the version; take the notes from
    `wip/beta21-release-notes` into `docs/releases/v0.4.0-beta.21.md` and add the fixes of the QA pass; push; wait for
    `ci`, `live` and `gate.yml` on that commit; the dry run of `release.yml`; then `publish=v0.4.0-beta.21`; check
