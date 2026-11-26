@@ -57,6 +57,7 @@ impl Network for Chain {
                     .up(&Ctx {
                         below: below.clone(),
                         state_dir: ctx.state_dir.clone(),
+                        name: ctx.name.clone(),
                     })
                     .await;
                 let step = up.map_err(|e| {

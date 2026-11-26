@@ -24,7 +24,6 @@
 //! network comes up. No text of this module holds a password, and no log
 //! line or JSON document holds one (TURN-5).
 
-use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -34,6 +33,13 @@ use pod_turn::{
 };
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::Instant;
+
+#[path = "turn/account.rs"]
+mod account;
+
+#[cfg(test)]
+pub(super) use account::account;
+pub(super) use account::{account_of, limits_of, suffix_of, Account};
 
 use super::turn_socket::{named, TurnDatagrams, TurnStage};
 use super::usage;
@@ -165,76 +171,6 @@ pub(super) fn parse(spec: &str) -> Result<Spec, Failure> {
 
 fn port_of(text: &str) -> Option<u16> {
     text.parse::<u16>().ok().filter(|p| *p != 0)
-}
-
-/// The user, the password and the realm of the allocations.
-#[derive(Clone)]
-pub(super) struct Account {
-    pub(super) user: String,
-    pub(super) password: String,
-    pub(super) realm: Option<String>,
-}
-
-impl Account {
-    #[cfg(test)]
-    pub(super) fn new(user: &str, password: &str) -> Account {
-        Account {
-            user: user.to_string(),
-            password: password.to_string(),
-            realm: None,
-        }
-    }
-}
-
-/// The user alone: the password never leaves the value as text.
-impl fmt::Debug for Account {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Account")
-            .field("user", &self.user)
-            .field("password", &"(hidden)")
-            .field("realm", &self.realm)
-            .finish()
-    }
-}
-
-/// Read the account with `get` (the variables of the environment). A fault
-/// names the variables and never holds a value.
-pub(super) fn account(get: &dyn Fn(&str) -> Option<String>) -> Result<Account, Failure> {
-    let set = |name: &str| get(name).filter(|v| !v.is_empty());
-    let user = set(USER_VARIABLE).ok_or_else(|| {
-        usage(format!(
-            "TURN needs a user: set {USER_VARIABLE} (and {PASSWORD_FILE_VARIABLE} or {PASSWORD_VARIABLE})"
-        ))
-    })?;
-    let password = match (set(PASSWORD_FILE_VARIABLE), set(PASSWORD_VARIABLE)) {
-        (Some(_), Some(_)) => {
-            return Err(usage(format!(
-                "set one of {PASSWORD_FILE_VARIABLE} and {PASSWORD_VARIABLE}, not both"
-            )))
-        }
-        (Some(file), None) => {
-            let text = std::fs::read_to_string(&file)
-                .map_err(|e| usage(format!("{PASSWORD_FILE_VARIABLE}: cannot read {file}: {e}")))?;
-            let line = text.strip_suffix('\n').unwrap_or(&text);
-            line.strip_suffix('\r').unwrap_or(line).to_string()
-        }
-        (None, Some(password)) => password,
-        (None, None) => {
-            return Err(usage(format!(
-                "TURN needs a password: set {PASSWORD_FILE_VARIABLE} (a file with one line) or {PASSWORD_VARIABLE}"
-            )))
-        }
-    };
-    if password.is_empty() {
-        return Err(usage(format!(
-            "{PASSWORD_FILE_VARIABLE}: the file holds no password"
-        )));
-    }
-    Ok(Account {
-        user,
-        password,
-        realm: set(REALM_VARIABLE),
-    })
 }
 
 /// The socket of TURN over UDP through the datagrams of the way below the
@@ -662,37 +598,6 @@ fn source(below: Option<&Arc<dyn Dial>>) -> Arc<dyn UdpSource> {
         }),
         None => Arc::new(SystemUdp::with_resolver(resolver)),
     }
-}
-
-/// Read the lifetime and the rate limit of the settings, and check them
-/// before any connection. A value that is not a number is a usage error
-/// that names the variable, never a value.
-pub(super) fn limits(
-    get: &dyn Fn(&str) -> Option<String>,
-) -> Result<(Limits, Option<u64>), Failure> {
-    let mut limits = Limits::default();
-    if let Some(text) = get(LIFETIME_VARIABLE).filter(|v| !v.is_empty()) {
-        let secs: u64 = text.parse().map_err(|_| {
-            usage(format!(
-                "{LIFETIME_VARIABLE} is the lifetime in seconds, a number: {text:?} is not one"
-            ))
-        })?;
-        if !(1..=3600).contains(&secs) {
-            return Err(usage(format!("{LIFETIME_VARIABLE} is 1 to 3600 seconds")));
-        }
-        limits.lifetime = Duration::from_secs(secs);
-        // A refresh comes before the end, at most at half of the lifetime.
-        limits.refresh_before = Duration::from_secs(secs / 2).max(Duration::from_secs(1));
-    }
-    let rate_limit = match get(RATE_LIMIT_VARIABLE).filter(|v| !v.is_empty()) {
-        Some(text) => Some(text.parse::<u64>().map_err(|_| {
-            usage(format!(
-                "{RATE_LIMIT_VARIABLE} is a number of bytes for each second"
-            ))
-        })?),
-        None => None,
-    };
-    Ok((limits, rate_limit))
 }
 
 /// Bring the network up. One allocation is made and ended at once: it

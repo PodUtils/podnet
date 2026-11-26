@@ -502,9 +502,12 @@ impl Network for SpecNetwork {
                 // The account comes from the environment, now and not at the
                 // parse: a parse reads no variable. The lifetime and the
                 // rate limit are settings too (GitHub #485, TURN-6).
+                // A network of a router file reads the variables with the
+                // suffix of its name when they are set (T-321).
                 let get = |name: &str| std::env::var(name).ok();
-                let account = turn::account(&get)?;
-                let (limits, rate_limit) = turn::limits(&get)?;
+                let suffix = turn::suffix_of(ctx.name.as_deref(), &get);
+                let account = turn::account_of(&get, &suffix)?;
+                let (limits, rate_limit) = turn::limits_of(&get, &suffix)?;
                 return Ok(turn::up(spec, account, ctx.below.as_ref(), limits, rate_limit).await?);
             }
             if let Kind::Devtunnel(spec) = &self.kind {

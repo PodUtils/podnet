@@ -337,10 +337,15 @@ fn main() {
         .build()
         .context("starting the async runtime")
         .and_then(|runtime| {
-            runtime.block_on(async {
+            let result = runtime.block_on(async {
                 install_signals();
                 async_main(cli).await
-            })
+            });
+            // T-592: a read of stdin blocks a thread of the runtime until
+            // the input ends, and a drop of the runtime waits for each such
+            // thread. The command is done: wait at most one second.
+            runtime.shutdown_timeout(std::time::Duration::from_secs(1));
+            result
         });
     podnet::detach::unregister();
     if let Err(err) = result {

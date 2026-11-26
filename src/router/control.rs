@@ -115,6 +115,7 @@ impl ControlState {
         let ctx = Ctx {
             below: None,
             state_dir: self.state_dir.as_ref().map(|d| d.join(name)),
+            name: Some(name.to_string()),
         };
         if let Some(dir) = &ctx.state_dir {
             std::fs::create_dir_all(dir)

@@ -2109,6 +2109,16 @@ it now says that the network makes an allocation for each flow and is not a prox
 `docs/router.md` says "UDP, and TCP over RFC 6062". Test: `cli::way_tests` (the refusal of `--egress turn://` and of
 `--egress turns://` before `pod`).
 
+2026-11-26, item (3), an account for each network (the commit of this entry). The call: a network `NAME` of a router
+file reads the TURN variables with the suffix `_NAME` (capitals, `-` as `_`) when `PODNET_TURN_USER_NAME` is set, else
+the variables of the process. The spec holds no account, as before. `Ctx` of `podnet-core` has `name`, which the router
+gives each network (`ctx_of`) and a chain gives each layer. `turn::account_of` and `turn::limits_of` read the variables
+with the suffix, and a fault names them. Test: `turn_a_router_network_reads_the_account_of_its_name` (two networks of
+one process with two accounts, a network with no own account, and a fault that names `PODNET_TURN_PASSWORD_FILE_LAB`);
+`cargo test -p podnet --lib networks::turn`: 20 passed. `docs/networks.md` and `docs/router.md`. What stays of T-321:
+the host and the port of a named TURN service from `pod-services` (item 4; the crate has no such fact), and a live TURN
+server.
+
 # T-354: net: `devtunnel://` with a tunnel access token, or with no token
 
 **Source:** T-137, the take of `PodUtils/podcrates` v0.47.0 (`TODO/crates.md`, the v0.47.0 line): "a possible next
@@ -2302,7 +2312,7 @@ satellite link, a relay plan billed by the gigabyte).
 ## Premise
 
 - Read on 2026-11-16 at 1caa0be: `docs/router.md` says "The counters of a door start at 0 when it is added and go with
-  it when it is removed" (`docs/router.md:306`); `src/router/door_stats.rs` has counts and bytes, no limit.
+  it when it is removed" (`docs/router.md:307`); `src/router/door_stats.rs` has counts and bytes, no limit.
 
 ## Approach
 

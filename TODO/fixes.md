@@ -7327,7 +7327,7 @@ documented commands" of the job `test` of `ci.yml`; set the entry `done` when th
 
 ## Done
 
-2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:353` (`net passwd-shim`,
+2026-11-15, eeac027 (the fix). ci 43774698575 on f2d96fc ran the documented block `docs/networks.md:356` (`net passwd-shim`,
 then `ssh-keygen`) in the step "The documented commands": `pass docs/networks.md:337`; `doc-commands: 4 passed, 0 failed,
 0 not run`.
 
@@ -16337,7 +16337,7 @@ the brief of a worker of podcrates `v0.85.0` (COORD-157); `docs/decisions.md` ha
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -16380,6 +16380,12 @@ service there gives the warning of `scripts/live-step.sh`.
 line and exit 75 gives the warning, the variable and exit 0; another exit 3 stays 3; exit 0 stays 0; a script that
 leaves `sleep 30` in the background ends in 1 s. `python3 -I scripts/check-workflows.py`: 0 faults. The proof on the
 runner is the next `live` run with a 429.
+2026-11-26, the proof on the runner: `live` 45738194994 on `ac0aa576` met the quota at 02:05:33 (`HTTP 429
+(Retry-After: 3600 s): error code: 1015`). The steps "Quick tunnel, QUIC through WARP (TCP 443)", "Quick tunnel with
+UDP and TCP 7844 dropped" and "Quick tunnel through the WebSocket relay" each gave the warning `the quick-tunnel service
+refuses this runner for now (HTTP 429); the step is not measured (T-589)` and set `LIVE_QUICK_REFUSED: 1`; each later
+step ran, and the run is green. The step "Autostart with a systemd user unit" passed in 11 s (before the quota); its
+journal line stays for the next stop of the unit.
 
 # T-590: The crash log and the harness name podcrates 0.79.0, and podnet takes v0.85.0
 
@@ -16495,7 +16501,15 @@ of stdin the process ended before the peer answered: a request through `link p2p
 cargo test --test link_p2p_cli link_p2p_carries_the_answer_of_the_peer_to_the_end
 ```
 
+## Correction
+
+2026-11-26: the test failed each time in its second case (the peer closes while stdin is open): the command printed
+the answer and then waited for the end of stdin. A read of stdin blocks a thread of the runtime, and the drop of the
+runtime at the end of `main` waits for each such thread (a hand test with `< <(sleep 12)` ended after 12 s). The first
+pass of the test was a race. `main` now ends the runtime with `shutdown_timeout` of 1 s, for each command that reads
+stdin. The test passes twice in a row (1.45 s); `--test signals`, `pod_signals`, `e2e` and `exit_stdio` pass.
+
 ## Done
 
 2026-11-26, the commit of this entry. The test `link_p2p_carries_the_answer_of_the_peer_to_the_end` passes; with the old
-`select!` it fails (no answer in 20 s). A peer that closes while stdin is open ends the command in 0.06 s.
+`select!` it fails (no answer in 20 s).

@@ -261,6 +261,7 @@ async fn wg_network_sends_its_udp_over_the_datagrams_of_the_way_below() {
     let ctx = Ctx {
         below: Some(std::sync::Arc::new(crate::dialers::Direct)),
         state_dir: None,
+        name: None,
     };
     let text = get(&network, &ctx).await;
     assert!(text.ends_with("behind the peer"), "{text}");
@@ -270,6 +271,7 @@ async fn wg_network_sends_its_udp_over_the_datagrams_of_the_way_below() {
             crate::egress::Proxy::parse_trusted("socks5h://127.0.0.1:9").unwrap(),
         )),
         state_dir: None,
+        name: None,
     };
     let err = network.up(&ctx).await.unwrap_err();
     assert!(format!("{err:#}").contains("carries no UDP"), "{err:#}");

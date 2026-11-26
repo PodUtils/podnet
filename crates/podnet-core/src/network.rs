@@ -226,6 +226,10 @@ pub struct Ctx {
     /// reconnect and a rotate of the router give the same directory again, so
     /// a network registers no new device.
     pub state_dir: Option<std::path::PathBuf>,
+    /// The name of the network in the file of a router. A network can read
+    /// its own settings by it (a TURN account, T-321). `None` out of a
+    /// router.
+    pub name: Option<String>,
 }
 
 impl fmt::Debug for Ctx {
@@ -234,6 +238,9 @@ impl fmt::Debug for Ctx {
         s.field("below", &self.below.as_ref().map(|d| d.label()));
         if let Some(dir) = &self.state_dir {
             s.field("state_dir", dir);
+        }
+        if let Some(name) = &self.name {
+            s.field("name", name);
         }
         s.finish()
     }

@@ -16529,7 +16529,10 @@ ChannelData. podnet has no TURN code of its own.
   `PODNET_TURN_PASSWORD_FILE`, else the value of `PODNET_TURN_PASSWORD` (give one of them). `PODNET_TURN_REALM`
   is optional: with it, a server of another realm is refused. A spec with a user, a password, a path or a query
   is a usage error (exit 64) that does not repeat the secret. A missing user or password is a usage error too.
-  The account is read when the network comes up. One account serves each process.
+  The account is read when the network comes up. A network `NAME` of a router file (`networks:`) reads the
+  variables with the suffix `_NAME` (the name in capitals, `-` as `_`) when `PODNET_TURN_USER_NAME` is set:
+  `PODNET_TURN_USER_OFFICE_4G` and `PODNET_TURN_PASSWORD_FILE_OFFICE_4G` for the network `office-4g`, and the same for
+  the realm, the lifetime and the rate limit. Else it reads the variables with no suffix, the account of the process.
 * `up` makes one allocation and ends it at once. It proves the server, the account and the transport. The
   status of the link has the scheme, the spec, the transport (`udp` or `tls`), the lifetime that the server gave
   and the address that the server saw. It has no user and no password.
@@ -16712,7 +16715,8 @@ doors:
   error names the key or the line.
 * A name is letters, digits, `-` and `_`. A group and a network cannot have the same name.
 * `networks` maps a name to a network spec (see [egress.md](egress.md)): `direct`, a proxy URL, `relay`,
-  `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` (UDP, and TCP over RFC 6062), `unix:/PATH` or a chain
+  `tailscale:/PATH`, `netbird:[PORT]`, `wg:FILE`, `turn://HOST[:PORT]` (UDP, and TCP over RFC 6062; the account of each network in its own variables,
+  [networks.md](networks.md)), `unix:/PATH` or a chain
   `TOP over BELOW` (`wg:/etc/wg0.conf over warp`). A `tailscale:/PATH` network is a member of a group
   and the `via` of a door, as each other network. When `tailscaled` is not `Running` at the start, the
   router prints one warning and goes on: each dial through that network fails until the daemon is logged

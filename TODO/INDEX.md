@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**591 entries: 9 open, 10 partial, 30 blocked, 542 done.**
+**591 entries: 9 open, 9 partial, 30 blocked, 543 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 91 | 96 |
 | P2 | 0 | 3 | 15 | 287 | 305 |
-| P3 | 8 | 5 | 13 | 163 | 189 |
-| **All** | 9 | 10 | 30 | 542 | 591 |
+| P3 | 8 | 4 | 13 | 164 | 189 |
+| **All** | 9 | 9 | 30 | 543 | 591 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -633,7 +633,7 @@ M8 Overlays, M9 Later.
 | [T-586](fixes.md) | P3 | M | M8 | feature | blocked | link p2p: take the relay first when the NAT classes of both ends rule out the direct path |
 | [T-587](fixes.md) | P2 | S | M5 | defect | done | live: a second run of doctor sees the leg quic+warp as not ok, and the step prints no reason |
 | [T-588](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.85.0 |
-| [T-589](fixes.md) | P3 | S | M5 | defect | partial | live: the quick-tunnel service refuses the runner for an hour (HTTP 429, error 1015), and each later step fails |
+| [T-589](fixes.md) | P3 | S | M5 | defect | done | live: the quick-tunnel service refuses the runner for an hour (HTTP 429, error 1015), and each later step fails |
 | [T-590](fixes.md) | P2 | S | M5 | defect | done | The crash log and the harness name podcrates 0.79.0, and podnet takes v0.85.0 |
 | [T-591](fixes.md) | P2 | S | M5 | defect | done | podnet cover with no --name answers each request with the 404 page, also / |
 | [T-592](fixes.md) | P2 | S | M5 | defect | done | link p2p drops the answer of the peer when stdin ends first |

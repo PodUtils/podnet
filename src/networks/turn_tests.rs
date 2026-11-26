@@ -243,6 +243,48 @@ fn turn_account_comes_from_the_variables_or_from_a_file() {
     assert!(err.text().contains("no password"), "{err}");
 }
 
+/// T-321: a network of a router file reads the account and the limits of
+/// the variables with the suffix of its name when its user variable is set,
+/// else the account of the process. A fault names the variables that the
+/// network reads.
+#[test]
+fn turn_a_router_network_reads_the_account_of_its_name() {
+    let vars = |pairs: &[(&str, &str)]| {
+        let map: HashMap<String, String> = pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        move |name: &str| map.get(name).cloned()
+    };
+    let both = vars(&[
+        ("PODNET_TURN_USER", "process"),
+        ("PODNET_TURN_PASSWORD", "pw-process"),
+        ("PODNET_TURN_USER_OFFICE_4G", "office"),
+        ("PODNET_TURN_PASSWORD_OFFICE_4G", "pw-office"),
+        ("PODNET_TURN_LIFETIME_OFFICE_4G", "60"),
+    ]);
+    // (the name of the network, the user that it reads, its lifetime)
+    let cases: [(Option<&str>, &str, u64); 3] = [
+        (Some("office-4g"), "office", 60),
+        (Some("home"), "process", 600),
+        (None, "process", 600),
+    ];
+    for (name, user, lifetime) in cases {
+        let suffix = turn::suffix_of(name, &both);
+        let account = turn::account_of(&both, &suffix).unwrap();
+        assert_eq!(account.user, user, "{name:?}");
+        let (limits, _) = turn::limits_of(&both, &suffix).unwrap();
+        assert_eq!(limits.lifetime.as_secs(), lifetime, "{name:?}");
+    }
+    let half = vars(&[("PODNET_TURN_USER_LAB", "lab")]);
+    let suffix = turn::suffix_of(Some("lab"), &half);
+    let err = turn::account_of(&half, &suffix).unwrap_err();
+    assert!(
+        err.text().contains("PODNET_TURN_PASSWORD_FILE_LAB"),
+        "{err}"
+    );
+}
+
 #[test]
 fn turn_account_debug_shows_the_user_alone() {
     let account = Account::new("alice", "very-secret-password");

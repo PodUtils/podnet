@@ -284,6 +284,7 @@ pub(crate) fn ctx_of(dir: &Path) -> Ctx {
     Ctx {
         below: None,
         state_dir: Some(dir.to_path_buf()),
+        name: None,
     }
 }
 
@@ -519,6 +520,7 @@ async fn warp_network_below_is_refused() {
     let ctx = Ctx {
         below: Some(below),
         state_dir: None,
+        name: None,
     };
     for result in [
         world.network().up(&ctx).await,
