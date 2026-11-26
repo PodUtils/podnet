@@ -59,7 +59,7 @@
 
 set -u
 
-CASES="version man local local-files local-udp local-tcp errors doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
+CASES="version man local local-files local-udp local-tcp errors doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix consumer-podrunner"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version errors doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
 WAYOUT_CASES="way-tunnel way-relay"
@@ -612,6 +612,10 @@ print(data.decode(errors="replace"))
         sh "$(dirname "$0")/lab-errors.sh" "$podnet" "$dir"
         exit $?
         ;;
+    consumer-podrunner)
+        consumer_case "$name" "$podnet" "$dir"
+        exit $?
+        ;;
     proxy-*)
         proxy_case "$name" "$podnet" "$dir"
         exit $?
@@ -765,6 +769,253 @@ sys.exit(0 if d.get("requests", 0) > 0 and not d.get("errors") else 1)' "$dir/ou
         return 77
     fi
     return 1
+}
+
+# The case consumer-podrunner (T-358 step 3): the calls of podnet that
+# PodUtils/podrunner makes, as it makes them, with a stand-in of its egress
+# broker: an HTTP CONNECT proxy on a unix socket (podrunner-standin.py).
+# Each row prints "row NAME: pass", "row NAME: n.a.: REASON" or "row NAME:
+# fail: REASON". The case fails when a row fails.
+consumer_case() {
+    podnet=$2
+    dir=$3
+    bad=0
+    row() {
+        echo "row $1: $2"
+        case $2 in fail*) bad=1 ;; esac
+    }
+    unset HTTPS_PROXY https_proxy HTTP_PROXY http_proxy ALL_PROXY all_proxy NO_PROXY no_proxy
+    # The version line (crates/podrunner/src/serve/host.rs).
+    first=$("$podnet" --version | head -n 1)
+    echo "version: $first"
+    if printf '%s\n' "$first" | grep -Eq '^podnet [0-9][^ ]*( |$)'; then
+        row version pass
+    else
+        row version "fail: the first line is not 'podnet VERSION'"
+    fi
+    consumer_doctor "$podnet" "$dir"
+    # The stand-in broker: in the lab, else the one outside (listen-denied).
+    sock="$dir/egress.sock"
+    log="$dir/egress.log"
+    : >"$log"
+    python3 -I "$dir/../podrunner-standin.py" "$sock" "$log" >"$dir/standin.txt" 2>&1 &
+    standin=$!
+    i=0
+    while ! grep -qx ready "$dir/standin.txt" && kill -0 $standin 2>/dev/null && test $i -lt 100; do
+        i=$((i + 1))
+        sleep 0.1
+    done
+    if ! grep -qx ready "$dir/standin.txt"; then
+        cat "$dir/standin.txt"
+        sock="$dir/../podrunner-egress.sock"
+        log="$dir/../podrunner-egress.log"
+        test -S "$sock" && echo "the stand-in in the lab did not start: the stand-in outside the lab serves"
+    fi
+    if ! test -S "$sock"; then
+        for r in pod-netns detach-netns pod-seccomp detach-seccomp under-shim; do
+            row $r "n.a.: no stand-in broker (the lab refuses listen(2) of AF_UNIX, and none runs outside)"
+        done
+        sock=
+    fi
+    # The loopback listeners of the seccomp rules: the port of the broker
+    # (direct) and one other port (the rules refuse it).
+    loop=
+    python3 -I "$dir/../podrunner-loop.py" "$dir/loop.ports" >"$dir/loop.txt" 2>&1 &
+    lpid=$!
+    i=0
+    while ! test -s "$dir/loop.ports" && kill -0 $lpid 2>/dev/null && test $i -lt 50; do
+        i=$((i + 1))
+        sleep 0.1
+    done
+    if test -s "$dir/loop.ports"; then
+        loop=$(cat "$dir/loop.ports")
+    else
+        cat "$dir/loop.txt"
+    fi
+    q=$(python3 -I -c 'import random; print(random.randint(20000, 60000))')
+    for b in netns seccomp; do
+        test -n "$sock" || break
+        consumer_pod "$podnet" "$dir" $b
+    done
+    consumer_shim "$podnet" "$dir"
+    echo "the log of the stand-in:"
+    cat "$log"
+    kill $standin $lpid 2>/dev/null
+    return $bad
+}
+
+# pod doctor --json (crates/podrunner-podvm/src/unit/hold.rs): exit 0 or
+# 3, JSON on stdout in both cases, a known level of each backend. It sets
+# netns and seccomp to the levels.
+consumer_doctor() {
+    netns=none
+    seccomp=none
+    "$1" pod doctor --json </dev/null >"$2/doctor.json" 2>"$2/doctor.err"
+    code=$?
+    echo "pod doctor --json -> exit $code"
+    levels=$(python3 -I -c '
+import json, sys
+v = json.load(open(sys.argv[1]))
+def level(name):
+    h = v.get("hold") if isinstance(v.get("hold"), dict) else {}
+    return (h.get(name) or {}).get("level") or (v.get(name) or {}).get("level")
+print(level("netns"), level("seccomp"))' "$2/doctor.json" 2>&1)
+    pcode=$?
+    echo "levels: $levels"
+    if test $code -ne 0 && test $code -ne 3; then
+        cat "$2/doctor.err"
+        row pod-doctor "fail: exit $code (podrunner takes 0 or 3)"
+        return
+    fi
+    if test $pcode -ne 0; then
+        head -c 300 "$2/doctor.json"
+        row pod-doctor "fail: the output is not JSON"
+        return
+    fi
+    # Two words: the split is the intent.
+    # shellcheck disable=SC2086
+    set -- $levels
+    for l in "$1" "$2"; do
+        case $l in
+        enforced | advisory | none) ;;
+        *)
+            row pod-doctor "fail: a level is '$l', not enforced, advisory or none"
+            return
+            ;;
+        esac
+    done
+    netns=$1
+    seccomp=$2
+    row pod-doctor pass
+}
+
+# The rows pod-B and detach-B: podnet pod --backend B as podrunner starts
+# podvm (crates/podrunner-podvm/src/unit/hold.rs), and a detached payload
+# (podvm run -d) that connects after podnet pod returned.
+consumer_pod() {
+    podnet=$1
+    dir=$2
+    b=$3
+    lvl=$seccomp
+    test $b = netns && lvl=$netns
+    if test "$lvl" = none; then
+        row pod-$b "n.a.: pod doctor gives the $b level none"
+        row detach-$b "n.a.: pod doctor gives the $b level none"
+        return
+    fi
+    rules=
+    extra=
+    note=
+    if test $b = seccomp; then
+        if test -n "$loop"; then
+            # Two port numbers: the split is the intent.
+            # shellcheck disable=SC2086
+            set -- $loop
+            rules="--loopback-rules -r tcp:127.0.0.1:$1=direct -r cidr:127.0.0.0/8=reject -r cidr:::1/128=reject"
+            extra="$1 $2"
+        else
+            note=" (no loopback check: no TCP listener on the loopback in this lab)"
+        fi
+    fi
+    q=$((q + 1))
+    # podrunner gives each word: $rules and $extra split on purpose.
+    # shellcheck disable=SC2086
+    PODVM_SPARE_TREE=0 timeout 60 "$podnet" pod --backend $b -x "http://unix:$sock" $rules -- \
+        python3 -I "$dir/../podrunner-payload.py" 10.255.0.1 $q 7 $extra >"$dir/pod-$b.txt" 2>&1
+    code=$?
+    cat "$dir/pod-$b.txt"
+    echo "pod --backend $b -> exit $code"
+    if test $code -ne 7; then
+        row pod-$b "fail: exit $code, not the exit 7 of the program$note"
+    elif ! grep -qx "CONNECT 10.255.0.1:$q" "$log"; then
+        row pod-$b "fail: the stand-in logged no CONNECT 10.255.0.1:$q"
+    else
+        row pod-$b "pass$note"
+    fi
+    q=$((q + 1))
+    late="python3 -I $dir/../podrunner-payload.py 10.255.0.1 $q 0 $extra >$dir/late-$b.txt 2>&1"
+    t0=$(date +%s)
+    # shellcheck disable=SC2086
+    PODVM_SPARE_TREE=0 timeout 60 "$podnet" pod --backend $b -x "http://unix:$sock" $rules -- \
+        sh -c "(sleep 3; $late) & exit 0" >"$dir/detach-$b.txt" 2>&1
+    code=$?
+    t1=$(date +%s)
+    cat "$dir/detach-$b.txt"
+    echo "pod --backend $b (detached) -> exit $code after $((t1 - t0)) s"
+    i=0
+    while ! grep -qx "CONNECT 10.255.0.1:$q" "$log" && test $i -lt 150; do
+        i=$((i + 1))
+        sleep 0.1
+    done
+    sleep 1
+    cat "$dir/late-$b.txt" 2>/dev/null
+    if test $code -ne 0; then
+        row detach-$b "fail: exit $code, not the exit 0 of sh"
+    elif test $((t1 - t0)) -gt 2; then
+        row detach-$b "fail: podnet pod returned after $((t1 - t0)) s, not at once"
+    elif ! grep -qx "CONNECT 10.255.0.1:$q" "$log"; then
+        row detach-$b "fail: the late connect did not reach the stand-in in 15 s"
+    else
+        row detach-$b pass
+    fi
+}
+
+# The rows net-shim (crates/podrunner/src/run_local/vnet.rs) and under-shim:
+# a runner under the shim (crates/podrunner-local/src/exec/vnet.rs).
+consumer_shim() {
+    podnet=$1
+    dir=$2
+    mkdir -p "$dir/shim"
+    shim=
+    "$podnet" net shim --json --out "$dir/shim" </dev/null >"$dir/shim.json" 2>"$dir/shim.err"
+    code=$?
+    cat "$dir/shim.json" "$dir/shim.err"
+    echo "net shim -> exit $code"
+    if test $code -ne 0; then
+        if test -z "${CC:-}" && ! command -v cc >/dev/null && ! command -v gcc >/dev/null &&
+            ! command -v clang >/dev/null && test "$(wc -l <"$dir/shim.err")" -eq 1; then
+            row net-shim "n.a.: no C compiler, and podnet says so in one line"
+        else
+            row net-shim "fail: exit $code"
+        fi
+    else
+        # The split of podrunner: the first absolute path that ends in the
+        # name of the shim, and the magic of ELF.
+        shim=$(python3 -I -c '
+import re, sys
+for t in re.split(r"[\":= \s]", open(sys.argv[1]).read()):
+    if t.startswith("/") and t.endswith("/libpodnet-vnet.so"):
+        with open(t, "rb") as f:
+            if f.read(4) == b"\x7fELF":
+                print(t)
+        break' "$dir/shim.json")
+        if test -n "$shim"; then
+            row net-shim pass
+        else
+            row net-shim "fail: no absolute path of an ELF libpodnet-vnet.so on stdout"
+        fi
+    fi
+    test -n "$sock" || return
+    if test -z "$shim"; then
+        row under-shim "n.a.: no shim"
+        return
+    fi
+    # The control: with no shim, the stand-in gets no CONNECT.
+    env HTTPS_PROXY=http://127.0.0.1:3128 NO_PROXY= NODE_USE_ENV_PROXY=1 \
+        timeout 30 python3 -I "$dir/../podrunner-https.py" "https://control-$q.test/" >"$dir/control.txt" 2>&1
+    env LD_PRELOAD="$shim" PODNET_VNET_FORWARD="127.0.0.1:3128=unix:$sock" HTTPS_PROXY=http://127.0.0.1:3128 \
+        NO_PROXY= NODE_USE_ENV_PROXY=1 \
+        timeout 30 python3 -I "$dir/../podrunner-https.py" "https://shim-$q.test/" >"$dir/under.txt" 2>&1
+    code=$?
+    cat "$dir/control.txt" "$dir/under.txt"
+    echo "the client under the shim -> exit $code"
+    if grep -q "^CONNECT control-$q.test:" "$log"; then
+        row under-shim "fail: the control with no shim reached the stand-in"
+    elif grep -qx "CONNECT shim-$q.test:443" "$log"; then
+        row under-shim pass
+    else
+        row under-shim "fail: the stand-in logged no CONNECT shim-$q.test:443"
+    fi
 }
 
 in_list() {
@@ -1070,6 +1321,127 @@ c.connect(sys.argv[1])
 c.sendall(b"\x05\x01\x00")
 sys.stdout.write(c.recv(2).hex())
 EOF
+    cat >"$1/podrunner-standin.py" <<'EOF'
+import os, socket, sys, threading
+# The stand-in of the egress broker of podrunner: an HTTP CONNECT proxy on
+# the unix socket PATH. It appends "CONNECT TARGET" to LOG for each request
+# and answers 200. Then it reads the first bytes of the client, answers
+# "standin:" and these bytes, and closes. It prints "ready" when it listens.
+# Usage: podrunner-standin.py PATH LOG
+path, log = sys.argv[1], sys.argv[2]
+try:
+    os.unlink(path)
+except FileNotFoundError:
+    pass
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.bind(path)
+try:
+    s.listen(16)
+except PermissionError as e:
+    sys.exit("listen: %s" % e)
+print("ready", flush=True)
+lock = threading.Lock()
+def serve(c):
+    c.settimeout(30)
+    try:
+        head = b""
+        while b"\r\n\r\n" not in head:
+            b = c.recv(4096)
+            if not b:
+                return
+            head += b
+        words = head.split(b"\r\n", 1)[0].decode("ascii", "replace").split()
+        with lock, open(log, "a") as f:
+            f.write(" ".join(words[:2]) + "\n")
+        if len(words) != 3 or words[0] != "CONNECT":
+            c.sendall(b"HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n")
+            return
+        c.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
+        rest = head.split(b"\r\n\r\n", 1)[1]
+        c.sendall(b"standin:" + (rest or c.recv(4096)))
+    except OSError:
+        pass
+    finally:
+        c.close()
+while True:
+    c, _ = s.accept()
+    threading.Thread(target=serve, args=(c,), daemon=True).start()
+EOF
+    cat >"$1/podrunner-loop.py" <<'EOF'
+import socket, sys, threading
+# Two TCP listeners on 127.0.0.1: each answers "direct:" and the first bytes
+# of the client. It writes "PORT1 PORT2" to FILE when both answer.
+socks = []
+for _ in range(2):
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    s.listen(8)
+    socks.append(s)
+def serve(s):
+    while True:
+        c, _ = s.accept()
+        try:
+            c.sendall(b"direct:" + c.recv(4096))
+        except OSError:
+            pass
+        c.close()
+for s in socks:
+    threading.Thread(target=serve, args=(s,), daemon=True).start()
+# The control: each port answers a connect with no pod.
+for s in socks:
+    c = socket.create_connection(s.getsockname(), timeout=5)
+    c.sendall(b"x")
+    if c.recv(100) != b"direct:x":
+        sys.exit("a listener does not answer")
+with open(sys.argv[1] + ".tmp", "w") as f:
+    f.write("%d %d\n" % (socks[0].getsockname()[1], socks[1].getsockname()[1]))
+import os
+os.rename(sys.argv[1] + ".tmp", sys.argv[1])
+threading.Event().wait()
+EOF
+    cat >"$1/podrunner-payload.py" <<'EOF'
+import socket, sys
+# The payload of a held unit: connect HOST:PORT (the stand-in answers
+# "standin:ping"). With DIRECT and REFUSED: 127.0.0.1:DIRECT answers
+# "direct:ping", and the rules refuse 127.0.0.1:REFUSED. Then exit CODE.
+# Usage: podrunner-payload.py HOST PORT CODE [DIRECT REFUSED]
+def ask(host, port):
+    c = socket.create_connection((host, port), timeout=10)
+    c.sendall(b"ping")
+    data = b""
+    while True:
+        b = c.recv(4096)
+        if not b:
+            break
+        data += b
+    return data.decode(errors="replace")
+host, port, code = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+got = ask(host, port)
+print("%s:%d -> %s" % (host, port, got))
+if got != "standin:ping":
+    sys.exit(1)
+if len(sys.argv) > 5:
+    got = ask("127.0.0.1", int(sys.argv[4]))
+    print("127.0.0.1:%s -> %s" % (sys.argv[4], got))
+    if got != "direct:ping":
+        sys.exit(1)
+    try:
+        got = ask("127.0.0.1", int(sys.argv[5]))
+        print("127.0.0.1:%s -> %s: not refused" % (sys.argv[5], got))
+        sys.exit(1)
+    except ConnectionRefusedError:
+        print("127.0.0.1:%s -> refused" % sys.argv[5])
+sys.exit(code)
+EOF
+    cat >"$1/podrunner-https.py" <<'EOF'
+import sys, urllib.request
+# An HTTPS client that takes HTTPS_PROXY from the environment. The stand-in
+# answers no TLS: the CONNECT is the proof, not the answer.
+try:
+    urllib.request.urlopen(sys.argv[1], timeout=10)
+except Exception as e:
+    print("client: %s" % e)
+EOF
 }
 
 if test "${1:-}" = "--case"; then
@@ -1113,6 +1485,11 @@ cp "$root/tests/consumers/python-http/client.py" "$work/http-client.py" || exit 
 cp "$root/tests/consumers/connect-proxy.py" "$root/tests/consumers/servers.py" "$work/" || exit 1
 python3 -I "$work/echo.py" "$work/echo.sock" &
 pids=$!
+# The stand-in broker of consumer-podrunner for a lab that refuses
+# listen(2) of AF_UNIX.
+python3 -I "$work/podrunner-standin.py" "$work/podrunner-egress.sock" "$work/podrunner-egress.log" \
+    >"$work/podrunner-standin.txt" 2>&1 &
+pids="$pids $!"
 # $pids is a list of numbers: split it.
 # shellcheck disable=SC2086
 trap 'kill $pids 2>/dev/null' EXIT

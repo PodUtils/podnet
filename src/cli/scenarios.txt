@@ -40,7 +40,7 @@ logs | live:warp tun --default-route (root), then everything as before; live:Rou
 man | lane:man
 net demo | lane:local
 net doctor | live:UDP probe, answered and refused
-net shim | ci:The consumer .NET HttpClient under the shim; ci:The consumer check fails on its plant; ci:The consumer Python HTTP client under the shim; ci:The consumer Python check fails on its plant; lane:shim-forward
+net shim | ci:The consumer .NET HttpClient under the shim; ci:The consumer check fails on its plant; ci:The consumer Python HTTP client under the shim; ci:The consumer Python check fails on its plant; lane:shim-forward; lane:consumer-podrunner
 net addresses | lane:local
 net proxy | lane:net-proxy-unix; lane:net-switch
 net switch | lane:net-switch
@@ -61,7 +61,7 @@ offline capture merge | lane:local-files
 offline pair offer | lane:local-files
 offline pair accept | lane:local-files
 offline replica merge | lane:local-files
-pod | lane:errors; lane:pod-seccomp; lane:pod-netns; lane:net-pod-auto; lane:net-pod-seccomp; lane:net-pod-netns; lane:proxy-pod-auto; lane:proxy-pod-seccomp; lane:proxy-pod-env
+pod | lane:errors; lane:pod-seccomp; lane:pod-netns; lane:consumer-podrunner; lane:net-pod-auto; lane:net-pod-seccomp; lane:net-pod-netns; lane:proxy-pod-auto; lane:proxy-pod-seccomp; lane:proxy-pod-env
 ports | lane:local
 ps | live:SSH through the reverse relay; live:agent up and down; live:An IPv6-only host
 qr | lane:local

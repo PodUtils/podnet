@@ -245,6 +245,8 @@ LANE_MAP = {
     "pod-seccomp": ["pod"],
     "pod-netns": ["pod"],
     "net-proxy-unix": ["net proxy"],
+    # T-358 step 3: the calls of PodUtils/podrunner.
+    "consumer-podrunner": ["pod", "net shim"],
     "net-switch": ["net switch", "expose", "net proxy"],
     "wg-serve": ["wg serve", "forward"],
     "net-curl": [],
