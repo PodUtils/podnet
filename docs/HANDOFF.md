@@ -1,64 +1,64 @@
 # Handoff
 
-The product work state at 2026-11-26 17:20 (UTC). Start a hosted checkout with
+The product work state at 2026-11-26 21:10 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
 
 **podrunner first** (the owner, 2026-11-18; `docs/decisions.md`). The order: a red run of podnet's CI; each ask of
 podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-137); podnet's own work in the order of
-`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.86.0`, taken in T-612) at 17:20.
+`TODO/PROGRESS.md`. The newest tag of podcrates is `v0.86.0` (taken in T-612). The open ask of podrunner,
+PodUtils/podrunner#369, has its fix on `main` (T-619) and its answer (COORD-139 #784); it closes with the release of
+`v0.4.0-beta.21`.
 
 ## Where the code is
 
-* All finished work is on `main`. Use the pinned Rust toolchain from [Hosted sessions](hosted-sessions.md).
-* Done on 2026-11-26 (17:20): T-127, T-128, T-129 and T-321 (each proven by its `live` step against a real server:
-  ssserver, Xray-core, wisp-server-python, derper, Pebble, coturn), T-294 (the service `ss`), T-618, T-619 (the inbound
-  sockets of `pod`, PodUtils/podrunner#369, answered by COORD-139 #784). T-358 step 1 `ipv6-only`: the row `ipv6-host`
-  passed in `live` 45861374486; `gate.yml` runs on `8712a9c` for its Prove. Blocked: T-295 (COORD-140 #785).
-* Done on 2026-11-26 (11:45): T-609 (the ICMP step of `live` 45802633188). Built and partial: T-129 (ACME; the Pebble
-  step of `live`; COORD-135 #780), T-244 (`tunnel --inspect`, `clear`, the measurements; COORD-136 #781), T-127 (VLESS,
-  Shadowsocks, Wisp; the steps against real servers in `live`; COORD-137 #782).
-* Done on 2026-11-26 (10:40): T-611 (the TCP direction split), T-126 (the networks `https://` and `wstunnel:` of
-  `pod-egress`; T-614 blocked on COORD-134 #779), T-358 step 2 (b, c) (the `live` and `root` blocks of the documents in
-  `live.yml`, the offline blocks in the labs), T-613, T-615, T-616, T-617. T-123 and T-124 are blocked (no `pod-ts`).
-* Done on 2026-11-26 after beta.20: T-612 (the take of podcrates `v0.86.0`; T-575, T-579, T-580, T-476, T-598 done by
-  it; T-244 open again), T-610, T-613, T-179 (the design of the TCP split), T-358 step 3 (the lane case
-  `consumer-podrunner`) and step 2 (a) (the class `scenario`: 23 documented blocks run), T-321 item 4 dropped
-  (`docs/decisions.md`). T-609 and the coturn step of T-321 wait for their runs.
-* The release `v0.4.0-beta.20` is out (T-608; tag at `be2c0df`; COORD-132 #777): the carriers of the feature `release`
-  (#620) and the fixes of the QA pass of 2026-11-26 (#761 to #775, T-593 to T-607; T-598 blocked on COORD-131 #776).
-  T-281 is done (the proof of the DNS carrier).
-* Done on 2026-11-26 (later): T-589 (proven by `live` 45738194994), T-398 (each command of a release binary but `net
-  tailscale` has a scenario: the lane cases `local-files`, `local-udp` and `local-tcp`), T-590 (the podcrates version of
-  the crash log and the harness), T-591 (`cover` with no `--name`), T-592 (`link p2p` to the end of the answer; `main`
-  ends the runtime in 1 s), T-321 item 3 (a TURN account for each router network).
-* Done on 2026-11-26: T-428 (the feature `release`; #620 closed), T-053 and T-054, T-398 (the lane case `local-files`:
-  15 commands get a scenario), T-163 (#360 closed), T-321's TCP half (docs). T-114 and T-244 blocked on COORD-130 (#760)
-  and COORD-128 (#758).
-* The release `v0.4.0-beta.19` is out (T-585; tag at `2ef8e3a`; COORD-129 #759). T-487 is proven; #656 is closed.
-  T-163 is done (by the take of `pod-cloudflare`); T-244 is blocked on COORD-128 (#758).
-* Done later on 2026-11-25: T-588 (podcrates `v0.85.0`, COORD-127 #757), T-587 and T-589 (`live` robustness),
-  T-492, T-543 (done), T-584; T-476 blocked on COORD-126 (#756); T-586 recorded.
-* Done in the session of 2026-11-25 (afternoon): T-583 (the take of podcrates `v0.84.0`, `405d47c`; COORD-122 #752 read
-  by podcrates), T-546 and T-550 (by the tag), the reviewed fixes of the QA pass of `0.4.0-beta.19` (T-547, T-572 to
-  T-574, T-576 to T-578, T-581), T-564, T-582, T-584 (#720), and T-543 steps 1 and 2 (the row `nat` of `doctor`).
-* Blocked on podcrates: T-575 (COORD-123 #753, `pod-dns`), T-580 (COORD-124 #754, `pod-proxy`), T-579 (COORD-125 #755,
-  `pod-cloudflare`). The release notes of beta.19 name them (`docs/decisions.md`, 2026-11-25).
+* All finished work is on `main` (`55f72144` at 21:10). `ci` 45856630710 (`bffca86`), `live` 45861374486 and
+  `gate.yml` 45866261787 (both `8712a9c`) pass: the batch for `v0.4.0-beta.21` is green. The commits after `8712a9c` are
+  records and documents only.
+* The newest release is `v0.4.0-beta.20` (T-608; tag at `be2c0df`; COORD-132 #777).
+* Done since beta.20: T-612 (podcrates `v0.86.0`), T-609, T-610, T-611, T-613, T-615 to T-619, T-126 to T-129 (the
+  networks `https://`, `wstunnel:`, `vless://`, `ss://`, `wisp:`; the DERP road; ACME), T-244 to its hook gaps, T-294
+  (the service `ss`), T-321 (TURN), T-358 (the release gate). Each new road has a `live` step against a real server
+  (coturn, Pebble, ssserver, Xray-core, wisp-server-python, derper).
+* Partial or blocked on podcrates: T-244 (COORD-136 #781), T-295 (COORD-140 #785), T-614 (COORD-134 #779), T-114 and
+  T-115 (COORD-130 #760), T-123 and T-124 (no `pod-ts`). COORD-135 (#780), COORD-137 (#782) and COORD-138 (#783) ask
+  for extensions of taken crates.
+* Backups on GitHub: `wip/beta21-release-notes` (the draft of the notes of beta.21,
+  `docs/releases/v0.4.0-beta.21.draft.md`); `wip/worktree-agent-a0fa474aa2d48b577` and
+  `wip/worktree-agent-a1b55fa9cb5648e19` (the T-358 commits of two agents before the resolution of their conflicts; `main`
+  has their content).
 
 ## The next steps, in order
 
-1. **The black-box QA pass of `v0.4.0-beta.21`** runs on the artifact of `ci` 45856630710 (`bffca86`), with podlab
-   `v0.86.0`. Triage each finding `[qa 0.4.0-beta.21]` into an entry; fix each P1 and P2 finding.
-2. **T-358 is done** (`gate.yml` 45866261787 on `8712a9c`).
-3. **The release of `v0.4.0-beta.21`:** after the QA pass, the dry run, then `publish`; a COORD issue `(to all)` with the
-   files and digests; answer PodUtils/podrunner#369 (COORD-139 #784) with the version.
-4. **Each tag of podcrates:** COORD-130 (#760), COORD-134 (#779), COORD-135 to COORD-138 (#780 to #783), COORD-140 (#785).
-5. Waits for a run or a ruling: T-414 and T-415 (a warning of their `live` steps), T-478 (blocked on T-406), T-488,
-   T-123 and T-124 (`pod-ts`), T-001 (the owner).
+1. **The black-box QA pass of `v0.4.0-beta.21`** runs (an agent with `scripts/agent/qa-pass.md`) on the artifact of
+   `ci` 45856630710 (`bffca86`, SHA-256 `c59abeac...76`), with the docs of that commit and podlab `v0.86.0`, in
+   `/var/tmp/qa/b21` (not in git). Each finding is a GitHub issue `[qa 0.4.0-beta.21] ...`. When the pass ends (or in a
+   new session, when no agent runs): triage each finding into an entry, map it in `TODO/issues.md` and
+   `TODO/github.txt`, and fix each P1 and P2 finding. With no pass result, run the pass again with the same prompt.
+2. **The release of `v0.4.0-beta.21`** (`docs/maintenance.md`, Release): set the version; take the notes from
+   `wip/beta21-release-notes` into `docs/releases/v0.4.0-beta.21.md` and add the fixes of the QA pass; push; wait for
+   `ci`, `live` and `gate.yml` on that commit; the dry run of `release.yml`; then `publish=v0.4.0-beta.21`; check
+   `release-proofs.yml`. Then a COORD issue `(to all)` with the files, their SHA-256 and the image by digest, and a line
+   `state:` on COORD-139 (#784) with the version for podrunner.
+3. **Each tag of podcrates:** take it (T-137) and close the COORD issues that it answers.
+4. Waits for a run or a ruling: T-414 and T-415 (a warning of their `live` steps), T-478 (blocked on T-406), T-488,
+   T-001 (the owner).
 
 ## Facts for the next session
 
+* Start each worktree agent with the shell in `/workspace/podnet`: the `isolation: worktree` of the Agent tool takes
+  the repository of the current directory. A `cd` into `.work/cloud/cargo/...` once made the worktree in the cargo cache
+  of podcrates.
+* The permission policy of this host refuses a run of a downloaded third-party binary (Pebble) and a change of
+  `/etc/hosts`. Do not work around it: a test against a real server goes into a step of `live.yml`.
+* A push cancels the `ci` run of the commit before it (`cancel-in-progress`); `live` waits instead. A commit of the record
+  or of a workflow alone takes `[skip ci]`, and `live` can then start by `workflow_dispatch` (`actions_run_trigger`).
+* A step of `live.yml` runs under `bash -eo pipefail` (`scripts/live-step.sh`): a `grep` with no match in a pipe ends
+  the step; give it `|| true` where no match is normal.
+* The test `report::tests::the_log_filter_names_each_pod_crate_of_podnet` needs each new `pod-*` crate of `Cargo.toml`
+  in the log filter of `crates/podnet-core/src/report.rs`; `each_variable_of_the_code_is_a_fact` needs each new
+  variable in `src/manual/facts.rs`; a test that binds the loopback starts with `need_loopback!()`.
 * `check.sh` must pass before the commit: a chained `git commit` after it does not stop on a fault.
 * Do not run the test suite under `nohup`: SIGHUP is then ignored for each child, and the SIGHUP cases of
   `tests/pod_signals.rs` and `tests/signals.rs` fail. Use `setsid` or a background shell.
