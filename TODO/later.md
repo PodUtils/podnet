@@ -2365,7 +2365,7 @@ router`: each test passes.
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -2393,7 +2393,7 @@ for TCP.
 
 ```sh
 cargo test -p podnet route_config_split
-cargo test -p podnet --test router_split_tcp
+cargo test -p podnet --features full --test router_split_tcp
 ```
 
 ## Correction
@@ -2412,3 +2412,15 @@ cargo test -p podnet --test router_split_tcp
 - The design names "a far key that the allow list does not hold" as an error. The router has no allow list of
   its own: the fingerprint of `tcp=` is the one key that it admits, and a fingerprint that is no key exits 78.
 - The router proves itself with the key of the install (`identity::default_dir`).
+
+## Done
+
+2026-11-26, the commit of this entry (`d861ecb` of a worktree, taken onto `main` on the tag `v0.86.0`). The tests
+`router_split_tcp_puts_each_direction_on_its_member_and_falls_back` (a table over `tcp|tcp` and `ws|h2`: the request
+bytes go by `up` only, the response bytes by `down` only; a cut of the down half falls back, is counted, and a new
+session comes up after the back-off), `router_split_tcp_bad_values_exit_78_with_the_key`,
+`route_config_split_tcp_reads_each_form`, `route_config_split_tcp_shows_in_the_status_of_a_dry_run` and
+`a_half_with_a_way_needs_a_carrier_that_takes_one` pass, with `cargo test --features full --test link_split` and the
+router tests of the lib.
+
+

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 612 entries: 9 open, 9 partial, 26 blocked, 568 done.
+`TODO/INDEX.md` holds 612 entries: 8 open, 9 partial, 26 blocked, 569 done.
 
 ## State
 
@@ -72,7 +72,7 @@ not wait for a larger one.
 6. **M4, the adapters:** done.
 7. **M6, the services:** done: the file server, git, the router, the resumable layer and `--seal` of the reverse road, and the
    transfer by code (`podnet send` and `podnet receive` over `pod-wormhole`; `docs/transfer.md`; `docs/decisions.md`,
-   2026-11-13, The transfer layer). One entry stays: T-611 (the TCP part of the direction split, over a split session of the link; its design is `docs/research/podnet/direction-split-tcp.md`).
+   2026-11-13, The transfer layer). Each entry is done (the TCP part of the direction split too, 2026-11-26).
 8. **M7, the pods:** no open entry. The hold of a SYN in `pod-hold` (PodUtils/podcrates#68) can start.
 9. **M8, the overlays:** T-114 and T-115 (blocked: a shared headscale harness, COORD-130 #760), T-247 (blocked: a NetBird account).
 10. **M9, later:** T-123, T-124 and T-126 to T-129, each when its start condition holds; T-001: edit GitHub #89 into a guide

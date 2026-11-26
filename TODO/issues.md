@@ -74,7 +74,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #372 | router datagram carrier | closed (ci 43459872995 at bf01ac6) | T-098, T-099, T-111 |
 | #373 | router health: hysteresis, cooldown | closed (ci 43459872995 at bf01ac6) | T-096, T-097 |
 | #374 | router probes via own member; resolver | closed (ci 43459872995 at bf01ac6) | T-097, T-098 |
-| #375 | `route check`, group policies, direction split | open | T-177, T-178, T-179, T-611 |
+| #375 | `route check`, group policies, direction split | closed: T-177, T-178, T-179 and T-611 done (the TCP split over a split session of the link, 2026-11-26) | T-177, T-178, T-179, T-611 |
 | #376 | router control, typed selection, seccomp budget | closed (ci 43459872995 at bf01ac6) | T-096, T-180, T-181 |
 | #377 | Transport trait addressing; gsr transport | closed | T-055, T-058 |
 | #378 | doctor --agent checks index host, not file host | closed (ci 42710206231, live 42710206544 at 93bafc2) | T-182 |
