@@ -85,9 +85,19 @@ fn full_holds_each_optional_feature() {
 fn the_default_build_holds_no_optional_feature() {
     if cfg!(feature = "full") {
         assert_eq!(features::enabled(), features::FULL);
-    } else if !cfg!(feature = "tcp") {
-        // Another feature may be on in a build with `--features`; the
-        // plain default build has none.
+    } else if !cfg!(any(
+        feature = "tcp",
+        feature = "ntp",
+        feature = "smtp",
+        feature = "imap",
+        feature = "ss",
+        feature = "trojan",
+        feature = "sidecar",
+        feature = "c-abi"
+    )) {
+        // Another feature may be on in a build with `--features` (each
+        // other optional feature holds `tcp`); the plain default build
+        // has none.
         assert!(features::enabled().is_empty(), "{:?}", features::enabled());
     }
 }
@@ -233,4 +243,34 @@ fn the_packet_sidecar_is_optional_and_its_command_names_the_feature() {
             "{err}"
         );
     }
+}
+
+/// `link listen --service ss` (T-294): a build with no feature `ss` exits
+/// 69 and names the feature; a build with it reads the key first, and a
+/// missing key exits 64 and names its variable. No listener starts.
+#[test]
+fn the_service_ss_needs_its_feature_and_then_its_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let sock = dir.path().join("l.sock");
+    let allow = dir.path().join("allow");
+    std::fs::write(&allow, "").unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_podnet"))
+        .args(["link", "listen", sock.to_str().unwrap(), "--allow"])
+        .arg(&allow)
+        .args(["--service", "ss"])
+        .env("PODNET_STATE_DIR", dir.path().join("state"))
+        .env("PODNET_RUN_DIR", dir.path().join("run"))
+        .env_remove("RUST_LOG")
+        .env_remove("PODNET_SHADOWSOCKS_SERVICE_KEY")
+        .env_remove("PODNET_SHADOWSOCKS_SERVICE_KEY_FILE")
+        .output()
+        .unwrap();
+    let err = String::from_utf8_lossy(&out.stderr);
+    let (code, words) = match features::built("ss") {
+        true => (exit::USAGE, "PODNET_SHADOWSOCKS_SERVICE_KEY_FILE"),
+        false => (exit::UNAVAILABLE, "not built: the feature ss is off"),
+    };
+    assert_eq!(out.status.code(), Some(code), "{err}");
+    assert!(err.contains(words), "{err}");
+    assert!(!sock.exists(), "no listener: {err}");
 }

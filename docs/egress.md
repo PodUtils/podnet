@@ -129,7 +129,8 @@ The three are roads of `pod-egress` (PodUtils/podcrates); podnet holds no code o
 ID or a key in a spec is a usage error (exit 64) that does not repeat it. A missing or bad secret is a usage error
 that names the variable. `up` proves the reach of the server (and its certificate over TLS); for Wisp it opens the
 connection. A fault names the hop (`the VLESS server`, `the Shadowsocks server`, `the Wisp server`). Each form,
-each setting and each fault is in [networks.md](networks.md).
+each setting and each fault is in [networks.md](networks.md). A link end of podnet can be the Shadowsocks server: the
+service `ss` of a peer, reached through `forward -L PORT=peer:FP/ss` ([link.md](link.md), "The service `ss`").
 
 | Item | Value | Checked |
 | --- | --- | --- |

@@ -2142,6 +2142,10 @@ PodUtils/podcrates must release `pod-egress` (T-127, T-137) and answer ask A4 (a
 
 T-127 is done (the take of `pod-egress`), and T-266 and T-311 are done.
 
+## Correction
+
+2026-11-26, the accept side is in `pod-egress` v0.86.0 (feature `shadowsocks`): `shadowsocks::codec::Decoder::new` opens a request stream with the master key, `Encoder::new` seals the answer, `parse_address` reads the address, `master_key` derives the key, and `replay::ReplayWindow` is the replay window. The published SIP004 vectors are `pod_testkit::vectors::SHADOWSOCKS`. The service is built: `--service ss` of `link listen` and `link connect` (`src/link_ss.rs`, the feature `ss`). The key `METHOD:PASSWORD` comes from `PODNET_SHADOWSOCKS_SERVICE_KEY_FILE` or `PODNET_SHADOWSOCKS_SERVICE_KEY`, never from `argv`; a Shadowsocks 2022 method exits 64 (the server side of SIP022 is not in the crate, and the row asks for SIP004 alone). A salt goes into a replay window of 10 minutes after its first chunk opens. A stream that does not open ends with no byte back and one line. Proof: `tests/service_ss.rs` (the vectors open at the service; each method carries a session of the client of `pod-egress`; the `ss://` network of T-127 reaches an echo target through `forward -L PORT=peer:FP/ss`) and `the_service_ss_needs_its_feature_and_then_its_key` of `tests/link_features.rs`. The Blocker is answered for this entry.
+
 # T-295: link: a Trojan service at a peer (GitHub #471)
 
 **Source:** GitHub #471 (https://github.com/PodUtils/podnet/issues/471), row E5-6.
@@ -2190,6 +2194,10 @@ PodUtils/podcrates must release `pod-egress` (T-127, T-137) and answer ask A4 (a
 ## Start condition
 
 T-127 is done (the take of `pod-egress`), and T-266 and T-311 are done.
+
+## Correction
+
+2026-11-26, `pod-egress` v0.86.0 has the feature `trojan` (it needs `vless` and `sha2`), and the client side alone. The public parts are `trojan::request` (it builds a request), `trojan::link::Password` (`new`, `hex`: the SHA-224 in hex) and `trojan::open`. No public function parses a request: the module `request` builds one, and the module `answer` (private) reads the first bytes of a server at the client. The service needs the accept side, and podnet does not write a codec that the crate holds. Ask for podcrates (A4, a COORD issue): a function of `pod_egress::trojan` that parses the start of a request against a `Password` (the 56 bytes of the hash in hex compared in constant time, CRLF, the command 0x01 or 0x03, the address in the form of SOCKS5, the port, CRLF) and gives the command, the host, the port and the bytes that it took, `None` while the bytes are short, and an error that tells "not this password" from "not a Trojan request" (the server then gives its static response); the vectors `pod_testkit::vectors::TROJAN` parsed back in its tests. The row of `trojan` in `podnet components` says that the code is not in the build. The entry stays blocked on the tag of `pod-egress` with this part.
 
 # T-296: link: an exec adapter that runs a program for each stream (GitHub #471)
 

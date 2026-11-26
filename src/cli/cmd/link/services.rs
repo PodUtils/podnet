@@ -1,4 +1,4 @@
-//! The services of a link end (T-266, T-291, T-292, T-296, T-297): what
+//! The services of a link end (T-266, T-291, T-292, T-294, T-296, T-297): what
 //! a stream that the peer opens runs. `link listen` and `link connect`
 //! share this code: the first line of the stream names the service, the
 //! grant of the peer is checked, and then the service runs.
@@ -28,6 +28,9 @@ const MAX_SERVICES: usize = 16;
 /// The time that a connection to a target can take.
 const CONNECT_LIMIT: Duration = Duration::from_secs(10);
 
+/// The name of the Shadowsocks service (T-294, the feature `ss`).
+const SHADOWSOCKS: &str = "ss";
+
 /// The flags that name the services of an end.
 #[derive(Args, Debug, Default)]
 pub(crate) struct ServiceArgs {
@@ -50,6 +53,12 @@ pub(crate) struct ServiceArgs {
     /// --exec-user (root only). A TARGET `exec-status:/ABS/PATH` runs the
     /// program in the same way. The peer gets its stdout, its stderr and its
     /// exit status as records (`link dial --status`).
+    ///
+    /// The service `ss` takes no target: `--service ss` makes this end a
+    /// Shadowsocks server of the AEAD form (SIP004; the build feature ss).
+    /// The key METHOD:PASSWORD comes from the file in
+    /// PODNET_SHADOWSOCKS_SERVICE_KEY_FILE or from
+    /// PODNET_SHADOWSOCKS_SERVICE_KEY, never from the command line.
     #[arg(long, value_name = "NAME=TARGET")]
     pub(crate) service: Vec<String>,
     /// The address where `BIND` of the service `socks5` listens (default
@@ -81,6 +90,9 @@ pub(super) enum Service {
     Http,
     /// Run a program for each stream (`--service NAME=exec:/PATH`, T-296).
     Exec(podnet::link_exec::Spec),
+    /// Serve Shadowsocks on the stream (`--service ss`, T-294).
+    #[cfg(feature = "ss")]
+    Shadowsocks(Arc<podnet::link_ss::Server>),
 }
 
 impl std::fmt::Display for Service {
@@ -90,6 +102,8 @@ impl std::fmt::Display for Service {
             Service::Socks5(_) => f.write_str("socks5"),
             Service::Http => f.write_str("http"),
             Service::Exec(spec) => write!(f, "{spec}"),
+            #[cfg(feature = "ss")]
+            Service::Shadowsocks(server) => write!(f, "{server}"),
         }
     }
 }
@@ -126,13 +140,22 @@ pub(super) fn services_of(
             }
             continue;
         }
+        if item == SHADOWSOCKS {
+            if out.insert(item.clone(), shadowsocks()?).is_some() {
+                return Err(usage(format!("--service {item}: given twice")));
+            }
+            continue;
+        }
         let (name, text) = item.split_once('=').ok_or_else(|| {
             usage(format!(
-                "--service {item:?}: give NAME=TARGET (or `socks5` or `http` with no target)"
+                "--service {item:?}: give NAME=TARGET (or `socks5`, `http` or `ss` with no target)"
             ))
         })?;
         service::check_name(name)?;
-        if name == podnet::link_socks::NAME || name == podnet::link_http::NAME {
+        if name == podnet::link_socks::NAME
+            || name == podnet::link_http::NAME
+            || name == SHADOWSOCKS
+        {
             return Err(usage(format!(
                 "--service {name}: the service {name} takes no target: give `--service {name}`"
             )));
@@ -182,6 +205,22 @@ pub(super) fn services_of(
         )));
     }
     Ok(out)
+}
+
+/// The Shadowsocks service, with its key from the environment. A build
+/// with no feature `ss` exits 69; a missing or bad key exits 64.
+#[cfg(feature = "ss")]
+fn shadowsocks() -> Result<Service> {
+    let key = podnet::link_ss::Key::from_env(&|name| std::env::var(name).ok())?;
+    Ok(Service::Shadowsocks(Arc::new(
+        podnet::link_ss::Server::new(key),
+    )))
+}
+
+#[cfg(not(feature = "ss"))]
+fn shadowsocks() -> Result<Service> {
+    podnet::build_features::require(SHADOWSOCKS)?;
+    Err(anyhow!("the feature {SHADOWSOCKS} is off"))
 }
 
 /// The address of `--socks-bind-ip`. A bad address exits 64.
@@ -383,6 +422,10 @@ pub(super) async fn bridge(
         Service::Http => {
             let resolve = resolver(services);
             return over(stream, seal, |io| podnet::link_http::serve(io, resolve)).await;
+        }
+        #[cfg(feature = "ss")]
+        Service::Shadowsocks(server) => {
+            return over(stream, seal, |io| podnet::link_ss::serve(server, io)).await;
         }
     };
     let mut io = match connect(target).await {

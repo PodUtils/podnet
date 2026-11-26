@@ -9,7 +9,7 @@ use crate::network::Failure;
 
 /// A reader of the variables of the process (`std::env::var` in a run, a
 /// table in a test).
-pub(super) type Get<'a> = &'a dyn Fn(&str) -> Option<String>;
+pub(crate) type Get<'a> = &'a dyn Fn(&str) -> Option<String>;
 
 /// The suffix of the variables of the router network `name`: its name in
 /// capitals, with `-` as `_` (`office-4g` gives `_OFFICE_4G`). It is given
@@ -33,7 +33,7 @@ pub(super) fn suffix_of(name: Option<&str>, get: Get<'_>, vars: &[&str]) -> Stri
 
 /// The form of a secret that was given, for the status of a link.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Form {
+pub(crate) enum Form {
     /// The file in the variable `..._FILE`.
     File,
     /// The value of the variable.
@@ -41,7 +41,7 @@ pub(super) enum Form {
 }
 
 impl Form {
-    pub(super) fn word(self) -> &'static str {
+    pub(crate) fn word(self) -> &'static str {
         match self {
             Form::File => "file",
             Form::Variable => "variable",
@@ -50,10 +50,10 @@ impl Form {
 }
 
 /// A secret, its form and the variable that gave it.
-pub(super) struct Given {
-    pub(super) text: String,
-    pub(super) form: Form,
-    pub(super) variable: String,
+pub(crate) struct Given {
+    pub(crate) text: String,
+    pub(crate) form: Form,
+    pub(crate) variable: String,
 }
 
 /// The value is not shown.
@@ -69,7 +69,7 @@ impl std::fmt::Debug for Given {
 /// The text of the file in `file_var`, else the value of `value_var`;
 /// `None` when neither is set. Both set, a file that cannot be read and an
 /// empty secret are usage faults that name the variable.
-pub(super) fn read(
+pub(crate) fn read(
     get: Get<'_>,
     file_var: &str,
     value_var: &str,

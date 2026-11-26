@@ -61,6 +61,7 @@ docs/link.md 789d1a6168 skip a template: the S3 keys (...) and SERVER-FINGERPRIN
 docs/link.md eb4a29d31c skip a template: SERVER-FINGERPRINT is a placeholder; two hosts
 docs/link.md 83e298b511 skip a template: KEY is a placeholder; two proxies
 docs/link.md 75a4e45854 skip a template: three hosts A, B and C with placeholder fingerprints
+docs/link.md 50cb0ddf04 skip a template: a listener with the build feature ss and a forward on two hosts; ADDRESS, FILE, FP and HOST are placeholders
 
 docs/maintenance.md 10b256c498 live [needs curl,python3] the GitHub API through forge.web.pkgforge.dev
 docs/maintenance.md 1da99bd822 live-manual [needs curl,python3] the GitHub API through forge.web.pkgforge.dev, which answers 403 at times

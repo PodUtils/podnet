@@ -133,6 +133,8 @@ pub mod link_s3;
 pub mod link_service;
 pub mod link_socks;
 pub mod link_split;
+#[cfg(feature = "ss")]
+pub mod link_ss;
 #[cfg(feature = "tcp")]
 pub mod link_tcp;
 #[cfg(feature = "udp")]

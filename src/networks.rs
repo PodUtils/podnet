@@ -36,7 +36,7 @@ pub mod chain;
 mod devtunnel;
 mod netbird;
 mod peer;
-mod secret;
+pub(crate) mod secret;
 mod servers;
 pub use netbird::{greeting as netbird_greeting, port_from_env as netbird_port};
 pub use servers::{SHADOWSOCKS_KEY, SHADOWSOCKS_KEY_FILE, VLESS_ID, VLESS_ID_FILE};

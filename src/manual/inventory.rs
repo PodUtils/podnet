@@ -115,7 +115,7 @@ pub const COMPONENTS: &[ComponentEntry] = &[
     ComponentEntry {
         name: "ss",
         kind: "service",
-        meaning: "The Shadowsocks service over a stream of the link. Cost class network, no privilege. Build feature ss.",
+        meaning: "The Shadowsocks service over a stream of the link: the AEAD form of SIP004 (chacha20-ietf-poly1305, aes-256-gcm, aes-128-gcm), not Shadowsocks 2022. The first chunk names the target, and this end dials it. The key METHOD:PASSWORD comes from PODNET_SHADOWSOCKS_SERVICE_KEY_FILE or PODNET_SHADOWSOCKS_SERVICE_KEY. A salt that comes again within 10 minutes is refused. Duplex, cost class network, no privilege. Build feature ss.",
     },
     ComponentEntry {
         name: "trojan",

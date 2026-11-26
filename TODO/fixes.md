@@ -13741,8 +13741,8 @@ cargo test -p podnet --test claims_docs
 - Change: `docs/host-runtime.md` gives `podnet init generate NODE --relay URL` (the sentence and the example) and
   `PODNET_POLICY=rules.json podnet bench --duration 1 https://example.net/file` (`bench` sends through
   `podnet::fetch`, which asks the policy). The test found four more faults, fixed in the same commit:
-  `docs/harness.md` (a usage line with `[--json]`: now two command lines), `docs/link.md:447` (`link listen` with no
-  `--allow`), `docs/link.md:448` (`link dial` has no `--to`: now `--peer FINGERPRINT`) and `docs/serve.md:61`
+  `docs/harness.md` (a usage line with `[--json]`: now two command lines), `docs/link.md:484` (`link listen` with no
+  `--allow`), `docs/link.md:485` (`link dial` has no `--to`: now `--peer FINGERPRINT`) and `docs/serve.md:61`
   (`link connect` with `--peer` and `--allow`, which clap refuses together: now `--allow hub.allow`).
   `scripts/doc-commands.txt` has the new hashes of the five blocks (same classes).
 - Test: `each_command_of_a_document_parses` (`src/cli/help_tests.rs`). The extraction is the one of
@@ -13753,7 +13753,7 @@ cargo test -p podnet --test claims_docs
   each with its reason. The documents have 311 lines.
 - Control: on the documents before the fix the test fails with 6 lines: `docs/harness.md:8` (unexpected argument
   `[--json]`), `docs/host-runtime.md:114` (unexpected argument `--node`), `docs/host-runtime.md:142`
-  (unrecognized subcommand `fetch`), `docs/link.md:447` (required `--allow`), `docs/link.md:448` (unexpected
+  (unrecognized subcommand `fetch`), `docs/link.md:484` (required `--allow`), `docs/link.md:485` (unexpected
   argument `--to`), `docs/serve.md:61` (`--peer` cannot be used with `--allow`).
 - `cargo test -p podnet each_command_of_a_document_parses`: 1 passed. `cargo test -p podnet --test claims_docs`:
   3 passed. `python3 -I scripts/doc-commands.py --check`: 135 blocks, each with a class.

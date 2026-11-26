@@ -102,16 +102,20 @@ pub struct Service {
     pub feature: &'static str,
     /// The entry of the record that adds the code.
     pub entry: &'static str,
+    /// True when this build holds the code of the service (its feature is
+    /// on and the code exists).
+    pub code: bool,
 }
 
 /// The services of this build, in order.
 pub const SERVICES: [Service; 2] = [
     Service {
         name: "ss",
-        about: "the Shadowsocks service over a stream of the link",
+        about: "the Shadowsocks service (the AEAD form of SIP004) over a stream of the link",
         cost: "network",
         feature: "ss",
         entry: "T-294",
+        code: cfg!(feature = "ss"),
     },
     Service {
         name: "trojan",
@@ -119,6 +123,8 @@ pub const SERVICES: [Service; 2] = [
         cost: "network",
         feature: "trojan",
         entry: "T-295",
+        // The accept side of Trojan's request is not in `pod-egress` yet.
+        code: false,
     },
 ];
 
@@ -142,6 +148,22 @@ fn from_report(r: &carriers::Report) -> Component {
 
 fn from_service(s: &Service) -> Component {
     let built = build_features::built(s.feature);
+    if built && s.code {
+        return Component {
+            name: s.name.to_string(),
+            kind: "service",
+            framing: Some("stream"),
+            duplex: Some(true),
+            needs_privilege: false,
+            available: true,
+            reason: None,
+            cost: s.cost,
+            feature: Some(s.feature),
+            built,
+            about: s.about,
+            address: None,
+        };
+    }
     let reason = if built {
         format!(
             "the feature is on, but the code of the service is not in this build ({})",

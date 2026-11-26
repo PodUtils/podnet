@@ -24,7 +24,7 @@ podnet forward -L 8080=peer:FINGERPRINT/http      # a local port to a service of
 * `link listen ADDRESS --allow FILE` binds the address through the carrier. It prints the address (for the unix carrier: the
   path and its mode, 0600), the fingerprint of this install and the size of the allow list. `--service NAME=TARGET` (repeat it,
   16 at most) sets where the streams of the service NAME go; `--to TARGET` is `--service raw=TARGET`. A TARGET is `host:port` or
-  `unix:/path`. `--service socks5` (no target) makes this end the server side of SOCKS5 (see "The service `socks5`"). `--service http` (no target) makes this end an HTTP proxy (see "The service `http`"). `--service NAME=exec:/ABS/PATH` runs a program for each stream (see "The service `exec`"). A stream for a service that the listener does not have is refused (the opener exits 69). A second
+  `unix:/path`. `--service socks5` (no target) makes this end the server side of SOCKS5 (see "The service `socks5`"). `--service http` (no target) makes this end an HTTP proxy (see "The service `http`"). `--service NAME=exec:/ABS/PATH` runs a program for each stream (see "The service `exec`"). `--service ss` (no target) makes this end a Shadowsocks server (see "The service `ss`"). A stream for a service that the listener does not have is refused (the opener exits 69). A second
   listener at a live address exits 69. A regular file at the address exits 64 and stays. A stale socket file is replaced.
 * `link dial ADDRESS` connects, proves the key of this install, and checks the key of the listener. Give `--peer FINGERPRINT`
   (repeat it for more than one) or `--allow FILE`: the dialer trusts no listener by default (else exit 64). Then it copies stdin
@@ -199,6 +199,43 @@ The file server serves a tree at a peer with `podnet serve DIR --at peer:FP/SERV
 
 Proof: `tests/service_exec.rs`. Not proven: `--exec-user` as root (the test runs without privilege and checks the refusal).
 
+### The service `ss`
+
+`--service ss` makes this end a Shadowsocks server of the AEAD form (SIP004) on each stream of the service `ss` (T-294). It needs
+the build feature `ss` ([build.md](build.md)): a build without it exits 69 with the reason. This is not Shadowsocks 2022 (SIP022).
+podnet has no code of the protocol: the codec, the keys and the address form are `shadowsocks` of `pod-egress`.
+
+```sh
+export PODNET_SHADOWSOCKS_SERVICE_KEY_FILE=/etc/podnet/ss.key   # one line: METHOD:PASSWORD, mode 0600
+podnet link listen ADDRESS --allow FILE --service ss
+# On the other host: a local port to the service, and the ss:// network of podnet through it.
+podnet forward -L 127.0.0.1:8388=peer:FP/ss
+PODNET_SHADOWSOCKS_KEY_FILE=/etc/podnet/ss.key podnet forward -L 127.0.0.1:2222=HOST:22 --network ss://127.0.0.1:8388
+```
+
+* The key is one line `METHOD:PASSWORD` in the file of `PODNET_SHADOWSOCKS_SERVICE_KEY_FILE`, or the value of
+  `PODNET_SHADOWSOCKS_SERVICE_KEY` (the file is the better choice). The methods are `chacha20-ietf-poly1305`, `aes-256-gcm` and
+  `aes-128-gcm`. A missing key, both variables, a method of Shadowsocks 2022, another method and an empty password exit 64 before the
+  listener listens. The line names the variable and never holds the password. `--service ss=TARGET` exits 64: the service takes
+  no target.
+* The peer sends a salt, then chunks. The first chunk starts with the target in the address form of SOCKS5 (an IPv4 address, a
+  name or an IPv6 address, then the port). This end dials the target from this host (10 s at most) and copies the bytes both ways.
+  The egress policy of this host decides on the target first, as for each other service.
+* The salt of a stream goes into a replay window of 10 minutes (4096 salts at most) after its first chunk opens. A salt that
+  comes again is refused.
+* A stream that does not open ends with no byte back, and the log gets one line `a Shadowsocks stream is refused: ...`: another
+  key, bytes of no Shadowsocks client, a replay, no address, no first chunk within 30 s, or a target that does not answer. A
+  stream that ends with no byte (the reach probe of a client) gets no line.
+* Each client of the AEAD form speaks to it: the `ss://` network of podnet ([egress.md](egress.md)) through `forward -L
+  PORT=peer:FP/ss`, as above, or another Shadowsocks client at that port. The listener prints `shadowsocks METHOD` as the
+  target of the service, and no password.
+* `podnet components` lists the service `ss` as available in a build with the feature.
+
+Proof: `tests/service_ss.rs` (the published SIP004 vectors of `pod-testkit` open at the service; each method carries a session
+of the client of `pod-egress`; the `ss://` network of podnet reaches an echo target through `forward -L PORT=peer:FP/ss`; a
+stream that does not open, a replay and a bad key). Not proven: a run against a client of another product (shadowsocks-rust,
+outline).
+
 ## The control socket
 
 `link listen` and `link connect` run a control socket for the links they hold. It is a unix socket with the mode 0600, at
@@ -363,7 +400,7 @@ carrier exits 69 with that reason.
 (`carrier` or `service`), `framing`, `duplex`, `needs_privilege`, `available`, `reason`, `cost`, `feature`, `built`, `about` and
 `address`. The names are stable, the list has at most 64 rows, and a row has at most 4 KiB in JSON. A row of a feature that this
 build leaves out has `available: false`, `built: false` and the reason; its `framing` and `duplex` are `null`. The services are
-`ss` and `trojan` (features `ss` and `trojan`). The JSON also has `features` (each optional feature and whether it is built)
+`ss` and `trojan` (features `ss` and `trojan`). The row of `ss` is available in a build with its feature; the row of `trojan` says that the code is not in the build (T-295). The JSON also has `features` (each optional feature and whether it is built)
 and `excluded` (each feature that is off, with its reason). `podnet man inventory` is the section of the manual for
 each row, and `tests/cli/manual.rs` requires a section for each row that the build holds.
 

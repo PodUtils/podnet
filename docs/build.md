@@ -53,7 +53,7 @@ the link, and the packet sidecar, sit behind a Cargo feature of the `podnet` cra
 | `smtp` | The SMTP submission carrier (one message for each batch). | GitHub #484 |
 | `imap` | The IMAP carrier (`APPEND` up, `UID FETCH` down). | GitHub #484 |
 | `sidecar` | The packet sidecar, `podnet sidecar` ([limits-carriers.md](limits-carriers.md)). | GitHub #495 |
-| `ss` | The Shadowsocks service. | T-294 |
+| `ss` | The Shadowsocks service of a link end (`link listen --service ss`, the AEAD form of SIP004; [link.md](link.md), "The service `ss`"). | T-294 |
 | `trojan` | The Trojan service. | T-295 |
 | `c-abi` | The C ABI. The code is the crate `crates/podnet-capi` (see The C library), which does not turn the feature on: the feature gates no code. | T-304 |
 | `full` | `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `dns`, `s3`, `icmp`, `ntp`, `smtp`, `imap`, `ss`, `trojan`, `sidecar` and `c-abi`: each optional feature. | T-311 |
