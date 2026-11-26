@@ -2095,6 +2095,12 @@ of the allocation), `turn_a_stale_nonce_does_not_lose_the_datagram` (a 438 answe
 test failed; with the `--egress` refusal off and the usage mapping off, the `way` test and the exit-code test failed (exit 1, not 64).
 Not proven: a live TURN server.
 
+2026-11-26, the TCP half is done (the commit of this entry): the TCP relay of RFC 6062 is in `pod-turn` and
+in `src/networks/turn.rs` (`connect_tcp`: a TCP allocation, `Connect` and `ConnectionBind`; the status
+`tcp_relay: rfc6062`). Tests: `turn_a_tcp_stream_goes_through_an_rfc6062_allocation` (the bytes of each direction, a
+refresh before the end of a lifetime of 2 s) and `turn_a_tls_tcp_stream_goes_through_an_rfc6062_allocation`; `cargo
+test -p podnet --lib networks::turn`: 19 passed. `docs/networks.md` says it now. What stays: a row of `doctor` for a TURN network, and an account for each network (one account
+serves each process now).
 
 # T-354: net: `devtunnel://` with a tunnel access token, or with no token
 

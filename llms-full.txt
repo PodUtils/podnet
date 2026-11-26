@@ -16538,6 +16538,11 @@ ChannelData. podnet has no TURN code of its own.
   A datagram that the peer sends back comes as ChannelData. The allocation ends when the socket is dropped.
 * The client refreshes the allocation, the permissions and the channels on its own timer. A 438 (stale nonce)
   is answered with the fresh nonce.
+* A TCP connection of the network (`podnet forward -L PORT=HOST:PORT --network turns://...`, a way of `route`) goes
+  through a TCP allocation of RFC 6062 (`Connect`, then `ConnectionBind` on a second connection to the server), with
+  the bare bytes of each direction. The allocation lives while the stream lives. The status of the link has
+  `tcp_relay: rfc6062`. A server with no RFC 6062 refuses the allocation, and the dial ends with the stage
+  `allocate`.
 * A stage that fails ends the socket with an error that starts with the network and the stage: `allocate`,
   `refresh`, `permission`, `bind`, `send` or `receive`. For example
   `turn://turn.example:3478: refresh: TURN: the server answered the Refresh request with 437`. The socket does
