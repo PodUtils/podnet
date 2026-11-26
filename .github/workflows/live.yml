@@ -767,24 +767,27 @@ jobs:
           set -eu
           p=$PWD/target/release/podnet
           d=$(mktemp -d)
-          id_of() { sudo env PODNET_STATE_DIR="$d/$1" "$p" link status | awk '/^identity/ { print $2 }'; }
+          # The state and the allow lists belong to root, who runs podnet: a
+          # file of another user is refused (exit 71).
+          r=$(sudo mktemp -d)
+          id_of() { sudo env PODNET_STATE_DIR="$r/$1" "$p" link status | awk '/^identity/ { print $2 }'; }
           a=$(id_of a)
           b=$(id_of b)
-          echo "$b" > "$d/allow-a"
-          echo "$a" > "$d/allow-b"
+          echo "$b" | sudo tee "$r/allow-a" > /dev/null
+          echo "$a" | sudo tee "$r/allow-b" > /dev/null
           python3 -I -c '
           import socket
           s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
           s.bind(("127.0.0.1", 47470)); s.listen(2); s.settimeout(90)
           c, _ = s.accept(); data = c.recv(100); c.sendall(b"echo:" + data); c.close()
           ' &
-          sudo env PODNET_STATE_DIR="$d/a" timeout 120 "$p" link listen 127.0.0.1 --carrier icmp --allow-raw icmp \
-            --allow "$d/allow-a" --to 127.0.0.1:47470 > "$d/listen.out" 2> "$d/listen.err" &
+          sudo env PODNET_STATE_DIR="$r/a" timeout 120 "$p" link listen 127.0.0.1 --carrier icmp --allow-raw icmp \
+            --allow "$r/allow-a" --to 127.0.0.1:47470 > "$d/listen.out" 2> "$d/listen.err" &
           sleep 2
-          sudo env PODNET_STATE_DIR="$d/b" timeout 30 "$p" link dial "$a@127.0.0.1" --carrier icmp --allow-raw icmp \
-            --allow "$d/allow-b" --check
-          out=$(echo ping | sudo env PODNET_STATE_DIR="$d/b" timeout 30 "$p" link dial "$a@127.0.0.1" --carrier icmp \
-            --allow-raw icmp --allow "$d/allow-b")
+          sudo env PODNET_STATE_DIR="$r/b" timeout 30 "$p" link dial "$a@127.0.0.1" --carrier icmp --allow-raw icmp \
+            --allow "$r/allow-b" --check
+          out=$(echo ping | sudo env PODNET_STATE_DIR="$r/b" timeout 30 "$p" link dial "$a@127.0.0.1" --carrier icmp \
+            --allow-raw icmp --allow "$r/allow-b")
           echo "$out"
           echo "$out" | grep -q '^echo:ping$' || { tail -20 "$d/listen.err"; exit 1; }
           sudo pkill -f "link listen 127.0.0.1 --carrier icmp" || true

@@ -17161,6 +17161,13 @@ echo, an object store, NTP or mail, and the release gate has no row of the `icmp
 # live: the step "A link over ICMP echo (root)" passes
 ```
 
+## Correction
+
+2026-11-26: `live` 45786019608 (`23205be`) failed in the step "A link over ICMP echo (root)": `podnet: .../allow-b is
+another user's, or others can change it; chmod go-w` (exit 71). The step wrote the allow lists as the runner user,
+and `sudo podnet` reads them as root, which refuses a file of another user by design. The step now writes the state
+and the allow lists as root (`sudo mktemp -d`, `sudo tee`).
+
 # T-610: link carriers names the cost class of a carrier two times
 
 **Source:** a run of `podnet link carriers` for T-609, 2026-11-26.
