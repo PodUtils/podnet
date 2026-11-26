@@ -58,6 +58,7 @@ mod flowlog;
 mod frontdoor;
 mod handoff;
 mod icmp;
+mod inbound;
 mod inbox;
 mod kernel;
 mod kernel_serve;

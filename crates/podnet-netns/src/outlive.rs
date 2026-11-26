@@ -160,7 +160,7 @@ pub(crate) fn split(verbose: bool, body: impl FnOnce(Reporter) -> Result<i32>) -
     drop(write);
     let ended = front(read, back);
     // COORD-142 of podrunner: a back that SIGKILL ended left its sockets.
-    crate::listen::sweep_end_dir();
+    crate::inbound::sweep_end_dir();
     ended
 }
 

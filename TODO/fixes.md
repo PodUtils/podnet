@@ -4030,11 +4030,11 @@ above. The check to satisfy is: no other user can connect, at any instant.
 
 ## Premise
 
-- `crates/podnet-netns/src/listen.rs:197-310` (`bind_private`) calls `UnixListener::bind(path)`, then
+- `crates/podnet-netns/src/listen.rs:127-240` (`bind_private`) calls `UnixListener::bind(path)`, then
   `set_permissions(path, 0o600)`.
 - The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:251`,
   src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:320`, `crates/podnet-vnet/src/switch.rs:438`,
-  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:445-448`),
+  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:375-378`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:95`.
 - `crates/podnet-netns/src/seccomp/accept.rs:61` is not exposed: it calls `private_dir` first
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).

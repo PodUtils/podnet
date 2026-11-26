@@ -284,7 +284,7 @@ The rules of the issue that apply to this row:
 - The tree has no `link` or `identity` command (`src/cli/cmd/mod.rs`).
 - The background record is `crates/podnet-core/src/detach.rs` (`register`, `update_record`) and `crates/podnet-core/src/instances.rs` (`Record`).
 - `tests/cli/manual.rs` checks that each command and flag is documented (`the_man_page_names_each_flag`).
-- `bind_private` in `crates/podnet-netns/src/listen.rs:197` binds a unix socket at mode 0600.
+- `bind_private` in `crates/podnet-netns/src/listen.rs:127` binds a unix socket at mode 0600.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 
 ## Approach
@@ -401,7 +401,7 @@ The rules of the issue that apply to this row:
 ## Premise
 
 - The router has a control socket: `src/router/control.rs:307` (`peer_allowed`), `:338` (`peer_cred`) and `:378` (it answers "HTTP/1.0" with JSON bodies).
-- The socket is bound with `bind_private` (`crates/podnet-netns/src/listen.rs:197`).
+- The socket is bound with `bind_private` (`crates/podnet-netns/src/listen.rs:127`).
 - The issue marks this row "partial" for these parts. No link socket exists.
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 
@@ -813,7 +813,7 @@ The rules of the issue that apply to this row:
 
 ## Premise
 
-- `bind_private` and `bind_claimed` in `crates/podnet-netns/src/listen.rs:197` and `:445` bind at mode 0600, refuse a regular file and replace a stale socket. The peer check exists in `src/router/control.rs:338`.
+- `bind_private` and `bind_claimed` in `crates/podnet-netns/src/listen.rs:127` and `:375` bind at mode 0600, refuse a regular file and replace a stale socket. The peer check exists in `src/router/control.rs:338`.
 - `AF_UNIX` is allowed on the test host (measured by the issue). The CI jobs `restricted-host` and `no-loopback` exist (`scripts/restricted-host.sh`, `.github/workflows/ci.yml`).
 - Read on 2026-11-12 at 505dfa0. Nothing was built or measured for this entry.
 

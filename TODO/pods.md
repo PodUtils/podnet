@@ -1500,8 +1500,8 @@ the same port.
    empty (a socket of another pod keeps it).
 2. The front sweeps the directory after the end of the back: each socket that no process answers goes, then the
    directory when it is empty. This covers a back that a stop signal ended with SIGKILL.
-3. At a start, remove each socket of the directory that no process answers (a pod that a SIGKILL of the whole group
-   ended).
+3. At a start, remove each socket of the directory that no socket of the host holds (`/proc/net/unix`; not a connect,
+   which is a connection to the program of a live pod), from a pod that a SIGKILL of the whole group ended.
 4. Tests: the end of a pod leaves no socket and no directory; a table of the start (a stale socket goes; a live socket
    and a file stay).
 
@@ -1518,3 +1518,10 @@ cargo test --test pod_seccomp -- the_default_inbound_directory_is_private
 directory are gone after the end; it fails without the fix (`.../podnet-netns-inbound/8080.sock stays after the end`).
 `the_inbound_sockets_go_at_the_end_and_a_stale_one_at_the_start` passes. By hand: a pod of a Python listener on port
 8080, stopped with SIGTERM, SIGINT and SIGHUP, leaves no socket and no directory each time.
+
+2026-11-26, a correction of the stale check: the first form tried a connect to each socket, and a connect to a live
+socket is a connection to the program of the pod (`ci` 45846666873: `warp_exec_join_reaches_a_listener_of_the_pod`
+lost its one accept to the check). The check now reads the bound paths of `/proc/net/unix`; with no readable list, it
+removes nothing. The test asserts that the check makes no connection to a live socket. The code of the cleanup is
+`crates/podnet-netns/src/inbound.rs`.
+

@@ -61,7 +61,7 @@ pub(crate) fn run_seccomp(args: Args) -> Result<i32> {
         bail!("the seccomp backend needs -x (there is no direct mode)");
     }
     let verbose = args.verbose;
-    crate::listen::set_end_dir(&args.inbound_dir);
+    crate::inbound::set_end_dir(&args.inbound_dir);
     crate::outlive::split(verbose, |reporter| supervise_pod(args, reporter))
 }
 
@@ -76,7 +76,7 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
     crate::listen::private_dir(&args.inbound_dir)?;
     // COORD-142 of podrunner: a socket of a pod that ended with no cleanup
     // goes now.
-    crate::listen::remove_stale_inbound(&args.inbound_dir);
+    crate::inbound::remove_stale_inbound(&args.inbound_dir);
     // T-110: the directory of the session is private too.
     if let Some(dir) = args.dns_state.as_deref().and_then(std::path::Path::parent) {
         crate::listen::private_dir(dir)?;
@@ -129,7 +129,7 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
     ));
     // COORD-142 of podrunner: the sockets of this pod, and the directory
     // when no other pod has a socket in it.
-    crate::listen::remove_inbound(&inbound_dir);
+    crate::inbound::remove_inbound(&inbound_dir);
     ended
 }
 
