@@ -61,7 +61,7 @@ not wait for a larger one.
    - The findings of the QA pass of `v0.4.0-beta.20` (#761 to #775): each is done.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
-   - the donor review (GitHub #429 to #434): done, except #435: T-244 (partial: `tunnel --inspect` is built; `clear`, the measurements and COORD-136 #781 stay).
+   - the donor review (GitHub #429 to #434): done, except #435: T-244 (partial: `tunnel --inspect` is built and measured; the gaps of the hook wait for COORD-136 #781).
    - open and partial follow-ups (`TODO/fixes.md`):
      T-478 and T-406 (blocked, #604), T-488, T-414 and T-415
      (partial), T-358 (partial).

@@ -1855,9 +1855,9 @@ POST with `Authorization` and `?token=` through the public URL, then `list`, `sh
 The commands `tunnel inspect list`, `show` and `replay` have no scenario of the release gate: they are
 experimental (`src/cli/scenarios.txt`).
 
-2026-11-26, the lead: the commit `T-244` is on `main`. What stays: `tunnel inspect clear`; the measurements of the Prove
-(1000 requests per second against a loopback origin; a 50 MiB upload and download within 8 MiB of resident set); and
-the two gaps of the hook above, asked in COORD-136 (PodUtils/podnet#781).
+2026-11-26, the lead: the commit `T-244` is on `main`. `tunnel inspect clear` and the measurements of the Prove are
+done (the commit `T-244: tunnel inspect clear`). What stays: the two gaps of the hook above, asked in COORD-136
+(PodUtils/podnet#781).
 
 2026-11-26, `tunnel inspect clear` and the measurements of the Prove:
 
