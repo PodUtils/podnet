@@ -4,6 +4,7 @@
 #   python3 -I servers.py http-unix PATH BODY LOG
 #   python3 -I servers.py http-tcp PORT BODY
 #   python3 -I servers.py socks-unix PATH LOG NAME:PORT=TCPPORT
+#   python3 -I servers.py socks-tcp PORT LOG NAME:PORT=TCPPORT
 #
 # http-unix serves HTTP on the unix socket PATH. Each request gets BODY.
 # For each connection it appends the peer (SO_PEERCRED: pid, uid and the
@@ -14,6 +15,8 @@
 # socks-unix is a SOCKS5 server on the unix socket PATH. It appends each
 # CONNECT target to LOG. It connects only NAME:PORT, to 127.0.0.1:TCPPORT;
 # it refuses each other target (reply 0x02).
+# socks-tcp is the same SOCKS5 server on 127.0.0.1:PORT (T-358 step 2: the
+# scenarios of the documented commands).
 import http.server
 import os
 import socket
@@ -131,6 +134,11 @@ class SocksUnix(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
     daemon_threads = True
 
 
+class SocksTcp(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
 def main():
     mode = sys.argv[1]
     os.umask(0)
@@ -140,8 +148,11 @@ def main():
     elif mode == "http-tcp":
         srv = HttpTcp(("127.0.0.1", int(sys.argv[2])), Handler)
         srv.body, srv.log = sys.argv[3].encode(), os.devnull
-    elif mode == "socks-unix":
-        srv = SocksUnix(sys.argv[2], Socks)
+    elif mode in ("socks-unix", "socks-tcp"):
+        if mode == "socks-unix":
+            srv = SocksUnix(sys.argv[2], Socks)
+        else:
+            srv = SocksTcp(("127.0.0.1", int(sys.argv[2])), Socks)
         srv.log = sys.argv[3]
         srv.name, tcp_port = sys.argv[4].split("=")
         srv.tcp_port = int(tcp_port)

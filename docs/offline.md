@@ -7,7 +7,7 @@ carriers speak over a device such as `/dev/ttyUSB0`.
 
 ```sh
 podnet offline spool add ./spool --file report.txt        # one entry, with a sequence, a checksum and the sender's key
-podnet offline spool take ./spool --out report.txt        # the lowest sequence: write the body, then remove the entry
+podnet offline spool take ./spool --out taken.txt         # the lowest sequence: write the body, then remove the entry
 podnet offline discover announce --name field --address /dev/ttyUSB0 --port 22 --to 127.0.0.1:5353
 podnet offline discover listen --timeout 10 --json        # the peers whose signature verified
 podnet offline bundle build --out ./bundle --name field --file ./site:site   # each file of ./site at site/PATH

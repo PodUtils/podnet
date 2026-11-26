@@ -7066,6 +7066,43 @@ step 3: a consumer that a sibling adds.
 ICMP echo (root)" and a row of the lane case `local-files` (exit 69 and `CAP_NET_RAW` as a user) are the rows. What
 remains of step 1: `ipv6-only` on a host with IPv6.
 
+2026-11-26, step 2, part (a). `scripts/doc-commands.py` has the class `scenario`: a block that runs as written after a
+set-up: a file HASH.sh of `scripts/doc-scenarios/`, with the helpers of `scripts/doc-scenarios/lib.sh` (`docs/development.md`, The
+scenario of a block). The set-up writes files, exports variables, and starts servers and stand-ins on the loopback or on
+a unix socket. `BACKGROUND` names the lines of the block that run in the background (the first shell of a block of two
+shells), `STDIN` gives the block its stdin (the password that curl asks for), `ready`, `check` and `teardown` wait,
+examine and clean up, and `LIMIT` gives a longer time limit. At the end, a stop ends each background command, each
+detached instance (`podnet stop --all`) and the process group of the block; the output goes to a file, so a command that
+the block starts with `&` cannot hold the run. A set-up that the host cannot give (no loopback, a fixed port or socket
+of the block in use) calls `doc_na`: the block is n.a., not failed, and the exit code does not change. `--check` fails
+on a `scenario` line with no set-up, a set-up with no `scenario` line, a set-up with no `setup()`, and a `BACKGROUND`
+line that names no line of the block. `tests/consumers/servers.py` has the mode `socks-tcp` (a SOCKS5 stand-in on
+`127.0.0.1:PORT`) for `docs/pods.md`.
+
+The counts of the 135 blocks: before, 4 `run`, 0 `scenario`, 65 `live`, 1 `root`, 65 `skip`; after, 8 `run`, 15
+`scenario`, 64 `live`, 1 `root`, 47 `skip`. 23 blocks run in `--run`. Here 22 passed and 1 was MISS
+(`docs/networks.md`, no `ssh-keygen` on this host), in 69 s with the debug binary. The new blocks: `docs/serve.md` (tar,
+the JSON listing, the users with a typed password, an upload, the unlock of a PIN), `docs/cli.md` (`--check` of serve and
+tunnel), `docs/harness.md` (the usage lines and `run.sh` of the archive), `docs/offline.md` (the reference list and the
+pairing), `docs/host-runtime.md` (`stat`, `init`, the status page), `docs/link.md` (the JSON query of the carriers),
+`docs/tunnels.md` (`ports` and `qr`), `docs/virtual-network.md` (a program under the shim, the proxy with a SOCKS5
+greeting, the stack with faults on a switch) and `docs/pods.md` (the rules, with a SOCKS5 stand-in).
+
+Faults of the documents that the blocks found, fixed in the documents: `init generate` prints the configuration and
+writes no file with no `--out`, so `init check node.json` found no file (`--out node.json` added);
+`podnet qr <URL>` is a redirection in sh (now a URL); the peer of `stat --serve` came after the sender, which then lost
+each packet (the peer is now first); `net switch ... &` raced the proxy of the next line, which then exited with
+`Connection refused` (now `--detach`, which returns when the switch listens); `spool take --out report.txt` wrote to
+the input file of the line before (now `taken.txt`). A fault of the code or of the documents, not fixed: `podnet offline
+spool take ./spool --out report.txt` with `report.txt` present prints `podnet: report.txt: File exists (os error 17)`
+and exits 65. `docs/offline.md` does not say that `--out` refuses a file that exists, and it gives 71 for a failure of
+the file system and 65 for data that does not verify.
+
+What remains of step 2: (b) the `live` blocks in `live.yml`; (c) the `root` block and the blocks that need a
+restricted host in the profiles of `pod-lab`. The other `skip` blocks are templates with placeholders (fingerprints,
+hosts), reference lists that mix them, two hosts, devices (`/dev/ttyUSB0`) or paths that only root can make
+(`/run/...`, `/mnt/data`).
+
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 

@@ -312,7 +312,7 @@ command. `--stdio` takes `--auth-user` and `--auth-password-file`. It exits
 ```sh
 podnet ports            # list the listening TCP ports (Linux)
 podnet ports --probe    # only the ports that accept a connection
-podnet qr <URL>         # print a QR code
+podnet qr https://example.com/   # print a QR code of a URL
 ```
 
 `podnet expose TARGET` publishes a local service by one word ([forward.md](forward.md)).
