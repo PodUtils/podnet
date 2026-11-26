@@ -400,7 +400,12 @@ jobs:
           echo "systemd started the quick tunnel, and its URL answers"
           # The unit runs podnet autostart run (T-398).
           systemctl --user cat podnet-live | grep -q ' autostart run '
-          systemctl --user is-active podnet-live
+          # T-589: a unit that stopped prints its journal, so the cause (a
+          # quota of the quick-tunnel service, exit 75) is in the step.
+          systemctl --user is-active podnet-live || {
+            journalctl --user -u podnet-live -o cat | grep -v '"event"' | tail -30
+            exit 1
+          }
           if systemctl --user cat podnet-secret podnet-live | grep -E "$token|pw@"; then echo "a secret is in a unit"; exit 1; fi
           if ps auxww | grep -v grep | grep -E "$token|pw@"; then echo "a secret is in ps"; exit 1; fi
           stat -c '%a %n' "$HOME"/.local/state/podnet/autostart/*.env

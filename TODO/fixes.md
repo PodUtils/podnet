@@ -16341,6 +16341,14 @@ python3 -I scripts/check-workflows.py
 # the next live run with a 429: a warning, and the run is green
 ```
 
+## Correction
+
+2026-11-26: `live` 45733368792 (`585b722`) failed in the step "Autostart with a systemd user unit": the URL of the
+unit answered, then `podnet autostart run` exited 75 and systemd restarted it, and `systemctl --user is-active` failed
+with no cause in the step (the line of podnet is in the journal of the unit). The step now prints the last 30 lines of
+the journal when the unit is not active, so the cause is in the output of the step, and a quota of the quick-tunnel
+service there gives the warning of `scripts/live-step.sh`.
+
 ## Done
 
 2026-11-25 (steps 1 to 3), the commit of this entry. A local run of `scripts/live-step.sh` over four scripts: a 429
