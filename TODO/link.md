@@ -1256,7 +1256,7 @@ CI: ci 43491819082, deny 43491826156 and secrets 43491833085 on d53df25 passed (
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -1297,7 +1297,19 @@ T-277 and T-278 are done.
 (`DnsSettings::in_flight`, 1 to 1024; podnet gives 8, row E2-3 of GitHub #468), the reorder by the ARQ of the session
 (the test dns_loss of the crate: 3 % loss with reorder and duplicates), a token bucket of queries
 (`queries_per_second`) and a backoff of 0 to 2 s. The block is gone. What is left is the proof in podnet:
-`tests/link_dns.rs` with 256 KiB, a SERVFAIL backoff and the rate ceiling over the taken carrier.
+`tests/link_dns.rs` with 256 KiB, a SERVFAIL backoff and the rate ceiling over the taken carrier. The test target is `link_dns`
+(the Prove names `link_dnsstream`, a name that was not made): `cargo test --features dns --test link_dns`.
+
+## Done
+
+2026-11-26, the commit of this entry. `tests/link_dns.rs`,
+`a_window_of_queries_carries_256_kib_through_servfail_and_keeps_its_rate`, over the taken carrier of `pod-link`
+(`Dns::dns`: the rate and the window), with a UDP relay between the dialer and the authoritative listener that counts
+each query and answers each tenth with SERVFAIL. A window of 32 queries at 4000 a second carries 256 KiB each way through
+260 SERVFAIL answers in 4.2 s (2600 queries): the dialer sends each lost datagram again, and the stream is whole. A
+dialer at 40 queries a second carries 16 KiB each way with 154 queries in 4.03 s (38 a second): the rate holds.
+`cargo test --features dns --test link_dns`: 9 passed.
+
 
 # T-282: link: the ICMP echo carrier (GitHub #469)
 

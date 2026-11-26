@@ -212,3 +212,130 @@ fn link_dial_check_meets_link_listen_over_dns_and_a_stranger_exits_77() {
         &["--dns-server", "{listen}"],
     );
 }
+
+// ---- T-281: the window, the SERVFAIL backoff and the rate ceiling ----
+
+/// A UDP relay between a dialer and the listener `to`: it counts each query,
+/// keeps the time of each, and answers each `servfail_every`th query with
+/// SERVFAIL itself (0: none). Each other query goes to the listener, and its
+/// answer back to the dialer.
+struct Relay {
+    addr: std::net::SocketAddr,
+    starts: std::sync::Arc<std::sync::Mutex<Vec<std::time::Instant>>>,
+    servfails: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+}
+
+async fn relay(to: std::net::SocketAddr, servfail_every: usize) -> Relay {
+    use std::sync::atomic::Ordering;
+    let front = std::sync::Arc::new(tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap());
+    let back = std::sync::Arc::new(tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap());
+    back.connect(to).await.unwrap();
+    let addr = front.local_addr().unwrap();
+    let starts = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let servfails = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let client = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let (f, b, c) = (front.clone(), back.clone(), client.clone());
+    tokio::spawn(async move {
+        let mut buf = vec![0u8; 4096];
+        while let Ok(n) = b.recv(&mut buf).await {
+            let to = *c.lock().unwrap();
+            if let Some(to) = to {
+                let _ = f.send_to(&buf[..n], to).await;
+            }
+        }
+    });
+    let (s, sf) = (starts.clone(), servfails.clone());
+    tokio::spawn(async move {
+        let mut buf = vec![0u8; 4096];
+        let mut count = 0usize;
+        while let Ok((n, from)) = front.recv_from(&mut buf).await {
+            *client.lock().unwrap() = Some(from);
+            s.lock().unwrap().push(std::time::Instant::now());
+            count += 1;
+            if servfail_every > 0 && count.is_multiple_of(servfail_every) && n >= 12 {
+                // The query back as an answer: QR, the opcode and RD kept,
+                // RCODE 2 (SERVFAIL), no record.
+                let mut answer = buf[..n].to_vec();
+                answer[2] |= 0x80;
+                answer[3] = (answer[3] & 0xf0) | 2;
+                sf.fetch_add(1, Ordering::Relaxed);
+                let _ = front.send_to(&answer, from).await;
+                continue;
+            }
+            let _ = back.send(&buf[..n]).await;
+        }
+    });
+    Relay {
+        addr,
+        starts,
+        servfails,
+    }
+}
+
+/// A dial of `to` through `server` with the rate `qps` and `in_flight`
+/// queries at once (the settings of `pod-link`; podnet gives 20 and 8).
+async fn dial_with(
+    me: &Identity,
+    allow: &AllowList,
+    to: &str,
+    server: std::net::SocketAddr,
+    qps: f64,
+    in_flight: usize,
+) -> anyhow::Result<podnet::link::Link> {
+    let tune = Tune {
+        dns_server: Some(server),
+        ..Tune::default()
+    };
+    let mut carrier = link_dns::carrier(me, allow, &tune);
+    carrier.dns.queries_per_second = qps;
+    carrier.dns.in_flight = in_flight;
+    let (link, _) = link_dns::dial(&carrier, allow, to, podnet::link::Settings::default()).await?;
+    Ok(link)
+}
+
+/// T-281: 256 KiB go each way over a window of 32 queries while the path
+/// answers one query in ten with SERVFAIL: the dialer sends each lost
+/// datagram again, and the stream is whole. Then a dialer with a rate of
+/// 40 queries a second starts no more than its rate over a transfer.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_window_of_queries_carries_256_kib_through_servfail_and_keeps_its_rate() {
+    test_host::need_loopback!();
+    let dir = tempfile::tempdir().unwrap();
+    let (a, b) = (install(dir.path(), "a"), install(dir.path(), "b"));
+    let to = address_of(&b.fingerprint(), "");
+    // (the SERVFAIL of each Nth query, the rate, the window, the bytes)
+    let cases: [(usize, f64, usize, usize); 2] =
+        [(10, 4000.0, 32, 256 * 1024), (0, 40.0, 32, 16 * 1024)];
+    for (every, qps, window, bytes) in cases {
+        let mut door = listen(&b, &list_of(&[&a])).await;
+        let path = relay(door.address().parse().unwrap(), every).await;
+        let started = std::time::Instant::now();
+        let allow = list_of(&[&b]);
+        let (dialed, accepted) = tokio::join!(
+            dial_with(&a, &allow, &to, path.addr, qps, window),
+            link_peer::quiet(&mut door)
+        );
+        let near = dialed.unwrap();
+        let (far, _) = accepted.unwrap();
+        link_peer::echo(&near, &far, &vec![5u8; bytes]).await;
+        let elapsed = started.elapsed().as_secs_f64();
+        let starts = path.starts.lock().unwrap().clone();
+        let servfails = path.servfails.load(std::sync::atomic::Ordering::Relaxed);
+        if every > 0 {
+            assert!(servfails > 10, "{servfails} SERVFAIL answers");
+        } else {
+            // The rate over the transfer, with one second of burst.
+            let ceiling = qps * (elapsed + 1.0);
+            assert!(
+                (starts.len() as f64) <= ceiling,
+                "{} queries in {elapsed:.1} s at {qps} a second",
+                starts.len()
+            );
+            assert!(elapsed > 1.0, "the transfer took {elapsed:.2} s");
+        }
+        eprintln!(
+            "servfail 1/{every}, rate {qps}: {} queries, {servfails} SERVFAIL, {bytes} bytes each way in {elapsed:.2} s",
+            starts.len()
+        );
+    }
+}
