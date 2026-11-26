@@ -4030,11 +4030,11 @@ above. The check to satisfy is: no other user can connect, at any instant.
 
 ## Premise
 
-- `crates/podnet-netns/src/listen.rs:127-240` (`bind_private`) calls `UnixListener::bind(path)`, then
+- `crates/podnet-netns/src/listen.rs:197-310` (`bind_private`) calls `UnixListener::bind(path)`, then
   `set_permissions(path, 0o600)`.
 - The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:251`,
   src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:320`, `crates/podnet-vnet/src/switch.rs:438`,
-  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:375-378`),
+  and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:445-448`),
   `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:95`.
 - `crates/podnet-netns/src/seccomp/accept.rs:61` is not exposed: it calls `private_dir` first
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
@@ -12724,8 +12724,8 @@ no execute permission, must give exit 3 and one line with the seccomp backend to
 
 ## Premise
 
-- Read: `crates/podnet-netns/src/seccomp/mod.rs:85` resolves a bare name (`pod_hold::spawn::resolve`). A name with a
-  `/` is used as it is, with no check. `crates/podnet-netns/src/seccomp/mod.rs:90` starts the program with
+- Read: `crates/podnet-netns/src/seccomp/mod.rs:89` resolves a bare name (`pod_hold::spawn::resolve`). A name with a
+  `/` is used as it is, with no check. `crates/podnet-netns/src/seccomp/mod.rs:94` starts the program with
   `pod_hold::spawn::start`.
 - Read: `PodUtils/podcrates:crates/pod-hold/src/spawn.rs` (v0.82.0): the child of the fork calls `execve` and then
   `_exit(127)`. The parent never reads the errno of `execve`. The netns backend (`crates/podnet-netns/src/raw.rs:36`,
@@ -12816,7 +12816,7 @@ supervisor for the seccomp backend, no network stack for the netns backend).
   (`src/main.rs:104`). The signal handlers of `src/cli/signals.rs` do not run for it.
 - Read: the backends install no handler for SIGTERM, SIGINT or SIGHUP. The netns reaper only ignores SIGINT and SIGQUIT
   for itself (`crates/podnet-netns/src/netns/mod.rs:198`). The seccomp supervisor (`supervise_pod`,
-  `crates/podnet-netns/src/seccomp/mod.rs:70`) has none. The default action ends podnet and the program stays.
+  `crates/podnet-netns/src/seccomp/mod.rs:71`) has none. The default action ends podnet and the program stays.
 - The code is podnet's own (`crates/podnet-netns`). The start of the program in the seccomp backend is
   `pod-hold`, but the signal belongs to the caller.
 - Not measured: `--backend netns-kernel`, and a program that ignores SIGTERM.

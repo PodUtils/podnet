@@ -104,6 +104,18 @@ fn the_default_inbound_directory_is_private() {
     drop(c);
     let _ = child.wait();
     assert_eq!(mode, 0o700, "the mode of {}", inbound.display());
+    // COORD-142 of podrunner: the end of the pod removes its socket and the
+    // empty directory.
+    assert!(
+        !sockpath.exists(),
+        "{} stays after the end",
+        sockpath.display()
+    );
+    assert!(
+        !inbound.exists(),
+        "{} stays after the end",
+        inbound.display()
+    );
 }
 
 #[test]

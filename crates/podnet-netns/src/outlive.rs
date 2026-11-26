@@ -158,7 +158,10 @@ pub(crate) fn split(verbose: bool, body: impl FnOnce(Reporter) -> Result<i32>) -
         unsafe { libc::_exit(code) };
     }
     drop(write);
-    front(read, back)
+    let ended = front(read, back);
+    // COORD-142 of podrunner: a back that SIGKILL ended left its sockets.
+    crate::listen::sweep_end_dir();
+    ended
 }
 
 /// Wait for the report of the back. At a code, return it at once. At an

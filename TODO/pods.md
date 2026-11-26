@@ -826,7 +826,7 @@ counter. The pod sees a bare errno.
 
 ## Premise
 
-- `crates/podnet-netns/src/seccomp/mod.rs:407` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
+- `crates/podnet-netns/src/seccomp/mod.rs:416` (constant), `fdtable.rs:74-82` (`has_room` sweeps then
   refuses), `socket.rs:19-21` (`EMFILE`), `seccomp/mod.rs:326-331` (`EIO` or `ECONNREFUSED`).
 - Not measured: the 5000-connection run of the issue.
 
@@ -1468,3 +1468,53 @@ the tests failed (`unexpected argument "--report"`). `sh scripts/agent/check.sh`
 a host with no backend at all (exit 3 with `backend` null) has only the unit test
 `no_backend_report_has_a_reason`; the schema is checked with a small checker in the test, not with a JSON
 Schema library; the release workflow runs at the next release.
+
+# T-619: podnet pod leaves its inbound sockets and their directory after its end (PodUtils/podrunner#369)
+
+**Source:** PodUtils/podrunner#369 (COORD-142 of podrunner, from its QA round 6): after `podrunner run --podnet PATH` (each unit
+held by `podnet pod`, the seccomp backend), `/tmp/podnet-netns-inbound-UID/` and its `*.sock` stay on the host, for
+users with no root.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The seccomp backend binds a Unix socket `PORT.sock` in the inbound directory for each port that the program listens
+on. No path removed the socket or the directory at the end of the pod: not a normal end, not a stop signal (the front
+ends the back with SIGKILL after the grace time). A socket of a pod that a SIGKILL ended stayed until a later pod bound
+the same port.
+
+## Premise
+
+- Read: `handle_listen` of `crates/podnet-netns/src/seccomp/accept.rs` (the bind); `supervise_pod` of
+  `crates/podnet-netns/src/seccomp/mod.rs`; `split` and `front` of `crates/podnet-netns/src/outlive.rs` (the front
+  outlives the back); `default_inbound_dir` and `private_dir` of `crates/podnet-netns/src/listen.rs`.
+- `seccomp/mod.rs` and `seccomp/accept.rs` are files of `pod-hold`: a fix only, written to podcrates as a COORD issue.
+
+## Approach
+
+1. Note each inbound socket at its bind. The end of the back removes each noted socket, then the directory when it is
+   empty (a socket of another pod keeps it).
+2. The front sweeps the directory after the end of the back: each socket that no process answers goes, then the
+   directory when it is empty. This covers a back that a stop signal ended with SIGKILL.
+3. At a start, remove each socket of the directory that no process answers (a pod that a SIGKILL of the whole group
+   ended).
+4. Tests: the end of a pod leaves no socket and no directory; a table of the start (a stale socket goes; a live socket
+   and a file stay).
+
+## Prove
+
+```sh
+cargo test -p podnet-netns --lib listen
+cargo test --test pod_seccomp -- the_default_inbound_directory_is_private
+```
+
+## Done
+
+2026-11-26, the commit of this entry. `the_default_inbound_directory_is_private` now checks that the socket and the
+directory are gone after the end; it fails without the fix (`.../podnet-netns-inbound/8080.sock stays after the end`).
+`the_inbound_sockets_go_at_the_end_and_a_stale_one_at_the_start` passes. By hand: a pod of a Python listener on port
+8080, stopped with SIGTERM, SIGINT and SIGHUP, leaves no socket and no directory each time.

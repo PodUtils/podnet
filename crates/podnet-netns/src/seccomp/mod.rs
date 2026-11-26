@@ -61,6 +61,7 @@ pub(crate) fn run_seccomp(args: Args) -> Result<i32> {
         bail!("the seccomp backend needs -x (there is no direct mode)");
     }
     let verbose = args.verbose;
+    crate::listen::set_end_dir(&args.inbound_dir);
     crate::outlive::split(verbose, |reporter| supervise_pod(args, reporter))
 }
 
@@ -73,6 +74,9 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
     }
     // Issue 306: the inbound directory is private before the program runs.
     crate::listen::private_dir(&args.inbound_dir)?;
+    // COORD-142 of podrunner: a socket of a pod that ended with no cleanup
+    // goes now.
+    crate::listen::remove_stale_inbound(&args.inbound_dir);
     // T-110: the directory of the session is private too.
     if let Some(dir) = args.dns_state.as_deref().and_then(std::path::Path::parent) {
         crate::listen::private_dir(dir)?;
@@ -113,7 +117,8 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
-    runtime.block_on(supervise_seccomp(
+    let inbound_dir = args.inbound_dir.clone();
+    let ended = runtime.block_on(supervise_seccomp(
         lfd,
         (pid, reporter),
         args.proxies,
@@ -121,7 +126,11 @@ fn supervise_pod(args: Args, reporter: crate::outlive::Reporter) -> Result<i32> 
         args.maps,
         args.verbose,
         (args.inbound_dir, args.dns_state),
-    ))
+    ));
+    // COORD-142 of podrunner: the sockets of this pod, and the directory
+    // when no other pod has a socket in it.
+    crate::listen::remove_inbound(&inbound_dir);
+    ended
 }
 
 pub(crate) async fn supervise_seccomp(

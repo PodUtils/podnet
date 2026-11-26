@@ -78,6 +78,76 @@ pub fn default_inbound_dir() -> PathBuf {
     std::env::temp_dir().join(format!("podnet-netns-inbound-{uid}"))
 }
 
+/// The inbound sockets that this process made (COORD-142 of podrunner): the
+/// end of the supervisor removes them.
+static INBOUND: std::sync::Mutex<Vec<PathBuf>> = std::sync::Mutex::new(Vec::new());
+
+/// Note an inbound socket that this process bound, for [`remove_inbound`].
+pub(crate) fn note_inbound(path: &std::path::Path) {
+    if let Ok(mut made) = INBOUND.lock() {
+        made.push(path.to_path_buf());
+    }
+}
+
+/// Remove each inbound socket that this process made, then `dir` when it is
+/// empty. A socket of another process in `dir` stays, and so does `dir`.
+pub fn remove_inbound(dir: &std::path::Path) {
+    let made = INBOUND
+        .lock()
+        .map(|mut made| std::mem::take(&mut *made))
+        .unwrap_or_default();
+    for path in made {
+        let _ = std::fs::remove_file(path);
+    }
+    // remove_dir refuses a directory that is not empty.
+    let _ = std::fs::remove_dir(dir);
+}
+
+/// The inbound directory of the pod, for the front: it outlives the back,
+/// which a stop signal can end with SIGKILL before its own cleanup.
+static END_DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// Name the inbound directory that [`sweep_end_dir`] cleans.
+pub(crate) fn set_end_dir(dir: &std::path::Path) {
+    let _ = END_DIR.set(dir.to_path_buf());
+}
+
+/// At the end of the pod: remove each socket of the inbound directory that
+/// no process answers, then the directory when it is empty.
+pub(crate) fn sweep_end_dir() {
+    if let Some(dir) = END_DIR.get() {
+        remove_stale_inbound(dir);
+        let _ = std::fs::remove_dir(dir);
+    }
+}
+
+/// Remove each socket `*.sock` of `dir` that no process answers: the socket
+/// of a process that ended with no cleanup (a SIGKILL). A socket that
+/// answers, a file that is not a socket, and a name with another end stay.
+/// It gives the count of the removed sockets.
+pub fn remove_stale_inbound(dir: &std::path::Path) -> usize {
+    use std::os::unix::fs::FileTypeExt as _;
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    let mut removed = 0;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_socket = entry.file_type().map(|t| t.is_socket()).unwrap_or(false);
+        if !is_socket || path.extension().is_none_or(|e| e != "sock") {
+            continue;
+        }
+        let refused = matches!(
+            std::os::unix::net::UnixStream::connect(&path),
+            Err(e) if e.kind() == std::io::ErrorKind::ConnectionRefused
+        );
+        if refused && std::fs::remove_file(&path).is_ok() {
+            removed += 1;
+        }
+    }
+    removed
+}
+
 /// Make `dir` a private directory of this user, or check the directory that
 /// is there (issue 306). A new directory gets mode 0700. A directory that
 /// is there must be a directory (not a symbolic link), of the effective
@@ -542,6 +612,38 @@ mod tests {
             "{results:?}"
         );
         assert!(path.exists(), "the socket of the winner stays");
+    }
+
+    /// COORD-142 of podrunner: the end removes the sockets of this process
+    /// and the empty directory; the next start removes a stale socket and
+    /// keeps a live one and a file.
+    #[test]
+    fn the_inbound_sockets_go_at_the_end_and_a_stale_one_at_the_start() {
+        let base = tempfile::tempdir().unwrap();
+        let dir = base.path().join("inbound");
+        private_dir(&dir).unwrap();
+        let mine = dir.join("8080.sock");
+        let held = std::os::unix::net::UnixListener::bind(&mine).unwrap();
+        note_inbound(&mine);
+        drop(held);
+        remove_inbound(&dir);
+        assert!(
+            !mine.exists() && !dir.exists(),
+            "the socket and the directory stay"
+        );
+
+        private_dir(&dir).unwrap();
+        let stale = dir.join("1.sock");
+        drop(std::os::unix::net::UnixListener::bind(&stale).unwrap());
+        let live = dir.join("2.sock");
+        let _live = std::os::unix::net::UnixListener::bind(&live).unwrap();
+        let file = dir.join("3.sock");
+        std::fs::write(&file, "").unwrap();
+        assert_eq!(remove_stale_inbound(&dir), 1);
+        assert!(!stale.exists() && live.exists() && file.exists());
+        // A directory that is not empty stays.
+        remove_inbound(&dir);
+        assert!(dir.exists());
     }
 
     #[test]

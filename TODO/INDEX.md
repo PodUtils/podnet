@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**617 entries: 1 open, 11 partial, 29 blocked, 576 done.**
+**618 entries: 1 open, 11 partial, 29 blocked, 577 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 3 | 93 | 98 |
+| P1 | 0 | 2 | 3 | 94 | 99 |
 | P2 | 0 | 3 | 11 | 303 | 317 |
 | P3 | 1 | 6 | 15 | 179 | 201 |
-| **All** | 1 | 11 | 29 | 576 | 617 |
+| **All** | 1 | 11 | 29 | 577 | 618 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -663,3 +663,4 @@ M8 Overlays, M9 Later.
 | [T-616](fixes.md) | P2 | S | M5 | defect | done | A Unix socket of net proxy and net switch stays after a clean stop, and a foreign socket gives exit 1 |
 | [T-617](fixes.md) | P3 | S | M5 | defect | done | The reason of a policy refusal says "refuse it", not "refuses it" |
 | [T-618](fixes.md) | P3 | S | M5 | defect | done | With a CA file, podnet-ca.pem beside the binary is not read, and no line says so |
+| [T-619](pods.md) | P1 | S | M5 | defect | done | podnet pod leaves its inbound sockets and their directory after its end (PodUtils/podrunner#369) |
