@@ -22,7 +22,7 @@ doctor | live:podnet doctor; live:Quick tunnel with UDP and TCP 7844 dropped (st
 exit | lane:net-exit
 expose | lane:net-switch
 forge clone | lane:local-files
-forward | lane:link-control; lane:wg-serve
+forward | live:A TURN network through coturn (UDP, and TCP over RFC 6062); lane:link-control; lane:wg-serve
 git serve | live:Git over HTTPS through a quick tunnel; live:Git over SSH through the reverse relay
 git init | live:Git over HTTPS through a quick tunnel; live:Git over SSH through the reverse relay
 git urls | live:Git over HTTPS through a quick tunnel; live:Git over SSH through the reverse relay

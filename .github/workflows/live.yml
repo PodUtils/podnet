@@ -788,6 +788,59 @@ jobs:
           echo "$out"
           echo "$out" | grep -q '^echo:ping$' || { tail -20 "$d/listen.err"; exit 1; }
           sudo pkill -f "link listen 127.0.0.1 --carrier icmp" || true
+      - name: A TURN network through coturn (UDP, and TCP over RFC 6062)
+        timeout-minutes: 5
+        # T-321: a real TURN server (coturn of Ubuntu) on the loopback, not
+        # the stand-in of the tests. One datagram to a UDP echo and one
+        # stream to a TCP echo go through a TURN network of podnet forward.
+        run: |
+          set -eu
+          sh scripts/retry.sh sudo apt-get install -y -qq coturn > /dev/null
+          d=$(mktemp -d)
+          sudo turnserver -n --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 --listening-port=3478 \
+            --lt-cred-mech --user=podnet:live-turn-pw --realm=podnet.test --allow-loopback-peers \
+            --no-tls --no-dtls --no-cli --log-file=stdout --simple-log > "$d/turn.log" 2>&1 &
+          python3 -I -c '
+          import socket, threading
+          u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); u.bind(("127.0.0.1", 47480))
+          t = socket.socket(); t.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); t.bind(("127.0.0.1", 47490)); t.listen(4)
+          def udp():
+              while True:
+                  data, peer = u.recvfrom(2048); u.sendto(b"echo:" + data, peer)
+          threading.Thread(target=udp, daemon=True).start()
+          t.settimeout(240)
+          while True:
+              c, _ = t.accept(); data = c.recv(100); c.sendall(b"echo:" + data); c.close()
+          ' &
+          sleep 2
+          export PODNET_TURN_USER=podnet PODNET_TURN_PASSWORD=live-turn-pw
+          fail() { echo "$1"; echo "--- turnserver"; tail -30 "$d/turn.log"; echo "--- forward"; tail -20 "$d/fwd-$2.err"; exit 1; }
+          target/release/podnet forward -L udp:47481=127.0.0.1:47480 --network turn://127.0.0.1:3478 --run-for 60 \
+            > "$d/fwd-udp.out" 2> "$d/fwd-udp.err" &
+          target/release/podnet forward -L 47491=127.0.0.1:47490 --network turn://127.0.0.1:3478 --run-for 60 \
+            > "$d/fwd-tcp.out" 2> "$d/fwd-tcp.err" &
+          sleep 3
+          got=$(python3 -I -c '
+          import socket
+          s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.settimeout(3)
+          for _ in range(5):
+              s.sendto(b"ping", ("127.0.0.1", 47481))
+              try:
+                  print(s.recv(100).decode()); break
+              except socket.timeout:
+                  pass
+          ') || true
+          echo "udp: $got"
+          test "$got" = "echo:ping" || fail "no answer of the UDP echo through the TURN network" udp
+          got=$(python3 -I -c '
+          import socket
+          c = socket.create_connection(("127.0.0.1", 47491), 10); c.settimeout(10)
+          c.sendall(b"ping"); print(c.recv(100).decode())
+          ') || true
+          echo "tcp: $got"
+          test "$got" = "echo:ping" || fail "no answer of the TCP echo through the TURN network (RFC 6062)" tcp
+          grep -h 'turn' "$d"/fwd-*.err | grep -v -i 'live-turn-pw' | tail -5 || true
+          if grep -q 'live-turn-pw' "$d"/fwd-*.out "$d"/fwd-*.err; then echo "a password is in the output"; exit 1; fi
       - name: Exit 69 for an unavailable path
         timeout-minutes: 3
         run: |

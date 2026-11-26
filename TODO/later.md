@@ -2119,6 +2119,11 @@ one process with two accounts, a network with no own account, and a fault that n
 the host and the port of a named TURN service from `pod-services` (item 4; the crate has no such fact), and a live TURN
 server.
 
+2026-11-26, a live TURN server: the `live` step "A TURN network through coturn (UDP, and TCP over RFC 6062)" installs
+coturn of Ubuntu on the runner, runs it on the loopback with a long-term account and `--allow-loopback-peers`, and sends
+one datagram to a UDP echo and one stream to a TCP echo through `podnet forward --network turn://127.0.0.1:3478`. The
+output holds no password. The proof is its first pass in `live` (this host cannot install coturn).
+
 # T-354: net: `devtunnel://` with a tunnel access token, or with no token
 
 **Source:** T-137, the take of `PodUtils/podcrates` v0.47.0 (`TODO/crates.md`, the v0.47.0 line): "a possible next
