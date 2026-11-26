@@ -52,15 +52,15 @@ offline spool add | lane:local-files
 offline spool list | lane:local-files
 offline spool take | lane:local-files
 offline spool check | lane:local-files
-offline discover announce |
-offline discover listen |
+offline discover announce | lane:local-udp
+offline discover listen | lane:local-udp
 offline bundle build | lane:local-files
 offline bundle apply | lane:local-files
 offline bundle verify | lane:local-files
-offline capture merge |
+offline capture merge | lane:local-files
 offline pair offer | lane:local-files
 offline pair accept | lane:local-files
-offline replica merge |
+offline replica merge | lane:local-files
 pod | lane:errors; lane:pod-seccomp; lane:pod-netns; lane:net-pod-auto; lane:net-pod-seccomp; lane:net-pod-netns; lane:proxy-pod-auto; lane:proxy-pod-seccomp; lane:proxy-pod-env
 ports | lane:local
 ps | live:SSH through the reverse relay; live:agent up and down; live:An IPv6-only host
@@ -114,4 +114,4 @@ init check | lane:local-files
 init enroll |
 init generate | lane:local-files
 rules check | lane:local-files
-stat |
+stat | lane:local-udp

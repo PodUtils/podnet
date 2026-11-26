@@ -8004,6 +8004,15 @@ the experimental mark. Still experimental: `cover`, `harness`, `link p2p`, `net 
 announce` and `listen`, `offline capture merge`, `offline replica merge`, `init enroll`, `stat`, and the `sidecar`
 commands (feature `sidecar`, not in a release binary).
 
+2026-11-26, the sixth part. The lane case `local-files` adds `offline replica merge` (two logs of two actors that write
+one key: one conflict, one winner, the same bytes in each order) and `offline capture merge` (a secret of a
+`--secret-file` is redacted, and is not in the merged file). A new lane case `local-udp` runs `offline discover
+announce` to a unicast `offline discover listen` on the loopback (the listener names the peer), and `stat` to a `stat
+--serve` peer on the loopback (`received 20`). As uid 65534 with `podlab` `v0.84.0`: both pass in `bind-denied`,
+`proc-masked`, `listen-denied` and `nonroot-nocaps`; `local-udp` is n.a. in `no-loopback` and `udp-denied`. 5 commands
+leave the experimental mark. Still experimental: `cover`, `harness`, `link p2p`, `net tailscale` (T-114), `init
+enroll`, and the `sidecar` commands.
+
 # T-399: live: the WebSocket client of a --url origin dials a name that has no IPv4 answer yet
 
 **Source:** live 43898114234 on c591bab (2026-11-16), failed.

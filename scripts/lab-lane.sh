@@ -59,7 +59,7 @@
 
 set -u
 
-CASES="version man local local-files errors doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
+CASES="version man local local-files local-udp errors doctor shim-forward link-unix link-control net-switch wg-serve pod-seccomp pod-netns net-proxy-unix"
 NET_LABS="proxy-only proxy-tls-reterminate proxy-per-name ws-upgrade-refused sni-allowlist no-proxy-no-dns ipv6-only"
 NET_CASES="version errors doctor net-curl net-bench net-exit net-pod-auto net-pod-seccomp net-pod-netns"
 WAYOUT_CASES="way-tunnel way-relay"
@@ -192,6 +192,24 @@ case_main() {
         code=$?
         echo "offline pair accept -> exit $code"
         test $code -eq 0 && cat "$dir/files.txt" "$dir/files.err" | grep -q '^paired with ' || { cat "$dir/files.err"; exit 1; }
+        # The replica logs of two actors (the public keys of RFC 8032, test
+        # 1 and 2) write one key at the same time: one conflict, and the key
+        # of test 1 wins (the greater hex breaks an equal counter).
+        hx() { printf %s "$1" | od -An -tx1 | tr -d ' \n'; }
+        a=d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
+        b=3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c
+        echo "$a 1 $(hx session:mode) $a:1 $(hx one)" >a.log
+        echo "$b 2 $(hx session:mode) $b:1 $(hx two)" >b.log
+        mkdir -p key
+        step "conflict session:mode .* winner_key=$a" "$podnet" offline replica merge a.log b.log --out m1.log --key ./key || exit 1
+        step '"records":2' "$podnet" offline replica merge b.log a.log --out m2.log --key ./key --json || exit 1
+        cmp -s m1.log m2.log || { echo "the two orders of the merge differ"; exit 1; }
+        # Two captures, and a secret that the merge must redact.
+        printf 'pod-offline capture 1\n200 in 0 %s\n' "$(hx hi)" >a.cap
+        printf 'pod-offline capture 1\n100 out 0 %s\n' "$(hx 'tok lab-secret-1')" >b.cap
+        echo lab-secret-1 >secrets.txt
+        step '^merged 2 record(s) into all.cap, 1 marked redacted' "$podnet" offline capture merge a.cap b.cap --out all.cap --secret-file secrets.txt || exit 1
+        if grep -q "$(hx lab-secret-1)" all.cap; then echo "the secret is in the merged capture"; exit 1; fi
         if command -v git >/dev/null 2>&1; then
             git init -q seed && git -C seed -c user.email=lab@lab.test -c user.name=lab commit -q --allow-empty -m seed || exit 1
             step '^cloned seed ' "$podnet" forge clone --seed seed --expect "$(git -C seed rev-parse HEAD)" clone || exit 1
@@ -361,6 +379,45 @@ case_main() {
         echo "client: $got"
         test "$got" = "echo:ping"
         exit $?
+        ;;
+    local-udp)
+        # T-398: the commands that send UDP on the loopback only: a signed
+        # announcement to a unicast listener, and the timestamping peer of
+        # podnet stat.
+        if ! python3 -I -c 'import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.bind(("127.0.0.1", 0)); s.sendto(b"x", s.getsockname())' 2>/dev/null; then
+            echo "the lab refuses UDP on the loopback"
+            exit 77
+        fi
+        cd "$dir" || exit 1
+        free() { python3 -I -c 'import socket; s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
+        port=$(free)
+        mkdir -p key
+        timeout 60 "$podnet" offline discover listen --bind "127.0.0.1:$port" --timeout 8 --json >disc.json 2>disc.err &
+        listen=$!
+        # The listener binds after its start: send until it ends.
+        i=0
+        while kill -0 "$listen" 2>/dev/null && test $i -lt 14; do
+            "$podnet" offline discover announce --to "127.0.0.1:$port" --name lab-a --address lab.test --port 22 --key ./key >announce.txt 2>announce.err ||
+                { cat announce.err; exit 1; }
+            i=$((i + 1))
+            sleep 0.5
+        done
+        wait "$listen"
+        code=$?
+        echo "offline discover listen -> exit $code"
+        test $code -eq 0 || { cat disc.err; exit 1; }
+        grep -q '"name":"lab-a","address":"lab.test","port":22' disc.json || { echo "the listener heard no peer"; cat disc.json; exit 1; }
+        grep -q '^announced lab-a lab.test:22 ' announce.txt || { cat announce.txt; exit 1; }
+        port=$(free)
+        "$podnet" stat --serve "127.0.0.1:$port" >serve.txt 2>serve.err &
+        serve=$!
+        sleep 2
+        timeout 60 "$podnet" stat --peer "127.0.0.1:$port" --count 20 --out stat.txt >stat.out 2>stat.err
+        code=$?
+        kill "$serve" 2>/dev/null
+        echo "stat -> exit $code"
+        test $code -eq 0 || { cat stat.err; exit 1; }
+        grep -q '^received 20$' stat.txt || { echo "the peer did not stamp each packet"; tail -8 stat.txt; exit 1; }
         ;;
     wg-serve)
         # podnet wg serve on UDP, with keys made for this run; a client of

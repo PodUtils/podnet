@@ -198,6 +198,13 @@ LANE_MAP = {
         "offline pair offer",
         "offline pair accept",
         "forge clone",
+        "offline replica merge",
+        "offline capture merge",
+    ],
+    "local-udp": [
+        "offline discover listen",
+        "offline discover announce",
+        "stat",
     ],
     "local": [
         "completions",
