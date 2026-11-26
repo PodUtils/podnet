@@ -271,7 +271,7 @@ fn the_three_network_service_carriers_carry_a_cost_class_and_a_rate() {
         );
         assert!(
             smtp.line()
-                .contains("cost medium, rate 950 B/s, poll none, cost medium"),
+                .contains("mtu none, rate 950 B/s, poll none, cost medium, address"),
             "{}",
             smtp.line()
         );

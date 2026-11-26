@@ -73,9 +73,10 @@ cargo test --workspace --features full       # what the CI job features runs
   names its entry (T-279).
 * The static musl build of the release set uses the feature `release`: the
   carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll` (with `sse`, `chunked`
-  and `httppoll`) and `dns` (T-428). The other optional features are not in
-  a release binary. Build a feature on every target of the release set
-  before it joins that set.
+  and `httppoll`), `dns` (T-428), `s3`, `icmp`, `ntp`, `smtp` and `imap`
+  (T-609): each carrier of the link. The services `ss` and `trojan`, the
+  `sidecar` and `c-abi` are not in a release binary. Build a feature on
+  every target of the release set before it joins that set.
 * `podnet::build_features` is the list (`OPTIONAL`, `FULL`), `built(NAME)`,
   `enabled()` and `require(NAME)` (the gate of a command: exit 69 with the
   feature name).

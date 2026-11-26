@@ -10828,7 +10828,7 @@ prints the tail of the file), not of podnet.
 **Milestone:** M6
 **Priority:** P1
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -10855,6 +10855,13 @@ time through the one node: the step waited until its limit of 5 minutes, with no
 ```sh
 cargo test -p podnet --test relay_reverse
 ```
+
+## Blocker
+
+T-406 (PodUtils/podnet#604, COORD-098): the relay keeps the lost socket of a node after a reset, the most likely cause
+(the Correction of 2026-11-17). The step of `live` has kept its limits and logs since then, and gave no second hang
+(each `live` run of 2026-11-26 passed the step "SSH through the reverse relay"). The work goes on with the fix of the
+relay, or with the logs of a next failure.
 
 ## Correction
 
@@ -13638,8 +13645,8 @@ cargo test -p podnet --test claims_docs
 - Change: `docs/host-runtime.md` gives `podnet init generate NODE --relay URL` (the sentence and the example) and
   `PODNET_POLICY=rules.json podnet bench --duration 1 https://example.net/file` (`bench` sends through
   `podnet::fetch`, which asks the policy). The test found four more faults, fixed in the same commit:
-  `docs/harness.md` (a usage line with `[--json]`: now two command lines), `docs/link.md:446` (`link listen` with no
-  `--allow`), `docs/link.md:447` (`link dial` has no `--to`: now `--peer FINGERPRINT`) and `docs/serve.md:61`
+  `docs/harness.md` (a usage line with `[--json]`: now two command lines), `docs/link.md:447` (`link listen` with no
+  `--allow`), `docs/link.md:448` (`link dial` has no `--to`: now `--peer FINGERPRINT`) and `docs/serve.md:61`
   (`link connect` with `--peer` and `--allow`, which clap refuses together: now `--allow hub.allow`).
   `scripts/doc-commands.txt` has the new hashes of the five blocks (same classes).
 - Test: `each_command_of_a_document_parses` (`src/cli/help_tests.rs`). The extraction is the one of
@@ -13650,7 +13657,7 @@ cargo test -p podnet --test claims_docs
   each with its reason. The documents have 311 lines.
 - Control: on the documents before the fix the test fails with 6 lines: `docs/harness.md:8` (unexpected argument
   `[--json]`), `docs/host-runtime.md:114` (unexpected argument `--node`), `docs/host-runtime.md:142`
-  (unrecognized subcommand `fetch`), `docs/link.md:446` (required `--allow`), `docs/link.md:447` (unexpected
+  (unrecognized subcommand `fetch`), `docs/link.md:447` (required `--allow`), `docs/link.md:448` (unexpected
   argument `--to`), `docs/serve.md:61` (`--peer` cannot be used with `--allow`).
 - `cargo test -p podnet each_command_of_a_document_parses`: 1 passed. `cargo test -p podnet --test claims_docs`:
   3 passed. `python3 -I scripts/doc-commands.py --check`: 135 blocks, each with a class.
@@ -17033,3 +17040,80 @@ the dry run 45768240934 passed. The release run 45772282526: each of the eight t
 `proofs` and `image` passed; `release-proofs.yml` 45777283954 passed. The x86-64 file checks against SHA256SUMS, prints
 `podnet 0.4.0-beta.20 (be2c0df...)`, lists the carriers of the feature `release`, and exits 68 for a name under
 `.invalid`. COORD-132 (PodUtils/podnet#777) hands off the files and the digests.
+
+# T-609: The release set holds each carrier of the link: s3, icmp, ntp, smtp and imap join the feature release
+
+**Source:** GitHub #620 (the carriers of the link in a release binary; T-428 gave seven), and T-358, step 1 ("the `icmp`
+rows wait for a release build with the feature").
+**Category:** feature
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+The release binaries have the carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll` and `dns` (T-428). The carriers `s3`,
+`icmp`, `ntp`, `smtp` and `imap` are not built, and T-428 names no reason. A release binary cannot use a link over ICMP
+echo, an object store, NTP or mail, and the release gate has no row of the `icmp` carrier.
+
+## Premise
+
+- Measured on 2026-11-26: a debug build with the five features builds; `podnet link carriers` gives each one
+  `available` as root, and `icmp` gives `unavailable: ... a raw ICMP socket needs CAP_NET_RAW or uid 0` as uid 65534.
+- Measured: as root, `link listen 127.0.0.1 --carrier icmp --allow-raw icmp` and `link dial KEY@127.0.0.1 --carrier icmp
+  --allow-raw icmp` give `peer admitted` (`--check`) and carry `echo:ping` to a TCP echo.
+
+## Approach
+
+1. `release` in `Cargo.toml` adds `s3`, `icmp`, `ntp`, `smtp` and `imap`. `docs/build.md` and `docs/link.md` say so.
+2. The `live` step "A link over ICMP echo (root)": a check and one stream over the `icmp` carrier on the loopback.
+3. The lane case `local-files`, as a user that is not root: `link dial --carrier icmp --check` exits 69 and names
+   `CAP_NET_RAW`.
+4. The proof that each target builds: a dry run of `release.yml`.
+
+## Decision
+
+`docs/decisions.md`, 2026-11-26, The release set holds each carrier of the link.
+
+## Prove
+
+```sh
+# release.yml with publish empty: each of the eight targets builds with the feature release
+# live: the step "A link over ICMP echo (root)" passes
+```
+
+# T-610: link carriers names the cost class of a carrier two times
+
+**Source:** a run of `podnet link carriers` for T-609, 2026-11-26.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+Each line of a built carrier said its cost class two times: `tcp: stream, duplex, ordered, mtu none, cost low, rate
+not measured, cost low, ...`. The rate phrase gives the class (`docs/link.md`, the rate), and the line gave it again.
+
+## Premise
+
+- Read: `Report::line` of `src/carriers.rs` wrote `cost {cost}` and then `rate {rate}`; `Report::rate` ends with the
+  class.
+
+## Approach
+
+1. The line of a built carrier keeps the class of the rate phrase only. The line of a carrier that is not built keeps
+   its `cost`, as before (it has no rate).
+2. A test: each line names the class once.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet carriers::tests::each_line_names_the_cost_once
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `each_line_names_the_cost_once` passes.

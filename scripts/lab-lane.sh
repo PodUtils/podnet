@@ -210,6 +210,19 @@ case_main() {
         echo lab-secret-1 >secrets.txt
         step '^merged 2 record(s) into all.cap, 1 marked redacted' "$podnet" offline capture merge a.cap b.cap --out all.cap --secret-file secrets.txt || exit 1
         if grep -q "$(hx lab-secret-1)" all.cap; then echo "the secret is in the merged capture"; exit 1; fi
+        # T-358 step 1: the icmp carrier (the release set) on a host that
+        # gives no raw socket: exit 69 with the cause. Root has the socket.
+        if test "$(id -u)" != 0; then
+            key=d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
+            timeout 60 "$podnet" link dial "$key@127.0.0.1" --carrier icmp --allow-raw icmp --peer "$key" --check >"$dir/files.txt" 2>"$dir/files.err"
+            code=$?
+            echo "link dial --carrier icmp -> exit $code"
+            if grep -q 'feature icmp is off' "$dir/files.err"; then
+                echo "this binary has no icmp carrier"
+            else
+                test $code -eq 69 && grep -q 'CAP_NET_RAW' "$dir/files.err" || { cat "$dir/files.err"; exit 1; }
+            fi
+        fi
         step '"registered": false' "$podnet" init enroll --node lab-node --relay https://relay.example --offline enrolled --json || exit 1
         test -s enrolled/link-identity.key || { echo "init enroll wrote no key"; exit 1; }
         # The verification matrix over the fixtures of tests/data/harness.

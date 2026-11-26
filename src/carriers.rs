@@ -690,13 +690,12 @@ impl Report {
             Err(reason) => format!("unavailable: {reason}"),
         };
         format!(
-            "{name}: {framing}, {duplex}, {ordered}, mtu {mtu}, cost {cost}, rate {rate}, address {address} ({addressing}): {state}",
+            "{name}: {framing}, {duplex}, {ordered}, mtu {mtu}, rate {rate}, address {address} ({addressing}): {state}",
             name = self.name,
             framing = self.framing(),
             duplex = if self.facts.duplex { "duplex" } else { "half duplex" },
             ordered = if self.facts.ordered { "ordered" } else { "unordered" },
             mtu = self.facts.mtu.map_or("none".to_string(), |m| m.to_string()),
-            cost = self.cost,
             rate = self.rate(),
             address = self.address,
             addressing = self.addressing.name(),

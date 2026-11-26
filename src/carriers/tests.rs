@@ -81,3 +81,13 @@ fn check_query_knows_the_names() {
     assert!(check_query("nope", &Query::default()).is_err());
     assert!(check_query("unix", &Query::default()).is_ok());
 }
+
+/// The line of each carrier names its cost class once (the line of a built
+/// carrier gave it two times: `cost low, rate not measured, cost low`).
+#[test]
+fn each_line_names_the_cost_once() {
+    for report in report(&Options::default()) {
+        let line = report.line();
+        assert_eq!(line.matches("cost ").count(), 1, "{line}");
+    }
+}

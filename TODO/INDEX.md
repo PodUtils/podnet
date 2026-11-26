@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**607 entries: 8 open, 9 partial, 31 blocked, 559 done.**
+**609 entries: 7 open, 10 partial, 32 blocked, 560 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 2 | 2 | 92 | 97 |
-| P2 | 0 | 3 | 15 | 296 | 314 |
-| P3 | 7 | 4 | 14 | 170 | 195 |
-| **All** | 8 | 9 | 31 | 559 | 607 |
+| P1 | 0 | 2 | 3 | 92 | 97 |
+| P2 | 0 | 4 | 15 | 296 | 315 |
+| P3 | 7 | 4 | 14 | 171 | 196 |
+| **All** | 7 | 10 | 32 | 560 | 609 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -522,7 +522,7 @@ M8 Overlays, M9 Later.
 | [T-475](fixes.md) | P2 | S | M5 | defect | done | `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6 |
 | [T-476](fixes.md) | P2 | S | M6 | defect | blocked | `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move |
 | [T-477](fixes.md) | P2 | S | M5 | defect | done | A refusal for now (HTTP 429, exit 75) gets the hint "does not change with a retry" |
-| [T-478](fixes.md) | P1 | M | M6 | defect | open | Two parallel SSH sessions through one relay node: one hung with no line |
+| [T-478](fixes.md) | P1 | M | M6 | defect | blocked | Two parallel SSH sessions through one relay node: one hung with no line |
 | [T-479](fixes.md) | P2 | S | M5 | defect | done | Tests free a port to get a refused address; another test can take the port |
 | [T-480](crates.md) | P1 | S | M3 | chore | done | Take podcrates v0.70.0 |
 | [T-481](fixes.md) | P1 | S | M5 | release | done | Publish `v0.4.0-beta.17` for podrunner: the fixes of T-456 and T-457, and the QA round |
@@ -653,3 +653,5 @@ M8 Overlays, M9 Later.
 | [T-606](fixes.md) | P2 | S | M5 | defect | done | forward: a refused bind of port 18000 tells the user to "give a port above 1023" |
 | [T-607](fixes.md) | P3 | S | M5 | defect | done | init check: a missing file is reported as "the configuration is not schema 1" |
 | [T-608](fixes.md) | P1 | S | M5 | release | done | Publish `v0.4.0-beta.20`: the carriers of the feature `release` and the fixes of the QA pass of 2026-11-26 |
+| [T-609](fixes.md) | P2 | S | M5 | feature | partial | The release set holds each carrier of the link: s3, icmp, ntp, smtp and imap join the feature release |
+| [T-610](fixes.md) | P3 | S | M5 | defect | done | link carriers names the cost class of a carrier two times |

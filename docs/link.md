@@ -354,7 +354,8 @@ code is `src/link_query.rs`. The command checks the query first, before it opens
 
 The carriers `tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `dns`, `s3`, `icmp`, `ntp`, `smtp` and `imap` sit behind a build feature ([build.md](build.md), Features). The default build has none of
 them. The binaries of a release have the feature `release`: the carriers `unix`, `memory`, `serial`, `hf`, `tcp`, `ws`, `h2`,
-`quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll` and `dns` (T-428). Build podnet with `--features` for another carrier. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
+`quic`, `udp`, `poll`, `sse`, `chunked`, `httppoll`, `dns`, `s3`, `icmp`, `ntp`, `smtp` and `imap` (T-428, T-609): each
+carrier of the link. Build podnet with `--features` for a service (`ss`, `trojan`) or the sidecar. `podnet link carriers` lists each one with `unavailable: not built: the feature NAME is off (build with --features NAME)`
 (the JSON has `built: false`, `feature` and `reason`, and no facts that a carrier would give), and a command that names the
 carrier exits 69 with that reason.
 
