@@ -1,17 +1,20 @@
 # Handoff
 
-The product work state at 2026-11-26 10:40 (UTC). Start a hosted checkout with
+The product work state at 2026-11-26 11:45 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
 
 **podrunner first** (the owner, 2026-11-18; `docs/decisions.md`). The order: a red run of podnet's CI; each ask of
 podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-137); podnet's own work in the order of
-`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.86.0`, taken in T-612) at 10:40.
+`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.86.0`, taken in T-612) at 11:45.
 
 ## Where the code is
 
 * All finished work is on `main`. Use the pinned Rust toolchain from [Hosted sessions](hosted-sessions.md).
+* Done on 2026-11-26 (11:45): T-609 (the ICMP step of `live` 45802633188). Built and partial: T-129 (ACME; the Pebble
+  step of `live`; COORD-135 #780), T-244 (`tunnel --inspect`, `clear`, the measurements; COORD-136 #781), T-127 (VLESS,
+  Shadowsocks, Wisp; the steps against real servers in `live`; COORD-137 #782).
 * Done on 2026-11-26 (10:40): T-611 (the TCP direction split), T-126 (the networks `https://` and `wstunnel:` of
   `pod-egress`; T-614 blocked on COORD-134 #779), T-358 step 2 (b, c) (the `live` and `root` blocks of the documents in
   `live.yml`, the offline blocks in the labs), T-613, T-615, T-616, T-617. T-123 and T-124 are blocked (no `pod-ts`).
@@ -41,13 +44,12 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 ## The next steps, in order
 
-1. **Three agents work in worktrees** (`.claude/worktrees/`): T-244 (`tunnel --inspect` over the capture hook of
-   `pod-cloudflare` `v0.86.0`), T-129 (ACME for `serve` and `git serve`, `pod-acme`) and T-127 (VLESS, Shadowsocks and
-   Wisp, `pod-egress`). Review each commit, take it onto `main`, and write the record (they do not edit
-   `TODO/INDEX.md`, `PROGRESS.md`, `issues.md`, `github.txt`). Then T-128 (the DERP carrier, `pod-derp`).
-2. **The proofs that wait for a run:** T-609 (the dry run 45786027233 passed; the `live` step "A link over ICMP echo
-   (root)", fixed in `0248aa61` with `link status --create`), T-321 (the `live` step of coturn: UDP and TCP over RFC
-   6062). Mark each done when its run passes.
+1. **One agent works in a worktree** (`.claude/worktrees/`): T-128 (the DERP carrier, `pod-derp`). Review its commit,
+   take it onto `main`, and write the record (it does not edit `TODO/INDEX.md`, `PROGRESS.md`, `issues.md`,
+   `github.txt`).
+2. **The proofs that wait for a run of `live` on `9b084ce` or later:** T-321 (the coturn step, now on port 47478), T-129
+   (the Pebble step), T-127 (the steps of `ssserver`, Xray-core and wisp-server-python). Fix a step that fails; mark
+   each entry done when its steps pass and its COORD asks are only extensions.
 3. **T-358:** step 1 `ipv6-only` (no IPv6 on the runner).
 4. **Each tag of podcrates:** COORD-130 (#760, the headscale harness: T-114, T-115), COORD-134 (#779, T-614).
 5. **The next beta (`v0.4.0-beta.21`):** the black-box QA pass first, when the batch above is green. The notes name the
