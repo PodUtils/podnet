@@ -6800,7 +6800,7 @@ won't be always available or willing to test." `docs/decisions.md`, 2026-11-15, 
 **Milestone:** M5
 **Priority:** P1
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -7161,6 +7161,15 @@ host with the musl podnet of beta.19 as root: `version`, `doctor`, `net-curl`, `
 want 68: this host breaks TLS to each DoH server, so the lookup fails on DoH, not on a name with no answer). The run
 of `live.yml` gives the result on the IPv6-only host.
 
+
+## Done
+
+2026-11-26, `f3f47256` (the last step). `gate.yml` 45866261787 (`8712a9c`) passed: the lane of the labs of `podlab`
+`v0.86.0`, the error rows and the consumer case of podrunner. `live` 45861374486 (`8712a9c`) passed the steps of the
+release gate on the runner: the row `ipv6-host` on the IPv6-only host (`podlab-check`, `version`, `errors`, `doctor`,
+`net-curl`, `net-bench` and `net-exit` pass; the three `net-pod` rows are n.a. with no proxy), the `icmp` link as root,
+and the documented commands of the classes `live` and `root`. The lane case `consumer-podrunner` runs the calls of
+podrunner (step 3); a consumer that a sibling adds later gets its own case.
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 

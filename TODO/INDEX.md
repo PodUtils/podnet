@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**618 entries: 1 open, 8 partial, 28 blocked, 581 done.**
+**618 entries: 1 open, 7 partial, 28 blocked, 582 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 3 | 94 | 99 |
+| P1 | 0 | 1 | 3 | 95 | 99 |
 | P2 | 0 | 3 | 11 | 303 | 317 |
 | P3 | 1 | 3 | 14 | 183 | 201 |
-| **All** | 1 | 8 | 28 | 581 | 618 |
+| **All** | 1 | 7 | 28 | 582 | 618 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -402,7 +402,7 @@ M8 Overlays, M9 Later.
 | [T-355](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.13`: the dry run, the publish and the release proofs |
 | [T-356](fixes.md) | P2 | S | M5 | defect | done | vnet shim: an IPv4-mapped IPv6 address gets the IPv4 abstract name |
 | [T-357](fixes.md) | P2 | S | M5 | feature | done | vnet shim: `PODNET_VNET_FORWARD` sends a TCP destination to a unix socket path |
-| [T-358](fixes.md) | P1 | L | M5 | chore | partial | The release gate: each beta passes a scenario run of its own binary on restricted hosts |
+| [T-358](fixes.md) | P1 | L | M5 | chore | done | The release gate: each beta passes a scenario run of its own binary on restricted hosts |
 | [T-359](fixes.md) | P2 | M | M3 | chore | done | One shared crate for the help and the manual of each PodUtils command line |
 | [T-360](fixes.md) | P2 | S | M5 | defect | done | install.sh: a second run with the same version changes nothing and says so |
 | [T-361](fixes.md) | P2 | S | M5 | defect | done | git init: make the root when it does not exist |

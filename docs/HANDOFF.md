@@ -50,7 +50,7 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 1. **The black-box QA pass of `v0.4.0-beta.21`** runs on the artifact of `ci` 45856630710 (`bffca86`), with podlab
    `v0.86.0`. Triage each finding `[qa 0.4.0-beta.21]` into an entry; fix each P1 and P2 finding.
-2. **T-358:** mark it done when `gate.yml` on `8712a9c` passes (its Prove).
+2. **T-358 is done** (`gate.yml` 45866261787 on `8712a9c`).
 3. **The release of `v0.4.0-beta.21`:** after the QA pass, the dry run, then `publish`; a COORD issue `(to all)` with the
    files and digests; answer PodUtils/podrunner#369 (COORD-139 #784) with the version.
 4. **Each tag of podcrates:** COORD-130 (#760), COORD-134 (#779), COORD-135 to COORD-138 (#780 to #783), COORD-140 (#785).
