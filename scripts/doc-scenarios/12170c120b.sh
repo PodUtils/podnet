@@ -3,10 +3,12 @@
 # line: report.txt, ./site, the base bundle ./old (the site before a change),
 # two captures, a file of secrets, and two replica logs with no record.
 # `discover listen` waits 10 s, and the debug build hashes the code slowly.
+# The block is n.a. on a host that sends no UDP to the loopback (discover).
 # shellcheck disable=SC2034
 LIMIT=60
 
 setup() {
+    doc_need_udp
     echo 'a report' > report.txt
     mkdir site
     echo 'the first file' > site/a.txt

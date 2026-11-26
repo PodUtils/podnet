@@ -5,6 +5,7 @@
 #   python3 -I servers.py http-tcp PORT BODY
 #   python3 -I servers.py socks-unix PATH LOG NAME:PORT=TCPPORT
 #   python3 -I servers.py socks-tcp PORT LOG NAME:PORT=TCPPORT
+#   python3 -I servers.py socks-tcp PORT LOG '*'
 #
 # http-unix serves HTTP on the unix socket PATH. Each request gets BODY.
 # For each connection it appends the peer (SO_PEERCRED: pid, uid and the
@@ -16,7 +17,9 @@
 # CONNECT target to LOG. It connects only NAME:PORT, to 127.0.0.1:TCPPORT;
 # it refuses each other target (reply 0x02).
 # socks-tcp is the same SOCKS5 server on 127.0.0.1:PORT (T-358 step 2: the
-# scenarios of the documented commands).
+# scenarios of the documented commands). With the target `*`, it connects
+# each target, by its own name and port (a proxy to the network of the
+# host, for the `live` blocks of the documents).
 import http.server
 import os
 import socket
@@ -118,10 +121,20 @@ class Socks(socketserver.BaseRequestHandler):
             return
         target = "%s:%d" % (host, port)
         log(self.server, "connect %s cmd=%d" % (target, cmd))
-        if cmd != 1 or target != self.server.name:
+        each = self.server.name == "*"
+        if cmd != 1 or not each and target != self.server.name:
             conn.sendall(b"\x05\x02\x00\x01" + b"\0" * 6)
             return
-        up = socket.create_connection(("127.0.0.1", self.server.tcp_port))
+        if not each:
+            up = socket.create_connection(("127.0.0.1", self.server.tcp_port))
+        else:
+            try:
+                up = socket.create_connection((host.strip("[]"), port), timeout=30)
+                up.settimeout(None)
+            except OSError as e:
+                log(self.server, "connect %s failed: %s" % (target, e))
+                conn.sendall(b"\x05\x05\x00\x01" + b"\0" * 6)
+                return
         conn.sendall(b"\x05\x00\x00\x01" + b"\0" * 6)
         t = threading.Thread(target=pipe, args=(up, conn), daemon=True)
         t.start()
@@ -154,8 +167,8 @@ def main():
         else:
             srv = SocksTcp(("127.0.0.1", int(sys.argv[2])), Socks)
         srv.log = sys.argv[3]
-        srv.name, tcp_port = sys.argv[4].split("=")
-        srv.tcp_port = int(tcp_port)
+        srv.name, _, tcp_port = sys.argv[4].partition("=")
+        srv.tcp_port = int(tcp_port or 0)
     else:
         print("unknown mode %s" % mode, file=sys.stderr)
         return 64

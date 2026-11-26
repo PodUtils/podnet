@@ -1452,6 +1452,20 @@ jobs:
           echo "the group after the failover: ${got:-no answer}"
           [ -n "$got" ] || { echo "the group carried no flow after the failover"; exit 1; }
           block -D
+      # T-358 step 2 (b): each block of the class live of
+      # scripts/doc-commands.txt, as written, with the release binary, in a
+      # new HOME, one after the other, each with its limit. A block that a
+      # service refuses for a time (HTTP 429 of the quick-tunnel service) is
+      # n.a. The output of a failed block has its tunnel hosts and ids
+      # masked. The blocks of the class live-manual need what this runner
+      # does not have (a second host, an account, a value of the user).
+      - name: The documented commands of the class live
+        timeout-minutes: 6
+        run: python3 -I scripts/doc-commands.py --run --class live --bin target/release/podnet
+      # T-358 step 2 (c): the blocks of the class root, as root.
+      - name: The documented commands of the class root
+        timeout-minutes: 2
+        run: sudo python3 -I scripts/doc-commands.py --run --class root --bin target/release/podnet
       - name: Remove the WARP device
         if: always()
         timeout-minutes: 2

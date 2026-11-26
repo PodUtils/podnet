@@ -65,6 +65,9 @@ NET_CASES="version errors doctor net-curl net-bench net-exit net-pod-auto net-po
 WAYOUT_CASES="way-tunnel way-relay"
 WAYWS_CASES="way-relay-refused"
 TESTER_CASES="pod-seccomp pod-netns errors"
+# The labs of the case docs (the documented commands): the restricted
+# hosts of docs/target-environment.md.
+DOC_LABS="proxy-only bind-denied nonroot-nocaps no-net-admin no-loopback udp-denied listen-denied"
 PROXY_CASES="proxy-direct proxy-port proxy-pod-auto proxy-pod-seccomp proxy-pod-env proxy-doctor"
 
 # The cases. Each one runs inside the lab and exits 0 (pass), 1 (fail) or
@@ -606,6 +609,18 @@ print(data.decode(errors="replace"))
             test $code -eq 69 && grep -q 'on the way refused the WebSocket upgrade' "$dir/out.txt"
         fi
         exit $?
+        ;;
+    docs)
+        # T-358 step 2 (c): the documented commands of the classes run and
+        # scenario (scripts/doc-commands.py) in the lab, with this binary.
+        # The outer script copies the documents and the set-ups to
+        # doc-tree. A set-up that the lab cannot give makes its block n.a.
+        # A block that needs a program that the host does not have is MISS:
+        # the row does not fail for it.
+        python3 -I "$dir/../doc-tree/scripts/doc-commands.py" --run --miss-ok --bin "$podnet" >"$dir/docs.txt" 2>&1
+        code=$?
+        cat "$dir/docs.txt"
+        exit $code
         ;;
     errors)
         # The error rows (T-452): scripts/lab-errors.sh, beside this file.
@@ -1483,6 +1498,16 @@ cp -r "$root/tests/data/harness" "$work/harness-data" || exit 1
 cp "$root/tests/data/cover/script.toml" "$work/cover-script.toml" || exit 1
 cp "$root/tests/consumers/python-http/client.py" "$work/http-client.py" || exit 1
 cp "$root/tests/consumers/connect-proxy.py" "$root/tests/consumers/servers.py" "$work/" || exit 1
+# The case docs: the documents, the classes and the set-ups of
+# scripts/doc-commands.py, and the files of the set-ups, at their paths of
+# the repository.
+mkdir -p "$work/doc-tree/docs" "$work/doc-tree/scripts" "$work/doc-tree/tests/consumers" "$work/doc-tree/tests/data" &&
+    cp "$root/README.md" "$work/doc-tree/" &&
+    cp "$root"/docs/*.md "$work/doc-tree/docs/" &&
+    cp "$root/scripts/doc-commands.py" "$root/scripts/doc-commands.txt" "$work/doc-tree/scripts/" &&
+    cp -r "$root/scripts/doc-scenarios" "$work/doc-tree/scripts/" &&
+    cp "$root/tests/consumers/servers.py" "$work/doc-tree/tests/consumers/" &&
+    cp -r "$root/tests/data/harness" "$work/doc-tree/tests/data/" || exit 1
 python3 -I "$work/echo.py" "$work/echo.sock" &
 pids=$!
 # The stand-in broker of consumer-podrunner for a lab that refuses
@@ -1559,6 +1584,9 @@ for profile in "$@"; do
         cases=$WAYWS_CASES
     elif in_list "$profile" "$NET_LABS"; then
         cases=$NET_CASES
+    fi
+    if in_list "$profile" "$DOC_LABS"; then
+        cases="$cases docs"
     fi
     # $lab is the profile, or options and the profile: split it.
     # shellcheck disable=SC2086

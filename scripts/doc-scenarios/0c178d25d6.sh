@@ -1,10 +1,12 @@
 # shellcheck shell=sh
 # docs/virtual-network.md: the proxy of the stack in the background (a
 # foreground command), then a SOCKS5 greeting on its unix socket.
+# The block is n.a. on a host that refuses a unix listener.
 # shellcheck disable=SC2034
 BACKGROUND="1"
 
 setup() {
+    doc_need_unix_listen
     doc_free_socket /tmp/podnet-vnet.socks
 }
 

@@ -2,10 +2,12 @@
 # docs/virtual-network.md: a detached switch, then a stack with faults on
 # the switch in the background (a foreground command). The check: the stack
 # still runs after 2 s.
+# The block is n.a. on a host that refuses a unix listener.
 # shellcheck disable=SC2034
 BACKGROUND="2"
 
 setup() {
+    doc_need_unix_listen
     doc_free_socket /tmp/sw.sock
     doc_free_socket /tmp/podnet-vnet.socks
 }
