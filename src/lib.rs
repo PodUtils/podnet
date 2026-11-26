@@ -83,6 +83,7 @@ mod core_tests;
 pub mod cover;
 pub mod crashlog;
 pub mod defer;
+pub mod derp;
 pub mod dialers;
 pub mod doctor;
 pub mod doctor_shape;

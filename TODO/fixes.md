@@ -4040,7 +4040,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:80`, `src/cli/cmd/net/mod.rs:97` and
   `src/cli/cmd/net/mod.rs:177` (and `/tmp/podnet-vnet.switch` at `src/cli/cmd/net/mod.rs:248`).
-- `libc` is a dependency (`Cargo.toml:197`, `crates/podnet-netns/Cargo.toml:24`). No code calls
+- `libc` is a dependency (`Cargo.toml:201`, `crates/podnet-netns/Cargo.toml:24`). No code calls
   `renameat2` yet.
 - T-186 (done, GitHub #385) added `claim_unix_path` and `bind_claimed`. They do not cover the interval.
   GitHub #306 (closed) fixed the inbound directory of `accept.rs` only.
@@ -13882,7 +13882,7 @@ the relay leg works gives exit 0.
 
 - Read: `src/cli/cmd/host.rs:406` bails with a plain error when `report.ok()` is false: exit 1.
   `Report::ok` (`src/doctor.rs:251`) is true when any of the legs has the verdict `ok`, the relay leg too. Thus a host
-  where only `http2+relay` works gives exit 0, and the help (`src/cli/mod.rs:292`) lists three legs only.
+  where only `http2+relay` works gives exit 0, and the help (`src/cli/mod.rs:297`) lists three legs only.
 - Read: the exit 1 of `doctor` is in the help, in `docs/doctor.md`, in the research list
   (`docs/research/podnet/parity-checklist.md`), and in the lane (`scripts/lab-lane.sh`, the case
   `proxy-doctor` runs `doctor` through a proxy that refuses). The manual row of 69 (`src/manual/facts.rs:212`) and `docs/cli.md:139` name "no edge
@@ -13897,7 +13897,7 @@ the relay leg works gives exit 0.
 1. `src/manual/facts.rs:212` and `docs/cli.md:139` say that "no edge leg worked" is 69 for `tunnel`, `warp` and the
    commands that start a session, and that `doctor` and `bench` give 1 when no leg or no request worked. The row of 1
    names them. `docs/exit-codes.md` gets the same sentence.
-2. `podnet doctor --help` (`src/cli/mod.rs:292`) and `docs/doctor.md:46` name the four legs (`quic`, `http2`,
+2. `podnet doctor --help` (`src/cli/mod.rs:297`) and `docs/doctor.md:46` name the four legs (`quic`, `http2`,
    `quic+warp`, `http2+relay`): exit 0 when at least one works, the relay leg too.
 3. One table-driven test: for each command that reports "no leg" or "no request" (`doctor`, `doctor --json`, `bench`,
    `tunnel` with no edge), the exit code is a code that the row of the table of `podnet man exit-status --json` names for
@@ -14092,7 +14092,7 @@ PODNET_RESOLVE=bad podnet pod --backend seccomp -x direct -- true               
 
 ## Premise
 
-- Read: `src/cli/opts.rs:315` checks the variable (`parse_pins`, `Fault::Config`) in the code that runs after the
+- Read: `src/cli/opts.rs:317` checks the variable (`parse_pins`, `Fault::Config`) in the code that runs after the
   command line is parsed. `podnet pod` goes to `podnet_netns::main_with_args` before that parse (`src/main.rs:104`),
   so each check of `opts.rs` is skipped: also the other variables that `opts.rs` checks (`PODNET_PROXY` with no scheme,
   `--egress`).

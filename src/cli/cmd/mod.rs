@@ -9,6 +9,7 @@ pub(crate) mod components;
 pub(crate) mod connect;
 mod connect_stdio;
 pub(crate) mod cover;
+pub(crate) mod derp;
 pub(crate) mod e2e;
 pub(crate) mod exit;
 pub(crate) mod expose;

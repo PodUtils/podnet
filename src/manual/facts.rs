@@ -156,6 +156,7 @@ pub const EXAMPLES: &[(&str, &str)] = &[
     ("podnet ps --json", "The instances that run in the background, as one JSON document."),
     ("podnet relay pair", "Ask the relay for a pair: a name, and the tokens of the node and of the operator."),
     ("podnet relay node --to 127.0.0.1:22", "Give the SSH server of this host to the operators of the pair, through the relay."),
+    ("podnet derp node --to 127.0.0.1:22 --peer CLIENT-FINGERPRINT", "Give the SSH server of this host to one client key at a DERP server of the fleet. The node prints its derp: ticket; the client runs ssh -o ProxyCommand='podnet derp connect TICKET'."),
     ("podnet ssh-relay --socket /run/user/1000/origin.sock --detach", "Publish a unix socket through the default SSH relay (pinggy). The endpoint, the user and the URL rule are data of pod-services. The URL is in the ready document; podnet ps shows the URL after each reconnect."),
     ("podnet ssh-relay --service serveo --socket /run/user/1000/origin.sock --detach", "Publish a unix socket through a named SSH relay. podnet tries its plain SSH endpoints in order."),
     ("podnet ssh-relay --server relay.example.net:443 --user podnet --url-skip dashboard.example.net --socket /run/user/1000/origin.sock --detach", "Publish a unix socket through an SSH relay that pod-services does not know: give the server, the user and the URL rule."),

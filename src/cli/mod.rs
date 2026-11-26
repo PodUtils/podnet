@@ -224,6 +224,11 @@ pub(crate) enum Command {
     /// Inbound access to this host through the WebSocket relay (--relay):
     /// pair, run a node for a local port, connect as the operator.
     Relay(RelayArgs),
+    /// Two hosts meet at a DERP server (Tailscale's fleets need no account,
+    /// or a derper of your own) through the way out: node (serve a local
+    /// service and print a derp: ticket), connect (copy stdin and stdout to
+    /// the node of a ticket). Sealed end to end; the session resumes.
+    Derp(cmd::derp::DerpArgs),
     /// A link between two installs over a carrier (a unix socket, memory;
     /// TCP and more behind build features): each end proves its Ed25519 key,
     /// and an allow list (default deny) says which peers may open streams.
@@ -381,6 +386,7 @@ pub(crate) async fn async_main(cli: Cli) -> Result<()> {
         Command::Warp(args) => warp(*args).await,
         Command::Wg(args) => cmd::wg::wg(args, egress).await,
         Command::Relay(args) => relay(args).await,
+        Command::Derp(args) => cmd::derp::derp(args).await,
         Command::Link(args) => link(args, egress).await,
         Command::Offline(args) => offline(args),
         Command::Cover(args) => cover(args).await,

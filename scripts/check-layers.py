@@ -68,6 +68,8 @@ LAYER = {
     "forge": "podnet", "ci": "podnet",
     # The cover listener and the deferred responses (T-369, T-371).
     "cover": "podnet", "defer": "podnet",
+    # The DERP road over pod-derp (T-128).
+    "derp": "podnet",
     "hostprobe": "podnet", "crashlog": "podnet", "stat": "podnet", "policy": "core",
     "initcfg": "podnet", "page": "podnet", "harness": "podnet",
     "status": "podnet", "bug_report": "podnet", "manual": "podnet",

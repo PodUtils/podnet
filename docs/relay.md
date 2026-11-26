@@ -1,6 +1,6 @@
-# Relays: `podnet relay` and `podnet ssh-relay`
+# Relays: `podnet relay`, `podnet derp` and `podnet ssh-relay`
 
-This page gives the reverse relay (`podnet relay`) and the SSH forward relay (`podnet ssh-relay`).
+This page gives the reverse relay (`podnet relay`), the DERP road (`podnet derp`) and the SSH forward relay (`podnet ssh-relay`).
 
 ## Inbound access through the relay: `podnet relay`
 
@@ -152,6 +152,60 @@ ssh -o ProxyCommand='podnet relay connect NAME --resume --seal --peer NODE-FINGE
     `--seal` to the node only when each operator uses it.
 * The connect token still decides who reaches the node at the relay. The keys
   decide who reaches the target.
+
+## Meet at a DERP server: `podnet derp`
+
+Two hosts with outbound HTTPS only can meet at a DERP server: a server of
+Tailscale's fleets (no account) or a `derper` of your own. DERP runs in a
+WebSocket at `wss://HOST/derp` on port 443, through the way out of podnet
+(`--proxy`, `--resolve`, `--ca-file`). `pod-derp` of PodUtils/podcrates does
+the work (T-128). No pair and no token are necessary: the ticket of the node
+is its address, and the keys decide who comes in.
+
+```sh
+# On the host: the fingerprint of the key of the client.
+podnet derp node --to 127.0.0.1:22 --peer CLIENT-FINGERPRINT --detach
+# On the computer of the client:
+ssh -o ProxyCommand='podnet derp connect TICKET' USER@HOST
+```
+
+* `podnet derp node --to TARGET` goes online at the first server of the list
+  that answers its probe and its DERP handshake, and prints its ticket
+  (`derp:` and one word of base32): the key of the node, its key on the
+  server, and the server. `TARGET` is `host:port` or `unix:/path`. The key on
+  the server comes from the key of the install, so a new start at the same
+  server gives the same ticket.
+* The servers: `--server HOST[:PORT][,HOST[:PORT]...]` (port 443 by default),
+  else the fleet of the data of `pod-services`: the four servers for tailcat,
+  then Tailscale's main fleet. `--main-fleet no` keeps the four servers alone.
+  podnet holds no host of a DERP server.
+* When the home of the node goes away (three failed connections in a row),
+  the node moves to the next server of the list and prints its new ticket. A
+  client of the old ticket and of the same list tries the other servers of the
+  list after the server of the ticket, and finds the node there.
+* `podnet derp connect TICKET` copies stdin and stdout to the node. Give it the
+  same `--server` list as the node (or none).
+* Each session runs the resumable layer (`pod-session`), with the end-to-end
+  channel of `pod-e2e` above it (Noise XX with the key of each install, as
+  `relay --seal`). The server sees the keys, the sizes and the times only.
+  After the loss of a link, the client opens a new link, and the session goes
+  on from the offsets of each end. The node keeps a session with no link for
+  10 minutes; its replay memory is at most 64 MiB for all its sessions.
+* The node admits the keys of `--peer FINGERPRINT` (repeat it) or `--allow
+  FILE` (the form of `link listen --allow`); give one of them, else exit 64.
+  The client checks that the node proves the key of the ticket. A key that an
+  end refuses exits 77 at the client, and the node does not dial the target.
+* The end of the input of `derp connect` ends one direction only: the answer of
+  the target still comes.
+* `--json` prints the ready document of the node as one JSON line: `ticket`,
+  `server`, `fingerprint` and `target`. `--detach` prints the same document.
+  `--run-for SECONDS` stops the node after that time, with exit 0.
+* Exit codes: 64 for a bad value (a ticket, `--server`, `--main-fleet`,
+  `--to`), 69 when no server takes the node, when the client reaches no node,
+  when the target does not answer, or when the session ends with an error,
+  77 for a key that an end refuses, 78 when the two ends share no suite.
+* `.github/workflows/live.yml` (the measure `derp`) runs a node and a client
+  through a `derper` of a pinned version on the runner.
 
 ## Hosts and limits
 

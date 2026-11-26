@@ -199,6 +199,7 @@ pub(crate) const SERVER_COMMANDS: &[&str] = &[
     "share",
     "connect",
     "relay node",
+    "derp node",
     "ssh-relay",
 ];
 

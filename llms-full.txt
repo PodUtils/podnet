@@ -71,6 +71,11 @@ SYNOPSIS
              uses the router as its gateway
     relay    Inbound access to this host through the WebSocket relay (--relay):
              pair, run a node for a local port, connect as the operator
+    derp     Two hosts meet at a DERP server (Tailscale's fleets need no
+             account, or a derper of your own) through the way out: node (serve
+             a local service and print a derp: ticket), connect (copy stdin and
+             stdout to the node of a ticket). Sealed end to end; the session
+             resumes
     link     A link between two installs over a carrier (a unix socket, memory;
              TCP and more behind build features): each end proves its Ed25519
              key, and an allow list (default deny) says which peers may open
@@ -196,11 +201,12 @@ DESCRIPTION
   transfer (share) and git hosting (git serve). To reach out: the Cloudflare
   WARP client with no root (warp, agent), the relay (relay, connect), forwards
   (forward) and a SOCKS5 exit on stdin and stdout (exit). The router has
-  networks, groups, policies and a kernel mode (route). To join two installs:
-  the link (link) over a carrier, with services at a peer and a mesh. To
-  contain programs: pods (pod) and virtual networks (net). To check and keep it
-  running: doctor, bench, status, components, the background runs (--detach,
-  ps, logs, stop, autostart) and update.
+  networks, groups, policies and a kernel mode (route). To meet another host at
+  a DERP server: derp. To join two installs: the link (link) over a carrier,
+  with services at a peer and a mesh. To contain programs: pods (pod) and
+  virtual networks (net). To check and keep it running: doctor, bench, status,
+  components, the background runs (--detach, ps, logs, stop, autostart) and
+  update.
 
   A tunnel reaches the edge with one of four legs. They are QUIC on UDP 7844,
   HTTP/2 on TCP 7844 (directly or through HTTPS_PROXY), and QUIC inside a WARP
@@ -9314,6 +9320,262 @@ podnet relay stop
 
     Give only one of --quiet, --verbose.
 
+podnet derp
+  Two hosts meet at a DERP server (Tailscale's fleets need no account, or a
+  derper of your own) through the way out: node (serve a local service and
+  print a derp: ticket), connect (copy stdin and stdout to the node of a
+  ticket). Sealed end to end; the session resumes.
+
+  Usage: podnet derp COMMAND [OPTIONS]
+
+  Commands:
+    node     Serve a local service at a DERP server: print the ticket
+             (derp:...) of this node, and connect each session of a client that
+             the allow list admits to --to. The node moves to the next server
+             when its server goes away, and prints its new ticket
+    connect  Open a session to the node of a ticket and copy stdin and stdout
+             (an SSH ProxyCommand). The node must prove the key of the ticket,
+             and admit the key of this install (else exit 77). The session goes
+             on after the loss of a link, for 10 minutes
+
+  Options:
+    --ca-file PATH
+        A file of TLS roots (PEM). podnet uses only these roots for each
+        connection that it opens as a client. Without it, podnet reads
+        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
+        and the compiled-in roots.
+    --proxy URL
+        The proxy for each connection: http://, socks5:// or socks5h://
+        [user:password@]host[:port]. A proxy on a unix socket:
+        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
+        stdout of a command, one for each connection (as ProxyCommand of SSH):
+        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
+        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
+        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
+        password out of the command line. Percent-encode / ? # @ : in the user
+        and the password. Variable: PODNET_PROXY.
+    --no-proxy
+        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
+    --egress SPEC
+        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
+        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+        chain (TOP over BELOW) are for podnet forward --network, podnet route
+        and podnet wg serve. With podnet link dial and podnet link connect,
+        each --egress is one element of the chain before the tcp carrier
+        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
+        the last element reaches the carrier address. With podnet wg serve, one
+        --egress is the way of the flows of the peers (each spec of podnet
+        forward --network that carries TCP).
+    --resolve HOST=IP
+        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
+        adds to it. TLS still checks the name of the certificate.
+    -q, --quiet
+        Log warnings and errors only.
+    -v, --verbose
+        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
+    --color COLOR
+        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
+        always or never. Default: auto. Values: auto, always, never.
+    --log-format LOG_FORMAT
+        The form of the log on stderr: text, or json (one object for each
+        line). Default: text. Values: text, json.
+
+  Rules:
+    Give only one of --no-proxy, --proxy.
+
+    Give only one of --quiet, --verbose.
+
+podnet derp node
+  Serve a local service at a DERP server: print the ticket (derp:...) of this
+  node, and connect each session of a client that the allow list admits to
+  --to. The node moves to the next server when its server goes away, and prints
+  its new ticket.
+
+  Usage: podnet derp node [OPTIONS]
+
+  Options:
+    --to TARGET
+        The local service: host:port or unix:/path. Required.
+    --server LIST
+        The DERP servers, in order: HOST[:PORT][,HOST[:PORT]...] (port 443 by
+        default), for example a derper of your own. Default: the fleet of the
+        data of pod-services: Tailscale's four servers for tailcat, then its
+        main fleet.
+    --main-fleet ANSWER
+        With no --server: yes (the default) or no. no keeps the four servers
+        for tailcat alone. Values: yes, no.
+    --peer FINGERPRINT
+        The fingerprint of a client that may connect (the line that `podnet
+        link status` prints on the client). Repeat it for more than one.
+    --allow FILE
+        An allow list file of the client keys (the form of `link listen
+        --allow`). Give --peer or --allow: the list is default deny. A client
+        that it does not admit exits 77, and the node does not dial the target
+        for it.
+    --json
+        Print the ready document as one JSON line on stdout when the node is
+        online: ticket, server, fingerprint and target. --detach prints the
+        same document.
+    --run-for SECONDS
+        Stop after this many seconds (a planned end: no restart).
+    --detach
+        Run in the background: podnet prints one JSON document when the command
+        is ready (its URL or its listen address) and exits 0. The instance
+        keeps running when the shell or the terminal closes. podnet ps, logs,
+        wait and stop manage it.
+    --name NAME
+        The name of the detached instance. Default: the command and a hash of
+        its arguments. A second start with the same name and the same arguments
+        gives the same instance. With no --detach: register this process under
+        the name (it is not forked and not restarted); podnet ps, logs, wait
+        and stop see it.
+    --ready-timeout SECS
+        With --detach: seconds to wait for the instance to be ready (else exit
+        124). The default covers the check of a new public name (180 s).
+        Default: 240.
+    --replace
+        Stop a running instance of the same name that has other arguments, and
+        start this one (needs --detach). connect: also take a unix socket of -L
+        that another process serves (by default, a socket that answers is
+        refused, exit 69; a stale socket file is replaced).
+    --no-restart
+        Do not start the instance again when it ends. Without it, a supervisor
+        starts it again with a backoff (1 s to 30 s). It does not start it
+        after exit 64 or 78. It does not start it after a planned end either
+        (the limit of the run time of the command, where it has one). A quick
+        tunnel gets a new URL; podnet ps shows it. With --name and no --detach,
+        there is no supervisor.
+    --ca-file PATH
+        A file of TLS roots (PEM). podnet uses only these roots for each
+        connection that it opens as a client. Without it, podnet reads
+        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
+        and the compiled-in roots.
+    --proxy URL
+        The proxy for each connection: http://, socks5:// or socks5h://
+        [user:password@]host[:port]. A proxy on a unix socket:
+        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
+        stdout of a command, one for each connection (as ProxyCommand of SSH):
+        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
+        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
+        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
+        password out of the command line. Percent-encode / ? # @ : in the user
+        and the password. Variable: PODNET_PROXY.
+    --no-proxy
+        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
+    --egress SPEC
+        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
+        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+        chain (TOP over BELOW) are for podnet forward --network, podnet route
+        and podnet wg serve. With podnet link dial and podnet link connect,
+        each --egress is one element of the chain before the tcp carrier
+        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
+        the last element reaches the carrier address. With podnet wg serve, one
+        --egress is the way of the flows of the peers (each spec of podnet
+        forward --network that carries TCP).
+    --resolve HOST=IP
+        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
+        adds to it. TLS still checks the name of the certificate.
+    -q, --quiet
+        Log warnings and errors only.
+    -v, --verbose
+        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
+    --color COLOR
+        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
+        always or never. Default: auto. Values: auto, always, never.
+    --log-format LOG_FORMAT
+        The form of the log on stderr: text, or json (one object for each
+        line). Default: text. Values: text, json.
+
+  Rules:
+    Give only one of --main-fleet, --server.
+
+    Give only one of --allow, --peer.
+
+    Give only one of --no-proxy, --proxy.
+
+    Give only one of --quiet, --verbose.
+
+  Examples:
+    Give the SSH server of this host to one client key at a DERP server of the
+    fleet. The node prints its derp: ticket; the client runs ssh -o
+    ProxyCommand='podnet derp connect TICKET'.
+        $ podnet derp node --to 127.0.0.1:22 --peer CLIENT-FINGERPRINT
+
+podnet derp connect
+  Open a session to the node of a ticket and copy stdin and stdout (an SSH
+  ProxyCommand). The node must prove the key of the ticket, and admit the key
+  of this install (else exit 77). The session goes on after the loss of a link,
+  for 10 minutes.
+
+  Usage: podnet derp connect [OPTIONS] TICKET
+
+  Arguments:
+    TICKET
+        The ticket that `podnet derp node` printed (derp:...).
+
+  Options:
+    --server LIST
+        The DERP servers, in order: HOST[:PORT][,HOST[:PORT]...] (port 443 by
+        default), for example a derper of your own. Default: the fleet of the
+        data of pod-services: Tailscale's four servers for tailcat, then its
+        main fleet.
+    --main-fleet ANSWER
+        With no --server: yes (the default) or no. no keeps the four servers
+        for tailcat alone. Values: yes, no.
+    --ca-file PATH
+        A file of TLS roots (PEM). podnet uses only these roots for each
+        connection that it opens as a client. Without it, podnet reads
+        SSL_CERT_FILE, else podnet-ca.pem beside the binary, the system bundle
+        and the compiled-in roots.
+    --proxy URL
+        The proxy for each connection: http://, socks5:// or socks5h://
+        [user:password@]host[:port]. A proxy on a unix socket:
+        socks5h+unix:/PATH (or socks5h://unix:/PATH). A proxy at the stdin and
+        stdout of a command, one for each connection (as ProxyCommand of SSH):
+        http+exec:COMMAND or socks5h+exec:COMMAND. Without it, podnet reads
+        HTTPS_PROXY and ALL_PROXY (no +exec: there). NO_PROXY names the targets
+        that do not use a proxy. PODNET_PROXY gives the same value, and keeps a
+        password out of the command line. Percent-encode / ? # @ : in the user
+        and the password. Variable: PODNET_PROXY.
+    --no-proxy
+        Use no proxy, also when HTTPS_PROXY or ALL_PROXY is set.
+    --egress SPEC
+        The way out, as a network spec: direct (as --no-proxy), a proxy URL (as
+        --proxy), relay or relay:URL (as tunnel --transport relay --relay URL).
+        With podnet pod, each --egress is one -x hop of the chain, in its order
+        (also tailscale:/PATH, netbird:[PORT] and unix:/PATH). wg:FILE and a
+        chain (TOP over BELOW) are for podnet forward --network, podnet route
+        and podnet wg serve. With podnet link dial and podnet link connect,
+        each --egress is one element of the chain before the tcp carrier
+        (direct, a proxy, peer:FINGERPRINT/SERVICE). The elements are in order:
+        the last element reaches the carrier address. With podnet wg serve, one
+        --egress is the way of the flows of the peers (each spec of podnet
+        forward --network that carries TCP).
+    --resolve HOST=IP
+        Addresses for names, in place of DNS: HOST=IP[,HOST=IP]. PODNET_RESOLVE
+        adds to it. TLS still checks the name of the certificate.
+    -q, --quiet
+        Log warnings and errors only.
+    -v, --verbose
+        Log more: -v for debug, -vv for trace. RUST_LOG takes priority.
+    --color COLOR
+        Colours in the log: auto (only on a terminal, and not with NO_COLOR),
+        always or never. Default: auto. Values: auto, always, never.
+    --log-format LOG_FORMAT
+        The form of the log on stderr: text, or json (one object for each
+        line). Default: text. Values: text, json.
+
+  Rules:
+    Give only one of --main-fleet, --server.
+
+    Give only one of --no-proxy, --proxy.
+
+    Give only one of --quiet, --verbose.
+
 podnet link
   A link between two installs over a carrier (a unix socket, memory; TCP and
   more behind build features): each end proves its Ed25519 key, and an allow
@@ -14959,6 +15221,11 @@ EXAMPLES
   relay.
       $ podnet relay node --to 127.0.0.1:22
 
+  Give the SSH server of this host to one client key at a DERP server of the
+  fleet. The node prints its derp: ticket; the client runs ssh -o
+  ProxyCommand='podnet derp connect TICKET'.
+      $ podnet derp node --to 127.0.0.1:22 --peer CLIENT-FINGERPRINT
+
   Publish a unix socket through the default SSH relay (pinggy). The endpoint,
   the user and the URL rule are data of pod-services. The URL is in the ready
   document; podnet ps shows the URL after each reconnect.
@@ -15177,7 +15444,7 @@ podnet man                                      # the manual
 | Router | `route --config`, `--check --to`, `--status`, `--control`, `--export` | Networks, groups, policies, health, doors, DNS door, guest wires (`unix:`, `tun:`, `veth:`; a guest uses the router as its gateway), kernel mode, WARP members (the egress check, renewal), a rate and a quota for each door, and changes of a running router (`--control`: select, rotate, add or remove a door or a network). | [router](https://github.com/PodUtils/podnet/blob/main/docs/router.md) |
 | Forwards | `forward -L`, `forward --dns`, `forward --name`, `forward --network warp` | TCP and UDP forwards and a DNS door through a network; names on 127.0.0.0/8 for a client that takes only HOST:PORT. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | Exit on stdio | `exit --stdio` | One SOCKS5 session (CONNECT, and UDP in frames) on stdin and stdout, with no listener, for a pipe such as ssh. | [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
-| Relays | `relay pair`, `node`, `connect`, `--resume`, `--seal`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only, sessions past the limits of the relay (`--resume`), sealed end to end (`--seal`); an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
+| Relays | `relay pair`, `node`, `connect`, `--resume`, `--seal`, `derp node`, `derp connect`, `ssh-relay` | Inbound TCP to a host with outbound HTTPS only, sessions past the limits of the relay (`--resume`), sealed end to end (`--seal`); two hosts that meet at a DERP server by a `derp:` ticket, sealed and resumable; an SSH forward relay. | [relay](https://github.com/PodUtils/podnet/blob/main/docs/relay.md) |
 | Link | `link listen`, `dial`, `connect`, `status`, `mesh`, `close`, `carriers`, `cover`, `peer:FP/SERVICE` | A link between two installs over a carrier (unix socket, memory; TCP with TLS, WebSocket, HTTP/2, QUIC, UDP with KCP, HTTP/1.1 polls, DNS, S3 and ICMP behind build features): each end proves its Ed25519 key, and an allow list (default deny) admits the peers. Services at a peer: `raw`, `socks5`, `http`, `exec:` and `exec-status:` (the exit status goes to `link dial --status`). A local SOCKS5 door to a peer (`link dial --service socks5 --listen`, `--resolve-at peer\|local`). Names for live links, query keys, chains of `--egress` before the carrier, link groups, a mesh (`--announce`, `link mesh`) and a control socket. `forward -L PORT=peer:FP/SERVICE` reaches a service of a peer. A C interface (`include/podnet.h`, a shared and a static library from `crates/podnet-capi`). | [link](https://github.com/PodUtils/podnet/blob/main/docs/link.md) |
 | Offline | `offline spool`, `discover`, `bundle`, `capture`, `pair`, `replica`; carriers `serial` and `hf` | A store and forward line for a host with no network: a spool that survives a kill, mDNS discovery with a signed record, a bundle and its delta, a capture merged with its secret redacted, a pairing code, a replication log that converges; AX.25 over a serial line and an ARDOP or VARA modem. | [offline](https://github.com/PodUtils/podnet/blob/main/docs/offline.md) |
 | Networks and `--egress` | `--egress`, `--proxy`, `--resolve` | One spec for each way out: direct, proxy URL, relay, `tailscale:`, `netbird:`, `wg:`, `devtunnel:` (a Dev Tunnels relay), `turn:` (UDP), `https:` (a proxy over TLS), `wstunnel:` (a wstunnel server), `vless://`, `ss://` and `wisp:` (a VLESS, a Shadowsocks or a Wisp server), `unix:`, `warp` and `warp:identity=FILE` (TCP and UDP through a WARP session, for `route` and `forward --network`), and a chain `TOP over BELOW` (`wg:FILE over warp`). | [egress](https://github.com/PodUtils/podnet/blob/main/docs/egress.md), [proxies](https://github.com/PodUtils/podnet/blob/main/docs/proxies.md) |
@@ -18447,9 +18714,9 @@ podnet expose unix:/run/app.sock --via switch --as 10.66.0.2:8080 -- --switch un
 
 <!-- document: docs/relay.md -->
 
-# Relays: `podnet relay` and `podnet ssh-relay`
+# Relays: `podnet relay`, `podnet derp` and `podnet ssh-relay`
 
-This page gives the reverse relay (`podnet relay`) and the SSH forward relay (`podnet ssh-relay`).
+This page gives the reverse relay (`podnet relay`), the DERP road (`podnet derp`) and the SSH forward relay (`podnet ssh-relay`).
 
 ## Inbound access through the relay: `podnet relay`
 
@@ -18601,6 +18868,60 @@ ssh -o ProxyCommand='podnet relay connect NAME --resume --seal --peer NODE-FINGE
     `--seal` to the node only when each operator uses it.
 * The connect token still decides who reaches the node at the relay. The keys
   decide who reaches the target.
+
+## Meet at a DERP server: `podnet derp`
+
+Two hosts with outbound HTTPS only can meet at a DERP server: a server of
+Tailscale's fleets (no account) or a `derper` of your own. DERP runs in a
+WebSocket at `wss://HOST/derp` on port 443, through the way out of podnet
+(`--proxy`, `--resolve`, `--ca-file`). `pod-derp` of PodUtils/podcrates does
+the work (T-128). No pair and no token are necessary: the ticket of the node
+is its address, and the keys decide who comes in.
+
+```sh
+# On the host: the fingerprint of the key of the client.
+podnet derp node --to 127.0.0.1:22 --peer CLIENT-FINGERPRINT --detach
+# On the computer of the client:
+ssh -o ProxyCommand='podnet derp connect TICKET' USER@HOST
+```
+
+* `podnet derp node --to TARGET` goes online at the first server of the list
+  that answers its probe and its DERP handshake, and prints its ticket
+  (`derp:` and one word of base32): the key of the node, its key on the
+  server, and the server. `TARGET` is `host:port` or `unix:/path`. The key on
+  the server comes from the key of the install, so a new start at the same
+  server gives the same ticket.
+* The servers: `--server HOST[:PORT][,HOST[:PORT]...]` (port 443 by default),
+  else the fleet of the data of `pod-services`: the four servers for tailcat,
+  then Tailscale's main fleet. `--main-fleet no` keeps the four servers alone.
+  podnet holds no host of a DERP server.
+* When the home of the node goes away (three failed connections in a row),
+  the node moves to the next server of the list and prints its new ticket. A
+  client of the old ticket and of the same list tries the other servers of the
+  list after the server of the ticket, and finds the node there.
+* `podnet derp connect TICKET` copies stdin and stdout to the node. Give it the
+  same `--server` list as the node (or none).
+* Each session runs the resumable layer (`pod-session`), with the end-to-end
+  channel of `pod-e2e` above it (Noise XX with the key of each install, as
+  `relay --seal`). The server sees the keys, the sizes and the times only.
+  After the loss of a link, the client opens a new link, and the session goes
+  on from the offsets of each end. The node keeps a session with no link for
+  10 minutes; its replay memory is at most 64 MiB for all its sessions.
+* The node admits the keys of `--peer FINGERPRINT` (repeat it) or `--allow
+  FILE` (the form of `link listen --allow`); give one of them, else exit 64.
+  The client checks that the node proves the key of the ticket. A key that an
+  end refuses exits 77 at the client, and the node does not dial the target.
+* The end of the input of `derp connect` ends one direction only: the answer of
+  the target still comes.
+* `--json` prints the ready document of the node as one JSON line: `ticket`,
+  `server`, `fingerprint` and `target`. `--detach` prints the same document.
+  `--run-for SECONDS` stops the node after that time, with exit 0.
+* Exit codes: 64 for a bad value (a ticket, `--server`, `--main-fleet`,
+  `--to`), 69 when no server takes the node, when the client reaches no node,
+  when the target does not answer, or when the session ends with an error,
+  77 for a key that an end refuses, 78 when the two ends share no suite.
+* `.github/workflows/live.yml` (the measure `derp`) runs a node and a client
+  through a `derper` of a pinned version on the runner.
 
 ## Hosts and limits
 

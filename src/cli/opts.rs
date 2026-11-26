@@ -286,6 +286,8 @@ pub(crate) fn detach_of(command: &Command) -> Option<&DetachArgs> {
             } => Some(detach),
             _ => None,
         },
+        // T-128: the node of the DERP road.
+        Command::Derp(args) => crate::cli::cmd::derp::detach_of(args),
         // T-265: the listener of the link.
         Command::Link(args) => crate::cli::cmd::link::detach_of(args),
         Command::Net(args) => match &args.command {

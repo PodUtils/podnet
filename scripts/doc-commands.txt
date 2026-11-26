@@ -92,6 +92,7 @@ docs/proxies.md 5b065c3f7f live-manual a quick tunnel and WARP; /etc/corp-root.p
 docs/relay.md 4bbc510365 live-manual the relay service of pod-services; <connect token> and NAME are placeholders; two hosts
 docs/relay.md 030186ad51 live-manual the relay service; NAME is a placeholder
 docs/relay.md 0be62d875f live-manual the relay service; NAME and NODE-FINGERPRINT are placeholders
+docs/relay.md dfcc6deb5c live-manual a DERP server of the fleet or a derper; CLIENT-FINGERPRINT, TICKET, USER and HOST are placeholders; two hosts
 docs/relay.md c4ec711fcc live-manual an SSH reverse tunnel service; /run/user/1000 and relay.example.net are placeholders
 
 docs/router.md af8e0a4b4a skip a reference list: router.yml of the user and a running router

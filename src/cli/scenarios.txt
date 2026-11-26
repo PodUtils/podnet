@@ -18,6 +18,8 @@ components | lane:local
 connect | live:Throughput of the HTTP path and of a --forward WebSocket; live:Throughput through WARP, 1 to 16 MiB; lane:errors
 cover | lane:local-tcp
 demo | live:Quick tunnel, QUIC (UDP 7844); live:Quick tunnel, HTTP/2 (TCP 7844); live:Quick tunnel, JSON lines (--json); live:UDP probe, answered and refused; live:Quick tunnel through a local CONNECT proxy; live:Quick tunnel with no system DNS, then with 1.1.1.1 blocked; live:A wrong --resolve pin fails at the TLS name check; live:Quick tunnel, QUIC through WARP (TCP 443); live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:Quick tunnel through the WebSocket relay (7844 dropped); live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:way-tunnel
+derp node | live:The DERP road through a derper on the runner
+derp connect | live:The DERP road through a derper on the runner
 doctor | live:podnet doctor; live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:warp up, env, exec, --persist and down; live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:doctor; lane:proxy-doctor
 exit | lane:net-exit
 expose | lane:net-switch
@@ -29,7 +31,7 @@ git urls | live:Git over HTTPS through a quick tunnel; live:Git over SSH through
 link listen | lane:link-unix; lane:link-control
 link dial | lane:link-unix
 link connect | lane:link-control
-link status | lane:link-unix; lane:link-control
+link status | live:The DERP road through a derper on the runner; lane:link-unix; lane:link-control
 link mesh | lane:link-control
 link close | lane:link-control
 link reconnect | lane:link-control

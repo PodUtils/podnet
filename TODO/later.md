@@ -763,6 +763,17 @@ The crate of this entry has a release in `PodUtils/podcrates`, with its hand-off
 
 2026-11-05, The work goes to `pod-derp` in PodUtils/podcrates. podnet only takes the crate (T-137). Do not do it in podnet. There is no crate `podnet-relay`: the relay client is `pod-relay`.
 
+2026-11-26, built: podnet takes `pod-derp` at the tag of the other `pod-*` crates (v0.86.0). The glue is
+`src/derp.rs`; the command is `podnet derp node --to TARGET (--peer FP | --allow FILE)` (it prints a `derp:`
+ticket) and `podnet derp connect TICKET` (stdin and stdout). Each session runs `pod-session` over the links of
+`pod-derp`, and the channel of `pod-e2e` above it. The way out is podnet's (`--proxy`, `--resolve`,
+`--ca-file`), the names on the wire are podnet's, and the default fleet comes from the crate (`pod-services`).
+The road has no build feature: it is not a carrier of `pod-link`, and `podnet relay` has none. The tests are
+`tests/derp_road.rs` (the stand-in of the crate); `.github/workflows/live.yml` runs a node and a client through a
+derper v1.104.4 on the runner. Waits: the transit of `podnet send` and `podnet receive` over DERP (a hint of a
+`derp:` ticket, as the podnet relay of T-104), and a row of `podnet doctor` with the probe of the fleet
+(`pod_derp::servers::probe_kept`).
+
 # T-129: An ACME client for a public listener
 
 **Source:** `docs/research/podnet/podssh-copy.md`, section 3 (C18).

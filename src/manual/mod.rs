@@ -24,7 +24,7 @@ pub use pod_manual::{Manual, Request};
 /// The paragraphs of DESCRIPTION.
 const DESCRIPTION: &[&str] = &[
     "podnet is one static binary that brings its own network to hosts with strong network limits: no root, no TUN device, no network namespace, no UDP, no AF_INET bind, or only TCP 443 out.",
-    "To publish a local service: Cloudflare quick and named tunnels (tunnel, expose), SSH forward relays (ssh-relay), the file server (serve), file transfer (share) and git hosting (git serve). To reach out: the Cloudflare WARP client with no root (warp, agent), the relay (relay, connect), forwards (forward) and a SOCKS5 exit on stdin and stdout (exit). The router has networks, groups, policies and a kernel mode (route). To join two installs: the link (link) over a carrier, with services at a peer and a mesh. To contain programs: pods (pod) and virtual networks (net). To check and keep it running: doctor, bench, status, components, the background runs (--detach, ps, logs, stop, autostart) and update.",
+    "To publish a local service: Cloudflare quick and named tunnels (tunnel, expose), SSH forward relays (ssh-relay), the file server (serve), file transfer (share) and git hosting (git serve). To reach out: the Cloudflare WARP client with no root (warp, agent), the relay (relay, connect), forwards (forward) and a SOCKS5 exit on stdin and stdout (exit). The router has networks, groups, policies and a kernel mode (route). To meet another host at a DERP server: derp. To join two installs: the link (link) over a carrier, with services at a peer and a mesh. To contain programs: pods (pod) and virtual networks (net). To check and keep it running: doctor, bench, status, components, the background runs (--detach, ps, logs, stop, autostart) and update.",
     "A tunnel reaches the edge with one of four legs. They are QUIC on UDP 7844, HTTP/2 on TCP 7844 (directly or through HTTPS_PROXY), and QUIC inside a WARP MASQUE tunnel on TCP 443. The fourth is HTTP/2 through the WebSocket relay on TCP 443 (--transport relay). With --protocol auto and --transport auto, podnet tries the first three in that order.",
     "podnet pod runs a program with all its traffic sent through a proxy, with no LD_PRELOAD (podnet-netns). podnet net gives programs virtual IP addresses on a host that refuses AF_INET binds.",
     "This manual is generated from the command tree of the binary. podnet man --roff writes it as a man(7) page, and podnet man --json writes its tables.",
@@ -60,8 +60,8 @@ pub const GROUPS: &[(&str, &[&str])] = &[
     (
         "Reach the internet from a limited host",
         &[
-            "agent", "warp", "pod", "net", "connect", "exit", "forward", "route", "relay", "link",
-            "wg",
+            "agent", "warp", "pod", "net", "connect", "exit", "forward", "route", "relay", "derp",
+            "link", "wg",
         ],
     ),
     (
@@ -217,7 +217,10 @@ pub const DOCS: &[(&str, &str)] = &[
         "docs/forward.md",
         "podnet forward, the DNS door and podnet expose.",
     ),
-    ("docs/relay.md", "podnet relay and podnet ssh-relay."),
+    (
+        "docs/relay.md",
+        "podnet relay, podnet derp and podnet ssh-relay.",
+    ),
     ("docs/egress.md", "Network specs and --egress."),
     ("docs/proxies.md", "Proxies, DNS and TLS roots."),
     (
