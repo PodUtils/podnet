@@ -7103,6 +7103,42 @@ restricted host in the profiles of `pod-lab`. The other `skip` blocks are templa
 hosts), reference lists that mix them, two hosts, devices (`/dev/ttyUSB0`) or paths that only root can make
 (`/run/...`, `/mnt/data`).
 
+2026-11-26, step 2, parts (b) and (c). `scripts/doc-commands.py --run --class live|root` runs the blocks of one class
+(`docs/development.md`, Documented commands). A `live` or `root` block can have a set-up of the scenario form. A `live`
+block gets the proxy variables and `SSL_CERT_FILE`; a failure with HTTP 429 of the quick-tunnel service or the certificate
+of Let's Encrypt at the door of WARP is n.a.; in GitHub Actions the tunnel hosts and the ids of its output are masked. A
+`root` block is n.a. when the user is not root. Two blocks with the same text run once. `--miss-ok` keeps the exit code
+of a MISS at 0. The new class `live-manual` holds the blocks that need what a runner does not have: a second host, an
+account or a credential, a placeholder, a change of the host, the source tree. `live.yml` has two new steps after the
+router: "The documented commands of the class live" (the release binary, 6 minutes at most) and "... of the class root"
+(with `sudo`). The lane case `docs` of `scripts/lab-lane.sh` runs the `run` and `scenario` blocks in the labs of
+`DOC_LABS` (`proxy-only`, `bind-denied`, `nonroot-nocaps`, `no-net-admin`, `no-loopback`, `udp-denied`,
+`listen-denied`); `gate.yml` runs it. New helpers of the set-ups: `doc_need_udp`, `doc_need_unix_listen`,
+`doc_socks_out` (a SOCKS5 stand-in to the network of the host: `servers.py socks-tcp PORT LOG '*'`) and
+`doc_warp_delete` (each `live` set-up that registers a WARP device removes it). `doc_need_loopback` also connects, and
+`doc_need_port` gives the reason of a refused socket.
+
+The counts: before, 136 blocks: 8 `run`, 15 `scenario`, 65 `live`, 1 `root`, 47 `skip`; after, 137 blocks: 9 `run`, 15
+`scenario`, 17 `live`, 47 `live-manual`, 1 `root`, 48 `skip`. `doctor --shape` opens no connection (now `run`). The
+two-host ICMP block is a `skip` template as the other carriers; a new block of `docs/link.md` tests the carrier on one
+host as root (`root`). Measured here (the debug binary, an HTTPS proxy, no UDP out): `--run` 23 passed, 1 MISS (no
+`ssh-keygen`), 77 s. Each `live` block passed here, one document at a time (about 175 s in all): the install script as
+uid 65534, `update`, the checksums, the doctor rows, `bench` through the stand-in, `agent up`, the detached tunnel and
+WARP proxy, the three WARP proxies, the policy, the TUIC download and the pages of forge.web.pkgforge.dev. The `root`
+block passed as root with a build with `--features icmp` (4 s), and is n.a. with no feature or no root. The lane case
+`docs` as uid 65534 with `podlab` v0.84.0: each of the 7 labs passes (12 to 23 blocks pass, the rest n.a. with a
+reason, 34 to 78 s each). Only the runner proves the time of the `live` step (direct UDP, the quick-tunnel quota) and
+the `root` step with the release binary.
+
+Faults of the documents, fixed: the policy block of `docs/host-runtime.md` benched `https://example.net/file` (HTTP 404,
+exit 1; now `https://example.net/`); the TUIC download of `docs/quic.md` gave a file with no execute bit, so the next
+block gave exit 126 (now `chmod +x`). Defects of the code, not fixed: `podnet offline discover announce ... --to
+127.0.0.1:5353` with UDP refused gives `podnet: Operation not permitted (os error 1)` (no loopback: `Network is
+unreachable (os error 101)`) and exit 1, with no step and no address; `podnet net proxy --listen unix:PATH` and
+`podnet net switch` leave the socket file after a stop, and a second user then gets `podnet: removing the old socket
+unix:/tmp/podnet-vnet.socks: Operation not permitted (os error 1)` and exit 1, a code that `docs/exit-codes.md` does
+not give.
+
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 

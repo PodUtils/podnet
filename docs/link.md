@@ -658,6 +658,19 @@ podnet link listen 0.0.0.0 --carrier icmp --allow-raw icmp --allow allowed.txt -
 podnet link dial SERVER-FINGERPRINT@203.0.113.7 --carrier icmp --allow-raw icmp --allow servers.txt
 ```
 
+To test the carrier on one host, run these lines as root in an empty directory. Each end has its own state directory
+(its key), and each allow list holds the key of the other end. The dial with `--check` opens the link and closes it.
+
+```sh
+PODNET_STATE_DIR=./a podnet link status --create | awk '/^identity/ { print $2 }' > a.key
+PODNET_STATE_DIR=./b podnet link status --create | awk '/^identity/ { print $2 }' > b.key
+PODNET_STATE_DIR=./a podnet link listen 127.0.0.1 --carrier icmp --allow-raw icmp --allow b.key --to 127.0.0.1:22 &
+sleep 2
+key=$(cat a.key)
+PODNET_STATE_DIR=./b podnet link dial "$key@127.0.0.1" --carrier icmp --allow-raw icmp --allow a.key --check
+kill "$!"
+```
+
 ## The S3 carrier
 
 Build with `--features s3` (it holds `tcp` and `poll`). `pod-link` of PodUtils/podcrates does the work (`pod_link::s3`);

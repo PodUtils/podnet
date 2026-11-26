@@ -13,12 +13,16 @@ FILE is the path from the root of the repository. HASH is the first 10
 hex digits of the SHA-256 of the block text (the indent removed). CLASS
 is one of:
 
-    run       runs offline as written, with `podnet` on PATH
-    scenario  runs offline as written after a set-up: the scenario
-              scripts/doc-scenarios/HASH.sh (see below)
-    live      needs a live service or a second host (for live.yml later)
-    root      needs root or a kernel feature
-    skip      not a command that a user runs (output, a template)
+    run          runs offline as written, with `podnet` on PATH
+    scenario     runs offline as written after a set-up: the scenario
+                 scripts/doc-scenarios/HASH.sh (see below)
+    live         needs a live service that a runner of GitHub reaches;
+                 the job live of .github/workflows/live.yml runs it
+    live-manual  needs a live service and a thing that the runner does
+                 not have: a second host, an account or a credential, a
+                 value of the user, a change of the host, the source tree
+    root         needs root or a kernel feature
+    skip         not a command that a user runs (output, a template)
 
 REASON is one line. A line that starts with `#` is a comment. A change of
 the text of a block changes its hash: the block then needs a new decision.
@@ -26,14 +30,22 @@ the text of a block changes its hash: the block then needs a new decision.
     python3 -I scripts/doc-commands.py --list    print the table
     python3 -I scripts/doc-commands.py --check   fail on an unclassified
                                                  block or a stale entry
-    python3 -I scripts/doc-commands.py --run [--bin PATH] [--timeout S]
-                                                 [--only FILE[:LINE]]
-        run each `run` and `scenario` block with `sh -e`, in a new
-        temporary HOME and working directory, with `podnet` (default
-        target/debug/podnet) first on PATH; print pass or fail, and the
-        output of a failure. A reason that starts with `[needs TOOL,TOOL]`
-        names the other programs of the block: with one of them absent,
-        the block is not run (MISS), and the exit code is 1.
+    python3 -I scripts/doc-commands.py --run [--class CLASS] [--bin PATH]
+                                 [--timeout S] [--only FILE[:LINE]] [--miss-ok]
+        run each block of CLASS with `sh -e`, in a new temporary HOME and
+        working directory, with `podnet` (default target/debug/podnet)
+        first on PATH; print pass or fail, and the output of a failure.
+        CLASS `run` (the default) runs the `run` and `scenario` blocks,
+        `live` the `live` blocks, `root` the `root` blocks. A `live` or
+        `root` block can have a set-up too (scripts/doc-scenarios/HASH.sh).
+        A `live` block gets the proxy variables and SSL_CERT_FILE of the
+        environment. A `live` block that the quota of a service refuses
+        (QUOTA) is n.a. A `root` block is n.a. when the user is not root.
+        Two blocks with the same text run once. A reason that starts with
+        `[needs TOOL,TOOL]` names the other programs of the block: with
+        one of them absent, the block is not run (MISS), and the exit code
+        is 1 (0 with --miss-ok). In GitHub Actions, the tunnel hosts and the
+        ids in the output of a failure are masked first.
     python3 -I scripts/doc-commands.py --lines
         print each `podnet` command line of each block (all classes) as
         one JSON object on each line: {"at": "FILE:LINE", "args": [...]}.
@@ -58,8 +70,8 @@ end, a stop ends each background command, each detached instance and the
 process group of the block. A set-up that calls `doc_na REASON` reports
 the block as not run on this host (n.a.); n.a. does not change the exit
 code. `--check` also fails on a `scenario` line with no scenario file, on
-a scenario file with no `scenario` line or no `setup()`, and on a
-BACKGROUND line that names no line of the block.
+a scenario file with no `scenario`, `live` or `root` line or no `setup()`,
+and on a BACKGROUND line that names no line of the block.
 """
 
 import argparse
@@ -78,7 +90,29 @@ import time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LIST = ROOT / "scripts" / "doc-commands.txt"
-CLASSES = ("run", "scenario", "live", "root", "skip")
+CLASSES = ("run", "scenario", "live", "live-manual", "root", "skip")
+# The classes that --run --class CLASS runs.
+RUNS = {"run": ("run", "scenario"), "live": ("live",), "root": ("root",)}
+# The classes that can have a set-up file.
+SET_UP = ("scenario", "live", "root")
+# The variables of the environment that a `live` block gets: the way out
+# of the host.
+LIVE_ENV = (
+    "HTTPS_PROXY", "HTTP_PROXY", "ALL_PROXY", "NO_PROXY",
+    "https_proxy", "http_proxy", "all_proxy", "no_proxy",
+    "SSL_CERT_FILE", "SSL_CERT_DIR",
+)
+# A `live` block that fails with one of these lines in its output is n.a.:
+# a service refuses this host for a time (scripts/live-step.sh).
+QUOTA = (
+    ("quick-tunnel service returned HTTP 429", "the quick-tunnel service refuses this host for now (HTTP 429)"),
+    ("WARP's door shows a certificate of Let's Encrypt", "WARP's door shows a certificate of Let's Encrypt (T-587)"),
+)
+# The values that the public log of CI must not show (scripts/live-run.sh).
+MASK = re.compile(
+    r"[a-z0-9-]+\.trycloudflare\.com|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    r"|t\.[0-9a-f-]{8,}|ephm1\.[A-Za-z0-9._-]+"
+)
 SCENARIOS = ROOT / "scripts" / "doc-scenarios"
 LIB = SCENARIOS / "lib.sh"
 BACKGROUND = re.compile(r'^BACKGROUND="?([0-9 ]*)"?\s*$', re.M)
@@ -198,11 +232,12 @@ def check(found, entries, errors):
             errors.append(f"{LIST.name}:{n}: stale entry {key[0]} {key[1]}: no such block")
     texts = {(f, h): text for f, _, h, text in found}
     for (f, h), (cls, _, n) in sorted(entries.items(), key=lambda e: e[1][2]):
-        if cls != "scenario":
+        if cls not in SET_UP:
             continue
         path = SCENARIOS / f"{h}.sh"
         if not path.is_file():
-            errors.append(f"{LIST.name}:{n}: the scenario {f} {h} has no set-up {path.relative_to(ROOT)}")
+            if cls == "scenario":
+                errors.append(f"{LIST.name}:{n}: the scenario {f} {h} has no set-up {path.relative_to(ROOT)}")
             continue
         body = path.read_text(encoding="utf-8")
         if not SETUP.search(body):
@@ -212,10 +247,10 @@ def check(found, entries, errors):
                 background(body, texts[(f, h)])
             except ValueError as e:
                 errors.append(f"{path.relative_to(ROOT)}: {e}")
-    used = {h for (_, h), (cls, _, _) in entries.items() if cls == "scenario"}
+    used = {h for (_, h), (cls, _, _) in entries.items() if cls in SET_UP}
     for path in sorted(SCENARIOS.glob("*.sh")):
         if path != LIB and path.stem not in used:
-            errors.append(f"{path.relative_to(ROOT)}: a set-up with no `scenario` line in {LIST.name}")
+            errors.append(f"{path.relative_to(ROOT)}: a set-up with no `scenario`, `live` or `root` line in {LIST.name}")
     return errors
 
 
@@ -288,7 +323,7 @@ def kill_group(p):
     p.wait()
 
 
-def run_block(text, binary, timeout, scenario=None):
+def run_block(text, binary, timeout, scenario=None, extra_env=None):
     """Run one block. Give (exit code or "timeout" or "n.a.", output)."""
     with tempfile.TemporaryDirectory(prefix="podnet-doc-") as tmp:
         tmp = pathlib.Path(tmp)
@@ -301,6 +336,7 @@ def run_block(text, binary, timeout, scenario=None):
             "PATH": f"{tmp / 'bin'}:/usr/local/bin:/usr/bin:/bin",
             "LANG": "C.UTF-8",
         }
+        env.update(extra_env or {})
         argv = ["sh", "-e", "-c", text]
         if scenario is not None:
             doc = tmp / "doc"
@@ -345,6 +381,9 @@ def main():
     ap.add_argument("--bin", default=str(ROOT / "target" / "debug" / "podnet"))
     ap.add_argument("--timeout", type=float, default=30.0)
     ap.add_argument("--only", help="FILE or FILE:LINE")
+    ap.add_argument("--class", dest="cls", choices=sorted(RUNS), default="run",
+                    help="with --run: run the blocks of this class (run: run and scenario)")
+    ap.add_argument("--miss-ok", action="store_true", help="with --run: a MISS block does not change the exit code")
     a = ap.parse_args()
     sys.stdout.reconfigure(line_buffering=True)
 
@@ -382,33 +421,52 @@ def main():
         return 1
     failed = passed = missing = absent_host = 0
     start = time.monotonic()
+    github = os.environ.get("GITHUB_ACTIONS") == "true"
+    extra_env = {k: v for k, v in os.environ.items() if k in LIVE_ENV} if a.cls == "live" else {}
+    seen = {}
     for f, line, h, text in found:
         cls, reason, _ = entries[(f, h)]
-        if cls not in ("run", "scenario"):
+        if cls not in RUNS[a.cls]:
             continue
         if a.only and a.only not in (f, f"{f}:{line}"):
             continue
+        if h in seen:
+            print(f"same {f}:{line} {h}: the text of {seen[h]}, run once")
+            continue
+        seen[h] = f"{f}:{line}"
         need = re.match(r"\[needs ([^\]]+)\]", reason)
         absent = [t for t in (need.group(1).split(",") if need else []) if shutil.which(t) is None]
         if absent:
             missing += 1
             print(f"MISS {f}:{line} {h}: not run, no {', '.join(absent)} on this host")
             continue
-        scenario, limit = None, a.timeout
-        if cls == "scenario":
-            scenario = SCENARIOS / f"{h}.sh"
+        if cls == "root" and os.geteuid() != 0:
+            absent_host += 1
+            print(f"n.a. {f}:{line} {h}: not run on this host: the block needs root")
+            continue
+        scenario, limit = SCENARIOS / f"{h}.sh", a.timeout
+        if scenario.is_file():
             m = LIMIT.search(scenario.read_text(encoding="utf-8"))
             limit = max(limit, float(m.group(1))) if m else limit
-        rc, output = run_block(text, binary, limit, scenario)
-        if rc == "n.a.":
+        else:
+            scenario = None
+        began = time.monotonic()
+        rc, output = run_block(text, binary, limit, scenario, extra_env)
+        took = f"{time.monotonic() - began:.0f} s"
+        quota = [why for line_of, why in QUOTA if line_of in output] if cls == "live" and rc != 0 else []
+        if github and cls == "live":
+            for value in sorted(set(MASK.findall(output))):
+                if value != "api.trycloudflare.com":
+                    print(f"::add-mask::{value}")
+        if rc == "n.a." or quota:
             absent_host += 1
-            print(f"n.a. {f}:{line} {h}: not run on this host: {output}")
+            print(f"n.a. {f}:{line} {h}: not run on this host: {quota[0] if quota else output}")
         elif rc == 0:
             passed += 1
-            print(f"pass {f}:{line} {h}")
+            print(f"pass {f}:{line} {h} ({took})")
         else:
             failed += 1
-            print(f"FAIL {f}:{line} {h} (exit {rc})")
+            print(f"FAIL {f}:{line} {h} (exit {rc}, {took})")
             for cmd in text.rstrip("\n").split("\n"):
                 print(f"  $ {cmd}")
             for out in output.rstrip("\n").split("\n")[-40:]:
@@ -418,7 +476,7 @@ def main():
         f"{absent_host} not run on this host (n.a.), {time.monotonic() - start:.1f} s",
         file=sys.stderr,
     )
-    return 1 if failed or missing else 0
+    return 1 if failed or (missing and not a.miss_ok) else 0
 
 
 if __name__ == "__main__":

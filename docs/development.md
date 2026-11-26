@@ -48,7 +48,8 @@ line `FILE HASH CLASS REASON`:
 | --- | --- |
 | `run` | It runs offline as written, with `podnet` on PATH. |
 | `scenario` | It runs offline as written after a set-up: a file of `scripts/doc-scenarios/` named by the hash of the block. |
-| `live` | It needs a live service or a second host. |
+| `live` | It runs as written (maybe after a set-up) with a live service that a runner of GitHub reaches. |
+| `live-manual` | It needs a live service and a thing that the runner does not have: a second host, an account or a credential, a value of the user (a placeholder), a change of the host, the source tree. |
 | `root` | It needs root or a kernel feature. |
 | `skip` | It is not a command to run as written: a template with placeholders, a reference list, two hosts. |
 
@@ -58,13 +59,35 @@ block changes its hash, so a new or changed block needs a new line.
 `--check` fails on a block with no line and on a line with no block. It
 also fails on a `scenario` line with no set-up file (the hash and `.sh` in `scripts/doc-scenarios/`),
 on a scenario file with no function `setup`, on a scenario file with no
-`scenario` line, and on a `BACKGROUND` line that names no line of the block.
-`--run` runs each `run` and each `scenario` block with `sh -e` in a new
-temporary HOME and working directory, with `target/debug/podnet` (or
-`--bin PATH`) first on PATH, and a time limit of 30 s for each block. A
-reason that starts with `[needs TOOL,TOOL]` names the other programs of the
-block: with one of them absent, `--run` does not run the block (MISS) and
-exits 1. CI runs `--check` (job `workflows`) and `--run` (job `test`).
+`scenario`, `live` or `root` line, and on a `BACKGROUND` line that names no
+line of the block. `--run` runs each `run` and each `scenario` block with
+`sh -e` in a new temporary HOME and working directory, with
+`target/debug/podnet` (or `--bin PATH`) first on PATH, and a time limit of
+30 s for each block. A reason that starts with `[needs TOOL,TOOL]` names
+the other programs of the block: with one of them absent, `--run` does not
+run the block (MISS) and exits 1 (0 with `--miss-ok`). Two blocks with the
+same text run once. CI runs `--check` (job `workflows`) and `--run` (job
+`test`).
+
+`--run --class live` runs the `live` blocks, and `--run --class root` the
+`root` blocks. A `live` or a `root` block can have a set-up
+(a file of `scripts/doc-scenarios/` named by the hash of the block) with the same form as a scenario. A
+`live` block gets the proxy variables and `SSL_CERT_FILE` of the
+environment. A `live` block that fails because a service refuses this host
+for a time (HTTP 429 of the quick-tunnel service, the certificate of Let's
+Encrypt at the door of WARP) is n.a. A `root` block is n.a. when the user
+is not root. In GitHub Actions (`GITHUB_ACTIONS=true`), `--run` gives a
+mask for each tunnel host and each id in the output of a `live` block
+before it prints the output. A set-up that registers a WARP device removes
+it in `teardown` (`doc_warp_delete`); `doc_socks_out PORT` starts a SOCKS5
+stand-in to the network of the host.
+
+| Class | Where it runs |
+| --- | --- |
+| `run`, `scenario` | `--run` in the job `test` of `ci.yml` (the debug binary); the lane case `docs` in the labs of `DOC_LABS` of `scripts/lab-lane.sh` (`gate.yml`, the static release binary, as the user `runner`). |
+| `live` | The step "The documented commands of the class live" of `live.yml` (the release binary, the network of the runner, 6 minutes at most). |
+| `root` | The step "The documented commands of the class root" of `live.yml`, with `sudo`. |
+| `live-manual`, `skip` | Not run. |
 
 ### The scenario of a block
 
@@ -92,7 +115,8 @@ Then it stops each other process of the block. A set-up that cannot run on
 this host calls `doc_na REASON`: for example `doc_need_loopback` (no TCP
 listener on the loopback), `doc_need_port PORT [udp]` (the block names a
 port that another program holds) and `doc_free_socket PATH` (another
-process serves a fixed socket path of the block). `--run` then prints
+process serves a fixed socket path of the block, or a stale socket of
+another user is at that path). `--run` then prints
 `n.a.` and the reason, and does not count the block as failed. n.a. does
 not change the exit code.
 
@@ -101,7 +125,9 @@ document: record it in `TODO/fixes.md`. Do not give a failing block the
 class `skip`. Do not change what a command does to make a block pass. Give
 a block the class `skip` only when it is not a command to run as written,
 and write why. When a set-up can make a `skip` or `live` block run
-offline, give it a scenario.
+offline, give it a scenario. When a set-up can make a `live-manual` block
+run on the runner, give it the class `live` and the set-up. Keep the total
+time of the `live` blocks under the limit of their step.
 
 ## The lane in the profiles of pod-lab
 
@@ -145,6 +171,14 @@ server (with a negative control: with no shim, the client gets no echo),
 `podnet link listen` and `podnet link dial` over the unix carrier,
 `podnet pod --backend seccomp` and `--backend netns` around `/bin/true`,
 and `podnet net proxy --listen unix:PATH` with a SOCKS5 greeting.
+
+The case `docs` runs the `run` and `scenario` blocks of the documents
+(`scripts/doc-commands.py --run --miss-ok`, see Documented commands) with
+the binary of the lane, in the labs of `DOC_LABS`: `proxy-only`,
+`bind-denied`, `nonroot-nocaps`, `no-net-admin`, `no-loopback`,
+`udp-denied` and `listen-denied`. The lane copies the documents, the list
+of classes and the set-ups to `LANE_DIR/doc-tree`. A set-up that the lab
+cannot give makes its block n.a.; a failed block fails the row.
 
 The script prints one row for each profile and command: `pass`, `fail`
 with the log, or `n.a.` with the reason (a lab that does not hold here; a

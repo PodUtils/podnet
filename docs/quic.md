@@ -169,6 +169,7 @@ The reference server is `tuic-server` 2.0.0-dev10 of `tuic-protocol/tuic` (forme
 curl -sSL -o "${TMPDIR:-/tmp}/tuic-server-v2" \
   "https://github.com/Itsusinn/tuic/releases/download/v2.0.0-dev10/tuic-server-x86_64-linux-musl"
 sha256sum "${TMPDIR:-/tmp}/tuic-server-v2"
+chmod +x "${TMPDIR:-/tmp}/tuic-server-v2"
 ```
 
 ```text

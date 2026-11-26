@@ -15,32 +15,69 @@ doc_na() {
     exit 77
 }
 
-# Stop the run if this host has no loopback where a TCP listener binds.
+# Stop the run if this host has no loopback where a TCP listener binds and
+# a client connects to it.
 doc_need_loopback() {
-    python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); s.listen()' \
+    python3 -I -c 'import socket
+s = socket.socket()
+s.bind(("127.0.0.1", 0))
+s.listen()
+socket.create_connection(s.getsockname(), timeout=5).close()' \
         > /dev/null 2>&1 || doc_na "no TCP listener on the loopback"
 }
 
+# Stop the run if this host gives no UDP socket that sends to the loopback.
+doc_need_udp() {
+    doc_why=$(python3 -I -c 'import socket, sys
+try:
+    socket.socket(type=socket.SOCK_DGRAM).sendto(b"x", ("127.0.0.1", 9))
+except OSError as e:
+    sys.exit("no UDP datagram to the loopback on this host: %s" % e.strerror)' 2>&1) || doc_na "$doc_why"
+}
+
+# Stop the run if this host refuses a unix listener (bind and listen of
+# AF_UNIX in the work directory).
+doc_need_unix_listen() {
+    doc_why=$(python3 -I -c 'import os, socket, sys
+path = "doc-probe-%d.sock" % os.getpid()
+try:
+    s = socket.socket(socket.AF_UNIX)
+    s.bind(path)
+    s.listen()
+except OSError as e:
+    sys.exit("no unix listener on this host: %s" % e.strerror)
+finally:
+    if os.path.exists(path):
+        os.unlink(path)' 2>&1) || doc_na "$doc_why"
+}
+
 # Stop the run if the port $1 of 127.0.0.1 is in use: the block names that
-# port, and another program holds it. $2 is tcp (the default) or udp.
+# port, and another program holds it. $2 is tcp (the default) or udp. A
+# host that refuses the socket or the bind gives its own reason.
 doc_need_port() {
     doc_need_loopback
-    python3 -I -c 'import socket, sys
-s = socket.socket(type=socket.SOCK_DGRAM if sys.argv[2] == "udp" else socket.SOCK_STREAM)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(("127.0.0.1", int(sys.argv[1])))' "$1" "${2:-tcp}" > /dev/null 2>&1 \
-        || doc_na "the ${2:-tcp} port 127.0.0.1:$1 of the block is in use"
+    doc_why=$(python3 -I -c 'import errno, socket, sys
+try:
+    s = socket.socket(type=socket.SOCK_DGRAM if sys.argv[2] == "udp" else socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("127.0.0.1", int(sys.argv[1])))
+except OSError as e:
+    if e.errno == errno.EADDRINUSE:
+        sys.exit("the %s port 127.0.0.1:%s of the block is in use" % (sys.argv[2], sys.argv[1]))
+    sys.exit("no %s socket on 127.0.0.1:%s on this host: %s" % (sys.argv[2], sys.argv[1], e.strerror))' \
+        "$1" "${2:-tcp}" 2>&1) || doc_na "$doc_why"
 }
 
 # Make the fixed unix socket path $1 of the block free: stop the run if
-# another process serves it, and remove a stale socket file.
+# another process serves it, and remove a stale socket file (n.a. when
+# the stale socket is of another user).
 doc_free_socket() {
     if [ -S "$1" ] && python3 -I -c 'import socket, sys
 socket.socket(socket.AF_UNIX).connect(sys.argv[1])' "$1" 2> /dev/null; then
         doc_na "another process serves $1"
     fi
-    if [ -S "$1" ]; then
-        rm -f "$1"
+    if [ -S "$1" ] && ! rm -f "$1" 2> /dev/null; then
+        doc_na "a stale socket $1 of another user is in the way"
     fi
 }
 
@@ -113,6 +150,29 @@ doc_stop() {
         done
         kill -9 "$doc_pid" 2> /dev/null || true
     done < "$DOC_DIR/pids"
+}
+
+# A `live` block: stop each instance, then remove the WARP device of each
+# identity file $1... from the WARP service (none: the default identity of
+# the HOME of the block). A device that a block registers does not stay.
+doc_warp_delete() {
+    doc_stop
+    if [ $# -eq 0 ]; then
+        podnet warp delete > /dev/null 2>&1 || true
+    fi
+    for doc_id in "$@"; do
+        if [ -f "$doc_id" ]; then
+            podnet warp --identity "$doc_id" delete > /dev/null 2>&1 || true
+        fi
+    done
+}
+
+# A `live` block: start a SOCKS5 proxy to the network of the host on the
+# port $1 of 127.0.0.1. Its log is $DOC_DIR/socks-$1.log.
+doc_socks_out() {
+    doc_need_port "$1"
+    doc_bg python3 -I "$DOC_ROOT/tests/consumers/servers.py" socks-tcp "$1" "$DOC_DIR/socks-$1.log" '*'
+    doc_wait_tcp "$1"
 }
 
 # Wait until a UDP socket is bound to the port $1 ($2 seconds, default 10).

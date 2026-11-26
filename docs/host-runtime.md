@@ -144,7 +144,7 @@ is active only when a policy is installed. Set one in a deployment that
 needs a classified egress.
 
 ```sh
-PODNET_POLICY=rules.json podnet bench --duration 1 https://example.net/file
+PODNET_POLICY=rules.json podnet bench --duration 1 https://example.net/
 podnet rules check rules.json
 podnet rules check rules.json --json
 ```

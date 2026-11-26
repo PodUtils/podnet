@@ -1,46 +1,48 @@
 # The class of each sh block of README.md and docs/*.md (scripts/doc-commands.py).
-# FILE HASH CLASS REASON. CLASS: run, scenario, live, root or skip. A reason that
-# starts with [needs TOOL,TOOL] names the programs that a run or scenario block
-# needs besides podnet. A scenario block has its set-up in scripts/doc-scenarios/HASH.sh.
+# FILE HASH CLASS REASON. CLASS: run, scenario, live, live-manual, root or skip. A
+# reason that starts with [needs TOOL,TOOL] names the programs that a block needs
+# besides podnet. A scenario block has its set-up in scripts/doc-scenarios/HASH.sh;
+# a live or root block can have one. live.yml runs the live and root blocks; a
+# live-manual block needs what the runner does not have.
 
-README.md b6b25e2927 live the install script: downloads a release from GitHub
-README.md 4c660eec7a live needs the downloaded release assets and cosign; vX.Y.Z is a placeholder
-README.md 2e390d75c4 live podnet update asks GitHub for the newest release
-README.md 974d35bf99 live a tour: the doctor probes, the tunnel, serve, share and warp need the network; pod needs a proxy at 127.0.0.1:1080
+README.md b6b25e2927 live [needs curl] the install script: downloads the newest release from GitHub into ~/.local/bin
+README.md 4c660eec7a live-manual needs the downloaded release assets and cosign; vX.Y.Z is a placeholder
+README.md 2e390d75c4 live podnet update asks GitHub for the newest release; the set-up puts a copy of the binary first on PATH
+README.md 974d35bf99 live-manual a tour of one line for each capability: three servers in the foreground (each until Ctrl-C), a proxy at 127.0.0.1:1080, four quick tunnels and a WARP device
 
-docs/background.md 5553c8bcda live a quick tunnel of Cloudflare and a WARP proxy
-docs/background.md 3fc88bf052 live changes the host: a systemd user unit or the crontab of the user; TUNNEL_TOKEN=... is a placeholder
+docs/background.md 5553c8bcda live a quick tunnel of Cloudflare and a WARP proxy; logs -f (until Ctrl-C) runs in the background
+docs/background.md 3fc88bf052 live-manual changes the host: a systemd user unit or the crontab of the user; TUNNEL_TOKEN=... is a placeholder
 
-docs/build.md bbae8b4443 live a build from the source tree: fetches crates; ci.yml runs it
-docs/build.md 2d76669d6f live a static build from the source tree: rustup and crates; ci.yml runs it
-docs/build.md c35416886a live a build and the tests from the source tree: fetches crates; ci.yml job features runs it
-docs/build.md 8c15cc5283 live a build of podnet-capi from the source tree: fetches crates; ci.yml runs it
-docs/build.md 752a049c77 live cargo-fuzz and a nightly toolchain: fetches them; fuzz.yml runs it
+docs/build.md bbae8b4443 live-manual a build from the source tree: fetches crates; ci.yml runs it
+docs/build.md 2d76669d6f live-manual a static build from the source tree: rustup and crates; ci.yml runs it
+docs/build.md c35416886a live-manual a build and the tests from the source tree: fetches crates; ci.yml job features runs it
+docs/build.md 8c15cc5283 live-manual a build of podnet-capi from the source tree: fetches crates; ci.yml runs it
+docs/build.md 752a049c77 live-manual cargo-fuzz and a nightly toolchain: fetches them; fuzz.yml runs it
 
 docs/cli.md adfc11c729 skip a reference list: the last three lines have the placeholder `...`
 docs/cli.md 071c676c5c scenario [needs jq] ./site, and a config.yml with a file server of the loopback as its origin
 
-docs/doctor.md 7288935548 live the doctor probes the ways out of this host
+docs/doctor.md 7288935548 live [needs jq] the doctor probes the ways out of this host
 docs/doctor.md 6147406e3a live the doctor of the agent probes the ways out and WARP
-docs/doctor.md 9f309a6052 live bench measures https://example.com/; a proxy at 127.0.0.1:1080
-docs/doctor.md cc3c66599e live agent up starts WARP and a quick tunnel
+docs/doctor.md 9f309a6052 live bench measures https://example.com/, direct and through a SOCKS5 stand-in at 127.0.0.1:1080
+docs/doctor.md cc3c66599e live agent up starts WARP if needed and a quick tunnel of port 3000 (an HTTP server of the set-up)
 
-docs/egress.md 2479000031 live each line needs a proxy, the relay or a tunnel; proxy-a and host are placeholders
-docs/egress.md a20cb97f5d live needs an HTTPS proxy and a wstunnel server (proxy.example and wst.example are placeholders)
+docs/egress.md 2479000031 live-manual each line needs a proxy, the relay or a tunnel; proxy-a and host are placeholders
+docs/egress.md a20cb97f5d live-manual needs an HTTPS proxy and a wstunnel server (proxy.example and wst.example are placeholders)
 
 docs/forward.md 3a11697f91 skip a reference list: foreground forwards to placeholder hosts (db.internal, host)
 docs/forward.md 675510e990 skip a template: FINGERPRINT is a placeholder; needs a second host
-docs/forward.md 9a018eeac8 live expose starts a quick tunnel, the relay or a switch
+docs/forward.md 9a018eeac8 live-manual a quick tunnel in the foreground; /run/app.sock and a running switch are of the user
 
-docs/install.md c068c96a13 live needs the downloaded release assets
-docs/install.md 25db25cf79 live needs the downloaded release assets and cosign; vX.Y.Z is a placeholder
-docs/install.md f53c399988 live gh attestation asks GitHub; needs the downloaded binary
-docs/install.md fd8fa56fb7 live needs the downloaded release assets and gh
-docs/install.md b6b25e2927 live the install script: downloads a release from GitHub
+docs/install.md c068c96a13 live [needs curl] the set-up downloads SHA256SUMS and the binary of this machine of the newest release
+docs/install.md 25db25cf79 live-manual needs the downloaded release assets and cosign; vX.Y.Z is a placeholder
+docs/install.md f53c399988 live-manual gh attestation needs a login of gh and the downloaded binary
+docs/install.md fd8fa56fb7 live-manual gh attestation needs a login of gh and the downloaded release assets
+docs/install.md b6b25e2927 live [needs curl] the install script: downloads the newest release from GitHub into ~/.local/bin
 docs/install.md ba07e9af28 skip a template: <TAG> is a placeholder; downloads the installer of a release from GitHub
-docs/install.md 282d07520a live docker and the image of ghcr.io
+docs/install.md 282d07520a live-manual docker runs the published image of ghcr.io, not the binary of the job; a WARP device in a docker volume
 docs/install.md 87ec5fb6ad skip a template: sha256:DIGEST is a placeholder; docker and gh pull the image of ghcr.io
-docs/install.md abb60731e4 live podnet update asks GitHub; <TAG> is a placeholder
+docs/install.md abb60731e4 live-manual podnet update asks GitHub; <TAG> is a placeholder
 docs/install.md 944cb19562 skip a template: <TAG> is a placeholder
 
 docs/link.md ceb95bbb0f skip a reference list: FINGERPRINT and device placeholders, foreground listeners
@@ -52,69 +54,70 @@ docs/link.md b78cc697b9 skip a template: a listener and a dial on two hosts; SER
 docs/link.md 024e693a53 skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
 docs/link.md 55066e011a skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
 docs/link.md 3e04a50f49 skip a template: a DNS zone and two hosts; SERVER-FINGERPRINT is a placeholder
-docs/link.md 925fb6459e root the icmp carrier needs a raw socket (CAP_NET_RAW or ping_group_range); two hosts
+docs/link.md 925fb6459e skip a template: a listener and a dial on two hosts; SERVER-FINGERPRINT is a placeholder
+docs/link.md 813e27c0b2 root the icmp carrier on one host: a raw ICMP socket needs root (CAP_NET_RAW); n.a. with no build feature icmp
 docs/link.md 789d1a6168 skip a template: the S3 keys (...) and SERVER-FINGERPRINT are placeholders
 docs/link.md eb4a29d31c skip a template: SERVER-FINGERPRINT is a placeholder; two hosts
 docs/link.md 83e298b511 skip a template: KEY is a placeholder; two proxies
 docs/link.md 75a4e45854 skip a template: three hosts A, B and C with placeholder fingerprints
 
-docs/maintenance.md 10b256c498 live the GitHub API through forge.web.pkgforge.dev
-docs/maintenance.md 1da99bd822 live the GitHub API through forge.web.pkgforge.dev
-docs/maintenance.md 2406900df5 live reads PodUtils/podcrates from GitHub
+docs/maintenance.md 10b256c498 live [needs curl,python3] the GitHub API through forge.web.pkgforge.dev
+docs/maintenance.md 1da99bd822 live [needs curl,python3] the GitHub API through forge.web.pkgforge.dev
+docs/maintenance.md 2406900df5 live-manual a step of the maintainer in the source tree; reads PodUtils/podcrates from GitHub
 docs/maintenance.md 29261c6550 skip a template of the take procedure: vX.Y.Z and pod-NAME are placeholders
 
 docs/networks.md 159ce1fea2 skip a reference list: foreground servers and the placeholder ./server
 docs/networks.md 8d40d38a40 skip a reference list: a foreground switch and the placeholder switch-host
-docs/networks.md 20a2357daf live needs a running tailscaled and a tailnet
-docs/networks.md d8966cbe82 live needs netbird and a NetBird account (NB_SETUP_KEY=... is a placeholder)
-docs/networks.md 6f828b326d live needs a WireGuard peer and its config file
-docs/networks.md 630acf650f live needs a WireGuard peer and WARP
+docs/networks.md 20a2357daf live-manual needs a running tailscaled and a tailnet
+docs/networks.md d8966cbe82 live-manual needs netbird and a NetBird account (NB_SETUP_KEY=... is a placeholder)
+docs/networks.md 6f828b326d live-manual needs a WireGuard peer and its config file
+docs/networks.md 630acf650f live-manual needs a WireGuard peer and WARP
 docs/networks.md 6d403c49ab skip a reference list: a foreground server; needs the config files of the user
-docs/networks.md bb246c305e live needs a TURN server (turn.example is a placeholder)
-docs/networks.md 6e64e9e40c live needs Microsoft Dev Tunnels and a token
-docs/networks.md 5f9b11850c live needs a forward proxy over TLS (proxy.example is a placeholder)
-docs/networks.md d0a11de310 live needs a wstunnel server (wst.example is a placeholder) and its path prefix
+docs/networks.md bb246c305e live-manual needs a TURN server (turn.example is a placeholder)
+docs/networks.md 6e64e9e40c live-manual needs Microsoft Dev Tunnels and a token
+docs/networks.md 5f9b11850c live-manual needs a forward proxy over TLS (proxy.example is a placeholder)
+docs/networks.md d0a11de310 live-manual needs a wstunnel server (wst.example is a placeholder) and its path prefix
 docs/networks.md 36f396629b run  [needs ssh-keygen] the passwd shim, then ssh-keygen writes a key
 
-docs/pods.md 6fab913969 live each line needs a proxy or the internet
+docs/pods.md 6fab913969 live-manual each line needs a proxy of the user or the internet; proxy:3128, /run/proxy.sock and ./static-binary are placeholders
 docs/pods.md 441ddc0e98 scenario [needs curl] a SOCKS5 stand-in at 127.0.0.1:1080 and ./program (curl of http://web.test/); n.a. with no pod backend
 
-docs/proxies.md 5cac6b1d15 live a proxy, a quick tunnel and WARP
-docs/proxies.md 5b065c3f7f live a quick tunnel and WARP; /etc/corp-root.pem is a placeholder
+docs/proxies.md 5cac6b1d15 live-manual tunnels in the foreground; $PROXY_URL is the proxy of the user
+docs/proxies.md 5b065c3f7f live-manual a quick tunnel and WARP; /etc/corp-root.pem is a placeholder
 
-docs/relay.md 4bbc510365 live the relay service of pod-services; <connect token> and NAME are placeholders
-docs/relay.md 030186ad51 live the relay service; NAME is a placeholder
-docs/relay.md 0be62d875f live the relay service; NAME and NODE-FINGERPRINT are placeholders
-docs/relay.md c4ec711fcc live an SSH reverse tunnel service (serveo, relay.example.net)
+docs/relay.md 4bbc510365 live-manual the relay service of pod-services; <connect token> and NAME are placeholders; two hosts
+docs/relay.md 030186ad51 live-manual the relay service; NAME is a placeholder
+docs/relay.md 0be62d875f live-manual the relay service; NAME and NODE-FINGERPRINT are placeholders
+docs/relay.md c4ec711fcc live-manual an SSH reverse tunnel service; /run/user/1000 and relay.example.net are placeholders
 
 docs/router.md af8e0a4b4a skip a reference list: router.yml of the user and a running router
-docs/router.md a39e85b241 live needs a far host that holds the allow list of the router key
+docs/router.md a39e85b241 live-manual needs a far host that holds the allow list of the router key
 
-docs/serve.md 9ab0dfc04a live serve opens a quick tunnel; ./public is the directory of the user
+docs/serve.md 9ab0dfc04a live-manual a reference list of servers in the foreground; ./app, /run/site.sock and NAME are placeholders
 docs/serve.md 21250fc791 skip a template: HUB-FINGERPRINT and CONNECTOR-FINGERPRINT; two hosts
 docs/serve.md b37100d2e0 skip a template: CLIENT-FINGERPRINT and SERVER-FINGERPRINT; two hosts
 docs/serve.md 5e6c1ef82c scenario [needs curl,tar] the server of ./public in the background (the first shell), then the client
 docs/serve.md 5cef402f52 scenario [needs curl] the server of ./public in the background (the first shell), then the client
 docs/serve.md 872babe603 scenario [needs curl] the users file with bob and report.pdf; the server in the background (the first shell); the password of bob on the stdin of curl
-docs/serve.md 5f6d28a04a live git serve opens a quick tunnel or the relay; NAME is a placeholder
-docs/serve.md 588daaa46a live share opens a quick tunnel
+docs/serve.md 5f6d28a04a live-manual git serve opens a quick tunnel or the relay in the foreground; NAME is a placeholder
+docs/serve.md 588daaa46a live-manual a reference list of share servers in the foreground; /run/api.sock is a placeholder
 docs/serve.md 527bfb7800 scenario [needs curl] serve --pin --upload on a free port of the loopback gives PIN, ORIGIN and URL
 docs/serve.md f6812b6979 scenario [needs curl] the password in PASSWORD and on the stdin of curl; the server in the background (the first shell)
 
-docs/target-environment.md 3aa821689c live WARP through a SOCKS5 proxy at 127.0.0.1:9050
-docs/target-environment.md 56640f12db live WARP through a proxy; PORT is a placeholder
-docs/target-environment.md a3c8800186 live two WARP devices
+docs/target-environment.md 3aa821689c live WARP through a SOCKS5 stand-in at 127.0.0.1:9050 (for Tor); the proxy (until Ctrl-C) runs in the background
+docs/target-environment.md 56640f12db live-manual WARP through a proxy; PORT is a placeholder
+docs/target-environment.md a3c8800186 live two WARP devices, one session in the other; the second proxy (until Ctrl-C) runs in the background
 
-docs/transfer.md 5453c10869 live the wormhole mailbox; two hosts
-docs/transfer.md 9fd3fe2521 live the relay; NAME is a placeholder; two hosts
-docs/transfer.md bd1a3b3430 live a piping server; two hosts
-docs/transfer.md 61d9482a58 live pip downloads magic-wormhole; a test from the source tree
+docs/transfer.md 5453c10869 live-manual the wormhole mailbox; two hosts
+docs/transfer.md 9fd3fe2521 live-manual the relay; NAME is a placeholder; two hosts
+docs/transfer.md bd1a3b3430 live-manual a piping server; two hosts; piping.example is a placeholder
+docs/transfer.md 61d9482a58 live-manual pip downloads magic-wormhole; a test from the source tree
 
-docs/tunnels.md 925cf1d55a live quick and named tunnels of Cloudflare
-docs/tunnels.md abb274ac56 live named tunnels; <token> and <id> are placeholders
-docs/tunnels.md c723784f4a live a quick tunnel; <random> is a placeholder
-docs/tunnels.md 4bb2408e42 live a quick tunnel; <random> is a placeholder
-docs/tunnels.md 3937e7aa8d live a quick tunnel; <random> and user@host are placeholders
+docs/tunnels.md 925cf1d55a live-manual a reference list of tunnels in the foreground; $T and /run/app.sock are of the user
+docs/tunnels.md abb274ac56 live-manual named tunnels; <token> and <id> are placeholders
+docs/tunnels.md c723784f4a live-manual a quick tunnel; <random> is a placeholder
+docs/tunnels.md 4bb2408e42 live-manual a quick tunnel; <random> is a placeholder
+docs/tunnels.md 3937e7aa8d live-manual a quick tunnel; <random> and user@host are placeholders
 docs/tunnels.md 3f647ef82e run  the listening ports of this host, and a QR code
 
 docs/virtual-network.md 9c652c4aa9 scenario  ./server binds 10.66.0.2:8080, an address that only the shim gives
@@ -126,13 +129,13 @@ docs/virtual-network.md 0dd4a91b09 run  builds the shim with a SOCKS route
 docs/virtual-network.md bc9442650d run  builds the shim with two unix forwards
 
 docs/warp.md 9bdd958621 skip a reference list: <KEY> is a placeholder; register and delete change the install
-docs/warp.md 9f6cad43c6 live a WARP proxy in the foreground; ~/.config/podnet/rules of the user
+docs/warp.md 9f6cad43c6 live a WARP proxy with rules (until Ctrl-C) runs in the background; the set-up writes ~/.config/podnet/rules
 docs/development.md fe6648d10b skip a step of the maintainer: it writes src/cli/scenarios.txt in the repository
-docs/forward.md 2bce1676d1 live a forward through the relay to hosts of a private network
+docs/forward.md 2bce1676d1 live-manual a forward through the relay to hosts of a private network
 docs/link.md 7c69a49b3e skip a reference list: the placeholders ADDRESS, FILE and FP
 
 # Blocks of the integ merge.
-docs/doctor.md 953525bdeb live the doctor probes the ways out of this host
+docs/doctor.md 953525bdeb run [needs jq] doctor --shape opens no connection
 docs/e2e.md 667093fcb3 skip a template: pair and peer placeholders; two hosts
 docs/e2e.md f3503938b9 skip a template: pair and peer placeholders
 docs/e2e.md 1f6dde44b9 skip a reference: ... is a placeholder
@@ -142,24 +145,24 @@ docs/host-runtime.md cb480ac148 skip needs /mnt/data or volume.img
 docs/host-runtime.md 246a96275a skip a deliberate panic; VALUE is a placeholder
 docs/host-runtime.md 08c57943fe scenario  the peer on UDP 127.0.0.1:9000 in the background (its own shell), then the sender
 docs/host-runtime.md d001d15fc0 run  the configuration, its check, and an enrolment with no relay (--offline)
-docs/host-runtime.md 8910439198 live needs a policy file and the network
+docs/host-runtime.md 898906c771 live bench through a policy and the network; the set-up writes rules.json of the document
 docs/host-runtime.md 6597beca32 scenario [needs git] a tree with one git repository (a Cargo package with one commit)
 docs/link.md 8dd8c3514a run [needs jq] a JSON query of the carriers
 docs/link.md 207a7d5be5 skip needs serial devices /dev/ttyUSB0 and /dev/ttyUSB1
-docs/link.md 389fb7017f live needs a TURN server and a password file
+docs/link.md 389fb7017f live-manual needs a TURN server and a password file
 docs/link.md 8fbcd54085 skip needs a site, a certificate and a switch key
 docs/offline.md 12170c120b scenario  the inputs of each line: report.txt, ./site, the base bundle ./old, two captures, secrets.txt and two empty replica logs
 docs/offline.md 72f6f63d66 run  a pairing code, its offer and its use in one directory
 docs/offline.md d5c8b27329 skip needs serial devices /dev/ttyUSB0 and /dev/ttyUSB1
 docs/offline.md cc47cf87bf skip needs a serial device /dev/ttyUSB0
-docs/quic.md e490396ae4 live WARP and an H3 server; the qlog path is local
+docs/quic.md e490396ae4 live-manual WARP and an H3 server for 120 s: more than the time of the step of live.yml
 docs/quic.md b76107dd68 skip a cargo test in the repository, not a temporary directory
 docs/quic.md bcf92a4f48 skip a cargo test in the repository, not a temporary directory
-docs/quic.md b171bd8e21 live a TUIC server; UUID, PASSWORD, HOST and PORT are placeholders
+docs/quic.md b171bd8e21 live-manual a TUIC server; UUID, PASSWORD, HOST and PORT are placeholders
 docs/quic.md 3354bcd999 skip a cargo test in the repository, not a temporary directory
 docs/quic.md 8d07bd3227 skip a cargo test in the repository, not a temporary directory
-docs/quic.md 33f61e661d live downloads the TUIC server; needs the network
-docs/quic.md dcf8f69035 live the server downloaded in the block above
+docs/quic.md a30fa202c0 live [needs curl] downloads the TUIC server; the check compares its SHA-256 with the pin of the document
+docs/quic.md dcf8f69035 live the server of the block above: the set-up downloads it and checks its SHA-256
 docs/quic.md 6b73d22e33 skip a cargo test; the server is downloaded above
 docs/quic.md 5659bf5812 skip a cargo test; /path is a placeholder
 docs/quic.md 549d2063ef skip a cargo test in the repository, not a temporary directory
