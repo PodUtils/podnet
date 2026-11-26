@@ -92,7 +92,8 @@ jobs:
       - name: Netfilter in a namespace (pod doctor)
         run: ./target/debug/podnet pod doctor | grep -i netfilter || true
       # T-358, step 2: each sh block of README.md and docs/*.md of the class
-      # run (scripts/doc-commands.txt) runs as written with this binary.
+      # run or scenario (scripts/doc-commands.txt) runs as written with this
+      # binary; a scenario first runs its set-up (scripts/doc-scenarios/).
       - name: The documented commands
         run: python3 -I scripts/doc-commands.py --run --bin target/debug/podnet
       # T-455: the count of the promises of each command and of the

@@ -47,25 +47,61 @@ line `FILE HASH CLASS REASON`:
 | Class | Meaning |
 | --- | --- |
 | `run` | It runs offline as written, with `podnet` on PATH. |
+| `scenario` | It runs offline as written after a set-up: `scripts/doc-scenarios/HASH.sh`. |
 | `live` | It needs a live service or a second host. |
 | `root` | It needs root or a kernel feature. |
-| `skip` | It is not a command to run as written: a template with placeholders, a reference list, two shells. |
+| `skip` | It is not a command to run as written: a template with placeholders, a reference list, two hosts. |
 
 HASH is the first 10 hex digits of the SHA-256 of the block. A change of a
 block changes its hash, so a new or changed block needs a new line.
 `--list` prints each block with its file, line, hash and class.
-`--check` fails on a block with no line and on a line with no block.
-`--run` runs each `run` block with `sh -e` in a new temporary HOME and
-working directory, with `target/debug/podnet` (or `--bin PATH`) first on
-PATH, and a timeout of 30 s for each block. A reason that starts with
-`[needs TOOL,TOOL]` names the other programs of the block: with one of
-them absent, `--run` does not run the block and exits 1. CI runs
-`--check` (job `workflows`) and `--run` (job `test`).
+`--check` fails on a block with no line and on a line with no block. It
+also fails on a `scenario` line with no file `scripts/doc-scenarios/HASH.sh`,
+on a scenario file with no function `setup`, on a scenario file with no
+`scenario` line, and on a `BACKGROUND` line that names no line of the block.
+`--run` runs each `run` and each `scenario` block with `sh -e` in a new
+temporary HOME and working directory, with `target/debug/podnet` (or
+`--bin PATH`) first on PATH, and a time limit of 30 s for each block. A
+reason that starts with `[needs TOOL,TOOL]` names the other programs of the
+block: with one of them absent, `--run` does not run the block (MISS) and
+exits 1. CI runs `--check` (job `workflows`) and `--run` (job `test`).
 
-A `run` block that fails is a defect of the code or of the document:
-record it in `TODO/fixes.md`. Do not give a failing block the class
-`skip`. Give a block the class `skip` only when it is not a command to run
-as written, and write why.
+### The scenario of a block
+
+A scenario gives a block what it needs to run offline: files, variables,
+a server or a stand-in on the loopback or on a unix socket. The block stays
+as a user types it. The scenario is a shell file
+`scripts/doc-scenarios/HASH.sh`. `--run` reads `scripts/doc-scenarios/lib.sh`
+(the helpers), then the scenario, in the work directory of the block.
+`DOC_ROOT` is the root of the repository, and `DOC_DIR` is a private
+directory for the logs of the run.
+
+| Part | Use |
+| --- | --- |
+| `setup()` | Necessary. It runs before the block. Write the files. Give a variable to the block with `export`. Start a server with `doc_bg CMD...`. |
+| `BACKGROUND="N M"` | The lines of the block (from 1) that run in the background, for example a server in the foreground that a user starts in a first shell. Each line starts at its place in the block. A line that ends with a backslash takes the next line with it. |
+| `ready()` | It runs after each background line, with its number (1 for the first). Wait for the server here (`doc_wait_tcp PORT`, `doc_wait_udp PORT`, `doc_wait_path PATH`, `doc_wait_line FILE REGEX`). |
+| `check()` | It runs after the block. Examine the result (a file that the block wrote). |
+| `teardown()` | It runs at the end, also after a failure. |
+| `STDIN=FILE` | The stdin of the block, for example a password that curl asks for. The block has no terminal. |
+| `LIMIT=SECONDS` | A longer time limit for a slow block. |
+
+At the end of each run, `--run` stops each command of `doc_bg` and each
+background line, then `podnet stop --all` stops each detached instance.
+Then it stops each other process of the block. A set-up that cannot run on
+this host calls `doc_na REASON`: for example `doc_need_loopback` (no TCP
+listener on the loopback), `doc_need_port PORT [udp]` (the block names a
+port that another program holds) and `doc_free_socket PATH` (another
+process serves a fixed socket path of the block). `--run` then prints
+`n.a.` and the reason, and does not count the block as failed. n.a. does
+not change the exit code.
+
+A `run` or `scenario` block that fails is a defect of the code or of the
+document: record it in `TODO/fixes.md`. Do not give a failing block the
+class `skip`. Do not change what a command does to make a block pass. Give
+a block the class `skip` only when it is not a command to run as written,
+and write why. When a set-up can make a `skip` or `live` block run
+offline, give it a scenario.
 
 ## The lane in the profiles of pod-lab
 

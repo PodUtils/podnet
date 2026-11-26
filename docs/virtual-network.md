@@ -262,7 +262,7 @@ no `--switch`, the flags are a usage error (exit 64), as a value out of 0.0
 to 1.0 is. In code, use `vnet::switch::Faults` and `FaultInjector`.
 
 ```sh
-podnet net switch --listen unix:/tmp/sw.sock &
+podnet net switch --listen unix:/tmp/sw.sock --detach
 podnet net proxy --switch unix:/tmp/sw.sock --address 10.66.0.3 --drop 0.1 --seed 7
 ```
 

@@ -75,8 +75,8 @@ also measures its own rate, to compare. A difference over five percent is a
 disagreement with both numbers; the run does not average them.
 
 ```sh
+podnet stat --serve 127.0.0.1:9000    # the peer: start it first, in its own shell
 podnet stat --peer 127.0.0.1:9000 --rate 1000 --size 50 --count 10 --out pod-stat.txt
-podnet stat --serve 127.0.0.1:9000
 ```
 
 The output is a capture file with one line for each packet and a summary. A
@@ -111,7 +111,7 @@ error `INIT-1`. A failed enrolment leaves no destination and no temporary
 directory.
 
 ```sh
-podnet init generate node-a --relay http://relay.example
+podnet init generate node-a --relay http://relay.example --out node.json
 podnet init check node.json
 podnet init enroll state --node node-a --relay http://relay.example --offline
 ```

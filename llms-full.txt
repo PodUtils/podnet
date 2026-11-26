@@ -15079,7 +15079,7 @@ command. `--stdio` takes `--auth-user` and `--auth-password-file`. It exits
 ```sh
 podnet ports            # list the listening TCP ports (Linux)
 podnet ports --probe    # only the ports that accept a connection
-podnet qr <URL>         # print a QR code
+podnet qr https://example.com/   # print a QR code of a URL
 ```
 
 `podnet expose TARGET` publishes a local service by one word ([forward.md](forward.md)).
@@ -19463,7 +19463,7 @@ no `--switch`, the flags are a usage error (exit 64), as a value out of 0.0
 to 1.0 is. In code, use `vnet::switch::Faults` and `FaultInjector`.
 
 ```sh
-podnet net switch --listen unix:/tmp/sw.sock &
+podnet net switch --listen unix:/tmp/sw.sock --detach
 podnet net proxy --switch unix:/tmp/sw.sock --address 10.66.0.3 --drop 0.1 --seed 7
 ```
 
@@ -19878,8 +19878,8 @@ also measures its own rate, to compare. A difference over five percent is a
 disagreement with both numbers; the run does not average them.
 
 ```sh
+podnet stat --serve 127.0.0.1:9000    # the peer: start it first, in its own shell
 podnet stat --peer 127.0.0.1:9000 --rate 1000 --size 50 --count 10 --out pod-stat.txt
-podnet stat --serve 127.0.0.1:9000
 ```
 
 The output is a capture file with one line for each packet and a summary. A
@@ -19914,7 +19914,7 @@ error `INIT-1`. A failed enrolment leaves no destination and no temporary
 directory.
 
 ```sh
-podnet init generate node-a --relay http://relay.example
+podnet init generate node-a --relay http://relay.example --out node.json
 podnet init check node.json
 podnet init enroll state --node node-a --relay http://relay.example --offline
 ```
