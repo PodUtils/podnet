@@ -16760,6 +16760,12 @@ cargo test --lib -p podnet identity::
 cargo test -p podnet-vnet --lib a_tcp_switch_that_does_not_answer_ends_at_the_limit
 ```
 
+## Correction
+
+2026-11-26: the job `restricted-host` of `ci` 45756419163 (`58a1c617`) refuses `bind(AF_INET)`, and the test failed at
+the bind of its listener (EACCES). The test now starts with `pod_testkit::need_loopback!()`, as the other tests of the
+file that bind TCP.
+
 ## Done
 
 2026-11-26, the commit of this entry. The test `a_tcp_switch_that_does_not_answer_ends_at_the_limit` (a listener with a full queue, a limit of 0.8 s: one line in 1.7 s) passes.

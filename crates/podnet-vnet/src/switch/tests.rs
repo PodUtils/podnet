@@ -384,6 +384,7 @@ fn a_full_queue_counts_its_drops() {
 /// with one line that names the switch and the limit.
 #[tokio::test]
 async fn a_tcp_switch_that_does_not_answer_ends_at_the_limit() {
+    pod_testkit::need_loopback!();
     let socket = tokio::net::TcpSocket::new_v4().unwrap();
     socket.bind("127.0.0.1:0".parse().unwrap()).unwrap();
     let listener = socket.listen(0).unwrap();
