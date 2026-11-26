@@ -14727,6 +14727,15 @@ ENVIRONMENT
       is a usage error (exit 64) that names the variable. Used by: the network
       vless://HOST:PORT?... (forward --network, a networks: entry of route, net
       doctor --network).
+  PODNET_SHADOWSOCKS_SERVICE_KEY_FILE, PODNET_SHADOWSOCKS_SERVICE_KEY
+      The key of the Shadowsocks service of a link end: the one line of the
+      file in PODNET_SHADOWSOCKS_SERVICE_KEY_FILE, else the value of
+      PODNET_SHADOWSOCKS_SERVICE_KEY (give one of them). The line is
+      METHOD:PASSWORD; the methods are chacha20-ietf-poly1305, aes-256-gcm and
+      aes-128-gcm (SIP004; a method of Shadowsocks 2022 is refused). No key is
+      in a log line, an error or --json. A missing or bad key is a usage error
+      (exit 64) that names the variable, before the listener listens. Used by:
+      link listen and link connect --service ss (the feature ss).
   PODNET_SHADOWSOCKS_KEY_FILE, PODNET_SHADOWSOCKS_KEY
       The key of a Shadowsocks server: the one line of the file in
       PODNET_SHADOWSOCKS_KEY_FILE, else the value of PODNET_SHADOWSOCKS_KEY
@@ -21369,7 +21378,7 @@ The kit ran in a netns and in a VM with IPv6 only (NAT66 out through
 WARP). `scripts/v6only/` makes the same host on a runner: the namespace
 `v6up` has IPv4 and `podnet warp tun --default-route`; `v6only` behind it
 has IPv6 only (no IPv4 route; the address 127.0.0.1 stays). The step "An IPv6-only host" of `live.yml` runs
-`scripts/v6only/acceptance.sh`.
+`scripts/v6only/acceptance.sh`, then the row `ipv6-host` of `scripts/lab-lane.sh` in `v6only` (`docs/development.md`, The row ipv6-host).
 
 | Fact | Result | Mark |
 | --- | --- | --- |

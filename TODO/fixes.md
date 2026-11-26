@@ -2223,7 +2223,7 @@ device that a service user saved. A second device spends a registration (`docs/d
 
 - src/warp/mod.rs:885-892 at `9c1fc4b` (owner and mode checks, bare `bail!`); readers: `load` (`:357`) and
   `src/warp/export.rs:68`. `register_or_load` (`src/warp/mod.rs:421-423`) refuses and does not write over the file.
-- `crates/podnet-core/src/state.rs:69-127` has the model. `src/manual/facts.rs:172` lists `PODNET_FOREIGN_HOME`.
+- `crates/podnet-core/src/state.rs:69-127` has the model. `src/manual/facts.rs:173` lists `PODNET_FOREIGN_HOME`.
 - `warp_client_inner` wraps errors in `Fault::Unavailable` (`src/cli/cmd/warp/client.rs:119-144`).
 - Not measured: two real users (a registration is spent).
 
@@ -13907,7 +13907,7 @@ the relay leg works gives exit 0.
   where only `http2+relay` works gives exit 0, and the help (`src/cli/mod.rs:297`) lists three legs only.
 - Read: the exit 1 of `doctor` is in the help, in `docs/doctor.md`, in the research list
   (`docs/research/podnet/parity-checklist.md`), and in the lane (`scripts/lab-lane.sh`, the case
-  `proxy-doctor` runs `doctor` through a proxy that refuses). The manual row of 69 (`src/manual/facts.rs:212`) and `docs/cli.md:139` name "no edge
+  `proxy-doctor` runs `doctor` through a proxy that refuses). The manual row of 69 (`src/manual/facts.rs:213`) and `docs/cli.md:139` name "no edge
   leg worked" for the commands that start a tunnel (`tunnel`, `warp`); `podnet tunnel` with no quick-tunnel service gives 69 (#695).
 - The call (the owner may rule otherwise; `TODO/PROGRESS.md`, Calls made without a ruling): keep the exit 1 of `doctor`
   and `bench`. A command whose job is to report that something is not available has failed in its check; 69 is for the
@@ -13916,7 +13916,7 @@ the relay leg works gives exit 0.
 
 ## Approach
 
-1. `src/manual/facts.rs:212` and `docs/cli.md:139` say that "no edge leg worked" is 69 for `tunnel`, `warp` and the
+1. `src/manual/facts.rs:213` and `docs/cli.md:139` say that "no edge leg worked" is 69 for `tunnel`, `warp` and the
    commands that start a session, and that `doctor` and `bench` give 1 when no leg or no request worked. The row of 1
    names them. `docs/exit-codes.md` gets the same sentence.
 2. `podnet doctor --help` (`src/cli/mod.rs:297`) and `docs/doctor.md:58` name the four legs (`quic`, `http2`,
