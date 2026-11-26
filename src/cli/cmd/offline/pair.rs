@@ -23,7 +23,8 @@ pub(crate) enum PairCommand {
     /// Make a code, sign the offer of it, and print the eight words.
     Offer(OfferArgs),
     /// Take an offer with a code, use the code once, and write the record
-    /// that binds the peer key to this key.
+    /// that binds the peer key to this key. The eight words of the code come
+    /// from stdin; on a terminal the command asks for them (one line).
     Accept(AcceptArgs),
 }
 
@@ -108,9 +109,20 @@ fn offer(args: OfferArgs) -> Result<()> {
 fn accept(args: AcceptArgs) -> Result<()> {
     let me = key(&args.key, true)?;
     let mut text = String::new();
-    std::io::stdin()
-        .read_to_string(&mut text)
-        .map_err(|e| anyhow!("stdin: {e}"))?;
+    // #772: on a terminal, ask for the code and read one line; else read
+    // stdin to its end (a file or a pipe).
+    let stdin = std::io::stdin();
+    if std::io::IsTerminal::is_terminal(&stdin) {
+        eprint!("the eight words of the code: ");
+        stdin
+            .read_line(&mut text)
+            .map_err(|e| anyhow!("stdin: {e}"))?;
+    } else {
+        stdin
+            .lock()
+            .read_to_string(&mut text)
+            .map_err(|e| anyhow!("stdin: {e}"))?;
+    }
     let code = Code::parse(text.trim()).map_err(store_error)?;
     let spool = match &args.spool {
         Some(dir) => Some(Spool::open(dir).map_err(store_error)?),

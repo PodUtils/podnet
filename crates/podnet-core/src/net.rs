@@ -69,6 +69,20 @@ pub enum Listener {
     Udp,
     /// A UDP port below 1024.
     UdpPrivileged,
+    /// A TCP port above 1023 (#774): a refusal is a host that refuses the
+    /// TCP listener, not a port that needs privilege.
+    IpUnprivileged,
+    /// A TCP port from 1 to 1023.
+    IpPrivileged,
+}
+
+/// The port of the first `IP:PORT` in `text` (a word, with the marks of a
+/// line around it taken off), if there is one.
+fn port_in(text: &str) -> Option<u16> {
+    text.split_whitespace()
+        .map(|w| w.trim_matches(|c: char| matches!(c, ':' | ',' | ';' | '"' | '\'' | '(' | ')')))
+        .find_map(|w| w.parse::<std::net::SocketAddr>().ok())
+        .map(|a| a.port())
 }
 
 /// The kind of the unix listener at `path`: [`Listener::UnixWritableDir`]
@@ -103,6 +117,15 @@ pub fn bind_step(listener: Listener, kind: std::io::ErrorKind) -> Option<&'stati
         }
         (Listener::Ip, PermissionDenied) => {
             "this host refuses the bind (a port below 1024 needs privilege, and some hosts refuse each TCP listener); give a port above 1023, or a unix socket (unix:PATH) where the command takes one (podnet net doctor)"
+        }
+        (Listener::IpUnprivileged | Listener::IpPrivileged, AddrInUse | AddrNotAvailable) => {
+            return bind_step(Listener::Ip, kind)
+        }
+        (Listener::IpUnprivileged, PermissionDenied) => {
+            "this host refuses the TCP listener (a seccomp or LSM rule, or a policy of the host); give a unix socket (unix:PATH) where the command takes one (podnet net doctor)"
+        }
+        (Listener::IpPrivileged, PermissionDenied) => {
+            "a port below 1024 needs privilege; give a port above 1023 (podnet net doctor)"
         }
         (Listener::Udp | Listener::UdpPrivileged, AddrInUse) => {
             "another process has this UDP port; give another port (port 0 gives a free one)"
@@ -179,9 +202,6 @@ pub fn bind_fault_of(listener: Listener, err: anyhow::Error) -> anyhow::Error {
     }) else {
         return err;
     };
-    let Some(step) = bind_step(listener, kind) else {
-        return fault(Fault::Unavailable, err);
-    };
     let mut text = String::new();
     for cause in err.chain() {
         let cause = cause.to_string();
@@ -192,6 +212,15 @@ pub fn bind_fault_of(listener: Listener, err: anyhow::Error) -> anyhow::Error {
             text.push_str(&cause);
         }
     }
+    // #774: a TCP address with a port names the cause that fits it.
+    let listener = match (listener, port_in(&text)) {
+        (Listener::Ip, Some(port)) if port >= 1024 => Listener::IpUnprivileged,
+        (Listener::Ip, Some(port)) if port > 0 => Listener::IpPrivileged,
+        (other, _) => other,
+    };
+    let Some(step) = bind_step(listener, kind) else {
+        return fault(Fault::Unavailable, err);
+    };
     if text.contains(step) {
         return fault(Fault::Unavailable, err);
     }
@@ -279,6 +308,37 @@ mod tests {
     /// T-515, T-523: a refused bind of each kind of listener is exit 69 and
     /// one line that names the address one time and gives a next step;
     /// another error keeps its text and has no class.
+    /// #774: a refused bind of a TCP port names the step of its port: a
+    /// unix socket above 1023, a higher port below 1024, both with no port.
+    #[test]
+    fn a_refused_tcp_bind_names_the_step_of_its_port() {
+        let cases = [
+            (
+                "-L 127.0.0.1:18000",
+                "refuses the TCP listener",
+                "above 1023",
+            ),
+            (
+                "--local [::1]:8443",
+                "refuses the TCP listener",
+                "above 1023",
+            ),
+            ("-L 127.0.0.1:80", "give a port above 1023", "unix:PATH"),
+            (
+                "the listener",
+                "give a port above 1023, or a unix socket",
+                "refuses the TCP listener",
+            ),
+        ];
+        for (context, want, not) in cases {
+            let io = std::io::Error::from(std::io::ErrorKind::PermissionDenied);
+            let err = bind_fault(anyhow::Error::new(io).context(context.to_string()));
+            let text = format!("{err:#}");
+            assert!(text.contains(want), "{context}: {text}");
+            assert!(!text.contains(not), "{context}: {text}");
+        }
+    }
+
     #[test]
     fn a_refused_bind_is_69_with_one_line_and_a_next_step() {
         use crate::exit::{code_of, FAILURE, UNAVAILABLE};

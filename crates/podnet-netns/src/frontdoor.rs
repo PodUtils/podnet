@@ -35,9 +35,45 @@ pub(crate) async fn serve_front_door(
         chain.len()
     );
     let door = Arc::new(front_door_with(chain, rules, verbose, early_reply));
-    match listener {
-        FrontListener::Unix(listener) => door.serve_unix(listener).await,
-        FrontListener::Tcp(listener) => door.serve_tcp(listener).await,
+    let serve = async {
+        match listener {
+            FrontListener::Unix(listener) => door.serve_unix(listener).await,
+            FrontListener::Tcp(listener) => door.serve_tcp(listener).await,
+        }
+    };
+    // #770: a server command stops cleanly at SIGINT, SIGTERM and SIGHUP
+    // (`docs/cli.md`, Stop signals): one line, its unix socket removed,
+    // exit 0.
+    let result = tokio::select! {
+        result = serve => result,
+        name = stop_signal() => {
+            eprintln!("{}: {name}: stopping", crate::cli::program_name());
+            Ok(())
+        }
+    };
+    if let crate::listen::ProxyListen::Unix(path) = &bound {
+        let _ = std::fs::remove_file(path);
+    }
+    result
+}
+
+/// The name of the first stop signal: SIGINT, SIGTERM or SIGHUP. A signal
+/// whose handler cannot be installed is not waited for.
+async fn stop_signal() -> &'static str {
+    use tokio::signal::unix::{signal, SignalKind};
+    let wait = |kind: SignalKind, name: &'static str| async move {
+        match signal(kind) {
+            Ok(mut s) => {
+                s.recv().await;
+                name
+            }
+            Err(_) => std::future::pending().await,
+        }
+    };
+    tokio::select! {
+        name = wait(SignalKind::interrupt(), "SIGINT") => name,
+        name = wait(SignalKind::terminate(), "SIGTERM") => name,
+        name = wait(SignalKind::hangup(), "SIGHUP") => name,
     }
 }
 

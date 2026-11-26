@@ -547,41 +547,6 @@ where
     }
 }
 
-/// Connect `stack` to the switch at `switch`. The returned task moves the
-/// packets until the connection closes. A TCP switch needs its `token`
-/// (issue 309); a unix switch needs none.
-pub async fn attach(
-    stack: &NetStack,
-    switch: &ProxyListen,
-    faults: Faults,
-    token: Option<&str>,
-) -> Result<JoinHandle<()>> {
-    let link_in = stack.link_in();
-    let link_out = stack.link_out();
-    Ok(match switch {
-        ProxyListen::Tcp(addr) => {
-            let Some(token) = token else {
-                anyhow::bail!(
-                    "a TCP switch needs its token: set {TOKEN_VARIABLE}, or give --switch-token-file"
-                );
-            };
-            let mut stream = tokio::net::TcpStream::connect(addr)
-                .await
-                .with_context(|| format!("connecting to the switch at tcp://{addr}"))?;
-            give_hello(&mut stream, token)
-                .await
-                .with_context(|| format!("the switch at tcp://{addr}"))?;
-            tokio::spawn(pump(link_in, link_out, stream, faults))
-        }
-        ProxyListen::Unix(path) => {
-            let stream = tokio::net::UnixStream::connect(path)
-                .await
-                .with_context(|| format!("connecting to the switch at unix:{}", path.display()))?;
-            tokio::spawn(pump(link_in, link_out, stream, faults))
-        }
-    })
-}
-
 /// Bind an abstract `AF_UNIX` stream listener named `name` (no leading NUL).
 #[cfg(target_os = "linux")]
 fn abstract_listener(name: &str) -> Result<tokio::net::UnixListener> {
@@ -777,6 +742,9 @@ pub fn import(stack: Arc<NetStack>, addr: crate::addr::VirtAddr) -> Result<JoinH
 }
 
 mod counts;
+
+mod attach;
+pub use attach::{attach, attach_within, SWITCH_CONNECT};
 pub use counts::{PeerCount, SwitchCounts};
 
 #[cfg(test)]

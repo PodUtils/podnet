@@ -14,8 +14,8 @@ podnet offline bundle build --out ./bundle --name field --file ./site:site   # e
 podnet offline bundle build --out ./delta --name field --base ./old --file ./site:site
 podnet offline bundle apply --base ./old --delta ./delta
 podnet offline capture merge ./a.cap ./b.cap --out all.cap --secret-file secrets.txt
-podnet offline pair offer --out offer.txt                 # eight words, and a signed offer
-podnet offline pair accept --offer offer.txt --used ./used
+podnet offline pair offer --out offer.txt > code.txt      # eight words in code.txt, and a signed offer
+podnet offline pair accept --offer offer.txt --used ./used < code.txt   # the eight words on stdin
 podnet offline replica merge ./a.log ./b.log --out merged.log --json
 ```
 

@@ -230,7 +230,7 @@ pub(crate) enum Command {
     Link(LinkArgs),
     /// A session with no network: a store-and-forward spool on a directory,
     /// a signed mDNS announcement, and an offline bundle with a delta. One
-    /// capture format with a merge, a four-word single-use pairing code,
+    /// capture format with a merge, an eight-word single-use pairing code,
     /// and a replication log. The carriers of a session without a network
     /// are those of `podnet link`: serial:PATH[,BAUD] and hf:PATH[,BPS].
     Offline(OfflineArgs),
@@ -338,7 +338,7 @@ pub(crate) enum Command {
     Wait {
         /// The name of the instance (podnet ps).
         name: String,
-        /// Seconds to wait (else exit 69).
+        /// Seconds to wait (else exit 124, as timeout(1) exits).
         #[arg(long, default_value_t = 60)]
         timeout: u64,
     },

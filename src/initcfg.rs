@@ -93,6 +93,9 @@ pub enum InitError {
     NoReach(String),
     /// An enrolment that did not complete.
     Enrol(String),
+    /// A file that cannot be read (#775): the path and the error, and
+    /// whether the file is missing (exit 66).
+    Read { text: String, missing: bool },
 }
 
 impl std::fmt::Display for InitError {
@@ -105,6 +108,7 @@ impl std::fmt::Display for InitError {
             InitError::Schema(text) => write!(f, "the configuration is not schema {SCHEMA_VERSION}: {text}"),
             InitError::NoReach(text) => write!(f, "the relay cannot be reached (INIT-2): {text}"),
             InitError::Enrol(text) => write!(f, "the enrolment did not complete (INIT-3): {text}"),
+            InitError::Read { text, .. } => f.write_str(text),
         }
     }
 }
@@ -119,6 +123,8 @@ impl InitError {
                 exit::CONFIG
             }
             InitError::Enrol(_) => exit::UNAVAILABLE,
+            InitError::Read { missing: true, .. } => exit::NO_INPUT,
+            InitError::Read { missing: false, .. } => exit::CONFIG,
         }
     }
 
@@ -126,6 +132,7 @@ impl InitError {
     pub fn fault(self) -> anyhow::Error {
         let class = match self.code() {
             exit::UNAVAILABLE => Fault::Unavailable,
+            exit::NO_INPUT => Fault::NoInput,
             _ => Fault::Config,
         };
         exit::fault(class, anyhow::anyhow!(self.to_string()))
@@ -164,8 +171,10 @@ impl NodeConfig {
 
     /// Read and validate a file.
     pub fn load(path: &Path) -> Result<NodeConfig, InitError> {
-        let text = std::fs::read_to_string(path)
-            .map_err(|e| InitError::Schema(format!("{}: {e}", path.display())))?;
+        let text = std::fs::read_to_string(path).map_err(|e| InitError::Read {
+            text: format!("{}: {e}", path.display()),
+            missing: e.kind() == std::io::ErrorKind::NotFound,
+        })?;
         NodeConfig::parse(&text).map_err(|e| match e {
             InitError::Schema(text) => InitError::Schema(format!("{}: {text}", path.display())),
             other => other,
@@ -525,6 +534,25 @@ async fn build(tmp: &Path, config: &NodeConfig, registrar: &Registrar) -> anyhow
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// #775: a file that cannot be read names its path and its error, not
+    /// a schema; a missing file exits 66.
+    #[test]
+    fn a_missing_file_is_no_input_and_names_its_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("node.json");
+        let e = NodeConfig::load(&missing).unwrap_err();
+        assert_eq!(e.code(), exit::NO_INPUT);
+        let text = e.to_string();
+        assert!(text.starts_with(&missing.display().to_string()), "{text}");
+        assert!(!text.contains("schema"), "{text}");
+        assert_eq!(exit::code_of(&e.fault()), exit::NO_INPUT);
+        // A directory is read and fails: not missing, exit 78.
+        assert_eq!(
+            NodeConfig::load(dir.path()).unwrap_err().code(),
+            exit::CONFIG
+        );
+    }
     use std::os::unix::fs::PermissionsExt;
 
     fn config() -> NodeConfig {

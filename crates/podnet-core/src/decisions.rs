@@ -32,10 +32,38 @@ pub fn report() -> pod_core::Report {
     pod_core::Report {
         events: std::sync::Arc::new(|event: pod_core::Event| match event.level {
             pod_core::Level::Info => tracing::info!(kind = event.kind, "{}", event.text),
-            pod_core::Level::Warn => tracing::warn!(kind = event.kind, "{}", event.text),
+            pod_core::Level::Warn => {
+                if first_warning(event.kind, &event.text, std::time::Instant::now()) {
+                    tracing::warn!(kind = event.kind, "{}", event.text)
+                }
+            }
         }),
         observer: std::sync::Arc::new(Counters),
     }
+}
+
+/// The time in which an equal warning (one kind, one text) is said once
+/// (#769: the edge discovery of one start ran for two plans, and its long
+/// warning came two times).
+const WARNING_QUIET: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// Whether the warning `kind` `text` at `now` is new: not said in the last
+/// [`WARNING_QUIET`].
+fn first_warning(kind: &str, text: &str, now: std::time::Instant) -> bool {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static SAID: OnceLock<Mutex<HashMap<String, std::time::Instant>>> = OnceLock::new();
+    let mut said = SAID
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    said.retain(|_, at| now.saturating_duration_since(*at) < WARNING_QUIET);
+    let key = format!("{kind}\n{text}");
+    if said.contains_key(&key) {
+        return false;
+    }
+    said.insert(key, now);
+    true
 }
 
 /// The observer of [`report`].
@@ -113,5 +141,29 @@ mod tests {
         )));
         assert!(summary().contains("test.other="));
         assert!(text.lines().all(|l| l.starts_with('#') || l.contains("} ")));
+    }
+
+    /// #769: an equal warning is said once in its quiet time, and again
+    /// after it; another text is new.
+    #[test]
+    fn an_equal_warning_is_said_once_in_its_quiet_time() {
+        let t0 = std::time::Instant::now();
+        let text = "DNS discovery of the edge failed (test-769)";
+        assert!(super::first_warning("edge.discovery", text, t0));
+        assert!(!super::first_warning(
+            "edge.discovery",
+            text,
+            t0 + std::time::Duration::from_millis(10)
+        ));
+        assert!(super::first_warning(
+            "edge.discovery",
+            "another text (test-769)",
+            t0
+        ));
+        assert!(super::first_warning(
+            "edge.discovery",
+            text,
+            t0 + super::WARNING_QUIET
+        ));
     }
 }

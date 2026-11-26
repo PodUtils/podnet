@@ -378,3 +378,48 @@ fn a_full_queue_counts_its_drops() {
     table.remove(2);
     assert_eq!(table.counts().left.dropped, 3);
 }
+
+/// #768: a TCP switch that does not answer (its accept queue is full, so
+/// the kernel drops each SYN) ends the dial at the limit of the attach,
+/// with one line that names the switch and the limit.
+#[tokio::test]
+async fn a_tcp_switch_that_does_not_answer_ends_at_the_limit() {
+    let socket = tokio::net::TcpSocket::new_v4().unwrap();
+    socket.bind("127.0.0.1:0".parse().unwrap()).unwrap();
+    let listener = socket.listen(0).unwrap();
+    let addr = listener.local_addr().unwrap();
+    // Fill the queue: no accept runs.
+    let mut held = Vec::new();
+    for _ in 0..4 {
+        if let Ok(Ok(s)) = tokio::time::timeout(
+            std::time::Duration::from_millis(300),
+            tokio::net::TcpStream::connect(addr),
+        )
+        .await
+        {
+            held.push(s);
+        }
+    }
+    let stack = NetStack::over_link(config(4));
+    let started = std::time::Instant::now();
+    let limit = std::time::Duration::from_millis(800);
+    let e = attach_within(
+        &stack,
+        &ProxyListen::Tcp(addr),
+        Faults::default(),
+        Some("t0k"),
+        limit,
+    )
+    .await
+    .unwrap_err();
+    let text = format!("{e:#}");
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(5),
+        "{text}"
+    );
+    assert!(
+        text.contains(&format!("the switch at tcp://{addr}")),
+        "{text}"
+    );
+    drop((held, listener));
+}

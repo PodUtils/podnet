@@ -396,9 +396,7 @@ fn trusted_nodes(
             "--seal needs --peer FINGERPRINT or --allow FILE: this end trusts no node by default"
         ))
         .fault(Fault::Usage),
-        None => {
-            podnet::identity::AllowList::parse(&peer.join("\n")).map_err(|e| e.context("--peer"))
-        }
+        None => podnet::identity::AllowList::of_peers(peer),
     }
 }
 

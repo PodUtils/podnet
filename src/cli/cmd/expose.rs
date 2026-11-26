@@ -81,12 +81,23 @@ pub(crate) fn plan(
                 Ok(_) => format!("127.0.0.1:{target}"),
                 Err(_) => tcp.unwrap_or(target).to_string(),
             };
-            vec![
+            let mut words: Vec<String> = vec![
                 "net".into(),
                 "proxy".into(),
                 "--forward".into(),
                 format!("{virt}={real}"),
-            ]
+            ];
+            // #773: on a switch, the stack needs its address: the address
+            // of --as, unless the words after `--` give one.
+            let named = |flag: &str| {
+                rest.iter()
+                    .any(|w| w == flag || w.starts_with(&format!("{flag}=")))
+            };
+            if named("--switch") && !named("--address") {
+                let ip = virt.rsplit_once(':').map_or(virt, |(ip, _)| ip);
+                words.extend(["--address".into(), ip.to_string()]);
+            }
+            words
         }
     };
     words.extend(rest.iter().cloned());
@@ -258,6 +269,31 @@ mod tests {
             assert_eq!(words, ["tunnel", flag[0], flag[1]], "{target}");
             assert!(matches!(parse(&words), Command::Tunnel(_)), "{target}");
         }
+    }
+
+    /// #773: `--via switch` with a `--switch` after `--` gives the stack
+    /// the address of --as; an --address after `--` stays the one.
+    #[test]
+    fn expose_via_a_switch_gives_the_stack_the_address_of_as() {
+        let words = |tail: &str| {
+            let argv: Vec<String> =
+                format!("podnet expose 3000 --via switch --as 10.66.0.2:8080 -- {tail}")
+                    .split_whitespace()
+                    .map(String::from)
+                    .collect();
+            let cli = Cli::try_parse_from(&argv).unwrap();
+            resolve(&argv, cli).unwrap().0
+        };
+        let given = words("--switch unix:/tmp/s.sock");
+        let at = given
+            .iter()
+            .position(|w| w == "--address")
+            .expect("--address");
+        assert_eq!(given[at + 1], "10.66.0.2");
+        let own = words("--switch unix:/tmp/s.sock --address 10.66.0.9");
+        assert_eq!(own.iter().filter(|w| *w == "--address").count(), 1);
+        assert!(own.contains(&"10.66.0.9".to_string()));
+        assert!(!words("--detach").contains(&"--address".to_string()));
     }
 
     /// Issue 612: the arguments after `--` reach the detach of main, and

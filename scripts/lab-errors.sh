@@ -117,7 +117,7 @@ check connect-refused 69 "does not answer.*($refused)"
 row connect-refused $?
 
 run connect-no-name 60 connect --stdio --no-proxy wss://nowhere.invalid/__podnet/ws
-check connect-no-name 69 "could not resolve nowhere\.invalid"
+check connect-no-name 68 "could not resolve nowhere\.invalid"
 row connect-no-name $?
 
 run connect-dead-proxy 60 connect --stdio --proxy http://127.0.0.1:1 wss://lab.test/__podnet/ws
@@ -148,7 +148,7 @@ check relay-refused 69 "the session to x: .*($refused)"
 row relay-refused $?
 
 run relay-no-name 60 relay connect x --token t0k --no-proxy --relay https://nowhere.invalid
-check relay-no-name 69 "could not resolve nowhere\.invalid"
+check relay-no-name 68 "could not resolve nowhere\.invalid"
 row relay-no-name $?
 
 run relay-dead-proxy 60 relay connect x --token t0k --relay https://lab.test --proxy http://127.0.0.1:1

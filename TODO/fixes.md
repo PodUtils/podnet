@@ -2439,7 +2439,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 ## Premise
 
 - Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:437`, `crates/podnet-vnet/src/proxy.rs:319`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-51`): `podnet-netns` cannot call it.
-- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:59` and `crates/podnet-netns/src/seccomp/accept.rs:60`.
+- Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:95` and `crates/podnet-netns/src/seccomp/accept.rs:60`.
 - `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:174`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:98-104`).
 
@@ -2513,7 +2513,7 @@ Unit tests: a literal, a name, a unix path, and the error words without a networ
 
 ## Problem
 
-`forward` binds inside a spawned task and returns a `JoinHandle` (`crates/podnet-vnet/src/proxy.rs:186-204`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:120`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`crates/podnet-vnet/src/switch.rs:757-761`).
+`forward` binds inside a spawned task and returns a `JoinHandle` (`crates/podnet-vnet/src/proxy.rs:186-204`). `net_proxy` prints `forward VIRT -> REAL` at once (`src/cli/cmd/net/proxy.rs:118`). An address outside the subnet, a duplicate `--forward`, an ACL refusal or a collision with a shim bind give the line, a log warn and exit 0. `--import` binds before it prints (`crates/podnet-vnet/src/switch.rs:722-726`).
 
 ## Premise
 
@@ -2688,7 +2688,7 @@ cargo test -p podnet --test cli
 
 ## Problem
 
-`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:94-106`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:43-60`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:336-341` and `net addresses` advertise the resolver.
+`--map NAME=ADDR` builds one `HashMap` for the door only (`src/cli/cmd/net/proxy.rs:92-104`). The stack gets `dns: None` (`StackConfig::default`, now its `gateway_service`: `PodUtils/podcrates:crates/pod-netstack/src/stack.rs`), so nothing listens on `10.66.0.1:53` (`PodUtils/podcrates:crates/pod-netstack/src/stack/reactor.rs`, `PodUtils/podcrates:crates/pod-netstack/src/stack/service.rs`). `net shim` has an empty `hosts` (`src/cli/cmd/net/shim.rs:43-60`, `crates/podnet-vnet/src/shim.rs:53,82-90`). `docs/virtual-network.md:336-341` and `net addresses` advertise the resolver.
 
 ## Premise
 
@@ -4035,7 +4035,7 @@ above. The check to satisfy is: no other user can connect, at any instant.
 - The callers that bind in a directory that other users can reach: `src/cli/cmd/connect.rs:251`,
   src/warp/proxy.rs:86 at `9c1fc4b`, `crates/podnet-vnet/src/proxy.rs:320`, `crates/podnet-vnet/src/switch.rs:438`,
   and, through `bind_claimed` (`crates/podnet-netns/src/listen.rs:375-378`),
-  `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:59`.
+  `crates/podnet-netns/src/tailscale.rs:356` and `crates/podnet-netns/src/frontdoor.rs:95`.
 - `crates/podnet-netns/src/seccomp/accept.rs:61` is not exposed: it calls `private_dir` first
   (`crates/podnet-netns/src/seccomp/accept.rs:58`), and it removes the old file before the bind (`crates/podnet-netns/src/seccomp/accept.rs:59`).
 - The defaults in `/tmp`: `src/cli/cmd/net/mod.rs:80`, `src/cli/cmd/net/mod.rs:97` and
@@ -12544,7 +12544,7 @@ listener or relay disabled by policy, or not answering"; "1 (failure): A failure
 
 ## Premise
 
-- Read: `crates/podnet-core/src/net.rs:139` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
+- Read: `crates/podnet-core/src/net.rs:162` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
   `PermissionDenied` and `AddrNotAvailable`. `forward`, `net proxy`, `serve`, `route`, `link` and `cover` call it.
 - Read: `src/cli/cmd/connect.rs:109` binds the TCP listener of `-L` and adds only a context (`:110`). It does not
   call `bind_fault`, so the exit code is 1. `unix_listener` (`src/cli/cmd/connect.rs:246`, `:249`) has the same
@@ -13198,7 +13198,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
   (`PodUtils/podcrates:crates/pod-cloudflare/src/origin.rs:155`, `:370`, `:380`).
 - Read: the `edge` row comes from the system resolver of podnet (`system_srv`, `src/tunnel.rs:282`). hickory writes
   `no records found for Query { ... }` with the Debug form of its `Query`. The row shows the error of hickory as it is.
-- Read: `src/egress.rs:334` adds `{at} through the proxy {label}` to the error of a dial. `pod-ws` adds `could not
+- Read: `src/egress.rs:343` adds `{at} through the proxy {label}` to the error of a dial. `pod-ws` adds `could not
   connect to {at}` (`PodUtils/podcrates:crates/pod-ws/src/way.rs`, `dial_error`, which strips only
   `connecting to {target}` and `could not connect to {target}`). `pod-proxy` writes `could not reach the proxy P: could
   not connect to P`. The target and the proxy come two or three times.
@@ -13217,7 +13217,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
 2. podnet: `system_srv` (`src/tunnel.rs:282`) maps `NoRecordsFound` to one sentence: `no SRV records for NAME at the
    system resolver`. It keeps no Debug form of a struct. Before that, read `pod-dns` for a lookup of SRV records
    (shared code first).
-3. podnet: `src/egress.rs:334` names the target once. The line of a dial is
+3. podnet: `src/egress.rs:343` names the target once. The line of a dial is
    `TARGET through the proxy PROXY: could not reach the proxy PROXY: Connection refused (os error 111)`, or shorter.
 4. COORD ask (to podcrates, the lead files it): (a) `pod-ws` `dial_error` strips the target lead of a dialer that writes
    `TARGET through the proxy`, and `pod-proxy` names the proxy once in `could not reach the proxy`; (b) `pod-dns`
@@ -13360,7 +13360,7 @@ says "nothing accepts a connection" when the cause is EACCES of the connect.
   (`src/cli/cmd/warp/mod.rs:156`, `warp_client`, which registers a device for `--ephemeral`): the registration comes
   before `bind_all` (`src/cli/cmd/warp/front.rs:134`). The comment of issue 97 says that the listeners
   bind before the session; that is true of the session of the proxy, not of the registration.
-- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:139`) is the one place that gives the class to a
+- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:162`) is the one place that gives the class to a
   refused bind. It adds no words. `src/cli/cmd/local.rs:65` writes its own line (`serve --local`).
 - Read: `src/cli/cmd/agent.rs:104` calls `podnet::ports::reachable(*p, ...)`, which gives a bool: a refused connect and
   an EACCES give the same answer. The advice with the unix sockets is in `src/agent.rs:529` and is not used here.
@@ -14795,7 +14795,7 @@ in a PID namespace. Name temp files with `mkdir` or `O_EXCL` and a nonce."
 podnet names temp paths with `std::process::id()` alone. A pod, a container and a PID namespace give pid 1 or the same
 small pid to two processes that share `/tmp`. The second process then takes or removes the file of the first. Paths
 of the code (not of tests): `src/cli/cmd/warp/run.rs:47` (the socket of `warp run`), `src/warp/export.rs:343`,
-`src/cli/cmd/link/mod.rs:635`, `src/stat.rs:158`, `src/initcfg.rs:461`, `src/cli/cmd/serve_at.rs:57`,
+`src/cli/cmd/link/mod.rs:635`, `src/stat.rs:158`, `src/initcfg.rs:470`, `src/cli/cmd/serve_at.rs:57`,
 `src/router/guest/wire.rs:196`, `crates/podnet-netns/src/netns/mod.rs:348` and `crates/podnet-netns/src/raw.rs` (the
 resolv.conf of a pod), `crates/podnet-vnet/src/doctor.rs:504`, `:618` and `:635`,
 `crates/podnet-vnet/src/tailscale_ssh.rs:210`, `crates/podnet-core/src/state.rs:257` and `:451`.
@@ -16513,3 +16513,471 @@ stdin. The test passes twice in a row (1.45 s); `--test signals`, `pod_signals`,
 
 2026-11-26, the commit of this entry. The test `link_p2p_carries_the_answer_of_the_peer_to_the_end` passes; with the old
 `select!` it fails (no answer in 20 s).
+
+# T-593: connect: the timeout line says "timed out after 0s" after a wait of 20 s
+
+**Source:** GitHub #761 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+A dial to an address that does not answer (192.0.2.1) ends after 20 s with `the connection to 192.0.2.1:443 timed out after 0s` in `connect`, `relay connect` and `send`. The line names a time limit that is not the real wait.
+
+## Premise
+
+- Read: `pod_ws::way::dial_error` (podcrates `v0.85.0`) makes a `DialError::Timeout` with `after: Duration::ZERO` for a failure that has no `DialError` as its cause; `egress::dial_failure` kept the `DialError` only at the hop of a proxy.
+
+## Approach
+
+1. `egress::dial_failure` keeps a `DialError::Timeout` as the cause at each hop, so `pod-ws` takes it as it is, with its limit.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet egress::
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_refusal_of_the_far_side_is_the_target_and_a_timeout_keeps_its_limit` (a timeout of 29 s stays the cause of the failure, with 29 s) passes; on the old code the cause was no `DialError`.
+
+# T-594: connect: a target that fails behind a working proxy is reported as a proxy failure
+
+**Source:** GitHub #762 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+A proxy that answers CONNECT with HTTP 502 (or a SOCKS5 reply of the far side: 4, 5) for a target that does not resolve or does not answer gives `could not reach the proxy` and `the proxy hop failed; check the proxy URL ...; --no-proxy goes around it`. The proxy answered; the target failed.
+
+## Premise
+
+- Read: `egress::failed` put each `DialError::ProxyRefused` at the hop `proxy`. `pod-proxy` gives a SOCKS5 refusal of the far side the status 502.
+
+## Approach
+
+1. A refusal with the status 502 or 504 is at the hop `connect` (the target); 403 and 407 stay at the hop `proxy`.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet egress::
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_refusal_of_the_far_side_is_the_target_and_a_timeout_keeps_its_limit` (502 and 504 give the hop `connect`, 403 and 407 the hop `proxy`) passes. By hand: `connect --proxy` to a stand-in that answers 502 prints `the connect hop failed` and exits 69.
+
+# T-595: connect: a name that does not resolve exits 69, not 68 (no-host)
+
+**Source:** GitHub #763 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`connect`, `relay connect`, `send` and `tunnel --transport relay` with a name under `.invalid` print `the dns hop failed` and exit 69. `podnet man exit-status` says that 68 (no-host) is for an address of a peer that does not resolve.
+
+## Premise
+
+- Read: `exit::code_of` takes the first `Faulted` of the chain (the `Unavailable` of the command); the hop is known (`hop::of`). `Faulted::source` skips its inner error, so the hop is read from the inner error.
+
+## Approach
+
+1. `exit::code_of`: a code 69 whose hop is `dns` is 68. A proxy host that does not resolve stays 69 (the hop `proxy`).
+2. `tests/error_words.rs` and `scripts/lab-errors.sh` (the rows `connect-no-name` and `relay-no-name`) take 68.
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib exit::
+cargo test --test error_words
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `an_unavailable_service_whose_name_does_not_resolve_is_no_host` (dns 68; proxy, connect 69; a usage fault stays 64) passes; `connect --no-proxy wss://x.invalid/...` exits 68. A breaking change of the notes.
+
+# T-596: net proxy: --switch tcp://NAME:PORT is refused as a "bad TCP listen address"
+
+**Source:** GitHub #764 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`net proxy --switch tcp://localhost:9000` exits 64 with `bad TCP listen address`; the example of `docs/networks.md` (`--switch tcp://switch-host:7000`) cannot run. `--switch` dials; it does not listen.
+
+## Premise
+
+- Read: `src/cli/cmd/net/proxy.rs` parsed `--switch` with `ProxyListen::parse`, which takes an IP only.
+
+## Approach
+
+1. `switch_of` takes `tcp://HOST:PORT` with a name, resolves it with the resolver of podnet (a name that does not resolve exits 68), and keeps `unix:` and an IP as before.
+
+## Prove
+
+```sh
+cargo test --bin podnet switch_tests
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_switch_takes_a_name_an_ip_or_a_path` passes (a name, an IP, a path; three bad forms exit 64).
+
+# T-597: wait: the help says exit 69 at --timeout, the command exits 124
+
+**Source:** GitHub #765 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`podnet wait --help` says `--timeout ... (else exit 69)`; the command exits 124, as `docs/background.md` and `podnet man exit-status` say.
+
+## Premise
+
+- Read: `src/cli/mod.rs`, the help of `--timeout` of `wait`.
+
+## Approach
+
+1. The help says `else exit 124, as timeout(1) exits`.
+
+## Prove
+
+```sh
+cargo test --bin podnet the_llms_files_equal_the_model
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The help and `llms-full.txt` say 124; the test `the_llms_files_equal_the_model` passes.
+
+# T-598: doctor: on bind-denied the TCP carrier rows give "Address family not supported", not the refused bind
+
+**Source:** GitHub #766 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** blocked
+
+## Problem
+
+In the lab `bind-denied` with no IPv6, each TCP carrier row of `doctor` and `components` says `TCP sockets on the loopback: Address family not supported by protocol (os error 97)`. The cause is the refused bind of 127.0.0.1 (EACCES).
+
+## Premise
+
+- Read: `pin::available` and `mail::tcp_available` of `pod-link` (podcrates `v0.85.0`) give the error of the IPv6 try when the IPv4 bind fails.
+
+## Approach
+
+1. The fix is in `pod-link`: COORD-131 (PodUtils/podnet#776). podnet takes it with the next tag (T-137).
+
+## Prove
+
+```sh
+podnet doctor   # in the lab bind-denied: the row names the refused bind
+```
+
+## Blocker
+
+COORD-131 (PodUtils/podnet#776): a tag of podcrates with the fix of `pod-link`.
+
+# T-599: link dial: a bad --peer value exits 78 and names "line 1"
+
+**Source:** GitHub #767 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`link dial --peer AAAA` and a fingerprint with a bad checksum exit 78 with `--peer: line 1: ...`. A bad value of a flag is a usage error (64), and a flag has no line.
+
+## Premise
+
+- Read: `link dial` and `relay` parsed `--peer` with `AllowList::parse` of the joined values, the parser of a file.
+
+## Approach
+
+1. `AllowList::of_peers` parses each value alone; a bad value exits 64 with `--peer VALUE: WHY`. A file keeps its line and 78.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet identity::
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_bad_peer_flag_is_a_usage_error_with_no_line` passes; `link dial --peer AAAA` exits 64.
+
+# T-600: net proxy: --switch to an address that does not answer waits 135 s, past --run-for, with no line
+
+**Source:** GitHub #768 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`net proxy --switch tcp://192.0.2.1:9000 --run-for 10` waits 135 s (the limit of the kernel) with no line, then exits 69.
+
+## Premise
+
+- Read: `switch::attach` of `podnet-vnet` called `TcpStream::connect` with no time limit.
+
+## Approach
+
+1. The connect to a TCP switch has a limit of 20 s (`SWITCH_CONNECT`), as the other dials; the line names the switch and the limit. `attach_within` takes the limit, for a test. The attach moves to `switch/attach.rs` (the size limit).
+
+## Prove
+
+```sh
+cargo test -p podnet-vnet --lib a_tcp_switch_that_does_not_answer_ends_at_the_limit
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_tcp_switch_that_does_not_answer_ends_at_the_limit` (a listener with a full queue, a limit of 0.8 s: one line in 1.7 s) passes.
+
+# T-601: tunnel: the warning "DNS discovery of the edge failed" comes two times at one start
+
+**Source:** GitHub #769 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+One start of a quick tunnel logs the same warning of about 1400 characters two times, 10 ms apart.
+
+## Premise
+
+- Read: `pod-cloudflare` runs the edge discovery for the plan (`tunnel/plan.rs`) and for the WARP targets (`tunnel/warp_targets.rs`); each run warns.
+
+## Approach
+
+1. `decisions::report` says an equal warning (one kind, one text) once in 60 s. Each other warning is said as before.
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib decisions
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `an_equal_warning_is_said_once_in_its_quiet_time` passes.
+
+# T-602: pod --serve: SIGINT or SIGTERM kills it with no clean stop, and the socket file stays
+
+**Source:** GitHub #770 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`pod --serve unix:PATH` ends by SIGINT or SIGTERM with the status of the signal (130, 143), no stop line, and its socket file stays. `docs/cli.md` says that a server command stops cleanly with exit 0.
+
+## Premise
+
+- Read: `podnet-netns` `serve_front_door` had no handler of a stop signal.
+
+## Approach
+
+1. `serve_front_door` waits for SIGINT, SIGTERM and SIGHUP beside the door: one line `SIGNAL: stopping`, the unix socket removed, exit 0.
+
+## Prove
+
+```sh
+cargo test --test pod_signals a_stop_signal_ends_pod_serve_cleanly_and_removes_its_socket
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_stop_signal_ends_pod_serve_cleanly_and_removes_its_socket` (SIGINT, SIGTERM and SIGHUP: exit 0, the line, no socket) passes.
+
+# T-603: offline: the help says "a four-word pairing code", the code has eight words
+
+**Source:** GitHub #771 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The help of `podnet offline` says a four-word single-use pairing code; `pair offer` prints eight words, as `docs/offline.md` says.
+
+## Premise
+
+- Read: `src/cli/mod.rs`, the help of `offline`.
+
+## Approach
+
+1. The help says an eight-word code.
+
+## Prove
+
+```sh
+cargo test --bin podnet the_llms_files_equal_the_model
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The help and `llms-full.txt` say eight words; the test `the_llms_files_equal_the_model` passes.
+
+# T-604: offline pair accept: it waits for the code on stdin with no prompt, and the help does not say so
+
+**Source:** GitHub #772 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`pair accept --offer offer.txt --used ./used` (the example of the summary of `docs/offline.md`) waits for stdin with no prompt; its help does not say that the code comes from stdin.
+
+## Premise
+
+- Read: `src/cli/cmd/offline/pair.rs` read stdin to its end.
+
+## Approach
+
+1. On a terminal, the command asks `the eight words of the code:` and reads one line; else it reads stdin to its end.
+2. The help says that the code comes from stdin. The summary of `docs/offline.md` writes the words to `code.txt` and reads them from it.
+
+## Prove
+
+```sh
+cargo test --bin podnet the_llms_files_equal_the_model
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The help and `llms-full.txt` name stdin; the test `the_llms_files_equal_the_model` passes; the lane case `local-files` (`pair accept` with the code from a file) passes.
+
+# T-605: expose --via switch: the example of docs/forward.md exits 64 "--switch needs --address"
+
+**Source:** GitHub #773 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`expose unix:/run/app.sock --via switch --as 10.66.0.2:8080 -- --switch unix:...` (the example of `docs/forward.md`) exits 64: `--switch needs --address`.
+
+## Premise
+
+- Read: `src/cli/cmd/expose.rs` made `net proxy --forward VIRT=REAL` and gave the stack no address.
+
+## Approach
+
+1. With a `--switch` after `--` and no `--address`, `expose` gives `--address` the IP of `--as`. `docs/forward.md` says so.
+
+## Prove
+
+```sh
+cargo test --bin podnet expose
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `expose_via_a_switch_gives_the_stack_the_address_of_as` passes.
+
+# T-606: forward: a refused bind of port 18000 tells the user to "give a port above 1023"
+
+**Source:** GitHub #774 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+In the lab `bind-denied`, `forward -L 18000=...` and the other TCP listeners say `this host refuses the bind (a port below 1024 needs privilege, ...); give a port above 1023, or a unix socket`. The port is above 1023.
+
+## Premise
+
+- Read: `net::bind_step` of `podnet-core` gave one text for each refused TCP bind.
+
+## Approach
+
+1. `bind_fault_of` reads the port of the address that the line names: above 1023, the host refuses the TCP listener (a unix socket); below 1024, a port above 1023; no port, the text as before.
+
+## Prove
+
+```sh
+cargo test -p podnet-core --lib net::
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_refused_tcp_bind_names_the_step_of_its_port` passes.
+
+# T-607: init check: a missing file is reported as "the configuration is not schema 1"
+
+**Source:** GitHub #775 (`[qa 0.4.0-beta.20]`, black-box QA pass of 2026-11-26).
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`init check /nonexistent.yml` says `the configuration is not schema 1: /nonexistent.yml: No such file or directory` and exits 78.
+
+## Premise
+
+- Read: `NodeConfig::load` of `src/initcfg.rs` gave a read error as `InitError::Schema`.
+
+## Approach
+
+1. `InitError::Read`: the path and the error; a missing file exits 66 (no-input), another read error 78.
+
+## Prove
+
+```sh
+cargo test --lib -p podnet initcfg
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_missing_file_is_no_input_and_names_its_path` passes; `init check /nonexistent.yml` exits 66.

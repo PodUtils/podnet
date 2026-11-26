@@ -99,7 +99,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet link rotate`: Move a link instance that dialed to a new link, with no stream lost: dial a new link first, send the streams that open from now on to it, and end the old link when its streams end. A listener exits 69
 - `podnet link p2p`: Carry a TCP stream to a peer: the direct path first, and a TURN relay (turn://HOST[:PORT], with PODNET_TURN_USER and PODNET_TURN_PASSWORD_FILE) when the direct path is refused or times out. It prints the path that carried the flow and the allocation lifetime
 - `podnet link carriers`: List the carriers of this build, with the flags of each and whether this host can use it. A carrier that this host cannot use gives its reason
-- `podnet offline`: A session with no network: a store-and-forward spool on a directory, a signed mDNS announcement, and an offline bundle with a delta. One capture format with a merge, a four-word single-use pairing code, and a replication log. The carriers of a session without a network are those of `podnet link`: serial:PATH[,BAUD] and hf:PATH[,BPS]
+- `podnet offline`: A session with no network: a store-and-forward spool on a directory, a signed mDNS announcement, and an offline bundle with a delta. One capture format with a merge, an eight-word single-use pairing code, and a replication log. The carriers of a session without a network are those of `podnet link`: serial:PATH[,BAUD] and hf:PATH[,BPS]
 - `podnet offline spool`: A store-and-forward spool: a directory of files, each with a checksum, a sequence and the sender's key
 - `podnet offline spool add`: Write one entry: a body, a sequence and the sender of this install
 - `podnet offline spool list`: List each entry that verifies, in the order of its sequence
@@ -116,7 +116,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet offline capture merge`: Merge capture files into one, ordered by the timestamp, then by the place of the file in the list, then by the line. The output is redacted again with each secret
 - `podnet offline pair`: An eight-word single-use code, bound to the Ed25519 key of this install, exchanged through a file or a spool
 - `podnet offline pair offer`: Make a code, sign the offer of it, and print the eight words
-- `podnet offline pair accept`: Take an offer with a code, use the code once, and write the record that binds the peer key to this key
+- `podnet offline pair accept`: Take an offer with a code, use the code once, and write the record that binds the peer key to this key. The eight words of the code come from stdin; on a terminal the command asks for them (one line)
 - `podnet offline replica`: An append-only replication log: last-writer-wins for each key with a vector clock and a stated tie rule
 - `podnet offline replica merge`: Merge replication logs into one, and print the state of each key and each conflict that the rule resolved
 - `podnet cover`: A TLS listener that answers as a static site until a client proves that it holds the switch key. An authenticated client gets the tunnel; every other byte goes to the site with the same certificate and no close. The cover script and its record sizes are data; with --mux one connection carries the page load and the session

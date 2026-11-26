@@ -127,7 +127,9 @@ dial of `pod-warp`.
   roads carry TCP. A URL exits 64, and the message names the `HOST:PORT` to give (`http://127.0.0.1:8081/` gives
   `127.0.0.1:8081`).
 * `--as VIRT` (with `--via switch`) gives the virtual address of the service, as `VIRT` in
-  `podnet net proxy --forward VIRT=REAL`, for example `10.66.0.2:8080`.
+  `podnet net proxy --forward VIRT=REAL`, for example `10.66.0.2:8080`. With a `--switch` after `--`, the IP of
+  `VIRT` is also the address of the stack on the switch (`--address`), unless an `--address` after `--` gives
+  another one.
 * The arguments after `--` go to the command that runs: for example `--detach`, a pair name or a
   `--switch`.
 

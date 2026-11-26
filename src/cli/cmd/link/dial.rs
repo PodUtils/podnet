@@ -110,7 +110,7 @@ pub(super) fn trusted(allow: &Option<PathBuf>, peer: &[String]) -> Result<AllowL
                 "give --peer FINGERPRINT or --allow FILE: the dialer trusts no listener by default"
             ),
         )),
-        None => AllowList::parse(&peer.join("\n")).map_err(|e| e.context("--peer")),
+        None => AllowList::of_peers(peer),
     }
 }
 

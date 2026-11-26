@@ -185,6 +185,22 @@ impl<T, E: Into<anyhow::Error>> ResultExt<T> for Result<T, E> {
 /// registration that a new start can fix
 /// ([`crate::hop::EdgeRefusal::transient`]) is [`TEMPFAIL`].
 pub fn code_of(err: &anyhow::Error) -> i32 {
+    let code = class_code(err);
+    // #763: a service that is not there because its name does not resolve
+    // is `no-host` (68), as `podnet man exit-status` says.
+    // The source of a `Faulted` skips its inner error: read the hop there.
+    let hop = match err.chain().find_map(|e| e.downcast_ref::<Faulted>()) {
+        Some(f) => crate::hop::of(&f.inner),
+        None => crate::hop::of(err),
+    };
+    if code == UNAVAILABLE && hop == Some(crate::hop::Hop::Dns) {
+        return NO_HOST;
+    }
+    code
+}
+
+/// The code of the fault or the class of the chain of `err`.
+fn class_code(err: &anyhow::Error) -> i32 {
     err.chain()
         .find_map(|e| {
             if let Some(f) = e.downcast_ref::<Faulted>() {
@@ -419,6 +435,22 @@ mod tests {
     /// Each class of `pod-core` exits a code of podnet's contract or
     /// [`FAILURE`]; a class whose code podnet gives keeps it (T-583:
     /// `Class::Data` of podcrates `v0.84.0` is 65).
+    #[test]
+    fn an_unavailable_service_whose_name_does_not_resolve_is_no_host() {
+        use crate::hop::{at, Hop};
+        // (the hop of the cause, the fault of the command, the code)
+        let cases = [
+            (Hop::Dns, Fault::Unavailable, NO_HOST),
+            (Hop::Proxy, Fault::Unavailable, UNAVAILABLE),
+            (Hop::Connect, Fault::Unavailable, UNAVAILABLE),
+            (Hop::Dns, Fault::Usage, USAGE),
+        ];
+        for (hop, outer, want) in cases {
+            let err = fault(outer, at(hop, anyhow::anyhow!("x.invalid:443: no answer")));
+            assert_eq!(code_of(&err), want, "{hop:?} {outer:?}");
+        }
+    }
+
     #[test]
     fn each_class_of_a_crate_has_a_code_of_podnet() {
         let ours = [

@@ -15,7 +15,11 @@ fn run(sub: &str, address: &str) -> Output {
         .env_remove("PODNET_ERROR_PROGRAM");
     match sub {
         "listen" => cmd.args(["--allow", "/nonexistent-allow"]),
-        _ => cmd.args(["--peer", "SHA256:AAAA"]),
+        // A valid key (RFC 8032, test 1): a bad --peer is a usage error too.
+        _ => cmd.args([
+            "--peer",
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+        ]),
     };
     cmd.output().unwrap()
 }

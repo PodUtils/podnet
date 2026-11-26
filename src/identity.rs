@@ -375,6 +375,22 @@ impl AllowList {
         Ok(AllowList { entries })
     }
 
+    /// The list of the flags `--peer`: one peer in each value. A value that
+    /// is no peer is a usage error (exit 64) that names the value; it has no
+    /// line, as a file has (#767).
+    pub fn of_peers(peers: &[String]) -> anyhow::Result<AllowList> {
+        let mut entries = Vec::new();
+        for peer in peers {
+            let one = AllowList::parse(peer).map_err(|e| {
+                let text = exit::text(&e);
+                let why = text.strip_prefix("line 1: ").unwrap_or(&text);
+                exit::fault(Fault::Usage, anyhow!("--peer {peer}: {why}"))
+            })?;
+            entries.extend(one.entries);
+        }
+        Ok(AllowList { entries })
+    }
+
     /// The list in the file at `path`: a file of this user that others can
     /// read and cannot change. A missing file exits 66, and a file that
     /// others can change exits 71.
@@ -445,4 +461,27 @@ impl AllowList {
 
 fn bad_line(n: usize, why: &str) -> anyhow::Error {
     exit::fault(Fault::Config, anyhow!("line {n}: {why}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// #767: a value of `--peer` that is no peer is a usage error (exit
+    /// 64) that names the value and no line; a file keeps its line and 78.
+    #[test]
+    fn a_bad_peer_flag_is_a_usage_error_with_no_line() {
+        let bad = ["AAAA", "AAAAAAAA-AAAAAAAA-AAAAAAAA-AAAAAAAA-AAAAAAAA"];
+        for value in bad {
+            let e = AllowList::of_peers(&[value.to_string()]).unwrap_err();
+            let text = exit::text(&e);
+            assert_eq!(exit::code_of(&e), exit::USAGE, "{text}");
+            assert!(text.starts_with(&format!("--peer {value}: ")), "{text}");
+            assert!(!text.contains("line 1"), "{text}");
+            let file = AllowList::parse(value).unwrap_err();
+            assert_eq!(exit::code_of(&file), exit::CONFIG);
+            assert!(exit::text(&file).starts_with("line 1: "));
+        }
+        assert!(AllowList::of_peers(&[]).unwrap().entries.is_empty());
+    }
 }

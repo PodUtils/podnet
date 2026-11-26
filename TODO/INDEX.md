@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**591 entries: 8 open, 9 partial, 30 blocked, 544 done.**
+**606 entries: 8 open, 9 partial, 31 blocked, 558 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 91 | 96 |
-| P2 | 0 | 3 | 15 | 287 | 305 |
-| P3 | 7 | 4 | 13 | 165 | 189 |
-| **All** | 8 | 9 | 30 | 544 | 591 |
+| P2 | 0 | 3 | 15 | 296 | 314 |
+| P3 | 7 | 4 | 14 | 170 | 195 |
+| **All** | 8 | 9 | 31 | 558 | 606 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -637,3 +637,18 @@ M8 Overlays, M9 Later.
 | [T-590](fixes.md) | P2 | S | M5 | defect | done | The crash log and the harness name podcrates 0.79.0, and podnet takes v0.85.0 |
 | [T-591](fixes.md) | P2 | S | M5 | defect | done | podnet cover with no --name answers each request with the 404 page, also / |
 | [T-592](fixes.md) | P2 | S | M5 | defect | done | link p2p drops the answer of the peer when stdin ends first |
+| [T-593](fixes.md) | P2 | S | M5 | defect | done | connect: the timeout line says "timed out after 0s" after a wait of 20 s |
+| [T-594](fixes.md) | P2 | S | M5 | defect | done | connect: a target that fails behind a working proxy is reported as a proxy failure |
+| [T-595](fixes.md) | P2 | S | M5 | defect | done | connect: a name that does not resolve exits 69, not 68 (no-host) |
+| [T-596](fixes.md) | P2 | S | M5 | defect | done | net proxy: --switch tcp://NAME:PORT is refused as a "bad TCP listen address" |
+| [T-597](fixes.md) | P3 | S | M5 | defect | done | wait: the help says exit 69 at --timeout, the command exits 124 |
+| [T-598](fixes.md) | P3 | S | M5 | defect | blocked | doctor: on bind-denied the TCP carrier rows give "Address family not supported", not the refused bind |
+| [T-599](fixes.md) | P2 | S | M5 | defect | done | link dial: a bad --peer value exits 78 and names "line 1" |
+| [T-600](fixes.md) | P2 | S | M5 | defect | done | net proxy: --switch to an address that does not answer waits 135 s, past --run-for, with no line |
+| [T-601](fixes.md) | P3 | S | M5 | defect | done | tunnel: the warning "DNS discovery of the edge failed" comes two times at one start |
+| [T-602](fixes.md) | P2 | S | M5 | defect | done | pod --serve: SIGINT or SIGTERM kills it with no clean stop, and the socket file stays |
+| [T-603](fixes.md) | P3 | S | M5 | defect | done | offline: the help says "a four-word pairing code", the code has eight words |
+| [T-604](fixes.md) | P3 | S | M5 | defect | done | offline pair accept: it waits for the code on stdin with no prompt, and the help does not say so |
+| [T-605](fixes.md) | P2 | S | M5 | defect | done | expose --via switch: the example of docs/forward.md exits 64 "--switch needs --address" |
+| [T-606](fixes.md) | P2 | S | M5 | defect | done | forward: a refused bind of port 18000 tells the user to "give a port above 1023" |
+| [T-607](fixes.md) | P3 | S | M5 | defect | done | init check: a missing file is reported as "the configuration is not schema 1" |

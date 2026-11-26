@@ -140,3 +140,52 @@ fn a_stop_signal_ends_the_program_and_each_process_of_the_pod() {
     }
     assert!(faults.is_empty(), "{}", faults.join("\n"));
 }
+
+/// #770: `pod --serve` is a server command: a stop signal ends it with one
+/// line and exit 0, and its unix socket goes (`docs/cli.md`, Stop signals).
+/// It runs no program, so it needs no backend.
+#[test]
+fn a_stop_signal_ends_pod_serve_cleanly_and_removes_its_socket() {
+    let dir = tempfile::tempdir().unwrap();
+    for (signal, name) in [
+        (libc::SIGINT, "SIGINT"),
+        (libc::SIGTERM, "SIGTERM"),
+        (libc::SIGHUP, "SIGHUP"),
+    ] {
+        let sock = dir.path().join(format!("{name}.sock"));
+        let mut child = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args([
+                "pod",
+                "--serve",
+                &format!("unix:{}", sock.display()),
+                "-x",
+                "direct",
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(20);
+        while !sock.exists() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert!(sock.exists(), "{name}: no socket");
+        unsafe { libc::kill(child.id() as i32, signal) };
+        let started = Instant::now();
+        let out = loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                break status;
+            }
+            if started.elapsed() > Duration::from_secs(10) {
+                let _ = child.kill();
+                panic!("{name}: pod --serve did not end in 10 s");
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        };
+        let mut err = String::new();
+        std::io::Read::read_to_string(&mut child.stderr.take().unwrap(), &mut err).unwrap();
+        assert_eq!(out.code(), Some(0), "{name}: {err}");
+        assert!(err.contains(&format!("{name}: stopping")), "{name}: {err}");
+        assert!(!sock.exists(), "{name}: the socket stays");
+    }
+}

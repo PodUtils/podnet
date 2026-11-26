@@ -91,7 +91,7 @@ SYNOPSIS
   Work with no network:
     offline  A session with no network: a store-and-forward spool on a
              directory, a signed mDNS announcement, and an offline bundle with
-             a delta. One capture format with a merge, a four-word single-use
+             a delta. One capture format with a merge, an eight-word single-use
              pairing code, and a replication log. The carriers of a session
              without a network are those of `podnet link`: serial:PATH[,BAUD]
              and hf:PATH[,BPS]
@@ -10010,8 +10010,8 @@ podnet link carriers
 podnet offline
   A session with no network: a store-and-forward spool on a directory, a signed
   mDNS announcement, and an offline bundle with a delta. One capture format
-  with a merge, a four-word single-use pairing code, and a replication log. The
-  carriers of a session without a network are those of `podnet link`:
+  with a merge, an eight-word single-use pairing code, and a replication log.
+  The carriers of a session without a network are those of `podnet link`:
   serial:PATH[,BAUD] and hf:PATH[,BPS].
 
   Usage: podnet offline COMMAND [OPTIONS]
@@ -10947,7 +10947,8 @@ podnet offline pair
   Commands:
     offer   Make a code, sign the offer of it, and print the eight words
     accept  Take an offer with a code, use the code once, and write the record
-            that binds the peer key to this key
+            that binds the peer key to this key. The eight words of the code
+            come from stdin; on a terminal the command asks for them (one line)
 
   Options:
     --ca-file PATH
@@ -11062,7 +11063,8 @@ podnet offline pair offer
 
 podnet offline pair accept
   Take an offer with a code, use the code once, and write the record that binds
-  the peer key to this key.
+  the peer key to this key. The eight words of the code come from stdin; on a
+  terminal the command asks for them (one line).
 
   Usage: podnet offline pair accept [OPTIONS]
 
@@ -13277,7 +13279,7 @@ podnet wait
 
   Options:
     --timeout TIMEOUT
-        Seconds to wait (else exit 69). Default: 60.
+        Seconds to wait (else exit 124, as timeout(1) exits). Default: 60.
     --ca-file PATH
         A file of TLS roots (PEM). podnet uses only these roots for each
         connection that it opens as a client. Without it, podnet reads
@@ -17249,7 +17251,9 @@ dial of `pod-warp`.
   roads carry TCP. A URL exits 64, and the message names the `HOST:PORT` to give (`http://127.0.0.1:8081/` gives
   `127.0.0.1:8081`).
 * `--as VIRT` (with `--via switch`) gives the virtual address of the service, as `VIRT` in
-  `podnet net proxy --forward VIRT=REAL`, for example `10.66.0.2:8080`.
+  `podnet net proxy --forward VIRT=REAL`, for example `10.66.0.2:8080`. With a `--switch` after `--`, the IP of
+  `VIRT` is also the address of the stack on the switch (`--address`), unless an `--address` after `--` gives
+  another one.
 * The arguments after `--` go to the command that runs: for example `--detach`, a pair name or a
   `--switch`.
 

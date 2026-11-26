@@ -179,8 +179,8 @@ fn the_dial_of_the_cli_with_no_key_in_the_address_exits_64() {
     )
     .output()
     .unwrap();
-    // `--peer x` is no key: the allow list is read first and exits 78.
-    assert_eq!(out.status.code(), Some(78), "{out:?}");
+    // `--peer x` is no key: a bad value of the flag exits 64 (#767).
+    assert_eq!(out.status.code(), Some(64), "{out:?}");
     let me = install(dir.path(), "cli-me");
     let file = dir.path().join("allow");
     std::fs::write(&file, format!("{}\n", me.fingerprint())).unwrap();

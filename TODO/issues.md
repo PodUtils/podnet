@@ -445,5 +445,21 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #760 | COORD-130: a shared headscale harness (headscale, its DERP, tailscaled peers) for CI, from podssh's ts-headscale (to podcrates) | open (a COORD issue between sessions; the ask of T-114) | none |
 | #745 | [qa 0.4.0-beta.19] --egress, forward --network: an unknown spec is read as a proxy host:port, and the error does not give the known specs | closed: T-570 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-570 |
 | #746 | [qa 0.4.0-beta.19] forward: a UDP forward and the DNS door over "direct" carry no datagram ("direct carries no UDP") | closed: T-571 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-571 |
+| #761 | [qa 0.4.0-beta.20] connect: the timeout line says "timed out after 0s" after a wait of 20 s | closed: T-593 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-593 |
+| #762 | [qa 0.4.0-beta.20] connect: a target that fails behind a working proxy is reported as a proxy failure | closed: T-594 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-594 |
+| #763 | [qa 0.4.0-beta.20] connect: a name that does not resolve exits 69, not 68 (no-host) | closed: T-595 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-595 |
+| #764 | [qa 0.4.0-beta.20] net proxy: --switch tcp://NAME:PORT is refused as a "bad TCP listen address" | closed: T-596 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-596 |
+| #765 | [qa 0.4.0-beta.20] wait: the help says exit 69 at --timeout, the command exits 124 | closed: T-597 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-597 |
+| #766 | [qa 0.4.0-beta.20] doctor: on bind-denied the TCP carrier rows give "Address family not supported", not the refused bind | open: T-598 blocked on COORD-131 (#776) | T-598 |
+| #767 | [qa 0.4.0-beta.20] link dial: a bad --peer value exits 78 and names "line 1" | closed: T-599 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-599 |
+| #768 | [qa 0.4.0-beta.20] net proxy: --switch to an address that does not answer waits 135 s, past --run-for, with no line | closed: T-600 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-600 |
+| #769 | [qa 0.4.0-beta.20] tunnel: the warning "DNS discovery of the edge failed" comes two times at one start | closed: T-601 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-601 |
+| #770 | [qa 0.4.0-beta.20] pod --serve: SIGINT or SIGTERM kills it with no clean stop, and the socket file stays | closed: T-602 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-602 |
+| #771 | [qa 0.4.0-beta.20] offline: the help says "a four-word pairing code", the code has eight words | closed: T-603 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-603 |
+| #772 | [qa 0.4.0-beta.20] offline pair accept: it waits for the code on stdin with no prompt, and the help does not say so | closed: T-604 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-604 |
+| #773 | [qa 0.4.0-beta.20] expose --via switch: the example of docs/forward.md exits 64 "--switch needs --address" | closed: T-605 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-605 |
+| #774 | [qa 0.4.0-beta.20] forward: a refused bind of port 18000 tells the user to "give a port above 1023" | closed: T-606 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-606 |
+| #775 | [qa 0.4.0-beta.20] init check: a missing file is reported as "the configuration is not schema 1" | closed: T-607 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-607 |
+| #776 | COORD-131: pod-link: the TCP probe of the carriers names the IPv6 try, not the refused IPv4 bind (to podcrates) | open (a COORD issue between sessions; the ask of T-598) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

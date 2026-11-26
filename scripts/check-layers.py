@@ -85,6 +85,9 @@ LAYER = {
     "serve_tests": "podnet",
     # The tests of the wg-quick reader with the WARP adapter (src/wg_quick_tests.rs).
     "wg_quick_tests": "podnet",
+    # The tests of the egress of the core that read a higher layer
+    # (src/egress_tests.rs).
+    "egress_tests": "podnet",
 }
 
 # The crates of the workspace (crates/NAME) and the layer of each. The
