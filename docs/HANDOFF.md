@@ -1,6 +1,6 @@
 # Handoff
 
-The product work state at 2026-11-26 02:00 (UTC). Start a hosted checkout with
+The product work state at 2026-11-26 03:30 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
@@ -12,6 +12,10 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 ## Where the code is
 
 * All finished work is on `main`. Use the pinned Rust toolchain from [Hosted sessions](hosted-sessions.md).
+* Done on 2026-11-26 (later): T-589 (proven by `live` 45738194994), T-398 (each command of a release binary but `net
+  tailscale` has a scenario: the lane cases `local-files`, `local-udp` and `local-tcp`), T-590 (the podcrates version of
+  the crash log and the harness), T-591 (`cover` with no `--name`), T-592 (`link p2p` to the end of the answer; `main`
+  ends the runtime in 1 s), T-321 item 3 (a TURN account for each router network).
 * Done on 2026-11-26: T-428 (the feature `release`; #620 closed), T-053 and T-054, T-398 (the lane case `local-files`:
   15 commands get a scenario), T-163 (#360 closed), T-321's TCP half (docs). T-114 and T-244 blocked on COORD-130 (#760)
   and COORD-128 (#758).
@@ -27,20 +31,19 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 ## The next steps, in order
 
-1. **The proof of T-589 and T-587** (both in `scripts/live-step.sh`): the next `live` run that meets the quota of the
-   quick-tunnel service (HTTP 429) or WARP's door with a certificate of Let's Encrypt gives a warning and stays green.
-   The autostart step prints the journal of a unit that stopped (`live` 45733368792: exit 75 with no cause). If the
-   journal shows a cause that is not a quota, it is a defect of `autostart run` or of the tunnel: record it.
+1. **The next beta (`v0.4.0-beta.20`):** the black-box QA pass runs on the static release build of `4a51e702`
+   (`/var/tmp/qa20`, issues titled `[qa 0.4.0-beta.20]`). Triage each finding into an entry; fix each P1 and P2
+   finding; then the notes (`docs/releases/v0.4.0-beta.20.md`: the carriers of the feature `release`, #620; `cover`
+   with no `--name`; `link p2p` to the end of the answer), the version, `ci` and `live` green, `gate.yml`, the dry run,
+   and `publish`.
 2. **Each tag of podcrates:** COORD-123 to COORD-126 (#753 to #756), COORD-128 (#758) and COORD-130 (#760) wait for
    one. Take it first (T-137), then close each answered ask and unblock T-575, T-579, T-580, T-476, T-244, T-114.
-3. **The next beta (`v0.4.0-beta.20`):** the black-box QA pass first (`scripts/agent/qa-pass.md`); its notes list the
-   carriers of the feature `release` (T-428).
-4. The rest of the work order is open research or waits for a run or a ruling: T-281 (a proof of the DNS carrier needs
-   hooks of `pod-link`), T-321 (a doctor row of TURN: `route --check` makes no connection now), T-358 step 3, T-414 and
-   T-415 (a warning of their `live` steps), T-478 (the logs of its next failure), T-488 (runs that the quota limits),
-   T-123 to T-129 (a ruling of the owner before the work).
-5. **The daily run of `issue-sync`:** no run of the event `schedule` came on 2026-11-24 and 2026-11-25; podrunner's
-   come 11 to 12 h late. Check again.
+3. The rest of the work order is open research or waits for a run or a ruling: T-281 (a proof of the DNS carrier needs
+   hooks of `pod-link`), T-321 item 4 (a named TURN service: `pod-services` has no such fact), T-358 (the ICMP rows; the
+   consumers of podssh and podrunner), T-414 and T-415 (a warning of their `live` steps), T-478 (the logs of its next
+   failure), T-488 (runs that the quota limits), T-123 to T-129 (a ruling of the owner before the work).
+4. **The daily run of `issue-sync`:** GitHub has made no run of its event `schedule` (the other schedules of the
+   repository run 11 to 12 h late). A push runs it. Check again.
 
 ## Facts for the next session
 
