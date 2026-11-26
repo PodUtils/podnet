@@ -206,9 +206,14 @@ ssh -o ProxyCommand='podnet derp connect TICKET' USER@HOST
   77 for a key that an end refuses, 78 when the two ends share no suite.
 * `podnet send --derp` offers a node of the run at a DERP server as a way of the
   transit to a podnet receiver ([transfer.md](transfer.md), A DERP server).
+* `podnet doctor` has the row `derp`: the first server of the list that
+  answers derper's probe through the way out, and its round trip, or the
+  reason why none does. `podnet doctor --derp-server LIST` probes your own
+  servers ([doctor.md](doctor.md)).
 * The step "The DERP road through a derper on the runner" of
   `.github/workflows/live.yml` runs a node and a client through a `derper` of a
-  pinned version (v1.104.4) on the runner.
+  pinned version (v1.104.4) on the runner, then the row `derp` of the doctor
+  and a transfer of 8 MiB by `send --derp` through the same `derper`.
 
 ## Hosts and limits
 

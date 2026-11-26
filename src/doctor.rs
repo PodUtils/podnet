@@ -50,6 +50,8 @@ pub struct Options {
     /// The time limit of the whole run (`--quick`). A part that does not end
     /// in time gets the verdict `unknown`.
     pub deadline: Option<Duration>,
+    /// The DERP servers of the row `derp` (`--derp-server`); else the fleet.
+    pub derp: Option<Vec<crate::derp::Server>>,
 }
 
 /// The time limit of `--quick`, measured from the launch of the process.
@@ -80,6 +82,7 @@ impl Default for Options {
             relay: None,
             ssh_relay: None,
             deadline: None,
+            derp: None,
         }
     }
 }
@@ -226,6 +229,8 @@ pub struct Report {
     pub probes: Probes,
     /// The class of the NAT of this host (T-543, `pod-natprobe`).
     pub nat: Nat,
+    /// derper's probe of the DERP servers (T-128).
+    pub derp: Derp,
 }
 
 /// The clock of this host against the `Date` header of an answer.
@@ -333,6 +338,7 @@ impl Report {
             self.nat.verdict.name(),
             self.nat.detail
         ));
+        out.push_str(&self.derp.line());
         if let Some(names) = &self.names {
             out.push_str(&format!("names  {names}\n"));
         }
@@ -414,6 +420,7 @@ pub async fn run(options: Options) -> Report {
         }
     };
     let lane_probes = lane_probes::start(&targets, options.timeout);
+    let derp = derp_check::start(options.derp.as_deref(), options.timeout * 3, end);
     let paths = futures::future::join_all(targets.into_iter().map(|t| {
         let unfinished = unfinished(&t, options.deadline);
         let options = &options;
@@ -455,7 +462,11 @@ pub async fn run(options: Options) -> Report {
         },
         None => SshRelay::none(),
     };
+    let derp = derp
+        .await
+        .unwrap_or_else(|e| Derp::unknown(format!("the probe did not run: {e}")));
     Report {
+        derp,
         proxy,
         paths,
         udp: (udp_target, udp),
@@ -509,6 +520,8 @@ mod tls_check;
 use tls_check::tls;
 mod nat_check;
 pub use nat_check::Nat;
+mod derp_check;
+pub use derp_check::{Derp, MAIN_PROBES};
 mod proxy_row;
 use proxy_row::proxy_report;
 

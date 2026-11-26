@@ -779,6 +779,23 @@ offers its ticket in a hint of the kind `podnet-derp-v1`; a podnet receiver dial
 the runner" passes; a row of `podnet doctor` for the DERP fleet (`pod_derp::servers::probe_kept`); a `live` step of a
 transfer through a derper. COORD-138 (PodUtils/podnet#783) asks podcrates for neutral names of its derper tests.
 
+2026-11-26, the doctor row and the transfer step: `podnet doctor` has the row `derp` (`src/doctor/derp_check.rs`;
+text `derp   ok: tc301a.ipn.dev (Tailscale's tailcat fleet) answered /derp/probe in 397.8 ms; 4 of 4 servers
+answered`; the JSON key `derp`: `verdict`, `status`, `server`, `fleet`, `ms`, `answered`, `probed`, `detail`). It runs
+`pod_derp::servers::probe_kept` through the way out of podnet (`podnet::derp::probe_kept`) on tailcat's four servers
+at the same time, then on the first 8 of the main fleet when none answers, from the start of the run, in three times
+`--timeout` and in the end of `--quick`; `--derp-server LIST` probes the servers of the user (a bad list exits 64).
+`ok` names the first server of the list that answered; `fail` and `unknown` give the reason of the first server in one
+line. The row does not change `ok` or the exit code. The tests: `doctor::derp_check` (a probe of the test in place of
+derper's, each shape of answer, the time limit), `tests/doctor_derp.rs` (stand-in servers on the loopback with
+`--ca-file`: derper's answer, a closed port, HTTP 404), `doctor_json_keys_are_fixed`, `doctor_quick_dials_each_path_once`
+(each server of `derp.probed` gets one CONNECT) and `doctor_quick_ends_in_the_limit`. The `live` step "The DERP road
+through a derper on the runner" now also checks the row with `--derp-server localhost:8443`, and sends 8 MiB by
+`send --derp` and `receive` through the derper (the public mailbox; no direct hint, no transit relay, no piping
+server; `via` is `DERP localhost:8443`). The certificate of the derper goes into `podnet-ca.pem` beside a copy of the
+binary: that file adds to the roots, so the public mailbox keeps its trust; `--ca-file` and `SSL_CERT_FILE` replace
+all roots. The step "podnet doctor" asserts `derp.status == "ok"` for the fleet. Waits: a pass of these steps in `live`.
+
 # T-129: An ACME client for a public listener
 
 **Source:** `docs/research/podnet/podssh-copy.md`, section 3 (C18).
@@ -1236,7 +1253,7 @@ reconnects with a 1 s to 30 s backoff; this leg does not.
    channel), then reconnect with the capped backoff of `relay_reverse.rs`.
 2. Give the new URL to the caller (a channel or a callback) at each reconnect.
 3. Log one line that names the relay and the reason of the end.
-4. `doctor`: add one line to the row at `src/doctor.rs:755-761` about the fixed session age.
+4. `doctor`: add one line to the row at `src/doctor.rs:768-774` about the fixed session age.
 5. Do not hardcode 60 minutes.
 
 ## Decision

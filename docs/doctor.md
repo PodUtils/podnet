@@ -40,7 +40,19 @@ check gives `ok`, `fail` or `unknown`.
   answer comes in twice `--timeout`. The probe adds no host: it uses the
   targets that the doctor already has;
 * the clock: this host against the `Date` of the first API that answers
-  TLS. More than 300 s off is `fail` (certificates and tokens fail).
+  TLS. More than 300 s off is `fail` (certificates and tokens fail);
+* DERP (`derp`): derper's probe (`GET /derp/probe`) of the DERP servers of
+  `podnet derp node` and `podnet send --derp` ([relay.md](relay.md)), through
+  the way out of podnet (the proxy, `NO_PROXY`, `--resolve`, the TLS roots).
+  The servers are the list of `--derp-server`, else Tailscale's four servers
+  for tailcat; when none of the four answers, the first 8 servers of the main
+  fleet. Each server gets one probe, all at the same time, in three times
+  `--timeout` (and in the limit of `--quick`). `ok` names the first server of
+  the list that answered (the home that a node takes) and its round trip.
+  `fail`: each server gave another answer (a refusal, a TLS fault, an HTTP
+  status). `unknown`: a server did not answer in the time limit. The line
+  gives the reason of the first server. The row does not change the exit
+  code.
 
 Then a table of the legs `quic`, `http2`, `quic+warp` and `http2+relay`
 (TCP and TLS to the relay; the relay protocol is not tried), with the
@@ -108,6 +120,8 @@ checks.
   with the reason and the probe does not dial. A proxy that answers 407 is `fail` at the stage `connect`. The
   text row names the proxy (`proxy HOST:PORT`, or `proxy none`). The JSON row has `proxy` (`http://HOST:PORT`,
   with no credentials, or `null`).
+* `--derp-server HOST[:PORT][,HOST[:PORT]...]` (port 443 by default) gives the servers of the row `derp`, for
+  example a derper of your own. A bad list exits 64.
 * `--json`: one document.
 
 ## The JSON document
@@ -129,6 +143,7 @@ removed or renamed. A consumer ignores a key that it does not know. The tests pi
 | `legs` | `quic`, `http2`, `quic+warp` and `http2+relay`, each with `verdict`, `status` and `reason`. |
 | `paths` | One object for each TCP path: `id`, `target`, `via`, `verdict`, `detail`, `samples` (loss, best, median, p95, jitter), `tls` and `dns`. |
 | `clock`, `git`, `ssh_relay`, `proxy`, `udp` | The clock, the installed git, the SSH relay, the proxy of the run and the UDP 7844 probe. |
+| `derp` | derper's probe of the DERP servers: `verdict`, `status`, `server` (the first server that answered, or null), `fleet` (its fleet, or null for a server of your own), `ms` (its round trip, or null), `answered` (a count), `probed` (each `HOST:PORT` that got a probe) and `detail`. It does not change `ok`. |
 | `nat` | The NAT of this host: `verdict`, `connectivity`, `mapping` and `filtering` (words such as `behind-nat` and `endpoint-independent`, or null) and `detail`. It does not change `ok`. |
 | `h3` | The shape of an HTTP/3 server of this run (`shape`, `congestion`, `alpn_h3`, `control_stream`, `settings`, `setting_ids`) and the schedule `cid_rotation` (`min_s`, `max_s`, `jitter`, `sample_s`). `podnet warp h3` serves the selected shape; `doctor` and `warp status` report it and observe no session. The text has the rows `h3-shape`, `h3-control-stream` and `h3-cid-rotation`. |
 | `carriers` | One object for each carrier of `podnet link` ([link.md](link.md)): `carrier`, `verdict`, `status` and `detail` (the reason when the host cannot use the carrier). The row `icmp` says whether a raw ICMP socket opens here: `ok` names `--allow-raw icmp`; `fail` gives `a raw ICMP socket needs CAP_NET_RAW or uid 0`. A carrier row does not change `ok`. |

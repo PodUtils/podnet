@@ -313,6 +313,7 @@ fn doctor_json_keys_are_fixed() {
         [
             "carriers",
             "clock",
+            "derp",
             "git",
             "h3",
             "lanes",
@@ -360,6 +361,10 @@ fn doctor_json_keys_are_fixed() {
         ["credentials", "direct", "text", "url"]
     );
     assert_eq!(keys(&doc["udp"]), ["detail", "status", "target", "verdict"]);
+    assert_eq!(
+        keys(&doc["derp"]),
+        ["answered", "detail", "fleet", "ms", "probed", "server", "status", "verdict"]
+    );
     assert_eq!(
         keys(&doc["ssh_relay"]),
         [
@@ -451,7 +456,8 @@ fn doctor_quick_ends_in_the_limit() {
 /// counts every CONNECT it accepts. Each path makes one for its sample and
 /// one for the TLS check that the sample's `open` verdict asks for, so the
 /// count is exactly `1 + tls` per path, plus one for the WebSocket lane probe
-/// of the edge host. A retry, a second sample or a dial that no row of the
+/// of the edge host, and one for each DERP server in `derp.probed` (T-128).
+/// A retry, a second sample or a dial that no row of the
 /// document names would make a count that does not fit.
 #[test]
 fn doctor_quick_dials_each_path_once() {
@@ -483,6 +489,12 @@ fn doctor_quick_dials_each_path_once() {
         );
     }
     assert!(paths > 0, "{all}");
+    // T-128: the row derp probes each server that it names one time.
+    for authority in doc["derp"]["probed"].as_array().unwrap() {
+        let authority = authority.as_str().unwrap();
+        expected.insert(authority.to_string());
+        assert_eq!(count(authority), 1, "{authority}: {seen:?}\n{all}");
+    }
     let distinct: std::collections::BTreeSet<&String> = seen.iter().collect();
     assert_eq!(
         distinct.len(),

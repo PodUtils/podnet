@@ -180,6 +180,10 @@ podnet receive
   the transit and the records that the transit key seals. The DERP server
   sees no byte of the file. The line of the sender and of the receiver says
   `DERP HOST`.
+* A `derper` of your own with a certificate of your own CA: put the CA in
+  `podnet-ca.pem` beside the binary at both ends. That file adds to the other
+  roots, so the public mailbox stays trusted. `--ca-file` and `SSL_CERT_FILE`
+  replace all the other roots: the public mailbox then fails its TLS check.
 
 ## A piping server: a podnet extension
 

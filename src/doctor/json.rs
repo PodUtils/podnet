@@ -71,6 +71,7 @@ impl Report {
                 "detail": self.udp.1.detail(),
             },
             "nat": self.nat.json(),
+            "derp": self.derp.json(),
             "names": self.names,
             "next": self.next(),
             "legs": self.legs.iter().map(|l| json!({

@@ -80,19 +80,41 @@ pub fn tls_dial() -> Dial {
 /// A probe of one server in progress: whether it answered.
 pub type Probing = std::pin::Pin<Box<dyn Future<Output = Result<(), String>> + Send>>;
 
-/// derper's probe of each server through the way out of podnet: whether it
-/// answered within `pod_derp::servers::PROBE_LIMIT`.
-pub fn probe() -> impl Fn(&Server) -> Probing {
+/// A probe of one server in progress: how long the answer took, or why
+/// none came, with the cut of the failure.
+pub type ProbingKept =
+    std::pin::Pin<Box<dyn Future<Output = Result<Duration, servers::Missed>> + Send>>;
+
+/// The client of derper's probe: the way out of podnet (the proxy, the
+/// resolver, the roots), with the user agent of podnet.
+fn probe_client() -> (pod_proxy::Client, pod_tls::Trust) {
     let client =
         pod_proxy::Client::new(crate::trust::context().clone(), crate::egress::egress(None))
             .with_user_agent(names().user_agent);
-    let trust = crate::trust::ws_trust();
+    (client, crate::trust::ws_trust())
+}
+
+/// derper's probe of each server through the way out of podnet: whether it
+/// answered within `pod_derp::servers::PROBE_LIMIT`.
+pub fn probe() -> impl Fn(&Server) -> Probing {
+    let (client, trust) = probe_client();
     move |server: &Server| {
         Box::pin(servers::answers(
             server.clone(),
             client.clone(),
             trust.clone(),
         ))
+    }
+}
+
+/// derper's probe of each server through the way out of podnet, with the
+/// round trip of the answer or the reason and the cut of a failure (the row
+/// `derp` of `podnet doctor`).
+pub fn probe_kept() -> impl Fn(&Server) -> ProbingKept + Send + Sync + 'static {
+    let (client, trust) = probe_client();
+    move |server: &Server| {
+        let (server, client, trust) = (server.clone(), client.clone(), trust.clone());
+        Box::pin(async move { servers::probe_kept(&server, &client, &trust).await })
     }
 }
 

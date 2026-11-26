@@ -20,7 +20,7 @@ cover | lane:local-tcp
 demo | live:Quick tunnel, QUIC (UDP 7844); live:Quick tunnel, HTTP/2 (TCP 7844); live:Quick tunnel, JSON lines (--json); live:UDP probe, answered and refused; live:Quick tunnel through a local CONNECT proxy; live:Quick tunnel with no system DNS, then with 1.1.1.1 blocked; live:A wrong --resolve pin fails at the TLS name check; live:Quick tunnel, QUIC through WARP (TCP 443); live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:Quick tunnel through the WebSocket relay (7844 dropped); live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:way-tunnel
 derp node | live:The DERP road through a derper on the runner
 derp connect | live:The DERP road through a derper on the runner
-doctor | live:podnet doctor; live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:warp up, env, exec, --persist and down; live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:doctor; lane:proxy-doctor
+doctor | live:podnet doctor; live:Quick tunnel with UDP and TCP 7844 dropped (staggered legs); live:The DERP road through a derper on the runner; live:warp up, env, exec, --persist and down; live:An IPv6-only host; live:The test box; live:The test box fails with a binary that exits 3; lane:doctor; lane:proxy-doctor
 exit | lane:net-exit
 expose | lane:net-switch
 forge clone | lane:local-files
@@ -67,13 +67,13 @@ pod | lane:errors; lane:pod-seccomp; lane:pod-netns; lane:consumer-podrunner; la
 ports | lane:local
 ps | live:SSH through the reverse relay; live:agent up and down; live:An IPv6-only host
 qr | lane:local
-receive | live:100 MiB by code through the mailbox, a transit relay and the podnet relay
+receive | live:100 MiB by code through the mailbox, a transit relay and the podnet relay; live:The DERP road through a derper on the runner
 relay pair | live:SSH through the reverse relay; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:100 MiB by code through the mailbox, a transit relay and the podnet relay; live:Git over SSH through the reverse relay; live:Router with WARP, the relay and a failover
 relay node | live:SSH through the reverse relay; live:200 MiB each way through the reverse relay with --resume
 relay connect | live:SSH through the reverse relay; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:Git over SSH through the reverse relay; lane:way-relay; lane:way-relay-refused
 relay stop | live:SSH through the reverse relay; live:File server through the reverse relay; live:200 MiB each way through the reverse relay with --resume; live:100 MiB by code through the mailbox, a transit relay and the podnet relay; live:Git over SSH through the reverse relay
 route | live:Router with WARP, the relay and a failover
-send | live:100 MiB by code through the mailbox, a transit relay and the podnet relay
+send | live:100 MiB by code through the mailbox, a transit relay and the podnet relay; live:The DERP road through a derper on the runner
 serve | live:File server through a quick tunnel; live:File server through the reverse relay; live:HTTPS with a certificate of ACME (Pebble)
 share | live:Large share uploads, QUIC and HTTP/2
 sidecar probe |

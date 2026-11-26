@@ -457,6 +457,7 @@ one of `answered`, `refused` and `unknown`.
 | `proxy` | object | The proxy of the run. |
 | `udp` | object | The UDP 7844 probe. |
 | `nat` | object | The class of the NAT of this host (T-543). |
+| `derp` | object | derper's probe of the DERP servers (T-128). |
 
 Each object of `roads` has `road`, `verdict`, `status` and `reason` (strings).
 Each object of `legs` has `leg`, `verdict`, `status` and `reason` (strings).
@@ -499,6 +500,13 @@ Each object of `paths`:
 * `nat`: `verdict` and `detail` (strings); `connectivity`, `mapping` and
   `filtering` (string or null: words such as `behind-nat`,
   `endpoint-independent` and `address-and-port-dependent`).
+* `derp`: `verdict`, `status` and `detail` (strings); `server` (string or
+  null: `HOST` or `HOST:PORT`, the first server of the list that answered
+  `/derp/probe`), `fleet` (string or null: `Tailscale's tailcat fleet`,
+  `Tailscale's main fleet`, or null for a server of `--derp-server` of the
+  user's own), `ms` (number or null: the round trip of that server),
+  `answered` (number) and `probed` (strings: each `HOST:PORT` that got a
+  probe, in order).
 
 ### Lanes
 

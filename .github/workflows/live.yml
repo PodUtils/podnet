@@ -96,6 +96,9 @@ jobs:
           done
           jq -e '.clock.status == "ok"' doctor.json
           jq -e '.paths[] | select(.id == "api") | .dns.addresses | length > 0' doctor.json
+          # T-128: a server of the DERP fleet answers derper's probe.
+          jq -c .derp doctor.json
+          jq -e '.derp.status == "ok"' doctor.json
       - name: Quick tunnel, QUIC (UDP 7844)
         timeout-minutes: 4
         run: sh scripts/live-run.sh quic target/release/podnet demo --exit-on-verify --protocol quic --transport direct
@@ -1152,7 +1155,9 @@ jobs:
         # a certificate of this run (a leaf: rustls refuses the certificate
         # of a CA as the server's own). A node serves a TCP echo; a client of its
         # ticket gets 4 MiB back through the resumable layer and the sealed
-        # channel; a client that the node does not admit exits 77.
+        # channel; a client that the node does not admit exits 77. The row derp
+        # of podnet doctor names the derper; send --derp and receive carry a
+        # file by code through it.
         run: |
           set -eu
           d="$RUNNER_TEMP/derp"
@@ -1211,6 +1216,54 @@ jobs:
           PODNET_STATE_DIR="$d/stranger" timeout 60 "$podnet" derp connect --ca-file "$ca" "$ticket" --server localhost:8443 < /dev/null > /dev/null 2> "$d/client.err" || code=$?
           [ "$code" = 77 ] || fail "a client that the node does not admit exited $code, not 77"
           echo "derp: a client that the node does not admit exits 77"
+          # The row derp of podnet doctor names the derper and its round trip.
+          "$podnet" --ca-file "$ca" doctor --quick --json --derp-server localhost:8443 > "$d/doctor.json" || true
+          jq -c .derp "$d/doctor.json"
+          jq -e '.derp.status == "ok" and .derp.server == "localhost:8443" and .derp.ms != null' "$d/doctor.json" > /dev/null \
+            || fail "the row derp of podnet doctor does not name the derper"
+          # 8 MiB by code through the derper: send --derp, the public mailbox,
+          # no direct hint, no transit relay and no piping server. The CA of
+          # the derper is podnet-ca.pem beside a copy of the binary: that file
+          # adds to the roots, so the public mailbox keeps its trust (--ca-file
+          # replaces them). The code is masked and cut out of each log line.
+          # SSL_CERT_FILE would replace the roots too, and podnet-ca.pem would
+          # not be read.
+          unset SSL_CERT_FILE
+          mkdir -p "$d/bin" "$d/got"
+          cp "$podnet" "$d/bin/podnet"
+          cp "$ca" "$d/bin/podnet-ca.pem"
+          bin="$d/bin/podnet"
+          head -c 8388608 /dev/urandom > "$d/file.bin"
+          ways="--no-listen --piping none --transit-relay none --derp-server localhost:8443"
+          # shellcheck disable=SC2086
+          PODNET_STATE_DIR="$d/sender" RUST_LOG=podnet=info "$bin" send --json --timeout 300 --derp $ways "$d/file.bin" \
+            > "$d/send.out" 2> "$d/send.err" &
+          send_pid=$!
+          code=""
+          for _ in $(seq 1 600); do
+            code=$(jq -r 'select(.event == "code") | .code' "$d/send.out" 2> /dev/null || true)
+            [ -n "$code" ] && break
+            kill -0 "$send_pid" 2> /dev/null || break
+            sleep 0.1
+          done
+          [ -n "$code" ] || { tail -40 "$d/send.err"; fail "the sender printed no code"; }
+          echo "::add-mask::$code"
+          scrub() { sed "s/$code/<code>/g" "$1" | cut -c1-300 | tail -40; }
+          mailbox=$(jq -r 'select(.event == "code") | .mailbox' "$d/send.out")
+          rc=0
+          # shellcheck disable=SC2086
+          printf '%s\n' "$code" | PODNET_STATE_DIR="$d/receiver" RUST_LOG=podnet=info timeout 300 "$bin" receive --yes --json \
+            --out "$d/got" --mailbox "$mailbox" $ways > "$d/receive.out" 2> "$d/receive.err" || rc=$?
+          wait "$send_pid" || rc=$((rc + 1000 * $?))
+          if [ "$rc" != 0 ]; then
+            echo "== send"; scrub "$d/send.err"
+            echo "== receive"; scrub "$d/receive.err"
+            fail "the transfer through the derper exited $rc (receive + 1000 * send)"
+          fi
+          cmp "$d/file.bin" "$d/got/file.bin" || fail "the file came through the derper changed"
+          via=$(jq -r 'select(.event == "received") | .via' "$d/receive.out")
+          [ "$via" = "DERP localhost:8443" ] || fail "the transfer went via '$via', not the derper"
+          echo "derp: 8 MiB by code through the derper (via $via, mailbox $mailbox)"
           pkill -f "derp node --to 127.0.0.1:47500" || true
           pkill -f "$d/derper" || true
           kill "$echo_pid" || true

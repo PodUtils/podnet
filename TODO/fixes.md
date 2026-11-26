@@ -2356,12 +2356,12 @@ The test asserts `parse("http://127.0.0.1").unwrap().port == 80` (or the ruled n
 
 ## Problem
 
-`podnet doctor` builds the relay row with `Relay::from_env(None)` and keeps it only when the URL starts with `https://` (`src/doctor.rs:163-174`). The user cannot pass the relay on the command line, and a loopback relay (`http://127.0.0.1:PORT`, allowed by `src/ws_relay.rs:119-171`) gives no row. `bug-report --doctor` has the same table. `--transport relay` is not seen either.
+`podnet doctor` builds the relay row with `Relay::from_env(None)` and keeps it only when the URL starts with `https://` (`src/doctor.rs:166-177`). The user cannot pass the relay on the command line, and a loopback relay (`http://127.0.0.1:PORT`, allowed by `src/ws_relay.rs:119-171`) gives no row. `bug-report --doctor` has the same table. `--transport relay` is not seen either.
 
 ## Premise
 
 - `--relay` and `--transport` are `global = true` in `TunnelOpts` (`src/cli/opts.rs:41-51`). `TunnelOpts` is flattened only into `tunnel` and `share` (`src/cli/cmd/tunnel.rs:21`, `src/cli/cmd/share.rs:22,62,114`). `DoctorArgs` has no `--relay` (`src/cli/cmd/host.rs:14-33`). A global flag does not reach a sibling command, so `doctor --relay X` most likely fails in clap. Not run (no build).
-- `targets()` has no argument (`src/doctor.rs:115`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:286-305`).
+- `targets()` has no argument (`src/doctor.rs:118`). `doctor()` calls `Options::default()` with three fields set (`src/cli/cmd/host.rs:295-314`).
 - `src/doctor.rs` has 1305 lines in `scripts/size-allow.txt`. It can only shrink: move code out in the same commit (T-033).
 
 ## Approach
@@ -3170,7 +3170,7 @@ sends no SIGTERM, waits the full timeout and sends SIGKILL.
 
 - `src/cli/cmd/agent.rs:14-35` (`Status` with no fields), `:207-213` (`instances_ps(false)`, `agent::text`).
 - `src/cli/cmd/instances.rs:41-47` (`instances_ps(json)` prints its own document).
-- `src/cli/cmd/host.rs:272-282` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:66-72`.
+- `src/cli/cmd/host.rs:281-291` (stamped report). `src/agent.rs:143-145` (`Serialize`). `docs/proxies.md:66-72`.
 - `T-011` (`TODO/record.md:220`) says `agent status` has no JSON form; its test is `tests/commands.rs:143`.
 
 ## Approach
@@ -3764,7 +3764,7 @@ cfb reads the document to qualify a host. The keys must not change within schema
 
 ## Premise
 
-- Read: `src/doctor.rs:249` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
+- Read: `src/doctor.rs:254` (`to_json`) writes `ok`, `roads`, `legs` (`leg`, `verdict`, `status`, `reason`) and `names`, and `status::stamped` adds `schema` 1 and `podnet`. No test pins the key set.
 - Read: `podnet doctor` has `--samples` and `--timeout` (`src/cli/cmd/host.rs`). It has no `--quick`. The default budget of the samples is 10 s (`Options::budget`).
 - Not measured: the time of a full run on a host with no egress.
 
@@ -3801,7 +3801,7 @@ Ask A-C-10 (P1): "A fixed JSON schema of the egress lanes for the node probe of 
 
 ## Premise
 
-- Read: `src/doctor.rs:227` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
+- Read: `src/doctor.rs:230` (`roads`) groups the legs by road. The legs have their own names, not the seven lane names. A leg has a time (`ms`) in the paths, not in the legs.
 - Read: the verdict words of the doctor are `ok`, `no` and others (`Verdict::name`). The lanes use `ok`, `fail` and `unknown`, so a map is necessary.
 - `ws_upgrade` has no probe now. `proxy` is the row of the proxy (T-184).
 
@@ -13871,7 +13871,7 @@ Exit code 1; `podnet doctor --json` also exits 1. The promise, in two forms that
 - `podnet man exit-status`: "69 (unavailable) A service or a network path is not available: no edge leg worked, the
   quick-tunnel service, the WARP API or the MASQUE endpoint did not answer." `docs/cli.md:139`: "69 when a service or a
   network path is not available (no edge leg worked)".
-- `docs/doctor.md:46` and `podnet doctor --help`: "Exit 0: at least one leg can work. Exit 1: none can." The table says
+- `docs/doctor.md:58` and `podnet doctor --help`: "Exit 0: at least one leg can work. Exit 1: none can." The table says
   "1 (failure): A failure that has no other code."
 
 `bench` has the same case ("no request worked": exit 1). Also, `podnet doctor --help` lists the legs "quic, http2,
@@ -13880,8 +13880,8 @@ the relay leg works gives exit 0.
 
 ## Premise
 
-- Read: `src/cli/cmd/host.rs:406` bails with a plain error when `report.ok()` is false: exit 1.
-  `Report::ok` (`src/doctor.rs:251`) is true when any of the legs has the verdict `ok`, the relay leg too. Thus a host
+- Read: `src/cli/cmd/host.rs:421` bails with a plain error when `report.ok()` is false: exit 1.
+  `Report::ok` (`src/doctor.rs:256`) is true when any of the legs has the verdict `ok`, the relay leg too. Thus a host
   where only `http2+relay` works gives exit 0, and the help (`src/cli/mod.rs:297`) lists three legs only.
 - Read: the exit 1 of `doctor` is in the help, in `docs/doctor.md`, in the research list
   (`docs/research/podnet/parity-checklist.md`), and in the lane (`scripts/lab-lane.sh`, the case
@@ -13897,7 +13897,7 @@ the relay leg works gives exit 0.
 1. `src/manual/facts.rs:212` and `docs/cli.md:139` say that "no edge leg worked" is 69 for `tunnel`, `warp` and the
    commands that start a session, and that `doctor` and `bench` give 1 when no leg or no request worked. The row of 1
    names them. `docs/exit-codes.md` gets the same sentence.
-2. `podnet doctor --help` (`src/cli/mod.rs:297`) and `docs/doctor.md:46` name the four legs (`quic`, `http2`,
+2. `podnet doctor --help` (`src/cli/mod.rs:297`) and `docs/doctor.md:58` name the four legs (`quic`, `http2`,
    `quic+warp`, `http2+relay`): exit 0 when at least one works, the relay leg too.
 3. One table-driven test: for each command that reports "no leg" or "no request" (`doctor`, `doctor --json`, `bench`,
    `tunnel` with no edge), the exit code is a code that the row of the table of `podnet man exit-status --json` names for

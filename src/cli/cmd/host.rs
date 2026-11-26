@@ -64,6 +64,14 @@ pub(crate) struct DoctorArgs {
         conflicts_with = "agent"
     )]
     connect_proxy: Option<String>,
+    /// The DERP servers of the row `derp`: HOST[:PORT][,HOST[:PORT]...]
+    /// (port 443 by default), for example a derper of your own. Default:
+    /// Tailscale's four servers for tailcat, then the first servers of its
+    /// main fleet when none of the four answers. The row probes /derp/probe
+    /// through the way out of podnet, and names the first server that
+    /// answers and its round trip.
+    #[arg(long, value_name = "LIST", conflicts_with = "agent")]
+    derp_server: Option<String>,
     /// Check the shape of the sealed record layer of each road: its
     /// declared profile (page-load, video-call, terminal, file-transfer)
     /// beside a sample of 1000 records. One line for each road says
@@ -80,7 +88,8 @@ pub(crate) struct DoctorArgs {
             "relay",
             "ssh_relay",
             "ssh_user",
-            "connect_proxy"
+            "connect_proxy",
+            "derp_server"
         ]
     )]
     shape: bool,
@@ -391,8 +400,14 @@ pub(crate) async fn doctor(args: DoctorArgs) -> Result<()> {
         }
         _ => None,
     };
+    // A bad list exits 64 before the network.
+    let derp = match args.derp_server.as_deref() {
+        Some(list) => Some(podnet::derp::servers_of(Some(list), None)?),
+        None => None,
+    };
     let report = podnet::doctor::run(podnet::doctor::Options {
         ssh_relay,
+        derp,
         timeout: Duration::from_secs(args.timeout),
         relay: args.relay.filter(|r| !r.trim().is_empty()),
         ..base
