@@ -21,6 +21,7 @@
 //! a file and a directory go to and from each client of magic-wormhole.
 
 pub mod connect;
+pub mod derp_way;
 pub mod land;
 pub mod messages;
 pub mod piping;
@@ -91,6 +92,10 @@ pub struct Settings {
     /// the transit between two podnet ends (T-252). Empty: no piping
     /// server.
     pub piping: Vec<String>,
+    /// The DERP road of this end (T-128). A sender offers a node at a DERP
+    /// server of the road to a podnet receiver; a receiver dials the node
+    /// of a sender's DERP hint on it. `None`: no DERP way.
+    pub derp: Option<crate::derp::Road>,
 }
 
 impl Settings {
@@ -109,6 +114,7 @@ impl Settings {
             relay_pair: None,
             relay_resume: crate::relay_reverse::Resume::default(),
             piping: Vec::new(),
+            derp: None,
         }
     }
 

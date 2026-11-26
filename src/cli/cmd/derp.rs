@@ -147,7 +147,7 @@ pub(crate) async fn derp(args: DerpArgs) -> Result<()> {
             let me = install_key()?;
             let keys = Keys::new(me.key(), move |k| admitted.admits(k));
             let road = Road::out(list);
-            let online = derp::online(me.key(), &road, derp::probe()).await?;
+            let online = derp::online(me.key(), &road).await?;
             let ticket = online.ticket.clone();
             let doc = ready(&ticket, &target.to_string());
             if json {

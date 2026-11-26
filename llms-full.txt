@@ -2371,6 +2371,11 @@ podnet send
         The node runs for the time of the transfer; do not run another node of
         the pair at the same time. A podnet extension: a client of
         magic-wormhole ignores it.
+    --derp
+        Offer a node of this run at a DERP server (--derp-server, or the fleet)
+        to a podnet receiver: a way of the transit through a server that needs
+        no account, after the transit relays. The server sees sealed records
+        only. A podnet extension: a client of magic-wormhole ignores it.
     --words N
         The count of words of the code after its number, 2 to 8 (as
         magic-wormhole's --code-length). Each word adds 8 bits: 2 words give a
@@ -2396,6 +2401,12 @@ podnet send
         piping server of pod-services; none gives no piping server.
         PODNET_PIPING gives the same list, separated by commas. Variable:
         PODNET_PIPING.
+    --derp-server LIST
+        The DERP servers of the DERP way between two podnet ends:
+        HOST[:PORT][,HOST[:PORT]...]. The default is the fleet of the data of
+        pod-services (Tailscale's servers for tailcat, then its main fleet). A
+        sender with the DERP way puts its node at the first that answers; a
+        receiver tries the server of the ticket, then this list.
     --listen ADDR
         Listen for a direct connection on this address only (the hint is this
         address, also a loopback address). The default is each address of the
@@ -2453,6 +2464,8 @@ podnet send
 
     Give only one of --relay-pair, --text.
 
+    Give only one of --derp, --text.
+
     Give only one of --listen, --no-listen.
 
     Give only one of --no-proxy, --proxy.
@@ -2501,6 +2514,12 @@ podnet receive
         piping server of pod-services; none gives no piping server.
         PODNET_PIPING gives the same list, separated by commas. Variable:
         PODNET_PIPING.
+    --derp-server LIST
+        The DERP servers of the DERP way between two podnet ends:
+        HOST[:PORT][,HOST[:PORT]...]. The default is the fleet of the data of
+        pod-services (Tailscale's servers for tailcat, then its main fleet). A
+        sender with the DERP way puts its node at the first that answers; a
+        receiver tries the server of the ticket, then this list.
     --listen ADDR
         Listen for a direct connection on this address only (the hint is this
         address, also a loopback address). The default is each address of the
@@ -15435,7 +15454,7 @@ podnet man                                      # the manual
 | Packet sidecar | `sidecar probe`, `search`, `run`, `split`, `faketcp`, `bond` | The packet path behind the build feature `sidecar`: a three-valued probe, a local simulator, five primitives, fake TCP and a bond, each with its limit. | [limits-carriers](https://github.com/PodUtils/podnet/blob/main/docs/limits-carriers.md) |
 | Raw streams | `tunnel --forward`, `connect` | SSH, databases and unix sockets through a quick tunnel. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | File server, transfer, git | `serve`, `share`, `git` | Serve a directory, receive or send files with a PIN, host git repositories; HTTPS on a public port with a certificate of ACME (`--acme`). | [serve](https://github.com/PodUtils/podnet/blob/main/docs/serve.md) |
-| Transfer by code | `send`, `receive`, `send --words`, `--relay-pair`, `--piping` | A file, a directory or a text to another host with a short code, as magic-wormhole does: a public mailbox for the code, the bytes direct or through a transit relay (from podnet to podnet also the podnet relay or a piping server), sealed end to end. | [transfer](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md) |
+| Transfer by code | `send`, `receive`, `send --words`, `--relay-pair`, `--derp`, `--piping` | A file, a directory or a text to another host with a short code, as magic-wormhole does: a public mailbox for the code, the bytes direct or through a transit relay (from podnet to podnet also the podnet relay, a DERP server or a piping server), sealed end to end. | [transfer](https://github.com/PodUtils/podnet/blob/main/docs/transfer.md) |
 | Publish by one word | `expose` | Publish a local service by a tunnel, the relay or a virtual address. | [forward](https://github.com/PodUtils/podnet/blob/main/docs/forward.md) |
 | WARP | `warp register`, `proxy`, `forward`, `run`, `up`, `env`, `exec`, `shell`, `nc`, `tun`, `export`, `scan` | The Cloudflare WARP client on TCP 443, with no root and no TUN. | [warp](https://github.com/PodUtils/podnet/blob/main/docs/warp.md) |
 | Pods | `pod`, `pod doctor`, `pod --report`, `pod --backend netns\|netns-kernel\|seccomp`, `pod --allow-raw icmp` | Run a program with all its traffic sent through a proxy chain, with rules, audit and a JSON report. | [pods](https://github.com/PodUtils/podnet/blob/main/docs/pods.md) |
@@ -16643,8 +16662,8 @@ CLI runs it.
 This page gives `podnet send` and `podnet receive`: a file, a directory or a
 text from one host to another with a short code, as magic-wormhole does. The
 code meets at a public mailbox. The bytes go direct between the hosts, or
-through a transit relay. Between two podnet ends, the podnet relay and a
-piping server are the last ways. Each byte is sealed end to end: the
+through a transit relay. Between two podnet ends, the podnet relay, a DERP
+server and a piping server are the last ways. Each byte is sealed end to end: the
 mailbox, the relays and the piping server see no plain text.
 
 ## Send and receive
@@ -16787,6 +16806,39 @@ podnet receive
 * After the ack, the sender waits at most 2.5 s for the end of the receiver
   before its node stops. The receiver waits at most 15 s for the end of the
   session.
+
+## A DERP server: a podnet extension
+
+A DERP server (Tailscale's fleets need no account, or a `derper` of your
+own) can carry the transit, with no pair and no token ([relay.md](relay.md),
+`podnet derp`). This way is a podnet extension: it works from podnet to
+podnet only.
+
+```sh
+# On the first host:
+podnet send --derp report.pdf
+# On the second host:
+podnet receive
+```
+
+* `podnet send --derp` runs a node at the first DERP server that answers,
+  under a key of this run, for the time of the transfer. It sends a file or
+  a directory: `--derp` with `--text` exits 64. The servers are
+  `--derp-server HOST[:PORT][,...]`, else the fleet of the data of
+  `pod-services`. No server takes the node: the sender stops before its
+  offer (exit 69), and the receiver gets the error.
+* The sender adds one hint of its own kind, `podnet-derp-v1`, with the
+  `derp:` ticket of the node. A client of magic-wormhole ignores it.
+* A podnet receiver dials the node of the ticket at the server of the
+  ticket, then at the other servers of its own list (`--derp-server`, else
+  the fleet). It starts 4 s after the other hints when a direct hint or a
+  transit relay exists, else at once. A node that does not answer is dialed
+  again each second, until the end of the wait of the transit.
+* Each session runs the resumable layer (`pod-session`): it resumes after
+  the loss of a DERP link. On the stream, the two ends run the handshake of
+  the transit and the records that the transit key seals. The DERP server
+  sees no byte of the file. The line of the sender and of the receiver says
+  `DERP HOST`.
 
 ## A piping server: a podnet extension
 
@@ -18920,8 +18972,11 @@ ssh -o ProxyCommand='podnet derp connect TICKET' USER@HOST
   `--to`), 69 when no server takes the node, when the client reaches no node,
   when the target does not answer, or when the session ends with an error,
   77 for a key that an end refuses, 78 when the two ends share no suite.
-* `.github/workflows/live.yml` (the measure `derp`) runs a node and a client
-  through a `derper` of a pinned version on the runner.
+* `podnet send --derp` offers a node of the run at a DERP server as a way of the
+  transit to a podnet receiver ([transfer.md](transfer.md), A DERP server).
+* The step "The DERP road through a derper on the runner" of
+  `.github/workflows/live.yml` runs a node and a client through a `derper` of a
+  pinned version (v1.104.4) on the runner.
 
 ## Hosts and limits
 

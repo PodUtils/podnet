@@ -23,6 +23,9 @@ pub const PODNET_RELAY_TOKEN: &str = "podnet-relay-token";
 /// PodUtils/podnet#452): the last way of the transit, between two podnet
 /// ends.
 pub const PIPING: &str = "piping-v1";
+/// podnet's kind of hint of a node at a DERP server (T-128): its `derp:`
+/// ticket, between two podnet ends.
+pub const DERP: &str = "podnet-derp-v1";
 /// The mode of a directory, as magic-wormhole names it. A zip with stored
 /// entries is a valid zip of this mode.
 pub const ZIP_MODE: &str = "zipfile/deflated";
@@ -74,6 +77,9 @@ pub enum Hint {
     PodnetRelay { url: String, name: String },
     /// podnet's own kind: a piping server at `url` ([`mod@super::piping`]).
     Piping { url: String },
+    /// podnet's own kind: the node of the sender at a DERP server, by its
+    /// `derp:` ticket ([`mod@super::derp_way`]).
+    Derp { ticket: String },
 }
 
 /// The `transit` message: the abilities and the hints of one end.
@@ -216,6 +222,7 @@ impl Hint {
                 json!({ "type": PODNET_RELAY, "url": url, "name": name, "priority": 0.0 })
             }
             Hint::Piping { url } => json!({ "type": PIPING, "url": url, "priority": 0.0 }),
+            Hint::Derp { ticket } => json!({ "type": DERP, "ticket": ticket, "priority": 0.0 }),
         }
     }
 
@@ -243,6 +250,9 @@ impl Hint {
             }),
             PIPING => Some(Hint::Piping {
                 url: value["url"].as_str()?.to_string(),
+            }),
+            DERP => Some(Hint::Derp {
+                ticket: value["ticket"].as_str()?.to_string(),
             }),
             _ => None,
         }
@@ -480,6 +490,26 @@ mod tests {
         let hint = &value["transit"]["hints-v1"][0];
         assert_eq!(hint["type"], "piping-v1");
         assert_eq!(hint["url"], "https://piping.example");
+        let Message::Transit(again) = parse(&bytes).unwrap() else {
+            panic!("a transit message")
+        };
+        assert_eq!(again, mine);
+    }
+
+    #[test]
+    fn derp_the_hint_of_a_node_is_its_own_kind() {
+        let mine = Transit {
+            abilities: vec![DIRECT.into(), DERP.into()],
+            hints: vec![Hint::Derp {
+                ticket: "derp:aeaq".into(),
+            }],
+            relay_token: None,
+        };
+        let bytes = mine.encode();
+        let value: Value = serde_json::from_slice(&bytes).unwrap();
+        let hint = &value["transit"]["hints-v1"][0];
+        assert_eq!(hint["type"], "podnet-derp-v1");
+        assert_eq!(hint["ticket"], "derp:aeaq");
         let Message::Transit(again) = parse(&bytes).unwrap() else {
             panic!("a transit message")
         };

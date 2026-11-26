@@ -11,6 +11,7 @@ use pod_wormhole::meet::or_close;
 use pod_wormhole::{Code, Failed, Wormhole};
 use sha2::{Digest, Sha256};
 
+use super::derp_way;
 use super::messages::{self, Answer, Hint, Message, Offer, Transit};
 use super::podnet_relay;
 use super::transit::{Role, CHUNK};
@@ -168,6 +169,24 @@ async fn send_payload(
         }
         None => None,
     };
+    // The node at a DERP server runs until the end of this function.
+    let derp_node = match &settings.derp {
+        Some(road) => match derp_way::start(road).await {
+            Ok((derp_node, sessions)) => {
+                abilities.push(messages::DERP.to_string());
+                ours.hints.push(derp_node.hint.clone());
+                ours.derp_node = Some((derp_node.what.clone(), sessions));
+                Some(derp_node)
+            }
+            Err(err) => {
+                let words = format!("the sender cannot run its DERP node: {err:#}");
+                let _ = hole.send(&messages::error(&words)).await;
+                hole.close(Mood::Errory).await;
+                return Err(err);
+            }
+        },
+        None => None,
+    };
     let transit = Transit {
         abilities,
         hints: ours.hints.clone(),
@@ -225,13 +244,14 @@ async fn send_payload(
         .await
         .map_err(|e| unavailable(format!("no ack came over the transit ({via}): {e}")))?;
     records.close().await;
-    if node.is_some() {
+    if node.is_some() || derp_node.is_some() {
         // The end of this side must pass the node before it stops: wait for
         // the end of the receiver, then for the layer of the node.
         records.drain(podnet_relay::GRACE).await;
         tokio::time::sleep(podnet_relay::GRACE / 4).await;
     }
     drop(node);
+    drop(derp_node);
     match messages::read_ack(&ack) {
         Ok(Some(theirs)) if theirs != sha256 => Err(super::refused(format!(
             "the receiver got other data: SHA-256 {theirs}, sent {sha256}"

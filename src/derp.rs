@@ -132,12 +132,14 @@ pub fn log_events() -> Arc<dyn Events> {
 }
 
 /// The road of one end: the way to each server, the servers in their
-/// order, and the sink of the lines.
+/// order, the sink of the lines, and whether a node probes each server
+/// ([`probe`]) before its handshake.
 #[derive(Clone)]
 pub struct Road {
     pub dial: Dial,
     pub servers: Vec<Server>,
     pub events: Arc<dyn Events>,
+    pub probed: bool,
 }
 
 impl Road {
@@ -147,6 +149,7 @@ impl Road {
             dial: tls_dial(),
             servers,
             events: log_events(),
+            probed: true,
         }
     }
 }
@@ -178,13 +181,14 @@ pub struct Online {
 }
 
 /// Bring the node of the key `me` online: the first server of `road` whose
-/// `probe` answers and whose DERP handshake completes. When none does, exit
-/// 69 with the reason of each server.
-pub async fn online<P, F>(me: &Identity, road: &Road, probe: P) -> Result<Online>
-where
-    P: Fn(&Server) -> F,
-    F: Future<Output = Result<(), String>>,
-{
+/// probe answers (when the road probes) and whose DERP handshake completes.
+/// When none does, exit 69 with the reason of each server.
+pub async fn online(me: &Identity, road: &Road) -> Result<Online> {
+    let check: Box<dyn Fn(&Server) -> Probing + Send + Sync> = if road.probed {
+        Box::new(probe())
+    } else {
+        Box::new(|_: &Server| -> Probing { Box::pin(async { Ok(()) }) })
+    };
     let secret = Arc::new(Secret::of_node(me));
     let names = names();
     let (home, missed) = far::home(
@@ -193,7 +197,7 @@ where
         &road.events,
         &names,
         &road.servers,
-        probe,
+        check,
     )
     .await;
     let Some((server, conn)) = home else {
@@ -245,6 +249,37 @@ pub async fn serve<M>(online: Online, road: Road, target: Target, keys: Keys, mo
 where
     M: Fn(&Ticket) + Send + Sync + 'static,
 {
+    let node_end = Arc::new(e2e_node(&keys));
+    let handler = relay_reverse::local_handler(&target);
+    let open = move || {
+        let (node_end, handler) = (node_end.clone(), handler.clone());
+        async move {
+            let (ours, theirs) = tokio::io::duplex(PIPE);
+            tokio::spawn(async move {
+                let dial = || async move {
+                    let target = &handler.target;
+                    pod_relay::reverse::local::connect(target, &handler.dialer, handler.timeout)
+                        .await
+                        .map_err(|why| format!("{target}: {why}"))
+                };
+                ends::serve_node(theirs, &node_end, dial).await;
+            });
+            Ok::<_, String>(ours)
+        }
+    };
+    serve_with(online, road, open, moved).await
+}
+
+/// Serve each session of the node until the caller stops it: the bytes of
+/// each new session go to the stream that `open` gives. `moved` hears the
+/// new ticket after a move of the home.
+pub async fn serve_with<A, O, F, M>(online: Online, road: Road, open: O, moved: M)
+where
+    A: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    O: Fn() -> F + Clone + Send + Sync + 'static,
+    F: Future<Output = Result<A, String>> + Send + 'static,
+    M: Fn(&Ticket) + Send + Sync + 'static,
+{
     let Online {
         ticket,
         secret,
@@ -265,24 +300,6 @@ where
                 ..ticket.clone()
             })
         }),
-    };
-    let node_end = Arc::new(e2e_node(&keys));
-    let handler = relay_reverse::local_handler(&target);
-    let open = move || {
-        let (node_end, handler) = (node_end.clone(), handler.clone());
-        async move {
-            let (ours, theirs) = tokio::io::duplex(PIPE);
-            tokio::spawn(async move {
-                let dial = || async move {
-                    let target = &handler.target;
-                    pod_relay::reverse::local::connect(target, &handler.dialer, handler.timeout)
-                        .await
-                        .map_err(|why| format!("{target}: {why}"))
-                };
-                ends::serve_node(theirs, &node_end, dial).await;
-            });
-            Ok::<_, String>(ours)
-        }
     };
     let settings = settings();
     let tell = budget::Tell::new(road.events.clone(), budget::CHANGE);
@@ -315,15 +332,6 @@ pub async fn connect<A>(ticket: &Ticket, road: &Road, app: A, me: &Identity) -> 
 where
     A: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    let unavailable = |e: anyhow::Error| exit::fault(Fault::Unavailable, e);
-    let dialer = Dialer::new(
-        ticket,
-        &road.servers,
-        road.dial.clone(),
-        road.events.clone(),
-        names(),
-    )
-    .map_err(|e| unavailable(anyhow!("{e}")))?;
     let want = ticket.node;
     let check = move |node: &PublicKey| {
         if *node == want {
@@ -339,7 +347,7 @@ where
     let me = Arc::new(Identity::from_seed(&me.seed()));
     let (records, channel) = ends::operator(app, me, check);
     let mut channel = Box::pin(channel);
-    let mut layer = Box::pin(pod_derp::carry(&dialer, records, settings(), say));
+    let mut layer = Box::pin(carry(ticket, road, records));
     let carried = tokio::select! {
         ended = &mut channel => match ended {
             Err(e) => Err(e),
@@ -355,14 +363,37 @@ where
             }
         }
     };
-    dialer.close().await;
-    let server = &ticket.server;
     match carried {
         // 77 for a key that an end refuses, 78 for no shared suite.
-        Err(e) => Err(relay_reverse::e2e_fault(e)
-            .context(format!("the sealed session to the node at {server}"))),
-        Ok(Err(failure)) => Err(unavailable(anyhow::Error::new(failure))),
-        Ok(Ok(Outcome::Layer(ended))) => match &ended.end {
+        Err(e) => Err(relay_reverse::e2e_fault(e).context(format!(
+            "the sealed session to the node at {}",
+            ticket.server
+        ))),
+        Ok(ended) => ended,
+    }
+}
+
+/// Carry `app` in a session of the layer to the node of `ticket`, with no
+/// channel above the layer (the caller seals its bytes), until the session
+/// ends. No server or no node exits 69.
+pub async fn carry<A>(ticket: &Ticket, road: &Road, app: A) -> Result<()>
+where
+    A: AsyncRead + AsyncWrite + Unpin + Send,
+{
+    let unavailable = |e: anyhow::Error| exit::fault(Fault::Unavailable, e);
+    let dialer = Dialer::new(
+        ticket,
+        &road.servers,
+        road.dial.clone(),
+        road.events.clone(),
+        names(),
+    )
+    .map_err(|e| unavailable(anyhow!("{e}")))?;
+    let carried = pod_derp::carry(&dialer, app, settings(), say).await;
+    dialer.close().await;
+    match carried {
+        Err(failure) => Err(unavailable(anyhow::Error::new(failure))),
+        Ok(Outcome::Layer(ended)) => match &ended.end {
             End::LocalEnd | End::Closed(_) => Ok(()),
             end => match crate::session::expired(end, settings().resume_deadline) {
                 Some(e) => Err(unavailable(
@@ -374,7 +405,7 @@ where
                 ))),
             },
         },
-        Ok(Ok(Outcome::Plain(None))) => Ok(()),
-        Ok(Ok(Outcome::Plain(Some(e)))) => Err(unavailable(anyhow!("the session over DERP: {e}"))),
+        Ok(Outcome::Plain(None)) => Ok(()),
+        Ok(Outcome::Plain(Some(e))) => Err(unavailable(anyhow!("the session over DERP: {e}"))),
     }
 }

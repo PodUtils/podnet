@@ -204,8 +204,11 @@ ssh -o ProxyCommand='podnet derp connect TICKET' USER@HOST
   `--to`), 69 when no server takes the node, when the client reaches no node,
   when the target does not answer, or when the session ends with an error,
   77 for a key that an end refuses, 78 when the two ends share no suite.
-* `.github/workflows/live.yml` (the measure `derp`) runs a node and a client
-  through a `derper` of a pinned version on the runner.
+* `podnet send --derp` offers a node of the run at a DERP server as a way of the
+  transit to a podnet receiver ([transfer.md](transfer.md), A DERP server).
+* The step "The DERP road through a derper on the runner" of
+  `.github/workflows/live.yml` runs a node and a client through a `derper` of a
+  pinned version (v1.104.4) on the runner.
 
 ## Hosts and limits
 

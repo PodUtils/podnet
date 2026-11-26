@@ -115,6 +115,11 @@ pub struct Ours {
     pub(super) token: Option<String>,
     /// A receiver: the moves of the layer.
     pub(super) resume: Resume,
+    /// A sender: what its node at a DERP server is (`DERP HOST`), and
+    /// the sessions of the node (T-128).
+    pub(super) derp_node: Option<(String, super::derp_way::Sessions)>,
+    /// A receiver: the road to the node of a DERP hint of the sender.
+    pub(super) derp: Option<crate::derp::Road>,
 }
 
 /// Listen as `listen` says, and give the hints of the listener, of
@@ -172,6 +177,8 @@ pub async fn prepare(
         node: None,
         token: None,
         resume: Resume::default(),
+        derp_node: None,
+        derp: None,
     })
 }
 
@@ -262,13 +269,24 @@ pub async fn connect(
             }
         });
     }
+    let derp_node = ours.derp_node.is_some();
+    if let Some((what, mut sessions)) = ours.derp_node {
+        let (tx, won) = (tx.clone(), won.clone());
+        tasks.spawn(async move {
+            let mut each = JoinSet::new();
+            while let Some(io) = sessions.recv().await {
+                let (tx, won, what) = (tx.clone(), won.clone(), what.clone());
+                each.spawn(negotiate(Box::new(io), what, role, key, won, tx));
+            }
+        });
+    }
     let mut relays: Vec<RelayEnd> = Vec::new();
     let mut directs = 0;
     for hint in ours.hints.iter().chain(theirs) {
         match hint {
             Hint::Relay { ends, .. } => relays.extend(ends.iter().cloned()),
             Hint::Direct { .. } => directs += 1,
-            Hint::PodnetRelay { .. } | Hint::Piping { .. } => {}
+            Hint::PodnetRelay { .. } | Hint::Piping { .. } | Hint::Derp { .. } => {}
         }
     }
     let podnet_relay =
@@ -317,10 +335,33 @@ pub async fn connect(
             }
         });
     }
+    // A DERP server is a way as the podnet relay is: after the transit
+    // relays when a direct hint or a transit relay exists.
+    let derp = ours
+        .derp
+        .as_ref()
+        .filter(|_| theirs.iter().any(|h| matches!(h, Hint::Derp { .. })));
+    for hint in theirs {
+        let (Hint::Derp { ticket }, Some(road)) = (hint, derp) else {
+            continue;
+        };
+        let (tx, won, ticket, road) = (tx.clone(), won.clone(), ticket.clone(), road.clone());
+        tasks.spawn(async move {
+            tokio::time::sleep(last).await;
+            if let Some(won) = super::derp_way::dial(ticket, road, role, key, won).await {
+                let _ = tx.send(won).await;
+            }
+        });
+    }
     // A piping server is the last way of all: after the podnet relay when
     // another way exists.
     if let Some(server) = piping::common(role, &ours.hints, theirs) {
-        let others = directs > 0 || !relays.is_empty() || podnet_relay || node;
+        let others = directs > 0
+            || !relays.is_empty()
+            || podnet_relay
+            || node
+            || derp.is_some()
+            || derp_node;
         let after = if others {
             RELAY_DELAY * 3
         } else {

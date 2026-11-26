@@ -110,11 +110,7 @@ pub(super) async fn dial(
             let (read, write) = tokio::io::split(app);
             relay_reverse::connect_resumable(&relay, &name_of, &token, read, write, resume).await
         });
-        let carried = Carried {
-            io: mine,
-            task: Some(task),
-            end: None,
-        };
+        let carried = Carried::new(mine, task);
         if let Some(io) = super::connect::handshake(Box::new(carried), role, key, won.clone()).await
         {
             return Some((io, format!("podnet relay {name}")));
@@ -126,10 +122,21 @@ pub(super) async fn dial(
 /// The stream of a receiver over the layer: at its shutdown, it waits at
 /// most [`END_WAIT`] for the session of the layer to end, so that its last
 /// bytes reach the node. A drop stops the session.
-struct Carried {
+pub(super) struct Carried {
     io: DuplexStream,
     task: Option<JoinHandle<anyhow::Result<()>>>,
     end: Option<Pin<Box<tokio::time::Sleep>>>,
+}
+
+impl Carried {
+    /// The stream `io`, whose other end `task` carries in the layer.
+    pub(super) fn new(io: DuplexStream, task: JoinHandle<anyhow::Result<()>>) -> Carried {
+        Carried {
+            io,
+            task: Some(task),
+            end: None,
+        }
+    }
 }
 
 impl Drop for Carried {

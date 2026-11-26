@@ -16,7 +16,7 @@ use std::process::Command;
 use std::time::Duration;
 
 use pod_derp::standin::StandIn;
-use pod_derp::{Key, Server};
+use pod_derp::Key;
 use pod_identity::Identity;
 use podnet::derp::{self, Keys, Road};
 use podnet::exit;
@@ -81,6 +81,7 @@ async fn run(case: &Case) {
         dial: stand_in.dial(),
         servers: vec![StandIn::server()],
         events: derp::log_events(),
+        probed: false,
     };
     let node_key = Identity::from_seed(&[7; 32]);
     let client_key = Identity::from_seed(&[9; 32]);
@@ -96,8 +97,7 @@ async fn run(case: &Case) {
     } else {
         closed().await
     };
-    let probe = |_: &Server| async { Ok::<(), String>(()) };
-    let online = derp::online(&node_key, &road, probe)
+    let online = derp::online(&node_key, &road)
         .await
         .expect("online at the stand-in");
     let mut ticket = online.ticket.clone();

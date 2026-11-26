@@ -116,6 +116,7 @@ docs/target-environment.md a3c8800186 live two WARP devices, one session in the 
 
 docs/transfer.md 5453c10869 live-manual the wormhole mailbox; two hosts
 docs/transfer.md 9fd3fe2521 live-manual the relay; NAME is a placeholder; two hosts
+docs/transfer.md e24304c9de live-manual a DERP server of the fleet; two hosts
 docs/transfer.md bd1a3b3430 live-manual a piping server; two hosts; piping.example is a placeholder
 docs/transfer.md 61d9482a58 live-manual pip downloads magic-wormhole; a test from the source tree
 

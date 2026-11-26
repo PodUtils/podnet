@@ -3,8 +3,8 @@
 This page gives `podnet send` and `podnet receive`: a file, a directory or a
 text from one host to another with a short code, as magic-wormhole does. The
 code meets at a public mailbox. The bytes go direct between the hosts, or
-through a transit relay. Between two podnet ends, the podnet relay and a
-piping server are the last ways. Each byte is sealed end to end: the
+through a transit relay. Between two podnet ends, the podnet relay, a DERP
+server and a piping server are the last ways. Each byte is sealed end to end: the
 mailbox, the relays and the piping server see no plain text.
 
 ## Send and receive
@@ -147,6 +147,39 @@ podnet receive
 * After the ack, the sender waits at most 2.5 s for the end of the receiver
   before its node stops. The receiver waits at most 15 s for the end of the
   session.
+
+## A DERP server: a podnet extension
+
+A DERP server (Tailscale's fleets need no account, or a `derper` of your
+own) can carry the transit, with no pair and no token ([relay.md](relay.md),
+`podnet derp`). This way is a podnet extension: it works from podnet to
+podnet only.
+
+```sh
+# On the first host:
+podnet send --derp report.pdf
+# On the second host:
+podnet receive
+```
+
+* `podnet send --derp` runs a node at the first DERP server that answers,
+  under a key of this run, for the time of the transfer. It sends a file or
+  a directory: `--derp` with `--text` exits 64. The servers are
+  `--derp-server HOST[:PORT][,...]`, else the fleet of the data of
+  `pod-services`. No server takes the node: the sender stops before its
+  offer (exit 69), and the receiver gets the error.
+* The sender adds one hint of its own kind, `podnet-derp-v1`, with the
+  `derp:` ticket of the node. A client of magic-wormhole ignores it.
+* A podnet receiver dials the node of the ticket at the server of the
+  ticket, then at the other servers of its own list (`--derp-server`, else
+  the fleet). It starts 4 s after the other hints when a direct hint or a
+  transit relay exists, else at once. A node that does not answer is dialed
+  again each second, until the end of the wait of the transit.
+* Each session runs the resumable layer (`pod-session`): it resumes after
+  the loss of a DERP link. On the stream, the two ends run the handshake of
+  the transit and the records that the transit key seals. The DERP server
+  sees no byte of the file. The line of the sender and of the receiver says
+  `DERP HOST`.
 
 ## A piping server: a podnet extension
 

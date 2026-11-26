@@ -186,6 +186,7 @@ async fn land_offer(
         };
     ours.token = theirs.relay_token;
     ours.resume = settings.relay_resume;
+    ours.derp = settings.derp.clone();
     let mut abilities = vec![
         messages::DIRECT.to_string(),
         messages::RELAY.to_string(),
@@ -193,6 +194,9 @@ async fn land_offer(
     ];
     if !settings.piping.is_empty() {
         abilities.push(messages::PIPING.to_string());
+    }
+    if settings.derp.is_some() {
+        abilities.push(messages::DERP.to_string());
     }
     let mine = Transit {
         abilities,

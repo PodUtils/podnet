@@ -770,9 +770,10 @@ ticket) and `podnet derp connect TICKET` (stdin and stdout). Each session runs `
 `--ca-file`), the names on the wire are podnet's, and the default fleet comes from the crate (`pod-services`).
 The road has no build feature: it is not a carrier of `pod-link`, and `podnet relay` has none. The tests are
 `tests/derp_road.rs` (the stand-in of the crate); `.github/workflows/live.yml` runs a node and a client through a
-derper v1.104.4 on the runner. Waits: the transit of `podnet send` and `podnet receive` over DERP (a hint of a
-`derp:` ticket, as the podnet relay of T-104), and a row of `podnet doctor` with the probe of the fleet
-(`pod_derp::servers::probe_kept`).
+derper v1.104.4 on the runner. A transfer: `podnet send --derp` runs a node of the run at a DERP server and
+offers its ticket in a hint of the kind `podnet-derp-v1`; a podnet receiver dials it (`src/transfer/derp_way.rs`,
+`tests/transfer_derp.rs`). Waits: a row of `podnet doctor` with the probe of the fleet
+(`pod_derp::servers::probe_kept`), and a live step of a transfer through a derper.
 
 # T-129: An ACME client for a public listener
 

@@ -13052,7 +13052,7 @@ writes "1 minutes" (a wrong plural).
 
 ## Premise
 
-- Read: `src/transfer/send.rs:87` returns `Failed::Expired(settings.wait)`: the value of `--timeout`, as a
+- Read: `src/transfer/send.rs:88` returns `Failed::Expired(settings.wait)`: the value of `--timeout`, as a
   `Duration`.
 - Read: `PodUtils/podcrates:crates/pod-wormhole/src/failed.rs:57` (v0.82.0) writes `life.as_secs().div_ceil(60)`
   followed by " minutes". The test of that file pins "within its 10 minutes" for 600 s. The words are in a crate of

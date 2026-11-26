@@ -50,6 +50,13 @@ pub(crate) struct WayArgs {
         value_delimiter = ','
     )]
     piping: Vec<String>,
+    /// The DERP servers of the DERP way between two podnet ends:
+    /// HOST[:PORT][,HOST[:PORT]...]. The default is the fleet of the data of
+    /// pod-services (Tailscale's servers for tailcat, then its main fleet).
+    /// A sender with the DERP way puts its node at the first that answers;
+    /// a receiver tries the server of the ticket, then this list.
+    #[arg(long, value_name = "LIST")]
+    derp_server: Option<String>,
     /// Listen for a direct connection on this address only (the hint is
     /// this address, also a loopback address). The default is each address
     /// of the host, on a free port.
@@ -83,6 +90,13 @@ pub(crate) struct SendArgs {
     /// it.
     #[arg(long, value_name = "NAME", conflicts_with = "text")]
     relay_pair: Option<String>,
+    /// Offer a node of this run at a DERP server (--derp-server, or the
+    /// fleet) to a podnet receiver: a way of the transit through a server
+    /// that needs no account, after the transit relays. The server sees
+    /// sealed records only. A podnet extension: a client of magic-wormhole
+    /// ignores it.
+    #[arg(long, conflicts_with = "text")]
+    derp: bool,
     /// The count of words of the code after its number, 2 to 8 (as
     /// magic-wormhole's --code-length). Each word adds 8 bits: 2 words give
     /// a guesser one chance in 65536.
@@ -133,6 +147,10 @@ fn settings(way: &WayArgs) -> Result<Settings> {
     };
     let mut settings = Settings::new(mailboxes, relays, podnet::ws::way());
     settings.piping = transfer::piping(&way.piping).map_err(usage)?;
+    // A receiver dials the DERP node of a sender that offers one; a sender
+    // offers one with --derp alone.
+    let derp_servers = podnet::derp::servers_of(way.derp_server.as_deref(), None)?;
+    settings.derp = Some(podnet::derp::Road::out(derp_servers));
     settings.listen = match (way.listen, way.no_listen) {
         (Some(at), _) => Listen::At(at),
         (None, true) => Listen::No,
@@ -160,6 +178,9 @@ pub(crate) async fn send(args: SendArgs) -> Result<()> {
             dir: podnet::relay_reverse::pairs_dir()?,
             name: name.clone(),
         });
+    }
+    if !args.derp {
+        settings.derp = None;
     }
     let what = match (&args.text, &args.path) {
         (Some(text), _) => What::Text(text.clone()),
