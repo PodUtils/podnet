@@ -7045,6 +7045,27 @@ What remains of step 1: `ipv6-only` on a host with IPv6 (the GitHub runner has n
 release binary is built with no optional feature (`release.yml`: `cargo zigbuild --release`), so its `icmp` carrier is
 "not built" (exit 69): a row of it checks nothing of ICMP. The `icmp` rows wait for a release build with the feature.
 
+2026-11-26, step 3 (the consumers), `PodUtils/podnet@8d9431c` taken as the next commit of `main`. A read of the
+`main` branches of PodUtils/podssh, podrunner and podvm (2026-11-26) found one consumer of the binary: podrunner. podssh
+and podvm run no `podnet` (podssh's `relay serve` is a relay that `relay node` and `relay connect` can use; it starts no
+podnet). No sibling calls `podnet relay` or `podnet tunnel`, so "the relay and the tunnel as podssh and podrunner call
+them" has no call to copy; the relay of podssh is the subject of T-406 (#604). podrunner's calls: `pod doctor --json`
+(exit 0 or 3, JSON in both, the levels of `netns` and `seccomp`), `pod --backend netns|seccomp -x http://unix:SOCK` with
+`--loopback-rules -r tcp:127.0.0.1:P=direct -r cidr:127.0.0.0/8=reject -r cidr:::1/128=reject` (seccomp) and
+`PODVM_SPARE_TREE=0`, a payload that connects after `pod` returned (`podvm run -d`), `net shim --json --out DIR`, a
+client under the shim with `PODNET_VNET_FORWARD`, and the version line (`^podnet [0-9]`). The lane case
+`consumer-podrunner` makes each call against a stand-in broker on a unix socket: the exit code 7 of the program comes
+back, the stand-in logs `CONNECT 10.255.0.1:Q`, the rules send `127.0.0.1:P` direct and refuse another loopback port,
+`pod` returns at once and the late connect arrives after 3 s, the shim path is an ELF file, and a `urllib` client under
+the shim reaches the stand-in. As uid 65534 with `podlab` `v0.84.0`: each row passes or is n.a. with its reason in
+`bind-denied`, `no-loopback`, `proc-masked`, `listen-denied`, `nonroot-nocaps`, `udp-denied` and `userns-off`; it found
+no defect. A plant that turns the exit of `pod` into 0 fails the rows `pod-netns` and `pod-seccomp`. What remains of
+step 3: a consumer that a sibling adds.
+
+2026-11-26, step 1, the `icmp` rows: T-609 puts the `icmp` carrier into the release set. The `live` step "A link over
+ICMP echo (root)" and a row of the lane case `local-files` (exit 69 and `CAP_NET_RAW` as a user) are the rows. What
+remains of step 1: `ipv6-only` on a host with IPv6.
+
 
 # T-359: One shared crate for the help and the manual of each PodUtils command line
 
