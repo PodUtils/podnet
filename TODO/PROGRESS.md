@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 606 entries: 8 open, 9 partial, 31 blocked, 558 done.
+`TODO/INDEX.md` holds 607 entries: 8 open, 10 partial, 31 blocked, 558 done.
 
 ## State
 
@@ -45,9 +45,8 @@ stop"). End a turn only when each remaining entry is blocked.
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.19`. The next beta
-   (`v0.4.0-beta.20`) runs the black-box QA pass first (`docs/maintenance.md`, Release, step 0). The feature `release`
-   builds on each target (dry run 45731591597).
+3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.19`. T-608 publishes
+   `v0.4.0-beta.20`: its QA pass is done (#761 to #775); ci, live and gate on the release commit, then the dry run.
 
 ### The order of podnet's own work
 

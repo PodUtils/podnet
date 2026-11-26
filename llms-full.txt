@@ -3,7 +3,7 @@
 The manual is the output of `podnet man --no-pager`.
 
 ```text
-podnet 0.4.0-beta.19 - Bring your own network to hosts with strong network limits: tunnels, WARP, pods, router, relays, virtual networks and file serving
+podnet 0.4.0-beta.20 - Bring your own network to hosts with strong network limits: tunnels, WARP, pods, router, relays, virtual networks and file serving
 
 SYNOPSIS
   podnet COMMAND [OPTIONS]

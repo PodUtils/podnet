@@ -16981,3 +16981,40 @@ cargo test --lib -p podnet initcfg
 ## Done
 
 2026-11-26, the commit of this entry. The test `a_missing_file_is_no_input_and_names_its_path` passes; `init check /nonexistent.yml` exits 66.
+
+# T-608: Publish `v0.4.0-beta.20`: the carriers of the feature `release` and the fixes of the QA pass of 2026-11-26
+
+**Source:** `docs/maintenance.md`, Release; `CLAUDE.md`, Releases (2026-11-09): cut the next prerelease when a batch of
+fixes is green. T-428 (#620: the release binaries had no network link carrier) and the black-box QA pass of 2026-11-26
+(GitHub #761 to #775).
+**Category:** release
+**Milestone:** M5
+**Priority:** P1
+**Effort:** S
+**Status:** partial
+
+## Problem
+
+`v0.4.0-beta.19` has no network link carrier in its release binaries (#620), and none of the fixes of T-589 to T-607.
+
+## Premise
+
+- The steps are `docs/maintenance.md`, "Release". Step 0 (the black-box QA pass on the static release build of
+  `4a51e702`) found 15 issues (#761 to #775). Each is an entry (T-593 to T-607). Each P1 and P2 entry is done; T-598
+  (P3) waits for `pod-link` (COORD-131, #776). The notes name it.
+- The notes have `## Breaking`: exit 68 for a name that does not resolve, 64 for a bad `--peer`, 66 for a missing
+  node configuration, the clean stop of `pod --serve`, `cover` with no `--name`, `link p2p` to the end of the answer.
+
+## Approach
+
+1. Set the version `0.4.0-beta.20` (the manifests, `Cargo.lock`, `fuzz/Cargo.lock`), write the llms files again.
+2. Write `docs/releases/v0.4.0-beta.20.md`, with `## Breaking`.
+3. Push; wait until `ci` and `live` pass on that commit. Dispatch `gate.yml` on that commit and wait until it passes.
+4. Dispatch the dry run of `release.yml` (`publish` empty), then `publish=v0.4.0-beta.20`; check `release-proofs.yml`
+   and the job `image`; hand off the files and the digests in a COORD issue `(to all)`.
+
+## Prove
+
+```sh
+# release-proofs.yml on the tag: each file OK, Verified OK
+```
