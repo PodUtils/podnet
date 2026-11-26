@@ -461,5 +461,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #774 | [qa 0.4.0-beta.20] forward: a refused bind of port 18000 tells the user to "give a port above 1023" | closed: T-606 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-606 |
 | #775 | [qa 0.4.0-beta.20] init check: a missing file is reported as "the configuration is not schema 1" | closed: T-607 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-607 |
 | #776 | COORD-131: pod-link: the TCP probe of the carriers names the IPv6 try, not the refused IPv4 bind (to podcrates) | open (a COORD issue between sessions; the ask of T-598) | none |
+| #777 | COORD-132: podnet v0.4.0-beta.20 is out: the files, their SHA-256 and the image by digest (to all) | open (a COORD issue between sessions) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

@@ -16997,7 +16997,7 @@ fixes is green. T-428 (#620: the release binaries had no network link carrier) a
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -17024,3 +17024,12 @@ fixes is green. T-428 (#620: the release binaries had no network link carrier) a
 ```sh
 # release-proofs.yml on the tag: each file OK, Verified OK
 ```
+
+## Done
+
+2026-11-26, the tag `v0.4.0-beta.20` at `be2c0df`. ci 45764673829 and live 45764673855 passed on `be2c0df`; gate
+45756432875 passed on `58a1c617` (the release commit: a test and the allow list of the secret scan changed after it);
+the dry run 45768240934 passed. The release run 45772282526: each of the eight targets, `gate / lane`, `publish`,
+`proofs` and `image` passed; `release-proofs.yml` 45777283954 passed. The x86-64 file checks against SHA256SUMS, prints
+`podnet 0.4.0-beta.20 (be2c0df...)`, lists the carriers of the feature `release`, and exits 68 for a name under
+`.invalid`. COORD-132 (PodUtils/podnet#777) hands off the files and the digests.

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**607 entries: 8 open, 10 partial, 31 blocked, 558 done.**
+**607 entries: 8 open, 9 partial, 31 blocked, 559 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 3 | 2 | 91 | 97 |
+| P1 | 1 | 2 | 2 | 92 | 97 |
 | P2 | 0 | 3 | 15 | 296 | 314 |
 | P3 | 7 | 4 | 14 | 170 | 195 |
-| **All** | 8 | 10 | 31 | 558 | 607 |
+| **All** | 8 | 9 | 31 | 559 | 607 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -652,4 +652,4 @@ M8 Overlays, M9 Later.
 | [T-605](fixes.md) | P2 | S | M5 | defect | done | expose --via switch: the example of docs/forward.md exits 64 "--switch needs --address" |
 | [T-606](fixes.md) | P2 | S | M5 | defect | done | forward: a refused bind of port 18000 tells the user to "give a port above 1023" |
 | [T-607](fixes.md) | P3 | S | M5 | defect | done | init check: a missing file is reported as "the configuration is not schema 1" |
-| [T-608](fixes.md) | P1 | S | M5 | release | partial | Publish `v0.4.0-beta.20`: the carriers of the feature `release` and the fixes of the QA pass of 2026-11-26 |
+| [T-608](fixes.md) | P1 | S | M5 | release | done | Publish `v0.4.0-beta.20`: the carriers of the feature `release` and the fixes of the QA pass of 2026-11-26 |

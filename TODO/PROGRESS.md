@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 607 entries: 8 open, 10 partial, 31 blocked, 558 done.
+`TODO/INDEX.md` holds 607 entries: 8 open, 9 partial, 31 blocked, 559 done.
 
 ## State
 
@@ -15,9 +15,8 @@
   `pod-testkit`. Not taken yet: `pod-egress`, `pod-derp`, `pod-ts` and `pod-acme`. A session reads the state of
   podcrates with `sh scripts/agent/podcrates.sh` (`docs/maintenance.md`, Shared crates). A file that a block of `crates/*/SOURCES`
   names with no `taken` line is frozen: it takes fixes only, each as a COORD issue.
-- The newest release is `v0.4.0-beta.19` (T-585, 2026-11-25, the tag at `2ef8e3a`). Its job `image` proved T-487
-  (the attestation of the manifest list, the digests in the notes); COORD-129 (#759) hands off the files and the
-  digests.
+- The newest release is `v0.4.0-beta.20` (T-608, 2026-11-26, the tag at `be2c0df`): the carriers of the feature
+  `release` (#620) and the fixes of the QA pass #761 to #775. COORD-132 (#777) hands off the files and the digests.
 - Deferred feature consolidation (`4df28952`): T-365, T-366, T-369 to T-373, and T-376 to T-378 are done; T-367
   (GitHub #486) stays partial on MASQUE `QUIC-1` to `QUIC-5`; T-368 (#489), T-374 (#497), and T-375 (#498) stay
   blocked.
@@ -45,8 +44,8 @@ stop"). End a turn only when each remaining entry is blocked.
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
-3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.19`. T-608 publishes
-   `v0.4.0-beta.20`: its QA pass is done (#761 to #775); ci, live and gate on the release commit, then the dry run.
+3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.20`. The next beta
+   (`v0.4.0-beta.21`) runs the black-box QA pass first (`docs/maintenance.md`, Release, step 0).
 
 ### The order of podnet's own work
 

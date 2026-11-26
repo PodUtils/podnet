@@ -1,17 +1,20 @@
 # Handoff
 
-The product work state at 2026-11-26 03:30 (UTC). Start a hosted checkout with
+The product work state at 2026-11-26 08:10 (UTC). Start a hosted checkout with
 [TODO/RESUME.md](../TODO/RESUME.md). Remove this file when the lead session has no unfinished step.
 
 ## The goal
 
 **podrunner first** (the owner, 2026-11-18; `docs/decisions.md`). The order: a red run of podnet's CI; each ask of
 podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-137); podnet's own work in the order of
-`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.85.0`, taken in T-588) at 16:30.
+`TODO/PROGRESS.md`. No new ask of podrunner and no new tag of podcrates (the newest is `v0.85.0`, taken in T-588) at 08:10.
 
 ## Where the code is
 
 * All finished work is on `main`. Use the pinned Rust toolchain from [Hosted sessions](hosted-sessions.md).
+* The release `v0.4.0-beta.20` is out (T-608; tag at `be2c0df`; COORD-132 #777): the carriers of the feature `release`
+  (#620) and the fixes of the QA pass of 2026-11-26 (#761 to #775, T-593 to T-607; T-598 blocked on COORD-131 #776).
+  T-281 is done (the proof of the DNS carrier).
 * Done on 2026-11-26 (later): T-589 (proven by `live` 45738194994), T-398 (each command of a release binary but `net
   tailscale` has a scenario: the lane cases `local-files`, `local-udp` and `local-tcp`), T-590 (the podcrates version of
   the crash log and the harness), T-591 (`cover` with no `--name`), T-592 (`link p2p` to the end of the answer; `main`
@@ -31,18 +34,18 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 
 ## The next steps, in order
 
-1. **The next beta (`v0.4.0-beta.20`):** the black-box QA pass runs on the static release build of `4a51e702`
-   (`/var/tmp/qa20`, issues titled `[qa 0.4.0-beta.20]`). Triage each finding into an entry; fix each P1 and P2
-   finding; then the notes (`docs/releases/v0.4.0-beta.20.md`: the carriers of the feature `release`, #620; `cover`
-   with no `--name`; `link p2p` to the end of the answer), the version, `ci` and `live` green, `gate.yml`, the dry run,
-   and `publish`.
-2. **Each tag of podcrates:** COORD-123 to COORD-126 (#753 to #756), COORD-128 (#758) and COORD-130 (#760) wait for
-   one. Take it first (T-137), then close each answered ask and unblock T-575, T-579, T-580, T-476, T-244, T-114.
-3. The rest of the work order is open research or waits for a run or a ruling: T-281 (a proof of the DNS carrier needs
-   hooks of `pod-link`), T-321 item 4 (a named TURN service: `pod-services` has no such fact), T-358 (the ICMP rows; the
-   consumers of podssh and podrunner), T-414 and T-415 (a warning of their `live` steps), T-478 (the logs of its next
-   failure), T-488 (runs that the quota limits), T-123 to T-129 (a ruling of the owner before the work).
-4. **The daily run of `issue-sync`:** GitHub has made no run of its event `schedule` (the other schedules of the
+1. **Each tag of podcrates:** COORD-123 to COORD-126 (#753 to #756), COORD-128 (#758), COORD-130 (#760) and COORD-131
+   (#776) wait for one. Take it first (T-137), then close each answered ask and unblock T-575, T-579, T-580, T-476,
+   T-244, T-114, T-598.
+2. **COORD-129 (#759) and COORD-132 (#777):** the hand-offs of beta.19 and beta.20. Close each through the record when
+   the other sessions read it.
+3. **The next beta (`v0.4.0-beta.21`):** the black-box QA pass first (`scripts/agent/qa-pass.md`), when a batch of
+   fixes is green.
+4. The rest of the work order waits for a run, a tag or a ruling: T-321 item 4 (a named TURN service: `pod-services` has
+   no such fact), T-358 (the ICMP rows; the consumers of podssh and podrunner), T-414 and T-415 (a warning of their
+   `live` steps), T-478 (the logs of its next failure), T-488 (runs that the quota limits), T-123 to T-129 (a ruling of
+   the owner before the work).
+5. **The daily run of `issue-sync`:** GitHub has made no run of its event `schedule` (the other schedules of the
    repository run 11 to 12 h late). A push runs it. Check again.
 
 ## Facts for the next session
@@ -82,6 +85,8 @@ podrunner (a COORD issue `(to podnet)`); the take of each tag of podcrates (T-13
 | `#754` (COORD-124, `pod-proxy`, a proxy command that does not exist) | A tag with the fix (T-580). |
 | `#755` (COORD-125, `pod-cloudflare`, the DoH wait of the edge discovery) | A tag with the fix (T-579). |
 | `#654` (COORD-107, takes of podcrates) | A `state:` line at each take. |
+| `#777` (COORD-132, the hand-off of beta.20) | The other sessions read it; then close it through the record. |
+| `#776` (COORD-131, `pod-link`: the TCP probe names the IPv6 try) | A tag with the fix (T-598). |
 | `#760` (COORD-130, a shared headscale harness) | podcrates writes it (T-114, T-115). |
 | `#758` (COORD-128, the capture hook of `pod-cloudflare`) | A tag with it (T-244). |
 | `#759` (COORD-129, the hand-off of beta.19) | The other sessions read it; then close it through the record. |
