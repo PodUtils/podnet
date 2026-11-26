@@ -124,8 +124,8 @@ pub(crate) struct TunnelArgs {
     /// Keep the last HTTP exchanges of the origin in memory (off by
     /// default): the method, the target, the status, the heads with each
     /// secret value redacted, and the bodies up to --inspect-body. podnet
-    /// tunnel inspect list, show and replay read them over a unix socket
-    /// of mode 0600.
+    /// tunnel inspect list, show, replay and clear use them over a unix
+    /// socket of mode 0600.
     #[arg(long)]
     inspect: bool,
     /// With --inspect: the count of exchanges in the ring (default 100).

@@ -87,6 +87,7 @@ tunnel | live:SIGTERM between the ready line and the verify; live:Throughput of 
 tunnel inspect list |
 tunnel inspect show |
 tunnel inspect replay |
+tunnel inspect clear |
 update | live:podnet update to v0.4.0-beta.1
 wait | lane:link-control
 warp register | live:WARP account and probe; live:WARP API through its second host; live:Router with WARP, the relay and a failover

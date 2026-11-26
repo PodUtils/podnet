@@ -71,7 +71,7 @@ podnet man                                      # the manual
 
 | Area | Commands | Function | Document |
 | --- | --- | --- | --- |
-| Tunnels | `tunnel`, `demo`, `qr`, `tunnel inspect` | Quick tunnels and named tunnels to a local origin (HTTP, unix socket, TCP). `tunnel --inspect` keeps the last HTTP exchanges in memory, with each secret redacted, for list, show and replay. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
+| Tunnels | `tunnel`, `demo`, `qr`, `tunnel inspect` | Quick tunnels and named tunnels to a local origin (HTTP, unix socket, TCP). `tunnel --inspect` keeps the last HTTP exchanges in memory, with each secret redacted, for list, show, replay and clear. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |
 | End-to-end session | `tunnel --e2e`, `tunnel --e2e-inspect` | Noise XX inside the carrier before any application byte, the destination in a sealed envelope, record keys from the handshake, and the hop table. | [e2e](https://github.com/PodUtils/podnet/blob/main/docs/e2e.md) |
 | Packet sidecar | `sidecar probe`, `search`, `run`, `split`, `faketcp`, `bond` | The packet path behind the build feature `sidecar`: a three-valued probe, a local simulator, five primitives, fake TCP and a bond, each with its limit. | [limits-carriers](https://github.com/PodUtils/podnet/blob/main/docs/limits-carriers.md) |
 | Raw streams | `tunnel --forward`, `connect` | SSH, databases and unix sockets through a quick tunnel. | [tunnels](https://github.com/PodUtils/podnet/blob/main/docs/tunnels.md) |

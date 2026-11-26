@@ -1,5 +1,5 @@
 //! `podnet tunnel --inspect` (the start of the inspector) and `podnet
-//! tunnel inspect list|show|replay` (its client) (T-244).
+//! tunnel inspect list|show|replay|clear` (its client) (T-244).
 
 use anyhow::Result;
 use clap::{Args, Subcommand};
@@ -46,6 +46,10 @@ pub(crate) enum InspectCommand {
         #[command(flatten)]
         target: InspectTarget,
     },
+    /// Remove each exchange from the ring. The ids go on from the last
+    /// one. An exchange that is open stays out of the ring; its copy goes
+    /// on.
+    Clear(InspectTarget),
 }
 
 #[derive(Args, Debug)]
@@ -109,6 +113,7 @@ pub(crate) async fn run(command: &InspectCommand, json: bool) -> Result<()> {
         InspectCommand::List(target) => (json!({"verb": "list"}), target),
         InspectCommand::Show { id, target } => (json!({"verb": "show", "id": id}), target),
         InspectCommand::Replay { id, target } => (json!({"verb": "replay", "id": id}), target),
+        InspectCommand::Clear(target) => (json!({"verb": "clear"}), target),
     };
     let path = inspect::find_socket(target.name.as_deref())?;
     let mut answer = inspect::client::ask(&path, &request).await?;
@@ -122,6 +127,10 @@ pub(crate) async fn run(command: &InspectCommand, json: bool) -> Result<()> {
     match command {
         InspectCommand::List(_) => print!("{}", list_text(&answer)),
         InspectCommand::Show { .. } => print!("{}", show_text(&answer["exchange"])),
+        InspectCommand::Clear(_) => println!(
+            "cleared {} exchanges from the ring",
+            number(&answer["cleared"])
+        ),
         InspectCommand::Replay { .. } => {
             print!("{}", replay_text(&answer));
             if let Some(error) = answer["error"].as_str() {

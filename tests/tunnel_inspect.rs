@@ -16,6 +16,9 @@ use tokio_util::compat::{TokioAsyncReadCompatExt as _, TokioAsyncWriteCompatExt 
 use podnet::ingress::{Ingress, Service};
 use podnet::tunnel::inspect::{header, Inspector, Options, State, REDACTED};
 
+#[path = "tunnel_inspect/measure.rs"]
+mod measure;
+
 /// The requests that the origin got, as text.
 type Seen = Arc<Mutex<Vec<String>>>;
 

@@ -19,6 +19,7 @@ llms-full.txt has the manual and the documents in one file.
 - `podnet tunnel inspect list`: List the exchanges in the ring, the oldest first: the id, the method, the target, the status and the state
 - `podnet tunnel inspect show`: Show one exchange: the heads and the bodies (each secret value is [redacted]; a body keeps the cap of tunnel --inspect-body)
 - `podnet tunnel inspect replay`: Send the request of one exchange to its origin again. The ring gets a new exchange that names the first. A redacted header or query parameter is left out, and the output says so. An open or incomplete exchange, a cut request body and a WebSocket are refused (exit 65)
+- `podnet tunnel inspect clear`: Remove each exchange from the ring. The ids go on from the last one. An exchange that is open stays out of the ring; its copy goes on
 - `podnet serve`: Serve a directory over a tunnel
 - `podnet share`: Share files or a local port in a session with a PIN
 - `podnet git`: Git hosting with the installed git: serve the repositories of a root over smart HTTP and SSH, make a repository, print the clone URLs

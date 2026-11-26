@@ -3,8 +3,8 @@
 //! (`SO_PEERCRED`): the user of the tunnel, or root.
 //!
 //! The wire is one JSON object for each line. A request is
-//! `{"verb":"list"}`, `{"verb":"show","id":N}` or `{"verb":"replay","id":N}`
-//! of 4 KiB at most. The answer is `{"ok":true,...}` or
+//! `{"verb":"list"}`, `{"verb":"show","id":N}`, `{"verb":"replay","id":N}`
+//! or `{"verb":"clear"}` of 4 KiB at most. The answer is `{"ok":true,...}` or
 //! `{"ok":false,"code":EXIT,"error":TEXT}`, and then the server closes the
 //! connection. There is no TCP listener.
 
@@ -252,6 +252,7 @@ pub(super) async fn handle(inspector: &Arc<Inspector>, request: &Value) -> Value
             doc["ok"] = true.into();
             doc
         }
+        (Some("clear"), _) => json!({"ok": true, "cleared": inspector.clear()}),
         (Some("show"), Some(id)) => match inspector.get(id) {
             Some(exchange) => json!({"ok": true, "exchange": exchange.detail()}),
             None => missing(id),
@@ -266,7 +267,7 @@ pub(super) async fn handle(inspector: &Arc<Inspector>, request: &Value) -> Value
         (Some("show" | "replay"), None) => refusal(64, "the request needs an id"),
         (verb, _) => refusal(
             64,
-            &format!("unknown verb {verb:?}; give list, show or replay"),
+            &format!("unknown verb {verb:?}; give list, show, replay or clear"),
         ),
     }
 }

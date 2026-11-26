@@ -19,9 +19,10 @@
 //!   each header or query parameter whose name names a secret is
 //!   `[redacted]` in the stored copy. The forward keeps the real value.
 //!   `--inspect-raw` keeps the values.
-//! * `podnet tunnel inspect list|show|replay` reads the ring over a unix
-//!   socket of mode 0600 (`server.rs`), and `replay` sends a stored request
-//!   to its origin again (`replay.rs`).
+//! * `podnet tunnel inspect list|show|replay|clear` reads the ring over a
+//!   unix socket of mode 0600 (`server.rs`), `replay` sends a stored
+//!   request to its origin again (`replay.rs`), and `clear` empties the
+//!   ring.
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -395,6 +396,18 @@ impl Inspector {
     /// A copy of the exchange `id`, while the ring has it.
     pub fn get(&self, id: u64) -> Option<Exchange> {
         self.ring().get(id).cloned()
+    }
+
+    /// Empty the ring, and give the count of the exchanges that it held.
+    /// The ids go on from the last one: a new exchange never gets the id
+    /// of a cleared one. The crate stops the capture of an exchange that
+    /// was open ([`Refused`]); the copy goes on.
+    pub fn clear(&self) -> usize {
+        let mut ring = self.ring();
+        ring.open.clear();
+        let count = ring.list.len();
+        ring.list.clear();
+        count
     }
 
     /// The document of `list`.

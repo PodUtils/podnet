@@ -1859,6 +1859,38 @@ experimental (`src/cli/scenarios.txt`).
 (1000 requests per second against a loopback origin; a 50 MiB upload and download within 8 MiB of resident set); and
 the two gaps of the hook above, asked in COORD-136 (PodUtils/podnet#781).
 
+2026-11-26, `tunnel inspect clear` and the measurements of the Prove:
+
+- `podnet tunnel inspect clear [--name INSTANCE]` empties the ring over the socket (the verb `clear`; the
+  same check of the peer uid and the same exit codes as `list`). It prints the count of the removed
+  exchanges. The ids go on from the last one. An exchange that is open stays out of the ring: the sink
+  refuses its next part, and the copy goes on. Tests: `clear_empties_the_ring_and_the_ids_go_on` and the
+  socket test `the_socket_is_private_and_answers` (`src/tunnel/inspect/tests.rs`).
+- The measurements are the `#[ignore]` tests of `tests/tunnel_inspect/measure.rs`, with the harness of
+  `tests/tunnel_inspect.rs` (a loopback origin through `serve_decoded`, no edge). `docs/development.md`,
+  "Measurements", gives the command. The host: 4 CPUs, other builds on it.
+- The cost at 1000 requests per second (`measure_the_cost_of_the_capture_at_1000_requests_per_second`): 3000
+  POST requests of 1 KiB with `Authorization` for each round, two rounds with no sink and two with the sink
+  of `--inspect` (the defaults), in turn. The CPU time is of the full process (the origin, the visitor and
+  the tunnel). The rate held 999 to 1000 requests per second in each round.
+  - Build with opt-level 2, load 1.3 to 2.2: four runs. Added by `--inspect`: p50 +0.011, +0.025, +0.025
+    and +0.012 ms (on a p50 of 0.22 to 0.24 ms); CPU +2.7, +24.1, +28.7 and +0.7 us for each request (on
+    365 to 383 us, so 0 to 8 percent). p99 (0.9 to 2.0 ms) changes by -0.42 to +0.16 ms: the noise of the
+    host is larger than the cost.
+  - Debug build, load 1.2: p50 +0.103 ms (on 0.50 to 0.67 ms), p99 +0.015 ms, CPU +108 us for each request
+    (on 718 to 910 us). At load 4.0: p50 +0.144 ms, p99 +1.43 ms, CPU +62 us.
+- The resident set of 50 MiB each way (`measure_the_resident_set_of_50_mib_each_way`): an upload with a
+  Content-Length, a download with a Content-Length and a chunked download, first with no sink, then with
+  `--inspect` (cap 65536). The peak over the baseline (the process after a warm-up exchange), a sample
+  each 2 ms:
+  - opt-level 2, load 1.3: baseline 9.6 MiB; with no sink +0.2, +0.4 and +0.4 MiB; with `--inspect` +0.4,
+    +0.6 and +0.7 MiB.
+  - Debug build, load 1.3: baseline 14.2 MiB; with no sink +0.3, +0.7 and +0.8 MiB; with `--inspect` +0.8,
+    +1.0 and +1.1 MiB.
+  - Each bound holds (8 MiB). Each stored body is 65536 bytes, `cut` is 52363264, and each exchange is
+    `complete`. The control: with a cap of 16 MiB the same test fails (+16.4, +32.5 and +48.6 MiB).
+- No number misses its bound. The default of `--inspect` stays off.
+
 # T-248: Router: a guest-wire router that ends guest TCP on smoltcp
 
 **Source:** the owner, 2026-11-11 (`docs/decisions.md`, Guest-wire router); T-176; GitHub #371 and #372.

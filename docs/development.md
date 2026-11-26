@@ -432,6 +432,22 @@ pod row must fail.
   each finding of the secret scan of such a value to
   `.github/secrets-allow.txt`, with the reason.
 
+## Measurements
+
+A measurement is a test with `#[ignore]` and a name that starts with
+`measure_`: its numbers change with the load of the host. Run it alone,
+when the load is low (`uptime`), and write the numbers and the load into
+the record entry that asks for them.
+
+* The cost of `tunnel --inspect` (T-244): the latency and the CPU time
+  for each request at 1000 requests per second against a loopback origin,
+  and the resident set of a 50 MiB upload and download with the bound of
+  8 MiB over the baseline (`tests/tunnel_inspect/measure.rs`).
+
+```sh
+cargo test --test tunnel_inspect -- --ignored --test-threads=1 --nocapture measure_
+```
+
 ## Random failures
 
 * A test that fails one time in many runs has a defect: in the test, or in

@@ -319,10 +319,48 @@ async fn the_socket_is_private_and_answers() {
         65,
         "no rule of the empty ingress"
     );
+    let cleared = client::ask(&path, &json!({"verb": "clear"})).await.unwrap();
+    assert_eq!(cleared["cleared"], 1);
     drop(served);
     assert!(!path.exists(), "the drop removes the socket");
     let err = client::ask(&path, &json!({"verb": "list"}))
         .await
         .unwrap_err();
     assert_eq!(crate::exit::code_of(&err), 69);
+}
+
+/// `clear` (the answer of the socket) empties the ring and gives the
+/// count. The ids go on from the last one, and an exchange that was open is
+/// out of the ring: its next part is refused.
+#[tokio::test]
+async fn clear_empties_the_ring_and_the_ids_go_on() {
+    let inspector = inspector(4, 64);
+    let sink = inspector.sink(None);
+    for exchange in 1..=3u64 {
+        sink.head(exchange, &request("/a", &[])).unwrap();
+    }
+    sink.end(1, &end(true));
+    sink.end(2, &end(true));
+    let ask = |request: serde_json::Value| {
+        let inspector = inspector.clone();
+        async move { super::server::handle(&inspector, &request).await }
+    };
+    let doc = ask(json!({"verb": "clear"})).await;
+    assert_eq!(doc["cleared"], 3);
+    let list = ask(json!({"verb": "list"})).await;
+    assert_eq!(list["exchanges"], json!([]));
+    // Exchange 3 was open: the crate stops its capture.
+    assert_eq!(sink.body(3, Direction::Response, b"x"), Err(Refused));
+    sink.end(3, &end(true));
+    sink.head(4, &request("/b", &[])).unwrap();
+    assert_eq!(sink.last(), Some(4), "a new id, not 1");
+    let doc = ask(json!({"verb": "show", "id": 1})).await;
+    assert_eq!(
+        (doc["ok"].clone(), doc["code"].clone()),
+        (json!(false), json!(66))
+    );
+    let doc = ask(json!({"verb": "clear"})).await;
+    assert_eq!(doc["cleared"], 1);
+    let doc = ask(json!({"verb": "clear"})).await;
+    assert_eq!(doc["cleared"], 0, "an empty ring clears with no error");
 }

@@ -305,6 +305,7 @@ podnet tunnel --port 3000 --inspect --name hooks --detach
 podnet tunnel inspect list --name hooks
 podnet tunnel inspect show 3 --name hooks
 podnet tunnel inspect replay 3 --name hooks
+podnet tunnel inspect clear --name hooks
 ```
 
 * The inspector is off by default. It gets each exchange of an HTTP origin
@@ -360,6 +361,9 @@ The commands:
   `replayed_from`. A redacted header or query parameter is left out of the
   request, and the output names it (`left_out`). The replay is not a
   visitor request in the metrics of the tunnel.
+* `podnet tunnel inspect clear` removes each exchange from the ring, and
+  prints the count. The ids go on from the last one. An exchange that is
+  open when you clear the ring stays out of it, and its copy goes on.
 * `replay` refuses (exit 65) an exchange that is open or incomplete, an
   upgrade (a WebSocket), and a request body that the cap cut. Start the
   tunnel with a larger `--inspect-body` to replay large bodies.
