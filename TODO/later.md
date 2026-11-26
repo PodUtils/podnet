@@ -1563,7 +1563,7 @@ Not proven: the margin and the dwell of `minrtt` for TCP-connect probes; a field
 **Milestone:** M9
 **Priority:** P3
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -1639,6 +1639,14 @@ Left, with the reason.
 - A measure of the uplink and the downlink of a member (to pick `up` and `down` without the operator).
 
 2026-11-12, GitHub #473 (row E7-1). The left item "a split of TCP" needs a far end that joins two connections. The link session of T-262 is such a far end: T-302 splits one session across an up carrier and a down carrier. The router split of this entry stays unchanged, and its tests must pass unchanged.
+
+## Done
+
+2026-11-26, the commit of this entry. The UDP part is built (56b3027). The design of the TCP part is
+`docs/research/podnet/direction-split-tcp.md`: the far end is the split session of the link (T-302), each half goes
+through the way of a member of the group, and a TCP flow is one stream of the session. The build is T-611.
+
+
 # T-244: `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435)
 
 **Source:** GitHub #435 (https://github.com/PodUtils/podnet/issues/435); donor review, tunnet.md block 4
@@ -2351,3 +2359,41 @@ Tests (`src/router/door_limit_tests.rs`): the sizes, the rules of the keys, the 
 month too), the usage across a restart (each door its own row), the token bucket, and a door over TCP: 200 kB at 400
 kB/s takes 0.35 s to 3 s; a quota of 10 kB with `close` ends the open flow and refuses a new one. `cargo test --lib
 router`: each test passes.
+
+# T-611: The direction split of a TCP flow of a router group, over a split session of the link
+
+**Source:** T-179 (GitHub #375), the design `docs/research/podnet/direction-split-tcp.md`.
+**Category:** feature
+**Milestone:** M9
+**Priority:** P3
+**Effort:** L
+**Status:** open
+
+## Problem
+
+A router group with `splits:` splits the directions of a UDP flow only; the value `tcp` is refused
+(`split::TCP_REFUSAL`). A TCP flow keeps one member, so a fast-download line beside a slow-upload line gives no gain
+for TCP.
+
+## Premise
+
+- Read: the split session of the link (`src/link_split.rs`, `pod_link::split`) joins two halves into one byte stream;
+  the carriers `udp`, `dns` and `quic` of `pod-link` take a way (`with_way`); podnet's `tcp` carrier takes the egress
+  chain. `link_split::half` gives a half no way of its own.
+
+## Approach
+
+1. `link_split::half` takes the way of a member for each half; a carrier with no way is refused at the read.
+2. `splits:` takes `tcp=FINGERPRINT@UP|DOWN`; the router dials one split session, the up half by the member `up`,
+   the down half by the member `down`.
+3. Each TCP flow of the group is one stream of the session to the service of the far host; a lost half ends the
+   session, each new flow takes the pick of the policy (counted), and the router dials a new session after a back-off.
+4. The status gives `mode: tcp`, the session and its streams. Tests: two stand-in members that count bytes by
+   direction; the bytes up go by `up` only, the bytes down by `down` only; a lost half falls back.
+
+## Prove
+
+```sh
+cargo test -p podnet route_config_split
+cargo test -p podnet --test router_split_tcp
+```
