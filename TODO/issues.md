@@ -442,6 +442,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #757 | COORD-127: podnet took podcrates v0.85.0; the role table of COORD-157 is in docs/hosted-sessions.md (to podcrates) | closed (read: PodUtils/podcrates#262 names the take at `cb695dd`) | none |
 | #758 | COORD-128: pod-cloudflare: a capture hook in the copy helpers of forward_http, for podnet tunnel --inspect (to podcrates) | open (a COORD issue between sessions; the ask of T-244) | none |
 | #759 | COORD-129: podnet v0.4.0-beta.19 is out: the files, their SHA-256 and the image by digest (to all) | open (a COORD issue between sessions) | none |
+| #760 | COORD-130: a shared headscale harness (headscale, its DERP, tailscaled peers) for CI, from podssh's ts-headscale (to podcrates) | open (a COORD issue between sessions; the ask of T-114) | none |
 | #745 | [qa 0.4.0-beta.19] --egress, forward --network: an unknown spec is read as a proxy host:port, and the error does not give the known specs | closed: T-570 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-570 |
 | #746 | [qa 0.4.0-beta.19] forward: a UDP forward and the DNS door over "direct" carry no datagram ("direct carries no UDP") | closed: T-571 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-571 |
 

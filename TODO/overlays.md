@@ -13,7 +13,7 @@ code is `pod-ts` of `PodUtils/podcrates`. Sources: `docs/research/podnet/podssh.
 **Milestone:** M8
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -49,6 +49,10 @@ The owner, 2026-11-05 (`docs/decisions.md`, Shared crates): the shared crates of
 gh workflow run ts-headscale.yml
 gh workflow run ts-headscale.yml -f plant=unknown-key   # must fail
 ```
+
+## Blocker
+
+A shared headscale harness in podcrates (COORD-130, #760): `pod-testkit` of `v0.85.0` has none, and podnet copies no script of podssh.
 
 ## Start condition
 
