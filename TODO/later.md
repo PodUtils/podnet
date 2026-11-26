@@ -795,6 +795,11 @@ T-091 is done.
 
 2026-11-05, The work goes to `pod-acme` in PodUtils/podcrates. podnet only takes the crate (T-137). Do not do it in podnet. Do not copy code of podssh into podnet (`docs/decisions.md`, Shared crates). The code comes through PodUtils/podcrates.
 
+2026-11-26, podnet takes `pod-acme` `v0.86.0` in `podnet-serve` (`crates/podnet-serve/src/acme.rs`). `serve` and `git serve` had no TCP listener with TLS, so `--acme DOMAIN` comes with `--listen tcp://ADDR:PORT` (each needs the other) and `--acme-directory URL`. The state is in `acme/` of the state directory. Gaps of the crate:
+
+- The account has no contact email: `Client::account` sends `termsOfServiceAgreed` alone, and `Acme::new` takes no contact. podnet has no `--acme-email`. It needs a COORD issue `(to podcrates)`.
+- The crate has no ACME stand-in for tests (no Pebble harness). The proof is `cargo test -p podnet-serve --lib acme`: the name check, the state, a kept certificate served with no order, the renewal time, the modes, the challenge on the listener, and a first order that fails. A run against Pebble (the Prove above) waits for a workflow.
+
 # T-130: Research: the iroh road, and a relay and mailbox of podnet's own
 
 **Source:** `docs/research/podnet/podssh-copy.md`, sections 2.6 and 3 (C20, C21).

@@ -1,5 +1,6 @@
 //! The commands of the binary: one file for each command or group.
 
+pub(crate) mod acme;
 pub(crate) mod agent;
 pub(crate) mod autostart;
 pub(crate) mod bench;

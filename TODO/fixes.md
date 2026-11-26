@@ -3012,7 +3012,7 @@ to true. Each `serve --dir DIR` of a directory with no `index.html` logs `WARN .
 
 - `grep -rn root_404 src` gives 3 lines: `src/cli/opts.rs:118` (field), `:128` (`root_404: false`),
   `src/cli/cmd/run.rs:43` (read).
-- `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:225`.
+- `serve` passes `args.common.show()`: `src/cli/cmd/serve.rs:239`.
 - The warn branch: `PodUtils/podnet@7fe60e0:src/tunnel.rs:1218-1222`. `static_router` gives 404 at `/` with no index: `crates/podnet-serve/src/files/mod.rs:73-137`.
 - `src/config.rs` is in the size allowlist: do not add the field there.
 
@@ -13464,7 +13464,7 @@ says "nothing accepts a connection" when the cause is EACCES of the connect.
   before `bind_all` (`src/cli/cmd/warp/front.rs:134`). The comment of issue 97 says that the listeners
   bind before the session; that is true of the session of the proxy, not of the registration.
 - Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:174`) is the one place that gives the class to a
-  refused bind. It adds no words. `src/cli/cmd/local.rs:65` writes its own line (`serve --local`).
+  refused bind. It adds no words. `src/cli/cmd/local.rs:79` writes its own line (`serve --local`).
 - Read: `src/cli/cmd/agent.rs:104` calls `podnet::ports::reachable(*p, ...)`, which gives a bool: a refused connect and
   an EACCES give the same answer. The advice with the unix sockets is in `src/agent.rs:529` and is not used here.
 - Not read: the `warp forward` lines (`src/cli/cmd/warp/front.rs:276`, `:291`) have the same form by the same reading.

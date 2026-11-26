@@ -25,6 +25,7 @@ use podnet::files::{Access, Role, Users};
 use podnet::git::http::HttpOptions;
 use podnet::ingress::Ingress;
 
+use crate::cli::cmd::acme::{bind_acme, AcmeOpts};
 use crate::cli::cmd::connect::unix_listener;
 use crate::cli::cmd::git::{default_host_key, real_root, record_path};
 use crate::cli::cmd::local::bind_local;
@@ -47,6 +48,10 @@ pub(crate) struct GitServeArgs {
     /// takes a free port.
     #[arg(long, value_name = "ADDR")]
     local: Vec<String>,
+    /// Smart HTTP over HTTPS on a public listener, with a certificate of
+    /// ACME (T-129).
+    #[command(flatten)]
+    acme: AcmeOpts,
     /// Serve SSH on HOST:PORT (or tcp://HOST:PORT) or unix:PATH. Only
     /// ed25519 and ECDSA keys are accepted.
     #[arg(long, value_name = "LISTEN")]
@@ -160,15 +165,18 @@ type Servers = tokio::task::JoinSet<Result<()>>;
 
 pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
     let root = real_root(&args.root)?;
+    args.acme.domain()?;
+    // The listeners of --local and the listener of --acme.
+    let listeners: Vec<String> = args.local.iter().cloned().chain(args.acme.rows()).collect();
     let ingress = args
         .ingress
-        .unwrap_or(if args.local.is_empty() && args.ssh.is_none() {
+        .unwrap_or(if listeners.is_empty() && args.ssh.is_none() {
             Road::Tunnel
         } else {
             Road::None
         });
-    if ingress == Road::None && args.local.is_empty() && args.ssh.is_none() {
-        return Err(usage("--ingress none needs --local or --ssh"));
+    if ingress == Road::None && listeners.is_empty() && args.ssh.is_none() {
+        return Err(usage("--ingress none needs --local, --acme or --ssh"));
     }
     if args.pair.is_some() && ingress != Road::Relay {
         return Err(usage("--pair is for --ingress relay"));
@@ -215,7 +223,7 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
     // GitHub #643: --check with --local or --ssh checks the root and each
     // listener, and starts nothing (it makes no host key).
     if args.common.check && ingress == Road::None {
-        let mut report = podnet::preflight::check_local(&root, false, &args.local);
+        let mut report = podnet::preflight::check_local(&root, false, &listeners);
         let ssh: Vec<String> = args.ssh.iter().cloned().collect();
         podnet::preflight::local_rows(&mut report, "ssh", &ssh);
         return super::tunnel::print_report(report, show);
@@ -237,6 +245,15 @@ pub(crate) async fn serve(args: GitServeArgs) -> Result<()> {
         let (server, file) = bound.split();
         files.push(file);
         servers.spawn(async move { Ok(server.await??) });
+    }
+    if !args.common.check {
+        if let Some(bound) = bind_acme(&args.acme, router.clone()).await? {
+            urls.http.push(bound.url.trim_end_matches('/').to_string());
+            urls.listens.push(bound.listen.clone());
+            announce(show, "http", &bound.url);
+            let (server, _) = bound.split();
+            servers.spawn(async move { Ok(server.await??) });
+        }
     }
     let ssh_needed = args.ssh.is_some() || ingress == Road::Relay;
     let ssh = if ssh_needed {

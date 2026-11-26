@@ -24,6 +24,10 @@ podnet-core = { path = "../podnet-core", version = "0.4.0-beta.20" }
 # PodUtils/podcrates at the git tag of the root.
 pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }
 pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }
+# The ACME client of a public listener (`--acme`, T-129): RFC 8555 with
+# TLS-ALPN-01 on the listener itself, the cache of the certificate and its
+# renewal, of PodUtils/podcrates at the git tag of the root.
+pod-acme = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }
 # The ingress rules and the services of a rule, of PodUtils/podcrates
 # (src/ingress.rs).
 pod-cloudflare = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }

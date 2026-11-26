@@ -96,6 +96,7 @@ docs/router.md a39e85b241 live-manual needs a far host that holds the allow list
 docs/serve.md 9ab0dfc04a live-manual a reference list of servers in the foreground; ./app, /run/site.sock and NAME are placeholders
 docs/serve.md 21250fc791 skip a template: HUB-FINGERPRINT and CONNECTOR-FINGERPRINT; two hosts
 docs/serve.md b37100d2e0 skip a template: CLIENT-FINGERPRINT and SERVER-FINGERPRINT; two hosts
+docs/serve.md 8660aa071d live --acme needs a public DNS name, port 443 and an ACME CA
 docs/serve.md 5e6c1ef82c scenario [needs curl,tar] the server of ./public in the background (the first shell), then the client
 docs/serve.md 5cef402f52 scenario [needs curl] the server of ./public in the background (the first shell), then the client
 docs/serve.md 872babe603 scenario [needs curl] the users file with bob and report.pdf; the server in the background (the first shell); the password of bob on the stdin of curl

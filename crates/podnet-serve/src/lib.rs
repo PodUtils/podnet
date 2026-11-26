@@ -3,7 +3,8 @@
 //! an ingress rule (`service`, `ingress`), the origins (`origin`), the
 //! features beside the data path (`feature`), the file server
 //! (`files`), the client of the SSH
-//! relay (`relay`) and git hosting (`git`). It uses the core (`podnet-core`) and no other crate of
+//! relay (`relay`), git hosting (`git`) and ACME for a public listener
+//! (`acme`). It uses the core (`podnet-core`) and no other crate of
 //! the workspace. It is a library of podnet, not a stable interface: use
 //! the crate `podnet`, which gives each module at its old path
 //! (`podnet::share`).
@@ -41,6 +42,7 @@ macro_rules! eprintln {
     }};
 }
 
+pub mod acme;
 pub mod feature;
 pub mod files;
 pub mod gate;

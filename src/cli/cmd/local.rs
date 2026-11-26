@@ -19,6 +19,20 @@ pub(crate) struct Local {
 }
 
 impl Local {
+    /// A listener with no socket file: the HTTPS listener of `--acme`.
+    pub(crate) fn tcp(
+        url: String,
+        listen: String,
+        server: tokio::task::JoinHandle<std::io::Result<()>>,
+    ) -> Local {
+        Local {
+            url,
+            listen,
+            server,
+            _file: None,
+        }
+    }
+
     /// The server task and the socket file (removed on drop).
     pub(crate) fn split(
         self,

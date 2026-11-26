@@ -101,6 +101,56 @@ podnet link dial /run/files.sock --peer SERVER-FINGERPRINT --service files   # t
 
 Proof: `tests/service_serve_at.rs`.
 
+### HTTPS on a public port (`--acme`)
+
+`--acme DOMAIN --listen tcp://ADDR:PORT` serves the files over HTTPS on a
+public TCP listener, with a certificate for DOMAIN from an ACME CA (RFC
+8555). `git serve` takes the same flags for smart HTTP. Off by default.
+
+```sh
+podnet serve ./public --acme files.example.com --listen tcp://0.0.0.0:443
+podnet git serve --root ./repos --anon-read \
+  --acme git.example.com --listen tcp://0.0.0.0:443
+```
+
+* DOMAIN must point to this host, and the CA must reach TCP port 443 of
+  DOMAIN. The listener answers the challenge TLS-ALPN-01 (RFC 8737) itself:
+  podnet needs no other port and no other server. A port other than 443
+  needs a forward of port 443 to it (podnet writes a warning).
+* The CA is Let's Encrypt (the directory of `letsencrypt-acme` of
+  `pod-services`). `--acme-directory URL` gives another CA (an `https://`
+  URL; another URL exits 64). `--ca-file` gives the roots of a test CA, for
+  example Pebble. The requests to the CA use `--proxy` and `--egress` as
+  each other client of podnet.
+* podnet keeps the account key and the certificate in
+  `acme/HOST-DIGEST/` of the state directory: each directory has mode 0700,
+  `account.key` and `DOMAIN.pem` (the key and the chain in one file) have
+  mode 0600. A restart serves a kept certificate at once and asks the CA for
+  nothing, while the certificate holds and names DOMAIN.
+* podnet renews the certificate 30 days before its end (at a third of its
+  life for a short certificate). A renewal that fails keeps the certificate,
+  writes a warning, and tries again after 5 min, doubled up to 6 h. Each
+  connection after a renewal gets the new certificate.
+* The log has the lines `acme.account` (a new account at the CA),
+  `acme.issued` (a certificate and its renewal time), `acme.held` (a kept
+  certificate) and `acme.renewal` (a renewal that failed).
+* podnet prints the ready line only after the first certificate. The URL is
+  `https://DOMAIN/`; with `--json`, `listen` is the bound address.
+* `--check` checks the bind of `--listen` with the rows of `--local`, and
+  asks the CA for nothing.
+
+| Exit | Cause |
+| --- | --- |
+| 64 | A DOMAIN that TLS-ALPN-01 cannot prove (an IP address, a wildcard, a name with no dot, a bad label), a `--listen` that is not `tcp://ADDR:PORT`, an `--acme-directory` that is not `https://`, `--acme` with `--at` or `--ingress peer:`. |
+| 69 | `--listen` cannot be bound, or the first order failed: the CA refused, gave a problem or did not answer. The line names the CA and the step (`the directory`, `the account`, `the order`, `the challenge`, `the authorization of DOMAIN`, `the finalization`, `the certificate`). |
+| 71 | The state of ACME cannot be kept or read (no private directory). |
+| 78 | No state directory (`PODNET_STATE_DIR=none`): a restart must find the certificate. |
+| 124 | The first order did not end in 600 s. |
+
+The account has no contact email: `pod-acme` sends none (T-129).
+
+Proof: `cargo test -p podnet-serve --lib acme`.
+
 `podnet serve` serves only the files in `--dir`:
 
 * A symlink is served only when its real path is in `--dir`.

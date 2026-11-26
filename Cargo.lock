@@ -2555,6 +2555,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "pod-acme"
+version = "0.86.0"
+source = "git+https://github.com/PodUtils/podcrates?tag=v0.86.0#22d1a7557c982b8eb5bef5b8c0e030f5ac54f6ef"
+dependencies = [
+ "base64",
+ "p256",
+ "pod-core",
+ "pod-proxy",
+ "pod-services",
+ "pod-tls",
+ "rcgen",
+ "rustls",
+ "rustls-pki-types",
+ "serde_json",
+ "sha2 0.11.1",
+ "tokio",
+ "x509-parser",
+ "zeroize",
+]
+
+[[package]]
 name = "pod-beneath"
 version = "0.86.0"
 source = "git+https://github.com/PodUtils/podcrates?tag=v0.86.0#22d1a7557c982b8eb5bef5b8c0e030f5ac54f6ef"
@@ -3288,6 +3309,7 @@ dependencies = [
  "http",
  "hyper-util",
  "libc",
+ "pod-acme",
  "pod-cloudflare",
  "pod-core",
  "pod-proxy",

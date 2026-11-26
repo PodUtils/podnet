@@ -123,7 +123,7 @@ pub const NEEDS: &str = "\
 listen(AF_INET): warp proxy --listen tcp://, connect -L tcp://, net proxy --listen tcp://,
   net switch --listen tcp://, net tailscale --listen tcp://, relay connect --listen tcp://, link dial --listen HOST:PORT,
   cover --listen ADDR,
-  warp h3 --listen ADDR,
+  warp h3 --listen ADDR, serve and git serve --acme DOMAIN --listen tcp:// (a public port),
   send and receive (a direct transfer; with no AF_INET listener they use a transit relay)
 listen(AF_UNIX): warp proxy --listen unix:, connect -L unix://, net proxy, net switch and
   net tailscale (each defaults to a unix path), relay connect --listen unix:, link dial --listen unix:

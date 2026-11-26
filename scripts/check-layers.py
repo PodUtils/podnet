@@ -59,7 +59,7 @@ LAYER = {
     "share": "serve", "gate": "serve", "service": "serve", "ingress": "serve",
     "origin": "serve", "feature": "serve", "transport": "serve",
     "relay": "serve", "ws": "serve", "tar": "serve", "tar_http": "serve",
-    "git": "serve", "files": "serve", "road": "serve",
+    "git": "serve", "files": "serve", "road": "serve", "acme": "serve",
     "cloudflare": "cloudflare", "tunnel": "cloudflare", "edge_h2": "cloudflare",
     "edge_discovery": "cloudflare", "quicktunnel": "cloudflare",
     "config": "cloudflare", "proxy": "cloudflare",

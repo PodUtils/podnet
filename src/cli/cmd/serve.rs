@@ -12,6 +12,7 @@ use podnet::files::{Access, FilesConfig, Role, Users};
 use podnet::gate::Gate;
 use podnet::ingress::Ingress;
 
+use crate::cli::cmd::acme::{bind_acme, AcmeOpts};
 use crate::cli::cmd::local::{bind_local, Local};
 use crate::cli::cmd::run::{run_share, run_tunnel};
 use crate::cli::opts::{Show, TunnelOpts};
@@ -126,7 +127,7 @@ pub(crate) struct ServeArgs {
     /// speaks HTTP on it. Index, range and HEAD work as on any listener,
     /// and --list, --spa, --tar, --users and --pin apply. Needs
     /// --at-listen. It makes no tunnel.
-    #[arg(long, value_name = "peer:FP/SERVICE", requires = "at_listen", conflicts_with_all = ["ingress", "pair", "local", "check"])]
+    #[arg(long, value_name = "peer:FP/SERVICE", requires = "at_listen", conflicts_with_all = ["ingress", "pair", "local", "check", "acme"])]
     at: Option<String>,
     /// With --at: where the link listener binds, in the form of the
     /// carrier as `podnet link listen ADDRESS` (a path for the unix
@@ -147,6 +148,9 @@ pub(crate) struct ServeArgs {
     /// TCP address with no listen and closes it at once.
     #[arg(long, value_name = "ADDR")]
     local: Vec<String>,
+    /// HTTPS on a public listener, with a certificate of ACME (T-129).
+    #[command(flatten)]
+    acme: AcmeOpts,
     /// Named-tunnel token. Prefer the variable TUNNEL_TOKEN or
     /// --token-file: other users of the host can read a command line.
     #[arg(long, env = "TUNNEL_TOKEN", hide_env_values = true)]
@@ -189,24 +193,34 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
         Some(IngressArg::Peer(text)) => Some(text.as_str()),
         _ => None,
     };
-    if peer.is_some() && (!args.local.is_empty() || args.pair.is_some() || args.common.check) {
+    if peer.is_some()
+        && (!args.local.is_empty()
+            || args.pair.is_some()
+            || args.common.check
+            || args.acme.acme.is_some())
+    {
         return Err(usage(
-            "serve --ingress peer:... takes no --local, --pair or --check",
+            "serve --ingress peer:... takes no --local, --acme, --pair or --check",
         ));
     }
+    args.acme.domain()?;
+    // The listeners of --local and the listener of --acme.
+    let listeners: Vec<String> = args.local.iter().cloned().chain(args.acme.rows()).collect();
     let ingress = match &args.ingress {
         Some(IngressArg::Road(road)) => Some(*road),
         _ => None,
     };
     let ingress = ingress.unwrap_or(if peer.is_some() {
         Road::None
-    } else if args.local.is_empty() {
+    } else if listeners.is_empty() {
         Road::Tunnel
     } else {
         Road::None
     });
-    if ingress == Road::None && args.local.is_empty() && peer.is_none() {
-        return Err(usage("serve --ingress none needs --local ADDR"));
+    if ingress == Road::None && listeners.is_empty() && peer.is_none() {
+        return Err(usage(
+            "serve --ingress none needs --local ADDR or --acme DOMAIN",
+        ));
     }
     if args.pair.is_some() && ingress != Road::Relay {
         return Err(usage("serve --pair is for --ingress relay"));
@@ -246,7 +260,7 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
     // GitHub #643: --check with --local checks the files and each local
     // listener, and starts nothing.
     if args.common.check && ingress == Road::None {
-        let report = podnet::preflight::check_local(args.dir(), args.spa, &args.local);
+        let report = podnet::preflight::check_local(args.dir(), args.spa, &listeners);
         return super::tunnel::print_report(report, show);
     }
     let mut locals = Vec::new();
@@ -258,6 +272,9 @@ pub(crate) async fn serve(args: ServeArgs) -> Result<()> {
     };
     for local in binds {
         locals.push(bind_local(local, args.common.detach.replace, router.clone()).await?);
+    }
+    if !args.common.check {
+        locals.extend(bind_acme(&args.acme, router.clone()).await?);
     }
     match ingress {
         Road::None => serve_local(&args, locals, pin).await,
@@ -295,7 +312,8 @@ async fn serve_tunnel(args: &ServeArgs, files: FilesConfig) -> Result<()> {
     show.auth = files.access.users.is_some() && !files.access.anon_read;
     if args.common.check {
         let mut report = podnet::preflight::check(&config).await;
-        podnet::preflight::local_rows(&mut report, "local", &args.local);
+        let listeners: Vec<String> = args.local.iter().cloned().chain(args.acme.rows()).collect();
+        podnet::preflight::local_rows(&mut report, "local", &listeners);
         return super::tunnel::print_report(report, show);
     }
     if let Some(pin) = files.access.pin.as_ref().and_then(Gate::pin_display) {
@@ -411,7 +429,7 @@ async fn serve_local(args: &ServeArgs, locals: Vec<Local>, pin: Option<&str>) ->
         }
     }
     // A QR code of a unix socket has no use.
-    if show.qr && url.starts_with("http://") {
+    if show.qr && url.starts_with("http") {
         print!("{}", podnet::qr::render_terminal(&url)?);
     }
     podnet::detach::ready(serde_json::json!({

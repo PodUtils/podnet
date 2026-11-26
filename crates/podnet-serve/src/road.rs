@@ -193,23 +193,29 @@ pub async fn serve<L>(mut listener: L, service: axum::Router) -> std::io::Result
 where
     L: axum::serve::Listener,
 {
-    use hyper_util::rt::{TokioExecutor, TokioIo};
-    use hyper_util::server::conn::auto::Builder;
-    use hyper_util::service::TowerToHyperService;
     loop {
         // The accept of axum retries a failed accept itself.
         let (io, _) = listener.accept().await;
-        let service = TowerToHyperService::new(service.clone());
-        tokio::spawn(async move {
-            let mut builder = Builder::new(TokioExecutor::new());
-            builder.http1().half_close(true);
-            if let Err(err) = builder
-                .serve_connection_with_upgrades(TokioIo::new(io), service)
-                .await
-            {
-                tracing::trace!(error = %err, "a connection of the road ended with an error");
-            }
-        });
+        tokio::spawn(serve_connection(io, service.clone()));
+    }
+}
+
+/// Serve `service` on one connection, with the half close of [`serve`].
+pub(crate) async fn serve_connection<I>(io: I, service: axum::Router)
+where
+    I: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
+    use hyper_util::rt::{TokioExecutor, TokioIo};
+    use hyper_util::server::conn::auto::Builder;
+    use hyper_util::service::TowerToHyperService;
+    let service = TowerToHyperService::new(service);
+    let mut builder = Builder::new(TokioExecutor::new());
+    builder.http1().half_close(true);
+    if let Err(err) = builder
+        .serve_connection_with_upgrades(TokioIo::new(io), service)
+        .await
+    {
+        tracing::trace!(error = %err, "a connection of the road ended with an error");
     }
 }
 
