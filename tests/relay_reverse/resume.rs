@@ -166,7 +166,12 @@ async fn relay_session_lasts_12_h_on_a_fake_clock() {
     };
     let first = open().await;
     let (mut app, app_end) = tokio::io::duplex(1 << 16);
-    let session = tokio::spawn(carry(first, app_end, Resume::default().settings(), next));
+    let session = tokio::spawn(carry(
+        first,
+        app_end,
+        Resume::default().settings().unwrap(),
+        next,
+    ));
     let start = tokio::time::Instant::now();
     let mut echoes = 0;
     while start.elapsed() < Duration::from_secs(13 * 3600) {

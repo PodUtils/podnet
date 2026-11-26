@@ -1655,7 +1655,7 @@ through the way of a member of the group, and a TCP flow is one stream of the se
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** blocked
+**Status:** open
 
 ## Problem
 
@@ -1736,10 +1736,6 @@ line `ffffffffffffffff` and closes: the exchange ends with an error as today, wi
 holds the partial record marked `incomplete`. Another uid cannot connect to `inspect.sock`, and its mode is
 0600.
 
-## Blocker
-
-The capture hook in the copy helpers of `pod-cloudflare` (COORD-128, #758, to podcrates).
-
 ## Start condition
 
 Podnet holds `pod-cloudflare`, and the crate holds `forward_http`.
@@ -1749,6 +1745,8 @@ Podnet holds `pod-cloudflare`, and the crate holds `forward_http`.
 2026-11-17: the start condition holds. podnet took `pod-cloudflare` (T-423), and the crate holds `forward_http`. The
 block of the session of podcrates ended. The capture sink of step 2 sits in the copy helpers of the crate: step 7
 (the COORD issue to podcrates) is the first step of the work.
+
+2026-11-26, the blocker ended (The capture hook in the copy helpers of `pod-cloudflare` (COORD-128, #758, to podcrates).): podcrates `v0.86.0` (T-612) has the capture hook (`host.capture`, a sink of the headers of the visitor). The work of the Approach can start: set the sink in `base_host` for `tunnel --inspect`, and redact the headers in the sink.
 
 # T-248: Router: a guest-wire router that ends guest TCP on smoltcp
 

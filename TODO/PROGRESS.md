@@ -1,13 +1,13 @@
 # Progress
 
-`TODO/INDEX.md` holds 610 entries: 8 open, 9 partial, 32 blocked, 561 done.
+`TODO/INDEX.md` holds 611 entries: 9 open, 9 partial, 26 blocked, 567 done.
 
 ## State
 
 - The repository is `PodUtils/podnet`; GitHub redirects `Azathothas/cfrs` (T-021).
 - The ruling "Order" of 2026-11-06 (`docs/decisions.md`): the work on podnet's own code goes on,
   beside the take of the shared crates (T-137). Betas are allowed; no crates.io (2026-11-09).
-- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.85.0` (T-588): `pod-todo`, `pod-core`, `pod-tls`,
+- podnet takes the crates of `PodUtils/podcrates` by the tag `v0.86.0` (T-612): `pod-todo`, `pod-core`, `pod-tls`,
   `pod-proxy`, `pod-dns`, `pod-services`, `pod-ws`, `pod-quic`, `pod-hold`, `pod-wg`, `pod-netstack`, `pod-relay`,
   `pod-identity`, `pod-session`, `pod-e2e`, `pod-link`, `pod-turn`, `pod-devtunnel`, `pod-warp`, `pod-wormhole`
   (the transfer), `pod-extract`, `pod-manual`, `pod-cloudflare`, `pod-cover`, `pod-harness`, `pod-offline`,
@@ -39,7 +39,7 @@ stop"). End a turn only when each remaining entry is blocked.
    the full lane in `gate.yml` (the case `errors`, the row `testers`).
 1. **At each release of podcrates:** T-137, the take of each crate whose hand-off
    `adoption/podnet/CRATE.patch` is at the tag (`docs/maintenance.md`, Shared crates). It goes
-   before other work. The next tag after `v0.85.0` is the next take.
+   before other work. The next tag after `v0.86.0` is the next take.
 2. **podnet's own work:** the order below. Skip an entry whose Correction says that its work is
    the take of a crate of podcrates: it waits for the release of that crate. An entry that changes
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
@@ -57,13 +57,13 @@ not wait for a larger one.
 2. **M1, the rename:** done (the public image was measured on 2026-11-11).
 3. **M5, the fixes, at any time from M0, beside M1 to M4:** the entries of the triage of GitHub #347 to #412 are done.
    The entries that stay (P1 first, then P2, then P3):
-   - The findings of the QA pass of `v0.4.0-beta.19` (#713 to #751): each is done but T-575, T-579 and T-580 (blocked: COORD-123 #753, COORD-125 #755, COORD-124 #754 to podcrates).
-   - The findings of the QA pass of `v0.4.0-beta.20` (#761 to #775): each is done but T-598 (blocked: COORD-131 #776 to podcrates).
+   - The findings of the QA pass of `v0.4.0-beta.19` (#713 to #751): each is done (the last three by the take of podcrates `v0.86.0`).
+   - The findings of the QA pass of `v0.4.0-beta.20` (#761 to #775): each is done.
    - CI: T-316 (partial: the stand-in runs in ci; its QUIC leg waits for `PodUtils/podnet@7fe60e0:src/cloudflare/`, frozen).
    - WARP: T-210 (blocked: a device with a paid licence).
-   - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
+   - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: the capture hook is in `pod-cloudflare` `v0.86.0`).
    - open and partial follow-ups (`TODO/fixes.md`):
-     T-476 (blocked, COORD-126 #756), T-478 and T-406 (blocked, #604), T-488, T-414 and T-415
+     T-478 and T-406 (blocked, #604), T-488, T-414 and T-415
      (partial), T-358 (partial).
 4. **M2, the splits:** T-044 (blocked:
    the rows left go with the takes, T-137). The split of the tunnel is done by the take of `pod-cloudflare`; each file has

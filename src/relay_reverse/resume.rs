@@ -60,7 +60,14 @@ pub struct Resume {
     /// The end of the pair (milliseconds since the epoch), when it is
     /// known: the operator warns before it.
     pub expires: Option<u64>,
+    /// The cap of the bytes of one relay session (the relay: 64 MiB). A
+    /// move must reach the new leg under it, heads and window counted
+    /// (`Settings::under_cap` of `pod-session`, COORD-126).
+    pub cap: u64,
 }
+
+/// The cap of one session of the relay of PodUtils/podssh.
+pub const RELAY_CAP: u64 = 64 << 20;
 
 impl Default for Resume {
     fn default() -> Self {
@@ -68,6 +75,7 @@ impl Default for Resume {
             move_bytes: resume::MOVE_BYTES,
             move_age: resume::MOVE_AGE,
             expires: None,
+            cap: RELAY_CAP,
         }
     }
 }
@@ -76,7 +84,9 @@ impl Resume {
     /// The settings of the client of the layer. The client asks for the end
     /// of one direction (`end.v1`): after the end of its input, the answer
     /// of the target still comes.
-    pub fn settings(&self) -> Settings {
+    /// A move that cannot reach the new leg under the cap is a usage error
+    /// that names the largest move under it.
+    pub fn settings(&self) -> Result<Settings> {
         Settings {
             move_bytes: self.move_bytes,
             move_age: self.move_age,
@@ -84,6 +94,8 @@ impl Resume {
             ..Settings::default()
         }
         .on_the_pair()
+        .under_cap(self.cap)
+        .map_err(|e| crate::exit::fault(crate::exit::Fault::Usage, anyhow::Error::new(e)))
     }
 }
 
@@ -381,6 +393,7 @@ where
         current: Mutex::new(None),
         refused: AtomicBool::new(false),
     });
+    let settings = resume.settings()?;
     let first = legs
         .open(false)
         .await
@@ -401,8 +414,8 @@ where
         }
     };
     let result = match seal {
-        None => carry(first, app, resume.settings(), next).await,
-        Some(seal) => carry_sealed(first, app, resume.settings(), next, seal).await,
+        None => carry(first, app, settings, next).await,
+        Some(seal) => carry_sealed(first, app, settings, next, seal).await,
     };
     if let Some(warnings) = warnings {
         warnings.abort();
@@ -441,9 +454,37 @@ where
 mod tests {
     use super::*;
 
+    /// T-476 (podcrates `v0.86.0`, `Settings::under_cap`): a move that
+    /// lets the old leg reach the cap of the relay is refused with the
+    /// largest move under it; the default move fits the cap of 64 MiB.
+    #[test]
+    fn a_move_over_the_cap_of_the_relay_is_refused() {
+        let cases: [(u64, u64, bool); 4] = [
+            (48 << 20, RELAY_CAP, true),
+            (63 << 20, RELAY_CAP, false),
+            (64 << 20, RELAY_CAP, false),
+            (160 << 10, 1 << 20, false),
+        ];
+        for (move_bytes, cap, fits) in cases {
+            let resume = Resume {
+                move_bytes,
+                cap,
+                ..Resume::default()
+            };
+            match resume.settings() {
+                Ok(settings) => assert!(fits, "{move_bytes} under {cap}: {}", settings.move_bytes),
+                Err(e) => {
+                    assert!(!fits, "{move_bytes} under {cap}: {e:#}");
+                    assert_eq!(crate::exit::code_of(&e), crate::exit::USAGE);
+                    assert!(format!("{e:#}").contains(&cap.to_string()), "{e:#}");
+                }
+            }
+        }
+    }
+
     #[test]
     fn the_settings_move_under_the_limits_of_the_relay() {
-        let settings = Resume::default().settings();
+        let settings = Resume::default().settings().unwrap();
         assert_eq!(settings.move_bytes, 48 << 20);
         assert_eq!(settings.move_age, Duration::from_secs(11 * 3600));
         assert!(settings.half_close);

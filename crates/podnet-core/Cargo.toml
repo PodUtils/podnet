@@ -22,16 +22,16 @@ path = "src/lib.rs"
 [dependencies]
 # The clock of an HTTP date, the services of other parties and the TLS
 # context, of PodUtils/podcrates at the git tag of the root.
-pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.85.0", version = "0.85.0" }
-pod-services = { git = "https://github.com/PodUtils/podcrates", tag = "v0.85.0", version = "0.85.0" }
-pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.85.0", version = "0.85.0" }
+pod-core = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }
+pod-services = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }
+pod-tls = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }
 # The CONNECT client of `connect` (T-473): the dial of PodUtils/podcrates,
 # with its blocking form for `connect_tunnel`.
-pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.85.0", version = "0.85.0", features = ["blocking"] }
+pod-proxy = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0", features = ["blocking"] }
 # The counters of a tunnel, the race, the UDP probe and the reader of the
 # configuration file, of PodUtils/podcrates (src/metrics.rs, race.rs,
 # udp.rs, yaml.rs).
-pod-cloudflare = { git = "https://github.com/PodUtils/podcrates", tag = "v0.85.0", version = "0.85.0" }
+pod-cloudflare = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }
 anyhow = "1"
 futures = "0.3"
 getrandom = "0.4"
@@ -72,4 +72,4 @@ tempfile = "3"
 tokio = { version = "1", features = ["test-util"] }
 # need_loopback! and need_localhost! of the tests (T-046), from the test kit
 # of PodUtils/podcrates at the git tag of the root.
-pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.85.0", version = "0.85.0" }
+pod-testkit = { git = "https://github.com/PodUtils/podcrates", tag = "v0.86.0", version = "0.86.0" }

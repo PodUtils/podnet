@@ -195,3 +195,22 @@ fn pod_proxy_refuses_a_unix_path_with_user_info() {
         env.skipped[0].value
     );
 }
+
+/// #754: the last line of the stderr of an exec proxy can repeat the words
+/// of its command; the line of the failure hides each secret part of the
+/// spec, and keeps the program word.
+#[test]
+fn the_words_of_an_exec_proxy_do_not_reach_a_line() {
+    let spec = "http+exec:helper754 --token=s3cretToken754 user754@host.example";
+    hide_secrets(spec);
+    let proxy = Proxy::parse_trusted(spec).unwrap();
+    let e = DialError::ProxyExited {
+        word: "helper754".into(),
+        status: "3".into(),
+        said: "helper754: refused --token=s3cretToken754 for user754@host.example".into(),
+    };
+    let text = format!("{:#}", failed(e, "t.example", 443, Some(&proxy)));
+    assert!(!text.contains("s3cretToken754"), "{text}");
+    assert!(!text.contains("user754@host.example"), "{text}");
+    assert!(text.contains("helper754"), "{text}");
+}

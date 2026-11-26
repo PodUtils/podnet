@@ -426,21 +426,21 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #725 | [qa 0.4.0-beta.19] pod: PODNET_POLICY does not refuse a destination (the program reaches a refused host) | closed: T-572 done (\2; the test of each entry is in its Done section) | T-572 |
 | #727 | [qa 0.4.0-beta.19] bench, connect: a refusal of PODNET_POLICY gives the next step of a connect failure | closed: T-573 done (\2; the test of each entry is in its Done section) | T-573 |
 | #731 | [qa 0.4.0-beta.19] warp status, rotate, delete, license: a missing identity file exits 78, not 66 (no-input) | closed: T-574 done (\2; the test of each entry is in its Done section) | T-574 |
-| #737 | [qa 0.4.0-beta.19] bench, connect, tunnel, relay connect, forward: the line of a name that does not resolve is cut with "..." in the middle of a cause | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-575 |
+| #737 | [qa 0.4.0-beta.19] bench, connect, tunnel, relay connect, forward: the line of a name that does not resolve is cut with "..." in the middle of a cause | closed: T-575 done (the take of podcrates `v0.86.0`, T-612) | T-575 |
 | #738 | [qa 0.4.0-beta.19] warp up: the failure prints two lines of about 1500 characters each that repeat each cause several times | closed: T-576 done (\2; the test of each entry is in its Done section) | T-576 |
 | #739 | [qa 0.4.0-beta.19] pod --report: "backend": "netns-kernel" is not a value of pod-report.schema.json | closed: T-577 done (\2; the test of each entry is in its Done section) | T-577 |
 | #740 | [qa 0.4.0-beta.19] pod --backend netns (userns-off): the start failure gives no next step, and the report has no true reason | closed: T-578 done (\2; the test of each entry is in its Done section) | T-578 |
-| #741 | [qa 0.4.0-beta.19] tunnel: behind a proxy, the start waits about 35 s in DNS over HTTPS with no line at the default level and no cause at -v | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-579 |
-| #744 | [qa 0.4.0-beta.19] --proxy http+exec: a command that does not exist floods stderr with one sh line for each try and ends with a wrong cause | open (black-box QA pass of 0.4.0-beta.19, 2026-11-25) | T-580 |
+| #741 | [qa 0.4.0-beta.19] tunnel: behind a proxy, the start waits about 35 s in DNS over HTTPS with no line at the default level and no cause at -v | closed: T-579 done (the take of podcrates `v0.86.0`, T-612) | T-579 |
+| #744 | [qa 0.4.0-beta.19] --proxy http+exec: a command that does not exist floods stderr with one sh line for each try and ends with a wrong cause | closed: T-580 done (the take of podcrates `v0.86.0`, T-612) | T-580 |
 | #749 | [qa 0.4.0-beta.19] pod doctor: says that seccomp (and netns) are ok in no-proc and proc-masked, where the pod cannot start | closed: T-581 done (\2; the test of each entry is in its Done section) | T-581 |
 | #751 | [qa 0.4.0-beta.19] update --check: a proxy that does not answer costs 60 s and the error gives no next step | closed: T-582 done (\2; the test of each entry is in its Done section) | T-582 |
 | #752 | COORD-122: podnet took podcrates v0.84.0; COORD-118 to COORD-121 closed; asks COORD-123 to COORD-125 (to podcrates) | closed (read: PodUtils/podcrates#260 names the take at `405d47c`, call C780) | none |
-| #753 | COORD-123: pod-dns: a line of a name that does not resolve is cut inside a cause, and one group of resolvers has no cause (to podcrates) | open (a COORD issue between sessions; the ask of T-575) | none |
-| #754 | COORD-124: pod-proxy: a proxy command that does not exist floods stderr, gives a wrong cause and hides the command (to podcrates) | open (a COORD issue between sessions; the ask of T-580) | none |
-| #755 | COORD-125: pod-cloudflare: the DoH step of the edge discovery waits about 35 s with no line (to podcrates) | open (a COORD issue between sessions; the ask of T-579) | none |
-| #756 | COORD-126: pod-session: resume::move_under(cap, window), the largest move that keeps a session under a relay cap (to podcrates) | open (a COORD issue between sessions; the ask of T-476) | none |
+| #753 | COORD-123: pod-dns: a line of a name that does not resolve is cut inside a cause, and one group of resolvers has no cause (to podcrates) | closed (answered by podcrates `v0.86.0`, PodUtils/podcrates#272; taken in T-612) | none |
+| #754 | COORD-124: pod-proxy: a proxy command that does not exist floods stderr, gives a wrong cause and hides the command (to podcrates) | closed (answered by podcrates `v0.86.0`, PodUtils/podcrates#272; taken in T-612) | none |
+| #755 | COORD-125: pod-cloudflare: the DoH step of the edge discovery waits about 35 s with no line (to podcrates) | closed (answered by podcrates `v0.86.0`, PodUtils/podcrates#272; taken in T-612) | none |
+| #756 | COORD-126: pod-session: resume::move_under(cap, window), the largest move that keeps a session under a relay cap (to podcrates) | closed (answered by podcrates `v0.86.0`, PodUtils/podcrates#272; taken in T-612) | none |
 | #757 | COORD-127: podnet took podcrates v0.85.0; the role table of COORD-157 is in docs/hosted-sessions.md (to podcrates) | closed (read: PodUtils/podcrates#262 names the take at `cb695dd`) | none |
-| #758 | COORD-128: pod-cloudflare: a capture hook in the copy helpers of forward_http, for podnet tunnel --inspect (to podcrates) | open (a COORD issue between sessions; the ask of T-244) | none |
+| #758 | COORD-128: pod-cloudflare: a capture hook in the copy helpers of forward_http, for podnet tunnel --inspect (to podcrates) | closed (answered by podcrates `v0.86.0`, PodUtils/podcrates#272; taken in T-612) | none |
 | #759 | COORD-129: podnet v0.4.0-beta.19 is out: the files, their SHA-256 and the image by digest (to all) | open (a COORD issue between sessions) | none |
 | #760 | COORD-130: a shared headscale harness (headscale, its DERP, tailscaled peers) for CI, from podssh's ts-headscale (to podcrates) | open (a COORD issue between sessions; the ask of T-114) | none |
 | #745 | [qa 0.4.0-beta.19] --egress, forward --network: an unknown spec is read as a proxy host:port, and the error does not give the known specs | closed: T-570 done (black-box QA pass of 0.4.0-beta.19, 2026-11-25; the test is in its Done section) | T-570 |
@@ -450,7 +450,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #763 | [qa 0.4.0-beta.20] connect: a name that does not resolve exits 69, not 68 (no-host) | closed: T-595 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-595 |
 | #764 | [qa 0.4.0-beta.20] net proxy: --switch tcp://NAME:PORT is refused as a "bad TCP listen address" | closed: T-596 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-596 |
 | #765 | [qa 0.4.0-beta.20] wait: the help says exit 69 at --timeout, the command exits 124 | closed: T-597 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-597 |
-| #766 | [qa 0.4.0-beta.20] doctor: on bind-denied the TCP carrier rows give "Address family not supported", not the refused bind | open: T-598 blocked on COORD-131 (#776) | T-598 |
+| #766 | [qa 0.4.0-beta.20] doctor: on bind-denied the TCP carrier rows give "Address family not supported", not the refused bind | closed: T-598 done (the take of podcrates `v0.86.0`, T-612) | T-598 |
 | #767 | [qa 0.4.0-beta.20] link dial: a bad --peer value exits 78 and names "line 1" | closed: T-599 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-599 |
 | #768 | [qa 0.4.0-beta.20] net proxy: --switch to an address that does not answer waits 135 s, past --run-for, with no line | closed: T-600 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-600 |
 | #769 | [qa 0.4.0-beta.20] tunnel: the warning "DNS discovery of the edge failed" comes two times at one start | closed: T-601 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-601 |
@@ -460,7 +460,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #773 | [qa 0.4.0-beta.20] expose --via switch: the example of docs/forward.md exits 64 "--switch needs --address" | closed: T-605 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-605 |
 | #774 | [qa 0.4.0-beta.20] forward: a refused bind of port 18000 tells the user to "give a port above 1023" | closed: T-606 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-606 |
 | #775 | [qa 0.4.0-beta.20] init check: a missing file is reported as "the configuration is not schema 1" | closed: T-607 done (black-box QA pass of 0.4.0-beta.20, 2026-11-26; the test is in its Done section) | T-607 |
-| #776 | COORD-131: pod-link: the TCP probe of the carriers names the IPv6 try, not the refused IPv4 bind (to podcrates) | open (a COORD issue between sessions; the ask of T-598) | none |
+| #776 | COORD-131: pod-link: the TCP probe of the carriers names the IPv6 try, not the refused IPv4 bind (to podcrates) | closed (answered by podcrates `v0.86.0`, PodUtils/podcrates#272; taken in T-612) | none |
 | #777 | COORD-132: podnet v0.4.0-beta.20 is out: the files, their SHA-256 and the image by digest (to all) | open (a COORD issue between sessions) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

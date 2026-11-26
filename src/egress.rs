@@ -62,7 +62,16 @@ pub fn rules() -> Rules {
 /// The proxy of a URL by podnet's rules, as a variable gives it: no command.
 pub fn parse(spec: &str) -> Result<Proxy> {
     check_unix_path(spec)?;
+    hide_secrets(spec);
     Proxy::parse(spec).map_err(anyhow::Error::msg)
+}
+
+/// Give each secret part of the proxy spec `spec` (a password, the words of
+/// an exec command) to the report, so that no line shows it (#754).
+pub fn hide_secrets(spec: &str) {
+    for secret in Proxy::secret_parts(spec) {
+        crate::report::hide(&secret);
+    }
 }
 
 /// T-349: refuse a proxy on a Unix socket whose path starts with `//HOST` or
@@ -324,6 +333,15 @@ fn failed(e: DialError, host: &str, port: u16, proxy: Option<&Proxy>) -> anyhow:
                 DialError::ProxyRefused { status, reason, .. } => {
                     anyhow::Error::new(Refusal::of(*status, reason))
                 }
+                // #754: the last line of the stderr of an exec command can
+                // hold the words of the command.
+                DialError::ProxyExited { word, status, said } => {
+                    error_of(&DialError::ProxyExited {
+                        word: word.clone(),
+                        status: status.clone(),
+                        said: crate::report::mask(said),
+                    })
+                }
                 _ => error_of(&e),
             };
             // #762: a proxy that answers 502 or 504 (a SOCKS5 reply of the
@@ -346,7 +364,9 @@ fn failed(e: DialError, host: &str, port: u16, proxy: Option<&Proxy>) -> anyhow:
             // HOST:PORT timed out ...`): name it once (T-452).
             let words = format!("connecting to {at}");
             let err = error_of(&e);
-            let err = match err.to_string().starts_with(&words) {
+            // #753 (podcrates v0.86.0): the line of a name that does not
+            // resolve names the host itself; no lead that names it again.
+            let err = match err.to_string().starts_with(&words) || stage == Stage::Dns {
                 true => err,
                 false => err.context(words),
             };

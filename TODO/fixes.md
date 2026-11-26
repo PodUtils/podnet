@@ -2317,7 +2317,7 @@ A unit test gives a row with a passing index and a failing file host and expects
 
 ## Premise
 
-- `src/egress.rs:45-46` sets 8080 and `rules()` passes it as `http_port` (`src/egress.rs:50-61`); `parse()` uses it (`:67`).
+- `src/egress.rs:45-46` sets 8080 and `rules()` passes it as `http_port` (`src/egress.rs:50-61`); `parse()` uses it (`:68`).
 - `pod-proxy` `HTTP_PORT = 80` (`proxy/parse.rs:21`) is the default of `Rules` (`env.rs:141`). A consumer can set another value (`env.rs:124`).
 - The tests assert the constant, not a number (`src/egress.rs:461,475`).
 - `docs/decisions.md` has no ruling on this value. Not measured: curl behaviour (read from the issue).
@@ -2476,7 +2476,7 @@ cargo test -p podnet-netns tailscale
 
 ## Premise
 
-- `connect_origin` (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:243-269`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:94-98`).
+- `connect_origin` (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:103-128`) resolves names and `localhost`. `egress::dial` (`src/egress.rs:252-278`) uses the proxy and `NO_PROXY`. `split_host_port` is private (`PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:94-98`).
 - `rules()` sends the loopback through the proxy (`loopback_direct: false`). A forward to `127.0.0.1` would then use the proxy. The Decision rules it: the loopback stays direct.
 - The `F: Fn() -> Fut` shape of `forward` stays (`crates/podnet-vnet/src/proxy.rs:186-190`).
 
@@ -10767,7 +10767,7 @@ manual has 6). `cargo test -p podnet --lib warp::up`: 17 passed.
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -10797,13 +10797,15 @@ the close of 1009 carried it). Alone, the test passed 3 times of 3.
 cargo test -p podnet --test transfer_relay -- transfer_over_the_relay_crosses_the_cap
 ```
 
-## Blocker
-
-`resume::move_under` of `pod-session` (COORD-126, #756, to podcrates). The test moves at 160 KiB until the tag.
-
 ## Correction
 
 2026-11-23, H-19 (`docs/research/podnet/hard-problems-results.md`): worst-case bytes before a move are `move_bytes + PAIR_WINDOW (768 KiB) + 2 * CHUNK (64 KiB) + 64`. The default 48 MiB move under a 64 MiB cap has 15.2 MiB of room, while the test's 256 KiB move under a 1 MiB cap overshot by 65,600 bytes. `tests/transfer_relay.rs` now moves at 160 KiB (`<= 191 KiB`, leaving 32,704 bytes of room) and passes `transfer_over_the_relay_crosses_the_cap`. Adding `resume::move_under(cap, window)` in `pod-session` remains the follow-up.
+
+2026-11-26, the blocker ended (`resume::move_under` of `pod-session` (COORD-126, #756, to podcrates). The test moves at 160 KiB until the tag.): podcrates `v0.86.0` (T-612) has `Settings::under_cap(cap)`. `Resume` has the cap of the relay (`RELAY_CAP`, 64 MiB), and `Resume::settings` checks the move against it: a move that lets the old leg reach the cap exits 64 and names the largest move under it. The test of the fake relay keeps its move of 160 KiB under its cap of 1 MiB.
+
+## Done
+
+2026-11-26, the take of `v0.86.0` (T-612). The test `a_move_over_the_cap_of_the_relay_is_refused` (48 MiB fits 64 MiB; 63 and 64 MiB do not; 160 KiB under 1 MiB with the window of the pair does not) passes, and `transfer_over_the_relay_crosses_the_cap` passes.
 
 # T-477: A refusal for now (HTTP 429, exit 75) gets the hint "does not change with a retry"
 
@@ -13084,7 +13086,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `connect`, `relay c
   `dial_error`), so the stage is gone when `src/ws.rs:111` reads it. No hop, no hint.
 - #697, #698. Read: `bench` keeps the first error of the workers as a string (`src/cli/cmd/bench.rs:77`,
   `format!("{err:#}")`) and `bail!` gives that string (`src/cli/cmd/bench.rs:176`): the hop of `src/fetch.rs` is lost.
-  `src/relay_reverse/resume.rs:422` and `:435` write `anyhow!("the session to {name}: {e}")`: the hop is lost too.
+  `src/relay_reverse/resume.rs:435` and `:448` write `anyhow!("the session to {name}: {e}")`: the hop is lost too.
 - The rule that works: `report::error_line` (`src/report.rs:9`) gives the hint of `hop::of(err)`. A command whose error
   keeps the typed chain gets the hint. Not read: `send` and the `warp proxy` path of #698 (the tester names no cause).
 
@@ -13226,7 +13228,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
   (`PodUtils/podcrates:crates/pod-cloudflare/src/origin.rs:155`, `:370`, `:380`).
 - Read: the `edge` row comes from the system resolver of podnet (`system_srv`, `src/tunnel.rs:282`). hickory writes
   `no records found for Query { ... }` with the Debug form of its `Query`. The row shows the error of hickory as it is.
-- Read: `src/egress.rs:343` adds `{at} through the proxy {label}` to the error of a dial. `pod-ws` adds `could not
+- Read: `src/egress.rs:361` adds `{at} through the proxy {label}` to the error of a dial. `pod-ws` adds `could not
   connect to {at}` (`PodUtils/podcrates:crates/pod-ws/src/way.rs`, `dial_error`, which strips only
   `connecting to {target}` and `could not connect to {target}`). `pod-proxy` writes `could not reach the proxy P: could
   not connect to P`. The target and the proxy come two or three times.
@@ -13245,7 +13247,7 @@ Measured on 2026-11-23 with the debug binary of beta.17: the `edge` row (six cop
 2. podnet: `system_srv` (`src/tunnel.rs:282`) maps `NoRecordsFound` to one sentence: `no SRV records for NAME at the
    system resolver`. It keeps no Debug form of a struct. Before that, read `pod-dns` for a lookup of SRV records
    (shared code first).
-3. podnet: `src/egress.rs:343` names the target once. The line of a dial is
+3. podnet: `src/egress.rs:361` names the target once. The line of a dial is
    `TARGET through the proxy PROXY: could not reach the proxy PROXY: Connection refused (os error 111)`, or shorter.
 4. COORD ask (to podcrates, the lead files it): (a) `pod-ws` `dial_error` strips the target lead of a dialer that writes
    `TARGET through the proxy`, and `pod-proxy` names the proxy once in `could not reach the proxy`; (b) `pod-dns`
@@ -15783,7 +15785,7 @@ before the fix (exit 78) and passes now.
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -15821,9 +15823,13 @@ code first" (`docs/decisions.md`, 2026-11-17) puts the fix into the crate that m
 cargo test -p podnet --test error_words
 ```
 
-## Blocker
+## Correction
 
-The fix of `pod-dns` (COORD-123, #753, to podcrates): no cut inside a cause, and each group of resolvers with its cause.
+2026-11-26, the blocker ended (The fix of `pod-dns` (COORD-123, #753, to podcrates): no cut inside a cause, and each group of resolvers with its cause.): podcrates `v0.86.0` (T-612) groups the resolvers by cause and keeps each cause whole; podnet drops the lead `connecting to HOST:PORT` at the hop `dns` (`failed` of `src/egress.rs`).
+
+## Done
+
+2026-11-26, the take of `v0.86.0` (T-612). `connect --no-proxy wss://nowhere.invalid/...` gives `could not resolve nowhere.invalid: system resolver: Name or service not known; DNS over HTTPS: 8 resolvers failed: 4 with TLS; 4 with ...`: no cut, each cause once, the host named once after the URL. The test `each_error_line_names_its_cause_once_and_says_what_to_do` (`tests/error_words.rs`, the rows of a name that does not resolve) passes.
 
 # T-576: warp up: the failure prints two lines of about 1500 characters that repeat each cause
 
@@ -15941,7 +15947,7 @@ exit 3, and a report with `backend` null, `hold` none and that line as the reaso
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -15960,9 +15966,13 @@ A line at the default level when a step of the resolver chain is slow, with its 
 
 `cargo test -p podnet --lib resolve`
 
-## Blocker
+## Correction
 
-The fix of `pod-cloudflare` (COORD-125 (#755), to podcrates). podnet takes it with the next tag; the release notes of `v0.4.0-beta.19` name the limit (`docs/decisions.md`, 2026-11-25).
+2026-11-26, the blocker ended (The fix of `pod-cloudflare` (COORD-125 (#755), to podcrates). podnet takes it with the next tag; the release notes of `v0.4.0-beta.19` name the limit (`docs/decisions.md`, 2026-11-25).): podcrates `v0.86.0` (T-612) ends the edge discovery within 12 s and gives one event `edge.discovery` for a slow source; `base_host` gives the events to `decisions::report`, which says an equal warning once (T-601).
+
+## Done
+
+2026-11-26, the take of `v0.86.0` (T-612): the bound and the event are in `pod-cloudflare`; the test of `decisions` (`an_equal_warning_is_said_once_in_its_quiet_time`) pass.
 
 # T-580: --proxy http+exec: a command that does not exist floods stderr and ends with a wrong cause
 
@@ -15971,7 +15981,7 @@ The fix of `pod-cloudflare` (COORD-125 (#755), to podcrates). podnet takes it wi
 **Milestone:** M5
 **Priority:** P2
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -15990,9 +16000,15 @@ Capture the stderr of the command; a command that ends before its first byte giv
 
 `cargo test --test proxy_exec`
 
-## Blocker
+## Correction
 
-The fix of `pod-proxy` (COORD-124 (#754), to podcrates). podnet takes it with the next tag; the release notes of `v0.4.0-beta.19` name the limit (`docs/decisions.md`, 2026-11-25).
+2026-11-26: the test target `proxy_exec` of the Prove was not made; the test is `the_words_of_an_exec_proxy_do_not_reach_a_line` of the lib (`cargo test --lib -p podnet egress::`).
+
+2026-11-26, the blocker ended (The fix of `pod-proxy` (COORD-124 (#754), to podcrates). podnet takes it with the next tag; the release notes of `v0.4.0-beta.19` name the limit (`docs/decisions.md`, 2026-11-25).): podcrates `v0.86.0` (T-612) gives `DialError::ProxyExited` (one line, the program word, the status), the stderr of the command no longer reaches podnet's stderr, and a command that is not found starts once. podnet hides `Proxy::secret_parts` of each spec of a network (`networks::parse`) and of the variables (`egress::parse`), and masks the last stderr line of the command (`said`) in `failed`.
+
+## Done
+
+2026-11-26, the take of `v0.86.0` (T-612). The test `the_words_of_an_exec_proxy_do_not_reach_a_line` (`src/egress_tests.rs`) passes: a token word and a `user@host` word of the command do not reach the line, and the program word does.
 
 # T-581: pod doctor: seccomp and netns are ok in no-proc and proc-masked, where the pod cannot start
 
@@ -16706,7 +16722,7 @@ cargo test --bin podnet the_llms_files_equal_the_model
 **Milestone:** M5
 **Priority:** P3
 **Effort:** S
-**Status:** blocked
+**Status:** done
 
 ## Problem
 
@@ -16726,9 +16742,13 @@ In the lab `bind-denied` with no IPv6, each TCP carrier row of `doctor` and `com
 podnet doctor   # in the lab bind-denied: the row names the refused bind
 ```
 
-## Blocker
+## Correction
 
-COORD-131 (PodUtils/podnet#776): a tag of podcrates with the fix of `pod-link`.
+2026-11-26, the blocker ended (COORD-131 (PodUtils/podnet#776): a tag of podcrates with the fix of `pod-link`.): podcrates `v0.86.0` (T-612) names each family in the line of the loopback bind.
+
+## Done
+
+2026-11-26, the take of `v0.86.0` (T-612). In the lab `bind-denied` (podlab `v0.84.0`, uid 65534), `podnet link carriers` gives `tcp ... unavailable: the tcp carrier: TCP sockets on the loopback: 127.0.0.1: Permission denied (os error 13); ::1: no IPv6 on this host`. The test `each_line_names_the_cost_once` and `cargo test --test link_registry` pass.
 
 # T-599: link dial: a bad --peer value exits 78 and names "line 1"
 
@@ -17138,3 +17158,42 @@ cargo test --lib -p podnet carriers::tests::each_line_names_the_cost_once
 ## Done
 
 2026-11-26, the commit of this entry. The test `each_line_names_the_cost_once` passes.
+
+# T-612: Take podcrates v0.86.0
+
+**Source:** PodUtils/podcrates#272 (COORD-158): the tag `v0.86.0` at `22d1a75` answers the asks of podnet #753 to #756,
+#758 and #776.
+**Category:** chore
+**Milestone:** M3
+**Priority:** P1
+**Effort:** S
+**Status:** done
+
+## Problem
+
+podnet takes the crates of podcrates by the tag `v0.85.0`. The tag `v0.86.0` holds the fixes of six asks of podnet.
+
+## Premise
+
+- Read: the section "podnet" of COORD-158: no build change; each ask with the call that podnet makes.
+- The tag has no `adoption/podnet/` patch; `PodUtils/podcrates@22d1a75:scripts/release-index.py` has the same SHA-256.
+
+## Approach
+
+1. Each `pod-*` dependency names `tag = "v0.86.0"`, `version = "0.86.0"`; `Cargo.lock`, `fuzz/Cargo.lock`,
+   `scripts/install/SOURCES`, `issue-sync.yml` and the checkout of `release.yml` name the commit `22d1a75`.
+2. The calls of each ask: T-575 (#753), T-580 (#754), T-579 (#755), T-476 (#756), T-244 (#758, open again), T-598 (#776).
+   `ConnectError::Ended`: `dial_again` of `src/ws.rs` and `next` of `src/relay_reverse/resume.rs` dial again for it
+   already (no arm stops on it).
+
+## Prove
+
+```sh
+cargo build --workspace --all-targets --features full
+sh scripts/agent/check.sh
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The workspace builds with `--features full` with no warning; the tests of the
+changed parts pass (`egress::`, `relay_reverse::resume`, `cargo test --test error_words --test link_registry`).

@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**610 entries: 8 open, 9 partial, 32 blocked, 561 done.**
+**611 entries: 9 open, 9 partial, 26 blocked, 567 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 0 | 2 | 3 | 92 | 97 |
-| P2 | 0 | 4 | 15 | 296 | 315 |
-| P3 | 8 | 3 | 14 | 172 | 197 |
-| **All** | 8 | 9 | 32 | 561 | 610 |
+| P1 | 0 | 2 | 3 | 93 | 98 |
+| P2 | 0 | 4 | 11 | 300 | 315 |
+| P3 | 9 | 3 | 12 | 173 | 197 |
+| **All** | 9 | 9 | 26 | 567 | 611 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -289,7 +289,7 @@ M8 Overlays, M9 Later.
 | [T-241](fixes.md) | P2 | M | M5 | defect | done | `warp`: register under a lock, save the device before the enrolment step, and fail over the registration POST only when no response came (GitHub #432) |
 | [T-242](services.md) | P3 | M | M6 | feature | done | Rules: warn when an earlier domain or cidr rule shadows a later one, and fail when the shadowed rule is a `reject` (GitHub #433) |
 | [T-243](overlays.md) | P3 | M | M8 | feature | done | `net tailscale`: `--tailnet NAME` refuses to start or to dial when the daemon is in another tailnet, a doctor row shows the status, and the docs name `TS_FORCE_NOISE_443` (GitHub #434) |
-| [T-244](later.md) | P3 | L | M9 | feature | blocked | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
+| [T-244](later.md) | P3 | L | M9 | feature | open | `tunnel --inspect`: capture each exchange beside the copy helpers of `forward_http`, keep a ring, redact by default, replay over a 0600 socket (GitHub #435) |
 | [T-245](fixes.md) | P2 | S | M5 | release | done | Publish `v0.4.0-beta.4`: the dry run, the publish and the release proofs |
 | [T-246](overlays.md) | P3 | S | M8 | feature | done | NetBird: the network spec `netbird:[PORT]` over the SOCKS5 listener of netstack mode |
 | [T-247](overlays.md) | P3 | M | M8 | measurement | blocked | NetBird: measure netstack mode on a proxy-only host |
@@ -520,7 +520,7 @@ M8 Overlays, M9 Later.
 | [T-473](fixes.md) | P2 | M | M3 | chore | done | A survey of podnet's copies of shared code against podcrates and the siblings (PodUtils/podcrates#221) |
 | [T-474](fixes.md) | P1 | S | M5 | defect | done | `ssh-relay` ignores `--proxy`, `--egress`, `--resolve` and the proxy variables |
 | [T-475](fixes.md) | P2 | S | M5 | defect | done | `warp up` reads its own list of 4 system CA bundles; the manual and `pod_tls` have 6 |
-| [T-476](fixes.md) | P2 | S | M6 | defect | blocked | `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move |
+| [T-476](fixes.md) | P2 | S | M6 | defect | done | `transfer_over_the_relay_crosses_the_cap` fails under load: a session meets the cap before its move |
 | [T-477](fixes.md) | P2 | S | M5 | defect | done | A refusal for now (HTTP 429, exit 75) gets the hint "does not change with a retry" |
 | [T-478](fixes.md) | P1 | M | M6 | defect | blocked | Two parallel SSH sessions through one relay node: one hung with no line |
 | [T-479](fixes.md) | P2 | S | M5 | defect | done | Tests free a port to get a refused address; another test can take the port |
@@ -619,12 +619,12 @@ M8 Overlays, M9 Later.
 | [T-572](fixes.md) | P1 | S | M5 | defect | done | pod: PODNET_POLICY does not refuse a destination |
 | [T-573](fixes.md) | P2 | S | M5 | defect | done | bench, connect: a refusal of PODNET_POLICY gives the next step of a connect failure |
 | [T-574](fixes.md) | P2 | S | M5 | defect | done | warp status, rotate, delete, license: a missing identity file exits 78, not 66 |
-| [T-575](fixes.md) | P2 | S | M5 | defect | blocked | bench, connect, tunnel, relay connect, forward: the line of a name that does not resolve is cut with ... in a cause |
+| [T-575](fixes.md) | P2 | S | M5 | defect | done | bench, connect, tunnel, relay connect, forward: the line of a name that does not resolve is cut with ... in a cause |
 | [T-576](fixes.md) | P2 | S | M5 | defect | done | warp up: the failure prints two lines of about 1500 characters that repeat each cause |
 | [T-577](fixes.md) | P2 | S | M5 | defect | done | pod --report: the backend netns-kernel is not a value of pod-report.schema.json |
 | [T-578](fixes.md) | P2 | S | M5 | defect | done | pod --backend netns (userns-off): the start failure gives no next step, and the report has no true reason |
-| [T-579](fixes.md) | P2 | S | M5 | defect | blocked | tunnel: behind a proxy the start waits about 35 s in DNS over HTTPS with no line |
-| [T-580](fixes.md) | P2 | S | M5 | defect | blocked | --proxy http+exec: a command that does not exist floods stderr and ends with a wrong cause |
+| [T-579](fixes.md) | P2 | S | M5 | defect | done | tunnel: behind a proxy the start waits about 35 s in DNS over HTTPS with no line |
+| [T-580](fixes.md) | P2 | S | M5 | defect | done | --proxy http+exec: a command that does not exist floods stderr and ends with a wrong cause |
 | [T-581](fixes.md) | P2 | S | M5 | defect | done | pod doctor: seccomp and netns are ok in no-proc and proc-masked, where the pod cannot start |
 | [T-582](fixes.md) | P2 | S | M5 | defect | done | update --check: a proxy that does not answer costs 60 s and the error gives no next step |
 | [T-583](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.84.0 |
@@ -642,7 +642,7 @@ M8 Overlays, M9 Later.
 | [T-595](fixes.md) | P2 | S | M5 | defect | done | connect: a name that does not resolve exits 69, not 68 (no-host) |
 | [T-596](fixes.md) | P2 | S | M5 | defect | done | net proxy: --switch tcp://NAME:PORT is refused as a "bad TCP listen address" |
 | [T-597](fixes.md) | P3 | S | M5 | defect | done | wait: the help says exit 69 at --timeout, the command exits 124 |
-| [T-598](fixes.md) | P3 | S | M5 | defect | blocked | doctor: on bind-denied the TCP carrier rows give "Address family not supported", not the refused bind |
+| [T-598](fixes.md) | P3 | S | M5 | defect | done | doctor: on bind-denied the TCP carrier rows give "Address family not supported", not the refused bind |
 | [T-599](fixes.md) | P2 | S | M5 | defect | done | link dial: a bad --peer value exits 78 and names "line 1" |
 | [T-600](fixes.md) | P2 | S | M5 | defect | done | net proxy: --switch to an address that does not answer waits 135 s, past --run-for, with no line |
 | [T-601](fixes.md) | P3 | S | M5 | defect | done | tunnel: the warning "DNS discovery of the edge failed" comes two times at one start |
@@ -656,3 +656,4 @@ M8 Overlays, M9 Later.
 | [T-609](fixes.md) | P2 | S | M5 | feature | partial | The release set holds each carrier of the link: s3, icmp, ntp, smtp and imap join the feature release |
 | [T-610](fixes.md) | P3 | S | M5 | defect | done | link carriers names the cost class of a carrier two times |
 | [T-611](later.md) | P3 | L | M9 | feature | open | The direction split of a TCP flow of a router group, over a split session of the link |
+| [T-612](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.86.0 |

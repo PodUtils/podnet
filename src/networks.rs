@@ -196,6 +196,8 @@ pub fn up_fault(e: anyhow::Error) -> anyhow::Error {
 /// Parse `spec`. The error is one line that names the spec.
 pub fn parse(spec: &str) -> Result<SpecNetwork, Failure> {
     let spec = spec.trim();
+    // #754: no line shows a password or the words of an exec command.
+    crate::egress::hide_secrets(spec);
     let kind = kind(spec)?;
     Ok(SpecNetwork {
         spec: spec.to_string(),
