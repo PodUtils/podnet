@@ -309,7 +309,7 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #617 | One-shot commands print the "runs in the foreground" warning | closed (outside the team: verified, labelled `confirmed`; T-437) | T-437 |
 | #618 | podnet serve --pin: the client unlock flow is not documented | closed (outside the team: verified, labelled `confirmed`; T-426) | T-426 |
 | #619 | podnet route: clarify which state directory holds router-usage.json | closed (outside the team: verified, labelled `confirmed`; T-427) | T-427 |
-| #620 | Release binary: all network link carriers are off (only unix and memory) | open (outside the team: verified, labelled `confirmed`; T-428 partial) | T-428 |
+| #620 | Release binary: all network link carriers are off (only unix and memory) | closed: T-428 done (the feature `release` of the release binaries; dry run 45731591597 built each target) | T-428 |
 | #621 | podnet pod -x direct: a false "upstream :0" warning, and -x does not accept direct | closed (outside the team: verified, labelled `confirmed`; T-432) | T-432 |
 | #622 | Minor output nits: duplicate headers, double spaces, missing schema, duplicated error | closed (outside the team: verified, labelled `confirmed`; T-429) | T-429 |
 | #623 | podnet exit: --stdio is the only mode, so make it the default | closed (outside the team: verified, labelled `confirmed`; T-438) | T-438 |

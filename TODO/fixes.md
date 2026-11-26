@@ -8827,7 +8827,7 @@ cargo test -p podnet --lib router::
 **Milestone:** M6
 **Priority:** P2
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -8862,6 +8862,13 @@ each release-mode build (`release.yml`, `rebuild.sh` for a tag that has the feat
 with `full`. The other features (`s3`, `icmp`, `ntp`, `smtp`, `imap`, `ss`, `trojan`, `sidecar`, `c-abi`) stay out. The
 proof is the dry run of `release.yml` (each target builds) after `v0.4.0-beta.19`.
 
+## Done
+
+2026-11-26, `3ef7d0f` and `5e67a23`. Step 1: `docs/link.md` and the notes name the carriers of a release binary. Step
+2: the feature `release` (`tcp`, `ws`, `h2`, `quic`, `udp`, `poll`, `dns`) for each release-mode build. The dry run
+45731591597 of `release.yml` on `49baa57` built each of the eight targets with it (x86-64 and ARM64 in the build image,
+the others with cargo-zigbuild), passed the lane, and checked that each binary is static. `cargo test --features release
+--test link_features`: 11 passed. The notes of the next beta (`v0.4.0-beta.20`) list the carriers.
 # T-429: Small output faults of the QA round (GitHub #622)
 
 **Source:** GitHub #622 (https://github.com/PodUtils/podnet/issues/622), Nemo-010 (outside: verified, labelled `confirmed`).

@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 588 entries: 9 open, 12 partial, 30 blocked, 537 done.
+`TODO/INDEX.md` holds 588 entries: 9 open, 11 partial, 30 blocked, 538 done.
 
 ## State
 
@@ -46,8 +46,8 @@ stop"). End a turn only when each remaining entry is blocked.
    frozen code (`sh scripts/agent/podcrates.sh`) waits for the take, except a fix. Add no new
    hardcoded host or service of another party (`docs/decisions.md`, Services crate).
 3. **Releases:** the gate of the QA round is done (2026-11-20). The newest is `v0.4.0-beta.19`. The next beta
-   (`v0.4.0-beta.20`) runs the black-box QA pass first (`docs/maintenance.md`, Release, step 0), and its dry run
-   proves the feature `release` on each target (T-428).
+   (`v0.4.0-beta.20`) runs the black-box QA pass first (`docs/maintenance.md`, Release, step 0). The feature `release`
+   builds on each target (dry run 45731591597).
 
 ### The order of podnet's own work
 
@@ -65,7 +65,7 @@ not wait for a larger one.
    - the donor review (GitHub #429 to #434): done, except #435: T-244 (open: its capture hook goes into `pod-cloudflare`).
    - open and partial follow-ups (`TODO/fixes.md`):
      T-476 (blocked, COORD-126 #756), T-478, T-406 (blocked, #604), T-488, T-414 and T-415
-     (partial), T-358 and T-398 (partial), T-428 (partial).
+     (partial), T-358 and T-398 (partial).
 4. **M2, the splits:** T-044 (blocked:
    the rows left go with the takes, T-137). The split of the tunnel is done by the take of `pod-cloudflare`; each file has
    at most 800 lines, and no allowlist has an entry.

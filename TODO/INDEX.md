@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**588 entries: 9 open, 12 partial, 30 blocked, 537 done.**
+**588 entries: 9 open, 11 partial, 30 blocked, 538 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 91 | 96 |
-| P2 | 0 | 5 | 15 | 282 | 302 |
+| P2 | 0 | 4 | 15 | 283 | 302 |
 | P3 | 8 | 5 | 13 | 163 | 189 |
-| **All** | 9 | 12 | 30 | 537 | 588 |
+| **All** | 9 | 11 | 30 | 538 | 588 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -472,7 +472,7 @@ M8 Overlays, M9 Later.
 | [T-425](fixes.md) | P3 | S | M6 | chore | done | `warp ssh-config` prints a `GIT_SSH_COMMAND` line with three layers of quotes (GitHub #615) |
 | [T-426](fixes.md) | P3 | S | M6 | docs | done | The unlock flow of a PIN is not documented (GitHub #618) |
 | [T-427](fixes.md) | P2 | S | M6 | defect | done | `route` writes `router-usage.json` to the global state directory, not to `state_dir` (GitHub #619) |
-| [T-428](fixes.md) | P2 | S | M6 | docs | partial | The release binaries have no optional link carrier, and the notes do not say it (GitHub #620) |
+| [T-428](fixes.md) | P2 | S | M6 | docs | done | The release binaries have no optional link carrier, and the notes do not say it (GitHub #620) |
 | [T-429](fixes.md) | P3 | S | M6 | defect | done | Small output faults of the QA round (GitHub #622) |
 | [T-430](fixes.md) | P1 | S | M7 | defect | done | `pod -x` with a dead upstream: a non-blocking connect() looks connected, then hangs (GitHub #610) |
 | [T-431](fixes.md) | P2 | S | M7 | docs | done | `pod -r 'cidr:...=reject'` does not refuse a name (GitHub #611) |

@@ -318,7 +318,7 @@
 617 issue closed
 618 issue closed
 619 issue closed
-620 issue open
+620 issue closed
 621 issue closed
 622 issue closed
 623 issue closed
