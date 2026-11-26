@@ -859,6 +859,7 @@ jobs:
           sh scripts/retry.sh curl -qfsSL -o "$d/pebble.tgz" "$u"
           echo "4f2fcb5bca8c85c9cf73ad140fccfc0d2be40bd81ab99879c79b7b8a0b4f70ed  $d/pebble.tgz" | sha256sum -c
           tar -xzf "$d/pebble.tgz" -C "$d"
+          chmod 0755 "$d/pebble-linux-amd64/linux/amd64/pebble"
           mkdir -p "$d/test/certs/localhost"
           for f in test/certs/localhost/cert.pem test/certs/localhost/key.pem test/certs/pebble.minica.pem; do
             sh scripts/retry.sh curl -qfsSL -o "$d/$f" "https://raw.githubusercontent.com/letsencrypt/pebble/$v/$f"

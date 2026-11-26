@@ -2157,7 +2157,7 @@ API"; no token in the document). Fail first: before 7d849e1, `net doctor` refuse
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -2293,6 +2293,12 @@ output holds no password. The proof is its first pass in `live` (this host canno
 of `pod-services`) is dropped (a call of the session; `docs/decisions.md`, 2026-11-26): a public TURN service gives no
 allocation without an account of its own, so a name in `pod-services` saves only the host and the port, and the user
 gives the account anyway. `turn://HOST[:PORT]` stays the form. T-321 is done when the coturn step passes.
+
+2026-11-26, `0645505f`, the proof of T-321. `live` 45810618319 (`d26f685`) passed the step "A TURN network through coturn (UDP, and TCP
+over RFC 6062)": one datagram to a UDP echo and one stream to a TCP echo through `podnet forward --network
+turn://127.0.0.1:47478` and coturn of Ubuntu, with no password in the output. The first run (`live` 45802633188)
+failed because the package of coturn starts its own service on port 3478; the step now stops it and takes port 47478.
+The tests of the stand-in: `cargo test -p podnet --lib networks::turn` (20 passed).
 
 # T-354: net: `devtunnel://` with a tunnel access token, or with no token
 

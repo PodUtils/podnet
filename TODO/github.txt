@@ -205,7 +205,7 @@
 504 issue closed
 505 issue closed
 506 issue closed
-507 issue open
+507 issue closed
 508 issue closed
 509 issue closed
 510 issue closed

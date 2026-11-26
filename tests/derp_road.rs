@@ -12,6 +12,8 @@
 //! * `derp_the_command_line_refuses_each_bad_value`: the binary exits 64 for
 //!   each bad value before the network, and 69 when no server answers.
 
+mod test_host;
+
 use std::process::Command;
 use std::time::Duration;
 
@@ -160,6 +162,7 @@ async fn run(case: &Case) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn derp_each_session_ends_with_its_code() {
+    test_host::need_loopback!();
     let cases = [
         Case {
             name: "an admitted client gets its bytes back",
