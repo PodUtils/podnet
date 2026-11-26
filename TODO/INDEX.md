@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**588 entries: 12 open, 13 partial, 29 blocked, 534 done.**
+**588 entries: 12 open, 12 partial, 29 blocked, 535 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
-| P1 | 1 | 3 | 2 | 90 | 96 |
+| P1 | 1 | 2 | 2 | 91 | 96 |
 | P2 | 3 | 5 | 14 | 280 | 302 |
 | P3 | 8 | 5 | 13 | 163 | 189 |
-| **All** | 12 | 13 | 29 | 534 | 588 |
+| **All** | 12 | 12 | 29 | 535 | 588 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -629,7 +629,7 @@ M8 Overlays, M9 Later.
 | [T-582](fixes.md) | P2 | S | M5 | defect | done | update --check: a proxy that does not answer costs 60 s and the error gives no next step |
 | [T-583](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.84.0 |
 | [T-584](fixes.md) | P3 | S | M5 | defect | done | send --json: the sent event of a text gives "bytes": 0 |
-| [T-585](fixes.md) | P1 | S | M5 | release | partial | Publish `v0.4.0-beta.19`: the fixes of the QA pass of 2026-11-25 and podcrates `v0.84.0` |
+| [T-585](fixes.md) | P1 | S | M5 | release | done | Publish `v0.4.0-beta.19`: the fixes of the QA pass of 2026-11-25 and podcrates `v0.84.0` |
 | [T-586](fixes.md) | P3 | M | M8 | feature | blocked | link p2p: take the relay first when the NAT classes of both ends rule out the direct path |
 | [T-587](fixes.md) | P2 | S | M5 | defect | done | live: a second run of doctor sees the leg quic+warp as not ok, and the step prints no reason |
 | [T-588](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.85.0 |

@@ -354,7 +354,7 @@
 653 issue closed
 654 issue open
 655 issue closed
-656 issue open
+656 issue closed
 657 issue closed
 658 issue closed
 659 issue closed
@@ -457,3 +457,4 @@
 756 issue open
 757 issue closed
 758 issue open
+759 issue open

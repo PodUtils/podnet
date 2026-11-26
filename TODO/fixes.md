@@ -16098,7 +16098,7 @@ PodUtils/podnet#656).
 **Milestone:** M5
 **Priority:** P1
 **Effort:** S
-**Status:** partial
+**Status:** done
 
 ## Problem
 
@@ -16133,6 +16133,24 @@ gh run list -R PodUtils/podnet --workflow release-proofs.yml --limit 1
 ```
 
 The job `image` of the release run passes, and the notes of the release have the section "The image, by digest".
+
+## Correction
+
+2026-11-25: `ci` 45632652111 and `gate` 45632656832 on `66b29ce` failed on the faults of new tests (the key `nat` of
+`doctor --json`, the relay test of T-576 on a host with no loopback, the rows of `forward` of the lane in the lab
+`no-loopback` after T-564, and the backend line of `warp exec` after T-547): fixed in `2fdb97c`, `b4aa4a9` and
+`2ef8e3a`. `live` failed three times at outside services (WARP's door, the quota of the quick-tunnel service): T-587,
+T-589. The take of podcrates `v0.85.0` (T-588) went in before the tag.
+
+## Done
+
+2026-11-25, the tag `v0.4.0-beta.19` at `2ef8e3a`. `ci` 45646491033 and `live` 45646491036 passed on `2ef8e3a`;
+`gate` 45640209602 on `b4aa4a9` (the same code but one test file). The dry run 45652900346 passed. `release.yml`
+45659243262 (`publish=v0.4.0-beta.19`) made the tag; the release run 45660048233 built each of the eight targets,
+passed `gate / lane`, published the prerelease with 18 files, and passed `proofs` and `image` (the attestation of the
+manifest list, the pull-back check of each image, the section "The image, by digest" of the notes).
+`release-proofs.yml` 45668331159 passed. The x86-64 binary of the release passes `sha256sum -c` and prints `podnet
+0.4.0-beta.19 (2ef8e3a...)`. COORD-129 (#759) hands off the files and the digests; COORD-109 (#656) is closed.
 
 # T-586: link p2p: take the relay first when the NAT classes of both ends rule out the direct path
 
