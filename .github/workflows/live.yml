@@ -799,8 +799,11 @@ jobs:
         run: |
           set -eu
           sh scripts/retry.sh sudo apt-get install -y -qq coturn > /dev/null
+          # The package starts its own service on port 3478: stop it, and use a
+          # port of this step.
+          sudo systemctl stop coturn 2> /dev/null || true
           d=$(mktemp -d)
-          sudo turnserver -n --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 --listening-port=3478 \
+          sudo turnserver -n --listening-ip=127.0.0.1 --relay-ip=127.0.0.1 --listening-port=47478 \
             --lt-cred-mech --user=podnet:live-turn-pw --realm=podnet.test --allow-loopback-peers \
             --no-tls --no-dtls --no-cli --log-file=stdout --simple-log > "$d/turn.log" 2>&1 &
           python3 -I -c '
@@ -818,9 +821,9 @@ jobs:
           sleep 2
           export PODNET_TURN_USER=podnet PODNET_TURN_PASSWORD=live-turn-pw
           fail() { echo "$1"; echo "--- turnserver"; tail -30 "$d/turn.log"; echo "--- forward"; tail -20 "$d/fwd-$2.err"; exit 1; }
-          target/release/podnet forward -L udp:47481=127.0.0.1:47480 --network turn://127.0.0.1:3478 --run-for 60 \
+          target/release/podnet forward -L udp:47481=127.0.0.1:47480 --network turn://127.0.0.1:47478 --run-for 60 \
             > "$d/fwd-udp.out" 2> "$d/fwd-udp.err" &
-          target/release/podnet forward -L 47491=127.0.0.1:47490 --network turn://127.0.0.1:3478 --run-for 60 \
+          target/release/podnet forward -L 47491=127.0.0.1:47490 --network turn://127.0.0.1:47478 --run-for 60 \
             > "$d/fwd-tcp.out" 2> "$d/fwd-tcp.err" &
           sleep 3
           got=$(python3 -I -c '
