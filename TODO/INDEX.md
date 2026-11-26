@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**588 entries: 12 open, 12 partial, 29 blocked, 535 done.**
+**588 entries: 10 open, 12 partial, 29 blocked, 537 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 1 | 2 | 2 | 91 | 96 |
-| P2 | 3 | 5 | 14 | 280 | 302 |
+| P2 | 1 | 5 | 14 | 282 | 302 |
 | P3 | 8 | 5 | 13 | 163 | 189 |
-| **All** | 12 | 12 | 29 | 535 | 588 |
+| **All** | 10 | 12 | 29 | 537 | 588 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -98,8 +98,8 @@ M8 Overlays, M9 Later.
 | [T-050](crates.md) | P2 | M | M3 | chore | done | Move the WARP adapter to the shared crate `pod-warp` in `PodUtils/podcrates` |
 | [T-051](crates.md) | P2 | M | M3 | chore | done | Extract the crate `podnet-serve`, with the library-only modules |
 | [T-052](crates.md) | P2 | M | M3 | chore | done | Move the Cloudflare adapter to the shared crate `pod-cloudflare` in `PodUtils/podcrates` |
-| [T-053](crates.md) | P2 | M | M3 | chore | open | The root package is the CLI and a facade that keeps each library path |
-| [T-054](crates.md) | P2 | S | M3 | release | open | A prerelease after the crate split, with the static builds of each target |
+| [T-053](crates.md) | P2 | M | M3 | chore | done | The root package is the CLI and a facade that keeps each library path |
+| [T-054](crates.md) | P2 | S | M3 | release | done | A prerelease after the crate split, with the static builds of each target |
 | [T-055](adapters.md) | P2 | M | M4 | feature | done | The network types in `podnet-core`: a target, a dialer, datagrams, a network and its link |
 | [T-056](adapters.md) | P2 | M | M4 | feature | done | Dialers for direct, the egress proxy, the relay, the pod upstream chains, the tailnet front door and the virtual network |
 | [T-057](adapters.md) | P2 | M | M4 | feature | done | A dialer and datagrams for WARP |

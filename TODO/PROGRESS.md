@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 588 entries: 12 open, 12 partial, 29 blocked, 535 done.
+`TODO/INDEX.md` holds 588 entries: 10 open, 12 partial, 29 blocked, 537 done.
 
 ## State
 
@@ -69,7 +69,7 @@ not wait for a larger one.
 4. **M2, the splits:** T-044 (blocked:
    the rows left go with the takes, T-137). The split of the tunnel is done by the take of `pod-cloudflare`; each file has
    at most 800 lines, and no allowlist has an entry.
-5. **M3, the crates:** T-053, then the prerelease T-054. The take of `pod-cloudflare` is done (podcrates `v0.69.0`).
+5. **M3, the crates:** done (the facade, the path map, and the prerelease after the split: `v0.4.0-beta.19`).
 6. **M4, the adapters:** done.
 7. **M6, the services:** done: the file server, git, the router, the resumable layer and `--seal` of the reverse road, and the
    transfer by code (`podnet send` and `podnet receive` over `pod-wormhole`; `docs/transfer.md`; `docs/decisions.md`,

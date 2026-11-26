@@ -569,7 +569,7 @@ and 4.6, step E; `docs/research/podnet/podssh.md`, section 3 (the path map).
 **Milestone:** M3
 **Priority:** P2
 **Effort:** M
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -617,7 +617,18 @@ PodUtils/podcrates.
 2026-11-11, T-059: the registry of networks (`src/networks.rs`) has no cargo features yet. The facade adds
 the features `warp`, `cloudflare`, `relay` and `vnet`, and each row of the table depends on its feature.
 
+## Done
 
+2026-11-26, the commit of this entry. The work of the steps came with the splits and the takes: `src/lib.rs` is the
+facade (the modules of `podnet-core`, `podnet-serve` and `podnet-vnet` at their old paths; the glue of the shared
+crates of podcrates in its own modules, so `pub use pod_warp as warp` does not apply: `podnet::warp` is the glue over
+`pod-warp`); `src/fuzzing.rs` and `crates/podnet-netns/src/fuzzing.rs` are the `#[doc(hidden)] pub mod fuzzing` of the
+fuzz targets, and a parser of a crate of podcrates is fuzzed in podcrates. This commit brings the path map of
+`docs/maintenance.md`, section "The code", to the present (`src/ws.rs` over `pod-ws`, `podnet-capi`, `src/doctor/`,
+`canrun.rs`, the fuzz entries). Proofs: `cargo test --test api_surface` (2 passed); `cargo check --bins` in `fuzz/`
+(18 targets, passed); `cargo todo check`. The build (step 4) with `CARGO_INCREMENTAL=0`: the rebuild of the `podnet`
+binary after a touch of `crates/podnet-core/src/state.rs` takes 31.6 s, and of `src/egress.rs` 27.1 s (T-046 measured
+5.2 s and 5.0 s with incremental builds on).
 # T-054: A prerelease after the crate split, with the static builds of each target
 
 **Source:** `docs/research/podnet/architecture.md`, section 4.2 (the rows Release build and
@@ -626,7 +637,7 @@ cargo package); `docs/maintenance.md`, section "Release"; `CLAUDE.md` (Releases)
 **Milestone:** M3
 **Priority:** P2
 **Effort:** S
-**Status:** open
+**Status:** done
 
 ## Problem
 
@@ -670,6 +681,12 @@ owner allows releases again. A `pod-*` dependency by a git tag stops `cargo publ
 
 2026-11-13: the ruling "Releases" of 2026-11-09 allows betas (`docs/decisions.md`), and the betas up to v0.4.0-beta.8 are out. The line "no podnet release now" above is old. This entry stays open for its own work: a prerelease after the crate split, which waits for T-053.
 
+## Done
+
+2026-11-26: `v0.4.0-beta.19` (T-585, the tag at `2ef8e3a`) is a prerelease after the split (T-053 done) and after the
+takes of the shared crates. Its release run 45660048233 built each of the eight static targets (x86-64 and ARM64 in
+the build image, the others with cargo-zigbuild), passed the lane, `proofs` and `image`; `release-proofs.yml`
+45668331159 passed. Its `## Breaking` is not "None.": the QA pass of 2026-11-25 changed exit codes and verdicts.
 # T-137: podnet uses the shared crates of `PodUtils/podcrates`
 
 **Source:** the owner, 2026-11-05 (`docs/decisions.md`, Shared crates and Order); the proposal of
