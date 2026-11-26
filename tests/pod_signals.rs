@@ -189,3 +189,30 @@ fn a_stop_signal_ends_pod_serve_cleanly_and_removes_its_socket() {
         assert!(!sock.exists(), "{name}: the socket stays");
     }
 }
+
+/// T-616: `net proxy --listen unix:PATH` and `net switch --listen unix:PATH`
+/// remove their socket at a clean stop, so the next start (also of another
+/// user in a shared directory) finds no stale file.
+#[test]
+fn a_clean_stop_of_a_unix_listener_removes_its_socket() {
+    let dir = tempfile::tempdir().unwrap();
+    for (name, command) in [("proxy", ["net", "proxy"]), ("switch", ["net", "switch"])] {
+        let sock = dir.path().join(format!("{name}.sock"));
+        let mut child = Command::new(env!("CARGO_BIN_EXE_podnet"))
+            .args(command)
+            .args(["--listen", &format!("unix:{}", sock.display())])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(20);
+        while !sock.exists() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        assert!(sock.exists(), "{name}: no socket");
+        unsafe { libc::kill(child.id() as i32, libc::SIGTERM) };
+        let status = child.wait().unwrap();
+        assert_eq!(status.code(), Some(0), "{name}");
+        assert!(!sock.exists(), "{name}: the socket stays");
+    }
+}

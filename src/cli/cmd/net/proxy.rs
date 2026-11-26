@@ -121,7 +121,12 @@ pub(crate) async fn net_proxy(args: ProxyArgs) -> Result<()> {
     println!("podnet: proxy    {}", proxy.listen);
     podnet::detach::ready(listen_doc(&proxy.listen));
     sleep_or_signal(args.run_for).await;
+    let listen = proxy.listen.clone();
     proxy.abort();
+    // T-616: a clean stop removes the unix socket that the proxy made.
+    if let ProxyListen::Unix(path) = &listen {
+        let _ = std::fs::remove_file(path);
+    }
     Ok(())
 }
 

@@ -31,8 +31,20 @@ pub fn claim_socket_path(path: &std::path::Path, replace: bool) -> Result<()> {
                     ),
                 ));
             }
-            std::fs::remove_file(path)
-                .with_context(|| format!("removing the old socket unix:{}", path.display()))?;
+            // T-616: a stale socket of another user (a shared /tmp) cannot
+            // be removed: exit 69 with the step.
+            std::fs::remove_file(path).map_err(|e| {
+                let what = format!("removing the old socket unix:{}: {e}", path.display());
+                match e.kind() {
+                    std::io::ErrorKind::PermissionDenied => fault(
+                        Fault::Unavailable,
+                        anyhow::anyhow!(
+                            "{what}; another user's socket is there: give another path"
+                        ),
+                    ),
+                    _ => fault(Fault::OsError, anyhow::anyhow!(what)),
+                }
+            })?;
             Ok(())
         }
         Ok(_) => Err(fault(

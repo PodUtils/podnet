@@ -45,6 +45,15 @@ impl Action {
         }
     }
 
+    /// The verb of a refusal in a sentence: `refuses`, `queues`.
+    pub fn verb(self) -> &'static str {
+        match self {
+            Action::Refuse => "refuses",
+            Action::Queue => "queues",
+            other => other.as_str(),
+        }
+    }
+
     fn refusal_is_an_error(self) -> bool {
         matches!(self, Action::Refuse | Action::Queue)
     }
@@ -377,7 +386,7 @@ impl Policy {
                     reason: Some(format!(
                         "the rule {:?} {} the destination {}:{} ({}), {BEFORE}",
                         rule.name,
-                        rule.action.as_str(),
+                        rule.action.verb(),
                         destination.host,
                         destination.port,
                         destination.family_name()
@@ -394,7 +403,7 @@ impl Policy {
                     destination.host,
                     destination.port,
                     destination.family_name(),
-                    self.default.as_str()
+                    self.default.verb()
                 ),
             );
         }

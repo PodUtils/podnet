@@ -279,7 +279,7 @@ mod tests {
         fn permit(host: &str, port: u16) -> std::result::Result<(), String> {
             match (host, port) {
                 ("refused.example", _) | ("2001:db8::1", 443) => Err(format!(
-                    "the rule \"no\" refuse the destination {host}:{port}"
+                    "the rule \"no\" refuses the destination {host}:{port}"
                 )),
                 _ => Ok(()),
             }

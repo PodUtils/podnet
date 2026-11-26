@@ -29,7 +29,7 @@ pub fn refusal_in(err: &anyhow::Error) -> Option<Stop> {
 fn read(text: &str) -> Option<Stop> {
     const LEAD: &str = "the rule \"";
     for action in [Action::Refuse, Action::Queue] {
-        let tail = format!("\" {} the destination ", action.as_str());
+        let tail = format!("\" {} the destination ", action.verb());
         let mut from = 0;
         while let Some(end) = text[from..].find(&tail).map(|e| e + from) {
             let head = &text[..end];
@@ -42,7 +42,7 @@ fn read(text: &str) -> Option<Stop> {
             }
             from = end + tail.len();
         }
-        if text.contains(&format!("so the policy {} it {BEFORE}", action.as_str())) {
+        if text.contains(&format!("so the policy {} it {BEFORE}", action.verb())) {
             return Some(Stop { rule: None });
         }
     }
@@ -116,7 +116,7 @@ mod tests {
             let got = read(&text).map(|s| s.rule);
             assert_eq!(got, want.map(|r| r.map(str::to_string)), "{text}");
         }
-        assert_eq!(read("the rule \"x\" refuse the destination a:1"), None);
+        assert_eq!(read("the rule \"x\" refuses the destination a:1"), None);
     }
 
     /// GitHub #727: each shape of a refused dial (typed, a failure of a
@@ -125,8 +125,8 @@ mod tests {
     #[test]
     fn each_shape_of_a_refusal_gives_the_step_of_the_policy() {
         use crate::hop::{at, Hop};
-        let rule = "the rule \"no-example\" refuse the destination example.com:443 (any family), before any connect";
-        let default = "no rule matches api.example:443 (any family), so the policy refuse it before any connect (EGRESS-3)";
+        let rule = "the rule \"no-example\" refuses the destination example.com:443 (any family), before any connect";
+        let default = "no rule matches api.example:443 (any family), so the policy refuses it before any connect (EGRESS-3)";
         let typed = || {
             let refused = crate::policy::Refused {
                 reason: rule.into(),

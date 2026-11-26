@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**613 entries: 7 open, 9 partial, 27 blocked, 570 done.**
+**616 entries: 7 open, 9 partial, 27 blocked, 573 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 3 | 93 | 98 |
-| P2 | 0 | 4 | 11 | 300 | 315 |
-| P3 | 7 | 3 | 13 | 176 | 199 |
-| **All** | 7 | 9 | 27 | 570 | 613 |
+| P2 | 0 | 4 | 11 | 302 | 317 |
+| P3 | 7 | 3 | 13 | 177 | 200 |
+| **All** | 7 | 9 | 27 | 573 | 616 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -659,3 +659,6 @@ M8 Overlays, M9 Later.
 | [T-612](fixes.md) | P1 | S | M3 | chore | done | Take podcrates v0.86.0 |
 | [T-613](fixes.md) | P3 | S | M5 | defect | done | offline spool take --out exits 65 for a file that exists, and the document does not say it |
 | [T-614](fixes.md) | P3 | S | M9 | feature | blocked | An https:// proxy of the process (--proxy, HTTPS_PROXY) through a TLS hop of pod-proxy |
+| [T-615](fixes.md) | P2 | S | M5 | defect | done | offline announce gives a raw I/O error and exit 1 on a host with no UDP |
+| [T-616](fixes.md) | P2 | S | M5 | defect | done | A Unix socket of net proxy and net switch stays after a clean stop, and a foreign socket gives exit 1 |
+| [T-617](fixes.md) | P3 | S | M5 | defect | done | The reason of a policy refusal says "refuse it", not "refuses it" |

@@ -2438,7 +2438,7 @@ Tests drive `handle_connection` over a duplex with tokio paused time: no byte, o
 
 ## Premise
 
-- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:437`, `crates/podnet-vnet/src/proxy.rs:319`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-51`): `podnet-netns` cannot call it.
+- Five callers use `claim_socket_path` (src/warp/proxy.rs:85 at `9c1fc4b`, `crates/podnet-vnet/src/switch.rs:437`, `crates/podnet-vnet/src/proxy.rs:319`, `src/cli/cmd/connect.rs:250`, `src/cli/cmd/relay.rs:283`). The function is in the root crate (`crates/podnet-core/src/net.rs:20-63`): `podnet-netns` cannot call it.
 - Two more listeners do `remove_file` then `bind_private`: `crates/podnet-netns/src/frontdoor.rs:95` and `crates/podnet-netns/src/seccomp/accept.rs:60`.
 - `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs` has no test of `claim_socket_path` (tests start at `PodUtils/podnet@7fe60e0:crates/podnet-core/src/net.rs:174`).
 - `net_tailscale` opens the LocalAPI socket before the bind (`src/cli/cmd/net/shim.rs:98-104`).
@@ -12647,7 +12647,7 @@ listener or relay disabled by policy, or not answering"; "1 (failure): A failure
 
 ## Premise
 
-- Read: `crates/podnet-core/src/net.rs:162` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
+- Read: `crates/podnet-core/src/net.rs:174` has `bind_fault`. It gives `Fault::Unavailable` (69) to `AddrInUse`,
   `PermissionDenied` and `AddrNotAvailable`. `forward`, `net proxy`, `serve`, `route`, `link` and `cover` call it.
 - Read: `src/cli/cmd/connect.rs:109` binds the TCP listener of `-L` and adds only a context (`:110`). It does not
   call `bind_fault`, so the exit code is 1. `unix_listener` (`src/cli/cmd/connect.rs:246`, `:249`) has the same
@@ -12892,7 +12892,7 @@ unknown action (`"default":"allow"`) also exits 1.
 ## Premise
 
 - Read: `src/cli/cmd/runtime.rs:165` calls `Policy::load(&file)?` and gives the error no class: exit 1. The same
-  function loads `PODNET_POLICY` in `install_from_env` (`src/policy.rs:511`), which `src/main.rs:58` turns into exit
+  function loads `PODNET_POLICY` in `install_from_env` (`src/policy.rs:520`), which `src/main.rs:58` turns into exit
   78. Thus one loader has two classes.
 - Read: the `--help` of `rules check` says it exits 78 when a rule is unreachable. That case is right
   (`src/cli/cmd/runtime.rs:205` gives `Fault::Config`). The bad file is the other case.
@@ -13463,7 +13463,7 @@ says "nothing accepts a connection" when the cause is EACCES of the connect.
   (`src/cli/cmd/warp/mod.rs:156`, `warp_client`, which registers a device for `--ephemeral`): the registration comes
   before `bind_all` (`src/cli/cmd/warp/front.rs:134`). The comment of issue 97 says that the listeners
   bind before the session; that is true of the session of the proxy, not of the registration.
-- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:162`) is the one place that gives the class to a
+- Read: `podnet_core::net::bind_fault` (`crates/podnet-core/src/net.rs:174`) is the one place that gives the class to a
   refused bind. It adds no words. `src/cli/cmd/local.rs:65` writes its own line (`serve --local`).
 - Read: `src/cli/cmd/agent.rs:104` calls `podnet::ports::reachable(*p, ...)`, which gives a bool: a refused connect and
   an EACCES give the same answer. The advice with the unix sockets is in `src/agent.rs:529` and is not used here.
@@ -17350,3 +17350,112 @@ cargo test --test road_network
 ## Blocker
 
 COORD-134 (PodUtils/podnet#779): a TLS hop to the proxy in `pod_proxy::Dialer` (ask 1).
+
+# T-615: offline announce gives a raw I/O error and exit 1 on a host with no UDP
+
+**Source:** T-358 step 2 (b, c), the blocks of `docs/offline.md` in the labs `udp-denied` and `no-loopback`
+(2026-11-26): `podnet offline announce` printed `podnet: Operation not permitted (os error 1)` and exited 1.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`announce` of `src/offline/mdns.rs` passed the error of the bind and of `send_to` up as a bare I/O error. The line did
+not name the step or the address, and the exit code was 1, not a documented code.
+
+## Premise
+
+- Read: `announce` of `src/offline/mdns.rs`; `docs/exit-codes.md` (69: a service that is not available).
+
+## Approach
+
+1. A failed bind or send exits 69 with the step, the address, and `podnet net doctor` as the next step.
+2. A test: a send to port 0 (EINVAL on each host) gives 69 and the step.
+
+## Prove
+
+```sh
+cargo test --lib offline::mdns
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_refused_announcement_names_its_step_and_exits_69` passes. In the labs
+`udp-denied` and `no-loopback` of podlab `v0.84.0`, `offline announce` exits 69 with one line.
+
+# T-616: A Unix socket of net proxy and net switch stays after a clean stop, and a foreign socket gives exit 1
+
+**Source:** T-358 step 2 (b, c), the blocks of `docs/proxies.md` (2026-11-26): after SIGTERM, `net proxy --listen
+unix:PATH` left PATH; a second start as another user printed a bare `Permission denied` and exited 1.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P2
+**Effort:** S
+**Status:** done
+
+## Problem
+
+`net proxy` and `net switch` aborted the listener on a stop signal and did not remove a Unix socket. The claim of a
+socket path (`claim_socket_path` of `podnet-core`) passed a refused remove of a stale socket up as a bare I/O error.
+
+## Premise
+
+- Read: `claim_socket_path` of `crates/podnet-core/src/net.rs`; `src/cli/cmd/net/proxy.rs`;
+  `src/cli/cmd/net/mod.rs`.
+
+## Approach
+
+1. A clean stop removes the Unix socket of the listener.
+2. A remove that the host refuses (another user's socket) exits 69 with the step: give another path. Another failure of
+   the remove exits 71.
+3. A test of the clean stop of each command.
+
+## Prove
+
+```sh
+cargo test --test pod_signals a_clean_stop_of_a_unix_listener_removes_its_socket
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The test `a_clean_stop_of_a_unix_listener_removes_its_socket` (net proxy and net
+switch: SIGTERM, exit 0, the socket is gone) passes.
+
+# T-617: The reason of a policy refusal says "refuse it", not "refuses it"
+
+**Source:** T-358 step 2 (b, c), the blocks of `docs/pods.md` (2026-11-26): a refusal printed `so the policy refuse it
+before any connect (EGRESS-3)`.
+**Category:** defect
+**Milestone:** M5
+**Priority:** P3
+**Effort:** S
+**Status:** done
+
+## Problem
+
+The reasons of `classify` in `src/policy.rs` put the name of the action (`refuse`, `queue`) where the sentence needs a
+verb. `src/policy/said.rs` reads the same words back.
+
+## Premise
+
+- Read: `classify` of `src/policy.rs`; `read` of `src/policy/said.rs`.
+
+## Approach
+
+1. `Action::verb` gives `refuses` and `queues`; the reasons and the reader use it.
+2. The tests of the reader, the test of `podnet-netns`, and the example of `docs/pods.md` use the new words.
+
+## Prove
+
+```sh
+cargo test --lib policy
+```
+
+## Done
+
+2026-11-26, the commit of this entry. The tests `each_refusal_reads_back_as_its_rule` and
+`each_shape_of_a_refusal_gives_the_step_of_the_policy` pass, and `cargo test -p podnet-netns --lib rules`
+(18 tests) pass with the new words.

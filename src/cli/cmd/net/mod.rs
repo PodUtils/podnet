@@ -416,7 +416,12 @@ pub(crate) async fn net(args: NetArgs) -> Result<()> {
             println!("podnet: switch   {}", switch.listen);
             podnet::detach::ready(listen_doc(&switch.listen));
             sleep_or_signal(args.run_for).await;
+            let listen = switch.listen.clone();
             switch.abort();
+            // T-616: a clean stop removes the unix socket of the switch.
+            if let podnet::vnet::proxy::ProxyListen::Unix(path) = &listen {
+                let _ = std::fs::remove_file(path);
+            }
             Ok(())
         }
         NetCommand::Tailscale(args) => net_tailscale(args).await,

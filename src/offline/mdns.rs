@@ -154,11 +154,22 @@ pub fn announce(
     // EGRESS-3 and EGRESS-4: the multicast group is a destination of the
     // policy, checked before the datagram socket is bound.
     crate::policy::permit_fault(&to.ip().to_string(), to.port())?;
-    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))?;
+    // T-615: a host that refuses UDP, or has no route to `to`, gives one
+    // line with the step and the address, and exit 69.
+    let unavailable = |what: String, e: std::io::Error| {
+        crate::exit::fault(
+            crate::exit::Fault::Unavailable,
+            anyhow::anyhow!("{what}: {e}; this host gives no UDP to {to} (podnet net doctor)"),
+        )
+    };
+    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))
+        .map_err(|e| unavailable("a UDP socket for the announcement".into(), e))?;
     socket.set_multicast_ttl_v4(255)?;
     socket.set_multicast_loop_v4(true)?;
     for _ in 0..repeat.max(1) {
-        socket.send_to(&packet, to)?;
+        socket
+            .send_to(&packet, to)
+            .map_err(|e| unavailable(format!("sending the announcement to {to}"), e))?;
     }
     Ok(announcement)
 }
@@ -268,5 +279,19 @@ mod tests {
         let packet = answer("one", &peer().txt().unwrap()).unwrap();
         assert!(txt_records(&packet[..packet.len() - 1]).is_empty());
         assert!(txt_records(&[0u8; 4]).is_empty());
+    }
+
+    /// T-615: a send that the host refuses exits 69 with the step and the
+    /// address (a send to port 0 fails on each host: EINVAL).
+    #[test]
+    fn a_refused_announcement_names_its_step_and_exits_69() {
+        let identity = Identity::from_seed(&[23; 32]);
+        let e = announce(&identity, "node-d", "10.0.0.9", 22, "127.0.0.1:0", 1).unwrap_err();
+        let text = format!("{e:#}");
+        assert_eq!(crate::exit::code_of(&e), crate::exit::UNAVAILABLE, "{text}");
+        assert!(
+            text.contains("sending the announcement to 127.0.0.1:0"),
+            "{text}"
+        );
     }
 }

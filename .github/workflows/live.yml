@@ -770,7 +770,7 @@ jobs:
           # The state and the allow lists belong to root, who runs podnet: a
           # file of another user is refused (exit 71).
           r=$(sudo mktemp -d)
-          id_of() { sudo env PODNET_STATE_DIR="$r/$1" "$p" link status | awk '/^identity/ { print $2 }'; }
+          id_of() { sudo env PODNET_STATE_DIR="$r/$1" "$p" link status --create | awk '/^identity/ { print $2 }'; }
           a=$(id_of a)
           b=$(id_of b)
           echo "$b" | sudo tee "$r/allow-a" > /dev/null
