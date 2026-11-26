@@ -1686,8 +1686,10 @@ jobs:
             case "$rate" in
               *" 20000000 200") ;;
               *)
-                grep -E 'WARN|ERROR|closed|dead|stall|capacity' "burst-$port.log" | sed -E 's/[0-9a-f]{8}-[0-9a-f-]{27}/<id>/g' | tail -8
-                head -c 200 "body-$port.bin" | od -An -c | head -4
+                # pipefail: a log with no such line must not end the step
+                # (live 45856630869: a 429 and a quiet log).
+                grep -E 'WARN|ERROR|closed|dead|stall|capacity' "burst-$port.log" | sed -E 's/[0-9a-f]{8}-[0-9a-f-]{27}/<id>/g' | tail -8 || true
+                head -c 200 "body-$port.bin" | od -An -c | head -4 || true
                 ;;
             esac
             rm -f "body-$port.bin"
