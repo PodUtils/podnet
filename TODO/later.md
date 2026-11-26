@@ -762,7 +762,7 @@ The crate of this entry has a release in `PodUtils/podcrates`, with its hand-off
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** partial
 
 ## Problem
 
@@ -799,6 +799,11 @@ T-091 is done.
 
 - The account has no contact email: `Client::account` sends `termsOfServiceAgreed` alone, and `Acme::new` takes no contact. podnet has no `--acme-email`. It needs a COORD issue `(to podcrates)`.
 - The crate has no ACME stand-in for tests (no Pebble harness). The proof is `cargo test -p podnet-serve --lib acme`: the name check, the state, a kept certificate served with no order, the renewal time, the modes, the challenge on the listener, and a first order that fails. A run against Pebble (the Prove above) waits for a workflow.
+
+2026-11-26, the lead: the step "HTTPS with a certificate of ACME (Pebble)" of `live.yml` runs Pebble `v2.10.1` (pinned by
+SHA-256) on the loopback: a first order by TLS-ALPN-01, a GET of a file over HTTPS with the root of Pebble, and a
+restart that serves the kept certificate with no new order. The asks of the crate are COORD-135 (PodUtils/podnet#780):
+a contact of the account, and a stand-in of a CA behind a feature.
 
 # T-130: Research: the iroh road, and a relay and mailbox of podnet's own
 

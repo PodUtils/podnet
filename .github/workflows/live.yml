@@ -844,6 +844,64 @@ jobs:
           test "$got" = "echo:ping" || fail "no answer of the TCP echo through the TURN network (RFC 6062)" tcp
           grep -h 'turn' "$d"/fwd-*.err | grep -v -i 'live-turn-pw' | tail -5 || true
           if grep -q 'live-turn-pw' "$d"/fwd-*.out "$d"/fwd-*.err; then echo "a password is in the output"; exit 1; fi
+      - name: HTTPS with a certificate of ACME (Pebble)
+        timeout-minutes: 6
+        # T-129: Pebble, the test CA of Let's Encrypt, on the loopback. serve
+        # --acme gets a certificate by TLS-ALPN-01 on its own listener and
+        # serves a file with it; a restart serves the kept certificate.
+        run: |
+          set -eu
+          d=$(mktemp -d); v=v2.10.1
+          u=https://github.com/letsencrypt/pebble/releases/download/$v/pebble-linux-amd64.tar.gz
+          sh scripts/retry.sh curl -qfsSL -o "$d/pebble.tgz" "$u"
+          echo "4f2fcb5bca8c85c9cf73ad140fccfc0d2be40bd81ab99879c79b7b8a0b4f70ed  $d/pebble.tgz" | sha256sum -c
+          tar -xzf "$d/pebble.tgz" -C "$d"
+          mkdir -p "$d/test/certs/localhost"
+          for f in test/certs/localhost/cert.pem test/certs/localhost/key.pem test/certs/pebble.minica.pem; do
+            sh scripts/retry.sh curl -qfsSL -o "$d/$f" "https://raw.githubusercontent.com/letsencrypt/pebble/$v/$f"
+          done
+          (cd "$d" && sha256sum -c) <<'SUMS'
+          c87fb918d9bac8db11aa54493b5f0cf6e0725a3fe73f617d1c64737e1ab4caf9  test/certs/localhost/cert.pem
+          0977979255b0e0721c17335c056b627f66a43cf56e5a52f3cda81fb111ecf00e  test/certs/localhost/key.pem
+          0c502e52627ff7de972c7e9e065640103b4589b4e2d23d3fcf21bef1e3c8c67c  test/certs/pebble.minica.pem
+          SUMS
+          printf '%s\n' '{"pebble": {"listenAddress": "127.0.0.1:14000", "managementListenAddress": "127.0.0.1:15000",' \
+            '"certificate": "test/certs/localhost/cert.pem", "privateKey": "test/certs/localhost/key.pem",' \
+            '"httpPort": 5002, "tlsPort": 5001, "ocspResponderURL": "", "externalAccountBindingRequired": false}}' \
+            > "$d/pebble.json"
+          echo '127.0.0.1 acme.podnet.test' | sudo tee -a /etc/hosts > /dev/null
+          (cd "$d" && PEBBLE_VA_NOSLEEP=1 PEBBLE_WFE_NONCEREJECT=0 ./pebble-linux-amd64/linux/amd64/pebble \
+            -config pebble.json > pebble.log 2>&1 &)
+          ca="$d/test/certs/pebble.minica.pem"
+          for _ in $(seq 30); do curl -qfsS --cacert "$ca" https://localhost:14000/dir > /dev/null && break; sleep 1; done
+          mkdir "$d/public"; echo acme-ok > "$d/public/hello.txt"
+          serve() {
+            PODNET_STATE_DIR="$d/state" target/release/podnet --ca-file "$ca" serve "$d/public" \
+              --acme acme.podnet.test --listen tcp://127.0.0.1:5001 --acme-directory https://localhost:14000/dir \
+              --run-for 90 > "$d/serve-$1.out" 2> "$d/serve-$1.err" &
+          }
+          fetch() {
+            curl -qfsS https://localhost:15000/roots/0 --cacert "$ca" > "$d/root.pem"
+            curl -qfsS --cacert "$d/root.pem" --resolve acme.podnet.test:5001:127.0.0.1 \
+              https://acme.podnet.test:5001/hello.txt
+          }
+          fail() { echo "$1"; echo "--- pebble"; tail -30 "$d/pebble.log"; echo "--- serve"; tail -20 "$d/serve-$2.err"; exit 1; }
+          serve 1
+          got=""; for _ in $(seq 60); do got=$(fetch 2> /dev/null) && break; sleep 1; done
+          echo "first start: $got"
+          test "$got" = acme-ok || fail "no HTTPS answer with a certificate of the CA" 1
+          test "$(stat -c %a "$d/state/acme")" = 700 || fail "the state of ACME is not 0700" 1
+          pkill -f 'serve .* --acme acme.podnet.test' || true
+          sleep 1
+          issued=$(grep -c -i 'issued certificate' "$d/pebble.log" || true)
+          serve 2
+          got=""; for _ in $(seq 20); do got=$(fetch 2> /dev/null) && break; sleep 1; done
+          echo "restart: $got"
+          test "$got" = acme-ok || fail "no HTTPS answer after a restart" 2
+          again=$(grep -c -i 'issued certificate' "$d/pebble.log" || true)
+          echo "certificates of the CA: $issued, then $again"
+          test "$again" = "$issued" || fail "the restart asked the CA for a new certificate" 2
+          pkill -f 'serve .* --acme acme.podnet.test' || true
       - name: Exit 69 for an unavailable path
         timeout-minutes: 3
         run: |

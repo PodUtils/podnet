@@ -464,5 +464,6 @@ or in `docs/reports/`. `TODO/RULES.md` gives the rules.
 | #777 | COORD-132: podnet v0.4.0-beta.20 is out: the files, their SHA-256 and the image by digest (to all) | open (a COORD issue between sessions) | none |
 | #778 | COORD-133: podnet took podcrates v0.86.0; the asks #753 to #756, #758 and #776 are closed (to podcrates) | open (a COORD issue between sessions; read by podcrates) | none |
 | #779 | COORD-134: pod-proxy: a TLS hop for an https:// proxy of the process; pod-egress: its stand-ins behind a feature (to podcrates) | open (a COORD issue between sessions; the ask of T-614) | none |
+| #780 | COORD-135: pod-acme: a contact of the account, and an ACME stand-in behind a feature (to podcrates) | open (a COORD issue between sessions; the asks of T-129) | none |
 
 #312 to #315, #318, #381 to #383, #415, #556, #557 and #680 to #684 are closed; they are pull requests.

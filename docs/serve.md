@@ -149,7 +149,7 @@ podnet git serve --root ./repos --anon-read \
 
 The account has no contact email: `pod-acme` sends none (T-129).
 
-Proof: `cargo test -p podnet-serve --lib acme`.
+Proof: `cargo test -p podnet-serve --lib acme`, and the `live.yml` step "HTTPS with a certificate of ACME (Pebble)".
 
 `podnet serve` serves only the files in `--dir`:
 
