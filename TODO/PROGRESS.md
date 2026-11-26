@@ -1,6 +1,6 @@
 # Progress
 
-`TODO/INDEX.md` holds 616 entries: 7 open, 9 partial, 27 blocked, 573 done.
+`TODO/INDEX.md` holds 616 entries: 5 open, 9 partial, 29 blocked, 573 done.
 
 ## State
 
@@ -78,7 +78,8 @@ not wait for a larger one.
 10. **M9, later:** T-123, T-124 and T-127 to T-129, each when its start condition holds (the egress roads of `pod-egress`
     are done; the proxy of the process is T-614, blocked on COORD-134 #779); T-001: edit GitHub #89 into a guide
     that a new client tests from.
-    T-123, T-124, T-127, T-128 and T-129 take `pod-ts`, `pod-egress`, `pod-derp` and `pod-acme` (wave 4).
+    T-127, T-128 and T-129 take `pod-egress`, `pod-derp` and `pod-acme` (wave 4). T-123 and T-124 are blocked: podcrates
+    `v0.86.0` has no `pod-ts` (its T-039 is open).
 10b. **Networks over the new crates (podcrates v0.33.0):** T-321 (`turn://`, `pod-turn`).
 11. **Blocked on `PodUtils/podcrates` (a COORD issue (to podcrates) for each):** T-161 and T-200
     (`pod-relay`: a relay that serves the call; the control host only), T-244 (`pod-cloudflare`); and the link

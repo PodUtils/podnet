@@ -34,15 +34,15 @@ M8 Overlays, M9 Later.
 
 ## Entries
 
-**616 entries: 7 open, 9 partial, 27 blocked, 573 done.**
+**616 entries: 5 open, 9 partial, 29 blocked, 573 done.**
 
 | Priority | open | partial | blocked | done | total |
 | --- | --- | --- | --- | --- | --- |
 | P0 | 0 | 0 | 0 | 1 | 1 |
 | P1 | 0 | 2 | 3 | 93 | 98 |
 | P2 | 0 | 4 | 11 | 302 | 317 |
-| P3 | 7 | 3 | 13 | 177 | 200 |
-| **All** | 7 | 9 | 27 | 573 | 616 |
+| P3 | 5 | 3 | 15 | 177 | 200 |
+| **All** | 5 | 9 | 29 | 573 | 616 |
 
 | ID | Priority | Effort | Milestone | Category | Status | Item |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -168,8 +168,8 @@ M8 Overlays, M9 Later.
 | [T-120](later.md) | P3 | M | M9 | feature | done | Router kernel mode: masquerade, an MSS clamp, an unreachable kill switch and `rp_filter` |
 | [T-121](later.md) | P3 | S | M9 | feature | done | Router: export the groups as a JSON file of the mwan form |
 | [T-122](later.md) | P3 | M | M9 | research | done | Research: a native git server with no installed `git` |
-| [T-123](later.md) | P3 | M | M9 | feature | open | Tailscale in the process: take the fork of tailscale-rs through `pod-ts` |
-| [T-124](later.md) | P3 | L | M9 | feature | open | Tailscale in the process: an adapter crate behind a feature that is off by default, with the static build proven |
+| [T-123](later.md) | P3 | M | M9 | feature | blocked | Tailscale in the process: take the fork of tailscale-rs through `pod-ts` |
+| [T-124](later.md) | P3 | L | M9 | feature | blocked | Tailscale in the process: an adapter crate behind a feature that is off by default, with the static build proven |
 | [T-125](later.md) | P3 | L | M9 | feature | done | A userspace WireGuard responder: `podnet wg serve` |
 | [T-126](later.md) | P3 | M | M9 | feature | done | Egress through an `https://` proxy and through wstunnel |
 | [T-127](later.md) | P3 | L | M9 | feature | open | Egress through VLESS, Shadowsocks and Wisp |

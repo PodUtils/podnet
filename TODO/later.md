@@ -338,7 +338,7 @@ the update of `docs/research/podnet/native-git.md` (grit-lib 0.5.33). A crate `p
 **Milestone:** M9
 **Priority:** P3
 **Effort:** M
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -375,6 +375,11 @@ cargo metadata --manifest-path vendor/tailscale-rs/Cargo.toml --format-version 1
 python3 -I scripts/check-vendored.py
 ```
 
+## Blocker
+
+The crate `pod-ts` is not in PodUtils/podcrates `v0.86.0`: its entry T-039 of podcrates (`pod-ts`: a Tailscale node
+in the process) is open. The entry starts at the first tag of podcrates that has the crate.
+
 ## Start condition
 
 T-114 is done.
@@ -395,7 +400,7 @@ ruling of 2026-11-05 (`docs/decisions.md`, Tailscale).
 **Milestone:** M9
 **Priority:** P3
 **Effort:** L
-**Status:** open
+**Status:** blocked
 
 ## Problem
 
@@ -428,6 +433,11 @@ cargo test --features ts -p podnet --test ts_headscale
 cargo deny check
 gh workflow run release.yml --ref main
 ```
+
+## Blocker
+
+The crate `pod-ts` is not in PodUtils/podcrates `v0.86.0`: its entry T-039 of podcrates (`pod-ts`: a Tailscale node
+in the process) is open. The entry starts at the first tag of podcrates that has the crate.
 
 ## Start condition
 
