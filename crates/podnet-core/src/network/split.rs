@@ -9,11 +9,11 @@
 //!   endpoint, and the far host answers on the path of `down`. Datagrams
 //!   that arrive on `up` are delivered too, so that no answer is lost.
 //!
-//! What podnet cannot split:
-//!
-//! * TCP. One byte stream has both directions. A split needs two
-//!   connections that a far end joins, and podnet has no such far end. The
-//!   option refuses it ([`TCP_REFUSAL`]).
+//! TCP is not split here. One byte stream has both directions: a split
+//! needs two connections that a far end joins. That far end is the split
+//! session of the link, and the router of podnet adds it with
+//! `tcp=FINGERPRINT@UP|DOWN` (T-611). This crate has no link: a bare
+//! `tcp` word is refused ([`TCP_REFUSAL`]).
 
 use std::io::{self, IoSliceMut};
 use std::net::SocketAddr;
@@ -23,9 +23,8 @@ use std::task::{Context, Poll};
 use super::{Datagrams, RecvMeta, Transmit};
 
 /// The text of the refusal of a TCP split.
-pub const TCP_REFUSAL: &str =
-    "a split of TCP needs a far end that joins two connections, and podnet has none; \
-     the flows of TCP keep one member";
+pub const TCP_REFUSAL: &str = "a split of TCP needs a far end that joins two connections: give \
+     tcp=FINGERPRINT@UP|DOWN, a podnet link listen with the service socks5";
 
 /// The members of a split, as indexes of the group: `up` sends, `down`
 /// receives.

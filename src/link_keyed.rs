@@ -248,6 +248,51 @@ pub fn carrier(
     }
 }
 
+/// [`carrier`] with each dial through `way` (a half of a split session
+/// of a router group, T-611): `quic`, `udp` and `dns` send over the
+/// datagrams of `way`, the poll carriers connect through it. Another name
+/// exits 78.
+pub fn carrier_via(
+    name: &str,
+    tune: &Tune,
+    me: &Identity,
+    allow: &AllowList,
+    way: std::sync::Arc<dyn pod_core::Dial>,
+) -> anyhow::Result<std::sync::Arc<dyn Carrier>> {
+    let _ = (&tune, &me, &allow, &way);
+    match name {
+        #[cfg(feature = "quic")]
+        "quic" => Ok(std::sync::Arc::new(
+            crate::link_quic::carrier(me, allow).with_way(way),
+        )),
+        #[cfg(feature = "udp")]
+        "udp" => Ok(std::sync::Arc::new(
+            crate::link_udp::carrier(me, allow, tune).with_way(way),
+        )),
+        #[cfg(feature = "dns")]
+        "dns" => {
+            let mut tune = tune.clone();
+            if tune.dns_server.is_none() {
+                let text =
+                    std::fs::read_to_string(crate::link_dns::RESOLV_CONF).unwrap_or_default();
+                tune.dns_server = crate::link_dns::first_nameserver(&text);
+            }
+            Ok(std::sync::Arc::new(
+                crate::link_dns::carrier(me, allow, &tune).with_way(way),
+            ))
+        }
+        #[cfg(feature = "poll")]
+        "poll" | "sse" | "chunked" | "httppoll" => {
+            let form = crate::link_poll::form_of(name).expect("a poll form");
+            Ok(std::sync::Arc::new(crate::link_poll::carrier_via(
+                me, allow, form, tune, way,
+            )))
+        }
+        "icmp" | "s3" => Err(crate::link_split::no_way(name)),
+        _ => Err(off(name)),
+    }
+}
+
 /// Listen at `address` through the carrier `name`. A client must prove a
 /// key of `allow`.
 pub async fn listen(

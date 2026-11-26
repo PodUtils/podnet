@@ -10,7 +10,7 @@
 //! policies:           # optional: NAME: POLICY of a group (T-178)
 //!   egress: minrtt     # weighted (default), rr, minrtt, leastload, protect
 //! splits:             # optional: NAME: up=MEMBER down=MEMBER of a group (T-179)
-//!   egress: up=home down=proxy  # UDP only; off (default) keeps one member
+//!   egress: up=home down=proxy  # UDP; tcp=FINGERPRINT@UP|DOWN adds TCP (T-611)
 //! health:              # the probe of the members of each group (T-097)
 //!   target: 1.1.1.1:443
 //!   interval: 10
@@ -60,6 +60,7 @@ pub mod live;
 pub mod metrics;
 mod probe;
 pub mod resolving;
+pub mod split_tcp;
 
 pub use control::{read_metrics, read_status};
 
@@ -191,16 +192,6 @@ impl Health {
     }
 }
 
-/// The split of group `name` with the members `list` (the value of
-/// `groups.NAME`): the names of `up` and `down`, or `None` for `off`.
-fn split_of(name: &str, value: &str, list: &str) -> Result<Option<(String, String)>> {
-    let (_, members) = parse_group(&format!("{name}={list}"))
-        .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?;
-    let names: Vec<String> = members.into_iter().map(|(m, _)| m).collect();
-    podnet_core::network::split::parse(value, &names)
-        .map_err(|e| anyhow::anyhow!("splits.{name}: {e}"))
-}
-
 /// One door.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -319,7 +310,7 @@ pub fn parse(text: &str) -> Result<Config> {
         let Some(list) = config.groups.get(name) else {
             bail!("splits.{name}: not a group of the file");
         };
-        split_of(name, value, list)?;
+        split_tcp::read(name, value, list)?;
     }
     for name in config.resolvers.keys() {
         resolver_of(&config, name)?;
@@ -491,6 +482,8 @@ pub struct Router {
     pub control: control::ControlState,
     /// The doors and the networks that run, with the counters (T-327).
     pub live: Arc<live::Live>,
+    /// The TCP split of each group that has one (T-611).
+    pub tcp_splits: Vec<(String, Arc<split_tcp::TcpSplit>)>,
 }
 
 /// The choice of a door for one target (T-177): the rule, the way and the
@@ -564,6 +557,15 @@ impl Router {
         }
         let router = Router::build(config, ways)?;
         router.control.keep(links).await;
+        if !router.tcp_splits.is_empty() {
+            // The key of this install proves the router to the far host.
+            let dir = crate::identity::default_dir()?;
+            let me = Arc::new(crate::identity::create(&dir).context("splits")?);
+            for (_, split) in &router.tcp_splits {
+                split.check()?;
+                split.start(me.clone());
+            }
+        }
         Ok(router)
     }
 
@@ -597,6 +599,7 @@ impl Router {
             swaps.insert(name.clone(), swap);
         }
         let mut groups = Vec::new();
+        let mut tcp_splits = Vec::new();
         for (name, list) in &config.groups {
             let (_, members) = parse_group(&format!("{name}={list}"))
                 .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?;
@@ -629,19 +632,21 @@ impl Router {
             let mut group = made
                 .map_err(|e| anyhow::anyhow!("groups.{name}: {}", e.text()))?
                 .with_policy(policy);
-            if let Some((up, down)) = config
-                .splits
-                .get(name)
-                .map(|v| split_of(name, v, list))
-                .transpose()?
-                .flatten()
-            {
+            let split = config.splits.get(name);
+            let split = split.map(|v| split_tcp::read(name, v, list)).transpose()?;
+            if let Some(split) = split.as_ref().and_then(|s| s.as_ref()) {
                 group = group
-                    .with_split(&up, &down)
+                    .with_split(&split.up, &split.down)
                     .map_err(|e| anyhow::anyhow!("splits.{name}: {}", e.text()))?;
             }
             let group = Arc::new(group);
-            ways.insert(name.clone(), group.way());
+            let mut way = group.way();
+            if let Some(spec) = split.flatten().and_then(|s| s.tcp) {
+                let tcp = Arc::new(split_tcp::TcpSplit::new(group.clone(), spec)?);
+                way.dial = tcp.clone();
+                tcp_splits.push((name.clone(), tcp));
+            }
+            ways.insert(name.clone(), way);
             groups.push((name.clone(), group));
         }
         let doors = config
@@ -699,6 +704,7 @@ impl Router {
             egress,
             control,
             live,
+            tcp_splits,
         })
     }
 
@@ -747,7 +753,13 @@ impl Router {
     pub fn status(&self) -> serde_json::Value {
         serde_json::json!({
             "doors": self.live.doors_json(),
-            "groups": self.groups.iter().map(|(_, g)| g.status()).collect::<Vec<_>>(),
+            "groups": self.groups.iter().map(|(name, g)| {
+                let mut status = g.status();
+                if let Some((_, tcp)) = self.tcp_splits.iter().find(|(n, _)| n == name) {
+                    tcp.merge(&mut status["split"]);
+                }
+                status
+            }).collect::<Vec<_>>(),
             "guests": self.guests.iter().map(|g| g.status()).collect::<Vec<_>>(),
             "interval": self.control.interval().map(|d| d.as_secs()),
         })

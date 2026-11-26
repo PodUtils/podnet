@@ -719,8 +719,11 @@ carrier, or a carrier that only one way of a firewall lets through.
   2026-11-14, [decisions.md](decisions.md), "The split session: a lost half ends the session"). A session that must outlive the
   loss of a carrier runs over the resumable layer (`pod-session`, `podnet::session`).
 * A chain of `--egress` elements is for the `tcp` carrier only: a split session with `--egress` exits 64.
-* The direction split of the router (`splits:` of a group, [router.md](router.md)) is another feature: it puts the two directions
-  of a UDP flow on two uplinks.
+* The direction split of the router (`splits:` of a group, [router.md](router.md)) puts the two directions of a UDP flow on two
+  uplinks. With `tcp=FINGERPRINT@UP|DOWN` it also dials a split session to a far host that runs `link listen 'UP|DOWN'
+  --service socks5`: each half goes through the way of one member of the group (the carriers `tcp`, `ws`, `h2`, `quic`, `udp`,
+  `dns` and the poll carriers take a way; `podnet::link_split::half`), and each TCP flow of the group is one stream of the
+  session (T-611).
 
 ```sh
 podnet link listen '/run/up.sock|/run/down.sock' --up-carrier unix --down-carrier unix --allow allowed.txt --to 127.0.0.1:22

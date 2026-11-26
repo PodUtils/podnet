@@ -207,7 +207,7 @@ pub(super) struct Halves {
 impl Halves {
     fn split(&self, me: &Identity, allow: &AllowList) -> Result<pod_link::split::Split> {
         let half =
-            |name: &str| podnet::link_split::half(name, &self.tune, me, allow, &self.options);
+            |name: &str| podnet::link_split::half(name, &self.tune, me, allow, &self.options, None);
         Ok(pod_link::split::Split::new(
             half(&self.up)?,
             half(&self.down)?,

@@ -2326,7 +2326,7 @@ satellite link, a relay plan billed by the gigabyte).
 ## Premise
 
 - Read on 2026-11-16 at 1caa0be: `docs/router.md` says "The counters of a door start at 0 when it is added and go with
-  it when it is removed" (`docs/router.md:307`); `src/router/door_stats.rs` has counts and bytes, no limit.
+  it when it is removed" (`docs/router.md:367`); `src/router/door_stats.rs` has counts and bytes, no limit.
 
 ## Approach
 
@@ -2395,3 +2395,20 @@ for TCP.
 cargo test -p podnet route_config_split
 cargo test -p podnet --test router_split_tcp
 ```
+
+## Correction
+
+2026-11-26, the build:
+
+- The test target `router_split_tcp` needs the feature `tcp` (the carriers of the halves): run
+  `cargo test -p podnet --features full --test router_split_tcp`. With no feature it holds no test.
+- The value is `up=MEMBER down=MEMBER tcp=FINGERPRINT@UP|DOWN [carriers=UP|DOWN]`; `UP` and `DOWN` have no key,
+  and the router dials `FINGERPRINT@UP|FINGERPRINT@DOWN`. The default carriers are `tcp|tcp`.
+- The far service is `socks5` (`podnet::link_door::Way`): the stream carries the target in its `CONNECT`.
+- A half takes a way with `tcp`, `ws`, `h2` (`carrier_via`), `quic`, `udp`, `dns` (`with_way` of `pod-link`) and
+  `poll`, `sse`, `chunked`, `httppoll` (`Poll::new` with the way). `unix` and `memory` have no network dial,
+  `icmp` opens a raw socket of this host, and `s3` needs an endpoint and a key that a router file does not give:
+  each of them exits 78 at the read of the router file.
+- The design names "a far key that the allow list does not hold" as an error. The router has no allow list of
+  its own: the fingerprint of `tcp=` is the one key that it admits, and a fingerprint that is no key exits 78.
+- The router proves itself with the key of the install (`identity::default_dir`).

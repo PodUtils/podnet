@@ -111,8 +111,14 @@ impl Member {
     }
 
     /// `socket` with its bytes counted for this member.
-    fn metered(&self, socket: Arc<dyn Datagrams>) -> Arc<dyn Datagrams> {
+    pub fn metered(&self, socket: Arc<dyn Datagrams>) -> Arc<dyn Datagrams> {
         Arc::new(MeteredDatagrams::new(socket, self.meter.clone()))
+    }
+
+    /// `io` with its bytes counted for this member: a connection that the
+    /// member carries outside of a pick (a half of a split session, T-611).
+    pub fn metered_io(&self, io: super::BoxedIo) -> super::BoxedIo {
+        Box::new(Metered::new(io, self.meter.clone(), None))
     }
 
     /// The least of the window of passing probe times.

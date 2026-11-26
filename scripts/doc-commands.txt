@@ -85,6 +85,7 @@ docs/relay.md 0be62d875f live the relay service; NAME and NODE-FINGERPRINT are p
 docs/relay.md c4ec711fcc live an SSH reverse tunnel service (serveo, relay.example.net)
 
 docs/router.md af8e0a4b4a skip a reference list: router.yml of the user and a running router
+docs/router.md a39e85b241 live needs a far host that holds the allow list of the router key
 
 docs/serve.md 9ab0dfc04a live serve opens a quick tunnel; ./public is the directory of the user
 docs/serve.md 21250fc791 skip a template: HUB-FINGERPRINT and CONNECTOR-FINGERPRINT; two hosts

@@ -49,7 +49,19 @@ pub fn form_of(name: &str) -> Option<Form> {
 /// the way out of the process. The query key `poll` of `tune` sets the
 /// hold of a long poll (1 to 60 s; default 25 s).
 pub fn carrier(me: &Identity, allow: &AllowList, form: Form, tune: &Tune) -> Poll {
-    let mut poll = Poll::new(provider(), key_of(me), crate::egress::egress(None))
+    carrier_via(me, allow, form, tune, crate::egress::egress(None))
+}
+
+/// [`carrier`] with each dial through `way` in place of the way out of the
+/// process (a half of a split session of a router group, T-611).
+pub fn carrier_via(
+    me: &Identity,
+    allow: &AllowList,
+    form: Form,
+    tune: &Tune,
+    way: std::sync::Arc<dyn pod_core::Dial>,
+) -> Poll {
+    let mut poll = Poll::new(provider(), key_of(me), way)
         .with_clients(keys(allow))
         .with_form(form);
     if let Some(hold) = tune.hold {

@@ -16687,7 +16687,7 @@ groups:                   # NAME: MEMBER*WEIGHT, MEMBER*WEIGHT, ...
   egress: home*2, proxy*1
 policies:                 # optional, NAME: POLICY of a group
   egress: minrtt
-splits:                   # optional, NAME: up=MEMBER down=MEMBER of a group
+splits:                   # optional, NAME: up=MEMBER down=MEMBER [tcp=FINGERPRINT@UP|DOWN] of a group
   egress: up=home down=proxy
 health:                   # the probe of the members of each group
   target: 1.1.1.1:443
@@ -16904,9 +16904,69 @@ A policy chooses the member of a new flow:
 | `protect` | A weighted pick among the members that are `up`. A member in `cooldown` or `probation` gets no flow while a member is `up`. |
 
 `splits` sends the UDP datagrams of a group out through one member and receives them on another:
-`NAME: up=MEMBER down=MEMBER`. It is off by default. TCP is not split. The byte meter of a member counts
-TCP flows and UDP datagrams, in both directions. With a split, `up` counts the datagrams that it sends
-and `down` counts the datagrams that it receives.
+`NAME: up=MEMBER down=MEMBER`. It is off by default. The words are split by a space or a comma. The byte meter
+of a member counts TCP flows and UDP datagrams, in both directions. With a split, `up` counts the datagrams
+that it sends and `down` counts the datagrams that it receives.
+
+### The split of TCP
+
+One TCP connection carries both directions, so a TCP split needs a far host that joins two connections. That
+far host runs podnet: the split session of the link ([link.md](link.md), "A split session") with the service
+`socks5`. Add the far end to the value (T-611):
+
+```yaml
+splits:
+  egress: up=home down=proxy tcp=FINGERPRINT@203.0.113.7:7001|203.0.113.7:7002 carriers=tcp|tcp
+```
+
+```sh
+# On the far host: the key of the router install is on the allow list.
+podnet link listen '0.0.0.0:7001|0.0.0.0:7002' --up-carrier tcp --down-carrier tcp \
+    --allow allowed.txt --service socks5
+```
+
+* `tcp=FINGERPRINT@UP|DOWN`: `FINGERPRINT` is the key of the far host (`podnet link status` shows it). `UP` and
+  `DOWN` are the dial address of each half, with no key: the router dials `FINGERPRINT@UP|FINGERPRINT@DOWN`.
+  The hello of the link admits only the far key.
+* `carriers=UP|DOWN`: the carrier of each half (default `tcp|tcp`). A half goes through the way of its member,
+  so its carrier must take a way: `tcp`, `ws`, `h2`, `quic`, `udp`, `dns`, `poll`, `sse`, `chunked` or
+  `httppoll`. `unix`, `memory`, `icmp` and `s3` cannot. A carrier whose feature is off exits 69 when the router
+  comes up.
+* The router proves itself with the key of this install (`podnet link status`), in the state directory. Put
+  its fingerprint in the allow list of the far host.
+* When the router comes up, it dials one split session. The up half goes through the way of the member `up`,
+  the down half through the way of the member `down`. Each TCP flow of the group is one stream of the session,
+  with a SOCKS5 `CONNECT` to the service `socks5` of the far host. The bytes of the flow go up on the up half
+  and come down on the down half; the far host is the exit, and the target sees its address. A refusal of the
+  far host (for example, a target that it cannot reach) is the failure of the flow.
+* A lost half ends the session at each end (the ruling of 2026-11-14). A flow that was open on it ends. Each
+  new TCP flow then takes the pick of the policy, as with no split, and counts as a fallback. The router dials
+  a new session after a back-off: 1 s, then twice the last wait, at most 30 s. A member of the split that is
+  `down` (the health probe) also sends each TCP flow to the pick. A pin of the group (`pin`) takes the pick,
+  and is no fallback. The lines `podnet: route  split NAME: session up` and `... session lost: WHY; next in N s`
+  go to stderr.
+* The UDP datagrams of the group keep the split of `up=` and `down=`.
+* The byte meter of each member counts the bytes of its half.
+* A bad value exits 78 when the file is read, and names the key `splits.NAME`: a `tcp=` with no `@` or no `|`,
+  a fingerprint that is no key, a carrier that cannot take a way, `carriers=` with no `tcp=`, or `tcp=` with
+  no `up=` and `down=`. A bare `tcp` is refused too.
+
+The key `split` of the status of the group has `mode: tcp` with a TCP split (`udp` with only `up=` and
+`down=`, `off` with none), and:
+
+| Key | Value |
+| --- | --- |
+| `up`, `down` | The members of the split. |
+| `sockets` | The UDP sockets that the split carries. |
+| `session` | `state` (`idle` in a dry run, `dialing`, `up`, `down`), `far`, `address`, `carriers`, `sessions` (the sessions that came up), `lost` (the sessions that a lost half ended), `error` (why the session is down). |
+| `streams` | The TCP flows that are open on the session now. |
+| `flows` | The TCP flows that the session carried. |
+| `tcp_fallbacks` | The TCP flows that took the pick because no session was up. |
+| `fallbacks` | The UDP sockets and the TCP flows that took one member in place of the split. |
+
+Limits: the far host must run podnet. The slower half sets the throughput of its direction, and the credits of
+each direction ride on the other half. A flow pays the overhead of the link. A flow does not move to a new
+session: the resumable layer (`pod-session`) is a later step.
 
 ### WARP as a member
 

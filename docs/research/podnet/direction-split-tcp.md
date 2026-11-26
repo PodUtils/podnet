@@ -53,5 +53,7 @@ link run above the session, so one session carries many TCP flows.
 
 ## The work
 
-The entry T-611 builds it, with the start condition that `podnet::link_split::half` takes a way for each half.
-Until then a TCP flow of a split group keeps one member, as the pick gives it.
+The entry T-611 builds it: `podnet::link_split::half` takes a way for each half, and `podnet::router::split_tcp`
+holds the session, the streams and the fallback ([router.md](../../router.md), "The split of TCP"). The far service
+is `socks5`: the stream carries the target in its `CONNECT`. Differences from the design: the router has no allow
+list of its own (the fingerprint of `tcp=` is the one key that it admits), and `s3` and `icmp` cannot be a half.

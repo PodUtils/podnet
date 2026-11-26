@@ -16,7 +16,9 @@
 //! This module is the glue:
 //!
 //! * [`half`] makes the carrier of one half by its name, with the key of
-//!   this install and the allow list for a carrier that pins keys.
+//!   this install and the allow list for a carrier that pins keys. A half
+//!   can take a way of its own (the member of a router group, T-611): the
+//!   carriers of [`WAYS`] take it, and another carrier exits 78.
 //! * [`dial`] opens a session at `UP|DOWN` (the address of each half in the
 //!   form of its carrier), then runs the hello of [`crate::hello`] above
 //!   it: each end proves its key on the session, whichever the halves are.
@@ -28,6 +30,7 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use pod_core::Dial;
 use pod_identity::PublicKey;
 use pod_link::split::{self, Split};
 use pod_link::{Accepted, BoxIo, Carrier, Listener, Pending, Role, Settings};
@@ -42,17 +45,47 @@ use crate::link_keyed::{self, Tune};
 /// show it.
 pub const NAME: &str = split::NAME;
 
+/// The carriers of a half that can take a way of their own: their dial
+/// goes through a [`Dial`] (a stream, or the datagrams of the way). `unix`,
+/// `memory`, `icmp` (a raw socket of this host) and `s3` (an endpoint and a
+/// key that a router file does not give) cannot.
+pub const WAYS: [&str; 10] = [
+    "tcp", "ws", "h2", "quic", "udp", "dns", "poll", "sse", "chunked", "httppoll",
+];
+
+/// True when the carrier `name` of a half can take a way ([`WAYS`]).
+pub fn takes_way(name: &str) -> bool {
+    WAYS.contains(&name)
+}
+
+/// The refusal of a half whose carrier cannot take a way: exit 78.
+pub fn no_way(name: &str) -> anyhow::Error {
+    exit::fault(
+        Fault::Config,
+        anyhow!(
+            "the {name} carrier cannot go through a member; a half that takes a way is one of {}",
+            WAYS.join(", ")
+        ),
+    )
+}
+
 /// The carrier `name` of one half: a carrier of the registry, a carrier of
 /// [`link_keyed`], or `tcp`, `ws` or `h2`. A carrier that this build leaves
-/// out exits 69; an unknown name exits 64.
+/// out exits 69; an unknown name exits 64. With `way`, the dial of the half
+/// goes through it (the member of a router group, T-611); a carrier that
+/// is not in [`WAYS`] then exits 78.
 pub fn half(
     name: &str,
     tune: &Tune,
     me: &Identity,
     allow: &AllowList,
     options: &Options,
+    way: Option<Arc<dyn Dial>>,
 ) -> anyhow::Result<Arc<dyn Carrier>> {
     let _ = (&tune, &me, &allow);
+    if let Some(way) = way {
+        return half_via(name, tune, me, allow, way);
+    }
     match name {
         #[cfg(feature = "tcp")]
         "tcp" => Ok(Arc::new(crate::link_tcp::carrier(me, allow))),
@@ -65,6 +98,32 @@ pub fn half(
         }
         _ if link_keyed::NAMES.contains(&name) => link_keyed::carrier(name, tune, me, allow),
         _ => Ok(Arc::from(carriers::open(name, options)?)),
+    }
+}
+
+/// The carrier `name` of one half with its dial through `way`.
+fn half_via(
+    name: &str,
+    tune: &Tune,
+    me: &Identity,
+    allow: &AllowList,
+    way: Arc<dyn Dial>,
+) -> anyhow::Result<Arc<dyn Carrier>> {
+    if !takes_way(name) {
+        return Err(no_way(name));
+    }
+    let _ = &way;
+    match name {
+        #[cfg(feature = "tcp")]
+        "tcp" => Ok(Arc::new(crate::link_tcp::carrier_via(me, allow, way))),
+        #[cfg(feature = "ws")]
+        "ws" => Ok(Arc::new(crate::link_ws::carrier_via(me, allow, way))),
+        #[cfg(feature = "h2")]
+        "h2" => Ok(Arc::new(crate::link_h2::carrier_via(me, allow, way))),
+        _ if ["tcp", "ws", "h2"].contains(&name) => {
+            crate::build_features::require(name).map(|()| unreachable!())
+        }
+        _ => link_keyed::carrier_via(name, tune, me, allow, way),
     }
 }
 
@@ -196,9 +255,49 @@ mod tests {
             &me,
             &AllowList::default(),
             &Options::default(),
+            None,
         ) else {
             panic!("no carrier is named pigeon")
         };
         assert_eq!(exit::code_of(&e), 64, "{e:#}");
+    }
+
+    /// T-611: a half with a way takes it when its carrier is one of WAYS;
+    /// another carrier exits 78 and names itself.
+    #[test]
+    fn a_half_with_a_way_needs_a_carrier_that_takes_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let me = crate::identity::create(dir.path()).unwrap();
+        let tune = Tune::default();
+        let way: Arc<dyn Dial> = crate::egress::egress(None);
+        for name in ["unix", "memory", "icmp", "s3", "pigeon"] {
+            let got = half(
+                name,
+                &tune,
+                &me,
+                &AllowList::default(),
+                &Options::default(),
+                Some(way.clone()),
+            );
+            let Err(e) = got else {
+                panic!("{name} takes no way")
+            };
+            assert_eq!(exit::code_of(&e), 78, "{name}: {e:#}");
+            assert!(format!("{e:#}").contains(name), "{e:#}");
+        }
+        for name in WAYS {
+            let got = half(
+                name,
+                &tune,
+                &me,
+                &AllowList::default(),
+                &Options::default(),
+                Some(way.clone()),
+            );
+            match got {
+                Ok(_) => {}
+                Err(e) => assert_eq!(exit::code_of(&e), 69, "{name}: a feature is off: {e:#}"),
+            }
+        }
     }
 }
